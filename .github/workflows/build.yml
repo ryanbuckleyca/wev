@@ -29,13 +29,18 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_KEY }}
         run: |
           if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
-            echo "ERROR: NEXT_PUBLIC_SUPABASE_URL is not set"
+            echo "❌ ERROR: NEXT_PUBLIC_SUPABASE_URL secret is not set in GitHub"
+            echo "Go to: https://github.com/ryanbuckleyca/wev-bulletin/settings/secrets/actions"
+            echo "Add a secret named: NEXT_PUBLIC_SUPABASE_URL"
             exit 1
           fi
-          if [ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ]; then
-            echo "ERROR: NEXT_PUBLIC_SUPABASE_ANON_KEY is not set"
+          if [ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] && [ -z "$NEXT_PUBLIC_SUPABASE_KEY" ]; then
+            echo "❌ ERROR: Neither NEXT_PUBLIC_SUPABASE_ANON_KEY nor NEXT_PUBLIC_SUPABASE_KEY is set"
+            echo "Go to: https://github.com/ryanbuckleyca/wev-bulletin/settings/secrets/actions"
+            echo "Add a secret named: NEXT_PUBLIC_SUPABASE_ANON_KEY (or NEXT_PUBLIC_SUPABASE_KEY)"
             exit 1
           fi
           echo "✓ Environment variables are set"
@@ -45,6 +50,7 @@ jobs:
           # Only NEXT_PUBLIC_* vars are embedded in client bundle (this is safe for Supabase anon key)
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_KEY }}
           # GitHub secrets are server-only and only needed at runtime, not during build
         run: npm run build
 
