@@ -60,6 +60,22 @@ jobs:
           NEXT_PUBLIC_SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_KEY }}
         run: npm run build
 
+      - name: Verify env vars in build
+        run: |
+          echo "Checking if env vars are embedded in the bundle..."
+          if grep -r "NEXT_PUBLIC_SUPABASE_URL" out/_next/static 2>/dev/null | head -1; then
+            echo "✓ Found NEXT_PUBLIC_SUPABASE_URL in bundle"
+          else
+            echo "⚠ NEXT_PUBLIC_SUPABASE_URL not found in bundle (might be minified)"
+          fi
+          # Check if placeholder values are present (bad)
+          if grep -r "placeholder.supabase.co" out/_next/static 2>/dev/null; then
+            echo "❌ ERROR: Placeholder values found in bundle - env vars not embedded!"
+            exit 1
+          else
+            echo "✓ No placeholder values found"
+          fi
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 

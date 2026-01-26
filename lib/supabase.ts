@@ -5,14 +5,20 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_KEY
 
+// Debug: Log what we have (only in browser, not during build)
+if (typeof window !== 'undefined') {
+  console.log('Supabase URL present:', !!supabaseUrl, supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'missing')
+  console.log('Supabase Key present:', !!supabaseAnonKey, supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'missing')
+}
+
 // Validate that env vars are present (this check happens at build time)
 if (!supabaseUrl || !supabaseAnonKey) {
   // During build, this will fail if vars aren't set (which is what we want)
   // At runtime, if vars weren't embedded, this will also fail with a clear error
-  throw new Error(
-    'Missing Supabase environment variables. ' +
-    'NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set during build.'
-  )
+  const errorMsg = 'Missing Supabase environment variables. ' +
+    'NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set during build. ' +
+    `URL: ${supabaseUrl ? 'set' : 'missing'}, Key: ${supabaseAnonKey ? 'set' : 'missing'}`
+  throw new Error(errorMsg)
 }
 
 // Create client - Next.js will embed the env var values in the bundle at build time
