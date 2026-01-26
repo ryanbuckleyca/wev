@@ -1,44 +1,22 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 
-let supabaseClient: SupabaseClient | null = null
+// Access env vars at module load time so Next.js embeds them in the bundle during build
+// Support both NEXT_PUBLIC_SUPABASE_ANON_KEY and NEXT_PUBLIC_SUPABASE_KEY for compatibility
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_KEY
 
-function getSupabaseClient(): SupabaseClient {
-  if (supabaseClient) {
-    return supabaseClient
-  }
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  // Support both NEXT_PUBLIC_SUPABASE_ANON_KEY and NEXT_PUBLIC_SUPABASE_KEY for compatibility
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    // During build time, Next.js may try to evaluate this module even for client components
-    // Create a placeholder client to allow build to complete
-    // The actual error will be caught at runtime when the client is used
-    if (typeof window === 'undefined') {
-      // Server-side (build time): create a placeholder client
-      supabaseClient = createClient('https://placeholder.supabase.co', 'placeholder-key')
-      return supabaseClient
-    }
-    // Client-side (runtime): throw error if env vars are missing
-    throw new Error('Missing Supabase environment variables')
-  }
-
-  supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
-  return supabaseClient
+// Validate that env vars are present (this check happens at build time)
+if (!supabaseUrl || !supabaseAnonKey) {
+  // During build, this will fail if vars aren't set (which is what we want)
+  // At runtime, if vars weren't embedded, this will also fail with a clear error
+  throw new Error(
+    'Missing Supabase environment variables. ' +
+    'NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set during build.'
+  )
 }
 
-// Use a Proxy to lazily initialize the client
-export const supabase = new Proxy({} as SupabaseClient, {
-  get(target, prop) {
-    const client = getSupabaseClient()
-    const value = (client as any)[prop]
-    if (typeof value === 'function') {
-      return value.bind(client)
-    }
-    return value
-  }
-})
+// Create client - Next.js will embed the env var values in the bundle at build time
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export interface JobPosting {
   id: string
