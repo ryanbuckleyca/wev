@@ -5,6 +5,9 @@ import { supabase, JobPosting, ScrapeRun } from '@/lib/supabase'
 import ReScrapeButton from '@/components/ReScrapeButton'
 import JobListings from '@/components/JobListings'
 
+// Force dynamic rendering to avoid build-time prerendering errors
+export const dynamic = 'force-dynamic'
+
 export default function Home() {
   const [jobs, setJobs] = useState<JobPosting[]>([])
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null)
