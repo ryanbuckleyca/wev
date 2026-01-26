@@ -5,8 +5,9 @@ import { supabase, JobPosting, ScrapeRun } from '@/lib/supabase'
 import ReScrapeButton from '@/components/ReScrapeButton'
 import JobListings from '@/components/JobListings'
 
-// Force dynamic rendering to avoid build-time prerendering errors
+// Force dynamic rendering - this page uses client-side data fetching
 export const dynamic = 'force-dynamic'
+export const revalidate = 0 // Disable static generation, always render dynamically
 
 export default function Home() {
   const [jobs, setJobs] = useState<JobPosting[]>([])

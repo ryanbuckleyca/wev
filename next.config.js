@@ -6,10 +6,8 @@ require('dotenv').config({ path: path.join(__dirname, '.env') })
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'export', // Enable static export for GitHub Pages
-  images: {
-    unoptimized: true, // Required for static export
-  },
+  // Removed 'output: export' to enable SSR/hybrid mode
+  // This allows API routes and server-side rendering
 }
 
 module.exports = nextConfig
