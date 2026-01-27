@@ -106,11 +106,11 @@ export default function Home() {
         {/* Last Scrape Time */}
         <div className="bg-white border border-wev-ash rounded-lg p-4 mb-6">
           <p className="text-sm text-black">
-            <span className="font-semibold text-wev-lavender">Last scrape: </span>
+            <span className="font-semibold text-wev-lavender">Last updated: </span>
             {lastScrapeTime ? (
               <span>{lastScrapeTime}</span>
             ) : (
-              <span className="italic">No scrape runs found</span>
+              <span className="italic">No updates found</span>
             )}
           </p>
         </div>
