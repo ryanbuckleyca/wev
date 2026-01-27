@@ -1,3 +1,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .job-details {
+    @apply leading-relaxed;
+  }
+
+  .job-label {
+    @apply font-semibold text-black;
+  }
+
+  .job-value {
+    @apply text-black;
+  }
+
+  .job-link {
+    @apply text-wev-lavender hover:text-black hover:underline;
+  }
+}

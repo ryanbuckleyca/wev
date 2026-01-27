@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Lora, Source_Sans_3 } from 'next/font/google'
+import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const lora = Lora({ subsets: ['latin'], variable: '--font-lora' })
+const sans = Source_Sans_3({ subsets: ['latin'], variable: '--font-sans' })
 
 export const metadata: Metadata = {
   title: 'WEV Bulletin - Job Postings',
@@ -15,8 +17,16 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className={`${lora.variable} ${sans.variable}`}>
+      <body className="font-sans antialiased text-black">
+        {children}
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            duration: 4000,
+          }}
+        />
+      </body>
     </html>
   )
 }

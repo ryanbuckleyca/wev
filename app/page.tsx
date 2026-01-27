@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase, JobPosting, ScrapeRun } from '@/lib/supabase'
 import ReScrapeButton from '@/components/ReScrapeButton'
 import JobListings from '@/components/JobListings'
+import CopyAllJobsButton from '@/components/CopyAllJobsButton'
 
 // Force dynamic rendering - this page uses client-side data fetching
 export const dynamic = 'force-dynamic'
@@ -96,28 +97,29 @@ export default function Home() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-gray-50 py-8">
+    <main className="min-h-screen bg-wev-offwhite py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
+        <h1 className="text-3xl font-bold font-serif text-black mb-8">
           WEV Bulletin - Job Postings
         </h1>
 
         {/* Last Scrape Time */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-gray-600">
-            <span className="font-semibold">Last scrape: </span>
+        <div className="bg-white border border-wev-ash rounded-lg p-4 mb-6">
+          <p className="text-sm text-black">
+            <span className="font-semibold text-wev-lavender">Last scrape: </span>
             {lastScrapeTime ? (
-              <span className="text-gray-900">{lastScrapeTime}</span>
+              <span>{lastScrapeTime}</span>
             ) : (
-              <span className="text-gray-500 italic">No scrape runs found</span>
+              <span className="italic">No scrape runs found</span>
             )}
           </p>
         </div>
 
-        {/* Re-scrape Button */}
-        <ReScrapeButton onComplete={fetchData} />
+        <div className="flex justify-start items-center gap-4 mb-6">
+          <ReScrapeButton onComplete={fetchData} />
+          <CopyAllJobsButton jobs={jobs} />
+        </div>
 
-        {/* Job Listings */}
         <JobListings jobs={jobs} loading={loading} error={error} />
       </div>
     </main>
