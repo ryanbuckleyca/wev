@@ -18,11 +18,15 @@ export interface JobPosting {
   id: string
   job_title: string
   organization: string
-  location: string
+  location: string  // Original scraped location (for display)
+  municipality: string | null
+  province: string | null
+  is_remote: boolean
   date_posted: string
   close_date: string | null
   wage: string | null
   listing_url: string
+  employment_type?: string | null
 }
 
 export interface ScrapeRun {
