@@ -235,7 +235,7 @@ export default function JobFilters({
         isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
       }`}>
         {/* Remote Filter */}
-        <div className="mt-4 mb-6">
+        <div className="mb-6">
         <label className="block text-sm font-semibold text-black mb-2">
           Remote Jobs
         </label>
@@ -277,7 +277,7 @@ export default function JobFilters({
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-2 gap-x-4 gap-y-4 md:gap-y-2 mb-4">
         {/* Provinces */}
         <div className="flex flex-col order-1 md:row-start-1 md:col-start-1">
           <label className="block text-sm font-semibold text-black mb-2">
@@ -345,7 +345,7 @@ export default function JobFilters({
         </div>
 
         {/* Municipalities (grouped by province, filtered by selected provinces) */}
-        <div className="flex flex-col order-2 md:row-start-2 md:col-start-1 md:-mt-4">
+        <div className="flex flex-col order-2 md:row-start-2 md:col-start-1">
           <label className="block text-sm font-semibold text-black mb-2">
             Municipality ({selectedMunicipalities.length}/{allMunicipalities.length})
             {selectedProvinces.length > 0 && allMunicipalities.length > 0 && (
@@ -408,7 +408,7 @@ export default function JobFilters({
         </div>
 
         {/* Organizations */}
-        <div className="flex flex-col order-4 md:row-start-2 md:col-start-2 md:-mt-4">
+        <div className="flex flex-col order-4 md:row-start-2 md:col-start-2">
           <label className="block text-sm font-semibold text-black mb-2">
             Organization ({selectedOrganizations.length}/{organizations.length})
           </label>
