@@ -28,29 +28,21 @@ jobs:
 
       - name: Verify environment variables (for build)
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
-            echo "⚠ WARNING: NEXT_PUBLIC_SUPABASE_URL not set in GitHub secrets"
-            echo "This is okay for CI - set it in Northflank environment variables"
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "⚠ WARNING: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set"
+            echo "Build may still succeed; set them in Northflank for runtime"
           else
-            echo "✓ NEXT_PUBLIC_SUPABASE_URL is set"
-          fi
-          if [ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] && [ -z "$NEXT_PUBLIC_SUPABASE_KEY" ]; then
-            echo "⚠ WARNING: Supabase key not set in GitHub secrets"
-            echo "This is okay for CI - set it in Northflank environment variables"
-          else
-            echo "✓ Supabase key is set"
+            echo "✓ Supabase server env vars are set"
           fi
 
       - name: Build Next.js app
         env:
-          # These will be available in Northflank at runtime
-          # For build, use secrets if available, otherwise build will use placeholders
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_KEY || 'placeholder-key' }}
+          # Server-only; not exposed to client. Use placeholders if missing so CI build succeeds.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key' }}
         run: npm run build
 
       - name: Run linting
@@ -63,8 +55,8 @@ jobs:
           echo "Ready for deployment to Northflank"
           echo ""
           echo "Remember to set these environment variables in Northflank:"
-          echo "  - NEXT_PUBLIC_SUPABASE_URL"
-          echo "  - NEXT_PUBLIC_SUPABASE_ANON_KEY (or NEXT_PUBLIC_SUPABASE_KEY)"
+          echo "  - SUPABASE_URL (server-only)"
+          echo "  - SUPABASE_SERVICE_ROLE_KEY (server-only, never )"
           echo "  - GITHUB_TOKEN (for API routes)"
           echo "  - GITHUB_REPO_OWNER"
           echo "  - GITHUB_REPO_NAME"

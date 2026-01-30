@@ -16,16 +16,16 @@ cp .env.example .env
 ```
 
 3. Fill in your environment variables in the root `.env` file:
-- `SUPABASE_URL`: Your Supabase project URL (used by scraper)
-- `SUPABASE_KEY`: Your Supabase service role key (used by scraper)
-- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL (used by Next.js)
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_KEY`: Your Supabase anonymous key (used by Next.js)
+- **wev-bulletin (Next.js)** — server-only (do not use `` for the key):
+  - `SUPABASE_URL`: Your Supabase project URL
+  - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (used only in API routes; never exposed to the browser)
+- **wev-scraper** (if using the same env): `SUPABASE_URL` / `SUPABASE_KEY` (or scraper-specific env)
 - `GITHUB_TOKEN`: A GitHub personal access token with `actions:write` permission
 - `GITHUB_REPO_OWNER`: Your GitHub username or organization
 - `GITHUB_REPO_NAME`: The repository name (e.g., "wev")
 - `GITHUB_WORKFLOW_ID`: The workflow file name (default: "scrape.yml")
 
-**Note:** The `.env` file should be placed in the project root (`/wev/.env`) so both `wev-scraper` and `wev-bulletin` can access it. The Next.js app is configured to automatically load environment variables from the parent directory.
+**Note:** The Supabase service role key must never be prefixed with `` — it is only used server-side in wev-bulletin (e.g. `/api/bulletin`). The `.env` file can live in the project root so both apps can access it; Next.js can load from the parent directory.
 
 ## Database Schema
 

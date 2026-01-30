@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { supabase, JobPosting, ScrapeRun } from '@/lib/supabase'
+import type { JobPosting } from '@/lib/supabase'
 import ReScrapeButton from '@/components/ReScrapeButton'
 import JobListings from '@/components/JobListings'
 import CopyAllJobsButton from '@/components/CopyAllJobsButton'
@@ -34,28 +34,17 @@ export default function Home() {
     setError(null)
 
     try {
-      // Fetch last scrape time
-      const { data: scrapeData, error: scrapeError } = await supabase
-        .from('scrape_runs')
-        .select('run_at')
-        .order('run_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (scrapeError && scrapeError.code !== 'PGRST116') {
-        // PGRST116 is "no rows returned", which is okay
-        throw scrapeError
+      const res = await fetch('/api/bulletin')
+      if (!res.ok) {
+        const body = await res.json()
+        throw new Error(body.error ?? 'Failed to load data')
       }
+      const { jobs: jobsData, lastScrapeTime: rawScrapeTime } = await res.json()
 
-      if (scrapeData) {
-        // Parse the UTC timestamp from the database
-        // The scraper stores timestamps as ISO format without timezone (e.g., "2026-01-26T05:12:00")
-        // We need to explicitly treat it as UTC by appending 'Z'
-        const timestamp = scrapeData.run_at
+      if (rawScrapeTime) {
+        const timestamp = rawScrapeTime
         let date: Date
-        
         if (typeof timestamp === 'string') {
-          // If it doesn't have a timezone indicator, treat it as UTC
           if (!timestamp.endsWith('Z') && !timestamp.match(/[+-]\d{2}:\d{2}$/)) {
             date = new Date(timestamp + 'Z')
           } else {
@@ -64,8 +53,6 @@ export default function Home() {
         } else {
           date = new Date(timestamp)
         }
-        
-        // Format in EST/EDT (America/New_York automatically handles EST/EDT)
         setLastScrapeTime(
           date.toLocaleString('en-US', {
             year: 'numeric',
@@ -81,35 +68,15 @@ export default function Home() {
         setLastScrapeTime(null)
       }
 
-      // Fetch job postings
-      const { data: jobsData, error: jobsError } = await supabase
-        .from('jobs')
-        .select('id, job_title, organization, location, municipality, province, is_remote, date_posted, close_date, wage, listing_url, employment_type')
-        .order('date_posted', { ascending: false })
-
-      if (jobsError) {
-        throw jobsError
-      }
-
-      setAllJobs(jobsData || [])
-      
-      // Debug: Log location data availability
-      if (jobsData && jobsData.length > 0) {
-        const withProvince = jobsData.filter(j => j.province).length
-        const withMunicipality = jobsData.filter(j => j.municipality).length
-        console.log(`Jobs with province: ${withProvince}/${jobsData.length}`)
-        console.log(`Jobs with municipality: ${withMunicipality}/${jobsData.length}`)
-      }
-      
-      // Reset to first page when new data is fetched
+      setAllJobs(jobsData ?? [])
       setCurrentPage(1)
     } catch (err) {
       console.error('Error fetching data:', err)
-      const errorMessage = err instanceof Error 
-        ? err.message 
+      const errorMessage = err instanceof Error
+        ? err.message
         : typeof err === 'object' && err !== null && 'message' in err
-        ? String(err.message)
-        : 'Failed to load data'
+          ? String((err as { message: unknown }).message)
+          : 'Failed to load data'
       setError(errorMessage)
     } finally {
       setLoading(false)
