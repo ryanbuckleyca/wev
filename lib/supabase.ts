@@ -16,6 +16,7 @@ export interface JobPosting {
   wage: string | null
   listing_url: string
   employment_type?: string | null
+  summary?: string | null
 }
 
 export interface ScrapeRun {

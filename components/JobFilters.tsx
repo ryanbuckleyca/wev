@@ -232,10 +232,10 @@ export default function JobFilters({
 
       {/* Collapsible Filters Section */}
       <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
-        isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+        isExpanded ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
       }`}>
         {/* Remote Filter */}
-        <div className="mb-6">
+        <div className="mb-4">
         <label className="block text-sm font-semibold text-black mb-2">
           Remote Jobs
         </label>
@@ -277,13 +277,13 @@ export default function JobFilters({
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-2 gap-x-4 gap-y-4 md:gap-y-2 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
         {/* Provinces */}
-        <div className="flex flex-col order-1 md:row-start-1 md:col-start-1">
+        <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0">
           <label className="block text-sm font-semibold text-black mb-2">
             Province ({selectedProvinces.length}/{provinces.length})
           </label>
-          <div className="h-32 overflow-y-auto border border-wev-ash rounded-lg p-2 bg-wev-offwhite">
+          <div className="max-h-32 overflow-y-auto border border-wev-ash rounded-lg p-2 bg-wev-offwhite">
             {provinces.length > 0 ? (
               provinces.map((province) => {
                 const isIndeterminate = indeterminateProvinces.has(province)
@@ -316,11 +316,11 @@ export default function JobFilters({
         </div>
 
         {/* Employment Types */}
-        <div className="flex flex-col order-3 md:row-start-1 md:col-start-2">
+        <div className="flex flex-col order-3 md:row-start-1 md:col-start-2 min-h-0">
           <label className="block text-sm font-semibold text-black mb-2">
             Employment Type ({selectedEmploymentTypes.length}/{employmentTypes.length})
           </label>
-          <div className="h-32 overflow-y-auto border border-wev-ash rounded-lg p-2 bg-wev-offwhite">
+          <div className="max-h-32 overflow-y-auto border border-wev-ash rounded-lg p-2 bg-wev-offwhite">
             {employmentTypes.length > 0 ? (
               employmentTypes.map((type) => (
                 <label

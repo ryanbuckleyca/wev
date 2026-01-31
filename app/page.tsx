@@ -91,6 +91,7 @@ export default function Home() {
         const query = searchQuery.toLowerCase()
         const matchesSearch =
           job.job_title.toLowerCase().includes(query) ||
+          (job.summary && job.summary.toLowerCase().includes(query)) ||
           job.organization.toLowerCase().includes(query) ||
           (job.location && job.location.toLowerCase().includes(query)) ||
           (job.municipality && job.municipality.toLowerCase().includes(query)) ||

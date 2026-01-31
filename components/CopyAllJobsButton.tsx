@@ -27,11 +27,11 @@ function formatJobsAsText(jobs: JobPosting[]): string {
   return jobs
     .map((job) => {
       const lines = [
-        `What: ${job.job_title}`,
         `Who: ${job.organization}`,
-        `Where: ${job.location}`,
+        `What: ${job.job_title}`,
+        `Where: ${job.location || 'N/A'}`,
+        ...(job.summary ? [`Why: ${job.summary}`] : []),
         `When: Posted ${formatDate(job.date_posted)}`,
-        `Deadline: ${job.close_date ? formatDate(job.close_date) : 'N/A'}`,
         `How much: ${job.wage || 'N/A'}`,
       ]
       return lines.join('\n')
@@ -54,11 +54,11 @@ function formatJobsAsHTML(jobs: JobPosting[]): string {
         ? `<a href="${escapeHtml(job.listing_url)}">${escapeHtml(job.job_title)}</a>`
         : escapeHtml(job.job_title)
       const lines = [
-        `<b>What:</b> ${what}`,
         `<b>Who:</b> ${escapeHtml(job.organization)}`,
-        `<b>Where:</b> ${escapeHtml(job.location)}`,
+        `<b>What:</b> ${what}`,
+        `<b>Where:</b> ${escapeHtml(job.location || 'N/A')}`,
+        ...(job.summary ? [`<b>Why:</b> ${escapeHtml(job.summary)}`] : []),
         `<b>When:</b> Posted ${escapeHtml(formatDate(job.date_posted))}`,
-        `<b>Deadline:</b> ${job.close_date ? escapeHtml(formatDate(job.close_date)) : 'N/A'}`,
         `<b>How much:</b> ${escapeHtml(job.wage || 'N/A')}`,
       ]
       return lines.join('<br>')

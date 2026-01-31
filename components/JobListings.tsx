@@ -9,11 +9,11 @@ interface JobListingsProps {
 }
 
 // Reusable component for job detail lines
-function JobDetailLine({ 
-  label, 
-  value, 
-  valueAsLink 
-}: { 
+function JobDetailLine({
+  label,
+  value,
+  valueAsLink,
+}: {
   label: string
   value: string | React.ReactNode
   valueAsLink?: { href: string; text: string }
@@ -88,15 +88,15 @@ export default function JobListings({ jobs, loading, error }: JobListingsProps) 
           className="bg-white border border-wev-ash rounded-lg p-6 shadow-sm hover:shadow-md hover:border-wev-lilac transition-all"
         >
           <p className="job-details">
+            <JobDetailLine label="Who" value={job.organization} />
             <JobDetailLine
               label="What"
               value={job.job_title}
               valueAsLink={job.listing_url ? { href: job.listing_url, text: job.job_title } : undefined}
             />
-            <JobDetailLine label="Who" value={job.organization} />
-            <JobDetailLine label="Where" value={job.location} />
+            <JobDetailLine label="Where" value={job.location || 'N/A'} />
+            {job.summary && <JobDetailLine label="Why" value={job.summary} />}
             <JobDetailLine label="When" value={`Posted ${formatDate(job.date_posted)}`} />
-            <JobDetailLine label="Deadline" value={job.close_date ? formatDate(job.close_date) : 'N/A'} />
             <JobDetailLine label="How much" value={job.wage || 'N/A'} />
           </p>
         </div>
