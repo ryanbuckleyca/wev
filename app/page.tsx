@@ -28,6 +28,8 @@ export default function Home() {
   const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useState<string[]>([])
   const [remoteFilter, setRemoteFilter] = useState<'all' | 'remote-only' | 'hide-remote'>('all')
   const [showCorporateGigs, setShowCorporateGigs] = useState(true)
+  const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useState(false)
+  const [postedWithin, setPostedWithin] = useState<'1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any'>('2-weeks')
   const [currentPage, setCurrentPage] = useState(1)
 
   const fetchData = async () => {
@@ -118,6 +120,26 @@ export default function Home() {
         return false
       }
 
+      // Salary filter: when "show jobs without salary" is off, hide jobs with no wage
+      if (!showJobsWithoutSalary) {
+        if (!job.wage || !String(job.wage).trim()) return false
+      }
+
+      // Posted-within filter: hide jobs older than the selected window
+      if (postedWithin !== 'any') {
+        const daysAgo = postedWithin === '1-week' ? 7 : postedWithin === '2-weeks' ? 14 : postedWithin === '3-weeks' ? 21 : 30
+        const cutoffMs = Date.now() - daysAgo * 24 * 60 * 60 * 1000
+        let postedMs: number
+        try {
+          const raw = job.date_posted
+          const str = typeof raw === 'string' && !raw.endsWith('Z') && !raw.match(/[+-]\d{2}:\d{2}$/) ? `${raw}Z` : raw
+          postedMs = new Date(str).getTime()
+        } catch {
+          postedMs = 0
+        }
+        if (Number.isNaN(postedMs) || postedMs < cutoffMs) return false
+      }
+
       // Province filter
       // Jobs with null province should show when filters are applied (null doesn't narrow down)
       if (selectedProvinces.length > 0) {
@@ -141,7 +163,7 @@ export default function Home() {
 
       return true
     })
-  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showCorporateGigs])
+  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showCorporateGigs, showJobsWithoutSalary, postedWithin])
 
   // Paginate filtered jobs
   const paginatedJobs = useMemo(() => {
@@ -153,7 +175,7 @@ export default function Home() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showCorporateGigs])
+  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showCorporateGigs, showJobsWithoutSalary, postedWithin])
 
   useEffect(() => {
     fetchData()
@@ -207,6 +229,10 @@ export default function Home() {
           onRemoteFilterChange={setRemoteFilter}
           showCorporateGigs={showCorporateGigs}
           onShowCorporateGigsChange={setShowCorporateGigs}
+          showJobsWithoutSalary={showJobsWithoutSalary}
+          onShowJobsWithoutSalaryChange={setShowJobsWithoutSalary}
+          postedWithin={postedWithin}
+          onPostedWithinChange={setPostedWithin}
         />
 
         {/* Results count */}

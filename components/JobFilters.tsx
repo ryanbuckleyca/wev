@@ -19,6 +19,10 @@ interface JobFiltersProps {
   onRemoteFilterChange: (filter: 'all' | 'remote-only' | 'hide-remote') => void
   showCorporateGigs: boolean
   onShowCorporateGigsChange: (show: boolean) => void
+  showJobsWithoutSalary: boolean
+  onShowJobsWithoutSalaryChange: (show: boolean) => void
+  postedWithin: '1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any'
+  onPostedWithinChange: (value: '1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any') => void
 }
 
 export default function JobFilters({
@@ -37,6 +41,10 @@ export default function JobFilters({
   onRemoteFilterChange,
   showCorporateGigs,
   onShowCorporateGigsChange,
+  showJobsWithoutSalary,
+  onShowJobsWithoutSalaryChange,
+  postedWithin,
+  onPostedWithinChange,
 }: JobFiltersProps) {
   // Auto-expand if filters are active
   const hasActiveFilters =
@@ -46,7 +54,9 @@ export default function JobFilters({
     selectedMunicipalities.length > 0 ||
     selectedEmploymentTypes.length > 0 ||
     remoteFilter !== 'all' ||
-    !showCorporateGigs
+    !showCorporateGigs ||
+    showJobsWithoutSalary ||
+    postedWithin !== '2-weeks'
   
   const [isExpanded, setIsExpanded] = useState(hasActiveFilters)
   
@@ -143,6 +153,8 @@ export default function JobFilters({
     onEmploymentTypesChange([])
     onRemoteFilterChange('all')
     onShowCorporateGigsChange(true)
+    onShowJobsWithoutSalaryChange(false)
+    onPostedWithinChange('2-weeks')
   }
 
   // Get municipalities to display based on selected provinces
@@ -256,6 +268,47 @@ export default function JobFilters({
           <p className="text-xs text-wev-text-secondary mt-1 pl-7">
             Uncheck to hide jobs marked as corporate
           </p>
+        </div>
+
+        {/* Jobs without salary filter */}
+        <div className="mb-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showJobsWithoutSalary}
+              onChange={(e) => onShowJobsWithoutSalaryChange(e.target.checked)}
+              className="wev-checkbox"
+            />
+            <span className="text-sm font-semibold text-wev-text-primary">
+              Show jobs without salary
+            </span>
+          </label>
+          <p className="text-xs text-wev-text-secondary mt-1 pl-7">
+            Uncheck to hide jobs that don’t list pay
+          </p>
+        </div>
+
+        {/* Posted within filter */}
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-wev-text-primary mb-2">
+            Posted within
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {(['1-week', '2-weeks', '3-weeks', '1-month', 'any'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onPostedWithinChange(value)}
+                className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
+                  postedWithin === value
+                    ? 'bg-wev-primary text-white shadow-wev-btn'
+                    : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
+                }`}
+              >
+                {value === '1-week' ? '1 week' : value === '2-weeks' ? '2 weeks' : value === '3-weeks' ? '3 weeks' : value === '1-month' ? '1 month' : 'Any'}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Remote Filter */}
