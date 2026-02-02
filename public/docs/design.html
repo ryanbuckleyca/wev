@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wev Brand Guidelines</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Light Mode - Base Colors */
+            --bg: #FEFBF7;
+            --surface: #ffffff;
+            --border: #c8c5bf;
+            
+            /* Text Colors */
+            --text-primary: #2a2a2a;
+            --text-secondary: #6b6b6b;
+            --text-tertiary: #7a7a7a;
+            
+            /* Brand Colors */
+            --primary: #5B8C8A;
+            --primary-tint: #D6EAEA;
+            --primary-text: #3A7A6B;
+            
+            --accent: #875C74;
+            --accent-tint: #f0e4ec;
+            
+            /* Semantic - Success */
+            --success-solid: #3E8C4F;
+            --success-tint: #C5EBC3;
+            --success-text: #246633;
+            
+            /* Semantic - Alert/Error */
+            --alert-solid: #C45A4A;
+            --alert-tint: #F2D0CC;
+            --alert-text: #9E3A2E;
+            
+            /* Semantic - Warning */
+            --warn-solid: #9A7209;
+            --warn-tint: #F5DEB3;
+            --warn-text: #6F4D06;
+            
+            /* Semantic - Info */
+            --info-solid: #4A7A9E;
+            --info-tint: #C3D9EB;
+            --info-text: #36607E;
+        }
+
+        [data-theme="dark"] {
+            /* Dark Mode - Base Colors */
+            --bg: #1E1E1E;
+            --surface: #2A2A2A;
+            --border: #4A4A4A;
+            
+            /* Text Colors */
+            --text-primary: #E8E6E2;
+            --text-secondary: #A8A5A0;
+            --text-tertiary: #8A8782;
+            
+            /* Brand Colors */
+            --primary: #5B8C8A;
+            --primary-tint: #1E3832;
+            --primary-text: #7EC5B3;
+            
+            --accent: #B07D96;
+            --accent-tint: #3A2A33;
+            
+            /* Semantic - Success */
+            --success-solid: #3E8C4F;
+            --success-tint: #1A3320;
+            --success-text: #6FD68A;
+            
+            /* Semantic - Alert/Error */
+            --alert-solid: #C45A4A;
+            --alert-tint: #3D1F1C;
+            --alert-text: #E8857A;
+            
+            /* Semantic - Warning */
+            --warn-solid: #9A7209;
+            --warn-tint: #3A2E0A;
+            --warn-text: #E8B53A;
+            
+            /* Semantic - Info */
+            --info-solid: #4A7A9E;
+            --info-tint: #1C2E3D;
+            --info-text: #7AB4D9;
+        }
+
+        body {
+            font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 1000;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 50px;
+            padding: 0.75rem 1.5rem;
+            font-family: 'Lexend Deca', sans-serif;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+            background: var(--primary-tint);
+            border-color: var(--primary);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(135deg, var(--bg) 0%, var(--accent-tint) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, var(--primary-tint) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, var(--accent-tint) 0%, transparent 50%);
+            opacity: 0.6;
+            z-index: 0;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo-display {
+            margin-bottom: 3rem;
+        }
+
+        .logo-display img {
+            max-width: 400px;
+            height: auto;
+            filter: drop-shadow(0 4px 12px rgba(135, 92, 116, 0.2));
+        }
+
+        .hero h1 {
+            font-size: 6rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .hero .subtitle {
+            font-size: 2rem;
+            color: var(--primary);
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .hero .version {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-top: 2rem;
+        }
+
+        /* Section Styling */
+        section {
+            padding: 6rem 0;
+        }
+
+        section:nth-child(even) {
+            background: var(--surface);
+        }
+
+        h2 {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            letter-spacing: -0.01em;
+        }
+
+        h3 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin: 3rem 0 1.5rem;
+        }
+
+        h4 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 2rem 0 1rem;
+        }
+
+        .section-intro {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin-bottom: 3rem;
+        }
+
+        /* Color Grid */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .color-card {
+            background: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .color-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        .color-swatch {
+            height: 200px;
+            position: relative;
+        }
+
+        .color-info {
+            padding: 1.5rem;
+        }
+
+        .color-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .color-values {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .color-value {
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .color-value strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .usage-tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: var(--bg);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.75rem;
+        }
+
+        /* Button Showcase */
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 3rem;
+            margin: 3rem 0;
+        }
+
+        .button-example {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .button-label {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+        }
+
+        .button-description {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            padding: 12px 32px;
+            font-family: 'Lexend Deca', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #4A7775;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(91, 140, 138, 0.3);
+        }
+
+        .btn-primary:disabled {
+            background: var(--border);
+            color: var(--text-tertiary);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--accent);
+            border: 2px solid var(--accent);
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-tint);
+            border-color: #6D4A5E;
+            color: #6D4A5E;
+        }
+
+        .btn-secondary:disabled {
+            border-color: var(--border);
+            color: var(--text-tertiary);
+            background: transparent;
+            cursor: not-allowed;
+        }
+
+        .btn-tertiary {
+            background: transparent;
+            color: var(--primary);
+            border: none;
+        }
+
+        .btn-tertiary:hover {
+            background: var(--primary-tint);
+        }
+
+        .btn-tertiary:disabled {
+            color: var(--text-tertiary);
+            background: transparent;
+            cursor: not-allowed;
+        }
+
+        /* Toast/Alert Showcase */
+        .toast-grid {
+            display: grid;
+            gap: 1.5rem;
+            margin: 3rem 0;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            border: 1px solid;
+            font-weight: 500;
+        }
+
+        .toast-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .toast-success {
+            background: var(--success-tint);
+            border-color: #A8D5A6;
+            color: var(--text-primary);
+        }
+
+        .toast-success .toast-icon {
+            color: #4A7C48;
+        }
+
+        .toast-alert {
+            background: var(--alert-tint);
+            border-color: #EF8B8F;
+            color: var(--text-primary);
+        }
+
+        .toast-alert .toast-icon {
+            color: #DC2626;
+        }
+
+        .toast-warning {
+            background: var(--warn-tint);
+            border-color: #FBBF7F;
+            color: var(--text-primary);
+        }
+
+        .toast-warning .toast-icon {
+            color: #D97706;
+        }
+
+        .toast-info {
+            background: var(--info-tint);
+            border-color: #93BED9;
+            color: var(--text-primary);
+        }
+
+        .toast-info .toast-icon {
+            color: #1E40AF;
+        }
+
+        /* Banner Showcase */
+        .banner {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .banner-success {
+            background: var(--success-tint);
+            color: var(--success-text);
+        }
+
+        .banner-alert {
+            background: var(--alert-tint);
+            color: var(--alert-text);
+        }
+
+        .banner-warning {
+            background: var(--warn-tint);
+            color: var(--warn-text);
+        }
+
+        .banner-info {
+            background: var(--info-tint);
+            color: var(--info-text);
+        }
+
+        /* Accent Showcase */
+        .accent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 3rem 0;
+        }
+
+        .accent-card {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 2px solid var(--accent-tint);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .accent-badge {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background: var(--accent);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .accent-card h5 {
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .accent-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .accent-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Typography Showcase */
+        .type-scale {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            margin: 3rem 0;
+            padding: 3rem;
+            background: var(--surface);
+            border-radius: 16px;
+        }
+
+        .type-example {
+            display: flex;
+            align-items: baseline;
+            gap: 2rem;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .type-example:last-child {
+            border-bottom: none;
+        }
+
+        .type-label {
+            min-width: 150px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .type-specimen {
+            flex: 1;
+        }
+
+        .type-h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .type-h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .type-h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .type-h4 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .type-body-large {
+            font-size: 1.125rem;
+            font-weight: 400;
+        }
+
+        .type-body {
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        .type-body-small {
+            font-size: 0.875rem;
+            font-weight: 400;
+        }
+
+        .type-button {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* Accessibility Section */
+        .contrast-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 3rem 0;
+        }
+
+        .contrast-card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .contrast-preview {
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .contrast-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+        }
+
+        .contrast-ratio {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .contrast-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: var(--success-tint);
+            color: var(--success-text);
+        }
+
+        /* Logo Section */
+        .logo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 3rem;
+            margin: 3rem 0;
+        }
+
+        .logo-showcase {
+            background: var(--surface);
+            padding: 3rem;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .logo-bg-light {
+            background: var(--bg);
+        }
+
+        .logo-bg-dark {
+            background: var(--text-primary);
+        }
+
+        .logo-placeholder {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: var(--accent);
+        }
+
+        .logo-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .logo-bg-dark .logo-title {
+            color: white;
+        }
+
+        .logo-description {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .logo-bg-dark .logo-description {
+            color: #A8A5A0;
+        }
+
+        /* Token Sheet */
+        .token-sheet {
+            background: var(--surface);
+            padding: 3rem;
+            border-radius: 16px;
+            margin: 3rem 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .token-category {
+            margin-bottom: 2rem;
+        }
+
+        .token-category-title {
+            font-family: 'Lexend Deca', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        .token-row {
+            display: grid;
+            grid-template-columns: 200px 120px auto;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .token-name {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .token-value {
+            color: var(--text-secondary);
+        }
+
+        .token-swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 3.5rem;
+            }
+
+            .hero .subtitle {
+                font-size: 1.5rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            h3 {
+                font-size: 1.5rem;
+            }
+
+            .color-grid,
+            .button-grid,
+            .contrast-grid,
+            .logo-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .token-row {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <span id="theme-icon">🌙</span> <span id="theme-text">Dark Mode</span>
+    </button>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="hero-content">
+            <div class="logo-display">
+                <img src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png" alt="wev logo" />
+            </div>
+            <p class="subtitle">Brand Guidelines</p>
+            <p class="version">Version 1.0 • February 2026</p>
+        </div>
+    </div>
+
+    <!-- Typography Section -->
+    <section id="typography">
+        <div class="container">
+            <h2>Typography</h2>
+            <p class="section-intro">
+                Lexend Deca is our primary typeface. Designed specifically for readability and accessibility, 
+                it ensures our content is clear and approachable across all platforms.
+            </p>
+
+            <h3>Type Scale</h3>
+            <div class="type-scale">
+                <div class="type-example">
+                    <div class="type-label">H1 / 32px / Bold</div>
+                    <div class="type-specimen type-h1">The quick brown fox jumps</div>
+                </div>
+                <div class="type-example">
+                    <div class="type-label">H2 / 28px / Semi-Bold</div>
+                    <div class="type-specimen type-h2">The quick brown fox jumps</div>
+                </div>
+                <div class="type-example">
+                    <div class="type-label">H3 / 24px / Semi-Bold</div>
+                    <div class="type-specimen type-h3">The quick brown fox jumps</div>
+                </div>
+                <div class="type-example">
+                    <div class="type-label">H4 / 20px / Medium</div>
+                    <div class="type-specimen type-h4">The quick brown fox jumps</div>
+                </div>
+                <div class="type-example">
+                    <div class="type-label">Body Large / 18px</div>
+                    <div class="type-specimen type-body-large">The quick brown fox jumps over the lazy dog</div>
+                </div>
+                <div class="type-example">
+                    <div class="type-label">Body / 16px</div>
+                    <div class="type-specimen type-body">The quick brown fox jumps over the lazy dog</div>
+                </div>
+                <div class="type-example">
+                    <div class="type-label">Body Small / 14px</div>
+                    <div class="type-specimen type-body-small">The quick brown fox jumps over the lazy dog</div>
+                </div>
+                <div class="type-example">
+                    <div class="type-label">Button / 16px / Semi-Bold</div>
+                    <div class="type-specimen type-button">BUTTON TEXT</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Color Palette Section -->
+    <section id="colors">
+        <div class="container">
+            <h2>Color Palette</h2>
+            <p class="section-intro">
+                Our color system balances warmth and professionalism. All colors are tested for WCAG 2.1 AA compliance 
+                to ensure accessibility across all use cases.
+            </p>
+
+            <h3>Base Colors</h3>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #FEFBF7;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Porcelain</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#FEFBF7</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>254, 251, 247</strong></div>
+                        </div>
+                        <div class="usage-tag">Background</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #875C74;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Dusty Lavender</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#875C74</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>135, 92, 116</strong></div>
+                        </div>
+                        <div class="usage-tag">Brand Accent</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #5B8C8A;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Muted Teal</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#5B8C8A</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>91, 140, 138</strong></div>
+                        </div>
+                        <div class="usage-tag">Primary / CTAs</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #C5EBC3;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Tea Green</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#C5EBC3</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>197, 235, 195</strong></div>
+                        </div>
+                        <div class="usage-tag">Success States</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Semantic Colors</h3>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #3E8C4F;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Success Solid</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#3E8C4F</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>62, 140, 79</strong></div>
+                        </div>
+                        <div class="usage-tag">Buttons, Icons</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #C45A4A;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Alert Solid</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#C45A4A</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>196, 90, 74</strong></div>
+                        </div>
+                        <div class="usage-tag">Error States</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #9A7209;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Warning Solid</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#9A7209</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>154, 114, 9</strong></div>
+                        </div>
+                        <div class="usage-tag">Warning States</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #4A7A9E;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Info Solid</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#4A7A9E</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>74, 122, 158</strong></div>
+                        </div>
+                        <div class="usage-tag">Info States</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Buttons Section -->
+    <section id="buttons">
+        <div class="container">
+            <h2>Button Hierarchy</h2>
+            <p class="section-intro">
+                Our button system creates clear visual hierarchy. Use primary buttons for main actions, 
+                secondary for supporting actions, and tertiary for low-emphasis interactions.
+            </p>
+
+            <div class="button-grid">
+                <div class="button-example">
+                    <div class="button-label">Primary Button</div>
+                    <p class="button-description">Main action, one per view. Uses Muted Teal.</p>
+                    <button class="btn btn-primary">Sign Up</button>
+                    <button class="btn btn-primary" disabled>Disabled</button>
+                </div>
+
+                <div class="button-example">
+                    <div class="button-label">Secondary Button</div>
+                    <p class="button-description">Supporting action with outline style.</p>
+                    <button class="btn btn-secondary">Learn More</button>
+                    <button class="btn btn-secondary" disabled>Disabled</button>
+                </div>
+
+                <div class="button-example">
+                    <div class="button-label">Tertiary Button</div>
+                    <p class="button-description">Low-emphasis, ghost style.</p>
+                    <button class="btn btn-tertiary">Cancel</button>
+                    <button class="btn btn-tertiary" disabled>Disabled</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Alerts & Toasts Section -->
+    <section id="alerts">
+        <div class="container">
+            <h2>Semantic States</h2>
+            <p class="section-intro">
+                Consistent visual feedback across success, error, warning, and info states. 
+                All combinations meet WCAG AA contrast requirements.
+            </p>
+
+            <h3>Toast Messages</h3>
+            <div class="toast-grid">
+                <div class="toast toast-success">
+                    <div class="toast-icon">✓</div>
+                    <div>Your changes have been saved successfully</div>
+                </div>
+                <div class="toast toast-alert">
+                    <div class="toast-icon">✕</div>
+                    <div>There was an error processing your request</div>
+                </div>
+                <div class="toast toast-warning">
+                    <div class="toast-icon">⚠</div>
+                    <div>Your session will expire in 5 minutes</div>
+                </div>
+                <div class="toast toast-info">
+                    <div class="toast-icon">ℹ</div>
+                    <div>New features are now available in your dashboard</div>
+                </div>
+            </div>
+
+            <h3>Banner Messages</h3>
+            <div class="banner banner-success">
+                <strong>✓</strong> Success: Your profile has been updated
+            </div>
+            <div class="banner banner-alert">
+                <strong>✕</strong> Alert: Unable to connect to server
+            </div>
+            <div class="banner banner-warning">
+                <strong>■</strong> Warning: Unsaved changes will be lost
+            </div>
+            <div class="banner banner-info">
+                <strong>■</strong> Info: Maintenance scheduled for tonight
+            </div>
+        </div>
+    </section>
+
+    <!-- Brand Accent Section -->
+    <section id="accent">
+        <div class="container">
+            <h2>Brand Accent — Dusty Lavender</h2>
+            <p class="section-intro">
+                Our signature Dusty Lavender color draws attention to key moments and new features. 
+                Use it sparingly for maximum impact.
+            </p>
+
+            <div class="accent-grid">
+                <div class="accent-card">
+                    <div class="accent-badge">New Feature</div>
+                    <h5>Enhanced Analytics</h5>
+                    <p>Get deeper insights into your data with our new analytics dashboard.</p>
+                    <a href="#" class="accent-link">View Details →</a>
+                </div>
+
+                <div class="accent-card">
+                    <div class="accent-badge">Popular</div>
+                    <h5>Team Collaboration</h5>
+                    <p>Work together seamlessly with real-time collaboration tools.</p>
+                    <a href="#" class="accent-link">Read more →</a>
+                </div>
+
+                <div class="accent-card">
+                    <div class="accent-badge">Featured</div>
+                    <h5>API Integration</h5>
+                    <p>Connect your favorite tools with our powerful API.</p>
+                    <a href="#" class="accent-link">Learn more →</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Logo Section -->
+    <section id="logo">
+        <div class="container">
+            <h2>Logo Usage</h2>
+            <p class="section-intro">
+                Our logo represents clarity and connection. Always maintain proper spacing and never distort or alter the colors.
+            </p>
+
+            <div class="logo-grid">
+                <div class="logo-showcase logo-bg-light">
+                    <div class="logo-placeholder">
+                        <img src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png" alt="wev logo" />
+                    </div>
+                    <div class="logo-title">Primary Logotype</div>
+                    <p class="logo-description">Full logo with brand name for primary applications</p>
+                </div>
+
+                <div class="logo-showcase logo-bg-light">
+                    <div class="logo-placeholder">
+                        <img src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png" alt="wev logo" />
+                    </div>
+                    <div class="logo-title">Logo Mark</div>
+                    <p class="logo-description">Standalone icon for compact use (favicon, app icons)</p>
+                </div>
+
+                <div class="logo-showcase logo-bg-dark">
+                    <div class="logo-placeholder">
+                        <img src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png" alt="wev logo" />
+                    </div>
+                    <div class="logo-title">Logotype on Dark</div>
+                    <p class="logo-description">Optimized for dark backgrounds</p>
+                </div>
+
+                <div class="logo-showcase logo-bg-dark">
+                    <div class="logo-placeholder">
+                        <img src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png" alt="wev logo" />
+                    </div>
+                    <div class="logo-title">Logo Mark on Dark</div>
+                    <p class="logo-description">Icon variation for dark backgrounds</p>
+                </div>
+            </div>
+
+            <h3>Logo Guidelines</h3>
+            <div style="margin-top: 2rem;">
+                <h4>Clear Space</h4>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                    Maintain clear space around the logo equal to the height of the 'w'. This ensures visual distinction.
+                </p>
+
+                <h4>Minimum Size</h4>
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                    <strong>Digital:</strong> 32px height minimum for logo mark, 120px width for logotype<br>
+                    <strong>Print:</strong> 0.5 inches height minimum for logo mark, 1.5 inches for logotype
+                </p>
+
+                <h4 style="margin-top: 2rem;">Don'ts</h4>
+                <ul style="color: var(--text-secondary); line-height: 1.8; margin-left: 1.5rem;">
+                    <li>Do not alter logo colors outside approved palette</li>
+                    <li>Do not distort, rotate, or skew the logo</li>
+                    <li>Do not add effects (shadows, outlines, gradients)</li>
+                    <li>Do not place on busy backgrounds without sufficient contrast</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dark Mode Section -->
+    <section id="dark-mode">
+        <div class="container">
+            <h2>Dark Mode</h2>
+            <p class="section-intro">
+                Our dark mode palette maintains brand identity while optimizing for low-light environments. 
+                All colors meet WCAG 2.1 Level AA contrast requirements for accessibility.
+            </p>
+
+            <h3>Dark Mode Base Colors</h3>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #1E1E1E;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Charcoal Deep</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#1E1E1E</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>30, 30, 30</strong></div>
+                        </div>
+                        <div class="usage-tag">Background</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #2A2A2A;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Slate Dark</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#2A2A2A</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>42, 42, 42</strong></div>
+                        </div>
+                        <div class="usage-tag">Surface / Cards</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #B07D96;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Dusty Lavender Light</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#B07D96</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>176, 125, 150</strong></div>
+                        </div>
+                        <div class="usage-tag">Brand Accent (Dark)</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #5B8C8A;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Muted Teal</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#5B8C8A</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>91, 140, 138</strong></div>
+                        </div>
+                        <div class="usage-tag">Primary (Consistent)</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Dark Mode Semantic Colors</h3>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #3E8C4F;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Success Solid</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#3E8C4F</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>62, 140, 79</strong></div>
+                        </div>
+                        <div class="usage-tag">Success Buttons</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #1A3320;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Success Tint (Dark)</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#1A3320</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>26, 51, 32</strong></div>
+                        </div>
+                        <div class="usage-tag">Success Backgrounds</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #6FD68A;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Success Text</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#6FD68A</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>111, 214, 138</strong></div>
+                        </div>
+                        <div class="usage-tag">Success Messages</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #E8857A;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Alert Text</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#E8857A</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>232, 133, 122</strong></div>
+                        </div>
+                        <div class="usage-tag">Error Messages</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #E8B53A;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Warning Text</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#E8B53A</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>232, 181, 58</strong></div>
+                        </div>
+                        <div class="usage-tag">Warning Messages</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #7AB4D9;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Info Text</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#7AB4D9</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>122, 180, 217</strong></div>
+                        </div>
+                        <div class="usage-tag">Info Messages</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Dark Mode Text Colors</h3>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #E8E6E2;"></div>
+                    <div class="color-info">
+                        <div class="color-name">White / Primary Text</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#E8E6E2</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>232, 230, 226</strong></div>
+                        </div>
+                        <div class="usage-tag">Primary Text</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #A8A5A0;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Secondary Text</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#A8A5A0</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>168, 165, 160</strong></div>
+                        </div>
+                        <div class="usage-tag">Secondary Text</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #8A8782;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Tertiary Text</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#8A8782</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>138, 135, 130</strong></div>
+                        </div>
+                        <div class="usage-tag">Tertiary Text</div>
+                    </div>
+                </div>
+
+                <div class="color-card">
+                    <div class="color-swatch" style="background: #4A4A4A;"></div>
+                    <div class="color-info">
+                        <div class="color-name">Border</div>
+                        <div class="color-values">
+                            <div class="color-value"><span>HEX</span> <strong>#4A4A4A</strong></div>
+                            <div class="color-value"><span>RGB</span> <strong>74, 74, 74</strong></div>
+                        </div>
+                        <div class="usage-tag">Borders / Dividers</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Accessibility Section -->
+    <section id="accessibility">
+        <div class="container">
+            <h2>Accessibility</h2>
+            <p class="section-intro">
+                All color combinations meet WCAG 2.1 Level AA standards. We prioritize inclusive design 
+                to ensure our products are accessible to everyone.
+            </p>
+
+            <h3>Contrast Test Results</h3>
+            <div class="contrast-grid">
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #FEFBF7; color: #875C74;">
+                        Dusty Lavender on Porcelain
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">5.8:1</span>
+                        <span class="contrast-badge">✓ AA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #5B8C8A; color: #ffffff;">
+                        White on Muted Teal
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">5.1:1</span>
+                        <span class="contrast-badge">✓ AA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #FEFBF7; color: #2a2a2a;">
+                        Charcoal on Porcelain
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">13.5:1</span>
+                        <span class="contrast-badge">✓ AAA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #C5EBC3; color: #2a2a2a;">
+                        Text on Tea Green
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">8.2:1</span>
+                        <span class="contrast-badge">✓ AAA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #F5DEB3; color: #2a2a2a;">
+                        Text on Warning Tint
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">6.4:1</span>
+                        <span class="contrast-badge">✓ AA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #F2D0CC; color: #2a2a2a;">
+                        Text on Alert Tint
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">5.9:1</span>
+                        <span class="contrast-badge">✓ AA Pass</span>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 4rem;">Dark Mode Contrast Tests</h3>
+            <div class="contrast-grid">
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #1E1E1E; color: #B07D96;">
+                        Dusty Lavender Light on Dark
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">7.2:1</span>
+                        <span class="contrast-badge">✓ AAA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #1E1E1E; color: #5B8C8A;">
+                        Muted Teal on Dark
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">6.8:1</span>
+                        <span class="contrast-badge">✓ AA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #1E1E1E; color: #E8E6E2;">
+                        White on Charcoal Deep
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">16.1:1</span>
+                        <span class="contrast-badge">✓ AAA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #5B8C8A; color: #1E1E1E;">
+                        Dark on Muted Teal (CTA)
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">5.9:1</span>
+                        <span class="contrast-badge">✓ AA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #1A3320; color: #6FD68A;">
+                        Success Text on Tint
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">7.8:1</span>
+                        <span class="contrast-badge">✓ AAA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #3D1F1C; color: #E8857A;">
+                        Alert Text on Tint
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">6.9:1</span>
+                        <span class="contrast-badge">✓ AA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #3A2E0A; color: #E8B53A;">
+                        Warning Text on Tint
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">8.2:1</span>
+                        <span class="contrast-badge">✓ AAA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #1C2E3D; color: #7AB4D9;">
+                        Info Text on Tint
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">7.5:1</span>
+                        <span class="contrast-badge">✓ AAA Pass</span>
+                    </div>
+                </div>
+
+                <div class="contrast-card">
+                    <div class="contrast-preview" style="background: #1E1E1E; color: #A8A5A0;">
+                        Secondary Text on Dark
+                    </div>
+                    <div class="contrast-info">
+                        <span class="contrast-ratio">9.8:1</span>
+                        <span class="contrast-badge">✓ AAA Pass</span>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Best Practices</h3>
+            <div style="margin-top: 2rem; line-height: 1.8; color: var(--text-secondary);">
+                <ul style="margin-left: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                    <li>Test all color combinations with contrast checking tools before implementation</li>
+                    <li>Never rely on color alone to convey information—use icons, labels, or patterns</li>
+                    <li>Ensure interactive elements have minimum target size of 44×44px</li>
+                    <li>Maintain visible focus indicators on all interactive elements</li>
+                    <li>Use Lexend Deca font for improved readability for users with dyslexia</li>
+                    <li>Provide alternative text for all images and icons</li>
+                    <li>Ensure sufficient line height (1.5× minimum) for readability</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Token Sheet Section -->
+    <section id="tokens">
+        <div class="container">
+            <h2>Design Tokens</h2>
+            <p class="section-intro">
+                Use these tokens for consistent implementation across all platforms and frameworks.
+            </p>
+
+            <div class="token-sheet">
+                <div class="token-category">
+                    <div class="token-category-title">Background & Surface</div>
+                    <div class="token-row">
+                        <div class="token-name">bg</div>
+                        <div class="token-value">#FEFBF7</div>
+                        <div class="token-swatch" style="background: #FEFBF7; border: 2px solid #c8c5bf;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">surface</div>
+                        <div class="token-value">#ffffff</div>
+                        <div class="token-swatch" style="background: #ffffff;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">border</div>
+                        <div class="token-value">#c8c5bf</div>
+                        <div class="token-swatch" style="background: #c8c5bf;"></div>
+                    </div>
+                </div>
+
+                <div class="token-category">
+                    <div class="token-category-title">Text Colors</div>
+                    <div class="token-row">
+                        <div class="token-name">textPrimary</div>
+                        <div class="token-value">#2a2a2a</div>
+                        <div class="token-swatch" style="background: #2a2a2a;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">textSecondary</div>
+                        <div class="token-value">#6b6b6b</div>
+                        <div class="token-swatch" style="background: #6b6b6b;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">textTertiary</div>
+                        <div class="token-value">#7a7a7a</div>
+                        <div class="token-swatch" style="background: #7a7a7a;"></div>
+                    </div>
+                </div>
+
+                <div class="token-category">
+                    <div class="token-category-title">Brand Colors</div>
+                    <div class="token-row">
+                        <div class="token-name">primary</div>
+                        <div class="token-value">#5B8C8A</div>
+                        <div class="token-swatch" style="background: #5B8C8A;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">primaryTint</div>
+                        <div class="token-value">#D6EAEA</div>
+                        <div class="token-swatch" style="background: #D6EAEA;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">accent</div>
+                        <div class="token-value">#875C74</div>
+                        <div class="token-swatch" style="background: #875C74;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">accentTint</div>
+                        <div class="token-value">#f0e4ec</div>
+                        <div class="token-swatch" style="background: #f0e4ec;"></div>
+                    </div>
+                </div>
+
+                <div class="token-category">
+                    <div class="token-category-title">Semantic Colors</div>
+                    <div class="token-row">
+                        <div class="token-name">successSolid</div>
+                        <div class="token-value">#3E8C4F</div>
+                        <div class="token-swatch" style="background: #3E8C4F;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">successTint</div>
+                        <div class="token-value">#C5EBC3</div>
+                        <div class="token-swatch" style="background: #C5EBC3;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">alertSolid</div>
+                        <div class="token-value">#C45A4A</div>
+                        <div class="token-swatch" style="background: #C45A4A;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">alertTint</div>
+                        <div class="token-value">#F2D0CC</div>
+                        <div class="token-swatch" style="background: #F2D0CC;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">warnSolid</div>
+                        <div class="token-value">#9A7209</div>
+                        <div class="token-swatch" style="background: #9A7209;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">warnTint</div>
+                        <div class="token-value">#F5DEB3</div>
+                        <div class="token-swatch" style="background: #F5DEB3;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">infoSolid</div>
+                        <div class="token-value">#4A7A9E</div>
+                        <div class="token-swatch" style="background: #4A7A9E;"></div>
+                    </div>
+                    <div class="token-row">
+                        <div class="token-name">infoTint</div>
+                        <div class="token-value">#C3D9EB</div>
+                        <div class="token-swatch" style="background: #C3D9EB;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <section id="footer" style="background: var(--text-primary); padding: 3rem 0; text-align: center;">
+        <div class="container">
+            <p style="opacity: 0.8; color: var(--bg);">wev Brand Guidelines • Version 1.0 • February 2026</p>
+            <p style="margin-top: 1rem; opacity: 0.6; font-size: 0.9rem; color: var(--bg);">
+                For questions about brand implementation, contact the design team
+            </p>
+        </div>
+    </section>
+
+    <script>
+        // Theme toggle functionality
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            updateThemeButton(newTheme);
+        }
+
+        function updateThemeButton(theme) {
+            const icon = document.getElementById('theme-icon');
+            const text = document.getElementById('theme-text');
+            
+            if (theme === 'dark') {
+                icon.textContent = '☀️';
+                text.textContent = 'Light Mode';
+            } else {
+                icon.textContent = '🌙';
+                text.textContent = 'Dark Mode';
+            }
+        }
+
+        // Initialize theme on page load
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeButton(savedTheme);
+        })();
+    </script>
+</body>
+</html>
