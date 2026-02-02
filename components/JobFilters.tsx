@@ -253,7 +253,7 @@ export default function JobFilters({
               Show corporate gigs
             </span>
           </label>
-          <p className="text-xs text-wev-text-secondary mt-1 ml-6">
+          <p className="text-xs text-wev-text-secondary mt-1 pl-7">
             Uncheck to hide jobs marked as corporate
           </p>
         </div>
