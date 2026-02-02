@@ -1,11 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { JobPosting } from '@/lib/supabase'
 
 interface JobListingsProps {
   jobs: JobPosting[]
   loading: boolean
   error: string | null
+  onJobCorporateChange?: (jobId: string, isCorporate: boolean) => void
 }
 
 // Reusable component for job detail lines
@@ -38,7 +40,29 @@ function JobDetailLine({
   )
 }
 
-export default function JobListings({ jobs, loading, error }: JobListingsProps) {
+export default function JobListings({ jobs, loading, error, onJobCorporateChange }: JobListingsProps) {
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
+
+  const handleCorporateToggle = async (job: JobPosting) => {
+    const newValue = !job.is_corporate
+    setUpdatingId(job.id)
+    try {
+      const res = await fetch(`/api/bulletin/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_corporate: newValue }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? 'Failed to update')
+      }
+      onJobCorporateChange?.(job.id, newValue)
+    } catch (err) {
+      console.error('Failed to update is_corporate:', err)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
   const formatDate = (dateString: string): string => {
     // Parse date string - if it doesn't have timezone, treat as UTC
     let date: Date
@@ -80,27 +104,72 @@ export default function JobListings({ jobs, loading, error }: JobListingsProps) 
     )
   }
 
+  const isCorporate = (job: JobPosting) => !!job.is_corporate
+
   return (
     <div className="space-y-6">
-      {jobs.map((job) => (
-        <div
-          key={job.id}
-          className="bg-wev-surface border border-wev-border rounded-wev-card p-6 shadow-wev-card hover:shadow-wev-card-hover hover:border-wev-primary transition-all duration-300"
-        >
-          <p className="job-details">
-            <JobDetailLine label="Who" value={job.organization} />
-            <JobDetailLine
-              label="What"
-              value={job.job_title}
-              valueAsLink={job.listing_url ? { href: job.listing_url, text: job.job_title } : undefined}
-            />
-            <JobDetailLine label="Where" value={job.location || 'N/A'} />
-            {job.summary && <JobDetailLine label="Why" value={job.summary} />}
-            <JobDetailLine label="When" value={`Posted ${formatDate(job.date_posted)}`} />
-            <JobDetailLine label="How much" value={job.wage || 'N/A'} />
-          </p>
-        </div>
-      ))}
+      {jobs.map((job) => {
+        const corporate = isCorporate(job)
+        return (
+          <div
+            key={job.id}
+            className={
+              corporate
+                ? 'overflow-hidden rounded-wev-card p-6 shadow-wev-card transition-all duration-300 bg-wev-primary-tint/30 border-2 border-wev-primary/50 opacity-75 hover:border-wev-primary/70'
+                : 'overflow-hidden rounded-wev-card p-6 shadow-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:shadow-wev-card-hover hover:border-wev-primary'
+            }
+          >
+            {(onJobCorporateChange != null || corporate) && (
+            <div className="float-right ml-4 flex flex-row items-center gap-1 shrink-0">
+              {corporate && (
+                <span
+                  className="rounded-wev-pill bg-wev-warn-tint text-wev-warn-text px-3 py-1 text-xs font-semibold whitespace-nowrap"
+                  aria-hidden
+                >
+                  Corporate
+                </span>
+              )}
+              {onJobCorporateChange != null && (
+                <button
+                  type="button"
+                  onClick={() => handleCorporateToggle(job)}
+                  disabled={updatingId === job.id}
+                  title={corporate ? 'Mark as not corporate' : 'Mark as corporate'}
+                  className="flex items-center justify-center w-8 h-8 rounded-wev-btn bg-transparent text-wev-warn-text hover:text-wev-warn transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label={corporate ? 'Corporate gig (click to unmark)' : 'Mark as corporate gig'}
+                >
+                  {updatingId === job.id ? (
+                    <span className="text-sm">…</span>
+                  ) : corporate ? (
+                    <svg className="w-5 h-5 flex shrink-0" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M8 2v20" />
+                      <rect x="8" y="4" width="8" height="8" rx="0.5" fill="currentColor" stroke="currentColor" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 flex shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M8 2v20" />
+                      <rect x="8" y="4" width="8" height="8" rx="0.5" />
+                    </svg>
+                  )}
+                </button>
+              )}
+            </div>
+            )}
+            <p className="job-details">
+              <JobDetailLine label="Who" value={job.organization} />
+              <JobDetailLine
+                label="What"
+                value={job.job_title}
+                valueAsLink={job.listing_url ? { href: job.listing_url, text: job.job_title } : undefined}
+              />
+              <JobDetailLine label="Where" value={job.location || 'N/A'} />
+              {job.summary && <JobDetailLine label="Why" value={job.summary} />}
+              <JobDetailLine label="When" value={`Posted ${formatDate(job.date_posted)}`} />
+              <JobDetailLine label="How much" value={job.wage || 'N/A'} />
+            </p>
+          </div>
+        )
+      })}
     </div>
   )
 }

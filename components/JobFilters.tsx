@@ -17,6 +17,8 @@ interface JobFiltersProps {
   onEmploymentTypesChange: (types: string[]) => void
   remoteFilter: 'all' | 'remote-only' | 'hide-remote'
   onRemoteFilterChange: (filter: 'all' | 'remote-only' | 'hide-remote') => void
+  showCorporateGigs: boolean
+  onShowCorporateGigsChange: (show: boolean) => void
 }
 
 export default function JobFilters({
@@ -33,6 +35,8 @@ export default function JobFilters({
   onEmploymentTypesChange,
   remoteFilter,
   onRemoteFilterChange,
+  showCorporateGigs,
+  onShowCorporateGigsChange,
 }: JobFiltersProps) {
   // Auto-expand if filters are active
   const hasActiveFilters =
@@ -41,7 +45,8 @@ export default function JobFilters({
     selectedProvinces.length > 0 ||
     selectedMunicipalities.length > 0 ||
     selectedEmploymentTypes.length > 0 ||
-    remoteFilter !== 'all'
+    remoteFilter !== 'all' ||
+    !showCorporateGigs
   
   const [isExpanded, setIsExpanded] = useState(hasActiveFilters)
   
@@ -137,6 +142,7 @@ export default function JobFilters({
     onMunicipalitiesChange([])
     onEmploymentTypesChange([])
     onRemoteFilterChange('all')
+    onShowCorporateGigsChange(true)
   }
 
   // Get municipalities to display based on selected provinces
@@ -234,6 +240,24 @@ export default function JobFilters({
       <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
         isExpanded ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
       }`}>
+        {/* Corporate gigs filter */}
+        <div className="mb-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showCorporateGigs}
+              onChange={(e) => onShowCorporateGigsChange(e.target.checked)}
+              className="wev-checkbox"
+            />
+            <span className="text-sm font-semibold text-wev-text-primary">
+              Show corporate gigs
+            </span>
+          </label>
+          <p className="text-xs text-wev-text-secondary mt-1 ml-6">
+            Uncheck to hide jobs marked as corporate
+          </p>
+        </div>
+
         {/* Remote Filter */}
         <div className="mb-4">
         <label className="block text-sm font-semibold text-wev-text-primary mb-2">
@@ -301,7 +325,7 @@ export default function JobFilters({
                       }}
                       checked={selectedProvinces.includes(province)}
                       onChange={() => handleProvinceToggle(province)}
-                      className="rounded border-wev-border text-wev-primary focus:ring-wev-primary"
+                      className="wev-checkbox"
                     />
                     <span className="text-sm text-wev-text-primary">{province}</span>
                   </label>
@@ -331,7 +355,7 @@ export default function JobFilters({
                     type="checkbox"
                     checked={selectedEmploymentTypes.includes(type)}
                     onChange={() => handleEmploymentTypeToggle(type)}
-                    className="rounded border-wev-border text-wev-primary focus:ring-wev-primary"
+                    className="wev-checkbox"
                   />
                   <span className="text-sm text-wev-text-primary">{type}</span>
                 </label>
@@ -390,7 +414,7 @@ export default function JobFilters({
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleMunicipalityToggle(municipality)}
-                            className="rounded border-wev-border text-wev-primary focus:ring-wev-primary"
+                            className="wev-checkbox"
                           />
                           <span className={`text-sm ${
                             isFromSelectedProvince ? 'text-wev-text-primary' : 'text-wev-text-secondary'
@@ -423,7 +447,7 @@ export default function JobFilters({
                     type="checkbox"
                     checked={selectedOrganizations.includes(org)}
                     onChange={() => handleOrganizationToggle(org)}
-                    className="rounded border-wev-border text-wev-primary focus:ring-wev-primary"
+                    className="wev-checkbox"
                   />
                   <span className="text-sm text-wev-text-primary">{org}</span>
                 </label>

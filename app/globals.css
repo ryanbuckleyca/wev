@@ -99,4 +99,20 @@
   .job-link {
     @apply text-wev-accent hover:text-wev-primary hover:underline;
   }
+
+  /* Checkbox – styleguide: 8px radius (match .btn), border, primary when checked, focus ring */
+  .wev-checkbox {
+    @apply h-5 w-5 shrink-0 cursor-pointer rounded-wev-btn border-2 border-wev-border bg-wev-surface transition-colors;
+    accent-color: var(--primary);
+  }
+  .wev-checkbox:hover {
+    border-color: var(--primary);
+  }
+  .wev-checkbox:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary);
+  }
+  .wev-checkbox:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
 }

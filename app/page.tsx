@@ -27,6 +27,7 @@ export default function Home() {
   const [selectedMunicipalities, setSelectedMunicipalities] = useState<string[]>([])
   const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useState<string[]>([])
   const [remoteFilter, setRemoteFilter] = useState<'all' | 'remote-only' | 'hide-remote'>('all')
+  const [showCorporateGigs, setShowCorporateGigs] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
 
   const fetchData = async () => {
@@ -112,6 +113,11 @@ export default function Home() {
         return false
       }
 
+      // Corporate filter: when "show corporate gigs" is off, hide jobs flagged as corporate
+      if (!showCorporateGigs && job.is_corporate) {
+        return false
+      }
+
       // Province filter
       // Jobs with null province should show when filters are applied (null doesn't narrow down)
       if (selectedProvinces.length > 0) {
@@ -135,7 +141,7 @@ export default function Home() {
 
       return true
     })
-  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter])
+  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showCorporateGigs])
 
   // Paginate filtered jobs
   const paginatedJobs = useMemo(() => {
@@ -147,7 +153,7 @@ export default function Home() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter])
+  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showCorporateGigs])
 
   useEffect(() => {
     fetchData()
@@ -199,6 +205,8 @@ export default function Home() {
           onEmploymentTypesChange={setSelectedEmploymentTypes}
           remoteFilter={remoteFilter}
           onRemoteFilterChange={setRemoteFilter}
+          showCorporateGigs={showCorporateGigs}
+          onShowCorporateGigsChange={setShowCorporateGigs}
         />
 
         {/* Results count */}
@@ -217,7 +225,16 @@ export default function Home() {
           </div>
         )}
 
-        <JobListings jobs={paginatedJobs} loading={loading} error={error} />
+        <JobListings
+          jobs={paginatedJobs}
+          loading={loading}
+          error={error}
+          onJobCorporateChange={(jobId, isCorporate) =>
+            setAllJobs((prev) =>
+              prev.map((j) => (j.id === jobId ? { ...j, is_corporate: isCorporate } : j))
+            )
+          }
+        />
 
         {/* Pagination */}
         {!loading && filteredJobs.length > 0 && (
