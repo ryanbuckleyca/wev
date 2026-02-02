@@ -20,7 +20,7 @@ export default function Pagination({
 
   if (totalPages <= 1) {
     return (
-      <div className="text-sm text-black text-center py-4">
+      <div className="text-sm text-wev-text-primary text-center py-4">
         Showing {totalItems} {totalItems === 1 ? 'job' : 'jobs'}
       </div>
     )
@@ -81,7 +81,7 @@ export default function Pagination({
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
-      <div className="text-sm text-black">
+      <div className="text-sm text-wev-text-primary">
         Showing {startItem}-{endItem} of {totalItems} {totalItems === 1 ? 'job' : 'jobs'}
       </div>
 
@@ -89,7 +89,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-3 py-1 border border-wev-ash rounded-lg text-black disabled:opacity-50 disabled:cursor-not-allowed hover:bg-wev-teagreen hover:border-wev-lilac transition-colors"
+          className="px-3 py-1 border border-wev-border rounded-wev-btn text-wev-text-primary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-wev-primary-tint hover:border-wev-primary transition-colors"
         >
           Previous
         </button>
@@ -98,7 +98,7 @@ export default function Pagination({
           {getPageNumbers().map((page, idx) => {
             if (page === '...') {
               return (
-                <span key={`ellipsis-${idx}`} className="px-2 text-wev-lilac">
+                <span key={`ellipsis-${idx}`} className="px-2 text-wev-text-secondary">
                   ...
                 </span>
               )
@@ -111,10 +111,10 @@ export default function Pagination({
               <button
                 key={pageNum}
                 onClick={() => onPageChange(pageNum)}
-                className={`px-3 py-1 border rounded-lg transition-colors ${
+                className={`px-3 py-1 border rounded-wev-btn transition-colors ${
                   isActive
-                    ? 'bg-wev-lavender text-white border-wev-lavender'
-                    : 'border-wev-ash text-black hover:bg-wev-teagreen hover:border-wev-lilac'
+                    ? 'bg-wev-primary text-white border-wev-primary shadow-wev-btn'
+                    : 'border-wev-border text-wev-text-primary hover:bg-wev-primary-tint hover:border-wev-primary'
                 }`}
               >
                 {pageNum}
@@ -126,7 +126,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-3 py-1 border border-wev-ash rounded-lg text-black disabled:opacity-50 disabled:cursor-not-allowed hover:bg-wev-teagreen hover:border-wev-lilac transition-colors"
+          className="px-3 py-1 border border-wev-border rounded-wev-btn text-wev-text-primary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-wev-primary-tint hover:border-wev-primary transition-colors"
         >
           Next
         </button>

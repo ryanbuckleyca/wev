@@ -191,17 +191,17 @@ export default function JobFilters({
   }, [provinces, municipalitiesByProvince, selectedMunicipalities])
 
   return (
-    <div className="bg-white border border-wev-ash rounded-lg p-6 mb-6">
+    <div className="bg-wev-surface border border-wev-border rounded-wev-card p-6 mb-6 shadow-wev-card">
       {/* Search */}
       <div className="mb-2">
         <div className="flex items-center justify-between mb-2">
-          <label htmlFor="search" className="block text-sm font-semibold text-black">
+          <label htmlFor="search" className="block text-sm font-semibold text-wev-text-primary">
             Search
           </label>
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-sm text-wev-lavender hover:text-wev-mauve hover:underline flex items-center gap-1"
+            className="text-sm text-wev-accent hover:text-wev-primary hover:underline flex items-center gap-1 transition-colors"
           >
             {isExpanded ? (
               <>
@@ -226,7 +226,7 @@ export default function JobFilters({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search by job title, organization, location..."
-          className="w-full px-4 py-2 border border-wev-ash rounded-lg focus:outline-none focus:ring-2 focus:ring-wev-lavender focus:border-transparent text-black bg-white"
+          className="w-full px-4 py-2 border border-wev-border rounded-wev-btn focus:outline-none focus:ring-2 focus:ring-wev-primary focus:border-transparent text-wev-text-primary bg-wev-surface transition-colors"
         />
       </div>
 
@@ -236,17 +236,17 @@ export default function JobFilters({
       }`}>
         {/* Remote Filter */}
         <div className="mb-4">
-        <label className="block text-sm font-semibold text-black mb-2">
+        <label className="block text-sm font-semibold text-wev-text-primary mb-2">
           Remote Jobs
         </label>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => onRemoteFilterChange('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
               remoteFilter === 'all'
-                ? 'bg-wev-lavender text-white'
-                : 'bg-wev-offwhite text-black border border-wev-ash hover:bg-wev-teagreen/30'
+                ? 'bg-wev-primary text-white shadow-wev-btn'
+                : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
             }`}
           >
             Show All
@@ -254,10 +254,10 @@ export default function JobFilters({
           <button
             type="button"
             onClick={() => onRemoteFilterChange('remote-only')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
               remoteFilter === 'remote-only'
-                ? 'bg-wev-lavender text-white'
-                : 'bg-wev-offwhite text-black border border-wev-ash hover:bg-wev-teagreen/30'
+                ? 'bg-wev-primary text-white shadow-wev-btn'
+                : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
             }`}
           >
             Remote Only
@@ -265,10 +265,10 @@ export default function JobFilters({
           <button
             type="button"
             onClick={() => onRemoteFilterChange('hide-remote')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
               remoteFilter === 'hide-remote'
-                ? 'bg-wev-lavender text-white'
-                : 'bg-wev-offwhite text-black border border-wev-ash hover:bg-wev-teagreen/30'
+                ? 'bg-wev-primary text-white shadow-wev-btn'
+                : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
             }`}
           >
             Hide Remote
@@ -280,17 +280,17 @@ export default function JobFilters({
       <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
         {/* Provinces */}
         <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0">
-          <label className="block text-sm font-semibold text-black mb-2">
+          <label className="block text-sm font-semibold text-wev-text-primary mb-2">
             Province ({selectedProvinces.length}/{provinces.length})
           </label>
-          <div className="max-h-32 overflow-y-auto border border-wev-ash rounded-lg p-2 bg-wev-offwhite">
+          <div className="max-h-32 overflow-y-auto border border-wev-border rounded-wev-btn p-2 bg-wev-bg">
             {provinces.length > 0 ? (
               provinces.map((province) => {
                 const isIndeterminate = indeterminateProvinces.has(province)
                 return (
                   <label
                     key={province}
-                    className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-wev-teagreen/30 rounded px-2"
+                    className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-wev-primary-tint rounded px-2 transition-colors"
                   >
                     <input
                       type="checkbox"
@@ -301,14 +301,14 @@ export default function JobFilters({
                       }}
                       checked={selectedProvinces.includes(province)}
                       onChange={() => handleProvinceToggle(province)}
-                      className="rounded border-wev-ash text-wev-lavender focus:ring-wev-lavender"
+                      className="rounded border-wev-border text-wev-primary focus:ring-wev-primary"
                     />
-                    <span className="text-sm text-black">{province}</span>
+                    <span className="text-sm text-wev-text-primary">{province}</span>
                   </label>
                 )
               })
             ) : (
-              <p className="text-sm text-wev-lilac italic px-2 py-2">
+              <p className="text-sm text-wev-text-secondary italic px-2 py-2">
                 No province data available. Run the scraper to populate location data.
               </p>
             )}
@@ -317,27 +317,27 @@ export default function JobFilters({
 
         {/* Employment Types */}
         <div className="flex flex-col order-3 md:row-start-1 md:col-start-2 min-h-0">
-          <label className="block text-sm font-semibold text-black mb-2">
+          <label className="block text-sm font-semibold text-wev-text-primary mb-2">
             Employment Type ({selectedEmploymentTypes.length}/{employmentTypes.length})
           </label>
-          <div className="max-h-32 overflow-y-auto border border-wev-ash rounded-lg p-2 bg-wev-offwhite">
+          <div className="max-h-32 overflow-y-auto border border-wev-border rounded-wev-btn p-2 bg-wev-bg">
             {employmentTypes.length > 0 ? (
               employmentTypes.map((type) => (
                 <label
                   key={type}
-                  className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-wev-teagreen/30 rounded px-2"
+                  className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-wev-primary-tint rounded px-2 transition-colors"
                 >
                   <input
                     type="checkbox"
                     checked={selectedEmploymentTypes.includes(type)}
                     onChange={() => handleEmploymentTypeToggle(type)}
-                    className="rounded border-wev-ash text-wev-lavender focus:ring-wev-lavender"
+                    className="rounded border-wev-border text-wev-primary focus:ring-wev-primary"
                   />
-                  <span className="text-sm text-black">{type}</span>
+                  <span className="text-sm text-wev-text-primary">{type}</span>
                 </label>
               ))
             ) : (
-              <p className="text-sm text-wev-lilac italic px-2 py-2">
+              <p className="text-sm text-wev-text-secondary italic px-2 py-2">
                 No employment type data available
               </p>
             )}
@@ -346,21 +346,21 @@ export default function JobFilters({
 
         {/* Municipalities (grouped by province, filtered by selected provinces) */}
         <div className="flex flex-col order-2 md:row-start-2 md:col-start-1">
-          <label className="block text-sm font-semibold text-black mb-2">
+          <label className="block text-sm font-semibold text-wev-text-primary mb-2">
             Municipality ({selectedMunicipalities.length}/{allMunicipalities.length})
             {selectedProvinces.length > 0 && allMunicipalities.length > 0 && (
-              <span className="text-xs font-normal text-wev-lilac ml-2">
+              <span className="text-xs font-normal text-wev-text-secondary ml-2">
                 (showing municipalities from selected provinces)
               </span>
             )}
           </label>
-          <div className="h-48 overflow-y-auto border border-wev-ash rounded-lg p-2 bg-wev-offwhite">
+          <div className="h-48 overflow-y-auto border border-wev-border rounded-wev-btn p-2 bg-wev-bg">
             {allMunicipalities.length === 0 ? (
-              <p className="text-sm text-wev-lilac italic px-2 py-2">
+              <p className="text-sm text-wev-text-secondary italic px-2 py-2">
                 No municipality data available. Run the scraper to populate location data.
               </p>
             ) : Object.keys(visibleMunicipalitiesByProvince).length === 0 ? (
-              <p className="text-sm text-wev-lilac italic px-2 py-2">
+              <p className="text-sm text-wev-text-secondary italic px-2 py-2">
                 Select a province to see municipalities
               </p>
             ) : (
@@ -369,7 +369,7 @@ export default function JobFilters({
                 return (
                   <div key={province} className="mb-2">
                     <div className={`text-xs font-semibold mb-1 px-2 ${
-                      isProvinceSelected ? 'text-wev-lavender' : 'text-wev-lilac'
+                      isProvinceSelected ? 'text-wev-primary' : 'text-wev-text-secondary'
                     }`}>
                       {province}
                       {isProvinceSelected && ' ✓'}
@@ -380,20 +380,20 @@ export default function JobFilters({
                       return (
                         <label
                           key={`${province}-${municipality}`}
-                          className={`flex items-center space-x-2 py-1 cursor-pointer rounded px-2 ml-2 ${
+                          className={`flex items-center space-x-2 py-1 cursor-pointer rounded px-2 ml-2 transition-colors ${
                             isFromSelectedProvince 
-                              ? 'hover:bg-wev-teagreen/30' 
-                              : 'hover:bg-wev-offwhite opacity-75'
+                              ? 'hover:bg-wev-primary-tint' 
+                              : 'hover:bg-wev-bg opacity-75'
                           }`}
                         >
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleMunicipalityToggle(municipality)}
-                            className="rounded border-wev-ash text-wev-lavender focus:ring-wev-lavender"
+                            className="rounded border-wev-border text-wev-primary focus:ring-wev-primary"
                           />
                           <span className={`text-sm ${
-                            isFromSelectedProvince ? 'text-black' : 'text-wev-lilac'
+                            isFromSelectedProvince ? 'text-wev-text-primary' : 'text-wev-text-secondary'
                           }`}>
                             {municipality}
                           </span>
@@ -409,27 +409,27 @@ export default function JobFilters({
 
         {/* Organizations */}
         <div className="flex flex-col order-4 md:row-start-2 md:col-start-2">
-          <label className="block text-sm font-semibold text-black mb-2">
+          <label className="block text-sm font-semibold text-wev-text-primary mb-2">
             Organization ({selectedOrganizations.length}/{organizations.length})
           </label>
-          <div className="h-48 overflow-y-auto border border-wev-ash rounded-lg p-2 bg-wev-offwhite">
+          <div className="h-48 overflow-y-auto border border-wev-border rounded-wev-btn p-2 bg-wev-bg">
             {organizations.length > 0 ? (
               organizations.map((org) => (
                 <label
                   key={org}
-                  className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-wev-teagreen/30 rounded px-2"
+                  className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-wev-primary-tint rounded px-2 transition-colors"
                 >
                   <input
                     type="checkbox"
                     checked={selectedOrganizations.includes(org)}
                     onChange={() => handleOrganizationToggle(org)}
-                    className="rounded border-wev-ash text-wev-lavender focus:ring-wev-lavender"
+                    className="rounded border-wev-border text-wev-primary focus:ring-wev-primary"
                   />
-                  <span className="text-sm text-black">{org}</span>
+                  <span className="text-sm text-wev-text-primary">{org}</span>
                 </label>
               ))
             ) : (
-              <p className="text-sm text-wev-lilac italic px-2 py-2">
+              <p className="text-sm text-wev-text-secondary italic px-2 py-2">
                 No organization data available
               </p>
             )}
@@ -441,7 +441,7 @@ export default function JobFilters({
         {hasActiveFilters && (
           <button
             onClick={clearAllFilters}
-            className="text-sm text-wev-lavender hover:text-wev-mauve hover:underline"
+            className="text-sm text-wev-accent hover:text-wev-primary hover:underline transition-colors"
           >
             Clear all filters
           </button>

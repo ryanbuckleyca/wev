@@ -121,7 +121,7 @@ export default function CopyAllJobsButton({ jobs }: CopyAllJobsButtonProps) {
     <button
       onClick={handleCopy}
       disabled={copied}
-      className="px-6 py-2 bg-wev-ash text-wev-mauve rounded-lg hover:bg-wev-teagreen hover:text-wev-mauve disabled:bg-wev-lilac disabled:text-wev-mauve/70 disabled:cursor-not-allowed transition-colors border border-wev-ash"
+      className="px-6 py-2.5 bg-transparent text-wev-accent border-2 border-wev-accent rounded-wev-btn font-semibold hover:bg-wev-accent-tint hover:border-wev-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
       title={`Copy ${jobs.length} job${jobs.length !== 1 ? 's' : ''} to clipboard`}
     >
       {copied ? 'Copied!' : 'Copy All Jobs'}

@@ -156,16 +156,21 @@ export default function Home() {
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE)
 
   return (
-    <main className="min-h-screen bg-wev-offwhite py-8">
+    <main className="min-h-screen bg-wev-bg py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold font-serif text-black mb-8">
-          WEV Bulletin - Job Postings
-        </h1>
+        <header className="mb-8">
+          <img
+            src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png"
+            alt="wev"
+            className="wev-logotype w-[100px] h-auto mb-2 drop-shadow-[0_4px_12px_rgba(135,92,116,0.2)]"
+          />
+          <p className="text-xl font-medium text-wev-primary">Bulletin – Job Postings</p>
+        </header>
 
         {/* Last Scrape Time */}
-        <div className="bg-white border border-wev-ash rounded-lg p-4 mb-6">
-          <p className="text-sm text-black">
-            <span className="font-semibold text-wev-lavender">Last updated: </span>
+        <div className="bg-wev-surface border border-wev-border rounded-wev-card p-4 mb-6 shadow-wev-card">
+          <p className="text-sm text-wev-text-primary">
+            <span className="font-semibold text-wev-accent">Last updated: </span>
             {lastScrapeTime ? (
               <span>{lastScrapeTime}</span>
             ) : (
@@ -198,7 +203,7 @@ export default function Home() {
 
         {/* Results count */}
         {!loading && (
-          <div className="mb-4 text-sm text-black">
+          <div className="mb-4 text-sm text-wev-text-primary">
             {filteredJobs.length === allJobs.length ? (
               <span>
                 {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'}

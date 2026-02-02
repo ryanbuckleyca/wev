@@ -1,14 +1,18 @@
 import type { Metadata } from 'next'
-import { Lora, Source_Sans_3 } from 'next/font/google'
+import { Lexend_Deca } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
+import ThemeToggle from '@/components/ThemeToggle'
 import './globals.css'
 
-const lora = Lora({ subsets: ['latin'], variable: '--font-lora' })
-const sans = Source_Sans_3({ subsets: ['latin'], variable: '--font-sans' })
+const lexend = Lexend_Deca({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-lexend',
+})
 
 export const metadata: Metadata = {
-  title: 'WEV Bulletin - Job Postings',
-  description: 'View and manage job postings from WEV scraper',
+  title: 'wev Bulletin - Job Postings',
+  description: 'View and manage job postings from wev scraper',
 }
 
 export default function RootLayout({
@@ -17,8 +21,16 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${lora.variable} ${sans.variable}`}>
-      <body className="font-sans antialiased text-black">
+    <html lang="en" className={lexend.variable} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem('theme')||'light';document.documentElement.setAttribute('data-theme',t);})();`,
+          }}
+        />
+      </head>
+      <body className="font-sans antialiased">
+        <ThemeToggle />
         {children}
         <Toaster
           position="bottom-right"

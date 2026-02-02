@@ -58,14 +58,14 @@ export default function JobListings({ jobs, loading, error }: JobListingsProps) 
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wev-lavender"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wev-primary"></div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-wev-teagreen/50 border border-wev-lilac rounded-lg p-4 text-black">
+      <div className="bg-wev-alert-tint border border-wev-alert rounded-wev-card p-4 text-wev-alert-text shadow-wev-card">
         <p className="font-semibold">Error loading job postings</p>
         <p className="text-sm mt-1">{error}</p>
       </div>
@@ -74,8 +74,8 @@ export default function JobListings({ jobs, loading, error }: JobListingsProps) 
 
   if (jobs.length === 0) {
     return (
-      <div className="bg-white border border-wev-ash rounded-lg p-8 text-center">
-        <p className="text-black">No job postings found.</p>
+      <div className="bg-wev-surface border border-wev-border rounded-wev-card p-8 text-center shadow-wev-card">
+        <p className="text-wev-text-primary">No job postings found.</p>
       </div>
     )
   }
@@ -85,7 +85,7 @@ export default function JobListings({ jobs, loading, error }: JobListingsProps) 
       {jobs.map((job) => (
         <div
           key={job.id}
-          className="bg-white border border-wev-ash rounded-lg p-6 shadow-sm hover:shadow-md hover:border-wev-lilac transition-all"
+          className="bg-wev-surface border border-wev-border rounded-wev-card p-6 shadow-wev-card hover:shadow-wev-card-hover hover:border-wev-primary transition-all duration-300"
         >
           <p className="job-details">
             <JobDetailLine label="Who" value={job.organization} />
