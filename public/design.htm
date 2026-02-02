@@ -175,6 +175,12 @@
             filter: drop-shadow(0 4px 12px rgba(135, 92, 116, 0.2));
         }
 
+        @media (max-width: 640px) {
+            .logo-display img {
+                max-width: 80%;
+            }
+        }
+
         .hero h1 {
             font-size: 6rem;
             font-weight: 700;
@@ -551,6 +557,7 @@
 
         .type-example {
             display: flex;
+            flex-direction: row;
             align-items: baseline;
             gap: 2rem;
             padding: 1.5rem 0;
@@ -559,6 +566,14 @@
 
         .type-example:last-child {
             border-bottom: none;
+        }
+
+        @media (max-width: 640px) {
+            .type-example {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
         }
 
         .type-label {
