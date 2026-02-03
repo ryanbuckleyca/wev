@@ -30,6 +30,7 @@ export default function Home() {
   const [showCorporateGigs, setShowCorporateGigs] = useState(true)
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useState(false)
   const [postedWithin, setPostedWithin] = useState<'1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any'>('2-weeks')
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
 
   const fetchData = async () => {
@@ -183,6 +184,65 @@ export default function Home() {
 
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE)
 
+  const hasActiveFilters =
+    !!searchQuery ||
+    selectedOrganizations.length > 0 ||
+    selectedProvinces.length > 0 ||
+    selectedMunicipalities.length > 0 ||
+    selectedEmploymentTypes.length > 0 ||
+    remoteFilter !== 'all' ||
+    !showCorporateGigs ||
+    showJobsWithoutSalary ||
+    postedWithin !== '2-weeks'
+
+  // Auto-expand filters when user has active filters
+  useEffect(() => {
+    if (hasActiveFilters && !filtersExpanded) {
+      setFiltersExpanded(true)
+    }
+  }, [hasActiveFilters])
+
+  const filterStateSummary = useMemo(() => {
+    const parts: string[] = []
+    parts.push(
+      postedWithin === '1-week'
+        ? 'Posted: 1 week'
+        : postedWithin === '2-weeks'
+          ? 'Posted: 2 weeks'
+          : postedWithin === '3-weeks'
+            ? 'Posted: 3 weeks'
+            : postedWithin === '1-month'
+              ? 'Posted: 1 month'
+              : 'Posted: any'
+    )
+    parts.push(showCorporateGigs ? 'Corporate gigs: Show' : 'Corporate gigs: Hide')
+    parts.push(
+      remoteFilter === 'all' ? 'Remote: Show' : remoteFilter === 'remote-only' ? 'Remote: Only' : 'Remote: Hide'
+    )
+    parts.push(showJobsWithoutSalary ? 'Without salary: Show' : 'Without salary: Hide')
+    if (searchQuery) {
+      const q = searchQuery.length > 18 ? `${searchQuery.slice(0, 18)}…` : searchQuery
+      parts.push(`Search: "${q}"`)
+    }
+    if (selectedProvinces.length > 0) parts.push(selectedProvinces.length === 1 ? '1 province' : `${selectedProvinces.length} provinces`)
+    if (selectedMunicipalities.length > 0) parts.push(selectedMunicipalities.length === 1 ? '1 municipality' : `${selectedMunicipalities.length} municipalities`)
+    if (selectedOrganizations.length > 0) parts.push(selectedOrganizations.length === 1 ? '1 organization' : `${selectedOrganizations.length} organizations`)
+    if (selectedEmploymentTypes.length > 0) parts.push(selectedEmploymentTypes.length === 1 ? '1 employment type' : `${selectedEmploymentTypes.length} employment types`)
+    return parts
+  }, [searchQuery, postedWithin, showJobsWithoutSalary, showCorporateGigs, remoteFilter, selectedProvinces.length, selectedMunicipalities.length, selectedOrganizations.length, selectedEmploymentTypes.length])
+
+  const clearAllFilters = () => {
+    setSearchQuery('')
+    setSelectedOrganizations([])
+    setSelectedProvinces([])
+    setSelectedMunicipalities([])
+    setSelectedEmploymentTypes([])
+    setRemoteFilter('all')
+    setShowCorporateGigs(true)
+    setShowJobsWithoutSalary(false)
+    setPostedWithin('2-weeks')
+  }
+
   return (
     <main className="min-h-screen bg-wev-bg py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -233,21 +293,51 @@ export default function Home() {
           onShowJobsWithoutSalaryChange={setShowJobsWithoutSalary}
           postedWithin={postedWithin}
           onPostedWithinChange={setPostedWithin}
+          filtersExpanded={filtersExpanded}
+          onFiltersExpandedChange={setFiltersExpanded}
         />
 
-        {/* Results count */}
+        {/* Results count and active filters */}
         {!loading && (
-          <div className="mb-4 text-sm text-wev-text-primary">
-            {filteredJobs.length === allJobs.length ? (
+          <div className="mb-4 text-sm text-wev-text-primary" aria-live="polite" aria-atomic="true">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span>
-                {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'}
-                {filteredJobs.length <= ITEMS_PER_PAGE && ' (all shown)'}
+                {filteredJobs.length === allJobs.length ? (
+                  <>
+                    {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'}
+                    {filteredJobs.length <= ITEMS_PER_PAGE && filteredJobs.length > 0 && ' (all shown)'}
+                  </>
+                ) : (
+                  <>
+                    Showing {filteredJobs.length} of {allJobs.length} {allJobs.length === 1 ? 'job' : 'jobs'}
+                  </>
+                )}
               </span>
-            ) : (
-              <span>
-                {filteredJobs.length} of {allJobs.length} {allJobs.length === 1 ? 'job' : 'jobs'}
-              </span>
-            )}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="text-wev-accent hover:text-wev-primary hover:underline focus:outline-none focus:ring-2 focus:ring-wev-primary focus:ring-offset-1 rounded"
+                  aria-label="Reset all filters to defaults"
+                >
+                  Reset filters
+                </button>
+              )}
+            </div>
+            <p className="mt-1.5 text-wev-text-secondary" aria-label="Filter state">
+              {filterStateSummary.join(' · ')}
+            </p>
+            <div className="mt-1.5">
+              <button
+                type="button"
+                onClick={() => setFiltersExpanded((prev) => !prev)}
+                className="text-sm text-wev-accent hover:text-wev-primary hover:underline focus:outline-none focus:ring-2 focus:ring-wev-primary focus:ring-offset-1 rounded"
+                aria-expanded={filtersExpanded}
+                aria-controls="job-filters-content"
+              >
+                {filtersExpanded ? 'Hide filters' : 'Show filters'}
+              </button>
+            </div>
           </div>
         )}
 

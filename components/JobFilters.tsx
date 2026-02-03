@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { JobPosting } from '@/lib/supabase'
 
 interface JobFiltersProps {
@@ -23,6 +23,8 @@ interface JobFiltersProps {
   onShowJobsWithoutSalaryChange: (show: boolean) => void
   postedWithin: '1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any'
   onPostedWithinChange: (value: '1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any') => void
+  filtersExpanded: boolean
+  onFiltersExpandedChange: (expanded: boolean) => void
 }
 
 export default function JobFilters({
@@ -45,10 +47,11 @@ export default function JobFilters({
   onShowJobsWithoutSalaryChange,
   postedWithin,
   onPostedWithinChange,
+  filtersExpanded,
+  onFiltersExpandedChange,
 }: JobFiltersProps) {
-  // Auto-expand if filters are active
   const hasActiveFilters =
-    searchQuery ||
+    !!searchQuery ||
     selectedOrganizations.length > 0 ||
     selectedProvinces.length > 0 ||
     selectedMunicipalities.length > 0 ||
@@ -57,16 +60,7 @@ export default function JobFilters({
     !showCorporateGigs ||
     showJobsWithoutSalary ||
     postedWithin !== '2-weeks'
-  
-  const [isExpanded, setIsExpanded] = useState(hasActiveFilters)
-  
-  // Auto-expand when filters become active
-  useEffect(() => {
-    if (hasActiveFilters && !isExpanded) {
-      setIsExpanded(true)
-    }
-  }, [hasActiveFilters])
-  
+
   // Extract unique values for filter options
   const { organizations, provinces, municipalitiesByProvince, employmentTypes } = useMemo(() => {
     const orgs = new Set<string>()
@@ -218,10 +212,12 @@ export default function JobFilters({
           </label>
           <button
             type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={() => onFiltersExpandedChange(!filtersExpanded)}
             className="text-sm text-wev-accent hover:text-wev-primary hover:underline flex items-center gap-1 transition-colors"
+            aria-expanded={filtersExpanded}
+            aria-controls="job-filters-content"
           >
-            {isExpanded ? (
+            {filtersExpanded ? (
               <>
                 <span>Hide Filters</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,7 +226,7 @@ export default function JobFilters({
               </>
             ) : (
               <>
-                <span>Show Filters</span>
+                <span>Show filters</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -249,9 +245,12 @@ export default function JobFilters({
       </div>
 
       {/* Collapsible Filters Section */}
-      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
-        isExpanded ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
-      }`}>
+      <div
+        id="job-filters-content"
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          filtersExpanded ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
+        }`}
+      >
         {/* Corporate gigs filter */}
         <div className="mb-4">
           <label className="flex items-center gap-2 cursor-pointer">
@@ -514,13 +513,13 @@ export default function JobFilters({
         </div>
       </div>
 
-        {/* Clear Filters Button */}
+        {/* Reset Filters Button */}
         {hasActiveFilters && (
           <button
             onClick={clearAllFilters}
             className="text-sm text-wev-accent hover:text-wev-primary hover:underline transition-colors"
           >
-            Clear all filters
+            Reset filters
           </button>
         )}
       </div>
