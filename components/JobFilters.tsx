@@ -213,7 +213,7 @@ export default function JobFilters({
           <button
             type="button"
             onClick={() => onFiltersExpandedChange(!filtersExpanded)}
-            className="text-sm text-wev-accent hover:text-wev-primary hover:underline flex items-center gap-1 transition-colors"
+            className="text-sm text-wev-accent hover:text-wev-primary-text hover:underline flex items-center gap-1 transition-colors"
             aria-expanded={filtersExpanded}
             aria-controls="job-filters-content"
           >
@@ -517,7 +517,7 @@ export default function JobFilters({
         {hasActiveFilters && (
           <button
             onClick={clearAllFilters}
-            className="text-sm text-wev-accent hover:text-wev-primary hover:underline transition-colors"
+            className="text-sm text-wev-accent hover:text-wev-primary-text hover:underline transition-colors"
           >
             Reset filters
           </button>

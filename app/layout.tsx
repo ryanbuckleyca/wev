@@ -29,7 +29,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-sans antialiased">
+      <body className="theme-transition font-sans antialiased">
         <ThemeToggle />
         {children}
         <Toaster

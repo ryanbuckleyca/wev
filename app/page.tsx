@@ -250,9 +250,9 @@ export default function Home() {
           <img
             src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png"
             alt="wev"
-            className="wev-logotype w-[100px] h-auto mb-2 drop-shadow-[0_4px_6px_rgba(135,92,116,0.2)]"
+            className="wev-logotype w-[100px] h-auto mb-2 drop-shadow-[0_4px_6px_rgba(135,92,116,0.15)]"
           />
-          <p className="text-xl font-medium text-wev-primary">Bulletin – Job Postings</p>
+          <p className="text-xl font-medium text-wev-primary-text">Bulletin – Job Postings</p>
         </header>
 
         {/* Last Scrape Time */}
@@ -317,7 +317,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={clearAllFilters}
-                  className="text-wev-accent hover:text-wev-primary hover:underline focus:outline-none focus:ring-2 focus:ring-wev-primary focus:ring-offset-1 rounded"
+                  className="text-wev-accent hover:text-wev-primary-text hover:underline focus:outline-none focus:ring-2 focus:ring-wev-primary focus:ring-offset-1 rounded"
                   aria-label="Reset all filters to defaults"
                 >
                   Reset filters
@@ -331,7 +331,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setFiltersExpanded((prev) => !prev)}
-                className="text-sm text-wev-accent hover:text-wev-primary hover:underline focus:outline-none focus:ring-2 focus:ring-wev-primary focus:ring-offset-1 rounded"
+                className="text-sm text-wev-accent hover:text-wev-primary-text hover:underline focus:outline-none focus:ring-2 focus:ring-wev-primary focus:ring-offset-1 rounded"
                 aria-expanded={filtersExpanded}
                 aria-controls="job-filters-content"
               >
