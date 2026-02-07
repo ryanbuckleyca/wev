@@ -250,7 +250,7 @@ export default function Home() {
           <img
             src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png"
             alt="wev"
-            className="wev-logotype w-[100px] h-auto mb-2 drop-shadow-[0_4px_12px_rgba(135,92,116,0.2)]"
+            className="wev-logotype w-[100px] h-auto mb-2 drop-shadow-[0_4px_6px_rgba(135,92,116,0.2)]"
           />
           <p className="text-xl font-medium text-wev-primary">Bulletin – Job Postings</p>
         </header>

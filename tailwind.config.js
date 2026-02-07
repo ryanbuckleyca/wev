@@ -44,9 +44,9 @@ module.exports = {
         'wev-btn': '8px',
       },
       boxShadow: {
-        'wev-card': '0 4px 20px rgba(0,0,0,0.08)',
-        'wev-card-hover': '0 8px 30px rgba(0,0,0,0.12)',
-        'wev-btn': '0 4px 12px rgba(0,0,0,0.1)',
+        'wev-card': '0 4px 10px rgba(0,0,0,0.06)',
+        'wev-card-hover': '0 6px 15px rgba(0,0,0,0.08)',
+        'wev-btn': '0 4px 6px rgba(0,0,0,0.08)',
       },
     },
   },
