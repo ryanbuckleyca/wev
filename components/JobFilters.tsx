@@ -1,6 +1,8 @@
 'use client'
 
 import { useMemo } from 'react'
+import { Lineicons } from '@lineiconshq/react-lineicons'
+import { Flag1Outlined, Flag1Solid } from '@lineiconshq/free-icons'
 import { JobPosting } from '@/lib/supabase'
 
 interface JobFiltersProps {
@@ -260,6 +262,7 @@ export default function JobFilters({
               onChange={(e) => onShowCorporateGigsChange(e.target.checked)}
               className="wev-checkbox"
             />
+            <Lineicons icon={showCorporateGigs ? Flag1Solid : Flag1Outlined} size={16} className="shrink-0 text-wev-primary" aria-hidden />
             <span className="text-sm font-semibold text-wev-text-primary">
               Show corporate gigs
             </span>

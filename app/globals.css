@@ -85,6 +85,20 @@
   }
 }
 
+/* Dark mode: light shadows so depth is visible on dark backgrounds */
+[data-theme="dark"] .shadow-wev-card {
+  box-shadow: 0 4px 10px rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .hover\:shadow-wev-card-hover:hover {
+  box-shadow: 0 6px 15px rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .shadow-wev-btn {
+  box-shadow: 0 4px 6px rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .hover\:shadow-lg:hover {
+  box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.08), 0 4px 6px -4px rgba(255, 255, 255, 0.06);
+}
+
 /* Logo filter in dark mode for better visibility */
 .wev-logotype {
   transition: filter 0.2s ease;
@@ -859,4 +873,21 @@
   opacity: 0.6;
   font-size: 0.9rem;
   color: var(--bg);
+}
+
+/* Style guide: light shadows in dark mode */
+[data-theme="dark"] .design-color-card {
+  box-shadow: 0 4px 10px rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .design-color-card:hover {
+  box-shadow: 0 6px 15px rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .design-btn-primary:hover {
+  box-shadow: 0 4px 6px rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .design-contrast-card {
+  box-shadow: 0 2px 5px rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .design-logo-showcase {
+  box-shadow: 0 4px 10px rgba(255, 255, 255, 0.06);
 }

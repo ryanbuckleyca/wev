@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { JobPosting } from '@/lib/supabase'
+import { Lineicons } from '@lineiconshq/react-lineicons'
+import { Briefcase2Outlined, Briefcase2Solid } from '@lineiconshq/free-icons'
 
 interface JobListingsProps {
   jobs: JobPosting[]
@@ -140,16 +142,8 @@ export default function JobListings({ jobs, loading, error, onJobCorporateChange
                 >
                   {updatingId === job.id ? (
                     <span className="text-sm">…</span>
-                  ) : corporate ? (
-                    <svg className="w-5 h-5 flex shrink-0" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <path d="M8 2v20" />
-                      <rect x="8" y="4" width="8" height="8" rx="0.5" fill="currentColor" stroke="currentColor" />
-                    </svg>
                   ) : (
-                    <svg className="w-5 h-5 flex shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <path d="M8 2v20" />
-                      <rect x="8" y="4" width="8" height="8" rx="0.5" />
-                    </svg>
+                    <Lineicons icon={corporate ? Briefcase2Solid : Briefcase2Outlined} size={24} className="flex shrink-0" />
                   )}
                 </button>
               )}
