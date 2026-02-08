@@ -117,37 +117,37 @@ export default function JobListings({ jobs, loading, error, onJobCorporateChange
             key={job.id}
             className={
               corporate
-                ? 'overflow-hidden rounded-wev-card p-6 shadow-wev-card transition-all duration-300 bg-wev-primary-tint/30 border-2 border-wev-primary/50 opacity-75 hover:border-wev-primary/70'
-                : 'overflow-hidden rounded-wev-card p-6 shadow-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:shadow-wev-card-hover hover:border-wev-primary'
+                ? 'relative rounded-wev-card p-6 pr-14 shadow-wev-card transition-all duration-300 bg-wev-primary-tint/30 border-2 border-wev-primary/50 opacity-75 hover:border-wev-primary/70'
+                : 'relative rounded-wev-card p-6 pr-14 shadow-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:shadow-wev-card-hover hover:border-wev-primary'
             }
           >
             {(onJobCorporateChange != null || corporate) && (
-            <div className="float-right ml-4 flex flex-row items-center gap-1 shrink-0">
-              {corporate && (
-                <span
-                  className="rounded-wev-pill bg-wev-warn-tint text-wev-warn-text px-3 py-1 text-xs font-semibold whitespace-nowrap"
-                  aria-hidden
-                >
-                  Corporate
-                </span>
-              )}
-              {onJobCorporateChange != null && (
-                <button
-                  type="button"
-                  onClick={() => handleCorporateToggle(job)}
-                  disabled={updatingId === job.id}
-                  title={corporate ? 'Mark as not corporate' : 'Mark as corporate'}
-                  className="flex items-center justify-center w-8 h-8 rounded-wev-btn bg-transparent text-wev-warn-text hover:text-wev-warn transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label={corporate ? 'Corporate gig (click to unmark)' : 'Mark as corporate gig'}
-                >
-                  {updatingId === job.id ? (
-                    <span className="text-sm">…</span>
-                  ) : (
-                    <Lineicons icon={corporate ? Briefcase2Solid : Briefcase2Outlined} size={24} className="flex shrink-0" />
-                  )}
-                </button>
-              )}
-            </div>
+              <>
+                {corporate && (
+                  <span
+                    className="float-right ml-4 rounded-wev-pill bg-wev-warn-tint text-wev-warn-text px-3 py-1 text-xs font-semibold whitespace-nowrap"
+                    aria-hidden
+                  >
+                    Corporate
+                  </span>
+                )}
+                {onJobCorporateChange != null && (
+                  <button
+                    type="button"
+                    onClick={() => handleCorporateToggle(job)}
+                    disabled={updatingId === job.id}
+                    title={corporate ? 'Mark as not corporate' : 'Mark as corporate'}
+                    className="absolute right-0 top-1/2 h-10 w-10 -translate-y-1/2 translate-x-1/2 flex items-center justify-center rounded-full border border-wev-border bg-wev-surface text-wev-warn-text shadow-wev-card hover:bg-wev-primary-tint/20 hover:text-wev-warn hover:border-wev-primary/50 transition-colors disabled:cursor-not-allowed disabled:bg-wev-surface disabled:shadow-none z-10 [&_svg]:pointer-events-none"
+                    aria-label={corporate ? 'Corporate gig (click to unmark)' : 'Mark as corporate gig'}
+                  >
+                    {updatingId === job.id ? (
+                      <span className="text-sm text-wev-text-warn">…</span>
+                    ) : (
+                      <Lineicons icon={corporate ? Briefcase2Solid : Briefcase2Outlined} size={22} className="flex shrink-0" />
+                    )}
+                  </button>
+                )}
+              </>
             )}
             <p className="job-details">
               <JobDetailLine label="Who" value={job.organization} />
