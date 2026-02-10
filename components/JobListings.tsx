@@ -65,10 +65,15 @@ export default function JobListings({ jobs, loading, error, onJobSseChange }: Jo
       setUpdatingId(null)
     }
   }
+
   const formatDate = (dateString: string): string => {
     // Parse date string - if it doesn't have timezone, treat as UTC
     let date: Date
-    if (typeof dateString === 'string' && !dateString.endsWith('Z') && !dateString.match(/[+-]\d{2}:\d{2}$/)) {
+    if (
+      typeof dateString === 'string' &&
+      !dateString.endsWith('Z') &&
+      !dateString.match(/[+-]\d{2}:\d{2}$/)
+    ) {
       date = new Date(dateString + 'Z')
     } else {
       date = new Date(dateString)
@@ -112,6 +117,12 @@ export default function JobListings({ jobs, loading, error, onJobSseChange }: Jo
     <div className="space-y-6">
       {jobs.map((job) => {
         const sse = isSse(job)
+        const sseButtonClass =
+          'absolute right-0 top-1/2 h-10 w-10 -translate-y-1/2 translate-x-1/2 flex items-center justify-center rounded-full border border-wev-border shadow-wev-card transition-colors disabled:cursor-not-allowed disabled:bg-wev-surface disabled:shadow-none z-10 overflow-hidden [&_svg]:pointer-events-none ' +
+          (sse
+            ? 'bg-wev-surface text-wev-success hover:bg-wev-success-tint/40 hover:border-wev-success/50'
+            : 'bg-wev-bg text-wev-text-tertiary hover:bg-wev-primary-tint/20 hover:text-wev-text-secondary hover:border-wev-border')
+
         return (
           <div
             key={job.id}
@@ -129,30 +140,31 @@ export default function JobListings({ jobs, loading, error, onJobSseChange }: Jo
                     onClick={() => handleSseToggle(job)}
                     disabled={updatingId === job.id}
                     title={sse ? 'Mark as not SSE' : 'Mark as SSE'}
-                    className={`absolute right-0 top-1/2 h-10 w-10 -translate-y-1/2 translate-x-1/2 flex items-center justify-center rounded-full border border-wev-border bg-wev-surface shadow-wev-card transition-colors disabled:cursor-not-allowed disabled:bg-wev-surface disabled:shadow-none z-10 [&_svg]:pointer-events-none ${
-                      sse
-                        ? 'text-wev-success hover:bg-wev-success-tint/40 hover:border-wev-success/50'
-                        : 'text-wev-text-tertiary hover:bg-wev-primary-tint/20 hover:text-wev-text-secondary hover:border-wev-border'
-                    }`}
+                    className={sseButtonClass}
                     aria-label={sse ? 'SSE job (click to unmark)' : 'Mark as SSE job'}
                   >
                     {updatingId === job.id ? (
-                      <span className="text-sm text-wev-text-warn">…</span>
+                      <span className="text-sm text-wev-text-tertiary">...</span>
                     ) : (
                       <span className="relative flex items-center justify-center">
                         <Lineicons icon={sse ? Leaf1Solid : Leaf1Outlined} size={22} className="flex shrink-0" />
-                        <span
-                          className={
-                            sse
-                              ? 'pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 rounded-wev-pill bg-wev-success-tint text-wev-success-text px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap shadow-wev-btn'
-                              : 'pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 rounded-wev-pill bg-wev-bg text-wev-text-tertiary px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap shadow-wev-btn border border-wev-border'
-                          }
-                        >
-                          {sse ? '✓ SSE' : '× SSE'}
-                        </span>
+                        {!sse && (
+                          <span className="pointer-events-none absolute left-1/2 top-1/2 h-px w-10 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-wev-text-tertiary" />
+                        )}
                       </span>
                     )}
                   </button>
+                )}
+                {updatingId !== job.id && (
+                  <span
+                    className={
+                      sse
+                        ? 'pointer-events-none absolute right-0 top-1/2 mt-4 translate-x-1/2 rounded-wev-pill bg-wev-success-tint text-wev-success-text px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap shadow-wev-btn'
+                        : 'pointer-events-none absolute right-0 top-1/2 mt-4 translate-x-1/2 rounded-wev-pill bg-wev-bg text-wev-text-tertiary px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap shadow-wev-btn border border-wev-border'
+                    }
+                  >
+                    {sse ? '✓ SSE' : '× SSE'}
+                  </span>
                 )}
               </>
             )}
