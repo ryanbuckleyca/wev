@@ -141,11 +141,15 @@ export default function JobListings({ jobs, loading, error, onJobSseChange }: Jo
                     ) : (
                       <span className="relative flex items-center justify-center">
                         <Lineicons icon={sse ? Leaf1Solid : Leaf1Outlined} size={22} className="flex shrink-0" />
-                        {sse && (
-                          <span className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 rounded-wev-pill bg-wev-success-tint text-wev-success-text px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap shadow-wev-btn">
-                            ✓ SSE
-                          </span>
-                        )}
+                        <span
+                          className={
+                            sse
+                              ? 'pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 rounded-wev-pill bg-wev-success-tint text-wev-success-text px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap shadow-wev-btn'
+                              : 'pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 rounded-wev-pill bg-wev-bg text-wev-text-tertiary px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap shadow-wev-btn border border-wev-border'
+                          }
+                        >
+                          {sse ? '✓ SSE' : '× SSE'}
+                        </span>
                       </span>
                     )}
                   </button>

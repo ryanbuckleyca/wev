@@ -17,6 +17,8 @@ interface JobFiltersProps {
   onMunicipalitiesChange: (municipalities: string[]) => void
   selectedEmploymentTypes: string[]
   onEmploymentTypesChange: (types: string[]) => void
+  selectedSources: string[]
+  onSourcesChange: (sources: string[]) => void
   remoteFilter: 'all' | 'remote-only' | 'hide-remote'
   onRemoteFilterChange: (filter: 'all' | 'remote-only' | 'hide-remote') => void
   showOnlySse: boolean
@@ -41,6 +43,8 @@ export default function JobFilters({
   onMunicipalitiesChange,
   selectedEmploymentTypes,
   onEmploymentTypesChange,
+  selectedSources,
+  onSourcesChange,
   remoteFilter,
   onRemoteFilterChange,
   showOnlySse,
@@ -58,20 +62,23 @@ export default function JobFilters({
     selectedProvinces.length > 0 ||
     selectedMunicipalities.length > 0 ||
     selectedEmploymentTypes.length > 0 ||
+    selectedSources.length > 0 ||
     remoteFilter !== 'all' ||
     !showOnlySse ||
     showJobsWithoutSalary ||
     postedWithin !== '2-weeks'
 
   // Extract unique values for filter options
-  const { organizations, provinces, municipalitiesByProvince, employmentTypes } = useMemo(() => {
+  const { organizations, provinces, municipalitiesByProvince, employmentTypes, sources } = useMemo(() => {
     const orgs = new Set<string>()
     const provs = new Set<string>()
     const munisByProv: Record<string, Set<string>> = {}
     const types = new Set<string>()
+    const sourceSet = new Set<string>()
 
     jobs.forEach((job) => {
       if (job.organization) orgs.add(job.organization)
+      if (job.source) sourceSet.add(job.source)
       if (job.province) {
         provs.add(job.province)
         if (!munisByProv[job.province]) {
@@ -92,6 +99,7 @@ export default function JobFilters({
 
     return {
       organizations: Array.from(orgs).sort(),
+      sources: Array.from(sourceSet).sort(),
       provinces: Array.from(provs).sort(),
       municipalitiesByProvince: sortedMunisByProv,
       employmentTypes: Array.from(types).sort(),
@@ -141,12 +149,21 @@ export default function JobFilters({
     }
   }
 
+  const handleSourceToggle = (source: string) => {
+    if (selectedSources.includes(source)) {
+      onSourcesChange(selectedSources.filter((s) => s !== source))
+    } else {
+      onSourcesChange([...selectedSources, source])
+    }
+  }
+
   const clearAllFilters = () => {
     onSearchChange('')
     onOrganizationsChange([])
     onProvincesChange([])
     onMunicipalitiesChange([])
     onEmploymentTypesChange([])
+    onSourcesChange([])
     onRemoteFilterChange('all')
     onShowOnlySseChange(false)
     onShowJobsWithoutSalaryChange(false)
@@ -364,7 +381,7 @@ export default function JobFilters({
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
         {/* Provinces */}
         <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0">
           <label className="block text-sm font-semibold text-wev-text-primary mb-2">
@@ -518,6 +535,35 @@ export default function JobFilters({
             ) : (
               <p className="text-sm text-wev-text-secondary italic px-2 py-2">
                 No organization data available
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Sources */}
+        <div className="flex flex-col order-5 md:row-start-3 md:col-start-1">
+          <label className="block text-sm font-semibold text-wev-text-primary mb-2">
+            Source ({selectedSources.length}/{sources.length})
+          </label>
+          <div className="max-h-32 overflow-y-auto border border-wev-border rounded-wev-btn p-2 bg-wev-bg">
+            {sources.length > 0 ? (
+              sources.map((source) => (
+                <label
+                  key={source}
+                  className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-wev-primary-tint rounded px-2 transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSources.includes(source)}
+                    onChange={() => handleSourceToggle(source)}
+                    className="wev-checkbox"
+                  />
+                  <span className="text-sm text-wev-text-primary">{source}</span>
+                </label>
+              ))
+            ) : (
+              <p className="text-sm text-wev-text-secondary italic px-2 py-2">
+                No source data available
               </p>
             )}
           </div>

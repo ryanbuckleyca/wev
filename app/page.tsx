@@ -26,6 +26,7 @@ export default function Home() {
   const [selectedProvinces, setSelectedProvinces] = useState<string[]>([])
   const [selectedMunicipalities, setSelectedMunicipalities] = useState<string[]>([])
   const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useState<string[]>([])
+  const [selectedSources, setSelectedSources] = useState<string[]>([])
   const [remoteFilter, setRemoteFilter] = useState<'all' | 'remote-only' | 'hide-remote'>('all')
   const [showOnlySse, setShowOnlySse] = useState(true)
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useState(false)
@@ -162,9 +163,14 @@ export default function Home() {
         }
       }
 
+      // Source filter
+      if (selectedSources.length > 0) {
+        if (!job.source || !selectedSources.includes(job.source)) return false
+      }
+
       return true
     })
-  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showOnlySse, showJobsWithoutSalary, postedWithin])
+  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, remoteFilter, showOnlySse, showJobsWithoutSalary, postedWithin])
 
   // Paginate filtered jobs
   const paginatedJobs = useMemo(() => {
@@ -176,7 +182,7 @@ export default function Home() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showOnlySse, showJobsWithoutSalary, postedWithin])
+  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, remoteFilter, showOnlySse, showJobsWithoutSalary, postedWithin])
 
   useEffect(() => {
     fetchData()
@@ -190,6 +196,7 @@ export default function Home() {
     selectedProvinces.length > 0 ||
     selectedMunicipalities.length > 0 ||
     selectedEmploymentTypes.length > 0 ||
+    selectedSources.length > 0 ||
     remoteFilter !== 'all' ||
     !showOnlySse ||
     showJobsWithoutSalary ||
@@ -228,8 +235,9 @@ export default function Home() {
     if (selectedMunicipalities.length > 0) parts.push(selectedMunicipalities.length === 1 ? '1 municipality' : `${selectedMunicipalities.length} municipalities`)
     if (selectedOrganizations.length > 0) parts.push(selectedOrganizations.length === 1 ? '1 organization' : `${selectedOrganizations.length} organizations`)
     if (selectedEmploymentTypes.length > 0) parts.push(selectedEmploymentTypes.length === 1 ? '1 employment type' : `${selectedEmploymentTypes.length} employment types`)
+    if (selectedSources.length > 0) parts.push(selectedSources.length === 1 ? '1 source' : `${selectedSources.length} sources`)
     return parts
-  }, [searchQuery, postedWithin, showJobsWithoutSalary, showOnlySse, remoteFilter, selectedProvinces.length, selectedMunicipalities.length, selectedOrganizations.length, selectedEmploymentTypes.length])
+  }, [searchQuery, postedWithin, showJobsWithoutSalary, showOnlySse, remoteFilter, selectedProvinces.length, selectedMunicipalities.length, selectedOrganizations.length, selectedEmploymentTypes.length, selectedSources.length])
 
   const clearAllFilters = () => {
     setSearchQuery('')
@@ -237,6 +245,7 @@ export default function Home() {
     setSelectedProvinces([])
     setSelectedMunicipalities([])
     setSelectedEmploymentTypes([])
+    setSelectedSources([])
     setRemoteFilter('all')
     setShowOnlySse(true)
     setShowJobsWithoutSalary(false)
@@ -285,6 +294,8 @@ export default function Home() {
           onMunicipalitiesChange={setSelectedMunicipalities}
           selectedEmploymentTypes={selectedEmploymentTypes}
           onEmploymentTypesChange={setSelectedEmploymentTypes}
+          selectedSources={selectedSources}
+          onSourcesChange={setSelectedSources}
           remoteFilter={remoteFilter}
           onRemoteFilterChange={setRemoteFilter}
           showOnlySse={showOnlySse}
