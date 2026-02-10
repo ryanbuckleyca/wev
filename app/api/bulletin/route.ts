@@ -20,8 +20,7 @@ export async function GET() {
 
     const { data: jobsData, error: jobsError } = await supabase
       .from('jobs')
-      .select('id, job_title, organization, location, municipality, province, is_remote, date_posted, close_date, wage, listing_url, employment_type, summary, is_corporate')
-      .or('sse_rating.eq.strong_yes,sse_rating.eq.weak_yes')
+      .select('id, job_title, organization, location, municipality, province, is_remote, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse')
       .order('date_posted', { ascending: false })
 
     if (jobsError) {

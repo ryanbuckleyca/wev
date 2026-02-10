@@ -27,7 +27,7 @@ export default function Home() {
   const [selectedMunicipalities, setSelectedMunicipalities] = useState<string[]>([])
   const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useState<string[]>([])
   const [remoteFilter, setRemoteFilter] = useState<'all' | 'remote-only' | 'hide-remote'>('all')
-  const [showCorporateGigs, setShowCorporateGigs] = useState(true)
+  const [showOnlySse, setShowOnlySse] = useState(true)
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useState(false)
   const [postedWithin, setPostedWithin] = useState<'1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any'>('2-weeks')
   const [filtersExpanded, setFiltersExpanded] = useState(false)
@@ -116,8 +116,8 @@ export default function Home() {
         return false
       }
 
-      // Corporate filter: when "show corporate gigs" is off, hide jobs flagged as corporate
-      if (!showCorporateGigs && job.is_corporate) {
+      // SSE filter: when "show only SSE" is on, hide jobs not flagged as SSE
+      if (showOnlySse && !job.is_sse) {
         return false
       }
 
@@ -164,7 +164,7 @@ export default function Home() {
 
       return true
     })
-  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showCorporateGigs, showJobsWithoutSalary, postedWithin])
+  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showOnlySse, showJobsWithoutSalary, postedWithin])
 
   // Paginate filtered jobs
   const paginatedJobs = useMemo(() => {
@@ -176,7 +176,7 @@ export default function Home() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showCorporateGigs, showJobsWithoutSalary, postedWithin])
+  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, remoteFilter, showOnlySse, showJobsWithoutSalary, postedWithin])
 
   useEffect(() => {
     fetchData()
@@ -191,7 +191,7 @@ export default function Home() {
     selectedMunicipalities.length > 0 ||
     selectedEmploymentTypes.length > 0 ||
     remoteFilter !== 'all' ||
-    !showCorporateGigs ||
+    !showOnlySse ||
     showJobsWithoutSalary ||
     postedWithin !== '2-weeks'
 
@@ -215,7 +215,7 @@ export default function Home() {
               ? 'Posted: 1 month'
               : 'Posted: any'
     )
-    parts.push(showCorporateGigs ? 'Corporate gigs: Show' : 'Corporate gigs: Hide')
+    parts.push(showOnlySse ? 'SSE: Only' : 'SSE: All')
     parts.push(
       remoteFilter === 'all' ? 'Remote: Show' : remoteFilter === 'remote-only' ? 'Remote: Only' : 'Remote: Hide'
     )
@@ -229,7 +229,7 @@ export default function Home() {
     if (selectedOrganizations.length > 0) parts.push(selectedOrganizations.length === 1 ? '1 organization' : `${selectedOrganizations.length} organizations`)
     if (selectedEmploymentTypes.length > 0) parts.push(selectedEmploymentTypes.length === 1 ? '1 employment type' : `${selectedEmploymentTypes.length} employment types`)
     return parts
-  }, [searchQuery, postedWithin, showJobsWithoutSalary, showCorporateGigs, remoteFilter, selectedProvinces.length, selectedMunicipalities.length, selectedOrganizations.length, selectedEmploymentTypes.length])
+  }, [searchQuery, postedWithin, showJobsWithoutSalary, showOnlySse, remoteFilter, selectedProvinces.length, selectedMunicipalities.length, selectedOrganizations.length, selectedEmploymentTypes.length])
 
   const clearAllFilters = () => {
     setSearchQuery('')
@@ -238,7 +238,7 @@ export default function Home() {
     setSelectedMunicipalities([])
     setSelectedEmploymentTypes([])
     setRemoteFilter('all')
-    setShowCorporateGigs(true)
+    setShowOnlySse(true)
     setShowJobsWithoutSalary(false)
     setPostedWithin('2-weeks')
   }
@@ -287,8 +287,8 @@ export default function Home() {
           onEmploymentTypesChange={setSelectedEmploymentTypes}
           remoteFilter={remoteFilter}
           onRemoteFilterChange={setRemoteFilter}
-          showCorporateGigs={showCorporateGigs}
-          onShowCorporateGigsChange={setShowCorporateGigs}
+          showOnlySse={showOnlySse}
+          onShowOnlySseChange={setShowOnlySse}
           showJobsWithoutSalary={showJobsWithoutSalary}
           onShowJobsWithoutSalaryChange={setShowJobsWithoutSalary}
           postedWithin={postedWithin}
@@ -345,9 +345,9 @@ export default function Home() {
           jobs={paginatedJobs}
           loading={loading}
           error={error}
-          onJobCorporateChange={(jobId, isCorporate) =>
+          onJobSseChange={(jobId, isSse) =>
             setAllJobs((prev) =>
-              prev.map((j) => (j.id === jobId ? { ...j, is_corporate: isCorporate } : j))
+              prev.map((j) => (j.id === jobId ? { ...j, is_sse: isSse } : j))
             )
           }
         />

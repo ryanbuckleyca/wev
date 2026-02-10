@@ -17,7 +17,7 @@ export interface JobPosting {
   listing_url: string
   employment_type?: string | null
   summary?: string | null
-  is_corporate?: boolean
+  is_sse?: boolean
 }
 
 export interface ScrapeRun {

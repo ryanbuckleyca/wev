@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { Lineicons } from '@lineiconshq/react-lineicons'
-import { Flag1Outlined, Flag1Solid } from '@lineiconshq/free-icons'
+import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
 import { JobPosting } from '@/lib/supabase'
 
 interface JobFiltersProps {
@@ -19,8 +19,8 @@ interface JobFiltersProps {
   onEmploymentTypesChange: (types: string[]) => void
   remoteFilter: 'all' | 'remote-only' | 'hide-remote'
   onRemoteFilterChange: (filter: 'all' | 'remote-only' | 'hide-remote') => void
-  showCorporateGigs: boolean
-  onShowCorporateGigsChange: (show: boolean) => void
+  showOnlySse: boolean
+  onShowOnlySseChange: (show: boolean) => void
   showJobsWithoutSalary: boolean
   onShowJobsWithoutSalaryChange: (show: boolean) => void
   postedWithin: '1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any'
@@ -43,8 +43,8 @@ export default function JobFilters({
   onEmploymentTypesChange,
   remoteFilter,
   onRemoteFilterChange,
-  showCorporateGigs,
-  onShowCorporateGigsChange,
+  showOnlySse,
+  onShowOnlySseChange,
   showJobsWithoutSalary,
   onShowJobsWithoutSalaryChange,
   postedWithin,
@@ -59,7 +59,7 @@ export default function JobFilters({
     selectedMunicipalities.length > 0 ||
     selectedEmploymentTypes.length > 0 ||
     remoteFilter !== 'all' ||
-    !showCorporateGigs ||
+    !showOnlySse ||
     showJobsWithoutSalary ||
     postedWithin !== '2-weeks'
 
@@ -148,7 +148,7 @@ export default function JobFilters({
     onMunicipalitiesChange([])
     onEmploymentTypesChange([])
     onRemoteFilterChange('all')
-    onShowCorporateGigsChange(true)
+    onShowOnlySseChange(false)
     onShowJobsWithoutSalaryChange(false)
     onPostedWithinChange('2-weeks')
   }
@@ -253,22 +253,30 @@ export default function JobFilters({
           filtersExpanded ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
         }`}
       >
-        {/* Corporate gigs filter */}
+        {/* SSE filter */}
         <div className="mb-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={showCorporateGigs}
-              onChange={(e) => onShowCorporateGigsChange(e.target.checked)}
+              checked={showOnlySse}
+              onChange={(e) => onShowOnlySseChange(e.target.checked)}
               className="wev-checkbox"
             />
-            <Lineicons icon={showCorporateGigs ? Flag1Solid : Flag1Outlined} size={16} className="shrink-0 text-wev-primary" aria-hidden />
+            <Lineicons icon={showOnlySse ? Leaf1Solid : Leaf1Outlined} size={16} className="shrink-0 text-wev-primary" aria-hidden />
             <span className="text-sm font-semibold text-wev-text-primary">
-              Show corporate gigs
+              Show only SSE jobs
             </span>
           </label>
           <p className="text-xs text-wev-text-secondary mt-1 pl-7">
-            Uncheck to hide jobs marked as corporate
+            SSE = Solidarity Economy. We tag SSE jobs based on published principles.
+            <a
+              href="https://solidarityeconomyprinciples.org/wp-content/uploads/2023/02/SE-Principles-2-pager-handout.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-1 text-wev-accent hover:text-wev-primary-text hover:underline"
+            >
+              Learn more
+            </a>
           </p>
         </div>
 

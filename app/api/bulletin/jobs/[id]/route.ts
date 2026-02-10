@@ -10,11 +10,11 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await _request.json()
-    const isCorporate = body?.is_corporate
+    const isSse = body?.is_sse
 
-    if (typeof isCorporate !== 'boolean') {
+    if (typeof isSse !== 'boolean') {
       return NextResponse.json(
-        { error: 'Body must include is_corporate (boolean)' },
+        { error: 'Body must include is_sse (boolean)' },
         { status: 400 }
       )
     }
@@ -22,9 +22,9 @@ export async function PATCH(
     const supabase = getSupabaseServer()
     const { data, error } = await supabase
       .from('jobs')
-      .update({ is_corporate: isCorporate })
+      .update({ is_sse: isSse })
       .eq('id', id)
-      .select('id, is_corporate')
+      .select('id, is_sse')
       .single()
 
     if (error) {

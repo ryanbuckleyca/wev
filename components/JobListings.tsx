@@ -3,13 +3,13 @@
 import { useState } from 'react'
 import { JobPosting } from '@/lib/supabase'
 import { Lineicons } from '@lineiconshq/react-lineicons'
-import { Briefcase2Outlined, Briefcase2Solid } from '@lineiconshq/free-icons'
+import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
 
 interface JobListingsProps {
   jobs: JobPosting[]
   loading: boolean
   error: string | null
-  onJobCorporateChange?: (jobId: string, isCorporate: boolean) => void
+  onJobSseChange?: (jobId: string, isSse: boolean) => void
 }
 
 // Reusable component for job detail lines
@@ -42,25 +42,25 @@ function JobDetailLine({
   )
 }
 
-export default function JobListings({ jobs, loading, error, onJobCorporateChange }: JobListingsProps) {
+export default function JobListings({ jobs, loading, error, onJobSseChange }: JobListingsProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
-  const handleCorporateToggle = async (job: JobPosting) => {
-    const newValue = !job.is_corporate
+  const handleSseToggle = async (job: JobPosting) => {
+    const newValue = !job.is_sse
     setUpdatingId(job.id)
     try {
       const res = await fetch(`/api/bulletin/jobs/${job.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_corporate: newValue }),
+        body: JSON.stringify({ is_sse: newValue }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error ?? 'Failed to update')
       }
-      onJobCorporateChange?.(job.id, newValue)
+      onJobSseChange?.(job.id, newValue)
     } catch (err) {
-      console.error('Failed to update is_corporate:', err)
+      console.error('Failed to update is_sse:', err)
     } finally {
       setUpdatingId(null)
     }
@@ -106,44 +106,47 @@ export default function JobListings({ jobs, loading, error, onJobCorporateChange
     )
   }
 
-  const isCorporate = (job: JobPosting) => !!job.is_corporate
+  const isSse = (job: JobPosting) => !!job.is_sse
 
   return (
     <div className="space-y-6">
       {jobs.map((job) => {
-        const corporate = isCorporate(job)
+        const sse = isSse(job)
         return (
           <div
             key={job.id}
             className={
-              corporate
-                ? 'relative rounded-wev-card p-6 pr-14 shadow-wev-card transition-all duration-300 bg-wev-primary-tint/30 border-2 border-wev-primary/50 opacity-75 hover:border-wev-primary/70'
-                : 'relative rounded-wev-card p-6 pr-14 shadow-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:shadow-wev-card-hover hover:border-wev-primary'
+              sse
+                ? 'relative rounded-wev-card p-6 pr-14 shadow-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:shadow-wev-card-hover hover:border-wev-primary'
+                : 'relative rounded-wev-card p-6 pr-14 shadow-wev-card transition-all duration-300 bg-wev-success-tint/40 border-2 border-wev-success/50 opacity-70 hover:border-wev-success/70'
             }
           >
-            {(onJobCorporateChange != null || corporate) && (
+            {(onJobSseChange != null || sse) && (
               <>
-                {corporate && (
-                  <span
-                    className="float-right ml-4 rounded-wev-pill bg-wev-warn-tint text-wev-warn-text px-3 py-1 text-xs font-semibold whitespace-nowrap"
-                    aria-hidden
-                  >
-                    Corporate
-                  </span>
-                )}
-                {onJobCorporateChange != null && (
+                {onJobSseChange != null && (
                   <button
                     type="button"
-                    onClick={() => handleCorporateToggle(job)}
+                    onClick={() => handleSseToggle(job)}
                     disabled={updatingId === job.id}
-                    title={corporate ? 'Mark as not corporate' : 'Mark as corporate'}
-                    className="absolute right-0 top-1/2 h-10 w-10 -translate-y-1/2 translate-x-1/2 flex items-center justify-center rounded-full border border-wev-border bg-wev-surface text-wev-warn-text shadow-wev-card hover:bg-wev-primary-tint/20 hover:text-wev-warn hover:border-wev-primary/50 transition-colors disabled:cursor-not-allowed disabled:bg-wev-surface disabled:shadow-none z-10 [&_svg]:pointer-events-none"
-                    aria-label={corporate ? 'Corporate gig (click to unmark)' : 'Mark as corporate gig'}
+                    title={sse ? 'Mark as not SSE' : 'Mark as SSE'}
+                    className={`absolute right-0 top-1/2 h-10 w-10 -translate-y-1/2 translate-x-1/2 flex items-center justify-center rounded-full border border-wev-border bg-wev-surface shadow-wev-card transition-colors disabled:cursor-not-allowed disabled:bg-wev-surface disabled:shadow-none z-10 [&_svg]:pointer-events-none ${
+                      sse
+                        ? 'text-wev-success hover:bg-wev-success-tint/40 hover:border-wev-success/50'
+                        : 'text-wev-text-tertiary hover:bg-wev-primary-tint/20 hover:text-wev-text-secondary hover:border-wev-border'
+                    }`}
+                    aria-label={sse ? 'SSE job (click to unmark)' : 'Mark as SSE job'}
                   >
                     {updatingId === job.id ? (
                       <span className="text-sm text-wev-text-warn">…</span>
                     ) : (
-                      <Lineicons icon={corporate ? Briefcase2Solid : Briefcase2Outlined} size={22} className="flex shrink-0" />
+                      <span className="relative flex items-center justify-center">
+                        <Lineicons icon={sse ? Leaf1Solid : Leaf1Outlined} size={22} className="flex shrink-0" />
+                        {sse && (
+                          <span className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 rounded-wev-pill bg-wev-success-tint text-wev-success-text px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap shadow-wev-btn">
+                            ✓ SSE
+                          </span>
+                        )}
+                      </span>
                     )}
                   </button>
                 )}
