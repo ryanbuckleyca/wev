@@ -96,7 +96,7 @@ export default function JobListings({ jobs, loading, error, onJobSseChange }: Jo
 
   if (error) {
     return (
-      <div className="bg-wev-alert-tint border border-wev-alert rounded-wev-card p-4 text-wev-alert-text shadow-wev-card">
+      <div className="bg-wev-alert-tint border border-wev-alert rounded-wev-card p-4 text-wev-alert-text">
         <p className="font-semibold">Error loading job postings</p>
         <p className="text-sm mt-1">{error}</p>
       </div>
@@ -105,7 +105,7 @@ export default function JobListings({ jobs, loading, error, onJobSseChange }: Jo
 
   if (jobs.length === 0) {
     return (
-      <div className="bg-wev-surface border border-wev-border rounded-wev-card p-8 text-center shadow-wev-card">
+      <div className="bg-wev-surface border border-wev-border rounded-wev-card p-8 text-center">
         <p className="text-wev-text-primary">No job postings found.</p>
       </div>
     )
@@ -118,7 +118,7 @@ export default function JobListings({ jobs, loading, error, onJobSseChange }: Jo
       {jobs.map((job) => {
         const sse = isSse(job)
         const sseButtonClass =
-          'absolute right-0 top-1/2 h-10 w-10 -translate-y-1/2 translate-x-1/2 flex items-center justify-center rounded-full border border-wev-border shadow-wev-card transition-colors disabled:cursor-not-allowed disabled:bg-wev-surface disabled:shadow-none z-10 overflow-hidden [&_svg]:pointer-events-none ' +
+          'absolute right-0 top-1/2 h-10 w-10 -translate-y-1/2 translate-x-1/2 flex items-center justify-center rounded-full border border-wev-border transition-colors disabled:cursor-not-allowed disabled:bg-wev-surface z-10 overflow-hidden [&_svg]:pointer-events-none ' +
           (sse
             ? 'bg-wev-surface text-wev-success hover:bg-wev-success-tint/40 hover:border-wev-success/50'
             : 'bg-wev-bg text-wev-text-tertiary hover:bg-wev-primary-tint/20 hover:text-wev-text-secondary hover:border-wev-border')
@@ -128,8 +128,8 @@ export default function JobListings({ jobs, loading, error, onJobSseChange }: Jo
             key={job.id}
             className={
               sse
-                ? 'relative rounded-wev-card p-6 pr-14 shadow-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:shadow-wev-card-hover hover:border-wev-primary'
-                : 'relative rounded-wev-card p-6 pr-14 shadow-wev-card transition-all duration-300 bg-wev-success-tint/40 border-2 border-wev-success/50 opacity-70 hover:border-wev-success/70'
+                ? 'relative rounded-wev-card p-6 pr-14 transition-all duration-300 bg-wev-surface border border-wev-border hover:border-wev-primary'
+                : 'relative rounded-wev-card p-6 pr-14 transition-all duration-300 bg-wev-success-tint/40 border-2 border-wev-success/50 opacity-70 hover:border-wev-success/70'
             }
           >
             {(onJobSseChange != null || sse) && (
@@ -159,8 +159,8 @@ export default function JobListings({ jobs, loading, error, onJobSseChange }: Jo
                   <span
                     className={
                       sse
-                        ? 'pointer-events-none absolute right-0 top-1/2 mt-4 translate-x-1/2 rounded-wev-pill bg-wev-success-tint text-wev-success-text px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap shadow-wev-btn'
-                        : 'pointer-events-none absolute right-0 top-1/2 mt-4 translate-x-1/2 rounded-wev-pill bg-wev-bg text-wev-text-tertiary px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap shadow-wev-btn border border-wev-border'
+                        ? 'pointer-events-none absolute right-0 top-1/2 mt-4 translate-x-1/2 rounded-wev-pill bg-wev-success-tint text-wev-success-text px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap'
+                        : 'pointer-events-none absolute right-0 top-1/2 mt-4 translate-x-1/2 rounded-wev-pill bg-wev-bg text-wev-text-tertiary px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap border border-wev-border'
                     }
                   >
                     {sse ? '✓ SSE' : '× SSE'}

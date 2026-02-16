@@ -222,7 +222,7 @@ export default function JobFilters({
   }, [provinces, municipalitiesByProvince, selectedMunicipalities])
 
   return (
-    <div className="bg-wev-surface border border-wev-border rounded-wev-card p-6 mb-6 shadow-wev-card">
+    <div className="bg-wev-surface border border-wev-border rounded-wev-card p-6 mb-6">
       {/* Search */}
       <div className="mb-2">
         <div className="flex items-center justify-between mb-2">
@@ -328,7 +328,7 @@ export default function JobFilters({
                 onClick={() => onPostedWithinChange(value)}
                 className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
                   postedWithin === value
-                    ? 'bg-wev-primary text-white shadow-wev-btn'
+                    ? 'bg-wev-primary text-white'
                     : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
                 }`}
               >
@@ -349,7 +349,7 @@ export default function JobFilters({
             onClick={() => onRemoteFilterChange('all')}
             className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
               remoteFilter === 'all'
-                ? 'bg-wev-primary text-white shadow-wev-btn'
+                ? 'bg-wev-primary text-white'
                 : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
             }`}
           >
@@ -360,7 +360,7 @@ export default function JobFilters({
             onClick={() => onRemoteFilterChange('remote-only')}
             className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
               remoteFilter === 'remote-only'
-                ? 'bg-wev-primary text-white shadow-wev-btn'
+                ? 'bg-wev-primary text-white'
                 : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
             }`}
           >
@@ -371,7 +371,7 @@ export default function JobFilters({
             onClick={() => onRemoteFilterChange('hide-remote')}
             className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
               remoteFilter === 'hide-remote'
-                ? 'bg-wev-primary text-white shadow-wev-btn'
+                ? 'bg-wev-primary text-white'
                 : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
             }`}
           >

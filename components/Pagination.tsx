@@ -113,7 +113,7 @@ export default function Pagination({
                 onClick={() => onPageChange(pageNum)}
                 className={`px-3 py-1 border rounded-wev-btn transition-colors ${
                   isActive
-                    ? 'bg-wev-primary text-white border-wev-primary shadow-wev-btn'
+                    ? 'bg-wev-primary text-white border-wev-primary'
                     : 'border-wev-border text-wev-text-primary hover:bg-wev-primary-tint hover:border-wev-primary'
                 }`}
               >

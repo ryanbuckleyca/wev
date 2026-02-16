@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import type { JobPosting } from '@/lib/supabase'
 import ReScrapeButton from '@/components/ReScrapeButton'
 import JobListings from '@/components/JobListings'
@@ -15,6 +16,10 @@ export const revalidate = 0 // Disable static generation, always render dynamica
 const ITEMS_PER_PAGE = 20
 
 export default function Home() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const supabase = createClient()
   const [allJobs, setAllJobs] = useState<JobPosting[]>([])
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -184,9 +189,38 @@ export default function Home() {
     setCurrentPage(1)
   }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, remoteFilter, showOnlySse, showJobsWithoutSalary, postedWithin])
 
+  // Check if user is logged in
   useEffect(() => {
-    fetchData()
-  }, [])
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      setIsLoggedIn(!!session)
+
+      // Check if user is admin
+      if (session?.user) {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('roles')
+          .eq('user_id', session.user.id)
+          .single()
+
+        if (!error && data && Array.isArray(data.roles)) {
+          setIsAdmin(data.roles.includes('admin'))
+        } else {
+          setIsAdmin(false)
+        }
+      }
+
+      setAuthLoading(false)
+    }
+    checkSession()
+  }, [supabase.auth])
+
+  // Only fetch jobs if user is logged in
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchData()
+    }
+  }, [isLoggedIn])
 
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE)
 
@@ -252,20 +286,25 @@ export default function Home() {
     setPostedWithin('2-weeks')
   }
 
+  // Fetch jobs on page load
+  useEffect(() => {
+    fetchData()
+  }, [])
+
   return (
-    <main className="min-h-screen bg-wev-bg py-8">
+    <main className="min-h-screen bg-wev-bg py-8 pt-24">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="mb-8">
           <img
             src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png"
             alt="wev"
-            className="wev-logotype w-[100px] h-auto mb-2 drop-shadow-[0_4px_6px_rgba(135,92,116,0.15)]"
+            className="wev-logotype w-[100px] h-auto mb-2"
           />
           <p className="text-xl font-medium text-wev-primary-text">Bulletin – Job Postings</p>
         </header>
 
         {/* Last Scrape Time */}
-        <div className="bg-wev-surface border border-wev-border rounded-wev-card p-4 mb-6 shadow-wev-card">
+        <div className="bg-wev-surface border border-wev-border rounded-wev-card p-4 mb-6">
           <p className="text-sm text-wev-text-primary">
             <span className="font-semibold text-wev-accent">Last updated: </span>
             {lastScrapeTime ? (
@@ -277,7 +316,7 @@ export default function Home() {
         </div>
 
         <div className="flex justify-start items-center gap-4 mb-6">
-          <ReScrapeButton onComplete={fetchData} />
+          {isAdmin && <ReScrapeButton onComplete={fetchData} />}
           <CopyAllJobsButton jobs={filteredJobs} />
         </div>
 
