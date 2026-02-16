@@ -10,7 +10,7 @@ export interface JobPosting {
   location: string
   municipality: string | null
   province: string | null
-  is_remote: boolean
+  work_type: 'remote' | 'hybrid' | 'office'
   date_posted: string
   close_date: string | null
   wage: string | null

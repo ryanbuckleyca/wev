@@ -27,7 +27,7 @@ export default function Home() {
   const [selectedMunicipalities, setSelectedMunicipalities] = useState<string[]>([])
   const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useState<string[]>([])
   const [selectedSources, setSelectedSources] = useState<string[]>([])
-  const [remoteFilter, setRemoteFilter] = useState<'all' | 'remote-only' | 'hide-remote'>('all')
+  const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([])
   const [showOnlySse, setShowOnlySse] = useState(true)
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useState(false)
   const [postedWithin, setPostedWithin] = useState<'1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any'>('2-weeks')
@@ -109,12 +109,9 @@ export default function Home() {
         if (!selectedOrganizations.includes(job.organization)) return false
       }
 
-      // Remote filter
-      if (remoteFilter === 'remote-only' && !job.is_remote) {
-        return false
-      }
-      if (remoteFilter === 'hide-remote' && job.is_remote) {
-        return false
+      // Work type filter (remote/hybrid/office)
+      if (selectedWorkTypes.length > 0) {
+        if (!selectedWorkTypes.includes(job.work_type)) return false
       }
 
       // SSE filter: when "show only SSE" is on, hide jobs not flagged as SSE
@@ -170,7 +167,7 @@ export default function Home() {
 
       return true
     })
-  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, remoteFilter, showOnlySse, showJobsWithoutSalary, postedWithin])
+  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin])
 
   // Paginate filtered jobs
   const paginatedJobs = useMemo(() => {
@@ -182,7 +179,7 @@ export default function Home() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, remoteFilter, showOnlySse, showJobsWithoutSalary, postedWithin])
+  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin])
 
   useEffect(() => {
     fetchData()
@@ -197,7 +194,7 @@ export default function Home() {
     selectedMunicipalities.length > 0 ||
     selectedEmploymentTypes.length > 0 ||
     selectedSources.length > 0 ||
-    remoteFilter !== 'all' ||
+    selectedWorkTypes.length > 0 ||
     !showOnlySse ||
     showJobsWithoutSalary ||
     postedWithin !== '2-weeks'
@@ -223,9 +220,10 @@ export default function Home() {
               : 'Posted: any'
     )
     parts.push(showOnlySse ? 'SSE: Only' : 'SSE: All')
-    parts.push(
-      remoteFilter === 'all' ? 'Remote: Show' : remoteFilter === 'remote-only' ? 'Remote: Only' : 'Remote: Hide'
-    )
+    if (selectedWorkTypes.length > 0) {
+      const workTypeLabels = selectedWorkTypes.map(wt => wt.charAt(0).toUpperCase() + wt.slice(1)).join(', ')
+      parts.push(`Work: ${workTypeLabels}`)
+    }
     parts.push(showJobsWithoutSalary ? 'Without salary: Show' : 'Without salary: Hide')
     if (searchQuery) {
       const q = searchQuery.length > 18 ? `${searchQuery.slice(0, 18)}…` : searchQuery
@@ -237,7 +235,7 @@ export default function Home() {
     if (selectedEmploymentTypes.length > 0) parts.push(selectedEmploymentTypes.length === 1 ? '1 employment type' : `${selectedEmploymentTypes.length} employment types`)
     if (selectedSources.length > 0) parts.push(selectedSources.length === 1 ? '1 source' : `${selectedSources.length} sources`)
     return parts
-  }, [searchQuery, postedWithin, showJobsWithoutSalary, showOnlySse, remoteFilter, selectedProvinces.length, selectedMunicipalities.length, selectedOrganizations.length, selectedEmploymentTypes.length, selectedSources.length])
+  }, [searchQuery, postedWithin, showJobsWithoutSalary, showOnlySse, selectedWorkTypes, selectedProvinces.length, selectedMunicipalities.length, selectedOrganizations.length, selectedEmploymentTypes.length, selectedSources.length])
 
   const clearAllFilters = () => {
     setSearchQuery('')
@@ -246,7 +244,7 @@ export default function Home() {
     setSelectedMunicipalities([])
     setSelectedEmploymentTypes([])
     setSelectedSources([])
-    setRemoteFilter('all')
+    setSelectedWorkTypes([])
     setShowOnlySse(true)
     setShowJobsWithoutSalary(false)
     setPostedWithin('2-weeks')
@@ -296,8 +294,8 @@ export default function Home() {
           onEmploymentTypesChange={setSelectedEmploymentTypes}
           selectedSources={selectedSources}
           onSourcesChange={setSelectedSources}
-          remoteFilter={remoteFilter}
-          onRemoteFilterChange={setRemoteFilter}
+          selectedWorkTypes={selectedWorkTypes}
+          onWorkTypesChange={setSelectedWorkTypes}
           showOnlySse={showOnlySse}
           onShowOnlySseChange={setShowOnlySse}
           showJobsWithoutSalary={showJobsWithoutSalary}

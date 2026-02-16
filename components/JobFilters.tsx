@@ -19,8 +19,8 @@ interface JobFiltersProps {
   onEmploymentTypesChange: (types: string[]) => void
   selectedSources: string[]
   onSourcesChange: (sources: string[]) => void
-  remoteFilter: 'all' | 'remote-only' | 'hide-remote'
-  onRemoteFilterChange: (filter: 'all' | 'remote-only' | 'hide-remote') => void
+  selectedWorkTypes: string[]
+  onWorkTypesChange: (types: string[]) => void
   showOnlySse: boolean
   onShowOnlySseChange: (show: boolean) => void
   showJobsWithoutSalary: boolean
@@ -45,8 +45,8 @@ export default function JobFilters({
   onEmploymentTypesChange,
   selectedSources,
   onSourcesChange,
-  remoteFilter,
-  onRemoteFilterChange,
+  selectedWorkTypes,
+  onWorkTypesChange,
   showOnlySse,
   onShowOnlySseChange,
   showJobsWithoutSalary,
@@ -63,7 +63,7 @@ export default function JobFilters({
     selectedMunicipalities.length > 0 ||
     selectedEmploymentTypes.length > 0 ||
     selectedSources.length > 0 ||
-    remoteFilter !== 'all' ||
+    selectedWorkTypes.length > 0 ||
     !showOnlySse ||
     showJobsWithoutSalary ||
     postedWithin !== '2-weeks'
@@ -164,7 +164,7 @@ export default function JobFilters({
     onMunicipalitiesChange([])
     onEmploymentTypesChange([])
     onSourcesChange([])
-    onRemoteFilterChange('all')
+    onWorkTypesChange([])
     onShowOnlySseChange(false)
     onShowJobsWithoutSalaryChange(false)
     onPostedWithinChange('2-weeks')
@@ -338,45 +338,36 @@ export default function JobFilters({
           </div>
         </div>
 
-        {/* Remote Filter */}
+        {/* Work Type Filter */}
         <div className="mb-4">
         <label className="block text-sm font-semibold text-wev-text-primary mb-2">
-          Remote Jobs
+          Work Type
         </label>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => onRemoteFilterChange('all')}
-            className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
-              remoteFilter === 'all'
-                ? 'bg-wev-primary text-white shadow-wev-btn'
-                : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
-            }`}
-          >
-            Show All
-          </button>
-          <button
-            type="button"
-            onClick={() => onRemoteFilterChange('remote-only')}
-            className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
-              remoteFilter === 'remote-only'
-                ? 'bg-wev-primary text-white shadow-wev-btn'
-                : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
-            }`}
-          >
-            Remote Only
-          </button>
-          <button
-            type="button"
-            onClick={() => onRemoteFilterChange('hide-remote')}
-            className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
-              remoteFilter === 'hide-remote'
-                ? 'bg-wev-primary text-white shadow-wev-btn'
-                : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
-            }`}
-          >
-            Hide Remote
-          </button>
+          {(['remote', 'hybrid', 'office'] as const).map((workType) => {
+            const isSelected = selectedWorkTypes.includes(workType)
+            const label = workType.charAt(0).toUpperCase() + workType.slice(1)
+            return (
+              <button
+                key={workType}
+                type="button"
+                onClick={() => {
+                  if (isSelected) {
+                    onWorkTypesChange(selectedWorkTypes.filter(wt => wt !== workType))
+                  } else {
+                    onWorkTypesChange([...selectedWorkTypes, workType])
+                  }
+                }}
+                className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
+                  isSelected
+                    ? 'bg-wev-primary text-white shadow-wev-btn'
+                    : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
