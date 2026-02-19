@@ -15,6 +15,10 @@
 # production
 /build
 
+# supabase
+/supabase/.temp
+/supabase/backups
+
 # misc
 .DS_Store
 *.pem
@@ -27,6 +31,7 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+.env.test
 
 # vercel
 .vercel

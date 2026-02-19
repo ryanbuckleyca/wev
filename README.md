@@ -19,7 +19,7 @@ cp .env.example .env
 - **wev-bulletin (Next.js)** — server-only (do not use `` for the key):
   - `SUPABASE_URL`: Your Supabase project URL
   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (used only in API routes; never exposed to the browser)
-- **wev-scraper** (if using the same env): `SUPABASE_URL` / `SUPABASE_KEY` (or scraper-specific env)
+- **wev-scraper** (if using the same env): `SUPABASE_URL` / `SUPABASE_SECRET_KEY` (or scraper-specific env)
 - `GITHUB_TOKEN`: A GitHub personal access token with `actions:write` permission
 - `GITHUB_REPO_OWNER`: Your GitHub username or organization
 - `GITHUB_REPO_NAME`: The repository name (e.g., "wev")
