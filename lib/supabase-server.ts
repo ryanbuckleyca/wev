@@ -10,10 +10,10 @@ let _client: SupabaseClient | null = null
 export function getSupabaseServer(): SupabaseClient {
   if (!_client) {
     const url = process.env.SUPABASE_URL ?? process.env.SUPABASE_URL
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY
     if (!url || !key) {
       throw new Error(
-        'Missing Supabase server env. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_URL and SUPABASE_KEY in .env for local dev).'
+        'Missing Supabase server env. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_URL and SUPABASE_SECRET_KEY in .env for local dev).'
       )
     }
     _client = createClient(url, key)
