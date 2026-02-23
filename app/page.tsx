@@ -252,13 +252,14 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-wev-bg py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-wev-bg pb-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        {/* Home page hero section */}
         <header className="mb-8">
           <img
             src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png"
             alt="wev"
-            className="wev-logotype w-[100px] h-auto mb-2 drop-shadow-[0_4px_6px_rgba(135,92,116,0.15)]"
+            className="main-logo wev-logotype w-[100px] h-auto mb-2 drop-shadow-[0_4px_6px_rgba(135,92,116,0.15)]"
           />
           <p className="text-xl font-medium text-wev-primary-text">Bulletin – Job Postings</p>
         </header>

@@ -14,7 +14,7 @@ export default function PageLayout({
   const baseClasses = 'min-h-screen bg-[var(--bg)]'
   
   const variantClasses = {
-    centered: 'flex items-center justify-center px-4',
+    centered: 'flex items-center justify-center px-4 pt-24',
     sidebar: 'pt-24'
   }
   

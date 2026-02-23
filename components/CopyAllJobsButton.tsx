@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { JobPosting } from '@/lib/supabase'
 
 interface CopyAllJobsButtonProps {
@@ -68,9 +68,24 @@ function formatJobsAsHTML(jobs: JobPosting[]): string {
 
 export default function CopyAllJobsButton({ jobs }: CopyAllJobsButtonProps) {
   const [copied, setCopied] = useState(false)
+  const copiedTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Clear any existing timeout when component unmounts
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current) {
+        clearTimeout(copiedTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleCopy = async () => {
     if (jobs.length === 0) return
+
+    // Clear any existing timeout
+    if (copiedTimeoutRef.current) {
+      clearTimeout(copiedTimeoutRef.current)
+    }
 
     try {
       const text = formatJobsAsText(jobs)
@@ -85,7 +100,12 @@ export default function CopyAllJobsButton({ jobs }: CopyAllJobsButtonProps) {
       
       await navigator.clipboard.write([clipboardItem])
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      
+      // Set timeout to reset copied state
+      copiedTimeoutRef.current = setTimeout(() => {
+        setCopied(false)
+        copiedTimeoutRef.current = null
+      }, 2000)
     } catch (err) {
       console.error('Failed to copy with ClipboardItem, trying plain text:', err)
       // Fallback to plain text if ClipboardItem fails
@@ -93,7 +113,11 @@ export default function CopyAllJobsButton({ jobs }: CopyAllJobsButtonProps) {
         const text = formatJobsAsText(jobs)
         await navigator.clipboard.writeText(text)
         setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
+        
+        copiedTimeoutRef.current = setTimeout(() => {
+          setCopied(false)
+          copiedTimeoutRef.current = null
+        }, 2000)
       } catch (textErr) {
         console.error('Failed to copy:', textErr)
         // Final fallback for older browsers
@@ -104,7 +128,11 @@ export default function CopyAllJobsButton({ jobs }: CopyAllJobsButtonProps) {
         try {
           document.execCommand('copy')
           setCopied(true)
-          setTimeout(() => setCopied(false), 2000)
+          
+          copiedTimeoutRef.current = setTimeout(() => {
+            setCopied(false)
+            copiedTimeoutRef.current = null
+          }, 2000)
         } catch (fallbackErr) {
           console.error('Fallback copy failed:', fallbackErr)
         }
