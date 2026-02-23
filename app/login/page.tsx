@@ -64,6 +64,7 @@ export default function LoginPage() {
             onChange={setEmail}
             placeholder="you@example.com"
             required
+            fullWidth
           />
 
           <FormField
@@ -73,14 +74,17 @@ export default function LoginPage() {
             onChange={setPassword}
             placeholder="•••••••••"
             required
+            fullWidth
           />
-          <Link
-            href="/forgot-password"
-            className="text-xs underline self-end"
-            style={{ color: 'var(--primary-text)' }}
-          >
-            Forgot password?
-          </Link>
+          <div className="w-full flex justify-end">
+            <Link
+              href="/forgot-password"
+              className="text-xs underline"
+              style={{ color: 'var(--primary-text)' }}
+            >
+              Forgot password?
+            </Link>
+          </div>
 
           <TurnstileWidget
             onSuccess={(token) => setCaptchaToken(token)}
@@ -95,6 +99,7 @@ export default function LoginPage() {
             type="submit"
             disabled={loading || !captchaToken}
             loading={loading}
+            fullWidth
           >
             Log in
           </Button>
@@ -105,11 +110,14 @@ export default function LoginPage() {
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Don't have an account?
-          &nbsp;
-          <LinkButton href="/signup" variant="outline" size="sm">
+          Don't have an account?{' '}
+          <Link
+            href="/signup"
+            className="underline font-medium"
+            style={{ color: 'var(--primary-text)' }}
+          >
             Sign up
-          </LinkButton>
+          </Link>
         </p>
       </CardLayout>
     </PageLayout>
