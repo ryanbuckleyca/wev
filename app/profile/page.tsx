@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfile } from '@/lib/hooks/useProfile';
 import ValuesSelector from '@/components/ValuesSelector';
+import LoadingState from '@/components/LoadingState';
 import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
@@ -63,11 +64,7 @@ export default function ProfilePage() {
   };
 
   if (loading || profileLoading) {
-    return (
-      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
-        <p className="text-[var(--text-secondary)]">Loading...</p>
-      </div>
-    );
+    return <LoadingState />;
   }
 
   if (!user) {
