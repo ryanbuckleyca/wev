@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { checkPasswordStrength } from '@/lib/password-strength'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
+import FormInput from '@/components/FormInput'
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
@@ -94,18 +95,12 @@ export default function ResetPasswordPage() {
               <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                 New Password
               </span>
-              <input
+              <FormInput
                 type="password"
-                required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="rounded px-3 py-2 text-sm outline-none"
-                style={{
-                  background: 'var(--bg)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-primary)',
-                }}
+                onChange={setPassword}
                 placeholder="••••••••"
+                required
               />
               <PasswordStrengthIndicator passwordStrength={passwordStrength} />
             </label>
@@ -114,18 +109,12 @@ export default function ResetPasswordPage() {
               <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Confirm Password
               </span>
-              <input
+              <FormInput
                 type="password"
-                required
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="rounded px-3 py-2 text-sm outline-none"
-                style={{
-                  background: 'var(--bg)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-primary)',
-                }}
+                onChange={setConfirmPassword}
                 placeholder="••••••••"
+                required
               />
             </label>
 
