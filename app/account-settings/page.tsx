@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { checkPasswordStrength } from '@/lib/password-strength';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
+import LoadingState from '@/components/LoadingState';
 
 export default function AccountSettingsPage() {
   const { user, loading } = useRequireAuth();
@@ -135,11 +136,7 @@ export default function AccountSettingsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
-        <p className="text-[var(--text-secondary)]">Loading...</p>
-      </div>
-    );
+    return <LoadingState />;
   }
 
   if (!user) {

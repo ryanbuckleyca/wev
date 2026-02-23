@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { checkPasswordStrength } from '@/lib/password-strength'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
 import FormInput from '@/components/FormInput'
+import LoadingState from '@/components/LoadingState'
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
@@ -63,11 +64,7 @@ export default function ResetPasswordPage() {
   }
 
   if (!isValidSession && !error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
-      </div>
-    )
+    return <LoadingState message="Verifying session..." />;
   }
 
   return (
