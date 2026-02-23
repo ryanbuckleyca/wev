@@ -6,6 +6,8 @@ import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfile } from '@/lib/hooks/useProfile';
 import ValuesSelector from '@/components/ValuesSelector';
 import LoadingState from '@/components/LoadingState';
+import FormInput from '@/components/FormInput';
+import FormLabel from '@/components/FormLabel';
 import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
@@ -158,18 +160,18 @@ export default function ProfilePage() {
 
             {/* Full Name */}
             <div>
-              <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+              <FormLabel htmlFor="full-name">
                 Full Name
-              </label>
+              </FormLabel>
               {isEditing ? (
-                <input
+                <FormInput
                   type="text"
                   value={formData.full_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, full_name: e.target.value })
+                  onChange={(value) =>
+                    setFormData({ ...formData, full_name: value })
                   }
                   placeholder="Enter your full name"
-                  className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+                  fullWidth
                 />
               ) : (
                 <p className="text-[var(--text-primary)] bg-[var(--bg)] rounded px-4 py-2 border border-[var(--border)] text-sm">
@@ -180,9 +182,9 @@ export default function ProfilePage() {
 
             {/* Bio */}
             <div>
-              <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+              <FormLabel htmlFor="bio">
                 Bio
-              </label>
+              </FormLabel>
               {isEditing ? (
                 <textarea
                   value={formData.bio}
