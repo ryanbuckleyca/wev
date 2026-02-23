@@ -172,13 +172,15 @@ export default function AccountSettingsPage() {
                 <p className="text-sm text-[var(--text-secondary)] mb-4">
                   Current email: <span className="font-semibold">{user.email}</span>
                 </p>
-                <Button
-                  type="submit"
-                  disabled={isUpdatingEmail}
-                  loading={isUpdatingEmail}
-                >
-                  Update Email
-                </Button>
+                <div className="flex justify-start">
+                  <Button
+                    type="submit"
+                    disabled={isUpdatingEmail}
+                    loading={isUpdatingEmail}
+                  >
+                    Update Email
+                  </Button>
+                </div>
               </FormContainer>
             </div>
 
@@ -229,13 +231,15 @@ export default function AccountSettingsPage() {
                   htmlFor="confirm-password"
                 />
 
-                <Button
-                  type="submit"
-                  disabled={isUpdatingPassword || !newPasswordStrength?.isAcceptable}
-                  loading={isUpdatingPassword}
-                >
-                  Change Password
-                </Button>
+                <div className="flex justify-start">
+                  <Button
+                    type="submit"
+                    disabled={isUpdatingPassword || !newPasswordStrength?.isAcceptable}
+                    loading={isUpdatingPassword}
+                  >
+                    Change Password
+                  </Button>
+                </div>
               </FormContainer>
             </div>
           </div>
