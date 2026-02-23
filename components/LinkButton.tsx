@@ -7,6 +7,8 @@ interface LinkButtonProps {
   size?: 'sm' | 'md' | 'lg'
   fullWidth?: boolean
   className?: string
+  prefetch?: boolean
+  onClick?: () => void
 }
 
 export default function LinkButton({ 
@@ -15,7 +17,9 @@ export default function LinkButton({
   variant = 'outline',
   size = 'md',
   fullWidth = false,
-  className = ''
+  className = '',
+  prefetch = true, // Enable prefetch by default for better UX
+  onClick
 }: LinkButtonProps) {
   const baseClasses = 'inline-block font-medium rounded transition-colors'
   
@@ -36,7 +40,12 @@ export default function LinkButton({
   const combinedClasses = `${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${widthClass} ${className}`.trim()
 
   return (
-    <Link href={href} className={combinedClasses}>
+    <Link 
+      href={href} 
+      className={combinedClasses}
+      prefetch={prefetch}
+      onClick={onClick}
+    >
       {children}
     </Link>
   )
