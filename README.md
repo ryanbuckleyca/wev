@@ -77,3 +77,39 @@ To create a GitHub personal access token:
 1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
 2. Generate a new token with the `repo` scope (or `actions:write` if using fine-grained tokens)
 3. Add the token to your `.env.local` file
+
+## Deployment
+
+### Environment Variables Setup
+
+This application requires environment variables in **both GitHub Actions (build time)** and **Northflank (runtime)**:
+
+#### GitHub Actions (Build Time)
+Add these secrets to your repository → Settings → Secrets and variables → Actions:
+
+```bash
+# Client-side variables (needed for build/middleware)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+
+# Server-side variables  
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+#### Northflank (Runtime)
+Add the same environment variables to your Northflank service environment:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+### Why Both Locations?
+
+- **GitHub Actions**: Needed during `npm run build` for Next.js to bundle Supabase clients correctly
+- **Northflank**: Needed at runtime for the deployed app to make actual API calls to Supabase
+
+The `NEXT_PUBLIC_*` variables are safe to expose to the client as they're designed for public operations only.
