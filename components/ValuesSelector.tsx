@@ -1,6 +1,7 @@
 'use client'
 
 import { VALUES_LIST } from '@/lib/values'
+import Button from '@/components/Button'
 
 interface ValuesSelectorProps {
   selectedValues: string[]
@@ -45,18 +46,20 @@ export default function ValuesSelector({
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {VALUES_LIST.map((value) => (
-        <button
+        <Button
           key={value}
-          type="button"
           onClick={() => toggleValue(value)}
-          className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-colors ${
-            selectedValues.includes(value)
-              ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
-              : 'bg-[var(--bg)] text-[var(--text-primary)] border-[var(--border)] hover:border-[var(--primary)]'
-          }`}
+          size="sm"
+          fullWidth
+          className="px-3 py-2"
+          style={{
+            background: selectedValues.includes(value) ? 'var(--primary)' : 'var(--bg)',
+            color: selectedValues.includes(value) ? 'white' : 'var(--text-primary)',
+            border: `2px solid ${selectedValues.includes(value) ? 'var(--primary)' : 'var(--border)'}`
+          }}
         >
           {value}
-        </button>
+        </Button>
       ))}
     </div>
   )
