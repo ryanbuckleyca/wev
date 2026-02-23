@@ -10,6 +10,7 @@ import Heading from '@/components/Heading'
 import FormContainer from '@/components/FormContainer'
 import FormField from '@/components/FormField'
 import Button from '@/components/Button'
+import Message from '@/components/Message'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -83,14 +84,10 @@ export default function ForgotPasswordPage() {
         </FormContainer>
 
         {error && (
-          <p className="mt-4 text-sm text-center" style={{ color: 'var(--alert-text)' }}>
-            {error}
-          </p>
+          <Message variant="error">{error}</Message>
         )}
         {message && (
-          <p className="mt-4 text-sm text-center" style={{ color: 'var(--success-text)' }}>
-            {message}
-          </p>
+          <Message variant="success">{message}</Message>
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
