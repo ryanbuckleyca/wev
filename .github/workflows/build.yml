@@ -26,30 +26,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify environment variables (for build)
-        run: |
-          echo "🔍 Checking environment variables..."
-          echo "SUPABASE_URL: ${{ secrets.SUPABASE_URL }}"
-          echo "SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
-          echo "NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}"
-          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}"
-          
-          if [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
-            echo "⚠ WARNING: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set"
-            echo "Build may still succeed; set them in Northflank for runtime"
-          else
-            echo "✓ Supabase server env vars are set"
-          fi
-          
-          if [ -z "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" ] || [ -z "${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}" ]; then
-            echo "❌ ERROR: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY not set"
-            echo "These are required for build to succeed!"
-            echo "Add them as repository secrets in GitHub Settings"
-            exit 1
-          else
-            echo "✓ NEXT_PUBLIC env vars are set"
-          fi
-
       - name: Build Next.js app
         env:
           # Server-only; not exposed to client. Use placeholders if missing so CI build succeeds.
@@ -58,13 +34,7 @@ jobs:
           # Client-side variables needed for middleware and build
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'placeholder-publishable-key' }}
-        run: |
-          echo "🔍 Debug: Environment variables during build:"
-          echo "NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}"
-          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:0:10}..."
-          echo "SUPABASE_URL: ${SUPABASE_URL}"
-          echo "SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:0:10}..."
-          npm run build
+        run: npm run build
 
       - name: Run linting
         run: npm run lint
