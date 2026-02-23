@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { checkPasswordStrength } from '@/lib/password-strength'
+import TurnstileWidget from '@/components/TurnstileWidget'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
@@ -11,6 +12,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   const passwordStrength = useMemo(() => {
     if (!password) return null
@@ -31,10 +33,19 @@ export default function SignupPage() {
       return
     }
 
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification.')
+      setLoading(false)
+      return
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        captchaToken,
+      },
     })
     if (error) {
       setError(error.message)
@@ -133,9 +144,18 @@ export default function SignupPage() {
             )}
           </label>
 
+          <TurnstileWidget
+            onSuccess={(token) => setCaptchaToken(token)}
+            onError={() => {
+              setCaptchaToken(null)
+              setError('CAPTCHA verification failed. Please try again.')
+            }}
+            onExpire={() => setCaptchaToken(null)}
+          />
+
           <button
             type="submit"
-            disabled={loading || (passwordStrength !== null && !passwordStrength.isAcceptable)}
+            disabled={loading || (passwordStrength !== null && !passwordStrength.isAcceptable) || !captchaToken}
             className="rounded px-4 py-2 text-sm font-medium transition-opacity disabled:opacity-50"
             style={{ background: 'var(--primary)', color: 'var(--on-primary)' }}
           >

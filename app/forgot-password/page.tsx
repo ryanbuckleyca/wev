@@ -5,10 +5,10 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import TurnstileWidget from '@/components/TurnstileWidget'
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
@@ -17,6 +17,7 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+    setMessage(null)
     setError(null)
 
     if (!captchaToken) {
@@ -25,17 +26,15 @@ export default function LoginPage() {
       return
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-      options: {
-        captchaToken,
-      },
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+      captchaToken,
     })
+
     if (error) {
       setError(error.message)
     } else {
-      window.location.href = '/'
+      setMessage('Check your email for a password reset link.')
     }
 
     setLoading(false)
@@ -48,11 +47,17 @@ export default function LoginPage() {
         style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
       >
         <h1
-          className="text-2xl font-semibold text-center mb-6"
+          className="text-2xl font-semibold text-center mb-2"
           style={{ color: 'var(--text-primary)' }}
         >
-          Log in
+          Forgot password?
         </h1>
+        <p
+          className="text-sm text-center mb-6"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          Enter your email and we&apos;ll send you a reset link.
+        </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1">
@@ -74,32 +79,6 @@ export default function LoginPage() {
             />
           </label>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Password
-            </span>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="rounded px-3 py-2 text-sm outline-none"
-              style={{
-                background: 'var(--bg)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-primary)',
-              }}
-              placeholder="••••••••"
-            />
-            <Link
-              href="/forgot-password"
-              className="text-xs underline self-end"
-              style={{ color: 'var(--primary-text)' }}
-            >
-              Forgot password?
-            </Link>
-          </label>
-
           <TurnstileWidget
             onSuccess={(token) => setCaptchaToken(token)}
             onError={() => {
@@ -115,7 +94,7 @@ export default function LoginPage() {
             className="rounded px-4 py-2 text-sm font-medium transition-opacity disabled:opacity-50"
             style={{ background: 'var(--primary)', color: 'var(--on-primary)' }}
           >
-            {loading ? 'Loading…' : 'Log in'}
+            {loading ? 'Sending…' : 'Send reset link'}
           </button>
         </form>
 
@@ -124,15 +103,20 @@ export default function LoginPage() {
             {error}
           </p>
         )}
+        {message && (
+          <p className="mt-4 text-sm text-center" style={{ color: 'var(--success-text)' }}>
+            {message}
+          </p>
+        )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Don&apos;t have an account?{' '}
+          Remember your password?{' '}
           <Link
-            href="/signup"
+            href="/login"
             className="underline font-medium"
             style={{ color: 'var(--primary-text)' }}
           >
-            Sign up
+            Log in
           </Link>
         </p>
       </div>
