@@ -274,10 +274,12 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="flex justify-start items-center gap-4 mb-6">
-          <ReScrapeButton onComplete={fetchData} />
-          <CopyAllJobsButton jobs={filteredJobs} />
-        </div>
+        {user.role == "admin" && (
+          <div className="flex justify-start items-center gap-4 mb-6">
+            <ReScrapeButton onComplete={fetchData} />
+            <CopyAllJobsButton jobs={filteredJobs} />
+          </div>
+        )}
 
         {/* Filters */}
         <JobFilters
