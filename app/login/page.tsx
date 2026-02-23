@@ -126,7 +126,8 @@ export default function LoginPage() {
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Don&apos;t have an account?{' '}
+          Don't have an account?
+          &nbsp;
           <Link
             href="/signup"
             className="underline font-medium"
