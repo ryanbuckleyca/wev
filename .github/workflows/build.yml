@@ -26,23 +26,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify environment variables (for build)
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "⚠ WARNING: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set"
-            echo "Build may still succeed; set them in Northflank for runtime"
-          else
-            echo "✓ Supabase server env vars are set"
-          fi
-
       - name: Build Next.js app
         env:
           # Server-only; not exposed to client. Use placeholders if missing so CI build succeeds.
           SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key' }}
+          # Client-side variables needed for middleware and build
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'placeholder-publishable-key' }}
         run: npm run build
 
       - name: Run linting
