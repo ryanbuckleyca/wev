@@ -14,6 +14,7 @@ import FormField from '@/components/FormField'
 import Button from '@/components/Button'
 import LinkButton from '@/components/LinkButton'
 import ErrorBox from '@/components/ErrorBox'
+import Message from '@/components/Message'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
@@ -112,9 +113,7 @@ export default function SignupPage() {
           <ErrorBox className="mt-4">{error}</ErrorBox>
         )}
         {message && (
-          <p className="mt-4 text-sm text-center" style={{ color: 'var(--success-text)' }}>
-            {message}
-          </p>
+          <Message variant="success">{message}</Message>
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>

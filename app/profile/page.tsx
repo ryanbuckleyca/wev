@@ -9,6 +9,9 @@ import LoadingState from '@/components/LoadingState';
 import FormInput from '@/components/FormInput';
 import FormLabel from '@/components/FormLabel';
 import ErrorBox from '@/components/ErrorBox';
+import PageLayout from '@/components/PageLayout';
+import CardLayout from '@/components/CardLayout';
+import Heading from '@/components/Heading';
 import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
 import toast from 'react-hot-toast';
@@ -78,29 +81,23 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-[var(--bg)] pt-24">
-        <div className="max-w-2xl mx-auto px-4 py-8">
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-8">
-            <h1 className="text-xl font-semibold text-[var(--text-primary)] mb-4">No Profile Found</h1>
-            <p className="text-[var(--text-secondary)] mb-6">
-              Your profile wasn&apos;t created. This may happen if you signed up before the profile system was set up.
-            </p>
-            <Link
-              href="/"
-              className="inline-block px-4 py-2 text-sm font-medium rounded bg-[var(--primary)] text-white"
-            >
-              Back to Jobs
-            </Link>
-          </div>
-        </div>
-      </div>
+      <PageLayout maxWidth="md">
+        <CardLayout>
+          <Heading level={1} className="mb-4">No Profile Found</Heading>
+          <p className="text-[var(--text-secondary)] mb-6">
+            Your profile wasn&apos;t created. This may happen if you signed up before the profile system was set up.
+          </p>
+          <LinkButton href="/">
+            Back to Jobs
+          </LinkButton>
+        </CardLayout>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] pt-24">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-8">
+    <PageLayout maxWidth="md">
+      <CardLayout>
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-xl font-semibold text-[var(--text-primary)]">My Profile</h1>
             <button
@@ -238,8 +235,7 @@ export default function ProfilePage() {
               Back to Jobs
             </LinkButton>
           </div>
-        </div>
-      </div>
-    </div>
+        </CardLayout>
+    </PageLayout>
   );
 }
