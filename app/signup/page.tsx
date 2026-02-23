@@ -79,6 +79,7 @@ export default function SignupPage() {
             onChange={setEmail}
             placeholder="you@example.com"
             required
+            fullWidth
           />
 
           <FormField
@@ -88,6 +89,7 @@ export default function SignupPage() {
             onChange={setPassword}
             placeholder="•••••••••••"
             required
+            fullWidth
           />
           <PasswordStrengthIndicator passwordStrength={passwordStrength} />
 
@@ -104,6 +106,7 @@ export default function SignupPage() {
             type="submit"
             disabled={loading || !captchaToken || (passwordStrength !== null && !passwordStrength.isAcceptable)}
             loading={loading}
+            fullWidth
           >
             Create account
           </Button>
@@ -118,9 +121,13 @@ export default function SignupPage() {
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
           Already have an account?{' '}
-          <LinkButton href="/login" variant="outline" size="sm">
+          <Link
+            href="/login"
+            className="underline font-medium"
+            style={{ color: 'var(--primary-text)' }}
+          >
             Log in
-          </LinkButton>
+          </Link>
         </p>
       </CardLayout>
     </PageLayout>
