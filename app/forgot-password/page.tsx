@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
       <CardLayout>
         <Heading level={1} className="text-center mb-2">Forgot password?</Heading>
         <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>
-          Enter your email and we&apos;ll send you a reset link.
+          Enter your email, we'll send you a reset link.
         </p>
 
         <FormContainer onSubmit={handleSubmit}>
@@ -63,6 +63,7 @@ export default function ForgotPasswordPage() {
             onChange={setEmail}
             placeholder="you@example.com"
             required
+            fullWidth
           />
 
           <TurnstileWidget
@@ -78,6 +79,7 @@ export default function ForgotPasswordPage() {
             type="submit"
             disabled={loading || !captchaToken}
             loading={loading}
+            fullWidth
           >
             Send reset link
           </Button>

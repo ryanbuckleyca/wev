@@ -323,7 +323,7 @@ export default function StyleGuidePage() {
           <div className="mt-8">
             <h4>Clear Space</h4>
             <p className="text-wev-text-secondary mb-8">
-              Maintain clear space around the logo equal to the height of the &apos;w&apos;. This
+              Maintain clear space around the logo equal to the height of the 'w'. This
               ensures visual distinction.
             </p>
 
@@ -335,7 +335,7 @@ export default function StyleGuidePage() {
               logotype
             </p>
 
-            <h4 className="mt-8">Don&apos;ts</h4>
+            <h4 className="mt-8">Don'ts</h4>
             <ul className="text-wev-text-secondary leading-relaxed ml-6 list-disc space-y-1">
               <li>Do not alter logo colors outside approved palette</li>
               <li>Do not distort, rotate, or skew the logo</li>
