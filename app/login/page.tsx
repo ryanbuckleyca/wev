@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import TurnstileWidget from '@/components/TurnstileWidget'
@@ -16,6 +17,7 @@ import ErrorBox from '@/components/ErrorBox'
 import LinkButton from '@/components/LinkButton'
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -45,7 +47,7 @@ export default function LoginPage() {
     if (error) {
       setError(error.message)
     } else {
-      window.location.href = '/'
+      router.push('/')
     }
 
     setLoading(false)

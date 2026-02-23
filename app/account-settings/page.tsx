@@ -26,14 +26,24 @@ export default function AccountSettingsPage() {
   const [newEmail, setNewEmail] = useState('');
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [emailError, setEmailError] = useState('');
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
-  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [emailChanged, setEmailChanged] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
 
   useEffect(() => {
     if (user?.email && !newEmail) {
       setNewEmail(user.email);
     }
   }, [user, newEmail]);
+
+  // Track changes
+  useEffect(() => {
+    setEmailChanged(user?.email !== newEmail && newEmail !== '');
+  }, [user?.email, newEmail]);
+
+  useEffect(() => {
+    setPasswordChanged(newPassword !== '' || confirmPassword !== '' || currentPassword !== '');
+  }, [newPassword, confirmPassword, currentPassword]);
 
   const newPasswordStrength = useMemo(() => {
     if (!newPassword) return null;
@@ -86,59 +96,69 @@ export default function AccountSettingsPage() {
     return true;
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
+  const handleUpdateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validatePasswordForm()) {
+    const hasEmailChanges = emailChanged;
+    const hasPasswordChanges = passwordChanged;
+    
+    if (!hasEmailChanges && !hasPasswordChanges) {
+      toast.error('No changes to save');
+      return;
+    }
+    
+    // Validate based on what's being changed
+    if (hasPasswordChanges && !validatePasswordForm()) {
+      return;
+    }
+    
+    if (hasEmailChanges && !validateEmailForm()) {
       return;
     }
 
-    setIsUpdatingPassword(true);
+    setIsUpdating(true);
     
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
+      // Update email if changed
+      if (hasEmailChanges) {
+        const { error: emailError } = await supabase.auth.updateUser({
+          email: newEmail,
+        });
 
-      if (error) {
-        toast.error(error.message || 'Failed to update password');
-      } else {
+        if (emailError) {
+          toast.error(emailError.message || 'Failed to update email');
+          return;
+        }
+      }
+
+      // Update password if changed
+      if (hasPasswordChanges) {
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
+
+        if (passwordError) {
+          toast.error(passwordError.message || 'Failed to update password');
+          return;
+        }
+      }
+
+      // Success messages
+      if (hasEmailChanges) {
+        toast.success('Confirmation email sent to your new address. Please verify it to complete the change.');
+      }
+      
+      if (hasPasswordChanges) {
         toast.success('Password updated successfully!');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
       }
+      
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update password');
+      toast.error(err instanceof Error ? err.message : 'Failed to update account');
     } finally {
-      setIsUpdatingPassword(false);
-    }
-  };
-
-  const handleChangeEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateEmailForm()) {
-      return;
-    }
-
-    setIsUpdatingEmail(true);
-    
-    try {
-      const { error } = await supabase.auth.updateUser({
-        email: newEmail,
-      });
-
-      if (error) {
-        toast.error(error.message || 'Failed to update email');
-      } else {
-        toast.success('Confirmation email sent to your new address. Please verify it to complete the change.');
-        setNewEmail(newEmail);
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update email');
-    } finally {
-      setIsUpdatingEmail(false);
+      setIsUpdating(false);
     }
   };
 
@@ -155,34 +175,24 @@ export default function AccountSettingsPage() {
       <CardLayout>
         <Heading level={1} className="mb-8">Account Settings</Heading>
 
+        <FormContainer onSubmit={handleUpdateAccount}>
           <div className="space-y-8">
             {/* Change Email */}
             <div>
               <Heading level={2} className="mb-4">Email Address</Heading>
-              <FormContainer onSubmit={handleChangeEmail}>
-                <FormField
-                  label="New Email"
-                  type="email"
-                  value={newEmail}
-                  onChange={setNewEmail}
-                  placeholder="Enter new email"
-                  fullWidth
-                  error={emailError}
-                  htmlFor="email"
-                />
-                <p className="text-sm text-[var(--text-secondary)] mb-4">
-                  Current email: <span className="font-semibold">{user.email}</span>
-                </p>
-                <div className="flex justify-start">
-                  <Button
-                    type="submit"
-                    disabled={isUpdatingEmail}
-                    loading={isUpdatingEmail}
-                  >
-                    Update Email
-                  </Button>
-                </div>
-              </FormContainer>
+              <FormField
+                label="New Email"
+                type="email"
+                value={newEmail}
+                onChange={setNewEmail}
+                placeholder="Enter new email"
+                fullWidth
+                error={emailError}
+                htmlFor="email"
+              />
+              <p className="text-sm text-[var(--text-secondary)] mt-2">
+                Current email: <span className="font-semibold">{user.email}</span>
+              </p>
             </div>
 
             <div className="border-t border-[var(--border)]"></div>
@@ -190,58 +200,66 @@ export default function AccountSettingsPage() {
             {/* Change Password */}
             <div>
               <Heading level={2} className="mb-4">Change Password</Heading>
-              <FormContainer onSubmit={handleChangePassword}>
-                <ErrorList errors={passwordErrors} />
+              <ErrorList errors={passwordErrors} />
 
-                <FormField
-                  label="Current Password"
-                  type="password"
-                  value={currentPassword}
-                  onChange={setCurrentPassword}
-                  placeholder="Enter current password"
-                  fullWidth
-                  htmlFor="current-password"
-                />
+              <FormField
+                label="Current Password"
+                type="password"
+                value={currentPassword}
+                onChange={setCurrentPassword}
+                placeholder="Enter current password"
+                fullWidth
+                htmlFor="current-password"
+                required={passwordChanged}
+              />
 
-                <FormField
-                  label="New Password"
-                  type="password"
-                  value={newPassword}
-                  onChange={setNewPassword}
-                  placeholder="Enter new password"
-                  fullWidth
-                  htmlFor="new-password"
-                />
-                <PasswordStrengthIndicator passwordStrength={newPasswordStrength} />
+              <FormField
+                label="New Password"
+                type="password"
+                value={newPassword}
+                onChange={setNewPassword}
+                placeholder="Enter new password"
+                fullWidth
+                htmlFor="new-password"
+                required={passwordChanged}
+              />
+              <PasswordStrengthIndicator passwordStrength={newPasswordStrength} />
 
-                <FormField
-                  label="Confirm Password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={setConfirmPassword}
-                  placeholder="Confirm new password"
-                  fullWidth
-                  htmlFor="confirm-password"
-                />
-
-                <div className="flex justify-start">
-                  <Button
-                    type="submit"
-                    disabled={isUpdatingPassword || !newPasswordStrength?.isAcceptable}
-                    loading={isUpdatingPassword}
-                  >
-                    Change Password
-                  </Button>
-                </div>
-              </FormContainer>
+              <FormField
+                label="Confirm Password"
+                type="password"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                placeholder="Confirm new password"
+                fullWidth
+                htmlFor="confirm-password"
+                required={passwordChanged}
+              />
             </div>
           </div>
 
+          {/* Action Buttons */}
           <div className="mt-8 pt-8 border-t border-[var(--border)]">
-            <LinkButton href="/profile">
-              Back to Profile
-            </LinkButton>
+            <div className="flex gap-3 mb-4">
+              <Button
+                type="submit"
+                disabled={isUpdating || (!emailChanged && !passwordChanged) || (passwordChanged && !newPasswordStrength?.isAcceptable)}
+                loading={isUpdating}
+              >
+                Save Changes
+              </Button>
+              <LinkButton href="/profile" variant="outline">
+                Back to Profile
+              </LinkButton>
+            </div>
+            
+            {!emailChanged && !passwordChanged && (
+              <p className="text-sm text-[var(--text-secondary)]">
+                Make changes above to enable saving
+              </p>
+            )}
           </div>
+        </FormContainer>
         </CardLayout>
     </PageLayout>
   );

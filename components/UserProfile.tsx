@@ -10,24 +10,6 @@ import Button from '@/components/Button'
 
 type UserRole = 'admin' | 'moderator' | 'user'
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${timeoutMs}ms`))
-    }, timeoutMs)
-
-    promise
-      .then((result) => {
-        clearTimeout(timeoutId)
-        resolve(result)
-      })
-      .catch((error) => {
-        clearTimeout(timeoutId)
-        reject(error)
-      })
-  })
-}
-
 export default function UserProfile() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -40,25 +22,14 @@ export default function UserProfile() {
 
   useEffect(() => {
     let mounted = true
-    const loadingWatchdog = setTimeout(() => {
-      if (mounted) {
-        setLoading(false)
-      }
-    }, 8000)
 
     const fetchRoles = async (userId: string) => {
       try {
-        const { data, error } = await withTimeout(
-          Promise.resolve(
-            supabase
-              .from('user_roles')
-              .select('roles')
-              .eq('user_id', userId)
-              .single()
-          ),
-          5000,
-          'fetchRoles'
-        )
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('roles')
+          .eq('user_id', userId)
+          .single()
 
         if (!mounted) return
 
@@ -78,7 +49,7 @@ export default function UserProfile() {
       try {
         const {
           data: { session },
-        } = await withTimeout(supabase.auth.getSession(), 5000, 'getSession')
+        } = await supabase.auth.getSession()
         if (!mounted) return
 
         setUser(session?.user ?? null)
@@ -89,7 +60,7 @@ export default function UserProfile() {
           setDbRoles(['user'])
         }
       } catch {
-        if (!mounted) return
+        if (mounted) return
         setUser(null)
         setDbRoles(['user'])
       } finally {
@@ -118,7 +89,6 @@ export default function UserProfile() {
 
     return () => {
       mounted = false
-      clearTimeout(loadingWatchdog)
       subscription?.unsubscribe()
     }
   }, [supabase])

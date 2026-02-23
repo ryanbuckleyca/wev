@@ -24,39 +24,33 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
         throw new Error(errorData.error || 'Failed to trigger workflow')
       }
 
-      // Poll for completion
-      const checkStatus = async (): Promise<boolean> => {
-        const statusResponse = await fetch('/api/github/status')
-        if (!statusResponse.ok) {
-          throw new Error('Failed to check workflow status')
+      // Instead of polling, we'll check once and then rely on the user to refresh
+      // or implement proper webhook/event-driven updates later
+      toast.success('Workflow started successfully. The page will refresh automatically when complete.')
+
+      // Set up a one-time check after a reasonable delay, but don't poll indefinitely
+      setTimeout(async () => {
+        try {
+          const statusResponse = await fetch('/api/github/status')
+          if (statusResponse.ok) {
+            const status = await statusResponse.json()
+            if (status.completed && status.success) {
+              onComplete()
+              toast.success('Re-scrape complete. Data refreshed.')
+            } else if (status.completed && !status.success) {
+              toast.error('Workflow completed but may have failed')
+            }
+            // If still running, user will need to check manually or we implement proper events
+          }
+        } catch (err) {
+          console.error('Status check failed:', err)
+        } finally {
+          setLoading(false)
         }
+      }, 10000) // Check once after 10 seconds
 
-        const status = await statusResponse.json()
-
-        if (status.error) {
-          throw new Error(status.error)
-        }
-
-        if (status.completed) {
-          return status.success
-        }
-
-        // Still running, check again in 3 seconds
-        await new Promise((resolve) => setTimeout(resolve, 3000))
-        return checkStatus()
-      }
-
-      const success = await checkStatus()
-
-      if (success) {
-        onComplete()
-        toast.success('Re-scrape complete. Data refreshed.')
-      } else {
-        toast.error('Workflow completed but may have failed')
-      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
       setLoading(false)
     }
   }
