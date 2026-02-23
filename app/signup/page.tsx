@@ -6,8 +6,14 @@ import { createClient } from '@/lib/supabase/client'
 import { checkPasswordStrength } from '@/lib/password-strength'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
-import FormInput from '@/components/FormInput'
-import FormLabel from '@/components/FormLabel'
+import PageLayout from '@/components/PageLayout'
+import CardLayout from '@/components/CardLayout'
+import Heading from '@/components/Heading'
+import FormContainer from '@/components/FormContainer'
+import FormField from '@/components/FormField'
+import Button from '@/components/Button'
+import LinkButton from '@/components/LinkButton'
+import ErrorBox from '@/components/ErrorBox'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
@@ -60,41 +66,29 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div
-        className="w-full max-w-sm rounded-lg p-8"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-      >
-        <h1
-          className="text-2xl font-semibold text-center mb-6"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          Sign up
-        </h1>
+    <PageLayout variant="centered">
+      <CardLayout>
+        <Heading level={1} className="text-center mb-6">Sign up</Heading>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1">
-            <FormLabel>Email</FormLabel>
-            <FormInput
-              type="email"
-              value={email}
-              onChange={setEmail}
-              placeholder="you@example.com"
-              required
-            />
-          </label>
+        <FormContainer onSubmit={handleSubmit}>
+          <FormField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            placeholder="you@example.com"
+            required
+          />
 
-          <label className="flex flex-col gap-1">
-            <FormLabel>Password</FormLabel>
-            <FormInput
-              type="password"
-              value={password}
-              onChange={setPassword}
-              placeholder="••••••••"
-              required
-            />
-            <PasswordStrengthIndicator passwordStrength={passwordStrength} />
-          </label>
+          <FormField
+            label="Password"
+            type="password"
+            value={password}
+            onChange={setPassword}
+            placeholder="•••••••••••"
+            required
+          />
+          <PasswordStrengthIndicator passwordStrength={passwordStrength} />
 
           <TurnstileWidget
             onSuccess={(token) => setCaptchaToken(token)}
@@ -105,20 +99,17 @@ export default function SignupPage() {
             onExpire={() => setCaptchaToken(null)}
           />
 
-          <button
+          <Button
             type="submit"
-            disabled={loading || (passwordStrength !== null && !passwordStrength.isAcceptable) || !captchaToken}
-            className="rounded px-4 py-2 text-sm font-medium transition-opacity disabled:opacity-50"
-            style={{ background: 'var(--primary)', color: 'var(--on-primary)' }}
+            disabled={loading || !captchaToken || (passwordStrength !== null && !passwordStrength.isAcceptable)}
+            loading={loading}
           >
-            {loading ? 'Loading…' : 'Sign up'}
-          </button>
-        </form>
+            Create account
+          </Button>
+        </FormContainer>
 
         {error && (
-          <p className="mt-4 text-sm text-center" style={{ color: 'var(--alert-text)' }}>
-            {error}
-          </p>
+          <ErrorBox className="mt-4">{error}</ErrorBox>
         )}
         {message && (
           <p className="mt-4 text-sm text-center" style={{ color: 'var(--success-text)' }}>
@@ -128,15 +119,11 @@ export default function SignupPage() {
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
           Already have an account?{' '}
-          <Link
-            href="/login"
-            className="underline font-medium"
-            style={{ color: 'var(--primary-text)' }}
-          >
+          <LinkButton href="/login" variant="outline" size="sm">
             Log in
-          </Link>
+          </LinkButton>
         </p>
-      </div>
-    </div>
+      </CardLayout>
+    </PageLayout>
   )
 }

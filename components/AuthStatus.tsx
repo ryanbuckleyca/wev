@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import LinkButton from '@/components/LinkButton'
+import Button from '@/components/Button'
 
 export default function AuthStatus() {
   const [user, setUser] = useState<User | null>(null)
@@ -28,13 +30,9 @@ export default function AuthStatus() {
 
   if (!user) {
     return (
-      <a
-        href="/login"
-        className="text-sm font-medium underline"
-        style={{ color: 'var(--primary-text)' }}
-      >
+      <LinkButton href="/login" size="sm">
         Log in
-      </a>
+      </LinkButton>
     )
   }
 
@@ -44,13 +42,13 @@ export default function AuthStatus() {
         {user.email}
       </span>
       <form action="/auth/signout" method="post">
-        <button
+        <Button
           type="submit"
-          className="text-sm font-medium underline"
-          style={{ color: 'var(--text-secondary)' }}
+          variant="outline"
+          size="sm"
         >
           Log out
-        </button>
+        </Button>
       </form>
     </div>
   )
