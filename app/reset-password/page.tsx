@@ -5,8 +5,14 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { checkPasswordStrength } from '@/lib/password-strength'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
-import FormInput from '@/components/FormInput'
-import FormLabel from '@/components/FormLabel'
+import PageLayout from '@/components/PageLayout'
+import CardLayout from '@/components/CardLayout'
+import Heading from '@/components/Heading'
+import FormContainer from '@/components/FormContainer'
+import FormField from '@/components/FormField'
+import Button from '@/components/Button'
+import LinkButton from '@/components/LinkButton'
+import ErrorBox from '@/components/ErrorBox'
 import LoadingState from '@/components/LoadingState'
 
 export default function ResetPasswordPage() {
@@ -69,79 +75,55 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div
-        className="w-full max-w-sm rounded-lg p-8"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-      >
-        <h1
-          className="text-2xl font-semibold text-center mb-2"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          Reset password
-        </h1>
-        <p
-          className="text-sm text-center mb-6"
-          style={{ color: 'var(--text-secondary)' }}
-        >
+    <PageLayout variant="centered">
+      <CardLayout>
+        <Heading level={1} className="text-center mb-2">Reset password</Heading>
+        <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>
           Enter your new password below.
         </p>
 
         {isValidSession ? (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <label className="flex flex-col gap-1">
-              <FormLabel>New Password</FormLabel>
-              <FormInput
-                type="password"
-                value={password}
-                onChange={setPassword}
-                placeholder="••••••••"
-                required
-              />
-              <PasswordStrengthIndicator passwordStrength={passwordStrength} />
-            </label>
+          <FormContainer onSubmit={handleSubmit}>
+            <FormField
+              label="New Password"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              placeholder="••••••••••"
+              required
+            />
+            <PasswordStrengthIndicator passwordStrength={passwordStrength} />
 
-            <label className="flex flex-col gap-1">
-              <FormLabel>Confirm Password</FormLabel>
-              <FormInput
-                type="password"
-                value={confirmPassword}
-                onChange={setConfirmPassword}
-                placeholder="••••••••"
-                required
-              />
-            </label>
+            <FormField
+              label="Confirm Password"
+              type="password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              placeholder="••••••••••"
+              required
+            />
 
-            <button
+            <Button
               type="submit"
               disabled={loading || (passwordStrength !== null && !passwordStrength.isAcceptable)}
-              className="rounded px-4 py-2 text-sm font-medium transition-opacity disabled:opacity-50"
-              style={{ background: 'var(--primary)', color: 'var(--on-primary)' }}
+              loading={loading}
             >
-              {loading ? 'Updating…' : 'Update password'}
-            </button>
-          </form>
+              Update password
+            </Button>
+          </FormContainer>
         ) : (
           <div className="text-center">
-            <p className="text-sm mb-4" style={{ color: 'var(--alert-text)' }}>
-              {error}
-            </p>
-            <a
-              href="/forgot-password"
-              className="text-sm underline font-medium"
-              style={{ color: 'var(--primary-text)' }}
-            >
+            <ErrorBox className="mb-4">{error}</ErrorBox>
+            <LinkButton href="/forgot-password" size="sm">
               Request a new reset link
-            </a>
+            </LinkButton>
           </div>
         )}
 
         {error && isValidSession && (
-          <p className="mt-4 text-sm text-center" style={{ color: 'var(--alert-text)' }}>
-            {error}
-          </p>
+          <ErrorBox className="mt-4">{error}</ErrorBox>
         )}
-      </div>
-    </div>
+      </CardLayout>
+    </PageLayout>
   )
 }

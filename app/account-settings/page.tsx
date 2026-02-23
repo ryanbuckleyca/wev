@@ -12,6 +12,7 @@ import CardLayout from '@/components/CardLayout';
 import Heading from '@/components/Heading';
 import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
+import ErrorList from '@/components/ErrorList';
 import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
 
@@ -190,15 +191,7 @@ export default function AccountSettingsPage() {
             <div>
               <Heading level={2} className="mb-4">Change Password</Heading>
               <FormContainer onSubmit={handleChangePassword}>
-                {passwordErrors.length > 0 && (
-                  <div className="mb-4 p-3 rounded bg-[var(--alert-tint)] text-[var(--alert-text)] text-sm">
-                    <ul className="list-disc list-inside">
-                      {passwordErrors.map((error, i) => (
-                        <li key={i}>{error}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                <ErrorList errors={passwordErrors} />
 
                 <FormField
                   label="Current Password"

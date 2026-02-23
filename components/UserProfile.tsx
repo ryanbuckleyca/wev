@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
+import Button from '@/components/Button'
 
 type UserRole = 'admin' | 'moderator' | 'user'
 
@@ -226,13 +227,20 @@ export default function UserProfile() {
           </nav>
 
           <div className="p-2 border-t border-wev-border">
-            <button
+            <Button
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="w-full px-4 py-2 text-sm text-wev-alert-text bg-wev-alert-tint rounded-wev-btn hover:bg-opacity-80 disabled:opacity-50 transition-colors"
+              loading={isLoggingOut}
+              fullWidth
+              className="w-full"
+              style={{
+                background: 'var(--alert-tint)',
+                color: 'var(--alert-text)',
+                border: 'none'
+              }}
             >
-              {isLoggingOut ? 'Logging out...' : 'Log Out'}
-            </button>
+              Log Out
+            </Button>
           </div>
         </div>
       )}

@@ -12,6 +12,8 @@ import FormField from '@/components/FormField'
 import FormLabel from '@/components/FormLabel'
 import FormInput from '@/components/FormInput'
 import Button from '@/components/Button'
+import ErrorBox from '@/components/ErrorBox'
+import LinkButton from '@/components/LinkButton'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -99,21 +101,15 @@ export default function LoginPage() {
         </FormContainer>
 
         {error && (
-          <p className="mt-4 text-sm text-center" style={{ color: 'var(--alert-text)' }}>
-            {error}
-          </p>
+          <ErrorBox className="mt-4">{error}</ErrorBox>
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
           Don't have an account?
           &nbsp;
-          <Link
-            href="/signup"
-            className="underline font-medium"
-            style={{ color: 'var(--primary-text)' }}
-          >
+          <LinkButton href="/signup" variant="outline" size="sm">
             Sign up
-          </Link>
+          </LinkButton>
         </p>
       </CardLayout>
     </PageLayout>

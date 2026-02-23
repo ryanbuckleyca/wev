@@ -8,6 +8,9 @@ import ValuesSelector from '@/components/ValuesSelector';
 import LoadingState from '@/components/LoadingState';
 import FormInput from '@/components/FormInput';
 import FormLabel from '@/components/FormLabel';
+import ErrorBox from '@/components/ErrorBox';
+import Button from '@/components/Button';
+import LinkButton from '@/components/LinkButton';
 import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
@@ -115,17 +118,13 @@ export default function ProfilePage() {
           </div>
 
           {profileError && (
-            <div className="mb-6 p-3 rounded bg-[var(--alert-tint)] text-[var(--alert-text)] text-sm">
-              {profileError}
-            </div>
+            <ErrorBox>{profileError}</ErrorBox>
           )}
 
           <div className="space-y-8">
             {/* Profile Photo Section */}
             <div>
-              <label className="block text-sm font-semibold text-[var(--text-primary)] mb-4">
-                Profile Photo
-              </label>
+              <FormLabel>Profile Photo</FormLabel>
               <div className="flex items-center gap-6">
                 <div className="w-24 h-24 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center flex-shrink-0">
                   {profile.profile_photo_url ? (
@@ -141,12 +140,12 @@ export default function ProfilePage() {
                   )}
                 </div>
                 {isEditing && (
-                  <button
+                  <Button
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 text-sm font-medium rounded border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg)]"
+                    variant="secondary"
                   >
                     Upload Photo
-                  </button>
+                  </Button>
                 )}
                 <input
                   ref={fileInputRef}
@@ -204,9 +203,7 @@ export default function ProfilePage() {
 
             {/* Work Values */}
             <div>
-              <label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-                Work Values
-              </label>
+              <FormLabel>Work Values</FormLabel>
               <ValuesSelector
                 selectedValues={formData.values}
                 onValuesChange={(values) =>
@@ -222,29 +219,24 @@ export default function ProfilePage() {
             <p className="text-sm text-[var(--text-secondary)] mb-3">
               To update your email address or change your password, visit Account Settings.
             </p>
-            <Link
-              href="/account-settings"
-              className="inline-block px-4 py-2 text-sm font-medium rounded border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg)]"
-            >
+            <LinkButton href="/account-settings">
               Go to Account Settings
-            </Link>
+            </LinkButton>
           </div>
 
           <div className="mt-8 pt-8 border-t border-[var(--border)]">
             {isEditing && (
-              <button
+              <Button
                 onClick={() => setIsEditing(false)}
-                className="mr-3 px-4 py-2 text-sm font-medium rounded border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)]"
+                variant="outline"
+                className="mr-3"
               >
                 Cancel
-              </button>
+              </Button>
             )}
-            <Link
-              href="/"
-              className="inline-block px-4 py-2 text-sm font-medium rounded border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)]"
-            >
+            <LinkButton href="/" variant="outline">
               Back to Jobs
-            </Link>
+            </LinkButton>
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ interface ButtonProps {
   size?: 'sm' | 'md' | 'lg'
   fullWidth?: boolean
   className?: string
+  style?: React.CSSProperties
 }
 
 export default function Button({ 
@@ -19,7 +20,8 @@ export default function Button({
   variant = 'primary',
   size = 'md',
   fullWidth = false,
-  className = ''
+  className = '',
+  style
 }: ButtonProps) {
   const baseClasses = 'font-medium rounded transition-colors disabled:cursor-not-allowed'
   
@@ -45,6 +47,7 @@ export default function Button({
       onClick={onClick}
       disabled={disabled || loading}
       className={combinedClasses}
+      style={style}
     >
       {loading ? 'Loading...' : children}
     </button>
