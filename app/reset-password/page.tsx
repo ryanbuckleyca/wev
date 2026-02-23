@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { checkPasswordStrength } from '@/lib/password-strength'
+import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
@@ -106,42 +107,7 @@ export default function ResetPasswordPage() {
                 }}
                 placeholder="••••••••"
               />
-              {passwordStrength && (
-                <div className="mt-2">
-                  <div className="flex gap-1 mb-2">
-                    {[0, 1, 2, 3, 4].map((i) => (
-                      <div
-                        key={i}
-                        className="flex-1 h-1.5 rounded-full transition-colors"
-                        style={{
-                          backgroundColor:
-                            i <= passwordStrength.score
-                              ? passwordStrength.color
-                              : 'var(--border)',
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs">
-                      Strength:{' '}
-                      <span style={{ color: passwordStrength.color }} className="font-semibold">
-                        {passwordStrength.label}
-                      </span>
-                    </span>
-                    {passwordStrength.isAcceptable && (
-                      <span className="text-xs" style={{ color: 'var(--success-solid)' }}>
-                        ✓ Acceptable
-                      </span>
-                    )}
-                  </div>
-                  {passwordStrength.feedback && !passwordStrength.isAcceptable && (
-                    <p className="text-xs mt-1" style={{ color: 'var(--warn-solid)' }}>
-                      {passwordStrength.feedback}
-                    </p>
-                  )}
-                </div>
-              )}
+              <PasswordStrengthIndicator passwordStrength={passwordStrength} />
             </label>
 
             <label className="flex flex-col gap-1">
