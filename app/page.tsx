@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState, useMemo } from 'react'
 import type { JobPosting } from '@/lib/supabase'
 import ReScrapeButton from '@/components/ReScrapeButton'
@@ -9,7 +11,6 @@ import JobFilters from '@/components/JobFilters'
 import Pagination from '@/components/Pagination'
 
 // Force dynamic rendering - this page uses client-side data fetching
-export const dynamic = 'force-dynamic'
 export const revalidate = 0 // Disable static generation, always render dynamically
 
 const ITEMS_PER_PAGE = 20

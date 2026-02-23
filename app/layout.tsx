@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Lexend_Deca } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
-import ThemeToggle from '@/components/ThemeToggle'
+import Header from '@/components/Header'
 import './globals.css'
 
 const lexend = Lexend_Deca({
@@ -30,7 +30,7 @@ export default function RootLayout({
         />
       </head>
       <body className="theme-transition font-sans antialiased">
-        <ThemeToggle />
+        <Header />
         {children}
         <Toaster
           position="bottom-right"
