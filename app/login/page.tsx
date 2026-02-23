@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import TurnstileWidget from '@/components/TurnstileWidget'
+import FormInput from '@/components/FormInput'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -59,18 +60,12 @@ export default function LoginPage() {
             <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
               Email
             </span>
-            <input
+            <FormInput
               type="email"
-              required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="rounded px-3 py-2 text-sm outline-none"
-              style={{
-                background: 'var(--bg)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-primary)',
-              }}
+              onChange={setEmail}
               placeholder="you@example.com"
+              required
             />
           </label>
 
@@ -78,18 +73,12 @@ export default function LoginPage() {
             <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
               Password
             </span>
-            <input
+            <FormInput
               type="password"
-              required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="rounded px-3 py-2 text-sm outline-none"
-              style={{
-                background: 'var(--bg)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-primary)',
-              }}
+              onChange={setPassword}
               placeholder="••••••••"
+              required
             />
             <Link
               href="/forgot-password"
