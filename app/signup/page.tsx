@@ -7,6 +7,7 @@ import { checkPasswordStrength } from '@/lib/password-strength'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
 import FormInput from '@/components/FormInput'
+import FormLabel from '@/components/FormLabel'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
@@ -73,9 +74,7 @@ export default function SignupPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Email
-            </span>
+            <FormLabel>Email</FormLabel>
             <FormInput
               type="email"
               value={email}
@@ -86,9 +85,7 @@ export default function SignupPage() {
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Password
-            </span>
+            <FormLabel>Password</FormLabel>
             <FormInput
               type="password"
               value={password}

@@ -2,12 +2,18 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState, useMemo } from 'react';
-import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { checkPasswordStrength } from '@/lib/password-strength';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
 import LoadingState from '@/components/LoadingState';
+import PageLayout from '@/components/PageLayout';
+import CardLayout from '@/components/CardLayout';
+import Heading from '@/components/Heading';
+import FormContainer from '@/components/FormContainer';
+import FormField from '@/components/FormField';
+import Button from '@/components/Button';
+import LinkButton from '@/components/LinkButton';
 
 export default function AccountSettingsPage() {
   const { user, loading } = useRequireAuth();
@@ -144,50 +150,44 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] pt-24">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-8">
-          <h1 className="text-xl font-semibold text-[var(--text-primary)] mb-8">Account Settings</h1>
+    <PageLayout maxWidth="md">
+      <CardLayout>
+        <Heading level={1} className="mb-8">Account Settings</Heading>
 
           <div className="space-y-8">
             {/* Change Email */}
             <div>
-              <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Email Address</h2>
-              <form onSubmit={handleChangeEmail}>
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
-                    New Email
-                  </label>
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="Enter new email"
-                    className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-                  />
-                  {emailError && (
-                    <p className="text-[var(--alert-text)] text-sm mt-2">{emailError}</p>
-                  )}
-                </div>
+              <Heading level={2} className="mb-4">Email Address</Heading>
+              <FormContainer onSubmit={handleChangeEmail}>
+                <FormField
+                  label="New Email"
+                  type="email"
+                  value={newEmail}
+                  onChange={setNewEmail}
+                  placeholder="Enter new email"
+                  fullWidth
+                  error={emailError}
+                  htmlFor="email"
+                />
                 <p className="text-sm text-[var(--text-secondary)] mb-4">
                   Current email: <span className="font-semibold">{user.email}</span>
                 </p>
-                <button
+                <Button
                   type="submit"
                   disabled={isUpdatingEmail}
-                  className="px-4 py-2 text-sm font-medium rounded bg-[var(--primary)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  loading={isUpdatingEmail}
                 >
-                  {isUpdatingEmail ? 'Updating...' : 'Update Email'}
-                </button>
-              </form>
+                  Update Email
+                </Button>
+              </FormContainer>
             </div>
 
             <div className="border-t border-[var(--border)]"></div>
 
             {/* Change Password */}
             <div>
-              <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Change Password</h2>
-              <form onSubmit={handleChangePassword}>
+              <Heading level={2} className="mb-4">Change Password</Heading>
+              <FormContainer onSubmit={handleChangePassword}>
                 {passwordErrors.length > 0 && (
                   <div className="mb-4 p-3 rounded bg-[var(--alert-tint)] text-[var(--alert-text)] text-sm">
                     <ul className="list-disc list-inside">
@@ -198,68 +198,54 @@ export default function AccountSettingsPage() {
                   </div>
                 )}
 
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password"
-                    className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-                  />
-                </div>
+                <FormField
+                  label="Current Password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={setCurrentPassword}
+                  placeholder="Enter current password"
+                  fullWidth
+                  htmlFor="current-password"
+                />
 
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-                  />
+                <FormField
+                  label="New Password"
+                  type="password"
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  placeholder="Enter new password"
+                  fullWidth
+                  htmlFor="new-password"
+                />
+                <PasswordStrengthIndicator passwordStrength={newPasswordStrength} />
 
-                  <PasswordStrengthIndicator passwordStrength={newPasswordStrength} />
-                </div>
+                <FormField
+                  label="Confirm Password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  placeholder="Confirm new password"
+                  fullWidth
+                  htmlFor="confirm-password"
+                />
 
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
-                    Confirm Password
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                    className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-                  />
-                </div>
-
-                <button
+                <Button
                   type="submit"
                   disabled={isUpdatingPassword || !newPasswordStrength?.isAcceptable}
-                  className="px-4 py-2 text-sm font-medium rounded bg-[var(--primary)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  loading={isUpdatingPassword}
                 >
-                  {isUpdatingPassword ? 'Updating...' : 'Change Password'}
-                </button>
-              </form>
+                  Change Password
+                </Button>
+              </FormContainer>
             </div>
           </div>
 
           <div className="mt-8 pt-8 border-t border-[var(--border)]">
-            <Link
-              href="/profile"
-              className="inline-block px-4 py-2 text-sm font-medium rounded border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)]"
-            >
+            <LinkButton href="/profile">
               Back to Profile
-            </Link>
+            </LinkButton>
           </div>
-        </div>
-      </div>
-    </div>
+        </CardLayout>
+    </PageLayout>
   );
 }

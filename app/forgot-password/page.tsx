@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import FormInput from '@/components/FormInput'
+import FormLabel from '@/components/FormLabel'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -62,9 +63,7 @@ export default function ForgotPasswordPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Email
-            </span>
+            <FormLabel>Email</FormLabel>
             <FormInput
               type="email"
               value={email}

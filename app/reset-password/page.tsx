@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { checkPasswordStrength } from '@/lib/password-strength'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
 import FormInput from '@/components/FormInput'
+import FormLabel from '@/components/FormLabel'
 import LoadingState from '@/components/LoadingState'
 
 export default function ResetPasswordPage() {
@@ -89,9 +90,7 @@ export default function ResetPasswordPage() {
         {isValidSession ? (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                New Password
-              </span>
+              <FormLabel>New Password</FormLabel>
               <FormInput
                 type="password"
                 value={password}
@@ -103,9 +102,7 @@ export default function ResetPasswordPage() {
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Confirm Password
-              </span>
+              <FormLabel>Confirm Password</FormLabel>
               <FormInput
                 type="password"
                 value={confirmPassword}
