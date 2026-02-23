@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
@@ -240,7 +241,10 @@ export default function AccountSettingsPage() {
 
           {/* Action Buttons */}
           <div className="mt-8 pt-8 border-t border-[var(--border)]">
-            <div className="flex gap-3 mb-4">
+            <div className="flex justify-between gap-3">
+              <Link href="/profile" className="text-wev-accent hover:text-wev-primary-text hover:underline">
+                Back to Profile
+              </Link>
               <Button
                 type="submit"
                 disabled={isUpdating || (!emailChanged && !passwordChanged) || (passwordChanged && !newPasswordStrength?.isAcceptable)}
@@ -248,13 +252,10 @@ export default function AccountSettingsPage() {
               >
                 Save Changes
               </Button>
-              <LinkButton href="/profile" variant="outline">
-                Back to Profile
-              </LinkButton>
             </div>
             
             {!emailChanged && !passwordChanged && (
-              <p className="text-sm text-[var(--text-secondary)]">
+              <p className="text-sm text-[var(--text-secondary)] mt-2">
                 Make changes above to enable saving
               </p>
             )}

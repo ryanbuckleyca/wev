@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
 import Button from '@/components/Button'
+import LinkButton from '@/components/LinkButton'
 
 type UserRole = 'admin' | 'moderator' | 'user'
 
@@ -183,14 +184,16 @@ export default function UserProfile() {
             <Link
               href="/profile"
               onClick={() => setIsOpen(false)}
-              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 transition-colors"
+              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-colors rounded"
+              prefetch={true}
             >
               My Profile
             </Link>
             <Link
               href="/account-settings"
               onClick={() => setIsOpen(false)}
-              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 transition-colors"
+              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-colors rounded"
+              prefetch={true}
             >
               Account Settings
             </Link>

@@ -155,6 +155,271 @@ export default function StyleGuidePage() {
         </div>
       </section>
 
+      {/* Button Layout Guidelines */}
+      <section id="button-layout" className="design-section">
+        <div className="design-container">
+          <h2>Button Layout Guidelines</h2>
+          <p className="design-section-intro">
+            Consistent button placement creates predictable user experience. Follow our left-secondary, right-primary pattern
+            for optimal UX across all forms and actions.
+          </p>
+
+          <h3>Layout Pattern: Left-Secondary, Right-Primary</h3>
+          <div className="design-layout-grid">
+            <div className="design-layout-example">
+              <div className="design-layout-label">Form Actions</div>
+              <p className="design-layout-description">
+                Secondary actions (cancel, back) on left, primary actions (save, submit) on right.
+              </p>
+              <div className="design-layout-preview">
+                <div className="flex justify-between gap-3">
+                  <button className="px-4 py-2 border border-wev-border rounded-wev-btn text-sm text-wev-text-secondary hover:bg-wev-bg transition-colors">
+                    Back to Jobs
+                  </button>
+                  <button className="px-4 py-2 bg-wev-primary text-white rounded-wev-btn text-sm hover:opacity-90 transition-colors">
+                    Save Profile
+                  </button>
+                </div>
+              </div>
+              <div className="design-layout-code">
+                <code className="text-xs bg-wev-surface p-2 rounded block">
+                  &lt;div className="flex justify-between gap-3"&gt;<br/>
+                  &nbsp;&nbsp;&lt;LinkButton href="/" variant="outline"&gt;<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;Back to Jobs<br/>
+                  &nbsp;&nbsp;&lt;/LinkButton&gt;<br/>
+                  &nbsp;&nbsp;&lt;Button type="submit"&gt;<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;Save Profile<br/>
+                  &nbsp;&nbsp;&lt;/Button&gt;<br/>
+                  &lt;/div&gt;
+                </code>
+              </div>
+            </div>
+
+            <div className="design-layout-example">
+              <div className="design-layout-label">Why This Pattern Works</div>
+              <p className="design-layout-description">
+                Follows natural reading flow and user expectations for action hierarchy.
+              </p>
+              <div className="design-layout-reasons">
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-wev-primary">👁️</span>
+                    <div>
+                      <strong>Visual Flow:</strong> Left-to-right reading pattern naturally encounters secondary then primary actions
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-wev-primary">🎯</span>
+                    <div>
+                      <strong>Action Hierarchy:</strong> Primary actions stand out on the right where attention naturally flows
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-wev-primary">📱</span>
+                    <div>
+                      <strong>Mobile Thumb Zone:</strong> Primary actions in easy reach for right-handed users
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-wev-primary">⚡</span>
+                    <div>
+                      <strong>Reduced Errors:</strong> Clear separation prevents accidental primary action clicks
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <h3>Implementation Examples</h3>
+          <div className="design-implementation-grid">
+            <div className="design-implementation-card">
+              <h4>✅ Correct: Profile Page</h4>
+              <div className="text-sm text-wev-text-secondary space-y-2">
+                <p><strong>Left:</strong> "Back to Jobs" (outline LinkButton)</p>
+                <p><strong>Right:</strong> "Save Profile" (primary Button)</p>
+                <p><strong>Layout:</strong> justify-between gap-3</p>
+              </div>
+            </div>
+
+            <div className="design-implementation-card">
+              <h4>✅ Correct: Account Settings</h4>
+              <div className="text-sm text-wev-text-secondary space-y-2">
+                <p><strong>Left:</strong> "Back to Profile" (outline LinkButton)</p>
+                <p><strong>Right:</strong> "Save Changes" (primary Button)</p>
+                <p><strong>Layout:</strong> justify-between gap-3</p>
+              </div>
+            </div>
+
+            <div className="design-implementation-card">
+              <h4>✅ Correct: Single Action Forms</h4>
+              <div className="text-sm text-wev-text-secondary space-y-2">
+                <p><strong>Center:</strong> Single primary action (Button)</p>
+                <p><strong>When:</strong> Only one action exists</p>
+                <p><strong>Layout:</strong> text-center or flex justify-center</p>
+              </div>
+            </div>
+          </div>
+
+          <h3>Best Practices</h3>
+          <div className="design-best-practices">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="design-practice-card">
+                <h4>✅ Do</h4>
+                <ul className="text-sm text-wev-text-secondary ml-6 list-disc space-y-1">
+                  <li>Use justify-between for two-button layouts</li>
+                  <li>Place secondary actions on left, primary on right</li>
+                  <li>Maintain consistent gap (gap-3 or gap-4)</li>
+                  <li>Use outline/secondary variants for left buttons</li>
+                  <li>Use primary variants for right buttons</li>
+                  <li>Center single primary actions</li>
+                </ul>
+              </div>
+
+              <div className="design-practice-card">
+                <h4>❌ Don't</h4>
+                <ul className="text-sm text-wev-text-secondary ml-6 list-disc space-y-1">
+                  <li>Place primary action on left (breaks pattern)</li>
+                  <li>Use flex-start or flex-end for two actions</li>
+                  <li>Inconsistent button ordering across pages</li>
+                  <li>Multiple primary actions competing for attention</li>
+                  <li>Crowded button layouts without proper spacing</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Buttons vs Links */}
+      <section id="buttons-vs-links" className="design-section">
+        <div className="design-container">
+          <h2>Buttons vs Links</h2>
+          <p className="design-section-intro">
+            Clear semantic separation between actions and navigation ensures predictable user experience
+            and proper accessibility. Use buttons for actions, links for navigation.
+          </p>
+
+          <div className="design-button-grid">
+            <div className="design-button-example">
+              <div className="design-button-label">Button Component</div>
+              <p className="design-button-description">
+                Use for actions that modify state or trigger events. Submit forms, toggle UI, trigger workflows.
+              </p>
+              <div className="space-y-2">
+                <button type="button" className="design-btn design-btn-primary">
+                  Save Changes
+                </button>
+                <button type="button" className="design-btn design-btn-secondary">
+                  Copy to Clipboard
+                </button>
+                <button type="button" className="design-btn design-btn-tertiary">
+                  Cancel
+                </button>
+              </div>
+              <div className="design-usage-examples">
+                <p className="text-sm text-wev-text-secondary mt-4">
+                  <strong>Use for:</strong> Form submission, modal triggers, state changes, API calls
+                </p>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">LinkButton Component</div>
+              <p className="design-button-description">
+                Use for navigation between pages. Includes prefetch on hover for faster navigation.
+              </p>
+              <div className="space-y-2">
+                <a href="#" className="design-btn design-btn-primary">
+                  View Profile
+                </a>
+                <a href="#" className="design-btn design-btn-secondary">
+                  Back to Jobs
+                </a>
+                <a href="#" className="design-btn design-btn-tertiary">
+                  Learn More
+                </a>
+              </div>
+              <div className="design-usage-examples">
+                <p className="text-sm text-wev-text-secondary mt-4">
+                  <strong>Use for:</strong> Page navigation, external links, routing
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <h3>Decision Guidelines</h3>
+          <div className="design-guidelines-grid">
+            <div className="design-guideline-card">
+              <h4>✅ Use Button When:</h4>
+              <ul className="text-sm text-wev-text-secondary ml-6 list-disc space-y-1">
+                <li>Submitting a form or saving data</li>
+                <li>Opening/closing modals or dropdowns</li>
+                <li>Triggering API calls or workflows</li>
+                <li>Toggling UI state (theme, filters)</li>
+                <li>Copying data to clipboard</li>
+                <li>Any action that changes application state</li>
+              </ul>
+            </div>
+
+            <div className="design-guideline-card">
+              <h4>✅ Use LinkButton When:</h4>
+              <ul className="text-sm text-wev-text-secondary ml-6 list-disc space-y-1">
+                <li>Navigating to another page</li>
+                <li>Going to login/signup/profile pages</li>
+                <li>External links to other websites</li>
+                <li>Anchor links within the same page</li>
+                <li>Any navigation that changes the URL</li>
+                <li>Links that should be prefetched on hover</li>
+                <li><strong>Visual Consistency:</strong> Login/signup use LinkButton for consistent appearance</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>Design Priority: Visual Consistency</h3>
+          <div className="design-exception-card">
+            <h4>🎨 Login/Signup Visual Consistency</h4>
+            <p className="text-sm text-wev-text-secondary mb-3">
+              Login/signup buttons use LinkButton to maintain visual consistency across all navigation elements:
+            </p>
+            <ul className="text-sm text-wev-text-secondary ml-6 list-disc space-y-1">
+              <li><strong>Visual Harmony:</strong> Consistent button styling across header navigation</li>
+              <li><strong>User Expectation:</strong> Users expect uniform appearance for navigation elements</li>
+              <li><strong>Design System:</strong> All page navigation uses LinkButton component</li>
+              <li><strong>Performance:</strong> Maintains prefetch benefits for faster navigation</li>
+            </ul>
+            <div className="design-code-example">
+              <p className="text-xs font-mono bg-wev-surface p-2 rounded mt-3">
+                <strong>✅ Correct:</strong> LinkButton href="/login" (visual consistency)<br/>
+                <strong>✅ Result:</strong> Consistent styling + prefetch performance
+              </p>
+            </div>
+          </div>
+
+          <h3>Accessibility Benefits</h3>
+          <div className="design-accessibility-grid">
+            <div className="design-accessibility-item">
+              <h4>Screen Readers</h4>
+              <p className="text-sm text-wev-text-secondary">
+                "Button" clearly indicates an action, "Link" indicates navigation. Users know what to expect.
+              </p>
+            </div>
+            <div className="design-accessibility-item">
+              <h4>Keyboard Navigation</h4>
+              <p className="text-sm text-wev-text-secondary">
+                Buttons activate with Space/Enter, Links with Enter only. Consistent behavior prevents confusion.
+              </p>
+            </div>
+            <div className="design-accessibility-item">
+              <h4>Performance</h4>
+              <p className="text-sm text-wev-text-secondary">
+                LinkButton includes prefetch on hover, anticipating navigation for faster page loads.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Buttons */}
       <section id="buttons" className="design-section">
         <div className="design-container">

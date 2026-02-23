@@ -253,7 +253,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-wev-bg pb-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {/* Home page hero section */}
         <header className="mb-8">
           <img

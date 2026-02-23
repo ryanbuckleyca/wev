@@ -2,6 +2,93 @@
 
 A Next.js application for displaying job postings from a Supabase database with the ability to trigger GitHub Actions workflows for re-scraping data.
 
+## Component Guidelines
+
+### Buttons vs Links
+
+This application follows strict semantic separation between actions and navigation:
+
+#### Button Component
+Use `<Button>` for actions that modify state or trigger events:
+- Form submission (Save, Update, Delete)
+- Modal/dropdown triggers
+- API calls and workflows
+- UI state toggles (theme, filters)
+- Clipboard operations
+
+```tsx
+import Button from '@/components/Button'
+
+// ✅ Correct: Form action
+<Button type="submit">Save Profile</Button>
+
+// ✅ Correct: API action  
+<Button onClick={handleCopy}>Copy to Clipboard</Button>
+
+// ✅ Correct: Modal trigger
+<Button onClick={() => setIsOpen(true)}>Open Modal</Button>
+```
+
+#### LinkButton Component
+Use `<LinkButton>` for navigation between pages:
+- Page navigation (Profile, Settings, Login)
+- External links
+- Any navigation that changes the URL
+- Includes automatic prefetch on hover for performance
+- **Exception:** Login/signup use custom-styled Link for original appearance
+
+```tsx
+import LinkButton from '@/components/LinkButton'
+
+// ✅ Correct: Page navigation
+<LinkButton href="/profile">View Profile</LinkButton>
+
+// ✅ Correct: Navigation with prefetch
+<LinkButton href="/account-settings">Account Settings</LinkButton>
+
+// ✅ Correct: Login/signup (original styling)
+<Link href="/login" className="px-4 py-2 h-10 flex items-center text-sm font-semibold text-wev-primary border border-wev-primary rounded-wev-btn hover:bg-wev-primary-tint transition-colors">
+  Log In
+</Link>
+
+// ✅ Correct: Disable prefetch if needed
+<LinkButton href="/external" prefetch={false}>External Site</LinkButton>
+```
+
+### Button Layout Best Practices
+
+Follow our **left-secondary, right-primary** pattern for consistent UX:
+
+#### Two-Button Layouts
+```tsx
+// ✅ Correct: Secondary on left, Primary on right
+<div className="flex justify-between gap-3">
+  <LinkButton href="/" variant="outline">Back to Jobs</LinkButton>
+  <Button type="submit">Save Profile</Button>
+</div>
+```
+
+#### Single Action Forms
+```tsx
+// ✅ Correct: Center single primary action
+<div className="text-center">
+  <Button type="submit">Submit</Button>
+</div>
+```
+
+#### Layout Rules
+- **Left side**: Secondary actions (cancel, back, navigate away)
+- **Right side**: Primary actions (save, submit, confirm)
+- **Spacing**: Use `gap-3` or `gap-4` for consistent spacing
+- **Variants**: Outline/secondary for left, primary for right
+- **Single actions**: Center align primary buttons
+
+### Performance Features
+
+- **Prefetch on Hover**: All LinkButton components prefetch pages on hover for instant navigation
+- **Client-side Routing**: Uses Next.js router for SPA-like navigation
+- **Semantic HTML**: Proper button/link elements for accessibility
+
 ## Setup
 
 1. Install dependencies:

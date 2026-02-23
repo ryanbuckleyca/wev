@@ -186,7 +186,10 @@ export default function ProfilePage() {
 
           {/* Action Buttons */}
           <div className="mt-8 pt-8 border-t border-[var(--border)]">
-            <div className="flex gap-3 mb-4">
+            <div className="flex justify-between gap-3">
+              <LinkButton href="/" variant="outline">
+                Back to Jobs
+              </LinkButton>
               <Button
                 type="submit"
                 disabled={isSaving}
@@ -194,9 +197,6 @@ export default function ProfilePage() {
               >
                 Save Profile
               </Button>
-              <LinkButton href="/" variant="outline">
-                Back to Jobs
-              </LinkButton>
             </div>
           </div>
         </FormContainer>
@@ -206,9 +206,9 @@ export default function ProfilePage() {
           <p className="text-sm text-[var(--text-secondary)] mb-3">
             To update your email address or change your password, visit Account Settings.
           </p>
-          <LinkButton href="/account-settings">
+          <Link href="/account-settings" className="text-wev-accent hover:text-wev-primary-text hover:underline">
             Go to Account Settings
-          </LinkButton>
+          </Link>
         </div>
         </CardLayout>
     </PageLayout>
