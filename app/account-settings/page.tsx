@@ -6,6 +6,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { checkPasswordStrength } from '@/lib/password-strength';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
+import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
 
 export default function AccountSettingsPage() {
   const { user, loading } = useRequireAuth();
@@ -225,44 +226,7 @@ export default function AccountSettingsPage() {
                     className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
                   />
 
-                  {newPasswordStrength && (
-                    <div className="mt-3">
-                      <div className="flex gap-1 mb-2">
-                        {[0, 1, 2, 3, 4].map((i) => (
-                          <div
-                            key={i}
-                            className="flex-1 h-2 rounded-full transition-colors"
-                            style={{
-                              backgroundColor:
-                                i <= newPasswordStrength.score
-                                  ? newPasswordStrength.color
-                                  : 'var(--border)',
-                            }}
-                          />
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs">
-                          Strength:{' '}
-                          <span style={{ color: newPasswordStrength.color }} className="font-semibold">
-                            {newPasswordStrength.label}
-                          </span>
-                        </span>
-                        {newPasswordStrength.isAcceptable && (
-                          <span className="text-xs text-[var(--success-solid)]">
-                            ✓ Acceptable
-                          </span>
-                        )}
-                      </div>
-
-                      {newPasswordStrength.feedback && !newPasswordStrength.isAcceptable && (
-                        <p className="text-xs text-[var(--warn-solid)]">
-                          {newPasswordStrength.feedback}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  <PasswordStrengthIndicator passwordStrength={newPasswordStrength} />
                 </div>
 
                 <div className="mb-6">
