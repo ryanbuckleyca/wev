@@ -85,7 +85,7 @@ export default function ProfilePage() {
         <CardLayout>
           <Heading level={1} className="mb-4">No Profile Found</Heading>
           <p className="text-[var(--text-secondary)] mb-6">
-            Your profile wasn&apos;t created. This may happen if you signed up before the profile system was set up.
+            Your profile wasn't created. This may happen if you signed up before the profile system was set up.
           </p>
           <LinkButton href="/">
             Back to Jobs
