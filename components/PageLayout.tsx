@@ -14,7 +14,7 @@ export default function PageLayout({
   const baseClasses = 'min-h-screen bg-[var(--bg)]'
   
   const variantClasses = {
-    centered: 'flex items-center justify-center px-4',
+    centered: 'flex items-center justify-center px-4 pt-24',
     sidebar: 'pt-24'
   }
   
@@ -25,7 +25,7 @@ export default function PageLayout({
     xl: 'max-w-6xl'
   }
 
-  const containerClasses = `${widthClasses[maxWidth]} mx-auto px-4 py-8`
+  const containerClasses = `${widthClasses[maxWidth]} mx-auto px-4 sm:px-6 lg:px-8 py-6`
 
   if (variant === 'centered') {
     return (

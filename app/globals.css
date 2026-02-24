@@ -156,6 +156,205 @@
   }
 }
 
+/* Toasts - Style guide matching */
+.design-toast {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  border: 1px solid;
+  font-weight: 500;
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+/* Override react-hot-toast default styles completely */
+[data-theme="light"] .design-toast {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.045) !important;
+}
+
+[data-theme="dark"] .design-toast {
+  box-shadow: 0 4px 10px rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Force success toast styling */
+[data-theme="light"] .design-toast[data-type="success"],
+[data-theme="light"] [data-type="success"].design-toast {
+  background: var(--success-tint) !important;
+  border-color: #a8d5a6 !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .design-toast[data-type="success"],
+[data-theme="dark"] [data-type="success"].design-toast {
+  background: #1A3320 !important;
+  border-color: #6FD68A !important;
+  color: var(--text-primary) !important;
+}
+
+/* Force error toast styling */
+[data-theme="light"] .design-toast[data-type="error"],
+[data-theme="light"] [data-type="error"].design-toast {
+  background: var(--alert-tint) !important;
+  border-color: #ef8b8f !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .design-toast[data-type="error"],
+[data-theme="dark"] [data-type="error"].design-toast {
+  background: #3D1F1C !important;
+  border-color: #E8857A !important;
+  color: var(--text-primary) !important;
+}
+
+/* Force info toast styling */
+[data-theme="light"] .design-toast[data-type="info"],
+[data-theme="light"] [data-type="info"].design-toast {
+  background: var(--info-tint) !important;
+  border-color: #93bed9 !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .design-toast[data-type="info"],
+[data-theme="dark"] [data-type="info"].design-toast {
+  background: #1C2E3D !important;
+  border-color: #7AB4D9 !important;
+  color: var(--text-primary) !important;
+}
+
+/* Force loading toast styling */
+[data-theme="light"] .design-toast[data-type="loading"],
+[data-theme="light"] [data-type="loading"].design-toast {
+  background: var(--info-tint) !important;
+  border-color: #93bed9 !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .design-toast[data-type="loading"],
+[data-theme="dark"] [data-type="loading"].design-toast {
+  background: #1C2E3D !important;
+  border-color: #7AB4D9 !important;
+  color: var(--text-primary) !important;
+}
+
+/* Force warning toast styling */
+[data-theme="light"] .design-toast[data-type="warning"],
+[data-theme="light"] [data-type="warning"].design-toast {
+  background: var(--warn-tint) !important;
+  border-color: #fbbf7f !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .design-toast[data-type="warning"],
+[data-theme="dark"] [data-type="warning"].design-toast {
+  background: #3A2E0A !important;
+  border-color: #E8B53A !important;
+  color: var(--text-primary) !important;
+}
+
+/* Alternative selector for broader compatibility */
+[data-theme="light"] .Toastify__toast:has([data-icon="⚠"]) {
+  background: #F5DEB3 !important;
+  border-color: #fbbf7f !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .Toastify__toast:has([data-icon="⚠"]) {
+  background: #3A2E0A !important;
+  border-color: #E8B53A !important;
+  color: var(--text-primary) !important;
+}
+
+/* Debugging - let's see what classes are actually applied */
+.Toastify__toast::before {
+  content: attr(class);
+  position: absolute;
+  top: -25px;
+  left: 0;
+  font-size: 10px;
+  color: red;
+  background: white;
+  padding: 2px;
+  border: 1px solid red;
+  z-index: 9999;
+}
+
+/* Icon styling - target react-hot-toast's actual icon structure */
+.design-toast > div:first-child {
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 700 !important;
+  font-size: 1.2rem !important;
+  line-height: 1 !important;
+}
+
+/* Target by toast type using react-hot-toast's internal classes - override inline styles */
+.Toastify__toast--success > div:first-child,
+.Toastify__toast--success > div:first-child > * {
+  color: #4a7c48 !important;
+  fill: #4a7c48 !important;
+}
+
+.Toastify__toast--error > div:first-child,
+.Toastify__toast--error > div:first-child > * {
+  color: #dc2626 !important;
+  fill: #dc2626 !important;
+}
+
+.Toastify__toast--warning > div:first-child,
+.Toastify__toast--warning > div:first-child > * {
+  color: #d97706 !important;
+  fill: #d97706 !important;
+}
+
+.Toastify__toast--info > div:first-child,
+.Toastify__toast--info > div:first-child > *,
+.Toastify__toast--loading > div:first-child,
+.Toastify__toast--loading > div:first-child > * {
+  color: #1e40af !important;
+  fill: #1e40af !important;
+}
+
+/* Also target any child elements (SVG, etc.) with maximum specificity */
+.Toastify__toast--success > div:first-child svg,
+.Toastify__toast--success > div:first-child svg path {
+  color: #4a7c48 !important;
+  fill: #4a7c48 !important;
+}
+
+.Toastify__toast--error > div:first-child svg,
+.Toastify__toast--error > div:first-child svg path {
+  color: #dc2626 !important;
+  fill: #dc2626 !important;
+}
+
+.Toastify__toast--warning > div:first-child svg,
+.Toastify__toast--warning > div:first-child svg path {
+  color: #d97706 !important;
+  fill: #d97706 !important;
+}
+
+.Toastify__toast--info > div:first-child svg,
+.Toastify__toast--info > div:first-child svg path,
+.Toastify__toast--loading > div:first-child svg,
+.Toastify__toast--loading > div:first-child svg path {
+  color: #1e40af !important;
+  fill: #1e40af !important;
+}
+
+/* Warning icon styling */
+[data-theme="light"] .design-toast[data-type="warning"] > div:first-child {
+  color: #d97706 !important;
+}
+
+[data-theme="dark"] .design-toast[data-type="warning"] > div:first-child {
+  color: #E8B53A !important;
+}
+
 /* ========== Style guide page (/style-guide) ========== */
 .design-container {
   max-width: 1200px;
@@ -519,31 +718,52 @@
 /* Banners */
 .design-banner {
   padding: 1rem 1.5rem;
-  border-radius: 8px;
+  border-radius: 12px;
   margin: 1rem 0;
   display: flex;
   align-items: center;
   gap: 1rem;
+  font-weight: 500;
 }
 
 .design-banner-success {
   background: var(--success-tint);
-  color: var(--success-text);
+  border: 1px solid #a8d5a6;
+  color: var(--text-primary);
+}
+
+.design-banner-success .font-bold {
+  color: #4a7c48;
 }
 
 .design-banner-alert {
   background: var(--alert-tint);
-  color: var(--alert-text);
+  border: 1px solid #ef8b8f;
+  color: var(--text-primary);
+}
+
+.design-banner-alert .font-bold {
+  color: #dc2626;
 }
 
 .design-banner-warning {
   background: var(--warn-tint);
-  color: var(--warn-text);
+  border: 1px solid #fbbf7f;
+  color: var(--text-primary);
+}
+
+.design-banner-warning .font-bold {
+  color: #d97706;
 }
 
 .design-banner-info {
   background: var(--info-tint);
-  color: var(--info-text);
+  border: 1px solid #93bed9;
+  color: var(--text-primary);
+}
+
+.design-banner-info .font-bold {
+  color: #1e40af;
 }
 
 /* Accent cards */

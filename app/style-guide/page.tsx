@@ -1,5 +1,12 @@
-import type { Metadata } from 'next'
+'use client'
+
 import Link from 'next/link'
+import Button from '@/components/Button'
+import LinkButton from '@/components/LinkButton'
+import StyledLink from '@/components/StyledLink'
+import StatusIcon from '@/components/StatusIcon'
+import BannerMessage from '@/components/BannerMessage'
+import notify from '@/lib/toast'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,11 +14,6 @@ const LOGO_LOGOTYPE =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png'
 const LOGO_MARK =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logo.png'
-
-export const metadata: Metadata = {
-  title: 'wev Style Guide',
-  description: 'wev style guide and design standards',
-}
 
 export default function StyleGuidePage() {
   return (
@@ -155,13 +157,153 @@ export default function StyleGuidePage() {
         </div>
       </section>
 
+      {/* Three Component System */}
+      <section id="three-component-system" className="design-section">
+        <div className="design-container">
+          <h2>Three Component System</h2>
+          <p className="design-section-intro">
+            We use three distinct components for different purposes: Button for actions, LinkButton for navigation that looks like buttons,
+            and StyledLink for navigation with flexible styling. All navigation components include prefetch on hover.
+          </p>
+
+          <div className="design-button-grid">
+            <div className="design-button-example">
+              <div className="design-button-label">Button Component</div>
+              <p className="design-button-description">
+                Pure actions that don't navigate. Form submission, modals, API calls, state changes.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button">
+                  Save Changes
+                </Button>
+                <Button variant="secondary">
+                  Copy to Clipboard
+                </Button>
+                <Button variant="outline">
+                  Cancel
+                </Button>
+              </div>
+              <div className="design-usage-examples">
+                <p className="text-sm text-wev-text-secondary mt-4">
+                  <strong>Variants:</strong> primary, secondary, outline
+                </p>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">LinkButton Component</div>
+              <p className="design-button-description">
+                Navigation that looks exactly like a button. Same visual variants as Button.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <LinkButton href="/profile">
+                  View Profile
+                </LinkButton>
+                <LinkButton href="/" variant="secondary">
+                  Back to Jobs
+                </LinkButton>
+                <LinkButton href="/help" variant="outline">
+                  Learn More
+                </LinkButton>
+              </div>
+              <div className="design-usage-examples">
+                <p className="text-sm text-wev-text-secondary mt-4">
+                  <strong>Variants:</strong> primary, secondary, outline (same as Button)
+                </p>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">StyledLink Component</div>
+              <p className="design-button-description">
+                Navigation with flexible styling - can look like button or text.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <StyledLink href="/profile" variant="primary">
+                  View Profile
+                </StyledLink>
+                <StyledLink href="/" variant="secondary">
+                  Back to Jobs
+                </StyledLink>
+                <StyledLink href="/help" variant="outline">
+                  Learn More
+                </StyledLink>
+                <StyledLink href="/docs" variant="text">
+                  Documentation
+                </StyledLink>
+              </div>
+              <div className="design-usage-examples">
+                <p className="text-sm text-wev-text-secondary mt-4">
+                  <strong>Variants:</strong> primary, secondary, outline, text
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <h3>Button Layout Guidelines</h3>
+          <div className="design-layout-grid">
+            <div className="design-layout-example">
+              <div className="design-layout-label">Two-Button Layouts</div>
+              <p className="design-layout-description">
+                Secondary actions (cancel, back) on left, primary actions (save, submit) on right.
+              </p>
+              <div className="design-layout-preview">
+                <div className="flex justify-between gap-3">
+                  <LinkButton href="/" variant="outline">
+                    Back to Jobs
+                  </LinkButton>
+                  <Button type="submit">
+                    Save Profile
+                  </Button>
+                </div>
+              </div>
+              <div className="design-layout-code">
+                <code className="text-xs bg-wev-surface p-2 rounded block">
+                  &lt;div className="flex justify-between gap-3"&gt;<br/>
+                  &nbsp;&nbsp;&lt;LinkButton href="/" variant="outline"&gt;<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;Back to Jobs<br/>
+                  &nbsp;&nbsp;&lt;/LinkButton&gt;<br/>
+                  &nbsp;&nbsp;&lt;Button type="submit"&gt;<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;Save Profile<br/>
+                  &nbsp;&nbsp;&lt;/Button&gt;<br/>
+                  &lt;/div&gt;
+                </code>
+              </div>
+            </div>
+
+            <div className="design-layout-example">
+              <div className="design-layout-label">Single Button Layouts</div>
+              <p className="design-layout-description">
+                Single primary actions should be right-aligned for consistency.
+              </p>
+              <div className="design-layout-preview">
+                <div className="flex justify-end gap-3">
+                  <Button type="submit">
+                    Submit Application
+                  </Button>
+                </div>
+              </div>
+              <div className="design-layout-code">
+                <code className="text-xs bg-wev-surface p-2 rounded block">
+                  &lt;div className="flex justify-end gap-3"&gt;<br/>
+                  &nbsp;&nbsp;&lt;Button type="submit"&gt;<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;Submit Application<br/>
+                  &nbsp;&nbsp;&lt;/Button&gt;<br/>
+                  &lt;/div&gt;
+                </code>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Buttons */}
       <section id="buttons" className="design-section">
         <div className="design-container">
           <h2>Button Hierarchy</h2>
           <p className="design-section-intro">
             Our button system creates clear visual hierarchy. Use primary buttons for main actions,
-            secondary for supporting actions, and tertiary for low-emphasis interactions.
+            secondary for supporting actions, and outline for low-emphasis interactions.
           </p>
 
           <div className="design-button-grid">
@@ -170,34 +312,127 @@ export default function StyleGuidePage() {
               <p className="design-button-description">
                 Main action, one per view. Uses Muted Teal.
               </p>
-              <button type="button" className="design-btn design-btn-primary">
-                Sign Up
-              </button>
-              <button type="button" className="design-btn design-btn-primary" disabled>
-                Disabled
-              </button>
+              <div className="space-y-2">
+                <Button type="button">
+                  Save Changes
+                </Button>
+                <Button type="button" disabled>
+                  Disabled
+                </Button>
+              </div>
             </div>
 
             <div className="design-button-example">
               <div className="design-button-label">Secondary Button</div>
-              <p className="design-button-description">Supporting action with outline style.</p>
-              <button type="button" className="design-btn design-btn-secondary">
-                Learn More
-              </button>
-              <button type="button" className="design-btn design-btn-secondary" disabled>
-                Disabled
-              </button>
+              <p className="design-button-description">Supporting action with teal outline and fill on hover.</p>
+              <div className="space-y-2">
+                <Button variant="secondary">
+                  Copy to Clipboard
+                </Button>
+                <Button variant="secondary" disabled>
+                  Disabled
+                </Button>
+              </div>
             </div>
 
             <div className="design-button-example">
-              <div className="design-button-label">Tertiary Button</div>
-              <p className="design-button-description">Low-emphasis, ghost style.</p>
-              <button type="button" className="design-btn design-btn-tertiary">
-                Cancel
-              </button>
-              <button type="button" className="design-btn design-btn-tertiary" disabled>
-                Disabled
-              </button>
+              <div className="design-button-label">Outline Button</div>
+              <p className="design-button-description">Low-emphasis, border-only style.</p>
+              <div className="space-y-2">
+                <Button variant="outline">
+                  Cancel
+                </Button>
+                <Button variant="outline" disabled>
+                  Disabled
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <h3>Navigation Components</h3>
+          <p className="design-section-intro">
+            Navigation components use the same visual styles as buttons but include prefetch for performance.
+          </p>
+
+          <div className="design-button-grid">
+            <div className="design-button-example">
+              <div className="design-button-label">LinkButton (Primary)</div>
+              <p className="design-button-description">
+                Navigation that looks like a primary button.
+              </p>
+              <div className="space-y-2">
+                <LinkButton href="/profile">
+                  View Profile
+                </LinkButton>
+                <LinkButton href="/profile" className="opacity-50">
+                  Disabled State
+                </LinkButton>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">LinkButton (Secondary)</div>
+              <p className="design-button-description">Navigation with teal outline and fill on hover.</p>
+              <div className="space-y-2">
+                <LinkButton href="/" variant="secondary">
+                  Back to Jobs
+                </LinkButton>
+                <LinkButton href="/" variant="secondary" className="opacity-50">
+                  Disabled State
+                </LinkButton>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">LinkButton (Outline)</div>
+              <p className="design-button-description">Navigation with outline styling.</p>
+              <div className="space-y-2">
+                <LinkButton href="/help" variant="outline">
+                  Learn More
+                </LinkButton>
+                <LinkButton href="/help" variant="outline" className="opacity-50">
+                  Disabled State
+                </LinkButton>
+              </div>
+            </div>
+          </div>
+
+          <h3>Text Links</h3>
+          <p className="design-section-intro">
+            Text links use theme colors with standard web conventions.
+          </p>
+
+          <div className="design-button-grid">
+            <div className="design-button-example">
+              <div className="design-button-label">StyledLink (Text)</div>
+              <p className="design-button-description">
+                Text-style navigation with theme colors.
+              </p>
+              <div className="space-y-2">
+                <StyledLink href="/docs" variant="text">
+                  Documentation
+                </StyledLink>
+                <br />
+                <StyledLink href="/help" variant="text">
+                  Help Center
+                </StyledLink>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">Standard Link</div>
+              <p className="design-button-description">
+                Basic text links with theme colors.
+              </p>
+              <div className="space-y-2">
+                <Link href="/profile" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
+                  View Profile
+                </Link>
+                <br />
+                <Link href="/help" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
+                  Help Documentation
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -214,37 +449,116 @@ export default function StyleGuidePage() {
 
           <h3>Toast Messages</h3>
           <div className="design-toast-grid">
-            <div className="design-toast design-toast-success">
-              <div className="design-toast-icon">✓</div>
-              <div>Your changes have been saved successfully</div>
+            <BannerMessage 
+              type="success" 
+              message="Your changes have been saved successfully" 
+            />
+            <BannerMessage 
+              type="error" 
+              message="There was an error processing your request" 
+            />
+            <BannerMessage 
+              type="warning" 
+              message="Your session will expire in 5 minutes" 
+            />
+            <BannerMessage 
+              type="info" 
+              message="New features are now available in your dashboard" 
+            />
+          </div>
+
+          <h4>Try It Out</h4>
+          <p className="design-section-intro">
+            Click the links below to see each toast type in action with the live styling.
+          </p>
+          
+          <div className="design-button-grid">
+            <div className="design-button-example">
+              <div className="design-button-label">Success Toast</div>
+              <p className="design-button-description">
+                Shows a success notification with green styling.
+              </p>
+              <Link 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault()
+                  notify.success('Your profile has been updated successfully!')
+                }}
+                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+              >
+                Trigger Success Toast
+              </Link>
             </div>
-            <div className="design-toast design-toast-alert">
-              <div className="design-toast-icon">✕</div>
-              <div>There was an error processing your request</div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">Error Toast</div>
+              <p className="design-button-description">
+                Shows an error notification with red styling.
+              </p>
+              <Link 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault()
+                  notify.error('Failed to save changes. Please try again.')
+                }}
+                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+              >
+                Trigger Error Toast
+              </Link>
             </div>
-            <div className="design-toast design-toast-warning">
-              <div className="design-toast-icon">⚠</div>
-              <div>Your session will expire in 5 minutes</div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">Warning Toast</div>
+              <p className="design-button-description">
+                Shows a warning notification with orange styling.
+              </p>
+              <Link 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault()
+                  notify.warning('Your session will expire in 5 minutes.')
+                }}
+                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+              >
+                Trigger Warning Toast
+              </Link>
             </div>
-            <div className="design-toast design-toast-info">
-              <div className="design-toast-icon">ℹ</div>
-              <div>New features are now available in your dashboard</div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">Info Toast</div>
+              <p className="design-button-description">
+                Shows an info notification with blue styling.
+              </p>
+              <Link 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault()
+                  notify.info('Processing your request...')
+                }}
+                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+              >
+                Trigger Info Toast
+              </Link>
             </div>
           </div>
 
           <h3>Banner Messages</h3>
-          <div className="design-banner design-banner-success">
-            <strong>✓</strong> Success: Your profile has been updated
-          </div>
-          <div className="design-banner design-banner-alert">
-            <strong>✕</strong> Alert: Unable to connect to server
-          </div>
-          <div className="design-banner design-banner-warning">
-            <strong>■</strong> Warning: Unsaved changes will be lost
-          </div>
-          <div className="design-banner design-banner-info">
-            <strong>■</strong> Info: Maintenance scheduled for tonight
-          </div>
+          <BannerMessage 
+            type="success" 
+            message="Success: Your profile has been updated" 
+          />
+          <BannerMessage 
+            type="error" 
+            message="Alert: Unable to connect to server" 
+          />
+          <BannerMessage 
+            type="warning" 
+            message="Warning: Unsaved changes will be lost" 
+          />
+          <BannerMessage 
+            type="info" 
+            message="Info: Maintenance scheduled for tonight" 
+          />
         </div>
       </section>
 

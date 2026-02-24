@@ -2,6 +2,125 @@
 
 A Next.js application for displaying job postings from a Supabase database with the ability to trigger GitHub Actions workflows for re-scraping data.
 
+### Component Guidelines
+
+#### Three Different Components
+
+This application uses three distinct components for different purposes:
+
+**Button Component**
+- **Purpose:** Pure actions that don't navigate
+- **Use for:** Form submission, modal triggers, API calls, state toggles, clipboard operations
+- **Behavior:** Triggers onClick handlers, no navigation
+- **Appearance:** Button styling with variants (primary, secondary, outline)
+
+**LinkButton Component** 
+- **Purpose:** Navigation that looks like a button
+- **Use for:** Page navigation where button appearance is desired
+- **Behavior:** Navigates to new page, includes prefetch on hover
+- **Appearance:** Identical to Button component styling
+
+**Link Component**
+- **Purpose:** Navigation that looks like text
+- **Use for:** Text links within content, secondary navigation
+- **Behavior:** Navigates to new page, includes prefetch on hover
+- **Appearance:** Text styling with underline on hover
+
+#### Button Component
+Use `<Button>` for actions that modify state or trigger events:
+- Form submission (Save, Update, Delete)
+- Modal/dropdown triggers
+- API calls and workflows
+- UI state toggles (theme, filters)
+- Clipboard operations
+
+```tsx
+import Button from '@/components/Button'
+
+// ✅ Correct: Form action
+<Button type="submit">Save Profile</Button>
+
+// ✅ Correct: API action  
+<Button onClick={handleCopy}>Copy to Clipboard</Button>
+
+// ✅ Correct: Modal trigger
+<Button onClick={() => setIsOpen(true)}>Open Modal</Button>
+```
+
+#### LinkButton Component
+Use `<LinkButton>` for navigation between pages when button appearance is desired:
+- Page navigation (Profile, Settings, Login)
+- Primary navigation actions
+- Any navigation that needs button styling
+- Includes automatic prefetch on hover for performance
+
+```tsx
+import LinkButton from '@/components/LinkButton'
+
+// ✅ Correct: Page navigation with button appearance
+<LinkButton href="/profile">View Profile</LinkButton>
+
+// ✅ Correct: Navigation with prefetch
+<LinkButton href="/account-settings">Account Settings</LinkButton>
+
+// ✅ Correct: Disable prefetch if needed
+<LinkButton href="/external" prefetch={false}>External Site</LinkButton>
+```
+
+#### Link Component
+Use `<Link>` for text-style navigation:
+- Links within content paragraphs
+- Secondary navigation
+- Cross-references in help text
+- Includes prefetch on hover for performance
+- **Colors**: Muted Teal (unvisited) → Dusty Lavender (visited)
+
+```tsx
+import Link from 'next/link'
+
+// ✅ Correct: Text link in content
+<Link href="/account-settings" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
+  Go to Account Settings
+</Link>
+
+// ✅ Correct: Inline text link
+<p>Visit our <Link href="/help" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>help page</Link> for more info.</p>
+```
+
+### Button Layout Best Practices
+
+Follow our **left-secondary, right-primary** pattern for consistent UX:
+
+#### Two-Button Layouts
+```tsx
+// ✅ Correct: Secondary on left, Primary on right
+<div className="flex justify-between gap-3">
+  <LinkButton href="/" variant="outline">Back to Jobs</LinkButton>
+  <Button type="submit">Save Profile</Button>
+</div>
+```
+
+#### Single Action Forms
+```tsx
+// ✅ Correct: Center single primary action
+<div className="text-center">
+  <Button type="submit">Submit</Button>
+</div>
+```
+
+#### Layout Rules
+- **Left side**: Secondary actions (cancel, back, navigate away)
+- **Right side**: Primary actions (save, submit, confirm)
+- **Spacing**: Use `gap-3` or `gap-4` for consistent spacing
+- **Variants**: Outline/secondary for left, primary for right
+- **Single actions**: Center align primary buttons
+
+### Performance Features
+
+- **Prefetch on Hover**: All LinkButton components prefetch pages on hover for instant navigation
+- **Client-side Routing**: Uses Next.js router for SPA-like navigation
+- **Semantic HTML**: Proper button/link elements for accessibility
+
 ## Setup
 
 1. Install dependencies:
