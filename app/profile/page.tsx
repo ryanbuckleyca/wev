@@ -101,14 +101,14 @@ export default function ProfilePage() {
   return (
     <PageLayout maxWidth="md">
       <CardLayout>
-        <Heading level={1} className="mb-8">My Profile</Heading>
+        <Heading level={1} className="mb-6">My Profile</Heading>
 
         {profileError && (
           <ErrorBox>{profileError}</ErrorBox>
         )}
 
         <FormContainer onSubmit={handleSaveProfile}>
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Profile Photo Section */}
             <div>
               <FormLabel>Profile Photo</FormLabel>
@@ -185,7 +185,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-8 pt-8 border-t border-[var(--border)]">
+          <div className="pt-6 border-t border-[var(--border)]">
             <div className="flex justify-between gap-3">
               <LinkButton href="/" variant="outline">
                 Back to Jobs
@@ -202,11 +202,11 @@ export default function ProfilePage() {
         </FormContainer>
 
         {/* Account Settings Info */}
-        <div className="bg-[var(--bg)] p-4 rounded-lg mt-4">
+        <div className="bg-[var(--bg)] p-4 rounded-lg mt-6">
           <p className="text-sm text-[var(--text-secondary)] mb-3">
             To update your email address or change your password, visit Account Settings.
           </p>
-          <Link href="/account-settings" className="text-wev-accent hover:text-wev-primary-text hover:underline">
+          <Link href="/account-settings" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
             Go to Account Settings
           </Link>
         </div>

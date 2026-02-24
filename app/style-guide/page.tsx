@@ -1,5 +1,12 @@
-import type { Metadata } from 'next'
+'use client'
+
 import Link from 'next/link'
+import Button from '@/components/Button'
+import LinkButton from '@/components/LinkButton'
+import StyledLink from '@/components/StyledLink'
+import StatusIcon from '@/components/StatusIcon'
+import BannerMessage from '@/components/BannerMessage'
+import notify from '@/lib/toast'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,11 +14,6 @@ const LOGO_LOGOTYPE =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png'
 const LOGO_MARK =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logo.png'
-
-export const metadata: Metadata = {
-  title: 'wev Style Guide',
-  description: 'wev style guide and design standards',
-}
 
 export default function StyleGuidePage() {
   return (
@@ -155,30 +157,104 @@ export default function StyleGuidePage() {
         </div>
       </section>
 
-      {/* Button Layout Guidelines */}
-      <section id="button-layout" className="design-section">
+      {/* Three Component System */}
+      <section id="three-component-system" className="design-section">
         <div className="design-container">
-          <h2>Button Layout Guidelines</h2>
+          <h2>Three Component System</h2>
           <p className="design-section-intro">
-            Consistent button placement creates predictable user experience. Follow our left-secondary, right-primary pattern
-            for optimal UX across all forms and actions.
+            We use three distinct components for different purposes: Button for actions, LinkButton for navigation that looks like buttons,
+            and StyledLink for navigation with flexible styling. All navigation components include prefetch on hover.
           </p>
 
-          <h3>Layout Pattern: Left-Secondary, Right-Primary</h3>
+          <div className="design-button-grid">
+            <div className="design-button-example">
+              <div className="design-button-label">Button Component</div>
+              <p className="design-button-description">
+                Pure actions that don't navigate. Form submission, modals, API calls, state changes.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button">
+                  Save Changes
+                </Button>
+                <Button variant="secondary">
+                  Copy to Clipboard
+                </Button>
+                <Button variant="outline">
+                  Cancel
+                </Button>
+              </div>
+              <div className="design-usage-examples">
+                <p className="text-sm text-wev-text-secondary mt-4">
+                  <strong>Variants:</strong> primary, secondary, outline
+                </p>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">LinkButton Component</div>
+              <p className="design-button-description">
+                Navigation that looks exactly like a button. Same visual variants as Button.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <LinkButton href="/profile">
+                  View Profile
+                </LinkButton>
+                <LinkButton href="/" variant="secondary">
+                  Back to Jobs
+                </LinkButton>
+                <LinkButton href="/help" variant="outline">
+                  Learn More
+                </LinkButton>
+              </div>
+              <div className="design-usage-examples">
+                <p className="text-sm text-wev-text-secondary mt-4">
+                  <strong>Variants:</strong> primary, secondary, outline (same as Button)
+                </p>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">StyledLink Component</div>
+              <p className="design-button-description">
+                Navigation with flexible styling - can look like button or text.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <StyledLink href="/profile" variant="primary">
+                  View Profile
+                </StyledLink>
+                <StyledLink href="/" variant="secondary">
+                  Back to Jobs
+                </StyledLink>
+                <StyledLink href="/help" variant="outline">
+                  Learn More
+                </StyledLink>
+                <StyledLink href="/docs" variant="text">
+                  Documentation
+                </StyledLink>
+              </div>
+              <div className="design-usage-examples">
+                <p className="text-sm text-wev-text-secondary mt-4">
+                  <strong>Variants:</strong> primary, secondary, outline, text
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <h3>Button Layout Guidelines</h3>
           <div className="design-layout-grid">
             <div className="design-layout-example">
-              <div className="design-layout-label">Form Actions</div>
+              <div className="design-layout-label">Two-Button Layouts</div>
               <p className="design-layout-description">
                 Secondary actions (cancel, back) on left, primary actions (save, submit) on right.
               </p>
               <div className="design-layout-preview">
                 <div className="flex justify-between gap-3">
-                  <button className="px-4 py-2 border border-wev-border rounded-wev-btn text-sm text-wev-text-secondary hover:bg-wev-bg transition-colors">
+                  <LinkButton href="/" variant="outline">
                     Back to Jobs
-                  </button>
-                  <button className="px-4 py-2 bg-wev-primary text-white rounded-wev-btn text-sm hover:opacity-90 transition-colors">
+                  </LinkButton>
+                  <Button type="submit">
                     Save Profile
-                  </button>
+                  </Button>
                 </div>
               </div>
               <div className="design-layout-code">
@@ -196,225 +272,26 @@ export default function StyleGuidePage() {
             </div>
 
             <div className="design-layout-example">
-              <div className="design-layout-label">Why This Pattern Works</div>
+              <div className="design-layout-label">Single Button Layouts</div>
               <p className="design-layout-description">
-                Follows natural reading flow and user expectations for action hierarchy.
+                Single primary actions should be right-aligned for consistency.
               </p>
-              <div className="design-layout-reasons">
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    <span className="text-wev-primary">👁️</span>
-                    <div>
-                      <strong>Visual Flow:</strong> Left-to-right reading pattern naturally encounters secondary then primary actions
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-wev-primary">🎯</span>
-                    <div>
-                      <strong>Action Hierarchy:</strong> Primary actions stand out on the right where attention naturally flows
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-wev-primary">📱</span>
-                    <div>
-                      <strong>Mobile Thumb Zone:</strong> Primary actions in easy reach for right-handed users
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-wev-primary">⚡</span>
-                    <div>
-                      <strong>Reduced Errors:</strong> Clear separation prevents accidental primary action clicks
-                    </div>
-                  </div>
+              <div className="design-layout-preview">
+                <div className="flex justify-end gap-3">
+                  <Button type="submit">
+                    Submit Application
+                  </Button>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <h3>Implementation Examples</h3>
-          <div className="design-implementation-grid">
-            <div className="design-implementation-card">
-              <h4>✅ Correct: Profile Page</h4>
-              <div className="text-sm text-wev-text-secondary space-y-2">
-                <p><strong>Left:</strong> "Back to Jobs" (outline LinkButton)</p>
-                <p><strong>Right:</strong> "Save Profile" (primary Button)</p>
-                <p><strong>Layout:</strong> justify-between gap-3</p>
+              <div className="design-layout-code">
+                <code className="text-xs bg-wev-surface p-2 rounded block">
+                  &lt;div className="flex justify-end gap-3"&gt;<br/>
+                  &nbsp;&nbsp;&lt;Button type="submit"&gt;<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;Submit Application<br/>
+                  &nbsp;&nbsp;&lt;/Button&gt;<br/>
+                  &lt;/div&gt;
+                </code>
               </div>
-            </div>
-
-            <div className="design-implementation-card">
-              <h4>✅ Correct: Account Settings</h4>
-              <div className="text-sm text-wev-text-secondary space-y-2">
-                <p><strong>Left:</strong> "Back to Profile" (outline LinkButton)</p>
-                <p><strong>Right:</strong> "Save Changes" (primary Button)</p>
-                <p><strong>Layout:</strong> justify-between gap-3</p>
-              </div>
-            </div>
-
-            <div className="design-implementation-card">
-              <h4>✅ Correct: Single Action Forms</h4>
-              <div className="text-sm text-wev-text-secondary space-y-2">
-                <p><strong>Center:</strong> Single primary action (Button)</p>
-                <p><strong>When:</strong> Only one action exists</p>
-                <p><strong>Layout:</strong> text-center or flex justify-center</p>
-              </div>
-            </div>
-          </div>
-
-          <h3>Best Practices</h3>
-          <div className="design-best-practices">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="design-practice-card">
-                <h4>✅ Do</h4>
-                <ul className="text-sm text-wev-text-secondary ml-6 list-disc space-y-1">
-                  <li>Use justify-between for two-button layouts</li>
-                  <li>Place secondary actions on left, primary on right</li>
-                  <li>Maintain consistent gap (gap-3 or gap-4)</li>
-                  <li>Use outline/secondary variants for left buttons</li>
-                  <li>Use primary variants for right buttons</li>
-                  <li>Center single primary actions</li>
-                </ul>
-              </div>
-
-              <div className="design-practice-card">
-                <h4>❌ Don't</h4>
-                <ul className="text-sm text-wev-text-secondary ml-6 list-disc space-y-1">
-                  <li>Place primary action on left (breaks pattern)</li>
-                  <li>Use flex-start or flex-end for two actions</li>
-                  <li>Inconsistent button ordering across pages</li>
-                  <li>Multiple primary actions competing for attention</li>
-                  <li>Crowded button layouts without proper spacing</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Buttons vs Links */}
-      <section id="buttons-vs-links" className="design-section">
-        <div className="design-container">
-          <h2>Buttons vs Links</h2>
-          <p className="design-section-intro">
-            Clear semantic separation between actions and navigation ensures predictable user experience
-            and proper accessibility. Use buttons for actions, links for navigation.
-          </p>
-
-          <div className="design-button-grid">
-            <div className="design-button-example">
-              <div className="design-button-label">Button Component</div>
-              <p className="design-button-description">
-                Use for actions that modify state or trigger events. Submit forms, toggle UI, trigger workflows.
-              </p>
-              <div className="space-y-2">
-                <button type="button" className="design-btn design-btn-primary">
-                  Save Changes
-                </button>
-                <button type="button" className="design-btn design-btn-secondary">
-                  Copy to Clipboard
-                </button>
-                <button type="button" className="design-btn design-btn-tertiary">
-                  Cancel
-                </button>
-              </div>
-              <div className="design-usage-examples">
-                <p className="text-sm text-wev-text-secondary mt-4">
-                  <strong>Use for:</strong> Form submission, modal triggers, state changes, API calls
-                </p>
-              </div>
-            </div>
-
-            <div className="design-button-example">
-              <div className="design-button-label">LinkButton Component</div>
-              <p className="design-button-description">
-                Use for navigation between pages. Includes prefetch on hover for faster navigation.
-              </p>
-              <div className="space-y-2">
-                <a href="#" className="design-btn design-btn-primary">
-                  View Profile
-                </a>
-                <a href="#" className="design-btn design-btn-secondary">
-                  Back to Jobs
-                </a>
-                <a href="#" className="design-btn design-btn-tertiary">
-                  Learn More
-                </a>
-              </div>
-              <div className="design-usage-examples">
-                <p className="text-sm text-wev-text-secondary mt-4">
-                  <strong>Use for:</strong> Page navigation, external links, routing
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <h3>Decision Guidelines</h3>
-          <div className="design-guidelines-grid">
-            <div className="design-guideline-card">
-              <h4>✅ Use Button When:</h4>
-              <ul className="text-sm text-wev-text-secondary ml-6 list-disc space-y-1">
-                <li>Submitting a form or saving data</li>
-                <li>Opening/closing modals or dropdowns</li>
-                <li>Triggering API calls or workflows</li>
-                <li>Toggling UI state (theme, filters)</li>
-                <li>Copying data to clipboard</li>
-                <li>Any action that changes application state</li>
-              </ul>
-            </div>
-
-            <div className="design-guideline-card">
-              <h4>✅ Use LinkButton When:</h4>
-              <ul className="text-sm text-wev-text-secondary ml-6 list-disc space-y-1">
-                <li>Navigating to another page</li>
-                <li>Going to login/signup/profile pages</li>
-                <li>External links to other websites</li>
-                <li>Anchor links within the same page</li>
-                <li>Any navigation that changes the URL</li>
-                <li>Links that should be prefetched on hover</li>
-                <li><strong>Visual Consistency:</strong> Login/signup use LinkButton for consistent appearance</li>
-              </ul>
-            </div>
-          </div>
-
-          <h3>Design Priority: Visual Consistency</h3>
-          <div className="design-exception-card">
-            <h4>🎨 Login/Signup Visual Consistency</h4>
-            <p className="text-sm text-wev-text-secondary mb-3">
-              Login/signup buttons use LinkButton to maintain visual consistency across all navigation elements:
-            </p>
-            <ul className="text-sm text-wev-text-secondary ml-6 list-disc space-y-1">
-              <li><strong>Visual Harmony:</strong> Consistent button styling across header navigation</li>
-              <li><strong>User Expectation:</strong> Users expect uniform appearance for navigation elements</li>
-              <li><strong>Design System:</strong> All page navigation uses LinkButton component</li>
-              <li><strong>Performance:</strong> Maintains prefetch benefits for faster navigation</li>
-            </ul>
-            <div className="design-code-example">
-              <p className="text-xs font-mono bg-wev-surface p-2 rounded mt-3">
-                <strong>✅ Correct:</strong> LinkButton href="/login" (visual consistency)<br/>
-                <strong>✅ Result:</strong> Consistent styling + prefetch performance
-              </p>
-            </div>
-          </div>
-
-          <h3>Accessibility Benefits</h3>
-          <div className="design-accessibility-grid">
-            <div className="design-accessibility-item">
-              <h4>Screen Readers</h4>
-              <p className="text-sm text-wev-text-secondary">
-                "Button" clearly indicates an action, "Link" indicates navigation. Users know what to expect.
-              </p>
-            </div>
-            <div className="design-accessibility-item">
-              <h4>Keyboard Navigation</h4>
-              <p className="text-sm text-wev-text-secondary">
-                Buttons activate with Space/Enter, Links with Enter only. Consistent behavior prevents confusion.
-              </p>
-            </div>
-            <div className="design-accessibility-item">
-              <h4>Performance</h4>
-              <p className="text-sm text-wev-text-secondary">
-                LinkButton includes prefetch on hover, anticipating navigation for faster page loads.
-              </p>
             </div>
           </div>
         </div>
@@ -426,7 +303,7 @@ export default function StyleGuidePage() {
           <h2>Button Hierarchy</h2>
           <p className="design-section-intro">
             Our button system creates clear visual hierarchy. Use primary buttons for main actions,
-            secondary for supporting actions, and tertiary for low-emphasis interactions.
+            secondary for supporting actions, and outline for low-emphasis interactions.
           </p>
 
           <div className="design-button-grid">
@@ -435,34 +312,127 @@ export default function StyleGuidePage() {
               <p className="design-button-description">
                 Main action, one per view. Uses Muted Teal.
               </p>
-              <button type="button" className="design-btn design-btn-primary">
-                Sign Up
-              </button>
-              <button type="button" className="design-btn design-btn-primary" disabled>
-                Disabled
-              </button>
+              <div className="space-y-2">
+                <Button type="button">
+                  Save Changes
+                </Button>
+                <Button type="button" disabled>
+                  Disabled
+                </Button>
+              </div>
             </div>
 
             <div className="design-button-example">
               <div className="design-button-label">Secondary Button</div>
-              <p className="design-button-description">Supporting action with outline style.</p>
-              <button type="button" className="design-btn design-btn-secondary">
-                Learn More
-              </button>
-              <button type="button" className="design-btn design-btn-secondary" disabled>
-                Disabled
-              </button>
+              <p className="design-button-description">Supporting action with teal outline and fill on hover.</p>
+              <div className="space-y-2">
+                <Button variant="secondary">
+                  Copy to Clipboard
+                </Button>
+                <Button variant="secondary" disabled>
+                  Disabled
+                </Button>
+              </div>
             </div>
 
             <div className="design-button-example">
-              <div className="design-button-label">Tertiary Button</div>
-              <p className="design-button-description">Low-emphasis, ghost style.</p>
-              <button type="button" className="design-btn design-btn-tertiary">
-                Cancel
-              </button>
-              <button type="button" className="design-btn design-btn-tertiary" disabled>
-                Disabled
-              </button>
+              <div className="design-button-label">Outline Button</div>
+              <p className="design-button-description">Low-emphasis, border-only style.</p>
+              <div className="space-y-2">
+                <Button variant="outline">
+                  Cancel
+                </Button>
+                <Button variant="outline" disabled>
+                  Disabled
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <h3>Navigation Components</h3>
+          <p className="design-section-intro">
+            Navigation components use the same visual styles as buttons but include prefetch for performance.
+          </p>
+
+          <div className="design-button-grid">
+            <div className="design-button-example">
+              <div className="design-button-label">LinkButton (Primary)</div>
+              <p className="design-button-description">
+                Navigation that looks like a primary button.
+              </p>
+              <div className="space-y-2">
+                <LinkButton href="/profile">
+                  View Profile
+                </LinkButton>
+                <LinkButton href="/profile" className="opacity-50">
+                  Disabled State
+                </LinkButton>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">LinkButton (Secondary)</div>
+              <p className="design-button-description">Navigation with teal outline and fill on hover.</p>
+              <div className="space-y-2">
+                <LinkButton href="/" variant="secondary">
+                  Back to Jobs
+                </LinkButton>
+                <LinkButton href="/" variant="secondary" className="opacity-50">
+                  Disabled State
+                </LinkButton>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">LinkButton (Outline)</div>
+              <p className="design-button-description">Navigation with outline styling.</p>
+              <div className="space-y-2">
+                <LinkButton href="/help" variant="outline">
+                  Learn More
+                </LinkButton>
+                <LinkButton href="/help" variant="outline" className="opacity-50">
+                  Disabled State
+                </LinkButton>
+              </div>
+            </div>
+          </div>
+
+          <h3>Text Links</h3>
+          <p className="design-section-intro">
+            Text links use theme colors with standard web conventions.
+          </p>
+
+          <div className="design-button-grid">
+            <div className="design-button-example">
+              <div className="design-button-label">StyledLink (Text)</div>
+              <p className="design-button-description">
+                Text-style navigation with theme colors.
+              </p>
+              <div className="space-y-2">
+                <StyledLink href="/docs" variant="text">
+                  Documentation
+                </StyledLink>
+                <br />
+                <StyledLink href="/help" variant="text">
+                  Help Center
+                </StyledLink>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">Standard Link</div>
+              <p className="design-button-description">
+                Basic text links with theme colors.
+              </p>
+              <div className="space-y-2">
+                <Link href="/profile" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
+                  View Profile
+                </Link>
+                <br />
+                <Link href="/help" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
+                  Help Documentation
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -479,37 +449,116 @@ export default function StyleGuidePage() {
 
           <h3>Toast Messages</h3>
           <div className="design-toast-grid">
-            <div className="design-toast design-toast-success">
-              <div className="design-toast-icon">✓</div>
-              <div>Your changes have been saved successfully</div>
+            <BannerMessage 
+              type="success" 
+              message="Your changes have been saved successfully" 
+            />
+            <BannerMessage 
+              type="error" 
+              message="There was an error processing your request" 
+            />
+            <BannerMessage 
+              type="warning" 
+              message="Your session will expire in 5 minutes" 
+            />
+            <BannerMessage 
+              type="info" 
+              message="New features are now available in your dashboard" 
+            />
+          </div>
+
+          <h4>Try It Out</h4>
+          <p className="design-section-intro">
+            Click the links below to see each toast type in action with the live styling.
+          </p>
+          
+          <div className="design-button-grid">
+            <div className="design-button-example">
+              <div className="design-button-label">Success Toast</div>
+              <p className="design-button-description">
+                Shows a success notification with green styling.
+              </p>
+              <Link 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault()
+                  notify.success('Your profile has been updated successfully!')
+                }}
+                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+              >
+                Trigger Success Toast
+              </Link>
             </div>
-            <div className="design-toast design-toast-alert">
-              <div className="design-toast-icon">✕</div>
-              <div>There was an error processing your request</div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">Error Toast</div>
+              <p className="design-button-description">
+                Shows an error notification with red styling.
+              </p>
+              <Link 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault()
+                  notify.error('Failed to save changes. Please try again.')
+                }}
+                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+              >
+                Trigger Error Toast
+              </Link>
             </div>
-            <div className="design-toast design-toast-warning">
-              <div className="design-toast-icon">⚠</div>
-              <div>Your session will expire in 5 minutes</div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">Warning Toast</div>
+              <p className="design-button-description">
+                Shows a warning notification with orange styling.
+              </p>
+              <Link 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault()
+                  notify.warning('Your session will expire in 5 minutes.')
+                }}
+                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+              >
+                Trigger Warning Toast
+              </Link>
             </div>
-            <div className="design-toast design-toast-info">
-              <div className="design-toast-icon">ℹ</div>
-              <div>New features are now available in your dashboard</div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">Info Toast</div>
+              <p className="design-button-description">
+                Shows an info notification with blue styling.
+              </p>
+              <Link 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault()
+                  notify.info('Processing your request...')
+                }}
+                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+              >
+                Trigger Info Toast
+              </Link>
             </div>
           </div>
 
           <h3>Banner Messages</h3>
-          <div className="design-banner design-banner-success">
-            <strong>✓</strong> Success: Your profile has been updated
-          </div>
-          <div className="design-banner design-banner-alert">
-            <strong>✕</strong> Alert: Unable to connect to server
-          </div>
-          <div className="design-banner design-banner-warning">
-            <strong>■</strong> Warning: Unsaved changes will be lost
-          </div>
-          <div className="design-banner design-banner-info">
-            <strong>■</strong> Info: Maintenance scheduled for tonight
-          </div>
+          <BannerMessage 
+            type="success" 
+            message="Success: Your profile has been updated" 
+          />
+          <BannerMessage 
+            type="error" 
+            message="Alert: Unable to connect to server" 
+          />
+          <BannerMessage 
+            type="warning" 
+            message="Warning: Unsaved changes will be lost" 
+          />
+          <BannerMessage 
+            type="info" 
+            message="Info: Maintenance scheduled for tonight" 
+          />
         </div>
       </section>
 

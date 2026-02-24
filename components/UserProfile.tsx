@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
-import toast from 'react-hot-toast'
+import notify from '@/lib/toast'
 import Button from '@/components/Button'
 import LinkButton from '@/components/LinkButton'
 
@@ -111,10 +111,10 @@ export default function UserProfile() {
     setIsOpen(false)
     try {
       await supabase.auth.signOut()
-      toast.success('Logged out successfully')
+      notify.success('Logged out successfully')
       router.push('/')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Logout failed')
+      notify.error(err instanceof Error ? err.message : 'Logout failed')
       setIsLoggingOut(false)
     }
   }

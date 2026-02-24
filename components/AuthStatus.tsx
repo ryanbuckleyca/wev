@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import LinkButton from '@/components/LinkButton'
 import Button from '@/components/Button'
-import toast from 'react-hot-toast'
+import notify from '@/lib/toast'
 
 export default function AuthStatus() {
   const router = useRouter()
@@ -34,10 +34,10 @@ export default function AuthStatus() {
     setIsLoggingOut(true)
     try {
       await supabase.auth.signOut()
-      toast.success('Logged out successfully')
+      notify.success('Logged out successfully')
       router.push('/')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Logout failed')
+      notify.error(err instanceof Error ? err.message : 'Logout failed')
       setIsLoggingOut(false)
     }
   }

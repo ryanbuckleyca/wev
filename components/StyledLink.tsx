@@ -1,29 +1,27 @@
-interface ButtonProps {
+import Link from 'next/link'
+
+interface StyledLinkProps {
+  href: string
   children: any
-  onClick?: () => void
-  type?: 'button' | 'submit' | 'reset'
-  disabled?: boolean
-  loading?: boolean
-  variant?: 'primary' | 'secondary' | 'outline'
+  variant?: 'primary' | 'secondary' | 'outline' | 'text'
   size?: 'sm' | 'md' | 'lg'
   fullWidth?: boolean
   className?: string
-  style?: React.CSSProperties
+  prefetch?: boolean
+  onClick?: () => void
 }
 
-export default function Button({ 
+export default function StyledLink({ 
+  href, 
   children, 
-  onClick, 
-  type = 'button', 
-  disabled = false, 
-  loading = false,
-  variant = 'primary',
+  variant = 'text',
   size = 'md',
   fullWidth = false,
   className = '',
-  style
-}: ButtonProps) {
-  const baseClasses = 'font-medium rounded transition-colors disabled:cursor-not-allowed'
+  prefetch = true,
+  onClick
+}: StyledLinkProps) {
+  const baseClasses = 'font-medium rounded transition-colors'
   
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-xs',
@@ -34,7 +32,8 @@ export default function Button({
   const variantClasses = {
     primary: 'bg-[var(--primary)] text-white hover:opacity-90 disabled:opacity-50',
     secondary: 'border border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white disabled:opacity-50',
-    outline: 'border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)]'
+    outline: 'border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)]',
+    text: 'text-[var(--primary)] hover:underline visited:text-[var(--accent)]'
   }
   
   const widthClass = fullWidth ? 'w-full' : ''
@@ -42,14 +41,13 @@ export default function Button({
   const combinedClasses = `${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${widthClass} ${className}`.trim()
 
   return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled || loading}
+    <Link 
+      href={href} 
       className={combinedClasses}
-      style={style}
+      prefetch={prefetch}
+      onClick={onClick}
     >
-      {loading ? 'Loading...' : children}
-    </button>
+      {children}
+    </Link>
   )
 }
