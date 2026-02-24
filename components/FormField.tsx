@@ -28,7 +28,7 @@ export default function FormField({
   htmlFor
 }: FormFieldProps) {
   return (
-    <div className="mb-4">
+    <div className="space-y-2">
       <FormLabel htmlFor={htmlFor} required={required}>
         {label}
       </FormLabel>

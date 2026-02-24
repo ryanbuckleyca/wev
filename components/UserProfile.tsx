@@ -5,28 +5,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
-import toast from 'react-hot-toast'
+import notify from '@/lib/toast'
 import Button from '@/components/Button'
+import LinkButton from '@/components/LinkButton'
 
 type UserRole = 'admin' | 'moderator' | 'user'
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${timeoutMs}ms`))
-    }, timeoutMs)
-
-    promise
-      .then((result) => {
-        clearTimeout(timeoutId)
-        resolve(result)
-      })
-      .catch((error) => {
-        clearTimeout(timeoutId)
-        reject(error)
-      })
-  })
-}
 
 export default function UserProfile() {
   const [user, setUser] = useState<User | null>(null)
@@ -40,25 +23,14 @@ export default function UserProfile() {
 
   useEffect(() => {
     let mounted = true
-    const loadingWatchdog = setTimeout(() => {
-      if (mounted) {
-        setLoading(false)
-      }
-    }, 8000)
 
     const fetchRoles = async (userId: string) => {
       try {
-        const { data, error } = await withTimeout(
-          Promise.resolve(
-            supabase
-              .from('user_roles')
-              .select('roles')
-              .eq('user_id', userId)
-              .single()
-          ),
-          5000,
-          'fetchRoles'
-        )
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('roles')
+          .eq('user_id', userId)
+          .single()
 
         if (!mounted) return
 
@@ -78,7 +50,7 @@ export default function UserProfile() {
       try {
         const {
           data: { session },
-        } = await withTimeout(supabase.auth.getSession(), 5000, 'getSession')
+        } = await supabase.auth.getSession()
         if (!mounted) return
 
         setUser(session?.user ?? null)
@@ -89,7 +61,7 @@ export default function UserProfile() {
           setDbRoles(['user'])
         }
       } catch {
-        if (!mounted) return
+        if (mounted) return
         setUser(null)
         setDbRoles(['user'])
       } finally {
@@ -118,7 +90,6 @@ export default function UserProfile() {
 
     return () => {
       mounted = false
-      clearTimeout(loadingWatchdog)
       subscription?.unsubscribe()
     }
   }, [supabase])
@@ -140,10 +111,10 @@ export default function UserProfile() {
     setIsOpen(false)
     try {
       await supabase.auth.signOut()
-      toast.success('Logged out successfully')
+      notify.success('Logged out successfully')
       router.push('/')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Logout failed')
+      notify.error(err instanceof Error ? err.message : 'Logout failed')
       setIsLoggingOut(false)
     }
   }
@@ -213,14 +184,16 @@ export default function UserProfile() {
             <Link
               href="/profile"
               onClick={() => setIsOpen(false)}
-              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 transition-colors"
+              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-colors rounded"
+              prefetch={true}
             >
               My Profile
             </Link>
             <Link
               href="/account-settings"
               onClick={() => setIsOpen(false)}
-              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 transition-colors"
+              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-colors rounded"
+              prefetch={true}
             >
               Account Settings
             </Link>
