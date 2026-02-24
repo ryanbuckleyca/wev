@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import toast from 'react-hot-toast'
+import notify from '@/lib/toast'
 
 interface ReScrapeButtonProps {
   onComplete: () => void
@@ -26,31 +26,29 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
 
       // Instead of polling, we'll check once and then rely on the user to refresh
       // or implement proper webhook/event-driven updates later
-      toast.success('Workflow started successfully. The page will refresh automatically when complete.')
+      notify.success('Workflow started successfully. The page will refresh automatically when complete.')
 
       // Set up a one-time check after a reasonable delay, but don't poll indefinitely
       setTimeout(async () => {
         try {
-          const statusResponse = await fetch('/api/github/status')
-          if (statusResponse.ok) {
-            const status = await statusResponse.json()
-            if (status.completed && status.success) {
-              onComplete()
-              toast.success('Re-scrape complete. Data refreshed.')
-            } else if (status.completed && !status.success) {
-              toast.error('Workflow completed but may have failed')
-            }
-            // If still running, user will need to check manually or we implement proper events
+          const statusResponse = await fetch('/api/scrape/status')
+          const status = await statusResponse.json()
+          if (status.completed && status.success) {
+            onComplete()
+            notify.success('Re-scrape complete. Data refreshed.')
+          } else if (status.completed && !status.success) {
+            notify.error('Workflow completed but may have failed')
           }
+          // If still running, user will need to check manually or we implement proper events
         } catch (err) {
-          console.error('Status check failed:', err)
+          console.error('Error checking scrape status:', err)
         } finally {
           setLoading(false)
         }
       }, 10000) // Check once after 10 seconds
 
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'An error occurred')
+      notify.error(err instanceof Error ? err.message : 'An error occurred')
       setLoading(false)
     }
   }

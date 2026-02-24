@@ -14,14 +14,14 @@ interface LinkButtonProps {
 export default function LinkButton({ 
   href, 
   children, 
-  variant = 'outline',
+  variant = 'primary', // Match Button default
   size = 'md',
   fullWidth = false,
   className = '',
   prefetch = true, // Enable prefetch by default for better UX
   onClick
 }: LinkButtonProps) {
-  const baseClasses = 'inline-block font-medium rounded transition-colors'
+  const baseClasses = 'font-medium rounded transition-colors' // Match Button exactly
   
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-xs',
@@ -30,8 +30,8 @@ export default function LinkButton({
   }
   
   const variantClasses = {
-    primary: 'bg-[var(--primary)] text-white hover:opacity-90',
-    secondary: 'bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--bg)]',
+    primary: 'bg-[var(--primary)] text-white hover:opacity-90 disabled:opacity-50',
+    secondary: 'border border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white disabled:opacity-50',
     outline: 'border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)]'
   }
   

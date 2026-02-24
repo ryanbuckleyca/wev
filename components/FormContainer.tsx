@@ -6,7 +6,7 @@ interface FormContainerProps {
 
 export default function FormContainer({ children, onSubmit, className = '' }: FormContainerProps) {
   return (
-    <form onSubmit={onSubmit} className={`flex flex-col gap-4 ${className}`.trim()}>
+    <form onSubmit={onSubmit} className={`flex flex-col space-y-6 ${className}`.trim()}>
       {children}
     </form>
   )

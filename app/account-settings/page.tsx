@@ -174,10 +174,10 @@ export default function AccountSettingsPage() {
   return (
     <PageLayout maxWidth="md">
       <CardLayout>
-        <Heading level={1} className="mb-8">Account Settings</Heading>
+        <Heading level={1} className="mb-6">Account Settings</Heading>
 
         <FormContainer onSubmit={handleUpdateAccount}>
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Change Email */}
             <div>
               <Heading level={2} className="mb-4">Email Address</Heading>
@@ -240,9 +240,9 @@ export default function AccountSettingsPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-8 pt-8 border-t border-[var(--border)]">
+          <div className="pt-6 border-t border-[var(--border)]">
             <div className="flex justify-between gap-3">
-              <Link href="/profile" className="text-wev-accent hover:text-wev-primary-text hover:underline">
+              <Link href="/profile" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
                 Back to Profile
               </Link>
               <Button
@@ -253,13 +253,12 @@ export default function AccountSettingsPage() {
                 Save Changes
               </Button>
             </div>
-            
+          </div>  
             {!emailChanged && !passwordChanged && (
               <p className="text-sm text-[var(--text-secondary)] mt-2">
                 Make changes above to enable saving
               </p>
             )}
-          </div>
         </FormContainer>
         </CardLayout>
     </PageLayout>
