@@ -88,7 +88,7 @@ export default function JobCard({
       {/* Card Header */}
       <div className={`flex items-center justify-between px-3 py-1 transition-all duration-300 ${
         isExpanded 
-          ? 'bg-wev-surface-tint rounded-t-wev-card border border-transparent border-b-wev-border' 
+          ? 'bg-wev-surface rounded-t-wev-card border border-transparent border-b-wev-border' 
           : 'bg-wev-surface rounded-wev-card border border-transparent'
       }`}>
         {/* Left side: SSE + Summary */}
