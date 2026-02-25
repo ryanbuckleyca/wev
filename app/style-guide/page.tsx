@@ -478,16 +478,14 @@ export default function StyleGuidePage() {
               <p className="design-button-description">
                 Shows a success notification with green styling.
               </p>
-              <Link 
-                href="#" 
-                onClick={(e) => {
-                  e.preventDefault()
+              <button
+                onClick={() => {
                   notify.success('Your profile has been updated successfully!')
                 }}
-                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+                className="text-[var(--primary)] hover:underline"
               >
                 Trigger Success Toast
-              </Link>
+              </button>
             </div>
 
             <div className="design-button-example">
@@ -495,16 +493,14 @@ export default function StyleGuidePage() {
               <p className="design-button-description">
                 Shows an error notification with red styling.
               </p>
-              <Link 
-                href="#" 
-                onClick={(e) => {
-                  e.preventDefault()
+              <button
+                onClick={() => {
                   notify.error('Failed to save changes. Please try again.')
                 }}
-                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+                className="text-[var(--primary)] hover:underline"
               >
                 Trigger Error Toast
-              </Link>
+              </button>
             </div>
 
             <div className="design-button-example">
@@ -512,16 +508,14 @@ export default function StyleGuidePage() {
               <p className="design-button-description">
                 Shows a warning notification with orange styling.
               </p>
-              <Link 
-                href="#" 
-                onClick={(e) => {
-                  e.preventDefault()
+              <button
+                onClick={() => {
                   notify.warning('Your session will expire in 5 minutes.')
                 }}
-                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+                className="text-[var(--primary)] hover:underline"
               >
                 Trigger Warning Toast
-              </Link>
+              </button>
             </div>
 
             <div className="design-button-example">
@@ -529,16 +523,14 @@ export default function StyleGuidePage() {
               <p className="design-button-description">
                 Shows an info notification with blue styling.
               </p>
-              <Link 
-                href="#" 
-                onClick={(e) => {
-                  e.preventDefault()
+              <button
+                onClick={() => {
                   notify.info('Processing your request...')
                 }}
-                className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]"
+                className="text-[var(--primary)] hover:underline"
               >
                 Trigger Info Toast
-              </Link>
+              </button>
             </div>
           </div>
 
