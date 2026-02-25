@@ -12,7 +12,9 @@ module.exports = {
         wev: {
           bg: 'var(--bg)',
           surface: 'var(--surface)',
+          'surface-tint': 'var(--surface-tint)',
           border: 'var(--border)',
+          'border-dark': 'var(--border-dark)',
           'text-primary': 'var(--text-primary)',
           'text-secondary': 'var(--text-secondary)',
           'text-tertiary': 'var(--text-tertiary)',

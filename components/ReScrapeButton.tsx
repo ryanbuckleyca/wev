@@ -57,7 +57,7 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
     <button
       onClick={triggerWorkflow}
       disabled={loading}
-      className="px-6 py-2.5 bg-wev-primary text-white border-2 border-wev-primary rounded-wev-btn font-semibold shadow-wev-btn hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:translate-y-0 disabled:shadow-wev-btn disabled:cursor-not-allowed transition-all duration-300"
+      className="w-full sm:w-auto px-6 py-2.5 bg-wev-primary text-white border-2 border-wev-primary rounded-wev-btn font-semibold shadow-wev-btn hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:translate-y-0 disabled:shadow-wev-btn disabled:cursor-not-allowed transition-all duration-300"
     >
       {loading ? (
         <span className="flex items-center gap-2">
