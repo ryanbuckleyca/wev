@@ -27,13 +27,19 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="relative inline-flex h-10 w-16 items-center rounded-wev-pill border border-[var(--primary)] bg-wev-bg transition-colors"
+      className="relative inline-flex h-10 w-16 items-center rounded-wev-pill border border-[var(--primary)] transition-colors"
+      style={{
+        backgroundColor: theme === 'dark' ? '#1E1E1E' : '#faf9f7'
+      }}
       aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       <span
-        className={`inline-flex h-8 w-8 transform items-center justify-center rounded-full bg-wev-surface transition-transform ${
+        className={`inline-flex h-8 w-8 transform items-center justify-center rounded-full transition-transform ${
           theme === 'dark' ? 'translate-x-7' : 'translate-x-1'
         }`}
+        style={{
+          backgroundColor: theme === 'dark' ? '#2A2A2A' : '#ffffff'
+        }}
       >
         {theme === 'dark' ? '☀️' : '🌙'}
       </span>

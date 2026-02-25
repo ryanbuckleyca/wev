@@ -41,7 +41,7 @@ module.exports = {
         sans: ['var(--font-lexend)', 'Lexend Deca', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       borderRadius: {
-        'wev-card': '16px',
+        'wev-card': '12px',
         'wev-pill': '50px',
         'wev-btn': '8px',
       },
