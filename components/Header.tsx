@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import ThemeToggle from './ThemeToggle'
 import UserProfile from './UserProfile'
+import ThemeToggle from './ThemeToggle'
 
 export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false)
@@ -44,11 +44,11 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
 
   return (
     <header
-      className={`fixed ${topOffset} right-0 left-0 z-50 transition-all duration-200 ${
+      className={`fixed ${topOffset} right-0 left-0 z-[9999] transition-all duration-200 ${
         showHeader ? 'bg-wev-surface border-b border-wev-border' : 'bg-transparent'
       }`}
     >
-      <div className="flex items-center justify-between px-8 py-4">
+      <div className="flex items-center justify-between px-4 py-4">
         <div className={`transition-opacity duration-200 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
           <Link href="/">
             <img

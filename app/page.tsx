@@ -34,13 +34,28 @@ export default function Home() {
   const [postedWithin, setPostedWithin] = useState<'1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any'>('2-weeks')
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [allJobsExpanded, setAllJobsExpanded] = useState(true)
+
+  const handleExpandAll = (expanded: boolean) => {
+    console.log('handleExpandAll called:', expanded)
+    setAllJobsExpanded(expanded)
+  }
 
   const fetchData = async () => {
     setLoading(true)
     setError(null)
 
+    // Set a timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.warn('Data fetching timeout - forcing completion')
+      setLoading(false)
+      setError('Request timed out. Please refresh the page.')
+    }, 10000) // 10 second timeout
+
     try {
       const res = await fetch('/api/bulletin')
+      clearTimeout(timeoutId)
+      
       if (!res.ok) {
         const body = await res.json()
         throw new Error(body.error ?? 'Failed to load data')
@@ -77,6 +92,7 @@ export default function Home() {
       setAllJobs(jobsData ?? [])
       setCurrentPage(1)
     } catch (err) {
+      clearTimeout(timeoutId)
       console.error('Error fetching data:', err)
       const errorMessage = err instanceof Error
         ? err.message
@@ -85,6 +101,7 @@ export default function Home() {
           : 'Failed to load data'
       setError(errorMessage)
     } finally {
+      clearTimeout(timeoutId)
       setLoading(false)
     }
   }
@@ -265,7 +282,7 @@ export default function Home() {
         </header>
 
         {/* Last Scrape Time */}
-        <div className="bg-wev-surface border border-wev-border rounded-wev-card p-4 mb-6 shadow-wev-card">
+        <div className="bg-wev-surface border border-wev-border rounded-wev-card px-4 py-3 mb-6 shadow-wev-card">
           <p className="text-sm text-wev-text-primary">
             <span className="font-semibold text-wev-accent">Last updated: </span>
             {lastScrapeTime ? (
@@ -276,9 +293,19 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="flex justify-start items-center gap-4 mb-6">
-          <ReScrapeButton onComplete={fetchData} />
-          <CopyAllJobsButton jobs={filteredJobs} />
+        {/* Action Buttons - Mobile Optimized */}
+        <div className="flex flex-col sm:flex-row justify-start items-stretch sm:items-center gap-4 mb-6">
+          {/* Mobile: Stacked vertically */}
+          <div className="flex flex-col gap-4 sm:hidden">
+            <ReScrapeButton onComplete={fetchData} />
+            <CopyAllJobsButton jobs={filteredJobs} />
+          </div>
+          
+          {/* Desktop: Side by side */}
+          <div className="hidden sm:flex sm:gap-4">
+            <ReScrapeButton onComplete={fetchData} />
+            <CopyAllJobsButton jobs={filteredJobs} />
+          </div>
         </div>
 
         {/* Filters */}
@@ -319,9 +346,17 @@ export default function Home() {
                     {filteredJobs.length <= ITEMS_PER_PAGE && filteredJobs.length > 0 && ' (all shown)'}
                   </>
                 ) : (
-                  <>
-                    Showing {filteredJobs.length} of {allJobs.length} {allJobs.length === 1 ? 'job' : 'jobs'}
-                  </>
+                  <div className="flex items-center gap-2">
+                    <span>Showing {filteredJobs.length} of {allJobs.length} {allJobs.length === 1 ? 'job' : 'jobs'}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAllJobsExpanded(!allJobsExpanded)}
+                      className="text-sm text-wev-accent hover:text-wev-primary-text hover:underline focus:outline-none focus:ring-2 focus:ring-wev-primary focus:ring-offset-1 rounded"
+                      title={allJobsExpanded ? 'Collapse all jobs' : 'Expand all jobs'}
+                    >
+                      {allJobsExpanded ? 'Collapse all' : 'Expand all'}
+                    </button>
+                  </div>
                 )}
               </span>
               {hasActiveFilters && (
@@ -335,10 +370,10 @@ export default function Home() {
                 </button>
               )}
             </div>
-            <p className="mt-1.5 text-wev-text-secondary" aria-label="Filter state">
-              {filterStateSummary.join(' · ')}
-            </p>
-            <div className="mt-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-wev-text-secondary" aria-label="Filter state">
+                {filterStateSummary.join(' · ')}
+              </p>
               <button
                 type="button"
                 onClick={() => setFiltersExpanded((prev) => !prev)}
@@ -356,6 +391,7 @@ export default function Home() {
           jobs={paginatedJobs}
           loading={loading}
           error={error}
+          allExpanded={allJobsExpanded}
           onJobSseChange={(jobId, isSse) =>
             setAllJobs((prev) =>
               prev.map((j) => (j.id === jobId ? { ...j, is_sse: isSse } : j))
@@ -364,15 +400,13 @@ export default function Home() {
         />
 
         {/* Pagination */}
-        {!loading && filteredJobs.length > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={filteredJobs.length}
-            itemsPerPage={ITEMS_PER_PAGE}
-          />
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredJobs.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+        />
       </div>
     </main>
   )
