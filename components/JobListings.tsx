@@ -116,7 +116,7 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
   const isAdmin = userRole === 'admin'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {jobs.map((job) => (
         <JobCard
           key={job.id}
