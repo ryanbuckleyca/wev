@@ -86,17 +86,17 @@ export default function JobCard({
   return (
     <div className="relative rounded-wev-card shadow-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:shadow-wev-card-hover hover:border-wev-primary">
       {/* Card Header */}
-      <div className={`flex items-center justify-between px-3 py-1 transition-all duration-300 bg-wev-surface-tint border border-transparent ${
+      <div className={`flex items-center justify-between px-3 py-1 transition-all duration-300 ${
         isExpanded 
-          ? 'rounded-t-wev-card border-b-wev-border' 
-          : 'rounded-wev-card'
+          ? 'bg-wev-surface-tint rounded-t-wev-card border border-transparent border-b-wev-border' 
+          : 'bg-wev-surface rounded-wev-card border border-transparent'
       }`}>
         {/* Left side: SSE + Summary */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <button
             onClick={() => onSseToggle(job)}
             disabled={updatingId === job.id}
-            className="p-1 rounded-lg hover:bg-wev-primary-tint/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-1 rounded-lg hover:bg-wev-primary-tint/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
             title={sse ? 'Remove SSE Status' : 'Mark as SSE'}
             aria-label={sse ? 'SSE job (click to unmark)' : 'Mark as SSE job'}
           >
