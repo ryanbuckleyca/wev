@@ -36,7 +36,7 @@ export default function ThemeToggle() {
         className={`inline-flex h-8 w-8 transform items-center justify-center rounded-full transition-transform ${
           theme === 'dark' ? 'translate-x-7' : 'translate-x-1'
         } ${
-          theme === 'dark' ? 'bg-wev-surface' : 'bg-wev-bg'
+          theme === 'dark' ? 'bg-wev-surface' : 'bg-wev-surface'
         }`}
       >
         {theme === 'dark' ? '☀️' : '🌙'}
