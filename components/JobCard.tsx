@@ -96,7 +96,7 @@ export default function JobCard({
           <button
             onClick={() => onSseToggle(job)}
             disabled={updatingId === job.id}
-            className="p-1 rounded-lg hover:bg-wev-primary-tint/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            className="p-0 rounded-lg hover:bg-wev-primary-tint/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
             title={sse ? 'Remove SSE Status' : 'Mark as SSE'}
             aria-label={sse ? 'SSE job (click to unmark)' : 'Mark as SSE job'}
           >
@@ -115,7 +115,7 @@ export default function JobCard({
         <div className="flex items-center gap-2">
           <button
             onClick={handleBookmarkToggle}
-            className="p-1 rounded-lg hover:bg-wev-primary-tint/20 transition-colors"
+            className="p-0 rounded-lg hover:bg-wev-primary-tint/20 transition-colors"
             title={bookmarked ? 'Remove bookmark' : 'Bookmark job'}
             aria-label={bookmarked ? 'Bookmarked (click to remove)' : 'Bookmark job'}
           >
@@ -127,7 +127,7 @@ export default function JobCard({
           </button>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1 rounded-lg hover:bg-wev-primary-tint/20 transition-colors"
+            className="p-0 rounded-lg hover:bg-wev-primary-tint/20 transition-colors"
             title={isExpanded ? 'Collapse' : 'Expand'}
             aria-label={isExpanded ? 'Collapse job details' : 'Expand job details'}
           >
