@@ -43,12 +43,7 @@ module.exports = {
       borderRadius: {
         'wev-card': '12px',
         'wev-pill': '50px',
-        'wev-btn': '8px',
-      },
-      boxShadow: {
-        'wev-card': '0 4px 10px rgba(0,0,0,0.045)',
-        'wev-card-hover': '0 6px 15px rgba(0,0,0,0.06)',
-        'wev-btn': '0 4px 6px rgba(0,0,0,0.06)',
+        'wev-btn': '12px',
       },
     },
   },
