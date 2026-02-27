@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { JobPosting } from '@/lib/supabase'
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Solid, Leaf1Outlined, Bookmark1Solid, Bookmark1Outlined, ChevronDownSolid, ChevronUpSolid } from '@lineiconshq/free-icons'
+import Pill from './Pill'
+import Tooltip from './Tooltip'
+import { getValueDefinition } from '@/lib/values'
 
 interface JobCardProps {
   job: JobPosting
@@ -181,6 +184,28 @@ export default function JobCard({
             <div className="job-detail-line">
               <span className="job-label">How much: </span>
               <span className="job-value">{job.wage || 'N/A'}</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Values Section */}
+      {job.values && job.values.length > 0 && (
+        <div className={`px-5 py-3 bg-wev-surface-tint ${isExpanded ? 'border-t border-wev-border' : ''}`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {job.values.map((value) => (
+                <Tooltip
+                  key={value}
+                  content={
+                    `<p class="font-medium text-wev-primary-text mb-1">${value}</p>
+                     <p class="text-xs text-wev-text-primary mb-2">${getValueDefinition(value).description}</p>
+                     <p class="text-xs text-wev-text-secondary italic">${getValueDefinition(value).example}</p>`
+                  }
+                >
+                  <Pill variant="default" size="sm">{value}</Pill>
+                </Tooltip>
+              ))}
             </div>
           </div>
         </div>
