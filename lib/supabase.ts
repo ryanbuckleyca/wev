@@ -19,6 +19,7 @@ export interface JobPosting {
   summary?: string | null
   is_sse?: boolean
   source?: string | null
+  values?: string[]
 }
 
 export interface ScrapeRun {
