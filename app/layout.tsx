@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Lexend_Deca } from 'next/font/google'
 import Header from '@/components/Header'
 import Toaster from '@/components/Toaster'
+import { AuthProvider } from '@/contexts/AuthContext'
 import './globals.css'
 
 const lexend = Lexend_Deca({
@@ -30,9 +31,11 @@ export default function RootLayout({
         />
       </head>
       <body className="theme-transition font-sans antialiased">
-        <Header />
-        {children}
-        <Toaster />
+        <AuthProvider>
+          <Header />
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   )

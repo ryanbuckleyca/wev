@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState } from 'react'
 import { JobPosting } from '@/lib/supabase'
 import JobCard from './JobCard'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
+import LoadingIndicator from './LoadingIndicator'
 
 interface JobListingsProps {
   jobs: JobPosting[]
@@ -16,36 +17,7 @@ interface JobListingsProps {
 
 export default function JobListings({ jobs, loading, error, onJobSseChange, onJobBookmarkChange, allExpanded = true }: JobListingsProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
-  const [userRole, setUserRole] = useState<'admin' | 'moderator' | 'user'>('user')
-  const supabase = createClient()
-
-  // Check user role on mount
-  useEffect(() => {
-    const checkUserRole = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          const { data, error } = await supabase
-            .from('user_roles')
-            .select('roles')
-            .eq('user_id', session.user.id)
-            .single()
-          
-          if (!error && data && Array.isArray(data.roles)) {
-            if (data.roles.includes('admin')) {
-              setUserRole('admin')
-            } else if (data.roles.includes('moderator')) {
-              setUserRole('moderator')
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error checking user role:', err)
-      }
-    }
-    
-    checkUserRole()
-  }, [supabase])
+  const { role } = useAuth()
 
   const handleSseToggle = async (job: JobPosting) => {
     const newValue = !job.is_sse
@@ -89,16 +61,12 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wev-primary"></div>
-      </div>
-    )
+    return <LoadingIndicator fullScreen={false} message="Loading jobs..." />
   }
 
   if (error) {
     return (
-      <div className="bg-wev-alert-tint border border-wev-alert rounded-wev-card p-4 text-wev-alert-text shadow-wev-card">
+      <div className="bg-wev-alert-tint border border-wev-alert rounded-wev-card p-4 text-wev-alert-text">
         <p className="font-semibold">Error loading job postings</p>
         <p className="text-sm mt-1">{error}</p>
       </div>
@@ -107,13 +75,13 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
 
   if (jobs.length === 0) {
     return (
-      <div className="bg-wev-surface border border-wev-border rounded-wev-card p-8 text-center shadow-wev-card">
+      <div className="bg-wev-surface border border-wev-border rounded-wev-card p-8 text-center">
         <p className="text-wev-text-primary">No job postings found.</p>
       </div>
     )
   }
 
-  const isAdmin = userRole === 'admin'
+  const isAdmin = role === 'admin'
 
   return (
     <div className="space-y-4">

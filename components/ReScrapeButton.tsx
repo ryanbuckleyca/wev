@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import notify from '@/lib/toast'
+import Button from './Button'
 
 interface ReScrapeButtonProps {
   onComplete: () => void
@@ -54,10 +55,13 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
   }
 
   return (
-    <button
+    <Button
       onClick={triggerWorkflow}
       disabled={loading}
-      className="w-full sm:w-auto px-6 py-2.5 bg-wev-primary text-white border-2 border-wev-primary rounded-wev-btn font-semibold shadow-wev-btn hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:translate-y-0 disabled:shadow-wev-btn disabled:cursor-not-allowed transition-all duration-300"
+      variant="primary"
+      size="md"
+      loading={loading}
+      fullWidth={false}
     >
       {loading ? (
         <span className="flex items-center gap-2">
@@ -86,6 +90,6 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
       ) : (
         'Re-scrape Data'
       )}
-    </button>
+    </Button>
   )
 }

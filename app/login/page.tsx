@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import PageLayout from '@/components/PageLayout'
 import CardLayout from '@/components/CardLayout'
@@ -18,6 +19,7 @@ import LinkButton from '@/components/LinkButton'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,6 +27,12 @@ export default function LoginPage() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   const supabase = createClient()
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace('/')
+    }
+  }, [authLoading, user, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -47,7 +55,7 @@ export default function LoginPage() {
     if (error) {
       setError(error.message)
     } else {
-      router.push('/')
+      router.replace('/')
     }
 
     setLoading(false)

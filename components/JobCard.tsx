@@ -84,19 +84,15 @@ export default function JobCard({
   }
 
   return (
-    <div className="relative rounded-wev-card shadow-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:shadow-wev-card-hover hover:border-wev-primary">
+    <div className="relative rounded-wev-card shadow-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:shadow-wev-card-hover hover:border-wev-primary overflow-hidden">
       {/* Card Header */}
-      <div className={`flex items-center justify-between px-3 py-1 transition-all duration-300 ${
-        isExpanded 
-          ? 'bg-wev-surface rounded-t-wev-card border border-transparent border-b-wev-border' 
-          : 'bg-wev-surface rounded-wev-card border border-transparent'
-      }`}>
+      <div className="flex items-center justify-between px-3 py-2 rounded-t-wev-card transition-all duration-300 border-b border-wev-border bg-wev-surface">
         {/* Left side: SSE + Summary */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <button
             onClick={() => onSseToggle(job)}
             disabled={updatingId === job.id}
-            className="p-0 rounded-lg hover:bg-wev-primary-tint/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            className="wev-icon-btn disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
             title={sse ? 'Remove SSE Status' : 'Mark as SSE'}
             aria-label={sse ? 'SSE job (click to unmark)' : 'Mark as SSE job'}
           >
@@ -106,28 +102,28 @@ export default function JobCard({
               <Lineicons icon={Leaf1Outlined} size={16} className="text-wev-text-secondary" />
             )}
           </button>
-          <span className="text-sm text-wev-text-secondary truncate">
+          <span className="text-sm text-wev-text-secondary truncate pr-2">
             {getCardSummary(job)}
           </span>
         </div>
         
         {/* Right side: Bookmark + Collapse */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleBookmarkToggle}
-            className="p-0 rounded-lg hover:bg-wev-primary-tint/20 transition-colors"
+            className="wev-icon-btn"
             title={bookmarked ? 'Remove bookmark' : 'Bookmark job'}
             aria-label={bookmarked ? 'Bookmarked (click to remove)' : 'Bookmark job'}
           >
             {bookmarked ? (
-              <Lineicons icon={Bookmark1Solid} size={16} className="text-wev-accent" />
+              <Lineicons icon={Bookmark1Solid} size={16} className="text-wev-info" />
             ) : (
               <Lineicons icon={Bookmark1Outlined} size={16} className="text-wev-text-secondary" />
             )}
           </button>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-0 rounded-lg hover:bg-wev-primary-tint/20 transition-colors"
+            className="wev-icon-btn"
             title={isExpanded ? 'Collapse' : 'Expand'}
             aria-label={isExpanded ? 'Collapse job details' : 'Expand job details'}
           >
@@ -142,7 +138,7 @@ export default function JobCard({
 
       {/* Card Content */}
       {isExpanded && (
-        <div className="py-4 px-5">
+        <div className="py-4 px-5 bg-wev-surface">
           <div className="job-details">
             <div className="job-detail-line">
               <span className="job-label">Who: </span>

@@ -9,6 +9,8 @@ import JobListings from '@/components/JobListings'
 import CopyAllJobsButton from '@/components/CopyAllJobsButton'
 import JobFilters from '@/components/JobFilters'
 import Pagination from '@/components/Pagination'
+import { useAuth } from '@/contexts/AuthContext'
+import ButtonLink from '@/components/ButtonLink'
 
 // Force dynamic rendering - this page uses client-side data fetching
 export const revalidate = 0 // Disable static generation, always render dynamically
@@ -16,6 +18,7 @@ export const revalidate = 0 // Disable static generation, always render dynamica
 const ITEMS_PER_PAGE = 20
 
 export default function Home() {
+  const { role } = useAuth()
   const [allJobs, setAllJobs] = useState<JobPosting[]>([])
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -30,7 +33,7 @@ export default function Home() {
   const [selectedSources, setSelectedSources] = useState<string[]>([])
   const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([])
   const [showOnlySse, setShowOnlySse] = useState(true)
-  const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useState(false)
+  const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useState(true)
   const [postedWithin, setPostedWithin] = useState<'1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any'>('2-weeks')
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -205,69 +208,6 @@ export default function Home() {
 
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE)
 
-  const hasActiveFilters =
-    !!searchQuery ||
-    selectedOrganizations.length > 0 ||
-    selectedProvinces.length > 0 ||
-    selectedMunicipalities.length > 0 ||
-    selectedEmploymentTypes.length > 0 ||
-    selectedSources.length > 0 ||
-    selectedWorkTypes.length > 0 ||
-    !showOnlySse ||
-    showJobsWithoutSalary ||
-    postedWithin !== '2-weeks'
-
-  // Auto-expand filters when user has active filters
-  useEffect(() => {
-    if (hasActiveFilters && !filtersExpanded) {
-      setFiltersExpanded(true)
-    }
-  }, [hasActiveFilters])
-
-  const filterStateSummary = useMemo(() => {
-    const parts: string[] = []
-    parts.push(
-      postedWithin === '1-week'
-        ? 'Posted: 1 week'
-        : postedWithin === '2-weeks'
-          ? 'Posted: 2 weeks'
-          : postedWithin === '3-weeks'
-            ? 'Posted: 3 weeks'
-            : postedWithin === '1-month'
-              ? 'Posted: 1 month'
-              : 'Posted: any'
-    )
-    parts.push(showOnlySse ? 'SSE: Only' : 'SSE: All')
-    if (selectedWorkTypes.length > 0) {
-      const workTypeLabels = selectedWorkTypes.map(wt => wt.charAt(0).toUpperCase() + wt.slice(1)).join(', ')
-      parts.push(`Work: ${workTypeLabels}`)
-    }
-    parts.push(showJobsWithoutSalary ? 'Without salary: Show' : 'Without salary: Hide')
-    if (searchQuery) {
-      const q = searchQuery.length > 18 ? `${searchQuery.slice(0, 18)}…` : searchQuery
-      parts.push(`Search: "${q}"`)
-    }
-    if (selectedProvinces.length > 0) parts.push(selectedProvinces.length === 1 ? '1 province' : `${selectedProvinces.length} provinces`)
-    if (selectedMunicipalities.length > 0) parts.push(selectedMunicipalities.length === 1 ? '1 municipality' : `${selectedMunicipalities.length} municipalities`)
-    if (selectedOrganizations.length > 0) parts.push(selectedOrganizations.length === 1 ? '1 organization' : `${selectedOrganizations.length} organizations`)
-    if (selectedEmploymentTypes.length > 0) parts.push(selectedEmploymentTypes.length === 1 ? '1 employment type' : `${selectedEmploymentTypes.length} employment types`)
-    if (selectedSources.length > 0) parts.push(selectedSources.length === 1 ? '1 source' : `${selectedSources.length} sources`)
-    return parts
-  }, [searchQuery, postedWithin, showJobsWithoutSalary, showOnlySse, selectedWorkTypes, selectedProvinces.length, selectedMunicipalities.length, selectedOrganizations.length, selectedEmploymentTypes.length, selectedSources.length])
-
-  const clearAllFilters = () => {
-    setSearchQuery('')
-    setSelectedOrganizations([])
-    setSelectedProvinces([])
-    setSelectedMunicipalities([])
-    setSelectedEmploymentTypes([])
-    setSelectedSources([])
-    setSelectedWorkTypes([])
-    setShowOnlySse(true)
-    setShowJobsWithoutSalary(false)
-    setPostedWithin('2-weeks')
-  }
-
   return (
     <main className="min-h-screen bg-wev-bg pb-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
@@ -276,41 +216,33 @@ export default function Home() {
           <img
             src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png"
             alt="wev"
-            className="main-logo wev-logotype w-[100px] h-auto mb-2 drop-shadow-[0_4px_6px_rgba(135,92,116,0.15)]"
+            className="main-logo wev-logotype w-[100px] h-auto mb-2"
           />
           <p className="text-xl font-medium text-wev-primary-text">Bulletin – Job Postings</p>
         </header>
 
-        {/* Last Scrape Time */}
-        <div className="bg-wev-surface border border-wev-border rounded-wev-card px-4 py-3 mb-6 shadow-wev-card">
-          <p className="text-sm text-wev-text-primary">
-            <span className="font-semibold text-wev-accent">Last updated: </span>
-            {lastScrapeTime ? (
-              <span>{lastScrapeTime}</span>
-            ) : (
-              <span className="italic">No updates found</span>
-            )}
-          </p>
-        </div>
-
-        {/* Action Buttons - Mobile Optimized */}
-        <div className="flex flex-col sm:flex-row justify-start items-stretch sm:items-center gap-4 mb-6">
-          {/* Mobile: Stacked vertically */}
-          <div className="flex flex-col gap-4 sm:hidden">
-            <ReScrapeButton onComplete={fetchData} />
-            <CopyAllJobsButton jobs={filteredJobs} />
+        {/* Action Buttons - Admin Only */}
+        {role === 'admin' && (
+          <div className="flex flex-col sm:flex-row justify-start items-stretch sm:items-center gap-4 mb-6">
+            {/* Mobile: Stacked vertically */}
+            <div className="flex flex-col gap-4 sm:hidden">
+              <ReScrapeButton onComplete={fetchData} />
+              <CopyAllJobsButton jobs={filteredJobs} />
+            </div>
+            
+            {/* Desktop: Side by side */}
+            <div className="hidden sm:flex sm:gap-4">
+              <ReScrapeButton onComplete={fetchData} />
+              <CopyAllJobsButton jobs={filteredJobs} />
+            </div>
           </div>
-          
-          {/* Desktop: Side by side */}
-          <div className="hidden sm:flex sm:gap-4">
-            <ReScrapeButton onComplete={fetchData} />
-            <CopyAllJobsButton jobs={filteredJobs} />
-          </div>
-        </div>
+        )}
 
         {/* Filters */}
         <JobFilters
           jobs={allJobs}
+          filteredJobsCount={filteredJobs.length}
+          totalJobsCount={allJobs.length}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           selectedOrganizations={selectedOrganizations}
@@ -335,55 +267,25 @@ export default function Home() {
           onFiltersExpandedChange={setFiltersExpanded}
         />
 
-        {/* Results count and active filters */}
+        {/* Expand/collapse all jobs */}
         {!loading && (
-          <div className="mb-4 text-sm text-wev-text-primary" aria-live="polite" aria-atomic="true">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span>
-                {filteredJobs.length === allJobs.length ? (
-                  <>
-                    {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'}
-                    {filteredJobs.length <= ITEMS_PER_PAGE && filteredJobs.length > 0 && ' (all shown)'}
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span>Showing {filteredJobs.length} of {allJobs.length} {allJobs.length === 1 ? 'job' : 'jobs'}</span>
-                    <button
-                      type="button"
-                      onClick={() => setAllJobsExpanded(!allJobsExpanded)}
-                      className="text-sm text-wev-accent hover:text-wev-primary-text hover:underline focus:outline-none focus:ring-2 focus:ring-wev-primary focus:ring-offset-1 rounded"
-                      title={allJobsExpanded ? 'Collapse all jobs' : 'Expand all jobs'}
-                    >
-                      {allJobsExpanded ? 'Collapse all' : 'Expand all'}
-                    </button>
-                  </div>
-                )}
-              </span>
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={clearAllFilters}
-                  className="text-wev-accent hover:text-wev-primary-text hover:underline focus:outline-none focus:ring-2 focus:ring-wev-primary focus:ring-offset-1 rounded"
-                  aria-label="Reset all filters to defaults"
-                >
-                  Reset filters
-                </button>
+          <div className="mb-4 flex justify-between items-center" aria-live="polite" aria-atomic="true">
+            <p className="text-sm text-wev-text-secondary">
+              <span className="font-semibold text-wev-accent">Last updated: </span>
+              {lastScrapeTime ? (
+                <span>{lastScrapeTime}</span>
+              ) : (
+                <span>Unknown</span>
               )}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-wev-text-secondary" aria-label="Filter state">
-                {filterStateSummary.join(' · ')}
-              </p>
-              <button
-                type="button"
-                onClick={() => setFiltersExpanded((prev) => !prev)}
-                className="text-sm text-wev-accent hover:text-wev-primary-text hover:underline focus:outline-none focus:ring-2 focus:ring-wev-primary focus:ring-offset-1 rounded"
-                aria-expanded={filtersExpanded}
-                aria-controls="job-filters-content"
-              >
-                {filtersExpanded ? 'Hide filters' : 'Show filters'}
-              </button>
-            </div>
+            </p>
+            <ButtonLink
+              onClick={() => setAllJobsExpanded(!allJobsExpanded)}
+              tone="accent"
+              size="sm"
+              title={allJobsExpanded ? 'Collapse all jobs' : 'Expand all jobs'}
+            >
+              {allJobsExpanded ? 'Collapse all' : 'Expand all'}
+            </ButtonLink>
           </div>
         )}
 

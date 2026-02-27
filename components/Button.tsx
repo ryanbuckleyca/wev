@@ -23,7 +23,7 @@ export default function Button({
   className = '',
   style
 }: ButtonProps) {
-  const baseClasses = 'font-medium rounded transition-colors disabled:cursor-not-allowed'
+  const baseClasses = 'font-medium rounded-wev-btn transition-colors disabled:cursor-not-allowed'
   
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-xs',

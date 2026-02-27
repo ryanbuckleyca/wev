@@ -3,113 +3,21 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import type { User } from '@supabase/supabase-js'
 import notify from '@/lib/toast'
 import Button from '@/components/Button'
-import LinkButton from '@/components/LinkButton'
 import ThemeToggle from './ThemeToggle'
-
-type UserRole = 'admin' | 'moderator' | 'user'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function UserProfile() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, role, loading } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [dbRoles, setDbRoles] = useState<string[]>(['user'])
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const dropdownRef = useRef<HTMLDivElement>(null)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    let mounted = true
-    let loadingTimeout: NodeJS.Timeout
-
-    const fetchRoles = async (userId: string) => {
-      try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('roles')
-          .eq('user_id', userId)
-          .single()
-
-        if (!mounted) return
-
-        if (!error && data && Array.isArray(data.roles)) {
-          setDbRoles(data.roles)
-        } else {
-          setDbRoles(['user'])
-        }
-      } catch {
-        if (mounted) {
-          setDbRoles(['user'])
-        }
-      }
-    }
-
-    const checkSession = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        if (!mounted) return
-
-        setUser(session?.user ?? null)
-
-        if (session?.user) {
-          await fetchRoles(session.user.id)
-        } else {
-          setDbRoles(['user'])
-        }
-      } catch {
-        if (mounted) return
-        setUser(null)
-        setDbRoles(['user'])
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    // Set a timeout to prevent infinite loading
-    loadingTimeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn('UserProfile loading timeout - forcing completion')
-        setLoading(false)
-        setUser(null)
-        setDbRoles(['user'])
-      }
-    }, 5000) // 5 second timeout
-
-    checkSession()
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return
-        setUser(session?.user ?? null)
-
-        if (session?.user) {
-          await fetchRoles(session.user.id)
-        } else {
-          setDbRoles(['user'])
-        }
-
-        setLoading(false)
-        clearTimeout(loadingTimeout)
-      }
-    )
-
-    return () => {
-      mounted = false
-      subscription?.unsubscribe()
-      clearTimeout(loadingTimeout)
-    }
-  }, [supabase, loading])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -136,24 +44,6 @@ export default function UserProfile() {
     } catch (err) {
       notify.error(err instanceof Error ? err.message : 'Logout failed')
       setIsLoggingOut(false)
-    }
-  }
-
-  const getUserRole = (): UserRole => {
-    if (!dbRoles || dbRoles.length === 0) return 'user'
-    if (dbRoles.includes('admin')) return 'admin'
-    if (dbRoles.includes('moderator')) return 'moderator'
-    return 'user'
-  }
-
-  const getRoleColor = (role: UserRole) => {
-    switch (role) {
-      case 'admin':
-        return 'bg-wev-alert-tint text-wev-alert-text'
-      case 'moderator':
-        return 'bg-wev-info-tint text-wev-info-text'
-      default:
-        return 'bg-wev-primary-tint text-wev-primary-text'
     }
   }
 
@@ -204,7 +94,7 @@ export default function UserProfile() {
 
         {/* Mobile menu dropdown */}
         {isMobileMenuOpen && (
-          <div className="absolute right-0 mt-2 w-56 bg-wev-surface border border-wev-border rounded-wev-card z-50 shadow-lg">
+          <div className="absolute right-0 mt-2 w-56 bg-wev-surface border border-wev-border rounded-wev-card z-50">
             <div className="p-4 space-y-3">
               {/* Theme Toggle */}
               <div className="flex items-center justify-between">
@@ -237,8 +127,6 @@ export default function UserProfile() {
       </div>
     )
   }
-
-  const role = getUserRole()
 
   return (
     <div className="relative" ref={dropdownRef}>
