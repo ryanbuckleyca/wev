@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { JobPosting } from '@/lib/supabase'
+import Button from './Button'
 
 interface CopyAllJobsButtonProps {
   jobs: JobPosting[]
@@ -146,13 +147,16 @@ export default function CopyAllJobsButton({ jobs }: CopyAllJobsButtonProps) {
   }
 
   return (
-    <button
-      onClick={handleCopy}
-      disabled={copied}
-      className="w-full sm:w-auto px-6 py-2.5 bg-transparent text-wev-accent border-2 border-wev-accent rounded-wev-btn font-semibold hover:bg-wev-accent-tint hover:border-wev-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
-      title={`Copy ${jobs.length} job${jobs.length !== 1 ? 's' : ''} to clipboard`}
-    >
-      {copied ? 'Copied!' : 'Copy All Jobs'}
-    </button>
+    <div title={`Copy ${jobs.length} job${jobs.length !== 1 ? 's' : ''} to clipboard`}>
+      <Button
+        onClick={handleCopy}
+        disabled={copied}
+        variant="secondary"
+        size="md"
+        fullWidth={false}
+      >
+        {copied ? 'Copied!' : 'Copy All Jobs'}
+      </Button>
+    </div>
   )
 }

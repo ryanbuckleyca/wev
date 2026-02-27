@@ -4,9 +4,12 @@ import { useMemo } from 'react'
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
 import { JobPosting } from '@/lib/supabase'
+import JobSearch, { ActiveFilterChip } from './JobSearch'
 
 interface JobFiltersProps {
   jobs: JobPosting[]
+  filteredJobsCount?: number
+  totalJobsCount?: number
   searchQuery: string
   onSearchChange: (query: string) => void
   selectedOrganizations: string[]
@@ -33,6 +36,8 @@ interface JobFiltersProps {
 
 export default function JobFilters({
   jobs,
+  filteredJobsCount,
+  totalJobsCount,
   searchQuery,
   onSearchChange,
   selectedOrganizations,
@@ -56,7 +61,7 @@ export default function JobFilters({
   filtersExpanded,
   onFiltersExpandedChange,
 }: JobFiltersProps) {
-  const hasActiveFilters =
+  const hasAnyFilters =
     !!searchQuery ||
     selectedOrganizations.length > 0 ||
     selectedProvinces.length > 0 ||
@@ -64,9 +69,143 @@ export default function JobFilters({
     selectedEmploymentTypes.length > 0 ||
     selectedSources.length > 0 ||
     selectedWorkTypes.length > 0 ||
-    !showOnlySse ||
-    showJobsWithoutSalary ||
-    postedWithin !== '2-weeks'
+    showOnlySse ||
+    !showJobsWithoutSalary ||
+    postedWithin !== 'any'
+
+  const isSuggestedDefaults =
+    !searchQuery &&
+    selectedOrganizations.length === 0 &&
+    selectedProvinces.length === 0 &&
+    selectedMunicipalities.length === 0 &&
+    selectedEmploymentTypes.length === 0 &&
+    selectedSources.length === 0 &&
+    selectedWorkTypes.length === 0 &&
+    showOnlySse &&
+    showJobsWithoutSalary &&
+    postedWithin === '2-weeks'
+
+  const filteredJobsCountResolved = filteredJobsCount ?? jobs.length
+  const totalJobsCountResolved = totalJobsCount ?? jobs.length
+
+  const activeFilterChips = useMemo(() => {
+    const chips: ActiveFilterChip[] = []
+
+    if (postedWithin !== 'any') {
+      chips.push({
+        id: 'posted-within',
+        label:
+          postedWithin === '1-week'
+            ? 'Posted: 1 week'
+            : postedWithin === '2-weeks'
+              ? 'Posted: 2 weeks'
+              : postedWithin === '3-weeks'
+                ? 'Posted: 3 weeks'
+                : 'Posted: 1 month',
+        onRemove: () => onPostedWithinChange('any'),
+      })
+    }
+
+    if (showOnlySse) {
+      chips.push({
+        id: 'sse',
+        label: 'SSE: only',
+        onRemove: () => onShowOnlySseChange(false),
+      })
+    }
+
+    if (!showJobsWithoutSalary) {
+      chips.push({
+        id: 'salary',
+        label: 'Salary: listed only',
+        onRemove: () => onShowJobsWithoutSalaryChange(true),
+      })
+    }
+
+    if (searchQuery) {
+      const label = searchQuery.length > 24 ? `${searchQuery.slice(0, 24)}…` : searchQuery
+      chips.push({
+        id: 'search',
+        label: `Search: "${label}"`,
+        onRemove: () => onSearchChange(''),
+      })
+    }
+
+    if (selectedWorkTypes.length > 0) {
+      const workLabel =
+        selectedWorkTypes.length <= 2
+          ? `Work: ${selectedWorkTypes.map((wt) => wt.charAt(0).toUpperCase() + wt.slice(1)).join(', ')}`
+          : `Work: ${selectedWorkTypes.length} selected`
+      chips.push({
+        id: 'work-types',
+        label: workLabel,
+        onRemove: () => onWorkTypesChange([]),
+      })
+    }
+
+    if (selectedProvinces.length > 0) {
+      chips.push({
+        id: 'provinces',
+        label: selectedProvinces.length === 1 ? '1 province' : `${selectedProvinces.length} provinces`,
+        onRemove: () => onProvincesChange([]),
+      })
+    }
+
+    if (selectedMunicipalities.length > 0) {
+      chips.push({
+        id: 'municipalities',
+        label: selectedMunicipalities.length === 1 ? '1 municipality' : `${selectedMunicipalities.length} municipalities`,
+        onRemove: () => onMunicipalitiesChange([]),
+      })
+    }
+
+    if (selectedOrganizations.length > 0) {
+      chips.push({
+        id: 'organizations',
+        label: selectedOrganizations.length === 1 ? '1 organization' : `${selectedOrganizations.length} organizations`,
+        onRemove: () => onOrganizationsChange([]),
+      })
+    }
+
+    if (selectedEmploymentTypes.length > 0) {
+      chips.push({
+        id: 'employment-types',
+        label: selectedEmploymentTypes.length === 1 ? '1 employment type' : `${selectedEmploymentTypes.length} employment types`,
+        onRemove: () => onEmploymentTypesChange([]),
+      })
+    }
+
+    if (selectedSources.length > 0) {
+      chips.push({
+        id: 'sources',
+        label: selectedSources.length === 1 ? '1 source' : `${selectedSources.length} sources`,
+        onRemove: () => onSourcesChange([]),
+      })
+    }
+
+    return chips
+  }, [
+    onEmploymentTypesChange,
+    onMunicipalitiesChange,
+    onOrganizationsChange,
+    onPostedWithinChange,
+    onProvincesChange,
+    onSearchChange,
+    onShowJobsWithoutSalaryChange,
+    onShowOnlySseChange,
+    onSourcesChange,
+    onWorkTypesChange,
+    postedWithin,
+    searchQuery,
+    selectedEmploymentTypes.length,
+    selectedMunicipalities.length,
+    selectedOrganizations.length,
+    selectedProvinces.length,
+    selectedSources.length,
+    selectedWorkTypes,
+    showJobsWithoutSalary,
+    showOnlySse,
+  ])
 
   // Extract unique values for filter options
   const { organizations, provinces, municipalitiesByProvince, employmentTypes, sources } = useMemo(() => {
@@ -166,7 +305,20 @@ export default function JobFilters({
     onSourcesChange([])
     onWorkTypesChange([])
     onShowOnlySseChange(false)
-    onShowJobsWithoutSalaryChange(false)
+    onShowJobsWithoutSalaryChange(true)
+    onPostedWithinChange('any')
+  }
+
+  const applySuggestedDefaults = () => {
+    onSearchChange('')
+    onOrganizationsChange([])
+    onProvincesChange([])
+    onMunicipalitiesChange([])
+    onEmploymentTypesChange([])
+    onSourcesChange([])
+    onWorkTypesChange([])
+    onShowOnlySseChange(true)
+    onShowJobsWithoutSalaryChange(true)
     onPostedWithinChange('2-weeks')
   }
 
@@ -222,80 +374,55 @@ export default function JobFilters({
   }, [provinces, municipalitiesByProvince, selectedMunicipalities])
 
   return (
-    <div className="bg-wev-surface border border-wev-border rounded-wev-card p-6 mb-6 shadow-wev-card">
-      {/* Search */}
-      <div className="mb-2">
-        <div className="flex items-center justify-between mb-2">
-          <label htmlFor="search" className="block text-sm font-semibold text-wev-text-primary">
-            Search
-          </label>
-          <button
-            type="button"
-            onClick={() => onFiltersExpandedChange(!filtersExpanded)}
-            className="text-sm text-wev-accent hover:text-wev-primary-text hover:underline flex items-center gap-1 transition-colors"
-            aria-expanded={filtersExpanded}
-            aria-controls="job-filters-content"
-          >
-            {filtersExpanded ? (
-              <>
-                <span>Hide Filters</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                </svg>
-              </>
-            ) : (
-              <>
-                <span>Show filters</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </>
-            )}
-          </button>
-        </div>
-        <input
-          type="text"
-          id="search"
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search by job title, organization, location..."
-          className="w-full px-4 py-2 border border-wev-border rounded-wev-btn focus:outline-none focus:ring-2 focus:ring-wev-primary focus:border-transparent text-wev-text-primary bg-wev-surface transition-colors"
-        />
-      </div>
+    <div className="bg-wev-surface border border-wev-border rounded-wev-card mb-6 overflow-hidden">
+      <JobSearch
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
+        filtersExpanded={filtersExpanded}
+        onFiltersExpandedChange={onFiltersExpandedChange}
+        activeFilterChips={activeFilterChips}
+        filteredJobsCount={filteredJobsCountResolved}
+        totalJobsCount={totalJobsCountResolved}
+        hasAnyFilters={hasAnyFilters}
+        isSuggestedDefaults={isSuggestedDefaults}
+        onClearAllFilters={clearAllFilters}
+        onApplySuggestedDefaults={applySuggestedDefaults}
+      />
 
       {/* Collapsible Filters Section */}
       <div
         id="job-filters-content"
         className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          filtersExpanded ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
+          filtersExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        {/* SSE filter */}
-        <div className="mb-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showOnlySse}
-              onChange={(e) => onShowOnlySseChange(e.target.checked)}
-              className="wev-checkbox"
-            />
-            <Lineicons icon={showOnlySse ? Leaf1Solid : Leaf1Outlined} size={16} className="shrink-0 text-wev-primary" aria-hidden />
-            <span className="text-sm font-semibold text-wev-text-primary">
-              Show only SSE jobs
-            </span>
-          </label>
-          <p className="text-xs text-wev-text-secondary mt-1 pl-7">
-            SSE = Solidarity Economy. We tag SSE jobs based on published principles.
-            <a
-              href="https://solidarityeconomyprinciples.org/wp-content/uploads/2023/02/SE-Principles-2-pager-handout.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-1 text-wev-accent hover:text-wev-primary-text hover:underline"
-            >
-              Learn more
-            </a>
-          </p>
-        </div>
+        <div className="p-6">
+          {/* SSE filter */}
+          <div className="mb-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showOnlySse}
+                onChange={(e) => onShowOnlySseChange(e.target.checked)}
+                className="wev-checkbox"
+              />
+              <Lineicons icon={showOnlySse ? Leaf1Solid : Leaf1Outlined} size={16} className="shrink-0 text-wev-primary" aria-hidden />
+              <span className="text-sm font-semibold text-wev-text-primary">
+                Show only SSE jobs
+              </span>
+            </label>
+            <p className="text-xs text-wev-text-secondary mt-1 pl-7">
+              SSE = Solidarity Economy. We tag SSE jobs based on published principles.
+              <a
+                href="https://solidarityeconomyprinciples.org/wp-content/uploads/2023/02/SE-Principles-2-pager-handout.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-1 text-wev-accent hover:text-wev-primary-text hover:underline"
+              >
+                Learn more
+              </a>
+            </p>
+          </div>
 
         {/* Jobs without salary filter */}
         <div className="mb-4">
@@ -328,7 +455,7 @@ export default function JobFilters({
                 onClick={() => onPostedWithinChange(value)}
                 className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
                   postedWithin === value
-                    ? 'bg-wev-primary text-white shadow-wev-btn'
+                    ? 'bg-wev-primary text-white'
                     : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
                 }`}
               >
@@ -360,7 +487,7 @@ export default function JobFilters({
                 }}
                 className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
                   isSelected
-                    ? 'bg-wev-primary text-white shadow-wev-btn'
+                    ? 'bg-wev-primary text-white'
                     : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
                 }`}
               >
@@ -560,16 +687,7 @@ export default function JobFilters({
           </div>
         </div>
       </div>
-
-        {/* Reset Filters Button */}
-        {hasActiveFilters && (
-          <button
-            onClick={clearAllFilters}
-            className="text-sm text-wev-accent hover:text-wev-primary-text hover:underline transition-colors"
-          >
-            Reset filters
-          </button>
-        )}
+      </div>
       </div>
     </div>
   )
