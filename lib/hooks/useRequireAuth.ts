@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import type { User } from '@supabase/supabase-js'
+import { useAuth } from '@/contexts/AuthContext'
 
 /**
  * Hook for pages that require authentication.
@@ -11,51 +10,18 @@ import type { User } from '@supabase/supabase-js'
  * Returns the authenticated user once confirmed, or null while loading.
  */
 export function useRequireAuth() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, loading } = useAuth()
   const router = useRouter()
-  const supabase = useMemo(() => createClient(), [])
+  const shouldRedirect = !loading && !user
 
   useEffect(() => {
-    let mounted = true
-
-    const checkSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      if (!mounted) return
-
-      if (!session) {
-        router.replace('/login')
-        return
-      }
-
-      setUser(session.user)
-      setLoading(false)
+    if (shouldRedirect) {
+      router.replace('/login')
     }
+  }, [shouldRedirect, router])
 
-    checkSession()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return
-
-      if (!session) {
-        setUser(null)
-        router.replace('/login')
-        return
-      }
-
-      setUser(session.user)
-    })
-
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
-  }, [router, supabase])
-
-  return { user, loading }
+  return {
+    user,
+    loading: loading || shouldRedirect,
+  }
 }

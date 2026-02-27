@@ -1,5 +1,7 @@
 'use client'
 
+import Button from './Button'
+
 import { useState } from 'react'
 
 interface PaginationProps {
@@ -88,13 +90,15 @@ export default function Pagination({
       </div>
 
       <div className="flex items-center gap-2">
-        <button
+        <Button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-3 py-1 border border-wev-border rounded-wev-btn text-wev-text-primary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-wev-primary-tint hover:border-wev-primary transition-colors"
+          variant="outline"
+          size="sm"
+          fullWidth={false}
         >
           Previous
-        </button>
+        </Button>
 
         <div className="flex items-center gap-1">
           {getPageNumbers().map((page, idx) => {
@@ -110,28 +114,28 @@ export default function Pagination({
             const isActive = pageNum === currentPage
 
             return (
-              <button
+              <Button
                 key={pageNum}
                 onClick={() => onPageChange(pageNum)}
-                className={`px-3 py-1 border rounded-wev-btn transition-colors ${
-                  isActive
-                    ? 'bg-wev-primary text-white border-wev-primary shadow-wev-btn'
-                    : 'border-wev-border text-wev-text-primary hover:bg-wev-primary-tint hover:border-wev-primary'
-                }`}
+                variant={isActive ? 'primary' : 'outline'}
+                size="sm"
+                fullWidth={false}
               >
                 {pageNum}
-              </button>
+              </Button>
             )
           })}
         </div>
 
-        <button
+        <Button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-3 py-1 border border-wev-border rounded-wev-btn text-wev-text-primary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-wev-primary-tint hover:border-wev-primary transition-colors"
+          variant="outline"
+          size="sm"
+          fullWidth={false}
         >
           Next
-        </button>
+        </Button>
       </div>
     </div>
   )

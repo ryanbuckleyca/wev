@@ -25,6 +25,12 @@ export function useProfile(userId: string | undefined): UseProfileState & UsePro
 
   const refresh = useCallback(async () => {
     if (!userId) {
+      setState((prev) => ({
+        ...prev,
+        profile: null,
+        loading: false,
+        error: null,
+      }))
       return
     }
 
