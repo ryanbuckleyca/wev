@@ -15,7 +15,6 @@ import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
 import ErrorList from '@/components/ErrorList';
 import Button from '@/components/Button';
-import LinkButton from '@/components/LinkButton';
 
 export default function AccountSettingsPage() {
   const { user, loading } = useRequireAuth();
