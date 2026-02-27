@@ -1,16 +1,16 @@
-interface AppLoaderProps {
+interface LoadingIndicatorProps {
   message?: string | null
   fullScreen?: boolean
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }
 
-export default function AppLoader({
+export default function LoadingIndicator({
   message = 'Loading...',
   fullScreen = true,
   size = 'md',
   className = '',
-}: AppLoaderProps) {
+}: LoadingIndicatorProps) {
   const containerClasses = fullScreen
     ? 'min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center gap-3'
     : 'flex flex-col items-center justify-center gap-3 py-8'

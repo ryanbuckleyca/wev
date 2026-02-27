@@ -39,26 +39,15 @@ function deriveRole(roles: string[]): UserRole {
   return 'user'
 }
 
-function extractRolesFromUser(user: User | null): string[] {
-  if (!user) return ['user']
+function parseRolesColumn(roles: unknown): string[] {
+  if (Array.isArray(roles)) {
+    const parsed = roles
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
 
-  const appMeta = user.app_metadata as Record<string, unknown> | undefined
-  const userMeta = user.user_metadata as Record<string, unknown> | undefined
-
-  const roleCandidates = [
-    appMeta?.roles,
-    appMeta?.role,
-    userMeta?.roles,
-    userMeta?.role,
-  ]
-
-  for (const candidate of roleCandidates) {
-    if (Array.isArray(candidate)) {
-      const roles = candidate.filter((r): r is string => typeof r === 'string' && r.length > 0)
-      if (roles.length > 0) return roles
-    }
-    if (typeof candidate === 'string' && candidate.length > 0) {
-      return [candidate]
+    if (parsed.length > 0) {
+      return normalizeRoles(parsed)
     }
   }
 
@@ -67,8 +56,7 @@ function extractRolesFromUser(user: User | null): string[] {
 
 async function fetchRolesForUser(
   supabase: ReturnType<typeof createClient>,
-  userId: string,
-  fallbackRoles: string[]
+  userId: string
 ): Promise<string[]> {
   try {
     const response = await fetch('/api/auth/roles', {
@@ -83,7 +71,7 @@ async function fetchRolesForUser(
     if (response.ok) {
       const payload = await response.json()
       if (payload && Array.isArray(payload.roles)) {
-        return normalizeRoles(payload.roles.filter((role: unknown): role is string => typeof role === 'string'))
+        return normalizeRoles(payload.roles.filter((role: unknown): role is string => typeof role === 'string' && role.length > 0))
       }
     }
   } catch {
@@ -97,14 +85,14 @@ async function fetchRolesForUser(
       .eq('user_id', userId)
       .maybeSingle()
 
-    if (!error && data && Array.isArray(data.roles)) {
-      return normalizeRoles(data.roles.filter((role): role is string => typeof role === 'string'))
+    if (!error) {
+      return parseRolesColumn((data as { roles?: unknown } | null)?.roles)
     }
   } catch {
-    // Keep fallback roles when direct query fails.
+    // Keep default role when direct query fails.
   }
 
-  return normalizeRoles(fallbackRoles)
+  return ['user']
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -135,11 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mounted) return
 
         setUser(resolvedUser)
-        const fallbackRoles = extractRolesFromUser(resolvedUser)
-        setRoles(fallbackRoles)
+        setRoles(['user'])
 
         if (resolvedUser) {
-          const resolvedRoles = await fetchRolesForUser(supabase, resolvedUser.id, fallbackRoles)
+          const resolvedRoles = await fetchRolesForUser(supabase, resolvedUser.id)
           if (!mounted) return
           setRoles(resolvedRoles)
         }
@@ -162,11 +149,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const nextUser = session?.user ?? null
       setUser(nextUser)
-      const fallbackRoles = extractRolesFromUser(nextUser)
-      setRoles(fallbackRoles)
+      setRoles(['user'])
 
       if (nextUser) {
-        const resolvedRoles = await fetchRolesForUser(supabase, nextUser.id, fallbackRoles)
+        const resolvedRoles = await fetchRolesForUser(supabase, nextUser.id)
         if (!mounted) return
         setRoles(resolvedRoles)
       }

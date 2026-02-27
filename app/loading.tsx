@@ -1,5 +1,5 @@
-import AppLoader from '@/components/AppLoader'
+import LoadingIndicator from '@/components/LoadingIndicator'
 
 export default function GlobalLoading() {
-  return <AppLoader />
+  return <LoadingIndicator />
 }

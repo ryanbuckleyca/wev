@@ -8,18 +8,15 @@ const NO_STORE_HEADERS = {
   'cache-control': 'no-store, max-age=0, must-revalidate',
 }
 
-function extractRolesFromUserMetadata(user: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }) {
-  const appMeta = user.app_metadata ?? {}
-  const userMeta = user.user_metadata ?? {}
-  const candidates = [appMeta.roles, appMeta.role, userMeta.roles, userMeta.role]
+function parseRolesColumn(roles: unknown): string[] {
+  if (Array.isArray(roles)) {
+    const parsed = roles
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
 
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      const roles = candidate.filter((r): r is string => typeof r === 'string' && r.length > 0)
-      if (roles.length > 0) return roles
-    }
-    if (typeof candidate === 'string' && candidate.length > 0) {
-      return [candidate]
+    if (parsed.length > 0) {
+      return Array.from(new Set(parsed))
     }
   }
 
@@ -37,8 +34,6 @@ export async function GET() {
       return NextResponse.json({ roles: ['user'] }, { status: 401, headers: NO_STORE_HEADERS })
     }
 
-    let roles = extractRolesFromUserMetadata(user)
-
     try {
       const adminClient = getSupabaseServer()
       const { data, error } = await adminClient
@@ -47,14 +42,15 @@ export async function GET() {
         .eq('user_id', user.id)
         .maybeSingle()
 
-      if (!error && data && Array.isArray(data.roles) && data.roles.length > 0) {
-        roles = data.roles.filter((r): r is string => typeof r === 'string' && r.length > 0)
+      if (error) {
+        return NextResponse.json({ roles: ['user'] }, { headers: NO_STORE_HEADERS })
       }
-    } catch {
-      // Keep metadata-derived roles when server-role client is unavailable.
-    }
 
-    return NextResponse.json({ roles }, { headers: NO_STORE_HEADERS })
+      const roles = parseRolesColumn((data as { roles?: unknown } | null)?.roles)
+      return NextResponse.json({ roles }, { headers: NO_STORE_HEADERS })
+    } catch {
+      return NextResponse.json({ roles: ['user'] }, { headers: NO_STORE_HEADERS })
+    }
   } catch {
     return NextResponse.json({ roles: ['user'] }, { status: 500, headers: NO_STORE_HEADERS })
   }

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Button from '@/components/Button'
 import LinkButton from '@/components/LinkButton'
 import StyledLink from '@/components/StyledLink'
+import ButtonLink from '@/components/ButtonLink'
 import StatusIcon from '@/components/StatusIcon'
 import BannerMessage from '@/components/BannerMessage'
 import notify from '@/lib/toast'
@@ -157,13 +158,13 @@ export default function StyleGuidePage() {
         </div>
       </section>
 
-      {/* Three Component System */}
+      {/* Component System */}
       <section id="three-component-system" className="design-section">
         <div className="design-container">
-          <h2>Three Component System</h2>
+          <h2>Component System</h2>
           <p className="design-section-intro">
-            We use three distinct components for different purposes: Button for actions, LinkButton for navigation that looks like buttons,
-            and StyledLink for navigation with flexible styling. All navigation components include prefetch on hover.
+            We use four distinct components for interaction patterns: Button for actions, LinkButton for navigation that looks like buttons,
+            StyledLink for navigation with flexible styling, and ButtonLink for actions that should look like inline links.
           </p>
 
           <div className="design-button-grid">
@@ -235,6 +236,29 @@ export default function StyleGuidePage() {
               <div className="design-usage-examples">
                 <p className="text-sm text-wev-text-secondary mt-4">
                   <strong>Variants:</strong> primary, secondary, outline, text
+                </p>
+              </div>
+            </div>
+
+            <div className="design-button-example">
+              <div className="design-button-label">ButtonLink Component</div>
+              <p className="design-button-description">
+                Actions that should look like links (toggle/collapse, clear, reset). This stays a semantic button.
+              </p>
+              <div className="flex flex-wrap gap-3 items-center">
+                <ButtonLink onClick={() => undefined}>
+                  Collapse all
+                </ButtonLink>
+                <ButtonLink tone="muted" size="xs" className="underline" onClick={() => undefined}>
+                  Show all jobs
+                </ButtonLink>
+                <ButtonLink tone="primary" onClick={() => undefined}>
+                  Use suggested filters
+                </ButtonLink>
+              </div>
+              <div className="design-usage-examples">
+                <p className="text-sm text-wev-text-secondary mt-4">
+                  <strong>Tones:</strong> accent, muted, primary
                 </p>
               </div>
             </div>
