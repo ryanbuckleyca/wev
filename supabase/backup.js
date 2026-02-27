@@ -1,10 +1,11 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../wev-scraper/.env') });
 const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://teuvfoftdjfsnkkbnzps.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '<YOUR_SERVICE_ROLE_KEY>';
+// Use production database for backup
+const SUPABASE_URL = process.env.SUPABASE_PROD_URL || 'https://teuvfoftdjfsnkkbnzps.supabase.co';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_PROD_SECRET_KEY || '<YOUR_SERVICE_ROLE_KEY>';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
@@ -68,9 +69,9 @@ async function backupTable(table, schema = 'public') {
 }
 
 
-// Adjust path: now running from supabase/backups/, migrations are at ../migrations
+// Adjust path: migrations are at ./migrations
 (async () => {
-  const migrationsDir = path.resolve(__dirname, '../migrations');
+  const migrationsDir = path.resolve(__dirname, 'migrations');
   let allTables = getAllTablesFromMigrations(migrationsDir);
   // Always include auth.users and auth.identities
   const mustHave = [
