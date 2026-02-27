@@ -903,3 +903,112 @@
   font-size: 0.9rem;
   color: var(--bg);
 }
+
+/* Tippy.js Tooltip Styles - Nuclear fix for transition resets */
+.tippy-box[data-state='hidden'] {
+  opacity: 0 !important;
+  transition: opacity 1000ms ease !important;
+}
+
+.tippy-box[data-state='visible'] {
+  opacity: 1 !important;
+  transition: opacity 10ms ease !important;
+}
+
+.tippy-box {
+  transition-property: opacity, transform !important;
+}
+
+.tippy-box[data-theme~='light'] {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--wev-card);
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  max-width: 300px;
+}
+
+.tippy-box[data-theme~='dark'] {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--wev-card);
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.25), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  max-width: 300px;
+}
+
+.tippy-box[data-theme~='light'] > .tippy-arrow::before {
+  border-top-color: var(--border);
+}
+
+.tippy-box[data-theme~='light'] > .tippy-arrow::after {
+  border-top-color: var(--surface);
+}
+
+.tippy-box[data-theme~='dark'] > .tippy-arrow::before {
+  border-top-color: var(--border);
+}
+
+.tippy-box[data-theme~='dark'] > .tippy-arrow::after {
+  border-top-color: var(--surface);
+}
+
+.tippy-custom-content {
+  padding: 0.75rem;
+}
+
+.tippy-custom-content p {
+  margin: 0;
+}
+
+.tippy-custom-content p + p {
+  margin-top: 0.5rem;
+}
+
+.tippy-custom-content .font-medium {
+  font-weight: 500;
+  color: var(--primary-text);
+  margin-bottom: 0.25rem;
+}
+
+.tippy-custom-content .text-xs {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.tippy-custom-content .italic {
+  font-style: italic;
+}
+
+.tippy-custom-content .mb-1 {
+  margin-bottom: 0.25rem;
+}
+
+.tippy-custom-content .mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.tippy-custom-content .text-wev-text-secondary {
+  color: var(--text-secondary);
+}
+
+/* Make tippy themes use our design system */
+.tippy-box[data-theme~='light'] {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--wev-card);
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+}
+
+.tippy-box[data-theme~='dark'] {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--wev-card);
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.25), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
