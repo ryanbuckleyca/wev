@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Turnstile } from '@marsidev/react-turnstile'
 import { useTheme } from '@/lib/hooks/useTheme'
 
@@ -15,23 +15,24 @@ export default function TurnstileWidget({ onSuccess, onError, onExpire }: Turnst
   const [mounted, setMounted] = useState(false)
 
   // Ensure component is mounted before rendering Turnstile
-  useState(() => {
+  useEffect(() => {
     setMounted(true)
-  })
+  }, [])
 
   if (!mounted) {
     return (
-      <div className="flex justify-center">
-        <div className="w-[300px] h-[65px] rounded-lg border border-[var(--border)] bg-[var(--bg)] animate-pulse" />
+      <div className="w-full">
+        <div className="w-full h-[65px] rounded-lg border border-[var(--border)] bg-[var(--bg)] animate-pulse" />
       </div>
     )
   }
 
   return (
-    <div className="flex justify-center">
+    <div className="w-full">
       <Turnstile
+        className="w-full"
         siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-        options={{ theme }}
+        options={{ theme, size: 'flexible' }}
         onSuccess={onSuccess}
         onError={onError}
         onExpire={onExpire}

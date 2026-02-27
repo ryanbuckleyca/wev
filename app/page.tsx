@@ -10,6 +10,7 @@ import CopyAllJobsButton from '@/components/CopyAllJobsButton'
 import JobFilters from '@/components/JobFilters'
 import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
+import ButtonLink from '@/components/ButtonLink'
 
 // Force dynamic rendering - this page uses client-side data fetching
 export const revalidate = 0 // Disable static generation, always render dynamically
@@ -277,14 +278,14 @@ export default function Home() {
                 <span>Unknown</span>
               )}
             </p>
-            <button
-              type="button"
+            <ButtonLink
               onClick={() => setAllJobsExpanded(!allJobsExpanded)}
-              className="text-sm text-wev-accent hover:text-wev-primary-text hover:underline focus:outline-none focus:ring-2 focus:ring-wev-primary focus:ring-offset-1 rounded"
+              tone="accent"
+              size="sm"
               title={allJobsExpanded ? 'Collapse all jobs' : 'Expand all jobs'}
             >
               {allJobsExpanded ? 'Collapse all' : 'Expand all'}
-            </button>
+            </ButtonLink>
           </div>
         )}
 

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { JobPosting } from '@/lib/supabase'
 import JobCard from './JobCard'
 import { useAuth } from '@/contexts/AuthContext'
-import AppLoader from './AppLoader'
+import LoadingIndicator from './LoadingIndicator'
 
 interface JobListingsProps {
   jobs: JobPosting[]
@@ -61,7 +61,7 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
   }
 
   if (loading) {
-    return <AppLoader fullScreen={false} message="Loading jobs..." />
+    return <LoadingIndicator fullScreen={false} message="Loading jobs..." />
   }
 
   if (error) {

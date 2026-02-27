@@ -8,7 +8,6 @@ import Button from '@/components/Button'
 import ThemeToggle from './ThemeToggle'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
-import AppLoader from './AppLoader'
 
 export default function UserProfile() {
   const { user, role, loading } = useAuth()

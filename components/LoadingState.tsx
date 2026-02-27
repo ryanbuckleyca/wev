@@ -1,4 +1,4 @@
-import AppLoader from './AppLoader'
+import LoadingIndicator from './LoadingIndicator'
 
 interface LoadingStateProps {
   message?: string
@@ -6,5 +6,5 @@ interface LoadingStateProps {
 }
 
 export default function LoadingState({ message = 'Loading...', fullScreen = true }: LoadingStateProps) {
-  return <AppLoader message={message} fullScreen={fullScreen} />
+  return <LoadingIndicator message={message} fullScreen={fullScreen} />
 }

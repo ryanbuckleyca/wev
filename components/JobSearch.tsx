@@ -1,6 +1,7 @@
 'use client'
 
 import FilterPill from './FilterPill'
+import ButtonLink from './ButtonLink'
 
 export interface ActiveFilterChip {
   id: string
@@ -103,22 +104,24 @@ export default function JobSearch({
         {(hasAnyFilters || !isSuggestedDefaults) && (
           <div className="flex flex-wrap items-center gap-3">
             {hasAnyFilters && (
-              <button
-                type="button"
+              <ButtonLink
                 onClick={onClearAllFilters}
-                className="text-xs text-wev-text-tertiary hover:text-wev-accent underline"
+                tone="muted"
+                size="xs"
+                className="underline"
               >
                 Show all jobs
-              </button>
+              </ButtonLink>
             )}
             {!isSuggestedDefaults && (
-              <button
-                type="button"
+              <ButtonLink
                 onClick={onApplySuggestedDefaults}
-                className="text-xs text-wev-text-tertiary hover:text-wev-accent underline"
+                tone="muted"
+                size="xs"
+                className="underline"
               >
                 Use suggested filters
-              </button>
+              </ButtonLink>
             )}
           </div>
         )}
