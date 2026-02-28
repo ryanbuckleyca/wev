@@ -1,32 +1,30 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase-server'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export async function GET(req: Request) {
   try {
-    const supabase = getSupabaseServer()
+    // Create a server client bound to the request cookies to detect the authenticated user
+    const serverSupabase = createServerClient()
+    const {
+      data: { user },
+    } = await serverSupabase.auth.getUser()
 
-    // Get current user from Supabase auth if available in cookie
-    const cookie = req.headers.get('cookie') || ''
-    // Use server client with service role to query bookmarks for the current authenticated user.
-    // Prefer checking auth header via supabase auth helpers if available; fall back to RLS via service key.
-
-    // We'll attempt to read the authenticated user's id from the Supabase session cookie
-    // If not present, return unauthorized.
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-    const userId = sessionData?.data?.session?.user?.id
-
-    if (!userId) {
+    if (!user) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    // Join bookmarks -> jobs and return job fields plus bookmark metadata
-    const { data, error } = await supabase
+    // Use admin client to perform a join between jobs and bookmarks for this user
+    const adminClient = getSupabaseServer()
+    const { data, error } = await adminClient
       .from('jobs')
-      .select(`id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, bookmarks!inner(user_id, created_at)`)
-      .in('id', supabase.from('bookmarks').select('job_id').eq('user_id', userId))
+      .select(
+        'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, bookmarks!inner(user_id, created_at)'
+      )
+      .eq('bookmarks.user_id', user.id)
       .order('date_posted', { ascending: false })
 
     if (error) {
