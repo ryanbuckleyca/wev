@@ -347,21 +347,20 @@ export default function Home() {
 
         {/* Results Header */}
         {!loading && (
-          <div className="flex items-center justify-between px-1 py-1 mb-2" style={{ padding: '4px 2px' }}>
-            {/* Left side: Last updated info */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-1 py-1 mb-2" style={{ padding: '4px 2px' }}>
+            {/* Left side: Last updated info (its own row on mobile) */}
             <div className="text-sm" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               <span className="font-semibold text-wev-accent">Last updated: </span>
               <span>{lastScrapeTime || 'Unknown'}</span>
             </div>
-            
-            {/* Right side: Sort control and expand/collapse */}
-            <div className="flex items-center gap-2" style={{ gap: '8px' }}>
-              {user && (
-                <SortDropdown
-                  sortBy={sortBy}
-                  onChange={(s) => setSortBy(s)}
-                />
-              )}
+
+            {/* Controls row: sort and expand/collapse - appears below on mobile */}
+            <div className="flex items-center gap-2 mt-2 sm:mt-0" style={{ gap: '8px', justifyContent: 'flex-end' }}>
+              <SortDropdown
+                sortBy={sortBy}
+                onChange={(s) => setSortBy(s)}
+                showMatchOption={!!user}
+              />
 
               <div style={{ width: '1px', height: '14px', background: 'var(--border)' }} />
 
