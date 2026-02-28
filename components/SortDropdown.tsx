@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Button from '@/components/Button'
+import Chevron from './Chevron'
 
 type SortOption = 'date-desc' | 'date-asc' | 'match-desc' | 'salary-desc' | 'salary-asc' | 'org-asc'
 
@@ -44,14 +45,7 @@ export default function SortDropdown({ sortBy, onChange }: SortDropdownProps) {
       >
         <span>Sort: </span>
         <span style={{ fontWeight: 600, color: 'var(--text)' }}>{label}</span>
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 12 12"
-          style={{ transition: 'transform 0.2s ease', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
-        >
-          <polyline points="3 5 6 8 9 5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <Chevron rotated={open} />
       </Button>
 
       <div
