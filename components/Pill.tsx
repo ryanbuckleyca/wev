@@ -27,8 +27,11 @@ export default function Pill({
     secondary: 'bg-[var(--primary-tint)] text-[var(--primary-text)]',  // Light teal
     default: 'bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)]'  // Tertiary (light gray with border)
   }
-  
-  const combinedClasses = `${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${className}`.trim()
+
+  // If the pill is removable, prefer the lavender accent styling used by the legacy FilterPill
+  const removableClasses = 'border border-wev-border bg-wev-accent-tint text-wev-accent'
+
+  const combinedClasses = `${baseClasses} ${sizeClasses[size]} ${removable ? removableClasses : variantClasses[variant]} ${className}`.trim()
 
   return (
     <span className={combinedClasses}>
@@ -37,7 +40,7 @@ export default function Pill({
         <button
           type="button"
           onClick={onRemove}
-          className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] leading-none ml-1"
+          className={removable ? 'text-wev-text-tertiary hover:text-wev-accent leading-none ml-1' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] leading-none ml-1'}
           aria-label={`Remove ${children}`}
         >
           ×
