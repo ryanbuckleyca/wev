@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase-server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import normalizeJobsWithSource from '@/lib/normalize-job'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -32,20 +33,7 @@ export async function GET(req: Request) {
     }
 
     // Normalize jobs result similar to /api/bulletin
-    const jobsWithSource = (data ?? []).map((job: any) => {
-      const sources = (job as { sources?: { name?: string } | { name?: string }[] }).sources
-      const sourceName = Array.isArray(sources) ? sources[0]?.name : sources?.name
-      const { sources: _sources, source_id: _sourceId, bookmarks: _bookmarks, ...rest } = job as {
-        sources?: { name?: string } | { name?: string }[]
-        source_id?: string
-        bookmarks?: any
-        [key: string]: unknown
-      }
-      return {
-        ...rest,
-        source: sourceName ?? null,
-      }
-    })
+    const jobsWithSource = normalizeJobsWithSource(data)
 
     return NextResponse.json({ jobs: jobsWithSource })
   } catch (err) {

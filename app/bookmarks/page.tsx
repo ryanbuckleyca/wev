@@ -19,25 +19,13 @@ export default function BookmarksPage() {
     let mounted = true
     ;(async () => {
       try {
-        const supabase = createClient()
-        const { data: bookmarks, error: bmError } = await supabase
-          .from('bookmarks')
-          .select('job_id')
-          .eq('user_id', user.id)
-
-        if (bmError) throw bmError
-
-        const jobIds = (bookmarks || []).map((b: any) => b.job_id)
-
-        // Fetch all jobs from the same API used by the main page and filter by bookmarked ids
-        const res = await fetch('/api/bulletin')
+        const res = await fetch('/api/bookmarks', { cache: 'no-store' })
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
-          throw new Error(body.error || 'Failed to fetch jobs')
+          throw new Error(body.error || 'Failed to fetch bookmarked jobs')
         }
-        const { jobs: allJobs } = await res.json()
-        const bookmarkedJobs = allJobs.filter((j: any) => jobIds.includes(j.id))
 
+        const { jobs: bookmarkedJobs } = await res.json()
         if (mounted) setJobs(bookmarkedJobs)
       } catch (err) {
         console.error('Failed to load bookmarks:', err)
@@ -45,7 +33,9 @@ export default function BookmarksPage() {
       }
     })()
 
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+    }
   }, [user])
 
   if (loading) return <LoadingState />
