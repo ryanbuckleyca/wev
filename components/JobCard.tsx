@@ -200,7 +200,7 @@ export default function JobCard({
       
       {/* Values Section */}
       {job.values && job.values.length > 0 && (
-        <div className={`px-5 py-3 bg-wev-surface-tint ${isExpanded ? 'border-t border-wev-border' : ''}`}>
+        <div className={`px-4 py-3 bg-wev-surface-tint ${isExpanded ? 'border-t border-wev-border' : ''}`}>
           <div className="flex flex-wrap items-center gap-1.5">
             {/* Match Score - only show when user is logged in */}
             {user && !loading && (
