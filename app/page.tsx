@@ -12,6 +12,8 @@ import JobFilters from '@/components/JobFilters'
 import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
 import ButtonLink from '@/components/ButtonLink'
+import SortDropdown from '@/components/SortDropdown'
+import ExpandAllToggle from '@/components/ExpandAllToggle'
 
 // Force dynamic rendering - this page uses client-side data fetching
 export const revalidate = 0 // Disable static generation, always render dynamically
@@ -43,39 +45,10 @@ export default function Home() {
   // Sort state
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'match-desc' | 'salary-desc' | 'salary-asc' | 'org-asc'>('date-desc')
   
-  // Dropdown state
-  const [sortDropdownOpen, setSortDropdownOpen] = useState(false)
-  
   // Match data state
   const [matchData, setMatchData] = useState<Map<string, { score: number; shared_values: string[] }>>(new Map())
 
-  // Helper functions for sort labels
-  const getSortLabel = (sort: string): string => {
-    switch (sort) {
-      case 'date-desc': return 'Newest first'
-      case 'date-asc': return 'Oldest first'
-      case 'match-desc': return 'Best match'
-      case 'salary-desc': return 'Salary: high to low'
-      case 'salary-asc': return 'Salary: low to high'
-      case 'org-asc': return 'Organization A–Z'
-      default: return 'Newest first'
-    }
-  }
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element
-      if (!target.closest('.sort-dropdown')) {
-        setSortDropdownOpen(false)
-      }
-    }
-
-    if (sortDropdownOpen) {
-      document.addEventListener('click', handleClickOutside)
-      return () => document.removeEventListener('click', handleClickOutside)
-    }
-  }, [sortDropdownOpen])
+  
 
   const handleExpandAll = (expanded: boolean) => {
     console.log('handleExpandAll called:', expanded)
@@ -383,256 +356,19 @@ export default function Home() {
             
             {/* Right side: Sort control and expand/collapse */}
             <div className="flex items-center gap-2" style={{ gap: '8px' }}>
-              {/* Sort control */}
               {user && (
-                <div className="sort-dropdown relative" style={{ zIndex: 50 }}>
-                  <button
-                    onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors"
-                    style={{
-                      fontSize: '13px',
-                      color: 'var(--text-secondary)',
-                      padding: '5px 8px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      background: 'none'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'none'
-                    }}
-                  >
-                    <span>Sort: </span>
-                    <span style={{ fontWeight: '600', color: 'var(--text)' }}>
-                      {getSortLabel(sortBy)}
-                    </span>
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 12 12"
-                      style={{
-                        transition: 'transform 0.2s ease',
-                        transform: sortDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
-                      }}
-                    >
-                      <polyline
-                        points="3 5 6 8 9 5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                  
-                  {/* Dropdown menu */}
-                  <div
-                    className="pointer-events-none"
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 6px)',
-                      right: '0',
-                      minWidth: '160px',
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '10px',
-                      padding: '4px',
-                      opacity: sortDropdownOpen ? '1' : '0',
-                      transform: sortDropdownOpen 
-                        ? 'translateY(0) scale(1)' 
-                        : 'translateY(-6px) scale(0.97)',
-                      transformOrigin: 'top right',
-                      transition: 'opacity 0.15s ease, transform 0.15s ease',
-                      pointerEvents: sortDropdownOpen ? 'auto' : 'none',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1)',
-                      zIndex: 50
-                    }}
-                  >
-                    {/* Date options */}
-                    <div
-                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
-                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
-                      onClick={() => { setSortBy('date-desc'); setSortDropdownOpen(false) }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'none'
-                      }}
-                    >
-                      <span style={{ color: sortBy === 'date-desc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'date-desc' ? '600' : '400' }}>
-                        Newest first
-                      </span>
-                      {sortBy === 'date-desc' && (
-                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
-                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                    </div>
-                    <div
-                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
-                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
-                      onClick={() => { setSortBy('date-asc'); setSortDropdownOpen(false) }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'none'
-                      }}
-                    >
-                      <span style={{ color: sortBy === 'date-asc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'date-asc' ? '600' : '400' }}>
-                        Oldest first
-                      </span>
-                      {sortBy === 'date-asc' && (
-                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
-                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                    </div>
-                    
-                    {/* Divider */}
-                    <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }}></div>
-                    
-                    {/* Match options */}
-                    <div
-                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
-                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
-                      onClick={() => { setSortBy('match-desc'); setSortDropdownOpen(false) }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'none'
-                      }}
-                    >
-                      <span style={{ color: sortBy === 'match-desc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'match-desc' ? '600' : '400' }}>
-                        Best match
-                      </span>
-                      {sortBy === 'match-desc' && (
-                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
-                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                    </div>
-                    
-                    {/* Divider */}
-                    <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }}></div>
-                    
-                    {/* Salary options */}
-                    <div
-                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
-                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
-                      onClick={() => { setSortBy('salary-desc'); setSortDropdownOpen(false) }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'none'
-                      }}
-                    >
-                      <span style={{ color: sortBy === 'salary-desc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'salary-desc' ? '600' : '400' }}>
-                        Salary: high to low
-                      </span>
-                      {sortBy === 'salary-desc' && (
-                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
-                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                    </div>
-                    <div
-                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
-                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
-                      onClick={() => { setSortBy('salary-asc'); setSortDropdownOpen(false) }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'none'
-                      }}
-                    >
-                      <span style={{ color: sortBy === 'salary-asc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'salary-asc' ? '600' : '400' }}>
-                        Salary: low to high
-                      </span>
-                      {sortBy === 'salary-asc' && (
-                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
-                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                    </div>
-                    
-                    {/* Divider */}
-                    <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }}></div>
-                    
-                    {/* Organization option */}
-                    <div
-                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
-                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
-                      onClick={() => { setSortBy('org-asc'); setSortDropdownOpen(false) }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'none'
-                      }}
-                    >
-                      <span style={{ color: sortBy === 'org-asc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'org-asc' ? '600' : '400' }}>
-                        Organization A–Z
-                      </span>
-                      {sortBy === 'org-asc' && (
-                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
-                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <SortDropdown
+                  sortBy={sortBy}
+                  onChange={(s) => setSortBy(s)}
+                />
               )}
-              
-              {/* Vertical separator */}
-              <div style={{ width: '1px', height: '14px', background: 'var(--border)' }}></div>
-              
-              {/* Expand/Collapse toggle */}
-              <button
-                onClick={() => setAllJobsExpanded(!allJobsExpanded)}
-                className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors"
-                style={{
-                  fontSize: '13px',
-                  color: 'var(--text-secondary)',
-                  padding: '5px 8px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: 'none'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'none'
-                }}
-              >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  style={{
-                    transition: 'transform 0.2s ease',
-                    transform: allJobsExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
-                  }}
-                >
-                  <polyline
-                    points="3 5 6 8 9 5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span>{allJobsExpanded ? 'Collapse all' : 'Expand all'}</span>
-              </button>
+
+              <div style={{ width: '1px', height: '14px', background: 'var(--border)' }} />
+
+              <ExpandAllToggle
+                allExpanded={allJobsExpanded}
+                onToggle={() => setAllJobsExpanded(!allJobsExpanded)}
+              />
             </div>
           </div>
         )}
