@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
@@ -58,9 +58,6 @@ async function fetchRolesForUser(
   supabase: ReturnType<typeof createClient>,
   userId: string
 ): Promise<string[]> {
-  const timeoutPromise = new Promise<string[]>((resolve) => {
-    setTimeout(() => resolve(['user']), 1000) // 1 second timeout
-  })
 
   const rolesPromise = async () => {
     try {
@@ -100,15 +97,17 @@ async function fetchRolesForUser(
     return ['user']
   }
 
-  // Race between actual role fetch and timeout
-  return Promise.race([rolesPromise(), timeoutPromise])
+  // Perform the role fetch; callers will set a fast default and update when this resolves.
+  return rolesPromise()
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [roles, setRoles] = useState<string[]>(['user'])
   const [loading, setLoading] = useState(true)
-  const supabase = useMemo(() => createClient(), [])
+  // Use a ref for the Supabase client to avoid re-creating it across renders
+  const supabaseRef = useRef(createClient())
+  const supabase = supabaseRef.current
 
   useEffect(() => {
     let mounted = true
@@ -136,18 +135,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false) // Set loading false immediately after user is found
 
         if (resolvedUser) {
-          const resolvedRoles = await fetchRolesForUser(supabase, resolvedUser.id)
-          if (!mounted) return
-          setRoles(resolvedRoles)
+          // Kick off async role fetch but don't block rendering — update when it completes
+          fetchRolesForUser(supabase, resolvedUser.id)
+            .then((resolvedRoles) => {
+              if (!mounted) return
+              setRoles(resolvedRoles)
+            })
+            .catch(() => {
+              // Keep default roles on error; optionally log in the future
+            })
         }
       } catch {
         if (!mounted) return
         setUser(null)
         setRoles(['user'])
         setLoading(false)
-      } finally {
-        if (!mounted) return
-        // setLoading(false) // Already set above
       }
     }
 
@@ -164,9 +166,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false) // Set loading false immediately after user is found
 
       if (nextUser) {
-        const resolvedRoles = await fetchRolesForUser(supabase, nextUser.id)
-        if (!mounted) return
-        setRoles(resolvedRoles)
+        fetchRolesForUser(supabase, nextUser.id)
+          .then((resolvedRoles) => {
+            if (!mounted) return
+            setRoles(resolvedRoles)
+          })
+          .catch(() => {
+            // Keep default roles on error
+          })
       }
     })
 
