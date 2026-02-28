@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useMemo } from 'react'
 import type { JobPosting } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
 import ReScrapeButton from '@/components/ReScrapeButton'
 import JobListings from '@/components/JobListings'
 import CopyAllJobsButton from '@/components/CopyAllJobsButton'
@@ -18,7 +19,7 @@ export const revalidate = 0 // Disable static generation, always render dynamica
 const ITEMS_PER_PAGE = 20
 
 export default function Home() {
-  const { role } = useAuth()
+  const { role, user } = useAuth()
   const [allJobs, setAllJobs] = useState<JobPosting[]>([])
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -38,6 +39,43 @@ export default function Home() {
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [allJobsExpanded, setAllJobsExpanded] = useState(true)
+  
+  // Sort state
+  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'match-desc' | 'salary-desc' | 'salary-asc' | 'org-asc'>('date-desc')
+  
+  // Dropdown state
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false)
+  
+  // Match data state
+  const [matchData, setMatchData] = useState<Map<string, { score: number; shared_values: string[] }>>(new Map())
+
+  // Helper functions for sort labels
+  const getSortLabel = (sort: string): string => {
+    switch (sort) {
+      case 'date-desc': return 'Newest first'
+      case 'date-asc': return 'Oldest first'
+      case 'match-desc': return 'Best match'
+      case 'salary-desc': return 'Salary: high to low'
+      case 'salary-asc': return 'Salary: low to high'
+      case 'org-asc': return 'Organization A–Z'
+      default: return 'Newest first'
+    }
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('.sort-dropdown')) {
+        setSortDropdownOpen(false)
+      }
+    }
+
+    if (sortDropdownOpen) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [sortDropdownOpen])
 
   const handleExpandAll = (expanded: boolean) => {
     console.log('handleExpandAll called:', expanded)
@@ -94,6 +132,12 @@ export default function Home() {
 
       setAllJobs(jobsData ?? [])
       setCurrentPage(1)
+      
+      // Fetch match data if user is logged in
+      if (user && jobsData) {
+        const matches = await fetchMatchData(jobsData)
+        setMatchData(matches)
+      }
     } catch (err) {
       clearTimeout(timeoutId)
       console.error('Error fetching data:', err)
@@ -109,9 +153,38 @@ export default function Home() {
     }
   }
 
-  // Filter jobs based on search and filters
+  // Fetch match data for all jobs (only when user is logged in)
+  const fetchMatchData = async (jobs: JobPosting[]) => {
+    if (!user) return new Map()
+
+    try {
+      const supabase = createClient()
+      const { data: matches, error } = await supabase
+        .from('job_matches')
+        .select('job_id, score, shared_values')
+        .eq('user_id', user.id)
+        .in('job_id', jobs.map(job => job.id))
+
+      if (error) {
+        console.error('Error fetching match data:', error)
+        return new Map()
+      }
+
+      const matchMap = new Map()
+      matches?.forEach((match: { job_id: string; score: number; shared_values: string[] }) => {
+        matchMap.set(match.job_id, match)
+      })
+      
+      return matchMap
+    } catch (error) {
+      console.error('Error fetching match data:', error)
+      return new Map()
+    }
+  }
+
+  // Filter and sort jobs based on search, filters, and sort option
   const filteredJobs = useMemo(() => {
-    return allJobs.filter((job) => {
+    let filtered = allJobs.filter((job) => {
       // Search filter (case-insensitive)
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
@@ -188,7 +261,36 @@ export default function Home() {
 
       return true
     })
-  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin])
+
+    // Sort jobs
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'date-desc':
+          return new Date(b.date_posted).getTime() - new Date(a.date_posted).getTime()
+        case 'date-asc':
+          return new Date(a.date_posted).getTime() - new Date(b.date_posted).getTime()
+        case 'match-desc':
+          const aMatch = matchData.get(a.id)?.score || 0
+          const bMatch = matchData.get(b.id)?.score || 0
+          return bMatch - aMatch
+        case 'salary-desc':
+          // Sort by salary high to low (jobs without salary go to end)
+          const aSalary = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : -1
+          const bSalary = b.wage ? parseFloat(b.wage.replace(/[^0-9.-]/g, '')) || 0 : -1
+          return bSalary - aSalary
+        case 'salary-asc':
+          // Sort by salary low to high (jobs without salary go to end)
+          const aSalaryAsc = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : Infinity
+          const bSalaryAsc = b.wage ? parseFloat(b.wage.replace(/[^0-9.-]/g, '')) || 0 : Infinity
+          return aSalaryAsc - bSalaryAsc
+        case 'org-asc':
+          // Sort by organization A-Z
+          return a.organization.localeCompare(b.organization)
+        default:
+          return 0
+      }
+    })
+  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin, sortBy, matchData])
 
   // Paginate filtered jobs
   const paginatedJobs = useMemo(() => {
@@ -197,14 +299,23 @@ export default function Home() {
     return filteredJobs.slice(startIndex, endIndex)
   }, [filteredJobs, currentPage])
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters or sort change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin])
+  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin, sortBy])
 
   useEffect(() => {
     fetchData()
   }, [])
+
+  // Refetch match data when user changes
+  useEffect(() => {
+    if (user && allJobs.length > 0) {
+      fetchMatchData(allJobs).then(setMatchData)
+    } else {
+      setMatchData(new Map())
+    }
+  }, [user, allJobs.length])
 
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE)
 
@@ -223,17 +334,11 @@ export default function Home() {
 
         {/* Action Buttons - Admin Only */}
         {role === 'admin' && (
-          <div className="flex flex-col sm:flex-row justify-start items-stretch sm:items-center gap-4 mb-6">
+          <div className="flex flex-col justify-start items-stretch gap-4 mb-6">
             {/* Mobile: Stacked vertically */}
-            <div className="flex flex-col gap-4 sm:hidden">
+            <div className="flex flex-row gap-4">
               <ReScrapeButton onComplete={fetchData} />
-              <CopyAllJobsButton jobs={filteredJobs} />
-            </div>
-            
-            {/* Desktop: Side by side */}
-            <div className="hidden sm:flex sm:gap-4">
-              <ReScrapeButton onComplete={fetchData} />
-              <CopyAllJobsButton jobs={filteredJobs} />
+              <CopyAllJobsButton jobs={allJobs} />
             </div>
           </div>
         )}
@@ -267,25 +372,268 @@ export default function Home() {
           onFiltersExpandedChange={setFiltersExpanded}
         />
 
-        {/* Expand/collapse all jobs */}
+        {/* Results Header */}
         {!loading && (
-          <div className="mb-4 flex justify-between items-center" aria-live="polite" aria-atomic="true">
-            <p className="text-sm text-wev-text-secondary">
+          <div className="flex items-center justify-between px-1 py-1 mb-4" style={{ padding: '4px 2px' }}>
+            {/* Left side: Last updated info */}
+            <div className="text-sm" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               <span className="font-semibold text-wev-accent">Last updated: </span>
-              {lastScrapeTime ? (
-                <span>{lastScrapeTime}</span>
-              ) : (
-                <span>Unknown</span>
+              <span>{lastScrapeTime || 'Unknown'}</span>
+            </div>
+            
+            {/* Right side: Sort control and expand/collapse */}
+            <div className="flex items-center gap-2" style={{ gap: '8px' }}>
+              {/* Sort control */}
+              {user && (
+                <div className="sort-dropdown relative" style={{ zIndex: 50 }}>
+                  <button
+                    onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+                    className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors"
+                    style={{
+                      fontSize: '13px',
+                      color: 'var(--text-secondary)',
+                      padding: '5px 8px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: 'none'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'none'
+                    }}
+                  >
+                    <span>Sort: </span>
+                    <span style={{ fontWeight: '600', color: 'var(--text)' }}>
+                      {getSortLabel(sortBy)}
+                    </span>
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      style={{
+                        transition: 'transform 0.2s ease',
+                        transform: sortDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                      }}
+                    >
+                      <polyline
+                        points="3 5 6 8 9 5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  
+                  {/* Dropdown menu */}
+                  <div
+                    className="pointer-events-none"
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      right: '0',
+                      minWidth: '160px',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '4px',
+                      opacity: sortDropdownOpen ? '1' : '0',
+                      transform: sortDropdownOpen 
+                        ? 'translateY(0) scale(1)' 
+                        : 'translateY(-6px) scale(0.97)',
+                      transformOrigin: 'top right',
+                      transition: 'opacity 0.15s ease, transform 0.15s ease',
+                      pointerEvents: sortDropdownOpen ? 'auto' : 'none',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1)',
+                      zIndex: 50
+                    }}
+                  >
+                    {/* Date options */}
+                    <div
+                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
+                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
+                      onClick={() => { setSortBy('date-desc'); setSortDropdownOpen(false) }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'none'
+                      }}
+                    >
+                      <span style={{ color: sortBy === 'date-desc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'date-desc' ? '600' : '400' }}>
+                        Newest first
+                      </span>
+                      {sortBy === 'date-desc' && (
+                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
+                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    <div
+                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
+                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
+                      onClick={() => { setSortBy('date-asc'); setSortDropdownOpen(false) }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'none'
+                      }}
+                    >
+                      <span style={{ color: sortBy === 'date-asc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'date-asc' ? '600' : '400' }}>
+                        Oldest first
+                      </span>
+                      {sortBy === 'date-asc' && (
+                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
+                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    
+                    {/* Divider */}
+                    <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }}></div>
+                    
+                    {/* Match options */}
+                    <div
+                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
+                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
+                      onClick={() => { setSortBy('match-desc'); setSortDropdownOpen(false) }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'none'
+                      }}
+                    >
+                      <span style={{ color: sortBy === 'match-desc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'match-desc' ? '600' : '400' }}>
+                        Best match
+                      </span>
+                      {sortBy === 'match-desc' && (
+                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
+                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    
+                    {/* Divider */}
+                    <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }}></div>
+                    
+                    {/* Salary options */}
+                    <div
+                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
+                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
+                      onClick={() => { setSortBy('salary-desc'); setSortDropdownOpen(false) }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'none'
+                      }}
+                    >
+                      <span style={{ color: sortBy === 'salary-desc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'salary-desc' ? '600' : '400' }}>
+                        Salary: high to low
+                      </span>
+                      {sortBy === 'salary-desc' && (
+                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
+                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    <div
+                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
+                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
+                      onClick={() => { setSortBy('salary-asc'); setSortDropdownOpen(false) }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'none'
+                      }}
+                    >
+                      <span style={{ color: sortBy === 'salary-asc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'salary-asc' ? '600' : '400' }}>
+                        Salary: low to high
+                      </span>
+                      {sortBy === 'salary-asc' && (
+                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
+                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    
+                    {/* Divider */}
+                    <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }}></div>
+                    
+                    {/* Organization option */}
+                    <div
+                      className="px-3 py-2 rounded-md cursor-pointer transition-colors"
+                      style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
+                      onClick={() => { setSortBy('org-asc'); setSortDropdownOpen(false) }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'none'
+                      }}
+                    >
+                      <span style={{ color: sortBy === 'org-asc' ? 'var(--primary)' : 'inherit', fontWeight: sortBy === 'org-asc' ? '600' : '400' }}>
+                        Organization A–Z
+                      </span>
+                      {sortBy === 'org-asc' && (
+                        <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: '1' }}>
+                          <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
-            </p>
-            <ButtonLink
-              onClick={() => setAllJobsExpanded(!allJobsExpanded)}
-              tone="accent"
-              size="sm"
-              title={allJobsExpanded ? 'Collapse all jobs' : 'Expand all jobs'}
-            >
-              {allJobsExpanded ? 'Collapse all' : 'Expand all'}
-            </ButtonLink>
+              
+              {/* Vertical separator */}
+              <div style={{ width: '1px', height: '14px', background: 'var(--border)' }}></div>
+              
+              {/* Expand/Collapse toggle */}
+              <button
+                onClick={() => setAllJobsExpanded(!allJobsExpanded)}
+                className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors"
+                style={{
+                  fontSize: '13px',
+                  color: 'var(--text-secondary)',
+                  padding: '5px 8px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(0,0,0,0.05)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'none'
+                }}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  style={{
+                    transition: 'transform 0.2s ease',
+                    transform: allJobsExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                  }}
+                >
+                  <polyline
+                    points="3 5 6 8 9 5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span>{allJobsExpanded ? 'Collapse all' : 'Expand all'}</span>
+              </button>
+            </div>
           </div>
         )}
 

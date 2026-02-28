@@ -78,7 +78,7 @@ export default function Tooltip({ children, content, className = '' }: TooltipPr
   }, [content, theme])
 
   return (
-    <div ref={ref} className={`inline-block cursor-help ${className}`}>
+    <div ref={ref} className={`inline-flex cursor-help ${className}`}>
       {children}
     </div>
   )

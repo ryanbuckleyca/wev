@@ -7,6 +7,9 @@ import { Leaf1Solid, Leaf1Outlined, Bookmark1Solid, Bookmark1Outlined, ChevronDo
 import Pill from './Pill'
 import Tooltip from './Tooltip'
 import { getValueDefinition } from '@/lib/values'
+import { useJobMatch } from '@/hooks/useJobMatch'
+import { useAuth } from '@/contexts/AuthContext'
+import MatchDonut from './MatchDonut'
 
 interface JobCardProps {
   job: JobPosting
@@ -27,6 +30,12 @@ export default function JobCard({
 }: JobCardProps) {
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
   const [bookmarked, setBookmarked] = useState(false) // TODO: Connect to actual bookmark state
+  
+  // Get user state
+  const { user } = useAuth()
+  
+  // Get match data for this job (only when user is logged in)
+  const { match, loading, isValueMatched, matchPercentage } = useJobMatch(job.id)
   
   // Sync internal state with prop changes
   useEffect(() => {
@@ -192,21 +201,38 @@ export default function JobCard({
       {/* Values Section */}
       {job.values && job.values.length > 0 && (
         <div className={`px-5 py-3 bg-wev-surface-tint ${isExpanded ? 'border-t border-wev-border' : ''}`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {job.values.map((value) => (
-                <Tooltip
-                  key={value}
-                  content={
-                    `<p class="font-medium text-wev-primary-text mb-1">${value}</p>
-                     <p class="text-xs text-wev-text-primary mb-2">${getValueDefinition(value).description}</p>
-                     <p class="text-xs text-wev-text-secondary italic">${getValueDefinition(value).example}</p>`
-                  }
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* Match Score - only show when user is logged in */}
+            {user && !loading && (
+              <div className="flex items-center gap-1">
+                <MatchDonut 
+                  percentage={matchPercentage} 
+                  size="sm"
+                />
+                <span className="text-sm text-wev-text-secondary font-medium">
+                  {matchPercentage}% match:
+                </span>
+              </div>
+            )}
+            
+            {/* Values pills */}
+            {job.values.map((value) => (
+              <Tooltip
+                key={value}
+                content={
+                  `<p class="font-medium text-wev-primary-text mb-1">${value}</p>
+                   <p class="text-xs text-wev-text-primary mb-2">${getValueDefinition(value).description}</p>
+                   <p class="text-xs text-wev-text-secondary italic">${getValueDefinition(value).example}</p>`
+                }
+              >
+                <Pill 
+                  variant={user ? (isValueMatched(value) ? 'matched' : 'unmatched') : 'default'} 
+                  size="sm"
                 >
-                  <Pill variant="default" size="sm">{value}</Pill>
-                </Tooltip>
-              ))}
-            </div>
+                  {value}
+                </Pill>
+              </Tooltip>
+            ))}
           </div>
         </div>
       )}

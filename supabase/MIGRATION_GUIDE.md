@@ -66,15 +66,17 @@ supabase db push
 # ✅ NEW: ./scripts/migrate.sh test/prod does this automatically!
 ```
 
-### ❌ Date Collisions
+### ❌ Environment File Confusion
 ```bash
-# OLD - Causes conflicts
-20260227_migration.sql
-20260227_migration.sql  # Same date = conflict!
+# OLD - Multiple redundant env files
+.env.local      # Development
+.env.test       # Test (duplicate)
+.env.production # Production
+.env.staging    # Staging (another duplicate)
 
-# ✅ NEW: Use sequential dates
-20260301_migration.sql
-20260302_migration.sql
+# ✅ NEW: Clean, standard approach
+.env            # Development/Local/Test (primary)
+.env.production # Production overrides only
 ```
 
 ### ❌ Manual SQL & Repair
