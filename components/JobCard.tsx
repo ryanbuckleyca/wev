@@ -226,7 +226,7 @@ export default function JobCard({
                 }
               >
                 <Pill 
-                  variant={user ? (isValueMatched(value) ? 'matched' : 'unmatched') : 'default'} 
+                  variant={user ? (isValueMatched(value) ? 'primary' : 'secondary') : 'default'} 
                   size="sm"
                 >
                   {value}
