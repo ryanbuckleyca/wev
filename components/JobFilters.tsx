@@ -374,7 +374,7 @@ export default function JobFilters({
   }, [provinces, municipalitiesByProvince, selectedMunicipalities])
 
   return (
-    <div className="bg-wev-surface border border-wev-border rounded-wev-card mb-6 overflow-hidden">
+    <div className="bg-wev-surface border border-wev-border rounded-wev-card mb-4 overflow-hidden">
       <JobSearch
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}

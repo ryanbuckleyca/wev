@@ -374,7 +374,7 @@ export default function Home() {
 
         {/* Results Header */}
         {!loading && (
-          <div className="flex items-center justify-between px-1 py-1 mb-4" style={{ padding: '4px 2px' }}>
+          <div className="flex items-center justify-between px-1 py-1 mb-2" style={{ padding: '4px 2px' }}>
             {/* Left side: Last updated info */}
             <div className="text-sm" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               <span className="font-semibold text-wev-accent">Last updated: </span>
