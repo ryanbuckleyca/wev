@@ -7,6 +7,8 @@ type SortOption = 'date-desc' | 'date-asc' | 'match-desc' | 'salary-desc' | 'sal
 interface SortDropdownProps {
   sortBy: SortOption
   onChange: (s: SortOption) => void
+  /** When false, hide the 'Best match' option (requires being logged in) */
+  showMatchOption?: boolean
 }
 
 const OPTIONS: { value: SortOption; label: string; group?: string }[] = [
@@ -33,6 +35,9 @@ export default function SortDropdown({ sortBy, onChange }: SortDropdownProps) {
   }, [open])
 
   const label = OPTIONS.find((o) => o.value === sortBy)?.label ?? 'Newest first'
+  const optionsToShow = (typeof (arguments[0] as any) !== 'undefined' && (arguments[0] as any).showMatchOption === false)
+    ? OPTIONS.filter(o => o.value !== 'match-desc')
+    : OPTIONS
 
   return (
     <div ref={rootRef} className="sort-dropdown relative" style={{ zIndex: 50 }}>
@@ -68,7 +73,7 @@ export default function SortDropdown({ sortBy, onChange }: SortDropdownProps) {
           boxShadow: '0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1)',
         }}
       >
-        {OPTIONS.map((opt, idx) => (
+        {optionsToShow.map((opt, idx) => (
           <div
             key={opt.value}
             className="px-3 py-2 rounded-md cursor-pointer transition-colors"
