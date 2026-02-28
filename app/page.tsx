@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useMemo } from 'react'
 import type { JobPosting } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
 import ReScrapeButton from '@/components/ReScrapeButton'
 import JobListings from '@/components/JobListings'
 import CopyAllJobsButton from '@/components/CopyAllJobsButton'
@@ -11,6 +12,8 @@ import JobFilters from '@/components/JobFilters'
 import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
 import ButtonLink from '@/components/ButtonLink'
+import SortDropdown from '@/components/SortDropdown'
+import ExpandAllToggle from '@/components/ExpandAllToggle'
 
 // Force dynamic rendering - this page uses client-side data fetching
 export const revalidate = 0 // Disable static generation, always render dynamically
@@ -18,7 +21,7 @@ export const revalidate = 0 // Disable static generation, always render dynamica
 const ITEMS_PER_PAGE = 20
 
 export default function Home() {
-  const { role } = useAuth()
+  const { role, user } = useAuth()
   const [allJobs, setAllJobs] = useState<JobPosting[]>([])
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -38,6 +41,14 @@ export default function Home() {
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [allJobsExpanded, setAllJobsExpanded] = useState(true)
+  
+  // Sort state
+  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'match-desc' | 'salary-desc' | 'salary-asc' | 'org-asc'>('date-desc')
+  
+  // Match data state
+  const [matchData, setMatchData] = useState<Map<string, { score: number; shared_values: string[] }>>(new Map())
+
+  
 
   const handleExpandAll = (expanded: boolean) => {
     console.log('handleExpandAll called:', expanded)
@@ -94,6 +105,12 @@ export default function Home() {
 
       setAllJobs(jobsData ?? [])
       setCurrentPage(1)
+      
+      // Fetch match data if user is logged in
+      if (user && jobsData) {
+        const matches = await fetchMatchData(jobsData)
+        setMatchData(matches)
+      }
     } catch (err) {
       clearTimeout(timeoutId)
       console.error('Error fetching data:', err)
@@ -109,9 +126,38 @@ export default function Home() {
     }
   }
 
-  // Filter jobs based on search and filters
+  // Fetch match data for all jobs (only when user is logged in)
+  const fetchMatchData = async (jobs: JobPosting[]) => {
+    if (!user) return new Map()
+
+    try {
+      const supabase = createClient()
+      const { data: matches, error } = await supabase
+        .from('job_matches')
+        .select('job_id, score, shared_values')
+        .eq('user_id', user.id)
+        .in('job_id', jobs.map(job => job.id))
+
+      if (error) {
+        console.error('Error fetching match data:', error)
+        return new Map()
+      }
+
+      const matchMap = new Map()
+      matches?.forEach((match: { job_id: string; score: number; shared_values: string[] }) => {
+        matchMap.set(match.job_id, match)
+      })
+      
+      return matchMap
+    } catch (error) {
+      console.error('Error fetching match data:', error)
+      return new Map()
+    }
+  }
+
+  // Filter and sort jobs based on search, filters, and sort option
   const filteredJobs = useMemo(() => {
-    return allJobs.filter((job) => {
+    let filtered = allJobs.filter((job) => {
       // Search filter (case-insensitive)
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
@@ -188,7 +234,36 @@ export default function Home() {
 
       return true
     })
-  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin])
+
+    // Sort jobs
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'date-desc':
+          return new Date(b.date_posted).getTime() - new Date(a.date_posted).getTime()
+        case 'date-asc':
+          return new Date(a.date_posted).getTime() - new Date(b.date_posted).getTime()
+        case 'match-desc':
+          const aMatch = matchData.get(a.id)?.score || 0
+          const bMatch = matchData.get(b.id)?.score || 0
+          return bMatch - aMatch
+        case 'salary-desc':
+          // Sort by salary high to low (jobs without salary go to end)
+          const aSalary = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : -1
+          const bSalary = b.wage ? parseFloat(b.wage.replace(/[^0-9.-]/g, '')) || 0 : -1
+          return bSalary - aSalary
+        case 'salary-asc':
+          // Sort by salary low to high (jobs without salary go to end)
+          const aSalaryAsc = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : Infinity
+          const bSalaryAsc = b.wage ? parseFloat(b.wage.replace(/[^0-9.-]/g, '')) || 0 : Infinity
+          return aSalaryAsc - bSalaryAsc
+        case 'org-asc':
+          // Sort by organization A-Z
+          return a.organization.localeCompare(b.organization)
+        default:
+          return 0
+      }
+    })
+  }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin, sortBy, matchData])
 
   // Paginate filtered jobs
   const paginatedJobs = useMemo(() => {
@@ -197,14 +272,23 @@ export default function Home() {
     return filteredJobs.slice(startIndex, endIndex)
   }, [filteredJobs, currentPage])
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters or sort change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin])
+  }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin, sortBy])
 
   useEffect(() => {
     fetchData()
   }, [])
+
+  // Refetch match data when user changes
+  useEffect(() => {
+    if (user && allJobs.length > 0) {
+      fetchMatchData(allJobs).then(setMatchData)
+    } else {
+      setMatchData(new Map())
+    }
+  }, [user, allJobs.length])
 
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE)
 
@@ -223,17 +307,11 @@ export default function Home() {
 
         {/* Action Buttons - Admin Only */}
         {role === 'admin' && (
-          <div className="flex flex-col sm:flex-row justify-start items-stretch sm:items-center gap-4 mb-6">
+          <div className="flex flex-col justify-start items-stretch gap-4 mb-6">
             {/* Mobile: Stacked vertically */}
-            <div className="flex flex-col gap-4 sm:hidden">
+            <div className="flex flex-row gap-4">
               <ReScrapeButton onComplete={fetchData} />
-              <CopyAllJobsButton jobs={filteredJobs} />
-            </div>
-            
-            {/* Desktop: Side by side */}
-            <div className="hidden sm:flex sm:gap-4">
-              <ReScrapeButton onComplete={fetchData} />
-              <CopyAllJobsButton jobs={filteredJobs} />
+              <CopyAllJobsButton jobs={allJobs} />
             </div>
           </div>
         )}
@@ -267,25 +345,31 @@ export default function Home() {
           onFiltersExpandedChange={setFiltersExpanded}
         />
 
-        {/* Expand/collapse all jobs */}
+        {/* Results Header */}
         {!loading && (
-          <div className="mb-4 flex justify-between items-center" aria-live="polite" aria-atomic="true">
-            <p className="text-sm text-wev-text-secondary">
+          <div className="flex items-center justify-between px-1 py-1 mb-2" style={{ padding: '4px 2px' }}>
+            {/* Left side: Last updated info */}
+            <div className="text-sm" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               <span className="font-semibold text-wev-accent">Last updated: </span>
-              {lastScrapeTime ? (
-                <span>{lastScrapeTime}</span>
-              ) : (
-                <span>Unknown</span>
+              <span>{lastScrapeTime || 'Unknown'}</span>
+            </div>
+            
+            {/* Right side: Sort control and expand/collapse */}
+            <div className="flex items-center gap-2" style={{ gap: '8px' }}>
+              {user && (
+                <SortDropdown
+                  sortBy={sortBy}
+                  onChange={(s) => setSortBy(s)}
+                />
               )}
-            </p>
-            <ButtonLink
-              onClick={() => setAllJobsExpanded(!allJobsExpanded)}
-              tone="accent"
-              size="sm"
-              title={allJobsExpanded ? 'Collapse all jobs' : 'Expand all jobs'}
-            >
-              {allJobsExpanded ? 'Collapse all' : 'Expand all'}
-            </ButtonLink>
+
+              <div style={{ width: '1px', height: '14px', background: 'var(--border)' }} />
+
+              <ExpandAllToggle
+                allExpanded={allJobsExpanded}
+                onToggle={() => setAllJobsExpanded(!allJobsExpanded)}
+              />
+            </div>
           </div>
         )}
 

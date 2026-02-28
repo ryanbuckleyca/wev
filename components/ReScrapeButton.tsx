@@ -55,6 +55,7 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
   }
 
   return (
+    <div>
     <Button
       onClick={triggerWorkflow}
       disabled={loading}
@@ -91,5 +92,6 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
         'Re-scrape Data'
       )}
     </Button>
+    </div>
   )
 }
