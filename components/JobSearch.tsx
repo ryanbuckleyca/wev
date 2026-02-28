@@ -1,6 +1,6 @@
 'use client'
 
-import FilterPill from './FilterPill'
+import Pill from './Pill'
 import ButtonLink from './ButtonLink'
 
 export interface ActiveFilterChip {
@@ -93,11 +93,16 @@ export default function JobSearch({
           </span>
           <div className="flex flex-wrap items-center gap-1.5">
             {activeFilterChips.map((chip) => (
-              <FilterPill
+              <Pill
                 key={chip.id}
-                label={chip.label}
+                removable
                 onRemove={chip.onRemove}
-              />
+                size="sm"
+                variant="secondary"
+                className="text-xs"
+              >
+                {chip.label}
+              </Pill>
             ))}
           </div>
         </div>

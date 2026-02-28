@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
@@ -58,48 +58,56 @@ async function fetchRolesForUser(
   supabase: ReturnType<typeof createClient>,
   userId: string
 ): Promise<string[]> {
-  try {
-    const response = await fetch('/api/auth/roles', {
-      method: 'GET',
-      credentials: 'include',
-      cache: 'no-store',
-      headers: {
-        'cache-control': 'no-store',
-      },
-    })
 
-    if (response.ok) {
-      const payload = await response.json()
-      if (payload && Array.isArray(payload.roles)) {
-        return normalizeRoles(payload.roles.filter((role: unknown): role is string => typeof role === 'string' && role.length > 0))
+  const rolesPromise = async () => {
+    try {
+      const response = await fetch('/api/auth/roles', {
+        method: 'GET',
+        credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'cache-control': 'no-store',
+        },
+      })
+
+      if (response.ok) {
+        const payload = await response.json()
+        if (payload && Array.isArray(payload.roles)) {
+          return normalizeRoles(payload.roles.filter((role: unknown): role is string => typeof role === 'string' && role.length > 0))
+        }
       }
+    } catch {
+      // Fall back to direct browser query.
     }
-  } catch {
-    // Fall back to direct browser query.
+
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('roles')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (!error) {
+        return parseRolesColumn((data as { roles?: unknown } | null)?.roles)
+      }
+    } catch {
+      // Keep default role when direct query fails.
+    }
+
+    return ['user']
   }
 
-  try {
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('roles')
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    if (!error) {
-      return parseRolesColumn((data as { roles?: unknown } | null)?.roles)
-    }
-  } catch {
-    // Keep default role when direct query fails.
-  }
-
-  return ['user']
+  // Perform the role fetch; callers will set a fast default and update when this resolves.
+  return rolesPromise()
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [roles, setRoles] = useState<string[]>(['user'])
   const [loading, setLoading] = useState(true)
-  const supabase = useMemo(() => createClient(), [])
+  // Use a ref for the Supabase client to avoid re-creating it across renders
+  const supabaseRef = useRef(createClient())
+  const supabase = supabaseRef.current
 
   useEffect(() => {
     let mounted = true
@@ -124,18 +132,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUser(resolvedUser)
         setRoles(['user'])
+        setLoading(false) // Set loading false immediately after user is found
 
         if (resolvedUser) {
-          const resolvedRoles = await fetchRolesForUser(supabase, resolvedUser.id)
-          if (!mounted) return
-          setRoles(resolvedRoles)
+          // Kick off async role fetch but don't block rendering — update when it completes
+          fetchRolesForUser(supabase, resolvedUser.id)
+            .then((resolvedRoles) => {
+              if (!mounted) return
+              setRoles(resolvedRoles)
+            })
+            .catch(() => {
+              // Keep default roles on error; optionally log in the future
+            })
         }
       } catch {
         if (!mounted) return
         setUser(null)
         setRoles(['user'])
-      } finally {
-        if (!mounted) return
         setLoading(false)
       }
     }
@@ -150,14 +163,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const nextUser = session?.user ?? null
       setUser(nextUser)
       setRoles(['user'])
+      setLoading(false) // Set loading false immediately after user is found
 
       if (nextUser) {
-        const resolvedRoles = await fetchRolesForUser(supabase, nextUser.id)
-        if (!mounted) return
-        setRoles(resolvedRoles)
+        fetchRolesForUser(supabase, nextUser.id)
+          .then((resolvedRoles) => {
+            if (!mounted) return
+            setRoles(resolvedRoles)
+          })
+          .catch(() => {
+            // Keep default roles on error
+          })
       }
-
-      setLoading(false)
     })
 
     return () => {
