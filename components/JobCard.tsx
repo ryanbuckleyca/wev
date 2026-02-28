@@ -9,7 +9,7 @@ import Tooltip from './Tooltip'
 import { getValueDefinition } from '@/lib/values'
 import { useJobMatch } from '@/hooks/useJobMatch'
 import { useAuth } from '@/contexts/AuthContext'
-import MatchDonut from './MatchDonut'
+import ProgressDonut from './ProgressDonut'
 
 interface JobCardProps {
   job: JobPosting
@@ -205,7 +205,7 @@ export default function JobCard({
             {/* Match Score - only show when user is logged in */}
             {user && !loading && (
               <div className="flex items-center gap-1">
-                <MatchDonut 
+                <ProgressDonut 
                   percentage={matchPercentage} 
                   size="sm"
                 />
