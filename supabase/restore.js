@@ -11,6 +11,22 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
 });
 
+async function clearTable(table) {
+  try {
+    // Use TRUNCATE-like behavior by deleting all rows
+    const { error } = await supabase.from(table).delete().gte('id', '00000000-0000-0000-0000-000000000000');
+    if (error) {
+      console.log(`Warning: Could not clear ${table}: ${error.message}`);
+      return false;
+    }
+    console.log(`✅ Cleared ${table}`);
+    return true;
+  } catch (e) {
+    console.log(`Warning: Could not clear ${table}: ${e.message}`);
+    return false;
+  }
+}
+
 async function restoreTable(table, schema = 'public') {
   const backupFile = path.resolve(__dirname, 'backups', `backup_${schema}_${table}.json`);
   
@@ -26,37 +42,37 @@ async function restoreTable(table, schema = 'public') {
     return;
   }
 
-  // Clear existing data - use a safer approach
-  try {
-    // First try to delete all data
-    const { error: deleteError } = await supabase.from(table).delete().gte('id', '00000000-0000-0000-0000-000000000000');
-    if (deleteError) {
-      console.log(`Warning: Could not clear ${schema}.${table}: ${deleteError.message}`);
-    }
-  } catch (e) {
-    console.log(`Warning: Could not clear ${schema}.${table}: ${e.message}`);
+  // Clear existing data first
+  const cleared = await clearTable(table);
+  if (!cleared) {
+    console.log(`⚠️  Could not clear ${table}, attempting to insert anyway...`);
   }
 
-  // Insert backup data in smaller batches to avoid issues
+  // Insert backup data in smaller batches
   const batchSize = 10;
+  let successCount = 0;
+  
   for (let i = 0; i < backupData.length; i += batchSize) {
     const batch = backupData.slice(i, i + batchSize);
     const { data, error } = await supabase.from(table).insert(batch);
     if (error) {
-      console.error(`Error restoring batch ${schema}.${table}:`, error.message);
+      console.error(`Error restoring batch ${i/batchSize + 1} for ${schema}.${table}:`, error.message);
       // Try individual inserts for problematic data
       for (const row of batch) {
         const { data: singleData, error: singleError } = await supabase.from(table).insert(row);
-        if (singleError) {
-          console.error(`Error inserting single row in ${schema}.${table}:`, singleError.message, row);
+        if (!singleError) {
+          successCount++;
+        } else {
+          console.error(`Error inserting single row in ${schema}.${table}:`, singleError.message);
         }
       }
     } else {
+      successCount += batch.length;
       console.log(`Restored batch ${i/batchSize + 1}/${Math.ceil(backupData.length/batchSize)} for ${schema}.${table}`);
     }
   }
 
-  console.log(`✅ Restored ${schema}.${table} (${backupData.length} rows total)`);
+  console.log(`✅ Restored ${successCount}/${backupData.length} rows for ${schema}.${table}`);
 }
 
 (async () => {

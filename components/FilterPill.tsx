@@ -6,7 +6,7 @@ interface FilterPillProps {
 
 export default function FilterPill({ label, onRemove, className = '' }: FilterPillProps) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border border-wev-accent/50 bg-wev-accent-tint px-2.5 py-1 text-xs font-medium text-wev-accent ${className}`}>
+    <span className={`inline-flex items-center gap-2 rounded-full border border-wev-border bg-wev-accent-tint px-2.5 py-1 text-xs font-medium text-wev-accent ${className}`}>
       {label}
       {onRemove && (
         <button
