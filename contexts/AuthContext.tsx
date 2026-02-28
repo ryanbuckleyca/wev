@@ -58,41 +58,50 @@ async function fetchRolesForUser(
   supabase: ReturnType<typeof createClient>,
   userId: string
 ): Promise<string[]> {
-  try {
-    const response = await fetch('/api/auth/roles', {
-      method: 'GET',
-      credentials: 'include',
-      cache: 'no-store',
-      headers: {
-        'cache-control': 'no-store',
-      },
-    })
+  const timeoutPromise = new Promise<string[]>((resolve) => {
+    setTimeout(() => resolve(['user']), 1000) // 1 second timeout
+  })
 
-    if (response.ok) {
-      const payload = await response.json()
-      if (payload && Array.isArray(payload.roles)) {
-        return normalizeRoles(payload.roles.filter((role: unknown): role is string => typeof role === 'string' && role.length > 0))
+  const rolesPromise = async () => {
+    try {
+      const response = await fetch('/api/auth/roles', {
+        method: 'GET',
+        credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'cache-control': 'no-store',
+        },
+      })
+
+      if (response.ok) {
+        const payload = await response.json()
+        if (payload && Array.isArray(payload.roles)) {
+          return normalizeRoles(payload.roles.filter((role: unknown): role is string => typeof role === 'string' && role.length > 0))
+        }
       }
+    } catch {
+      // Fall back to direct browser query.
     }
-  } catch {
-    // Fall back to direct browser query.
+
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('roles')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (!error) {
+        return parseRolesColumn((data as { roles?: unknown } | null)?.roles)
+      }
+    } catch {
+      // Keep default role when direct query fails.
+    }
+
+    return ['user']
   }
 
-  try {
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('roles')
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    if (!error) {
-      return parseRolesColumn((data as { roles?: unknown } | null)?.roles)
-    }
-  } catch {
-    // Keep default role when direct query fails.
-  }
-
-  return ['user']
+  // Race between actual role fetch and timeout
+  return Promise.race([rolesPromise(), timeoutPromise])
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -124,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUser(resolvedUser)
         setRoles(['user'])
+        setLoading(false) // Set loading false immediately after user is found
 
         if (resolvedUser) {
           const resolvedRoles = await fetchRolesForUser(supabase, resolvedUser.id)
@@ -134,9 +144,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mounted) return
         setUser(null)
         setRoles(['user'])
+        setLoading(false)
       } finally {
         if (!mounted) return
-        setLoading(false)
+        // setLoading(false) // Already set above
       }
     }
 
@@ -150,14 +161,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const nextUser = session?.user ?? null
       setUser(nextUser)
       setRoles(['user'])
+      setLoading(false) // Set loading false immediately after user is found
 
       if (nextUser) {
         const resolvedRoles = await fetchRolesForUser(supabase, nextUser.id)
         if (!mounted) return
         setRoles(resolvedRoles)
       }
-
-      setLoading(false)
     })
 
     return () => {
