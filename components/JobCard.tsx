@@ -10,6 +10,9 @@ import { getValueDefinition } from '@/lib/values'
 import { useJobMatch } from '@/hooks/useJobMatch'
 import { useAuth } from '@/contexts/AuthContext'
 import ProgressDonut from './ProgressDonut'
+import { createClient } from '@/lib/supabase/client'
+import notify from '@/lib/toast'
+import { useRouter } from 'next/navigation'
 
 interface JobCardProps {
   job: JobPosting
@@ -30,9 +33,11 @@ export default function JobCard({
 }: JobCardProps) {
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
   const [bookmarked, setBookmarked] = useState(false) // TODO: Connect to actual bookmark state
+  const [bookmarkLoading, setBookmarkLoading] = useState(false)
   
   // Get user state
   const { user } = useAuth()
+  const router = useRouter()
   
   // Get match data for this job (only when user is logged in)
   const { match, loading, isValueMatched, matchPercentage } = useJobMatch(job.id)
@@ -41,6 +46,39 @@ export default function JobCard({
   useEffect(() => {
     setIsExpanded(initialExpanded)
   }, [initialExpanded])
+
+  // Load bookmark state for logged-in users
+  useEffect(() => {
+    let mounted = true
+    const loadBookmark = async () => {
+      if (!user) {
+        if (mounted) setBookmarked(false)
+        return
+      }
+
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('bookmarks')
+          .select('user_id,job_id')
+          .eq('user_id', user.id)
+          .eq('job_id', job.id)
+          .limit(1)
+
+        if (error) {
+          console.error('Error checking bookmark:', error)
+          return
+        }
+
+        if (mounted) setBookmarked((data && data.length > 0) ?? false)
+      } catch (err) {
+        console.error('Error loading bookmark state:', err)
+      }
+    }
+
+    loadBookmark()
+    return () => { mounted = false }
+  }, [user, job.id])
   
   const sse = !!job.is_sse
   
@@ -90,9 +128,39 @@ export default function JobCard({
   }
 
   const handleBookmarkToggle = () => {
+    if (!user) {
+      router.push('/login')
+      return
+    }
+
     const newBookmarkState = !bookmarked
+    // Optimistic UI
     setBookmarked(newBookmarkState)
     onBookmarkToggle?.(job, newBookmarkState)
+
+    ;(async () => {
+      setBookmarkLoading(true)
+      const supabase = createClient()
+      try {
+        if (newBookmarkState) {
+          const { error } = await supabase.from('bookmarks').insert([{ user_id: user.id, job_id: job.id }])
+          if (error) throw error
+          notify.success('Bookmarked job')
+        } else {
+          const { error } = await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('job_id', job.id)
+          if (error) throw error
+          notify.success('Removed bookmark')
+        }
+      } catch (err) {
+        console.error('Bookmark update failed:', err)
+        // rollback
+        setBookmarked(!newBookmarkState)
+        onBookmarkToggle?.(job, !newBookmarkState)
+        notify.error('Failed to update bookmark')
+      } finally {
+        setBookmarkLoading(false)
+      }
+    })()
   }
 
   return (
@@ -126,6 +194,7 @@ export default function JobCard({
             className="wev-icon-btn"
             title={bookmarked ? 'Remove bookmark' : 'Bookmark job'}
             aria-label={bookmarked ? 'Bookmarked (click to remove)' : 'Bookmark job'}
+            disabled={bookmarkLoading}
           >
             {bookmarked ? (
               <Lineicons icon={Bookmark1Solid} size={16} className="text-wev-info" />

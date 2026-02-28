@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import notify from '@/lib/toast'
 import Button from '@/components/Button'
-import ThemeToggle from './ThemeToggle'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -96,15 +95,9 @@ export default function UserProfile() {
         {isMobileMenuOpen && (
           <div className="absolute right-0 mt-2 w-56 bg-wev-surface border border-wev-border rounded-wev-card z-50">
             <div className="p-4 space-y-3">
-              {/* Theme Toggle */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-wev-text-primary">Theme</span>
-                <ThemeToggle />
-              </div>
-              
               {/* Divider */}
-              <div className="border-t border-wev-border pt-3">
-                <div className="space-y-2">
+              <div className="border-t border-wev-border pt-1">
+                <div className="space-y-2 pt-3">
                   <Link
                     href="/login"
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -152,6 +145,14 @@ export default function UserProfile() {
               prefetch={true}
             >
               My Profile
+            </Link>
+            <Link
+              href="/bookmarks"
+              onClick={() => setIsOpen(false)}
+              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-colors rounded"
+              prefetch={true}
+            >
+              My Bookmarks
             </Link>
             <Link
               href="/account-settings"
