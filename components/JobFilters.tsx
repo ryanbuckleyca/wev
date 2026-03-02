@@ -1,10 +1,11 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
 import { JobPosting } from '@/lib/supabase'
 import JobSearch, { ActiveFilterChip } from './JobSearch'
+import Collapsible from './Collapsible'
 
 interface JobFiltersProps {
   jobs: JobPosting[]
@@ -373,8 +374,6 @@ export default function JobFilters({
     return indeterminate
   }, [provinces, municipalitiesByProvince, selectedMunicipalities])
 
-  const filterContentRef = useRef<HTMLDivElement>(null)
-
   return (
     <div className="bg-wev-surface border border-wev-border rounded-wev-card mb-4 overflow-hidden">
       <JobSearch
@@ -392,15 +391,7 @@ export default function JobFilters({
       />
 
       {/* Collapsible Filters Section */}
-      <div
-        id="job-filters-content"
-        style={{
-          overflow: 'hidden',
-          maxHeight: filtersExpanded ? `${filterContentRef.current?.scrollHeight ?? 9999}px` : '0px',
-          transition: 'max-height 0.35s ease-in-out',
-        }}
-      >
-        <div ref={filterContentRef} className="p-6">
+      <Collapsible isOpen={filtersExpanded} className="p-6">
           {/* SSE filter */}
           <div className="mb-4">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -690,9 +681,7 @@ export default function JobFilters({
             )}
           </div>
         </div>
-      </div>
-        </div>
-      </div>
+      </Collapsible>
     </div>
   )
 }
