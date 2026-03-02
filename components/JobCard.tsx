@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { JobPosting } from '@/lib/supabase'
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Solid, Leaf1Outlined, Bookmark1Solid, Bookmark1Outlined, ChevronDownSolid, ChevronUpSolid } from '@lineiconshq/free-icons'
@@ -34,6 +34,16 @@ export default function JobCard({
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
   const [bookmarked, setBookmarked] = useState(false) // TODO: Connect to actual bookmark state
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
+
+  // Animated expand/collapse
+  const cardContentRef = useRef<HTMLDivElement>(null)
+  const [cardContentHeight, setCardContentHeight] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (cardContentRef.current) {
+      setCardContentHeight(cardContentRef.current.scrollHeight)
+    }
+  }, [job.id, job.summary, job.wage, job.location])
   
   // Get user state
   const { user } = useAuth()
@@ -218,8 +228,14 @@ export default function JobCard({
       </div>
 
       {/* Card Content */}
-      {isExpanded && (
-        <div className="py-4 px-5 bg-wev-surface">
+      <div style={{
+        overflow: 'hidden',
+        maxHeight: cardContentHeight === null
+          ? (isExpanded ? 'none' : '0px')
+          : (isExpanded ? `${cardContentHeight}px` : '0px'),
+        transition: cardContentHeight === null ? 'none' : 'max-height 0.3s ease-in-out',
+      }}>
+        <div ref={cardContentRef} className="py-4 px-5 bg-wev-surface">
           <div className="job-details">
             <div className="job-detail-line">
               <span className="job-label">Who: </span>
@@ -265,7 +281,7 @@ export default function JobCard({
             </div>
           </div>
         </div>
-      )}
+      </div>
       
       {/* Values Section */}
       {job.values && job.values.length > 0 && (

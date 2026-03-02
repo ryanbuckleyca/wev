@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect, useState } from 'react'
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
 import { JobPosting } from '@/lib/supabase'
@@ -373,6 +373,20 @@ export default function JobFilters({
     return indeterminate
   }, [provinces, municipalitiesByProvince, selectedMunicipalities])
 
+  const filterContentRef = useRef<HTMLDivElement>(null)
+  const [filterContentHeight, setFilterContentHeight] = useState<number | null>(null)
+
+  useEffect(() => {
+    const el = filterContentRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => {
+      setFilterContentHeight(el.scrollHeight)
+    })
+    observer.observe(el)
+    setFilterContentHeight(el.scrollHeight)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div className="bg-wev-surface border border-wev-border rounded-wev-card mb-4 overflow-hidden">
       <JobSearch
@@ -392,11 +406,15 @@ export default function JobFilters({
       {/* Collapsible Filters Section */}
       <div
         id="job-filters-content"
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          filtersExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
+        style={{
+          overflow: 'hidden',
+          maxHeight: filterContentHeight === null
+            ? (filtersExpanded ? 'none' : '0px')
+            : (filtersExpanded ? `${filterContentHeight}px` : '0px'),
+          transition: filterContentHeight === null ? 'none' : 'max-height 0.35s ease-in-out',
+        }}
       >
-        <div className="p-6">
+        <div ref={filterContentRef} className="p-6">
           {/* SSE filter */}
           <div className="mb-4">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -687,7 +705,7 @@ export default function JobFilters({
           </div>
         </div>
       </div>
-      </div>
+        </div>
       </div>
     </div>
   )
