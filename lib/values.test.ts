@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { VALUES_DICTIONARY, VALUES_LIST, getValueDefinition } from './values'
-import type { Value, ValueDefinition } from './values'
 
 describe('VALUES_DICTIONARY', () => {
   it('contains a non-empty set of values', () => {

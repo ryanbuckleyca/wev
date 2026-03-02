@@ -34,6 +34,7 @@
     "@types/react-dom": "^18",
     "@types/zxcvbn": "^4.4.5",
     "@vitejs/plugin-react": "^5.1.4",
+    "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.0.1",
     "dotenv": "^16.3.1",
     "eslint": "^8",
