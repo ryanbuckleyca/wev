@@ -5,6 +5,7 @@ import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
 import { JobPosting } from '@/lib/supabase'
 import JobSearch, { ActiveFilterChip } from './JobSearch'
+import Collapsible from './Collapsible'
 
 interface JobFiltersProps {
   jobs: JobPosting[]
@@ -390,13 +391,7 @@ export default function JobFilters({
       />
 
       {/* Collapsible Filters Section */}
-      <div
-        id="job-filters-content"
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          filtersExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
-        <div className="p-6">
+      <Collapsible isOpen={filtersExpanded} className="p-6">
           {/* SSE filter */}
           <div className="mb-4">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -687,8 +682,7 @@ export default function JobFilters({
           </div>
         </div>
       </div>
-      </div>
-      </div>
+      </Collapsible>
     </div>
   )
 }

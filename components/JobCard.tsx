@@ -11,8 +11,8 @@ import { useJobMatch } from '@/hooks/useJobMatch'
 import { useAuth } from '@/contexts/AuthContext'
 import ProgressDonut from './ProgressDonut'
 import { createClient } from '@/lib/supabase/client'
-import notify from '@/lib/toast'
 import { useRouter } from 'next/navigation'
+import Collapsible from './Collapsible'
 
 interface JobCardProps {
   job: JobPosting
@@ -34,7 +34,7 @@ export default function JobCard({
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
   const [bookmarked, setBookmarked] = useState(false) // TODO: Connect to actual bookmark state
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
-  
+
   // Get user state
   const { user } = useAuth()
   const router = useRouter()
@@ -145,18 +145,15 @@ export default function JobCard({
         if (newBookmarkState) {
           const { error } = await supabase.from('bookmarks').insert([{ user_id: user.id, job_id: job.id }])
           if (error) throw error
-          notify.success('Bookmarked job')
         } else {
           const { error } = await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('job_id', job.id)
           if (error) throw error
-          notify.success('Removed bookmark')
         }
       } catch (err) {
         console.error('Bookmark update failed:', err)
         // rollback
         setBookmarked(!newBookmarkState)
         onBookmarkToggle?.(job, !newBookmarkState)
-        notify.error('Failed to update bookmark')
       } finally {
         setBookmarkLoading(false)
       }
@@ -169,19 +166,30 @@ export default function JobCard({
       <div className="flex items-center justify-between px-3 py-2 rounded-t-wev-card transition-all duration-300 border-b border-wev-border bg-wev-surface">
         {/* Left side: SSE + Summary */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <button
-            onClick={() => onSseToggle(job)}
-            disabled={updatingId === job.id}
-            className="wev-icon-btn disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-            title={sse ? 'Remove SSE Status' : 'Mark as SSE'}
-            aria-label={sse ? 'SSE job (click to unmark)' : 'Mark as SSE job'}
-          >
-            {sse ? (
+          {isAdmin ? (
+            <button
+              onClick={() => {
+                const msg = sse
+                  ? `Remove the SSE tag from "${job.job_title}" at ${job.organization}?`
+                  : `Mark "${job.job_title}" at ${job.organization} as a Solidarity Economy job?`
+                if (window.confirm(msg)) onSseToggle(job)
+              }}
+              disabled={updatingId === job.id}
+              className="wev-icon-btn disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              title={sse ? 'Remove SSE Status' : 'Mark as SSE'}
+              aria-label={sse ? 'SSE job (click to unmark)' : 'Mark as SSE job'}
+            >
+              {sse ? (
+                <Lineicons icon={Leaf1Solid} size={16} className="text-wev-success" />
+              ) : (
+                <Lineicons icon={Leaf1Outlined} size={16} className="text-wev-text-secondary" />
+              )}
+            </button>
+          ) : sse ? (
+            <span className="flex-shrink-0" aria-label="SSE job">
               <Lineicons icon={Leaf1Solid} size={16} className="text-wev-success" />
-            ) : (
-              <Lineicons icon={Leaf1Outlined} size={16} className="text-wev-text-secondary" />
-            )}
-          </button>
+            </span>
+          ) : null}
           <span className="text-sm text-wev-text-secondary truncate pr-2">
             {getCardSummary(job)}
           </span>
@@ -218,7 +226,7 @@ export default function JobCard({
       </div>
 
       {/* Card Content */}
-      {isExpanded && (
+      <Collapsible isOpen={isExpanded}>
         <div className="py-4 px-5 bg-wev-surface">
           <div className="job-details">
             <div className="job-detail-line">
@@ -265,7 +273,7 @@ export default function JobCard({
             </div>
           </div>
         </div>
-      )}
+      </Collapsible>
       
       {/* Values Section */}
       {job.values && job.values.length > 0 && (
