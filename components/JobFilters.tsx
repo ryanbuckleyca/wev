@@ -681,6 +681,7 @@ export default function JobFilters({
             )}
           </div>
         </div>
+      </div>
       </Collapsible>
     </div>
   )
