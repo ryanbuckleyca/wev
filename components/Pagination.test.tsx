@@ -84,9 +84,11 @@ describe('Pagination', () => {
   it('renders page number buttons', () => {
     render(<Pagination {...defaultProps} />)
     // With 5 total pages and maxVisible=5, all page numbers should show
-    for (let i = 1; i <= 5; i++) {
-      expect(screen.getByRole('button', { name: String(i) })).toBeVisible()
-    }
+    expect(screen.getByRole('button', { name: '1' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '2' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '3' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '4' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '5' })).toBeVisible()
   })
 
   it('shows ellipsis for many pages', () => {
