@@ -13,7 +13,6 @@ import ProgressDonut from './ProgressDonut'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Collapsible from './Collapsible'
-import ConfirmDialog from './ConfirmDialog'
 
 interface JobCardProps {
   job: JobPosting
@@ -35,7 +34,6 @@ export default function JobCard({
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
   const [bookmarked, setBookmarked] = useState(false) // TODO: Connect to actual bookmark state
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
-  const [sseConfirmOpen, setSseConfirmOpen] = useState(false)
 
   // Get user state
   const { user } = useAuth()
@@ -164,24 +162,18 @@ export default function JobCard({
 
   return (
     <div className="relative rounded-wev-card shadow-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:shadow-wev-card-hover hover:border-wev-primary overflow-hidden">
-      <ConfirmDialog
-        isOpen={sseConfirmOpen}
-        title={sse ? 'Remove SSE status?' : 'Mark as SSE?'}
-        message={sse
-          ? `Remove the SSE tag from "${job.job_title}" at ${job.organization}?`
-          : `Mark "${job.job_title}" at ${job.organization} as a Solidarity Economy job?`
-        }
-        confirmLabel={sse ? 'Remove' : 'Mark as SSE'}
-        onConfirm={() => { setSseConfirmOpen(false); onSseToggle(job) }}
-        onCancel={() => setSseConfirmOpen(false)}
-      />
       {/* Card Header */}
       <div className="flex items-center justify-between px-3 py-2 rounded-t-wev-card transition-all duration-300 border-b border-wev-border bg-wev-surface">
         {/* Left side: SSE + Summary */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {isAdmin ? (
             <button
-              onClick={() => setSseConfirmOpen(true)}
+              onClick={() => {
+                const msg = sse
+                  ? `Remove the SSE tag from "${job.job_title}" at ${job.organization}?`
+                  : `Mark "${job.job_title}" at ${job.organization} as a Solidarity Economy job?`
+                if (window.confirm(msg)) onSseToggle(job)
+              }}
               disabled={updatingId === job.id}
               className="wev-icon-btn disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               title={sse ? 'Remove SSE Status' : 'Mark as SSE'}
