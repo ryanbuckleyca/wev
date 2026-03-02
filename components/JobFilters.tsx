@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useEffect, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
 import { JobPosting } from '@/lib/supabase'
@@ -374,18 +374,6 @@ export default function JobFilters({
   }, [provinces, municipalitiesByProvince, selectedMunicipalities])
 
   const filterContentRef = useRef<HTMLDivElement>(null)
-  const [filterContentHeight, setFilterContentHeight] = useState<number | null>(null)
-
-  useEffect(() => {
-    const el = filterContentRef.current
-    if (!el) return
-    const observer = new ResizeObserver(() => {
-      setFilterContentHeight(el.scrollHeight)
-    })
-    observer.observe(el)
-    setFilterContentHeight(el.scrollHeight)
-    return () => observer.disconnect()
-  }, [])
 
   return (
     <div className="bg-wev-surface border border-wev-border rounded-wev-card mb-4 overflow-hidden">
@@ -408,10 +396,8 @@ export default function JobFilters({
         id="job-filters-content"
         style={{
           overflow: 'hidden',
-          maxHeight: filterContentHeight === null
-            ? (filtersExpanded ? 'none' : '0px')
-            : (filtersExpanded ? `${filterContentHeight}px` : '0px'),
-          transition: filterContentHeight === null ? 'none' : 'max-height 0.35s ease-in-out',
+          maxHeight: filtersExpanded ? `${filterContentRef.current?.scrollHeight ?? 9999}px` : '0px',
+          transition: 'max-height 0.35s ease-in-out',
         }}
       >
         <div ref={filterContentRef} className="p-6">
