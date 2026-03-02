@@ -219,6 +219,24 @@ describe('MyComponent', () => {
 })
 ```
 
+### 11. Don't Loop Over Assertions
+
+Avoid `for` / `forEach` loops around `expect()` calls. When a loop-based assertion fails, the error message doesn't tell you *which* iteration broke. Write each expectation explicitly — it's more readable and produces clear failure output.
+
+```tsx
+// ❌ Bad — which iteration failed?
+for (let i = 1; i <= 5; i++) {
+  expect(screen.getByRole('button', { name: String(i) })).toBeVisible()
+}
+
+// ✅ Good — each assertion is explicit and self-describing
+expect(screen.getByRole('button', { name: '1' })).toBeVisible()
+expect(screen.getByRole('button', { name: '2' })).toBeVisible()
+expect(screen.getByRole('button', { name: '3' })).toBeVisible()
+expect(screen.getByRole('button', { name: '4' })).toBeVisible()
+expect(screen.getByRole('button', { name: '5' })).toBeVisible()
+```
+
 ## File Structure
 
 Test files live **next to the files they test**, not in separate `__tests__` directories:
@@ -305,6 +323,7 @@ describe('MyComponent', () => {
 | Create all state inside each `it()` block | Share mutable `let` variables across tests |
 | Use `vi.fn()` only when you assert on it | Create tracked mocks you never check |
 | Put helpers/constants at top scope | Nest shared helpers inside `describe` |
+| Write each assertion explicitly | Loop over `expect()` calls with `for`/`forEach` |
 
 ## Further Reading
 
