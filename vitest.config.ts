@@ -10,6 +10,11 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: ['**/*.test.{ts,tsx}'],
     css: false,
+    coverage: {
+      provider: 'v8',
+      include: ['lib/**/*.{ts,tsx}', 'components/**/*.{ts,tsx}', 'hooks/**/*.{ts,tsx}'],
+      exclude: ['**/*.test.{ts,tsx}'],
+    },
   },
   resolve: {
     alias: {

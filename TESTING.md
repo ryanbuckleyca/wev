@@ -1,5 +1,20 @@
 # Testing Guide — wev-bulletin
 
+## Why We Write Tests
+
+Every test we write should serve at least one of these purposes. When deciding *how* to test something, consider which factors matter most for that piece of code.
+
+| # | Good tests can… | What it means |
+|---|---|---|
+| 1 | **Verify the code is working correctly** | Confirm the current implementation does what we expect right now. |
+| 2 | **Prevent future regressions** | Catch breakage when someone changes code later — the safety net. |
+| 3 | **Document the code's behaviour** | A well-named test suite is living documentation — it tells the next developer what the code is *supposed* to do, without reading the implementation. |
+| 4 | **Provide design guidance** | If something is hard to test, it's often hard to use. Writing tests pushes us toward simpler interfaces, smaller functions, and clearer boundaries. |
+
+Factors 1 and 2 are the standard reasons everyone cites. But the debates we have about testing — within teams and endlessly on the internet — usually stem from unarticulated differences in how we weigh factors 3 and 4. Keep all four in mind when choosing what and how to test.
+
+*Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.com/post/PrinciplesofAutomatedTesting.html).*
+
 ## Stack
 
 | Tool | Purpose |
@@ -290,3 +305,10 @@ describe('MyComponent', () => {
 | Create all state inside each `it()` block | Share mutable `let` variables across tests |
 | Use `vi.fn()` only when you assert on it | Create tracked mocks you never check |
 | Put helpers/constants at top scope | Nest shared helpers inside `describe` |
+
+## Further Reading
+
+- [Principles of Automated Testing](https://www.lihaoyi.com/post/PrinciplesofAutomatedTesting.html) — Li Haoyi's deep dive on the "why" behind testing decisions. The "Why We Write Tests" section above is adapted from this essay. **Required reading** before writing tests in this codebase.
+- [Testing Library Docs](https://testing-library.com/docs/) — official guides for queries, `userEvent`, and `jest-dom` matchers.
+- [About Queries](https://testing-library.com/docs/queries/about) — query priority reference (which query to reach for first).
+- [UserEvent Introduction](https://testing-library.com/docs/user-event/intro) — why `userEvent` over `fireEvent`.
