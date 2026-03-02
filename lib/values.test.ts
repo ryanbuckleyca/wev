@@ -7,12 +7,15 @@ describe('VALUES_DICTIONARY', () => {
   })
 
   it('every entry has a description and example string', () => {
-    for (const [key, def] of Object.entries(VALUES_DICTIONARY)) {
-      expect(def.description, `${key} description`).toBeTruthy()
-      expect(typeof def.description).toBe('string')
-      expect(def.example, `${key} example`).toBeTruthy()
-      expect(typeof def.example).toBe('string')
-    }
+    const entries = Object.entries(VALUES_DICTIONARY)
+    const invalidEntries = entries.filter(
+      ([, def]) =>
+        typeof def.description !== 'string' ||
+        !def.description ||
+        typeof def.example !== 'string' ||
+        !def.example
+    )
+    expect(invalidEntries).toEqual([])
   })
 })
 
