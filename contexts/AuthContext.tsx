@@ -161,19 +161,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return
 
       const nextUser = session?.user ?? null
-      setUser(nextUser)
-      setRoles(['user'])
-      setLoading(false) // Set loading false immediately after user is found
+      const userChanged = nextUser?.id !== user?.id
 
-      if (nextUser) {
+      setUser(nextUser)
+      setLoading(false)
+
+      if (!nextUser) {
+        setRoles(['user'])
+      } else if (userChanged) {
+        setRoles(['user'])
         fetchRolesForUser(supabase, nextUser.id)
           .then((resolvedRoles) => {
             if (!mounted) return
             setRoles(resolvedRoles)
           })
-          .catch(() => {
-            // Keep default roles on error
+          .catch(() => {})
+      } else {
+        fetchRolesForUser(supabase, nextUser.id)
+          .then((resolvedRoles) => {
+            if (!mounted) return
+            setRoles(resolvedRoles)
           })
+          .catch(() => {})
       }
     })
 
