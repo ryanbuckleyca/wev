@@ -4,20 +4,18 @@ import userEvent from '@testing-library/user-event'
 import CopyAllJobsButton from './CopyAllJobsButton'
 import type { JobPosting } from '@/lib/supabase'
 
-const originalNavigator = global.navigator
+const originalClipboard = navigator.clipboard
+const originalClipboardItem = (global as any).ClipboardItem
 
 describe('CopyAllJobsButton', () => {
   const writeTextMock = vi.fn()
 
   beforeEach(() => {
-    // Mock navigator.clipboard. We intentionally exercise the "plain text"
-    // fallback path so we don't couple tests to ClipboardItem/Blob internals.
-    ;(global as any).navigator = {
-      ...originalNavigator,
-      clipboard: {
-        writeText: writeTextMock,
-      },
-    }
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: writeTextMock },
+      writable: true,
+      configurable: true,
+    })
     writeTextMock.mockReset()
     ;(global as any).ClipboardItem = vi.fn(() => {
       throw new Error('ClipboardItem not supported in test environment')
@@ -25,29 +23,33 @@ describe('CopyAllJobsButton', () => {
   })
 
   afterEach(() => {
-    ;(global as any).navigator = originalNavigator
-    ;(global as any).ClipboardItem = undefined
+    Object.defineProperty(navigator, 'clipboard', {
+      value: originalClipboard,
+      writable: true,
+      configurable: true,
+    })
+    ;(global as any).ClipboardItem = originalClipboardItem
     vi.clearAllMocks()
   })
 
-  const makeJob = (overrides: Partial<JobPosting>): JobPosting =>
-    ({
-      id: overrides.id ?? '1',
-      created_at: overrides.created_at ?? new Date().toISOString(),
-      organization: overrides.organization ?? 'Org',
-      job_title: overrides.job_title ?? 'Title',
-      location: overrides.location ?? 'Location',
-      summary: overrides.summary ?? null,
-      date_posted: overrides.date_posted ?? new Date().toISOString(),
-      wage: overrides.wage ?? null,
-      listing_url: overrides.listing_url ?? null,
-      source: overrides.source ?? 'source',
-      employment_type: overrides.employment_type ?? 'Full-time',
-      work_type: overrides.work_type ?? 'In-person',
-      municipality: overrides.municipality ?? 'Municipality',
-      province: overrides.province ?? 'Province',
-      is_sse: overrides.is_sse ?? false,
-    } as JobPosting)
+  const makeJob = (overrides: Partial<JobPosting>): JobPosting => ({
+    id: '1',
+    job_title: 'Title',
+    organization: 'Org',
+    location: 'Location',
+    municipality: 'Municipality',
+    province: 'Province',
+    work_type: 'remote',
+    date_posted: new Date().toISOString(),
+    close_date: null,
+    wage: null,
+    listing_url: 'https://example.com/job',
+    employment_type: 'Full-time',
+    summary: null,
+    is_sse: false,
+    source: 'source',
+    ...overrides,
+  } satisfies JobPosting)
 
   it('copies only the provided jobs in the given order', async () => {
     const user = userEvent.setup()
