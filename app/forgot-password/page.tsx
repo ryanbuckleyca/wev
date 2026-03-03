@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
             loading={loading}
             fullWidth
           >
-            Send reset link
+            {loading ? 'Sending...' : 'Send reset link'}
           </Button>
         </FormContainer>
 

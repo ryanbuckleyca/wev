@@ -108,7 +108,7 @@ export default function SignupPage() {
             loading={loading}
             fullWidth
           >
-            Create account
+            {loading ? 'Creating account...' : 'Create account'}
           </Button>
         </FormContainer>
 
