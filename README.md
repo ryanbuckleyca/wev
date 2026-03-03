@@ -139,10 +139,7 @@ cp .env.example .env
   - `SUPABASE_URL`: Your Supabase project URL
   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (used only in API routes; never exposed to the browser)
 - **wev-scraper** (if using the same env): `SUPABASE_URL` / `SUPABASE_SECRET_KEY` (or scraper-specific env)
-- `GITHUB_TOKEN`: A GitHub personal access token with `actions:write` permission
-- `GITHUB_REPO_OWNER`: Your GitHub username or organization
-- `GITHUB_REPO_NAME`: The repository name (e.g., "wev")
-- `GITHUB_WORKFLOW_ID`: The workflow file name (default: "scrape.yml")
+- `WEV_GITHUB_TOKEN`: A GitHub personal access token with `actions:write` permission
 
 **Note:** The Supabase service role key must never be prefixed with `` — it is only used server-side in wev-bulletin (e.g. `/api/bulletin`). The `.env` file can live in the project root so both apps can access it; Next.js can load from the parent directory.
 

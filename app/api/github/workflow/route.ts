@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const githubToken = process.env.GITHUB_TOKEN
+    const githubToken = process.env.WEV_GITHUB_TOKEN
     const repoOwner = "ryanbuckleyca"
     const repoName = "wev-scraper"
-    const workflowId = process.env.GITHUB_WORKFLOW_ID || 'scrape.yml'
+    const workflowId = 'scrape.yml'
 
     if (!githubToken || !repoOwner || !repoName) {
       return NextResponse.json(
