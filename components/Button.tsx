@@ -49,7 +49,7 @@ export default function Button({
       className={combinedClasses}
       style={style}
     >
-      {loading ? 'Loading...' : children}
+      {children}
     </button>
   )
 }

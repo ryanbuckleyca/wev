@@ -108,7 +108,7 @@ export default function ResetPasswordPage() {
               disabled={loading || (passwordStrength !== null && !passwordStrength.isAcceptable)}
               loading={loading}
             >
-              Update password
+              {loading ? 'Updating...' : 'Update password'}
             </Button>
           </FormContainer>
         ) : (
