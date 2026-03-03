@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import CopyAllJobsButton from './CopyAllJobsButton'
 import type { JobPosting } from '@/lib/supabase'
 
@@ -8,17 +7,40 @@ const originalClipboard = navigator.clipboard
 const originalClipboardItem = (global as any).ClipboardItem
 
 describe('CopyAllJobsButton', () => {
-  const writeTextMock = vi.fn()
+  const writeMock = vi.fn().mockResolvedValue(undefined)
+  let capturedPlainText = ''
 
   beforeEach(() => {
+    capturedPlainText = ''
+
+    ;(global as any).ClipboardItem = class {
+      items: Record<string, Blob>
+      constructor(items: Record<string, Blob>) {
+        this.items = items
+      }
+    }
+
+    ;(global as any).Blob = class {
+      content: string
+      type: string
+      constructor(parts: string[], opts?: { type?: string }) {
+        this.content = parts.join('')
+        this.type = opts?.type ?? ''
+      }
+    }
+
+    writeMock.mockReset()
+    writeMock.mockImplementation(async (items: any[]) => {
+      const item = items[0]
+      if (item?.items?.['text/plain']) {
+        capturedPlainText = item.items['text/plain'].content
+      }
+    })
+
     Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: writeTextMock },
+      value: { write: writeMock, writeText: vi.fn() },
       writable: true,
       configurable: true,
-    })
-    writeTextMock.mockReset()
-    ;(global as any).ClipboardItem = vi.fn(() => {
-      throw new Error('ClipboardItem not supported in test environment')
     })
   })
 
@@ -29,6 +51,7 @@ describe('CopyAllJobsButton', () => {
       configurable: true,
     })
     ;(global as any).ClipboardItem = originalClipboardItem
+    ;(global as any).Blob = globalThis.Blob
     vi.clearAllMocks()
   })
 
@@ -52,8 +75,6 @@ describe('CopyAllJobsButton', () => {
   } satisfies JobPosting)
 
   it('copies only the provided jobs in the given order', async () => {
-    const user = userEvent.setup()
-
     const jobA = makeJob({
       id: 'a',
       organization: 'Alpha Org',
@@ -67,24 +88,50 @@ describe('CopyAllJobsButton', () => {
       date_posted: '2024-01-02T00:00:00Z',
     })
 
-    // Simulate "filtered & sorted" jobs by providing them in the desired order
     const filteredAndSortedJobs = [jobB, jobA]
 
     render(<CopyAllJobsButton jobs={filteredAndSortedJobs} />)
 
-    const button = screen.getByRole('button', { name: 'Copy All Jobs' })
-    await user.click(button)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy All Jobs' }))
+    })
 
-    expect(writeTextMock).toHaveBeenCalledTimes(1)
-    const plainText = writeTextMock.mock.calls[0][0] as string
+    expect(writeMock).toHaveBeenCalledTimes(1)
 
-    // Ensures we only copy the passed-in jobs, in the same order
-    const idxBeta = plainText.indexOf('Who: Beta Org')
-    const idxAlpha = plainText.indexOf('Who: Alpha Org')
+    const idxBeta = capturedPlainText.indexOf('Who: Beta Org')
+    const idxAlpha = capturedPlainText.indexOf('Who: Alpha Org')
 
     expect(idxBeta).toBeGreaterThanOrEqual(0)
     expect(idxAlpha).toBeGreaterThanOrEqual(0)
     expect(idxBeta).toBeLessThan(idxAlpha)
+  })
+
+  it('does not include jobs that were not passed in', async () => {
+    const job = makeJob({
+      id: 'only',
+      organization: 'Only Org',
+      job_title: 'Only Role',
+    })
+
+    render(<CopyAllJobsButton jobs={[job]} />)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy All Jobs' }))
+    })
+
+    expect(capturedPlainText).toContain('Who: Only Org')
+    expect(capturedPlainText).not.toContain('Alpha Org')
+  })
+
+  it('shows "Copied!" after a successful copy', async () => {
+    const job = makeJob({ id: 'x' })
+    render(<CopyAllJobsButton jobs={[job]} />)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy All Jobs' }))
+    })
+
+    expect(screen.getByRole('button', { name: 'Copied!' })).toBeVisible()
   })
 
   it('renders nothing when there are no jobs', () => {
@@ -92,4 +139,3 @@ describe('CopyAllJobsButton', () => {
     expect(container).toBeEmptyDOMElement()
   })
 })
-
