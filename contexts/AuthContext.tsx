@@ -108,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Use a ref for the Supabase client to avoid re-creating it across renders
   const supabaseRef = useRef(createClient())
   const supabase = supabaseRef.current
+  const userIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -130,9 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!mounted) return
 
+        userIdRef.current = resolvedUser?.id ?? null
         setUser(resolvedUser)
         setRoles(['user'])
-        setLoading(false) // Set loading false immediately after user is found
+        setLoading(false)
 
         if (resolvedUser) {
           // Kick off async role fetch but don't block rendering — update when it completes
@@ -142,11 +144,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setRoles(resolvedRoles)
             })
             .catch(() => {
-              // Keep default roles on error; optionally log in the future
+              if (!mounted) return
+              setRoles(['user'])
             })
         }
       } catch {
         if (!mounted) return
+        userIdRef.current = null
         setUser(null)
         setRoles(['user'])
         setLoading(false)
@@ -161,8 +165,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return
 
       const nextUser = session?.user ?? null
-      const userChanged = nextUser?.id !== user?.id
+      const userChanged = nextUser?.id !== userIdRef.current
 
+      userIdRef.current = nextUser?.id ?? null
       setUser(nextUser)
       setLoading(false)
 
@@ -175,14 +180,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (!mounted) return
             setRoles(resolvedRoles)
           })
-          .catch(() => {})
+          .catch(() => {
+            if (!mounted) return
+            setRoles(['user'])
+          })
       } else {
         fetchRolesForUser(supabase, nextUser.id)
           .then((resolvedRoles) => {
             if (!mounted) return
             setRoles(resolvedRoles)
           })
-          .catch(() => {})
+          .catch(() => {
+            if (!mounted) return
+            setRoles(['user'])
+          })
       }
     })
 

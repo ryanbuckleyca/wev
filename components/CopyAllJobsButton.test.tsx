@@ -4,7 +4,8 @@ import CopyAllJobsButton from './CopyAllJobsButton'
 import type { JobPosting } from '@/lib/supabase'
 
 const originalClipboard = navigator.clipboard
-const originalClipboardItem = (global as any).ClipboardItem
+const originalClipboardItem = globalThis.ClipboardItem
+const originalBlob = globalThis.Blob
 
 describe('CopyAllJobsButton', () => {
   const writeMock = vi.fn().mockResolvedValue(undefined)
@@ -13,14 +14,14 @@ describe('CopyAllJobsButton', () => {
   beforeEach(() => {
     capturedPlainText = ''
 
-    ;(global as any).ClipboardItem = class {
+    ;(globalThis as any).ClipboardItem = class {
       items: Record<string, Blob>
       constructor(items: Record<string, Blob>) {
         this.items = items
       }
     }
 
-    ;(global as any).Blob = class {
+    ;(globalThis as any).Blob = class {
       content: string
       type: string
       constructor(parts: string[], opts?: { type?: string }) {
@@ -45,13 +46,28 @@ describe('CopyAllJobsButton', () => {
   })
 
   afterEach(() => {
-    Object.defineProperty(navigator, 'clipboard', {
-      value: originalClipboard,
-      writable: true,
-      configurable: true,
-    })
-    ;(global as any).ClipboardItem = originalClipboardItem
-    ;(global as any).Blob = globalThis.Blob
+    if (originalClipboard) {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: originalClipboard,
+        writable: true,
+        configurable: true,
+      })
+    } else {
+      delete (navigator as any).clipboard
+    }
+
+    if (originalClipboardItem) {
+      ;(globalThis as any).ClipboardItem = originalClipboardItem
+    } else {
+      delete (globalThis as any).ClipboardItem
+    }
+
+    if (originalBlob) {
+      ;(globalThis as any).Blob = originalBlob
+    } else {
+      delete (globalThis as any).Blob
+    }
+
     vi.clearAllMocks()
   })
 
