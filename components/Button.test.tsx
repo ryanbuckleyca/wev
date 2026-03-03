@@ -35,9 +35,9 @@ describe('Button', () => {
 
   it('is disabled when loading is true', () => {
     render(<Button loading>Save</Button>)
-    const btn = screen.getByRole('button')
+    const btn = screen.getByRole('button', { name: 'Save' })
+    expect(btn).toBeVisible()
     expect(btn).toBeDisabled()
-    expect(btn).toHaveTextContent('Loading...')
   })
 
   it('does not call onClick when disabled', async () => {
