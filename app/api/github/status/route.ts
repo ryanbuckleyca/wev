@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
     const githubToken = process.env.GITHUB_TOKEN
-    const repoOwner = process.env.GITHUB_REPO_OWNER
-    const repoName = process.env.GITHUB_REPO_NAME
+    const repoOwner = "ryanbuckleyca"
+    const repoName = "wev-scraper"
     const workflowId = process.env.GITHUB_WORKFLOW_ID || 'scrape.yml'
 
     if (!githubToken || !repoOwner || !repoName) {
