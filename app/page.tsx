@@ -311,7 +311,7 @@ export default function Home() {
             {/* Mobile: Stacked vertically */}
             <div className="flex flex-row gap-4">
               <ReScrapeButton onComplete={fetchData} />
-              <CopyAllJobsButton jobs={allJobs} />
+              <CopyAllJobsButton jobs={filteredJobs} />
             </div>
           </div>
         )}
