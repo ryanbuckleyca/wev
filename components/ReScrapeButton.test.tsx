@@ -9,6 +9,7 @@ vi.mock('@/lib/toast', () => ({
 import notify from '@/lib/toast'
 
 const originalFetch = global.fetch
+const STORAGE_KEY = 'wev-scrape-state'
 
 // ─── fetch helpers ───────────────────────────────────────────────────────────
 
@@ -77,6 +78,7 @@ const tick = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms))
 describe('ReScrapeButton', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    localStorage.removeItem(STORAGE_KEY)
   })
 
   afterEach(() => {
@@ -84,6 +86,7 @@ describe('ReScrapeButton', () => {
     vi.useRealTimers()
     vi.clearAllMocks()
     global.fetch = originalFetch
+    localStorage.removeItem(STORAGE_KEY)
   })
 
   it('renders "Re-scrape Data" and is enabled initially', () => {
@@ -234,5 +237,111 @@ describe('ReScrapeButton', () => {
     // Advancing timers after unmount should be a no-op — no errors thrown
     await tick(15_000)
     expect(true).toBe(true) // just ensuring no throw
+  })
+
+  // ─── localStorage persistence tests ──────────────────────────────────────
+
+  it('persists scrape state to localStorage after successful trigger', async () => {
+    global.fetch = vi.fn()
+      .mockReturnValueOnce(triggerOk())
+      .mockReturnValue(new Promise(() => {}))
+
+    render(<ReScrapeButton onComplete={() => {}} />)
+    await clickButton()
+    await flushPromises()
+
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
+    expect(stored).toMatchObject({ status: 'queued' })
+    expect(stored.triggeredAt).toBeDefined()
+    expect(stored.startedAt).toBeGreaterThan(0)
+  })
+
+  it('clears localStorage on successful completion', async () => {
+    global.fetch = vi.fn()
+      .mockReturnValueOnce(triggerOk())
+      .mockReturnValueOnce(pollSuccess())
+
+    render(<ReScrapeButton onComplete={() => {}} />)
+    await clickButton()
+    await flushPromises()
+    await tick(5_000)
+
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
+  it('clears localStorage on failure', async () => {
+    global.fetch = vi.fn()
+      .mockReturnValueOnce(triggerOk())
+      .mockReturnValueOnce(pollFailure())
+
+    render(<ReScrapeButton onComplete={() => {}} />)
+    await clickButton()
+    await flushPromises()
+    await tick(5_000)
+
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
+  it('clears localStorage when trigger request fails', async () => {
+    global.fetch = vi.fn().mockReturnValue(triggerFail('Unauthorized'))
+
+    render(<ReScrapeButton onComplete={() => {}} />)
+    await clickButton()
+    await flushPromises()
+
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
+  it('resumes polling from localStorage on mount and completes', async () => {
+    const onComplete = vi.fn()
+    const saved = {
+      triggeredAt: new Date(Date.now() - 30_000).toISOString(),
+      startedAt: Date.now(),
+      status: 'queued',
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
+
+    global.fetch = vi.fn().mockReturnValueOnce(pollSuccess())
+
+    render(<ReScrapeButton onComplete={onComplete} />)
+
+    // Button should show loading state immediately from localStorage
+    expect(screen.getByRole('button')).toBeDisabled()
+
+    await flushPromises()
+
+    expect(onComplete).toHaveBeenCalledOnce()
+    expect(notify.success).toHaveBeenCalledWith(expect.stringContaining('Re-scrape complete'))
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
+  it('resumes with "Running..." when localStorage has running status', async () => {
+    const saved = {
+      triggeredAt: new Date(Date.now() - 30_000).toISOString(),
+      startedAt: Date.now(),
+      status: 'running',
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
+
+    global.fetch = vi.fn().mockReturnValue(new Promise(() => {}))
+
+    render(<ReScrapeButton onComplete={() => {}} />)
+
+    expect(screen.getByRole('button', { name: 'Running...' })).toBeDisabled()
+  })
+
+  it('discards expired localStorage state and renders idle', () => {
+    const expired = {
+      triggeredAt: new Date(Date.now() - 30_000).toISOString(),
+      startedAt: Date.now() - 11 * 60_000, // older than MAX_WAIT_MS
+      status: 'running',
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(expired))
+
+    render(<ReScrapeButton onComplete={() => {}} />)
+
+    const btn = screen.getByRole('button', { name: 'Re-scrape Data' })
+    expect(btn).toBeEnabled()
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 })
