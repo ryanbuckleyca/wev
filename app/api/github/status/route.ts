@@ -14,9 +14,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get workflow runs
-    const response = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/actions/workflows/${workflowId}/runs?per_page=1`,
+    // Get workflow runs, optionally filtered to runs created after a given timestamp
+    const createdAfter = request.nextUrl.searchParams.get('created_after')
+    const runsUrl = new URL(`https://api.github.com/repos/${repoOwner}/${repoName}/actions/workflows/${workflowId}/runs`)
+    runsUrl.searchParams.set('per_page', '5')
+    if (createdAfter) runsUrl.searchParams.set('created', `>=${createdAfter}`)
+
+    const response = await fetch(runsUrl.toString(),
       {
         headers: {
           'Authorization': `Bearer ${githubToken}`,
@@ -34,7 +38,11 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json()
-    const latestRun = data.workflow_runs?.[0]
+    // If filtering by created_after, find the first run at or after that time;
+    // otherwise just take the most recent
+    const latestRun = createdAfter
+      ? (data.workflow_runs ?? []).find((r: { created_at: string }) => r.created_at >= createdAfter)
+      : data.workflow_runs?.[0]
 
     if (!latestRun) {
       return NextResponse.json({ status: 'unknown', running: false })
