@@ -48,7 +48,4 @@ jobs:
           echo "Remember to set these environment variables in Northflank:"
           echo "  - SUPABASE_URL (server-only)"
           echo "  - SUPABASE_SERVICE_ROLE_KEY (server-only, never )"
-          echo "  - GITHUB_TOKEN (for API routes)"
-          echo "  - GITHUB_REPO_OWNER"
-          echo "  - GITHUB_REPO_NAME"
-          echo "  - GITHUB_WORKFLOW_ID (optional)"
+          echo "  - WEV_GITHUB_TOKEN (for API routes)"
