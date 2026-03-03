@@ -111,7 +111,7 @@ export default function LoginPage() {
             loading={loading}
             fullWidth
           >
-            Log in
+            {loading ? 'Logging in...' : 'Log in'}
           </Button>
         </FormContainer>
 

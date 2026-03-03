@@ -249,7 +249,7 @@ export default function AccountSettingsPage() {
                 disabled={isUpdating || (!emailChanged && !passwordChanged) || (passwordChanged && !newPasswordStrength?.isAcceptable)}
                 loading={isUpdating}
               >
-                Save Changes
+                {isUpdating ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </div>  

@@ -15,10 +15,23 @@ export async function GET(request: NextRequest) {
     }
 
     // Get workflow runs, optionally filtered to runs created after a given timestamp
-    const createdAfter = request.nextUrl.searchParams.get('created_after')
+    const createdAfterParam = request.nextUrl.searchParams.get('created_after')
+
+    let createdAfterMs: number | null = null
+    if (createdAfterParam) {
+      createdAfterMs = Date.parse(createdAfterParam)
+      if (Number.isNaN(createdAfterMs)) {
+        return NextResponse.json(
+          { error: `Invalid created_after value: ${createdAfterParam}` },
+          { status: 400 }
+        )
+      }
+    }
+
     const runsUrl = new URL(`https://api.github.com/repos/${repoOwner}/${repoName}/actions/workflows/${workflowId}/runs`)
     runsUrl.searchParams.set('per_page', '5')
-    if (createdAfter) runsUrl.searchParams.set('created', `>=${createdAfter}`)
+    // Pass the filter to GitHub too so it does the heavy lifting server-side
+    if (createdAfterParam) runsUrl.searchParams.set('created', `>=${createdAfterParam}`)
 
     const response = await fetch(runsUrl.toString(),
       {
@@ -38,10 +51,12 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json()
-    // If filtering by created_after, find the first run at or after that time;
-    // otherwise just take the most recent
-    const latestRun = createdAfter
-      ? (data.workflow_runs ?? []).find((r: { created_at: string }) => r.created_at >= createdAfter)
+    // If filtering by created_after, find the first run at or after that time using
+    // numeric timestamp comparison to avoid string format / millisecond mismatches
+    const latestRun = createdAfterMs !== null
+      ? (data.workflow_runs ?? []).find(
+          (r: { created_at: string }) => Date.parse(r.created_at) >= createdAfterMs!
+        )
       : data.workflow_runs?.[0]
 
     if (!latestRun) {

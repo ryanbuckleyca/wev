@@ -177,7 +177,7 @@ export default function UserProfile() {
                 border: 'none'
               }}
             >
-              Log Out
+              {isLoggingOut ? 'Logging out...' : 'Log Out'}
             </Button>
           </div>
         </div>

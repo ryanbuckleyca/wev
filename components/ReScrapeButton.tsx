@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import notify from '@/lib/toast'
 import Button from './Button'
 
@@ -14,10 +14,32 @@ const MAX_WAIT_MS = 10 * 60_000
 export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
   const [loading, setLoading] = useState(false)
   const [statusText, setStatusText] = useState('Re-scrape Data')
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current)
+      abortControllerRef.current?.abort()
+    }
+  }, [])
+
+  const stopPolling = () => {
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current)
+      pollTimeoutRef.current = null
+    }
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+  }
 
   const triggerWorkflow = async () => {
     setLoading(true)
     setStatusText('Starting...')
+
+    // Capture before the request and subtract 30s buffer for clock skew / fast dispatch
+    const triggeredAt = new Date(Date.now() - 30_000).toISOString()
 
     try {
       const triggerResponse = await fetch('/api/github/workflow', { method: 'POST' })
@@ -29,9 +51,6 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
       notify.success('Workflow triggered. Waiting for it to complete...')
       setStatusText('Queued...')
 
-      // Record trigger time before the initial delay so we don't miss a fast run
-      const triggeredAt = new Date().toISOString()
-
       // Give GitHub a moment before the new run appears in the API
       await new Promise(r => setTimeout(r, 5000))
 
@@ -40,35 +59,52 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
       const poll = async () => {
         if (Date.now() - startedAt > MAX_WAIT_MS) {
           notify.error('Timed out waiting for workflow. Check GitHub Actions.')
+          stopPolling()
           setLoading(false)
           setStatusText('Re-scrape Data')
           return
         }
 
+        abortControllerRef.current = new AbortController()
+
         try {
-          const res = await fetch(`/api/github/status?created_after=${encodeURIComponent(triggeredAt)}`)
+          const res = await fetch(
+            `/api/github/status?created_after=${encodeURIComponent(triggeredAt)}`,
+            { signal: abortControllerRef.current.signal }
+          )
           const status = await res.json()
+
+          if (!res.ok || status.error) {
+            notify.error(`Failed to check workflow status: ${status.error ?? res.statusText}`)
+            stopPolling()
+            setLoading(false)
+            setStatusText('Re-scrape Data')
+            return
+          }
 
           if (status.running) {
             setStatusText('Running...')
-            setTimeout(poll, POLL_INTERVAL_MS)
+            pollTimeoutRef.current = setTimeout(poll, POLL_INTERVAL_MS)
           } else if (status.completed && status.success) {
             notify.success('Re-scrape complete. Refreshing data...')
+            stopPolling()
             onComplete()
             setLoading(false)
             setStatusText('Re-scrape Data')
           } else if (status.completed && !status.success) {
             notify.error(`Workflow finished with status: ${status.conclusion}`)
+            stopPolling()
             setLoading(false)
             setStatusText('Re-scrape Data')
           } else {
             // Run not found yet (still queued or not visible) — keep waiting
             setStatusText('Queued...')
-            setTimeout(poll, POLL_INTERVAL_MS)
+            pollTimeoutRef.current = setTimeout(poll, POLL_INTERVAL_MS)
           }
-        } catch {
+        } catch (err) {
+          if (err instanceof Error && err.name === 'AbortError') return
           // Network hiccup — retry
-          setTimeout(poll, POLL_INTERVAL_MS)
+          pollTimeoutRef.current = setTimeout(poll, POLL_INTERVAL_MS)
         }
       }
 
@@ -76,6 +112,7 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
 
     } catch (err) {
       notify.error(err instanceof Error ? err.message : 'An error occurred')
+      stopPolling()
       setLoading(false)
       setStatusText('Re-scrape Data')
     }
