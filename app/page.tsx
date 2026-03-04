@@ -311,9 +311,11 @@ export default function Home() {
     fetchData()
   }, [])
 
-  // Refetch match data and bookmarks when user changes
+  // Refetch match data and bookmarks when user changes (by id, not object reference)
+  // Using user?.id avoids refetch on token refresh when switching tabs
+  const userId = user?.id ?? null
   useEffect(() => {
-    if (user && allJobs.length > 0) {
+    if (userId && allJobs.length > 0) {
       Promise.all([
         fetchMatchData(allJobs),
         fetchBookmarks(allJobs.map(j => j.id)),
@@ -325,7 +327,7 @@ export default function Home() {
       setMatchData(new Map())
       setBookmarkedJobIds(new Set())
     }
-  }, [user, allJobs.length])
+  }, [userId, allJobs.length])
 
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE)
 
