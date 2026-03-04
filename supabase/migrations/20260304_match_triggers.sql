@@ -3,7 +3,7 @@
 -- are recalculated incrementally (only the changed job/user),
 -- replacing the expensive O(users × jobs) full recalculation.
 
--- Match score formula (mirrors calculate_matches.py):
+-- Match score formula (mirrors lib/match-calculator.ts):
 --   overlap = shared_count / user_values_count
 --   bonus   = LEAST(shared_count * 0.1, 0.3)
 --   score   = LEAST(overlap + bonus, 1.0)

@@ -200,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
           .catch(() => {
             if (!mounted) return
+            setRoles(['user'])
           })
       }
     })
