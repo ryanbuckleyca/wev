@@ -29,8 +29,8 @@ describe('calculateMatch', () => {
     const jobValues = ['Community', 'Creativity', 'Security']
     const result = calculateMatch(userValues, jobValues)
 
-    // shared = 2 (Community, Creativity), max(4, 3) = 4
-    expect(result.score).toBe(0.5)
+    // shared = 2, overlap = 2/4 = 0.5, bonus = min(2*0.1, 0.3) = 0.2, score = 0.7
+    expect(result.score).toBe(0.7)
     expect(result.shared_values).toEqual(['Community', 'Creativity'])
   })
 
@@ -40,13 +40,13 @@ describe('calculateMatch', () => {
     expect(result.shared_values).toEqual([])
   })
 
-  it('uses the larger list length as denominator', () => {
-    // user has 2, job has 5 → denominator is 5
+  it('uses user values count as denominator', () => {
+    // user has 2, job has 5, shared = 2 → overlap = 2/2 = 1.0, bonus = 0.2, score capped at 1.0
     const result = calculateMatch(
       ['Community', 'Creativity'],
       ['Community', 'Creativity', 'Security', 'Knowledge', 'Challenge']
     )
-    expect(result.score).toBe(2 / 5)
+    expect(result.score).toBe(1.0)
     expect(result.shared_values).toEqual(['Community', 'Creativity'])
   })
 

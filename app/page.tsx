@@ -47,6 +47,8 @@ export default function Home() {
   
   // Match data state
   const [matchData, setMatchData] = useState<Map<string, { score: number; shared_values: string[] }>>(new Map())
+  // Bookmarked job IDs (batch-fetched for logged-in users)
+  const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(new Set())
 
   
 
@@ -106,10 +108,16 @@ export default function Home() {
       setAllJobs(jobsData ?? [])
       setCurrentPage(1)
       
-      // Fetch match data if user is logged in
+      // Fetch match data and bookmarks if user is logged in
       if (user && jobsData) {
-        const matches = await fetchMatchData(jobsData)
+        const [matches, bookmarked] = await Promise.all([
+          fetchMatchData(jobsData),
+          fetchBookmarks(jobsData.map((j: JobPosting) => j.id)),
+        ])
         setMatchData(matches)
+        setBookmarkedJobIds(bookmarked)
+      } else {
+        setBookmarkedJobIds(new Set())
       }
     } catch (err) {
       clearTimeout(timeoutId)
@@ -123,6 +131,28 @@ export default function Home() {
     } finally {
       clearTimeout(timeoutId)
       setLoading(false)
+    }
+  }
+
+  // Fetch bookmarks for job IDs (only when user is logged in)
+  const fetchBookmarks = async (jobIds: string[]) => {
+    if (!user || jobIds.length === 0) return new Set<string>()
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('bookmarks')
+        .select('job_id')
+        .eq('user_id', user.id)
+        .in('job_id', jobIds)
+
+      if (error) {
+        console.error('Error fetching bookmarks:', error)
+        return new Set<string>()
+      }
+      return new Set((data ?? []).map((b: { job_id: string }) => b.job_id))
+    } catch (error) {
+      console.error('Error fetching bookmarks:', error)
+      return new Set<string>()
     }
   }
 
@@ -281,12 +311,19 @@ export default function Home() {
     fetchData()
   }, [])
 
-  // Refetch match data when user changes
+  // Refetch match data and bookmarks when user changes
   useEffect(() => {
     if (user && allJobs.length > 0) {
-      fetchMatchData(allJobs).then(setMatchData)
+      Promise.all([
+        fetchMatchData(allJobs),
+        fetchBookmarks(allJobs.map(j => j.id)),
+      ]).then(([matches, bookmarked]) => {
+        setMatchData(matches)
+        setBookmarkedJobIds(bookmarked)
+      })
     } else {
       setMatchData(new Map())
+      setBookmarkedJobIds(new Set())
     }
   }, [user, allJobs.length])
 
@@ -377,11 +414,21 @@ export default function Home() {
           loading={loading}
           error={error}
           allExpanded={allJobsExpanded}
+          matchData={matchData}
+          bookmarkedJobIds={bookmarkedJobIds}
           onJobSseChange={(jobId, isSse) =>
             setAllJobs((prev) =>
               prev.map((j) => (j.id === jobId ? { ...j, is_sse: isSse } : j))
             )
           }
+          onJobBookmarkChange={(job, bookmarked) => {
+            setBookmarkedJobIds((prev) => {
+              const next = new Set(prev)
+              if (bookmarked) next.add(job.id)
+              else next.delete(job.id)
+              return next
+            })
+          }}
         />
 
         {/* Pagination */}
