@@ -107,18 +107,7 @@ export default function Home() {
 
       setAllJobs(jobsData ?? [])
       setCurrentPage(1)
-      
-      // Fetch match data and bookmarks if user is logged in
-      if (user && jobsData) {
-        const [matches, bookmarked] = await Promise.all([
-          fetchMatchData(jobsData),
-          fetchBookmarks(jobsData.map((j: JobPosting) => j.id)),
-        ])
-        setMatchData(matches)
-        setBookmarkedJobIds(bookmarked)
-      } else {
-        setBookmarkedJobIds(new Set())
-      }
+      // Match data and bookmarks are fetched by the useEffect when userId + allJobs are ready
     } catch (err) {
       clearTimeout(timeoutId)
       console.error('Error fetching data:', err)

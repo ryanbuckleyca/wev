@@ -19,7 +19,8 @@ interface MatchResult {
 
 /**
  * Calculate match score between user profile and job.
- * Formula (matches PL/pgSQL trigger in 20260304_match_triggers.sql):
+ * Formula (matches PL/pgSQL implementation in 20260305_optimize_match_triggers.sql;
+ * legacy definition in 20260304_match_triggers.sql):
  *   overlap = shared_count / user_values_count
  *   bonus   = min(shared_count * 0.1, 0.3)
  *   score   = min(overlap + bonus, 1.0)
