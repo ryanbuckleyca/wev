@@ -7,7 +7,6 @@ import { Leaf1Solid, Leaf1Outlined, Bookmark1Solid, Bookmark1Outlined, ChevronDo
 import Pill from './Pill'
 import Tooltip from './Tooltip'
 import { getValueDefinition } from '@/lib/values'
-import { useJobMatch } from '@/hooks/useJobMatch'
 import { useAuth } from '@/contexts/AuthContext'
 import ProgressDonut from './ProgressDonut'
 import { createClient } from '@/lib/supabase/client'
@@ -21,6 +20,8 @@ interface JobCardProps {
   onBookmarkToggle?: (job: JobPosting, bookmarked: boolean) => void
   updatingId: string | null
   initialExpanded?: boolean
+  match?: { score: number; shared_values: string[] } | null
+  initialBookmarked?: boolean
 }
 
 export default function JobCard({ 
@@ -29,56 +30,30 @@ export default function JobCard({
   onSseToggle, 
   onBookmarkToggle,
   updatingId,
-  initialExpanded = true
+  initialExpanded = true,
+  match: matchProp,
+  initialBookmarked = false,
 }: JobCardProps) {
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
-  const [bookmarked, setBookmarked] = useState(false) // TODO: Connect to actual bookmark state
+  const [bookmarked, setBookmarked] = useState(initialBookmarked)
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
 
   // Get user state
   const { user } = useAuth()
   const router = useRouter()
-  
-  // Get match data for this job (only when user is logged in)
-  const { match, loading, isValueMatched, matchPercentage } = useJobMatch(job.id)
+
+  // Use passed-in match data (batch-fetched by parent)
+  const matchPercentage = matchProp ? Math.round(matchProp.score * 100) : 0
+  const isValueMatched = (value: string) => matchProp?.shared_values?.includes(value) ?? false
   
   // Sync internal state with prop changes
   useEffect(() => {
     setIsExpanded(initialExpanded)
   }, [initialExpanded])
 
-  // Load bookmark state for logged-in users
   useEffect(() => {
-    let mounted = true
-    const loadBookmark = async () => {
-      if (!user) {
-        if (mounted) setBookmarked(false)
-        return
-      }
-
-      try {
-        const supabase = createClient()
-        const { data, error } = await supabase
-          .from('bookmarks')
-          .select('user_id,job_id')
-          .eq('user_id', user.id)
-          .eq('job_id', job.id)
-          .limit(1)
-
-        if (error) {
-          console.error('Error checking bookmark:', error)
-          return
-        }
-
-        if (mounted) setBookmarked((data && data.length > 0) ?? false)
-      } catch (err) {
-        console.error('Error loading bookmark state:', err)
-      }
-    }
-
-    loadBookmark()
-    return () => { mounted = false }
-  }, [user, job.id])
+    setBookmarked(initialBookmarked)
+  }, [initialBookmarked])
   
   const sse = !!job.is_sse
   
@@ -280,7 +255,7 @@ export default function JobCard({
         <div className={`px-4 py-3 bg-wev-surface-tint ${isExpanded ? 'border-t border-wev-border' : ''}`}>
           <div className="flex flex-wrap items-center gap-1.5">
             {/* Match Score - only show when user is logged in */}
-            {user && !loading && (
+            {user && (
               <div className="flex items-center gap-1">
                 <ProgressDonut 
                   percentage={matchPercentage} 

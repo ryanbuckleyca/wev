@@ -18,8 +18,11 @@ interface MatchResult {
 }
 
 /**
- * Calculate match score between user profile and job
- * Score = (shared_values_count) / (max(user_values_count, job_values_count))
+ * Calculate match score between user profile and job.
+ * Formula (matches PL/pgSQL trigger in 20260304_match_triggers.sql):
+ *   overlap = shared_count / user_values_count
+ *   bonus   = min(shared_count * 0.1, 0.3)
+ *   score   = min(overlap + bonus, 1.0)
  */
 export function calculateMatch(userValues: string[], jobValues: string[]): {
   score: number
@@ -29,9 +32,11 @@ export function calculateMatch(userValues: string[], jobValues: string[]): {
     return { score: 0, shared_values: [] }
   }
 
-  const sharedValues = userValues.filter(value => jobValues.includes(value))
-  const maxCount = Math.max(userValues.length, jobValues.length)
-  const score = sharedValues.length / maxCount
+  const jobSet = new Set(jobValues)
+  const sharedValues = userValues.filter(v => jobSet.has(v))
+  const overlap = sharedValues.length / userValues.length
+  const bonus = Math.min(sharedValues.length * 0.1, 0.3)
+  const score = Math.min(overlap + bonus, 1.0)
 
   return {
     score,

@@ -105,10 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [roles, setRoles] = useState<string[]>(['user'])
   const [loading, setLoading] = useState(true)
-  // Use a ref for the Supabase client to avoid re-creating it across renders
   const supabaseRef = useRef(createClient())
   const supabase = supabaseRef.current
   const userIdRef = useRef<string | null>(null)
+  const rolesResolvedForRef = useRef<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -137,10 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false)
 
         if (resolvedUser) {
-          // Kick off async role fetch but don't block rendering — update when it completes
           fetchRolesForUser(supabase, resolvedUser.id)
             .then((resolvedRoles) => {
               if (!mounted) return
+              rolesResolvedForRef.current = resolvedUser!.id
               setRoles(resolvedRoles)
             })
             .catch(() => {
@@ -151,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         if (!mounted) return
         userIdRef.current = null
+        rolesResolvedForRef.current = null
         setUser(null)
         setRoles(['user'])
         setLoading(false)
@@ -161,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
 
       const nextUser = session?.user ?? null
@@ -172,27 +173,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
 
       if (!nextUser) {
+        rolesResolvedForRef.current = null
         setRoles(['user'])
       } else if (userChanged) {
+        rolesResolvedForRef.current = null
         setRoles(['user'])
         fetchRolesForUser(supabase, nextUser.id)
           .then((resolvedRoles) => {
             if (!mounted) return
+            rolesResolvedForRef.current = nextUser.id
             setRoles(resolvedRoles)
           })
           .catch(() => {
             if (!mounted) return
             setRoles(['user'])
           })
-      } else {
+      } else if (event === 'TOKEN_REFRESHED' && rolesResolvedForRef.current === nextUser.id) {
+        // Same user, token just refreshed (e.g. tab switch) — roles haven't changed,
+        // skip refetch to avoid a transient downgrade if the API races the refresh.
+      } else if (rolesResolvedForRef.current !== nextUser.id) {
         fetchRolesForUser(supabase, nextUser.id)
           .then((resolvedRoles) => {
             if (!mounted) return
+            rolesResolvedForRef.current = nextUser.id
             setRoles(resolvedRoles)
           })
           .catch(() => {
             if (!mounted) return
-            setRoles(['user'])
           })
       }
     })

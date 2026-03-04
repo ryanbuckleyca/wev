@@ -12,6 +12,7 @@ export default function BookmarksPage() {
   const { user, loading } = useRequireAuth()
   const [jobs, setJobs] = useState<any[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [matchData, setMatchData] = useState<Map<string, { score: number; shared_values: string[] }>>(new Map())
 
   useEffect(() => {
     if (!user) return
@@ -26,7 +27,27 @@ export default function BookmarksPage() {
         }
 
         const { jobs: bookmarkedJobs } = await res.json()
-        if (mounted) setJobs(bookmarkedJobs)
+        if (!mounted) return
+
+        setJobs(bookmarkedJobs)
+
+        // Batch-fetch match data for bookmarked jobs
+        if (bookmarkedJobs?.length > 0) {
+          const supabase = createClient()
+          const { data: matches, error: matchError } = await supabase
+            .from('job_matches')
+            .select('job_id, score, shared_values')
+            .eq('user_id', user.id)
+            .in('job_id', bookmarkedJobs.map((j: { id: string }) => j.id))
+
+          if (!matchError && mounted) {
+            const matchMap = new Map<string, { score: number; shared_values: string[] }>()
+            matches?.forEach((m: { job_id: string; score: number; shared_values: string[] }) => {
+              matchMap.set(m.job_id, { score: m.score, shared_values: m.shared_values || [] })
+            })
+            setMatchData(matchMap)
+          }
+        }
       } catch (err) {
         console.error('Failed to load bookmarks:', err)
         if (mounted) setError(err instanceof Error ? err.message : String(err))
@@ -63,7 +84,16 @@ export default function BookmarksPage() {
             <p className="text-wev-text-primary">No bookmarked jobs yet.</p>
           </div>
         ) : (
-          <JobListings jobs={jobs} loading={false} error={null} />
+          <JobListings
+            jobs={jobs}
+            loading={false}
+            error={null}
+            matchData={matchData}
+            bookmarkedJobIds={new Set(jobs.map((j: { id: string }) => j.id))}
+            onJobBookmarkChange={(job, bookmarked) => {
+              if (!bookmarked) setJobs((prev) => (prev ?? []).filter((j) => j.id !== job.id))
+            }}
+          />
         )}
       </div>
     </PageLayout>
