@@ -69,6 +69,8 @@ export function useProfile(userId: string | undefined): UseProfileState & UsePro
         const updated = await updateProfile(userId, data)
         if (updated) {
           setState((prev) => ({ ...prev, profile: updated, isUpdating: false }))
+          // Match recalculation is handled by Supabase database triggers
+          // when profiles.values changes — no client-side call needed.
           return updated
         } else {
           setState((prev) => ({
