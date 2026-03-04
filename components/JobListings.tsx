@@ -13,9 +13,11 @@ interface JobListingsProps {
   onJobSseChange?: (jobId: string, isSse: boolean) => void
   onJobBookmarkChange?: (job: JobPosting, bookmarked: boolean) => void
   allExpanded?: boolean
+  matchData?: Map<string, { score: number; shared_values: string[] }>
+  bookmarkedJobIds?: Set<string>
 }
 
-export default function JobListings({ jobs, loading, error, onJobSseChange, onJobBookmarkChange, allExpanded = true }: JobListingsProps) {
+export default function JobListings({ jobs, loading, error, onJobSseChange, onJobBookmarkChange, allExpanded = true, matchData, bookmarkedJobIds }: JobListingsProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const { role } = useAuth()
 
@@ -94,6 +96,8 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
           onBookmarkToggle={onJobBookmarkChange}
           updatingId={updatingId}
           initialExpanded={allExpanded}
+          match={matchData?.get(job.id)}
+          initialBookmarked={bookmarkedJobIds?.has(job.id) ?? false}
         />
       ))}
     </div>
