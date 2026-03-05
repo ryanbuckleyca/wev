@@ -1,0 +1,26 @@
+{
+  "navigation": {
+    "home": "Home",
+    "jobs": "Jobs",
+    "companies": "Companies",
+    "about": "About",
+    "contact": "Contact"
+  },
+  "hero": {
+    "heading": "Find Your Dream Job Today"
+  },
+  "search": {
+    "button": "Search Jobs"
+  },
+  "filters": {
+    "label": "Filters"
+  },
+  "results": {
+    "noResults": "No jobs found matching your criteria. Try adjusting your filters or search terms."
+  },
+  "footer": {
+    "copyright": "© 2026 Job Board. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  }
+}
