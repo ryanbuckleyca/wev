@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { checkPasswordStrength } from '@/lib/password-strength'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'

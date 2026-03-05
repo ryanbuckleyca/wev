@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState, useMemo } from 'react';
 import toast from 'react-hot-toast';

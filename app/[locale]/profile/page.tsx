@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import Link from 'next/link';
+import Link from '@/i18n/navigation';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfile } from '@/lib/hooks/useProfile';
 import ValuesSelector from '@/components/ValuesSelector';

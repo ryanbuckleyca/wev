@@ -1,4 +1,6 @@
 const path = require('path')
+const createNextIntlPlugin = require('next-intl/plugin')
+
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') })
 // Also try loading from current directory as fallback
 require('dotenv').config({ path: path.join(__dirname, '.env') })
@@ -10,4 +12,6 @@ const nextConfig = {
   // This allows API routes and server-side rendering
 }
 
-module.exports = nextConfig
+const withNextIntl = createNextIntlPlugin()
+
+module.exports = withNextIntl(nextConfig)

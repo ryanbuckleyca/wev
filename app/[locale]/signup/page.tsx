@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
+import Link from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { checkPasswordStrength } from '@/lib/password-strength'
 import TurnstileWidget from '@/components/TurnstileWidget'
