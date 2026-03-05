@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import Link from '@/i18n/navigation'
+import { useRouter } from '@/i18n/navigation'
 import notify from '@/lib/toast'
 import Button from '@/components/Button'
 import { createClient } from '@/lib/supabase/client'

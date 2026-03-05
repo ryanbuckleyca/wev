@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { useLocale } from 'next-intl'
 import Link from 'next/link'
 import UserProfile from './UserProfile'
 import ThemeToggle from './ThemeToggle'
@@ -9,7 +10,9 @@ import ThemeToggle from './ThemeToggle'
 export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false)
   const pathname = usePathname()
-  const isHomePage = pathname === '/'
+  const locale = useLocale()
+  // Check if we're on the home page (with or without locale prefix)
+  const isHomePage = pathname === '/' || pathname === `/${locale}` || pathname.match(/^\/[a-z]{2}$/)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -50,7 +53,7 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
     >
       <div className="flex items-center justify-between px-4 py-4">
         <div className={`transition-opacity duration-200 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-          <Link href="/">
+          <Link href={`/${locale}`}>
             <img
               src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png"
               alt="wev"

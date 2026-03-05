@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/i18n/navigation'
+import { useLocale } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import PageLayout from '@/components/PageLayout'
@@ -13,6 +14,7 @@ import Button from '@/components/Button'
 import Message from '@/components/Message'
 
 export default function ForgotPasswordPage() {
+  const locale = useLocale()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -34,7 +36,7 @@ export default function ForgotPasswordPage() {
     }
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/${locale}/reset-password`,
       captchaToken,
     })
 
