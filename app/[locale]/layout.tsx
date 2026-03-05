@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import { Lexend_Deca } from 'next/font/google'
+import { NextIntlClientProvider } from 'next-intl'
+import { getMessages } from 'next-intl/server'
 import Header from '@/components/Header'
 import Toaster from '@/components/Toaster'
 import { AuthProvider } from '@/contexts/AuthContext'
-import './globals.css'
+import '../globals.css'
 
 const lexend = Lexend_Deca({
   subsets: ['latin'],
@@ -16,13 +18,18 @@ export const metadata: Metadata = {
   description: 'View and manage job postings from wev scraper',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
+  params,
 }: {
   children: React.ReactNode
+  params: { locale: string }
 }) {
+  const locale = params.locale
+  const messages = await getMessages()
+
   return (
-    <html lang="en" className={lexend.variable} suppressHydrationWarning>
+    <html lang={locale} className={lexend.variable} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -31,11 +38,13 @@ export default function RootLayout({
         />
       </head>
       <body className="theme-transition font-sans antialiased">
-        <AuthProvider>
-          <Header />
-          {children}
-          <Toaster />
-        </AuthProvider>
+        <NextIntlClientProvider messages={messages}>
+          <AuthProvider>
+            <Header />
+            {children}
+            <Toaster />
+          </AuthProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   )
