@@ -1,0 +1,26 @@
+{
+  "navigation": {
+    "home": "Accueil",
+    "jobs": "Emplois",
+    "companies": "Entreprises",
+    "about": "À propos",
+    "contact": "Contact"
+  },
+  "hero": {
+    "heading": "Trouvez l'emploi de vos rêves aujourd'hui"
+  },
+  "search": {
+    "button": "Rechercher des emplois"
+  },
+  "filters": {
+    "label": "Filtres"
+  },
+  "results": {
+    "noResults": "Aucun emploi trouvé correspondant à vos critères. Essayez d'ajuster vos filtres ou vos termes de recherche."
+  },
+  "footer": {
+    "copyright": "© 2026 Job Board. Tous droits réservés.",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions d'utilisation"
+  }
+}
