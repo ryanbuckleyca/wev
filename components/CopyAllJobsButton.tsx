@@ -145,7 +145,7 @@ export default function CopyAllJobsButton({ jobs }: CopyAllJobsButtonProps) {
   }
 
   return (
-    <div title={jobs.length > 0 ? `Copy ${jobs.length} job${jobs.length !== 1 ? 's' : ''} to clipboard` : undefined}>
+    <div title={jobs.length > 0 ? t('buttons.copyJobsTitle', { count: jobs.length }) : undefined}>
       <Button
         onClick={handleCopy}
         disabled={copied || jobs.length === 0}
