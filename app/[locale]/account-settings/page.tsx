@@ -5,7 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { checkPasswordStrength } from '@/lib/password-strength';
+import { usePasswordStrength } from '@/hooks/usePasswordStrength';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
 import LoadingState from '@/components/LoadingState';
@@ -47,16 +47,7 @@ export default function AccountSettingsPage() {
     setPasswordChanged(newPassword !== '' || confirmPassword !== '' || currentPassword !== '');
   }, [newPassword, confirmPassword, currentPassword]);
 
-  const newPasswordStrength = useMemo(() => {
-    if (!newPassword) return null;
-    return checkPasswordStrength(newPassword, {
-      veryWeak: t('passwordStrength.veryWeak'),
-      weak: t('passwordStrength.weak'),
-      fair: t('passwordStrength.fair'),
-      good: t('passwordStrength.good'),
-      strong: t('passwordStrength.strong'),
-    });
-  }, [newPassword, t]);
+  const newPasswordStrength = usePasswordStrength(newPassword);
 
   const validatePasswordForm = (): boolean => {
     const errors: string[] = [];
