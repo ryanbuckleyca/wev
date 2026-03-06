@@ -959,19 +959,35 @@ html.theme-switching *::after {
   color: var(--bg);
 }
 
-/* Tippy.js Tooltip Styles - Nuclear fix for transition resets */
+/* Tippy.js tooltip styles */
+.tippy-box {
+  transition-property: opacity, transform, visibility !important;
+  transition-duration: 300ms !important;
+  transition-timing-function: ease !important;
+}
+
 .tippy-box[data-state='hidden'] {
   opacity: 0 !important;
-  transition: opacity 1000ms ease !important;
+  pointer-events: none !important;
 }
 
 .tippy-box[data-state='visible'] {
   opacity: 1 !important;
-  transition: opacity 10ms ease !important;
 }
 
-.tippy-box {
-  transition-property: opacity, transform !important;
+.tippy-content,
+.tippy-custom-content {
+  transition: opacity 300ms ease !important;
+}
+
+.tippy-box[data-state='hidden'] .tippy-content,
+.tippy-box[data-state='hidden'] .tippy-custom-content {
+  opacity: 0 !important;
+}
+
+.tippy-box[data-state='visible'] .tippy-content,
+.tippy-box[data-state='visible'] .tippy-custom-content {
+  opacity: 1 !important;
 }
 
 .tippy-box > .tippy-arrow {
@@ -994,7 +1010,7 @@ html.theme-switching *::after {
   color: var(--text-primary);
   border: 1px solid var(--border);
   border-radius: var(--wev-card);
-  box-shadow: 0 25px 50px -5px rgb(0 0 0 / 0.08), 0 15px 25px -6px rgb(0 0 0 / 0.05), 0 8px 15px -4px rgb(0 0 0 / 0.02);
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.25), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   font-size: 0.875rem;
   line-height: 1.25rem;
   max-width: 300px;
@@ -1053,21 +1069,4 @@ html.theme-switching *::after {
 
 .tippy-custom-content .text-wev-text-secondary {
   color: var(--text-secondary);
-}
-
-/* Make tippy themes use our design system */
-.tippy-box[data-theme~='light'] {
-  background-color: var(--surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--wev-card);
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.04);
-}
-
-.tippy-box[data-theme~='dark'] {
-  background-color: var(--surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--wev-card);
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.25), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
