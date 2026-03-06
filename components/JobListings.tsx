@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { JobPosting } from '@/lib/supabase'
 import JobCard from './JobCard'
 import { useAuth } from '@/contexts/AuthContext'
@@ -20,6 +20,7 @@ interface JobListingsProps {
 
 export default function JobListings({ jobs, loading, error, onJobSseChange, onJobBookmarkChange, allExpanded = true, matchData, bookmarkedJobIds }: JobListingsProps) {
   const t = useTranslations()
+  const locale = useLocale()
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const { role } = useAuth()
 
@@ -56,7 +57,13 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
     } else {
       date = new Date(dateString)
     }
-    return date.toLocaleDateString('en-CA', {
+    // Map locale to appropriate locale string for toLocaleDateString
+    const localeMap: Record<string, string> = {
+      en: 'en-CA',
+      fr: 'fr-CA',
+    }
+    const dateLocale = localeMap[locale] || 'en-CA'
+    return date.toLocaleDateString(dateLocale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

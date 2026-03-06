@@ -126,7 +126,7 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
     }
 
     poll()
-      }, [onComplete, reset, t, tReScrape])
+      }, [onComplete, reset, tReScrape])
 
   // Resume polling on mount if there's a persisted in-flight scrape
   useEffect(() => {
