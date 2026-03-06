@@ -30,66 +30,76 @@ const formatVarName = (cssVar: string) => {
   // Extract variable name (remove "var(" and ")" and trim)
   const varName = cssVar.replace('var(', '').replace(')', '').trim()
   
-  // Convert kebab-case to Title Case
+  // Remove dashes and convert to Title Case
   return varName
     .split('-')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-// Helper function to get all CSS color variables automatically
-const getAllColorVariables = () => {
-  const style = getComputedStyle(document.documentElement)
-  const colorVars: Array<{name: string, value: string, category: string}> = []
-  
-  // Get all properties that look like color variables
-  for (let i = 0; i < style.length; i++) {
-    const prop = style[i]
-    if (prop.startsWith('--')) {
-      const value = style.getPropertyValue(prop).trim()
-      
-      // Check if it's actually a color value (hex, rgb, rgba, hsl, etc.)
-      if (value && (
-        value.startsWith('#') || 
-        value.startsWith('rgb') || 
-        value.startsWith('hsl')
-      )) {
-        let category = 'Other'
-        if (prop.includes('text')) category = 'Text'
-        else if (prop.includes('primary') || prop.includes('accent')) category = 'Brand'
-        else if (prop.includes('success') || prop.includes('alert') || prop.includes('warn') || prop.includes('info')) category = 'Semantic'
-        else if (prop.includes('surface') || prop.includes('bg') || prop.includes('border')) category = 'Surface'
-        else if (prop.includes('gradient')) category = 'Gradient'
-        else if (prop.includes('watercolor')) category = 'Background'
-        
-        colorVars.push({
-          name: prop,
-          value: value,
-          category: category
-        })
-      }
-    }
-  }
-  
-  return colorVars
-}
-
-// Helper function to generate ColorCards for a specific category
-const generateColorCards = (category: string) => {
-  const colorVars = getAllColorVariables()
-  
-  return colorVars
-    .filter(colorVar => colorVar.category === category)
-    .map(colorVar => (
-      <ColorCard
-        key={colorVar.name}
-        swatch={`var(${colorVar.name})`}
-        tag={colorVar.category}
-      />
-    ))
+    .join('')
 }
 
 export default function StyleGuidePage() {
+  const [groupedColors, setGroupedColors] = useState<Record<string, any>>({})
+
+  useEffect(() => {
+    // Helper function to get common prefix from variable name
+    const getCommonPrefix = (varName: string) => {
+      const parts = varName.split('-')
+      if (parts.length <= 2) return 'Other'
+      
+      // Get first two parts as prefix and remove dashes, convert to TitleCase
+      const prefix = parts.slice(1, 3).join('-')
+      return prefix
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('')
+    }
+
+    // Helper function to get all CSS color variables automatically
+    const getAllColorVariables = () => {
+      const style = getComputedStyle(document.documentElement)
+      const colorVars: Array<{name: string, value: string, prefix: string}> = []
+      
+      // Get all properties that look like color variables
+      for (let i = 0; i < style.length; i++) {
+        const prop = style[i]
+        if (prop.startsWith('--')) {
+          const value = style.getPropertyValue(prop).trim()
+          
+          // Check if it's actually a color value (hex, rgb, rgba, hsl, etc.)
+          if (value && (
+            value.startsWith('#') || 
+            value.startsWith('rgb') || 
+            value.startsWith('hsl')
+          )) {
+            colorVars.push({
+              name: prop,
+              value: value,
+              prefix: getCommonPrefix(prop)
+            })
+          }
+        }
+      }
+      
+      return colorVars
+    }
+
+    // Helper function to group colors by prefix
+    const getGroupedColors = () => {
+      const colorVars = getAllColorVariables()
+      
+      return colorVars.reduce((groups, colorVar) => {
+        const prefix = colorVar.prefix
+        if (!groups[prefix]) {
+          groups[prefix] = []
+        }
+        groups[prefix].push(colorVar)
+        return groups
+      }, {} as Record<string, typeof colorVars>)
+    }
+
+    setGroupedColors(getGroupedColors())
+  }, [])
+
   return (
     <>
       {/* Hero */}
@@ -165,35 +175,22 @@ export default function StyleGuidePage() {
             AA compliance to ensure accessibility across all use cases.
           </p>
 
-          <h3>Surface Colors</h3>
-          <div className="design-color-grid">
-            {generateColorCards('Surface')}
-          </div>
-
-          <h3>Brand Colors</h3>
-          <div className="design-color-grid">
-            {generateColorCards('Brand')}
-          </div>
-
-          <h3>Semantic Colors</h3>
-          <div className="design-color-grid">
-            {generateColorCards('Semantic')}
-          </div>
-
-          <h3>Text Colors</h3>
-          <div className="design-color-grid">
-            {generateColorCards('Text')}
-          </div>
-
-          <h3>Background Colors</h3>
-          <div className="design-color-grid">
-            {generateColorCards('Background')}
-          </div>
-
-          <h3>Gradient Colors</h3>
-          <div className="design-color-grid">
-            {generateColorCards('Gradient')}
-          </div>
+          {Object.entries(groupedColors)
+            .sort(([a], [b]) => a.localeCompare(b)) // Sort alphabetically
+            .map(([prefix, colors]) => (
+              <div key={prefix}>
+                <h3>{prefix} Colors</h3>
+                <div className="design-color-grid">
+                  {colors.map((colorVar: any) => (
+                    <ColorCard
+                      key={colorVar.name}
+                      swatch={`var(${colorVar.name})`}
+                      tag={prefix}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
         </div>
       </section>
 
