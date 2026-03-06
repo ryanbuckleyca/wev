@@ -150,7 +150,7 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
       const triggerResponse = await fetch('/api/github/workflow', { method: 'POST' })
       if (!triggerResponse.ok) {
         const errorData = await triggerResponse.json()
-        throw new Error(errorData.error || 'Failed to trigger workflow')
+        throw new Error(errorData.error || tReScrape('failedToTrigger'))
       }
 
       notify.success(tReScrape('triggered'))

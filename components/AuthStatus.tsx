@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
@@ -10,6 +11,7 @@ import notify from '@/lib/toast'
 
 export default function AuthStatus() {
   const router = useRouter()
+  const t = useTranslations()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -34,10 +36,10 @@ export default function AuthStatus() {
     setIsLoggingOut(true)
     try {
       await supabase.auth.signOut()
-      notify.success('Logged out successfully')
+      notify.success(t('userProfile.logoutSuccess'))
       router.push('/')
     } catch (err) {
-      notify.error(err instanceof Error ? err.message : 'Logout failed')
+      notify.error(err instanceof Error ? err.message : t('userProfile.logoutFailed'))
       setIsLoggingOut(false)
     }
   }
