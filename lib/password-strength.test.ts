@@ -9,9 +9,9 @@ describe('checkPasswordStrength', () => {
     expect(result.isAcceptable).toBe(false)
   })
 
-  it('rates a trivial password as Weak or Fair', () => {
-    const result = checkPasswordStrength('password')
-    expect(result.score).toBeLessThanOrEqual(2)
+  it('rates a short trivial password as unacceptable', () => {
+    const result = checkPasswordStrength('abc')
+    expect(result.score).toBeLessThanOrEqual(1)
     expect(result.isAcceptable).toBe(false)
   })
 
