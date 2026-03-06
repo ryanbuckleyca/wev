@@ -6,13 +6,11 @@ import { Link, usePathname } from '@/i18n/navigation'
 import UserProfile from './UserProfile'
 import ThemeToggle from './ThemeToggle'
 import LocaleSwitcher from './LocaleSwitcher'
-import { useResponsiveMenuBreakpoints } from '@/hooks/useResponsiveMenuBreakpoints'
 
 export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false)
   const pathname = usePathname()
   const locale = useLocale()
-  const { isUnder400, isUnder365 } = useResponsiveMenuBreakpoints()
   // Check if we're on the home page (with or without locale prefix)
   const isHomePage = pathname === '/' || pathname === `/${locale}` || pathname.match(/^\/[a-z]{2}$/)
 
@@ -65,13 +63,27 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-stretch gap-4">
-            {!isUnder365 && <LocaleSwitcher />}
-            {!isUnder400 && <ThemeToggle />}
+            <div className="hidden sm:block">
+              <LocaleSwitcher />
+            </div>
+            <div className="hidden md:block">
+              <ThemeToggle />
+            </div>
           </div>
-          <UserProfile 
-            showThemeInMenu={isUnder400}
-            showLocaleInMenu={isUnder365}
-          />
+          {/* Mobile menu - show theme/locale when hidden from header */}
+          <div className="sm:hidden">
+            <UserProfile 
+              showThemeInMenu={true}
+              showLocaleInMenu={true}
+            />
+          </div>
+          {/* Desktop menu - don't show theme/locale */}
+          <div className="hidden sm:block">
+            <UserProfile 
+              showThemeInMenu={false}
+              showLocaleInMenu={false}
+            />
+          </div>
         </div>
       </div>
     </header>
