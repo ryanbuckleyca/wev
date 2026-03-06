@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { checkPasswordStrength } from '@/lib/password-strength'
+import { usePasswordStrength } from '@/hooks/usePasswordStrength'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
 import PageLayout from '@/components/PageLayout'
 import CardLayout from '@/components/CardLayout'
@@ -27,16 +27,7 @@ export default function ResetPasswordPage() {
 
   const supabase = createClient()
 
-  const passwordStrength = useMemo(() => {
-    if (!password) return null
-    return checkPasswordStrength(password, {
-      veryWeak: t('passwordStrength.veryWeak'),
-      weak: t('passwordStrength.weak'),
-      fair: t('passwordStrength.fair'),
-      good: t('passwordStrength.good'),
-      strong: t('passwordStrength.strong'),
-    })
-  }, [password, t])
+  const passwordStrength = usePasswordStrength(password)
 
   useEffect(() => {
     const checkSession = async () => {

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { checkPasswordStrength } from '@/lib/password-strength'
+import { usePasswordStrength } from '@/hooks/usePasswordStrength'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
 import PageLayout from '@/components/PageLayout'
@@ -26,16 +26,7 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
-  const passwordStrength = useMemo(() => {
-    if (!password) return null
-    return checkPasswordStrength(password, {
-      veryWeak: t('passwordStrength.veryWeak'),
-      weak: t('passwordStrength.weak'),
-      fair: t('passwordStrength.fair'),
-      good: t('passwordStrength.good'),
-      strong: t('passwordStrength.strong'),
-    })
-  }, [password, t])
+  const passwordStrength = usePasswordStrength(password)
 
   const supabase = createClient()
 
