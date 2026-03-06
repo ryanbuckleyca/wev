@@ -12,6 +12,14 @@ import frMessages from '@/messages/fr.json'
  * - both message files have the same keys (no missing translations)
  */
 
+const paginationProps = {
+  currentPage: 1,
+  totalPages: 5,
+  onPageChange: () => {},
+  totalItems: 50,
+  itemsPerPage: 10,
+} as const
+
 describe('i18n integration', () => {
   describe('message file completeness', () => {
     function flatKeys(obj: Record<string, unknown>, prefix = ''): string[] {
@@ -41,15 +49,7 @@ describe('i18n integration', () => {
 
   describe('English locale (default)', () => {
     it('renders Pagination with English text', () => {
-      render(
-        <Pagination
-          currentPage={1}
-          totalPages={5}
-          onPageChange={() => {}}
-          totalItems={50}
-          itemsPerPage={10}
-        />,
-      )
+      render(<Pagination {...paginationProps} />)
 
       expect(screen.getByText('Previous')).toBeVisible()
       expect(screen.getByText('Next')).toBeVisible()
@@ -64,16 +64,7 @@ describe('i18n integration', () => {
 
   describe('French locale', () => {
     it('renders Pagination with French text', () => {
-      renderWithLocale(
-        <Pagination
-          currentPage={1}
-          totalPages={5}
-          onPageChange={() => {}}
-          totalItems={50}
-          itemsPerPage={10}
-        />,
-        'fr',
-      )
+      renderWithLocale(<Pagination {...paginationProps} />, 'fr')
 
       expect(screen.getByText('Précédent')).toBeVisible()
       expect(screen.getByText('Suivant')).toBeVisible()
@@ -92,13 +83,7 @@ describe('i18n integration', () => {
   describe('locale switching', () => {
     it('same component renders differently per locale', () => {
       const ui = (
-        <Pagination
-          currentPage={1}
-          totalPages={1}
-          onPageChange={() => {}}
-          totalItems={3}
-          itemsPerPage={10}
-        />
+        <Pagination {...paginationProps} totalPages={1} totalItems={3} />
       )
 
       const { unmount } = renderWithLocale(ui, 'en')
