@@ -11,6 +11,7 @@ export interface PillProps {
   onRemove?: () => void
   removable?: boolean
   title?: string
+  icon?: React.ReactNode
 }
 
 export default function Pill({ 
@@ -21,6 +22,7 @@ export default function Pill({
   onRemove,
   removable = false,
   title,
+  icon,
 }: PillProps) {
   const t = useTranslations('ariaLabels.pill')
   
@@ -32,18 +34,19 @@ export default function Pill({
   }
   
   const variantClasses = {
-    primary: 'bg-[var(--primary)] text-white',  // Dark teal
-    secondary: 'bg-[var(--primary-tint)] text-[var(--primary-text)]',  // Light teal
-    default: 'bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)]'  // Tertiary (light gray with border)
+    primary: 'bg-white dark:bg-wev-surface text-wev-text-primary dark:text-wev-text-primary border-solid border-[1px] border-wev-border',  // Active: same as job cards
+    secondary: 'bg-wev-surface text-wev-text-tertiary border-solid border-[1px] border-wev-border',  // Inactive: same as job cards
+    default: 'bg-wev-surface text-wev-text-primary border-solid border-[1px] border-wev-border'  // Default: same as job cards
   }
 
-  // If the pill is removable, prefer the lavender accent styling used by the legacy FilterPill
-  const removableClasses = 'border border-wev-border bg-wev-accent-tint text-wev-accent'
+  // If the pill is removable, use neutral styling for better visual flow
+  const removableClasses = 'border-solid border-[1px] border-wev-border bg-wev-surface text-wev-text-secondary'
 
   const combinedClasses = `${baseClasses} ${sizeClasses[size]} ${removable ? removableClasses : variantClasses[variant]} ${className}`.trim()
 
   const pillContent = (
     <span className={combinedClasses} data-tooltip={title}>
+      {icon && <span className="mr-1">{icon}</span>}
       {children}
       {(removable || onRemove) && (
         <button

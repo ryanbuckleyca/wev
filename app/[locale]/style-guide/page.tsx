@@ -102,6 +102,13 @@ export default function StyleGuidePage() {
               tag="Background"
             />
             <ColorCard
+              swatch="#F8F9FB"
+              name="Info Tint"
+              hex="#F8F9FB"
+              rgb="248, 249, 251"
+              tag="Surface Tint"
+            />
+            <ColorCard
               swatch="#875C74"
               name="Dusty Lavender"
               hex="#875C74"
@@ -688,18 +695,25 @@ export default function StyleGuidePage() {
           <h3>Dark Mode Base Colors</h3>
           <div className="design-color-grid">
             <ColorCard
-              swatch="#1E1E1E"
-              name="Charcoal Deep"
-              hex="#1E1E1E"
-              rgb="30, 30, 30"
+              swatch="#242424"
+              name="Charcoal Optimized"
+              hex="#242424"
+              rgb="36, 36, 36"
               tag="Background"
             />
             <ColorCard
-              swatch="#2A2A2A"
-              name="Slate Dark"
-              hex="#2A2A2A"
-              rgb="42, 42, 42"
+              swatch="#353535"
+              name="Slate Light"
+              hex="#353535"
+              rgb="53, 53, 53"
               tag="Surface / Cards"
+            />
+            <ColorCard
+              swatch="#616161"
+              name="Steel Bright"
+              hex="#616161"
+              rgb="97, 97, 97"
+              tag="Borders"
             />
             <ColorCard
               swatch="#B07D96"
@@ -945,6 +959,7 @@ export default function StyleGuidePage() {
               <div className="design-token-category-title">Background & Surface</div>
               <TokenRow name="bg" value="#FEFBF7" swatch="#FEFBF7" border />
               <TokenRow name="surface" value="#ffffff" swatch="#ffffff" />
+              <TokenRow name="surfaceTint" value="#F8F9FB" swatch="#F8F9FB" />
               <TokenRow name="border" value="#c8c5bf" swatch="#c8c5bf" />
             </div>
 

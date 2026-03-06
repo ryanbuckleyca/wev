@@ -259,7 +259,7 @@ export default function JobCard({
           <div className="flex flex-wrap items-center gap-1.5">
             {/* Match Score - only show when user is logged in */}
             {user && (
-              <div className="flex items-center gap-1">
+              <div className="flex-center-gap">
                 <ProgressDonut 
                   percentage={matchPercentage} 
                   size="sm"
@@ -290,6 +290,7 @@ export default function JobCard({
                   <Pill 
                     variant={user ? (isValueMatched(value) ? 'primary' : 'secondary') : 'default'} 
                     size="sm"
+                    icon={user && isValueMatched(value) ? '✓' : undefined}
                   >
                     {valueName}
                   </Pill>

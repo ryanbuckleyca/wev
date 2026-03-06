@@ -42,16 +42,15 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
     : OPTIONS
 
   return (
-    <div ref={rootRef} className="sort-dropdown relative" style={{ zIndex: 50 }}>
+    <div ref={rootRef} className="sort-dropdown relative z-50">
       <Button
         onClick={() => setOpen(!open)}
         variant="outline"
         size="sm"
-        className="flex items-center gap-1"
-        style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', padding: '5px 8px', fontSize: '13px' }}
+        className="flex-center-gap bg-transparent border-none text-wev-text-secondary p-1.5 text-xs"
       >
         <span>{t('sort.label')} </span>
-        <span style={{ fontWeight: 600, color: 'var(--text)' }}>{label}</span>
+        <span className="font-semibold text-wev-text-primary">{label}</span>
         <Chevron rotated={open} />
       </Button>
 
@@ -78,24 +77,17 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
         {optionsToShow.map((opt, idx) => (
           <div
             key={opt.value}
-            className="px-3 py-2 rounded-md cursor-pointer transition-colors"
-            style={{ fontSize: '13.5px', padding: '8px 12px', borderRadius: '7px' }}
+            className="px-3 py-2 rounded-md cursor-pointer transition-colors text-xs p-2 rounded-lg"
             onClick={() => {
               onChange(opt.value)
               setOpen(false)
             }}
-            onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.05)'
-            }}
-            onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLElement).style.background = 'none'
-            }}
           >
-            <span style={{ color: sortBy === opt.value ? 'var(--primary)' : 'inherit', fontWeight: sortBy === opt.value ? 600 : 400 }}>
+            <span className={sortBy === opt.value ? 'text-wev-primary font-semibold' : 'text-wev-text-primary font-normal'}>
               {opt.label}
             </span>
             {sortBy === opt.value && (
-              <svg width="12" height="12" viewBox="0 0 12 12" className="float-right" style={{ opacity: 1 }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" className="float-right">
                 <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             )}

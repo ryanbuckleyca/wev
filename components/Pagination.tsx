@@ -102,7 +102,7 @@ export default function Pagination({
           {t('pagination.previous')}
         </Button>
 
-        <div className="flex items-center gap-1">
+        <div className="flex-center-gap">
           {getPageNumbers().map((page, idx) => {
             if (page === '...') {
               return (

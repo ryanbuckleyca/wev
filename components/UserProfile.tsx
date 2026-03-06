@@ -223,12 +223,7 @@ export default function UserProfile({ showThemeInMenu = false, showLocaleInMenu 
               disabled={isLoggingOut}
               loading={isLoggingOut}
               fullWidth
-              className="w-full"
-              style={{
-                background: 'var(--alert-tint)',
-                color: 'var(--alert-text)',
-                border: 'none'
-              }}
+              className="w-full bg-wev-alert-tint text-wev-alert-text border-none"
             >
               {isLoggingOut ? t('userProfile.loggingOut') : t('userProfile.logOut')}
             </Button>

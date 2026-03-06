@@ -17,6 +17,7 @@
     "label": "Filters",
     "hideFilters": "Hide filters",
     "showFilters": "Filters",
+    "collapseFilters": "Collapse filter tray",
     "showAllJobs": "Show all jobs",
     "useSuggestedFilters": "Use suggested filters",
     "sse": {

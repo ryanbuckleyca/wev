@@ -51,7 +51,7 @@ export default function ThemeToggle() {
         type="button"
         onClick={toggle}
         className={`relative flex py-1 w-14 items-center justify-start rounded-full transition-all duration-500 ease-in-out h-full ${
-          theme === 'dark' ? 'bg-wev-bg' : 'bg-wev-surface-tint'
+          theme === 'dark' ? 'bg-wev-bg' : 'bg-wev-bg'
         }`}
         aria-label={theme === 'dark' ? t('switchToLight') : t('switchToDark')}
       >
