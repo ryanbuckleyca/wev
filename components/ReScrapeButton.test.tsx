@@ -73,6 +73,11 @@ const flushPromises = () => act(async () => { await Promise.resolve() })
 /** Advance fake timers AND drain all resulting microtasks. */
 const tick = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms))
 
+const BUTTON_IDLE = 'Re-scrape Data'
+const BUTTON_STARTING = 'Starting...'
+const BUTTON_QUEUED = 'Queued...'
+const BUTTON_RUNNING = 'Running...'
+
 // ─── tests ───────────────────────────────────────────────────────────────────
 
 describe('ReScrapeButton', () => {
@@ -91,7 +96,7 @@ describe('ReScrapeButton', () => {
 
   it('renders "Re-scrape Data" and is enabled initially', () => {
     render(<ReScrapeButton onComplete={() => {}} />)
-    const btn = screen.getByRole('button', { name: 'Re-scrape Data' })
+    const btn = screen.getByRole('button', { name: BUTTON_IDLE })
     expect(btn).toBeVisible()
     expect(btn).toBeEnabled()
   })
