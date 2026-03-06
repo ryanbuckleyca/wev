@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl'
 
 interface PillProps {
   children: any
-  variant?: 'default' | 'primary' | 'secondary'
+  variant?: 'default' | 'primary' | 'secondary' | 'disabled'
   size?: 'sm' | 'md'
   className?: string
   onRemove?: () => void
@@ -31,7 +31,8 @@ export default function Pill({
   const variantClasses = {
     primary: 'bg-[var(--primary)] text-white',  // Dark teal
     secondary: 'bg-[var(--primary-tint)] text-[var(--primary-text)]',  // Light teal
-    default: 'bg-wev-surface text-wev-text-primary border border-wev-border'  // Tertiary (light gray with border)
+    default: 'bg-wev-surface text-wev-text-primary border border-wev-border',  // Tertiary (light gray with border)
+    disabled: 'bg-wev-surface text-wev-text-tertiary border border-wev-border opacity-60'  // Disabled state
   }
 
   // If the pill is removable, prefer the lavender accent styling used by the legacy FilterPill
