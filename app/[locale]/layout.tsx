@@ -24,6 +24,16 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} className={lexend.variable} suppressHydrationWarning>
+      <head>
+        {/* Blocking script to apply persisted theme before first paint,
+            preventing a flash of the wrong theme on locale switches or
+            hard navigations. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t)}}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="theme-transition font-sans antialiased" suppressHydrationWarning>
         <NuqsAdapter>
           <NextIntlClientProvider locale={locale} messages={messages}>

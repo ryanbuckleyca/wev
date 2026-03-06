@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 
 function getInitialTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light'
-  // Always read from localStorage as source of truth
   const stored = localStorage.getItem('theme')
   if (stored === 'dark' || stored === 'light') return stored
   return 'light'
@@ -15,38 +14,15 @@ export default function ThemeToggle() {
   const t = useTranslations('ariaLabels.themeToggle')
   const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme)
   const [mounted, setMounted] = useState(false)
-  const isInitialMount = useRef(true)
 
+  // Sync React state with localStorage on mount (the inline script in the
+  // layout already applied data-theme to the DOM before hydration).
   useEffect(() => {
     setMounted(true)
-    
-    // On initial mount, sync with localStorage (ignore DOM during locale changes)
-    if (isInitialMount.current) {
-      const stored = localStorage.getItem('theme')
-      if (stored === 'dark' || stored === 'light') {
-        setTheme(stored)
-        // Ensure DOM matches localStorage
-        document.documentElement.setAttribute('data-theme', stored)
-      }
-      isInitialMount.current = false
+    const stored = localStorage.getItem('theme')
+    if (stored === 'dark' || stored === 'light') {
+      setTheme(stored)
     }
-    
-    // Watch for theme changes on the DOM (but don't override localStorage)
-    const observer = new MutationObserver(() => {
-      const current = document.documentElement.getAttribute('data-theme') as 'light' | 'dark'
-      const stored = localStorage.getItem('theme')
-      // Only update if DOM matches localStorage (to avoid conflicts)
-      if (current === stored && (current === 'dark' || current === 'light')) {
-        setTheme(current)
-      }
-    })
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme']
-    })
-
-    return () => observer.disconnect()
   }, [])
 
   const toggle = () => {
