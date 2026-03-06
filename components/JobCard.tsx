@@ -288,9 +288,12 @@ export default function JobCard({
                   }
                 >
                   <Pill 
-                    variant={user ? (isValueMatched(value) ? 'primary' : 'secondary') : 'default'} 
+                    variant={user ? (isValueMatched(value) ? 'default' : 'disabled') : 'disabled'} 
                     size="sm"
                   >
+                    {user && isValueMatched(value) && (
+                      <span className="mr-1 text-xs">✓</span>
+                    )}
                     {valueName}
                   </Pill>
                 </Tooltip>
