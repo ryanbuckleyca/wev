@@ -42,8 +42,8 @@ describe('checkPasswordStrength', () => {
     expect(strong.isAcceptable).toBe(true)
   })
 
-  it('feedback is always a string', () => {
+  it('feedbackKey is always a string', () => {
     const result = checkPasswordStrength('hello')
-    expect(typeof result.feedback).toBe('string')
+    expect(typeof result.feedbackKey).toBe('string')
   })
 })

@@ -300,14 +300,40 @@
     "strong": "Fort",
     "acceptable": "✓ Acceptable",
     "feedback": {
-      "addAnotherWord": "Ajoutez un ou deux mots supplémentaires. Les mots rares sont préférables.",
-      "useFewerWords": "Utilisez quelques mots, évitez les phrases courantes.",
-      "avoidRepeat": "Évitez les mots et caractères répétés.",
-      "avoidSequence": "Évitez les séquences de caractères.",
-      "longerKeyboardPattern": "Utilisez un motif clavier plus long avec plus de changements de direction.",
-      "noDates": "Évitez les années, les dates et les années associées à vous.",
-      "noNames": "Évitez les prénoms, noms et noms d'utilisateurs seuls.",
-      "tooGuessable": "C'est facile à deviner. Évitez les motifs courants."
+      "suggestions": {
+        "l33t": "Évitez les substitutions de lettres prévisibles comme '@' pour 'a'.",
+        "reverseWords": "Évitez les orthographes inversées des mots courants.",
+        "allUppercase": "Mettez quelques lettres en majuscules, mais pas toutes.",
+        "capitalization": "Mettez en majuscule, mais pas seulement la première lettre.",
+        "dates": "Évitez les dates et les années qui vous sont associées.",
+        "recentYears": "Évitez les dernières années.",
+        "associatedYears": "Évitez les années qui vous sont associées.",
+        "sequences": "Évitez les séquences de caractères courantes.",
+        "repeated": "Évitez les mots et les caractères répétés.",
+        "longerKeyboardPattern": "Utilisez des motifs de clavier plus longs et changez de sens de frappe plusieurs fois.",
+        "anotherWord": "Ajoutez des mots moins courants.",
+        "useWords": "Utilisez plusieurs mots, mais évitez les phrases courantes.",
+        "noNeed": "Vous pouvez créer des mots de passe forts sans utiliser de symboles, de chiffres ou de lettres majuscules.",
+        "pwned": "Si vous utilisez ce mot de passe ailleurs, vous devriez le modifier."
+      },
+      "warnings": {
+        "straightRow": "Les lignes droites de touches sont faciles à deviner.",
+        "keyPattern": "Les motifs de clavier courts sont faciles à deviner.",
+        "simpleRepeat": "Les caractères répétés comme 'aaa' sont faciles à deviner.",
+        "extendedRepeat": "Les motifs de caractères répétés comme 'abcabcabc' sont faciles à deviner.",
+        "sequences": "Les séquences de caractères courantes comme 'abc' sont faciles à deviner.",
+        "recentYears": "Les années récentes sont faciles à deviner.",
+        "dates": "Les dates sont souvent faciles à deviner.",
+        "topTen": "C'est un mot de passe très utilisé.",
+        "topHundred": "C'est un mot de passe fréquemment utilisé.",
+        "common": "C'est un mot de passe couramment utilisé.",
+        "similarToCommon": "C'est similaire à un mot de passe couramment utilisé.",
+        "wordByItself": "Un seul mot est facile à deviner.",
+        "namesByThemselves": "Les noms ou prénoms seuls sont faciles à deviner.",
+        "commonNames": "Les noms et prénoms courants sont faciles à deviner.",
+        "userInputs": "Il ne devrait pas y avoir de données personnelles ou liées à la page.",
+        "pwned": "Ce mot de passe a été exposé par une fuite de données sur Internet."
+      }
     }
   },
   "reScrape": {
