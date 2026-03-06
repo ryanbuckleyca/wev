@@ -8,11 +8,17 @@ import { act } from 'react'
 // warning. This is a known React 19 + Testing Library interop issue.
 // See: https://github.com/testing-library/react-testing-library/issues/1297
 const originalConsoleError = console.error
-console.error = (...args: Parameters<typeof console.error>) => {
-  const msg = typeof args[0] === 'string' ? args[0] : ''
-  if (msg.includes('was not wrapped in act(')) return
-  originalConsoleError(...args)
-}
+beforeAll(() => {
+  console.error = (...args: Parameters<typeof console.error>) => {
+    const msg = typeof args[0] === 'string' ? args[0] : ''
+    if (msg.includes('was not wrapped in act(')) return
+    originalConsoleError(...args)
+  }
+})
+
+afterAll(() => {
+  console.error = originalConsoleError
+})
 
 afterEach(async () => {
   await act(async () => {
