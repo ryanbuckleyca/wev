@@ -88,6 +88,8 @@
   --gradient-lp: #c96fa0;
   --gradient-tl: #4eb8b8;
   --gradient-mb: #5a9ec9;
+  --lavender-opacity: 0.1;
+  --blue-opacity: 0.08;
 }
 
 @layer base {
