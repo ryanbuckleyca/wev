@@ -95,7 +95,7 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
   const isAdmin = role === 'admin'
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {loading && jobs.length > 0 && (
         <div className="flex items-center justify-center py-4">
           <LoadingIndicator fullScreen={false} message={t('jobListings.loading')} />
