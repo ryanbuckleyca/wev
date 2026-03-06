@@ -39,6 +39,7 @@ const formatVarName = (cssVar: string) => {
 
 export default function StyleGuidePage() {
   const [groupedColors, setGroupedColors] = useState<Record<string, any>>({})
+  const [allTokens, setAllTokens] = useState<Array<any>>([])
 
   useEffect(() => {
     // Helper function to get common prefix from variable name
@@ -97,7 +98,31 @@ export default function StyleGuidePage() {
       }, {} as Record<string, typeof colorVars>)
     }
 
+    // Helper function to format CSS variable name to readable name
+    const formatTokenName = (cssVar: string) => {
+      // Extract variable name (remove "--" and trim)
+      const varName = cssVar.replace('--', '').trim()
+      
+      // Remove dashes and convert to TitleCase
+      return varName
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('')
+    }
+
+    // Get all tokens for TokenRows
+    const getAllTokens = () => {
+      const colorVars = getAllColorVariables()
+      return colorVars.map(colorVar => ({
+        name: formatTokenName(colorVar.name),
+        value: `var(${colorVar.name})`,
+        swatch: `var(${colorVar.name})`,
+        border: colorVar.name.includes('border')
+      }))
+    }
+
     setGroupedColors(getGroupedColors())
+    setAllTokens(getAllTokens())
   }, [])
 
   return (
@@ -721,78 +746,7 @@ export default function StyleGuidePage() {
             environments. All colors meet WCAG 2.1 Level AA contrast requirements for accessibility.
           </p>
 
-          <h3>Dark Mode Base Colors</h3>
-          <div className="design-color-grid">
-            <ColorCard
-              swatch="#242424"
-              tag="Background"
-            />
-            <ColorCard
-              swatch="#353535"
-              tag="Surface / Cards"
-            />
-            <ColorCard
-              swatch="#616161"
-              tag="Borders"
-            />
-            <ColorCard
-              swatch="#B07D96"
-              tag="Brand Accent (Dark)"
-            />
-            <ColorCard
-              swatch="#5B8C8A"
-              tag="Primary (Consistent)"
-            />
-          </div>
-
-          <h3>Dark Mode Semantic Colors</h3>
-          <div className="design-color-grid">
-            <ColorCard
-              swatch="#3E8C4F"
-              tag="Success Buttons"
-            />
-            <ColorCard
-              swatch="#1A3320"
-              tag="Success Backgrounds"
-            />
-            <ColorCard
-              swatch="#6FD68A"
-              tag="Success Messages"
-            />
-            <ColorCard
-              swatch="#E8857A"
-              tag="Error Messages"
-            />
-            <ColorCard
-              swatch="#E8B53A"
-              tag="Warning Messages"
-            />
-            <ColorCard
-              swatch="#7AB4D9"
-              tag="Info Messages"
-            />
-          </div>
-
-          <h3>Dark Mode Text Colors</h3>
-          <div className="design-color-grid">
-            <ColorCard
-              swatch="#E8E6E2"
-              tag="Primary Text"
-            />
-            <ColorCard
-              swatch="#A8A5A0"
-              tag="Secondary Text"
-            />
-            <ColorCard
-              swatch="#8A8782"
-              tag="Tertiary Text"
-            />
-            <ColorCard
-              swatch="#4A4A4A"
-              tag="Borders / Dividers"
-            />
-          </div>
-        </div>
+                  </div>
       </section>
 
       {/* Accessibility */}
@@ -939,40 +893,44 @@ export default function StyleGuidePage() {
           </p>
 
           <div className="design-token-sheet">
-            <div className="design-token-category">
-              <div className="design-token-category-title">Background & Surface</div>
-              <TokenRow name="bg" value="var(--bg)" swatch="var(--bg)" border />
-              <TokenRow name="surface" value="var(--surface)" swatch="var(--surface)" />
-              <TokenRow name="surfaceTint" value="var(--surface-tint)" swatch="var(--surface-tint)" />
-              <TokenRow name="border" value="var(--border)" swatch="var(--border)" />
-            </div>
+            {(() => {
+              // Group tokens by category for better organization
+              const tokenCategories = allTokens.reduce((categories, token) => {
+                let category = 'Other'
+                if (token.name.includes('Bg') || token.name.includes('Surface') || token.name.includes('Border')) {
+                  category = 'Background & Surface'
+                } else if (token.name.includes('Text')) {
+                  category = 'Text Colors'
+                } else if (token.name.includes('Primary') || token.name.includes('Accent')) {
+                  category = 'Brand Colors'
+                } else if (token.name.includes('Success') || token.name.includes('Alert') || token.name.includes('Warn') || token.name.includes('Info')) {
+                  category = 'Semantic Colors'
+                }
+                
+                if (!categories[category]) {
+                  categories[category] = []
+                }
+                categories[category].push(token)
+                return categories
+              }, {} as Record<string, typeof allTokens>)
 
-            <div className="design-token-category">
-              <div className="design-token-category-title">Text Colors</div>
-              <TokenRow name="textPrimary" value="var(--text-primary)" swatch="var(--text-primary)" />
-              <TokenRow name="textSecondary" value="var(--text-secondary)" swatch="var(--text-secondary)" />
-              <TokenRow name="textTertiary" value="var(--text-tertiary)" swatch="var(--text-tertiary)" />
-            </div>
-
-            <div className="design-token-category">
-              <div className="design-token-category-title">Brand Colors</div>
-              <TokenRow name="primary" value="var(--primary)" swatch="var(--primary)" />
-              <TokenRow name="primaryTint" value="var(--primary-tint)" swatch="var(--primary-tint)" />
-              <TokenRow name="accent" value="var(--accent)" swatch="var(--accent)" />
-              <TokenRow name="accentTint" value="var(--accent-tint)" swatch="var(--accent-tint)" />
-            </div>
-
-            <div className="design-token-category">
-              <div className="design-token-category-title">Semantic Colors</div>
-              <TokenRow name="successSolid" value="var(--success-solid)" swatch="var(--success-solid)" />
-              <TokenRow name="successTint" value="var(--success-tint)" swatch="var(--success-tint)" />
-              <TokenRow name="alertSolid" value="var(--alert-solid)" swatch="var(--alert-solid)" />
-              <TokenRow name="alertTint" value="var(--alert-tint)" swatch="var(--alert-tint)" />
-              <TokenRow name="warnSolid" value="var(--warn-solid)" swatch="var(--warn-solid)" />
-              <TokenRow name="warnTint" value="var(--warn-tint)" swatch="var(--warn-tint)" />
-              <TokenRow name="infoSolid" value="var(--info-solid)" swatch="var(--info-solid)" />
-              <TokenRow name="infoTint" value="var(--info-tint)" swatch="var(--info-tint)" />
-            </div>
+              return Object.entries(tokenCategories)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([category, tokens]) => (
+                  <div key={category} className="design-token-category">
+                    <div className="design-token-category-title">{category}</div>
+                    {tokens.map((token, index) => (
+                      <TokenRow 
+                        key={`${category}-${index}`}
+                        name={token.name} 
+                        value={token.value} 
+                        swatch={token.swatch} 
+                        border={token.border}
+                      />
+                    ))}
+                  </div>
+                ))
+            })()}
           </div>
         </div>
       </section>
