@@ -1,35 +1,55 @@
-import zxcvbn from 'zxcvbn'
+import { zxcvbn } from '@zxcvbn-ts/core'
 
 export type PasswordStrength = {
   score: 0 | 1 | 2 | 3 | 4
   label: string
   color: string
-  feedback: string
+  /** Raw feedback key from zxcvbn (e.g. "anotherWord", "extendedRepeat"). Translate in the presentation layer. */
+  feedbackKey: string
+  /** Whether the key is a warning (true) or suggestion (false) */
+  feedbackIsWarning: boolean
   isAcceptable: boolean
 }
 
-export function checkPasswordStrength(password: string): PasswordStrength {
+const STRENGTH_COLORS = [
+  'var(--alert-solid)',   // 0 Very Weak - red
+  'var(--warn-solid)',    // 1 Weak - orange
+  'var(--info-solid)',    // 2 Fair - blue
+  'var(--success-solid)', // 3 Good - green
+  'var(--success-solid)', // 4 Strong - green
+]
+
+export function checkPasswordStrength(
+  password: string,
+  labels?: {
+    veryWeak: string
+    weak: string
+    fair: string
+    good: string
+    strong: string
+  }
+): PasswordStrength {
   const result = zxcvbn(password)
 
-  const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong']
-  const strengthColors = [
-    'var(--alert-solid)', // Very Weak - red
-    'var(--warn-solid)', // Weak - orange
-    'var(--info-solid)', // Fair - blue
-    'var(--success-solid)', // Good - green
-    'var(--success-solid)', // Strong - green
-  ]
+  const strengthLabels = labels
+    ? [labels.veryWeak, labels.weak, labels.fair, labels.good, labels.strong]
+    : ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong']
 
-  const label = strengthLabels[result.score]
-  const color = strengthColors[result.score]
-  const feedback = result.feedback.warning || result.feedback.suggestions[0] || ''
-  const isAcceptable = result.score >= 2 // Fair or better
+  let feedbackKey = ''
+  let feedbackIsWarning = false
+  if (result.feedback.warning) {
+    feedbackKey = result.feedback.warning
+    feedbackIsWarning = true
+  } else if (result.feedback.suggestions.length > 0) {
+    feedbackKey = result.feedback.suggestions[0]
+  }
 
   return {
     score: result.score as 0 | 1 | 2 | 3 | 4,
-    label,
-    color,
-    feedback,
-    isAcceptable,
+    label: strengthLabels[result.score],
+    color: STRENGTH_COLORS[result.score],
+    feedbackKey,
+    feedbackIsWarning,
+    isAcceptable: result.score >= 2,
   }
 }

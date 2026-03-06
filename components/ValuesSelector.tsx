@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { VALUES_LIST, getValueDefinition } from '@/lib/values'
 import Pill from '@/components/Pill'
 
@@ -14,6 +15,7 @@ export default function ValuesSelector({
   onValuesChange,
   isEditing,
 }: ValuesSelectorProps) {
+  const t = useTranslations('values')
   const toggleValue = (value: string) => {
     if (selectedValues.includes(value)) {
       onValuesChange(selectedValues.filter((selected) => selected !== value))
@@ -30,22 +32,31 @@ export default function ValuesSelector({
 
     return (
       <div className="space-y-3">
-        {selectedValues.map((value) => (
-          <div
-            key={value}
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4"
-          >
-            <div className="mb-2 flex items-center gap-2">
-              <Pill>{value}</Pill>
+        {selectedValues.map((value) => {
+          const valueName = t(`${value}.name`, { defaultValue: value })
+          const details = getValueDefinition(value, {
+            name: valueName,
+            description: t(`${value}.description`),
+            example: t(`${value}.example`),
+          })
+
+          return (
+            <div
+              key={value}
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4"
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <Pill>{valueName}</Pill>
+              </div>
+              <p className="text-sm text-[var(--text-primary)]">
+                {details.description}
+              </p>
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                {details.example}
+              </p>
             </div>
-            <p className="text-sm text-[var(--text-primary)]">
-              {getValueDefinition(value).description}
-            </p>
-            <p className="mt-1 text-xs text-[var(--text-secondary)]">
-              {getValueDefinition(value).example}
-            </p>
-          </div>
-        ))}
+          )
+        })}
       </div>
     )
   }
@@ -53,12 +64,17 @@ export default function ValuesSelector({
   return (
     <div className="space-y-4">
       <p className="text-xs text-[var(--text-secondary)]">
-        Select the values that matter most to you. {selectedValues.length} selected.
+        {t('selector.instruction')} {selectedValues.length} {t('selector.selected')}.
       </p>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {VALUES_LIST.map((value) => {
-          const details = getValueDefinition(value)
+          const valueName = t(`${value}.name`, { defaultValue: value })
+          const details = getValueDefinition(value, {
+            name: valueName,
+            description: t(`${value}.description`),
+            example: t(`${value}.example`),
+          })
           const isSelected = selectedValues.includes(value)
 
           return (
@@ -75,11 +91,11 @@ export default function ValuesSelector({
             >
               <div className="mb-2 flex items-start justify-between gap-2">
                 <span className="text-sm font-semibold text-[var(--text-primary)]">
-                  {value}
+                  {valueName}
                 </span>
                 {isSelected && (
                   <span className="rounded-full bg-[var(--primary)] px-2 py-0.5 text-xs font-medium text-white">
-                    Selected
+                    {t('selector.selectedLabel')}
                   </span>
                 )}
               </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import { JobPosting } from '@/lib/supabase'
 import JobCard from './JobCard'
 import { useAuth } from '@/contexts/AuthContext'
@@ -18,6 +19,8 @@ interface JobListingsProps {
 }
 
 export default function JobListings({ jobs, loading, error, onJobSseChange, onJobBookmarkChange, allExpanded = true, matchData, bookmarkedJobIds }: JobListingsProps) {
+  const t = useTranslations()
+  const locale = useLocale()
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const { role } = useAuth()
 
@@ -54,7 +57,13 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
     } else {
       date = new Date(dateString)
     }
-    return date.toLocaleDateString('en-US', {
+    // Map locale to appropriate locale string for toLocaleDateString
+    const localeMap: Record<string, string> = {
+      en: 'en-CA',
+      fr: 'fr-CA',
+    }
+    const dateLocale = localeMap[locale] || 'en-CA'
+    return date.toLocaleDateString(dateLocale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -62,23 +71,23 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
     })
   }
 
-  if (loading) {
-    return <LoadingIndicator fullScreen={false} message="Loading jobs..." />
-  }
-
   if (error) {
     return (
       <div className="bg-wev-alert-tint border border-wev-alert rounded-wev-card p-4 text-wev-alert-text">
-        <p className="font-semibold">Error loading job postings</p>
+        <p className="font-semibold">{t('jobListings.error')}</p>
         <p className="text-sm mt-1">{error}</p>
       </div>
     )
   }
 
-  if (jobs.length === 0) {
+  if (loading && jobs.length === 0) {
+    return <LoadingIndicator fullScreen={false} message={t('jobListings.loading')} />
+  }
+
+  if (!loading && jobs.length === 0) {
     return (
       <div className="bg-wev-surface border border-wev-border rounded-wev-card p-8 text-center">
-        <p className="text-wev-text-primary">No job postings found.</p>
+        <p className="text-wev-text-primary">{t('jobListings.noJobs')}</p>
       </div>
     )
   }
@@ -87,6 +96,11 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
 
   return (
     <div className="space-y-4">
+      {loading && jobs.length > 0 && (
+        <div className="flex items-center justify-center py-4">
+          <LoadingIndicator fullScreen={false} message={t('jobListings.loading')} />
+        </div>
+      )}
       {jobs.map((job) => (
         <JobCard
           key={job.id}

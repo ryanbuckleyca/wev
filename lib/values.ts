@@ -4,6 +4,7 @@
  */
 
 export interface ValueDefinition {
+  name?: string // Optional translated display name
   description: string
   example: string
 }
@@ -176,7 +177,27 @@ const DEFAULT_VALUE_DEFINITION: ValueDefinition = {
   example: 'Example: choosing roles that better match personal motivation and needs.',
 }
 
-export function getValueDefinition(value: string): ValueDefinition {
+/**
+ * Get value definition with optional translations.
+ * If translations are provided, returns translated version; otherwise returns English default.
+ */
+export function getValueDefinition(
+  value: string,
+  translations?: {
+    name?: string
+    description: string
+    example: string
+  }
+): ValueDefinition {
+  if (translations) {
+    return {
+      name: translations.name,
+      description: translations.description,
+      example: translations.example,
+    }
+  }
+
+  // Fallback to English dictionary
   if (Object.prototype.hasOwnProperty.call(VALUES_DICTIONARY, value)) {
     return VALUES_DICTIONARY[value as Value]
   }

@@ -25,7 +25,7 @@ function parseRolesColumn(roles: unknown): string[] {
 
 export async function GET() {
   try {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

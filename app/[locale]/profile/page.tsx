@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfile } from '@/lib/hooks/useProfile';
 import ValuesSelector from '@/components/ValuesSelector';
@@ -18,6 +19,7 @@ import LinkButton from '@/components/LinkButton';
 import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
+  const t = useTranslations();
   const { user, loading } = useRequireAuth();
 
   const { profile, loading: profileLoading, error: profileError, updateProfile, uploadPhoto } = useProfile(user?.id);
@@ -51,12 +53,12 @@ export default function ProfilePage() {
       });
 
       if (updated) {
-        toast.success('Profile updated successfully!');
+        toast.success(t('profile.updateSuccess'));
       } else {
-        toast.error(profileError || 'Failed to update profile');
+        toast.error(profileError || t('profile.updateFailed'));
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update profile');
+      toast.error(err instanceof Error ? err.message : t('profile.updateFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -68,14 +70,14 @@ export default function ProfilePage() {
 
     try {
       await uploadPhoto(file);
-      toast.success('Photo uploaded successfully!');
+      toast.success(t('profile.photoUploadSuccess'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to upload photo');
+      toast.error(err instanceof Error ? err.message : t('profile.photoUploadFailed'));
     }
   };
 
   if (loading || profileLoading) {
-    return <LoadingState />;
+    return <LoadingState message={t('common.loading')} />;
   }
 
   if (!user) {
@@ -86,12 +88,12 @@ export default function ProfilePage() {
     return (
       <PageLayout maxWidth="md">
         <CardLayout>
-          <Heading level={1} className="mb-4">No Profile Found</Heading>
+          <Heading level={1} className="mb-4">{t('profile.noProfileFound')}</Heading>
           <p className="text-[var(--text-secondary)] mb-6">
-            Your profile wasn't created. This may happen if you signed up before the profile system was set up.
+            {t('profile.noProfileDescription')}
           </p>
           <LinkButton href="/">
-            Back to Jobs
+            {t('profile.backToJobs')}
           </LinkButton>
         </CardLayout>
       </PageLayout>
@@ -101,7 +103,7 @@ export default function ProfilePage() {
   return (
     <PageLayout maxWidth="md">
       <CardLayout>
-        <Heading level={1} className="mb-6">My Profile</Heading>
+        <Heading level={1} className="mb-6">{t('profile.title')}</Heading>
 
         {profileError && (
           <ErrorBox>{profileError}</ErrorBox>
@@ -111,13 +113,13 @@ export default function ProfilePage() {
           <div className="space-y-6">
             {/* Profile Photo Section */}
             <div>
-              <FormLabel>Profile Photo</FormLabel>
+              <FormLabel>{t('profile.profilePhoto')}</FormLabel>
               <div className="flex items-center gap-6">
                 <div className="w-24 h-24 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center flex-shrink-0">
                   {profile.profile_photo_url ? (
                     <img
                       src={profile.profile_photo_url}
-                      alt="Profile"
+                      alt={t('profile.profilePhoto')}
                       className="w-full h-full object-cover rounded-lg"
                     />
                   ) : (
@@ -131,7 +133,7 @@ export default function ProfilePage() {
                   variant="secondary"
                   type="button"
                 >
-                  Upload Photo
+                  {t('profile.uploadPhoto')}
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -145,27 +147,27 @@ export default function ProfilePage() {
 
             {/* Full Name */}
             <FormField
-              label="Full Name"
+              label={t('profile.fullName')}
               type="text"
               value={formData.full_name}
               onChange={(value) =>
                 setFormData({ ...formData, full_name: value })
               }
-              placeholder="Enter your full name"
+              placeholder={t('profile.fullNamePlaceholder')}
               fullWidth
               htmlFor="full-name"
             />
 
             {/* Bio */}
             <div>
-              <FormLabel htmlFor="bio">Bio</FormLabel>
+              <FormLabel htmlFor="bio">{t('profile.bio')}</FormLabel>
               <textarea
                 id="bio"
                 value={formData.bio}
                 onChange={(e) =>
                   setFormData({ ...formData, bio: e.target.value })
                 }
-                placeholder="Tell us about yourself..."
+                placeholder={t('profile.bioPlaceholder')}
                 rows={4}
                 className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
               />
@@ -173,7 +175,7 @@ export default function ProfilePage() {
 
             {/* Work Values */}
             <div>
-              <FormLabel>Work Values</FormLabel>
+              <FormLabel>{t('profile.workValues')}</FormLabel>
               <ValuesSelector
                 selectedValues={formData.values}
                 onValuesChange={(values) =>
@@ -188,28 +190,18 @@ export default function ProfilePage() {
           <div className="pt-6 border-t border-[var(--border)]">
             <div className="flex justify-between gap-3">
               <LinkButton href="/" variant="outline">
-                Back to Jobs
+                {t('profile.backToJobs')}
               </LinkButton>
               <Button
                 type="submit"
                 disabled={isSaving}
                 loading={isSaving}
               >
-                {isSaving ? 'Saving...' : 'Save Profile'}
+                {isSaving ? t('profile.saving') : t('profile.saveProfile')}
               </Button>
             </div>
           </div>
         </FormContainer>
-
-        {/* Account Settings Info */}
-        <div className="bg-[var(--bg)] p-4 rounded-lg mt-6">
-          <p className="text-sm text-[var(--text-secondary)] mb-3">
-            To update your email address or change your password, visit Account Settings.
-          </p>
-          <Link href="/account-settings" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
-            Go to Account Settings
-          </Link>
-        </div>
         </CardLayout>
     </PageLayout>
   );

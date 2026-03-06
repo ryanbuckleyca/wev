@@ -1,0 +1,566 @@
+{
+  "home": {
+    "heading": "Bulletin – Offres d'emploi",
+    "lastUpdated": "Dernière mise à jour :",
+    "unknown": "Inconnu",
+    "errors": {
+      "timeout": "La requête a expiré. Veuillez actualiser la page.",
+      "loadFailed": "Échec du chargement des données"
+    }
+  },
+  "search": {
+    "placeholder": "Rechercher par titre de poste, organisation, lieu...",
+    "label": "Rechercher des emplois",
+    "button": "Rechercher des emplois"
+  },
+  "filters": {
+    "label": "Filtres",
+    "hideFilters": "Masquer les filtres",
+    "showFilters": "Filtres",
+    "showAllJobs": "Afficher tous les emplois",
+    "useSuggestedFilters": "Utiliser les filtres suggérés",
+    "sse": {
+      "label": "Afficher uniquement les emplois SSE",
+      "description": "SSE = Économie solidaire. Nous étiquetons les emplois SSE en fonction des principes publiés.",
+      "learnMore": "En savoir plus"
+    },
+    "salary": {
+      "label": "Afficher les emplois sans salaire",
+      "description": "Décochez pour masquer les emplois qui ne listent pas de rémunération"
+    },
+    "postedWithin": {
+      "label": "Publié dans",
+      "options": {
+        "1Week": "1 semaine",
+        "2Weeks": "2 semaines",
+        "3Weeks": "3 semaines",
+        "1Month": "1 mois",
+        "any": "Tous"
+      }
+    },
+    "workType": {
+      "label": "Type de travail",
+      "remote": "Télétravail",
+      "hybrid": "Hybride",
+      "office": "Bureau"
+    },
+    "province": {
+      "label": "Province",
+      "noData": "Aucune donnée de province disponible. Exécutez le scraper pour remplir les données de localisation."
+    },
+    "municipality": {
+      "label": "Municipalité",
+      "showingFromSelected": "(affichage des municipalités des provinces sélectionnées)",
+      "noData": "Aucune donnée de municipalité disponible. Exécutez le scraper pour remplir les données de localisation.",
+      "selectProvince": "Sélectionnez une province pour voir les municipalités"
+    },
+    "employmentType": {
+      "label": "Type d'emploi",
+      "noData": "Aucune donnée de type d'emploi disponible"
+    },
+    "organization": {
+      "label": "Organisation",
+      "noData": "Aucune donnée d'organisation disponible"
+    },
+    "source": {
+      "label": "Source",
+      "noData": "Aucune donnée de source disponible"
+    },
+    "chips": {
+      "posted": "Publié :",
+      "sseOnly": "SSE : uniquement",
+      "salaryListedOnly": "Salaire : uniquement listé",
+      "search": "Recherche :",
+      "work": "Travail :",
+      "selected": "sélectionné",
+      "province": "province",
+      "provinces": "provinces",
+      "municipality": "municipalité",
+      "municipalities": "municipalités",
+      "organization": "organisation",
+      "organizations": "organisations",
+      "employmentType": "type d'emploi",
+      "employmentTypes": "types d'emploi",
+      "source": "source",
+      "sources": "sources"
+    }
+  },
+  "sort": {
+    "label": "Trier :",
+    "newestFirst": "Plus récent en premier",
+    "oldestFirst": "Plus ancien en premier",
+    "bestMatch": "Meilleure correspondance",
+    "salaryHighToLow": "Salaire : du plus élevé au plus bas",
+    "salaryLowToHigh": "Salaire : du plus bas au plus élevé",
+    "orgAZ": "Organisation A–Z"
+  },
+  "expand": {
+    "expandAll": "Tout développer",
+    "collapseAll": "Tout réduire"
+  },
+  "pagination": {
+    "showing": "Affichage",
+    "of": "de",
+    "job": "emploi",
+    "jobs": "emplois",
+    "previous": "Précédent",
+    "next": "Suivant"
+  },
+  "jobListings": {
+    "loading": "Chargement des emplois...",
+    "error": "Erreur lors du chargement des offres d'emploi",
+    "noJobs": "Aucune offre d'emploi trouvée."
+  },
+  "bookmarks": {
+    "title": "Mes signets",
+    "error": "Erreur",
+    "noBookmarks": "Aucun emploi enregistré pour le moment.",
+    "loadFailed": "Échec du chargement des emplois enregistrés"
+  },
+  "jobCard": {
+    "remote": "Télétravail",
+    "nA": "N/D",
+    "posted": "Publié",
+    "who": "Qui :",
+    "what": "Quoi :",
+    "where": "Où :",
+    "why": "Pourquoi :",
+    "when": "Quand :",
+    "howMuch": "Combien :",
+    "match": "% de correspondance :",
+    "removeSse": "Retirer le statut SSE",
+    "markSse": "Marquer comme SSE",
+    "sseJob": "Emploi SSE (cliquez pour retirer)",
+    "sseJobLabel": "Emploi SSE",
+    "markSseJob": "Marquer comme emploi SSE",
+    "removeBookmark": "Retirer le signet",
+    "bookmarkJob": "Signer l'emploi",
+    "bookmarked": "Signet (cliquez pour retirer)",
+    "bookmarkJobLabel": "Signer l'emploi",
+    "collapse": "Réduire",
+    "expand": "Développer",
+    "collapseDetails": "Réduire les détails de l'emploi",
+    "expandDetails": "Développer les détails de l'emploi",
+    "removeSseConfirm": "Retirer l'étiquette SSE de \"{title}\" chez {org} ?",
+    "markSseConfirm": "Marquer \"{title}\" chez {org} comme un emploi d'économie solidaire ?"
+  },
+  "buttons": {
+    "reScrape": "Ré-analyser les données",
+    "reScrapeStarting": "Démarrage...",
+    "reScrapeQueued": "En file d'attente...",
+    "reScrapeRunning": "En cours...",
+    "copyAllJobs": "Copier tous les emplois",
+    "copyJobsTitle": "Copier {count, plural, one {# emploi} other {# emplois}} dans le presse-papiers",
+    "copied": "Copié !"
+  },
+  "auth": {
+    "login": {
+      "title": "Se connecter",
+      "email": "Courriel",
+      "password": "Mot de passe",
+      "forgotPassword": "Mot de passe oublié ?",
+      "submit": "Se connecter",
+      "submitting": "Connexion...",
+      "noAccount": "Vous n'avez pas de compte ?",
+      "signUp": "S'inscrire",
+      "captchaError": "La vérification CAPTCHA a échoué. Veuillez réessayer.",
+      "captchaRequired": "Veuillez compléter la vérification CAPTCHA."
+    },
+    "signup": {
+      "title": "S'inscrire",
+      "email": "Courriel",
+      "password": "Mot de passe",
+      "submit": "Créer un compte",
+      "submitting": "Création du compte...",
+      "hasAccount": "Vous avez déjà un compte ?",
+      "logIn": "Se connecter",
+      "emailSent": "Vérifiez votre courriel pour un lien de confirmation.",
+      "passwordWeak": "Le mot de passe est trop faible. Veuillez choisir un mot de passe plus fort.",
+      "captchaError": "La vérification CAPTCHA a échoué. Veuillez réessayer.",
+      "captchaRequired": "Veuillez compléter la vérification CAPTCHA."
+    },
+    "forgotPassword": {
+      "title": "Mot de passe oublié ?",
+      "description": "Entrez votre courriel, nous vous enverrons un lien de réinitialisation.",
+      "email": "Courriel",
+      "submit": "Envoyer le lien de réinitialisation",
+      "submitting": "Envoi...",
+      "emailSent": "Vérifiez votre courriel pour un lien de réinitialisation de mot de passe.",
+      "rememberPassword": "Vous vous souvenez de votre mot de passe ?",
+      "logIn": "Se connecter",
+      "captchaError": "La vérification CAPTCHA a échoué. Veuillez réessayer.",
+      "captchaRequired": "Veuillez compléter la vérification CAPTCHA."
+    },
+    "resetPassword": {
+      "title": "Réinitialiser le mot de passe",
+      "description": "Entrez votre nouveau mot de passe ci-dessous.",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "submit": "Mettre à jour le mot de passe",
+      "submitting": "Mise à jour...",
+      "verifying": "Vérification de la session...",
+      "invalidLink": "Lien de réinitialisation invalide ou expiré. Veuillez en demander un nouveau.",
+      "requestNewLink": "Demander un nouveau lien de réinitialisation",
+      "passwordWeak": "Le mot de passe est trop faible. Veuillez choisir un mot de passe plus fort.",
+      "passwordsDontMatch": "Les mots de passe ne correspondent pas.",
+      "success": "Mot de passe mis à jour avec succès. Redirection vers la connexion..."
+    },
+    "error": {
+      "title": "Erreur d'authentification",
+      "message": "Une erreur s'est produite lors de la connexion. Veuillez réessayer.",
+      "backToLogin": "Retour à la connexion"
+    }
+  },
+  "profile": {
+    "title": "Mon profil",
+    "noProfileFound": "Aucun profil trouvé",
+    "noProfileDescription": "Votre profil n'a pas été créé. Cela peut se produire si vous vous êtes inscrit avant la mise en place du système de profil.",
+    "backToJobs": "Retour aux emplois",
+    "profilePhoto": "Photo de profil",
+    "uploadPhoto": "Téléverser une photo",
+    "fullName": "Nom complet",
+    "fullNamePlaceholder": "Entrez votre nom complet",
+    "bio": "Biographie",
+    "bioPlaceholder": "Parlez-nous de vous...",
+    "workValues": "Valeurs de travail",
+    "saveProfile": "Enregistrer le profil",
+    "saving": "Enregistrement...",
+    "updateSuccess": "Profil mis à jour avec succès !",
+    "updateFailed": "Échec de la mise à jour du profil",
+    "photoUploadSuccess": "Photo téléversée avec succès !",
+    "photoUploadFailed": "Échec du téléchargement de la photo"
+  },
+  "accountSettings": {
+    "title": "Paramètres du compte",
+    "emailAddress": "Adresse courriel",
+    "newEmail": "Nouveau courriel",
+    "newEmailPlaceholder": "Entrez le nouveau courriel",
+    "currentEmail": "Courriel actuel :",
+    "changePassword": "Changer le mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "currentPasswordPlaceholder": "Entrez le mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "newPasswordPlaceholder": "Entrez le nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "confirmPasswordPlaceholder": "Confirmer le nouveau mot de passe",
+    "saveChanges": "Enregistrer les modifications",
+    "saving": "Enregistrement...",
+    "noChanges": "Aucune modification à enregistrer",
+    "currentPasswordRequired": "Le mot de passe actuel est requis",
+    "newPasswordRequired": "Le nouveau mot de passe est requis",
+    "confirmPasswordRequired": "La confirmation du mot de passe est requise",
+    "passwordsDontMatch": "Les mots de passe ne correspondent pas",
+    "passwordWeak": "Le nouveau mot de passe est trop faible. Veuillez choisir un mot de passe plus fort.",
+    "passwordSameAsOld": "Le nouveau mot de passe doit être différent de votre mot de passe actuel",
+    "emailRequired": "Le courriel est requis",
+    "invalidEmailFormat": "Format de courriel invalide",
+    "emailMustBeDifferent": "Le nouveau courriel doit être différent du courriel actuel",
+    "emailUpdateSuccess": "Courriel de confirmation envoyé à votre nouvelle adresse. Veuillez le vérifier pour compléter le changement.",
+    "passwordUpdateSuccess": "Mot de passe mis à jour avec succès !",
+    "emailUpdateFailed": "Échec de la mise à jour du courriel",
+    "passwordUpdateFailed": "Échec de la mise à jour du mot de passe",
+    "updateFailed": "Échec de la mise à jour du compte"
+  },
+  "userProfile": {
+    "logIn": "Se connecter",
+    "signUp": "S'inscrire",
+    "myProfile": "Mon profil",
+    "myBookmarks": "Mes signets",
+    "accountSettings": "Paramètres du compte",
+    "logOut": "Se déconnecter",
+    "loggingOut": "Déconnexion...",
+    "logoutSuccess": "Déconnexion réussie",
+    "logoutFailed": "Échec de la déconnexion",
+    "openMenu": "Ouvrir le menu",
+    "role": "Rôle :"
+  },
+  "navigation": {
+    "home": "Accueil",
+    "jobs": "Emplois",
+    "companies": "Entreprises",
+    "about": "À propos",
+    "contact": "Contact"
+  },
+  "footer": {
+    "copyright": "© 2026 Job Board. Tous droits réservés.",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions d'utilisation"
+  },
+  "common": {
+    "loading": "Chargement..."
+  },
+  "passwordStrength": {
+    "strength": "Force :",
+    "veryWeak": "Très faible",
+    "weak": "Faible",
+    "fair": "Moyen",
+    "good": "Bon",
+    "strong": "Fort",
+    "acceptable": "✓ Acceptable",
+    "feedback": {
+      "suggestions": {
+        "l33t": "Évitez les substitutions de lettres prévisibles comme '@' pour 'a'.",
+        "reverseWords": "Évitez les orthographes inversées des mots courants.",
+        "allUppercase": "Mettez quelques lettres en majuscules, mais pas toutes.",
+        "capitalization": "Mettez en majuscule, mais pas seulement la première lettre.",
+        "dates": "Évitez les dates et les années qui vous sont associées.",
+        "recentYears": "Évitez les dernières années.",
+        "associatedYears": "Évitez les années qui vous sont associées.",
+        "sequences": "Évitez les séquences de caractères courantes.",
+        "repeated": "Évitez les mots et les caractères répétés.",
+        "longerKeyboardPattern": "Utilisez des motifs de clavier plus longs et changez de sens de frappe plusieurs fois.",
+        "anotherWord": "Ajoutez des mots moins courants.",
+        "useWords": "Utilisez plusieurs mots, mais évitez les phrases courantes.",
+        "noNeed": "Vous pouvez créer des mots de passe forts sans utiliser de symboles, de chiffres ou de lettres majuscules.",
+        "pwned": "Si vous utilisez ce mot de passe ailleurs, vous devriez le modifier."
+      },
+      "warnings": {
+        "straightRow": "Les lignes droites de touches sont faciles à deviner.",
+        "keyPattern": "Les motifs de clavier courts sont faciles à deviner.",
+        "simpleRepeat": "Les caractères répétés comme 'aaa' sont faciles à deviner.",
+        "extendedRepeat": "Les motifs de caractères répétés comme 'abcabcabc' sont faciles à deviner.",
+        "sequences": "Les séquences de caractères courantes comme 'abc' sont faciles à deviner.",
+        "recentYears": "Les années récentes sont faciles à deviner.",
+        "dates": "Les dates sont souvent faciles à deviner.",
+        "topTen": "C'est un mot de passe très utilisé.",
+        "topHundred": "C'est un mot de passe fréquemment utilisé.",
+        "common": "C'est un mot de passe couramment utilisé.",
+        "similarToCommon": "C'est similaire à un mot de passe couramment utilisé.",
+        "wordByItself": "Un seul mot est facile à deviner.",
+        "namesByThemselves": "Les noms ou prénoms seuls sont faciles à deviner.",
+        "commonNames": "Les noms et prénoms courants sont faciles à deviner.",
+        "userInputs": "Il ne devrait pas y avoir de données personnelles ou liées à la page.",
+        "pwned": "Ce mot de passe a été exposé par une fuite de données sur Internet."
+      }
+    }
+  },
+  "reScrape": {
+    "timeout": "Délai d'attente dépassé pour le workflow. Vérifiez GitHub Actions.",
+    "checkFailed": "Échec de la vérification du statut du workflow : {error}",
+    "complete": "Nouveau scraping terminé. Actualisation des données...",
+    "workflowFailed": "Le workflow s'est terminé avec le statut : {status}",
+    "triggered": "Workflow déclenché. En attente de son achèvement...",
+    "queued": "En file d'attente...",
+    "failedToTrigger": "Échec du déclenchement du flux de travail",
+    "error": "Une erreur s'est produite"
+  },
+  "values": {
+    "Advancement": {
+      "name": "Avancement",
+      "description": "Progresser vers des niveaux supérieurs de responsabilité, d'autorité ou de portée.",
+      "example": "Exemple : opportunités de passer de spécialiste à gestionnaire au fil du temps."
+    },
+    "Aesthetic": {
+      "name": "Esthétique",
+      "description": "Travailler dans des environnements où la beauté, le design et la forme comptent.",
+      "example": "Exemple : créer un travail visuel soigné et améliorer l'apparence et la sensation des choses."
+    },
+    "Affiliation": {
+      "name": "Affiliation",
+      "description": "Se sentir accepté et connecté à un groupe de travail solidaire.",
+      "example": "Exemple : faire partie d'une culture d'équipe étroite et collaborative."
+    },
+    "Artistic Creativity": {
+      "name": "Créativité artistique",
+      "description": "Produire un travail artistique original avec de la place pour l'imagination et le style.",
+      "example": "Exemple : créer des illustrations, écrits, musique ou travaux multimédias uniques."
+    },
+    "Challenge": {
+      "name": "Défi",
+      "description": "Relever des objectifs difficiles qui étirent les compétences et la capacité de résolution de problèmes.",
+      "example": "Exemple : résoudre des problèmes complexes sans chemin de solution évident."
+    },
+    "Change and Variety": {
+      "name": "Changement et variété",
+      "description": "Avoir différentes tâches, contextes ou priorités au lieu de répétition.",
+      "example": "Exemple : passer d'un projet à l'autre et apprendre souvent de nouveaux outils."
+    },
+    "Community": {
+      "name": "Communauté",
+      "description": "Se sentir enraciné et connecté à une communauté locale ou professionnelle plus large.",
+      "example": "Exemple : travail qui renforce les quartiers ou les programmes communautaires."
+    },
+    "Competition": {
+      "name": "Compétition",
+      "description": "Mesurer la performance par rapport aux pairs et viser à gagner ou à surpasser.",
+      "example": "Exemple : objectifs de vente, classements ou tableaux de bord de performance."
+    },
+    "Competence": {
+      "name": "Compétence",
+      "description": "Utiliser efficacement les compétences et être reconnu pour une exécution de haute qualité.",
+      "example": "Exemple : être connu comme fiable et techniquement solide dans les tâches principales."
+    },
+    "Creative Expression": {
+      "name": "Expression créative",
+      "description": "Exprimer des idées personnelles, une voix et une perspective à travers le travail.",
+      "example": "Exemple : façonner le contenu, les messages ou le design dans votre propre style."
+    },
+    "Creativity": {
+      "name": "Créativité",
+      "description": "Générer des idées, méthodes ou solutions nouvelles et utiles.",
+      "example": "Exemple : inventer de nouvelles approches qui améliorent les résultats."
+    },
+    "Decision Making": {
+      "name": "Prise de décision",
+      "description": "Avoir l'autorité de faire des choix significatifs qui affectent les résultats.",
+      "example": "Exemple : posséder la direction du projet, les priorités ou les compromis de ressources."
+    },
+    "Excitement": {
+      "name": "Excitation",
+      "description": "Vivre de l'énergie, de la stimulation et de la nouveauté dans le travail quotidien.",
+      "example": "Exemple : travail à fort engagement avec un élan et une action visibles."
+    },
+    "Experience": {
+      "name": "Expérience",
+      "description": "Construire une exposition large au monde réel aux rôles, systèmes et situations.",
+      "example": "Exemple : rotation entre les fonctions pour acquérir une perspective pratique."
+    },
+    "Fast Pace": {
+      "name": "Rythme rapide",
+      "description": "Travailler rapidement avec des cycles courts, des délais serrés et des retours rapides.",
+      "example": "Exemple : gérer des livrables fréquents dans un environnement à haut tempo."
+    },
+    "Financial Gain": {
+      "name": "Gain financier",
+      "description": "Augmenter les revenus grâce à la performance, la croissance ou les avantages financiers.",
+      "example": "Exemple : structures de bonus, commissions, actions ou partage des profits."
+    },
+    "Friendship": {
+      "name": "Amitié",
+      "description": "Former des relations chaleureuses et personnelles avec les collègues au travail.",
+      "example": "Exemple : profiter d'amitiés authentiques au quotidien dans l'équipe."
+    },
+    "Help Others": {
+      "name": "Aider les autres",
+      "description": "Fournir un soutien direct qui améliore le bien-être ou le succès d'une autre personne.",
+      "example": "Exemple : coaching, mentorat, conseil ou résolution de problèmes clients."
+    },
+    "Help Society": {
+      "name": "Aider la société",
+      "description": "Contribuer au bien social et à l'impact positif à un niveau plus large.",
+      "example": "Exemple : travail qui fait progresser la santé, l'équité, l'éducation ou la durabilité."
+    },
+    "High Earnings": {
+      "name": "Revenus élevés",
+      "description": "Prioriser un salaire de premier plan par rapport aux alternatives.",
+      "example": "Exemple : choisir des rôles connus pour leurs plafonds de rémunération élevés."
+    },
+    "Influence People": {
+      "name": "Influencer les gens",
+      "description": "Persuader les autres et façonner les décisions, priorités ou comportements.",
+      "example": "Exemple : guider les parties prenantes pour s'aligner sur une direction proposée."
+    },
+    "Intellectual Status": {
+      "name": "Statut intellectuel",
+      "description": "Être respecté pour son expertise, son insight et sa contribution intellectuelle.",
+      "example": "Exemple : reconnaissance en tant que partenaire de réflexion dans des domaines complexes."
+    },
+    "Job Tranquility": {
+      "name": "Tranquillité au travail",
+      "description": "Maintenir un faible stress, un calme émotionnel et une pression de travail prévisible.",
+      "example": "Exemple : charges de travail stables avec une urgence et une réponse aux crises limitées."
+    },
+    "Knowledge": {
+      "name": "Connaissance",
+      "description": "Apprendre continuellement, comprendre et maîtriser de nouvelles informations.",
+      "example": "Exemple : rôles qui récompensent l'étude, l'analyse et l'apprentissage approfondi du domaine."
+    },
+    "Location": {
+      "name": "Localisation",
+      "description": "Travailler dans un cadre géographique ou un environnement physique préféré.",
+      "example": "Exemple : rester dans une ville, région ou configuration à distance spécifique."
+    },
+    "Moral Fulfillment": {
+      "name": "Épanouissement moral",
+      "description": "Faire un travail qui correspond à l'éthique personnelle et au sens de l'action juste.",
+      "example": "Exemple : choisir des projets qui correspondent à vos valeurs et normes d'intégrité."
+    },
+    "Physical Challenge": {
+      "name": "Défi physique",
+      "description": "Engager le corps par la force, le mouvement, l'endurance ou la coordination.",
+      "example": "Exemple : travail actif avec des exigences physiques significatives."
+    },
+    "Precision Work": {
+      "name": "Travail de précision",
+      "description": "Produire un résultat précis et orienté vers les détails avec des erreurs minimales.",
+      "example": "Exemple : tâches où la qualité dépend d'une exécution soigneuse et exacte."
+    },
+    "Public Contact": {
+      "name": "Contact public",
+      "description": "Interagir fréquemment avec les clients, les clients ou le grand public.",
+      "example": "Exemple : rôles orientés client avec communication externe régulière."
+    },
+    "Recognition": {
+      "name": "Reconnaissance",
+      "description": "Recevoir une appréciation, un crédit et une reconnaissance visibles pour le travail.",
+      "example": "Exemple : éloges publiques, prix ou attribution claire des contributions."
+    },
+    "Research and Development": {
+      "name": "Recherche et développement",
+      "description": "Enquêter sur des idées, tester des hypothèses et créer de nouvelles capacités.",
+      "example": "Exemple : expérimentation et prototypage pour développer des solutions futures."
+    },
+    "Security": {
+      "name": "Sécurité",
+      "description": "Avoir confiance en l'emploi continu et un revenu fiable.",
+      "example": "Exemple : organisations stables avec un faible risque perçu de licenciement."
+    },
+    "Stability": {
+      "name": "Stabilité",
+      "description": "Travailler dans des routines, structures et attentes cohérentes.",
+      "example": "Exemple : horaires prévisibles et processus clairement définis."
+    },
+    "Status": {
+      "name": "Statut",
+      "description": "Occuper une position respectée avec un prestige ou un standing visible.",
+      "example": "Exemple : titre, visibilité du rôle et importance perçue dans une organisation."
+    },
+    "Supervision": {
+      "name": "Supervision",
+      "description": "Diriger, orienter et développer le travail d'autres personnes.",
+      "example": "Exemple : gérer une équipe et être responsable des résultats de l'équipe."
+    },
+    "Time Freedom": {
+      "name": "Liberté temporelle",
+      "description": "Contrôler quand le travail est fait, y compris la flexibilité d'horaire.",
+      "example": "Exemple : fixer vos propres heures ou ajuster le travail selon les demandes de la vie."
+    },
+    "Work Alone": {
+      "name": "Travailler seul",
+      "description": "Avoir un travail concentré et indépendant avec des exigences de collaboration minimales.",
+      "example": "Exemple : longues périodes de travail autonome et propriété individuelle."
+    },
+    "Work Under Pressure": {
+      "name": "Travailler sous pression",
+      "description": "Performancer efficacement dans des situations urgentes, à enjeux élevés ou axées sur les délais.",
+      "example": "Exemple : rester efficace pendant la charge de pointe et les décisions critiques."
+    },
+    "Work with Others": {
+      "name": "Travailler avec d'autres",
+      "description": "Collaborer étroitement et régulièrement avec des coéquipiers ou des partenaires.",
+      "example": "Exemple : planifier et exécuter le travail grâce à une responsabilité partagée."
+    },
+    "default": {
+      "description": "Un résultat ou une condition lié au travail qu'une personne peut prioriser dans un emploi.",
+      "example": "Exemple : choisir des rôles qui correspondent mieux à la motivation et aux besoins personnels."
+    },
+    "selector": {
+      "instruction": "Sélectionnez les valeurs qui comptent le plus pour vous.",
+      "selected": "sélectionné",
+      "selectedLabel": "Sélectionné"
+    }
+  },
+  "ariaLabels": {
+    "themeToggle": {
+      "switchToLight": "Passer en mode clair",
+      "switchToDark": "Passer en mode sombre"
+    },
+    "localeSwitcher": {
+      "switchToEnglish": "Passer à l'anglais",
+      "switchToFrench": "Passer au français"
+    },
+    "pill": {
+      "remove": "Retirer {label}"
+    }
+  }
+}

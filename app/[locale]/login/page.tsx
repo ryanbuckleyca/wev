@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { Link, useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import TurnstileWidget from '@/components/TurnstileWidget'
@@ -18,6 +18,7 @@ import ErrorBox from '@/components/ErrorBox'
 import LinkButton from '@/components/LinkButton'
 
 export default function LoginPage() {
+  const t = useTranslations()
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
@@ -40,7 +41,7 @@ export default function LoginPage() {
     setError(null)
 
     if (!captchaToken) {
-      setError('Please complete the CAPTCHA verification.')
+      setError(t('auth.login.captchaRequired'))
       setLoading(false)
       return
     }
@@ -64,11 +65,11 @@ export default function LoginPage() {
   return (
     <PageLayout variant="centered">
       <CardLayout>
-        <Heading level={1} className="text-center mb-6">Log in</Heading>
+        <Heading level={1} className="text-center mb-6">{t('auth.login.title')}</Heading>
 
         <FormContainer onSubmit={handleSubmit}>
           <FormField
-            label="Email"
+            label={t('auth.login.email')}
             type="email"
             value={email}
             onChange={setEmail}
@@ -78,7 +79,7 @@ export default function LoginPage() {
           />
 
           <FormField
-            label="Password"
+            label={t('auth.login.password')}
             type="password"
             value={password}
             onChange={setPassword}
@@ -92,7 +93,7 @@ export default function LoginPage() {
               className="text-xs underline"
               style={{ color: 'var(--primary-text)' }}
             >
-              Forgot password?
+              {t('auth.login.forgotPassword')}
             </Link>
           </div>
 
@@ -100,7 +101,7 @@ export default function LoginPage() {
             onSuccess={(token) => setCaptchaToken(token)}
             onError={() => {
               setCaptchaToken(null)
-              setError('CAPTCHA verification failed. Please try again.')
+              setError(t('auth.login.captchaError'))
             }}
             onExpire={() => setCaptchaToken(null)}
           />
@@ -111,7 +112,7 @@ export default function LoginPage() {
             loading={loading}
             fullWidth
           >
-            {loading ? 'Logging in...' : 'Log in'}
+            {loading ? t('auth.login.submitting') : t('auth.login.submit')}
           </Button>
         </FormContainer>
 
@@ -120,13 +121,13 @@ export default function LoginPage() {
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Don't have an account?{' '}
+          {t('auth.login.noAccount')}{' '}
           <Link
             href="/signup"
             className="underline font-medium"
             style={{ color: 'var(--primary-text)' }}
           >
-            Sign up
+            {t('auth.login.signUp')}
           </Link>
         </p>
       </CardLayout>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Button from '@/components/Button'
 import Chevron from './Chevron'
 
@@ -11,16 +12,17 @@ interface SortDropdownProps {
   showMatchOption?: boolean
 }
 
-const OPTIONS: { value: SortOption; label: string; group?: string }[] = [
-  { value: 'date-desc', label: 'Newest first', group: 'date' },
-  { value: 'date-asc', label: 'Oldest first', group: 'date' },
-  { value: 'match-desc', label: 'Best match', group: 'match' },
-  { value: 'salary-desc', label: 'Salary: high to low', group: 'salary' },
-  { value: 'salary-asc', label: 'Salary: low to high', group: 'salary' },
-  { value: 'org-asc', label: 'Organization A–Z', group: 'org' },
-]
-
-export default function SortDropdown({ sortBy, onChange }: SortDropdownProps) {
+export default function SortDropdown({ sortBy, onChange, showMatchOption }: SortDropdownProps) {
+  const t = useTranslations()
+  
+  const OPTIONS: { value: SortOption; label: string; group?: string }[] = [
+    { value: 'date-desc', label: t('sort.newestFirst'), group: 'date' },
+    { value: 'date-asc', label: t('sort.oldestFirst'), group: 'date' },
+    { value: 'match-desc', label: t('sort.bestMatch'), group: 'match' },
+    { value: 'salary-desc', label: t('sort.salaryHighToLow'), group: 'salary' },
+    { value: 'salary-asc', label: t('sort.salaryLowToHigh'), group: 'salary' },
+    { value: 'org-asc', label: t('sort.orgAZ'), group: 'org' },
+  ]
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
 
@@ -34,8 +36,8 @@ export default function SortDropdown({ sortBy, onChange }: SortDropdownProps) {
     return () => document.removeEventListener('click', onDocClick)
   }, [open])
 
-  const label = OPTIONS.find((o) => o.value === sortBy)?.label ?? 'Newest first'
-  const optionsToShow = (typeof (arguments[0] as any) !== 'undefined' && (arguments[0] as any).showMatchOption === false)
+  const label = OPTIONS.find((o) => o.value === sortBy)?.label ?? t('sort.newestFirst')
+  const optionsToShow = showMatchOption === false
     ? OPTIONS.filter(o => o.value !== 'match-desc')
     : OPTIONS
 
@@ -48,7 +50,7 @@ export default function SortDropdown({ sortBy, onChange }: SortDropdownProps) {
         className="flex items-center gap-1"
         style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', padding: '5px 8px', fontSize: '13px' }}
       >
-        <span>Sort: </span>
+        <span>{t('sort.label')} </span>
         <span style={{ fontWeight: 600, color: 'var(--text)' }}>{label}</span>
         <Chevron rotated={open} />
       </Button>
