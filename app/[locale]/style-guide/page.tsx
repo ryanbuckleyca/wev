@@ -37,9 +37,16 @@ const formatVarName = (cssVar: string) => {
     .join('')
 }
 
+interface Token {
+  name: string
+  value: string
+  swatch: string
+  border: boolean
+}
+
 export default function StyleGuidePage() {
   const [groupedColors, setGroupedColors] = useState<Record<string, any>>({})
-  const [allTokens, setAllTokens] = useState<Array<any>>([])
+  const [allTokens, setAllTokens] = useState<Token[]>([])
 
   useEffect(() => {
     // Helper function to get common prefix from variable name
@@ -111,7 +118,7 @@ export default function StyleGuidePage() {
     }
 
     // Get all tokens for TokenRows
-    const getAllTokens = () => {
+    const getAllTokens = (): Token[] => {
       const colorVars = getAllColorVariables()
       return colorVars.map(colorVar => ({
         name: formatTokenName(colorVar.name),
@@ -895,7 +902,7 @@ export default function StyleGuidePage() {
           <div className="design-token-sheet">
             {(() => {
               // Group tokens by category for better organization
-              const tokenCategories = allTokens.reduce((categories, token) => {
+              const tokenCategories = allTokens.reduce((categories: Record<string, Token[]>, token: Token) => {
                 let category = 'Other'
                 if (token.name.includes('Bg') || token.name.includes('Surface') || token.name.includes('Border')) {
                   category = 'Background & Surface'
@@ -912,16 +919,16 @@ export default function StyleGuidePage() {
                 }
                 categories[category].push(token)
                 return categories
-              }, {} as Record<string, typeof allTokens>)
+              }, {} as Record<string, Token[]>)
 
               return Object.entries(tokenCategories)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([category, tokens]) => (
                   <div key={category} className="design-token-category">
                     <div className="design-token-category-title">{category}</div>
-                    {tokens.map((token, index) => (
+                    {tokens.map((token) => (
                       <TokenRow 
-                        key={`${category}-${index}`}
+                        key={token.name}
                         name={token.name} 
                         value={token.value} 
                         swatch={token.swatch} 
