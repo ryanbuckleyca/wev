@@ -254,6 +254,7 @@
     "confirmPasswordRequired": "La confirmation du mot de passe est requise",
     "passwordsDontMatch": "Les mots de passe ne correspondent pas",
     "passwordWeak": "Le nouveau mot de passe est trop faible. Veuillez choisir un mot de passe plus fort.",
+    "passwordSameAsOld": "Le nouveau mot de passe doit être différent de votre mot de passe actuel",
     "emailRequired": "Le courriel est requis",
     "invalidEmailFormat": "Format de courriel invalide",
     "emailMustBeDifferent": "Le nouveau courriel doit être différent du courriel actuel",
@@ -343,6 +344,7 @@
     "workflowFailed": "Le workflow s'est terminé avec le statut : {status}",
     "triggered": "Workflow déclenché. En attente de son achèvement...",
     "queued": "En file d'attente...",
+    "failedToTrigger": "Échec du déclenchement du flux de travail",
     "error": "Une erreur s'est produite"
   },
   "values": {

@@ -14,9 +14,6 @@ vi.mock('next/navigation', () => ({
 
 import { useRouter } from '@/i18n/navigation'
 
-const EN_LABEL = 'Switch to English'
-const FR_LABEL = 'Passer au français'
-
 const mockRouter = () => ({ replace: vi.fn(), push: vi.fn() })
 
 describe('LocaleSwitcher', () => {
@@ -25,8 +22,8 @@ describe('LocaleSwitcher', () => {
 
     render(<LocaleSwitcher />)
 
-    expect(screen.getByRole('button', { name: EN_LABEL })).toBeVisible()
-    expect(screen.getByRole('button', { name: FR_LABEL })).toBeVisible()
+    expect(screen.getByRole('button', { name: /Switch to English/i })).toBeVisible()
+    expect(screen.getByRole('button', { name: /Switch to French|Passer au/i })).toBeVisible()
   })
 
   it('marks the EN button as pressed when the current locale is English', () => {
@@ -34,8 +31,10 @@ describe('LocaleSwitcher', () => {
 
     render(<LocaleSwitcher />)
 
-    expect(screen.getByRole('button', { name: EN_LABEL })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: FR_LABEL })).toHaveAttribute('aria-pressed', 'false')
+    const enButton = screen.getByRole('button', { name: /Switch to English/i })
+    const frButton = screen.getByRole('button', { name: /Switch to French|Passer au/i })
+    expect(enButton).toHaveAttribute('aria-pressed', 'true')
+    expect(frButton).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('marks the FR button as pressed when the current locale is French', () => {
@@ -43,17 +42,19 @@ describe('LocaleSwitcher', () => {
 
     renderWithLocale(<LocaleSwitcher />, 'fr')
 
-    expect(screen.getByRole('button', { name: EN_LABEL })).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByRole('button', { name: FR_LABEL })).toHaveAttribute('aria-pressed', 'true')
+    const enButton = screen.getByRole('button', { name: /Switch to English|Passer à/i })
+    const frButton = screen.getByRole('button', { name: /Passer au français|Switch to French/i })
+    expect(enButton).toHaveAttribute('aria-pressed', 'false')
+    expect(frButton).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('aria-labels are always in the target language regardless of current locale', () => {
     vi.mocked(useRouter).mockReturnValue(mockRouter() as never)
 
-    // When on the French site, the EN button label is still English (not French)
+    // When on the French site, aria-labels should show the locale-specific translations
     renderWithLocale(<LocaleSwitcher />, 'fr')
-    expect(screen.getByRole('button', { name: EN_LABEL })).toBeVisible()
-    expect(screen.getByRole('button', { name: FR_LABEL })).toBeVisible()
+    expect(screen.getByRole('button', { name: /Switch to English|Passer à/i })).toBeVisible()
+    expect(screen.getByRole('button', { name: /Passer au français|Switch to French/i })).toBeVisible()
   })
 
   it('calls router.replace with the French locale when clicking FR', async () => {
@@ -63,7 +64,8 @@ describe('LocaleSwitcher', () => {
 
     render(<LocaleSwitcher />)
 
-    await user.click(screen.getByRole('button', { name: FR_LABEL }))
+    const frButton = screen.getByRole('button', { name: /Switch to French|Passer au/i })
+    await user.click(frButton)
 
     expect(mockReplace).toHaveBeenCalledWith('/', { locale: 'fr' })
   })
@@ -75,7 +77,8 @@ describe('LocaleSwitcher', () => {
 
     render(<LocaleSwitcher />)
 
-    await user.click(screen.getByRole('button', { name: EN_LABEL }))
+    const enButton = screen.getByRole('button', { name: /Switch to English/i })
+    await user.click(enButton)
 
     expect(mockReplace).not.toHaveBeenCalled()
   })
@@ -90,7 +93,8 @@ describe('LocaleSwitcher', () => {
 
     render(<LocaleSwitcher />)
 
-    await user.click(screen.getByRole('button', { name: FR_LABEL }))
+    const frButton = screen.getByRole('button', { name: /Switch to French|Passer au/i })
+    await user.click(frButton)
 
     expect(mockReplace).toHaveBeenCalledWith('/?q=engineer&location=ottawa', { locale: 'fr' })
   })

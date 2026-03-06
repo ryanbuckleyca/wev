@@ -52,7 +52,7 @@ export default function Pill({
           type="button"
           onClick={onRemove}
           className={removable ? 'text-wev-text-tertiary hover:text-wev-accent leading-none ml-1' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] leading-none ml-1'}
-          aria-label={mounted ? t('remove', { label: String(children) }) : `Remove ${String(children)}`}
+          aria-label={t('remove', { label: String(children) })}
         >
           ×
         </button>

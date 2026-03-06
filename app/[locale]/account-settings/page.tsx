@@ -32,6 +32,18 @@ export default function AccountSettingsPage() {
   const [emailChanged, setEmailChanged] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
 
+  // Map Supabase error messages to translation keys
+  const mapErrorToTranslationKey = (error: string): string => {
+    if (error.toLowerCase().includes('new password should be different from old password')) {
+      return t('accountSettings.passwordSameAsOld');
+    }
+    if (error.toLowerCase().includes('weak password')) {
+      return t('accountSettings.passwordWeak');
+    }
+    // Default to generic error
+    return t('accountSettings.passwordUpdateFailed');
+  };
+
   useEffect(() => {
     if (user?.email && !newEmail) {
       setNewEmail(user.email);
@@ -212,28 +224,32 @@ export default function AccountSettingsPage() {
                 required={passwordChanged}
               />
 
-              <FormField
-                label={t('accountSettings.newPassword')}
-                type="password"
-                value={newPassword}
-                onChange={setNewPassword}
-                placeholder={t('accountSettings.newPasswordPlaceholder')}
-                fullWidth
-                htmlFor="new-password"
-                required={passwordChanged}
-              />
-              <PasswordStrengthIndicator passwordStrength={newPasswordStrength} />
+              <div className="mt-4">
+                <FormField
+                  label={t('accountSettings.newPassword')}
+                  type="password"
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  placeholder={t('accountSettings.newPasswordPlaceholder')}
+                  fullWidth
+                  htmlFor="new-password"
+                  required={passwordChanged}
+                />
+                <PasswordStrengthIndicator passwordStrength={newPasswordStrength} />
+              </div>
 
-              <FormField
-                label={t('accountSettings.confirmPassword')}
-                type="password"
-                value={confirmPassword}
-                onChange={setConfirmPassword}
-                placeholder={t('accountSettings.confirmPasswordPlaceholder')}
-                fullWidth
-                htmlFor="confirm-password"
-                required={passwordChanged}
-              />
+              <div className="mt-4">
+                <FormField
+                  label={t('accountSettings.confirmPassword')}
+                  type="password"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  placeholder={t('accountSettings.confirmPasswordPlaceholder')}
+                  fullWidth
+                  htmlFor="confirm-password"
+                  required={passwordChanged}
+                />
+              </div>
             </div>
           </div>
 

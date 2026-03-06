@@ -1,6 +1,6 @@
 'use client'
 
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/navigation'
 import { useSearchParams } from 'next/navigation'
 
@@ -9,6 +9,7 @@ export default function LocaleSwitcher() {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const t = useTranslations()
 
   const switchLocale = (newLocale: 'en' | 'fr') => {
     if (newLocale === locale) return
@@ -34,7 +35,7 @@ export default function LocaleSwitcher() {
             ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
             : 'bg-wev-surface-tint font-normal text-wev-text-tertiary'
         }`}
-        aria-label="Switch to English"
+        aria-label={t('ariaLabels.localeSwitcher.switchToEnglish')}
         aria-pressed={locale === 'en'}
       >
         EN
@@ -46,7 +47,7 @@ export default function LocaleSwitcher() {
             ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
             : 'bg-wev-surface-tint font-normal text-wev-text-tertiary'
         }`}
-        aria-label="Passer au français"
+        aria-label={t('ariaLabels.localeSwitcher.switchToFrench')}
         aria-pressed={locale === 'fr'}
       >
         FR

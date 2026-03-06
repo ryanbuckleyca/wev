@@ -254,6 +254,7 @@
     "confirmPasswordRequired": "Password confirmation is required",
     "passwordsDontMatch": "Passwords do not match",
     "passwordWeak": "New password is too weak. Please choose a stronger password.",
+    "passwordSameAsOld": "New password must be different from your current password",
     "emailRequired": "Email is required",
     "invalidEmailFormat": "Invalid email format",
     "emailMustBeDifferent": "New email must be different from current email",
@@ -356,6 +357,7 @@
     "workflowFailed": "Workflow finished with status: {status}",
     "triggered": "Workflow triggered. Waiting for it to complete...",
     "queued": "Queued...",
+    "failedToTrigger": "Failed to trigger workflow",
     "error": "An error occurred"
   },
   "values": {
