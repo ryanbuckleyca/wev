@@ -107,7 +107,7 @@ export default function UserProfile({ showThemeInMenu = false, showLocaleInMenu 
               className="fixed inset-0 bg-black/15 z-40 opacity-0 animate-fade-in"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className="absolute right-0 mt-2 w-56 bg-wev-surface border border-wev-border rounded-wev-card z-50 shadow-lg transition-all duration-700 ease-in-out">
+            <div className="absolute right-0 mt-2 w-56 bg-wev-surface border border-wev-border rounded-wev-card z-50 shadow-wev-dropdown transition-all duration-700 ease-in-out">
             <div className="p-4 space-y-3">
               <div className="space-y-2">
                 <Link
@@ -167,7 +167,7 @@ export default function UserProfile({ showThemeInMenu = false, showLocaleInMenu 
             className="fixed inset-0 bg-black/15 z-40 opacity-0 animate-fade-in"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-48 bg-wev-surface border border-wev-border rounded-wev-card z-50 shadow-lg transition-all duration-700 ease-in-out">
+          <div className="absolute right-0 mt-2 w-48 bg-wev-surface border border-wev-border rounded-wev-card z-50 shadow-wev-dropdown transition-all duration-700 ease-in-out">
           <div className="p-4 border-b border-wev-border transition-colors duration-700 ease-in-out">
             <p className="text-sm text-wev-text-primary font-semibold truncate transition-colors duration-700 ease-in-out">{user.email}</p>
             <p className="text-xs text-wev-text-tertiary mt-1 transition-colors duration-700 ease-in-out">{t('userProfile.role')} {role}</p>

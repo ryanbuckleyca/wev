@@ -51,8 +51,8 @@ export const tokens = {
 
   // Opacity Values
   lavenderOpacity: {
-    light: 0.24,
-    dark: 0.1
+    light: 0.228,
+    dark: 0.095
   },
   blueOpacity: {
     light: 0.2,

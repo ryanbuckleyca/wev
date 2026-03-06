@@ -71,7 +71,7 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
           transformOrigin: 'top right',
           transition: 'opacity 0.15s ease, transform 0.15s ease',
           pointerEvents: open ? 'auto' : 'none',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1)',
+          boxShadow: 'var(--tw-shadow-wev-dropdown)',
         }}
       >
         {optionsToShow.map((opt, idx) => (
