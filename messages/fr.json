@@ -227,9 +227,7 @@
     "updateSuccess": "Profil mis à jour avec succès !",
     "updateFailed": "Échec de la mise à jour du profil",
     "photoUploadSuccess": "Photo téléversée avec succès !",
-    "photoUploadFailed": "Échec du téléversement de la photo",
-    "accountSettingsInfo": "Pour mettre à jour votre adresse courriel ou changer votre mot de passe, visitez les Paramètres du compte.",
-    "goToAccountSettings": "Aller aux paramètres du compte"
+    "photoUploadFailed": "Échec du téléchargement de la photo"
   },
   "accountSettings": {
     "title": "Paramètres du compte",
@@ -244,11 +242,9 @@
     "newPasswordPlaceholder": "Entrez le nouveau mot de passe",
     "confirmPassword": "Confirmer le mot de passe",
     "confirmPasswordPlaceholder": "Confirmer le nouveau mot de passe",
-    "backToProfile": "Retour au profil",
     "saveChanges": "Enregistrer les modifications",
     "saving": "Enregistrement...",
     "noChanges": "Aucune modification à enregistrer",
-    "makeChanges": "Apportez des modifications ci-dessus pour activer l'enregistrement",
     "currentPasswordRequired": "Le mot de passe actuel est requis",
     "newPasswordRequired": "Le nouveau mot de passe est requis",
     "confirmPasswordRequired": "La confirmation du mot de passe est requise",
