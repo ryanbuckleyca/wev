@@ -18,7 +18,7 @@ type PostedWithinLabel = {
   fallbackShort: string
 }
 
-const postedWithinLabels: Record<PostedWithinOption, PostedWithinLabel> = {
+const postedWithinOptions: Record<PostedWithinOption, PostedWithinLabel> = {
   '1-week': {
     fullKey: 'filters.postedWithin.options.1Week',
     shortKey: 'filters.postedWithin.short.1Week',
@@ -65,8 +65,8 @@ interface JobFiltersProps {
   onShowOnlySseChange: (show: boolean) => void
   showJobsWithoutSalary: boolean
   onShowJobsWithoutSalaryChange: (show: boolean) => void
-  postedWithin: '1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any'
-  onPostedWithinChange: (value: '1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any') => void
+  postedWithin: PostedWithinSelection
+  onPostedWithinChange: (value: PostedWithinSelection) => void
   filtersExpanded: boolean
   onFiltersExpandedChange: (expanded: boolean) => void
 }
@@ -135,34 +135,9 @@ export default function JobFilters({
     const chips: ActiveFilterChip[] = []
 
     if (postedWithin !== 'any') {
-      const fullLabel =
-        postedWithin === '1-week'
-          ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.1Week')}`
-          : postedWithin === '2-weeks'
-            ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.2Weeks')}`
-            : postedWithin === '3-weeks'
-              ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.3Weeks')}`
-              : `${t('filters.chips.posted')} ${t('filters.postedWithin.options.1Month')}`
-
-      const valueKey =
-        postedWithin === '1-week'
-          ? '1Week'
-          : postedWithin === '2-weeks'
-            ? '2Weeks'
-            : postedWithin === '3-weeks'
-              ? '3Weeks'
-              : '1Month'
-
-      const fallbackShortLabel =
-        postedWithin === '1-week'
-          ? '1 wk'
-          : postedWithin === '2-weeks'
-            ? '2 wks'
-            : postedWithin === '3-weeks'
-              ? '3 wks'
-              : '1 mo'
-
-      const shortLabel = getTranslationOrFallback(`filters.postedWithin.short.${valueKey}`, fallbackShortLabel)
+      const option = postedWithinOptions[postedWithin as PostedWithinOption]
+      const fullLabel = `${t('filters.chips.posted')} ${t(option.fullKey)}`
+      const shortLabel = getTranslationOrFallback(option.shortKey, option.fallbackShort)
 
       chips.push({
         id: 'posted-within',
