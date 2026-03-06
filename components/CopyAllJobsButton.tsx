@@ -17,7 +17,7 @@ function formatDate(dateString: string): string {
   } else {
     date = new Date(dateString)
   }
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString('en-CA', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
