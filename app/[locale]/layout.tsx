@@ -39,7 +39,7 @@ export default async function LocaleLayout({
           }}
         />
       </head>
-      <body className="theme-transition font-sans antialiased" suppressHydrationWarning>
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <NuqsAdapter>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <AuthProvider>

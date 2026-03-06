@@ -54,6 +54,8 @@
   /* Opacity values */
   --lavender-opacity: 0.228;
   --blue-opacity: 0.2;
+  --theme-switch-duration: 300ms;
+  --theme-switch-easing: ease-in-out;
 }
 
 /* Design system - Dark mode */
@@ -100,35 +102,28 @@
   --blue-opacity: 0.08;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --theme-switch-duration: 0ms;
+  }
+}
+
 @layer base {
   body {
     background: var(--bg);
     color: var(--text-primary);
-    @apply transition duration-300;
-  }
-  /* Coordinated theme transition so light/dark switch doesn’t feel janky */
-  body.theme-transition,
-  body.theme-transition * {
-    @apply transition duration-300;
   }
 }
 
-/* Coordinated theme transition so light/dark switch doesn't feel janky */
-@keyframes theme-transition {
-  0% {
-    background-color: var(--bg);
-    color: var(--text-primary);
-    border-color: var(--wev-border);
-  }
-  100% {
-    background-color: var(--bg);
-    color: var(--text-primary);
-    border-color: var(--wev-border);
-  }
-}
-
-body.theme-transition {
-  animation: theme-transition 0.5s ease;
+/* Apply one consistent transition window during theme flips. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition-property: background-color, border-color, color, fill, stroke, outline-color, text-decoration-color, box-shadow, filter !important;
+  transition-duration: var(--theme-switch-duration) !important;
+  transition-timing-function: var(--theme-switch-easing) !important;
+  transition-delay: 0ms !important;
 }
 
 @keyframes fade-in {
@@ -1076,4 +1071,3 @@ body.theme-transition {
   border-radius: var(--wev-card);
   box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.25), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
-

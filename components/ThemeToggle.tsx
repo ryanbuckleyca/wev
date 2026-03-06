@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import RoundToggle from './RoundToggle'
+
+const THEME_TRANSITION_MS = 300
 
 function getInitialTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light'
@@ -15,6 +17,7 @@ export default function ThemeToggle() {
   const t = useTranslations('ariaLabels.themeToggle')
   const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme)
   const [mounted, setMounted] = useState(false)
+  const transitionTimeoutRef = useRef<number | null>(null)
 
   // Sync React state with localStorage on mount (the inline script in the
   // layout already applied data-theme to the DOM before hydration).
@@ -26,21 +29,37 @@ export default function ThemeToggle() {
     }
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (transitionTimeoutRef.current !== null) {
+        window.clearTimeout(transitionTimeoutRef.current)
+      }
+      document.documentElement.classList.remove('theme-switching')
+    }
+  }, [])
+
   const toggle = () => {
     const next = theme === 'dark' ? 'light' : 'dark'
+    const root = document.documentElement
     setTheme(next)
-    
-    // Add transition class to body for smooth theme change
-    document.body.classList.add('theme-transition')
-    
-    document.documentElement.setAttribute('data-theme', next)
+
+    root.classList.add('theme-switching')
+    // Force style recalculation so transition styles apply before theme vars change.
+    void document.body.offsetHeight
+
+    root.setAttribute('data-theme', next)
     localStorage.setItem('theme', next)
     // Persist to cookie so the server layout can include data-theme on <html>
     // during soft navigations (e.g. locale switches).
     document.cookie = `theme=${next};path=/;max-age=31536000;SameSite=Lax`
-    
-    // Remove transition class after CSS animation completes
-    // CSS handles the timing and cleanup automatically
+
+    if (transitionTimeoutRef.current !== null) {
+      window.clearTimeout(transitionTimeoutRef.current)
+    }
+    transitionTimeoutRef.current = window.setTimeout(() => {
+      root.classList.remove('theme-switching')
+      transitionTimeoutRef.current = null
+    }, THEME_TRANSITION_MS)
   }
 
   if (!mounted) return null
