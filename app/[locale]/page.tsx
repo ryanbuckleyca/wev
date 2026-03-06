@@ -327,8 +327,22 @@ export default function Home() {
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE)
 
   return (
-    <main className="min-h-screen bg-wev-bg pb-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+    <main className="min-h-screen pb-8 relative overflow-hidden" style={{
+      background: 'var(--bg)'
+    }}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '50vh',
+        zIndex: 0,
+        opacity: 1.0,
+        filter: 'blur(90px)'
+      }}>
+        <circle cx="250" cy="-50" r="484" fill="#875C74" opacity="0.24"/>
+        <circle cx="930" cy="130" r="418" fill="#4A7A9E" opacity="0.2"/>
+      </svg>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
         {/* Home page hero section */}
         <header className="mb-8">
           <img
@@ -384,22 +398,22 @@ export default function Home() {
 
         {/* Results Header */}
         {allJobs.length > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-1 py-1 mb-2 items-center justify-center sm:justify-start" style={{ padding: '4px 2px' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
             {/* Left side: Last updated info (its own row on mobile) */}
-            <div className="text-sm text-center sm:text-left" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            <div className="text-sm text-center sm:text-left text-xs text-wev-text-secondary">
               <span className="font-semibold text-wev-accent">{t('home.lastUpdated')} </span>
               <span>{lastScrapeTime || t('home.unknown')}</span>
             </div>
 
             {/* Controls row: sort and expand/collapse - appears below on mobile */}
-            <div className="flex items-center gap-2 mt-2 sm:mt-0" style={{ gap: '8px', justifyContent: 'flex-end' }}>
+            <div className="flex items-center gap-2 mt-2 sm:mt-0 gap-2 sm:justify-end">
               <SortDropdown
                 sortBy={sortBy}
                 onChange={(s) => setSortBy(s)}
                 showMatchOption={!!user}
               />
 
-              <div style={{ width: '1px', height: '14px', background: 'var(--border)' }} />
+              <div className="w-0.5 h-3.5 bg-wev-border" />
 
               <ExpandAllToggle
                 allExpanded={allJobsExpanded}

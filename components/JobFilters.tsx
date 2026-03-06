@@ -7,6 +7,7 @@ import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
 import { JobPosting } from '@/lib/supabase'
 import JobSearch, { ActiveFilterChip } from './JobSearch'
 import Collapsible from './Collapsible'
+import FilterIcon from './FilterIcon'
 
 interface JobFiltersProps {
   jobs: JobPosting[]
@@ -725,6 +726,18 @@ export default function JobFilters({
             )}
           </div>
         </div>
+      </div>
+      
+      {/* Collapse indicator at bottom */}
+      <div className="mt-6 relative h-2 shadow-top flex items-center justify-center border-t border-wev-border">
+        <button
+          type="button"
+          onClick={() => onFiltersExpandedChange(false)}
+          className="absolute -top-3 flex items-center justify-center w-8 h-6 bg-wev-surface border border-wev-border rounded-full shadow-sm transition-all group"
+          aria-label={t('filters.hideFilters')}
+        >
+          <FilterIcon className="w-4 h-4 text-wev-text-tertiary group-hover:text-wev-text-secondary transition-colors" reversed />
+        </button>
       </div>
       </Collapsible>
     </div>

@@ -38,14 +38,14 @@ export default function LocaleSwitcher() {
         <span className={`px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center ${
           locale === 'en'
             ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
-            : 'bg-wev-surface-tint font-normal text-wev-text-tertiary'
+            : 'bg-wev-bg font-normal text-wev-text-tertiary'
         }`}>
           EN
         </span>
         <span className={`px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center ${
           locale === 'fr'
             ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
-            : 'bg-wev-surface-tint font-normal text-wev-text-tertiary'
+            : 'bg-wev-bg font-normal text-wev-text-tertiary'
         }`}>
           FR
         </span>

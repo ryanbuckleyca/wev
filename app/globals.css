@@ -2,11 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom utility classes */
+.flex-center-gap {
+  @apply flex items-center gap-1.5;
+}
+
 /* Design system - Light mode (default) */
 :root {
   --bg: #FEFBF7;
   --surface: #ffffff;
-  --surface-tint: #faf9f7;
+  --surface-tint: #F8F9FB;
   --border: #c8c5bf;
 
   --text-primary: #2a2a2a;
@@ -36,15 +41,20 @@
   --info-solid: #4A7A9E;
   --info-tint: #C3D9EB;
   --info-text: #36607E;
+
+  --gradient-bg: #ffffff;
+  --gradient-lp: #f0e4ec;
+  --gradient-tl: #D6EAEA;
+  --gradient-mb: #C3D9EB;
 }
 
 /* Design system - Dark mode */
 [data-theme="dark"] {
-  --bg: #1E1E1E;
-  --surface: #2A2A2A;
-  --surface-tint: #242424;
-  --border: #4A4A4A;
-  --border-dark: #1A1A1A;
+  --bg: #242424;
+  --surface: #353535;
+  --surface-tint: #2B2B2B;
+  --border: #616161;
+  --border-dark: #242424;
 
   --text-primary: #E8E6E2;
   --text-secondary: #A8A5A0;
@@ -52,27 +62,32 @@
 
   /* Primary: keep for buttons (white text). Primary-text: lighter teal for text on dark so it passes a11y. */
   --primary: #5B8C8A;
-  --primary-tint: #1E3832;
+  --primary-tint: #254340;
   --primary-text: #7EC5B3;
 
   --accent: #C08DA0;
-  --accent-tint: #3A2A33;
+  --accent-tint: #413540;
 
   --success-solid: #3E8C4F;
-  --success-tint: #1A3320;
+  --success-tint: #1F422B;
   --success-text: #6FD68A;
 
   --alert-solid: #C45A4A;
-  --alert-tint: #3D1F1C;
+  --alert-tint: #472622;
   --alert-text: #E8857A;
 
   --warn-solid: #9A7209;
-  --warn-tint: #3A2E0A;
+  --warn-tint: #3A2F0E;
   --warn-text: #E8B53A;
 
   --info-solid: #4A7A9E;
-  --info-tint: #1C2E3D;
+  --info-tint: #1D2D3C;
   --info-text: #7AB4D9;
+
+  --gradient-bg: #0d0d0d;
+  --gradient-lp: #c96fa0;
+  --gradient-tl: #4eb8b8;
+  --gradient-mb: #5a9ec9;
 }
 
 @layer base {
@@ -106,10 +121,6 @@ body.theme-transition {
   animation: theme-transition 0.5s ease;
 }
 
-body.theme-transition * {
-  transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease !important;
-}
-
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -121,6 +132,10 @@ body.theme-transition * {
 
 .animate-fade-in {
   animation: fade-in 0.2s ease-in-out forwards;
+}
+
+.shadow-top {
+  box-shadow: rgba(0, 0, 0, 0.05) 0px -1px 6px -1px;
 }
 
 /* Logo filter in dark mode for better visibility */
@@ -954,6 +969,10 @@ body.theme-transition * {
   transition-property: opacity, transform !important;
 }
 
+.tippy-box > .tippy-arrow {
+  transition: none !important;
+}
+
 .tippy-box[data-theme~='light'] {
   background-color: var(--surface);
   color: var(--text-primary);
@@ -970,7 +989,7 @@ body.theme-transition * {
   color: var(--text-primary);
   border: 1px solid var(--border);
   border-radius: var(--wev-card);
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.25), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  box-shadow: 0 25px 50px -5px rgb(0 0 0 / 0.08), 0 15px 25px -6px rgb(0 0 0 / 0.05), 0 8px 15px -4px rgb(0 0 0 / 0.02);
   font-size: 0.875rem;
   line-height: 1.25rem;
   max-width: 300px;
@@ -1047,3 +1066,9 @@ body.theme-transition * {
   border-radius: var(--wev-card);
   box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.25), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
+
+/* SVG gradient background styles */
+.svg-bg { fill: var(--gradient-bg); transition: fill 0.5s ease; }
+.s-lp   { stop-color: var(--gradient-lp); transition: stop-color 0.5s ease; }
+.s-tl   { stop-color: var(--gradient-tl); transition: stop-color 0.5s ease; }
+.s-mb   { stop-color: var(--gradient-mb); transition: stop-color 0.5s ease; }
