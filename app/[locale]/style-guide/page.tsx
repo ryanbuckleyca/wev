@@ -42,40 +42,17 @@ const getAllColorVariables = () => {
   const style = getComputedStyle(document.documentElement)
   const colorVars: Array<{name: string, value: string, category: string}> = []
   
-  // Get ALL CSS custom properties (variables)
-  const allVars = Array.from(document.styleSheets)
-    .flatMap(sheet => {
-      try {
-        return Array.from(sheet.cssRules || [])
-      } catch (e) {
-        return [] // Skip cross-origin stylesheets
-      }
-    })
-    .flatMap(rule => {
-      if (rule.type === CSSRule.STYLE_RULE) {
-        const styleRule = rule as CSSStyleRule
-        return Array.from(styleRule.style).filter(prop => prop.startsWith('--'))
-      }
-      return []
-    })
-  
-  // Or fallback to checking common color variable patterns
-  const commonColorPatterns = [
-    'bg', 'surface', 'border', 'text', 'primary', 'accent', 'success', 'alert', 'warn', 'info', 'gradient', 'watercolor'
-  ]
-  
   // Get all properties that look like color variables
   for (let i = 0; i < style.length; i++) {
     const prop = style[i]
     if (prop.startsWith('--')) {
       const value = style.getPropertyValue(prop).trim()
       
-      // Check if it's a color (hex, rgb, rgba, hsl, etc.) or contains color-related keywords
+      // Check if it's actually a color value (hex, rgb, rgba, hsl, etc.)
       if (value && (
         value.startsWith('#') || 
         value.startsWith('rgb') || 
-        value.startsWith('hsl') ||
-        commonColorPatterns.some(pattern => prop.includes(pattern))
+        value.startsWith('hsl')
       )) {
         let category = 'Other'
         if (prop.includes('text')) category = 'Text'
