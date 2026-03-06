@@ -13,6 +13,7 @@ import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
 import SortDropdown from '@/components/SortDropdown'
 import ExpandAllToggle from '@/components/ExpandAllToggle'
+import WatercolorBackground from '@/components/WatercolorBackground'
 
 const ITEMS_PER_PAGE = 20
 
@@ -330,18 +331,7 @@ export default function Home() {
     <main className="min-h-screen pb-8 relative overflow-hidden" style={{
       background: 'var(--bg)'
     }}>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" style={{
-        position: 'absolute',
-        inset: 0,
-        width: '100%',
-        height: '50vh',
-        zIndex: 0,
-        opacity: 1.0,
-        filter: 'blur(90px)'
-      }}>
-        <circle cx="100" cy="-50" r="580" fill="var(--watercolor-lavender)" style={{ opacity: 'var(--lavender-opacity, 0.24)' }}/>
-        <circle cx="930" cy="190" r="510" fill="var(--watercolor-blue)" style={{ opacity: 'var(--blue-opacity, 0.2)' }}/>
-      </svg>
+      <WatercolorBackground />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
         {/* Home page hero section */}
         <header className="mb-8">
