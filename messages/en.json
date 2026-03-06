@@ -36,6 +36,12 @@
         "3Weeks": "3 weeks",
         "1Month": "1 month",
         "any": "Any"
+      },
+      "short": {
+        "1Week": "1 wk",
+        "2Weeks": "2 wks",
+        "3Weeks": "3 wks",
+        "1Month": "1 mo"
       }
     },
     "workType": {
@@ -68,6 +74,7 @@
     },
     "chips": {
       "posted": "Posted:",
+      "sseShort": "SSE",
       "sseOnly": "SSE: only",
       "salaryListedOnly": "Salary: listed only",
       "search": "Search:",
@@ -87,12 +94,12 @@
   },
   "sort": {
     "label": "Sort:",
-    "newestFirst": "Newest first",
-    "oldestFirst": "Oldest first",
-    "bestMatch": "Best match",
-    "salaryHighToLow": "Salary: high to low",
-    "salaryLowToHigh": "Salary: low to high",
-    "orgAZ": "Organization A–Z"
+    "newestFirst": "Date desc",
+    "oldestFirst": "Date asc",
+    "bestMatch": "Correspondence",
+    "salaryHighToLow": "Salary desc",
+    "salaryLowToHigh": "Salary asc",
+    "orgAZ": "Org A ↔ Z"
   },
   "expand": {
     "expandAll": "Expand all",
@@ -272,7 +279,9 @@
     "logoutSuccess": "Logged out successfully",
     "logoutFailed": "Logout failed",
     "openMenu": "Open menu",
-    "role": "Role:"
+    "role": "Role:",
+    "theme": "Site Theme",
+    "language": "Language"
   },
   "navigation": {
     "home": "Home",

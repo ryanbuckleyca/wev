@@ -8,6 +8,7 @@ import ButtonLink from '@/components/ButtonLink'
 import StatusIcon from '@/components/StatusIcon'
 import BannerMessage from '@/components/BannerMessage'
 import notify from '@/lib/toast'
+import { useState, useEffect } from 'react'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,121 @@ const LOGO_LOGOTYPE =
 const LOGO_MARK =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logo.png'
 
+// Helper function to convert hex to RGB
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  return result ? 
+    `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : 
+    ''
+}
+
+// Helper function to format CSS variable name to readable name
+const formatVarName = (cssVar: string) => {
+  // Extract variable name (remove "var(" and ")" and trim)
+  const varName = cssVar.replace('var(', '').replace(')', '').trim()
+  
+  // Remove dashes and convert to Title Case
+  return varName
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('')
+}
+
+interface Token {
+  name: string
+  value: string
+  swatch: string
+  border: boolean
+}
+
 export default function StyleGuidePage() {
+  const [groupedColors, setGroupedColors] = useState<Record<string, any>>({})
+  const [allTokens, setAllTokens] = useState<Token[]>([])
+
+  useEffect(() => {
+    // Helper function to get common prefix from variable name
+    const getCommonPrefix = (varName: string) => {
+      const parts = varName.split('-')
+      if (parts.length <= 2) return 'Other'
+      
+      // Get first two parts as prefix and remove dashes, convert to TitleCase
+      const prefix = parts.slice(1, 3).join('-')
+      return prefix
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('')
+    }
+
+    // Helper function to get all CSS color variables automatically
+    const getAllColorVariables = () => {
+      const style = getComputedStyle(document.documentElement)
+      const colorVars: Array<{name: string, value: string, prefix: string}> = []
+      
+      // Get all properties that look like color variables
+      for (let i = 0; i < style.length; i++) {
+        const prop = style[i]
+        if (prop.startsWith('--')) {
+          const value = style.getPropertyValue(prop).trim()
+          
+          // Check if it's actually a color value (hex, rgb, rgba, hsl, etc.)
+          if (value && (
+            value.startsWith('#') || 
+            value.startsWith('rgb') || 
+            value.startsWith('hsl')
+          )) {
+            colorVars.push({
+              name: prop,
+              value: value,
+              prefix: getCommonPrefix(prop)
+            })
+          }
+        }
+      }
+      
+      return colorVars
+    }
+
+    // Helper function to group colors by prefix
+    const getGroupedColors = () => {
+      const colorVars = getAllColorVariables()
+      
+      return colorVars.reduce((groups, colorVar) => {
+        const prefix = colorVar.prefix
+        if (!groups[prefix]) {
+          groups[prefix] = []
+        }
+        groups[prefix].push(colorVar)
+        return groups
+      }, {} as Record<string, typeof colorVars>)
+    }
+
+    // Helper function to format CSS variable name to readable name
+    const formatTokenName = (cssVar: string) => {
+      // Extract variable name (remove "--" and trim)
+      const varName = cssVar.replace('--', '').trim()
+      
+      // Remove dashes and convert to TitleCase
+      return varName
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('')
+    }
+
+    // Get all tokens for TokenRows
+    const getAllTokens = (): Token[] => {
+      const colorVars = getAllColorVariables()
+      return colorVars.map(colorVar => ({
+        name: formatTokenName(colorVar.name),
+        value: `var(${colorVar.name})`,
+        swatch: `var(${colorVar.name})`,
+        border: colorVar.name.includes('border')
+      }))
+    }
+
+    setGroupedColors(getGroupedColors())
+    setAllTokens(getAllTokens())
+  }, [])
+
   return (
     <>
       {/* Hero */}
@@ -92,69 +207,22 @@ export default function StyleGuidePage() {
             AA compliance to ensure accessibility across all use cases.
           </p>
 
-          <h3>Base Colors</h3>
-          <div className="design-color-grid">
-            <ColorCard
-              swatch="#FEFBF7"
-              name="Porcelain"
-              hex="#FEFBF7"
-              rgb="254, 251, 247"
-              tag="Background"
-            />
-            <ColorCard
-              swatch="#875C74"
-              name="Dusty Lavender"
-              hex="#875C74"
-              rgb="135, 92, 116"
-              tag="Brand Accent"
-            />
-            <ColorCard
-              swatch="#5B8C8A"
-              name="Muted Teal"
-              hex="#5B8C8A"
-              rgb="91, 140, 138"
-              tag="Primary / CTAs"
-            />
-            <ColorCard
-              swatch="#C5EBC3"
-              name="Tea Green"
-              hex="#C5EBC3"
-              rgb="197, 235, 195"
-              tag="Success States"
-            />
-          </div>
-
-          <h3>Semantic Colors</h3>
-          <div className="design-color-grid">
-            <ColorCard
-              swatch="#3E8C4F"
-              name="Success Solid"
-              hex="#3E8C4F"
-              rgb="62, 140, 79"
-              tag="Buttons, Icons"
-            />
-            <ColorCard
-              swatch="#C45A4A"
-              name="Alert Solid"
-              hex="#C45A4A"
-              rgb="196, 90, 74"
-              tag="Error States"
-            />
-            <ColorCard
-              swatch="#9A7209"
-              name="Warning Solid"
-              hex="#9A7209"
-              rgb="154, 114, 9"
-              tag="Warning States"
-            />
-            <ColorCard
-              swatch="#4A7A9E"
-              name="Info Solid"
-              hex="#4A7A9E"
-              rgb="74, 122, 158"
-              tag="Info States"
-            />
-          </div>
+          {Object.entries(groupedColors)
+            .sort(([a], [b]) => a.localeCompare(b)) // Sort alphabetically
+            .map(([prefix, colors]) => (
+              <div key={prefix}>
+                <h3>{prefix} Colors</h3>
+                <div className="design-color-grid">
+                  {colors.map((colorVar: any) => (
+                    <ColorCard
+                      key={colorVar.name}
+                      swatch={`var(${colorVar.name})`}
+                      tag={prefix}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
         </div>
       </section>
 
@@ -685,116 +753,7 @@ export default function StyleGuidePage() {
             environments. All colors meet WCAG 2.1 Level AA contrast requirements for accessibility.
           </p>
 
-          <h3>Dark Mode Base Colors</h3>
-          <div className="design-color-grid">
-            <ColorCard
-              swatch="#1E1E1E"
-              name="Charcoal Deep"
-              hex="#1E1E1E"
-              rgb="30, 30, 30"
-              tag="Background"
-            />
-            <ColorCard
-              swatch="#2A2A2A"
-              name="Slate Dark"
-              hex="#2A2A2A"
-              rgb="42, 42, 42"
-              tag="Surface / Cards"
-            />
-            <ColorCard
-              swatch="#B07D96"
-              name="Dusty Lavender Light"
-              hex="#B07D96"
-              rgb="176, 125, 150"
-              tag="Brand Accent (Dark)"
-            />
-            <ColorCard
-              swatch="#5B8C8A"
-              name="Muted Teal"
-              hex="#5B8C8A"
-              rgb="91, 140, 138"
-              tag="Primary (Consistent)"
-            />
-          </div>
-
-          <h3>Dark Mode Semantic Colors</h3>
-          <div className="design-color-grid">
-            <ColorCard
-              swatch="#3E8C4F"
-              name="Success Solid"
-              hex="#3E8C4F"
-              rgb="62, 140, 79"
-              tag="Success Buttons"
-            />
-            <ColorCard
-              swatch="#1A3320"
-              name="Success Tint (Dark)"
-              hex="#1A3320"
-              rgb="26, 51, 32"
-              tag="Success Backgrounds"
-            />
-            <ColorCard
-              swatch="#6FD68A"
-              name="Success Text"
-              hex="#6FD68A"
-              rgb="111, 214, 138"
-              tag="Success Messages"
-            />
-            <ColorCard
-              swatch="#E8857A"
-              name="Alert Text"
-              hex="#E8857A"
-              rgb="232, 133, 122"
-              tag="Error Messages"
-            />
-            <ColorCard
-              swatch="#E8B53A"
-              name="Warning Text"
-              hex="#E8B53A"
-              rgb="232, 181, 58"
-              tag="Warning Messages"
-            />
-            <ColorCard
-              swatch="#7AB4D9"
-              name="Info Text"
-              hex="#7AB4D9"
-              rgb="122, 180, 217"
-              tag="Info Messages"
-            />
-          </div>
-
-          <h3>Dark Mode Text Colors</h3>
-          <div className="design-color-grid">
-            <ColorCard
-              swatch="#E8E6E2"
-              name="White / Primary Text"
-              hex="#E8E6E2"
-              rgb="232, 230, 226"
-              tag="Primary Text"
-            />
-            <ColorCard
-              swatch="#A8A5A0"
-              name="Secondary Text"
-              hex="#A8A5A0"
-              rgb="168, 165, 160"
-              tag="Secondary Text"
-            />
-            <ColorCard
-              swatch="#8A8782"
-              name="Tertiary Text"
-              hex="#8A8782"
-              rgb="138, 135, 130"
-              tag="Tertiary Text"
-            />
-            <ColorCard
-              swatch="#4A4A4A"
-              name="Border"
-              hex="#4A4A4A"
-              rgb="74, 74, 74"
-              tag="Borders / Dividers"
-            />
-          </div>
-        </div>
+                  </div>
       </section>
 
       {/* Accessibility */}
@@ -941,39 +900,44 @@ export default function StyleGuidePage() {
           </p>
 
           <div className="design-token-sheet">
-            <div className="design-token-category">
-              <div className="design-token-category-title">Background & Surface</div>
-              <TokenRow name="bg" value="#FEFBF7" swatch="#FEFBF7" border />
-              <TokenRow name="surface" value="#ffffff" swatch="#ffffff" />
-              <TokenRow name="border" value="#c8c5bf" swatch="#c8c5bf" />
-            </div>
+            {(() => {
+              // Group tokens by category for better organization
+              const tokenCategories = allTokens.reduce((categories: Record<string, Token[]>, token: Token) => {
+                let category = 'Other'
+                if (token.name.includes('Bg') || token.name.includes('Surface') || token.name.includes('Border')) {
+                  category = 'Background & Surface'
+                } else if (token.name.includes('Text')) {
+                  category = 'Text Colors'
+                } else if (token.name.includes('Primary') || token.name.includes('Accent')) {
+                  category = 'Brand Colors'
+                } else if (token.name.includes('Success') || token.name.includes('Alert') || token.name.includes('Warn') || token.name.includes('Info')) {
+                  category = 'Semantic Colors'
+                }
+                
+                if (!categories[category]) {
+                  categories[category] = []
+                }
+                categories[category].push(token)
+                return categories
+              }, {} as Record<string, Token[]>)
 
-            <div className="design-token-category">
-              <div className="design-token-category-title">Text Colors</div>
-              <TokenRow name="textPrimary" value="#2a2a2a" swatch="#2a2a2a" />
-              <TokenRow name="textSecondary" value="#6b6b6b" swatch="#6b6b6b" />
-              <TokenRow name="textTertiary" value="#7a7a7a" swatch="#7a7a7a" />
-            </div>
-
-            <div className="design-token-category">
-              <div className="design-token-category-title">Brand Colors</div>
-              <TokenRow name="primary" value="#5B8C8A" swatch="#5B8C8A" />
-              <TokenRow name="primaryTint" value="#D6EAEA" swatch="#D6EAEA" />
-              <TokenRow name="accent" value="#875C74" swatch="#875C74" />
-              <TokenRow name="accentTint" value="#f0e4ec" swatch="#f0e4ec" />
-            </div>
-
-            <div className="design-token-category">
-              <div className="design-token-category-title">Semantic Colors</div>
-              <TokenRow name="successSolid" value="#3E8C4F" swatch="#3E8C4F" />
-              <TokenRow name="successTint" value="#C5EBC3" swatch="#C5EBC3" />
-              <TokenRow name="alertSolid" value="#C45A4A" swatch="#C45A4A" />
-              <TokenRow name="alertTint" value="#F2D0CC" swatch="#F2D0CC" />
-              <TokenRow name="warnSolid" value="#9A7209" swatch="#9A7209" />
-              <TokenRow name="warnTint" value="#F5DEB3" swatch="#F5DEB3" />
-              <TokenRow name="infoSolid" value="#4A7A9E" swatch="#4A7A9E" />
-              <TokenRow name="infoTint" value="#C3D9EB" swatch="#C3D9EB" />
-            </div>
+              return Object.entries(tokenCategories)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([category, tokens]) => (
+                  <div key={category} className="design-token-category">
+                    <div className="design-token-category-title">{category}</div>
+                    {tokens.map((token) => (
+                      <TokenRow 
+                        key={token.name}
+                        name={token.name} 
+                        value={token.value} 
+                        swatch={token.swatch} 
+                        border={token.border}
+                      />
+                    ))}
+                  </div>
+                ))
+            })()}
           </div>
         </div>
       </section>
@@ -996,17 +960,34 @@ export default function StyleGuidePage() {
 
 function ColorCard({
   swatch,
-  name,
-  hex,
-  rgb,
   tag,
 }: {
   swatch: string
-  name: string
-  hex: string
-  rgb: string
   tag: string
 }) {
+  const [colorData, setColorData] = useState({
+    hex: '',
+    rgb: ''
+  })
+
+  useEffect(() => {
+    // Extract CSS variable name from swatch string
+    const cssVarName = swatch.replace('var(', '').replace(')', '').trim()
+    
+    // Get actual CSS variable value
+    const value = getComputedStyle(document.documentElement)
+      .getPropertyValue(cssVarName)
+      .trim()
+    
+    setColorData({
+      hex: value,
+      rgb: hexToRgb(value)
+    })
+  }, [swatch])
+
+  // Auto-generate name from CSS variable
+  const name = formatVarName(swatch)
+
   return (
     <div className="design-color-card">
       <div className="design-color-swatch" style={{ background: swatch }} />
@@ -1014,10 +995,10 @@ function ColorCard({
         <div className="design-color-name">{name}</div>
         <div className="design-color-values">
           <div className="design-color-value">
-            <span>HEX</span> <strong>{hex}</strong>
+            <span>HEX</span> <strong>{colorData.hex}</strong>
           </div>
           <div className="design-color-value">
-            <span>RGB</span> <strong>{rgb}</strong>
+            <span>RGB</span> <strong>{colorData.rgb}</strong>
           </div>
         </div>
         <div className="design-usage-tag">{tag}</div>

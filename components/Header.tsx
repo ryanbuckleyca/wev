@@ -63,10 +63,27 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-stretch gap-4">
-            <LocaleSwitcher />
-            <ThemeToggle />
+            <div className="hidden sm:block">
+              <LocaleSwitcher />
+            </div>
+            <div className="hidden md:block">
+              <ThemeToggle />
+            </div>
           </div>
-          <UserProfile />
+          {/* Mobile menu - show theme/locale when hidden from header */}
+          <div className="sm:hidden">
+            <UserProfile 
+              showThemeInMenu={true}
+              showLocaleInMenu={true}
+            />
+          </div>
+          {/* Desktop menu - don't show theme/locale */}
+          <div className="hidden sm:block">
+            <UserProfile 
+              showThemeInMenu={false}
+              showLocaleInMenu={false}
+            />
+          </div>
         </div>
       </div>
     </header>

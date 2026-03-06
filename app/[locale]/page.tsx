@@ -11,9 +11,9 @@ import CopyAllJobsButton from '@/components/CopyAllJobsButton'
 import JobFilters from '@/components/JobFilters'
 import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
-import ButtonLink from '@/components/ButtonLink'
 import SortDropdown from '@/components/SortDropdown'
 import ExpandAllToggle from '@/components/ExpandAllToggle'
+import WatercolorBackground from '@/components/WatercolorBackground'
 
 const ITEMS_PER_PAGE = 20
 
@@ -328,8 +328,11 @@ export default function Home() {
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE)
 
   return (
-    <main className="min-h-screen bg-wev-bg pb-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+    <main className="min-h-screen pb-8 relative overflow-hidden" style={{
+      background: 'var(--bg)'
+    }}>
+      <WatercolorBackground />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
         {/* Home page hero section */}
         <header className="mb-8">
           <img
@@ -343,10 +346,13 @@ export default function Home() {
         {/* Action Buttons - Admin Only */}
         {role === 'admin' && (
           <div className="flex flex-col justify-start items-stretch gap-4 mb-6">
-            {/* Mobile: Stacked vertically */}
-            <div className="flex flex-row gap-4">
-              <ReScrapeButton onComplete={fetchData} />
-              <CopyAllJobsButton jobs={filteredJobs} />
+            <div className="flex flex-row gap-4 max-[442px]:flex-col max-[442px]:items-stretch">
+              <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
+                <ReScrapeButton onComplete={fetchData} />
+              </div>
+              <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
+                <CopyAllJobsButton jobs={filteredJobs} />
+              </div>
             </div>
           </div>
         )}
@@ -382,22 +388,22 @@ export default function Home() {
 
         {/* Results Header */}
         {allJobs.length > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-1 py-1 mb-2" style={{ padding: '4px 2px' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
             {/* Left side: Last updated info (its own row on mobile) */}
-            <div className="text-sm" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            <div className="text-sm text-center sm:text-left text-xs text-wev-text-secondary">
               <span className="font-semibold text-wev-accent">{t('home.lastUpdated')} </span>
               <span>{lastScrapeTime || t('home.unknown')}</span>
             </div>
 
             {/* Controls row: sort and expand/collapse - appears below on mobile */}
-            <div className="flex items-center gap-2 mt-2 sm:mt-0" style={{ gap: '8px', justifyContent: 'flex-end' }}>
+            <div className="flex items-center gap-2 mt-2 sm:mt-0 gap-2 sm:justify-end">
               <SortDropdown
                 sortBy={sortBy}
                 onChange={(s) => setSortBy(s)}
                 showMatchOption={!!user}
               />
 
-              <div style={{ width: '1px', height: '14px', background: 'var(--border)' }} />
+              <div className="w-0.5 h-3.5 bg-wev-border" />
 
               <ExpandAllToggle
                 allExpanded={allJobsExpanded}

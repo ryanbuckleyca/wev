@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: ['class', '[data-theme="dark"]'],
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -44,6 +45,9 @@ module.exports = {
         'wev-card': '12px',
         'wev-pill': '50px',
         'wev-btn': '12px',
+      },
+      boxShadow: {
+        'wev-dropdown': '0 4px 12px rgba(0,0,0,0.1197), 0 2px 4px rgba(0,0,0,0.0812)',
       },
     },
   },

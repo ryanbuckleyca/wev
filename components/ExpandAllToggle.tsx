@@ -14,8 +14,7 @@ export default function ExpandAllToggle({ allExpanded, onToggle }: ExpandAllTogg
       onClick={onToggle}
       variant="outline"
       size="sm"
-      className="flex items-center gap-1"
-      style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', padding: '5px 8px', fontSize: '13px' }}
+      className="flex-center-gap bg-transparent border-none text-wev-text-secondary p-1.5 text-xs"
     >
       <Chevron rotated={allExpanded} />
       <span>{allExpanded ? t('expand.collapseAll') : t('expand.expandAll')}</span>
