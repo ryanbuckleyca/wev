@@ -20,7 +20,7 @@ export default async function LocaleLayout({
   children: React.ReactNode
   params: { locale: string }
 }) {
-  const { locale } = await params
+  const { locale } = params
   const messages = await getMessages({locale})
   const cookieStore = await cookies()
   const theme = cookieStore.get('theme')?.value === 'dark' ? 'dark' : 'light'
