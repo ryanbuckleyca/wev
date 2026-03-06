@@ -40,27 +40,8 @@ const postedWithinLabels: Record<PostedWithinOption, PostedWithinLabel> = {
     fallbackShort: '1 mo',
   },
 }
-  '1-week': {
-    full: 'filters.postedWithin.options.1Week',
-    short: 'filters.postedWithin.short.1Week',
-    fallbackShort: '1 wk',
-  },
-  '2-weeks': {
-    full: 'filters.postedWithin.options.2Weeks',
-    short: 'filters.postedWithin.short.2Weeks',
-    fallbackShort: '2 wks',
-  },
-  '3-weeks': {
-    full: 'filters.postedWithin.options.3Weeks',
-    short: 'filters.postedWithin.short.3Weeks',
-    fallbackShort: '3 wks',
-  },
-  '1-month': {
-    full: 'filters.postedWithin.options.1Month',
-    short: 'filters.postedWithin.short.1Month',
-    fallbackShort: '1 mo',
-  },
-}
+
+type PostedWithinSelection = PostedWithinOption | 'any'
 
 interface JobFiltersProps {
   jobs: JobPosting[]
