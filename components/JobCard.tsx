@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { JobPosting } from '@/lib/supabase'
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Solid, Leaf1Outlined, Bookmark1Solid, Bookmark1Outlined, ChevronDownSolid, ChevronUpSolid } from '@lineiconshq/free-icons'
@@ -10,7 +11,7 @@ import { getValueDefinition } from '@/lib/values'
 import { useAuth } from '@/contexts/AuthContext'
 import ProgressDonut from './ProgressDonut'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/i18n/navigation'
 import Collapsible from './Collapsible'
 
 interface JobCardProps {
@@ -39,6 +40,7 @@ export default function JobCard({
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
 
   // Get user state
+  const t = useTranslations()
   const { user } = useAuth()
   const router = useRouter()
 
@@ -61,7 +63,7 @@ export default function JobCard({
     const title = job.job_title.length > 25 
       ? job.job_title.substring(0, 25) + '...' 
       : job.job_title
-    const location = job.location || 'Remote'
+    const location = job.location || t('jobCard.remote')
   
     // Simple date formatting for header
     let date: Date
@@ -145,14 +147,14 @@ export default function JobCard({
             <button
               onClick={() => {
                 const msg = sse
-                  ? `Remove the SSE tag from "${job.job_title}" at ${job.organization}?`
-                  : `Mark "${job.job_title}" at ${job.organization} as a Solidarity Economy job?`
+                  ? t('jobCard.removeSseConfirm', { title: job.job_title, org: job.organization })
+                  : t('jobCard.markSseConfirm', { title: job.job_title, org: job.organization })
                 if (window.confirm(msg)) onSseToggle(job)
               }}
               disabled={updatingId === job.id}
               className="wev-icon-btn disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-              title={sse ? 'Remove SSE Status' : 'Mark as SSE'}
-              aria-label={sse ? 'SSE job (click to unmark)' : 'Mark as SSE job'}
+              title={sse ? t('jobCard.removeSse') : t('jobCard.markSse')}
+              aria-label={sse ? t('jobCard.sseJob') : t('jobCard.markSseJob')}
             >
               {sse ? (
                 <Lineicons icon={Leaf1Solid} size={16} className="text-wev-success" />
@@ -161,7 +163,7 @@ export default function JobCard({
               )}
             </button>
           ) : sse ? (
-            <span className="flex-shrink-0" aria-label="SSE job">
+            <span className="flex-shrink-0" aria-label={t('jobCard.sseJob')}>
               <Lineicons icon={Leaf1Solid} size={16} className="text-wev-success" />
             </span>
           ) : null}
@@ -175,8 +177,8 @@ export default function JobCard({
           <button
             onClick={handleBookmarkToggle}
             className="wev-icon-btn"
-            title={bookmarked ? 'Remove bookmark' : 'Bookmark job'}
-            aria-label={bookmarked ? 'Bookmarked (click to remove)' : 'Bookmark job'}
+            title={bookmarked ? t('jobCard.removeBookmark') : t('jobCard.bookmarkJob')}
+            aria-label={bookmarked ? t('jobCard.bookmarked') : t('jobCard.bookmarkJobLabel')}
             disabled={bookmarkLoading}
           >
             {bookmarked ? (
@@ -188,8 +190,8 @@ export default function JobCard({
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="wev-icon-btn"
-            title={isExpanded ? 'Collapse' : 'Expand'}
-            aria-label={isExpanded ? 'Collapse job details' : 'Expand job details'}
+            title={isExpanded ? t('jobCard.collapse') : t('jobCard.expand')}
+            aria-label={isExpanded ? t('jobCard.collapseDetails') : t('jobCard.expandDetails')}
           >
             {isExpanded ? (
               <Lineicons icon={ChevronUpSolid} size={18} className="text-wev-text-secondary" />
@@ -205,12 +207,12 @@ export default function JobCard({
         <div className="py-4 px-5 bg-wev-surface">
           <div className="job-details">
             <div className="job-detail-line">
-              <span className="job-label">Who: </span>
+              <span className="job-label">{t('jobCard.who')} </span>
               <span className="job-value">{job.organization}</span>
               <br />
             </div>
             <div className="job-detail-line">
-              <span className="job-label">What: </span>
+              <span className="job-label">{t('jobCard.what')} </span>
               {job.listing_url ? (
                 <a
                   href={job.listing_url}
@@ -226,25 +228,25 @@ export default function JobCard({
               <br />
             </div>
             <div className="job-detail-line">
-              <span className="job-label">Where: </span>
-              <span className="job-value">{job.location || 'N/A'}</span>
+              <span className="job-label">{t('jobCard.where')} </span>
+              <span className="job-value">{job.location || t('jobCard.nA')}</span>
               <br />
             </div>
             {job.summary && (
               <div className="job-detail-line">
-                <span className="job-label">Why: </span>
+                <span className="job-label">{t('jobCard.why')} </span>
                 <span className="job-value">{job.summary}</span>
                 <br />
               </div>
             )}
             <div className="job-detail-line">
-              <span className="job-label">When: </span>
-              <span className="job-value">Posted {formatDate(job.date_posted)}</span>
+              <span className="job-label">{t('jobCard.when')} </span>
+              <span className="job-value">{t('jobCard.posted')} {formatDate(job.date_posted)}</span>
               <br />
             </div>
             <div className="job-detail-line">
-              <span className="job-label">How much: </span>
-              <span className="job-value">{job.wage || 'N/A'}</span>
+              <span className="job-label">{t('jobCard.howMuch')} </span>
+              <span className="job-value">{job.wage || t('jobCard.nA')}</span>
             </div>
           </div>
         </div>
@@ -262,29 +264,37 @@ export default function JobCard({
                   size="sm"
                 />
                 <span className="text-sm text-wev-text-secondary font-medium">
-                  {matchPercentage}% match:
+                  {matchPercentage}{t('jobCard.match')}
                 </span>
               </div>
             )}
             
             {/* Values pills */}
-            {job.values.map((value) => (
-              <Tooltip
-                key={value}
-                content={
-                  `<p class="font-medium text-wev-primary-text mb-1">${value}</p>
-                   <p class="text-xs text-wev-text-primary mb-2">${getValueDefinition(value).description}</p>
-                   <p class="text-xs text-wev-text-secondary italic">${getValueDefinition(value).example}</p>`
-                }
-              >
-                <Pill 
-                  variant={user ? (isValueMatched(value) ? 'primary' : 'secondary') : 'default'} 
-                  size="sm"
+            {job.values.map((value) => {
+              const valueName = t(`values.${value}.name`, { defaultValue: value })
+              const valueDef = getValueDefinition(value, {
+                name: valueName,
+                description: t(`values.${value}.description`),
+                example: t(`values.${value}.example`),
+              })
+              return (
+                <Tooltip
+                  key={value}
+                  content={
+                    `<p class="font-medium text-wev-primary-text mb-1">${valueName}</p>
+                     <p class="text-xs text-wev-text-primary mb-2">${valueDef.description}</p>
+                     <p class="text-xs text-wev-text-secondary italic">${valueDef.example}</p>`
+                  }
                 >
-                  {value}
-                </Pill>
-              </Tooltip>
-            ))}
+                  <Pill 
+                    variant={user ? (isValueMatched(value) ? 'primary' : 'secondary') : 'default'} 
+                    size="sm"
+                  >
+                    {valueName}
+                  </Pill>
+                </Tooltip>
+              )
+            })}
           </div>
         </div>
       )}

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from '@/i18n/navigation'
+import { useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { checkPasswordStrength } from '@/lib/password-strength'
 import TurnstileWidget from '@/components/TurnstileWidget'
@@ -17,6 +18,7 @@ import ErrorBox from '@/components/ErrorBox'
 import Message from '@/components/Message'
 
 export default function SignupPage() {
+  const t = useTranslations()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -26,8 +28,14 @@ export default function SignupPage() {
 
   const passwordStrength = useMemo(() => {
     if (!password) return null
-    return checkPasswordStrength(password)
-  }, [password])
+    return checkPasswordStrength(password, {
+      veryWeak: t('passwordStrength.veryWeak'),
+      weak: t('passwordStrength.weak'),
+      fair: t('passwordStrength.fair'),
+      good: t('passwordStrength.good'),
+      strong: t('passwordStrength.strong'),
+    })
+  }, [password, t])
 
   const supabase = createClient()
 
@@ -38,13 +46,13 @@ export default function SignupPage() {
     setError(null)
 
     if (passwordStrength && !passwordStrength.isAcceptable) {
-      setError('Password is too weak. Please choose a stronger password.')
+      setError(t('auth.signup.passwordWeak'))
       setLoading(false)
       return
     }
 
     if (!captchaToken) {
-      setError('Please complete the CAPTCHA verification.')
+      setError(t('auth.signup.captchaRequired'))
       setLoading(false)
       return
     }
@@ -60,7 +68,7 @@ export default function SignupPage() {
     if (error) {
       setError(error.message)
     } else {
-      setMessage('Check your email for a confirmation link.')
+      setMessage(t('auth.signup.emailSent'))
     }
 
     setLoading(false)
@@ -69,11 +77,11 @@ export default function SignupPage() {
   return (
     <PageLayout variant="centered">
       <CardLayout>
-        <Heading level={1} className="text-center mb-6">Sign up</Heading>
+        <Heading level={1} className="text-center mb-6">{t('auth.signup.title')}</Heading>
 
         <FormContainer onSubmit={handleSubmit}>
           <FormField
-            label="Email"
+            label={t('auth.signup.email')}
             type="email"
             value={email}
             onChange={setEmail}
@@ -83,7 +91,7 @@ export default function SignupPage() {
           />
 
           <FormField
-            label="Password"
+            label={t('auth.signup.password')}
             type="password"
             value={password}
             onChange={setPassword}
@@ -97,7 +105,7 @@ export default function SignupPage() {
             onSuccess={(token) => setCaptchaToken(token)}
             onError={() => {
               setCaptchaToken(null)
-              setError('CAPTCHA verification failed. Please try again.')
+              setError(t('auth.signup.captchaError'))
             }}
             onExpire={() => setCaptchaToken(null)}
           />
@@ -108,7 +116,7 @@ export default function SignupPage() {
             loading={loading}
             fullWidth
           >
-            {loading ? 'Creating account...' : 'Create account'}
+            {loading ? t('auth.signup.submitting') : t('auth.signup.submit')}
           </Button>
         </FormContainer>
 
@@ -120,13 +128,13 @@ export default function SignupPage() {
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Already have an account?{' '}
+          {t('auth.signup.hasAccount')}{' '}
           <Link
             href="/login"
             className="underline font-medium"
             style={{ color: 'var(--primary-text)' }}
           >
-            Log in
+            {t('auth.signup.logIn')}
           </Link>
         </p>
       </CardLayout>

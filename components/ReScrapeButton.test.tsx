@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, act, fireEvent } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@/test-utils'
 import ReScrapeButton from './ReScrapeButton'
 
 vi.mock('@/lib/toast', () => ({

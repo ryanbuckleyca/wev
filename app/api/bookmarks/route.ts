@@ -9,7 +9,7 @@ export const revalidate = 0
 export async function GET(req: Request) {
   try {
     // Create a server client bound to the request cookies to detect the authenticated user
-    const serverSupabase = createServerClient()
+    const serverSupabase = await createServerClient()
     const {
       data: { user },
     } = await serverSupabase.auth.getUser()

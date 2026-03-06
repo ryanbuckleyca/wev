@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
 import { useLocale } from 'next-intl'
-import Link from 'next/link'
+import { Link, usePathname } from '@/i18n/navigation'
 import UserProfile from './UserProfile'
 import ThemeToggle from './ThemeToggle'
+import LocaleSwitcher from './LocaleSwitcher'
 
 export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false)
@@ -53,7 +53,7 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
     >
       <div className="flex items-center justify-between px-4 py-4">
         <div className={`transition-opacity duration-200 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-          <Link href={`/${locale}`}>
+          <Link href="/">
             <img
               src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png"
               alt="wev"
@@ -62,7 +62,10 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
           </Link>
         </div>
         <div className="flex items-center gap-4">
-          <ThemeToggle />
+          <div className="flex items-stretch gap-4">
+            <LocaleSwitcher />
+            <ThemeToggle />
+          </div>
           <UserProfile />
         </div>
       </div>

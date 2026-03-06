@@ -8,10 +8,36 @@ export type PasswordStrength = {
   isAcceptable: boolean
 }
 
-export function checkPasswordStrength(password: string): PasswordStrength {
+/**
+ * Get password strength labels for a given locale.
+ * This function should be called from a component that has access to translations.
+ */
+export function getPasswordStrengthLabels(labels: {
+  veryWeak: string
+  weak: string
+  fair: string
+  good: string
+  strong: string
+}): string[] {
+  return [labels.veryWeak, labels.weak, labels.fair, labels.good, labels.strong]
+}
+
+export function checkPasswordStrength(
+  password: string,
+  labels?: {
+    veryWeak: string
+    weak: string
+    fair: string
+    good: string
+    strong: string
+  }
+): PasswordStrength {
   const result = zxcvbn(password)
 
-  const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong']
+  const strengthLabels = labels
+    ? getPasswordStrengthLabels(labels)
+    : ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'] // Fallback to English
+  
   const strengthColors = [
     'var(--alert-solid)', // Very Weak - red
     'var(--warn-solid)', // Weak - orange

@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import Link from '@/i18n/navigation'
-import { useRouter } from '@/i18n/navigation'
+import { useTranslations } from 'next-intl'
+import { Link, useRouter } from '@/i18n/navigation'
 import notify from '@/lib/toast'
 import Button from '@/components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function UserProfile() {
+  const t = useTranslations()
   const { user, role, loading } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -38,10 +39,10 @@ export default function UserProfile() {
     setIsOpen(false)
     try {
       await supabase.auth.signOut()
-      notify.success('Logged out successfully')
+      notify.success(t('userProfile.logoutSuccess'))
       router.push('/')
     } catch (err) {
-      notify.error(err instanceof Error ? err.message : 'Logout failed')
+      notify.error(err instanceof Error ? err.message : t('userProfile.logoutFailed'))
       setIsLoggingOut(false)
     }
   }
@@ -59,7 +60,7 @@ export default function UserProfile() {
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="sm:hidden p-2 rounded-lg hover:bg-wev-primary-tint/20 transition-colors"
-          aria-label="Open menu"
+          aria-label={t('userProfile.openMenu')}
         >
           <svg
             className="w-6 h-6 text-wev-text-primary"
@@ -81,13 +82,13 @@ export default function UserProfile() {
             href="/login"
             className="w-full sm:w-auto px-4 py-2 h-10 flex items-center justify-center text-sm font-semibold text-wev-primary border border-wev-primary rounded-wev-btn hover:bg-wev-primary-tint transition-colors"
           >
-            Log In
+            {t('userProfile.logIn')}
           </Link>
           <Link
             href="/signup"
             className="w-full sm:w-auto px-4 py-2 h-10 flex items-center justify-center text-sm font-semibold text-white bg-wev-primary rounded-wev-btn hover:bg-opacity-90 transition-all"
           >
-            Sign Up
+            {t('userProfile.signUp')}
           </Link>
         </div>
 
@@ -103,14 +104,14 @@ export default function UserProfile() {
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="block w-full px-4 py-2 text-center text-sm font-semibold text-wev-primary border border-wev-primary rounded-wev-btn hover:bg-wev-primary-tint transition-colors"
                   >
-                    Log In
+                    {t('userProfile.logIn')}
                   </Link>
                   <Link
                     href="/signup"
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="block w-full px-4 py-2 text-center text-sm font-semibold text-white bg-wev-primary rounded-wev-btn hover:bg-opacity-90 transition-all"
                   >
-                    Sign Up
+                    {t('userProfile.signUp')}
                   </Link>
                 </div>
               </div>
@@ -134,7 +135,7 @@ export default function UserProfile() {
         <div className="absolute right-0 mt-2 w-48 bg-wev-surface border border-wev-border rounded-wev-card z-50">
           <div className="p-4 border-b border-wev-border">
             <p className="text-sm text-wev-text-primary font-semibold truncate">{user.email}</p>
-            <p className="text-xs text-wev-text-tertiary mt-1">Role: {role}</p>
+            <p className="text-xs text-wev-text-tertiary mt-1">{t('userProfile.role')} {role}</p>
           </div>
 
           <nav className="py-2">
@@ -144,7 +145,7 @@ export default function UserProfile() {
               className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-colors rounded"
               prefetch={true}
             >
-              My Profile
+              {t('userProfile.myProfile')}
             </Link>
             <Link
               href="/bookmarks"
@@ -152,7 +153,7 @@ export default function UserProfile() {
               className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-colors rounded"
               prefetch={true}
             >
-              My Bookmarks
+              {t('userProfile.myBookmarks')}
             </Link>
             <Link
               href="/account-settings"
@@ -160,7 +161,7 @@ export default function UserProfile() {
               className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-colors rounded"
               prefetch={true}
             >
-              Account Settings
+              {t('userProfile.accountSettings')}
             </Link>
           </nav>
 
@@ -177,7 +178,7 @@ export default function UserProfile() {
                 border: 'none'
               }}
             >
-              {isLoggingOut ? 'Logging out...' : 'Log Out'}
+              {isLoggingOut ? t('userProfile.loggingOut') : t('userProfile.logOut')}
             </Button>
           </div>
         </div>

@@ -10,8 +10,11 @@ const nextConfig = {
   reactStrictMode: true,
   // Removed 'output: export' to enable SSR/hybrid mode
   // This allows API routes and server-side rendering
+  turbopack: {
+    root: __dirname,
+  },
 }
 
-const withNextIntl = createNextIntlPlugin()
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
 module.exports = withNextIntl(nextConfig)

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import Button from './Button'
 
 import { useState } from 'react'
@@ -19,13 +20,14 @@ export default function Pagination({
   totalItems,
   itemsPerPage,
 }: PaginationProps) {
+  const t = useTranslations()
   const startItem = (currentPage - 1) * itemsPerPage + 1
   const endItem = Math.min(currentPage * itemsPerPage, totalItems)
 
   if (totalPages <= 1) {
     return (
       <div className="text-sm text-wev-text-primary text-center py-4">
-        Showing {totalItems} {totalItems === 1 ? 'job' : 'jobs'}
+        {t('pagination.showing')} {totalItems} {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
       </div>
     )
   }
@@ -86,7 +88,7 @@ export default function Pagination({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
       <div className="text-sm text-wev-text-primary">
-        Showing {startItem}-{endItem} of {totalItems} {totalItems === 1 ? 'job' : 'jobs'}
+        {t('pagination.showing')} {startItem}-{endItem} {t('pagination.of')} {totalItems} {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
       </div>
 
       <div className="flex items-center gap-2">
@@ -97,7 +99,7 @@ export default function Pagination({
           size="sm"
           fullWidth={false}
         >
-          Previous
+          {t('pagination.previous')}
         </Button>
 
         <div className="flex items-center gap-1">
@@ -134,7 +136,7 @@ export default function Pagination({
           size="sm"
           fullWidth={false}
         >
-          Next
+          {t('pagination.next')}
         </Button>
       </div>
     </div>
