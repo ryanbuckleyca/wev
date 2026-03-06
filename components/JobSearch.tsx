@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { truncateMiddle } from '@/lib/string-utils'
 import Pill from './Pill'
 import ButtonLink from './ButtonLink'
 import FilterIcon from './FilterIcon'
@@ -43,12 +44,6 @@ export default function JobSearch({
   const t = useTranslations()
   const [dynamicPlaceholder, setDynamicPlaceholder] = useState(t('search.placeholder'))
   const searchContainerRef = useRef<HTMLDivElement | null>(null)
-
-  const truncateMiddle = (value: string, maxLength: number) => {
-    if (value.length <= maxLength) return value
-    const half = Math.floor((maxLength - 1) / 2)
-    return `${value.slice(0, half)}…${value.slice(value.length - half)}`
-  }
 
   useEffect(() => {
     setDynamicPlaceholder(t('search.placeholder'))

@@ -24,7 +24,13 @@ export default async function LocaleLayout({
   const { locale: rawLocale } = await params
   const validLocales = routing.locales as readonly string[]
   const locale = validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale
-  const messages = await getMessages({ locale })
+  const defaultMessages = await getMessages({ locale: routing.defaultLocale })
+  const localeMessages =
+    locale === routing.defaultLocale ? defaultMessages : await getMessages({ locale })
+  const messages = {
+    ...defaultMessages,
+    ...localeMessages,
+  }
   const cookieStore = await cookies()
   const theme = cookieStore.get('theme')?.value === 'dark' ? 'dark' : 'light'
 

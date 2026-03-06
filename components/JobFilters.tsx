@@ -4,10 +4,63 @@ import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
-import { JobPosting } from '@/lib/supabase'
 import JobSearch, { ActiveFilterChip } from './JobSearch'
 import Collapsible from './Collapsible'
 import FilterIcon from './FilterIcon'
+import { JobPosting } from '@/lib/supabase'
+import { truncateMiddle } from '@/lib/string-utils'
+
+type PostedWithinOption = '1-week' | '2-weeks' | '3-weeks' | '1-month'
+
+type PostedWithinLabel = {
+  fullKey: string
+  shortKey: string
+  fallbackShort: string
+}
+
+const postedWithinLabels: Record<PostedWithinOption, PostedWithinLabel> = {
+  '1-week': {
+    fullKey: 'filters.postedWithin.options.1Week',
+    shortKey: 'filters.postedWithin.short.1Week',
+    fallbackShort: '1 wk',
+  },
+  '2-weeks': {
+    fullKey: 'filters.postedWithin.options.2Weeks',
+    shortKey: 'filters.postedWithin.short.2Weeks',
+    fallbackShort: '2 wks',
+  },
+  '3-weeks': {
+    fullKey: 'filters.postedWithin.options.3Weeks',
+    shortKey: 'filters.postedWithin.short.3Weeks',
+    fallbackShort: '3 wks',
+  },
+  '1-month': {
+    fullKey: 'filters.postedWithin.options.1Month',
+    shortKey: 'filters.postedWithin.short.1Month',
+    fallbackShort: '1 mo',
+  },
+}
+  '1-week': {
+    full: 'filters.postedWithin.options.1Week',
+    short: 'filters.postedWithin.short.1Week',
+    fallbackShort: '1 wk',
+  },
+  '2-weeks': {
+    full: 'filters.postedWithin.options.2Weeks',
+    short: 'filters.postedWithin.short.2Weeks',
+    fallbackShort: '2 wks',
+  },
+  '3-weeks': {
+    full: 'filters.postedWithin.options.3Weeks',
+    short: 'filters.postedWithin.short.3Weeks',
+    fallbackShort: '3 wks',
+  },
+  '1-month': {
+    full: 'filters.postedWithin.options.1Month',
+    short: 'filters.postedWithin.short.1Month',
+    fallbackShort: '1 mo',
+  },
+}
 
 interface JobFiltersProps {
   jobs: JobPosting[]
@@ -95,12 +148,6 @@ export default function JobFilters({
   const getTranslationOrFallback = (key: string, fallback: string) => {
     const translation = t(key)
     return translation === key ? fallback : translation
-  }
-
-  const truncateMiddle = (value: string, maxLength: number) => {
-    if (value.length <= maxLength) return value
-    const half = Math.floor((maxLength - 1) / 2)
-    return `${value.slice(0, half)}…${value.slice(value.length - half)}`
   }
 
   const activeFilterChips = useMemo(() => {
