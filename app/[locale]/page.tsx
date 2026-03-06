@@ -11,7 +11,6 @@ import CopyAllJobsButton from '@/components/CopyAllJobsButton'
 import JobFilters from '@/components/JobFilters'
 import Pagination from '@/components/Pagination'
 import { useAuth } from '@/contexts/AuthContext'
-import ButtonLink from '@/components/ButtonLink'
 import SortDropdown from '@/components/SortDropdown'
 import ExpandAllToggle from '@/components/ExpandAllToggle'
 
@@ -343,10 +342,13 @@ export default function Home() {
         {/* Action Buttons - Admin Only */}
         {role === 'admin' && (
           <div className="flex flex-col justify-start items-stretch gap-4 mb-6">
-            {/* Mobile: Stacked vertically */}
-            <div className="flex flex-row gap-4">
-              <ReScrapeButton onComplete={fetchData} />
-              <CopyAllJobsButton jobs={filteredJobs} />
+            <div className="flex flex-row gap-4 max-[442px]:flex-col max-[442px]:items-stretch">
+              <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
+                <ReScrapeButton onComplete={fetchData} />
+              </div>
+              <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
+                <CopyAllJobsButton jobs={filteredJobs} />
+              </div>
             </div>
           </div>
         )}
@@ -382,9 +384,9 @@ export default function Home() {
 
         {/* Results Header */}
         {allJobs.length > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-1 py-1 mb-2" style={{ padding: '4px 2px' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-1 py-1 mb-2 items-center justify-center sm:justify-start" style={{ padding: '4px 2px' }}>
             {/* Left side: Last updated info (its own row on mobile) */}
-            <div className="text-sm" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            <div className="text-sm text-center sm:text-left" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               <span className="font-semibold text-wev-accent">{t('home.lastUpdated')} </span>
               <span>{lastScrapeTime || t('home.unknown')}</span>
             </div>

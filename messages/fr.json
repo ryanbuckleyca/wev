@@ -36,6 +36,12 @@
         "3Weeks": "3 semaines",
         "1Month": "1 mois",
         "any": "Tous"
+      },
+      "short": {
+        "1Week": "1 sem.",
+        "2Weeks": "2 sem.",
+        "3Weeks": "3 sem.",
+        "1Month": "1 mois"
       }
     },
     "workType": {
@@ -68,6 +74,7 @@
     },
     "chips": {
       "posted": "Publié :",
+      "sseShort": "SSE",
       "sseOnly": "SSE : uniquement",
       "salaryListedOnly": "Salaire : uniquement listé",
       "search": "Recherche :",
@@ -87,12 +94,12 @@
   },
   "sort": {
     "label": "Trier :",
-    "newestFirst": "Plus récent en premier",
-    "oldestFirst": "Plus ancien en premier",
-    "bestMatch": "Meilleure correspondance",
-    "salaryHighToLow": "Salaire : du plus élevé au plus bas",
-    "salaryLowToHigh": "Salaire : du plus bas au plus élevé",
-    "orgAZ": "Organisation A–Z"
+    "newestFirst": "Date desc",
+    "oldestFirst": "Date asc",
+    "bestMatch": "Correspondance",
+    "salaryHighToLow": "Salaire desc",
+    "salaryLowToHigh": "Salaire asc",
+    "orgAZ": "Org A ↔ Z"
   },
   "expand": {
     "expandAll": "Tout développer",
@@ -272,7 +279,9 @@
     "logoutSuccess": "Déconnexion réussie",
     "logoutFailed": "Échec de la déconnexion",
     "openMenu": "Ouvrir le menu",
-    "role": "Rôle :"
+    "role": "Rôle :",
+    "theme": "Thème du site",
+    "language": "Langue"
   },
   "navigation": {
     "home": "Accueil",

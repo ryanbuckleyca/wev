@@ -7,6 +7,7 @@ import Button from './Button'
 
 interface CopyAllJobsButtonProps {
   jobs: JobPosting[]
+  buttonClassName?: string
 }
 
 function formatDate(dateString: string, locale?: string): string {
@@ -68,7 +69,7 @@ function formatJobsAsHTML(jobs: JobPosting[], t: ReturnType<typeof useTranslatio
     .join('<br><br>')
 }
 
-export default function CopyAllJobsButton({ jobs }: CopyAllJobsButtonProps) {
+export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobsButtonProps) {
   const t = useTranslations()
   const locale = useLocale()
   const [copied, setCopied] = useState(false)
@@ -153,6 +154,7 @@ export default function CopyAllJobsButton({ jobs }: CopyAllJobsButtonProps) {
         variant="secondary"
         size="md"
         fullWidth={false}
+        className={buttonClassName}
       >
         {copied ? t('buttons.copied') : t('buttons.copyAllJobs')}
       </Button>

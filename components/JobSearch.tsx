@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Pill from './Pill'
 import ButtonLink from './ButtonLink'
@@ -8,6 +9,7 @@ export interface ActiveFilterChip {
   id: string
   label: string
   onRemove?: () => void
+  title?: string
 }
 
 interface JobSearchProps {
@@ -38,6 +40,36 @@ export default function JobSearch({
   onApplySuggestedDefaults,
 }: JobSearchProps) {
   const t = useTranslations()
+  const [dynamicPlaceholder, setDynamicPlaceholder] = useState(t('search.placeholder'))
+  const searchContainerRef = useRef<HTMLDivElement | null>(null)
+
+  const truncateMiddle = (value: string, maxLength: number) => {
+    if (value.length <= maxLength) return value
+    const half = Math.floor((maxLength - 1) / 2)
+    return `${value.slice(0, half)}…${value.slice(value.length - half)}`
+  }
+
+  useEffect(() => {
+    setDynamicPlaceholder(t('search.placeholder'))
+  }, [t])
+
+  useEffect(() => {
+    if (!searchContainerRef.current) return
+    const handleResize = (entries: ResizeObserverEntry[]) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width
+        let limit = t('search.placeholder').length
+        if (width < 320) limit = 16
+        else if (width < 420) limit = 24
+        const text = t('search.placeholder')
+        setDynamicPlaceholder(limit >= text.length ? text : truncateMiddle(text, limit))
+      }
+    }
+
+    const ro = new ResizeObserver(handleResize)
+    ro.observe(searchContainerRef.current)
+    return () => ro.disconnect()
+  }, [t])
   return (
     <>
       <div className="p-3 sm:p-4">
@@ -62,7 +94,7 @@ export default function JobSearch({
               id="search"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={t('search.placeholder')}
+              placeholder={dynamicPlaceholder}
               className="w-full h-10 pl-9 pr-3 border border-wev-border rounded-wev-btn bg-wev-surface text-sm text-wev-text-primary focus:outline-none focus:ring-2 focus:ring-wev-primary/20 focus:border-wev-primary transition-colors"
             />
           </div>
@@ -102,6 +134,7 @@ export default function JobSearch({
                 size="sm"
                 variant="secondary"
                 className="text-xs"
+                title={chip.title}
               >
                 {chip.label}
               </Pill>

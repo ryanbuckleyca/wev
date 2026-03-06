@@ -1,14 +1,16 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import Tooltip from './Tooltip'
 
-interface PillProps {
-  children: any
-  variant?: 'default' | 'primary' | 'secondary'
+export interface PillProps {
+  children: React.ReactNode
+  variant?: 'primary' | 'secondary' | 'default'
   size?: 'sm' | 'md'
   className?: string
   onRemove?: () => void
   removable?: boolean
+  title?: string
 }
 
 export default function Pill({ 
@@ -17,7 +19,8 @@ export default function Pill({
   size = 'md', 
   className = '', 
   onRemove,
-  removable = false 
+  removable = false,
+  title,
 }: PillProps) {
   const t = useTranslations('ariaLabels.pill')
   
@@ -39,8 +42,8 @@ export default function Pill({
 
   const combinedClasses = `${baseClasses} ${sizeClasses[size]} ${removable ? removableClasses : variantClasses[variant]} ${className}`.trim()
 
-  return (
-    <span className={combinedClasses}>
+  const pillContent = (
+    <span className={combinedClasses} data-tooltip={title}>
       {children}
       {(removable || onRemove) && (
         <button
@@ -54,4 +57,6 @@ export default function Pill({
       )}
     </span>
   )
+
+  return title ? <Tooltip content={title}>{pillContent}</Tooltip> : pillContent
 }
