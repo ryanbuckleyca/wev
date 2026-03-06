@@ -8,7 +8,6 @@ import ButtonLink from '@/components/ButtonLink'
 import StatusIcon from '@/components/StatusIcon'
 import BannerMessage from '@/components/BannerMessage'
 import notify from '@/lib/toast'
-import { tokens, darkTokens } from '@/lib/design-tokens'
 
 export const dynamic = 'force-dynamic'
 
@@ -958,37 +957,37 @@ export default function StyleGuidePage() {
           <div className="design-token-sheet">
             <div className="design-token-category">
               <div className="design-token-category-title">Background & Surface</div>
-              <TokenRow name="bg" value={tokens.bg} swatch={tokens.bg} border />
-              <TokenRow name="surface" value={tokens.surface} swatch={tokens.surface} />
-              <TokenRow name="surfaceTint" value={tokens.surfaceTint} swatch={tokens.surfaceTint} />
-              <TokenRow name="border" value={tokens.border} swatch={tokens.border} />
+              <TokenRow name="bg" value="var(--bg)" swatch="var(--bg)" border />
+              <TokenRow name="surface" value="var(--surface)" swatch="var(--surface)" />
+              <TokenRow name="surfaceTint" value="var(--surface-tint)" swatch="var(--surface-tint)" />
+              <TokenRow name="border" value="var(--border)" swatch="var(--border)" />
             </div>
 
             <div className="design-token-category">
               <div className="design-token-category-title">Text Colors</div>
-              <TokenRow name="textPrimary" value={tokens.textPrimary} swatch={tokens.textPrimary} />
-              <TokenRow name="textSecondary" value={tokens.textSecondary} swatch={tokens.textSecondary} />
-              <TokenRow name="textTertiary" value={tokens.textTertiary} swatch={tokens.textTertiary} />
+              <TokenRow name="textPrimary" value="var(--text-primary)" swatch="var(--text-primary)" />
+              <TokenRow name="textSecondary" value="var(--text-secondary)" swatch="var(--text-secondary)" />
+              <TokenRow name="textTertiary" value="var(--text-tertiary)" swatch="var(--text-tertiary)" />
             </div>
 
             <div className="design-token-category">
               <div className="design-token-category-title">Brand Colors</div>
-              <TokenRow name="primary" value={tokens.primary} swatch={tokens.primary} />
-              <TokenRow name="primaryTint" value={tokens.primaryTint} swatch={tokens.primaryTint} />
-              <TokenRow name="accent" value={tokens.accent} swatch={tokens.accent} />
-              <TokenRow name="accentTint" value={tokens.accentTint} swatch={tokens.accentTint} />
+              <TokenRow name="primary" value="var(--primary)" swatch="var(--primary)" />
+              <TokenRow name="primaryTint" value="var(--primary-tint)" swatch="var(--primary-tint)" />
+              <TokenRow name="accent" value="var(--accent)" swatch="var(--accent)" />
+              <TokenRow name="accentTint" value="var(--accent-tint)" swatch="var(--accent-tint)" />
             </div>
 
             <div className="design-token-category">
               <div className="design-token-category-title">Semantic Colors</div>
-              <TokenRow name="successSolid" value={tokens.successSolid} swatch={tokens.successSolid} />
-              <TokenRow name="successTint" value={tokens.successTint} swatch={tokens.successTint} />
-              <TokenRow name="alertSolid" value={tokens.alertSolid} swatch={tokens.alertSolid} />
-              <TokenRow name="alertTint" value={tokens.alertTint} swatch={tokens.alertTint} />
-              <TokenRow name="warnSolid" value={tokens.warnSolid} swatch={tokens.warnSolid} />
-              <TokenRow name="warnTint" value={tokens.warnTint} swatch={tokens.warnTint} />
-              <TokenRow name="infoSolid" value={tokens.infoSolid} swatch={tokens.infoSolid} />
-              <TokenRow name="infoTint" value={tokens.infoTint} swatch={tokens.infoTint} />
+              <TokenRow name="successSolid" value="var(--success-solid)" swatch="var(--success-solid)" />
+              <TokenRow name="successTint" value="var(--success-tint)" swatch="var(--success-tint)" />
+              <TokenRow name="alertSolid" value="var(--alert-solid)" swatch="var(--alert-solid)" />
+              <TokenRow name="alertTint" value="var(--alert-tint)" swatch="var(--alert-tint)" />
+              <TokenRow name="warnSolid" value="var(--warn-solid)" swatch="var(--warn-solid)" />
+              <TokenRow name="warnTint" value="var(--warn-tint)" swatch="var(--warn-tint)" />
+              <TokenRow name="infoSolid" value="var(--info-solid)" swatch="var(--info-solid)" />
+              <TokenRow name="infoTint" value="var(--info-tint)" swatch="var(--info-tint)" />
             </div>
           </div>
         </div>
