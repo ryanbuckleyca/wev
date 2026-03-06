@@ -1077,8 +1077,3 @@ body.theme-transition {
   box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.25), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
-/* SVG gradient background styles */
-.svg-bg { fill: var(--gradient-bg); transition: fill 0.5s ease; }
-.s-lp   { stop-color: var(--gradient-lp); transition: stop-color 0.5s ease; }
-.s-tl   { stop-color: var(--gradient-tl); transition: stop-color 0.5s ease; }
-.s-mb   { stop-color: var(--gradient-mb); transition: stop-color 0.5s ease; }
