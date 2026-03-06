@@ -8,6 +8,7 @@ import ButtonLink from '@/components/ButtonLink'
 import StatusIcon from '@/components/StatusIcon'
 import BannerMessage from '@/components/BannerMessage'
 import notify from '@/lib/toast'
+import { tokens, darkTokens } from '@/lib/design-tokens'
 
 export const dynamic = 'force-dynamic'
 
@@ -957,37 +958,37 @@ export default function StyleGuidePage() {
           <div className="design-token-sheet">
             <div className="design-token-category">
               <div className="design-token-category-title">Background & Surface</div>
-              <TokenRow name="bg" value="#FEFBF7" swatch="#FEFBF7" border />
-              <TokenRow name="surface" value="#ffffff" swatch="#ffffff" />
-              <TokenRow name="surfaceTint" value="#F8F9FB" swatch="#F8F9FB" />
-              <TokenRow name="border" value="#c8c5bf" swatch="#c8c5bf" />
+              <TokenRow name="bg" value={tokens.bg} swatch={tokens.bg} border />
+              <TokenRow name="surface" value={tokens.surface} swatch={tokens.surface} />
+              <TokenRow name="surfaceTint" value={tokens.surfaceTint} swatch={tokens.surfaceTint} />
+              <TokenRow name="border" value={tokens.border} swatch={tokens.border} />
             </div>
 
             <div className="design-token-category">
               <div className="design-token-category-title">Text Colors</div>
-              <TokenRow name="textPrimary" value="#2a2a2a" swatch="#2a2a2a" />
-              <TokenRow name="textSecondary" value="#6b6b6b" swatch="#6b6b6b" />
-              <TokenRow name="textTertiary" value="#7a7a7a" swatch="#7a7a7a" />
+              <TokenRow name="textPrimary" value={tokens.textPrimary} swatch={tokens.textPrimary} />
+              <TokenRow name="textSecondary" value={tokens.textSecondary} swatch={tokens.textSecondary} />
+              <TokenRow name="textTertiary" value={tokens.textTertiary} swatch={tokens.textTertiary} />
             </div>
 
             <div className="design-token-category">
               <div className="design-token-category-title">Brand Colors</div>
-              <TokenRow name="primary" value="#5B8C8A" swatch="#5B8C8A" />
-              <TokenRow name="primaryTint" value="#D6EAEA" swatch="#D6EAEA" />
-              <TokenRow name="accent" value="#875C74" swatch="#875C74" />
-              <TokenRow name="accentTint" value="#f0e4ec" swatch="#f0e4ec" />
+              <TokenRow name="primary" value={tokens.primary} swatch={tokens.primary} />
+              <TokenRow name="primaryTint" value={tokens.primaryTint} swatch={tokens.primaryTint} />
+              <TokenRow name="accent" value={tokens.accent} swatch={tokens.accent} />
+              <TokenRow name="accentTint" value={tokens.accentTint} swatch={tokens.accentTint} />
             </div>
 
             <div className="design-token-category">
               <div className="design-token-category-title">Semantic Colors</div>
-              <TokenRow name="successSolid" value="#3E8C4F" swatch="#3E8C4F" />
-              <TokenRow name="successTint" value="#C5EBC3" swatch="#C5EBC3" />
-              <TokenRow name="alertSolid" value="#C45A4A" swatch="#C45A4A" />
-              <TokenRow name="alertTint" value="#F2D0CC" swatch="#F2D0CC" />
-              <TokenRow name="warnSolid" value="#9A7209" swatch="#9A7209" />
-              <TokenRow name="warnTint" value="#F5DEB3" swatch="#F5DEB3" />
-              <TokenRow name="infoSolid" value="#4A7A9E" swatch="#4A7A9E" />
-              <TokenRow name="infoTint" value="#C3D9EB" swatch="#C3D9EB" />
+              <TokenRow name="successSolid" value={tokens.successSolid} swatch={tokens.successSolid} />
+              <TokenRow name="successTint" value={tokens.successTint} swatch={tokens.successTint} />
+              <TokenRow name="alertSolid" value={tokens.alertSolid} swatch={tokens.alertSolid} />
+              <TokenRow name="alertTint" value={tokens.alertTint} swatch={tokens.alertTint} />
+              <TokenRow name="warnSolid" value={tokens.warnSolid} swatch={tokens.warnSolid} />
+              <TokenRow name="warnTint" value={tokens.warnTint} swatch={tokens.warnTint} />
+              <TokenRow name="infoSolid" value={tokens.infoSolid} swatch={tokens.infoSolid} />
+              <TokenRow name="infoTint" value={tokens.infoTint} swatch={tokens.infoTint} />
             </div>
           </div>
         </div>
