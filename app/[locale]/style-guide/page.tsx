@@ -37,42 +37,62 @@ const formatVarName = (cssVar: string) => {
     .join(' ')
 }
 
-// Helper function to get all CSS color variables
+// Helper function to get all CSS color variables automatically
 const getAllColorVariables = () => {
   const style = getComputedStyle(document.documentElement)
   const colorVars: Array<{name: string, value: string, category: string}> = []
   
-  // List of CSS color variables to include
-  const colorVarNames = [
-    '--bg', '--surface', '--surface-tint', '--border',
-    '--text-primary', '--text-secondary', '--text-tertiary',
-    '--primary', '--primary-tint', '--accent', '--accent-tint',
-    '--success-solid', '--success-tint', '--success-text',
-    '--alert-solid', '--alert-tint', '--alert-text',
-    '--warn-solid', '--warn-tint', '--warn-text',
-    '--info-solid', '--info-tint', '--info-text',
-    '--gradient-bg', '--gradient-lp', '--gradient-tl', '--gradient-mb',
-    '--watercolor-lavender', '--watercolor-blue'
+  // Get ALL CSS custom properties (variables)
+  const allVars = Array.from(document.styleSheets)
+    .flatMap(sheet => {
+      try {
+        return Array.from(sheet.cssRules || [])
+      } catch (e) {
+        return [] // Skip cross-origin stylesheets
+      }
+    })
+    .flatMap(rule => {
+      if (rule.type === CSSRule.STYLE_RULE) {
+        const styleRule = rule as CSSStyleRule
+        return Array.from(styleRule.style).filter(prop => prop.startsWith('--'))
+      }
+      return []
+    })
+  
+  // Or fallback to checking common color variable patterns
+  const commonColorPatterns = [
+    'bg', 'surface', 'border', 'text', 'primary', 'accent', 'success', 'alert', 'warn', 'info', 'gradient', 'watercolor'
   ]
   
-  colorVarNames.forEach(varName => {
-    const value = style.getPropertyValue(varName).trim()
-    if (value) {
-      let category = 'Other'
-      if (varName.includes('text')) category = 'Text'
-      else if (varName.includes('primary') || varName.includes('accent')) category = 'Brand'
-      else if (varName.includes('success') || varName.includes('alert') || varName.includes('warn') || varName.includes('info')) category = 'Semantic'
-      else if (varName.includes('surface') || varName.includes('bg') || varName.includes('border')) category = 'Surface'
-      else if (varName.includes('gradient')) category = 'Gradient'
-      else if (varName.includes('watercolor')) category = 'Background'
+  // Get all properties that look like color variables
+  for (let i = 0; i < style.length; i++) {
+    const prop = style[i]
+    if (prop.startsWith('--')) {
+      const value = style.getPropertyValue(prop).trim()
       
-      colorVars.push({
-        name: varName,
-        value: value,
-        category: category
-      })
+      // Check if it's a color (hex, rgb, rgba, hsl, etc.) or contains color-related keywords
+      if (value && (
+        value.startsWith('#') || 
+        value.startsWith('rgb') || 
+        value.startsWith('hsl') ||
+        commonColorPatterns.some(pattern => prop.includes(pattern))
+      )) {
+        let category = 'Other'
+        if (prop.includes('text')) category = 'Text'
+        else if (prop.includes('primary') || prop.includes('accent')) category = 'Brand'
+        else if (prop.includes('success') || prop.includes('alert') || prop.includes('warn') || prop.includes('info')) category = 'Semantic'
+        else if (prop.includes('surface') || prop.includes('bg') || prop.includes('border')) category = 'Surface'
+        else if (prop.includes('gradient')) category = 'Gradient'
+        else if (prop.includes('watercolor')) category = 'Background'
+        
+        colorVars.push({
+          name: prop,
+          value: value,
+          category: category
+        })
+      }
     }
-  })
+  }
   
   return colorVars
 }
