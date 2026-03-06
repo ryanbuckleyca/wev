@@ -1,7 +1,6 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useState, useEffect } from 'react'
 
 interface PillProps {
   children: any
@@ -20,12 +19,8 @@ export default function Pill({
   onRemove,
   removable = false 
 }: PillProps) {
-  const [mounted, setMounted] = useState(false)
   const t = useTranslations('ariaLabels.pill')
   
-  useEffect(() => {
-    setMounted(true)
-  }, [])
   const baseClasses = 'inline-flex items-center font-medium rounded-full transition-colors'
   
   const sizeClasses = {
