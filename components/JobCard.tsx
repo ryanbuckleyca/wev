@@ -290,7 +290,6 @@ export default function JobCard({
                   <Pill 
                     variant={user ? (isValueMatched(value) ? 'primary' : 'secondary') : 'default'} 
                     size="sm"
-                    icon={user && isValueMatched(value) ? '✓' : undefined}
                   >
                     {valueName}
                   </Pill>
