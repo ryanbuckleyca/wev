@@ -1,3 +1,7 @@
+'use client'
+
+import { useTranslations } from 'next-intl'
+
 interface PillProps {
   children: any
   variant?: 'default' | 'primary' | 'secondary'
@@ -15,6 +19,8 @@ export default function Pill({
   onRemove,
   removable = false 
 }: PillProps) {
+  const t = useTranslations('ariaLabels.pill')
+  
   const baseClasses = 'inline-flex items-center font-medium rounded-full transition-colors'
   
   const sizeClasses = {
@@ -41,7 +47,7 @@ export default function Pill({
           type="button"
           onClick={onRemove}
           className={removable ? 'text-wev-text-tertiary hover:text-wev-accent leading-none ml-1' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] leading-none ml-1'}
-          aria-label={`Remove ${children}`}
+          aria-label={t('remove', { label: String(children) })}
         >
           ×
         </button>

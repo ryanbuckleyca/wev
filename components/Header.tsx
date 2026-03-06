@@ -1,15 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
-import Link from 'next/link'
+import { useLocale } from 'next-intl'
+import { Link, usePathname } from '@/i18n/navigation'
 import UserProfile from './UserProfile'
 import ThemeToggle from './ThemeToggle'
+import LocaleSwitcher from './LocaleSwitcher'
 
 export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false)
   const pathname = usePathname()
-  const isHomePage = pathname === '/'
+  const locale = useLocale()
+  // Check if we're on the home page (with or without locale prefix)
+  const isHomePage = pathname === '/' || pathname === `/${locale}` || pathname.match(/^\/[a-z]{2}$/)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -59,7 +62,10 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
           </Link>
         </div>
         <div className="flex items-center gap-4">
-          <ThemeToggle />
+          <div className="flex items-stretch gap-4">
+            <LocaleSwitcher />
+            <ThemeToggle />
+          </div>
           <UserProfile />
         </div>
       </div>

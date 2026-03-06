@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl'
 import Button from '@/components/Button'
 import Chevron from './Chevron'
 
@@ -7,6 +8,7 @@ interface ExpandAllToggleProps {
 }
 
 export default function ExpandAllToggle({ allExpanded, onToggle }: ExpandAllToggleProps) {
+  const t = useTranslations()
   return (
     <Button
       onClick={onToggle}
@@ -16,7 +18,7 @@ export default function ExpandAllToggle({ allExpanded, onToggle }: ExpandAllTogg
       style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', padding: '5px 8px', fontSize: '13px' }}
     >
       <Chevron rotated={allExpanded} />
-      <span>{allExpanded ? 'Collapse all' : 'Expand all'}</span>
+      <span>{allExpanded ? t('expand.collapseAll') : t('expand.expandAll')}</span>
     </Button>
   )
 }

@@ -1,33 +1,26 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import Link from 'next/link'
+import { useState } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { checkPasswordStrength } from '@/lib/password-strength'
 import TurnstileWidget from '@/components/TurnstileWidget'
-import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
 import PageLayout from '@/components/PageLayout'
 import CardLayout from '@/components/CardLayout'
 import Heading from '@/components/Heading'
 import FormContainer from '@/components/FormContainer'
 import FormField from '@/components/FormField'
 import Button from '@/components/Button'
-import LinkButton from '@/components/LinkButton'
-import ErrorBox from '@/components/ErrorBox'
 import Message from '@/components/Message'
 
-export default function SignupPage() {
+export default function ForgotPasswordPage() {
+  const t = useTranslations()
+  const locale = useLocale()
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
-
-  const passwordStrength = useMemo(() => {
-    if (!password) return null
-    return checkPasswordStrength(password)
-  }, [password])
 
   const supabase = createClient()
 
@@ -37,30 +30,21 @@ export default function SignupPage() {
     setMessage(null)
     setError(null)
 
-    if (passwordStrength && !passwordStrength.isAcceptable) {
-      setError('Password is too weak. Please choose a stronger password.')
-      setLoading(false)
-      return
-    }
-
     if (!captchaToken) {
-      setError('Please complete the CAPTCHA verification.')
+      setError(t('auth.forgotPassword.captchaRequired'))
       setLoading(false)
       return
     }
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        captchaToken,
-      },
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/${locale}/reset-password`,
+      captchaToken,
     })
+
     if (error) {
       setError(error.message)
     } else {
-      setMessage('Check your email for a confirmation link.')
+      setMessage(t('auth.forgotPassword.emailSent'))
     }
 
     setLoading(false)
@@ -69,11 +53,14 @@ export default function SignupPage() {
   return (
     <PageLayout variant="centered">
       <CardLayout>
-        <Heading level={1} className="text-center mb-6">Sign up</Heading>
+        <Heading level={1} className="text-center mb-2">{t('auth.forgotPassword.title')}</Heading>
+        <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>
+          {t('auth.forgotPassword.description')}
+        </p>
 
         <FormContainer onSubmit={handleSubmit}>
           <FormField
-            label="Email"
+            label={t('auth.forgotPassword.email')}
             type="email"
             value={email}
             onChange={setEmail}
@@ -82,51 +69,40 @@ export default function SignupPage() {
             fullWidth
           />
 
-          <FormField
-            label="Password"
-            type="password"
-            value={password}
-            onChange={setPassword}
-            placeholder="•••••••••••"
-            required
-            fullWidth
-          />
-          <PasswordStrengthIndicator passwordStrength={passwordStrength} />
-
           <TurnstileWidget
             onSuccess={(token) => setCaptchaToken(token)}
             onError={() => {
               setCaptchaToken(null)
-              setError('CAPTCHA verification failed. Please try again.')
+              setError(t('auth.forgotPassword.captchaError'))
             }}
             onExpire={() => setCaptchaToken(null)}
           />
 
           <Button
             type="submit"
-            disabled={loading || !captchaToken || (passwordStrength !== null && !passwordStrength.isAcceptable)}
+            disabled={loading || !captchaToken}
             loading={loading}
             fullWidth
           >
-            {loading ? 'Creating account...' : 'Create account'}
+            {loading ? t('auth.forgotPassword.submitting') : t('auth.forgotPassword.submit')}
           </Button>
         </FormContainer>
 
         {error && (
-          <ErrorBox className="mt-4">{error}</ErrorBox>
+          <Message variant="error">{error}</Message>
         )}
         {message && (
           <Message variant="success">{message}</Message>
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Already have an account?{' '}
+          {t('auth.forgotPassword.rememberPassword')}{' '}
           <Link
             href="/login"
             className="underline font-medium"
             style={{ color: 'var(--primary-text)' }}
           >
-            Log in
+            {t('auth.forgotPassword.logIn')}
           </Link>
         </p>
       </CardLayout>

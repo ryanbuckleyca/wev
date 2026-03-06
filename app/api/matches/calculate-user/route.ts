@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     // Verify the user exists and has permission
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: user, error: userError } = await supabase
       .from('profiles')
       .select('id')

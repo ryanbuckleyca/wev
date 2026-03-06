@@ -1,10 +1,11 @@
 'use client';
 
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { checkPasswordStrength } from '@/lib/password-strength';
+import { usePasswordStrength } from '@/hooks/usePasswordStrength';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
 import LoadingState from '@/components/LoadingState';
@@ -17,6 +18,7 @@ import ErrorList from '@/components/ErrorList';
 import Button from '@/components/Button';
 
 export default function AccountSettingsPage() {
+  const t = useTranslations();
   const { user, loading } = useRequireAuth();
   const supabase = useMemo(() => createClient(), []);
 
@@ -29,6 +31,18 @@ export default function AccountSettingsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [emailChanged, setEmailChanged] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
+
+  // Map Supabase error messages to translation keys
+  const mapErrorToTranslationKey = (error: string): string => {
+    if (error.toLowerCase().includes('new password should be different from old password')) {
+      return t('accountSettings.passwordSameAsOld');
+    }
+    if (error.toLowerCase().includes('weak password')) {
+      return t('accountSettings.passwordWeak');
+    }
+    // Default to generic error
+    return t('accountSettings.passwordUpdateFailed');
+  };
 
   useEffect(() => {
     if (user?.email && !newEmail) {
@@ -45,28 +59,25 @@ export default function AccountSettingsPage() {
     setPasswordChanged(newPassword !== '' || confirmPassword !== '' || currentPassword !== '');
   }, [newPassword, confirmPassword, currentPassword]);
 
-  const newPasswordStrength = useMemo(() => {
-    if (!newPassword) return null;
-    return checkPasswordStrength(newPassword);
-  }, [newPassword]);
+  const newPasswordStrength = usePasswordStrength(newPassword);
 
   const validatePasswordForm = (): boolean => {
     const errors: string[] = [];
     
     if (!currentPassword) {
-      errors.push('Current password is required');
+      errors.push(t('accountSettings.currentPasswordRequired'));
     }
     if (!newPassword) {
-      errors.push('New password is required');
+      errors.push(t('accountSettings.newPasswordRequired'));
     }
     if (!confirmPassword) {
-      errors.push('Password confirmation is required');
+      errors.push(t('accountSettings.confirmPasswordRequired'));
     }
     if (newPassword !== confirmPassword) {
-      errors.push('Passwords do not match');
+      errors.push(t('accountSettings.passwordsDontMatch'));
     }
     if (newPassword && (!newPasswordStrength || !newPasswordStrength.isAcceptable)) {
-      errors.push('New password is too weak. Please choose a stronger password.');
+      errors.push(t('accountSettings.passwordWeak'));
     }
     
     setPasswordErrors(errors);
@@ -77,19 +88,19 @@ export default function AccountSettingsPage() {
     setEmailError('');
     
     if (!newEmail) {
-      setEmailError('Email is required');
+      setEmailError(t('accountSettings.emailRequired'));
       return false;
     }
     
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail)) {
-      setEmailError('Invalid email format');
+      setEmailError(t('accountSettings.invalidEmailFormat'));
       return false;
     }
     
     if (user?.email === newEmail) {
-      setEmailError('New email must be different from current email');
+      setEmailError(t('accountSettings.emailMustBeDifferent'));
       return false;
     }
     
@@ -103,7 +114,7 @@ export default function AccountSettingsPage() {
     const hasPasswordChanges = passwordChanged;
     
     if (!hasEmailChanges && !hasPasswordChanges) {
-      toast.error('No changes to save');
+      toast.error(t('accountSettings.noChanges'));
       return;
     }
     
@@ -126,7 +137,7 @@ export default function AccountSettingsPage() {
         });
 
         if (emailError) {
-          toast.error(emailError.message || 'Failed to update email');
+          toast.error(emailError.message || t('accountSettings.emailUpdateFailed'));
           return;
         }
       }
@@ -138,32 +149,32 @@ export default function AccountSettingsPage() {
         });
 
         if (passwordError) {
-          toast.error(passwordError.message || 'Failed to update password');
+          toast.error(passwordError.message || t('accountSettings.passwordUpdateFailed'));
           return;
         }
       }
 
       // Success messages
       if (hasEmailChanges) {
-        toast.success('Confirmation email sent to your new address. Please verify it to complete the change.');
+        toast.success(t('accountSettings.emailUpdateSuccess'));
       }
       
       if (hasPasswordChanges) {
-        toast.success('Password updated successfully!');
+        toast.success(t('accountSettings.passwordUpdateSuccess'));
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
       }
       
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update account');
+      toast.error(err instanceof Error ? err.message : t('accountSettings.updateFailed'));
     } finally {
       setIsUpdating(false);
     }
   };
 
   if (loading) {
-    return <LoadingState />;
+    return <LoadingState message={t('common.loading')} />;
   }
 
   if (!user) {
@@ -173,25 +184,25 @@ export default function AccountSettingsPage() {
   return (
     <PageLayout maxWidth="md">
       <CardLayout>
-        <Heading level={1} className="mb-6">Account Settings</Heading>
+        <Heading level={1} className="mb-6">{t('accountSettings.title')}</Heading>
 
         <FormContainer onSubmit={handleUpdateAccount}>
           <div className="space-y-6">
             {/* Change Email */}
             <div>
-              <Heading level={2} className="mb-4">Email Address</Heading>
+              <Heading level={2} className="mb-4">{t('accountSettings.emailAddress')}</Heading>
               <FormField
-                label="New Email"
+                label={t('accountSettings.newEmail')}
                 type="email"
                 value={newEmail}
                 onChange={setNewEmail}
-                placeholder="Enter new email"
+                placeholder={t('accountSettings.newEmailPlaceholder')}
                 fullWidth
                 error={emailError}
                 htmlFor="email"
               />
               <p className="text-sm text-[var(--text-secondary)] mt-2">
-                Current email: <span className="font-semibold">{user.email}</span>
+                {t('accountSettings.currentEmail')} <span className="font-semibold">{user.email}</span>
               </p>
             </div>
 
@@ -199,65 +210,60 @@ export default function AccountSettingsPage() {
 
             {/* Change Password */}
             <div>
-              <Heading level={2} className="mb-4">Change Password</Heading>
+              <Heading level={2} className="mb-4">{t('accountSettings.changePassword')}</Heading>
               <ErrorList errors={passwordErrors} />
 
               <FormField
-                label="Current Password"
+                label={t('accountSettings.currentPassword')}
                 type="password"
                 value={currentPassword}
                 onChange={setCurrentPassword}
-                placeholder="Enter current password"
+                placeholder={t('accountSettings.currentPasswordPlaceholder')}
                 fullWidth
                 htmlFor="current-password"
                 required={passwordChanged}
               />
 
-              <FormField
-                label="New Password"
-                type="password"
-                value={newPassword}
-                onChange={setNewPassword}
-                placeholder="Enter new password"
-                fullWidth
-                htmlFor="new-password"
-                required={passwordChanged}
-              />
-              <PasswordStrengthIndicator passwordStrength={newPasswordStrength} />
+              <div className="mt-4">
+                <FormField
+                  label={t('accountSettings.newPassword')}
+                  type="password"
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  placeholder={t('accountSettings.newPasswordPlaceholder')}
+                  fullWidth
+                  htmlFor="new-password"
+                  required={passwordChanged}
+                />
+                <PasswordStrengthIndicator passwordStrength={newPasswordStrength} />
+              </div>
 
-              <FormField
-                label="Confirm Password"
-                type="password"
-                value={confirmPassword}
-                onChange={setConfirmPassword}
-                placeholder="Confirm new password"
-                fullWidth
-                htmlFor="confirm-password"
-                required={passwordChanged}
-              />
+              <div className="mt-4">
+                <FormField
+                  label={t('accountSettings.confirmPassword')}
+                  type="password"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  placeholder={t('accountSettings.confirmPasswordPlaceholder')}
+                  fullWidth
+                  htmlFor="confirm-password"
+                  required={passwordChanged}
+                />
+              </div>
             </div>
           </div>
-
           {/* Action Buttons */}
           <div className="pt-6 border-t border-[var(--border)]">
-            <div className="flex justify-between gap-3">
-              <Link href="/profile" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
-                Back to Profile
-              </Link>
+            <div className="flex justify-end">
               <Button
                 type="submit"
                 disabled={isUpdating || (!emailChanged && !passwordChanged) || (passwordChanged && !newPasswordStrength?.isAcceptable)}
                 loading={isUpdating}
               >
-                {isUpdating ? 'Saving...' : 'Save Changes'}
+                {isUpdating ? t('accountSettings.saving') : t('accountSettings.saveChanges')}
               </Button>
             </div>
-          </div>  
-            {!emailChanged && !passwordChanged && (
-              <p className="text-sm text-[var(--text-secondary)] mt-2">
-                Make changes above to enable saving
-              </p>
-            )}
+          </div>
         </FormContainer>
         </CardLayout>
     </PageLayout>

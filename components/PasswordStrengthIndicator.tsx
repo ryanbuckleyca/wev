@@ -1,10 +1,13 @@
-import type { PasswordStrength } from '@/lib/password-strength'
+import { useTranslations } from 'next-intl'
+import type { PasswordStrengthResult } from '@/hooks/usePasswordStrength'
 
 interface PasswordStrengthIndicatorProps {
-  passwordStrength: PasswordStrength | null
+  passwordStrength: PasswordStrengthResult | null
 }
 
 export default function PasswordStrengthIndicator({ passwordStrength }: PasswordStrengthIndicatorProps) {
+  const t = useTranslations('passwordStrength')
+  
   if (!passwordStrength) {
     return null
   }
@@ -28,14 +31,14 @@ export default function PasswordStrengthIndicator({ passwordStrength }: Password
 
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs">
-          Strength:{' '}
+          {t('strength')}{' '}
           <span style={{ color: passwordStrength.color }} className="font-semibold">
             {passwordStrength.label}
           </span>
         </span>
         {passwordStrength.isAcceptable && (
           <span className="text-xs text-[var(--success-solid)]">
-            ✓ Acceptable
+            {t('acceptable')}
           </span>
         )}
       </div>

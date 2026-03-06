@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@/test-utils'
 import CopyAllJobsButton from './CopyAllJobsButton'
 import type { JobPosting } from '@/lib/supabase'
 
@@ -150,8 +150,9 @@ describe('CopyAllJobsButton', () => {
     expect(screen.getByRole('button', { name: 'Copied!' })).toBeVisible()
   })
 
-  it('renders nothing when there are no jobs', () => {
-    const { container } = render(<CopyAllJobsButton jobs={[]} />)
-    expect(container).toBeEmptyDOMElement()
+  it('renders a disabled button when there are no jobs', () => {
+    render(<CopyAllJobsButton jobs={[]} />)
+    const btn = screen.getByRole('button', { name: 'Copy All Jobs' })
+    expect(btn).toBeDisabled()
   })
 })

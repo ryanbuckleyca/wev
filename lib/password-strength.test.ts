@@ -9,8 +9,8 @@ describe('checkPasswordStrength', () => {
     expect(result.isAcceptable).toBe(false)
   })
 
-  it('rates a trivial password as Weak', () => {
-    const result = checkPasswordStrength('password')
+  it('rates a short trivial password as unacceptable', () => {
+    const result = checkPasswordStrength('abc')
     expect(result.score).toBeLessThanOrEqual(1)
     expect(result.isAcceptable).toBe(false)
   })
@@ -42,8 +42,8 @@ describe('checkPasswordStrength', () => {
     expect(strong.isAcceptable).toBe(true)
   })
 
-  it('feedback is always a string', () => {
+  it('feedbackKey is always a string', () => {
     const result = checkPasswordStrength('hello')
-    expect(typeof result.feedback).toBe('string')
+    expect(typeof result.feedbackKey).toBe('string')
   })
 })

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import notify from '@/lib/toast'
 import Button from './Button'
 
@@ -43,14 +44,25 @@ function clearScrapeState() {
 }
 
 export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
+  const t = useTranslations()
+  const tReScrape = useTranslations('reScrape')
+  const locale = useLocale()
   const [loading, setLoading] = useState(() => !!loadScrapeState())
-  const [statusText, setStatusText] = useState(() => {
+  const [statusState, setStatusState] = useState<'idle' | 'starting' | 'queued' | 'running'>(() => {
     const saved = loadScrapeState()
-    if (!saved) return 'Re-scrape Data'
-    return saved.status === 'running' ? 'Running...' : 'Queued...'
+    if (!saved) return 'idle'
+    return saved.status
   })
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Compute status text reactively based on current locale and state
+  const statusText = useMemo(() => {
+    if (statusState === 'idle') return t('buttons.reScrape')
+    if (statusState === 'starting') return t('buttons.reScrapeStarting')
+    if (statusState === 'running') return t('buttons.reScrapeRunning')
+    return t('buttons.reScrapeQueued')
+  }, [statusState, t, locale])
 
   const stopPolling = useCallback(() => {
     if (pollTimeoutRef.current) {
@@ -65,13 +77,13 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
     stopPolling()
     clearScrapeState()
     setLoading(false)
-    setStatusText('Re-scrape Data')
+    setStatusState('idle')
   }, [stopPolling])
 
   const startPolling = useCallback((triggeredAt: string, startedAt: number) => {
     const poll = async () => {
       if (Date.now() - startedAt > MAX_WAIT_MS) {
-        notify.error('Timed out waiting for workflow. Check GitHub Actions.')
+        notify.error(tReScrape('timeout'))
         reset()
         return
       }
@@ -86,24 +98,24 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
         const status = await res.json()
 
         if (!res.ok || status.error) {
-          notify.error(`Failed to check workflow status: ${status.error ?? res.statusText}`)
+          notify.error(tReScrape('checkFailed', { error: status.error ?? res.statusText }))
           reset()
           return
         }
 
         if (status.running) {
-          setStatusText('Running...')
+          setStatusState('running')
           saveScrapeState({ triggeredAt, startedAt, status: 'running' })
           pollTimeoutRef.current = setTimeout(poll, POLL_INTERVAL_MS)
         } else if (status.completed && status.success) {
-          notify.success('Re-scrape complete. Refreshing data...')
+          notify.success(tReScrape('complete'))
           reset()
           onComplete()
         } else if (status.completed && !status.success) {
-          notify.error(`Workflow finished with status: ${status.conclusion}`)
+          notify.error(tReScrape('workflowFailed', { status: status.conclusion }))
           reset()
         } else {
-          setStatusText('Queued...')
+          setStatusState('queued')
           saveScrapeState({ triggeredAt, startedAt, status: 'queued' })
           pollTimeoutRef.current = setTimeout(poll, POLL_INTERVAL_MS)
         }
@@ -114,7 +126,7 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
     }
 
     poll()
-  }, [onComplete, reset])
+      }, [onComplete, reset, tReScrape])
 
   // Resume polling on mount if there's a persisted in-flight scrape
   useEffect(() => {
@@ -130,7 +142,7 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
 
   const triggerWorkflow = async () => {
     setLoading(true)
-    setStatusText('Starting...')
+    setStatusState('starting')
 
     const triggeredAt = new Date(Date.now() - 30_000).toISOString()
 
@@ -138,11 +150,11 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
       const triggerResponse = await fetch('/api/github/workflow', { method: 'POST' })
       if (!triggerResponse.ok) {
         const errorData = await triggerResponse.json()
-        throw new Error(errorData.error || 'Failed to trigger workflow')
+        throw new Error(errorData.error || tReScrape('failedToTrigger'))
       }
 
-      notify.success('Workflow triggered. Waiting for it to complete...')
-      setStatusText('Queued...')
+      notify.success(tReScrape('triggered'))
+      setStatusState('queued')
 
       const startedAt = Date.now()
       saveScrapeState({ triggeredAt, startedAt, status: 'queued' })
@@ -151,7 +163,7 @@ export default function ReScrapeButton({ onComplete }: ReScrapeButtonProps) {
 
       startPolling(triggeredAt, startedAt)
     } catch (err) {
-      notify.error(err instanceof Error ? err.message : 'An error occurred')
+      notify.error(err instanceof Error ? err.message : tReScrape('error'))
       reset()
     }
   }

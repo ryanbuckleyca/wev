@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
 import { JobPosting } from '@/lib/supabase'
@@ -62,6 +63,7 @@ export default function JobFilters({
   filtersExpanded,
   onFiltersExpandedChange,
 }: JobFiltersProps) {
+  const t = useTranslations()
   const hasAnyFilters =
     !!searchQuery ||
     selectedOrganizations.length > 0 ||
@@ -97,12 +99,12 @@ export default function JobFilters({
         id: 'posted-within',
         label:
           postedWithin === '1-week'
-            ? 'Posted: 1 week'
+            ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.1Week')}`
             : postedWithin === '2-weeks'
-              ? 'Posted: 2 weeks'
+              ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.2Weeks')}`
               : postedWithin === '3-weeks'
-                ? 'Posted: 3 weeks'
-                : 'Posted: 1 month',
+                ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.3Weeks')}`
+                : `${t('filters.chips.posted')} ${t('filters.postedWithin.options.1Month')}`,
         onRemove: () => onPostedWithinChange('any'),
       })
     }
@@ -110,7 +112,7 @@ export default function JobFilters({
     if (showOnlySse) {
       chips.push({
         id: 'sse',
-        label: 'SSE: only',
+        label: t('filters.chips.sseOnly'),
         onRemove: () => onShowOnlySseChange(false),
       })
     }
@@ -118,7 +120,7 @@ export default function JobFilters({
     if (!showJobsWithoutSalary) {
       chips.push({
         id: 'salary',
-        label: 'Salary: listed only',
+        label: t('filters.chips.salaryListedOnly'),
         onRemove: () => onShowJobsWithoutSalaryChange(true),
       })
     }
@@ -127,7 +129,7 @@ export default function JobFilters({
       const label = searchQuery.length > 24 ? `${searchQuery.slice(0, 24)}…` : searchQuery
       chips.push({
         id: 'search',
-        label: `Search: "${label}"`,
+        label: `${t('filters.chips.search')} "${label}"`,
         onRemove: () => onSearchChange(''),
       })
     }
@@ -135,8 +137,13 @@ export default function JobFilters({
     if (selectedWorkTypes.length > 0) {
       const workLabel =
         selectedWorkTypes.length <= 2
-          ? `Work: ${selectedWorkTypes.map((wt) => wt.charAt(0).toUpperCase() + wt.slice(1)).join(', ')}`
-          : `Work: ${selectedWorkTypes.length} selected`
+          ? `${t('filters.chips.work')} ${selectedWorkTypes.map((wt) => {
+              if (wt === 'remote') return t('filters.workType.remote')
+              if (wt === 'hybrid') return t('filters.workType.hybrid')
+              if (wt === 'office') return t('filters.workType.office')
+              return wt.charAt(0).toUpperCase() + wt.slice(1)
+            }).join(', ')}`
+          : `${t('filters.chips.work')} ${selectedWorkTypes.length} ${t('filters.chips.selected')}`
       chips.push({
         id: 'work-types',
         label: workLabel,
@@ -147,7 +154,7 @@ export default function JobFilters({
     if (selectedProvinces.length > 0) {
       chips.push({
         id: 'provinces',
-        label: selectedProvinces.length === 1 ? '1 province' : `${selectedProvinces.length} provinces`,
+        label: selectedProvinces.length === 1 ? `1 ${t('filters.chips.province')}` : `${selectedProvinces.length} ${t('filters.chips.provinces')}`,
         onRemove: () => onProvincesChange([]),
       })
     }
@@ -155,7 +162,7 @@ export default function JobFilters({
     if (selectedMunicipalities.length > 0) {
       chips.push({
         id: 'municipalities',
-        label: selectedMunicipalities.length === 1 ? '1 municipality' : `${selectedMunicipalities.length} municipalities`,
+        label: selectedMunicipalities.length === 1 ? `1 ${t('filters.chips.municipality')}` : `${selectedMunicipalities.length} ${t('filters.chips.municipalities')}`,
         onRemove: () => onMunicipalitiesChange([]),
       })
     }
@@ -163,7 +170,7 @@ export default function JobFilters({
     if (selectedOrganizations.length > 0) {
       chips.push({
         id: 'organizations',
-        label: selectedOrganizations.length === 1 ? '1 organization' : `${selectedOrganizations.length} organizations`,
+        label: selectedOrganizations.length === 1 ? `1 ${t('filters.chips.organization')}` : `${selectedOrganizations.length} ${t('filters.chips.organizations')}`,
         onRemove: () => onOrganizationsChange([]),
       })
     }
@@ -171,7 +178,7 @@ export default function JobFilters({
     if (selectedEmploymentTypes.length > 0) {
       chips.push({
         id: 'employment-types',
-        label: selectedEmploymentTypes.length === 1 ? '1 employment type' : `${selectedEmploymentTypes.length} employment types`,
+        label: selectedEmploymentTypes.length === 1 ? `1 ${t('filters.chips.employmentType')}` : `${selectedEmploymentTypes.length} ${t('filters.chips.employmentTypes')}`,
         onRemove: () => onEmploymentTypesChange([]),
       })
     }
@@ -179,7 +186,7 @@ export default function JobFilters({
     if (selectedSources.length > 0) {
       chips.push({
         id: 'sources',
-        label: selectedSources.length === 1 ? '1 source' : `${selectedSources.length} sources`,
+        label: selectedSources.length === 1 ? `1 ${t('filters.chips.source')}` : `${selectedSources.length} ${t('filters.chips.sources')}`,
         onRemove: () => onSourcesChange([]),
       })
     }
@@ -403,18 +410,18 @@ export default function JobFilters({
               />
               <Lineicons icon={showOnlySse ? Leaf1Solid : Leaf1Outlined} size={16} className="shrink-0 text-wev-primary" aria-hidden />
               <span className="text-sm font-semibold text-wev-text-primary">
-                Show only SSE jobs
+                {t('filters.sse.label')}
               </span>
             </label>
             <p className="text-xs text-wev-text-secondary mt-1 pl-7">
-              SSE = Solidarity Economy. We tag SSE jobs based on published principles.
+              {t('filters.sse.description')}
               <a
                 href="https://solidarityeconomyprinciples.org/wp-content/uploads/2023/02/SE-Principles-2-pager-handout.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="ml-1 text-wev-accent hover:text-wev-primary-text hover:underline"
               >
-                Learn more
+                {t('filters.sse.learnMore')}
               </a>
             </p>
           </div>
@@ -429,18 +436,18 @@ export default function JobFilters({
               className="wev-checkbox"
             />
             <span className="text-sm font-semibold text-wev-text-primary">
-              Show jobs without salary
+              {t('filters.salary.label')}
             </span>
           </label>
           <p className="text-xs text-wev-text-secondary mt-1 pl-7">
-            Uncheck to hide jobs that don’t list pay
+            {t('filters.salary.description')}
           </p>
         </div>
 
         {/* Posted within filter */}
         <div className="mb-4">
           <label className="block text-sm font-semibold text-wev-text-primary mb-2">
-            Posted within
+            {t('filters.postedWithin.label')}
           </label>
           <div className="flex flex-wrap gap-2">
             {(['1-week', '2-weeks', '3-weeks', '1-month', 'any'] as const).map((value) => (
@@ -454,7 +461,7 @@ export default function JobFilters({
                     : 'bg-wev-bg text-wev-text-primary border border-wev-border hover:bg-wev-primary-tint'
                 }`}
               >
-                {value === '1-week' ? '1 week' : value === '2-weeks' ? '2 weeks' : value === '3-weeks' ? '3 weeks' : value === '1-month' ? '1 month' : 'Any'}
+                {value === '1-week' ? t('filters.postedWithin.options.1Week') : value === '2-weeks' ? t('filters.postedWithin.options.2Weeks') : value === '3-weeks' ? t('filters.postedWithin.options.3Weeks') : value === '1-month' ? t('filters.postedWithin.options.1Month') : t('filters.postedWithin.options.any')}
               </button>
             ))}
           </div>
@@ -463,12 +470,12 @@ export default function JobFilters({
         {/* Work Type Filter */}
         <div className="mb-4">
         <label className="block text-sm font-semibold text-wev-text-primary mb-2">
-          Work Type
+          {t('filters.workType.label')}
         </label>
         <div className="flex gap-2">
           {(['remote', 'hybrid', 'office'] as const).map((workType) => {
             const isSelected = selectedWorkTypes.includes(workType)
-            const label = workType.charAt(0).toUpperCase() + workType.slice(1)
+            const label = workType === 'remote' ? t('filters.workType.remote') : workType === 'hybrid' ? t('filters.workType.hybrid') : t('filters.workType.office')
             return (
               <button
                 key={workType}
@@ -498,7 +505,7 @@ export default function JobFilters({
         {/* Provinces */}
         <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0">
           <label className="block text-sm font-semibold text-wev-text-primary mb-2">
-            Province ({selectedProvinces.length}/{provinces.length})
+            {t('filters.province.label')} ({selectedProvinces.length}/{provinces.length})
           </label>
           <div className="max-h-32 overflow-y-auto border border-wev-border rounded-wev-btn p-2 bg-wev-bg">
             {provinces.length > 0 ? (
@@ -526,7 +533,7 @@ export default function JobFilters({
               })
             ) : (
               <p className="text-sm text-wev-text-secondary italic px-2 py-2">
-                No province data available. Run the scraper to populate location data.
+                {t('filters.province.noData')}
               </p>
             )}
           </div>
@@ -535,7 +542,7 @@ export default function JobFilters({
         {/* Employment Types */}
         <div className="flex flex-col order-3 md:row-start-1 md:col-start-2 min-h-0">
           <label className="block text-sm font-semibold text-wev-text-primary mb-2">
-            Employment Type ({selectedEmploymentTypes.length}/{employmentTypes.length})
+            {t('filters.employmentType.label')} ({selectedEmploymentTypes.length}/{employmentTypes.length})
           </label>
           <div className="max-h-32 overflow-y-auto border border-wev-border rounded-wev-btn p-2 bg-wev-bg">
             {employmentTypes.length > 0 ? (
@@ -555,7 +562,7 @@ export default function JobFilters({
               ))
             ) : (
               <p className="text-sm text-wev-text-secondary italic px-2 py-2">
-                No employment type data available
+                {t('filters.employmentType.noData')}
               </p>
             )}
           </div>
@@ -564,21 +571,21 @@ export default function JobFilters({
         {/* Municipalities (grouped by province, filtered by selected provinces) */}
         <div className="flex flex-col order-2 md:row-start-2 md:col-start-1">
           <label className="block text-sm font-semibold text-wev-text-primary mb-2">
-            Municipality ({selectedMunicipalities.length}/{allMunicipalities.length})
+            {t('filters.municipality.label')} ({selectedMunicipalities.length}/{allMunicipalities.length})
             {selectedProvinces.length > 0 && allMunicipalities.length > 0 && (
               <span className="text-xs font-normal text-wev-text-secondary ml-2">
-                (showing municipalities from selected provinces)
+                {t('filters.municipality.showingFromSelected')}
               </span>
             )}
           </label>
           <div className="h-48 overflow-y-auto border border-wev-border rounded-wev-btn p-2 bg-wev-bg">
             {allMunicipalities.length === 0 ? (
               <p className="text-sm text-wev-text-secondary italic px-2 py-2">
-                No municipality data available. Run the scraper to populate location data.
+                {t('filters.municipality.noData')}
               </p>
             ) : Object.keys(visibleMunicipalitiesByProvince).length === 0 ? (
               <p className="text-sm text-wev-text-secondary italic px-2 py-2">
-                Select a province to see municipalities
+                {t('filters.municipality.selectProvince')}
               </p>
             ) : (
               Object.entries(visibleMunicipalitiesByProvince).map(([province, municipalities]) => {
@@ -627,7 +634,7 @@ export default function JobFilters({
         {/* Organizations */}
         <div className="flex flex-col order-4 md:row-start-2 md:col-start-2">
           <label className="block text-sm font-semibold text-wev-text-primary mb-2">
-            Organization ({selectedOrganizations.length}/{organizations.length})
+            {t('filters.organization.label')} ({selectedOrganizations.length}/{organizations.length})
           </label>
           <div className="h-48 overflow-y-auto border border-wev-border rounded-wev-btn p-2 bg-wev-bg">
             {organizations.length > 0 ? (
@@ -647,7 +654,7 @@ export default function JobFilters({
               ))
             ) : (
               <p className="text-sm text-wev-text-secondary italic px-2 py-2">
-                No organization data available
+                {t('filters.organization.noData')}
               </p>
             )}
           </div>
@@ -656,7 +663,7 @@ export default function JobFilters({
         {/* Sources */}
         <div className="flex flex-col order-5 md:row-start-3 md:col-start-1">
           <label className="block text-sm font-semibold text-wev-text-primary mb-2">
-            Source ({selectedSources.length}/{sources.length})
+            {t('filters.source.label')} ({selectedSources.length}/{sources.length})
           </label>
           <div className="max-h-32 overflow-y-auto border border-wev-border rounded-wev-btn p-2 bg-wev-bg">
             {sources.length > 0 ? (
@@ -676,7 +683,7 @@ export default function JobFilters({
               ))
             ) : (
               <p className="text-sm text-wev-text-secondary italic px-2 py-2">
-                No source data available
+                {t('filters.source.noData')}
               </p>
             )}
           </div>
