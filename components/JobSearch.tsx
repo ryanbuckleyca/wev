@@ -101,7 +101,6 @@ export default function JobSearch({
                 size="sm"
                 variant="secondary"
                 className="text-xs"
-                title={chip.title}
               >
                 {chip.label}
               </Pill>
