@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { checkPasswordStrength, type PasswordStrength } from '@/lib/password-strength'
 
 /**
@@ -8,15 +8,20 @@ import { checkPasswordStrength, type PasswordStrength } from '@/lib/password-str
  */
 export function usePasswordStrength(password: string): PasswordStrength | null {
   const t = useTranslations('passwordStrength')
+  const locale = useLocale()
 
   return useMemo(() => {
     if (!password) return null
-    return checkPasswordStrength(password, {
-      veryWeak: t('veryWeak'),
-      weak: t('weak'),
-      fair: t('fair'),
-      good: t('good'),
-      strong: t('strong'),
-    })
-  }, [password, t])
+    return checkPasswordStrength(
+      password,
+      (locale as 'en' | 'fr') || 'en',
+      {
+        veryWeak: t('veryWeak'),
+        weak: t('weak'),
+        fair: t('fair'),
+        good: t('good'),
+        strong: t('strong'),
+      }
+    )
+  }, [password, locale, t])
 }

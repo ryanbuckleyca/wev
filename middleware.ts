@@ -6,6 +6,12 @@ import { routing } from './i18n/routing'
 const i18nMiddleware = createMiddleware(routing)
 
 export async function middleware(request: NextRequest) {
+  // Skip i18n for API routes – they live at /api/... without a locale prefix.
+  // Still run Supabase session refresh so auth cookies stay valid.
+  if (request.nextUrl.pathname.startsWith('/api')) {
+    return await updateSession(request)
+  }
+
   // Run i18n middleware first to get any redirect or rewrite/locale headers
   const i18nResponse = i18nMiddleware(request)
 

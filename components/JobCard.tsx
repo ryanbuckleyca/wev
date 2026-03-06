@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { JobPosting } from '@/lib/supabase'
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Solid, Leaf1Outlined, Bookmark1Solid, Bookmark1Outlined, ChevronDownSolid, ChevronUpSolid } from '@lineiconshq/free-icons'
@@ -41,6 +41,7 @@ export default function JobCard({
 
   // Get user state
   const t = useTranslations()
+  const locale = useLocale()
   const { user } = useAuth()
   const router = useRouter()
 
@@ -76,7 +77,7 @@ export default function JobCard({
     } else {
       date = new Date(job.date_posted)
     }
-    const dateStr = date.toLocaleDateString('en-CA', {
+    const dateStr = date.toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric'
     })
@@ -96,7 +97,7 @@ export default function JobCard({
     } else {
       date = new Date(dateString)
     }
-    return date.toLocaleDateString('en-CA', {
+    return date.toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

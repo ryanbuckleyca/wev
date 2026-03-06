@@ -311,7 +311,17 @@
     "fair": "Fair",
     "good": "Good",
     "strong": "Strong",
-    "acceptable": "✓ Acceptable"
+    "acceptable": "✓ Acceptable",
+    "feedback": {
+      "addAnotherWord": "Add another word or two. Uncommon words are better.",
+      "useFewerWords": "Use a few words, avoid common phrases.",
+      "avoidRepeat": "Avoid repeated words and characters.",
+      "avoidSequence": "Avoid sequences of characters.",
+      "longerKeyboardPattern": "Use a longer keyboard pattern with more turns.",
+      "noDates": "Avoid years, dates, and years that are associated with you.",
+      "noNames": "Avoid first and last names and usernames by themselves.",
+      "tooGuessable": "This is easily guessable. Avoid common patterns."
+    }
   },
   "reScrape": {
     "timeout": "Timed out waiting for workflow. Check GitHub Actions.",

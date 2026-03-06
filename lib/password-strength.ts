@@ -1,4 +1,5 @@
-import zxcvbn from 'zxcvbn'
+import { zxcvbn, ZxcvbnOptions } from '@zxcvbn-ts/core'
+import { translations } from '@zxcvbn-ts/language-fr'
 
 export type PasswordStrength = {
   score: 0 | 1 | 2 | 3 | 4
@@ -24,6 +25,7 @@ export function getPasswordStrengthLabels(labels: {
 
 export function checkPasswordStrength(
   password: string,
+  locale: 'en' | 'fr' = 'en',
   labels?: {
     veryWeak: string
     weak: string
@@ -32,12 +34,18 @@ export function checkPasswordStrength(
     strong: string
   }
 ): PasswordStrength {
-  const result = zxcvbn(password)
+  // Set up zxcvbn-ts with the appropriate language
+  const options: ZxcvbnOptions = {}
+  if (locale === 'fr') {
+    options.translations = translations
+  }
+
+  const result = zxcvbn(password, undefined, options)
 
   const strengthLabels = labels
     ? getPasswordStrengthLabels(labels)
     : ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'] // Fallback to English
-  
+
   const strengthColors = [
     'var(--alert-solid)', // Very Weak - red
     'var(--warn-solid)', // Weak - orange
