@@ -76,7 +76,7 @@ export default function JobCard({
     } else {
       date = new Date(job.date_posted)
     }
-    const dateStr = date.toLocaleDateString('en-US', {
+    const dateStr = date.toLocaleDateString('en-CA', {
       month: 'short',
       day: 'numeric'
     })
@@ -96,7 +96,7 @@ export default function JobCard({
     } else {
       date = new Date(dateString)
     }
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('en-CA', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

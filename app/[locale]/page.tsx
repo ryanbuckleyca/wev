@@ -96,7 +96,7 @@ export default function Home() {
           date = new Date(timestamp)
         }
         // Map locale to proper locale code for date formatting
-        const dateLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
+        const dateLocale = locale === 'fr' ? 'fr-CA' : 'en-CA'
         setLastScrapeTime(
           date.toLocaleString(dateLocale, {
             year: 'numeric',
