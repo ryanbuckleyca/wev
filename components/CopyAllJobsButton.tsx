@@ -9,7 +9,7 @@ interface CopyAllJobsButtonProps {
   jobs: JobPosting[]
 }
 
-function formatDate(dateString: string, locale: string): string {
+function formatDate(dateString: string, locale?: string): string {
   // Parse date string - if it doesn't have timezone, treat as UTC
   let date: Date
   if (typeof dateString === 'string' && !dateString.endsWith('Z') && !dateString.match(/[+-]\d{2}:\d{2}$/)) {
@@ -17,7 +17,7 @@ function formatDate(dateString: string, locale: string): string {
   } else {
     date = new Date(dateString)
   }
-  return date.toLocaleDateString(locale, {
+  return date.toLocaleDateString(locale || 'en-CA', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -25,7 +25,7 @@ function formatDate(dateString: string, locale: string): string {
   })
 }
 
-function formatJobsAsText(jobs: JobPosting[], t: ReturnType<typeof useTranslations>, locale: string): string {
+function formatJobsAsText(jobs: JobPosting[], t: ReturnType<typeof useTranslations>, locale?: string): string {
   return jobs
     .map((job) => {
       const lines = [
@@ -49,7 +49,7 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function formatJobsAsHTML(jobs: JobPosting[], t: ReturnType<typeof useTranslations>, locale: string): string {
+function formatJobsAsHTML(jobs: JobPosting[], t: ReturnType<typeof useTranslations>, locale?: string): string {
   return jobs
     .map((job) => {
       const what = job.listing_url
