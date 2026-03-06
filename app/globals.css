@@ -2,11 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom utility classes */
+.flex-center-gap {
+  @apply flex items-center gap-1.5;
+}
+
 /* Design system - Light mode (default) */
 :root {
   --bg: #FEFBF7;
   --surface: #ffffff;
-  --surface-tint: #faf9f7;
+  --surface-tint: #F8F9FB;
   --border: #c8c5bf;
 
   --text-primary: #2a2a2a;
@@ -36,15 +41,30 @@
   --info-solid: #4A7A9E;
   --info-tint: #C3D9EB;
   --info-text: #36607E;
+
+  --gradient-bg: #ffffff;
+  --gradient-lp: #f0e4ec;
+  --gradient-tl: #D6EAEA;
+  --gradient-mb: #C3D9EB;
+
+  /* Watercolor background colors */
+  --watercolor-lavender: #C895B3;
+  --watercolor-blue: #B5C9ED;
+
+  /* Opacity values */
+  --lavender-opacity: 0.228;
+  --blue-opacity: 0.2;
+  --theme-switch-duration: 300ms;
+  --theme-switch-easing: ease-in-out;
 }
 
 /* Design system - Dark mode */
 [data-theme="dark"] {
-  --bg: #1E1E1E;
-  --surface: #2A2A2A;
-  --surface-tint: #242424;
-  --border: #4A4A4A;
-  --border-dark: #1A1A1A;
+  --bg: #242424;
+  --surface: #353535;
+  --surface-tint: #2B2B2B;
+  --border: #616161;
+  --border-dark: #242424;
 
   --text-primary: #E8E6E2;
   --text-secondary: #A8A5A0;
@@ -52,40 +72,75 @@
 
   /* Primary: keep for buttons (white text). Primary-text: lighter teal for text on dark so it passes a11y. */
   --primary: #5B8C8A;
-  --primary-tint: #1E3832;
+  --primary-tint: #254340;
   --primary-text: #7EC5B3;
 
   --accent: #C08DA0;
-  --accent-tint: #3A2A33;
+  --accent-tint: #413540;
 
   --success-solid: #3E8C4F;
-  --success-tint: #1A3320;
+  --success-tint: #1F422B;
   --success-text: #6FD68A;
 
   --alert-solid: #C45A4A;
-  --alert-tint: #3D1F1C;
+  --alert-tint: #472622;
   --alert-text: #E8857A;
 
   --warn-solid: #9A7209;
-  --warn-tint: #3A2E0A;
+  --warn-tint: #3A2F0E;
   --warn-text: #E8B53A;
 
   --info-solid: #4A7A9E;
-  --info-tint: #1C2E3D;
+  --info-tint: #1D2D3C;
   --info-text: #7AB4D9;
+
+  --gradient-bg: #0d0d0d;
+  --gradient-lp: #c96fa0;
+  --gradient-tl: #4eb8b8;
+  --gradient-mb: #5a9ec9;
+  --lavender-opacity: 0.095;
+  --blue-opacity: 0.08;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --theme-switch-duration: 0ms;
+  }
 }
 
 @layer base {
   body {
     background: var(--bg);
     color: var(--text-primary);
-    transition: background-color 0.2s ease, color 0.2s ease;
   }
-  /* Coordinated theme transition so light/dark switch doesn’t feel janky */
-  body.theme-transition,
-  body.theme-transition * {
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Apply one consistent transition window during theme flips. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition-property: background-color, border-color, color, fill, stroke, outline-color, text-decoration-color, box-shadow, filter !important;
+  transition-duration: var(--theme-switch-duration) !important;
+  transition-timing-function: var(--theme-switch-easing) !important;
+  transition-delay: 0ms !important;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
   }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-in-out forwards;
+}
+
+.shadow-top {
+  box-shadow: rgba(0, 0, 0, 0.05) 0px -1px 6px -1px;
 }
 
 /* Logo filter in dark mode for better visibility */
@@ -904,19 +959,39 @@
   color: var(--bg);
 }
 
-/* Tippy.js Tooltip Styles - Nuclear fix for transition resets */
+/* Tippy.js tooltip styles */
+.tippy-box {
+  transition-property: opacity, transform, visibility !important;
+  transition-duration: 300ms !important;
+  transition-timing-function: ease !important;
+}
+
 .tippy-box[data-state='hidden'] {
   opacity: 0 !important;
-  transition: opacity 1000ms ease !important;
+  pointer-events: none !important;
 }
 
 .tippy-box[data-state='visible'] {
   opacity: 1 !important;
-  transition: opacity 10ms ease !important;
 }
 
-.tippy-box {
-  transition-property: opacity, transform !important;
+.tippy-content,
+.tippy-custom-content {
+  transition: opacity 300ms ease !important;
+}
+
+.tippy-box[data-state='hidden'] .tippy-content,
+.tippy-box[data-state='hidden'] .tippy-custom-content {
+  opacity: 0 !important;
+}
+
+.tippy-box[data-state='visible'] .tippy-content,
+.tippy-box[data-state='visible'] .tippy-custom-content {
+  opacity: 1 !important;
+}
+
+.tippy-box > .tippy-arrow {
+  transition: none !important;
 }
 
 .tippy-box[data-theme~='light'] {
@@ -994,21 +1069,4 @@
 
 .tippy-custom-content .text-wev-text-secondary {
   color: var(--text-secondary);
-}
-
-/* Make tippy themes use our design system */
-.tippy-box[data-theme~='light'] {
-  background-color: var(--surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--wev-card);
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.04);
-}
-
-.tippy-box[data-theme~='dark'] {
-  background-color: var(--surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--wev-card);
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.25), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }

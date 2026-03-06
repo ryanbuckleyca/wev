@@ -27,12 +27,7 @@ export default function FormInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`rounded px-3 py-2 text-sm outline-none ${widthClass}`.trim()}
-      style={{
-        background: 'var(--bg)',
-        border: '1px solid var(--border)',
-        color: 'var(--text-primary)',
-      }}
+      className={`rounded px-3 py-2 text-sm outline-none border border-wev-border bg-wev-bg text-wev-text-primary ${widthClass}`.trim()}
     />
   )
 }

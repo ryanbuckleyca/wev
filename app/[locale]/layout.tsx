@@ -6,6 +6,7 @@ import { Lexend_Deca } from 'next/font/google'
 import Header from '@/components/Header'
 import Toaster from '@/components/Toaster'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { routing } from '@/i18n/routing'
 
 const lexend = Lexend_Deca({
   subsets: ['latin'],
@@ -20,8 +21,16 @@ export default async function LocaleLayout({
   children: React.ReactNode
   params: Promise<{ locale: string }>
 }) {
-  const { locale } = await params
-  const messages = await getMessages({locale})
+  const { locale: rawLocale } = await params
+  const validLocales = routing.locales as readonly string[]
+  const locale = validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale
+  const defaultMessages = await getMessages({ locale: routing.defaultLocale })
+  const localeMessages =
+    locale === routing.defaultLocale ? defaultMessages : await getMessages({ locale })
+  const messages = {
+    ...defaultMessages,
+    ...localeMessages,
+  }
   const cookieStore = await cookies()
   const theme = cookieStore.get('theme')?.value === 'dark' ? 'dark' : 'light'
 
@@ -36,7 +45,7 @@ export default async function LocaleLayout({
           }}
         />
       </head>
-      <body className="theme-transition font-sans antialiased" suppressHydrationWarning>
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <NuqsAdapter>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <AuthProvider>

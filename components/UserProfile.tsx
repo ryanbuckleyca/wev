@@ -8,7 +8,15 @@ import Button from '@/components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 
-export default function UserProfile() {
+import ThemeToggle from './ThemeToggle'
+import LocaleSwitcher from './LocaleSwitcher'
+
+interface UserProfileProps {
+  showThemeInMenu?: boolean
+  showLocaleInMenu?: boolean
+}
+
+export default function UserProfile({ showThemeInMenu = false, showLocaleInMenu = false }: UserProfileProps) {
   const t = useTranslations()
   const { user, role, loading } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
@@ -59,7 +67,7 @@ export default function UserProfile() {
         {/* Mobile hamburger menu */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="sm:hidden p-2 rounded-lg hover:bg-wev-primary-tint/20 transition-colors"
+          className="sm:hidden p-2 rounded-lg transition-colors relative z-50"
           aria-label={t('userProfile.openMenu')}
         >
           <svg
@@ -94,30 +102,52 @@ export default function UserProfile() {
 
         {/* Mobile menu dropdown */}
         {isMobileMenuOpen && (
-          <div className="absolute right-0 mt-2 w-56 bg-wev-surface border border-wev-border rounded-wev-card z-50">
+          <>
+            <div 
+              className="fixed inset-0 bg-black/15 z-40 opacity-0 animate-fade-in"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            <div className="absolute right-0 mt-2 w-56 bg-wev-surface border border-wev-border rounded-wev-card z-50 shadow-wev-dropdown transition-all duration-700 ease-in-out">
             <div className="p-4 space-y-3">
-              {/* Divider */}
-              <div className="border-t border-wev-border pt-1">
-                <div className="space-y-2 pt-3">
-                  <Link
-                    href="/login"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block w-full px-4 py-2 text-center text-sm font-semibold text-wev-primary border border-wev-primary rounded-wev-btn hover:bg-wev-primary-tint transition-colors"
-                  >
-                    {t('userProfile.logIn')}
-                  </Link>
-                  <Link
-                    href="/signup"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block w-full px-4 py-2 text-center text-sm font-semibold text-white bg-wev-primary rounded-wev-btn hover:bg-opacity-90 transition-all"
-                  >
-                    {t('userProfile.signUp')}
-                  </Link>
-                </div>
+              <div className="space-y-2">
+                <Link
+                  href="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block w-full px-4 py-2 text-center text-sm font-semibold text-wev-primary border border-wev-primary rounded-wev-btn hover:bg-wev-primary-tint transition-all duration-700 ease-in-out"
+                >
+                  {t('userProfile.logIn')}
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block w-full px-4 py-2 text-center text-sm font-semibold text-white bg-wev-primary rounded-wev-btn hover:bg-opacity-90 transition-all duration-700 ease-in-out"
+                >
+                  {t('userProfile.signUp')}
+                </Link>
               </div>
+              {(showThemeInMenu || showLocaleInMenu) && (
+                <>
+                  <div className="border-t border-wev-border"></div>
+                  <div className="space-y-3">
+                    {showThemeInMenu && (
+                      <div className="flex items-center gap-3 transition-colors duration-700 ease-in-out">
+                        <ThemeToggle />
+                        <span className="text-sm text-wev-text-secondary transition-colors duration-700 ease-in-out">{t('userProfile.theme')}</span>
+                      </div>
+                    )}
+                    {showLocaleInMenu && (
+                      <div className="flex items-center gap-3 transition-colors duration-700 ease-in-out">
+                        <LocaleSwitcher />
+                        <span className="text-sm text-wev-text-secondary transition-colors duration-700 ease-in-out">{t('userProfile.language')}</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        )}
+        </>
+      )}
       </div>
     )
   }
@@ -126,23 +156,28 @@ export default function UserProfile() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 rounded-full bg-wev-primary flex items-center justify-center text-white font-bold text-sm flex-shrink-0 border border-wev-border transition-all"
+        className="w-10 h-10 rounded-full bg-wev-primary flex items-center justify-center text-white font-bold text-sm flex-shrink-0 border border-wev-border relative z-50"
       >
         {user.email ? user.email[0].toUpperCase() : '?'}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-wev-surface border border-wev-border rounded-wev-card z-50">
-          <div className="p-4 border-b border-wev-border">
-            <p className="text-sm text-wev-text-primary font-semibold truncate">{user.email}</p>
-            <p className="text-xs text-wev-text-tertiary mt-1">{t('userProfile.role')} {role}</p>
+        <>
+          <div 
+            className="fixed inset-0 bg-black/15 z-40 opacity-0 animate-fade-in"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute right-0 mt-2 w-48 bg-wev-surface border border-wev-border rounded-wev-card z-50 shadow-wev-dropdown transition-all duration-700 ease-in-out">
+          <div className="p-4 border-b border-wev-border transition-colors duration-700 ease-in-out">
+            <p className="text-sm text-wev-text-primary font-semibold truncate transition-colors duration-700 ease-in-out">{user.email}</p>
+            <p className="text-xs text-wev-text-tertiary mt-1 transition-colors duration-700 ease-in-out">{t('userProfile.role')} {role}</p>
           </div>
 
           <nav className="py-2">
             <Link
               href="/profile"
               onClick={() => setIsOpen(false)}
-              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-colors rounded"
+              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
               prefetch={true}
             >
               {t('userProfile.myProfile')}
@@ -150,7 +185,7 @@ export default function UserProfile() {
             <Link
               href="/bookmarks"
               onClick={() => setIsOpen(false)}
-              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-colors rounded"
+              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
               prefetch={true}
             >
               {t('userProfile.myBookmarks')}
@@ -158,12 +193,29 @@ export default function UserProfile() {
             <Link
               href="/account-settings"
               onClick={() => setIsOpen(false)}
-              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-colors rounded"
+              className="block px-4 py-2 text-sm text-wev-text-primary hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
               prefetch={true}
             >
               {t('userProfile.accountSettings')}
             </Link>
           </nav>
+
+          {(showThemeInMenu || showLocaleInMenu) && (
+            <div className="p-3 border-t border-wev-border space-y-3 transition-colors duration-700 ease-in-out">
+              {showThemeInMenu && (
+                <div className="flex items-center gap-3 transition-colors duration-700 ease-in-out">
+                  <ThemeToggle />
+                  <span className="text-sm text-wev-text-secondary transition-colors duration-700 ease-in-out">{t('userProfile.theme')}</span>
+                </div>
+              )}
+              {showLocaleInMenu && (
+                <div className="flex items-center gap-3 transition-colors duration-700 ease-in-out">
+                  <LocaleSwitcher />
+                  <span className="text-sm text-wev-text-secondary transition-colors duration-700 ease-in-out">{t('userProfile.language')}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="p-2 border-t border-wev-border">
             <Button
@@ -171,17 +223,13 @@ export default function UserProfile() {
               disabled={isLoggingOut}
               loading={isLoggingOut}
               fullWidth
-              className="w-full"
-              style={{
-                background: 'var(--alert-tint)',
-                color: 'var(--alert-text)',
-                border: 'none'
-              }}
+              className="w-full bg-wev-alert-tint text-wev-alert-text border-none"
             >
               {isLoggingOut ? t('userProfile.loggingOut') : t('userProfile.logOut')}
             </Button>
           </div>
         </div>
+        </>
       )}
     </div>
   )
