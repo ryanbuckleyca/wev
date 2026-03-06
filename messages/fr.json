@@ -131,6 +131,7 @@
     "removeSse": "Retirer le statut SSE",
     "markSse": "Marquer comme SSE",
     "sseJob": "Emploi SSE (cliquez pour retirer)",
+    "sseJobLabel": "Emploi SSE",
     "markSseJob": "Marquer comme emploi SSE",
     "removeBookmark": "Retirer le signet",
     "bookmarkJob": "Signer l'emploi",

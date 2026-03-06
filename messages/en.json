@@ -131,6 +131,7 @@
     "removeSse": "Remove SSE Status",
     "markSse": "Mark as SSE",
     "sseJob": "SSE job (click to unmark)",
+    "sseJobLabel": "SSE job",
     "markSseJob": "Mark as SSE job",
     "removeBookmark": "Remove bookmark",
     "bookmarkJob": "Bookmark job",

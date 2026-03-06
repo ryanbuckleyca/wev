@@ -32,30 +32,31 @@ export default function ValuesSelector({
 
     return (
       <div className="space-y-3">
-        {selectedValues.map((value) => (
-          <div
-            key={value}
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4"
-          >
-            <div className="mb-2 flex items-center gap-2">
-              <Pill>{t(`${value}.name`, { defaultValue: value })}</Pill>
+        {selectedValues.map((value) => {
+          const valueName = t(`${value}.name`, { defaultValue: value })
+          const details = getValueDefinition(value, {
+            name: valueName,
+            description: t(`${value}.description`),
+            example: t(`${value}.example`),
+          })
+
+          return (
+            <div
+              key={value}
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4"
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <Pill>{valueName}</Pill>
+              </div>
+              <p className="text-sm text-[var(--text-primary)]">
+                {details.description}
+              </p>
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                {details.example}
+              </p>
             </div>
-            <p className="text-sm text-[var(--text-primary)]">
-              {getValueDefinition(value, {
-                name: t(`${value}.name`, { defaultValue: value }),
-                description: t(`${value}.description`),
-                example: t(`${value}.example`),
-              }).description}
-            </p>
-            <p className="mt-1 text-xs text-[var(--text-secondary)]">
-              {getValueDefinition(value, {
-                name: t(`${value}.name`, { defaultValue: value }),
-                description: t(`${value}.description`),
-                example: t(`${value}.example`),
-              }).example}
-            </p>
-          </div>
-        ))}
+          )
+        })}
       </div>
     )
   }
