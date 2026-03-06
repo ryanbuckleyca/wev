@@ -149,6 +149,7 @@
     "reScrapeQueued": "En file d'attente...",
     "reScrapeRunning": "En cours...",
     "copyAllJobs": "Copier tous les emplois",
+    "copyJobsTitle": "Copier {count, plural, one {# emploi} other {# emplois}} dans le presse-papiers",
     "copied": "Copié !"
   },
   "auth": {

@@ -149,6 +149,7 @@
     "reScrapeQueued": "Queued...",
     "reScrapeRunning": "Running...",
     "copyAllJobs": "Copy All Jobs",
+    "copyJobsTitle": "Copy {count, plural, one {# job} other {# jobs}} to clipboard",
     "copied": "Copied!"
   },
   "auth": {
