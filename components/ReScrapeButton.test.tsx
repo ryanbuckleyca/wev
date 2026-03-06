@@ -107,7 +107,7 @@ describe('ReScrapeButton', () => {
     render(<ReScrapeButton onComplete={() => {}} />)
     await clickButton()
 
-    const btn = screen.getByRole('button', { name: 'Starting...' })
+    const btn = screen.getByRole('button', { name: BUTTON_STARTING })
     expect(btn).toBeVisible()
     expect(btn).toBeDisabled()
   })
@@ -120,7 +120,7 @@ describe('ReScrapeButton', () => {
     await flushPromises()
 
     expect(notify.error).toHaveBeenCalledWith('Bad credentials')
-    const btn = screen.getByRole('button', { name: 'Re-scrape Data' })
+    const btn = screen.getByRole('button', { name: BUTTON_IDLE })
     expect(btn).toBeVisible()
     expect(btn).toBeEnabled()
   })
@@ -134,7 +134,7 @@ describe('ReScrapeButton', () => {
     await clickButton()
     await flushPromises()
 
-    expect(screen.getByRole('button', { name: 'Queued...' })).toBeVisible()
+    expect(screen.getByRole('button', { name: BUTTON_QUEUED })).toBeVisible()
   })
 
   it('transitions Queued → Running → complete and calls onComplete on success', async () => {
@@ -149,18 +149,18 @@ describe('ReScrapeButton', () => {
     await clickButton()
     await flushPromises()
 
-    expect(screen.getByRole('button', { name: 'Queued...' })).toBeVisible()
+    expect(screen.getByRole('button', { name: BUTTON_QUEUED })).toBeVisible()
 
     // Initial 5 s delay before first poll
     await tick(5_000)
-    expect(screen.getByRole('button', { name: 'Running...' })).toBeVisible()
+    expect(screen.getByRole('button', { name: BUTTON_RUNNING })).toBeVisible()
 
     // 15 s to next poll
     await tick(15_000)
 
     expect(onComplete).toHaveBeenCalledOnce()
     expect(notify.success).toHaveBeenCalledWith(expect.stringContaining('Re-scrape complete'))
-    const btn = screen.getByRole('button', { name: 'Re-scrape Data' })
+    const btn = screen.getByRole('button', { name: BUTTON_IDLE })
     expect(btn).toBeVisible()
     expect(btn).toBeEnabled()
   })
@@ -178,7 +178,7 @@ describe('ReScrapeButton', () => {
     await flushPromises()
 
     await tick(5_000)
-    expect(screen.getByRole('button', { name: 'Queued...' })).toBeVisible()
+    expect(screen.getByRole('button', { name: BUTTON_QUEUED })).toBeVisible()
 
     await tick(15_000)
     expect(onComplete).toHaveBeenCalledOnce()
@@ -198,7 +198,7 @@ describe('ReScrapeButton', () => {
 
     expect(onComplete).not.toHaveBeenCalled()
     expect(notify.error).toHaveBeenCalledWith(expect.stringContaining('failure'))
-    const btn = screen.getByRole('button', { name: 'Re-scrape Data' })
+    const btn = screen.getByRole('button', { name: BUTTON_IDLE })
     expect(btn).toBeVisible()
     expect(btn).toBeEnabled()
   })
@@ -216,7 +216,7 @@ describe('ReScrapeButton', () => {
     await tick(5_000)
 
     expect(notify.error).toHaveBeenCalledWith(expect.stringContaining('Unauthorized'))
-    const btn = screen.getByRole('button', { name: 'Re-scrape Data' })
+    const btn = screen.getByRole('button', { name: BUTTON_IDLE })
     expect(btn).toBeVisible()
     expect(btn).toBeEnabled()
 
@@ -332,7 +332,7 @@ describe('ReScrapeButton', () => {
 
     render(<ReScrapeButton onComplete={() => {}} />)
 
-    expect(screen.getByRole('button', { name: 'Running...' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: BUTTON_RUNNING })).toBeDisabled()
   })
 
   it('discards expired localStorage state and renders idle', () => {
@@ -345,7 +345,7 @@ describe('ReScrapeButton', () => {
 
     render(<ReScrapeButton onComplete={() => {}} />)
 
-    const btn = screen.getByRole('button', { name: 'Re-scrape Data' })
+    const btn = screen.getByRole('button', { name: BUTTON_IDLE })
     expect(btn).toBeEnabled()
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
