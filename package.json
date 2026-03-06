@@ -19,14 +19,15 @@
     "@marsidev/react-turnstile": "^1.4.2",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.39.0",
+    "@zxcvbn-ts/core": "^3.0.4",
+    "@zxcvbn-ts/language-fr": "^3.0.2",
     "next": "^16.1.6",
     "next-intl": "^4.8.3",
     "nuqs": "^2.8.9",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-hot-toast": "^2.4.1",
-    "tippy.js": "^6.3.7",
-    "zxcvbn": "^4.4.2"
+    "tippy.js": "^6.3.7"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -35,7 +36,6 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/zxcvbn": "^4.4.5",
     "@vitejs/plugin-react": "^5.1.4",
     "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.0.1",

@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages } from 'next-intl/server'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -21,13 +22,14 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params
   const messages = await getMessages({locale})
+  const cookieStore = await cookies()
+  const theme = cookieStore.get('theme')?.value === 'dark' ? 'dark' : 'light'
 
   return (
-    <html lang={locale} className={lexend.variable} suppressHydrationWarning>
+    <html lang={locale} data-theme={theme} className={lexend.variable} suppressHydrationWarning>
       <head>
-        {/* Blocking script to apply persisted theme before first paint,
-            preventing a flash of the wrong theme on locale switches or
-            hard navigations. */}
+        {/* Blocking script to apply persisted theme before first paint on
+            hard navigations (cookie may not be set on very first visit). */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t)}}catch(e){}})()`,

@@ -30,6 +30,9 @@ export default function ThemeToggle() {
     setTheme(next)
     document.documentElement.setAttribute('data-theme', next)
     localStorage.setItem('theme', next)
+    // Persist to cookie so the server layout can include data-theme on <html>
+    // during soft navigations (e.g. locale switches).
+    document.cookie = `theme=${next};path=/;max-age=31536000;SameSite=Lax`
   }
 
   if (!mounted) return null

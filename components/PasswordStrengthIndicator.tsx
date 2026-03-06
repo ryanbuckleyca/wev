@@ -1,4 +1,4 @@
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import type { PasswordStrength } from '@/lib/password-strength'
 
 interface PasswordStrengthIndicatorProps {
@@ -7,6 +7,7 @@ interface PasswordStrengthIndicatorProps {
 
 export default function PasswordStrengthIndicator({ passwordStrength }: PasswordStrengthIndicatorProps) {
   const t = useTranslations('passwordStrength')
+  const locale = useLocale()
   
   if (!passwordStrength) {
     return null

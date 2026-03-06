@@ -298,7 +298,17 @@
     "fair": "Moyen",
     "good": "Bon",
     "strong": "Fort",
-    "acceptable": "✓ Acceptable"
+    "acceptable": "✓ Acceptable",
+    "feedback": {
+      "addAnotherWord": "Ajoutez un ou deux mots supplémentaires. Les mots rares sont préférables.",
+      "useFewerWords": "Utilisez quelques mots, évitez les phrases courantes.",
+      "avoidRepeat": "Évitez les mots et caractères répétés.",
+      "avoidSequence": "Évitez les séquences de caractères.",
+      "longerKeyboardPattern": "Utilisez un motif clavier plus long avec plus de changements de direction.",
+      "noDates": "Évitez les années, les dates et les années associées à vous.",
+      "noNames": "Évitez les prénoms, noms et noms d'utilisateurs seuls.",
+      "tooGuessable": "C'est facile à deviner. Évitez les motifs courants."
+    }
   },
   "reScrape": {
     "timeout": "Délai d'attente dépassé pour le workflow. Vérifiez GitHub Actions.",
