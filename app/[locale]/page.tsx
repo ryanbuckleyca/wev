@@ -339,8 +339,8 @@ export default function Home() {
         opacity: 1.0,
         filter: 'blur(90px)'
       }}>
-        <circle cx="250" cy="-50" r="580" fill="#A68BA5" style={{ opacity: 'var(--lavender-opacity, 0.24)' }}/>
-        <circle cx="930" cy="190" r="510" fill="#9BB5E8" style={{ opacity: 'var(--blue-opacity, 0.2)' }}/>
+        <circle cx="100" cy="-50" r="580" fill="#B8A0B0" style={{ opacity: 'var(--lavender-opacity, 0.24)' }}/>
+        <circle cx="930" cy="190" r="510" fill="#B5C9ED" style={{ opacity: 'var(--blue-opacity, 0.2)' }}/>
       </svg>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
         {/* Home page hero section */}
