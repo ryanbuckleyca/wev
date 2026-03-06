@@ -46,6 +46,14 @@
   --gradient-lp: #f0e4ec;
   --gradient-tl: #D6EAEA;
   --gradient-mb: #C3D9EB;
+
+  /* Watercolor background colors */
+  --watercolor-lavender: #C895B3;
+  --watercolor-blue: #B5C9ED;
+
+  /* Opacity values */
+  --lavender-opacity: 0.24;
+  --blue-opacity: 0.2;
 }
 
 /* Design system - Dark mode */
