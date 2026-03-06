@@ -91,20 +91,54 @@ export default function JobFilters({
   const filteredJobsCountResolved = filteredJobsCount ?? jobs.length
   const totalJobsCountResolved = totalJobsCount ?? jobs.length
 
+  const getTranslationOrFallback = (key: string, fallback: string) => {
+    const translation = t(key)
+    return translation === key ? fallback : translation
+  }
+
+  const truncateMiddle = (value: string, maxLength: number) => {
+    if (value.length <= maxLength) return value
+    const half = Math.floor((maxLength - 1) / 2)
+    return `${value.slice(0, half)}…${value.slice(value.length - half)}`
+  }
+
   const activeFilterChips = useMemo(() => {
     const chips: ActiveFilterChip[] = []
 
     if (postedWithin !== 'any') {
+      const fullLabel =
+        postedWithin === '1-week'
+          ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.1Week')}`
+          : postedWithin === '2-weeks'
+            ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.2Weeks')}`
+            : postedWithin === '3-weeks'
+              ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.3Weeks')}`
+              : `${t('filters.chips.posted')} ${t('filters.postedWithin.options.1Month')}`
+
+      const valueKey =
+        postedWithin === '1-week'
+          ? '1Week'
+          : postedWithin === '2-weeks'
+            ? '2Weeks'
+            : postedWithin === '3-weeks'
+              ? '3Weeks'
+              : '1Month'
+
+      const fallbackShortLabel =
+        postedWithin === '1-week'
+          ? '1 wk'
+          : postedWithin === '2-weeks'
+            ? '2 wks'
+            : postedWithin === '3-weeks'
+              ? '3 wks'
+              : '1 mo'
+
+      const shortLabel = getTranslationOrFallback(`filters.postedWithin.short.${valueKey}`, fallbackShortLabel)
+
       chips.push({
         id: 'posted-within',
-        label:
-          postedWithin === '1-week'
-            ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.1Week')}`
-            : postedWithin === '2-weeks'
-              ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.2Weeks')}`
-              : postedWithin === '3-weeks'
-                ? `${t('filters.chips.posted')} ${t('filters.postedWithin.options.3Weeks')}`
-                : `${t('filters.chips.posted')} ${t('filters.postedWithin.options.1Month')}`,
+        label: shortLabel,
+        title: fullLabel,
         onRemove: () => onPostedWithinChange('any'),
       })
     }
@@ -112,7 +146,8 @@ export default function JobFilters({
     if (showOnlySse) {
       chips.push({
         id: 'sse',
-        label: t('filters.chips.sseOnly'),
+        label: getTranslationOrFallback('filters.chips.sseShort', 'SSE'),
+        title: t('filters.chips.sseOnly'),
         onRemove: () => onShowOnlySseChange(false),
       })
     }
@@ -126,10 +161,11 @@ export default function JobFilters({
     }
 
     if (searchQuery) {
-      const label = searchQuery.length > 24 ? `${searchQuery.slice(0, 24)}…` : searchQuery
+      const truncated = searchQuery.length > 24 ? `${searchQuery.slice(0, 24)}…` : searchQuery
       chips.push({
         id: 'search',
-        label: `${t('filters.chips.search')} "${label}"`,
+        label: `"${truncated}"`,
+        title: `${t('filters.chips.search')} "${truncated}"`,
         onRemove: () => onSearchChange(''),
       })
     }
@@ -137,13 +173,15 @@ export default function JobFilters({
     if (selectedWorkTypes.length > 0) {
       const workLabel =
         selectedWorkTypes.length <= 2
-          ? `${t('filters.chips.work')} ${selectedWorkTypes.map((wt) => {
-              if (wt === 'remote') return t('filters.workType.remote')
-              if (wt === 'hybrid') return t('filters.workType.hybrid')
-              if (wt === 'office') return t('filters.workType.office')
-              return wt.charAt(0).toUpperCase() + wt.slice(1)
-            }).join(', ')}`
-          : `${t('filters.chips.work')} ${selectedWorkTypes.length} ${t('filters.chips.selected')}`
+          ? selectedWorkTypes
+              .map((wt) => {
+                if (wt === 'remote') return t('filters.workType.remote')
+                if (wt === 'hybrid') return t('filters.workType.hybrid')
+                if (wt === 'office') return t('filters.workType.office')
+                return wt.charAt(0).toUpperCase() + wt.slice(1)
+              })
+              .join(', ')
+          : `${selectedWorkTypes.length} ${t('filters.chips.selected')}`
       chips.push({
         id: 'work-types',
         label: workLabel,
@@ -151,44 +189,43 @@ export default function JobFilters({
       })
     }
 
-    if (selectedProvinces.length > 0) {
-      chips.push({
-        id: 'provinces',
-        label: selectedProvinces.length === 1 ? `1 ${t('filters.chips.province')}` : `${selectedProvinces.length} ${t('filters.chips.provinces')}`,
-        onRemove: () => onProvincesChange([]),
+    const MAX_TAG_LENGTH = 20
+    const pushSelectionChips = (keyPrefix: string, items: string[], labelFn: (item: string) => string, onRemoveFn: (item: string) => void) => {
+      items.forEach((item) => {
+        const fullLabel = labelFn(item)
+        chips.push({
+          id: `${keyPrefix}-${item}`,
+          label: truncateMiddle(fullLabel, MAX_TAG_LENGTH),
+          title: fullLabel,
+          onRemove: () => onRemoveFn(item),
+        })
       })
+    }
+
+    if (selectedProvinces.length > 0) {
+      pushSelectionChips('province', selectedProvinces, (province) => province, (province) => onProvincesChange(selectedProvinces.filter((p) => p !== province)))
     }
 
     if (selectedMunicipalities.length > 0) {
-      chips.push({
-        id: 'municipalities',
-        label: selectedMunicipalities.length === 1 ? `1 ${t('filters.chips.municipality')}` : `${selectedMunicipalities.length} ${t('filters.chips.municipalities')}`,
-        onRemove: () => onMunicipalitiesChange([]),
-      })
+      pushSelectionChips('municipality', selectedMunicipalities, (municipality) => municipality, (municipality) => onMunicipalitiesChange(selectedMunicipalities.filter((m) => m !== municipality)))
     }
 
     if (selectedOrganizations.length > 0) {
-      chips.push({
-        id: 'organizations',
-        label: selectedOrganizations.length === 1 ? `1 ${t('filters.chips.organization')}` : `${selectedOrganizations.length} ${t('filters.chips.organizations')}`,
-        onRemove: () => onOrganizationsChange([]),
-      })
+      pushSelectionChips('organization', selectedOrganizations, (organization) => organization, (organization) => onOrganizationsChange(selectedOrganizations.filter((o) => o !== organization)))
     }
 
     if (selectedEmploymentTypes.length > 0) {
-      chips.push({
-        id: 'employment-types',
-        label: selectedEmploymentTypes.length === 1 ? `1 ${t('filters.chips.employmentType')}` : `${selectedEmploymentTypes.length} ${t('filters.chips.employmentTypes')}`,
-        onRemove: () => onEmploymentTypesChange([]),
-      })
+      const translateWorkType = (type: string) => {
+        if (type === 'remote') return t('filters.workType.remote')
+        if (type === 'hybrid') return t('filters.workType.hybrid')
+        if (type === 'office') return t('filters.workType.office')
+        return type
+      }
+      pushSelectionChips('employment-type', selectedEmploymentTypes, translateWorkType, (type) => onEmploymentTypesChange(selectedEmploymentTypes.filter((t) => t !== type)))
     }
 
     if (selectedSources.length > 0) {
-      chips.push({
-        id: 'sources',
-        label: selectedSources.length === 1 ? `1 ${t('filters.chips.source')}` : `${selectedSources.length} ${t('filters.chips.sources')}`,
-        onRemove: () => onSourcesChange([]),
-      })
+      pushSelectionChips('source', selectedSources, (source) => source, (source) => onSourcesChange(selectedSources.filter((s) => s !== source)))
     }
 
     return chips

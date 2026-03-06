@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/navigation'
 import { useSearchParams } from 'next/navigation'
+import RoundToggle from './RoundToggle'
 
 export default function LocaleSwitcher() {
   const locale = useLocale()
@@ -27,31 +28,28 @@ export default function LocaleSwitcher() {
   }
 
   return (
-    <div className="flex items-stretch gap-0 border border-wev-border rounded-full overflow-hidden self-stretch min-h-[28px]">
+    <RoundToggle>
       <button
-        onClick={() => switchLocale('en')}
-        className={`px-3 py-1 text-sm transition-colors h-full ${
-          locale === 'en'
-            ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
-            : 'bg-wev-surface-tint font-normal text-wev-text-tertiary'
-        }`}
-        aria-label={t('ariaLabels.localeSwitcher.switchToEnglish')}
-        aria-pressed={locale === 'en'}
-      >
-        EN
-      </button>
-      <button
-        onClick={() => switchLocale('fr')}
-        className={`px-3 py-1 text-sm transition-colors h-full ${
-          locale === 'fr'
-            ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
-            : 'bg-wev-surface-tint font-normal text-wev-text-tertiary'
-        }`}
+        onClick={() => switchLocale(locale === 'en' ? 'fr' : 'en')}
+        className="flex items-stretch gap-0 rounded-full overflow-hidden self-stretch h-full bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary"
         aria-label={t('ariaLabels.localeSwitcher.switchToFrench')}
         aria-pressed={locale === 'fr'}
       >
-        FR
+        <span className={`px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center ${
+          locale === 'en'
+            ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
+            : 'bg-wev-surface-tint font-normal text-wev-text-tertiary'
+        }`}>
+          EN
+        </span>
+        <span className={`px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center ${
+          locale === 'fr'
+            ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
+            : 'bg-wev-surface-tint font-normal text-wev-text-tertiary'
+        }`}>
+          FR
+        </span>
       </button>
-    </div>
+    </RoundToggle>
   )
 }
