@@ -1,4 +1,280 @@
 {
+  "home": {
+    "heading": "Bulletin – Job Postings",
+    "lastUpdated": "Last updated:",
+    "unknown": "Unknown",
+    "errors": {
+      "timeout": "Request timed out. Please refresh the page.",
+      "loadFailed": "Failed to load data"
+    }
+  },
+  "search": {
+    "placeholder": "Search by job title, organization, location...",
+    "label": "Search jobs",
+    "button": "Search Jobs"
+  },
+  "filters": {
+    "label": "Filters",
+    "hideFilters": "Hide filters",
+    "showFilters": "Filters",
+    "showAllJobs": "Show all jobs",
+    "useSuggestedFilters": "Use suggested filters",
+    "sse": {
+      "label": "Show only SSE jobs",
+      "description": "SSE = Solidarity Economy. We tag SSE jobs based on published principles.",
+      "learnMore": "Learn more"
+    },
+    "salary": {
+      "label": "Show jobs without salary",
+      "description": "Uncheck to hide jobs that don't list pay"
+    },
+    "postedWithin": {
+      "label": "Posted within",
+      "options": {
+        "1Week": "1 week",
+        "2Weeks": "2 weeks",
+        "3Weeks": "3 weeks",
+        "1Month": "1 month",
+        "any": "Any"
+      }
+    },
+    "workType": {
+      "label": "Work Type",
+      "remote": "Remote",
+      "hybrid": "Hybrid",
+      "office": "Office"
+    },
+    "province": {
+      "label": "Province",
+      "noData": "No province data available. Run the scraper to populate location data."
+    },
+    "municipality": {
+      "label": "Municipality",
+      "showingFromSelected": "(showing municipalities from selected provinces)",
+      "noData": "No municipality data available. Run the scraper to populate location data.",
+      "selectProvince": "Select a province to see municipalities"
+    },
+    "employmentType": {
+      "label": "Employment Type",
+      "noData": "No employment type data available"
+    },
+    "organization": {
+      "label": "Organization",
+      "noData": "No organization data available"
+    },
+    "source": {
+      "label": "Source",
+      "noData": "No source data available"
+    },
+    "chips": {
+      "posted": "Posted:",
+      "sseOnly": "SSE: only",
+      "salaryListedOnly": "Salary: listed only",
+      "search": "Search:",
+      "work": "Work:",
+      "selected": "selected",
+      "province": "province",
+      "provinces": "provinces",
+      "municipality": "municipality",
+      "municipalities": "municipalities",
+      "organization": "organization",
+      "organizations": "organizations",
+      "employmentType": "employment type",
+      "employmentTypes": "employment types",
+      "source": "source",
+      "sources": "sources"
+    }
+  },
+  "sort": {
+    "label": "Sort:",
+    "newestFirst": "Newest first",
+    "oldestFirst": "Oldest first",
+    "bestMatch": "Best match",
+    "salaryHighToLow": "Salary: high to low",
+    "salaryLowToHigh": "Salary: low to high",
+    "orgAZ": "Organization A–Z"
+  },
+  "expand": {
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all"
+  },
+  "pagination": {
+    "showing": "Showing",
+    "of": "of",
+    "job": "job",
+    "jobs": "jobs",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "jobListings": {
+    "loading": "Loading jobs...",
+    "error": "Error loading job postings",
+    "noJobs": "No job postings found."
+  },
+  "bookmarks": {
+    "title": "My Bookmarks",
+    "error": "Error",
+    "noBookmarks": "No bookmarked jobs yet.",
+    "loadFailed": "Failed to fetch bookmarked jobs"
+  },
+  "jobCard": {
+    "remote": "Remote",
+    "nA": "N/A",
+    "posted": "Posted",
+    "who": "Who:",
+    "what": "What:",
+    "where": "Where:",
+    "why": "Why:",
+    "when": "When:",
+    "howMuch": "How much:",
+    "match": "% match:",
+    "removeSse": "Remove SSE Status",
+    "markSse": "Mark as SSE",
+    "sseJob": "SSE job (click to unmark)",
+    "markSseJob": "Mark as SSE job",
+    "removeBookmark": "Remove bookmark",
+    "bookmarkJob": "Bookmark job",
+    "bookmarked": "Bookmarked (click to remove)",
+    "bookmarkJobLabel": "Bookmark job",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "collapseDetails": "Collapse job details",
+    "expandDetails": "Expand job details",
+    "removeSseConfirm": "Remove the SSE tag from \"{title}\" at {org}?",
+    "markSseConfirm": "Mark \"{title}\" at {org} as a Solidarity Economy job?"
+  },
+  "buttons": {
+    "reScrape": "Re-scrape Data",
+    "reScrapeStarting": "Starting...",
+    "reScrapeQueued": "Queued...",
+    "reScrapeRunning": "Running...",
+    "copyAllJobs": "Copy All Jobs",
+    "copied": "Copied!"
+  },
+  "auth": {
+    "login": {
+      "title": "Log in",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Log in",
+      "submitting": "Logging in...",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "captchaError": "CAPTCHA verification failed. Please try again.",
+      "captchaRequired": "Please complete the CAPTCHA verification."
+    },
+    "signup": {
+      "title": "Sign up",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Create account",
+      "submitting": "Creating account...",
+      "hasAccount": "Already have an account?",
+      "logIn": "Log in",
+      "emailSent": "Check your email for a confirmation link.",
+      "passwordWeak": "Password is too weak. Please choose a stronger password.",
+      "captchaError": "CAPTCHA verification failed. Please try again.",
+      "captchaRequired": "Please complete the CAPTCHA verification."
+    },
+    "forgotPassword": {
+      "title": "Forgot password?",
+      "description": "Enter your email, we'll send you a reset link.",
+      "email": "Email",
+      "submit": "Send reset link",
+      "submitting": "Sending...",
+      "emailSent": "Check your email for a password reset link.",
+      "rememberPassword": "Remember your password?",
+      "logIn": "Log in",
+      "captchaError": "CAPTCHA verification failed. Please try again.",
+      "captchaRequired": "Please complete the CAPTCHA verification."
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "description": "Enter your new password below.",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Update password",
+      "submitting": "Updating...",
+      "verifying": "Verifying session...",
+      "invalidLink": "Invalid or expired reset link. Please request a new one.",
+      "requestNewLink": "Request a new reset link",
+      "passwordWeak": "Password is too weak. Please choose a stronger password.",
+      "passwordsDontMatch": "Passwords do not match.",
+      "success": "Password updated successfully. Redirecting to login..."
+    },
+    "error": {
+      "title": "Authentication error",
+      "message": "Something went wrong during sign-in. Please try again.",
+      "backToLogin": "Back to login"
+    }
+  },
+  "profile": {
+    "title": "My Profile",
+    "noProfileFound": "No Profile Found",
+    "noProfileDescription": "Your profile wasn't created. This may happen if you signed up before the profile system was set up.",
+    "backToJobs": "Back to Jobs",
+    "profilePhoto": "Profile Photo",
+    "uploadPhoto": "Upload Photo",
+    "fullName": "Full Name",
+    "fullNamePlaceholder": "Enter your full name",
+    "bio": "Bio",
+    "bioPlaceholder": "Tell us about yourself...",
+    "workValues": "Work Values",
+    "saveProfile": "Save Profile",
+    "saving": "Saving...",
+    "updateSuccess": "Profile updated successfully!",
+    "updateFailed": "Failed to update profile",
+    "photoUploadSuccess": "Photo uploaded successfully!",
+    "photoUploadFailed": "Failed to upload photo",
+    "accountSettingsInfo": "To update your email address or change your password, visit Account Settings.",
+    "goToAccountSettings": "Go to Account Settings"
+  },
+  "accountSettings": {
+    "title": "Account Settings",
+    "emailAddress": "Email Address",
+    "newEmail": "New Email",
+    "newEmailPlaceholder": "Enter new email",
+    "currentEmail": "Current email:",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "currentPasswordPlaceholder": "Enter current password",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "Enter new password",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm new password",
+    "backToProfile": "Back to Profile",
+    "saveChanges": "Save Changes",
+    "saving": "Saving...",
+    "noChanges": "No changes to save",
+    "makeChanges": "Make changes above to enable saving",
+    "currentPasswordRequired": "Current password is required",
+    "newPasswordRequired": "New password is required",
+    "confirmPasswordRequired": "Password confirmation is required",
+    "passwordsDontMatch": "Passwords do not match",
+    "passwordWeak": "New password is too weak. Please choose a stronger password.",
+    "emailRequired": "Email is required",
+    "invalidEmailFormat": "Invalid email format",
+    "emailMustBeDifferent": "New email must be different from current email",
+    "emailUpdateSuccess": "Confirmation email sent to your new address. Please verify it to complete the change.",
+    "passwordUpdateSuccess": "Password updated successfully!",
+    "emailUpdateFailed": "Failed to update email",
+    "passwordUpdateFailed": "Failed to update password",
+    "updateFailed": "Failed to update account"
+  },
+  "userProfile": {
+    "logIn": "Log In",
+    "signUp": "Sign Up",
+    "myProfile": "My Profile",
+    "myBookmarks": "My Bookmarks",
+    "accountSettings": "Account Settings",
+    "logOut": "Log Out",
+    "loggingOut": "Logging out...",
+    "logoutSuccess": "Logged out successfully",
+    "logoutFailed": "Logout failed",
+    "openMenu": "Open menu",
+    "role": "Role:"
+  },
   "navigation": {
     "home": "Home",
     "jobs": "Jobs",
@@ -6,21 +282,249 @@
     "about": "About",
     "contact": "Contact"
   },
-  "hero": {
-    "heading": "Find Your Dream Job Today"
-  },
-  "search": {
-    "button": "Search Jobs"
-  },
-  "filters": {
-    "label": "Filters"
-  },
-  "results": {
-    "noResults": "No jobs found matching your criteria. Try adjusting your filters or search terms."
-  },
   "footer": {
     "copyright": "© 2026 Job Board. All rights reserved.",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service"
+  },
+  "common": {
+    "loading": "Loading..."
+  },
+  "ariaLabels": {
+    "themeToggle": {
+      "switchToLight": "Switch to light mode",
+      "switchToDark": "Switch to dark mode"
+    },
+    "localeSwitcher": {
+      "switchToEnglish": "Switch to English",
+      "switchToFrench": "Switch to French"
+    },
+    "pill": {
+      "remove": "Remove {label}"
+    }
+  },
+  "passwordStrength": {
+    "strength": "Strength:",
+    "veryWeak": "Very Weak",
+    "weak": "Weak",
+    "fair": "Fair",
+    "good": "Good",
+    "strong": "Strong",
+    "acceptable": "✓ Acceptable"
+  },
+  "reScrape": {
+    "timeout": "Timed out waiting for workflow. Check GitHub Actions.",
+    "checkFailed": "Failed to check workflow status: {error}",
+    "complete": "Re-scrape complete. Refreshing data...",
+    "workflowFailed": "Workflow finished with status: {status}",
+    "triggered": "Workflow triggered. Waiting for it to complete...",
+    "queued": "Queued...",
+    "error": "An error occurred"
+  },
+  "values": {
+    "Advancement": {
+      "name": "Advancement",
+      "description": "Progressing to higher levels of responsibility, authority, or scope.",
+      "example": "Example: opportunities to move from specialist to manager over time."
+    },
+    "Aesthetic": {
+      "name": "Aesthetic",
+      "description": "Working in environments where beauty, design, and form matter.",
+      "example": "Example: creating polished visual work and improving how things look and feel."
+    },
+    "Affiliation": {
+      "name": "Affiliation",
+      "description": "Feeling accepted and connected to a supportive work group.",
+      "example": "Example: being part of a close, collaborative team culture."
+    },
+    "Artistic Creativity": {
+      "name": "Artistic Creativity",
+      "description": "Producing original artistic work with room for imagination and style.",
+      "example": "Example: creating unique illustrations, writing, music, or multimedia work."
+    },
+    "Challenge": {
+      "name": "Challenge",
+      "description": "Taking on difficult goals that stretch skills and problem-solving ability.",
+      "example": "Example: solving complex problems with no obvious solution path."
+    },
+    "Change and Variety": {
+      "name": "Change and Variety",
+      "description": "Having different tasks, contexts, or priorities instead of repetition.",
+      "example": "Example: shifting between projects and learning new tools often."
+    },
+    "Community": {
+      "name": "Community",
+      "description": "Feeling rooted in and connected to a broader local or professional community.",
+      "example": "Example: work that builds stronger neighborhoods or community programs."
+    },
+    "Competition": {
+      "name": "Competition",
+      "description": "Measuring performance against peers and aiming to win or outperform.",
+      "example": "Example: sales targets, rankings, or performance leaderboards."
+    },
+    "Competence": {
+      "name": "Competence",
+      "description": "Using skills effectively and being trusted for high-quality execution.",
+      "example": "Example: being known as reliable and technically strong in core tasks."
+    },
+    "Creative Expression": {
+      "name": "Creative Expression",
+      "description": "Expressing personal ideas, voice, and perspective through work output.",
+      "example": "Example: shaping content, messaging, or design in your own style."
+    },
+    "Creativity": {
+      "name": "Creativity",
+      "description": "Generating novel and useful ideas, methods, or solutions.",
+      "example": "Example: inventing new approaches that improve outcomes."
+    },
+    "Decision Making": {
+      "name": "Decision Making",
+      "description": "Having authority to make meaningful choices that affect outcomes.",
+      "example": "Example: owning project direction, priorities, or resource tradeoffs."
+    },
+    "Excitement": {
+      "name": "Excitement",
+      "description": "Experiencing energy, stimulation, and novelty in day-to-day work.",
+      "example": "Example: high-engagement work with visible momentum and action."
+    },
+    "Experience": {
+      "name": "Experience",
+      "description": "Building broad real-world exposure to roles, systems, and situations.",
+      "example": "Example: rotating across functions to gain practical perspective."
+    },
+    "Fast Pace": {
+      "name": "Fast Pace",
+      "description": "Working quickly with short cycles, tight timelines, and rapid feedback.",
+      "example": "Example: handling frequent deliverables in a high-tempo environment."
+    },
+    "Financial Gain": {
+      "name": "Financial Gain",
+      "description": "Increasing income through performance, growth, or financial upside.",
+      "example": "Example: bonus structures, commissions, equity, or profit sharing."
+    },
+    "Friendship": {
+      "name": "Friendship",
+      "description": "Forming warm, personal relationships with coworkers at work.",
+      "example": "Example: enjoying genuine day-to-day friendships on the team."
+    },
+    "Help Others": {
+      "name": "Help Others",
+      "description": "Providing direct support that improves another person's well-being or success.",
+      "example": "Example: coaching, mentoring, advising, or solving client problems."
+    },
+    "Help Society": {
+      "name": "Help Society",
+      "description": "Contributing to social good and positive impact at a broader level.",
+      "example": "Example: work that advances health, equity, education, or sustainability."
+    },
+    "High Earnings": {
+      "name": "High Earnings",
+      "description": "Prioritizing a top-tier salary compared with alternatives.",
+      "example": "Example: choosing roles known for strong compensation ceilings."
+    },
+    "Influence People": {
+      "name": "Influence People",
+      "description": "Persuading others and shaping decisions, priorities, or behavior.",
+      "example": "Example: guiding stakeholders to align on a proposed direction."
+    },
+    "Intellectual Status": {
+      "name": "Intellectual Status",
+      "description": "Being respected for expertise, insight, and intellectual contribution.",
+      "example": "Example: recognition as a thought partner in complex domains."
+    },
+    "Job Tranquility": {
+      "name": "Job Tranquility",
+      "description": "Maintaining low stress, emotional calm, and predictable work pressure.",
+      "example": "Example: steady workloads with limited urgency and crisis response."
+    },
+    "Knowledge": {
+      "name": "Knowledge",
+      "description": "Continually learning, understanding, and mastering new information.",
+      "example": "Example: roles that reward study, analysis, and deep domain learning."
+    },
+    "Location": {
+      "name": "Location",
+      "description": "Working in a preferred geographic setting or physical environment.",
+      "example": "Example: staying in a specific city, region, or remote setup."
+    },
+    "Moral Fulfillment": {
+      "name": "Moral Fulfillment",
+      "description": "Doing work that aligns with personal ethics and sense of right action.",
+      "example": "Example: choosing projects that match your values and integrity standards."
+    },
+    "Physical Challenge": {
+      "name": "Physical Challenge",
+      "description": "Engaging the body through strength, movement, stamina, or coordination.",
+      "example": "Example: active work with meaningful physical demands."
+    },
+    "Precision Work": {
+      "name": "Precision Work",
+      "description": "Producing accurate, detail-oriented output with minimal errors.",
+      "example": "Example: tasks where quality depends on careful, exact execution."
+    },
+    "Public Contact": {
+      "name": "Public Contact",
+      "description": "Interacting frequently with clients, customers, or the general public.",
+      "example": "Example: front-facing roles with regular external communication."
+    },
+    "Recognition": {
+      "name": "Recognition",
+      "description": "Receiving visible appreciation, credit, and acknowledgment for work.",
+      "example": "Example: public praise, awards, or clear attribution for contributions."
+    },
+    "Research and Development": {
+      "name": "Research and Development",
+      "description": "Investigating ideas, testing hypotheses, and creating new capabilities.",
+      "example": "Example: experimentation and prototyping to develop future solutions."
+    },
+    "Security": {
+      "name": "Security",
+      "description": "Having confidence in continued employment and dependable income.",
+      "example": "Example: stable organizations with low perceived layoff risk."
+    },
+    "Stability": {
+      "name": "Stability",
+      "description": "Working within consistent routines, structures, and expectations.",
+      "example": "Example: predictable schedules and clearly defined processes."
+    },
+    "Status": {
+      "name": "Status",
+      "description": "Holding a respected position with visible prestige or standing.",
+      "example": "Example: title, role visibility, and perceived importance in an organization."
+    },
+    "Supervision": {
+      "name": "Supervision",
+      "description": "Leading, directing, and developing the work of other people.",
+      "example": "Example: managing a team and being accountable for team outcomes."
+    },
+    "Time Freedom": {
+      "name": "Time Freedom",
+      "description": "Controlling when work is done, including schedule flexibility.",
+      "example": "Example: setting your own hours or adjusting work around life demands."
+    },
+    "Work Alone": {
+      "name": "Work Alone",
+      "description": "Having focused, independent work with minimal collaboration demands.",
+      "example": "Example: long stretches of autonomous work and individual ownership."
+    },
+    "Work Under Pressure": {
+      "name": "Work Under Pressure",
+      "description": "Performing effectively in urgent, high-stakes, or deadline-driven situations.",
+      "example": "Example: staying effective during peak load and time-critical decisions."
+    },
+    "Work with Others": {
+      "name": "Work with Others",
+      "description": "Collaborating closely and regularly with teammates or partners.",
+      "example": "Example: planning and executing work through shared responsibility."
+    },
+    "default": {
+      "description": "A work-related outcome or condition someone may prioritize in a job.",
+      "example": "Example: choosing roles that better match personal motivation and needs."
+    },
+    "selector": {
+      "instruction": "Select the values that matter most to you.",
+      "selected": "selected",
+      "selectedLabel": "Selected"
+    }
   }
 }

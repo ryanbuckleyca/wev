@@ -1,8 +1,8 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState, useMemo } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
+import { useQueryState, parseAsString, parseAsArrayOf, parseAsBoolean, parseAsInteger, parseAsStringLiteral } from 'nuqs'
 import type { JobPosting } from '@/lib/supabase'
 import { createClient } from '@/lib/supabase/client'
 import ReScrapeButton from '@/components/ReScrapeButton'
@@ -15,35 +15,40 @@ import ButtonLink from '@/components/ButtonLink'
 import SortDropdown from '@/components/SortDropdown'
 import ExpandAllToggle from '@/components/ExpandAllToggle'
 
-// Force dynamic rendering - this page uses client-side data fetching
-export const revalidate = 0 // Disable static generation, always render dynamically
-
 const ITEMS_PER_PAGE = 20
 
 export default function Home() {
+  const t = useTranslations()
+  const locale = useLocale()
   const { role, user } = useAuth()
   const [allJobs, setAllJobs] = useState<JobPosting[]>([])
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Filter state
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedOrganizations, setSelectedOrganizations] = useState<string[]>([])
-  const [selectedProvinces, setSelectedProvinces] = useState<string[]>([])
-  const [selectedMunicipalities, setSelectedMunicipalities] = useState<string[]>([])
-  const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useState<string[]>([])
-  const [selectedSources, setSelectedSources] = useState<string[]>([])
-  const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([])
-  const [showOnlySse, setShowOnlySse] = useState(true)
-  const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useState(true)
-  const [postedWithin, setPostedWithin] = useState<'1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any'>('2-weeks')
+  // Filter state - synced with URL via nuqs
+  const [searchQuery, setSearchQuery] = useQueryState('q', parseAsString.withDefault(''))
+  const [selectedOrganizations, setSelectedOrganizations] = useQueryState('org', parseAsArrayOf(parseAsString).withDefault([]))
+  const [selectedProvinces, setSelectedProvinces] = useQueryState('province', parseAsArrayOf(parseAsString).withDefault([]))
+  const [selectedMunicipalities, setSelectedMunicipalities] = useQueryState('municipality', parseAsArrayOf(parseAsString).withDefault([]))
+  const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useQueryState('employment', parseAsArrayOf(parseAsString).withDefault([]))
+  const [selectedSources, setSelectedSources] = useQueryState('source', parseAsArrayOf(parseAsString).withDefault([]))
+  const [selectedWorkTypes, setSelectedWorkTypes] = useQueryState('workType', parseAsArrayOf(parseAsString).withDefault([]))
+  const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true))
+  const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState('salary', parseAsBoolean.withDefault(true))
+  const [postedWithin, setPostedWithin] = useQueryState(
+    'posted',
+    parseAsStringLiteral(['1-week', '2-weeks', '3-weeks', '1-month', 'any'] as const).withDefault('2-weeks')
+  )
   const [filtersExpanded, setFiltersExpanded] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1))
   const [allJobsExpanded, setAllJobsExpanded] = useState(true)
   
   // Sort state
-  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'match-desc' | 'salary-desc' | 'salary-asc' | 'org-asc'>('date-desc')
+  const [sortBy, setSortBy] = useQueryState(
+    'sort',
+    parseAsStringLiteral(['date-desc', 'date-asc', 'match-desc', 'salary-desc', 'salary-asc', 'org-asc'] as const).withDefault('date-desc')
+  )
   
   // Match data state
   const [matchData, setMatchData] = useState<Map<string, { score: number; shared_values: string[] }>>(new Map())
@@ -65,7 +70,7 @@ export default function Home() {
     const timeoutId = setTimeout(() => {
       console.warn('Data fetching timeout - forcing completion')
       setLoading(false)
-      setError('Request timed out. Please refresh the page.')
+      setError(t('home.errors.timeout'))
     }, 10000) // 10 second timeout
 
     try {
@@ -74,7 +79,7 @@ export default function Home() {
       
       if (!res.ok) {
         const body = await res.json()
-        throw new Error(body.error ?? 'Failed to load data')
+        throw new Error(body.error ?? t('home.errors.loadFailed'))
       }
       const { jobs: jobsData, lastScrapeTime: rawScrapeTime } = await res.json()
 
@@ -90,8 +95,10 @@ export default function Home() {
         } else {
           date = new Date(timestamp)
         }
+        // Map locale to proper locale code for date formatting
+        const dateLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
         setLastScrapeTime(
-          date.toLocaleString('en-US', {
+          date.toLocaleString(dateLocale, {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
@@ -115,7 +122,7 @@ export default function Home() {
         ? err.message
         : typeof err === 'object' && err !== null && 'message' in err
           ? String((err as { message: unknown }).message)
-          : 'Failed to load data'
+          : t('home.errors.loadFailed')
       setError(errorMessage)
     } finally {
       clearTimeout(timeoutId)
@@ -330,7 +337,7 @@ export default function Home() {
             alt="wev"
             className="main-logo wev-logotype w-[100px] h-auto mb-2"
           />
-          <p className="text-xl font-medium text-wev-primary-text">Bulletin – Job Postings</p>
+          <p className="text-xl font-medium text-wev-primary-text">{t('home.heading')}</p>
         </header>
 
         {/* Action Buttons - Admin Only */}
@@ -374,12 +381,12 @@ export default function Home() {
         />
 
         {/* Results Header */}
-        {!loading && (
+        {allJobs.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-1 py-1 mb-2" style={{ padding: '4px 2px' }}>
             {/* Left side: Last updated info (its own row on mobile) */}
             <div className="text-sm" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              <span className="font-semibold text-wev-accent">Last updated: </span>
-              <span>{lastScrapeTime || 'Unknown'}</span>
+              <span className="font-semibold text-wev-accent">{t('home.lastUpdated')} </span>
+              <span>{lastScrapeTime || t('home.unknown')}</span>
             </div>
 
             {/* Controls row: sort and expand/collapse - appears below on mobile */}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import JobListings from '@/components/JobListings'
 import { createClient } from '@/lib/supabase/client'
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth'
@@ -9,6 +9,7 @@ import LoadingState from '@/components/LoadingState'
 import PageLayout from '@/components/PageLayout'
 
 export default function BookmarksPage() {
+  const t = useTranslations()
   const { user, loading } = useRequireAuth()
   const [jobs, setJobs] = useState<any[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +24,7 @@ export default function BookmarksPage() {
         const res = await fetch('/api/bookmarks', { cache: 'no-store' })
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
-          throw new Error(body.error || 'Failed to fetch bookmarked jobs')
+          throw new Error(body.error || t('bookmarks.loadFailed'))
         }
 
         const { jobs: bookmarkedJobs } = await res.json()
@@ -59,7 +60,7 @@ export default function BookmarksPage() {
     }
   }, [user])
 
-  if (loading) return <LoadingState />
+  if (loading) return <LoadingState message={t('common.loading')} />
 
   if (!user) {
     return null
@@ -68,20 +69,20 @@ export default function BookmarksPage() {
   return (
     <PageLayout>
       <div>
-        <h1 className="text-2xl font-semibold mb-2">My Bookmarks</h1>
+        <h1 className="text-2xl font-semibold mb-2">{t('bookmarks.title')}</h1>
 
         {error && (
           <div className="bg-wev-alert-tint border border-wev-alert rounded-wev-card p-4 text-wev-alert-text mb-4">
-            <p className="font-semibold">Error</p>
+            <p className="font-semibold">{t('bookmarks.error')}</p>
             <p className="text-sm mt-1">{error}</p>
           </div>
         )}
 
         {jobs === null ? (
-          <LoadingState />
+          <LoadingState message={t('common.loading')} />
         ) : jobs.length === 0 ? (
           <div className="bg-wev-surface border border-wev-border rounded-wev-card p-8 text-center">
-            <p className="text-wev-text-primary">No bookmarked jobs yet.</p>
+            <p className="text-wev-text-primary">{t('bookmarks.noBookmarks')}</p>
           </div>
         ) : (
           <JobListings

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Link from '@/i18n/navigation'
-import { useLocale } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import PageLayout from '@/components/PageLayout'
@@ -14,6 +14,7 @@ import Button from '@/components/Button'
 import Message from '@/components/Message'
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations()
   const locale = useLocale()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -30,7 +31,7 @@ export default function ForgotPasswordPage() {
     setError(null)
 
     if (!captchaToken) {
-      setError('Please complete the CAPTCHA verification.')
+      setError(t('auth.forgotPassword.captchaRequired'))
       setLoading(false)
       return
     }
@@ -43,7 +44,7 @@ export default function ForgotPasswordPage() {
     if (error) {
       setError(error.message)
     } else {
-      setMessage('Check your email for a password reset link.')
+      setMessage(t('auth.forgotPassword.emailSent'))
     }
 
     setLoading(false)
@@ -52,14 +53,14 @@ export default function ForgotPasswordPage() {
   return (
     <PageLayout variant="centered">
       <CardLayout>
-        <Heading level={1} className="text-center mb-2">Forgot password?</Heading>
+        <Heading level={1} className="text-center mb-2">{t('auth.forgotPassword.title')}</Heading>
         <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>
-          Enter your email, we'll send you a reset link.
+          {t('auth.forgotPassword.description')}
         </p>
 
         <FormContainer onSubmit={handleSubmit}>
           <FormField
-            label="Email"
+            label={t('auth.forgotPassword.email')}
             type="email"
             value={email}
             onChange={setEmail}
@@ -72,7 +73,7 @@ export default function ForgotPasswordPage() {
             onSuccess={(token) => setCaptchaToken(token)}
             onError={() => {
               setCaptchaToken(null)
-              setError('CAPTCHA verification failed. Please try again.')
+              setError(t('auth.forgotPassword.captchaError'))
             }}
             onExpire={() => setCaptchaToken(null)}
           />
@@ -83,7 +84,7 @@ export default function ForgotPasswordPage() {
             loading={loading}
             fullWidth
           >
-            {loading ? 'Sending...' : 'Send reset link'}
+            {loading ? t('auth.forgotPassword.submitting') : t('auth.forgotPassword.submit')}
           </Button>
         </FormContainer>
 
@@ -95,13 +96,13 @@ export default function ForgotPasswordPage() {
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Remember your password?{' '}
+          {t('auth.forgotPassword.rememberPassword')}{' '}
           <Link
             href="/login"
             className="underline font-medium"
             style={{ color: 'var(--primary-text)' }}
           >
-            Log in
+            {t('auth.forgotPassword.logIn')}
           </Link>
         </p>
       </CardLayout>

@@ -45,6 +45,9 @@ module.exports = {
         'wev-pill': '50px',
         'wev-btn': '12px',
       },
+      width: {
+        15: '3.75rem', // 60px - custom width
+      },
     },
   },
   plugins: [],

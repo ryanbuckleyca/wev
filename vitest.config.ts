@@ -19,6 +19,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
+      '@lineiconshq/react-lineicons': path.resolve(__dirname, './test-stubs/lineicons.ts'),
+      '@lineiconshq/free-icons': path.resolve(__dirname, './test-stubs/lineicons.ts'),
     },
   },
 })

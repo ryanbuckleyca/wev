@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { checkPasswordStrength } from '@/lib/password-strength'
@@ -16,6 +17,7 @@ import ErrorBox from '@/components/ErrorBox'
 import LoadingState from '@/components/LoadingState'
 
 export default function ResetPasswordPage() {
+  const t = useTranslations()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -27,8 +29,14 @@ export default function ResetPasswordPage() {
 
   const passwordStrength = useMemo(() => {
     if (!password) return null
-    return checkPasswordStrength(password)
-  }, [password])
+    return checkPasswordStrength(password, {
+      veryWeak: t('passwordStrength.veryWeak'),
+      weak: t('passwordStrength.weak'),
+      fair: t('passwordStrength.fair'),
+      good: t('passwordStrength.good'),
+      strong: t('passwordStrength.strong'),
+    })
+  }, [password, t])
 
   useEffect(() => {
     const checkSession = async () => {
@@ -36,7 +44,7 @@ export default function ResetPasswordPage() {
       if (session) {
         setIsValidSession(true)
       } else {
-        setError('Invalid or expired reset link. Please request a new one.')
+        setError(t('auth.resetPassword.invalidLink'))
       }
     }
     checkSession()
@@ -48,13 +56,13 @@ export default function ResetPasswordPage() {
     setError(null)
 
     if (passwordStrength && !passwordStrength.isAcceptable) {
-      setError('Password is too weak. Please choose a stronger password.')
+      setError(t('auth.resetPassword.passwordWeak'))
       setLoading(false)
       return
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.')
+      setError(t('auth.resetPassword.passwordsDontMatch'))
       setLoading(false)
       return
     }
@@ -71,21 +79,21 @@ export default function ResetPasswordPage() {
   }
 
   if (!isValidSession && !error) {
-    return <LoadingState message="Verifying session..." />;
+    return <LoadingState message={t('auth.resetPassword.verifying')} />;
   }
 
   return (
     <PageLayout variant="centered">
       <CardLayout>
-        <Heading level={1} className="text-center mb-2">Reset password</Heading>
+        <Heading level={1} className="text-center mb-2">{t('auth.resetPassword.title')}</Heading>
         <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>
-          Enter your new password below.
+          {t('auth.resetPassword.description')}
         </p>
 
         {isValidSession ? (
           <FormContainer onSubmit={handleSubmit}>
             <FormField
-              label="New Password"
+              label={t('auth.resetPassword.newPassword')}
               type="password"
               value={password}
               onChange={setPassword}
@@ -95,7 +103,7 @@ export default function ResetPasswordPage() {
             <PasswordStrengthIndicator passwordStrength={passwordStrength} />
 
             <FormField
-              label="Confirm Password"
+              label={t('auth.resetPassword.confirmPassword')}
               type="password"
               value={confirmPassword}
               onChange={setConfirmPassword}
@@ -108,14 +116,14 @@ export default function ResetPasswordPage() {
               disabled={loading || (passwordStrength !== null && !passwordStrength.isAcceptable)}
               loading={loading}
             >
-              {loading ? 'Updating...' : 'Update password'}
+              {loading ? t('auth.resetPassword.submitting') : t('auth.resetPassword.submit')}
             </Button>
           </FormContainer>
         ) : (
           <div className="text-center">
             <ErrorBox className="mb-4">{error}</ErrorBox>
             <LinkButton href="/forgot-password" size="sm">
-              Request a new reset link
+              {t('auth.resetPassword.requestNewLink')}
             </LinkButton>
           </div>
         )}

@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     // Verify the job exists
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: job, error: jobError } = await supabase
       .from('jobs')
       .select('id')
