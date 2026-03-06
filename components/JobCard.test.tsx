@@ -3,6 +3,7 @@ import { render, screen } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import JobCard from './JobCard'
 import type { JobPosting } from '@/lib/supabase'
+import { MOCK_AUTH_ANON, MOCK_AUTH_USER, mockRouter } from '@/test-stubs/constants'
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(),
@@ -54,20 +55,29 @@ function makeSupabaseClient() {
   }
 }
 
+const BOOKMARK_LABEL = 'Bookmark job'
+const COLLAPSE_LABEL = 'Collapse job details'
+const EXPAND_LABEL = 'Expand job details'
+const SSE_LABEL = 'Mark as SSE job'
+
+function renderJobCard(overrides: Partial<Parameters<typeof JobCard>[0]> = {}) {
+  const props = {
+    job: defaultJob,
+    isAdmin: false,
+    onSseToggle: () => {},
+    updatingId: null,
+    initialExpanded: true,
+    ...overrides,
+  }
+  return render(<JobCard {...props} />)
+}
+
 describe('JobCard', () => {
   it('renders job details when the card is expanded', () => {
-    mockUseAuth.mockReturnValue({ user: null, role: 'user', roles: ['user'], loading: false })
-    mockUseRouter.mockReturnValue({ push: vi.fn(), replace: vi.fn() } as never)
+    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never)
+    mockUseRouter.mockReturnValue(mockRouter() as never)
 
-    render(
-      <JobCard
-        job={defaultJob}
-        isAdmin={false}
-        onSseToggle={() => {}}
-        updatingId={null}
-        initialExpanded
-      />
-    )
+    renderJobCard()
 
     expect(screen.getByText('Green Tech Co')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Software Engineer' })).toBeVisible()
@@ -77,137 +87,80 @@ describe('JobCard', () => {
   })
 
   it('shows a bookmark button and a collapse button', () => {
-    mockUseAuth.mockReturnValue({ user: null, role: 'user', roles: ['user'], loading: false })
-    mockUseRouter.mockReturnValue({ push: vi.fn(), replace: vi.fn() } as never)
+    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never)
+    mockUseRouter.mockReturnValue(mockRouter() as never)
 
-    render(
-      <JobCard
-        job={defaultJob}
-        isAdmin={false}
-        onSseToggle={() => {}}
-        updatingId={null}
-        initialExpanded
-      />
-    )
+    renderJobCard()
 
-    expect(screen.getByRole('button', { name: 'Bookmark job' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Collapse job details' })).toBeVisible()
+    expect(screen.getByRole('button', { name: BOOKMARK_LABEL })).toBeVisible()
+    expect(screen.getByRole('button', { name: COLLAPSE_LABEL })).toBeVisible()
   })
 
   it('collapses and expands the card body when the toggle button is clicked', async () => {
     const user = userEvent.setup()
-    mockUseAuth.mockReturnValue({ user: null, role: 'user', roles: ['user'], loading: false })
-    mockUseRouter.mockReturnValue({ push: vi.fn(), replace: vi.fn() } as never)
+    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never)
+    mockUseRouter.mockReturnValue(mockRouter() as never)
 
-    render(
-      <JobCard
-        job={defaultJob}
-        isAdmin={false}
-        onSseToggle={() => {}}
-        updatingId={null}
-        initialExpanded
-      />
-    )
+    renderJobCard()
 
-    const collapseBtn = screen.getByRole('button', { name: 'Collapse job details' })
+    const collapseBtn = screen.getByRole('button', { name: COLLAPSE_LABEL })
     await user.click(collapseBtn)
 
-    expect(screen.getByRole('button', { name: 'Expand job details' })).toBeVisible()
+    expect(screen.getByRole('button', { name: EXPAND_LABEL })).toBeVisible()
   })
 
   it('redirects an unauthenticated user to /login when clicking bookmark', async () => {
     const user = userEvent.setup()
     const mockPush = vi.fn()
-    mockUseAuth.mockReturnValue({ user: null, role: 'user', roles: ['user'], loading: false })
+    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never)
     mockUseRouter.mockReturnValue({ push: mockPush, replace: vi.fn() } as never)
 
-    render(
-      <JobCard
-        job={defaultJob}
-        isAdmin={false}
-        onSseToggle={() => {}}
-        updatingId={null}
-        initialExpanded
-      />
-    )
+    renderJobCard()
 
-    await user.click(screen.getByRole('button', { name: 'Bookmark job' }))
+    await user.click(screen.getByRole('button', { name: BOOKMARK_LABEL }))
 
     expect(mockPush).toHaveBeenCalledWith('/login')
   })
 
   it('toggles the bookmark state for an authenticated user', async () => {
     const user = userEvent.setup()
-    const fakeUser = { id: 'user-1' }
-    mockUseAuth.mockReturnValue({ user: fakeUser as never, role: 'user', roles: ['user'], loading: false })
-    mockUseRouter.mockReturnValue({ push: vi.fn(), replace: vi.fn() } as never)
+    mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never)
+    mockUseRouter.mockReturnValue(mockRouter() as never)
     mockCreateClient.mockReturnValue(makeSupabaseClient() as never)
 
-    render(
-      <JobCard
-        job={defaultJob}
-        isAdmin={false}
-        onSseToggle={() => {}}
-        updatingId={null}
-        initialExpanded
-        initialBookmarked={false}
-      />
-    )
+    renderJobCard({ initialBookmarked: false })
 
-    await user.click(screen.getByRole('button', { name: 'Bookmark job' }))
+    await user.click(screen.getByRole('button', { name: BOOKMARK_LABEL }))
 
     expect(screen.getByRole('button', { name: 'Bookmarked (click to remove)' })).toBeVisible()
   })
 
   it('shows the SSE toggle button for admin users', () => {
-    mockUseAuth.mockReturnValue({ user: null, role: 'user', roles: ['user'], loading: false })
-    mockUseRouter.mockReturnValue({ push: vi.fn(), replace: vi.fn() } as never)
+    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never)
+    mockUseRouter.mockReturnValue(mockRouter() as never)
 
-    render(
-      <JobCard
-        job={defaultJob}
-        isAdmin
-        onSseToggle={() => {}}
-        updatingId={null}
-        initialExpanded
-      />
-    )
+    renderJobCard({ isAdmin: true })
 
-    expect(screen.getByRole('button', { name: 'Mark as SSE job' })).toBeVisible()
+    expect(screen.getByRole('button', { name: SSE_LABEL })).toBeVisible()
   })
 
   it('does not show the SSE toggle button for non-admin users', () => {
-    mockUseAuth.mockReturnValue({ user: null, role: 'user', roles: ['user'], loading: false })
-    mockUseRouter.mockReturnValue({ push: vi.fn(), replace: vi.fn() } as never)
+    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never)
+    mockUseRouter.mockReturnValue(mockRouter() as never)
 
-    render(
-      <JobCard
-        job={defaultJob}
-        isAdmin={false}
-        onSseToggle={() => {}}
-        updatingId={null}
-        initialExpanded
-      />
-    )
+    renderJobCard()
 
-    expect(screen.queryByRole('button', { name: 'Mark as SSE job' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: SSE_LABEL })).not.toBeInTheDocument()
   })
 
   it('shows the match score and value pills for a logged-in user with a match', () => {
-    const fakeUser = { id: 'user-1' }
-    mockUseAuth.mockReturnValue({ user: fakeUser as never, role: 'user', roles: ['user'], loading: false })
-    mockUseRouter.mockReturnValue({ push: vi.fn(), replace: vi.fn() } as never)
+    mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never)
+    mockUseRouter.mockReturnValue(mockRouter() as never)
 
-    render(
-      <JobCard
-        job={{ ...defaultJob, values: ['Advancement'] }}
-        isAdmin={false}
-        onSseToggle={() => {}}
-        updatingId={null}
-        initialExpanded
-        match={{ score: 0.8, shared_values: ['Advancement'] }}
-      />
-    )
+    renderJobCard({
+      job: { ...defaultJob, values: ['Advancement'] },
+      match: { score: 0.8, shared_values: ['Advancement'] },
+    })
 
     expect(screen.getByText('80% match:')).toBeVisible()
   })
