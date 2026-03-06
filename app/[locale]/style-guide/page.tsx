@@ -8,6 +8,7 @@ import ButtonLink from '@/components/ButtonLink'
 import StatusIcon from '@/components/StatusIcon'
 import BannerMessage from '@/components/BannerMessage'
 import notify from '@/lib/toast'
+import { useState, useEffect } from 'react'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,81 @@ const LOGO_LOGOTYPE =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png'
 const LOGO_MARK =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logo.png'
+
+// Helper function to convert hex to RGB
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  return result ? 
+    `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : 
+    ''
+}
+
+// Helper function to format CSS variable name to readable name
+const formatVarName = (cssVar: string) => {
+  // Extract variable name (remove "var(" and ")" and trim)
+  const varName = cssVar.replace('var(', '').replace(')', '').trim()
+  
+  // Convert kebab-case to Title Case
+  return varName
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+// Helper function to get all CSS color variables
+const getAllColorVariables = () => {
+  const style = getComputedStyle(document.documentElement)
+  const colorVars: Array<{name: string, value: string, category: string}> = []
+  
+  // List of CSS color variables to include
+  const colorVarNames = [
+    '--bg', '--surface', '--surface-tint', '--border',
+    '--text-primary', '--text-secondary', '--text-tertiary',
+    '--primary', '--primary-tint', '--accent', '--accent-tint',
+    '--success-solid', '--success-tint', '--success-text',
+    '--alert-solid', '--alert-tint', '--alert-text',
+    '--warn-solid', '--warn-tint', '--warn-text',
+    '--info-solid', '--info-tint', '--info-text',
+    '--gradient-bg', '--gradient-lp', '--gradient-tl', '--gradient-mb',
+    '--watercolor-lavender', '--watercolor-blue'
+  ]
+  
+  colorVarNames.forEach(varName => {
+    const value = style.getPropertyValue(varName).trim()
+    if (value) {
+      let category = 'Other'
+      if (varName.includes('text')) category = 'Text'
+      else if (varName.includes('primary') || varName.includes('accent')) category = 'Brand'
+      else if (varName.includes('success') || varName.includes('alert') || varName.includes('warn') || varName.includes('info')) category = 'Semantic'
+      else if (varName.includes('surface') || varName.includes('bg') || varName.includes('border')) category = 'Surface'
+      else if (varName.includes('gradient')) category = 'Gradient'
+      else if (varName.includes('watercolor')) category = 'Background'
+      
+      colorVars.push({
+        name: varName,
+        value: value,
+        category: category
+      })
+    }
+  })
+  
+  return colorVars
+}
+
+// Helper function to generate ColorCards for a specific category
+const generateColorCards = (category: string) => {
+  const colorVars = getAllColorVariables()
+  
+  return colorVars
+    .filter(colorVar => colorVar.category === category)
+    .map(colorVar => (
+      <ColorCard
+        key={colorVar.name}
+        swatch={`var(${colorVar.name})`}
+        tag={colorVar.category}
+      />
+    ))
+}
 
 export default function StyleGuidePage() {
   return (
@@ -92,75 +168,34 @@ export default function StyleGuidePage() {
             AA compliance to ensure accessibility across all use cases.
           </p>
 
-          <h3>Base Colors</h3>
+          <h3>Surface Colors</h3>
           <div className="design-color-grid">
-            <ColorCard
-              swatch="#FEFBF7"
-              name="Porcelain"
-              hex="#FEFBF7"
-              rgb="254, 251, 247"
-              tag="Background"
-            />
-            <ColorCard
-              swatch="#F8F9FB"
-              name="Info Tint"
-              hex="#F8F9FB"
-              rgb="248, 249, 251"
-              tag="Surface Tint"
-            />
-            <ColorCard
-              swatch="#875C74"
-              name="Dusty Lavender"
-              hex="#875C74"
-              rgb="135, 92, 116"
-              tag="Brand Accent"
-            />
-            <ColorCard
-              swatch="#5B8C8A"
-              name="Muted Teal"
-              hex="#5B8C8A"
-              rgb="91, 140, 138"
-              tag="Primary / CTAs"
-            />
-            <ColorCard
-              swatch="#C5EBC3"
-              name="Tea Green"
-              hex="#C5EBC3"
-              rgb="197, 235, 195"
-              tag="Success States"
-            />
+            {generateColorCards('Surface')}
+          </div>
+
+          <h3>Brand Colors</h3>
+          <div className="design-color-grid">
+            {generateColorCards('Brand')}
           </div>
 
           <h3>Semantic Colors</h3>
           <div className="design-color-grid">
-            <ColorCard
-              swatch="#3E8C4F"
-              name="Success Solid"
-              hex="#3E8C4F"
-              rgb="62, 140, 79"
-              tag="Buttons, Icons"
-            />
-            <ColorCard
-              swatch="#C45A4A"
-              name="Alert Solid"
-              hex="#C45A4A"
-              rgb="196, 90, 74"
-              tag="Error States"
-            />
-            <ColorCard
-              swatch="#9A7209"
-              name="Warning Solid"
-              hex="#9A7209"
-              rgb="154, 114, 9"
-              tag="Warning States"
-            />
-            <ColorCard
-              swatch="#4A7A9E"
-              name="Info Solid"
-              hex="#4A7A9E"
-              rgb="74, 122, 158"
-              tag="Info States"
-            />
+            {generateColorCards('Semantic')}
+          </div>
+
+          <h3>Text Colors</h3>
+          <div className="design-color-grid">
+            {generateColorCards('Text')}
+          </div>
+
+          <h3>Background Colors</h3>
+          <div className="design-color-grid">
+            {generateColorCards('Background')}
+          </div>
+
+          <h3>Gradient Colors</h3>
+          <div className="design-color-grid">
+            {generateColorCards('Gradient')}
           </div>
         </div>
       </section>
@@ -696,37 +731,22 @@ export default function StyleGuidePage() {
           <div className="design-color-grid">
             <ColorCard
               swatch="#242424"
-              name="Charcoal Optimized"
-              hex="#242424"
-              rgb="36, 36, 36"
               tag="Background"
             />
             <ColorCard
               swatch="#353535"
-              name="Slate Light"
-              hex="#353535"
-              rgb="53, 53, 53"
               tag="Surface / Cards"
             />
             <ColorCard
               swatch="#616161"
-              name="Steel Bright"
-              hex="#616161"
-              rgb="97, 97, 97"
               tag="Borders"
             />
             <ColorCard
               swatch="#B07D96"
-              name="Dusty Lavender Light"
-              hex="#B07D96"
-              rgb="176, 125, 150"
               tag="Brand Accent (Dark)"
             />
             <ColorCard
               swatch="#5B8C8A"
-              name="Muted Teal"
-              hex="#5B8C8A"
-              rgb="91, 140, 138"
               tag="Primary (Consistent)"
             />
           </div>
@@ -735,44 +755,26 @@ export default function StyleGuidePage() {
           <div className="design-color-grid">
             <ColorCard
               swatch="#3E8C4F"
-              name="Success Solid"
-              hex="#3E8C4F"
-              rgb="62, 140, 79"
               tag="Success Buttons"
             />
             <ColorCard
               swatch="#1A3320"
-              name="Success Tint (Dark)"
-              hex="#1A3320"
-              rgb="26, 51, 32"
               tag="Success Backgrounds"
             />
             <ColorCard
               swatch="#6FD68A"
-              name="Success Text"
-              hex="#6FD68A"
-              rgb="111, 214, 138"
               tag="Success Messages"
             />
             <ColorCard
               swatch="#E8857A"
-              name="Alert Text"
-              hex="#E8857A"
-              rgb="232, 133, 122"
               tag="Error Messages"
             />
             <ColorCard
               swatch="#E8B53A"
-              name="Warning Text"
-              hex="#E8B53A"
-              rgb="232, 181, 58"
               tag="Warning Messages"
             />
             <ColorCard
               swatch="#7AB4D9"
-              name="Info Text"
-              hex="#7AB4D9"
-              rgb="122, 180, 217"
               tag="Info Messages"
             />
           </div>
@@ -781,30 +783,18 @@ export default function StyleGuidePage() {
           <div className="design-color-grid">
             <ColorCard
               swatch="#E8E6E2"
-              name="White / Primary Text"
-              hex="#E8E6E2"
-              rgb="232, 230, 226"
               tag="Primary Text"
             />
             <ColorCard
               swatch="#A8A5A0"
-              name="Secondary Text"
-              hex="#A8A5A0"
-              rgb="168, 165, 160"
               tag="Secondary Text"
             />
             <ColorCard
               swatch="#8A8782"
-              name="Tertiary Text"
-              hex="#8A8782"
-              rgb="138, 135, 130"
               tag="Tertiary Text"
             />
             <ColorCard
               swatch="#4A4A4A"
-              name="Border"
-              hex="#4A4A4A"
-              rgb="74, 74, 74"
               tag="Borders / Dividers"
             />
           </div>
@@ -1011,17 +1001,34 @@ export default function StyleGuidePage() {
 
 function ColorCard({
   swatch,
-  name,
-  hex,
-  rgb,
   tag,
 }: {
   swatch: string
-  name: string
-  hex: string
-  rgb: string
   tag: string
 }) {
+  const [colorData, setColorData] = useState({
+    hex: '',
+    rgb: ''
+  })
+
+  useEffect(() => {
+    // Extract CSS variable name from swatch string
+    const cssVarName = swatch.replace('var(', '').replace(')', '').trim()
+    
+    // Get actual CSS variable value
+    const value = getComputedStyle(document.documentElement)
+      .getPropertyValue(cssVarName)
+      .trim()
+    
+    setColorData({
+      hex: value,
+      rgb: hexToRgb(value)
+    })
+  }, [swatch])
+
+  // Auto-generate name from CSS variable
+  const name = formatVarName(swatch)
+
   return (
     <div className="design-color-card">
       <div className="design-color-swatch" style={{ background: swatch }} />
@@ -1029,10 +1036,10 @@ function ColorCard({
         <div className="design-color-name">{name}</div>
         <div className="design-color-values">
           <div className="design-color-value">
-            <span>HEX</span> <strong>{hex}</strong>
+            <span>HEX</span> <strong>{colorData.hex}</strong>
           </div>
           <div className="design-color-value">
-            <span>RGB</span> <strong>{rgb}</strong>
+            <span>RGB</span> <strong>{colorData.rgb}</strong>
           </div>
         </div>
         <div className="design-usage-tag">{tag}</div>
