@@ -1,3 +1,5 @@
+import { vi } from 'vitest'
+
 /**
  * Shared test constants and mock factories.
  *
