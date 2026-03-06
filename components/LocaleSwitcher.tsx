@@ -30,29 +30,27 @@ export default function LocaleSwitcher() {
     <div className="flex items-center justify-center border border-wev-border rounded-full overflow-hidden self-stretch min-h-[28px] h-[32px] transition-all duration-500 ease-in-out">
       <button
         onClick={() => switchLocale('en')}
-        className="flex items-stretch gap-0 rounded-full overflow-hidden self-stretch h-full bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary"
+        className={`px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center ${
+          locale === 'en'
+            ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
+            : 'bg-wev-bg font-normal text-wev-text-tertiary'
+        }`}
         aria-label={t('ariaLabels.localeSwitcher.switchToEnglish')}
         aria-pressed={locale === 'en'}
       >
-        <span className="px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary">
-          EN
-        </span>
-        <span className="px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center bg-wev-bg font-normal text-wev-text-tertiary">
-          FR
-        </span>
+        EN
       </button>
       <button
         onClick={() => switchLocale('fr')}
-        className="flex items-stretch gap-0 rounded-full overflow-hidden self-stretch h-full bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary"
+        className={`px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center ${
+          locale === 'fr'
+            ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
+            : 'bg-wev-bg font-normal text-wev-text-tertiary'
+        }`}
         aria-label={t('ariaLabels.localeSwitcher.switchToFrench')}
         aria-pressed={locale === 'fr'}
       >
-        <span className="px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary">
-          EN
-        </span>
-        <span className="px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center bg-wev-bg font-normal text-wev-text-tertiary">
-          FR
-        </span>
+        FR
       </button>
     </div>
   )
