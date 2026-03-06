@@ -227,9 +227,7 @@
     "updateSuccess": "Profile updated successfully!",
     "updateFailed": "Failed to update profile",
     "photoUploadSuccess": "Photo uploaded successfully!",
-    "photoUploadFailed": "Failed to upload photo",
-    "accountSettingsInfo": "To update your email address or change your password, visit Account Settings.",
-    "goToAccountSettings": "Go to Account Settings"
+    "photoUploadFailed": "Failed to upload photo"
   },
   "accountSettings": {
     "title": "Account Settings",
@@ -244,11 +242,9 @@
     "newPasswordPlaceholder": "Enter new password",
     "confirmPassword": "Confirm Password",
     "confirmPasswordPlaceholder": "Confirm new password",
-    "backToProfile": "Back to Profile",
     "saveChanges": "Save Changes",
     "saving": "Saving...",
     "noChanges": "No changes to save",
-    "makeChanges": "Make changes above to enable saving",
     "currentPasswordRequired": "Current password is required",
     "newPasswordRequired": "New password is required",
     "confirmPasswordRequired": "Password confirmation is required",

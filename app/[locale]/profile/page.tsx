@@ -202,16 +202,6 @@ export default function ProfilePage() {
             </div>
           </div>
         </FormContainer>
-
-        {/* Account Settings Info */}
-        <div className="bg-[var(--bg)] p-4 rounded-lg mt-6">
-          <p className="text-sm text-[var(--text-secondary)] mb-3">
-            {t('profile.accountSettingsInfo')}
-          </p>
-          <Link href="/account-settings" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
-            {t('profile.goToAccountSettings')}
-          </Link>
-        </div>
         </CardLayout>
     </PageLayout>
   );

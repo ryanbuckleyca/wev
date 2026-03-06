@@ -252,13 +252,9 @@ export default function AccountSettingsPage() {
               </div>
             </div>
           </div>
-
           {/* Action Buttons */}
           <div className="pt-6 border-t border-[var(--border)]">
-            <div className="flex justify-between gap-3">
-              <Link href="/profile" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
-                {t('accountSettings.backToProfile')}
-              </Link>
+            <div className="flex justify-end">
               <Button
                 type="submit"
                 disabled={isUpdating || (!emailChanged && !passwordChanged) || (passwordChanged && !newPasswordStrength?.isAcceptable)}
@@ -267,12 +263,7 @@ export default function AccountSettingsPage() {
                 {isUpdating ? t('accountSettings.saving') : t('accountSettings.saveChanges')}
               </Button>
             </div>
-          </div>  
-            {!emailChanged && !passwordChanged && (
-              <p className="text-sm text-[var(--text-secondary)] mt-2">
-                {t('accountSettings.makeChanges')}
-              </p>
-            )}
+          </div>
         </FormContainer>
         </CardLayout>
     </PageLayout>
