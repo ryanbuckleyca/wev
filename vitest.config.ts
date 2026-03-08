@@ -16,5 +16,11 @@ export default defineConfig({
       exclude: ['**/*.test.{ts,tsx}'],
     },
   },
+  resolve: {
+    alias: {
+      '@lineiconshq/react-lineicons': '/Users/ryanbuckley/code/wev/wev-bulletin/test-utils/lineicons-mock.ts',
+      '@lineiconshq/free-icons': '/Users/ryanbuckley/code/wev/wev-bulletin/test-utils/lineicons-mock.ts',
+    },
+  },
 })
 

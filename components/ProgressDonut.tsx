@@ -20,7 +20,11 @@ export default function ProgressDonut({ percentage, size = 'sm', className = '',
   const config = sizes[size]
 
   return (
-    <div className={`relative inline-flex items-center justify-center ${className}`}>
+    <div 
+      className={`relative inline-flex items-center justify-center ${className}`}
+      role="img"
+      aria-label={`Progress: ${normalizedPercentage}%`}
+    >
       <div 
         className="rounded-full relative"
         style={{

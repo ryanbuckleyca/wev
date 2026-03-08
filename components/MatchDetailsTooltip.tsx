@@ -1,6 +1,8 @@
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { HeartSolid, Briefcase2Solid } from '@lineiconshq/free-icons'
 
+type TranslateFn = (key: string, values?: Record<string, any>) => string
+
 interface MatchDetailsTooltipProps {
   totalMatchPercentage: number
   valueMatchPercentage: number
@@ -10,7 +12,7 @@ interface MatchDetailsTooltipProps {
   sharedValues: string[]
   sharedSkills: string[]
   skillTerms: Record<string, string>
-  translate: (key: string, values?: Record<string, unknown>) => string
+  translate: TranslateFn
 }
 
 export default function MatchDetailsTooltip({
