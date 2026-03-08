@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
-import { JobPosting } from '@/lib/supabase'
+import { JobPosting, JobMatchData } from '@/lib/supabase'
 import JobCard from './JobCard'
 import { useAuth } from '@/contexts/AuthContext'
 import LoadingIndicator from './LoadingIndicator'
+import Button from './Button'
 
 interface JobListingsProps {
   jobs: JobPosting[]
@@ -14,7 +15,7 @@ interface JobListingsProps {
   onJobSseChange?: (jobId: string, isSse: boolean) => void
   onJobBookmarkChange?: (job: JobPosting, bookmarked: boolean) => void
   allExpanded?: boolean
-  matchData?: Map<string, { score: number; shared_values: string[] }>
+  matchData?: Map<string, JobMatchData>
   bookmarkedJobIds?: Set<string>
 }
 
@@ -95,25 +96,28 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
   const isAdmin = role === 'admin'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {loading && jobs.length > 0 && (
         <div className="flex items-center justify-center py-4">
           <LoadingIndicator fullScreen={false} message={t('jobListings.loading')} />
         </div>
       )}
-      {jobs.map((job) => (
-        <JobCard
-          key={job.id}
-          job={job}
-          isAdmin={isAdmin}
-          onSseToggle={handleSseToggle}
-          onBookmarkToggle={onJobBookmarkChange}
-          updatingId={updatingId}
-          initialExpanded={allExpanded}
-          match={matchData?.get(job.id)}
-          initialBookmarked={bookmarkedJobIds?.has(job.id) ?? false}
-        />
-      ))}
+
+      <div className="space-y-6">
+        {jobs.map((job) => (
+          <JobCard
+            key={job.id}
+            job={job}
+            isAdmin={isAdmin}
+            onSseToggle={handleSseToggle}
+            onBookmarkToggle={onJobBookmarkChange}
+            updatingId={updatingId}
+            initialExpanded={allExpanded}
+            match={matchData?.get(job.id)}
+            initialBookmarked={bookmarkedJobIds?.has(job.id) ?? false}
+          />
+        ))}
+      </div>
     </div>
   )
 }

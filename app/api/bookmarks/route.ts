@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     const { data, error } = await adminClient
       .from('jobs')
       .select(
-        'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, bookmarks!inner(user_id, created_at)'
+        'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, skills, bookmarks!inner(user_id, created_at)'
       )
       .eq('bookmarks.user_id', user.id)
       .order('date_posted', { ascending: false })

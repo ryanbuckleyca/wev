@@ -116,7 +116,11 @@
   "jobListings": {
     "loading": "Loading jobs...",
     "error": "Error loading job postings",
-    "noJobs": "No job postings found."
+    "noJobs": "No job postings found.",
+    "sliderHint": "Scroll horizontally to browse jobs.",
+    "stackedHint": "Showing all jobs in a vertical list.",
+    "showAll": "Show all",
+    "useSlider": "Use slider"
   },
   "bookmarks": {
     "title": "My Bookmarks",
@@ -135,6 +139,8 @@
     "when": "When:",
     "howMuch": "How much:",
     "match": "% match:",
+    "valuesMatch": "% values match:",
+    "skillsMatch": "% skills match:",
     "removeSse": "Remove SSE Status",
     "markSse": "Mark as SSE",
     "sseJob": "SSE job (click to unmark)",
@@ -230,6 +236,13 @@
     "bio": "Bio",
     "bioPlaceholder": "Tell us about yourself...",
     "workValues": "Work Values",
+    "skills": "Skills",
+    "skillsPlaceholder": "Search skills...",
+    "skillsMinChars": "Type at least 2 characters to search.",
+    "skillsNoResults": "No skills found.",
+    "skillsLoading": "Searching skills...",
+    "skillsMaxReached": "Maximum {max} skills selected. Remove one to add another.",
+    "skillsMatchedAlias": "Matched",
     "saveProfile": "Save Profile",
     "saving": "Saving...",
     "updateSuccess": "Profile updated successfully!",
@@ -305,7 +318,8 @@
     },
     "localeSwitcher": {
       "switchToEnglish": "Switch to English",
-      "switchToFrench": "Switch to French"
+      "switchToFrench": "Switch to French",
+      "toggleLocale": "Toggle language"
     },
     "pill": {
       "remove": "Remove {label}"
@@ -569,7 +583,9 @@
     "selector": {
       "instruction": "Select the values that matter most to you.",
       "selected": "selected",
-      "selectedLabel": "Selected"
+      "selectedLabel": "Selected",
+      "placeholder": "Search for values...",
+      "noResults": "No values found"
     }
   }
 }

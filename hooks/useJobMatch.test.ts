@@ -54,7 +54,13 @@ describe('useJobMatch', () => {
       expect(result.current.loading).toBe(false)
     })
 
-    expect(result.current.match).toEqual({ score: 0.75, shared_values: ['sustainability', 'innovation'] })
+    expect(result.current.match).toEqual({
+      score: 0.75,
+      value_score: undefined,
+      skill_score: undefined,
+      shared_values: ['sustainability', 'innovation'],
+      shared_skills: [],
+    })
     expect(result.current.matchPercentage).toBe(75)
   })
 

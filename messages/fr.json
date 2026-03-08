@@ -116,7 +116,11 @@
   "jobListings": {
     "loading": "Chargement des emplois...",
     "error": "Erreur lors du chargement des offres d'emploi",
-    "noJobs": "Aucune offre d'emploi trouvée."
+    "noJobs": "Aucune offre d'emploi trouvée.",
+    "sliderHint": "Faites défiler horizontalement pour parcourir les emplois.",
+    "stackedHint": "Affichage de tous les emplois dans une liste verticale.",
+    "showAll": "Tout afficher",
+    "useSlider": "Utiliser le carrousel"
   },
   "bookmarks": {
     "title": "Mes signets",
@@ -135,6 +139,8 @@
     "when": "Quand :",
     "howMuch": "Combien :",
     "match": "% de correspondance :",
+    "valuesMatch": "% de correspondance valeurs :",
+    "skillsMatch": "% de correspondance compétences :",
     "removeSse": "Retirer le statut SSE",
     "markSse": "Marquer comme SSE",
     "sseJob": "Emploi SSE (cliquez pour retirer)",
@@ -230,6 +236,13 @@
     "bio": "Biographie",
     "bioPlaceholder": "Parlez-nous de vous...",
     "workValues": "Valeurs de travail",
+    "skills": "Compétences",
+    "skillsPlaceholder": "Rechercher des compétences...",
+    "skillsMinChars": "Tapez au moins 2 caractères pour rechercher.",
+    "skillsNoResults": "Aucune compétence trouvée.",
+    "skillsLoading": "Recherche de compétences...",
+    "skillsMaxReached": "Maximum de {max} compétences sélectionnées. Retirez-en une pour en ajouter une autre.",
+    "skillsMatchedAlias": "Correspondance",
     "saveProfile": "Enregistrer le profil",
     "saving": "Enregistrement...",
     "updateSuccess": "Profil mis à jour avec succès !",
@@ -556,7 +569,9 @@
     "selector": {
       "instruction": "Sélectionnez les valeurs qui comptent le plus pour vous.",
       "selected": "sélectionné",
-      "selectedLabel": "Sélectionné"
+      "selectedLabel": "Sélectionné",
+      "placeholder": "Rechercher des valeurs...",
+      "noResults": "Aucune valeur trouvée"
     }
   },
   "ariaLabels": {
@@ -566,7 +581,8 @@
     },
     "localeSwitcher": {
       "switchToEnglish": "Passer à l'anglais",
-      "switchToFrench": "Passer au français"
+      "switchToFrench": "Passer au français",
+      "toggleLocale": "Changer de langue"
     },
     "pill": {
       "remove": "Retirer {label}"

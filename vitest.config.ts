@@ -1,9 +1,9 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import path from 'path'
+import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tsconfigPaths()],
   test: {
     environment: 'jsdom',
     globals: true,
@@ -16,11 +16,5 @@ export default defineConfig({
       exclude: ['**/*.test.{ts,tsx}'],
     },
   },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, '.'),
-      '@lineiconshq/react-lineicons': path.resolve(__dirname, './test-stubs/lineicons.ts'),
-      '@lineiconshq/free-icons': path.resolve(__dirname, './test-stubs/lineicons.ts'),
-    },
-  },
 })
+

@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfile } from '@/lib/hooks/useProfile';
 import ValuesSelector from '@/components/ValuesSelector';
+import SkillsSelector, { type SkillOption } from '@/components/SkillsSelector';
 import LoadingState from '@/components/LoadingState';
 import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
@@ -18,38 +19,105 @@ import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
 import toast from 'react-hot-toast';
 
+const MAX_PROFILE_SKILLS = 10;
+
+function uniqueSkillOptions(skills: SkillOption[]): SkillOption[] {
+  const seen = new Set<string>();
+  const deduped: SkillOption[] = [];
+  for (const skill of skills) {
+    if (seen.has(skill.value)) {
+      continue;
+    }
+    seen.add(skill.value);
+    deduped.push(skill);
+  }
+  return deduped.slice(0, MAX_PROFILE_SKILLS);
+}
+
 export default function ProfilePage() {
   const t = useTranslations();
+  const locale = useLocale() as 'en' | 'fr';
   const { user, loading } = useRequireAuth();
 
   const { profile, loading: profileLoading, error: profileError, updateProfile, uploadPhoto } = useProfile(user?.id);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedSkills, setSelectedSkills] = useState<SkillOption[]>([]);
   const [formData, setFormData] = useState({
     full_name: '',
     bio: '',
     values: [] as string[],
+    skills: [] as string[],
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Update form data when profile loads
   useEffect(() => {
     if (profile) {
+      const profileSkills = Array.from(new Set(profile.skills || [])).slice(0, MAX_PROFILE_SKILLS);
       setFormData({
         full_name: profile.full_name || '',
         bio: profile.bio || '',
         values: profile.values || [],
+        skills: profileSkills,
       });
+
+      // Explicit hydration step: resolve stored concept_uri[] into full option objects.
+      if (profileSkills.length > 0) {
+        const params = new URLSearchParams({
+          uris: profileSkills.join(','),
+          locale,
+        });
+
+        void fetch(`/api/skills/by-uri?${params.toString()}`)
+          .then(async (res) => {
+            if (!res.ok) {
+              throw new Error('Failed to hydrate skills')
+            }
+            return res.json() as Promise<{
+              skills?: Array<{
+                concept_uri: string
+                term: string
+                definition: string | null
+                scope_note: string | null
+                skill_type: string | null
+                reuse_level: string | null
+              }>
+            }>
+          })
+          .then((body) => {
+            const hydrated = uniqueSkillOptions((body.skills || []).map((skill) => ({
+              value: skill.concept_uri,
+              label: skill.term,
+              definition: skill.definition,
+              scopeNote: skill.scope_note,
+              skillType: skill.skill_type,
+              reuseLevel: skill.reuse_level,
+            })));
+            setSelectedSkills(hydrated);
+            setFormData((prev) => ({
+              ...prev,
+              skills: hydrated.map((skill) => skill.value).slice(0, MAX_PROFILE_SKILLS),
+            }));
+          })
+          .catch(() => {
+            setSelectedSkills([]);
+          });
+      } else {
+        setSelectedSkills([]);
+      }
     }
-  }, [profile]);
+  }, [profile, locale]);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
+      const normalizedSkills = Array.from(new Set(formData.skills)).slice(0, MAX_PROFILE_SKILLS);
       const updated = await updateProfile({
         full_name: formData.full_name || null,
         bio: formData.bio || null,
         values: formData.values,
+        skills: normalizedSkills,
       });
 
       if (updated) {
@@ -182,6 +250,30 @@ export default function ProfilePage() {
                   setFormData({ ...formData, values })
                 }
                 isEditing={true}
+              />
+            </div>
+
+            {/* Skills */}
+            <div>
+              <FormLabel>{t('profile.skills')}</FormLabel>
+              <SkillsSelector
+                selectedSkills={selectedSkills}
+                onSkillsChange={(skills) => {
+                  const normalized = uniqueSkillOptions(skills);
+                  setSelectedSkills(normalized);
+                  setFormData((prev) => ({
+                    ...prev,
+                    skills: normalized.map((skill) => skill.value),
+                  }));
+                }}
+                placeholder={t('profile.skillsPlaceholder')}
+                minCharsText={t('profile.skillsMinChars')}
+                noResultsText={t('profile.skillsNoResults')}
+                loadingText={t('profile.skillsLoading')}
+                maxSelections={MAX_PROFILE_SKILLS}
+                maxSelectionsReachedText={t('profile.skillsMaxReached', { max: MAX_PROFILE_SKILLS })}
+                locale={locale}
+                matchedAliasLabel={t('profile.skillsMatchedAlias')}
               />
             </div>
           </div>

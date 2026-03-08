@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { VALUES_LIST, getValueDefinition } from '@/lib/values'
 import Pill from '@/components/Pill'
+import ValuesCommandSelector, { type ValueOption } from '@/components/ValuesCommandSelector'
 
 interface ValuesSelectorProps {
   selectedValues: string[]
@@ -16,13 +17,28 @@ export default function ValuesSelector({
   isEditing,
 }: ValuesSelectorProps) {
   const t = useTranslations('values')
-  const toggleValue = (value: string) => {
-    if (selectedValues.includes(value)) {
-      onValuesChange(selectedValues.filter((selected) => selected !== value))
-      return
-    }
 
-    onValuesChange([...selectedValues, value])
+  // Convert selectedValues (string[]) to ValueOption[] for the command selector
+  const selectedValueOptions: ValueOption[] = selectedValues.map((value) => {
+    const valueName = t(`${value}.name`, { defaultValue: value })
+    const details = getValueDefinition(value, {
+      name: valueName,
+      description: t(`${value}.description`),
+      example: t(`${value}.example`),
+    })
+    
+    return {
+      value,
+      label: valueName,
+      description: details.description,
+      example: details.example,
+    }
+  })
+
+  // Handle changes from ValuesCommandSelector and convert back to string[]
+  const handleValueOptionsChange = (valueOptions: ValueOption[]) => {
+    const newSelectedValues = valueOptions.map((option) => option.value)
+    onValuesChange(newSelectedValues)
   }
 
   if (!isEditing) {
@@ -61,55 +77,19 @@ export default function ValuesSelector({
     )
   }
 
+  // Editing mode - use the command selector
   return (
     <div className="space-y-4">
       <p className="text-xs text-[var(--text-secondary)]">
         {t('selector.instruction')} {selectedValues.length} {t('selector.selected')}.
       </p>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {VALUES_LIST.map((value) => {
-          const valueName = t(`${value}.name`, { defaultValue: value })
-          const details = getValueDefinition(value, {
-            name: valueName,
-            description: t(`${value}.description`),
-            example: t(`${value}.example`),
-          })
-          const isSelected = selectedValues.includes(value)
-
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => toggleValue(value)}
-              aria-pressed={isSelected}
-              className="rounded-lg border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-              style={{
-                borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
-                background: isSelected ? 'var(--primary-tint)' : 'var(--surface)',
-              }}
-            >
-              <div className="mb-2 flex items-start justify-between gap-2">
-                <span className="text-sm font-semibold text-[var(--text-primary)]">
-                  {valueName}
-                </span>
-                {isSelected && (
-                  <span className="rounded-full bg-[var(--primary)] px-2 py-0.5 text-xs font-medium text-white">
-                    {t('selector.selectedLabel')}
-                  </span>
-                )}
-              </div>
-
-              <p className="text-xs text-[var(--text-primary)]">
-                {details.description}
-              </p>
-              <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                {details.example}
-              </p>
-            </button>
-          )
-        })}
-      </div>
+      <ValuesCommandSelector
+        selectedValues={selectedValueOptions}
+        onValuesChange={handleValueOptionsChange}
+        placeholder={t('selector.placeholder', { defaultValue: 'Search for values...' })}
+        noResultsText={t('selector.noResults', { defaultValue: 'No values found' })}
+      />
     </div>
   )
 }

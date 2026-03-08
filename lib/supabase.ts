@@ -20,6 +20,15 @@ export interface JobPosting {
   is_sse?: boolean
   source?: string | null
   values?: string[]
+  skills?: string[]
+}
+
+export interface JobMatchData {
+  score: number
+  value_score?: number | null
+  skill_score?: number | null
+  shared_values: string[]
+  shared_skills?: string[]
 }
 
 export interface ScrapeRun {
