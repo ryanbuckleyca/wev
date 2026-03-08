@@ -56,11 +56,13 @@ function MatchDetailsTooltip({
     ...values.filter(value => sharedValues.includes(value)),
     ...values.filter(value => !sharedValues.includes(value))
   ]
+  const limitedValues = orderedValues.slice(0, 5)
 
   const orderedSkills = [
     ...skills.filter(skill => sharedSkills.includes(skill)),
     ...skills.filter(skill => !sharedSkills.includes(skill))
   ]
+  const limitedSkills = orderedSkills.slice(0, 5)
 
   const renderListItem = (label: string, key: string, matched: boolean) => (
     <div key={key} className={`text-xs pl-4 lowercase ${matched ? '' : 'text-gray-400'}`}>
@@ -92,7 +94,7 @@ function MatchDetailsTooltip({
         <div className="text-xs opacity-75 lowercase">{t('matchDetails.totalMatch')}</div>
       </div>
 
-      {orderedValues.length > 0 && (
+      {limitedValues.length > 0 && (
         <div className="space-y-1">
           <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
             <Lineicons icon={HeartSolid} size={12} className="text-wev-accent" />
@@ -100,7 +102,7 @@ function MatchDetailsTooltip({
               {t('matchDetails.values')}: {valueMatchPercentage}%
             </span>
           </div>
-          {orderedValues.map(value => {
+          {limitedValues.map(value => {
             const isMatched = sharedValues.includes(value)
             const valueName = t(`values.${value}.name`, { defaultValue: value })
             return renderListItem(valueName, `value-${value}`, isMatched)
@@ -108,7 +110,7 @@ function MatchDetailsTooltip({
         </div>
       )}
 
-      {orderedSkills.length > 0 && (
+      {limitedSkills.length > 0 && (
         <div className="space-y-1">
           <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
             <Lineicons icon={Briefcase2Solid} size={12} className="text-wev-primary" />
@@ -116,7 +118,7 @@ function MatchDetailsTooltip({
               {t('matchDetails.skills')}: {skillMatchPercentage}%
             </span>
           </div>
-          {orderedSkills.map(skill => {
+          {limitedSkills.map(skill => {
             const isMatched = sharedSkills.includes(skill)
             const skillName = skillTerms[skill] || skill
             return renderListItem(skillName, `skill-${skill}`, isMatched)
