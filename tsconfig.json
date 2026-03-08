@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
-    "types": ["@testing-library/jest-dom"],
+    "types": [
+      "@testing-library/jest-dom",
+      "vitest"
+    ],
     "target": "es5",
     "lib": [
       "dom",

@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { act } from 'react'
+import { beforeAll, afterAll, afterEach } from 'vitest'
 
 class ResizeObserverMock {
   observe() {}
@@ -10,7 +11,7 @@ class ResizeObserverMock {
 
 if (typeof globalThis.ResizeObserver === 'undefined') {
   // cmdk relies on ResizeObserver; jsdom does not provide it.
-  ;(globalThis as { ResizeObserver?: typeof ResizeObserverMock }).ResizeObserver = ResizeObserverMock
+  ;(globalThis as unknown as { ResizeObserver?: typeof ResizeObserverMock }).ResizeObserver = ResizeObserverMock
 }
 
 // React 19 is stricter about act() boundaries than React 18. When components
