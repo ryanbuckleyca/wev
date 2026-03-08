@@ -1,19 +1,23 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
-import { useQueryState, parseAsString, parseAsArrayOf, parseAsBoolean, parseAsInteger, parseAsStringLiteral } from 'nuqs'
-import type { JobPosting } from '@/lib/supabase'
-import { createClient } from '@/lib/supabase/client'
-import ReScrapeButton from '@/components/ReScrapeButton'
+import { parseAsArrayOf, parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import JobListings from '@/components/JobListings'
-import CopyAllJobsButton from '@/components/CopyAllJobsButton'
 import JobFilters from '@/components/JobFilters'
-import Pagination from '@/components/Pagination'
+import UserProfile from '@/components/UserProfile'
+import LinkButton from '@/components/LinkButton'
+import Button from '@/components/Button'
+import { useRequireAuth } from '@/lib/hooks/useRequireAuth'
+import { createClient } from '@/lib/supabase/client'
+import type { JobPosting, JobMatchData } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import SortDropdown from '@/components/SortDropdown'
 import ExpandAllToggle from '@/components/ExpandAllToggle'
 import WatercolorBackground from '@/components/WatercolorBackground'
+import ReScrapeButton from '@/components/ReScrapeButton'
+import CopyAllJobsButton from '@/components/CopyAllJobsButton'
+import Pagination from '@/components/Pagination'
 
 const ITEMS_PER_PAGE = 20
 
@@ -51,7 +55,7 @@ export default function Home() {
   )
   
   // Match data state
-  const [matchData, setMatchData] = useState<Map<string, { score: number; shared_values: string[] }>>(new Map())
+  const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(new Map())
   // Bookmarked job IDs (batch-fetched for logged-in users)
   const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(new Set())
 
@@ -160,7 +164,7 @@ export default function Home() {
       const supabase = createClient()
       const { data: matches, error } = await supabase
         .from('job_matches')
-        .select('job_id, score, shared_values')
+        .select('job_id, score, value_score, skill_score, shared_values, shared_skills')
         .eq('user_id', user.id)
         .in('job_id', jobs.map(job => job.id))
 
@@ -170,7 +174,7 @@ export default function Home() {
       }
 
       const matchMap = new Map()
-      matches?.forEach((match: { job_id: string; score: number; shared_values: string[] }) => {
+      matches?.forEach((match: { job_id: string; score: number; value_score?: number | null; skill_score?: number | null; shared_values: string[]; shared_skills?: string[] }) => {
         matchMap.set(match.job_id, match)
       })
       

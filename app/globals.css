@@ -52,8 +52,8 @@
   --watercolor-blue: #B5C9ED;
 
   /* Opacity values */
-  --lavender-opacity: 0.228;
-  --blue-opacity: 0.2;
+  --lavender-opacity: 0.2;
+  --blue-opacity: 0.23;
   --theme-switch-duration: 300ms;
   --theme-switch-easing: ease-in-out;
 }
@@ -251,7 +251,7 @@ html.theme-switching *::after {
   background:
     radial-gradient(circle at 20% 30%, var(--primary-tint) 0%, transparent 50%),
     radial-gradient(circle at 80% 70%, var(--accent-tint) 0%, transparent 50%);
-  opacity: 0.6;
+  opacity: 0.30;
   z-index: 0;
 }
 

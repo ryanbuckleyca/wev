@@ -154,14 +154,35 @@ describe('JobCard', () => {
   })
 
   it('shows the match score and value pills for a logged-in user with a match', () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        skills: [
+          { concept_uri: 'http://data.europa.eu/esco/skill/test-skill', term: 'Test Skill' },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
     mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never)
     mockUseRouter.mockReturnValue(mockRouter() as never)
 
     renderJobCard({
-      job: { ...defaultJob, values: ['Advancement'] },
-      match: { score: 0.8, shared_values: ['Advancement'] },
+      job: {
+        ...defaultJob,
+        values: ['Advancement'],
+        skills: ['http://data.europa.eu/esco/skill/test-skill'],
+      },
+      match: {
+        score: 0.8,
+        value_score: 0.8,
+        skill_score: 0.6,
+        shared_values: ['Advancement'],
+        shared_skills: ['http://data.europa.eu/esco/skill/test-skill'],
+      },
     })
 
-    expect(screen.getByText('80% match:')).toBeVisible()
+    expect(screen.getByText('80% values match:')).toBeVisible()
+    expect(screen.getByText('60% skills match:')).toBeVisible()
+    vi.unstubAllGlobals()
   })
 })

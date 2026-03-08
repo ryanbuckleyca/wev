@@ -7,13 +7,14 @@ import { createClient } from '@/lib/supabase/client'
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth'
 import LoadingState from '@/components/LoadingState'
 import PageLayout from '@/components/PageLayout'
+import type { JobMatchData } from '@/lib/supabase'
 
 export default function BookmarksPage() {
   const t = useTranslations()
   const { user, loading } = useRequireAuth()
   const [jobs, setJobs] = useState<any[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [matchData, setMatchData] = useState<Map<string, { score: number; shared_values: string[] }>>(new Map())
+  const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(new Map())
 
   useEffect(() => {
     if (!user) return
@@ -37,14 +38,20 @@ export default function BookmarksPage() {
           const supabase = createClient()
           const { data: matches, error: matchError } = await supabase
             .from('job_matches')
-            .select('job_id, score, shared_values')
+            .select('job_id, score, value_score, skill_score, shared_values, shared_skills')
             .eq('user_id', user.id)
             .in('job_id', bookmarkedJobs.map((j: { id: string }) => j.id))
 
           if (!matchError && mounted) {
-            const matchMap = new Map<string, { score: number; shared_values: string[] }>()
-            matches?.forEach((m: { job_id: string; score: number; shared_values: string[] }) => {
-              matchMap.set(m.job_id, { score: m.score, shared_values: m.shared_values || [] })
+            const matchMap = new Map<string, JobMatchData>()
+            matches?.forEach((m: { job_id: string; score: number; value_score?: number | null; skill_score?: number | null; shared_values: string[]; shared_skills?: string[] }) => {
+              matchMap.set(m.job_id, {
+                score: m.score,
+                value_score: m.value_score,
+                skill_score: m.skill_score,
+                shared_values: m.shared_values || [],
+                shared_skills: m.shared_skills || [],
+              })
             })
             setMatchData(matchMap)
           }

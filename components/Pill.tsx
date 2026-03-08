@@ -9,6 +9,7 @@ interface PillProps {
   className?: string
   onRemove?: () => void
   removable?: boolean
+  title?: string
 }
 
 export default function Pill({ 
@@ -17,7 +18,8 @@ export default function Pill({
   size = 'md', 
   className = '', 
   onRemove,
-  removable = false 
+  removable = false,
+  title
 }: PillProps) {
   const t = useTranslations('ariaLabels.pill')
   
@@ -41,7 +43,10 @@ export default function Pill({
   const combinedClasses = `${baseClasses} ${sizeClasses[size]} ${removable ? removableClasses : variantClasses[variant]} ${className}`.trim()
 
   return (
-    <span className={combinedClasses}>
+    <span 
+      className={combinedClasses}
+      title={title}
+    >
       {children}
       {(removable || onRemove) && (
         <button
