@@ -302,9 +302,11 @@ export default function Home() {
     return filteredJobs.slice(startIndex, endIndex)
   }, [filteredJobs, currentPage])
 
-  // Reset to page 1 when filters or sort change
+  // Reset to page 1 when filters or sort change (only if not already on page 1)
   useEffect(() => {
-    setCurrentPage(1)
+    if (currentPage !== 1) {
+      setCurrentPage(1)
+    }
   }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin, sortBy])
 
   useEffect(() => {

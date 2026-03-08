@@ -1,8 +1,15 @@
 import { useScrollFades } from "@/hooks/useScrollFades";
 import Pill from "@/components/Pill";
+import Tooltip from "@/components/Tooltip";
+
+interface ScrollablePillsItem {
+  label: string;
+  tooltip?: string;
+  isMatched?: boolean;
+}
 
 interface ScrollablePillsProps {
-  items: string[];
+  items: string[] | ScrollablePillsItem[];
   variant?: "default" | "pink" | "gray";
   className?: string;
   fadeBackground?: string; // match your card background color, default "white"
@@ -26,7 +33,18 @@ export function ScrollablePills({
 }: ScrollablePillsProps) {
   const { ref, fades } = useScrollFades();
 
-  const getVariantClass = () => {
+  // Normalize items to always be objects
+  const normalizedItems: ScrollablePillsItem[] = items.map(item => 
+    typeof item === 'string' ? { label: item, isMatched: true } : item
+  );
+
+  const getVariantClass = (isMatched: boolean = true) => {
+    if (!isMatched) {
+      // Greyed out state for non-matching items
+      if (variant === "pink") return "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60";
+      if (variant === "gray") return "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60";
+      return "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60";
+    }
     if (variant === "pink") return "bg-pink-50 text-pink-800 border-pink-200 hover:bg-pink-50";
     if (variant === "gray") return "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-50";
     return "";
@@ -50,15 +68,28 @@ export function ScrollablePills({
         className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide"
         style={{ WebkitOverflowScrolling: "touch" }}
       >
-        {items.map((item) => (
-          <Pill
-            key={item}
-            size="sm"
-            className={`shrink-0 whitespace-nowrap ${getVariantClass()}`}
-          >
-            {item}
-          </Pill>
-        ))}
+        {normalizedItems.map((item, index) => {
+          const pill = (
+            <Pill
+              key={item.label + index}
+              size="sm"
+              className={`shrink-0 whitespace-nowrap ${getVariantClass(item.isMatched)}`}
+            >
+              {item.label}
+            </Pill>
+          );
+          
+          // Wrap in tooltip if tooltip content exists
+          if (item.tooltip) {
+            return (
+              <Tooltip key={item.label + index} content={item.tooltip}>
+                {pill}
+              </Tooltip>
+            );
+          }
+          
+          return pill;
+        })}
       </div>
 
       {/* Right fade */}
