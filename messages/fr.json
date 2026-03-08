@@ -97,9 +97,16 @@
     "newestFirst": "Date desc",
     "oldestFirst": "Date asc",
     "bestMatch": "Correspondance",
+    "valueMatch": "Valeurs",
+    "skillMatch": "Compétences",
     "salaryHighToLow": "Salaire desc",
     "salaryLowToHigh": "Salaire asc",
     "orgAZ": "Org A ↔ Z"
+  },
+  "matchDetails": {
+    "totalMatch": "Correspondance totale",
+    "values": "Valeurs",
+    "skills": "Compétences"
   },
   "expand": {
     "expandAll": "Tout développer",
@@ -154,6 +161,7 @@
     "expand": "Développer",
     "collapseDetails": "Réduire les détails de l'emploi",
     "expandDetails": "Développer les détails de l'emploi",
+    "viewMatchDetails": "Voir les détails de la correspondance",
     "removeSseConfirm": "Retirer l'étiquette SSE de \"{title}\" chez {org} ?",
     "markSseConfirm": "Marquer \"{title}\" chez {org} comme un emploi d'économie solidaire ?"
   },
@@ -309,7 +317,8 @@
     "terms": "Conditions d'utilisation"
   },
   "common": {
-    "loading": "Chargement..."
+    "loading": "Chargement...",
+    "close": "Fermer"
   },
   "passwordStrength": {
     "strength": "Force :",

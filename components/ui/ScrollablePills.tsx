@@ -6,6 +6,8 @@ interface ScrollablePillsItem {
   label: string;
   tooltip?: string;
   isMatched?: boolean;
+  icon?: 'heart' | 'briefcase';
+  type?: 'value' | 'skill';
 }
 
 interface ScrollablePillsProps {
@@ -38,16 +40,14 @@ export function ScrollablePills({
     typeof item === 'string' ? { label: item, isMatched: true } : item
   );
 
-  const getVariantClass = (isMatched: boolean = true) => {
+  const getVariantClass = (isMatched: boolean = true, type?: 'value' | 'skill') => {
+    const baseClasses = "border transition-colors";
     if (!isMatched) {
-      // Greyed out state for non-matching items
-      if (variant === "pink") return "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60";
-      if (variant === "gray") return "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60";
-      return "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60";
+      // Desaturated state for non-matching items
+      return `${baseClasses} bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-100 opacity-60`;
     }
-    if (variant === "pink") return "bg-pink-50 text-pink-800 border-pink-200 hover:bg-pink-50";
-    if (variant === "gray") return "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-50";
-    return "";
+    // Saturated state for matching items - standard colors
+    return `${baseClasses} bg-white text-gray-900 border-gray-300 hover:bg-gray-50`;
   };
 
   return (
@@ -70,13 +70,25 @@ export function ScrollablePills({
       >
         {normalizedItems.map((item, index) => {
           const pill = (
-            <Pill
+            <span
               key={item.label + index}
-              size="sm"
-              className={`shrink-0 whitespace-nowrap ${getVariantClass(item.isMatched)}`}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getVariantClass(item.isMatched, item.type)}`}
             >
-              {item.label}
-            </Pill>
+              {item.icon === 'heart' ? (
+                <span className={`flex-shrink-0 ${item.isMatched ? 'text-wev-accent' : 'text-gray-400'}`}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  </svg>
+                </span>
+              ) : item.icon === 'briefcase' ? (
+                <span className={`flex-shrink-0 ${item.isMatched ? 'text-wev-primary' : 'text-gray-400'}`}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
+                    <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/>
+                  </svg>
+                </span>
+              ) : null}
+              <span>{item.label}</span>
+            </span>
           );
           
           // Wrap in tooltip if tooltip content exists

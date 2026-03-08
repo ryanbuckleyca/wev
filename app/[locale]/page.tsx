@@ -51,7 +51,7 @@ export default function Home() {
   // Sort state
   const [sortBy, setSortBy] = useQueryState(
     'sort',
-    parseAsStringLiteral(['date-desc', 'date-asc', 'match-desc', 'salary-desc', 'salary-asc', 'org-asc'] as const).withDefault('date-desc')
+    parseAsStringLiteral(['date-desc', 'date-asc', 'match-desc', 'value-match-desc', 'skill-match-desc', 'salary-desc', 'salary-asc', 'org-asc'] as const).withDefault('date-desc')
   )
   
   // Match data state
@@ -276,6 +276,14 @@ export default function Home() {
           const aMatch = matchData.get(a.id)?.score || 0
           const bMatch = matchData.get(b.id)?.score || 0
           return bMatch - aMatch
+        case 'value-match-desc':
+          const aValueMatch = matchData.get(a.id)?.value_score || 0
+          const bValueMatch = matchData.get(b.id)?.value_score || 0
+          return bValueMatch - aValueMatch
+        case 'skill-match-desc':
+          const aSkillMatch = matchData.get(a.id)?.skill_score || 0
+          const bSkillMatch = matchData.get(b.id)?.skill_score || 0
+          return bSkillMatch - aSkillMatch
         case 'salary-desc':
           // Sort by salary high to low (jobs without salary go to end)
           const aSalary = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : -1

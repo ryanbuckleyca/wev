@@ -96,10 +96,17 @@
     "label": "Sort:",
     "newestFirst": "Date desc",
     "oldestFirst": "Date asc",
-    "bestMatch": "Correspondence",
+    "bestMatch": "Match",
+    "valueMatch": "Values",
+    "skillMatch": "Skills",
     "salaryHighToLow": "Salary desc",
     "salaryLowToHigh": "Salary asc",
     "orgAZ": "Org A ↔ Z"
+  },
+  "matchDetails": {
+    "totalMatch": "Total Match",
+    "values": "Values",
+    "skills": "Skills"
   },
   "expand": {
     "expandAll": "Expand all",
@@ -154,6 +161,7 @@
     "expand": "Expand",
     "collapseDetails": "Collapse job details",
     "expandDetails": "Expand job details",
+    "viewMatchDetails": "View match details",
     "removeSseConfirm": "Remove the SSE tag from \"{title}\" at {org}?",
     "markSseConfirm": "Mark \"{title}\" at {org} as a Solidarity Economy job?"
   },
@@ -309,7 +317,8 @@
     "terms": "Terms of Service"
   },
   "common": {
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "close": "Close"
   },
   "ariaLabels": {
     "themeToggle": {
