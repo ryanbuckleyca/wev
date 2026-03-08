@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, ReactNode } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { JobPosting, JobMatchData } from '@/lib/supabase'
 import { Lineicons } from '@lineiconshq/react-lineicons'
-import { Leaf1Solid, Leaf1Outlined, Bookmark1Solid, Bookmark1Outlined, ChevronDownSolid, ChevronUpSolid } from '@lineiconshq/free-icons'
+import { Leaf1Solid, Leaf1Outlined, Bookmark1Solid, Bookmark1Outlined, ChevronDownSolid, ChevronUpSolid, HeartSolid, Briefcase2Solid } from '@lineiconshq/free-icons'
 import Pill from './Pill'
 import Tooltip from './Tooltip'
 import { getValueDefinition } from '@/lib/values'
@@ -24,6 +24,107 @@ interface JobCardProps {
   initialExpanded?: boolean
   match?: JobMatchData | null
   initialBookmarked?: boolean
+}
+
+interface MatchDetailsTooltipProps {
+  totalMatchPercentage: number
+  valueMatchPercentage: number
+  skillMatchPercentage: number
+  values: string[]
+  skills: string[]
+  sharedValues: string[]
+  sharedSkills: string[]
+  skillTerms: Record<string, string>
+  t: ReturnType<typeof useTranslations>
+}
+
+function MatchDetailsTooltip({
+  totalMatchPercentage,
+  valueMatchPercentage,
+  skillMatchPercentage,
+  values,
+  skills,
+  sharedValues,
+  sharedSkills,
+  skillTerms,
+  t,
+}: MatchDetailsTooltipProps) {
+  const primaryColor = 'rgb(var(--primary))'
+  const textColor = 'rgb(var(--text-primary))'
+
+  const orderedValues = [
+    ...values.filter(value => sharedValues.includes(value)),
+    ...values.filter(value => !sharedValues.includes(value))
+  ]
+
+  const orderedSkills = [
+    ...skills.filter(skill => sharedSkills.includes(skill)),
+    ...skills.filter(skill => !sharedSkills.includes(skill))
+  ]
+
+  const renderListItem = (label: string, key: string, matched: boolean) => (
+    <div key={key} className={`text-xs pl-4 lowercase ${matched ? '' : 'text-gray-400'}`}>
+      {matched && '✓ '}
+      {label}
+    </div>
+  )
+
+  return (
+    <div className="space-y-3">
+      <div className="text-center">
+        <div className="relative inline-flex items-center justify-center">
+          <div
+            className="rounded-full relative"
+            style={{
+              width: 45,
+              height: 45,
+              background: `conic-gradient(from 0deg, ${primaryColor} 0deg ${totalMatchPercentage * 3.6}deg, #f9fafb ${totalMatchPercentage * 3.6}deg)` ,
+              border: `2px solid ${primaryColor}`,
+            }}
+          >
+            <div className="absolute inset-1 rounded-full bg-white flex items-center justify-center">
+              <span className="font-bold" style={{ fontSize: 11, color: primaryColor }}>
+                {totalMatchPercentage}%
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="text-xs opacity-75 lowercase">{t('matchDetails.totalMatch')}</div>
+      </div>
+
+      {orderedValues.length > 0 && (
+        <div className="space-y-1">
+          <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
+            <Lineicons icon={HeartSolid} size={12} className="text-wev-accent" />
+            <span>
+              {t('matchDetails.values')}: {valueMatchPercentage}%
+            </span>
+          </div>
+          {orderedValues.map(value => {
+            const isMatched = sharedValues.includes(value)
+            const valueName = t(`values.${value}.name`, { defaultValue: value })
+            return renderListItem(valueName, `value-${value}`, isMatched)
+          })}
+        </div>
+      )}
+
+      {orderedSkills.length > 0 && (
+        <div className="space-y-1">
+          <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
+            <Lineicons icon={Briefcase2Solid} size={12} className="text-wev-primary" />
+            <span>
+              {t('matchDetails.skills')}: {skillMatchPercentage}%
+            </span>
+          </div>
+          {orderedSkills.map(skill => {
+            const isMatched = sharedSkills.includes(skill)
+            const skillName = skillTerms[skill] || skill
+            return renderListItem(skillName, `skill-${skill}`, isMatched)
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function JobCard({ 
@@ -54,6 +155,32 @@ export default function JobCard({
   const skillMatchPercentage = matchProp?.skill_score != null ? Math.round(matchProp.skill_score * 100) : 0
   const isValueMatched = (value: string) => matchProp?.shared_values?.includes(value) ?? false
   const isSkillMatched = (skill: string) => matchProp?.shared_skills?.includes(skill) ?? false
+  const matchTooltipContent = useMemo<ReactNode | null>(() => {
+    if (!matchProp) return null
+
+    return (
+      <MatchDetailsTooltip
+        totalMatchPercentage={totalMatchPercentage}
+        valueMatchPercentage={valueMatchPercentage}
+        skillMatchPercentage={skillMatchPercentage}
+        values={job.values || []}
+        skills={job.skills || []}
+        sharedValues={matchProp.shared_values || []}
+        sharedSkills={matchProp.shared_skills || []}
+        skillTerms={skillTerms}
+        t={t}
+      />
+    )
+  }, [
+    matchProp,
+    job.values,
+    job.skills,
+    skillTerms,
+    t,
+    totalMatchPercentage,
+    valueMatchPercentage,
+    skillMatchPercentage
+  ])
   
   // Sync internal state with prop changes
   useEffect(() => {
@@ -308,83 +435,96 @@ export default function JobCard({
         </div>
       </Collapsible>
       
-      {(user && matchProp) || (job.values && job.values.length > 0) || (job.skills && job.skills.length > 0) ? (
+      {(job.values && job.values.length > 0) || (job.skills && job.skills.length > 0) ? (
         <div className={`px-4 py-3 bg-wev-surface-tint ${isExpanded ? 'border-t border-wev-border' : ''}`}>
           <div className="flex gap-4">
-            {/* Left side: Total score */}
-            {user && matchProp && (
-              <div className="flex flex-col items-center justify-center pr-4 border-r border-wev-border">
-                <ProgressDonut
-                  percentage={totalMatchPercentage}
-                  size="xl"
-                  text={`${totalMatchPercentage}`}
-                />
+            {/* Left side: Total score with tooltip */}
+            {user && matchProp && matchTooltipContent && (
+              <div className="flex items-center justify-center pr-4 border-r border-wev-border">
+                <Tooltip
+                  content={matchTooltipContent}
+                >
+                  <div className="flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform">
+                    <ProgressDonut
+                      percentage={totalMatchPercentage}
+                      size="sm"
+                      text=""
+                    />
+                    <span className="text-sm font-medium text-wev-text-primary">{totalMatchPercentage}%</span>
+                  </div>
+                </Tooltip>
               </div>
             )}
 
-            {/* Right side: Values and Skills */}
-            <div className="flex-1 min-w-0 space-y-3">
-              {job.values && job.values.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {user && (
-                      <span className="text-sm text-wev-text-secondary font-medium">
-                        {valueMatchPercentage}% values match:
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <ScrollablePills
-                      items={job.values.map(value => {
-                        const valueName = t(`values.${value}.name`, { defaultValue: value })
-                        const valueDef = getValueDefinition(value, {
-                          name: valueName,
-                          description: t(`values.${value}.description`),
-                          example: t(`values.${value}.example`),
-                        })
-                        return {
-                          label: valueName,
-                          tooltip: `${valueDef.description}<br/><br/><em>Example: ${valueDef.example}</em>`,
-                          isMatched: isValueMatched(value)
-                        }
-                      })}
-                      variant="pink"
-                      fadeBackground="#f9fafb"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {job.skills && job.skills.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {user && (
-                      <span className="text-sm text-wev-text-secondary font-medium">
-                        {skillMatchPercentage}% skills match:
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <ScrollablePills
-                      items={job.skills.map(skill => {
-                        const skillLabel = skillTerms[skill] || skill
-                        const skillTooltip = skillDefinitions[skill]
-                        return {
-                          label: skillLabel,
-                          tooltip: skillTooltip,
-                          isMatched: isSkillMatched(skill)
-                        }
-                      })}
-                      variant="gray"
-                      fadeBackground="#f9fafb"
-                    />
-                  </div>
-                </div>
-              )}
+            {/* Right side: Combined Values and Skills in single row */}
+            <div className="flex-1 min-w-0">
+              <ScrollablePills
+                items={[
+                  // Matched values first (max 5 total)
+                  ...(job.values?.filter(value => isValueMatched(value)).slice(0, 5).map(value => {
+                    const valueName = t(`values.${value}.name`, { defaultValue: value }).toLowerCase()
+                    const valueDef = getValueDefinition(value, {
+                      name: valueName,
+                      description: t(`values.${value}.description`),
+                      example: t(`values.${value}.example`),
+                    })
+                    return {
+                      label: valueName,
+                      tooltip: `${valueDef.description}<br/><br/><em>Example: ${valueDef.example}</em>`,
+                      isMatched: true,
+                      icon: 'heart' as const,
+                      type: 'value' as const
+                    }
+                  }) || []),
+                  // Non-matched values second (fill up to 5 total)
+                  ...(job.values?.filter(value => !isValueMatched(value)).slice(0, Math.max(0, 5 - (job.values?.filter(value => isValueMatched(value)).length || 0))).map(value => {
+                    const valueName = t(`values.${value}.name`, { defaultValue: value }).toLowerCase()
+                    const valueDef = getValueDefinition(value, {
+                      name: valueName,
+                      description: t(`values.${value}.description`),
+                      example: t(`values.${value}.example`),
+                    })
+                    return {
+                      label: valueName,
+                      tooltip: `${valueDef.description}<br/><br/><em>Example: ${valueDef.example}</em>`,
+                      isMatched: false,
+                      icon: 'heart' as const,
+                      type: 'value' as const
+                    }
+                  }) || []),
+                  // Matched skills third (max 5 total)
+                  ...(job.skills?.filter(skill => isSkillMatched(skill)).slice(0, 5).map(skill => {
+                    const skillLabel = (skillTerms[skill] || skill).toLowerCase()
+                    const skillTooltip = skillDefinitions[skill]
+                    return {
+                      label: skillLabel,
+                      tooltip: skillTooltip,
+                      isMatched: true,
+                      icon: 'briefcase' as const,
+                      type: 'skill' as const
+                    }
+                  }) || []),
+                  // Non-matched skills fourth (fill up to 5 total)
+                  ...(job.skills?.filter(skill => !isSkillMatched(skill)).slice(0, Math.max(0, 5 - (job.skills?.filter(skill => isSkillMatched(skill)).length || 0))).map(skill => {
+                    const skillLabel = (skillTerms[skill] || skill).toLowerCase()
+                    const skillTooltip = skillDefinitions[skill]
+                    return {
+                      label: skillLabel,
+                      tooltip: skillTooltip,
+                      isMatched: false,
+                      icon: 'briefcase' as const,
+                      type: 'skill' as const
+                    }
+                  }) || [])
+                ]}
+                variant="default"
+                fadeBackground="#f9fafb"
+              />
             </div>
           </div>
         </div>
       ) : null}
+
     </div>
   )
 }
