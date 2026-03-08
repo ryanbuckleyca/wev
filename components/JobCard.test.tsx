@@ -17,6 +17,14 @@ vi.mock('@/i18n/navigation', () => ({
   useRouter: vi.fn(),
 }))
 
+vi.mock(
+  '@lineiconshq/react-lineicons',
+  () => ({
+    Lineicons: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
+  }),
+  { virtual: true }
+)
+
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from '@/i18n/navigation'
@@ -183,6 +191,42 @@ describe('JobCard', () => {
 
     expect(screen.getByText('80% values match:')).toBeVisible()
     expect(screen.getByText('60% skills match:')).toBeVisible()
+    vi.unstubAllGlobals()
+  })
+
+  it('caps displayed skills to five pills for users', () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ skills: [] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never)
+    mockUseRouter.mockReturnValue(mockRouter() as never)
+
+    const skills = ['skill-one', 'skill-two', 'skill-three', 'skill-four', 'skill-five', 'skill-six', 'skill-seven']
+
+    renderJobCard({
+      job: {
+        ...defaultJob,
+        values: [],
+        skills,
+      },
+      match: {
+        score: 0.7,
+        value_score: 0,
+        skill_score: 0.6,
+        shared_values: [],
+        shared_skills: ['skill-one', 'skill-two', 'skill-three'],
+      },
+    })
+
+    const visibleSkills = skills.slice(0, 5)
+    visibleSkills.forEach(skill => {
+      expect(screen.getByText(skill)).toBeVisible()
+    })
+    expect(screen.queryByText('skill-six')).not.toBeInTheDocument()
+    expect(screen.queryByText('skill-seven')).not.toBeInTheDocument()
+
     vi.unstubAllGlobals()
   })
 })

@@ -47,7 +47,7 @@ export default function WatercolorBackground({
           cy="-50" 
           r="580" 
           fill="var(--watercolor-lavender)" 
-          style={{ opacity: 'var(--lavender-opacity, 0.04)' }}
+          style={{ opacity: 'var(--lavender-opacity, 0.24)' }}
         />
         <circle 
           cx="930" 
