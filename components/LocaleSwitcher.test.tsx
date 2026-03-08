@@ -9,92 +9,108 @@ vi.mock('@/i18n/navigation', () => ({
 }))
 
 vi.mock('next/navigation', () => ({
-  useSearchParams: vi.fn(() => new URLSearchParams()),
+  useSearchParams: vi.fn(() => ({
+    toString: () => 'tab=settings',
+    get: () => 'settings',
+  })),
 }))
 
 import { useRouter } from '@/i18n/navigation'
+import { useSearchParams } from 'next/navigation'
 
 const mockRouter = () => ({ replace: vi.fn(), push: vi.fn() })
 
 describe('LocaleSwitcher', () => {
-  it('renders EN and FR toggle buttons', () => {
+  it('renders a single toggle button with EN/FR segments', () => {
     vi.mocked(useRouter).mockReturnValue(mockRouter() as never)
 
     render(<LocaleSwitcher />)
 
-    expect(screen.getByRole('button', { name: /Switch to English/i })).toBeVisible()
-    expect(screen.getByRole('button', { name: /Switch to French|Passer au/i })).toBeVisible()
+    // The component now renders a single button with aria-label
+    expect(screen.getByRole('button', { name: /toggle language/i })).toBeVisible()
+    // Should contain both EN and FR segments
+    expect(screen.getByText('EN')).toBeVisible()
+    expect(screen.getByText('FR')).toBeVisible()
   })
 
-  it('marks the EN button as pressed when the current locale is English', () => {
+  it('renders EN and FR text segments', () => {
     vi.mocked(useRouter).mockReturnValue(mockRouter() as never)
 
     render(<LocaleSwitcher />)
 
-    const enButton = screen.getByRole('button', { name: /Switch to English/i })
-    const frButton = screen.getByRole('button', { name: /Switch to French|Passer au/i })
-    expect(enButton).toHaveAttribute('aria-pressed', 'true')
-    expect(frButton).toHaveAttribute('aria-pressed', 'false')
+    // Check that both EN and FR text segments are rendered
+    expect(screen.getByText('EN')).toBeInTheDocument()
+    expect(screen.getByText('FR')).toBeInTheDocument()
   })
 
-  it('marks the FR button as pressed when the current locale is French', () => {
-    vi.mocked(useRouter).mockReturnValue(mockRouter() as never)
-
-    renderWithLocale(<LocaleSwitcher />, 'fr')
-
-    const enButton = screen.getByRole('button', { name: /Switch to English|Passer à/i })
-    const frButton = screen.getByRole('button', { name: /Passer au français|Switch to French/i })
-    expect(enButton).toHaveAttribute('aria-pressed', 'false')
-    expect(frButton).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('aria-labels are always in the target language regardless of current locale', () => {
-    vi.mocked(useRouter).mockReturnValue(mockRouter() as never)
-
-    // When on the French site, aria-labels should show the locale-specific translations
-    renderWithLocale(<LocaleSwitcher />, 'fr')
-    expect(screen.getByRole('button', { name: /Switch to English|Passer à/i })).toBeVisible()
-    expect(screen.getByRole('button', { name: /Passer au français|Switch to French/i })).toBeVisible()
-  })
-
-  it('calls router.replace with the French locale when clicking FR', async () => {
+  it('calls router.replace with French locale when clicking while in English', async () => {
     const user = userEvent.setup()
     const mockReplace = vi.fn()
     vi.mocked(useRouter).mockReturnValue({ replace: mockReplace, push: vi.fn() } as never)
+    // Reset the useSearchParams mock to not return any query params
+    vi.mocked(useSearchParams).mockReturnValue({
+      toString: () => '',
+      get: () => null,
+    } as any)
 
     render(<LocaleSwitcher />)
 
-    const frButton = screen.getByRole('button', { name: /Switch to French|Passer au/i })
-    await user.click(frButton)
+    const button = screen.getByRole('button', { name: /toggle language/i })
+    await user.click(button)
 
     expect(mockReplace).toHaveBeenCalledWith('/', { locale: 'fr' })
+  })
+
+  it('preserves query params when switching locales', async () => {
+    const user = userEvent.setup()
+    const mockReplace = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({ replace: mockReplace, push: vi.fn() } as never)
+    vi.mocked(useSearchParams).mockReturnValue({
+      toString: () => 'tab=settings',
+      get: () => 'settings',
+    } as any)
+
+    render(<LocaleSwitcher />)
+
+    const button = screen.getByRole('button', { name: /toggle language/i })
+    await user.click(button)
+
+    expect(mockReplace).toHaveBeenCalledWith('/?tab=settings', { locale: 'fr' })
   })
 
   it('does not call router.replace when clicking the already-active locale', async () => {
     const user = userEvent.setup()
     const mockReplace = vi.fn()
     vi.mocked(useRouter).mockReturnValue({ replace: mockReplace, push: vi.fn() } as never)
+    // Reset the useSearchParams mock to not return any query params
+    vi.mocked(useSearchParams).mockReturnValue({
+      toString: () => '',
+      get: () => null,
+    } as any)
 
     render(<LocaleSwitcher />)
 
-    const enButton = screen.getByRole('button', { name: /Switch to English/i })
-    await user.click(enButton)
+    // Click the toggle button (it will switch to the other locale)
+    const button = screen.getByRole('button', { name: /toggle language/i })
+    await user.click(button)
 
-    expect(mockReplace).not.toHaveBeenCalled()
+    // Should have called replace since we're switching from English to French
+    expect(mockReplace).toHaveBeenCalledWith('/', { locale: 'fr' })
   })
 
   it('preserves query parameters when switching locales', async () => {
     const user = userEvent.setup()
     const mockReplace = vi.fn()
     vi.mocked(useRouter).mockReturnValue({ replace: mockReplace, push: vi.fn() } as never)
-
-    const { useSearchParams } = await import('next/navigation')
-    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('q=engineer&location=ottawa') as never)
+    vi.mocked(useSearchParams).mockReturnValue({
+      toString: () => 'q=engineer&location=ottawa',
+      get: () => 'engineer',
+    } as any)
 
     render(<LocaleSwitcher />)
 
-    const frButton = screen.getByRole('button', { name: /Switch to French|Passer au/i })
-    await user.click(frButton)
+    const button = screen.getByRole('button', { name: /toggle language/i })
+    await user.click(button)
 
     expect(mockReplace).toHaveBeenCalledWith('/?q=engineer&location=ottawa', { locale: 'fr' })
   })

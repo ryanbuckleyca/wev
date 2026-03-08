@@ -19,7 +19,7 @@ import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
 import toast from 'react-hot-toast';
 
-const MAX_PROFILE_SKILLS = 10;
+const MAX_PROFILE_SKILLS = 5;
 
 function uniqueSkillOptions(skills: SkillOption[]): SkillOption[] {
   const seen = new Set<string>();

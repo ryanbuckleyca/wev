@@ -219,11 +219,11 @@ describe('ProfilePage skills integration', () => {
     )
   })
 
-  it('caps saved skills at 10', async () => {
+  it('caps saved skills at 5', async () => {
     const user = userEvent.setup()
     const profileWithManySkills = {
       ...baseProfile,
-      skills: Array.from({ length: 12 }, (_, i) => `uri-${i + 1}`),
+      skills: Array.from({ length: 7 }, (_, i) => `uri-${i + 1}`),
     }
     vi.mocked(useProfile).mockReturnValue({
       profile: profileWithManySkills,
@@ -239,7 +239,7 @@ describe('ProfilePage skills integration', () => {
       const url = String(input)
       if (url.startsWith('/api/skills/by-uri?uris=')) {
         return jsonResponse({
-          skills: Array.from({ length: 12 }, (_, i) => ({
+          skills: Array.from({ length: 7 }, (_, i) => ({
             concept_uri: `uri-${i + 1}`,
             term: `Skill ${i + 1}`,
             definition: null,
@@ -262,18 +262,13 @@ describe('ProfilePage skills integration', () => {
     })
 
     const lastCall = mockUpdateProfile.mock.calls.at(-1)?.[0] as { skills: string[] }
-    expect(lastCall.skills).toHaveLength(10)
+    expect(lastCall.skills).toHaveLength(5)
     expect(lastCall.skills).toEqual([
       'uri-1',
       'uri-2',
       'uri-3',
       'uri-4',
       'uri-5',
-      'uri-6',
-      'uri-7',
-      'uri-8',
-      'uri-9',
-      'uri-10',
     ])
   })
 })
