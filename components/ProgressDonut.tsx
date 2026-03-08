@@ -2,17 +2,19 @@
 
 interface ProgressDonutProps {
   percentage: number
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
+  text?: string
 }
 
-export default function ProgressDonut({ percentage, size = 'sm', className = '' }: ProgressDonutProps) {
+export default function ProgressDonut({ percentage, size = 'sm', className = '', text }: ProgressDonutProps) {
   const normalizedPercentage = Math.min(Math.max(percentage, 0), 100)
 
   const sizes = {
     sm: { width: 14, height: 14, strokeWidth: 3 },
     md: { width: 18, height: 18, strokeWidth: 4 },
     lg: { width: 20, height: 20, strokeWidth: 5 },
+    xl: { width: 45, height: 45, strokeWidth: 5 },
   }
 
   const config = sizes[size]
@@ -57,6 +59,11 @@ export default function ProgressDonut({ percentage, size = 'sm', className = '' 
           style={{ opacity: getOpacity() }}
         />
       </svg>
+      {text && (
+        <span className="absolute text-xs font-bold text-wev-text-secondary" style={{ fontSize: config.width / 2.8 }}>
+          {text}
+        </span>
+      )}
     </div>
   )
 }

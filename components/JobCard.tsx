@@ -40,6 +40,7 @@ export default function JobCard({
   const [bookmarked, setBookmarked] = useState(initialBookmarked)
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
   const [skillTerms, setSkillTerms] = useState<Record<string, string>>({})
+  const [skillDefinitions, setSkillDefinitions] = useState<Record<string, string>>({})
 
   // Get user state
   const t = useTranslations()
@@ -48,6 +49,7 @@ export default function JobCard({
   const router = useRouter()
 
   // Use passed-in match data (batch-fetched by parent)
+  const totalMatchPercentage = matchProp?.score != null ? Math.round(matchProp.score * 100) : 0
   const valueMatchPercentage = matchProp?.value_score != null ? Math.round(matchProp.value_score * 100) : 0
   const skillMatchPercentage = matchProp?.skill_score != null ? Math.round(matchProp.skill_score * 100) : 0
   const isValueMatched = (value: string) => matchProp?.shared_values?.includes(value) ?? false
@@ -66,6 +68,7 @@ export default function JobCard({
     const skills = job.skills ?? []
     if (skills.length === 0) {
       setSkillTerms({})
+      setSkillDefinitions({})
       return
     }
 
@@ -85,12 +88,21 @@ export default function JobCard({
           return
         }
         const nextTerms: Record<string, string> = {}
+        const nextDefinitions: Record<string, string> = {}
         for (const row of body.skills ?? []) {
           if (row?.concept_uri && row?.term) {
             nextTerms[row.concept_uri] = row.term
+            // Build tooltip from definition and scope note
+            const parts = []
+            if (row.definition) parts.push(row.definition)
+            if (row.scope_note) parts.push(row.scope_note)
+            if (parts.length > 0) {
+              nextDefinitions[row.concept_uri] = parts.join('<br/><br/>')
+            }
           }
         }
         setSkillTerms(nextTerms)
+        setSkillDefinitions(nextDefinitions)
       } catch (error) {
         console.error('Failed to fetch skill labels:', error)
       }
@@ -296,57 +308,81 @@ export default function JobCard({
         </div>
       </Collapsible>
       
-      {(job.values && job.values.length > 0) || (job.skills && job.skills.length > 0) ? (
+      {(user && matchProp) || (job.values && job.values.length > 0) || (job.skills && job.skills.length > 0) ? (
         <div className={`px-4 py-3 bg-wev-surface-tint ${isExpanded ? 'border-t border-wev-border' : ''}`}>
-          {job.values && job.values.length > 0 && (
-            <div className="flex items-baseline gap-2">
-              <div className="flex items-center gap-1.5 shrink-0">
-                {user && (
-                  <>
-                    <ProgressDonut 
-                      percentage={valueMatchPercentage} 
-                      size="sm"
-                    />
-                    <span className="text-sm text-wev-text-secondary font-medium">
-                      {valueMatchPercentage}{t('jobCard.valuesMatch')}
-                    </span>
-                  </>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <ScrollablePills
-                  items={job.values.map(value => t(`values.${value}.name`, { defaultValue: value }))}
-                  variant="pink"
-                  fadeBackground="#f9fafb" // bg-wev-surface-tint
+          <div className="flex gap-4">
+            {/* Left side: Total score */}
+            {user && matchProp && (
+              <div className="flex flex-col items-center justify-center pr-4 border-r border-wev-border">
+                <ProgressDonut
+                  percentage={totalMatchPercentage}
+                  size="xl"
+                  text={`${totalMatchPercentage}`}
                 />
               </div>
-            </div>
-          )}
+            )}
 
-          {job.skills && job.skills.length > 0 && (
-            <div className={`flex items-center gap-2 ${job.values && job.values.length > 0 ? 'mt-3' : ''}`}>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {user && (
-                  <>
-                    <ProgressDonut 
-                      percentage={skillMatchPercentage} 
-                      size="sm"
+            {/* Right side: Values and Skills */}
+            <div className="flex-1 min-w-0 space-y-3">
+              {job.values && job.values.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {user && (
+                      <span className="text-sm text-wev-text-secondary font-medium">
+                        {valueMatchPercentage}% values match:
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <ScrollablePills
+                      items={job.values.map(value => {
+                        const valueName = t(`values.${value}.name`, { defaultValue: value })
+                        const valueDef = getValueDefinition(value, {
+                          name: valueName,
+                          description: t(`values.${value}.description`),
+                          example: t(`values.${value}.example`),
+                        })
+                        return {
+                          label: valueName,
+                          tooltip: `${valueDef.description}<br/><br/><em>Example: ${valueDef.example}</em>`,
+                          isMatched: isValueMatched(value)
+                        }
+                      })}
+                      variant="pink"
+                      fadeBackground="#f9fafb"
                     />
-                    <span className="text-sm text-wev-text-secondary font-medium">
-                      {skillMatchPercentage}{t('jobCard.skillsMatch')}
-                    </span>
-                  </>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <ScrollablePills
-                  items={job.skills.map(skill => skillTerms[skill] || skill)}
-                  variant="gray"
-                  fadeBackground="#f9fafb" // bg-wev-surface-tint
-                />
-              </div>
+                  </div>
+                </div>
+              )}
+
+              {job.skills && job.skills.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {user && (
+                      <span className="text-sm text-wev-text-secondary font-medium">
+                        {skillMatchPercentage}% skills match:
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <ScrollablePills
+                      items={job.skills.map(skill => {
+                        const skillLabel = skillTerms[skill] || skill
+                        const skillTooltip = skillDefinitions[skill]
+                        return {
+                          label: skillLabel,
+                          tooltip: skillTooltip,
+                          isMatched: isSkillMatched(skill)
+                        }
+                      })}
+                      variant="gray"
+                      fadeBackground="#f9fafb"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       ) : null}
     </div>
