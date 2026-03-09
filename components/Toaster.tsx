@@ -24,7 +24,7 @@ export default function ToasterProvider() {
           style: {
             background: 'var(--success-tint)',
             borderColor: '#a8d5a6',
-            color: 'var(--text-primary)',
+            color: 'var(--foreground)',
           },
         },
         error: {
@@ -33,9 +33,9 @@ export default function ToasterProvider() {
             secondary: '#F2D0CC',
           },
           style: {
-            background: 'var(--alert-tint)',
+            background: 'var(--destructive-tint)',
             borderColor: '#ef8b8f',
-            color: 'var(--text-primary)',
+            color: 'var(--foreground)',
           },
         },
         loading: {
@@ -46,7 +46,7 @@ export default function ToasterProvider() {
           style: {
             background: 'var(--info-tint)',
             borderColor: '#93bed9',
-            color: 'var(--text-primary)',
+            color: 'var(--foreground)',
           },
         },
       }}

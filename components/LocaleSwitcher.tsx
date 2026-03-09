@@ -29,15 +29,15 @@ export default function LocaleSwitcher() {
   return (
     <button
       onClick={toggleLocale}
-      className="flex items-center justify-center border border-wev-border rounded-full overflow-hidden self-stretch min-h-[28px] h-[32px] transition-all duration-500 ease-in-out hover:opacity-80 cursor-pointer"
+      className="flex items-center justify-center border border-border rounded-full overflow-hidden self-stretch min-h-[28px] h-[32px] transition-all duration-500 ease-in-out hover:opacity-80 cursor-pointer"
       aria-label={t('ariaLabels.localeSwitcher.toggleLocale')}
     >
       <div className="flex items-center h-full">
         <div
           className={`px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center ${
             locale === 'en'
-              ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
-              : 'bg-wev-bg font-normal text-wev-text-tertiary'
+              ? 'bg-white dark:bg-card font-bold text-black dark:text-foreground'
+              : 'bg-background font-normal text-wev-text-tertiary'
           }`}
         >
           EN
@@ -45,8 +45,8 @@ export default function LocaleSwitcher() {
         <div
           className={`px-3 py-1 text-sm transition-all duration-500 ease-in-out h-full flex items-center justify-center ${
             locale === 'fr'
-              ? 'bg-white dark:bg-wev-surface font-bold text-black dark:text-wev-text-primary'
-              : 'bg-wev-bg font-normal text-wev-text-tertiary'
+              ? 'bg-white dark:bg-card font-bold text-black dark:text-foreground'
+              : 'bg-background font-normal text-wev-text-tertiary'
           }`}
         >
           FR

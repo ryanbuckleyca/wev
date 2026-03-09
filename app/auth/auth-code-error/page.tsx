@@ -37,11 +37,11 @@ export default async function AuthCodeError() {
       <div className="text-center">
         <h1
           className="text-2xl font-semibold mb-2"
-          style={{ color: 'var(--text-primary)' }}
+          style={{ color: 'var(--foreground)' }}
         >
           Authentication error
         </h1>
-        <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
+        <p className="mb-4" style={{ color: 'var(--muted-foreground)' }}>
           Something went wrong during sign-in. Please try again.
         </p>
         <Link

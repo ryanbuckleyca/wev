@@ -70,14 +70,14 @@ export default function ThemeToggle() {
         type="button"
         onClick={toggle}
         className={`relative flex py-1 w-14 items-center justify-start rounded-full transition-all duration-500 ease-in-out h-full ${
-          theme === 'dark' ? 'bg-wev-bg' : 'bg-wev-bg'
+          theme === 'dark' ? 'bg-background' : 'bg-background'
         }`}
         aria-label={theme === 'dark' ? t('switchToLight') : t('switchToDark')}
       >
         <span
           className={`inline-flex h-6 w-6 items-center justify-center rounded-full transition-all duration-500 ease-in-out ${
             theme === 'dark' ? 'ml-auto mr-0.5' : 'ml-0.5'
-          } bg-wev-surface`}
+          } bg-card`}
         >
           <span className="text-xl leading-none">{theme === 'dark' ? '☀️' : '🌙'}</span>
         </span>

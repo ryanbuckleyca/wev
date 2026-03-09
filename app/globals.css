@@ -9,30 +9,30 @@
 
 /* Design system - Light mode (default) */
 :root {
-  --bg: #FEFBF7;
-  --surface: #ffffff;
-  --surface-tint: #F8F9FB;
+  --background: #FEFBF7;
+  --card: #ffffff;
+  --muted: #F8F9FB;
   --border: #c8c5bf;
 
-  --text-primary: #2a2a2a;
-  --text-secondary: #6b6b6b;
+  --foreground: #2a2a2a;
+  --muted-foreground: #6b6b6b;
   --text-tertiary: #7a7a7a;
 
   --primary: #5B8C8A;
   --primary-tint: #D6EAEA;
   --primary-text: #5B8C8A;
-  --on-primary: #ffffff;
+  --primary-foreground: #ffffff;
 
-  --accent: #875C74;
-  --accent-tint: #f0e4ec;
+  --brand-accent: #875C74;
+  --brand-accent-tint: #f0e4ec;
 
   --success-solid: #3E8C4F;
   --success-tint: #C5EBC3;
   --success-text: #246633;
 
-  --alert-solid: #C45A4A;
-  --alert-tint: #F2D0CC;
-  --alert-text: #9E3A2E;
+  --destructive: #C45A4A;
+  --destructive-tint: #F2D0CC;
+  --destructive-foreground: #9E3A2E;
 
   --warn-solid: #9A7209;
   --warn-tint: #F5DEB3;
@@ -60,14 +60,14 @@
 
 /* Design system - Dark mode */
 [data-theme="dark"] {
-  --bg: #242424;
-  --surface: #353535;
-  --surface-tint: #2B2B2B;
+  --background: #242424;
+  --card: #353535;
+  --muted: #2B2B2B;
   --border: #616161;
   --border-dark: #242424;
 
-  --text-primary: #E8E6E2;
-  --text-secondary: #A8A5A0;
+  --foreground: #E8E6E2;
+  --muted-foreground: #A8A5A0;
   --text-tertiary: #8A8782;
 
   /* Primary: keep for buttons (white text). Primary-text: lighter teal for text on dark so it passes a11y. */
@@ -75,16 +75,16 @@
   --primary-tint: #254340;
   --primary-text: #7EC5B3;
 
-  --accent: #C08DA0;
-  --accent-tint: #413540;
+  --brand-accent: #C08DA0;
+  --brand-accent-tint: #413540;
 
   --success-solid: #3E8C4F;
   --success-tint: #1F422B;
   --success-text: #6FD68A;
 
-  --alert-solid: #C45A4A;
-  --alert-tint: #472622;
-  --alert-text: #E8857A;
+  --destructive: #C45A4A;
+  --destructive-tint: #472622;
+  --destructive-foreground: #E8857A;
 
   --warn-solid: #9A7209;
   --warn-tint: #3A2F0E;
@@ -110,8 +110,8 @@
 
 @layer base {
   body {
-    background: var(--bg);
-    color: var(--text-primary);
+    background: var(--background);
+    color: var(--foreground);
   }
 }
 
@@ -157,15 +157,15 @@ html.theme-switching *::after {
   }
 
   .job-label {
-    @apply font-semibold text-wev-text-primary;
+    @apply font-semibold text-foreground;
   }
 
   .job-value {
-    @apply text-wev-text-primary;
+    @apply text-foreground;
   }
 
   .job-link {
-    @apply text-wev-accent hover:text-wev-primary-text hover:underline;
+    @apply text-wev-brand-accent hover:text-primary-text hover:underline;
   }
 
   .wev-icon-btn {
@@ -182,11 +182,11 @@ html.theme-switching *::after {
 
   /* Checkbox – styleguide: 8px radius (match .btn), border, primary when checked, focus ring. Full custom so dark mode works. */
   .wev-checkbox {
-    @apply h-5 w-5 shrink-0 cursor-pointer rounded border-2 border-wev-border bg-wev-surface transition-colors duration-200;
+    @apply h-5 w-5 shrink-0 cursor-pointer rounded border-2 border-border bg-card transition-colors duration-200;
     -webkit-appearance: none;
     appearance: none;
     accent-color: var(--primary);
-    background-color: var(--surface);
+    background-color: var(--card);
     background-image: none;
     background-position: center;
     background-repeat: no-repeat;
@@ -221,8 +221,8 @@ html.theme-switching *::after {
   border-radius: 12px;
   border: 1px solid;
   font-weight: 500;
-  background: var(--surface);
-  color: var(--text-primary);
+  background: var(--card);
+  color: var(--foreground);
 }
 
 /* ========== Style guide page (/style-guide) ========== */
@@ -239,7 +239,7 @@ html.theme-switching *::after {
   justify-content: center;
   align-items: center;
   text-align: center;
-  background: linear-gradient(135deg, var(--bg) 0%, var(--accent-tint) 100%);
+  background: linear-gradient(135deg, var(--background) 0%, var(--brand-accent-tint) 100%);
   position: relative;
   overflow: hidden;
 }
@@ -250,7 +250,7 @@ html.theme-switching *::after {
   inset: 0;
   background:
     radial-gradient(circle at 20% 30%, var(--primary-tint) 0%, transparent 50%),
-    radial-gradient(circle at 80% 70%, var(--accent-tint) 0%, transparent 50%);
+    radial-gradient(circle at 80% 70%, var(--brand-accent-tint) 0%, transparent 50%);
   opacity: 0.30;
   z-index: 0;
 }
@@ -284,7 +284,7 @@ html.theme-switching *::after {
 .design-hero h1 {
   font-size: 6rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--brand-accent);
   margin-bottom: 1rem;
   letter-spacing: -0.02em;
 }
@@ -298,7 +298,7 @@ html.theme-switching *::after {
 
 .design-hero .design-version {
   font-size: 1rem;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   margin-top: 2rem;
 }
 
@@ -307,13 +307,13 @@ html.theme-switching *::after {
 }
 
 .design-section:nth-child(even) {
-  background: var(--surface);
+  background: var(--card);
 }
 
 .design-section h2 {
   font-size: 3rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--brand-accent);
   margin-bottom: 1rem;
   letter-spacing: -0.01em;
 }
@@ -337,13 +337,13 @@ html.theme-switching *::after {
 .design-section h4 {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--foreground);
   margin: 2rem 0 1rem;
 }
 
 .design-section-intro {
   font-size: 1.25rem;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   max-width: 800px;
   margin-bottom: 3rem;
 }
@@ -363,7 +363,7 @@ html.theme-switching *::after {
 }
 
 .design-color-card {
-  background: var(--surface);
+  background: var(--card);
   border-radius: 16px;
   overflow: hidden;
   transition: transform 0.3s ease;
@@ -385,7 +385,7 @@ html.theme-switching *::after {
 .design-color-name {
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--foreground);
   margin-bottom: 0.5rem;
 }
 
@@ -398,24 +398,24 @@ html.theme-switching *::after {
 .design-color-value {
   font-family: ui-monospace, monospace;
   font-size: 0.95rem;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .design-color-value strong {
-  color: var(--text-primary);
+  color: var(--foreground);
   font-weight: 600;
 }
 
 .design-usage-tag {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  background: var(--bg);
+  background: var(--background);
   border-radius: 20px;
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   margin-top: 0.75rem;
 }
 
@@ -441,13 +441,13 @@ html.theme-switching *::after {
 
 .design-button-label {
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: 1.1rem;
 }
 
 .design-button-description {
   font-size: 0.95rem;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   margin-bottom: 1rem;
 }
 
@@ -481,12 +481,12 @@ html.theme-switching *::after {
 
 .design-btn-secondary {
   background: transparent;
-  color: var(--accent);
-  border: 2px solid var(--accent);
+  color: var(--brand-accent);
+  border: 2px solid var(--brand-accent);
 }
 
 .design-btn-secondary:hover {
-  background: var(--accent-tint);
+  background: var(--brand-accent-tint);
   border-color: #6d4a5e;
   color: #6d4a5e;
 }
@@ -544,7 +544,7 @@ html.theme-switching *::after {
 .design-toast-success {
   background: var(--success-tint);
   border-color: #a8d5a6;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-toast-success .design-toast-icon {
@@ -552,9 +552,9 @@ html.theme-switching *::after {
 }
 
 .design-toast-alert {
-  background: var(--alert-tint);
+  background: var(--destructive-tint);
   border-color: #ef8b8f;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-toast-alert .design-toast-icon {
@@ -564,7 +564,7 @@ html.theme-switching *::after {
 .design-toast-warning {
   background: var(--warn-tint);
   border-color: #fbbf7f;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-toast-warning .design-toast-icon {
@@ -574,7 +574,7 @@ html.theme-switching *::after {
 .design-toast-info {
   background: var(--info-tint);
   border-color: #93bed9;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-toast-info .design-toast-icon {
@@ -595,7 +595,7 @@ html.theme-switching *::after {
 .design-banner-success {
   background: var(--success-tint);
   border: 1px solid #a8d5a6;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-banner-success .font-bold {
@@ -603,9 +603,9 @@ html.theme-switching *::after {
 }
 
 .design-banner-alert {
-  background: var(--alert-tint);
+  background: var(--destructive-tint);
   border: 1px solid #ef8b8f;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-banner-alert .font-bold {
@@ -615,7 +615,7 @@ html.theme-switching *::after {
 .design-banner-warning {
   background: var(--warn-tint);
   border: 1px solid #fbbf7f;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-banner-warning .font-bold {
@@ -625,7 +625,7 @@ html.theme-switching *::after {
 .design-banner-info {
   background: var(--info-tint);
   border: 1px solid #93bed9;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-banner-info .font-bold {
@@ -641,10 +641,10 @@ html.theme-switching *::after {
 }
 
 .design-accent-card {
-  background: var(--surface);
+  background: var(--card);
   padding: 1.5rem;
   border-radius: 12px;
-  border: 2px solid var(--accent-tint);
+  border: 2px solid var(--brand-accent-tint);
   position: relative;
   overflow: hidden;
 }
@@ -653,7 +653,7 @@ html.theme-switching *::after {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
-  background: var(--accent);
+  background: var(--brand-accent);
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 20px;
@@ -662,13 +662,13 @@ html.theme-switching *::after {
 }
 
 .design-accent-card h5 {
-  color: var(--accent);
+  color: var(--brand-accent);
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
 .design-accent-link {
-  color: var(--accent);
+  color: var(--brand-accent);
   text-decoration: none;
   font-weight: 500;
   display: inline-flex;
@@ -688,7 +688,7 @@ html.theme-switching *::after {
   gap: 2rem;
   margin: 3rem 0;
   padding: 3rem;
-  background: var(--surface);
+  background: var(--card);
   border-radius: 16px;
 }
 
@@ -716,7 +716,7 @@ html.theme-switching *::after {
 .design-type-label {
   min-width: 150px;
   font-size: 0.9rem;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-weight: 500;
 }
 
@@ -727,25 +727,25 @@ html.theme-switching *::after {
 .design-type-h1 {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-type-h2 {
   font-size: 1.75rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-type-h3 {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-type-h4 {
   font-size: 1.25rem;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-type-body-large {
@@ -783,7 +783,7 @@ html.theme-switching *::after {
 }
 
 .design-contrast-card {
-  background: var(--surface);
+  background: var(--card);
   border-radius: 12px;
   padding: 1.5rem;
 }
@@ -809,7 +809,7 @@ html.theme-switching *::after {
 .design-contrast-ratio {
   font-family: ui-monospace, monospace;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .design-contrast-badge {
@@ -836,18 +836,18 @@ html.theme-switching *::after {
 }
 
 .design-logo-showcase {
-  background: var(--surface);
+  background: var(--card);
   padding: 3rem;
   border-radius: 16px;
   text-align: center;
 }
 
 .design-logo-bg-light {
-  background: var(--bg);
+  background: var(--background);
 }
 
 .design-logo-bg-dark {
-  background: var(--text-primary);
+  background: var(--foreground);
 }
 
 .design-logo-placeholder {
@@ -858,7 +858,7 @@ html.theme-switching *::after {
   align-items: center;
   justify-content: center;
   font-size: 4rem;
-  color: var(--accent);
+  color: var(--brand-accent);
 }
 
 .design-logo-placeholder img {
@@ -872,7 +872,7 @@ html.theme-switching *::after {
 .design-logo-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--foreground);
   margin-bottom: 0.5rem;
 }
 
@@ -881,7 +881,7 @@ html.theme-switching *::after {
 }
 
 .design-logo-description {
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 0.95rem;
 }
 
@@ -891,7 +891,7 @@ html.theme-switching *::after {
 
 /* Token sheet */
 .design-token-sheet {
-  background: var(--surface);
+  background: var(--card);
   padding: 3rem;
   border-radius: 16px;
   margin: 3rem 0;
@@ -905,7 +905,7 @@ html.theme-switching *::after {
 .design-token-category-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--brand-accent);
   margin-bottom: 1rem;
 }
 
@@ -926,12 +926,12 @@ html.theme-switching *::after {
 }
 
 .design-token-name {
-  color: var(--text-primary);
+  color: var(--foreground);
   font-weight: 600;
 }
 
 .design-token-value {
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
 }
 
 .design-token-swatch {
@@ -942,21 +942,21 @@ html.theme-switching *::after {
 }
 
 .design-footer {
-  background: var(--text-primary);
+  background: var(--foreground);
   padding: 3rem 0;
   text-align: center;
 }
 
 .design-footer p {
   opacity: 0.8;
-  color: var(--bg);
+  color: var(--background);
 }
 
 .design-footer p + p {
   margin-top: 1rem;
   opacity: 0.6;
   font-size: 0.9rem;
-  color: var(--bg);
+  color: var(--background);
 }
 
 /* Tippy.js tooltip styles */
@@ -995,8 +995,8 @@ html.theme-switching *::after {
 }
 
 .tippy-box[data-theme~='light'] {
-  background-color: var(--surface);
-  color: var(--text-primary);
+  background-color: var(--card);
+  color: var(--foreground);
   border: 1px solid var(--border);
   border-radius: var(--wev-card);
   box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.04);
@@ -1006,8 +1006,8 @@ html.theme-switching *::after {
 }
 
 .tippy-box[data-theme~='dark'] {
-  background-color: var(--surface);
-  color: var(--text-primary);
+  background-color: var(--card);
+  color: var(--foreground);
   border: 1px solid var(--border);
   border-radius: var(--wev-card);
   box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.25), 0 8px 10px -6px rgb(0 0 0 / 0.1);
@@ -1021,7 +1021,7 @@ html.theme-switching *::after {
 }
 
 .tippy-box[data-theme~='light'] > .tippy-arrow::after {
-  border-top-color: var(--surface);
+  border-top-color: var(--card);
 }
 
 .tippy-box[data-theme~='dark'] > .tippy-arrow::before {
@@ -1029,7 +1029,7 @@ html.theme-switching *::after {
 }
 
 .tippy-box[data-theme~='dark'] > .tippy-arrow::after {
-  border-top-color: var(--surface);
+  border-top-color: var(--card);
 }
 
 .tippy-custom-content {
@@ -1067,6 +1067,6 @@ html.theme-switching *::after {
   margin-bottom: 0.5rem;
 }
 
-.tippy-custom-content .text-wev-text-secondary {
-  color: var(--text-secondary);
+.tippy-custom-content .text-muted-foreground {
+  color: var(--muted-foreground);
 }

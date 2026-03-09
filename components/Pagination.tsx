@@ -26,7 +26,7 @@ export default function Pagination({
 
   if (totalPages <= 1) {
     return (
-      <div className="text-sm text-wev-text-primary text-center py-4">
+      <div className="text-sm text-foreground text-center py-4">
         {t('pagination.showing')} {totalItems} {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
       </div>
     )
@@ -87,7 +87,7 @@ export default function Pagination({
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
-      <div className="text-sm text-wev-text-primary">
+      <div className="text-sm text-foreground">
         {t('pagination.showing')} {startItem}-{endItem} {t('pagination.of')} {totalItems} {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
       </div>
 
@@ -106,7 +106,7 @@ export default function Pagination({
           {getPageNumbers().map((page, idx) => {
             if (page === '...') {
               return (
-                <span key={`ellipsis-${idx}`} className="px-2 text-wev-text-secondary">
+                <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">
                   ...
                 </span>
               )

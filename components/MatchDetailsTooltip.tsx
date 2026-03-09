@@ -28,7 +28,7 @@ export default function MatchDetailsTooltip({
   translate,
 }: MatchDetailsTooltipProps) {
   const primaryColor = 'rgb(var(--primary))'
-  const textColor = 'rgb(var(--text-primary))'
+  const textColor = 'rgb(var(--foreground))'
 
   const orderedValues = [
     ...values.filter(value => sharedValues.includes(value)),
@@ -59,7 +59,7 @@ export default function MatchDetailsTooltip({
       {orderedValues.length > 0 && (
         <div className="space-y-1">
           <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
-            <Lineicons icon={HeartSolid} size={12} className="text-wev-accent" />
+            <Lineicons icon={HeartSolid} size={12} className="text-wev-brand-accent" />
             <span>
               {translate('matchDetails.values')}: {valueMatchPercentage}%
             </span>
@@ -75,7 +75,7 @@ export default function MatchDetailsTooltip({
       {orderedSkills.length > 0 && (
         <div className="space-y-1">
           <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
-            <Lineicons icon={Briefcase2Solid} size={12} className="text-wev-primary" />
+            <Lineicons icon={Briefcase2Solid} size={12} className="text-primary" />
             <span>
               {translate('matchDetails.skills')}: {skillMatchPercentage}%
             </span>

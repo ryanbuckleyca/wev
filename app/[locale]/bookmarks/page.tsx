@@ -79,7 +79,7 @@ export default function BookmarksPage() {
         <h1 className="text-2xl font-semibold mb-2">{t('bookmarks.title')}</h1>
 
         {error && (
-          <div className="bg-wev-alert-tint border border-wev-alert rounded-wev-card p-4 text-wev-alert-text mb-4">
+          <div className="bg-wev-destructive-tint border border-destructive rounded-wev-card p-4 text-destructive-foreground mb-4">
             <p className="font-semibold">{t('bookmarks.error')}</p>
             <p className="text-sm mt-1">{error}</p>
           </div>
@@ -88,8 +88,8 @@ export default function BookmarksPage() {
         {jobs === null ? (
           <LoadingState message={t('common.loading')} />
         ) : jobs.length === 0 ? (
-          <div className="bg-wev-surface border border-wev-border rounded-wev-card p-8 text-center">
-            <p className="text-wev-text-primary">{t('bookmarks.noBookmarks')}</p>
+          <div className="bg-card border border-border rounded-wev-card p-8 text-center">
+            <p className="text-foreground">{t('bookmarks.noBookmarks')}</p>
           </div>
         ) : (
           <JobListings

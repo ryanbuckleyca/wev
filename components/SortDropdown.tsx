@@ -49,10 +49,10 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
         onClick={() => setOpen(!open)}
         variant="outline"
         size="sm"
-        className="flex-center-gap bg-transparent border-none text-wev-text-secondary p-1.5 text-xs"
+        className="flex-center-gap bg-transparent border-none text-muted-foreground p-1.5 text-xs"
       >
         <span>{t('sort.label')} </span>
-        <span className="font-semibold text-wev-text-primary">{label}</span>
+        <span className="font-semibold text-foreground">{label}</span>
         <Chevron rotated={open} />
       </Button>
 
@@ -64,7 +64,7 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
           top: 'calc(100% + 6px)',
           right: 0,
           minWidth: '160px',
-          background: 'var(--surface)',
+          background: 'var(--card)',
           border: '1px solid var(--border)',
           borderRadius: '10px',
           padding: '4px',
@@ -85,7 +85,7 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
               setOpen(false)
             }}
           >
-            <span className={sortBy === opt.value ? 'text-wev-primary font-semibold' : 'text-wev-text-primary font-normal'}>
+            <span className={sortBy === opt.value ? 'text-primary font-semibold' : 'text-foreground font-normal'}>
               {opt.label}
             </span>
             {sortBy === opt.value && (

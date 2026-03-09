@@ -220,9 +220,9 @@ export default function JobCard({
   }
 
   return (
-    <div className="relative rounded-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:border-wev-primary overflow-hidden">
+    <div className="relative rounded-wev-card transition-all duration-300 bg-card border border-border hover:border-primary overflow-hidden">
       {/* Card Header */}
-      <div className="flex items-center justify-between px-3 py-2 rounded-t-wev-card transition-all duration-300 border-b border-wev-border bg-wev-surface">
+      <div className="flex items-center justify-between px-3 py-2 rounded-t-wev-card transition-all duration-300 border-b border-border bg-card">
         {/* Left side: SSE + Summary */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {isAdmin ? (
@@ -241,7 +241,7 @@ export default function JobCard({
               {sse ? (
                 <Lineicons icon={Leaf1Solid} size={16} className="text-wev-success" />
               ) : (
-                <Lineicons icon={Leaf1Outlined} size={16} className="text-wev-text-secondary" />
+                <Lineicons icon={Leaf1Outlined} size={16} className="text-muted-foreground" />
               )}
             </button>
           ) : sse ? (
@@ -249,7 +249,7 @@ export default function JobCard({
               <Lineicons icon={Leaf1Solid} size={16} className="text-wev-success" />
             </span>
           ) : null}
-          <span className="text-sm text-wev-text-secondary truncate pr-2">
+          <span className="text-sm text-muted-foreground truncate pr-2">
             {getCardSummary(job)}
           </span>
         </div>
@@ -266,7 +266,7 @@ export default function JobCard({
             {bookmarked ? (
               <Lineicons icon={Bookmark1Solid} size={16} className="text-wev-info" />
             ) : (
-              <Lineicons icon={Bookmark1Outlined} size={16} className="text-wev-text-secondary" />
+              <Lineicons icon={Bookmark1Outlined} size={16} className="text-muted-foreground" />
             )}
           </button>
           <button
@@ -276,9 +276,9 @@ export default function JobCard({
             aria-label={isExpanded ? t('jobCard.collapseDetails') : t('jobCard.expandDetails')}
           >
             {isExpanded ? (
-              <Lineicons icon={ChevronUpSolid} size={18} className="text-wev-text-secondary" />
+              <Lineicons icon={ChevronUpSolid} size={18} className="text-muted-foreground" />
             ) : (
-              <Lineicons icon={ChevronDownSolid} size={18} className="text-wev-text-secondary" />
+              <Lineicons icon={ChevronDownSolid} size={18} className="text-muted-foreground" />
             )}
           </button>
         </div>
@@ -286,7 +286,7 @@ export default function JobCard({
 
       {/* Card Content */}
       <Collapsible isOpen={isExpanded}>
-        <div className="py-4 px-5 bg-wev-surface">
+        <div className="py-4 px-5 bg-card">
           <div className="job-details">
             <div className="job-detail-line">
               <span className="job-label">{t('jobCard.who')} </span>
@@ -335,7 +335,7 @@ export default function JobCard({
       </Collapsible>
       
       {(job.values && job.values.length > 0) || (job.skills && job.skills.length > 0) ? (
-        <div className={`px-4 py-3 bg-wev-surface-tint ${isExpanded ? 'border-t border-wev-border' : ''}`}>
+        <div className={`px-4 py-3 bg-muted ${isExpanded ? 'border-t border-border' : ''}`}>
           <JobCardFooter
             values={job.values || []}
             skills={job.skills || []}

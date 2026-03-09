@@ -47,8 +47,8 @@ export default function PillSelector({
           fullWidth
           className="px-3 py-2"
           style={{
-            background: selectedOptions.includes(option) ? 'var(--primary)' : 'var(--bg)',
-            color: selectedOptions.includes(option) ? 'white' : 'var(--text-primary)',
+            background: selectedOptions.includes(option) ? 'var(--primary)' : 'var(--background)',
+            color: selectedOptions.includes(option) ? 'white' : 'var(--foreground)',
             border: `2px solid ${selectedOptions.includes(option) ? 'var(--primary)' : 'var(--border)'}`
           }}
         >

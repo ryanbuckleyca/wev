@@ -343,7 +343,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen pb-8 relative overflow-hidden" style={{
-      background: 'var(--bg)'
+      background: 'var(--background)'
     }}>
       <WatercolorBackground />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
@@ -354,7 +354,7 @@ export default function Home() {
             alt="wev"
             className="main-logo wev-logotype w-[100px] h-auto mb-2"
           />
-          <p className="text-xl font-medium text-wev-primary-text">{t('home.heading')}</p>
+          <p className="text-xl font-medium text-primary-text">{t('home.heading')}</p>
         </header>
 
         {/* Action Buttons - Admin Only */}
@@ -404,8 +404,8 @@ export default function Home() {
         {allJobs.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
             {/* Left side: Last updated info (its own row on mobile) */}
-            <div className="text-sm text-center sm:text-left text-xs text-wev-text-secondary">
-              <span className="font-semibold text-wev-accent">{t('home.lastUpdated')} </span>
+            <div className="text-sm text-center sm:text-left text-xs text-muted-foreground">
+              <span className="font-semibold text-wev-brand-accent">{t('home.lastUpdated')} </span>
               <span>{lastScrapeTime || t('home.unknown')}</span>
             </div>
 
@@ -417,7 +417,7 @@ export default function Home() {
                 showMatchOption={!!user}
               />
 
-              <div className="w-0.5 h-3.5 bg-wev-border" />
+              <div className="w-0.5 h-3.5 bg-border" />
 
               <ExpandAllToggle
                 allExpanded={allJobsExpanded}

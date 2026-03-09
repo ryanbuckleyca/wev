@@ -34,7 +34,7 @@ export default function Button({
   const variantClasses = {
     primary: 'bg-[var(--primary)] text-white hover:opacity-90 disabled:opacity-50',
     secondary: 'border border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white disabled:opacity-50',
-    outline: 'border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)]'
+    outline: 'border border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--background)]'
   }
   
   const widthClass = fullWidth ? 'w-full' : ''
