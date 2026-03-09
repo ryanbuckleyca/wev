@@ -20,6 +20,8 @@ type SkillsSelectorProps = {
   loadingText: string
   maxSelections?: number
   maxSelectionsReachedText?: string
+  softLimit?: number
+  softLimitWarningText?: string
   locale?: 'en' | 'fr'
   matchedAliasLabel?: string
 }
@@ -57,6 +59,8 @@ export default function SkillsSelector({
   loadingText,
   maxSelections = 10,
   maxSelectionsReachedText,
+  softLimit,
+  softLimitWarningText,
   locale = 'en',
   matchedAliasLabel = 'Matched',
 }: SkillsSelectorProps) {
@@ -119,16 +123,49 @@ export default function SkillsSelector({
           }>
         }
         const nextOptions = dedupeOptions(
-          (body.skills ?? []).map((skill) => ({
-            value: skill.concept_uri,
-            label: skill.term,
-            tooltip: skill.definition || `<em>${skill.term}</em>`,
-            definition: skill.definition,
-            scopeNote: skill.scope_note,
-            skillType: skill.skill_type,
-            reuseLevel: skill.reuse_level,
-            matchedAlias: skill.matched_alias,
-          }))
+          (body.skills ?? []).map((skill) => {
+            // Create rich tooltip content
+            const tooltipContent = (
+              <div className="space-y-2 text-left">
+                <div>
+                  <div className="font-semibold text-[var(--foreground)]">{skill.term}</div>
+                  {skill.definition && (
+                    <div className="text-[var(--foreground)] mt-1">{skill.definition}</div>
+                  )}
+                </div>
+                {skill.scope_note && (
+                  <div className="text-xs text-[var(--muted-foreground)]">
+                    <span className="font-medium">Scope:</span> {skill.scope_note}
+                  </div>
+                )}
+                {(skill.skill_type || skill.reuse_level) && (
+                  <div className="flex gap-1 flex-wrap">
+                    {skill.skill_type && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--card)] text-[var(--muted-foreground)]">
+                        {formatEnumLabel(skill.skill_type)}
+                      </span>
+                    )}
+                    {skill.reuse_level && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--card)] text-[var(--muted-foreground)]">
+                        {formatEnumLabel(skill.reuse_level)}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+
+            return {
+              value: skill.concept_uri,
+              label: skill.term,
+              tooltip: tooltipContent,
+              definition: skill.definition,
+              scopeNote: skill.scope_note,
+              skillType: skill.skill_type,
+              reuseLevel: skill.reuse_level,
+              matchedAlias: skill.matched_alias,
+            }
+          })
         )
         cacheRef.current.set(debouncedQuery, nextOptions)
         setOptions(nextOptions)
@@ -158,15 +195,15 @@ export default function SkillsSelector({
         aria-label={option.label}
       />
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-[var(--text-primary)]">{option.label}</p>
+        <p className="font-medium text-[var(--foreground)]">{option.label}</p>
         <div className="mt-1 flex flex-wrap gap-1">
           {formatEnumLabel(option.skillType) && (
-            <span className="rounded-full bg-[var(--surface)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--text-secondary)]">
+            <span className="rounded-full bg-[var(--card)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--muted-foreground)]">
               {formatEnumLabel(option.skillType)}
             </span>
           )}
           {formatEnumLabel(option.reuseLevel) && (
-            <span className="rounded-full bg-[var(--surface)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--text-secondary)]">
+            <span className="rounded-full bg-[var(--card)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--muted-foreground)]">
               {formatEnumLabel(option.reuseLevel)}
             </span>
           )}
@@ -175,7 +212,7 @@ export default function SkillsSelector({
         {option.scopeNote && <p className="mt-1 text-xs text-[var(--text-tertiary)]">{option.scopeNote}</p>}
         {option.matchedAlias &&
           normalizeSkillText(option.matchedAlias) !== normalizeSkillText(option.label) && (
-            <p className="mt-1 text-[11px] text-[var(--text-secondary)]">
+            <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">
               {matchedAliasLabel}: {option.matchedAlias}
             </p>
           )}
@@ -195,6 +232,8 @@ export default function SkillsSelector({
       minChars={MIN_CHARS}
       maxSelections={maxSelections}
       maxSelectionsReachedText={maxSelectionsReachedText}
+      softLimit={softLimit}
+      softLimitWarningText={softLimitWarningText}
       query={query}
       onQueryChange={setQuery}
       availableOptions={options}

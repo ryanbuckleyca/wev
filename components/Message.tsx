@@ -9,8 +9,8 @@ export default function Message({ children, variant = 'info', className = '' }: 
   
   const variantClasses = {
     success: 'text-[var(--success-text)]',
-    error: 'text-[var(--alert-text)]',
-    info: 'text-[var(--text-secondary)]'
+    error: 'text-[var(--destructive-foreground)]',
+    info: 'text-[var(--muted-foreground)]'
   }
   
   const combinedClasses = `${baseClasses} ${variantClasses[variant]} ${className}`.trim()

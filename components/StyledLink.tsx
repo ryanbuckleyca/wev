@@ -32,8 +32,8 @@ export default function StyledLink({
   const variantClasses = {
     primary: 'bg-[var(--primary)] text-white hover:opacity-90 disabled:opacity-50',
     secondary: 'border border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white disabled:opacity-50',
-    outline: 'border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)]',
-    text: 'text-[var(--primary)] hover:underline visited:text-[var(--accent)]'
+    outline: 'border border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--background)]',
+    text: 'text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]'
   }
   
   const widthClass = fullWidth ? 'w-full' : ''

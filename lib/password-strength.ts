@@ -12,7 +12,7 @@ export type PasswordStrength = {
 }
 
 const STRENGTH_COLORS = [
-  'var(--alert-solid)',   // 0 Very Weak - red
+  'var(--destructive)',   // 0 Very Weak - red
   'var(--warn-solid)',    // 1 Weak - orange
   'var(--info-solid)',    // 2 Fair - blue
   'var(--success-solid)', // 3 Good - green

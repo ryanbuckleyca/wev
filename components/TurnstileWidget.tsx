@@ -22,7 +22,7 @@ export default function TurnstileWidget({ onSuccess, onError, onExpire }: Turnst
   if (!mounted) {
     return (
       <div className="w-full">
-        <div className="w-full h-[65px] rounded-lg border border-[var(--border)] bg-[var(--bg)] animate-pulse" />
+        <div className="w-full h-[65px] rounded-lg border border-[var(--border)] bg-[var(--background)] animate-pulse" />
       </div>
     )
   }

@@ -8,10 +8,10 @@ export default function FormLabel({ children, htmlFor, required = false }: FormL
   return (
     <label 
       htmlFor={htmlFor}
-      className="block text-sm font-semibold text-[var(--text-primary)] mb-2"
+      className="block text-sm font-semibold text-[var(--foreground)] mb-2"
     >
       {children}
-      {required && <span className="text-[var(--alert-text)] ml-1">*</span>}
+      {required && <span className="text-[var(--destructive-foreground)] ml-1">*</span>}
     </label>
   )
 }

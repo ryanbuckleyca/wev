@@ -253,7 +253,7 @@ export default function StyleGuidePage() {
                 </Button>
               </div>
               <div className="design-usage-examples">
-                <p className="text-sm text-wev-text-secondary mt-4">
+                <p className="text-sm text-muted-foreground mt-4">
                   <strong>Variants:</strong> primary, secondary, outline
                 </p>
               </div>
@@ -276,7 +276,7 @@ export default function StyleGuidePage() {
                 </LinkButton>
               </div>
               <div className="design-usage-examples">
-                <p className="text-sm text-wev-text-secondary mt-4">
+                <p className="text-sm text-muted-foreground mt-4">
                   <strong>Variants:</strong> primary, secondary, outline (same as Button)
                 </p>
               </div>
@@ -302,7 +302,7 @@ export default function StyleGuidePage() {
                 </StyledLink>
               </div>
               <div className="design-usage-examples">
-                <p className="text-sm text-wev-text-secondary mt-4">
+                <p className="text-sm text-muted-foreground mt-4">
                   <strong>Variants:</strong> primary, secondary, outline, text
                 </p>
               </div>
@@ -325,7 +325,7 @@ export default function StyleGuidePage() {
                 </ButtonLink>
               </div>
               <div className="design-usage-examples">
-                <p className="text-sm text-wev-text-secondary mt-4">
+                <p className="text-sm text-muted-foreground mt-4">
                   <strong>Tones:</strong> accent, muted, primary
                 </p>
               </div>
@@ -350,7 +350,7 @@ export default function StyleGuidePage() {
                 </div>
               </div>
               <div className="design-layout-code">
-                <code className="text-xs bg-wev-surface p-2 rounded block">
+                <code className="text-xs bg-card p-2 rounded block">
                   &lt;div className="flex justify-between gap-3"&gt;<br/>
                   &nbsp;&nbsp;&lt;LinkButton href="/" variant="outline"&gt;<br/>
                   &nbsp;&nbsp;&nbsp;&nbsp;Back to Jobs<br/>
@@ -376,7 +376,7 @@ export default function StyleGuidePage() {
                 </div>
               </div>
               <div className="design-layout-code">
-                <code className="text-xs bg-wev-surface p-2 rounded block">
+                <code className="text-xs bg-card p-2 rounded block">
                   &lt;div className="flex justify-end gap-3"&gt;<br/>
                   &nbsp;&nbsp;&lt;Button type="submit"&gt;<br/>
                   &nbsp;&nbsp;&nbsp;&nbsp;Submit Application<br/>
@@ -517,11 +517,11 @@ export default function StyleGuidePage() {
                 Basic text links with theme colors.
               </p>
               <div className="space-y-2">
-                <Link href="/profile" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
+                <Link href="/profile" className="text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]" prefetch={true}>
                   View Profile
                 </Link>
                 <br />
-                <Link href="/help" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
+                <Link href="/help" className="text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]" prefetch={true}>
                   Help Documentation
                 </Link>
               </div>
@@ -720,13 +720,13 @@ export default function StyleGuidePage() {
           <h3>Logo Guidelines</h3>
           <div className="mt-8">
             <h4>Clear Space</h4>
-            <p className="text-wev-text-secondary mb-8">
+            <p className="text-muted-foreground mb-8">
               Maintain clear space around the logo equal to the height of the 'w'. This
               ensures visual distinction.
             </p>
 
             <h4>Minimum Size</h4>
-            <p className="text-wev-text-secondary mb-4">
+            <p className="text-muted-foreground mb-4">
               <strong>Digital:</strong> 32px height minimum for logo mark, 120px width for logotype
               <br />
               <strong>Print:</strong> 0.5 inches height minimum for logo mark, 1.5 inches for
@@ -734,7 +734,7 @@ export default function StyleGuidePage() {
             </p>
 
             <h4 className="mt-8">Don'ts</h4>
-            <ul className="text-wev-text-secondary leading-relaxed ml-6 list-disc space-y-1">
+            <ul className="text-muted-foreground leading-relaxed ml-6 list-disc space-y-1">
               <li>Do not alter logo colors outside approved palette</li>
               <li>Do not distort, rotate, or skew the logo</li>
               <li>Do not add effects (shadows, outlines, gradients)</li>
@@ -879,7 +879,7 @@ export default function StyleGuidePage() {
           </div>
 
           <h3>Best Practices</h3>
-          <ul className="mt-8 ml-6 list-disc flex flex-col gap-4 text-wev-text-secondary leading-relaxed">
+          <ul className="mt-8 ml-6 list-disc flex flex-col gap-4 text-muted-foreground leading-relaxed">
             <li>Test all color combinations with contrast checking tools before implementation</li>
             <li>Never rely on color alone to convey information—use icons, labels, or patterns</li>
             <li>Ensure interactive elements have minimum target size of 44×44px</li>
@@ -948,7 +948,7 @@ export default function StyleGuidePage() {
           <p>wev Style Guide • Version 1.0 • February 2026</p>
           <p>For questions about brand implementation, contact the design team</p>
           <p className="mt-4">
-            <Link href="/" className="underline opacity-80 hover:opacity-100" style={{ color: 'var(--bg)' }}>
+            <Link href="/" className="underline opacity-80 hover:opacity-100" style={{ color: 'var(--background)' }}>
               ← Back to Bulletin
             </Link>
           </p>

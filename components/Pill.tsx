@@ -33,12 +33,12 @@ export default function Pill({
   const variantClasses = {
     primary: 'bg-[var(--primary)] text-white',  // Dark teal
     secondary: 'bg-[var(--primary-tint)] text-[var(--primary-text)]',  // Light teal
-    default: 'bg-wev-surface text-wev-text-primary border border-wev-border',  // Tertiary (light gray with border)
-    disabled: 'bg-wev-surface text-wev-text-tertiary border border-wev-border opacity-60'  // Disabled state
+    default: 'bg-card text-foreground border border-border',  // Tertiary (light gray with border)
+    disabled: 'bg-card text-wev-text-tertiary border border-border opacity-60'  // Disabled state
   }
 
   // If the pill is removable, prefer the lavender accent styling used by the legacy FilterPill
-  const removableClasses = 'border border-wev-border bg-wev-accent-tint text-wev-accent'
+  const removableClasses = 'border border-border bg-wev-brand-accent-tint text-wev-brand-accent'
 
   const combinedClasses = `${baseClasses} ${sizeClasses[size]} ${removable ? removableClasses : variantClasses[variant]} ${className}`.trim()
 
@@ -52,7 +52,7 @@ export default function Pill({
         <button
           type="button"
           onClick={onRemove}
-          className={removable ? 'text-wev-text-tertiary hover:text-wev-accent leading-none ml-1' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] leading-none ml-1'}
+          className={removable ? 'text-wev-text-tertiary hover:text-wev-brand-accent leading-none ml-1' : 'text-[var(--text-tertiary)] hover:text-[var(--foreground)] leading-none ml-1'}
           aria-label={t('remove', { label: String(children) })}
         >
           ×

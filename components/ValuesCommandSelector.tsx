@@ -15,6 +15,10 @@ type ValuesCommandSelectorProps = {
   onValuesChange: (values: ValueOption[]) => void
   placeholder: string
   noResultsText: string
+  maxSelections?: number
+  maxSelectionsReachedText?: string
+  softLimit?: number
+  softLimitWarningText?: string
 }
 
 function normalizeValueText(value: string | null | undefined): string {
@@ -26,6 +30,10 @@ export default function ValuesCommandSelector({
   onValuesChange,
   placeholder,
   noResultsText,
+  maxSelections,
+  maxSelectionsReachedText,
+  softLimit,
+  softLimitWarningText,
 }: ValuesCommandSelectorProps) {
   const t = useTranslations('values')
   const [query, setQuery] = useState('')
@@ -40,10 +48,23 @@ export default function ValuesCommandSelector({
         example: t(`${value}.example`),
       })
 
+      // Create rich tooltip content
+      const tooltipContent = (
+        <div className="space-y-2 text-left">
+          <div className="font-semibold text-[var(--foreground)]">{valueName}</div>
+          <div className="text-[var(--foreground)]">{details.description}</div>
+          {details.example && (
+            <div className="text-xs text-[var(--muted-foreground)] italic">
+              {details.example}
+            </div>
+          )}
+        </div>
+      )
+
       return {
         value,
         label: valueName,
-        tooltip: details.description,
+        tooltip: tooltipContent,
         description: details.description,
         example: details.example,
       }
@@ -81,8 +102,8 @@ export default function ValuesCommandSelector({
         aria-label={option.label}
       />
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-[var(--text-primary)]">{option.label}</p>
-        <p className="mt-1 text-xs text-[var(--text-secondary)]">{option.description}</p>
+        <p className="font-medium text-[var(--foreground)]">{option.label}</p>
+        <p className="mt-1 text-xs text-[var(--muted-foreground)]">{option.description}</p>
         <p className="mt-1 text-xs text-[var(--text-tertiary)]">{option.example}</p>
       </div>
     </div>
@@ -94,6 +115,10 @@ export default function ValuesCommandSelector({
       onOptionsChange={onValuesChange}
       placeholder={placeholder}
       noResultsText={noResultsText}
+      maxSelections={maxSelections}
+      maxSelectionsReachedText={maxSelectionsReachedText}
+      softLimit={softLimit}
+      softLimitWarningText={softLimitWarningText}
       query={query}
       onQueryChange={setQuery}
       availableOptions={dedupedOptions}

@@ -120,7 +120,7 @@ export default function LoginPage() {
           <ErrorBox className="mt-4">{error}</ErrorBox>
         )}
 
-        <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-6 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
           {t('auth.login.noAccount')}{' '}
           <Link
             href="/signup"

@@ -74,7 +74,7 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
 
   if (error) {
     return (
-      <div className="bg-wev-alert-tint border border-wev-alert rounded-wev-card p-4 text-wev-alert-text">
+      <div className="bg-wev-destructive-tint border border-destructive rounded-wev-card p-4 text-destructive-foreground">
         <p className="font-semibold">{t('jobListings.error')}</p>
         <p className="text-sm mt-1">{error}</p>
       </div>
@@ -87,8 +87,8 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
 
   if (!loading && jobs.length === 0) {
     return (
-      <div className="bg-wev-surface border border-wev-border rounded-wev-card p-8 text-center">
-        <p className="text-wev-text-primary">{t('jobListings.noJobs')}</p>
+      <div className="bg-card border border-border rounded-wev-card p-8 text-center">
+        <p className="text-foreground">{t('jobListings.noJobs')}</p>
       </div>
     )
   }

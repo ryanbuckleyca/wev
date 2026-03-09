@@ -6,7 +6,7 @@ interface CardLayoutProps {
 export default function CardLayout({ children, className = '' }: CardLayoutProps) {
   return (
     <div 
-      className={`bg-[var(--surface)] border border-[var(--border)] rounded-lg p-6 ${className}`.trim()}
+      className={`bg-[var(--card)] border border-[var(--border)] rounded-lg p-6 ${className}`.trim()}
     >
       {children}
     </div>

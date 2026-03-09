@@ -23,6 +23,8 @@ type CommandSelectorProps<T extends Option> = {
   minChars?: number
   maxSelections?: number
   maxSelectionsReachedText?: string
+  softLimit?: number
+  softLimitWarningText?: string
   query: string
   onQueryChange: (query: string) => void
   availableOptions: T[]
@@ -73,6 +75,8 @@ export default function CommandSelector<T extends Option>({
   minChars = 0,
   maxSelections,
   maxSelectionsReachedText,
+  softLimit,
+  softLimitWarningText,
   query,
   onQueryChange,
   availableOptions,
@@ -81,6 +85,7 @@ export default function CommandSelector<T extends Option>({
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
+  const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom')
 
   const selectedSet = useMemo(
     () => new Set(selectedOptions.map((option) => option.value)),
@@ -92,7 +97,44 @@ export default function CommandSelector<T extends Option>({
   )
 
   const isAtSelectionLimit = maxSelections ? selectedOptions.length >= maxSelections : false
+  const isAboveSoftLimit = softLimit ? selectedOptions.length > softLimit : false
   const showMinCharsWarning = minChars > 0 && query.trim().length > 0 && query.trim().length < minChars
+
+  // Calculate dropdown position based on available viewport space
+  useEffect(() => {
+    if (!open || !containerRef.current) return
+
+    const calculatePosition = () => {
+      const container = containerRef.current
+      if (!container) return
+
+      const rect = container.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const spaceBelow = viewportHeight - rect.bottom
+      const spaceAbove = rect.top
+
+      // Dropdown max height is 320px (max-h-80 = 20rem = 320px)
+      const dropdownHeight = 320
+
+      // If not enough space below but more space above, flip it
+      if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+        setDropdownPosition('top')
+      } else {
+        setDropdownPosition('bottom')
+      }
+    }
+
+    calculatePosition()
+
+    // Recalculate on scroll and resize
+    window.addEventListener('scroll', calculatePosition, true)
+    window.addEventListener('resize', calculatePosition)
+
+    return () => {
+      window.removeEventListener('scroll', calculatePosition, true)
+      window.removeEventListener('resize', calculatePosition)
+    }
+  }, [open])
 
   // Handle click outside to close
   useState(() => {
@@ -161,7 +203,7 @@ export default function CommandSelector<T extends Option>({
         aria-label={option.label}
       />
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-[var(--text-primary)]">{option.label}</p>
+        <p className="font-medium text-[var(--foreground)]">{option.label}</p>
         {option.metadata}
       </div>
     </div>
@@ -184,7 +226,7 @@ export default function CommandSelector<T extends Option>({
       <div className="relative">
         <Command
           shouldFilter={false}
-          className="rounded-lg border border-[var(--border)] bg-[var(--bg)]"
+          className="rounded-lg border border-[var(--border)] bg-[var(--background)]"
         >
           <Command.Input
             ref={inputRef}
@@ -196,19 +238,21 @@ export default function CommandSelector<T extends Option>({
               }
             }}
             placeholder={placeholder}
-            className="w-full rounded-lg bg-transparent px-4 py-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
+            className="w-full rounded-lg bg-transparent px-4 py-2 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--text-tertiary)]"
           />
 
           {open && (
-            <Command.List className="absolute left-0 right-0 top-full z-20 mt-1 max-h-80 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-lg">
+            <Command.List className={`absolute left-0 right-0 z-20 max-h-80 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-lg ${
+              dropdownPosition === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
+            }`}>
               {!loading && availableOptions.length === 0 && (
-                <Command.Empty className="px-4 py-3 text-sm text-[var(--text-secondary)]">
+                <Command.Empty className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
                   {noResultsText}
                 </Command.Empty>
               )}
 
               {loading && availableOptions.length === 0 && loadingText && (
-                <div className="px-4 py-3 text-sm text-[var(--text-secondary)]">
+                <div className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
                   {loadingText}
                 </div>
               )}
@@ -251,6 +295,10 @@ export default function CommandSelector<T extends Option>({
 
       {showMinCharsWarning && minCharsText && (
         <p className="text-xs text-[var(--text-tertiary)]">{minCharsText}</p>
+      )}
+
+      {isAboveSoftLimit && softLimitWarningText && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">{softLimitWarningText}</p>
       )}
 
       {isAtSelectionLimit && maxSelectionsReachedText && (

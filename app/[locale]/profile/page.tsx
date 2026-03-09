@@ -20,6 +20,9 @@ import LinkButton from '@/components/LinkButton';
 import toast from 'react-hot-toast';
 
 const MAX_PROFILE_SKILLS = 5;
+const MAX_SKILLS_SELECTION = 15; // Allow selecting more during exploration, but enforce MAX_PROFILE_SKILLS on save
+const MAX_PROFILE_VALUES = 5;
+const MAX_VALUES_SELECTION = 10; // Allow selecting up to 10 values during exploration
 
 function uniqueSkillOptions(skills: SkillOption[]): SkillOption[] {
   const seen = new Set<string>();
@@ -86,14 +89,58 @@ export default function ProfilePage() {
             }>
           })
           .then((body) => {
-            const hydrated = uniqueSkillOptions((body.skills || []).map((skill) => ({
-              value: skill.concept_uri,
-              label: skill.term,
-              definition: skill.definition,
-              scopeNote: skill.scope_note,
-              skillType: skill.skill_type,
-              reuseLevel: skill.reuse_level,
-            })));
+            const formatEnumLabel = (value: string | null | undefined): string => {
+              const clean = (value ?? '').trim()
+              if (!clean) return ''
+              return clean
+                .replace(/[_-]+/g, ' ')
+                .split(' ')
+                .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+                .join(' ')
+            }
+
+            const hydrated = uniqueSkillOptions((body.skills || []).map((skill) => {
+              // Create rich tooltip content
+              const tooltipContent = (
+                <div className="space-y-2 text-left">
+                  <div>
+                    <div className="font-semibold text-[var(--foreground)]">{skill.term}</div>
+                    {skill.definition && (
+                      <div className="text-[var(--foreground)] mt-1">{skill.definition}</div>
+                    )}
+                  </div>
+                  {skill.scope_note && (
+                    <div className="text-xs text-[var(--muted-foreground)]">
+                      <span className="font-medium">Scope:</span> {skill.scope_note}
+                    </div>
+                  )}
+                  {(skill.skill_type || skill.reuse_level) && (
+                    <div className="flex gap-1 flex-wrap">
+                      {skill.skill_type && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--card)] text-[var(--muted-foreground)]">
+                          {formatEnumLabel(skill.skill_type)}
+                        </span>
+                      )}
+                      {skill.reuse_level && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--card)] text-[var(--muted-foreground)]">
+                          {formatEnumLabel(skill.reuse_level)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+
+              return {
+                value: skill.concept_uri,
+                label: skill.term,
+                tooltip: tooltipContent,
+                definition: skill.definition,
+                scopeNote: skill.scope_note,
+                skillType: skill.skill_type,
+                reuseLevel: skill.reuse_level,
+              }
+            }));
             setSelectedSkills(hydrated);
             setFormData((prev) => ({
               ...prev,
@@ -110,13 +157,24 @@ export default function ProfilePage() {
   }, [profile, locale]);
 
   const handleSaveProfile = async () => {
+    // Validate that user hasn't exceeded limits before saving
+    if (formData.skills.length > MAX_PROFILE_SKILLS) {
+      toast.error(t('profile.skillsMaxExceeded', { max: MAX_PROFILE_SKILLS, current: formData.skills.length }));
+      return;
+    }
+    if (formData.values.length > MAX_PROFILE_VALUES) {
+      toast.error(t('profile.valuesMaxExceeded', { max: MAX_PROFILE_VALUES, current: formData.values.length }));
+      return;
+    }
+
     setIsSaving(true);
     try {
       const normalizedSkills = Array.from(new Set(formData.skills)).slice(0, MAX_PROFILE_SKILLS);
+      const normalizedValues = Array.from(new Set(formData.values)).slice(0, MAX_PROFILE_VALUES);
       const updated = await updateProfile({
         full_name: formData.full_name || null,
         bio: formData.bio || null,
-        values: formData.values,
+        values: normalizedValues,
         skills: normalizedSkills,
       });
 
@@ -157,7 +215,7 @@ export default function ProfilePage() {
       <PageLayout maxWidth="md">
         <CardLayout>
           <Heading level={1} className="mb-4">{t('profile.noProfileFound')}</Heading>
-          <p className="text-[var(--text-secondary)] mb-6">
+          <p className="text-[var(--muted-foreground)] mb-6">
             {t('profile.noProfileDescription')}
           </p>
           <LinkButton href="/">
@@ -183,7 +241,7 @@ export default function ProfilePage() {
             <div>
               <FormLabel>{t('profile.profilePhoto')}</FormLabel>
               <div className="flex items-center gap-6">
-                <div className="w-24 h-24 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center flex-shrink-0">
+                <div className="w-24 h-24 rounded-lg bg-[var(--background)] border border-[var(--border)] flex items-center justify-center flex-shrink-0">
                   {profile.profile_photo_url ? (
                     <img
                       src={profile.profile_photo_url}
@@ -191,7 +249,7 @@ export default function ProfilePage() {
                       className="w-full h-full object-cover rounded-lg"
                     />
                   ) : (
-                    <span className="text-3xl font-bold text-[var(--text-secondary)]">
+                    <span className="text-3xl font-bold text-[var(--muted-foreground)]">
                       {user.email?.[0].toUpperCase()}
                     </span>
                   )}
@@ -237,7 +295,7 @@ export default function ProfilePage() {
                 }
                 placeholder={t('profile.bioPlaceholder')}
                 rows={4}
-                className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--bg)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+                className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
               />
             </div>
 
@@ -250,6 +308,10 @@ export default function ProfilePage() {
                   setFormData({ ...formData, values })
                 }
                 isEditing={true}
+                maxSelections={MAX_VALUES_SELECTION}
+                maxSelectionsReachedText={t('profile.valuesHardMaxReached', { max: MAX_VALUES_SELECTION })}
+                softLimit={MAX_PROFILE_VALUES}
+                softLimitWarningText={t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
               />
             </div>
 
@@ -270,8 +332,10 @@ export default function ProfilePage() {
                 minCharsText={t('profile.skillsMinChars')}
                 noResultsText={t('profile.skillsNoResults')}
                 loadingText={t('profile.skillsLoading')}
-                maxSelections={MAX_PROFILE_SKILLS}
-                maxSelectionsReachedText={t('profile.skillsMaxReached', { max: MAX_PROFILE_SKILLS })}
+                maxSelections={MAX_SKILLS_SELECTION}
+                maxSelectionsReachedText={t('profile.skillsHardMaxReached', { max: MAX_SKILLS_SELECTION })}
+                softLimit={MAX_PROFILE_SKILLS}
+                softLimitWarningText={t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
                 locale={locale}
                 matchedAliasLabel={t('profile.skillsMatchedAlias')}
               />

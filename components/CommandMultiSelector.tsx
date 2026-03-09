@@ -84,7 +84,7 @@ export default function CommandMultiSelector<T>({
       )}
 
       <div className="relative">
-        <Command shouldFilter={shouldFilter} className="rounded-lg border border-[var(--border)] bg-[var(--bg)]">
+        <Command shouldFilter={shouldFilter} className="rounded-lg border border-[var(--border)] bg-[var(--background)]">
           <Command.Input
             ref={inputRef}
             value={inputValue}
@@ -93,11 +93,11 @@ export default function CommandMultiSelector<T>({
               onInputFocus?.()
             }}
             placeholder={placeholder}
-            className="w-full rounded-lg bg-transparent px-4 py-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
+            className="w-full rounded-lg bg-transparent px-4 py-2 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--text-tertiary)]"
           />
 
           {isOpen && (
-            <Command.List className="absolute left-0 right-0 top-full z-20 mt-1 max-h-80 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-lg">
+            <Command.List className="absolute left-0 right-0 top-full z-20 mt-1 max-h-80 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--background)] shadow-lg">
               {options.map(option => (
                 <Command.Item
                   key={option.id}
@@ -114,11 +114,11 @@ export default function CommandMultiSelector<T>({
               ))}
 
               {showEmptyState && options.length === 0 && emptyMessage && !showLoadingState && (
-                <div className="px-4 py-3 text-sm text-[var(--text-secondary)]">{emptyMessage}</div>
+                <div className="px-4 py-3 text-sm text-[var(--muted-foreground)]">{emptyMessage}</div>
               )}
 
               {showLoadingState && loadingMessage && (
-                <div className="px-4 py-3 text-sm text-[var(--text-secondary)]">{loadingMessage}</div>
+                <div className="px-4 py-3 text-sm text-[var(--muted-foreground)]">{loadingMessage}</div>
               )}
 
               {listFooter}
