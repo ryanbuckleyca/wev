@@ -41,16 +41,30 @@ export default function Tooltip({ children, content, className = '' }: TooltipPr
     }
   }, [])
 
+  // Create content container and root once on mount
   useEffect(() => {
-    if (!contentContainerRef.current) {
-      contentContainerRef.current = document.createElement('div')
-      contentRootRef.current = createRoot(contentContainerRef.current)
+    contentContainerRef.current = document.createElement('div')
+    contentRootRef.current = createRoot(contentContainerRef.current)
+
+    return () => {
+      // Cleanup on unmount
+      const rootToUnmount = contentRootRef.current
+      if (rootToUnmount) {
+        setTimeout(() => {
+          rootToUnmount.unmount()
+        }, 0)
+      }
     }
-    if (contentRootRef.current) {
+  }, [])
+
+  // Update content when it changes
+  useEffect(() => {
+    if (contentRootRef.current && content) {
       contentRootRef.current.render(<div className="tippy-custom-content">{content}</div>)
     }
   }, [content])
 
+  // Create/update tippy instance
   useEffect(() => {
     if (!ref.current || !content || !contentContainerRef.current) {
       return
@@ -91,25 +105,6 @@ export default function Tooltip({ children, content, className = '' }: TooltipPr
       }
     }
   }, [content, theme])
-
-  useEffect(() => {
-    return () => {
-      // Clean up React root and DOM element asynchronously
-      if (contentRootRef.current) {
-        // Use setTimeout to defer unmount until after current render cycle
-        setTimeout(() => {
-          if (contentRootRef.current) {
-            contentRootRef.current.unmount()
-            contentRootRef.current = null
-          }
-          if (contentContainerRef.current) {
-            contentContainerRef.current.remove()
-            contentContainerRef.current = null
-          }
-        }, 0)
-      }
-    }
-  }, [])
 
   return (
     <div ref={ref} className={`inline-flex cursor-help ${className}`}>
