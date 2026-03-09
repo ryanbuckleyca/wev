@@ -38,7 +38,9 @@ export default function MatchDetailsTooltip({
   const orderedSkills = [
     ...skills.filter(skill => sharedSkills.includes(skill)),
     ...skills.filter(skill => !sharedSkills.includes(skill)),
-  ].slice(0, 5)
+  ]
+    .filter(skill => skillTerms[skill]) // Only show skills with terms
+    .slice(0, 5)
 
   const renderListItem = (label: string, key: string, matched: boolean) => (
     <div key={key} className={`text-xs pl-4 lowercase ${matched ? '' : 'text-gray-400'}`}>
@@ -80,7 +82,7 @@ export default function MatchDetailsTooltip({
           </div>
           {orderedSkills.map(skill => {
             const isMatched = sharedSkills.includes(skill)
-            const skillName = skillTerms[skill] || skill
+            const skillName = skillTerms[skill]
             return renderListItem(skillName, `skill-${skill}`, isMatched)
           })}
         </div>
