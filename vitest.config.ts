@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
+import path from 'path'
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
@@ -18,8 +19,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@lineiconshq/react-lineicons': '/Users/ryanbuckley/code/wev/wev-bulletin/test-utils/lineicons-mock.ts',
-      '@lineiconshq/free-icons': '/Users/ryanbuckley/code/wev/wev-bulletin/test-utils/lineicons-mock.ts',
+      '@lineiconshq/react-lineicons': path.resolve(__dirname, 'test-utils/lineicons-mock.ts'),
+      '@lineiconshq/free-icons': path.resolve(__dirname, 'test-utils/lineicons-mock.ts'),
     },
   },
 })
