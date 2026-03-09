@@ -60,7 +60,11 @@ export default function Tooltip({ children, content, className = '' }: TooltipPr
   // Update content when it changes
   useEffect(() => {
     if (contentRootRef.current && content) {
-      contentRootRef.current.render(<div className="tippy-custom-content">{content}</div>)
+      contentRootRef.current.render(
+        typeof content === 'string'
+          ? <div className="tippy-custom-content" dangerouslySetInnerHTML={{ __html: content }} />
+          : <div className="tippy-custom-content">{content}</div>
+      )
     }
   }, [content])
 
