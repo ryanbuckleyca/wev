@@ -1,5 +1,6 @@
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { HeartSolid, Briefcase2Solid } from '@lineiconshq/free-icons'
+import ProgressDonut from './ProgressDonut'
 
 type TranslateFn = (key: string, values?: Record<string, any>) => string
 
@@ -49,23 +50,7 @@ export default function MatchDetailsTooltip({
   return (
     <div className="space-y-3">
       <div className="text-center">
-        <div className="relative inline-flex items-center justify-center">
-          <div
-            className="rounded-full relative"
-            style={{
-              width: 45,
-              height: 45,
-              background: `conic-gradient(from 0deg, ${primaryColor} 0deg ${totalMatchPercentage * 3.6}deg, #f9fafb ${totalMatchPercentage * 3.6}deg)` ,
-              border: `2px solid ${primaryColor}`,
-            }}
-          >
-            <div className="absolute inset-1 rounded-full bg-white flex items-center justify-center">
-              <span className="font-bold" style={{ fontSize: 11, color: primaryColor }}>
-                {totalMatchPercentage}%
-              </span>
-            </div>
-          </div>
-        </div>
+        <ProgressDonut percentage={totalMatchPercentage} size="xl" text={`${totalMatchPercentage}%`} />
         <div className="text-xs opacity-75 lowercase">{translate('matchDetails.totalMatch')}</div>
       </div>
 
