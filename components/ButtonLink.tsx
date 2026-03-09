@@ -21,7 +21,7 @@ export default function ButtonLink({
     'inline-flex items-center rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed'
 
   const toneClasses: Record<ButtonLinkTone, string> = {
-    accent: 'text-wev-brand-accent hover:text-primary-text hover:underline',
+    accent: 'text-wev-brand-accent hover:text-wev-primary-text hover:underline',
     muted: 'text-wev-text-tertiary hover:text-wev-brand-accent hover:underline',
     primary: 'text-[var(--primary)] hover:underline',
   }

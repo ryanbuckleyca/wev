@@ -165,7 +165,7 @@ html.theme-switching *::after {
   }
 
   .job-link {
-    @apply text-wev-brand-accent hover:text-primary-text hover:underline;
+    @apply text-wev-brand-accent hover:text-wev-primary-text hover:underline;
   }
 
   .wev-icon-btn {
