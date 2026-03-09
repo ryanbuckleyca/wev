@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@/test-utils'
+import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import JobCard from './JobCard'
 import type { JobPosting } from '@/lib/supabase'
@@ -190,16 +190,21 @@ describe('JobCard', () => {
     vi.unstubAllGlobals()
   })
 
-  it('caps displayed skills to five pills for users', () => {
+  it('caps displayed skills to five pills for users', async () => {
+    const skills = ['skill-one', 'skill-two', 'skill-three', 'skill-four', 'skill-five', 'skill-six', 'skill-seven']
+
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ skills: [] }),
+      json: async () => ({
+        skills: skills.map(skill => ({
+          concept_uri: skill,
+          term: skill,
+        })),
+      }),
     })
     vi.stubGlobal('fetch', fetchMock)
     mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never)
     mockUseRouter.mockReturnValue(mockRouter() as never)
-
-    const skills = ['skill-one', 'skill-two', 'skill-three', 'skill-four', 'skill-five', 'skill-six', 'skill-seven']
 
     renderJobCard({
       job: {
@@ -217,8 +222,10 @@ describe('JobCard', () => {
     })
 
     const visibleSkills = skills.slice(0, 5)
-    visibleSkills.forEach(skill => {
-      expect(screen.getByText(skill)).toBeVisible()
+    await waitFor(() => {
+      visibleSkills.forEach(skill => {
+        expect(screen.getByText(skill)).toBeVisible()
+      })
     })
     expect(screen.queryByText('skill-six')).not.toBeInTheDocument()
     expect(screen.queryByText('skill-seven')).not.toBeInTheDocument()

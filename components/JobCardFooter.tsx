@@ -67,10 +67,12 @@ export default function JobCardFooter({
     const ordered = [
       ...skills.filter(skill => sharedSkills.includes(skill)),
       ...skills.filter(skill => !sharedSkills.includes(skill)),
-    ].slice(0, MAX_ITEMS)
+    ]
+      .filter(skill => skillTerms[skill]) // Only show skills with terms
+      .slice(0, MAX_ITEMS)
 
     return ordered.map(skill => {
-      const skillLabel = (skillTerms[skill] || skill).toLowerCase()
+      const skillLabel = skillTerms[skill].toLowerCase()
       const skillTooltip = skillDefinitions[skill]
       return {
         label: skillLabel,
