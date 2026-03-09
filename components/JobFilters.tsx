@@ -460,7 +460,7 @@ export default function JobFilters({
                 href="https://solidarityeconomyprinciples.org/wp-content/uploads/2023/02/SE-Principles-2-pager-handout.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-1 text-wev-brand-accent hover:text-primary-text hover:underline"
+                className="ml-1 text-wev-brand-accent hover:text-wev-primary-text hover:underline"
               >
                 {t('filters.sse.learnMore')}
               </a>

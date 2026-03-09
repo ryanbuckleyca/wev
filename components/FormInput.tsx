@@ -1,3 +1,6 @@
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+
 interface FormInputProps {
   type: 'text' | 'email' | 'password'
   value: string
@@ -8,26 +11,24 @@ interface FormInputProps {
   fullWidth?: boolean
 }
 
-export default function FormInput({ 
-  type, 
-  value, 
-  onChange, 
-  placeholder, 
-  required = false, 
+export default function FormInput({
+  type,
+  value,
+  onChange,
+  placeholder,
+  required = false,
   disabled = false,
-  fullWidth = false
+  fullWidth = false,
 }: FormInputProps) {
-  const widthClass = fullWidth ? 'w-full' : ''
-
   return (
-    <input
+    <Input
       type={type}
       required={required}
       disabled={disabled}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`rounded px-3 py-2 text-sm outline-none border border-border bg-background text-foreground ${widthClass}`.trim()}
+      className={cn(!fullWidth && 'w-auto')}
     />
   )
 }

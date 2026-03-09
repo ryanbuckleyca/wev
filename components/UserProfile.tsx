@@ -177,7 +177,7 @@ export default function UserProfile({ showThemeInMenu = false, showLocaleInMenu 
             <Link
               href="/profile"
               onClick={() => setIsOpen(false)}
-              className="block px-4 py-2 text-sm text-foreground hover:bg-primary-tint/20 hover:text-primary-text transition-all duration-700 ease-in-out rounded"
+              className="block px-4 py-2 text-sm text-foreground hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
               prefetch={true}
             >
               {t('userProfile.myProfile')}
@@ -185,7 +185,7 @@ export default function UserProfile({ showThemeInMenu = false, showLocaleInMenu 
             <Link
               href="/bookmarks"
               onClick={() => setIsOpen(false)}
-              className="block px-4 py-2 text-sm text-foreground hover:bg-primary-tint/20 hover:text-primary-text transition-all duration-700 ease-in-out rounded"
+              className="block px-4 py-2 text-sm text-foreground hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
               prefetch={true}
             >
               {t('userProfile.myBookmarks')}
@@ -193,7 +193,7 @@ export default function UserProfile({ showThemeInMenu = false, showLocaleInMenu 
             <Link
               href="/account-settings"
               onClick={() => setIsOpen(false)}
-              className="block px-4 py-2 text-sm text-foreground hover:bg-primary-tint/20 hover:text-primary-text transition-all duration-700 ease-in-out rounded"
+              className="block px-4 py-2 text-sm text-foreground hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
               prefetch={true}
             >
               {t('userProfile.accountSettings')}
