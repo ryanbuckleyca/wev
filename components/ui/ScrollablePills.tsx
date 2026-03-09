@@ -14,7 +14,7 @@ interface ScrollablePillsProps {
   items: string[] | ScrollablePillsItem[];
   variant?: "default" | "pink" | "gray";
   className?: string;
-  fadeBackground?: string; // match your card background color, default "white"
+  fadeBackground?: string; // CSS color value matching the surrounding background, default "var(--card)"
 }
 
 const scrollbarHideStyle = `
@@ -31,7 +31,7 @@ export function ScrollablePills({
   items,
   variant = "default",
   className,
-  fadeBackground = "white",
+  fadeBackground = "var(--card)",
 }: ScrollablePillsProps) {
   const { ref, fades } = useScrollFades();
 
@@ -43,11 +43,9 @@ export function ScrollablePills({
   const getVariantClass = (isMatched: boolean = true, type?: 'value' | 'skill') => {
     const baseClasses = "border transition-colors";
     if (!isMatched) {
-      // Desaturated state for non-matching items
-      return `${baseClasses} bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-100 opacity-60`;
+      return `${baseClasses} bg-muted text-muted-foreground border-border opacity-60`;
     }
-    // Saturated state for matching items - standard colors
-    return `${baseClasses} bg-white text-gray-900 border-gray-300 hover:bg-gray-50`;
+    return `${baseClasses} bg-card text-foreground border-border hover:bg-muted`;
   };
 
   return (
