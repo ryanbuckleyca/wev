@@ -85,15 +85,29 @@ export default function Tooltip({ children, content, className = '' }: TooltipPr
     })
 
     return () => {
-      instanceRef.current?.destroy()
-      instanceRef.current = null
+      if (instanceRef.current) {
+        instanceRef.current.destroy()
+        instanceRef.current = null
+      }
     }
   }, [content, theme])
 
   useEffect(() => {
     return () => {
-      instanceRef.current?.destroy()
-      contentRootRef.current?.unmount()
+      // Clean up React root and DOM element asynchronously
+      if (contentRootRef.current) {
+        // Use setTimeout to defer unmount until after current render cycle
+        setTimeout(() => {
+          if (contentRootRef.current) {
+            contentRootRef.current.unmount()
+            contentRootRef.current = null
+          }
+          if (contentContainerRef.current) {
+            contentContainerRef.current.remove()
+            contentContainerRef.current = null
+          }
+        }, 0)
+      }
     }
   }, [])
 
