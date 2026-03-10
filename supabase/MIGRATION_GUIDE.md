@@ -25,7 +25,7 @@ SUPABASE_PROJECT_REF=teuvfoftdjfsnkkbnzps  # Override for prod migrations
 # Production-specific env vars would go here
 ```
 
-### ✅ DO - Use Semantic Naming
+### DO - Use Semantic Naming
 ```bash
 # Good: Clear, descriptive, ordered
 20260301_add_job_matches_table.sql
@@ -38,7 +38,25 @@ SUPABASE_PROJECT_REF=teuvfoftdjfsnkkbnzps  # Override for prod migrations
 20260301_fix.sql  # Same date = conflict!
 ```
 
-### ✅ DO - One Change Per Migration
+### DO - Keep Applied Prefixes Stable
+```bash
+# Once a migration version has been applied remotely, do NOT change its
+# numeric prefix. Supabase tracks migrations by that prefix, not by the
+# descriptive suffix.
+
+# Safe: improve suffix only while keeping the same applied prefix
+20260306_create_esco_skills_index.sql
+
+# Unsafe: changing the applied prefix creates a different migration version
+202603061613_create_esco_skills_index.sql
+```
+
+Legacy note:
+- `20260306_esco_skills_index.sql` uses an older short prefix format.
+- Leave that applied prefix as-is unless you are intentionally repairing both local and remote migration history.
+- For all new migrations, use a full sortable timestamp prefix such as `YYYYMMDDHHMM_description.sql`.
+
+### DO - One Change Per Migration
 ```sql
 -- GOOD: Single purpose
 CREATE TABLE job_matches (

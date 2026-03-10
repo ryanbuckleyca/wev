@@ -2,61 +2,54 @@
 
 interface ProgressDonutProps {
   percentage: number
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
+  text?: string
 }
 
-export default function ProgressDonut({ percentage, size = 'sm', className = '' }: ProgressDonutProps) {
+export default function ProgressDonut({ percentage, size = 'sm', className = '', text }: ProgressDonutProps) {
   const normalizedPercentage = Math.min(Math.max(percentage, 0), 100)
 
   const sizes = {
-    sm: { width: 14, height: 14, strokeWidth: 3 },
-    md: { width: 18, height: 18, strokeWidth: 4 },
-    lg: { width: 20, height: 20, strokeWidth: 5 },
+    sm: { width: 14, height: 14 },
+    md: { width: 18, height: 18 },
+    lg: { width: 20, height: 20 },
+    xl: { width: 45, height: 45 },
   }
 
   const config = sizes[size]
-  const radius = (config.width - config.strokeWidth) / 2
-  const circumference = 2 * Math.PI * radius
-  const strokeDasharray = circumference
-  const strokeDashoffset = circumference - (normalizedPercentage / 100) * circumference
-
-  const getColor = () => 'var(--success-solid)'
-
-  const getOpacity = () => {
-    if (normalizedPercentage === 0) return 0.2
-    return 0.3 + (normalizedPercentage / 100) * 0.7
-  }
-
-  const strokeColor = getColor()
 
   return (
-    <div className={`relative inline-flex items-center justify-center ${className}`}>
-      <svg width={config.width} height={config.height} className="transform -rotate-90">
-        <circle
-          cx={config.width / 2}
-          cy={config.height / 2}
-          r={radius}
-          stroke="var(--border)"
-          strokeWidth={config.strokeWidth}
-          fill="none"
-          style={{ opacity: 0.5 }}
-        />
-
-        <circle
-          cx={config.width / 2}
-          cy={config.height / 2}
-          r={radius}
-          stroke={strokeColor}
-          strokeWidth={config.strokeWidth}
-          fill="none"
-          strokeDasharray={strokeDasharray}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          className="transition-all duration-500 ease-out"
-          style={{ opacity: getOpacity() }}
-        />
-      </svg>
+    <div 
+      className={`relative inline-flex items-center justify-center ${className}`}
+      role="img"
+      aria-label={`Progress: ${normalizedPercentage}%`}
+    >
+      <div 
+        className="rounded-full relative"
+        style={{
+          width: config.width,
+          height: config.height,
+          background: `conic-gradient(from 0deg, var(--primary) 0deg ${normalizedPercentage * 3.6}deg, var(--muted) ${normalizedPercentage * 3.6}deg)`,
+          border: 'none'
+        }}
+      >
+        <div 
+          className="absolute inset-1 rounded-full bg-card flex items-center justify-center"
+        >
+          {text && (
+            <span 
+              className="font-bold" 
+              style={{ 
+                fontSize: config.width / 4,
+                color: 'var(--primary)'
+              }}
+            >
+              {text}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

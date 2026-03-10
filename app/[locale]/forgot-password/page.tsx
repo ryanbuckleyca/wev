@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
     <PageLayout variant="centered">
       <CardLayout>
         <Heading level={1} className="text-center mb-2">{t('auth.forgotPassword.title')}</Heading>
-        <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm text-center mb-6" style={{ color: 'var(--muted-foreground)' }}>
           {t('auth.forgotPassword.description')}
         </p>
 
@@ -95,7 +95,7 @@ export default function ForgotPasswordPage() {
           <Message variant="success">{message}</Message>
         )}
 
-        <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-6 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
           {t('auth.forgotPassword.rememberPassword')}{' '}
           <Link
             href="/login"

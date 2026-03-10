@@ -5,7 +5,7 @@ interface ErrorBoxProps {
 
 export default function ErrorBox({ children, className = '' }: ErrorBoxProps) {
   return (
-    <div className={`mb-6 p-3 rounded bg-[var(--alert-tint)] text-[var(--alert-text)] text-sm ${className}`.trim()}>
+    <div className={`mb-6 p-3 rounded bg-[var(--destructive-tint)] text-[var(--destructive-foreground)] text-sm ${className}`.trim()}>
       {children}
     </div>
   )

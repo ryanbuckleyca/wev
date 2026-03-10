@@ -1,6 +1,18 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { act } from 'react'
+import { beforeAll, afterAll, afterEach } from 'vitest'
+
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  // cmdk relies on ResizeObserver; jsdom does not provide it.
+  ;(globalThis as unknown as { ResizeObserver?: typeof ResizeObserverMock }).ResizeObserver = ResizeObserverMock
+}
 
 // React 19 is stricter about act() boundaries than React 18. When components
 // use async effects with fake timers (e.g. polling), microtask-scheduled state

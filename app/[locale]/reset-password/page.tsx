@@ -77,7 +77,7 @@ export default function ResetPasswordPage() {
     <PageLayout variant="centered">
       <CardLayout>
         <Heading level={1} className="text-center mb-2">{t('auth.resetPassword.title')}</Heading>
-        <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm text-center mb-6" style={{ color: 'var(--muted-foreground)' }}>
           {t('auth.resetPassword.description')}
         </p>
 

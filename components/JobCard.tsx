@@ -1,18 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, ReactNode } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
-import { JobPosting } from '@/lib/supabase'
+import { JobPosting, JobMatchData } from '@/lib/supabase'
 import { Lineicons } from '@lineiconshq/react-lineicons'
 import { Leaf1Solid, Leaf1Outlined, Bookmark1Solid, Bookmark1Outlined, ChevronDownSolid, ChevronUpSolid } from '@lineiconshq/free-icons'
-import Pill from './Pill'
 import Tooltip from './Tooltip'
-import { getValueDefinition } from '@/lib/values'
 import { useAuth } from '@/contexts/AuthContext'
 import ProgressDonut from './ProgressDonut'
+import Collapsible from './Collapsible'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from '@/i18n/navigation'
-import Collapsible from './Collapsible'
+import MatchDetailsTooltip from './MatchDetailsTooltip'
+import JobCardFooter from './JobCardFooter'
 
 interface JobCardProps {
   job: JobPosting
@@ -21,9 +21,10 @@ interface JobCardProps {
   onBookmarkToggle?: (job: JobPosting, bookmarked: boolean) => void
   updatingId: string | null
   initialExpanded?: boolean
-  match?: { score: number; shared_values: string[] } | null
+  match?: JobMatchData | null
   initialBookmarked?: boolean
 }
+
 
 export default function JobCard({ 
   job, 
@@ -38,6 +39,8 @@ export default function JobCard({
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
   const [bookmarked, setBookmarked] = useState(initialBookmarked)
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
+  const [skillTerms, setSkillTerms] = useState<Record<string, string>>({})
+  const [skillDefinitions, setSkillDefinitions] = useState<Record<string, string>>({})
 
   // Get user state
   const t = useTranslations()
@@ -46,8 +49,37 @@ export default function JobCard({
   const router = useRouter()
 
   // Use passed-in match data (batch-fetched by parent)
-  const matchPercentage = matchProp ? Math.round(matchProp.score * 100) : 0
+  const totalMatchPercentage = matchProp?.score != null ? Math.round(matchProp.score * 100) : 0
+  const valueMatchPercentage = matchProp?.value_score != null ? Math.round(matchProp.value_score * 100) : 0
+  const skillMatchPercentage = matchProp?.skill_score != null ? Math.round(matchProp.skill_score * 100) : 0
   const isValueMatched = (value: string) => matchProp?.shared_values?.includes(value) ?? false
+  const isSkillMatched = (skill: string) => matchProp?.shared_skills?.includes(skill) ?? false
+  const matchTooltipContent = useMemo<ReactNode | null>(() => {
+    if (!matchProp) return null
+
+    return (
+      <MatchDetailsTooltip
+        totalMatchPercentage={totalMatchPercentage}
+        valueMatchPercentage={valueMatchPercentage}
+        skillMatchPercentage={skillMatchPercentage}
+        values={job.values || []}
+        skills={job.skills || []}
+        sharedValues={matchProp.shared_values || []}
+        sharedSkills={matchProp.shared_skills || []}
+        skillTerms={skillTerms}
+        translate={(key, values) => t(key, values)}
+      />
+    )
+  }, [
+    matchProp,
+    job.values,
+    job.skills,
+    skillTerms,
+    t,
+    totalMatchPercentage,
+    valueMatchPercentage,
+    skillMatchPercentage
+  ])
   
   // Sync internal state with prop changes
   useEffect(() => {
@@ -57,6 +89,55 @@ export default function JobCard({
   useEffect(() => {
     setBookmarked(initialBookmarked)
   }, [initialBookmarked])
+
+  useEffect(() => {
+    const skills = job.skills ?? []
+    if (skills.length === 0) {
+      setSkillTerms({})
+      setSkillDefinitions({})
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const params = new URLSearchParams({
+          uris: skills.join(','),
+          locale,
+        })
+        const res = await fetch(`/api/skills/by-uri?${params.toString()}`, { cache: 'no-store' })
+        if (!res.ok) {
+          return
+        }
+        const body = await res.json()
+        if (cancelled) {
+          return
+        }
+        const nextTerms: Record<string, string> = {}
+        const nextDefinitions: Record<string, string> = {}
+        for (const row of body.skills ?? []) {
+          if (row?.concept_uri && row?.term) {
+            nextTerms[row.concept_uri] = row.term
+            // Build tooltip from definition and scope note
+            const parts = []
+            if (row.definition) parts.push(row.definition)
+            if (row.scope_note) parts.push(row.scope_note)
+            if (parts.length > 0) {
+              nextDefinitions[row.concept_uri] = parts.join('<br/><br/>')
+            }
+          }
+        }
+        setSkillTerms(nextTerms)
+        setSkillDefinitions(nextDefinitions)
+      } catch (error) {
+        console.error('Failed to fetch skill labels:', error)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [job.skills, locale])
   
   const sse = !!job.is_sse
   
@@ -139,9 +220,9 @@ export default function JobCard({
   }
 
   return (
-    <div className="relative rounded-wev-card transition-all duration-300 bg-wev-surface border border-wev-border hover:border-wev-primary overflow-hidden">
+    <div className="relative rounded-wev-card transition-all duration-300 bg-card border border-border hover:border-primary overflow-hidden">
       {/* Card Header */}
-      <div className="flex items-center justify-between px-3 py-2 rounded-t-wev-card transition-all duration-300 border-b border-wev-border bg-wev-surface">
+      <div className="flex items-center justify-between px-3 py-2 rounded-t-wev-card transition-all duration-300 border-b border-border bg-card">
         {/* Left side: SSE + Summary */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {isAdmin ? (
@@ -160,7 +241,7 @@ export default function JobCard({
               {sse ? (
                 <Lineicons icon={Leaf1Solid} size={16} className="text-wev-success" />
               ) : (
-                <Lineicons icon={Leaf1Outlined} size={16} className="text-wev-text-secondary" />
+                <Lineicons icon={Leaf1Outlined} size={16} className="text-muted-foreground" />
               )}
             </button>
           ) : sse ? (
@@ -168,13 +249,13 @@ export default function JobCard({
               <Lineicons icon={Leaf1Solid} size={16} className="text-wev-success" />
             </span>
           ) : null}
-          <span className="text-sm text-wev-text-secondary truncate pr-2">
+          <span className="text-sm text-muted-foreground truncate pr-2">
             {getCardSummary(job)}
           </span>
         </div>
         
         {/* Right side: Bookmark + Collapse */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={handleBookmarkToggle}
             className="wev-icon-btn"
@@ -185,7 +266,7 @@ export default function JobCard({
             {bookmarked ? (
               <Lineicons icon={Bookmark1Solid} size={16} className="text-wev-info" />
             ) : (
-              <Lineicons icon={Bookmark1Outlined} size={16} className="text-wev-text-secondary" />
+              <Lineicons icon={Bookmark1Outlined} size={16} className="text-muted-foreground" />
             )}
           </button>
           <button
@@ -195,9 +276,9 @@ export default function JobCard({
             aria-label={isExpanded ? t('jobCard.collapseDetails') : t('jobCard.expandDetails')}
           >
             {isExpanded ? (
-              <Lineicons icon={ChevronUpSolid} size={18} className="text-wev-text-secondary" />
+              <Lineicons icon={ChevronUpSolid} size={18} className="text-muted-foreground" />
             ) : (
-              <Lineicons icon={ChevronDownSolid} size={18} className="text-wev-text-secondary" />
+              <Lineicons icon={ChevronDownSolid} size={18} className="text-muted-foreground" />
             )}
           </button>
         </div>
@@ -205,7 +286,7 @@ export default function JobCard({
 
       {/* Card Content */}
       <Collapsible isOpen={isExpanded}>
-        <div className="py-4 px-5 bg-wev-surface">
+        <div className="py-4 px-5 bg-card">
           <div className="job-details">
             <div className="job-detail-line">
               <span className="job-label">{t('jobCard.who')} </span>
@@ -253,55 +334,25 @@ export default function JobCard({
         </div>
       </Collapsible>
       
-      {/* Values Section */}
-      {job.values && job.values.length > 0 && (
-        <div className={`px-4 py-3 bg-wev-surface-tint ${isExpanded ? 'border-t border-wev-border' : ''}`}>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {/* Match Score - only show when user is logged in */}
-            {user && (
-              <div className="flex-center-gap">
-                <ProgressDonut 
-                  percentage={matchPercentage} 
-                  size="sm"
-                />
-                <span className="text-sm text-wev-text-secondary font-medium">
-                  {matchPercentage}{t('jobCard.match')}
-                </span>
-              </div>
-            )}
-            
-            {/* Values pills */}
-            {job.values.map((value) => {
-              const valueName = t(`values.${value}.name`, { defaultValue: value })
-              const valueDef = getValueDefinition(value, {
-                name: valueName,
-                description: t(`values.${value}.description`),
-                example: t(`values.${value}.example`),
-              })
-              return (
-                <Tooltip
-                  key={value}
-                  content={
-                    `<p class="font-medium text-wev-primary-text mb-1">${valueName}</p>
-                     <p class="text-xs text-wev-text-primary mb-2">${valueDef.description}</p>
-                     <p class="text-xs text-wev-text-secondary italic">${valueDef.example}</p>`
-                  }
-                >
-                  <Pill 
-                    variant={user ? (isValueMatched(value) ? 'default' : 'disabled') : 'disabled'} 
-                    size="sm"
-                  >
-                    {user && isValueMatched(value) && (
-                      <span className="mr-1 text-xs">✓</span>
-                    )}
-                    {valueName}
-                  </Pill>
-                </Tooltip>
-              )
-            })}
-          </div>
+      {(job.values && job.values.length > 0) || (job.skills && job.skills.length > 0) ? (
+        <div className={`px-4 py-3 bg-muted ${isExpanded ? 'border-t border-border' : ''}`}>
+          <JobCardFooter
+            values={job.values || []}
+            skills={job.skills || []}
+            sharedValues={matchProp?.shared_values || []}
+            sharedSkills={matchProp?.shared_skills || []}
+            isValueMatched={isValueMatched}
+            isSkillMatched={isSkillMatched}
+            skillTerms={skillTerms}
+            skillDefinitions={skillDefinitions}
+            totalMatchPercentage={totalMatchPercentage}
+            matchTooltipContent={matchTooltipContent}
+            showTooltip={Boolean(user && matchProp && matchTooltipContent)}
+            fadeBackground="#f9fafb"
+          />
         </div>
-      )}
+      ) : null}
+
     </div>
   )
 }

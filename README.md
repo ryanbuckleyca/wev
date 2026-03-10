@@ -178,6 +178,31 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## ESCO Skills Index
+
+Normalize the raw ESCO CSV into a canonical, deduplicated skills index:
+
+```bash
+npm run skills:index
+```
+
+This script:
+- Deduplicates by `concept URI`
+- Keeps canonical label
+- Merges alt labels (`altLabel` + `hiddenLabel`)
+- Chooses best definition by priority: `description > scopeNote > definition`
+
+Output JSON:
+- `supabase/seed/esco_skills_index.json`
+
+Optional DB upsert:
+
+```bash
+python3 scripts/build_esco_skills_index.py --upsert-db
+```
+
+Requires `SUPABASE_URL` and a service-role key (`SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY`).
+
 ## Features
 
 - Display last scrape time from the `scrape_runs` table`

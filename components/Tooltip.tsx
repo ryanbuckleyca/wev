@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createRoot, Root } from 'react-dom/client'
 import tippy, { Instance, Props } from 'tippy.js'
 import 'tippy.js/dist/tippy.css'
 import 'tippy.js/themes/light.css'
 
 interface TooltipProps {
   children: React.ReactNode
-  content: string
+  content: React.ReactNode
   className?: string
 }
 
@@ -15,6 +16,8 @@ export default function Tooltip({ children, content, className = '' }: TooltipPr
   const ref = useRef<HTMLDivElement>(null)
   const instanceRef = useRef<Instance<Props> | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const contentContainerRef = useRef<HTMLDivElement | null>(null)
+  const contentRootRef = useRef<Root | null>(null)
 
   // Listen for theme changes
   useEffect(() => {
@@ -38,41 +41,71 @@ export default function Tooltip({ children, content, className = '' }: TooltipPr
     }
   }, [])
 
+  // Create content container and root once on mount
   useEffect(() => {
-    if (ref.current && content) {
-      instanceRef.current = tippy(ref.current, {
-        content: `<div class="tippy-custom-content">${content}</div>`,
-        allowHTML: true,
-        theme: theme,
-        placement: 'top',
-        arrow: true,
-        delay: 0,
-        duration: [300, 300],
-        maxWidth: 300,
-        touch: ['hold', 500],
-        hideOnClick: false,
-        popperOptions: {
-          modifiers: [
-            {
-              name: 'preventOverflow',
-              options: {
-                padding: 8,
-              },
-            },
-            {
-              name: 'offset',
-              options: {
-                offset: [0, 8],
-              },
-            },
-          ],
-        },
-      })
+    contentContainerRef.current = document.createElement('div')
+    contentRootRef.current = createRoot(contentContainerRef.current)
+
+    return () => {
+      // Cleanup on unmount
+      const rootToUnmount = contentRootRef.current
+      if (rootToUnmount) {
+        setTimeout(() => {
+          rootToUnmount.unmount()
+        }, 0)
+      }
     }
+  }, [])
+
+  // Update content when it changes
+  useEffect(() => {
+    if (contentRootRef.current && content) {
+      contentRootRef.current.render(
+        typeof content === 'string'
+          ? <div className="tippy-custom-content" dangerouslySetInnerHTML={{ __html: content }} />
+          : <div className="tippy-custom-content">{content}</div>
+      )
+    }
+  }, [content])
+
+  // Create/update tippy instance
+  useEffect(() => {
+    if (!ref.current || !content || !contentContainerRef.current) {
+      return
+    }
+
+    instanceRef.current = tippy(ref.current, {
+      content: contentContainerRef.current,
+      theme: theme,
+      placement: 'top',
+      arrow: true,
+      delay: 0,
+      duration: [300, 300],
+      maxWidth: 300,
+      touch: ['hold', 500],
+      hideOnClick: false,
+      popperOptions: {
+        modifiers: [
+          {
+            name: 'preventOverflow',
+            options: {
+              padding: 8,
+            },
+          },
+          {
+            name: 'offset',
+            options: {
+              offset: [0, 8],
+            },
+          },
+        ],
+      },
+    })
 
     return () => {
       if (instanceRef.current) {
         instanceRef.current.destroy()
+        instanceRef.current = null
       }
     }
   }, [content, theme])

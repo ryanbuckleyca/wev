@@ -118,7 +118,7 @@ export default function SignupPage() {
           <Message variant="success">{message}</Message>
         )}
 
-        <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-6 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
           {t('auth.signup.hasAccount')}{' '}
           <Link
             href="/login"

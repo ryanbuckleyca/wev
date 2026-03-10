@@ -97,9 +97,16 @@
     "newestFirst": "Date desc",
     "oldestFirst": "Date asc",
     "bestMatch": "Correspondance",
+    "valueMatch": "Valeurs",
+    "skillMatch": "Compétences",
     "salaryHighToLow": "Salaire desc",
     "salaryLowToHigh": "Salaire asc",
     "orgAZ": "Org A ↔ Z"
+  },
+  "matchDetails": {
+    "totalMatch": "Correspondance totale",
+    "values": "Valeurs",
+    "skills": "Compétences"
   },
   "expand": {
     "expandAll": "Tout développer",
@@ -116,7 +123,11 @@
   "jobListings": {
     "loading": "Chargement des emplois...",
     "error": "Erreur lors du chargement des offres d'emploi",
-    "noJobs": "Aucune offre d'emploi trouvée."
+    "noJobs": "Aucune offre d'emploi trouvée.",
+    "sliderHint": "Faites défiler horizontalement pour parcourir les emplois.",
+    "stackedHint": "Affichage de tous les emplois dans une liste verticale.",
+    "showAll": "Tout afficher",
+    "useSlider": "Utiliser le carrousel"
   },
   "bookmarks": {
     "title": "Mes signets",
@@ -135,6 +146,8 @@
     "when": "Quand :",
     "howMuch": "Combien :",
     "match": "% de correspondance :",
+    "valuesMatch": "% de correspondance valeurs :",
+    "skillsMatch": "% de correspondance compétences :",
     "removeSse": "Retirer le statut SSE",
     "markSse": "Marquer comme SSE",
     "sseJob": "Emploi SSE (cliquez pour retirer)",
@@ -148,6 +161,7 @@
     "expand": "Développer",
     "collapseDetails": "Réduire les détails de l'emploi",
     "expandDetails": "Développer les détails de l'emploi",
+    "viewMatchDetails": "Voir les détails de la correspondance",
     "removeSseConfirm": "Retirer l'étiquette SSE de \"{title}\" chez {org} ?",
     "markSseConfirm": "Marquer \"{title}\" chez {org} comme un emploi d'économie solidaire ?"
   },
@@ -230,6 +244,19 @@
     "bio": "Biographie",
     "bioPlaceholder": "Parlez-nous de vous...",
     "workValues": "Valeurs de travail",
+    "skills": "Compétences",
+    "skillsPlaceholder": "Rechercher des compétences...",
+    "skillsMinChars": "Tapez au moins 2 caractères pour rechercher.",
+    "skillsNoResults": "Aucune compétence trouvée.",
+    "skillsLoading": "Recherche de compétences...",
+    "skillsMaxReached": "Maximum de {max} compétences sélectionnées. Retirez-en une pour en ajouter une autre.",
+    "skillsHardMaxReached": "Maximum de {max} compétences atteint. Retirez-en une pour en ajouter une autre.",
+    "skillsSoftLimitWarning": "Vous avez sélectionné plus de {max} compétences. Vous devrez en retirer avant d'enregistrer.",
+    "skillsMaxExceeded": "Veuillez retirer {current, number} {current, plural, one {compétence} other {compétences}} pour respecter le maximum de {max}.",
+    "valuesHardMaxReached": "Maximum de {max} valeurs atteint. Retirez-en une pour en ajouter une autre.",
+    "valuesSoftLimitWarning": "Vous avez sélectionné plus de {max} valeurs. Vous devrez en retirer avant d'enregistrer.",
+    "valuesMaxExceeded": "Veuillez retirer {current, number} {current, plural, one {valeur} other {valeurs}} pour respecter le maximum de {max}.",
+    "skillsMatchedAlias": "Correspondance",
     "saveProfile": "Enregistrer le profil",
     "saving": "Enregistrement...",
     "updateSuccess": "Profil mis à jour avec succès !",
@@ -296,7 +323,8 @@
     "terms": "Conditions d'utilisation"
   },
   "common": {
-    "loading": "Chargement..."
+    "loading": "Chargement...",
+    "close": "Fermer"
   },
   "passwordStrength": {
     "strength": "Force :",
@@ -556,7 +584,9 @@
     "selector": {
       "instruction": "Sélectionnez les valeurs qui comptent le plus pour vous.",
       "selected": "sélectionné",
-      "selectedLabel": "Sélectionné"
+      "selectedLabel": "Sélectionné",
+      "placeholder": "Rechercher des valeurs...",
+      "noResults": "Aucune valeur trouvée"
     }
   },
   "ariaLabels": {
@@ -566,7 +596,8 @@
     },
     "localeSwitcher": {
       "switchToEnglish": "Passer à l'anglais",
-      "switchToFrench": "Passer au français"
+      "switchToFrench": "Passer au français",
+      "toggleLocale": "Changer de langue"
     },
     "pill": {
       "remove": "Retirer {label}"

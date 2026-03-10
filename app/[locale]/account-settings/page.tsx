@@ -201,7 +201,7 @@ export default function AccountSettingsPage() {
                 error={emailError}
                 htmlFor="email"
               />
-              <p className="text-sm text-[var(--text-secondary)] mt-2">
+              <p className="text-sm text-[var(--muted-foreground)] mt-2">
                 {t('accountSettings.currentEmail')} <span className="font-semibold">{user.email}</span>
               </p>
             </div>

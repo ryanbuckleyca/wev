@@ -66,30 +66,30 @@ export default function JobSearch({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder={placeholder}
-              className="w-full h-10 pl-9 pr-3 border border-wev-border rounded-wev-btn bg-wev-surface text-sm text-wev-text-primary focus:outline-none focus:ring-2 focus:ring-wev-primary/20 focus:border-wev-primary transition-colors"
+              className="w-full h-10 pl-9 pr-3 border border-border rounded-wev-btn bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
             />
           </div>
 
           <button
             type="button"
             onClick={() => onFiltersExpandedChange(!filtersExpanded)}
-            className="h-10 px-3 border border-wev-border rounded-wev-btn bg-wev-surface text-sm text-wev-text-secondary hover:border-wev-primary transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+            className="h-10 px-3 border border-border rounded-wev-btn bg-card text-sm text-muted-foreground hover:border-primary transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
             aria-expanded={filtersExpanded}
             aria-controls="job-filters-content"
           >
             <FilterIcon className="w-4 h-4" aria-hidden />
             <span className="max-[519px]:hidden">{filtersExpanded ? t('filters.hideFilters') : t('filters.showFilters')}</span>
-            <span className="inline-flex min-w-[1.25rem] h-5 px-1.5 items-center justify-center rounded-full bg-wev-primary text-white text-xs font-semibold">
+            <span className="inline-flex min-w-[1.25rem] h-5 px-1.5 items-center justify-center rounded-full bg-primary text-white text-xs font-semibold">
               {activeFilterChips.length}
             </span>
           </button>
         </div>
       </div>
 
-      <div className="px-3 sm:px-4 py-2.5 bg-wev-surface-tint border-t border-wev-border flex flex-col gap-2">
+      <div className="px-3 sm:px-4 py-2.5 bg-muted border-t border-border flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-wev-text-secondary whitespace-nowrap">
-            <strong className="font-semibold text-wev-text-primary">{filteredJobsCount}</strong> {t('pagination.of')} {totalJobsCount}{' '}
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            <strong className="font-semibold text-foreground">{filteredJobsCount}</strong> {t('pagination.of')} {totalJobsCount}{' '}
             {totalJobsCount === 1 ? t('pagination.job') : t('pagination.jobs')}
           </span>
           <div className="flex flex-wrap items-center gap-1.5">
