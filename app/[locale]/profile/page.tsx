@@ -34,7 +34,7 @@ function uniqueSkillOptions(skills: SkillOption[]): SkillOption[] {
     seen.add(skill.value);
     deduped.push(skill);
   }
-  return deduped.slice(0, MAX_PROFILE_SKILLS);
+  return deduped;
 }
 
 export default function ProfilePage() {
