@@ -53,7 +53,7 @@ export function ScrollablePills({
       <style>{scrollbarHideStyle}</style>
       {/* Left fade */}
       <div
-        className="absolute left-0 top-0 bottom-1 w-8 pointer-events-none z-10 transition-opacity duration-200"
+        className="absolute left-0 top-0 bottom-0 w-8 pointer-events-none z-10 transition-opacity duration-200"
         style={{
           background: `linear-gradient(to right, ${fadeBackground}, transparent)`,
           opacity: fades.left ? 1 : 0,
@@ -104,7 +104,7 @@ export function ScrollablePills({
 
       {/* Right fade */}
       <div
-        className="absolute right-0 top-0 bottom-1 w-12 pointer-events-none z-10 transition-opacity duration-200"
+        className="absolute right-0 top-0 bottom-0 w-12 pointer-events-none z-10 transition-opacity duration-200"
         style={{
           background: `linear-gradient(to left, ${fadeBackground}, transparent)`,
           opacity: fades.right ? 1 : 0,
