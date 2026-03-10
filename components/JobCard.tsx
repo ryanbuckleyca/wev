@@ -348,7 +348,7 @@ export default function JobCard({
             totalMatchPercentage={totalMatchPercentage}
             matchTooltipContent={matchTooltipContent}
             showTooltip={Boolean(user && matchProp && matchTooltipContent)}
-            fadeBackground="#f9fafb"
+            fadeBackground="var(--muted)"
           />
         </div>
       ) : null}
