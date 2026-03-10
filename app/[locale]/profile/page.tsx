@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
-import { useProfile } from '@/lib/hooks/useProfile';
+import { useProfileForm, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES } from '@/lib/hooks/useProfileForm';
 import ValuesSelector from '@/components/ValuesSelector';
-import SkillsSelector, { type SkillOption } from '@/components/SkillsSelector';
+import SkillsSelector from '@/components/SkillsSelector';
 import LoadingState from '@/components/LoadingState';
 import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
@@ -17,210 +15,39 @@ import CardLayout from '@/components/CardLayout';
 import Heading from '@/components/Heading';
 import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
-import toast from 'react-hot-toast';
-
-const MAX_PROFILE_SKILLS = 5;
-const MAX_SKILLS_SELECTION = 15; // Allow selecting more during exploration, but enforce MAX_PROFILE_SKILLS on save
-const MAX_PROFILE_VALUES = 10;
-const MAX_VALUES_SELECTION = 15; // Allow selecting more during exploration, but enforce MAX_PROFILE_VALUES on save
-
-function uniqueSkillOptions(skills: SkillOption[]): SkillOption[] {
-  const seen = new Set<string>();
-  const deduped: SkillOption[] = [];
-  for (const skill of skills) {
-    if (seen.has(skill.value)) {
-      continue;
-    }
-    seen.add(skill.value);
-    deduped.push(skill);
-  }
-  return deduped;
-}
 
 export default function ProfilePage() {
   const t = useTranslations();
   const locale = useLocale() as 'en' | 'fr';
   const { user, loading } = useRequireAuth();
 
-  const { profile, loading: profileLoading, error: profileError, updateProfile, uploadPhoto } = useProfile(user?.id);
-
-  const [isSaving, setIsSaving] = useState(false);
-  const [selectedSkills, setSelectedSkills] = useState<SkillOption[]>([]);
-  const [formData, setFormData] = useState({
-    full_name: '',
-    bio: '',
-    values: [] as string[],
-    skills: [] as string[],
-  });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Update form data when profile loads
-  useEffect(() => {
-    if (profile) {
-      const profileSkills = Array.from(new Set(profile.skills || [])).slice(0, MAX_PROFILE_SKILLS);
-      setFormData({
-        full_name: profile.full_name || '',
-        bio: profile.bio || '',
-        values: profile.values || [],
-        skills: profileSkills,
-      });
-
-      // Explicit hydration step: resolve stored concept_uri[] into full option objects.
-      if (profileSkills.length > 0) {
-        const params = new URLSearchParams({
-          uris: profileSkills.join(','),
-          locale,
-        });
-
-        void fetch(`/api/skills/by-uri?${params.toString()}`)
-          .then(async (res) => {
-            if (!res.ok) {
-              throw new Error('Failed to hydrate skills')
-            }
-            return res.json() as Promise<{
-              skills?: Array<{
-                concept_uri: string
-                term: string
-                definition: string | null
-                scope_note: string | null
-                skill_type: string | null
-                reuse_level: string | null
-              }>
-            }>
-          })
-          .then((body) => {
-            const formatEnumLabel = (value: string | null | undefined): string => {
-              const clean = (value ?? '').trim()
-              if (!clean) return ''
-              return clean
-                .replace(/[_-]+/g, ' ')
-                .split(' ')
-                .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-                .join(' ')
-            }
-
-            const hydrated = uniqueSkillOptions((body.skills || []).map((skill) => {
-              // Create rich tooltip content
-              const tooltipContent = (
-                <div className="space-y-2 text-left">
-                  <div>
-                    <div className="font-semibold text-[var(--foreground)]">{skill.term}</div>
-                    {skill.definition && (
-                      <div className="text-[var(--foreground)] mt-1">{skill.definition}</div>
-                    )}
-                  </div>
-                  {skill.scope_note && (
-                    <div className="text-xs text-[var(--muted-foreground)]">
-                      <span className="font-medium">Scope:</span> {skill.scope_note}
-                    </div>
-                  )}
-                  {(skill.skill_type || skill.reuse_level) && (
-                    <div className="flex gap-1 flex-wrap">
-                      {skill.skill_type && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--card)] text-[var(--muted-foreground)]">
-                          {formatEnumLabel(skill.skill_type)}
-                        </span>
-                      )}
-                      {skill.reuse_level && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--card)] text-[var(--muted-foreground)]">
-                          {formatEnumLabel(skill.reuse_level)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-
-              return {
-                value: skill.concept_uri,
-                label: skill.term,
-                tooltip: tooltipContent,
-                definition: skill.definition,
-                scopeNote: skill.scope_note,
-                skillType: skill.skill_type,
-                reuseLevel: skill.reuse_level,
-              }
-            }));
-            setSelectedSkills(hydrated);
-            setFormData((prev) => ({
-              ...prev,
-              skills: hydrated.map((skill) => skill.value).slice(0, MAX_PROFILE_SKILLS),
-            }));
-          })
-          .catch(() => {
-            setSelectedSkills([]);
-          });
-      } else {
-        setSelectedSkills([]);
-      }
-    }
-  }, [profile, locale]);
-
-  const handleSaveProfile = async () => {
-    // Validate that user hasn't exceeded limits before saving
-    if (formData.skills.length > MAX_PROFILE_SKILLS) {
-      toast.error(t('profile.skillsMaxExceeded', { max: MAX_PROFILE_SKILLS, current: formData.skills.length - MAX_PROFILE_SKILLS }));
-      return;
-    }
-    if (formData.values.length > MAX_PROFILE_VALUES) {
-      toast.error(t('profile.valuesMaxExceeded', { max: MAX_PROFILE_VALUES, current: formData.values.length - MAX_PROFILE_VALUES }));
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const normalizedSkills = Array.from(new Set(formData.skills)).slice(0, MAX_PROFILE_SKILLS);
-      const normalizedValues = Array.from(new Set(formData.values)).slice(0, MAX_PROFILE_VALUES);
-      const updated = await updateProfile({
-        full_name: formData.full_name || null,
-        bio: formData.bio || null,
-        values: normalizedValues,
-        skills: normalizedSkills,
-      });
-
-      if (updated) {
-        toast.success(t('profile.updateSuccess'));
-      } else {
-        toast.error(profileError || t('profile.updateFailed'));
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('profile.updateFailed'));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      await uploadPhoto(file);
-      toast.success(t('profile.photoUploadSuccess'));
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('profile.photoUploadFailed'));
-    }
-  };
+  const {
+    profile,
+    profileLoading,
+    profileError,
+    formData,
+    setFormData,
+    selectedSkills,
+    handleSkillsChange,
+    isSaving,
+    fileInputRef,
+    handleSaveProfile,
+    handlePhotoUpload,
+  } = useProfileForm(user?.id, locale);
 
   if (loading || profileLoading) {
     return <LoadingState message={t('common.loading')} />;
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   if (!profile) {
     return (
       <PageLayout maxWidth="md">
         <CardLayout>
           <Heading level={1} className="mb-4">{t('profile.noProfileFound')}</Heading>
-          <p className="text-[var(--muted-foreground)] mb-6">
-            {t('profile.noProfileDescription')}
-          </p>
-          <LinkButton href="/">
-            {t('profile.backToJobs')}
-          </LinkButton>
+          <p className="text-[var(--muted-foreground)] mb-6">{t('profile.noProfileDescription')}</p>
+          <LinkButton href="/">{t('profile.backToJobs')}</LinkButton>
         </CardLayout>
       </PageLayout>
     );
@@ -231,13 +58,11 @@ export default function ProfilePage() {
       <CardLayout>
         <Heading level={1} className="mb-6">{t('profile.title')}</Heading>
 
-        {profileError && (
-          <ErrorBox>{profileError}</ErrorBox>
-        )}
+        {profileError && <ErrorBox>{profileError}</ErrorBox>}
 
         <FormContainer onSubmit={handleSaveProfile}>
           <div className="space-y-6">
-            {/* Profile Photo Section */}
+            {/* Profile Photo */}
             <div>
               <FormLabel>{t('profile.profilePhoto')}</FormLabel>
               <div className="flex items-center gap-6">
@@ -254,20 +79,10 @@ export default function ProfilePage() {
                     </span>
                   )}
                 </div>
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  variant="secondary"
-                  type="button"
-                >
+                <Button onClick={() => fileInputRef.current?.click()} variant="secondary" type="button">
                   {t('profile.uploadPhoto')}
                 </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
               </div>
             </div>
 
@@ -276,9 +91,7 @@ export default function ProfilePage() {
               label={t('profile.fullName')}
               type="text"
               value={formData.full_name}
-              onChange={(value) =>
-                setFormData({ ...formData, full_name: value })
-              }
+              onChange={(value) => setFormData({ ...formData, full_name: value })}
               placeholder={t('profile.fullNamePlaceholder')}
               fullWidth
               htmlFor="full-name"
@@ -290,9 +103,7 @@ export default function ProfilePage() {
               <textarea
                 id="bio"
                 value={formData.bio}
-                onChange={(e) =>
-                  setFormData({ ...formData, bio: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                 placeholder={t('profile.bioPlaceholder')}
                 rows={4}
                 className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
@@ -304,14 +115,10 @@ export default function ProfilePage() {
               <FormLabel>{t('profile.workValues')}</FormLabel>
               <ValuesSelector
                 selectedValues={formData.values}
-                onValuesChange={(values) =>
-                  setFormData({ ...formData, values })
-                }
+                onValuesChange={(values) => setFormData({ ...formData, values })}
                 isEditing={true}
-                maxSelections={MAX_VALUES_SELECTION}
-                maxSelectionsReachedText={t('profile.valuesHardMaxReached', { max: MAX_VALUES_SELECTION })}
-                softLimit={MAX_PROFILE_VALUES}
-                softLimitWarningText={t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
+                maxSelections={MAX_PROFILE_VALUES}
+                maxSelectionsReachedText={t('profile.valuesHardMaxReached', { max: MAX_PROFILE_VALUES })}
               />
             </div>
 
@@ -320,45 +127,30 @@ export default function ProfilePage() {
               <FormLabel>{t('profile.skills')}</FormLabel>
               <SkillsSelector
                 selectedSkills={selectedSkills}
-                onSkillsChange={(skills) => {
-                  const normalized = uniqueSkillOptions(skills);
-                  setSelectedSkills(normalized);
-                  setFormData((prev) => ({
-                    ...prev,
-                    skills: normalized.map((skill) => skill.value),
-                  }));
-                }}
+                onSkillsChange={handleSkillsChange}
                 placeholder={t('profile.skillsPlaceholder')}
                 minCharsText={t('profile.skillsMinChars')}
                 noResultsText={t('profile.skillsNoResults')}
                 loadingText={t('profile.skillsLoading')}
-                maxSelections={MAX_SKILLS_SELECTION}
-                maxSelectionsReachedText={t('profile.skillsHardMaxReached', { max: MAX_SKILLS_SELECTION })}
-                softLimit={MAX_PROFILE_SKILLS}
-                softLimitWarningText={t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
+                maxSelections={MAX_PROFILE_SKILLS}
+                maxSelectionsReachedText={t('profile.skillsHardMaxReached', { max: MAX_PROFILE_SKILLS })}
                 locale={locale}
                 matchedAliasLabel={t('profile.skillsMatchedAlias')}
               />
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Actions */}
           <div className="pt-6 border-t border-[var(--border)]">
             <div className="flex justify-between gap-3">
-              <LinkButton href="/" variant="outline">
-                {t('profile.backToJobs')}
-              </LinkButton>
-              <Button
-                type="submit"
-                disabled={isSaving}
-                loading={isSaving}
-              >
+              <LinkButton href="/" variant="outline">{t('profile.backToJobs')}</LinkButton>
+              <Button type="submit" disabled={isSaving} loading={isSaving}>
                 {isSaving ? t('profile.saving') : t('profile.saveProfile')}
               </Button>
             </div>
           </div>
         </FormContainer>
-        </CardLayout>
+      </CardLayout>
     </PageLayout>
   );
 }
