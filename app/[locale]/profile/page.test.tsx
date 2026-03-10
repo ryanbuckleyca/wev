@@ -219,7 +219,7 @@ describe('ProfilePage skills integration', () => {
     )
   })
 
-  it('caps saved skills at 5', async () => {
+  it('blocks save and shows error when skills exceed limit', async () => {
     const user = userEvent.setup()
     const profileWithManySkills = {
       ...baseProfile,
@@ -255,20 +255,11 @@ describe('ProfilePage skills integration', () => {
 
     render(<ProfilePage />)
 
-    await user.click(await screen.findByRole('button', { name: /save profile/i }))
+    await screen.findByRole('button', { name: /save profile/i })
+    await user.click(screen.getByRole('button', { name: /save profile/i }))
 
-    await waitFor(() => {
-      expect(mockUpdateProfile).toHaveBeenCalled()
-    })
-
-    const lastCall = mockUpdateProfile.mock.calls.at(-1)?.[0] as { skills: string[] }
-    expect(lastCall.skills).toHaveLength(5)
-    expect(lastCall.skills).toEqual([
-      'uri-1',
-      'uri-2',
-      'uri-3',
-      'uri-4',
-      'uri-5',
-    ])
+    // Save should be blocked — updateProfile must not be called
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(mockUpdateProfile).not.toHaveBeenCalled()
   })
 })
