@@ -57,7 +57,7 @@ export default function SkillsSelector({
   minCharsText,
   noResultsText,
   loadingText,
-  maxSelections = 10,
+  maxSelections,
   maxSelectionsReachedText,
   softLimit,
   softLimitWarningText,
@@ -221,7 +221,11 @@ export default function SkillsSelector({
   )
 
   return (
-    <CommandSelector
+    <div className="space-y-2">
+      <p className={`text-xs ${softLimit && selectedSkills.length > softLimit ? 'text-wev-warn-text' : 'text-muted-foreground'}`}>
+        {softLimit ? `${selectedSkills.length} / ${softLimit} selected` : `${selectedSkills.length} selected`}
+      </p>
+      <CommandSelector
       selectedOptions={selectedSkills}
       onOptionsChange={onSkillsChange}
       placeholder={placeholder}
@@ -239,5 +243,6 @@ export default function SkillsSelector({
       availableOptions={options}
       renderOptionContent={renderOptionContent}
     />
+    </div>
   )
 }

@@ -117,8 +117,8 @@ export default function ProfilePage() {
                 selectedValues={formData.values}
                 onValuesChange={(values) => setFormData({ ...formData, values })}
                 isEditing={true}
-                maxSelections={MAX_PROFILE_VALUES}
-                maxSelectionsReachedText={t('profile.valuesHardMaxReached', { max: MAX_PROFILE_VALUES })}
+                softLimit={MAX_PROFILE_VALUES}
+                softLimitWarningText={t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
               />
             </div>
 
@@ -132,8 +132,8 @@ export default function ProfilePage() {
                 minCharsText={t('profile.skillsMinChars')}
                 noResultsText={t('profile.skillsNoResults')}
                 loadingText={t('profile.skillsLoading')}
-                maxSelections={MAX_PROFILE_SKILLS}
-                maxSelectionsReachedText={t('profile.skillsHardMaxReached', { max: MAX_PROFILE_SKILLS })}
+                softLimit={MAX_PROFILE_SKILLS}
+                softLimitWarningText={t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
                 locale={locale}
                 matchedAliasLabel={t('profile.skillsMatchedAlias')}
               />
