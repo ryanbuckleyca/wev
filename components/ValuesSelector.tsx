@@ -118,8 +118,8 @@ export default function ValuesSelector({
   // Editing mode - use the command selector
   return (
     <div className="space-y-4">
-      <p className="text-xs text-[var(--muted-foreground)]">
-        {t('selector.instruction')} {selectedValues.length} {t('selector.selected')}.
+      <p className={`text-xs ${softLimit && selectedValues.length > softLimit ? 'text-wev-warn-text' : 'text-muted-foreground'}`}>
+        {t('selector.instruction')} {softLimit ? `${selectedValues.length} / ${softLimit}` : selectedValues.length} {t('selector.selected')}.
       </p>
 
       <ValuesCommandSelector
