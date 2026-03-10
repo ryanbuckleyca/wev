@@ -21,6 +21,6 @@ describe('ErrorMessage', () => {
 
   it('always includes the error text color class', () => {
     render(<ErrorMessage>Fail</ErrorMessage>)
-    expect(screen.getByText('Fail').className).toContain('text-[var(--alert-text)]')
+    expect(screen.getByText('Fail').className).toContain('text-[var(--destructive-foreground)]')
   })
 })

@@ -96,10 +96,17 @@
     "label": "Sort:",
     "newestFirst": "Date desc",
     "oldestFirst": "Date asc",
-    "bestMatch": "Correspondence",
+    "bestMatch": "Match",
+    "valueMatch": "Values",
+    "skillMatch": "Skills",
     "salaryHighToLow": "Salary desc",
     "salaryLowToHigh": "Salary asc",
     "orgAZ": "Org A ↔ Z"
+  },
+  "matchDetails": {
+    "totalMatch": "Total Match",
+    "values": "Values",
+    "skills": "Skills"
   },
   "expand": {
     "expandAll": "Expand all",
@@ -116,7 +123,11 @@
   "jobListings": {
     "loading": "Loading jobs...",
     "error": "Error loading job postings",
-    "noJobs": "No job postings found."
+    "noJobs": "No job postings found.",
+    "sliderHint": "Scroll horizontally to browse jobs.",
+    "stackedHint": "Showing all jobs in a vertical list.",
+    "showAll": "Show all",
+    "useSlider": "Use slider"
   },
   "bookmarks": {
     "title": "My Bookmarks",
@@ -135,6 +146,8 @@
     "when": "When:",
     "howMuch": "How much:",
     "match": "% match:",
+    "valuesMatch": "% values match:",
+    "skillsMatch": "% skills match:",
     "removeSse": "Remove SSE Status",
     "markSse": "Mark as SSE",
     "sseJob": "SSE job (click to unmark)",
@@ -148,6 +161,7 @@
     "expand": "Expand",
     "collapseDetails": "Collapse job details",
     "expandDetails": "Expand job details",
+    "viewMatchDetails": "View match details",
     "removeSseConfirm": "Remove the SSE tag from \"{title}\" at {org}?",
     "markSseConfirm": "Mark \"{title}\" at {org} as a Solidarity Economy job?"
   },
@@ -230,6 +244,19 @@
     "bio": "Bio",
     "bioPlaceholder": "Tell us about yourself...",
     "workValues": "Work Values",
+    "skills": "Skills",
+    "skillsPlaceholder": "Search skills...",
+    "skillsMinChars": "Type at least 2 characters to search.",
+    "skillsNoResults": "No skills found.",
+    "skillsLoading": "Searching skills...",
+    "skillsMaxReached": "Maximum {max} skills selected. Remove one to add another.",
+    "skillsHardMaxReached": "Maximum {max} skills reached. Remove one to add another.",
+    "skillsSoftLimitWarning": "You've selected more than {max} skills. You'll need to remove some before saving.",
+    "skillsMaxExceeded": "Please remove {current, number} {current, plural, one {skill} other {skills}} to meet the maximum of {max}.",
+    "valuesHardMaxReached": "Maximum {max} values reached. Remove one to add another.",
+    "valuesSoftLimitWarning": "You've selected more than {max} values. You'll need to remove some before saving.",
+    "valuesMaxExceeded": "Please remove {current, number} {current, plural, one {value} other {values}} to meet the maximum of {max}.",
+    "skillsMatchedAlias": "Matched",
     "saveProfile": "Save Profile",
     "saving": "Saving...",
     "updateSuccess": "Profile updated successfully!",
@@ -296,7 +323,8 @@
     "terms": "Terms of Service"
   },
   "common": {
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "close": "Close"
   },
   "ariaLabels": {
     "themeToggle": {
@@ -305,7 +333,8 @@
     },
     "localeSwitcher": {
       "switchToEnglish": "Switch to English",
-      "switchToFrench": "Switch to French"
+      "switchToFrench": "Switch to French",
+      "toggleLocale": "Toggle language"
     },
     "pill": {
       "remove": "Remove {label}"
@@ -569,7 +598,9 @@
     "selector": {
       "instruction": "Select the values that matter most to you.",
       "selected": "selected",
-      "selectedLabel": "Selected"
+      "selectedLabel": "Selected",
+      "placeholder": "Search for values...",
+      "noResults": "No values found"
     }
   }
 }

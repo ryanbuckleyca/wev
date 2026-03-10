@@ -108,6 +108,6 @@ describe('Pagination', () => {
   it('highlights the current page as primary variant', () => {
     render(<Pagination {...defaultProps} currentPage={3} />)
     const btn3 = screen.getByRole('button', { name: '3' })
-    expect(btn3.className).toContain('bg-[var(--primary)]')
+    expect(btn3.className).toContain('bg-primary')
   })
 })

@@ -1,19 +1,23 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
-import { useQueryState, parseAsString, parseAsArrayOf, parseAsBoolean, parseAsInteger, parseAsStringLiteral } from 'nuqs'
-import type { JobPosting } from '@/lib/supabase'
-import { createClient } from '@/lib/supabase/client'
-import ReScrapeButton from '@/components/ReScrapeButton'
+import { parseAsArrayOf, parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import JobListings from '@/components/JobListings'
-import CopyAllJobsButton from '@/components/CopyAllJobsButton'
 import JobFilters from '@/components/JobFilters'
-import Pagination from '@/components/Pagination'
+import UserProfile from '@/components/UserProfile'
+import LinkButton from '@/components/LinkButton'
+import Button from '@/components/Button'
+import { useRequireAuth } from '@/lib/hooks/useRequireAuth'
+import { createClient } from '@/lib/supabase/client'
+import type { JobPosting, JobMatchData } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import SortDropdown from '@/components/SortDropdown'
 import ExpandAllToggle from '@/components/ExpandAllToggle'
 import WatercolorBackground from '@/components/WatercolorBackground'
+import ReScrapeButton from '@/components/ReScrapeButton'
+import CopyAllJobsButton from '@/components/CopyAllJobsButton'
+import Pagination from '@/components/Pagination'
 
 const ITEMS_PER_PAGE = 20
 
@@ -47,11 +51,11 @@ export default function Home() {
   // Sort state
   const [sortBy, setSortBy] = useQueryState(
     'sort',
-    parseAsStringLiteral(['date-desc', 'date-asc', 'match-desc', 'salary-desc', 'salary-asc', 'org-asc'] as const).withDefault('date-desc')
+    parseAsStringLiteral(['date-desc', 'date-asc', 'match-desc', 'value-match-desc', 'skill-match-desc', 'salary-desc', 'salary-asc', 'org-asc'] as const).withDefault('date-desc')
   )
   
   // Match data state
-  const [matchData, setMatchData] = useState<Map<string, { score: number; shared_values: string[] }>>(new Map())
+  const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(new Map())
   // Bookmarked job IDs (batch-fetched for logged-in users)
   const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(new Set())
 
@@ -160,7 +164,7 @@ export default function Home() {
       const supabase = createClient()
       const { data: matches, error } = await supabase
         .from('job_matches')
-        .select('job_id, score, shared_values')
+        .select('job_id, score, value_score, skill_score, shared_values, shared_skills')
         .eq('user_id', user.id)
         .in('job_id', jobs.map(job => job.id))
 
@@ -170,7 +174,7 @@ export default function Home() {
       }
 
       const matchMap = new Map()
-      matches?.forEach((match: { job_id: string; score: number; shared_values: string[] }) => {
+      matches?.forEach((match: { job_id: string; score: number; value_score?: number | null; skill_score?: number | null; shared_values: string[]; shared_skills?: string[] }) => {
         matchMap.set(match.job_id, match)
       })
       
@@ -272,6 +276,14 @@ export default function Home() {
           const aMatch = matchData.get(a.id)?.score || 0
           const bMatch = matchData.get(b.id)?.score || 0
           return bMatch - aMatch
+        case 'value-match-desc':
+          const aValueMatch = matchData.get(a.id)?.value_score || 0
+          const bValueMatch = matchData.get(b.id)?.value_score || 0
+          return bValueMatch - aValueMatch
+        case 'skill-match-desc':
+          const aSkillMatch = matchData.get(a.id)?.skill_score || 0
+          const bSkillMatch = matchData.get(b.id)?.skill_score || 0
+          return bSkillMatch - aSkillMatch
         case 'salary-desc':
           // Sort by salary high to low (jobs without salary go to end)
           const aSalary = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : -1
@@ -298,9 +310,11 @@ export default function Home() {
     return filteredJobs.slice(startIndex, endIndex)
   }, [filteredJobs, currentPage])
 
-  // Reset to page 1 when filters or sort change
+  // Reset to page 1 when filters or sort change (only if not already on page 1)
   useEffect(() => {
-    setCurrentPage(1)
+    if (currentPage !== 1) {
+      setCurrentPage(1)
+    }
   }, [searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin, sortBy])
 
   useEffect(() => {
@@ -329,7 +343,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen pb-8 relative overflow-hidden" style={{
-      background: 'var(--bg)'
+      background: 'var(--background)'
     }}>
       <WatercolorBackground />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
@@ -340,7 +354,7 @@ export default function Home() {
             alt="wev"
             className="main-logo wev-logotype w-[100px] h-auto mb-2"
           />
-          <p className="text-xl font-medium text-wev-primary-text">{t('home.heading')}</p>
+          <p className="text-xl font-medium text-primary-text">{t('home.heading')}</p>
         </header>
 
         {/* Action Buttons - Admin Only */}
@@ -390,8 +404,8 @@ export default function Home() {
         {allJobs.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
             {/* Left side: Last updated info (its own row on mobile) */}
-            <div className="text-sm text-center sm:text-left text-xs text-wev-text-secondary">
-              <span className="font-semibold text-wev-accent">{t('home.lastUpdated')} </span>
+            <div className="text-sm text-center sm:text-left text-xs text-muted-foreground">
+              <span className="font-semibold text-wev-brand-accent">{t('home.lastUpdated')} </span>
               <span>{lastScrapeTime || t('home.unknown')}</span>
             </div>
 
@@ -403,7 +417,7 @@ export default function Home() {
                 showMatchOption={!!user}
               />
 
-              <div className="w-0.5 h-3.5 bg-wev-border" />
+              <div className="w-0.5 h-3.5 bg-border" />
 
               <ExpandAllToggle
                 allExpanded={allJobsExpanded}

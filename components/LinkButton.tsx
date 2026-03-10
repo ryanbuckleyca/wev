@@ -1,4 +1,6 @@
 import { Link } from '@/i18n/navigation'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface LinkButtonProps {
   href: string
@@ -11,38 +13,36 @@ interface LinkButtonProps {
   onClick?: () => void
 }
 
-export default function LinkButton({ 
-  href, 
-  children, 
-  variant = 'primary', // Match Button default
+const variantMap = {
+  primary: 'default',
+  secondary: 'secondary',
+  outline: 'outline',
+} as const
+
+const sizeMap = {
+  sm: 'sm',
+  md: 'default',
+  lg: 'lg',
+} as const
+
+export default function LinkButton({
+  href,
+  children,
+  variant = 'primary',
   size = 'md',
   fullWidth = false,
   className = '',
-  prefetch = true, // Enable prefetch by default for better UX
-  onClick
+  prefetch = true,
+  onClick,
 }: LinkButtonProps) {
-  const baseClasses = 'font-medium rounded transition-colors' // Match Button exactly
-  
-  const sizeClasses = {
-    sm: 'px-3 py-1.5 text-xs',
-    md: 'px-4 py-2 text-sm', 
-    lg: 'px-6 py-3 text-base'
-  }
-  
-  const variantClasses = {
-    primary: 'bg-[var(--primary)] text-white hover:opacity-90 disabled:opacity-50',
-    secondary: 'border border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white disabled:opacity-50',
-    outline: 'border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg)]'
-  }
-  
-  const widthClass = fullWidth ? 'w-full' : ''
-  
-  const combinedClasses = `${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${widthClass} ${className}`.trim()
-
   return (
-    <Link 
-      href={href} 
-      className={combinedClasses}
+    <Link
+      href={href}
+      className={cn(
+        buttonVariants({ variant: variantMap[variant], size: sizeMap[size] }),
+        fullWidth && 'w-full',
+        className
+      )}
       prefetch={prefetch}
       onClick={onClick}
     >

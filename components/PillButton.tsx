@@ -17,7 +17,7 @@ export default function PillButton({
   'aria-label': ariaLabel,
   'aria-pressed': ariaPressed 
 }: PillButtonProps) {
-  const baseClasses = 'flex items-stretch border border-wev-border rounded-full overflow-hidden self-stretch min-h-[28px] transition-all duration-500 ease-in-out h-full'
+  const baseClasses = 'flex items-stretch border border-border rounded-full overflow-hidden self-stretch min-h-[28px] transition-all duration-500 ease-in-out h-full'
   const combinedClasses = `${baseClasses} ${className}`.trim()
 
   return (

@@ -11,7 +11,7 @@ export default function PageLayout({
   maxWidth = 'lg',
   className = ''
 }: PageLayoutProps) {
-  const baseClasses = 'min-h-screen bg-[var(--bg)]'
+  const baseClasses = 'min-h-screen bg-[var(--background)]'
   
   const variantClasses = {
     centered: 'flex items-center justify-center px-4 pt-24',

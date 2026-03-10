@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@/test-utils'
+import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import JobCard from './JobCard'
 import type { JobPosting } from '@/lib/supabase'
@@ -16,6 +16,8 @@ vi.mock('@/lib/supabase/client', () => ({
 vi.mock('@/i18n/navigation', () => ({
   useRouter: vi.fn(),
 }))
+
+vi.mock('@lineiconshq/react-lineicons', () => vi.importActual('./test-utils/lineicons-mock.ts'))
 
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
@@ -154,14 +156,80 @@ describe('JobCard', () => {
   })
 
   it('shows the match score and value pills for a logged-in user with a match', () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        skills: [
+          { concept_uri: 'http://data.europa.eu/esco/skill/test-skill', term: 'Test Skill' },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
     mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never)
     mockUseRouter.mockReturnValue(mockRouter() as never)
 
     renderJobCard({
-      job: { ...defaultJob, values: ['Advancement'] },
-      match: { score: 0.8, shared_values: ['Advancement'] },
+      job: {
+        ...defaultJob,
+        values: ['Advancement'],
+        skills: ['http://data.europa.eu/esco/skill/test-skill'],
+      },
+      match: {
+        score: 0.8,
+        value_score: 0.8,
+        skill_score: 0.6,
+        shared_values: ['Advancement'],
+        shared_skills: ['http://data.europa.eu/esco/skill/test-skill'],
+      },
     })
 
-    expect(screen.getByText('80% match:')).toBeVisible()
+    // Check for the match percentage in the rendered output
+    expect(screen.getByText('80%')).toBeInTheDocument()
+    // Check for the tooltip button (bookmark button is the only button visible)
+    expect(screen.getByRole('button', { name: 'Bookmark job' })).toBeInTheDocument()
+    vi.unstubAllGlobals()
+  })
+
+  it('caps displayed skills to five pills for users', async () => {
+    const skills = ['skill-one', 'skill-two', 'skill-three', 'skill-four', 'skill-five', 'skill-six', 'skill-seven']
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        skills: skills.map(skill => ({
+          concept_uri: skill,
+          term: skill,
+        })),
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never)
+    mockUseRouter.mockReturnValue(mockRouter() as never)
+
+    renderJobCard({
+      job: {
+        ...defaultJob,
+        values: [],
+        skills,
+      },
+      match: {
+        score: 0.7,
+        value_score: 0,
+        skill_score: 0.6,
+        shared_values: [],
+        shared_skills: ['skill-one', 'skill-two', 'skill-three'],
+      },
+    })
+
+    const visibleSkills = skills.slice(0, 5)
+    await waitFor(() => {
+      visibleSkills.forEach(skill => {
+        expect(screen.getByText(skill)).toBeVisible()
+      })
+    })
+    expect(screen.queryByText('skill-six')).not.toBeInTheDocument()
+    expect(screen.queryByText('skill-seven')).not.toBeInTheDocument()
+
+    vi.unstubAllGlobals()
   })
 })

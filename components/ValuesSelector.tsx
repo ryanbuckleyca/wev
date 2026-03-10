@@ -3,26 +3,65 @@
 import { useTranslations } from 'next-intl'
 import { VALUES_LIST, getValueDefinition } from '@/lib/values'
 import Pill from '@/components/Pill'
+import Tooltip from '@/components/Tooltip'
+import ValuesCommandSelector, { type ValueOption } from '@/components/ValuesCommandSelector'
 
 interface ValuesSelectorProps {
   selectedValues: string[]
   onValuesChange: (values: string[]) => void
   isEditing: boolean
+  maxSelections?: number
+  maxSelectionsReachedText?: string
+  softLimit?: number
+  softLimitWarningText?: string
 }
 
 export default function ValuesSelector({
   selectedValues,
   onValuesChange,
   isEditing,
+  maxSelections,
+  maxSelectionsReachedText,
+  softLimit,
+  softLimitWarningText,
 }: ValuesSelectorProps) {
   const t = useTranslations('values')
-  const toggleValue = (value: string) => {
-    if (selectedValues.includes(value)) {
-      onValuesChange(selectedValues.filter((selected) => selected !== value))
-      return
-    }
 
-    onValuesChange([...selectedValues, value])
+  // Convert selectedValues (string[]) to ValueOption[] for the command selector
+  const selectedValueOptions: ValueOption[] = selectedValues.map((value) => {
+    const valueName = t(`${value}.name`, { defaultValue: value })
+    const details = getValueDefinition(value, {
+      name: valueName,
+      description: t(`${value}.description`),
+      example: t(`${value}.example`),
+    })
+
+    // Create rich tooltip content
+    const tooltipContent = (
+      <div className="space-y-2 text-left">
+        <div className="font-semibold text-[var(--foreground)]">{valueName}</div>
+        <div className="text-[var(--foreground)]">{details.description}</div>
+        {details.example && (
+          <div className="text-xs text-[var(--muted-foreground)] italic">
+            {details.example}
+          </div>
+        )}
+      </div>
+    )
+
+    return {
+      value,
+      label: valueName,
+      tooltip: tooltipContent,
+      description: details.description,
+      example: details.example,
+    }
+  })
+
+  // Handle changes from ValuesCommandSelector and convert back to string[]
+  const handleValueOptionsChange = (valueOptions: ValueOption[]) => {
+    const newSelectedValues = valueOptions.map((option) => option.value)
+    onValuesChange(newSelectedValues)
   }
 
   if (!isEditing) {
@@ -40,18 +79,33 @@ export default function ValuesSelector({
             example: t(`${value}.example`),
           })
 
+          // Create rich tooltip content
+          const tooltipContent = (
+            <div className="space-y-2 text-left">
+              <div className="font-semibold text-[var(--foreground)]">{valueName}</div>
+              <div className="text-[var(--foreground)]">{details.description}</div>
+              {details.example && (
+                <div className="text-xs text-[var(--muted-foreground)] italic">
+                  {details.example}
+                </div>
+              )}
+            </div>
+          )
+
           return (
             <div
               key={value}
-              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4"
+              className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4"
             >
               <div className="mb-2 flex items-center gap-2">
-                <Pill>{valueName}</Pill>
+                <Tooltip content={tooltipContent}>
+                  <Pill>{valueName}</Pill>
+                </Tooltip>
               </div>
-              <p className="text-sm text-[var(--text-primary)]">
+              <p className="text-sm text-[var(--foreground)]">
                 {details.description}
               </p>
-              <p className="mt-1 text-xs text-[var(--text-secondary)]">
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">
                 {details.example}
               </p>
             </div>
@@ -61,55 +115,23 @@ export default function ValuesSelector({
     )
   }
 
+  // Editing mode - use the command selector
   return (
     <div className="space-y-4">
-      <p className="text-xs text-[var(--text-secondary)]">
-        {t('selector.instruction')} {selectedValues.length} {t('selector.selected')}.
+      <p className={`text-xs ${softLimit && selectedValues.length > softLimit ? 'text-wev-warn-text' : 'text-muted-foreground'}`}>
+        {t('selector.instruction')} {softLimit ? `${selectedValues.length} / ${softLimit}` : selectedValues.length} {t('selector.selected')}.
       </p>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {VALUES_LIST.map((value) => {
-          const valueName = t(`${value}.name`, { defaultValue: value })
-          const details = getValueDefinition(value, {
-            name: valueName,
-            description: t(`${value}.description`),
-            example: t(`${value}.example`),
-          })
-          const isSelected = selectedValues.includes(value)
-
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => toggleValue(value)}
-              aria-pressed={isSelected}
-              className="rounded-lg border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-              style={{
-                borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
-                background: isSelected ? 'var(--primary-tint)' : 'var(--surface)',
-              }}
-            >
-              <div className="mb-2 flex items-start justify-between gap-2">
-                <span className="text-sm font-semibold text-[var(--text-primary)]">
-                  {valueName}
-                </span>
-                {isSelected && (
-                  <span className="rounded-full bg-[var(--primary)] px-2 py-0.5 text-xs font-medium text-white">
-                    {t('selector.selectedLabel')}
-                  </span>
-                )}
-              </div>
-
-              <p className="text-xs text-[var(--text-primary)]">
-                {details.description}
-              </p>
-              <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                {details.example}
-              </p>
-            </button>
-          )
-        })}
-      </div>
+      <ValuesCommandSelector
+        selectedValues={selectedValueOptions}
+        onValuesChange={handleValueOptionsChange}
+        placeholder={t('selector.placeholder', { defaultValue: 'Search for values...' })}
+        noResultsText={t('selector.noResults', { defaultValue: 'No values found' })}
+        maxSelections={maxSelections}
+        maxSelectionsReachedText={maxSelectionsReachedText}
+        softLimit={softLimit}
+        softLimitWarningText={softLimitWarningText}
+      />
     </div>
   )
 }

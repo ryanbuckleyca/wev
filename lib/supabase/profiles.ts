@@ -5,6 +5,7 @@ export type Profile = {
   full_name: string | null
   bio: string | null
   values: string[]
+  skills: string[]
   profile_photo_url: string | null
   created_at: string
   updated_at: string
@@ -14,6 +15,7 @@ export type ProfileUpdateData = {
   full_name?: string | null
   bio?: string | null
   values?: string[]
+  skills?: string[]
   profile_photo_url?: string | null
 }
 
@@ -38,7 +40,12 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     return null
   }
 
-  return data[0]
+  const profile = data[0] as Profile
+  return {
+    ...profile,
+    values: profile.values ?? [],
+    skills: profile.skills ?? [],
+  }
 }
 
 /**

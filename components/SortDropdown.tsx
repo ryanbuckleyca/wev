@@ -3,7 +3,7 @@ import { useTranslations } from 'next-intl'
 import Button from '@/components/Button'
 import Chevron from './Chevron'
 
-type SortOption = 'date-desc' | 'date-asc' | 'match-desc' | 'salary-desc' | 'salary-asc' | 'org-asc'
+type SortOption = 'date-desc' | 'date-asc' | 'match-desc' | 'value-match-desc' | 'skill-match-desc' | 'salary-desc' | 'salary-asc' | 'org-asc'
 
 interface SortDropdownProps {
   sortBy: SortOption
@@ -19,6 +19,8 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
     { value: 'date-desc', label: t('sort.newestFirst'), group: 'date' },
     { value: 'date-asc', label: t('sort.oldestFirst'), group: 'date' },
     { value: 'match-desc', label: t('sort.bestMatch'), group: 'match' },
+    { value: 'value-match-desc', label: t('sort.valueMatch'), group: 'match' },
+    { value: 'skill-match-desc', label: t('sort.skillMatch'), group: 'match' },
     { value: 'salary-desc', label: t('sort.salaryHighToLow'), group: 'salary' },
     { value: 'salary-asc', label: t('sort.salaryLowToHigh'), group: 'salary' },
     { value: 'org-asc', label: t('sort.orgAZ'), group: 'org' },
@@ -38,7 +40,7 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
 
   const label = OPTIONS.find((o) => o.value === sortBy)?.label ?? t('sort.newestFirst')
   const optionsToShow = showMatchOption === false
-    ? OPTIONS.filter(o => o.value !== 'match-desc')
+    ? OPTIONS.filter(o => !o.group || o.group !== 'match')
     : OPTIONS
 
   return (
@@ -47,10 +49,10 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
         onClick={() => setOpen(!open)}
         variant="outline"
         size="sm"
-        className="flex-center-gap bg-transparent border-none text-wev-text-secondary p-1.5 text-xs"
+        className="flex-center-gap bg-transparent border-none text-muted-foreground p-1.5 text-xs"
       >
         <span>{t('sort.label')} </span>
-        <span className="font-semibold text-wev-text-primary">{label}</span>
+        <span className="font-semibold text-foreground">{label}</span>
         <Chevron rotated={open} />
       </Button>
 
@@ -62,7 +64,7 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
           top: 'calc(100% + 6px)',
           right: 0,
           minWidth: '160px',
-          background: 'var(--surface)',
+          background: 'var(--card)',
           border: '1px solid var(--border)',
           borderRadius: '10px',
           padding: '4px',
@@ -83,7 +85,7 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
               setOpen(false)
             }}
           >
-            <span className={sortBy === opt.value ? 'text-wev-primary font-semibold' : 'text-wev-text-primary font-normal'}>
+            <span className={sortBy === opt.value ? 'text-primary font-semibold' : 'text-foreground font-normal'}>
               {opt.label}
             </span>
             {sortBy === opt.value && (

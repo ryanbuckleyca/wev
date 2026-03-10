@@ -3,15 +3,11 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
-
-interface JobMatch {
-  score: number
-  shared_values: string[]
-}
+import type { JobMatchData } from '@/lib/supabase'
 
 export function useJobMatch(jobId: string) {
   const { user } = useAuth()
-  const [match, setMatch] = useState<JobMatch | null>(null)
+  const [match, setMatch] = useState<JobMatchData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,7 +22,7 @@ export function useJobMatch(jobId: string) {
         const supabase = createClient()
         const { data, error } = await supabase
           .from('job_matches')
-          .select('score, shared_values')
+          .select('score, value_score, skill_score, shared_values, shared_skills')
           .eq('user_id', user.id)
           .eq('job_id', jobId)
           .maybeSingle()
@@ -37,7 +33,10 @@ export function useJobMatch(jobId: string) {
         } else if (data) {
           setMatch({
             score: data.score,
-            shared_values: data.shared_values || []
+            value_score: data.value_score,
+            skill_score: data.skill_score,
+            shared_values: data.shared_values || [],
+            shared_skills: data.shared_skills || [],
           })
         } else {
           // No match data found
@@ -58,10 +57,15 @@ export function useJobMatch(jobId: string) {
     return match?.shared_values?.includes(value) || false
   }
 
+  const isSkillMatched = (skill: string) => {
+    return match?.shared_skills?.includes(skill) || false
+  }
+
   return {
     match,
     loading,
     isValueMatched,
+    isSkillMatched,
     matchPercentage: match ? Math.round(match.score * 100) : 0
   }
 }

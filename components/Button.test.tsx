@@ -51,7 +51,7 @@ describe('Button', () => {
 
   it('applies variant classes', () => {
     const { rerender } = render(<Button variant="primary">P</Button>)
-    expect(screen.getByRole('button').className).toContain('bg-[var(--primary)]')
+    expect(screen.getByRole('button').className).toContain('bg-primary')
 
     rerender(<Button variant="outline">O</Button>)
     expect(screen.getByRole('button').className).toContain('border')

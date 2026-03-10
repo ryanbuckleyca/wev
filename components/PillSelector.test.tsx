@@ -82,6 +82,6 @@ describe('PillSelector', () => {
     expect(hybridBtn).toHaveStyle({ background: 'var(--primary)' })
 
     const remoteBtn = screen.getByRole('button', { name: 'Remote' })
-    expect(remoteBtn).toHaveStyle({ background: 'var(--bg)' })
+    expect(remoteBtn).toHaveStyle({ background: 'var(--background)' })
   })
 })

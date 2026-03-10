@@ -48,7 +48,7 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
   return (
     <header
       className={`fixed ${topOffset} right-0 left-0 z-[9999] transition-all duration-200 ${
-        showHeader ? 'bg-wev-surface border-b border-wev-border' : 'bg-transparent'
+        showHeader ? 'bg-card border-b border-border' : 'bg-transparent'
       }`}
     >
       <div className="flex items-center justify-between px-4 py-4">
