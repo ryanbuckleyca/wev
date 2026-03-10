@@ -36,7 +36,7 @@ export default function JobCardFooter({
   totalMatchPercentage,
   matchTooltipContent,
   showTooltip,
-  fadeBackground = '#f9fafb',
+  fadeBackground = 'var(--muted)',
 }: JobCardFooterProps) {
   const t = useTranslations()
 
