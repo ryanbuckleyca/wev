@@ -21,8 +21,8 @@ import toast from 'react-hot-toast';
 
 const MAX_PROFILE_SKILLS = 5;
 const MAX_SKILLS_SELECTION = 15; // Allow selecting more during exploration, but enforce MAX_PROFILE_SKILLS on save
-const MAX_PROFILE_VALUES = 5;
-const MAX_VALUES_SELECTION = 10; // Allow selecting up to 10 values during exploration
+const MAX_PROFILE_VALUES = 10;
+const MAX_VALUES_SELECTION = 15; // Allow selecting more during exploration, but enforce MAX_PROFILE_VALUES on save
 
 function uniqueSkillOptions(skills: SkillOption[]): SkillOption[] {
   const seen = new Set<string>();
