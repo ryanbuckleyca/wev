@@ -159,11 +159,11 @@ export default function ProfilePage() {
   const handleSaveProfile = async () => {
     // Validate that user hasn't exceeded limits before saving
     if (formData.skills.length > MAX_PROFILE_SKILLS) {
-      toast.error(t('profile.skillsMaxExceeded', { max: MAX_PROFILE_SKILLS, current: formData.skills.length }));
+      toast.error(t('profile.skillsMaxExceeded', { max: MAX_PROFILE_SKILLS, current: formData.skills.length - MAX_PROFILE_SKILLS }));
       return;
     }
     if (formData.values.length > MAX_PROFILE_VALUES) {
-      toast.error(t('profile.valuesMaxExceeded', { max: MAX_PROFILE_VALUES, current: formData.values.length }));
+      toast.error(t('profile.valuesMaxExceeded', { max: MAX_PROFILE_VALUES, current: formData.values.length - MAX_PROFILE_VALUES }));
       return;
     }
 
