@@ -30,6 +30,12 @@ export default function MatchDetailsTooltip({
   const primaryColor = 'rgb(var(--primary))'
   const textColor = 'rgb(var(--foreground))'
 
+  const formatValueLabel = (value: string) =>
+    value
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .toLowerCase()
+
   const orderedValues = [
     ...values.filter(value => sharedValues.includes(value)),
     ...values.filter(value => !sharedValues.includes(value)),
@@ -66,7 +72,7 @@ export default function MatchDetailsTooltip({
           </div>
           {orderedValues.map(value => {
             const isMatched = sharedValues.includes(value)
-            const valueName = translate(`values.${value}.name`, { defaultValue: value })
+            const valueName = formatValueLabel(value)
             return renderListItem(valueName, `value-${value}`, isMatched)
           })}
         </div>

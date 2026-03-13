@@ -354,7 +354,7 @@ export default function Home() {
             alt="wev"
             className="main-logo wev-logotype w-[100px] h-auto mb-2"
           />
-          <p className="text-xl font-medium text-primary-text">{t('home.heading')}</p>
+          <p className="text-xl font-medium text-primary">{t('home.heading')}</p>
         </header>
 
         {/* Action Buttons - Admin Only */}
@@ -434,6 +434,7 @@ export default function Home() {
           allExpanded={allJobsExpanded}
           matchData={matchData}
           bookmarkedJobIds={bookmarkedJobIds}
+          selectedWorkTypes={selectedWorkTypes}
           onJobSseChange={(jobId, isSse) =>
             setAllJobs((prev) =>
               prev.map((j) => (j.id === jobId ? { ...j, is_sse: isSse } : j))
