@@ -42,16 +42,37 @@ export default function JobCardFooter({
   selectedWorkTypes = [],
 }: JobCardFooterProps) {
   const t = useTranslations()
+  const tValues = useTranslations('values')
   const [valuesExpanded, setValuesExpanded] = useState(false)
   const [skillsExpanded, setSkillsExpanded] = useState(false)
 
 
   const formatValueLabel = (value: string) => {
-    const fallbackLabel = value
+    return value
       .replace(/_/g, ' ')
       .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .replace(/\b\w/g, char => char.toUpperCase())
-    return t(`values.${value}.name`, { defaultValue: fallbackLabel })
+      .toLowerCase()
+  }
+
+  const getValueTranslations = (value: string) => {
+    const fallbackDefinition = getValueDefinition(value)
+    const fallbackName = formatValueLabel(value)
+
+    const nameKey = `${value}.name`
+    const descriptionKey = `${value}.description`
+    const exampleKey = `${value}.example`
+
+    const name = tValues.has(nameKey) ? tValues(nameKey) : fallbackName
+    const description = tValues.has(descriptionKey)
+      ? tValues(descriptionKey)
+      : fallbackDefinition.description
+    const example = tValues.has(exampleKey) ? tValues(exampleKey) : fallbackDefinition.example
+
+    return {
+      label: name.toLowerCase(),
+      description,
+      example,
+    }
   }
 
   const formatSkillLabel = (skill: string) => {
@@ -103,7 +124,11 @@ export default function JobCardFooter({
     if (!workType) return undefined
 
     const isMatched = selectedWorkTypes.includes(workType)
-    const label = workType.charAt(0).toUpperCase() + workType.slice(1)
+    const label = workType === 'remote'
+      ? t('filters.workType.remote')
+      : workType === 'hybrid'
+        ? t('filters.workType.hybrid')
+        : t('filters.workType.office')
     const tooltip = isMatched
       ? `${label} matches your current work-style filter.`
       : `${label} is provided by this employer. Active filters take priority over saved preferences.`
@@ -119,10 +144,10 @@ export default function JobCardFooter({
 
   // Create summary pills
   const summaryItems = useMemo(() => {
-    const matchedValueNames = sharedValues.map(formatValueLabel).join(', ')
+    const matchedValueNames = sharedValues.map(value => getValueTranslations(value).label).join(', ')
     const unmatchedValueNames = values
       .filter(value => !sharedValues.includes(value))
-      .map(formatValueLabel)
+      .map(value => getValueTranslations(value).label)
       .join(', ')
 
     const matchedSkillNames = sharedSkills
@@ -134,13 +159,16 @@ export default function JobCardFooter({
       .map(skill => formatSkillLabel(skill).toLowerCase())
       .join(', ')
 
+    const valueSummaryLabel = t('matchDetails.values').toLowerCase()
+    const skillSummaryLabel = t('matchDetails.skills').toLowerCase()
+
     return [
       buildSummaryPill(
         matchedValueCount,
         totalValueCount,
         matchedValueNames,
         unmatchedValueNames,
-        'values',
+        valueSummaryLabel,
         'heart'
       ),
       buildSummaryPill(
@@ -148,7 +176,7 @@ export default function JobCardFooter({
         totalSkillCount,
         matchedSkillNames,
         unmatchedSkillNames,
-        'skills',
+        skillSummaryLabel,
         'briefcase'
       ),
     ].filter(Boolean) as ScrollablePillsItem[]
@@ -162,6 +190,8 @@ export default function JobCardFooter({
     values,
     skills,
     skillTerms,
+    t,
+    tValues,
   ])
 
   // Create separate arrays for values and skills
@@ -169,18 +199,10 @@ export default function JobCardFooter({
     const matchedValues = values
       .filter(value => sharedValues.includes(value))
       .map(value => {
-        const valueName = formatValueLabel(value)
-        const fallbackDef = getValueDefinition(value)
-        const translatedDescription = t(`values.${value}.description`, { defaultValue: fallbackDef.description })
-        const translatedExample = t(`values.${value}.example`, { defaultValue: fallbackDef.example || '' })
-        const translatedDef = getValueDefinition(value, {
-          name: valueName,
-          description: translatedDescription,
-          example: translatedExample,
-        })
+        const valueTranslations = getValueTranslations(value)
         return {
-          label: valueName,
-          tooltip: `${translatedDef.description}<br/><br/><em>${translatedDef.example}</em><br/><br/><em>Click to collapse to summary</em>`,
+          label: valueTranslations.label,
+          tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em><br/><br/><em>Click to collapse to summary</em>`,
           isMatched: true,
           type: 'value' as const,
         }
@@ -189,18 +211,10 @@ export default function JobCardFooter({
     const unmatchedValues = values
       .filter(value => !sharedValues.includes(value))
       .map(value => {
-        const valueName = formatValueLabel(value)
-        const fallbackDef = getValueDefinition(value)
-        const translatedDescription = t(`values.${value}.description`, { defaultValue: fallbackDef.description })
-        const translatedExample = t(`values.${value}.example`, { defaultValue: fallbackDef.example || '' })
-        const translatedDef = getValueDefinition(value, {
-          name: valueName,
-          description: translatedDescription,
-          example: translatedExample,
-        })
+        const valueTranslations = getValueTranslations(value)
         return {
-          label: valueName,
-          tooltip: `${translatedDef.description}<br/><br/><em>${translatedDef.example}</em><br/><br/><em>Click to collapse to summary</em>`,
+          label: valueTranslations.label,
+          tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em><br/><br/><em>Click to collapse to summary</em>`,
           isMatched: false,
           type: 'value' as const,
         }
@@ -208,7 +222,7 @@ export default function JobCardFooter({
 
     // Combine matched and unmatched values
     return [...matchedValues, ...unmatchedValues]
-  }, [values, sharedValues, t])
+  }, [values, sharedValues, tValues])
 
   const skillItems = useMemo(() => {
     const matchedSkills = skills
