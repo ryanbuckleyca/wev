@@ -196,63 +196,42 @@ export default function JobCardFooter({
 
   // Create separate arrays for values and skills
   const valueItems = useMemo(() => {
-    const matchedValues = values
-      .filter(value => sharedValues.includes(value))
-      .map(value => {
-        const valueTranslations = getValueTranslations(value)
-        return {
-          label: valueTranslations.label,
-          tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em><br/><br/><em>Click to collapse to summary</em>`,
-          isMatched: true,
-          type: 'value' as const,
-        }
-      })
+    const sharedSet = new Set(sharedValues)
+    const orderedValues = [
+      ...values.filter(value => sharedSet.has(value)),
+      ...values.filter(value => !sharedSet.has(value)),
+    ]
 
-    const unmatchedValues = values
-      .filter(value => !sharedValues.includes(value))
-      .map(value => {
-        const valueTranslations = getValueTranslations(value)
-        return {
-          label: valueTranslations.label,
-          tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em><br/><br/><em>Click to collapse to summary</em>`,
-          isMatched: false,
-          type: 'value' as const,
-        }
-      })
-
-    // Combine matched and unmatched values
-    return [...matchedValues, ...unmatchedValues]
+    return orderedValues.map(value => {
+      const valueTranslations = getValueTranslations(value)
+      const isMatched = sharedSet.has(value)
+      return {
+        label: valueTranslations.label,
+        tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em><br/><br/><em>Click to collapse to summary</em>`,
+        isMatched,
+        type: 'value' as const,
+      }
+    })
   }, [values, sharedValues, tValues])
 
   const skillItems = useMemo(() => {
-    const matchedSkills = skills
-      .filter(skill => sharedSkills.includes(skill))
-      .map(skill => {
-        const skillLabel = formatSkillLabel(skill).toLowerCase()
-        const skillTooltip = skillDefinitions[skill]
-        return {
-          label: skillLabel,
-          tooltip: `${skillTooltip || ''}<br/><br/><em>Click to collapse to summary</em>`,
-          isMatched: true,
-          type: 'skill' as const,
-        }
-      })
+    const sharedSet = new Set(sharedSkills)
+    const orderedSkills = [
+      ...skills.filter(skill => sharedSet.has(skill)),
+      ...skills.filter(skill => !sharedSet.has(skill)),
+    ]
 
-    const unmatchedSkills = skills
-      .filter(skill => !sharedSkills.includes(skill))
-      .map(skill => {
-        const skillLabel = formatSkillLabel(skill).toLowerCase()
-        const skillTooltip = skillDefinitions[skill]
-        return {
-          label: skillLabel,
-          tooltip: `${skillTooltip || ''}<br/><br/><em>Click to collapse to summary</em>`,
-          isMatched: false,
-          type: 'skill' as const,
-        }
-      })
-
-    // Combine matched and unmatched skills
-    return [...matchedSkills, ...unmatchedSkills]
+    return orderedSkills.map(skill => {
+      const skillLabel = formatSkillLabel(skill).toLowerCase()
+      const skillTooltip = skillDefinitions[skill]
+      const isMatched = sharedSet.has(skill)
+      return {
+        label: skillLabel,
+        tooltip: `${skillTooltip || ''}<br/><br/><em>Click to collapse to summary</em>`,
+        isMatched,
+        type: 'skill' as const,
+      }
+    })
   }, [skills, sharedSkills, skillTerms, skillDefinitions])
 
   const valueSummaryPill = summaryItems.find(item => item.icon === 'heart')
