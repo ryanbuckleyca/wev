@@ -42,21 +42,16 @@ export default function JobCardFooter({
   selectedWorkTypes = [],
 }: JobCardFooterProps) {
   const t = useTranslations()
-  const tValues = useTranslations('values')
   const [valuesExpanded, setValuesExpanded] = useState(false)
   const [skillsExpanded, setSkillsExpanded] = useState(false)
 
+
   const formatValueLabel = (value: string) => {
-    // Try to get translated name from values namespace, fallback to formatted key
-    const translatedName = tValues(`${value}.name`, { defaultValue: '' })
-    if (translatedName && translatedName !== `${value}.name`) {
-      return translatedName
-    }
-    // Fallback to formatting the key
-    return value
+    const fallbackLabel = value
       .replace(/_/g, ' ')
       .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .toLowerCase()
+      .replace(/\b\w/g, char => char.toUpperCase())
+    return t(`values.${value}.name`, { defaultValue: fallbackLabel })
   }
 
   const formatSkillLabel = (skill: string) => {
@@ -176,10 +171,12 @@ export default function JobCardFooter({
       .map(value => {
         const valueName = formatValueLabel(value)
         const fallbackDef = getValueDefinition(value)
+        const translatedDescription = t(`values.${value}.description`, { defaultValue: fallbackDef.description })
+        const translatedExample = t(`values.${value}.example`, { defaultValue: fallbackDef.example || '' })
         const translatedDef = getValueDefinition(value, {
           name: valueName,
-          description: tValues(`${value}.description`, { defaultValue: fallbackDef.description }),
-          example: tValues(`${value}.example`, { defaultValue: fallbackDef.example }),
+          description: translatedDescription,
+          example: translatedExample,
         })
         return {
           label: valueName,
@@ -194,10 +191,12 @@ export default function JobCardFooter({
       .map(value => {
         const valueName = formatValueLabel(value)
         const fallbackDef = getValueDefinition(value)
+        const translatedDescription = t(`values.${value}.description`, { defaultValue: fallbackDef.description })
+        const translatedExample = t(`values.${value}.example`, { defaultValue: fallbackDef.example || '' })
         const translatedDef = getValueDefinition(value, {
           name: valueName,
-          description: tValues(`${value}.description`, { defaultValue: fallbackDef.description }),
-          example: tValues(`${value}.example`, { defaultValue: fallbackDef.example }),
+          description: translatedDescription,
+          example: translatedExample,
         })
         return {
           label: valueName,
@@ -209,7 +208,7 @@ export default function JobCardFooter({
 
     // Combine matched and unmatched values
     return [...matchedValues, ...unmatchedValues]
-  }, [values, sharedValues, tValues])
+  }, [values, sharedValues, t])
 
   const skillItems = useMemo(() => {
     const matchedSkills = skills

@@ -512,7 +512,12 @@
       "description": "Faire un travail qui correspond à l'éthique personnelle et au sens de l'action juste.",
       "example": "Exemple : choisir des projets qui correspondent à vos valeurs et normes d'intégrité."
     },
-    "Physical Challenge": {
+    "Organization": {
+    "name": "Organisation",
+    "description": "Travailler au sein de systèmes organisationnels et de hiérarchies structurés.",
+    "example": "Exemple : opérer au sein d'entreprises établies, d'institutions ou de départements formels."
+  },
+  "Physical Challenge": {
       "name": "Défi physique",
       "description": "Engager le corps par la force, le mouvement, l'endurance ou la coordination.",
       "example": "Exemple : travail actif avec des exigences physiques significatives."
