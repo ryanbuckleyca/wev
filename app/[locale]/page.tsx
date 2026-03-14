@@ -60,10 +60,7 @@ export default function Home() {
     const profileSet = new Set(profileWorkTypes)
     const selectedSet = new Set(selectedWorkTypes)
     if (profileSet.size !== selectedSet.size) return false
-    for (const wt of profileSet) {
-      if (!selectedSet.has(wt)) return false
-    }
-    return true
+    return Array.from(profileSet).every((wt) => selectedSet.has(wt))
   }, [profileWorkTypes, selectedWorkTypes])
 
   useEffect(() => {
