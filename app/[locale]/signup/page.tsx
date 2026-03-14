@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -22,18 +22,31 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [successEmail, setSuccessEmail] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resendFeedback, setResendFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const RESEND_COOLDOWN_SECONDS = 30
 
   const passwordStrength = usePasswordStrength(password)
 
   const supabase = createClient()
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timeout = setTimeout(() => {
+      setResendCooldown(prev => Math.max(prev - 1, 0))
+    }, 1000)
+    return () => clearTimeout(timeout)
+  }, [resendCooldown])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setMessage(null)
+    setResendFeedback(null)
     setError(null)
 
     if (passwordStrength && !passwordStrength.isAcceptable) {
@@ -59,10 +72,78 @@ export default function SignupPage() {
     if (error) {
       setError(error.message)
     } else {
-      setMessage(t('auth.signup.emailSent'))
+      setSuccessEmail(email)
+      setResendCooldown(RESEND_COOLDOWN_SECONDS)
+      setCaptchaToken(null)
     }
 
     setLoading(false)
+  }
+
+  const handleResend = async () => {
+    if (!successEmail) return
+    setResendLoading(true)
+    setResendFeedback(null)
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: successEmail,
+    })
+    if (error) {
+      setResendFeedback({ type: 'error', text: t('auth.signup.resendError') })
+    } else {
+      setResendFeedback({ type: 'success', text: t('auth.signup.resendSuccess') })
+      setResendCooldown(RESEND_COOLDOWN_SECONDS)
+    }
+    setResendLoading(false)
+  }
+
+  const handleChangeEmail = () => {
+    setSuccessEmail(null)
+    setResendCooldown(0)
+    setResendFeedback(null)
+    setError(null)
+    setCaptchaToken(null)
+    setPassword('')
+  }
+
+  if (successEmail) {
+    return (
+      <PageLayout variant="centered">
+        <CardLayout>
+          <Heading level={1} className="text-center mb-3">{t('auth.signup.checkEmailTitle')}</Heading>
+          <p className="text-center text-sm text-muted-foreground">
+            {t('auth.signup.checkEmailDescription', { email: successEmail })}
+          </p>
+
+          <div className="mt-6 space-y-3">
+            <Button
+              onClick={handleResend}
+              disabled={resendLoading || resendCooldown > 0}
+              loading={resendLoading}
+              fullWidth
+            >
+              {resendCooldown > 0
+                ? t('auth.signup.resendIn', { seconds: resendCooldown })
+                : t('auth.signup.resendEmail')}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleChangeEmail}
+              fullWidth
+            >
+              {t('auth.signup.changeEmail')}
+            </Button>
+            <LinkButton href="/login" variant="outline" fullWidth>
+              {t('auth.signup.backToLogin')}
+            </LinkButton>
+          </div>
+
+          {resendFeedback && (
+            <Message variant={resendFeedback.type}>{resendFeedback.text}</Message>
+          )}
+        </CardLayout>
+      </PageLayout>
+    )
   }
 
   return (
@@ -113,9 +194,6 @@ export default function SignupPage() {
 
         {error && (
           <ErrorBox className="mt-4">{error}</ErrorBox>
-        )}
-        {message && (
-          <Message variant="success">{message}</Message>
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
