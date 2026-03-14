@@ -23,6 +23,7 @@ interface JobCardProps {
   initialExpanded?: boolean
   match?: JobMatchData | null
   initialBookmarked?: boolean
+  selectedWorkTypes?: string[]
 }
 
 
@@ -35,6 +36,7 @@ export default function JobCard({
   initialExpanded = true,
   match: matchProp,
   initialBookmarked = false,
+  selectedWorkTypes,
 }: JobCardProps) {
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
   const [bookmarked, setBookmarked] = useState(initialBookmarked)
@@ -276,9 +278,9 @@ export default function JobCard({
             aria-label={isExpanded ? t('jobCard.collapseDetails') : t('jobCard.expandDetails')}
           >
             {isExpanded ? (
-              <Lineicons icon={ChevronUpSolid} size={18} className="text-muted-foreground" />
+              <Lineicons icon={ChevronUpSolid} size={18} className="text-muted-foreground transition-transform duration-200" />
             ) : (
-              <Lineicons icon={ChevronDownSolid} size={18} className="text-muted-foreground" />
+              <Lineicons icon={ChevronDownSolid} size={18} className="text-muted-foreground transition-transform duration-200" />
             )}
           </button>
         </div>
@@ -349,6 +351,8 @@ export default function JobCard({
             matchTooltipContent={matchTooltipContent}
             showTooltip={Boolean(user && matchProp && matchTooltipContent)}
             fadeBackground="var(--muted)"
+            workType={job.work_type}
+            selectedWorkTypes={selectedWorkTypes || []}
           />
         </div>
       ) : null}

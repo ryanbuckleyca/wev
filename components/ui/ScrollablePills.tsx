@@ -1,13 +1,19 @@
+import { useMemo, useRef } from "react";
+import { Lineicons } from "@lineiconshq/react-lineicons";
+import { HeartSolid, Briefcase2Solid, LocationArrowRightSolid } from "@lineiconshq/free-icons";
 import { useScrollFades } from "@/hooks/useScrollFades";
 import Pill from "@/components/Pill";
 import Tooltip from "@/components/Tooltip";
 
-interface ScrollablePillsItem {
+export interface ScrollablePillsItem {
   label: string;
   tooltip?: string;
   isMatched?: boolean;
-  icon?: 'heart' | 'briefcase';
-  type?: 'value' | 'skill';
+  icon?: 'heart' | 'briefcase' | 'location';
+  type?: 'value' | 'skill' | 'summary' | 'workType';
+  className?: string;
+  groupId?: string;
+  groupKey?: string;
 }
 
 interface ScrollablePillsProps {
@@ -15,6 +21,8 @@ interface ScrollablePillsProps {
   variant?: "default" | "pink" | "gray";
   className?: string;
   fadeBackground?: string; // CSS color value matching the surrounding background, default "var(--card)"
+  onItemClick?: (item: ScrollablePillsItem, index: number) => void;
+  tight?: boolean;
 }
 
 const scrollbarHideStyle = `
@@ -32,7 +40,10 @@ export function ScrollablePills({
   variant = "default",
   className,
   fadeBackground = "var(--card)",
+  onItemClick,
+  tight = false,
 }: ScrollablePillsProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const { ref, fades } = useScrollFades();
 
   // Normalize items to always be objects
@@ -40,7 +51,23 @@ export function ScrollablePills({
     typeof item === 'string' ? { label: item, isMatched: true } : item
   );
 
-  const getVariantClass = (isMatched: boolean = true, type?: 'value' | 'skill') => {
+  const normalizedWithIndex = useMemo(() => normalizedItems.map((item, index) => ({ item, index })), [normalizedItems]);
+
+  const groupedItems = useMemo(() => {
+    const groups: { groupId?: string; entries: { item: ScrollablePillsItem; index: number }[] }[] = []
+    normalizedWithIndex.forEach(entry => {
+      const groupKey = entry.item.groupId
+      const lastGroup = groups[groups.length - 1]
+      if (groupKey && lastGroup && lastGroup.groupId === groupKey) {
+        lastGroup.entries.push(entry)
+      } else {
+        groups.push({ groupId: groupKey, entries: [entry] })
+      }
+    })
+    return groups
+  }, [normalizedWithIndex])
+
+  const getVariantClass = (isMatched: boolean = true, type?: 'value' | 'skill' | 'summary' | 'workType') => {
     const baseClasses = "border transition-colors";
     if (!isMatched) {
       return `${baseClasses} bg-muted text-muted-foreground border-border opacity-60`;
@@ -49,7 +76,7 @@ export function ScrollablePills({
   };
 
   return (
-    <div className={`relative ${className || ''}`}>
+    <div ref={containerRef} className={`relative ${className || ''}`}>
       <style>{scrollbarHideStyle}</style>
       {/* Left fade */}
       <div
@@ -63,42 +90,68 @@ export function ScrollablePills({
       {/* Scrollable row */}
       <div
         ref={ref}
-        className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide"
+        className={`flex items-center ${tight ? 'gap-0' : 'gap-2'} overflow-x-auto scrollbar-hide`}
         style={{ WebkitOverflowScrolling: "touch" }}
       >
-        {normalizedItems.map((item, index) => {
-          const pill = (
-            <span
-              key={item.label + index}
-              className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getVariantClass(item.isMatched, item.type)}`}
-            >
-              {item.icon === 'heart' ? (
-                <span className={`flex-shrink-0 ${item.isMatched ? 'text-wev-brand-accent' : 'text-gray-400'}`}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                  </svg>
-                </span>
-              ) : item.icon === 'briefcase' ? (
-                <span className={`flex-shrink-0 ${item.isMatched ? 'text-primary' : 'text-gray-400'}`}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
-                    <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/>
-                  </svg>
-                </span>
-              ) : null}
-              <span>{item.label}</span>
-            </span>
-          );
-          
-          // Wrap in tooltip if tooltip content exists
-          if (item.tooltip) {
-            return (
-              <Tooltip key={item.label + index} content={item.tooltip}>
-                {pill}
-              </Tooltip>
-            );
+        {groupedItems.map((group, groupIndex) => {
+          const renderButton = (entry: { item: ScrollablePillsItem; index: number }) => {
+            const { item, index } = entry
+            const button = (
+              <button
+                key={item.label + index}
+                type="button"
+                onClick={() => onItemClick?.(item, index)}
+                className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getVariantClass(item.isMatched, item.type)} focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${item.className || ''}`}
+              >
+                {item.icon === 'heart' ? (
+                  <Lineicons
+                    icon={HeartSolid}
+                    size={12}
+                    className={`flex-shrink-0 ${item.isMatched ? 'text-wev-brand-accent' : 'text-gray-400'}`}
+                  />
+                ) : item.icon === 'briefcase' ? (
+                  <Lineicons
+                    icon={Briefcase2Solid}
+                    size={12}
+                    className={`flex-shrink-0 ${item.isMatched ? 'text-primary' : 'text-gray-400'}`}
+                  />
+                ) : item.icon === 'location' ? (
+                  <Lineicons
+                    icon={LocationArrowRightSolid}
+                    size={12}
+                    className={`flex-shrink-0 ${item.isMatched ? 'text-wev-info' : 'text-gray-400'}`}
+                  />
+                ) : null}
+                <span>{item.label}</span>
+              </button>
+            )
+
+            if (item.tooltip) {
+              const containerEl = containerRef.current
+              return (
+                <Tooltip
+                  key={item.label + index}
+                  content={item.tooltip}
+                  appendTo={containerEl ? () => containerEl : undefined}
+                  boundary={containerEl || undefined}
+                >
+                  {button}
+                </Tooltip>
+              )
+            }
+
+            return button
           }
-          
-          return pill;
+
+          if (group.groupId && group.entries.length > 1) {
+            return (
+              <div key={`group-${group.groupId}-${groupIndex}`} className="flex items-center gap-0">
+                {group.entries.map(renderButton)}
+              </div>
+            )
+          }
+
+          return group.entries.map(entry => renderButton(entry))
         })}
       </div>
 

@@ -16,5 +16,6 @@ export const ChevronDownSolid = ({ children }: { children?: React.ReactNode }) =
 export const ChevronUpSolid = ({ children }: { children?: React.ReactNode }) => React.createElement('span', null, children)
 export const HeartSolid = ({ children }: { children?: React.ReactNode }) => React.createElement('span', null, children)
 export const Briefcase2Solid = ({ children }: { children?: React.ReactNode }) => React.createElement('span', null, children)
+export const LocationArrowRightSolid = ({ children }: { children?: React.ReactNode }) => React.createElement('span', null, children)
 
 export default Lineicons

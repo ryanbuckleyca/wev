@@ -17,9 +17,10 @@ interface JobListingsProps {
   allExpanded?: boolean
   matchData?: Map<string, JobMatchData>
   bookmarkedJobIds?: Set<string>
+  selectedWorkTypes?: string[]
 }
 
-export default function JobListings({ jobs, loading, error, onJobSseChange, onJobBookmarkChange, allExpanded = true, matchData, bookmarkedJobIds }: JobListingsProps) {
+export default function JobListings({ jobs, loading, error, onJobSseChange, onJobBookmarkChange, allExpanded = true, matchData, bookmarkedJobIds, selectedWorkTypes }: JobListingsProps) {
   const t = useTranslations()
   const locale = useLocale()
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -115,6 +116,7 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
             initialExpanded={allExpanded}
             match={matchData?.get(job.id)}
             initialBookmarked={bookmarkedJobIds?.has(job.id) ?? false}
+            selectedWorkTypes={selectedWorkTypes}
           />
         ))}
       </div>

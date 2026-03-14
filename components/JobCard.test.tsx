@@ -221,14 +221,20 @@ describe('JobCard', () => {
       },
     })
 
-    const visibleSkills = skills.slice(0, 5)
+    // Click the skills summary pill to expand individual skill pills
+    const skillsSummaryPill = screen.getByText('3/7 skills')
+    await userEvent.click(skillsSummaryPill)
+    
+    // When expanded, all skills should be visible (no capping when expanded)
     await waitFor(() => {
-      visibleSkills.forEach(skill => {
-        expect(screen.getByText(skill)).toBeVisible()
-      })
+      expect(screen.getByText('skill-one')).toBeVisible()
+      expect(screen.getByText('skill-two')).toBeVisible()
+      expect(screen.getByText('skill-three')).toBeVisible()
+      expect(screen.getByText('skill-four')).toBeVisible()
+      expect(screen.getByText('skill-five')).toBeVisible()
+      expect(screen.getByText('skill-six')).toBeVisible()
+      expect(screen.getByText('skill-seven')).toBeVisible()
     })
-    expect(screen.queryByText('skill-six')).not.toBeInTheDocument()
-    expect(screen.queryByText('skill-seven')).not.toBeInTheDocument()
 
     vi.unstubAllGlobals()
   })

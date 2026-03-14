@@ -6,13 +6,17 @@ import tippy, { Instance, Props } from 'tippy.js'
 import 'tippy.js/dist/tippy.css'
 import 'tippy.js/themes/light.css'
 
+type BoundaryOption = HTMLElement | 'viewport' | 'clippingParents' | 'scrollParent'
+
 interface TooltipProps {
   children: React.ReactNode
   content: React.ReactNode
   className?: string
+  appendTo?: HTMLElement | ((reference: Element) => HTMLElement) | 'parent'
+  boundary?: BoundaryOption
 }
 
-export default function Tooltip({ children, content, className = '' }: TooltipProps) {
+export default function Tooltip({ children, content, className = '', appendTo, boundary }: TooltipProps) {
   const ref = useRef<HTMLDivElement>(null)
   const instanceRef = useRef<Instance<Props> | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
@@ -74,6 +78,10 @@ export default function Tooltip({ children, content, className = '' }: TooltipPr
       return
     }
 
+    const resolvedAppendTo = appendTo || document.body
+
+    const resolvedBoundary: BoundaryOption = boundary ?? 'viewport'
+
     instanceRef.current = tippy(ref.current, {
       content: contentContainerRef.current,
       theme: theme,
@@ -84,12 +92,15 @@ export default function Tooltip({ children, content, className = '' }: TooltipPr
       maxWidth: 300,
       touch: ['hold', 500],
       hideOnClick: false,
+      appendTo: resolvedAppendTo,
       popperOptions: {
+        strategy: 'fixed',
         modifiers: [
           {
             name: 'preventOverflow',
             options: {
               padding: 8,
+              boundary: resolvedBoundary,
             },
           },
           {
