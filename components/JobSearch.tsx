@@ -4,6 +4,8 @@ import { useTranslations } from 'next-intl'
 import Pill from './Pill'
 import ButtonLink from './ButtonLink'
 import FilterIcon from './FilterIcon'
+import { Lineicons } from '@lineiconshq/react-lineicons'
+import { Search1Outlined } from '@lineiconshq/free-icons'
 
 export interface ActiveFilterChip {
   id: string
@@ -49,17 +51,12 @@ export default function JobSearch({
             <label htmlFor="search" className="sr-only">
               {t('search.label')}
             </label>
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-wev-text-tertiary pointer-events-none"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
+            <Lineicons
+              icon={Search1Outlined}
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-wev-text-tertiary pointer-events-none"
               aria-hidden
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
+            />
             <input
               type="text"
               id="search"

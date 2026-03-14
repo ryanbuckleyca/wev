@@ -277,11 +277,11 @@ export default function JobCard({
             title={isExpanded ? t('jobCard.collapse') : t('jobCard.expand')}
             aria-label={isExpanded ? t('jobCard.collapseDetails') : t('jobCard.expandDetails')}
           >
-            {isExpanded ? (
-              <Lineicons icon={ChevronUpSolid} size={18} className="text-muted-foreground transition-transform duration-200" />
-            ) : (
-              <Lineicons icon={ChevronDownSolid} size={18} className="text-muted-foreground transition-transform duration-200" />
-            )}
+            <Lineicons
+              icon={ChevronDownSolid}
+              size={18}
+              className={`text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+            />
           </button>
         </div>
       </div>
