@@ -3,12 +3,10 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { parseAsArrayOf, parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
+import { useSearchParams } from 'next/navigation'
 import JobListings from '@/components/JobListings'
 import JobFilters from '@/components/JobFilters'
-import UserProfile from '@/components/UserProfile'
-import LinkButton from '@/components/LinkButton'
-import Button from '@/components/Button'
-import { useRequireAuth } from '@/lib/hooks/useRequireAuth'
+import { useProfile } from '@/lib/hooks/useProfile'
 import { createClient } from '@/lib/supabase/client'
 import type { JobPosting, JobMatchData } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -18,6 +16,7 @@ import WatercolorBackground from '@/components/WatercolorBackground'
 import ReScrapeButton from '@/components/ReScrapeButton'
 import CopyAllJobsButton from '@/components/CopyAllJobsButton'
 import Pagination from '@/components/Pagination'
+import { normalizeWorkTypes } from '@/lib/work-types'
 
 const ITEMS_PER_PAGE = 20
 
@@ -25,6 +24,8 @@ export default function Home() {
   const t = useTranslations()
   const locale = useLocale()
   const { role, user } = useAuth()
+  const { profile, loading: profileLoading } = useProfile(user?.id)
+  const searchParams = useSearchParams()
   const [allJobs, setAllJobs] = useState<JobPosting[]>([])
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -47,6 +48,45 @@ export default function Home() {
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1))
   const [allJobsExpanded, setAllJobsExpanded] = useState(true)
+
+  const profileWorkTypes = useMemo(
+    () => normalizeWorkTypes(profile?.work_types),
+    [profile?.work_types]
+  )
+  const [hasAppliedProfileWorkTypes, setHasAppliedProfileWorkTypes] = useState(false)
+  const isUsingProfileWorkTypes = useMemo(() => {
+    if (profileWorkTypes.length === 0) return false
+    if (selectedWorkTypes.length === 0) return false
+    const profileSet = new Set(profileWorkTypes)
+    const selectedSet = new Set(selectedWorkTypes)
+    if (profileSet.size !== selectedSet.size) return false
+    for (const wt of profileSet) {
+      if (!selectedSet.has(wt)) return false
+    }
+    return true
+  }, [profileWorkTypes, selectedWorkTypes])
+
+  useEffect(() => {
+    if (!user?.id) return
+    if (hasAppliedProfileWorkTypes) return
+    if (profileLoading) return
+    if (profileWorkTypes.length === 0) {
+      setHasAppliedProfileWorkTypes(true)
+      return
+    }
+    const hasWorkTypeParam = searchParams?.has('workType') ?? false
+    if (hasWorkTypeParam || selectedWorkTypes.length > 0) {
+      setHasAppliedProfileWorkTypes(true)
+      return
+    }
+    setSelectedWorkTypes(profileWorkTypes)
+    setHasAppliedProfileWorkTypes(true)
+  }, [user?.id, hasAppliedProfileWorkTypes, profileWorkTypes, searchParams, selectedWorkTypes.length, setSelectedWorkTypes])
+
+  const handleResetToProfileWorkTypes = useCallback(() => {
+    if (profileWorkTypes.length === 0) return
+    setSelectedWorkTypes(profileWorkTypes)
+  }, [profileWorkTypes, setSelectedWorkTypes])
   
   // Sort state
   const [sortBy, setSortBy] = useQueryState(
@@ -398,6 +438,9 @@ export default function Home() {
           onPostedWithinChange={setPostedWithin}
           filtersExpanded={filtersExpanded}
           onFiltersExpandedChange={setFiltersExpanded}
+          profileWorkTypes={profileWorkTypes}
+          isUsingProfileWorkTypes={isUsingProfileWorkTypes}
+          onResetToProfileWorkTypes={handleResetToProfileWorkTypes}
         />
 
         {/* Results Header */}

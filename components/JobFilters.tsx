@@ -7,8 +7,10 @@ import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
 import JobSearch, { ActiveFilterChip } from './JobSearch'
 import Collapsible from './Collapsible'
 import FilterIcon from './FilterIcon'
+import StyledLink from './StyledLink'
 import { JobPosting } from '@/lib/supabase'
 import { truncateMiddle } from '@/lib/string-utils'
+import { WORK_TYPES, normalizeWorkTypes, type WorkType } from '@/lib/work-types'
 
 type PostedWithinOption = '1-week' | '2-weeks' | '3-weeks' | '1-month'
 
@@ -69,6 +71,9 @@ interface JobFiltersProps {
   onPostedWithinChange: (value: PostedWithinSelection) => void
   filtersExpanded: boolean
   onFiltersExpandedChange: (expanded: boolean) => void
+  profileWorkTypes?: WorkType[]
+  isUsingProfileWorkTypes?: boolean
+  onResetToProfileWorkTypes?: () => void
 }
 
 export default function JobFilters({
@@ -97,8 +102,26 @@ export default function JobFilters({
   onPostedWithinChange,
   filtersExpanded,
   onFiltersExpandedChange,
+  profileWorkTypes = [],
+  isUsingProfileWorkTypes = false,
+  onResetToProfileWorkTypes,
 }: JobFiltersProps) {
   const t = useTranslations()
+  const hasProfileWorkTypes = profileWorkTypes.length > 0
+  const defaultWorkTypes = hasProfileWorkTypes ? profileWorkTypes : []
+  const normalizedSelectedWorkTypes = normalizeWorkTypes(selectedWorkTypes)
+  const isWorkTypesDefault =
+    defaultWorkTypes.length === normalizedSelectedWorkTypes.length &&
+    defaultWorkTypes.every((workType) => normalizedSelectedWorkTypes.includes(workType))
+  const profileWorkTypeLabel = hasProfileWorkTypes
+    ? profileWorkTypes
+        .map((wt) => {
+          if (wt === 'remote') return t('filters.workType.remote')
+          if (wt === 'hybrid') return t('filters.workType.hybrid')
+          return t('filters.workType.office')
+        })
+        .join(', ')
+    : ''
   const hasAnyFilters =
     !!searchQuery ||
     selectedOrganizations.length > 0 ||
@@ -118,7 +141,7 @@ export default function JobFilters({
     selectedMunicipalities.length === 0 &&
     selectedEmploymentTypes.length === 0 &&
     selectedSources.length === 0 &&
-    selectedWorkTypes.length === 0 &&
+    isWorkTypesDefault &&
     showOnlySse &&
     showJobsWithoutSalary &&
     postedWithin === '2-weeks'
@@ -365,7 +388,7 @@ export default function JobFilters({
     onMunicipalitiesChange([])
     onEmploymentTypesChange([])
     onSourcesChange([])
-    onWorkTypesChange([])
+    onWorkTypesChange(defaultWorkTypes)
     onShowOnlySseChange(true)
     onShowJobsWithoutSalaryChange(true)
     onPostedWithinChange('2-weeks')
@@ -513,8 +536,29 @@ export default function JobFilters({
         <label className="block text-sm font-semibold text-foreground mb-2">
           {t('filters.workType.label')}
         </label>
+        {hasProfileWorkTypes && (
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>
+              {isUsingProfileWorkTypes
+                ? t('filters.workType.profileDefault', { types: profileWorkTypeLabel })
+                : t('filters.workType.profileOverride', { types: profileWorkTypeLabel })}
+            </span>
+            <StyledLink href="/profile" variant="text" size="sm" className="p-0">
+              {t('filters.workType.profileLink')}
+            </StyledLink>
+            {!isUsingProfileWorkTypes && onResetToProfileWorkTypes && (
+              <button
+                type="button"
+                onClick={onResetToProfileWorkTypes}
+                className="text-[var(--primary)] hover:underline"
+              >
+                {t('filters.workType.profileReset')}
+              </button>
+            )}
+          </div>
+        )}
         <div className="flex gap-2">
-          {(['remote', 'hybrid', 'office'] as const).map((workType) => {
+          {WORK_TYPES.map((workType) => {
             const isSelected = selectedWorkTypes.includes(workType)
             const label = workType === 'remote' ? t('filters.workType.remote') : workType === 'hybrid' ? t('filters.workType.hybrid') : t('filters.workType.office')
             return (

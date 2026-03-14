@@ -2,7 +2,9 @@
 
 import { useLocale, useTranslations } from 'next-intl';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
-import { useProfileForm, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES } from '@/lib/hooks/useProfileForm';
+import { useProfileForm, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES, MAX_PROFILE_WORK_ENV_CHARS } from '@/lib/hooks/useProfileForm';
+import { WORK_TYPES, type WorkType } from '@/lib/work-types';
+import FormTextarea from '@/components/FormTextarea';
 import ValuesSelector from '@/components/ValuesSelector';
 import SkillsSelector from '@/components/SkillsSelector';
 import LoadingState from '@/components/LoadingState';
@@ -34,6 +36,15 @@ export default function ProfilePage() {
     handleSaveProfile,
     handlePhotoUpload,
   } = useProfileForm(user?.id, locale);
+
+  const workEnvironmentCharCount = formData.ideal_work_environment.length;
+  const isWorkEnvironmentOverLimit = workEnvironmentCharCount > MAX_PROFILE_WORK_ENV_CHARS;
+
+  const getWorkTypeLabel = (workType: WorkType) => {
+    if (workType === 'remote') return t('filters.workType.remote');
+    if (workType === 'hybrid') return t('filters.workType.hybrid');
+    return t('filters.workType.office');
+  };
 
   if (loading || profileLoading) {
     return <LoadingState message={t('common.loading')} />;
@@ -107,6 +118,63 @@ export default function ProfilePage() {
                 placeholder={t('profile.bioPlaceholder')}
                 rows={4}
                 className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+              />
+            </div>
+
+            {/* Work Type Preference */}
+            <div>
+              <FormLabel>{t('profile.workType')}</FormLabel>
+              <p className="text-xs text-muted-foreground mb-2">
+                {t('profile.workTypeHint')}
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {WORK_TYPES.map((workType) => {
+                  const isSelected = formData.work_types.includes(workType)
+                  return (
+                    <button
+                      key={workType}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setFormData({
+                            ...formData,
+                            work_types: formData.work_types.filter((wt) => wt !== workType),
+                          })
+                        } else {
+                          setFormData({
+                            ...formData,
+                            work_types: [...formData.work_types, workType],
+                          })
+                        }
+                      }}
+                      className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
+                        isSelected
+                          ? 'bg-primary text-white'
+                          : 'bg-background text-foreground border border-border hover:bg-primary-tint'
+                      }`}
+                    >
+                      {getWorkTypeLabel(workType)}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Ideal Work Environment */}
+            <div>
+              <FormLabel htmlFor="ideal-work-environment">{t('profile.workEnvironment')}</FormLabel>
+              <p className="text-xs text-muted-foreground mb-2">
+                {t('profile.workEnvironmentHint', { max: MAX_PROFILE_WORK_ENV_CHARS })}
+              </p>
+              <FormTextarea
+                htmlFor="ideal-work-environment"
+                value={formData.ideal_work_environment}
+                onChange={(value) => setFormData({ ...formData, ideal_work_environment: value })}
+                placeholder={t('profile.workEnvironmentPlaceholder')}
+                rows={6}
+                charLimit={MAX_PROFILE_WORK_ENV_CHARS}
+                countLabel={(current, max) => t('profile.workEnvironmentCount', { current, max })}
+                className={isWorkEnvironmentOverLimit ? 'border-destructive-foreground focus:border-destructive-foreground' : ''}
               />
             </div>
 
