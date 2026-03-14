@@ -1,12 +1,12 @@
 "use client"
 
-import { ReactNode, useMemo, useState } from 'react'
+import { ReactNode, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import Tooltip from './Tooltip'
 import ProgressDonut from './ProgressDonut'
-import { ScrollablePills, ScrollablePillsItem } from '@/components/ui/ScrollablePills'
+import ExpandablePills, { ExpandablePillGroup } from './ExpandablePills'
+import { ScrollablePillsItem } from '@/components/ui/ScrollablePills'
 import { getValueDefinition } from '@/lib/values'
-import { useTranslations } from 'next-intl'
-import { LocationArrowRightOutlined } from '@lineiconshq/free-icons'
 
 interface JobCardFooterProps {
   values: string[]
@@ -43,9 +43,6 @@ export default function JobCardFooter({
 }: JobCardFooterProps) {
   const t = useTranslations()
   const tValues = useTranslations('values')
-  const [valuesExpanded, setValuesExpanded] = useState(false)
-  const [skillsExpanded, setSkillsExpanded] = useState(false)
-
 
   const formatValueLabel = (value: string) => {
     return value
@@ -86,7 +83,6 @@ export default function JobCardFooter({
     }
   }
 
-  // Calculate match counts for summary pills
   const matchedValueCount = sharedValues.length
   const totalValueCount = values.length
   const matchedSkillCount = sharedSkills.filter(skill => skills.includes(skill)).length
@@ -142,7 +138,6 @@ export default function JobCardFooter({
     }
   }
 
-  // Create summary pills
   const summaryItems = useMemo(() => {
     const matchedValueNames = sharedValues.map(value => getValueTranslations(value).label).join(', ')
     const unmatchedValueNames = values
@@ -194,7 +189,6 @@ export default function JobCardFooter({
     tValues,
   ])
 
-  // Create separate arrays for values and skills
   const valueItems = useMemo(() => {
     const sharedSet = new Set(sharedValues)
     const orderedValues = [
@@ -236,57 +230,12 @@ export default function JobCardFooter({
 
   const valueSummaryPill = summaryItems.find(item => item.icon === 'heart')
   const skillSummaryPill = summaryItems.find(item => item.icon === 'briefcase')
-
-  const buildCluster = (
-    summary: ScrollablePillsItem | undefined,
-    items: ScrollablePillsItem[],
-    expanded: boolean
-  ): ScrollablePillsItem[] => {
-    if (!summary) return expanded ? items : []
-    if (!expanded) {
-      return [{ ...summary, groupId: undefined, className: 'transition-colors border border-border rounded-full' }]
-    }
-
-    const clusterId = summary.icon ? `cluster-${summary.icon}` : undefined
-    const connectedItems = items.map((item, index, arr) => {
-      const isLast = index === arr.length - 1
-      return {
-        ...item,
-        groupId: clusterId,
-        className: `rounded-none border border-border -ml-px border-l border-border ${isLast ? 'rounded-r-full' : ''}`,
-      }
-    })
-
-    return [
-      {
-        ...summary,
-        groupId: clusterId,
-        className: 'rounded-r-none pr-3 shadow-sm border border-border',
-      },
-      ...connectedItems,
-    ]
-  }
-
   const workTypePill = workType ? buildWorkTypePill() : undefined
-  const inlineItems: ScrollablePillsItem[] = [
-    ...(workTypePill ? [workTypePill] : []),
-    ...buildCluster(valueSummaryPill, valueItems, valuesExpanded && totalValueCount > 0),
-    ...buildCluster(skillSummaryPill, skillItems, skillsExpanded && totalSkillCount > 0),
-  ]
 
-  const handlePillClick = (item: ScrollablePillsItem) => {
-    if (item.type === 'summary') {
-      if (item.icon === 'heart') {
-        setValuesExpanded(prev => !prev)
-      } else if (item.icon === 'briefcase') {
-        setSkillsExpanded(prev => !prev)
-      }
-    } else if (item.type === 'value') {
-      setValuesExpanded(false)
-    } else if (item.type === 'skill') {
-      setSkillsExpanded(false)
-    }
-  }
+  const groups: ExpandablePillGroup[] = [
+    { key: 'values', summary: valueSummaryPill, items: valueItems },
+    { key: 'skills', summary: skillSummaryPill, items: skillItems },
+  ]
 
   return (
     <div className="flex gap-4">
@@ -302,14 +251,12 @@ export default function JobCardFooter({
       )}
 
       <div className="flex-1 min-w-0">
-        {inlineItems.length > 0 && (
-          <ScrollablePills
-            items={inlineItems}
-            variant="default"
-            fadeBackground={fadeBackground}
-            onItemClick={handlePillClick}
-          />
-        )}
+        <ExpandablePills
+          preItems={workTypePill ? [workTypePill] : []}
+          groups={groups}
+          variant="default"
+          fadeBackground={fadeBackground}
+        />
       </div>
     </div>
   )

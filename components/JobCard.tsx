@@ -278,9 +278,9 @@ export default function JobCard({
             aria-label={isExpanded ? t('jobCard.collapseDetails') : t('jobCard.expandDetails')}
           >
             {isExpanded ? (
-              <Lineicons icon={ChevronUpSolid} size={18} className="text-muted-foreground" />
+              <Lineicons icon={ChevronUpSolid} size={18} className="text-muted-foreground transition-transform duration-200" />
             ) : (
-              <Lineicons icon={ChevronDownSolid} size={18} className="text-muted-foreground" />
+              <Lineicons icon={ChevronDownSolid} size={18} className="text-muted-foreground transition-transform duration-200" />
             )}
           </button>
         </div>

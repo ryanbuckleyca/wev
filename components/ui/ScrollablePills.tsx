@@ -13,6 +13,7 @@ export interface ScrollablePillsItem {
   type?: 'value' | 'skill' | 'summary' | 'workType';
   className?: string;
   groupId?: string;
+  groupKey?: string;
 }
 
 interface ScrollablePillsProps {

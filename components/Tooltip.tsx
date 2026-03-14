@@ -12,7 +12,7 @@ interface TooltipProps {
   children: React.ReactNode
   content: React.ReactNode
   className?: string
-  appendTo?: HTMLElement | ((reference: Element) => HTMLElement | null) | 'parent'
+  appendTo?: HTMLElement | ((reference: Element) => HTMLElement) | 'parent'
   boundary?: BoundaryOption
 }
 
@@ -78,13 +78,7 @@ export default function Tooltip({ children, content, className = '', appendTo, b
       return
     }
 
-    const resolvedAppendTo: Props['appendTo'] = appendTo === 'parent'
-      ? 'parent'
-      : typeof appendTo === 'function'
-        ? (reference) => appendTo(reference) ?? document.body
-        : appendTo
-          ? appendTo
-          : () => document.body
+    const resolvedAppendTo = appendTo || document.body
 
     const resolvedBoundary: BoundaryOption = boundary ?? 'viewport'
 
