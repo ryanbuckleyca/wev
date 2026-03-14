@@ -7,6 +7,8 @@ import notify from '@/lib/toast'
 import Button from '@/components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
+import { Lineicons } from '@lineiconshq/react-lineicons'
+import { MenuHamburger1Outlined, XmarkOutlined } from '@lineiconshq/free-icons'
 
 import ThemeToggle from './ThemeToggle'
 import LocaleSwitcher from './LocaleSwitcher'
@@ -70,18 +72,11 @@ export default function UserProfile({ showThemeInMenu = false, showLocaleInMenu 
           className="sm:hidden p-2 rounded-lg transition-colors relative z-50"
           aria-label={t('userProfile.openMenu')}
         >
-          <svg
-            className="w-6 h-6 text-foreground"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            {isMobileMenuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
+          <Lineicons
+            icon={isMobileMenuOpen ? XmarkOutlined : MenuHamburger1Outlined}
+            size={24}
+            className="text-foreground"
+          />
         </button>
 
         {/* Desktop login/signup buttons */}

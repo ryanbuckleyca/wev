@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Button from '@/components/Button'
 import Chevron from './Chevron'
+import { Lineicons } from '@lineiconshq/react-lineicons'
+import { CheckOutlined } from '@lineiconshq/free-icons'
 
 type SortOption = 'date-desc' | 'date-asc' | 'match-desc' | 'value-match-desc' | 'skill-match-desc' | 'salary-desc' | 'salary-asc' | 'org-asc'
 
@@ -89,9 +91,7 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
               {opt.label}
             </span>
             {sortBy === opt.value && (
-              <svg width="12" height="12" viewBox="0 0 12 12" className="float-right">
-                <polyline points="2 6 5 9 10 4" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Lineicons icon={CheckOutlined} size={12} className="float-right text-primary" />
             )}
           </div>
         ))}
