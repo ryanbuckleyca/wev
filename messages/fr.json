@@ -48,7 +48,11 @@
       "label": "Type de travail",
       "remote": "Télétravail",
       "hybrid": "Hybride",
-      "office": "Bureau"
+      "office": "Bureau",
+      "profileDefault": "Préférence du profil utilisée : {types}.",
+      "profileOverride": "Préférence du profil : {types}. Vous pouvez remplacer ce filtre ici.",
+      "profileLink": "Modifier le profil",
+      "profileReset": "Revenir au profil"
     },
     "province": {
       "label": "Province",
@@ -251,6 +255,13 @@
     "bio": "Biographie",
     "bioPlaceholder": "Parlez-nous de vous...",
     "workValues": "Valeurs de travail",
+    "workType": "Préférence de type de travail",
+    "workTypeHint": "Utilisé pour préremplir vos filtres de recherche. Vous pouvez toujours modifier cela sur la page des emplois.",
+    "workEnvironment": "Environnement de travail idéal",
+    "workEnvironmentPlaceholder": "Décrivez l'environnement dans lequel vous vous épanouissez...",
+    "workEnvironmentHint": "Jusqu'à {max} caractères (environ 250 mots). Ce champ est privé et sert uniquement à personnaliser votre recherche.",
+    "workEnvironmentCount": "{current}/{max} caractères",
+    "workEnvironmentMaxExceeded": "Veuillez limiter votre description de l'environnement de travail à moins de {max} caractères.",
     "skills": "Compétences",
     "skillsPlaceholder": "Rechercher des compétences...",
     "skillsMinChars": "Tapez au moins 2 caractères pour rechercher.",

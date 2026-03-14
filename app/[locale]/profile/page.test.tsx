@@ -44,6 +44,8 @@ const baseProfile = {
   bio: 'Bio',
   values: [],
   skills: ['uri-1'],
+  work_types: ['remote'],
+  ideal_work_environment: 'Calm, collaborative, flexible hours.',
   profile_photo_url: null,
   created_at: '2026-03-06T00:00:00.000Z',
   updated_at: '2026-03-06T00:00:00.000Z',

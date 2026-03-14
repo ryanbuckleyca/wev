@@ -48,7 +48,11 @@
       "label": "Work Type",
       "remote": "Remote",
       "hybrid": "Hybrid",
-      "office": "Office"
+      "office": "Office",
+      "profileDefault": "Using your profile preference: {types}.",
+      "profileOverride": "Profile preference: {types}. You can override this filter here.",
+      "profileLink": "Edit in profile",
+      "profileReset": "Reset to profile"
     },
     "province": {
       "label": "Province",
@@ -251,6 +255,13 @@
     "bio": "Bio",
     "bioPlaceholder": "Tell us about yourself...",
     "workValues": "Work Values",
+    "workType": "Work Type Preference",
+    "workTypeHint": "Used to pre-fill your job search filters. You can still override this on the jobs page.",
+    "workEnvironment": "Ideal Work Environment",
+    "workEnvironmentPlaceholder": "Describe the environment you thrive in...",
+    "workEnvironmentHint": "Up to {max} characters (about 250 words). This is private and only used to personalize your search.",
+    "workEnvironmentCount": "{current}/{max} characters",
+    "workEnvironmentMaxExceeded": "Please keep your work environment description under {max} characters.",
     "skills": "Skills",
     "skillsPlaceholder": "Search skills...",
     "skillsMinChars": "Type at least 2 characters to search.",

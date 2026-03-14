@@ -6,6 +6,8 @@ export type Profile = {
   bio: string | null
   values: string[]
   skills: string[]
+  work_types: string[]
+  ideal_work_environment: string | null
   profile_photo_url: string | null
   created_at: string
   updated_at: string
@@ -16,6 +18,8 @@ export type ProfileUpdateData = {
   bio?: string | null
   values?: string[]
   skills?: string[]
+  work_types?: string[]
+  ideal_work_environment?: string | null
   profile_photo_url?: string | null
 }
 
@@ -45,6 +49,8 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     ...profile,
     values: profile.values ?? [],
     skills: profile.skills ?? [],
+    work_types: profile.work_types ?? [],
+    ideal_work_environment: profile.ideal_work_environment ?? null,
   }
 }
 

@@ -4,10 +4,12 @@ import { useEffect, useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { useProfile } from '@/lib/hooks/useProfile'
 import { type SkillOption } from '@/components/SkillsSelector'
+import { normalizeWorkTypes, type WorkType } from '@/lib/work-types'
 import toast from 'react-hot-toast'
 
 export const MAX_PROFILE_SKILLS = 5
 export const MAX_PROFILE_VALUES = 10
+export const MAX_PROFILE_WORK_ENV_CHARS = 1500
 
 function uniqueSkillOptions(skills: SkillOption[]): SkillOption[] {
   const seen = new Set<string>()
@@ -41,6 +43,8 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     bio: '',
     values: [] as string[],
     skills: [] as string[],
+    work_types: [] as WorkType[],
+    ideal_work_environment: '',
   })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -53,6 +57,8 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
       bio: profile.bio || '',
       values: profile.values || [],
       skills: profileSkills,
+      work_types: normalizeWorkTypes(profile.work_types),
+      ideal_work_environment: profile.ideal_work_environment || '',
     })
 
     if (profileSkills.length === 0) {
@@ -145,6 +151,10 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
       }))
       return
     }
+    if (formData.ideal_work_environment.length > MAX_PROFILE_WORK_ENV_CHARS) {
+      toast.error(t('profile.workEnvironmentMaxExceeded', { max: MAX_PROFILE_WORK_ENV_CHARS }))
+      return
+    }
 
     setIsSaving(true)
     try {
@@ -153,6 +163,8 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
         bio: formData.bio || null,
         values: Array.from(new Set(formData.values)).slice(0, MAX_PROFILE_VALUES),
         skills: Array.from(new Set(formData.skills)).slice(0, MAX_PROFILE_SKILLS),
+        work_types: normalizeWorkTypes(formData.work_types),
+        ideal_work_environment: formData.ideal_work_environment.trim() || null,
       })
       if (updated) {
         toast.success(t('profile.updateSuccess'))
