@@ -50,6 +50,12 @@ function _cleanDisplay(value: string | null | undefined): string {
   return (value ?? '').trim()
 }
 
+function stripHtml(value: string | null | undefined): string | null {
+  if (!value) return null
+  const stripped = value.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+  return stripped || null
+}
+
 export default function SkillsSelector({
   selectedSkills,
   onSkillsChange,
@@ -130,12 +136,12 @@ export default function SkillsSelector({
                 <div>
                   <div className="font-semibold text-[var(--foreground)]">{skill.term}</div>
                   {skill.definition && (
-                    <div className="text-[var(--foreground)] mt-1">{skill.definition}</div>
+                    <div className="text-[var(--foreground)] mt-1">{stripHtml(skill.definition)}</div>
                   )}
                 </div>
                 {skill.scope_note && (
                   <div className="text-xs text-[var(--muted-foreground)]">
-                    <span className="font-medium">Scope:</span> {skill.scope_note}
+                    <span className="font-medium">Scope:</span> {stripHtml(skill.scope_note)}
                   </div>
                 )}
                 {(skill.skill_type || skill.reuse_level) && (
@@ -159,8 +165,8 @@ export default function SkillsSelector({
               value: skill.concept_uri,
               label: skill.term,
               tooltip: tooltipContent,
-              definition: skill.definition,
-              scopeNote: skill.scope_note,
+              definition: stripHtml(skill.definition),
+              scopeNote: stripHtml(skill.scope_note),
               skillType: skill.skill_type,
               reuseLevel: skill.reuse_level,
               matchedAlias: skill.matched_alias,
