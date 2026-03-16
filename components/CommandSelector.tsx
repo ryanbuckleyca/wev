@@ -86,6 +86,7 @@ export default function CommandSelector<T extends Option>({
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
+  const [inputFocused, setInputFocused] = useState(false)
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom')
 
   const selectedSet = useMemo(
@@ -146,6 +147,7 @@ export default function CommandSelector<T extends Option>({
       const target = event.target
       if (target instanceof Node && !containerRef.current.contains(target)) {
         setOpen(false)
+        setInputFocused(false)
       }
     }
 
@@ -155,12 +157,12 @@ export default function CommandSelector<T extends Option>({
     }
   })
 
-  // Open dropdown when options become available (only if there's a query)
+  // Keep dropdown open while input is focused and there's something to show
   useEffect(() => {
-    if (availableOptions.length > 0 && !loading && query.trim().length > 0) {
+    if (inputFocused && (availableOptions.length > 0 || loading || query.trim().length > 0)) {
       setOpen(true)
     }
-  }, [availableOptions.length, loading, query])
+  }, [availableOptions.length, loading, query, inputFocused])
 
   const removeOption = (value: string) => {
     onOptionsChange(selectedOptions.filter((option) => option.value !== value))
@@ -235,9 +237,13 @@ export default function CommandSelector<T extends Option>({
               value={query}
               onValueChange={onQueryChange}
               onFocus={() => {
+                setInputFocused(true)
                 if (availableOptions.length > 0 || loading) {
                   setOpen(true)
                 }
+              }}
+              onBlur={() => {
+                setInputFocused(false)
               }}
               placeholder={placeholder}
               className="w-full rounded-lg bg-transparent px-4 py-2 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--text-tertiary)] pr-10"
