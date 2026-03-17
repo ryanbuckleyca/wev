@@ -105,7 +105,7 @@ export default function JobCardFooter({
     if (unmatchedNames) {
       tooltip += `<br/><br /><strong>Unmatched:</strong> ${unmatchedNames}`
     }
-    tooltip += `<br/><br/><em>Click to expand details</em>`
+    tooltip += `<br/><br/><em>Click > to expand details</em>`
 
     return {
       label: `${matchedCount}/${totalCount} ${label}`,
@@ -201,7 +201,7 @@ export default function JobCardFooter({
       const isMatched = sharedSet.has(value)
       return {
         label: valueTranslations.label,
-        tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em><br/><br/><em>Click to collapse to summary</em>`,
+        tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em>`,
         isMatched,
         type: 'value' as const,
       }
@@ -221,7 +221,7 @@ export default function JobCardFooter({
       const isMatched = sharedSet.has(skill)
       return {
         label: skillLabel,
-        tooltip: `${skillTooltip || ''}<br/><br/><em>Click to collapse to summary</em>`,
+        tooltip: skillTooltip,
         isMatched,
         type: 'skill' as const,
       }

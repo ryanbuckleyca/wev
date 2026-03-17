@@ -12,12 +12,13 @@ export default function Chevron({ size = 12, rotated = false, className = '', st
   const transform = rotated ? 'rotate(180deg)' : 'rotate(0deg)'
 
   return (
-    <Lineicons
-      icon={ChevronDownOutlined}
-      size={size}
-      className={className}
-      style={{ transition: 'transform 0.2s ease', transform, ...style }}
-      aria-hidden
-    />
+    <div style={{ display: 'inline-flex', transition: 'transform 0.2s ease', transform, ...style }}>
+      <Lineicons
+        icon={ChevronDownOutlined}
+        size={size}
+        className={className}
+        aria-hidden
+      />
+    </div>
   )
 }

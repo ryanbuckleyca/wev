@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 import { Lineicons } from "@lineiconshq/react-lineicons";
-import { HeartSolid, Briefcase2Solid, LocationArrowRightSolid } from "@lineiconshq/free-icons";
+import { HeartSolid, Briefcase2Solid, LocationArrowRightSolid, ChevronDownOutlined } from "@lineiconshq/free-icons";
 import { useScrollFades } from "@/hooks/useScrollFades";
 import Pill from "@/components/Pill";
 import Tooltip from "@/components/Tooltip";
@@ -14,6 +14,8 @@ export interface ScrollablePillsItem {
   className?: string;
   groupId?: string;
   groupKey?: string;
+  expandable?: boolean;
+  isExpanded?: boolean;
 }
 
 interface ScrollablePillsProps {
@@ -96,12 +98,12 @@ export function ScrollablePills({
         {groupedItems.map((group, groupIndex) => {
           const renderButton = (entry: { item: ScrollablePillsItem; index: number }) => {
             const { item, index } = entry
+            const isCollapseButton = item.label === '' && item.expandable && item.isExpanded
             const button = (
-              <button
+              <div
                 key={item.label + index}
-                type="button"
-                onClick={() => onItemClick?.(item, index)}
-                className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getVariantClass(item.isMatched, item.type)} focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${item.className || ''}`}
+                className={`shrink-0 inline-flex items-center ${isCollapseButton ? 'gap-0 pl-0 pr-2.5' : 'gap-1.5 px-2.5'} py-1 rounded-full text-xs font-medium whitespace-nowrap ${getVariantClass(item.isMatched, item.type)} ${item.className || ''}`}
+                style={{ touchAction: 'manipulation' }}
               >
                 {item.icon === 'heart' ? (
                   <Lineicons
@@ -122,18 +124,27 @@ export function ScrollablePills({
                     className={`flex-shrink-0 ${item.isMatched ? 'text-wev-info' : 'text-gray-400'}`}
                   />
                 ) : null}
-                <span>{item.label}</span>
-              </button>
+                <span>{item.label || '\u00A0'}</span>
+                {item.expandable && (
+                  <button
+                    type="button"
+                    onClick={() => onItemClick?.(item, index)}
+                    className="flex items-center focus:outline-none -mr-1 pl-0.5"
+                    aria-label={item.isExpanded ? 'Collapse' : 'Expand'}
+                  >
+                    <div style={{ transition: 'transform 0.2s ease', transform: item.isExpanded ? 'rotate(90deg)' : 'rotate(-90deg)' }}>
+                      <Lineicons icon={ChevronDownOutlined} size={11} className="text-muted-foreground" />
+                    </div>
+                  </button>
+                )}
+              </div>
             )
 
             if (item.tooltip) {
-              const containerEl = containerRef.current
               return (
                 <Tooltip
                   key={item.label + index}
                   content={item.tooltip}
-                  appendTo={containerEl ? () => containerEl : undefined}
-                  boundary={containerEl || undefined}
                 >
                   {button}
                 </Tooltip>

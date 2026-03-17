@@ -23,45 +23,26 @@ export default function Tooltip({ children, content, className = '', appendTo, b
   const contentContainerRef = useRef<HTMLDivElement | null>(null)
   const contentRootRef = useRef<Root | null>(null)
 
-  // Listen for theme changes
   useEffect(() => {
     const updateTheme = () => {
       const currentTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
       setTheme(currentTheme)
     }
-
-    // Initial theme
     updateTheme()
-
-    // Listen for theme changes
     const observer = new MutationObserver(updateTheme)
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme']
-    })
-
-    return () => {
-      observer.disconnect()
-    }
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => observer.disconnect()
   }, [])
 
-  // Create content container and root once on mount
   useEffect(() => {
     contentContainerRef.current = document.createElement('div')
     contentRootRef.current = createRoot(contentContainerRef.current)
-
     return () => {
-      // Cleanup on unmount
       const rootToUnmount = contentRootRef.current
-      if (rootToUnmount) {
-        setTimeout(() => {
-          rootToUnmount.unmount()
-        }, 0)
-      }
+      if (rootToUnmount) setTimeout(() => rootToUnmount.unmount(), 0)
     }
   }, [])
 
-  // Update content when it changes
   useEffect(() => {
     if (contentRootRef.current && content) {
       contentRootRef.current.render(
@@ -72,52 +53,84 @@ export default function Tooltip({ children, content, className = '', appendTo, b
     }
   }, [content])
 
-  // Create/update tippy instance
   useEffect(() => {
-    if (!ref.current || !content || !contentContainerRef.current) {
-      return
-    }
+    if (!ref.current || !content || !contentContainerRef.current) return
 
+    const el = ref.current
     const resolvedAppendTo = appendTo || document.body
-
     const resolvedBoundary: BoundaryOption = boundary ?? 'viewport'
 
-    instanceRef.current = tippy(ref.current, {
+    const isTouchDevice = 'ontouchstart' in window
+
+    const instance = tippy(el, {
       content: contentContainerRef.current,
-      theme: theme,
+      theme,
       placement: 'top',
       arrow: true,
       delay: 0,
       duration: [300, 300],
       maxWidth: 300,
-      touch: ['hold', 500],
-      hideOnClick: false,
+      trigger: isTouchDevice ? 'click' : 'mouseenter focus',
+      hideOnClick: isTouchDevice ? 'toggle' : false,
+      interactive: true,
       appendTo: resolvedAppendTo,
       popperOptions: {
         strategy: 'fixed',
         modifiers: [
-          {
-            name: 'preventOverflow',
-            options: {
-              padding: 8,
-              boundary: resolvedBoundary,
-            },
-          },
-          {
-            name: 'offset',
-            options: {
-              offset: [0, 8],
-            },
-          },
+          { name: 'preventOverflow', options: { padding: 8, boundary: resolvedBoundary } },
+          { name: 'offset', options: { offset: [0, 8] } },
         ],
       },
+      // Add plugins for click-outside behavior on mobile
+      plugins: isTouchDevice ? [{
+        name: 'hideOnClickOutside',
+        defaultValue: true,
+        fn(instance) {
+          return {
+            onCreate() {
+              const handleClickOutside = (event: MouseEvent) => {
+                if (instance.state.isVisible) {
+                  const target = event.target as Node
+                  const { reference, popper } = instance
+                  
+                  // Hide if clicking outside both reference and popper
+                  if (!reference.contains(target) && !popper.contains(target)) {
+                    instance.hide()
+                  }
+                  // Also hide if clicking the popper itself (the tooltip bubble)
+                  else if (popper.contains(target) && !reference.contains(target)) {
+                    instance.hide()
+                  }
+                }
+              }
+              
+              document.addEventListener('mousedown', handleClickOutside)
+              
+              return {
+                onDestroy() {
+                  document.removeEventListener('mousedown', handleClickOutside)
+                }
+              }
+            }
+          }
+        }
+      }] : [],
     })
+    instanceRef.current = instance
+
+    // ESC key to close
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && instance.state.isVisible) {
+        instance.hide()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
 
     return () => {
-      if (instanceRef.current) {
-        instanceRef.current.destroy()
-        instanceRef.current = null
-      }
+      document.removeEventListener('keydown', onKeyDown)
+      instance.destroy()
+      instanceRef.current = null
     }
   }, [content, theme])
 
