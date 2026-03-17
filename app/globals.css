@@ -47,6 +47,9 @@
   --gradient-tl: #D6EAEA;
   --gradient-mb: #C3D9EB;
 
+  /* Border radius */
+  --radius: 0.5rem;
+
   /* Watercolor background colors */
   --watercolor-lavender: #C895B3;
   --watercolor-blue: #B5C9ED;

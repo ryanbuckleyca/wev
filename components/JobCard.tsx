@@ -221,10 +221,13 @@ export default function JobCard({
     })()
   }
 
+  // Check if there will be a footer
+  const hasFooter = (job.values && job.values.length > 0) || (job.skills && job.skills.length > 0)
+
   return (
     <div className="relative rounded-wev-card transition-all duration-300 bg-card border border-border hover:border-primary overflow-hidden">
       {/* Card Header */}
-      <div className="flex items-center justify-between px-3 py-2 rounded-t-wev-card transition-all duration-300 border-b border-border bg-card">
+      <div className={`flex items-center justify-between px-3 py-2 rounded-t-wev-card transition-all duration-300 bg-card ${hasFooter ? 'border-b border-border' : ''}`}>
         {/* Left side: SSE + Summary */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {isAdmin ? (
