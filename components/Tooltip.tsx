@@ -37,18 +37,23 @@ export default function Tooltip({ children, content, className = '' }: TooltipPr
       </PopoverTrigger>
       <PopoverContent 
         side="top" 
-        sideOffset={0}
+        sideOffset={8}
         align="center"
         alignOffset={0}
         collisionPadding={16}
-        className="max-w-[300px] text-xs p-3"
+        className="max-w-[300px] text-xs p-3 overflow-visible"
       >
+        <PopoverArrow 
+          width={16} 
+          height={8}
+          className="fill-popover stroke-border"
+          strokeWidth={1}
+        />
         {typeof content === 'string' ? (
           <div dangerouslySetInnerHTML={{ __html: content }} />
         ) : (
           content
         )}
-        <PopoverArrow className="fill-popover -mb-px" width={16} height={8} />
       </PopoverContent>
     </Popover>
   )
