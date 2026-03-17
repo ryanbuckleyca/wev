@@ -78,7 +78,7 @@ export default function ExpandablePills({
         )
       : group.summary.tooltip
 
-    // Add collapse button at the end
+    // Add collapse button at the end - inherit matched state from summary
     const collapseButton: ScrollablePillsItem = {
       label: '',
       groupKey: group.key,
@@ -86,7 +86,8 @@ export default function ExpandablePills({
       type: 'summary',
       expandable: true,
       isExpanded: true,
-      isMatched: true, // Always use matched styling (bg-card)
+      isMatched: group.summary.isMatched, // Inherit matched state from summary
+      isCollapseButton: true, // Mark as collapse button for special styling
       className: 'rounded-none rounded-r-full border border-border -ml-px',
     }
 

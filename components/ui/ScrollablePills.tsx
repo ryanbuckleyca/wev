@@ -16,6 +16,7 @@ export interface ScrollablePillsItem {
   groupKey?: string;
   expandable?: boolean;
   isExpanded?: boolean;
+  isCollapseButton?: boolean;
 }
 
 interface ScrollablePillsProps {
@@ -98,11 +99,10 @@ export function ScrollablePills({
         {groupedItems.map((group, groupIndex) => {
           const renderButton = (entry: { item: ScrollablePillsItem; index: number }) => {
             const { item, index } = entry
-            const isCollapseButton = item.label === '' && item.expandable && item.isExpanded
             const button = (
               <div
                 key={item.label + index}
-                className={`shrink-0 inline-flex items-center ${isCollapseButton ? 'gap-0 pl-0 pr-2.5' : 'gap-1.5 px-2.5'} py-1 rounded-full text-xs font-medium whitespace-nowrap ${getVariantClass(item.isMatched, item.type)} ${item.className || ''}`}
+                className={`shrink-0 inline-flex items-center ${item.isCollapseButton ? 'gap-0 pl-1 pr-2.5' : 'gap-1.5 px-2.5'} py-1 rounded-full text-xs font-medium whitespace-nowrap ${getVariantClass(item.isMatched, item.type)} ${item.className || ''}`}
                 style={{ touchAction: 'manipulation' }}
               >
                 {item.icon === 'heart' ? (

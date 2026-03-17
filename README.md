@@ -2,6 +2,26 @@
 
 A Next.js application for displaying job postings from a Supabase database with the ability to trigger GitHub Actions workflows for re-scraping data.
 
+## UI Components
+
+This project uses [shadcn/ui](https://ui.shadcn.com/) for UI components, which are built on Radix UI primitives and styled with Tailwind CSS.
+
+### Installing Components
+
+Components are installed individually using the shadcn CLI:
+
+```bash
+npx shadcn@latest add <component-name>
+```
+
+Example:
+```bash
+npx shadcn@latest add tooltip
+npx shadcn@latest add button
+```
+
+Installed components are added to `components/ui/` and can be customized as needed. They're not imported from a package - they become part of your codebase.
+
 ### Component Guidelines
 
 #### Three Different Components

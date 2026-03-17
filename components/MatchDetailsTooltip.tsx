@@ -1,5 +1,5 @@
 import { Lineicons } from '@lineiconshq/react-lineicons'
-import { HeartSolid, Briefcase2Solid } from '@lineiconshq/free-icons'
+import { HeartSolid, Briefcase2Solid, CheckOutlined, XmarkOutlined } from '@lineiconshq/free-icons'
 import ProgressDonut from './ProgressDonut'
 
 type TranslateFn = (key: string, values?: Record<string, any>) => string
@@ -49,8 +49,12 @@ export default function MatchDetailsTooltip({
     .slice(0, 5)
 
   const renderListItem = (label: string, key: string, matched: boolean) => (
-    <div key={key} className={`text-xs pl-4 lowercase ${matched ? '' : 'text-gray-400'}`}>
-      {matched && '✓ '}
+    <div key={key} className={`text-xs lowercase flex items-center gap-1 ${matched ? '' : 'text-gray-400'}`}>
+      {matched ? (
+        <Lineicons icon={CheckOutlined} size={11} className="flex-shrink-0" />
+      ) : (
+        <Lineicons icon={XmarkOutlined} size={11} className="flex-shrink-0" />
+      )}
       {label}
     </div>
   )
