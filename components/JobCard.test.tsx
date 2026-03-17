@@ -221,9 +221,9 @@ describe('JobCard', () => {
       },
     })
 
-    // Click the skills summary pill to expand individual skill pills
-    const skillsSummaryPill = screen.getByText('3/7 skills')
-    await userEvent.click(skillsSummaryPill)
+    // Click the expand button (chevron) within the skills summary pill to expand individual skill pills
+    const expandButton = screen.getByRole('button', { name: 'Expand' })
+    await userEvent.click(expandButton)
     
     // When expanded, all skills should be visible (no capping when expanded)
     await waitFor(() => {

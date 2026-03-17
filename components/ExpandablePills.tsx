@@ -86,7 +86,7 @@ export default function ExpandablePills({
       type: 'summary',
       expandable: true,
       isExpanded: true,
-      isMatched: group.summary.isMatched, // Inherit matched state from summary
+      isMatched: Boolean(group.summary.isMatched), // Explicitly ensure boolean value
       isCollapseButton: true, // Mark as collapse button for special styling
       className: 'rounded-none rounded-r-full border border-border -ml-px',
     }

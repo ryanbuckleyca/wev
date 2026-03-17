@@ -70,9 +70,17 @@ export function ScrollablePills({
     return groups
   }, [normalizedWithIndex])
 
-  const getVariantClass = (isMatched: boolean = true, type?: 'value' | 'skill' | 'summary' | 'workType') => {
+  const getVariantClass = (isMatched: boolean = true, type?: 'value' | 'skill' | 'summary' | 'workType', isCollapseButton?: boolean) => {
     const baseClasses = "border transition-colors";
-    if (!isMatched) {
+    // Ensure isMatched is explicitly boolean
+    const matched = Boolean(isMatched);
+    
+    // Debug logging for collapse buttons
+    if (isCollapseButton) {
+      console.log('Collapse button styling:', { isMatched, matched, type });
+    }
+    
+    if (!matched) {
       return `${baseClasses} bg-muted text-muted-foreground border-border opacity-60`;
     }
     return `${baseClasses} bg-card text-foreground border-border hover:bg-muted`;
@@ -102,7 +110,7 @@ export function ScrollablePills({
             const button = (
               <div
                 key={item.label + index}
-                className={`shrink-0 inline-flex items-center ${item.isCollapseButton ? 'gap-0 pl-1 pr-2.5' : 'gap-1.5 px-2.5'} py-1 rounded-full text-xs font-medium whitespace-nowrap ${getVariantClass(item.isMatched, item.type)} ${item.className || ''}`}
+                className={`shrink-0 inline-flex items-center ${item.isCollapseButton ? 'gap-0 pl-0 pr-2.5' : 'gap-1.5 px-2.5'} py-1 rounded-full text-xs font-medium whitespace-nowrap ${getVariantClass(item.isMatched, item.type, item.isCollapseButton)} ${item.className || ''}`}
                 style={{ touchAction: 'manipulation' }}
               >
                 {item.icon === 'heart' ? (
