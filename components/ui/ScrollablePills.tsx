@@ -72,15 +72,7 @@ export function ScrollablePills({
 
   const getVariantClass = (isMatched: boolean = true, type?: 'value' | 'skill' | 'summary' | 'workType', isCollapseButton?: boolean) => {
     const baseClasses = "border transition-colors";
-    // Ensure isMatched is explicitly boolean
-    const matched = Boolean(isMatched);
-    
-    // Debug logging for collapse buttons
-    if (isCollapseButton) {
-      console.log('Collapse button styling:', { isMatched, matched, type });
-    }
-    
-    if (!matched) {
+    if (!isMatched) {
       return `${baseClasses} bg-muted text-muted-foreground border-border opacity-60`;
     }
     return `${baseClasses} bg-card text-foreground border-border hover:bg-muted`;
