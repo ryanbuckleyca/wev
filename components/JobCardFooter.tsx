@@ -2,7 +2,7 @@
 
 import { ReactNode, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
-import Tooltip from './Tooltip'
+import InfoPopover from './InfoPopover'
 import ProgressDonut from './ProgressDonut'
 import ExpandablePills, { ExpandablePillGroup } from './ExpandablePills'
 import { ScrollablePillsItem } from '@/components/ui/ScrollablePills'
@@ -241,12 +241,12 @@ export default function JobCardFooter({
     <div className="flex gap-4">
       {showTooltip && matchTooltipContent && (
         <div className="flex items-center justify-center pr-4 border-r border-border">
-          <Tooltip content={matchTooltipContent}>
+          <InfoPopover content={matchTooltipContent}>
             <div className="flex items-center gap-2 cursor-pointer">
               <ProgressDonut percentage={totalMatchPercentage} size="sm" text="" />
               <span className="text-sm font-medium text-foreground">{totalMatchPercentage}%</span>
             </div>
-          </Tooltip>
+          </InfoPopover>
         </div>
       )}
 

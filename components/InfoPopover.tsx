@@ -27,7 +27,7 @@ interface TooltipProps {
  * - Portal rendering: No z-index issues
  * - Accessibility: Full WCAG 2.1 compliance built-in
  */
-export default function Tooltip({ children, content, className = '' }: TooltipProps) {
+export default function InfoPopover({ children, content, className = '' }: TooltipProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -47,7 +47,7 @@ export default function Tooltip({ children, content, className = '' }: TooltipPr
         ) : (
           content
         )}
-        <PopoverArrow className="fill-white" />
+        <PopoverArrow className="fill-popover" />
       </PopoverContent>
     </Popover>
   )

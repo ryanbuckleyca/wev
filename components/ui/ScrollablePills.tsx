@@ -3,7 +3,7 @@ import { Lineicons } from "@lineiconshq/react-lineicons";
 import { HeartSolid, Briefcase2Solid, LocationArrowRightSolid, ChevronDownOutlined } from "@lineiconshq/free-icons";
 import { useScrollFades } from "@/hooks/useScrollFades";
 import Pill from "@/components/Pill";
-import Tooltip from "@/components/Tooltip";
+import InfoPopover from "@/components/InfoPopover";
 
 export interface ScrollablePillsItem {
   label: string;
@@ -142,12 +142,12 @@ export function ScrollablePills({
 
             if (item.tooltip) {
               return (
-                <Tooltip
+                <InfoPopover
                   key={item.label + index}
                   content={item.tooltip}
                 >
                   {button}
-                </Tooltip>
+                </InfoPopover>
               )
             }
 

@@ -4,7 +4,7 @@ import { useRef, useState, useMemo, useEffect, ReactNode } from 'react'
 import LoadingIndicator from '@/components/LoadingIndicator'
 import { Command } from 'cmdk'
 import Pill from '@/components/Pill'
-import Tooltip from '@/components/Tooltip'
+import InfoPopover from '@/components/InfoPopover'
 
 export type Option = {
   value: string
@@ -217,11 +217,11 @@ export default function CommandSelector<T extends Option>({
       {selectedOptions.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {selectedOptions.map((option) => (
-            <Tooltip key={option.value} content={option.tooltip || option.label}>
+            <InfoPopover key={option.value} content={option.tooltip || option.label}>
               <Pill removable onRemove={() => removeOption(option.value)}>
                 {option.label}
               </Pill>
-            </Tooltip>
+            </InfoPopover>
           ))}
         </div>
       )}
