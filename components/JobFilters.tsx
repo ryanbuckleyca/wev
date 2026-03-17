@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { Lineicons } from '@lineiconshq/react-lineicons'
-import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons'
+import { Leaf1Outlined, Leaf1Solid, CheckOutlined } from '@lineiconshq/free-icons'
 import JobSearch, { ActiveFilterChip } from './JobSearch'
 import Collapsible from './Collapsible'
 import FilterIcon from './FilterIcon'
@@ -677,11 +677,11 @@ export default function JobFilters({
                 const isProvinceSelected = selectedProvinces.includes(province)
                 return (
                   <div key={province} className="mb-2">
-                    <div className={`text-xs font-semibold mb-1 px-2 ${
+                    <div className={`text-xs font-semibold mb-1 px-2 flex items-center gap-1 ${
                       isProvinceSelected ? 'text-primary' : 'text-muted-foreground'
                     }`}>
                       {province}
-                      {isProvinceSelected && ' ✓'}
+                      {isProvinceSelected && <Lineicons icon={CheckOutlined} size={11} className="flex-shrink-0" />}
                     </div>
                     {municipalities.map((municipality) => {
                       const isSelected = selectedMunicipalities.includes(municipality)

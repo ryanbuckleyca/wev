@@ -2,7 +2,7 @@
 
 import { ReactNode, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
-import Tooltip from './Tooltip'
+import InfoPopover from './InfoPopover'
 import ProgressDonut from './ProgressDonut'
 import ExpandablePills, { ExpandablePillGroup } from './ExpandablePills'
 import { ScrollablePillsItem } from '@/components/ui/ScrollablePills'
@@ -105,7 +105,7 @@ export default function JobCardFooter({
     if (unmatchedNames) {
       tooltip += `<br/><br /><strong>Unmatched:</strong> ${unmatchedNames}`
     }
-    tooltip += `<br/><br/><em>Click to expand details</em>`
+    tooltip += `<br/><br/><em>Click > to expand details</em>`
 
     return {
       label: `${matchedCount}/${totalCount} ${label}`,
@@ -201,7 +201,7 @@ export default function JobCardFooter({
       const isMatched = sharedSet.has(value)
       return {
         label: valueTranslations.label,
-        tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em><br/><br/><em>Click to collapse to summary</em>`,
+        tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em>`,
         isMatched,
         type: 'value' as const,
       }
@@ -221,7 +221,7 @@ export default function JobCardFooter({
       const isMatched = sharedSet.has(skill)
       return {
         label: skillLabel,
-        tooltip: `${skillTooltip || ''}<br/><br/><em>Click to collapse to summary</em>`,
+        tooltip: skillTooltip,
         isMatched,
         type: 'skill' as const,
       }
@@ -241,12 +241,12 @@ export default function JobCardFooter({
     <div className="flex gap-4">
       {showTooltip && matchTooltipContent && (
         <div className="flex items-center justify-center pr-4 border-r border-border">
-          <Tooltip content={matchTooltipContent}>
-            <div className="flex items-center gap-2 cursor-pointer">
+          <InfoPopover content={matchTooltipContent}>
+            <div className="flex items-center gap-2">
               <ProgressDonut percentage={totalMatchPercentage} size="sm" text="" />
               <span className="text-sm font-medium text-foreground">{totalMatchPercentage}%</span>
             </div>
-          </Tooltip>
+          </InfoPopover>
         </div>
       )}
 

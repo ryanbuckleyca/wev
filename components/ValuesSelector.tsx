@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { VALUES_LIST, getValueDefinition } from '@/lib/values'
 import Pill from '@/components/Pill'
-import Tooltip from '@/components/Tooltip'
+import InfoPopover from '@/components/InfoPopover'
 import ValuesCommandSelector, { type ValueOption } from '@/components/ValuesCommandSelector'
 
 interface ValuesSelectorProps {
@@ -98,9 +98,9 @@ export default function ValuesSelector({
               className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4"
             >
               <div className="mb-2 flex items-center gap-2">
-                <Tooltip content={tooltipContent}>
+                <InfoPopover content={tooltipContent}>
                   <Pill>{valueName}</Pill>
-                </Tooltip>
+                </InfoPopover>
               </div>
               <p className="text-sm text-[var(--foreground)]">
                 {details.description}

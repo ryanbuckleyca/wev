@@ -49,6 +49,8 @@ export default function ExpandablePills({
           ...group.summary,
           groupKey: group.key,
           groupId: undefined,
+          expandable: true,
+          isExpanded: false,
           className: 'transition-colors border border-border rounded-full',
         },
       ]
@@ -64,18 +66,43 @@ export default function ExpandablePills({
         ...item,
         groupKey: group.key,
         groupId: clusterId,
-        className: `rounded-none border border-border -ml-px border-l border-border ${isLast ? 'rounded-r-full' : ''}`,
+        className: `rounded-none border border-border -ml-px border-l border-border ${isLast ? '' : ''}`,
       }
     })
+
+    // Update summary tooltip to show collapse instruction when expanded
+    const expandedSummaryTooltip = group.summary.tooltip
+      ? group.summary.tooltip.replace(
+          /<em>Click > to expand details<\/em>/,
+          '<em>Click < to collapse</em>'
+        )
+      : group.summary.tooltip
+
+    // Add collapse button at the end - inherit matched state from summary
+    const collapseButton: ScrollablePillsItem = {
+      label: '',
+      groupKey: group.key,
+      groupId: clusterId,
+      type: 'summary',
+      expandable: true,
+      isExpanded: true,
+      isMatched: Boolean(group.summary.isMatched), // Explicitly ensure boolean value
+      isCollapseButton: true, // Mark as collapse button for special styling
+      className: 'rounded-none rounded-r-full border border-border -ml-px',
+    }
 
     return [
       {
         ...group.summary,
+        tooltip: expandedSummaryTooltip,
         groupKey: group.key,
         groupId: clusterId,
+        expandable: true,
+        isExpanded: true,
         className: 'rounded-r-none pr-3 shadow-sm border border-border',
       },
       ...connectedItems,
+      collapseButton,
     ]
   }
 

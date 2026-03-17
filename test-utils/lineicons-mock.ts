@@ -13,6 +13,7 @@ export const Leaf1Outlined = ({ children }: { children?: React.ReactNode }) => R
 export const Bookmark1Solid = ({ children }: { children?: React.ReactNode }) => React.createElement('span', null, children)
 export const Bookmark1Outlined = ({ children }: { children?: React.ReactNode }) => React.createElement('span', null, children)
 export const ChevronDownSolid = ({ children }: { children?: React.ReactNode }) => React.createElement('span', null, children)
+export const ChevronDownOutlined = ({ children }: { children?: React.ReactNode }) => React.createElement('span', null, children)
 export const ChevronUpSolid = ({ children }: { children?: React.ReactNode }) => React.createElement('span', null, children)
 export const HeartSolid = ({ children }: { children?: React.ReactNode }) => React.createElement('span', null, children)
 export const Briefcase2Solid = ({ children }: { children?: React.ReactNode }) => React.createElement('span', null, children)
