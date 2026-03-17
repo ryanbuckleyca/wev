@@ -8,26 +8,19 @@ import {
   PopoverArrow,
 } from '@/components/ui/popover'
 
-interface TooltipProps {
+interface InfoPopoverProps {
   children: React.ReactNode
   content: React.ReactNode
   className?: string
 }
 
 /**
- * Tooltip Component (Popover-based)
+ * InfoPopover Component
  * 
- * Uses shadcn/ui Popover (Radix UI) instead of Tooltip for proper mobile support.
- * Popovers are designed for click/tap interactions and work reliably on touch devices.
- * 
- * BEHAVIOR:
- * - Click/tap to show, click outside/ESC to hide
- * - Works consistently on desktop and mobile
- * - Positioning: Automatically flips to stay in viewport with collision detection
- * - Portal rendering: No z-index issues
- * - Accessibility: Full WCAG 2.1 compliance built-in
+ * Uses shadcn/ui Popover (Radix UI) for click/tap interactions.
+ * Matches the exact structure from Radix UI documentation.
  */
-export default function InfoPopover({ children, content, className = '' }: TooltipProps) {
+export default function InfoPopover({ children, content, className = '' }: InfoPopoverProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -36,18 +29,16 @@ export default function InfoPopover({ children, content, className = '' }: Toolt
         </div>
       </PopoverTrigger>
       <PopoverContent 
-        side="top" 
+        className="PopoverContent"
         sideOffset={5}
-        align="center"
         collisionPadding={16}
-        className="max-w-[300px] text-xs p-3"
       >
         {typeof content === 'string' ? (
           <div dangerouslySetInnerHTML={{ __html: content }} />
         ) : (
           content
         )}
-        <PopoverArrow className="fill-popover" />
+        <PopoverArrow className="PopoverArrow" />
       </PopoverContent>
     </Popover>
   )
