@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getSiteBaseUrl } from '@/lib/site-url'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import PageLayout from '@/components/PageLayout'
 import CardLayout from '@/components/CardLayout'
@@ -36,7 +37,7 @@ export default function ForgotPasswordPage() {
       return
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
+    const baseUrl = getSiteBaseUrl()
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${baseUrl}/${locale}/reset-password`,
       captchaToken,

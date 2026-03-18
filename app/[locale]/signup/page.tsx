@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getSiteBaseUrl } from '@/lib/site-url'
 import { usePasswordStrength } from '@/hooks/usePasswordStrength'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
@@ -61,7 +62,7 @@ export default function SignupPage() {
       return
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
+    const baseUrl = getSiteBaseUrl()
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -85,7 +86,7 @@ export default function SignupPage() {
     if (!successEmail) return
     setResendLoading(true)
     setResendFeedback(null)
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
+    const baseUrl = getSiteBaseUrl()
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: successEmail,
