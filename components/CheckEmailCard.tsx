@@ -19,7 +19,7 @@ interface CheckEmailCardProps {
 export default function CheckEmailCard({ onPrimaryAction }: CheckEmailCardProps) {
   const t = useTranslations('auth.checkEmail')
   const [loading, setLoading] = useState(false)
-  const [cooldownRemaining, setCooldownRemaining] = useState(0)
+  const [cooldownRemaining, setCooldownRemaining] = useState(COOLDOWN_SECONDS)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
