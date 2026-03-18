@@ -16,6 +16,7 @@ import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
 import ErrorList from '@/components/ErrorList';
 import Button from '@/components/Button';
+import DeleteAccountModal from '@/components/DeleteAccountModal';
 
 export default function AccountSettingsPage() {
   const t = useTranslations();
@@ -31,6 +32,7 @@ export default function AccountSettingsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [emailChanged, setEmailChanged] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Map Supabase error messages to translation keys
   const mapErrorToTranslationKey = (error: string): string => {
@@ -265,6 +267,26 @@ export default function AccountSettingsPage() {
             </div>
           </div>
         </FormContainer>
+
+        {/* Delete Account Section */}
+        <div className="mt-8 p-6 border border-red-200 rounded-lg bg-red-50">
+          <Heading level={2} className="mb-4 text-red-800">{t('deleteAccount.title')}</Heading>
+          <p className="text-sm text-red-700 mb-4">
+            {t('deleteAccount.description')}
+          </p>
+          <Button
+            onClick={() => setShowDeleteModal(true)}
+            disabled={isUpdating}
+            className="bg-wev-destructive-tint text-destructive-foreground border-none"
+          >
+            {t('deleteAccount.button')}
+          </Button>
+        </div>
+
+        <DeleteAccountModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+        />
         </CardLayout>
     </PageLayout>
   );

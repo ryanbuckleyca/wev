@@ -312,6 +312,26 @@
     "passwordUpdateFailed": "Failed to update password",
     "updateFailed": "Failed to update account"
   },
+  "deleteAccount": {
+    "title": "Delete Account",
+    "description": "Permanently delete your account and all associated data. This action cannot be undone.",
+    "button": "Delete Account",
+    "passwordRequired": "Password is required to delete your account",
+    "confirmationRequired": "Please type DELETE to confirm",
+    "passwordLabel": "Enter your password",
+    "passwordPlaceholder": "Current password",
+    "confirmLabel": "Type DELETE to confirm",
+    "confirmHelp": "Type the word DELETE in capital letters to confirm deletion",
+    "confirm": "Delete Account",
+    "deleting": "Deleting...",
+    "warning": "This action will permanently delete:",
+    "warningProfile": "Your profile and personal information",
+    "warningBookmarks": "All your bookmarked jobs",
+    "warningMatches": "Your job match history",
+    "warningIrreversible": "This action cannot be undone",
+    "success": "Account deleted successfully",
+    "error": "Failed to delete account. Please try again."
+  },
   "userProfile": {
     "logIn": "Log In",
     "signUp": "Sign Up",
@@ -340,7 +360,8 @@
   },
   "common": {
     "loading": "Loading...",
-    "close": "Close"
+    "close": "Close",
+    "cancel": "Cancel"
   },
   "ariaLabels": {
     "themeToggle": {

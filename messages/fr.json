@@ -312,6 +312,26 @@
     "passwordUpdateFailed": "Échec de la mise à jour du mot de passe",
     "updateFailed": "Échec de la mise à jour du compte"
   },
+  "deleteAccount": {
+    "title": "Supprimer le compte",
+    "description": "Supprimer définitivement votre compte et toutes les données associées. Cette action ne peut pas être annulée.",
+    "button": "Supprimer le compte",
+    "passwordRequired": "Le mot de passe est requis pour supprimer votre compte",
+    "confirmationRequired": "Veuillez taper SUPPRIMER pour confirmer",
+    "passwordLabel": "Entrez votre mot de passe",
+    "passwordPlaceholder": "Mot de passe actuel",
+    "confirmLabel": "Tapez SUPPRIMER pour confirmer",
+    "confirmHelp": "Tapez le mot SUPPRIMER en lettres majuscules pour confirmer la suppression",
+    "confirm": "Supprimer le compte",
+    "deleting": "Suppression...",
+    "warning": "Cette action supprimera définitivement :",
+    "warningProfile": "Votre profil et informations personnelles",
+    "warningBookmarks": "Tous vos emplois mis en signet",
+    "warningMatches": "Votre historique de correspondances d'emplois",
+    "warningIrreversible": "Cette action ne peut pas être annulée",
+    "success": "Compte supprimé avec succès",
+    "error": "Échec de la suppression du compte. Veuillez réessayer."
+  },
   "userProfile": {
     "logIn": "Se connecter",
     "signUp": "S'inscrire",
@@ -340,7 +360,8 @@
   },
   "common": {
     "loading": "Chargement...",
-    "close": "Fermer"
+    "close": "Fermer",
+    "cancel": "Annuler"
   },
   "passwordStrength": {
     "strength": "Force :",
