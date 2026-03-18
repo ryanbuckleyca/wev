@@ -39,7 +39,7 @@ export default function InfoPopover({ children, content, className = '' }: InfoP
         ) : (
           content
         )}
-        <PopoverArrow className="fill-border h-1 w-1" />
+        <PopoverArrow className="fill-border h-1 w-3" />
       </PopoverContent>
     </Popover>
   )
