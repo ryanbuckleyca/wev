@@ -27,36 +27,13 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // For now, we'll skip password verification since the user is already authenticated
-    // In a production environment, you might want to implement additional verification
-    // The fact that they have a valid session is sufficient for account deletion
-
     // Use admin client for deletion operations
     const adminSupabase = getSupabaseServer()
     const userId = user.id
 
     // Delete user data in correct order (manual cleanup for tables without CASCADE)
     
-    // 1. Delete profile photo from storage if exists
-    const { data: profile } = await adminSupabase
-      .from('profiles')
-      .select('profile_photo_url')
-      .eq('id', userId)
-      .single()
-
-    if (profile?.profile_photo_url) {
-      // Extract file path from URL
-      const url = new URL(profile.profile_photo_url)
-      const filePath = url.pathname.split('/storage/v1/object/public/avatars/')[1]
-      
-      if (filePath) {
-        await adminSupabase.storage
-          .from('avatars')
-          .remove([filePath])
-      }
-    }
-
-    // 2. Delete from tables without CASCADE (must be done manually)
+    // 1. Delete from tables without CASCADE (must be done manually)
     await adminSupabase
       .from('profiles')
       .delete()
@@ -67,11 +44,11 @@ export async function DELETE(request: NextRequest) {
       .delete()
       .eq('user_id', userId)
 
-    // 3. Tables with CASCADE will be automatically cleaned up:
+    // 2. Tables with CASCADE will be automatically cleaned up:
     // - bookmarks (ON DELETE CASCADE)
     // - job_matches (ON DELETE CASCADE)
 
-    // 4. Finally, delete the auth user (this triggers CASCADE deletes)
+    // 3. Finally, delete the auth user (this triggers CASCADE deletes)
     const { error: deleteError } = await adminSupabase.auth.admin.deleteUser(userId)
 
     if (deleteError) {
