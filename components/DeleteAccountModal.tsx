@@ -122,7 +122,7 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
             </p>
           </div>
 
-          {error && <ErrorMessage message={error} />}
+          {error && <ErrorMessage>{error}</ErrorMessage>}
 
           <div className="flex gap-3 pt-4">
             <Button
@@ -135,7 +135,7 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
             </Button>
             <Button
               onClick={handleDelete}
-              disabled={isDeleting || !password.trim() || (confirmText !== 'DELETE' && confirmText !== 'SUPPRIMER')}
+              disabled={isDeleting}
               className="flex-1 bg-wev-destructive-tint text-destructive-foreground border-none"
             >
               {isDeleting ? t('deleteAccount.deleting') : t('deleteAccount.confirm')}

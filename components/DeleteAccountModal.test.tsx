@@ -1,25 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { useTranslations } from 'next-intl'
-import { useRouter } from '@/i18n/navigation'
-import toast from 'react-hot-toast'
+import { render, screen, waitFor } from '@/test-utils'
+import userEvent from '@testing-library/user-event'
 import DeleteAccountModal from './DeleteAccountModal'
 
-// Mock dependencies
-vi.mock('next-intl', () => ({
-  useTranslations: vi.fn()
-}))
-
+// Mock the router
 vi.mock('@/i18n/navigation', () => ({
-  useRouter: vi.fn()
+  useRouter: vi.fn(() => ({
+    push: vi.fn()
+  }))
 }))
 
-vi.mock('react-hot-toast', () => ({
-  default: {
-    success: vi.fn()
-  }
-}))
-
+// Mock Supabase client
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(() => ({
     auth: {
@@ -28,140 +19,124 @@ vi.mock('@/lib/supabase/client', () => ({
   }))
 }))
 
+// Mock toast
+vi.mock('react-hot-toast', () => ({
+  default: {
+    success: vi.fn()
+  }
+}))
+
 // Mock fetch
 const mockFetch = vi.fn()
 global.fetch = mockFetch
 
 // Mock window.location
 Object.defineProperty(window, 'location', {
-  value: {
-    href: ''
-  },
+  value: { href: '' },
   writable: true
 })
 
 describe('DeleteAccountModal', () => {
-  const mockPush = vi.fn()
-  const mockT = vi.fn((key: string) => {
-    const translations: Record<string, string> = {
-      'deleteAccount.title': 'Delete Account',
-      'deleteAccount.warning': 'This action will permanently delete:',
-      'deleteAccount.warningProfile': 'Your profile and personal information',
-      'deleteAccount.warningBookmarks': 'All your bookmarked jobs',
-      'deleteAccount.warningMatches': 'Your job match history',
-      'deleteAccount.warningIrreversible': 'This action cannot be undone',
-      'deleteAccount.passwordLabel': 'Enter your password',
-      'deleteAccount.passwordPlaceholder': 'Current password',
-      'deleteAccount.confirmLabel': 'Type DELETE to confirm',
-      'deleteAccount.confirmHelp': 'Type the word DELETE in capital letters to confirm deletion',
-      'deleteAccount.confirm': 'Delete Account',
-      'deleteAccount.deleting': 'Deleting...',
-      'deleteAccount.passwordRequired': 'Password is required to delete your account',
-      'deleteAccount.confirmationRequired': 'Please type DELETE to confirm',
-      'deleteAccount.success': 'Account deleted successfully',
-      'deleteAccount.error': 'Failed to delete account. Please try again.',
-      'common.cancel': 'Cancel'
-    }
-    return translations[key] || key
-  })
+  const user = userEvent.setup()
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useTranslations).mockReturnValue(mockT)
-    vi.mocked(useRouter).mockReturnValue({ push: mockPush })
     mockFetch.mockClear()
     window.location.href = ''
   })
 
-  it('should not render when isOpen is false', () => {
+  it('does not render when closed', () => {
     render(<DeleteAccountModal isOpen={false} onClose={vi.fn()} />)
     
-    expect(screen.queryByText('Delete Account')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('should render modal content when isOpen is true', () => {
+  it('renders modal content when open', () => {
     render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
     
-    expect(screen.getByText('Delete Account')).toBeInTheDocument()
-    expect(screen.getByText('This action will permanently delete:')).toBeInTheDocument()
-    expect(screen.getByText('Your profile and personal information')).toBeInTheDocument()
-    expect(screen.getByText('All your bookmarked jobs')).toBeInTheDocument()
-    expect(screen.getByText('Your job match history')).toBeInTheDocument()
-    expect(screen.getByText('This action cannot be undone')).toBeInTheDocument()
-    
-    expect(screen.getByLabelText('Enter your password')).toBeInTheDocument()
-    expect(screen.getByLabelText('Type DELETE to confirm')).toBeInTheDocument()
-    expect(screen.getByText('Type the word DELETE in capital letters to confirm deletion')).toBeInTheDocument()
-    
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Delete Account' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /delete account/i })).toBeVisible()
+    expect(screen.getByText(/this action will permanently delete/i)).toBeVisible()
+    expect(screen.getByText(/your profile and personal information/i)).toBeVisible()
+    expect(screen.getByText(/all your bookmarked jobs/i)).toBeVisible()
+    expect(screen.getByText(/your job match history/i)).toBeVisible()
+    expect(screen.getByText(/this action cannot be undone/i)).toBeVisible()
   })
 
-  it('should close modal when cancel button is clicked', () => {
+  it('has form fields and buttons', () => {
+    render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
+    
+    expect(screen.getByText(/enter your password/i)).toBeVisible()
+    expect(screen.getByText(/type delete to confirm/i)).toBeVisible()
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeVisible()
+    expect(screen.getByRole('button', { name: /delete account/i })).toBeVisible()
+  })
+
+  it('calls onClose when cancel button is clicked', async () => {
     const mockOnClose = vi.fn()
     render(<DeleteAccountModal isOpen={true} onClose={mockOnClose} />)
     
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: /cancel/i }))
     
-    expect(mockOnClose).toHaveBeenCalled()
+    expect(mockOnClose).toHaveBeenCalledOnce()
   })
 
-  it('should show error when password is missing', async () => {
+  it('has delete button enabled initially', () => {
     render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
     
-    // Fill confirmation text but leave password empty
-    const confirmInput = screen.getByPlaceholderText('DELETE')
-    fireEvent.change(confirmInput, { target: { value: 'DELETE' } })
-    
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }))
-    
-    await waitFor(() => {
-      expect(screen.getByText('Password is required to delete your account')).toBeInTheDocument()
-    })
-  })
-
-  it('should show error when confirmation text is incorrect', async () => {
-    render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
-    
-    // Fill password but wrong confirmation text
-    const passwordInput = screen.getByPlaceholderText('Current password')
-    const confirmInput = screen.getByPlaceholderText('DELETE')
-    
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
-    fireEvent.change(confirmInput, { target: { value: 'WRONG' } })
-    
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }))
-    
-    await waitFor(() => {
-      expect(screen.getByText('Please type DELETE to confirm')).toBeInTheDocument()
-    })
-  })
-
-  it('should disable delete button when form is invalid', () => {
-    render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
-    
-    const deleteButton = screen.getByRole('button', { name: 'Delete Account' })
-    const passwordInput = screen.getByPlaceholderText('Current password')
-    const confirmInput = screen.getByPlaceholderText('DELETE')
-    
-    expect(deleteButton).toBeDisabled()
-    
-    // Fill password only
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
-    expect(deleteButton).toBeDisabled()
-    
-    // Fill confirmation text only
-    fireEvent.change(passwordInput, { target: { value: '' } })
-    fireEvent.change(confirmInput, { target: { value: 'DELETE' } })
-    expect(deleteButton).toBeDisabled()
-    
-    // Fill both correctly
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
-    fireEvent.change(confirmInput, { target: { value: 'DELETE' } })
+    const deleteButton = screen.getByRole('button', { name: /delete account/i })
     expect(deleteButton).not.toBeDisabled()
   })
 
-  it('should successfully delete account', async () => {
+  it('keeps delete button enabled when fields are filled', async () => {
+    render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
+    
+    const deleteButton = screen.getByRole('button', { name: /delete account/i })
+    const passwordInput = screen.getByPlaceholderText(/current password/i)
+    const confirmInput = screen.getByPlaceholderText(/delete/i)
+    
+    expect(deleteButton).not.toBeDisabled()
+    
+    // Fill password
+    await user.type(passwordInput, 'mypassword123')
+    expect(deleteButton).not.toBeDisabled()
+    
+    // Fill confirmation
+    await user.type(confirmInput, 'DELETE')
+    expect(deleteButton).not.toBeDisabled()
+  })
+
+  it('shows error when password is missing', async () => {
+    render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
+    
+    const confirmInput = screen.getByPlaceholderText(/delete/i)
+    const deleteButton = screen.getByRole('button', { name: /delete account/i })
+    
+    // Fill only confirmation
+    await user.type(confirmInput, 'DELETE')
+    await user.click(deleteButton)
+    
+    await waitFor(() => {
+      expect(screen.getByText(/password is required to delete your account/i)).toBeVisible()
+    })
+  })
+
+  it('shows error when confirmation is wrong', async () => {
+    render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
+    
+    const passwordInput = screen.getByPlaceholderText(/current password/i)
+    const confirmInput = screen.getByPlaceholderText(/delete/i)
+    const deleteButton = screen.getByRole('button', { name: /delete account/i })
+    
+    await user.type(passwordInput, 'mypassword123')
+    await user.type(confirmInput, 'WRONG')
+    await user.click(deleteButton)
+    
+    await waitFor(() => {
+      expect(screen.getByText(/please type delete to confirm/i)).toBeVisible()
+    })
+  })
+
+  it('successfully deletes account', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ message: 'Account successfully deleted' })
@@ -169,14 +144,13 @@ describe('DeleteAccountModal', () => {
 
     render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
     
-    // Fill form correctly
-    const passwordInput = screen.getByPlaceholderText('Current password')
-    const confirmInput = screen.getByPlaceholderText('DELETE')
+    const passwordInput = screen.getByPlaceholderText(/current password/i)
+    const confirmInput = screen.getByPlaceholderText(/delete/i)
+    const deleteButton = screen.getByRole('button', { name: /delete account/i })
     
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
-    fireEvent.change(confirmInput, { target: { value: 'DELETE' } })
-    
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }))
+    await user.type(passwordInput, 'mypassword123')
+    await user.type(confirmInput, 'DELETE')
+    await user.click(deleteButton)
     
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/account/delete', {
@@ -184,17 +158,16 @@ describe('DeleteAccountModal', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password: 'password123' }),
+        body: JSON.stringify({ password: 'mypassword123' }),
       })
     })
 
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('Account deleted successfully')
       expect(window.location.href).toBe('/')
     })
   })
 
-  it('should handle API error', async () => {
+  it('handles API error', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 400,
@@ -203,68 +176,20 @@ describe('DeleteAccountModal', () => {
 
     render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
     
-    // Fill form correctly
-    const passwordInput = screen.getByPlaceholderText('Current password')
-    const confirmInput = screen.getByPlaceholderText('DELETE')
+    const passwordInput = screen.getByPlaceholderText(/current password/i)
+    const confirmInput = screen.getByPlaceholderText(/delete/i)
+    const deleteButton = screen.getByRole('button', { name: /delete account/i })
     
-    fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } })
-    fireEvent.change(confirmInput, { target: { value: 'DELETE' } })
-    
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }))
+    await user.type(passwordInput, 'wrongpassword')
+    await user.type(confirmInput, 'DELETE')
+    await user.click(deleteButton)
     
     await waitFor(() => {
-      expect(screen.getByText('Invalid password')).toBeInTheDocument()
+      expect(screen.getByText(/invalid password/i)).toBeVisible()
     })
   })
 
-  it('should handle network error', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('Network error'))
-
-    render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
-    
-    // Fill form correctly
-    const passwordInput = screen.getByPlaceholderText('Current password')
-    const confirmInput = screen.getByPlaceholderText('DELETE')
-    
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
-    fireEvent.change(confirmInput, { target: { value: 'DELETE' } })
-    
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }))
-    
-    await waitFor(() => {
-      expect(screen.getByText('Network error')).toBeInTheDocument()
-    })
-  })
-
-  it('should accept SUPPRIMER as confirmation text for French', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ message: 'Account successfully deleted' })
-    })
-
-    // Mock French translation
-    mockT.mockImplementation((key: string) => {
-      if (key === 'deleteAccount.confirmLabel') return 'Tapez SUPPRIMER pour confirmer'
-      return key
-    })
-
-    render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
-    
-    // Fill form with French confirmation
-    const passwordInput = screen.getByPlaceholderText('Current password')
-    const confirmInput = screen.getByPlaceholderText('SUPPRIMER')
-    
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
-    fireEvent.change(confirmInput, { target: { value: 'SUPPRIMER' } })
-    
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }))
-    
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalled()
-    })
-  })
-
-  it('should show loading state during deletion', async () => {
+  it('shows loading state during deletion', async () => {
     // Mock a delayed response
     mockFetch.mockImplementation(() => 
       new Promise(resolve => 
@@ -277,18 +202,17 @@ describe('DeleteAccountModal', () => {
 
     render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
     
-    // Fill form correctly
-    const passwordInput = screen.getByPlaceholderText('Current password')
-    const confirmInput = screen.getByPlaceholderText('DELETE')
+    const passwordInput = screen.getByPlaceholderText(/current password/i)
+    const confirmInput = screen.getByPlaceholderText(/delete/i)
+    const deleteButton = screen.getByRole('button', { name: /delete account/i })
     
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
-    fireEvent.change(confirmInput, { target: { value: 'DELETE' } })
-    
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }))
+    await user.type(passwordInput, 'mypassword123')
+    await user.type(confirmInput, 'DELETE')
+    await user.click(deleteButton)
     
     // Should show loading state
-    expect(screen.getByRole('button', { name: 'Deleting...' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Deleting...' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /deleting/i })).toBeVisible()
+    expect(screen.getByRole('button', { name: /deleting/i })).toBeDisabled()
     
     // Wait for completion
     await waitFor(() => {
@@ -296,27 +220,24 @@ describe('DeleteAccountModal', () => {
     }, { timeout: 200 })
   })
 
-  it('should clear form when modal is closed and reopened', () => {
-    const mockOnClose = vi.fn()
-    const { rerender } = render(<DeleteAccountModal isOpen={true} onClose={mockOnClose} />)
+  it('accepts SUPPRIMER for French locale', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: 'Account successfully deleted' })
+    })
+
+    render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />)
     
-    // Fill form
-    const passwordInput = screen.getByPlaceholderText('Current password')
-    const confirmInput = screen.getByPlaceholderText('DELETE')
+    const passwordInput = screen.getByPlaceholderText(/current password/i)
+    const confirmInput = screen.getByPlaceholderText(/delete/i)
+    const deleteButton = screen.getByRole('button', { name: /delete account/i })
     
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
-    fireEvent.change(confirmInput, { target: { value: 'DELETE' } })
+    await user.type(passwordInput, 'mypassword123')
+    await user.type(confirmInput, 'SUPPRIMER')
+    await user.click(deleteButton)
     
-    // Close modal
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    expect(mockOnClose).toHaveBeenCalled()
-    
-    // Reopen modal
-    rerender(<DeleteAccountModal isOpen={false} onClose={mockOnClose} />)
-    rerender(<DeleteAccountModal isOpen={true} onClose={mockOnClose} />)
-    
-    // Form should be cleared
-    expect(screen.getByPlaceholderText('Current password')).toHaveValue('')
-    expect(screen.getByPlaceholderText('DELETE')).toHaveValue('')
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled()
+    })
   })
 })

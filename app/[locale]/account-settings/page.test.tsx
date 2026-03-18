@@ -1,13 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { useTranslations } from 'next-intl'
+import { render, screen, waitFor } from '@/test-utils'
+import userEvent from '@testing-library/user-event'
 import AccountSettingsPage from './page'
 
-// Mock dependencies
-vi.mock('next-intl', () => ({
-  useTranslations: vi.fn()
-}))
-
+// Mock the auth hook
 vi.mock('@/lib/hooks/useRequireAuth', () => ({
   useRequireAuth: vi.fn(() => ({
     user: { 
@@ -18,6 +14,7 @@ vi.mock('@/lib/hooks/useRequireAuth', () => ({
   }))
 }))
 
+// Mock Supabase client
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(() => ({
     auth: {
@@ -26,6 +23,7 @@ vi.mock('@/lib/supabase/client', () => ({
   }))
 }))
 
+// Mock password strength hook
 vi.mock('@/hooks/usePasswordStrength', () => ({
   usePasswordStrength: vi.fn(() => ({
     isAcceptable: true,
@@ -33,6 +31,7 @@ vi.mock('@/hooks/usePasswordStrength', () => ({
   }))
 }))
 
+// Mock toast
 vi.mock('react-hot-toast', () => ({
   default: {
     success: vi.fn(),
@@ -44,7 +43,7 @@ vi.mock('react-hot-toast', () => ({
 vi.mock('@/components/DeleteAccountModal', () => ({
   default: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => (
     isOpen ? (
-      <div data-testid="delete-account-modal">
+      <div role="dialog" aria-label="Delete Account Modal">
         <h2>Delete Account Modal</h2>
         <button onClick={onClose}>Close Modal</button>
       </div>
@@ -53,118 +52,105 @@ vi.mock('@/components/DeleteAccountModal', () => ({
 }))
 
 describe('AccountSettingsPage', () => {
-  const mockT = vi.fn((key: string) => {
-    const translations: Record<string, string> = {
-      'accountSettings.title': 'Account Settings',
-      'accountSettings.emailAddress': 'Email Address',
-      'accountSettings.newEmail': 'New Email',
-      'accountSettings.newEmailPlaceholder': 'Enter new email',
-      'accountSettings.currentEmail': 'Current email:',
-      'accountSettings.changePassword': 'Change Password',
-      'accountSettings.currentPassword': 'Current Password',
-      'accountSettings.currentPasswordPlaceholder': 'Enter current password',
-      'accountSettings.newPassword': 'New Password',
-      'accountSettings.newPasswordPlaceholder': 'Enter new password',
-      'accountSettings.confirmPassword': 'Confirm Password',
-      'accountSettings.confirmPasswordPlaceholder': 'Confirm new password',
-      'accountSettings.saveChanges': 'Save Changes',
-      'accountSettings.saving': 'Saving...',
-      'deleteAccount.title': 'Delete Account',
-      'deleteAccount.description': 'Permanently delete your account and all associated data. This action cannot be undone.',
-      'deleteAccount.button': 'Delete Account',
-      'common.loading': 'Loading...'
-    }
-    return translations[key] || key
-  })
+  const user = userEvent.setup()
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useTranslations).mockReturnValue(mockT)
   })
 
-  it('should render account settings form', () => {
+  it('renders account settings form', () => {
     render(<AccountSettingsPage />)
     
-    expect(screen.getByText('Account Settings')).toBeInTheDocument()
-    expect(screen.getByText('Email Address')).toBeInTheDocument()
-    expect(screen.getByText('Change Password')).toBeInTheDocument()
-    expect(screen.getByText('Current email: test@example.com')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /account settings/i })).toBeVisible()
+    expect(screen.getByText(/email address/i)).toBeVisible()
+    expect(screen.getByText(/change password/i)).toBeVisible()
+    expect(screen.getByText(/current email:/i)).toBeVisible()
+    expect(screen.getByText('test@example.com')).toBeVisible()
     
-    expect(screen.getByLabelText('New Email')).toBeInTheDocument()
-    expect(screen.getByLabelText('Current Password')).toBeInTheDocument()
-    expect(screen.getByLabelText('New Password')).toBeInTheDocument()
-    expect(screen.getByLabelText('Confirm Password')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/enter new email/i)).toBeVisible()
+    expect(screen.getByPlaceholderText(/enter current password/i)).toBeVisible()
+    expect(screen.getByPlaceholderText(/enter new password/i)).toBeVisible()
+    expect(screen.getByPlaceholderText(/confirm new password/i)).toBeVisible()
     
-    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /save changes/i })).toBeVisible()
   })
 
-  it('should render delete account section', () => {
+  it('renders delete account section', () => {
     render(<AccountSettingsPage />)
     
-    expect(screen.getByText('Delete Account')).toBeInTheDocument()
-    expect(screen.getByText('Permanently delete your account and all associated data. This action cannot be undone.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Delete Account' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /delete account/i })).toBeVisible()
+    expect(screen.getByText(/permanently delete your account and all associated data/i)).toBeVisible()
+    expect(screen.getByRole('button', { name: /delete account/i })).toBeVisible()
   })
 
-  it('should open delete account modal when delete button is clicked', async () => {
+  it('delete account section has danger styling', () => {
     render(<AccountSettingsPage />)
     
-    const deleteButton = screen.getByRole('button', { name: 'Delete Account' })
-    fireEvent.click(deleteButton)
+    const deleteButton = screen.getByRole('button', { name: /delete account/i })
+    expect(deleteButton).toHaveClass('bg-wev-destructive-tint', 'text-destructive-foreground', 'border-none')
+    
+    // Check that the section has red styling
+    const deleteSection = screen.getByRole('heading', { name: /delete account/i }).closest('div')
+    expect(deleteSection).toHaveClass('border-red-200', 'bg-red-50')
+  })
+
+  it('opens delete account modal when delete button is clicked', async () => {
+    render(<AccountSettingsPage />)
+    
+    const deleteButton = screen.getByRole('button', { name: /delete account/i })
+    await user.click(deleteButton)
     
     await waitFor(() => {
-      expect(screen.getByTestId('delete-account-modal')).toBeInTheDocument()
-      expect(screen.getByText('Delete Account Modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: /delete account modal/i })).toBeVisible()
+      expect(screen.getByText('Delete Account Modal')).toBeVisible()
     })
   })
 
-  it('should close delete account modal when close is clicked', async () => {
+  it('closes delete account modal when close is clicked', async () => {
     render(<AccountSettingsPage />)
     
     // Open modal
-    const deleteButton = screen.getByRole('button', { name: 'Delete Account' })
-    fireEvent.click(deleteButton)
+    const deleteButton = screen.getByRole('button', { name: /delete account/i })
+    await user.click(deleteButton)
     
     await waitFor(() => {
-      expect(screen.getByTestId('delete-account-modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: /delete account modal/i })).toBeVisible()
     })
     
     // Close modal
     const closeButton = screen.getByText('Close Modal')
-    fireEvent.click(closeButton)
+    await user.click(closeButton)
     
     await waitFor(() => {
-      expect(screen.queryByTestId('delete-account-modal')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: /delete account modal/i })).not.toBeInTheDocument()
     })
   })
 
-  it('should have delete account button with correct styling', () => {
+  it('has save button disabled when no changes are made', () => {
     render(<AccountSettingsPage />)
     
-    const deleteButton = screen.getByRole('button', { name: 'Delete Account' })
-    expect(deleteButton).toHaveClass('bg-wev-destructive-tint', 'text-destructive-foreground', 'border-none')
+    const saveButton = screen.getByRole('button', { name: /save changes/i })
+    expect(saveButton).toBeDisabled()
   })
 
-  it('should disable delete button when form is updating', () => {
-    // Mock updating state by checking if save button shows "Saving..."
+  it('enables save button when email is changed', async () => {
     render(<AccountSettingsPage />)
     
-    const deleteButton = screen.getByRole('button', { name: 'Delete Account' })
-    expect(deleteButton).not.toBeDisabled()
+    const emailInput = screen.getByPlaceholderText(/enter new email/i)
+    const saveButton = screen.getByRole('button', { name: /save changes/i })
     
-    // This would require more complex state mocking to test the disabled state
-    // when isUpdating is true, but the basic rendering test is sufficient
+    expect(saveButton).toBeDisabled()
+    
+    await user.clear(emailInput)
+    await user.type(emailInput, 'newemail@example.com')
+    
+    expect(saveButton).not.toBeDisabled()
   })
 
-  it('should show delete account section in danger zone styling', () => {
+  it('shows current email in the form', () => {
     render(<AccountSettingsPage />)
     
-    // Find the delete account section container
-    const deleteSection = screen.getByText('Delete Account').closest('div')
-    expect(deleteSection).toHaveClass('border-red-200', 'bg-red-50')
-    
-    // Check that the title has red styling
-    const deleteTitle = screen.getByText('Delete Account')
-    expect(deleteTitle).toHaveClass('text-red-800')
+    const emailInput = screen.getByPlaceholderText(/enter new email/i)
+    expect(emailInput).toHaveValue('test@example.com')
   })
 })
