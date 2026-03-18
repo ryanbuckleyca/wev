@@ -252,6 +252,8 @@ Add these secrets to your repository → Settings → Secrets and variables → 
 # Client-side variables (needed for build/middleware)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+# Auth email links (signup, password reset) redirect here. Set to production URL so links work even when testing from localhost.
+NEXT_PUBLIC_SITE_URL=https://bulletin.wevchange.org
 
 # Server-side variables  
 SUPABASE_URL=https://your-project.supabase.co
@@ -264,6 +266,7 @@ Add the same environment variables to your Northflank service environment:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+NEXT_PUBLIC_SITE_URL=https://bulletin.wevchange.org
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```

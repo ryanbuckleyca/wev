@@ -90,6 +90,7 @@ export default function ResetPasswordPage() {
               onChange={setPassword}
               placeholder="••••••••••"
               required
+              fullWidth
             />
             <PasswordStrengthIndicator passwordStrength={passwordStrength} />
 
@@ -100,12 +101,14 @@ export default function ResetPasswordPage() {
               onChange={setConfirmPassword}
               placeholder="••••••••••"
               required
+              fullWidth
             />
 
             <Button
               type="submit"
               disabled={loading || (passwordStrength !== null && !passwordStrength.isAcceptable)}
               loading={loading}
+              fullWidth
             >
               {loading ? t('auth.resetPassword.submitting') : t('auth.resetPassword.submit')}
             </Button>

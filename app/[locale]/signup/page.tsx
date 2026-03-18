@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getSiteBaseUrl } from '@/lib/site-url'
 import { usePasswordStrength } from '@/hooks/usePasswordStrength'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator'
@@ -13,40 +14,24 @@ import Heading from '@/components/Heading'
 import FormContainer from '@/components/FormContainer'
 import FormField from '@/components/FormField'
 import Button from '@/components/Button'
-import LinkButton from '@/components/LinkButton'
+import CheckEmailCard from '@/components/CheckEmailCard'
 import ErrorBox from '@/components/ErrorBox'
-import Message from '@/components/Message'
 
 export default function SignupPage() {
   const t = useTranslations()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [successEmail, setSuccessEmail] = useState<string | null>(null)
+  const [sentEmail, setSentEmail] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
-  const [resendLoading, setResendLoading] = useState(false)
-  const [resendCooldown, setResendCooldown] = useState(0)
-  const [resendFeedback, setResendFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-
-  const RESEND_COOLDOWN_SECONDS = 30
 
   const passwordStrength = usePasswordStrength(password)
-
   const supabase = createClient()
-
-  useEffect(() => {
-    if (resendCooldown <= 0) return
-    const timeout = setTimeout(() => {
-      setResendCooldown(prev => Math.max(prev - 1, 0))
-    }, 1000)
-    return () => clearTimeout(timeout)
-  }, [resendCooldown])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setResendFeedback(null)
     setError(null)
 
     if (passwordStrength && !passwordStrength.isAcceptable) {
@@ -61,19 +46,20 @@ export default function SignupPage() {
       return
     }
 
+    const baseUrl = getSiteBaseUrl()
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${baseUrl}/auth/callback`,
         captchaToken,
       },
     })
+
     if (error) {
       setError(error.message)
     } else {
-      setSuccessEmail(email)
-      setResendCooldown(RESEND_COOLDOWN_SECONDS)
+      setSentEmail(email)
       setCaptchaToken(null)
     }
 
@@ -81,69 +67,18 @@ export default function SignupPage() {
   }
 
   const handleResend = async () => {
-    if (!successEmail) return
-    setResendLoading(true)
-    setResendFeedback(null)
+    if (!sentEmail) return false
+    const baseUrl = getSiteBaseUrl()
     const { error } = await supabase.auth.resend({
       type: 'signup',
-      email: successEmail,
+      email: sentEmail,
+      options: { emailRedirectTo: `${baseUrl}/auth/callback` },
     })
-    if (error) {
-      setResendFeedback({ type: 'error', text: t('auth.signup.resendError') })
-    } else {
-      setResendFeedback({ type: 'success', text: t('auth.signup.resendSuccess') })
-      setResendCooldown(RESEND_COOLDOWN_SECONDS)
-    }
-    setResendLoading(false)
+    return !error
   }
 
-  const handleChangeEmail = () => {
-    setSuccessEmail(null)
-    setResendCooldown(0)
-    setResendFeedback(null)
-    setError(null)
-    setCaptchaToken(null)
-    setPassword('')
-  }
-
-  if (successEmail) {
-    return (
-      <PageLayout variant="centered">
-        <CardLayout>
-          <Heading level={1} className="text-center mb-3">{t('auth.signup.checkEmailTitle')}</Heading>
-          <p className="text-center text-sm text-muted-foreground">
-            {t('auth.signup.checkEmailDescription', { email: successEmail })}
-          </p>
-
-          <div className="mt-6 space-y-3">
-            <Button
-              onClick={handleResend}
-              disabled={resendLoading || resendCooldown > 0}
-              loading={resendLoading}
-              fullWidth
-            >
-              {resendCooldown > 0
-                ? t('auth.signup.resendIn', { seconds: resendCooldown })
-                : t('auth.signup.resendEmail')}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleChangeEmail}
-              fullWidth
-            >
-              {t('auth.signup.changeEmail')}
-            </Button>
-            <LinkButton href="/login" variant="outline" fullWidth>
-              {t('auth.signup.backToLogin')}
-            </LinkButton>
-          </div>
-
-          {resendFeedback && (
-            <Message variant={resendFeedback.type}>{resendFeedback.text}</Message>
-          )}
-        </CardLayout>
-      </PageLayout>
-    )
+  if (sentEmail) {
+    return <CheckEmailCard onPrimaryAction={handleResend} />
   }
 
   return (

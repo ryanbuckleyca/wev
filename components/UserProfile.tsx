@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { useTranslations } from 'next-intl'
-import { Link, useRouter } from '@/i18n/navigation'
+import { useTranslations, useLocale } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import notify from '@/lib/toast'
+import { getSiteBaseUrl } from '@/lib/site-url'
 import Button from '@/components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -20,11 +21,11 @@ interface UserProfileProps {
 
 export default function UserProfile({ showThemeInMenu = false, showLocaleInMenu = false }: UserProfileProps) {
   const t = useTranslations()
+  const locale = useLocale()
   const { user, role, loading } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const dropdownRef = useRef<HTMLDivElement>(null)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
@@ -49,8 +50,9 @@ export default function UserProfile({ showThemeInMenu = false, showLocaleInMenu 
     setIsOpen(false)
     try {
       await supabase.auth.signOut()
-      notify.success(t('userProfile.logoutSuccess'))
-      router.push('/')
+      // Hard redirect to avoid client-side navigation getting stuck (e.g. with useRequireAuth)
+      const base = getSiteBaseUrl() || window.location.origin
+      window.location.href = `${base.replace(/\/$/, '')}/${locale}`
     } catch (err) {
       notify.error(err instanceof Error ? err.message : t('userProfile.logoutFailed'))
       setIsLoggingOut(false)

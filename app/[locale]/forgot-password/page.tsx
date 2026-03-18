@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getSiteBaseUrl } from '@/lib/site-url'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import PageLayout from '@/components/PageLayout'
 import CardLayout from '@/components/CardLayout'
@@ -11,6 +12,7 @@ import Heading from '@/components/Heading'
 import FormContainer from '@/components/FormContainer'
 import FormField from '@/components/FormField'
 import Button from '@/components/Button'
+import CheckEmailCard from '@/components/CheckEmailCard'
 import Message from '@/components/Message'
 
 export default function ForgotPasswordPage() {
@@ -18,7 +20,7 @@ export default function ForgotPasswordPage() {
   const locale = useLocale()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [sentEmail, setSentEmail] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
@@ -27,7 +29,6 @@ export default function ForgotPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setMessage(null)
     setError(null)
 
     if (!captchaToken) {
@@ -36,18 +37,35 @@ export default function ForgotPasswordPage() {
       return
     }
 
+    const baseUrl = getSiteBaseUrl()
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/${locale}/reset-password`,
+      redirectTo: `${baseUrl}/${locale}/reset-password`,
       captchaToken,
     })
 
     if (error) {
       setError(error.message)
     } else {
-      setMessage(t('auth.forgotPassword.emailSent'))
+      setSentEmail(email)
+      setCaptchaToken(null)
     }
 
     setLoading(false)
+  }
+
+  const handleRequestAnother = async () => {
+    if (!sentEmail) return false
+
+    const baseUrl = getSiteBaseUrl()
+    const { error } = await supabase.auth.resetPasswordForEmail(sentEmail, {
+      redirectTo: `${baseUrl}/${locale}/reset-password`,
+    })
+
+    return !error
+  }
+
+  if (sentEmail) {
+    return <CheckEmailCard onPrimaryAction={handleRequestAnother} />
   }
 
   return (
@@ -90,9 +108,6 @@ export default function ForgotPasswordPage() {
 
         {error && (
           <Message variant="error">{error}</Message>
-        )}
-        {message && (
-          <Message variant="success">{message}</Message>
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
