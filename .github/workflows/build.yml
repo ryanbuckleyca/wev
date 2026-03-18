@@ -51,5 +51,6 @@ jobs:
           echo ""
           echo "Remember to set these environment variables in Northflank:"
           echo "  - SUPABASE_URL (server-only)"
-          echo "  - SUPABASE_SERVICE_ROLE_KEY (server-only, never )"
+          echo "  - SUPABASE_SERVICE_ROLE_KEY (server-only, never expose)"
+          echo "  - NEXT_PUBLIC_SITE_URL (for auth redirects, e.g. https://bulletin.wevchange.org)"
           echo "  - WEV_GITHUB_TOKEN (for API routes)"
