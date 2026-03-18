@@ -29,16 +29,17 @@ export default function InfoPopover({ children, content, className = '' }: InfoP
         </div>
       </PopoverTrigger>
       <PopoverContent 
+        side="top"
         sideOffset={5}
         collisionPadding={16}
-        className="z-50 w-[260px] rounded bg-white p-5 text-xs text-gray-900 shadow-[0_10px_38px_-10px_hsl(206_22%_7%_/_35%),_0_10px_20px_-15px_hsl(206_22%_7%_/_20%)] outline-none overflow-visible border-0 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+        className="w-[260px] p-5 text-xs border-0"
       >
         {typeof content === 'string' ? (
           <div dangerouslySetInnerHTML={{ __html: content }} />
         ) : (
           content
         )}
-        <PopoverArrow className="fill-white" />
+        <PopoverArrow className="fill-card" />
       </PopoverContent>
     </Popover>
   )
