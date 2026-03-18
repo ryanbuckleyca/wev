@@ -3,11 +3,16 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from '@/i18n/navigation'
-import toast from 'react-hot-toast'
 import Button from './Button'
 import FormField from './FormField'
 import ErrorMessage from './ErrorMessage'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from './ui/dialog'
 
 interface DeleteAccountModalProps {
   isOpen: boolean
@@ -16,7 +21,6 @@ interface DeleteAccountModalProps {
 
 export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps) {
   const t = useTranslations()
-  const router = useRouter()
   const [password, setPassword] = useState('')
   const [confirmText, setConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
@@ -51,9 +55,6 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
         throw new Error(data.error || 'Failed to delete account')
       }
 
-      // Account deleted successfully
-      toast.success(t('deleteAccount.success'))
-      
       // Sign out to clear the session
       const supabase = createClient()
       await supabase.auth.signOut()
@@ -69,8 +70,8 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
     }
   }
 
-  const handleClose = () => {
-    if (!isDeleting) {
+  const handleOpenChange = (open: boolean) => {
+    if (!open && !isDeleting) {
       setPassword('')
       setConfirmText('')
       setError('')
@@ -78,16 +79,16 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <h2 className="text-xl font-semibold text-red-600 mb-4">
-          {t('deleteAccount.title')}
-        </h2>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-red-600">
+            {t('deleteAccount.title')}
+          </DialogTitle>
+        </DialogHeader>
         
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm text-red-800 mb-2">
             {t('deleteAccount.warning')}
           </p>
@@ -126,26 +127,26 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
           </div>
 
           {error && <ErrorMessage>{error}</ErrorMessage>}
-
-          <div className="flex gap-3 pt-4">
-            <Button
-              variant="secondary"
-              onClick={handleClose}
-              disabled={isDeleting}
-              className="flex-1"
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="flex-1 bg-wev-destructive-tint text-destructive-foreground border-none"
-            >
-              {isDeleting ? t('deleteAccount.deleting') : t('deleteAccount.confirm')}
-            </Button>
-          </div>
         </div>
-      </div>
-    </div>
+
+        <DialogFooter className="gap-3 sm:gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => handleOpenChange(false)}
+            disabled={isDeleting}
+            className="flex-1 sm:flex-none"
+          >
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="flex-1 sm:flex-none bg-wev-destructive-tint text-destructive-foreground border-none"
+          >
+            {isDeleting ? t('deleteAccount.deleting') : t('deleteAccount.confirm')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
