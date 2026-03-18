@@ -212,6 +212,10 @@
     },
     "checkEmail": {
       "title": "Check your email",
+      "message": "We sent you an email with a link. Open it to continue.",
+      "primary": "Send another link",
+      "cooldown": "Try again in {seconds}s",
+      "error": "We couldn't send another link. Please try again.",
       "logIn": "Log in"
     },
     "forgotPassword": {

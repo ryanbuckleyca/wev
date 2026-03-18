@@ -79,7 +79,7 @@ describe('SignupPage', () => {
     })
 
     expect(screen.getByRole('heading', { name: /check your email/i })).toBeVisible()
-    expect(screen.getByText(/test@example.com/i)).toBeVisible()
+    expect(screen.getByText(/we sent you an email with a link/i)).toBeVisible()
     expect(screen.queryByRole('button', { name: /create account/i })).not.toBeInTheDocument()
   })
 })
