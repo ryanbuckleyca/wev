@@ -24,25 +24,11 @@ export function useScrollFades() {
     el.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
     
-    // Listen for content changes using MutationObserver
-    const observer = new MutationObserver(() => {
-      // Use setTimeout to ensure DOM changes are complete
-      setTimeout(update, 0);
-    });
-    
-    observer.observe(el, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'style']
-    });
-    
     return () => {
       el.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
-      observer.disconnect();
     };
   }, [update]);
 
-  return { ref, fades };
+  return { ref, fades, update };
 }

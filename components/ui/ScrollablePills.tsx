@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { Lineicons } from "@lineiconshq/react-lineicons";
 import { HeartSolid, Briefcase2Solid, LocationArrowRightSolid, ChevronDownOutlined } from "@lineiconshq/free-icons";
 import { useScrollFades } from "@/hooks/useScrollFades";
@@ -47,7 +47,7 @@ export function ScrollablePills({
   tight = false,
 }: ScrollablePillsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { ref, fades } = useScrollFades();
+  const { ref, fades, update } = useScrollFades();
 
   // Normalize items to always be objects
   const normalizedItems: ScrollablePillsItem[] = items.map(item => 
@@ -55,6 +55,11 @@ export function ScrollablePills({
   );
 
   const normalizedWithIndex = useMemo(() => normalizedItems.map((item, index) => ({ item, index })), [normalizedItems]);
+
+  // Update fades when items change
+  useEffect(() => {
+    update();
+  }, [normalizedItems.length, update]);
 
   const groupedItems = useMemo(() => {
     const groups: { groupId?: string; entries: { item: ScrollablePillsItem; index: number }[] }[] = []
