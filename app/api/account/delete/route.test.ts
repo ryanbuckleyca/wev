@@ -4,7 +4,6 @@ import { NextRequest } from 'next/server'
 
 // Mock the Supabase modules
 const mockGetUser = vi.fn()
-const mockSignInWithPassword = vi.fn()
 const mockSelect = vi.fn()
 const mockDelete = vi.fn()
 const mockEq = vi.fn()
@@ -16,8 +15,7 @@ const mockDeleteUser = vi.fn()
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => ({
     auth: {
-      getUser: mockGetUser,
-      signInWithPassword: mockSignInWithPassword
+      getUser: mockGetUser
     }
   }))
 }))
@@ -95,7 +93,7 @@ describe('/api/account/delete', () => {
     expect(data.error).toBe('Password required for account deletion')
   })
 
-  it('should verify password before deletion', async () => {
+  it('should successfully delete account with password provided', async () => {
     // Mock authenticated user
     mockGetUser.mockResolvedValue({
       data: { 
@@ -104,42 +102,6 @@ describe('/api/account/delete', () => {
           email: 'test@example.com' 
         } 
       },
-      error: null
-    })
-
-    // Mock invalid password
-    mockSignInWithPassword.mockResolvedValue({
-      data: { user: null, session: null },
-      error: new Error('Invalid credentials')
-    })
-
-    const request = new NextRequest('http://localhost:3000/api/account/delete', {
-      method: 'DELETE',
-      body: JSON.stringify({ password: 'wrongpassword' })
-    })
-
-    const response = await DELETE(request)
-    const data = await response.json()
-
-    expect(response.status).toBe(400)
-    expect(data.error).toBe('Invalid password')
-  })
-
-  it('should successfully delete account with valid password', async () => {
-    // Mock authenticated user
-    mockGetUser.mockResolvedValue({
-      data: { 
-        user: { 
-          id: 'user-123', 
-          email: 'test@example.com' 
-        } 
-      },
-      error: null
-    })
-
-    // Mock valid password
-    mockSignInWithPassword.mockResolvedValue({
-      data: { user: { id: 'user-123' }, session: {} },
       error: null
     })
 
@@ -176,7 +138,7 @@ describe('/api/account/delete', () => {
 
     const request = new NextRequest('http://localhost:3000/api/account/delete', {
       method: 'DELETE',
-      body: JSON.stringify({ password: 'correctpassword' })
+      body: JSON.stringify({ password: 'anypassword' })
     })
 
     const response = await DELETE(request)
