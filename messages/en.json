@@ -218,6 +218,8 @@
       "submit": "Send reset link",
       "submitting": "Sending...",
       "emailSent": "Check your email for a password reset link.",
+      "checkEmailTitle": "Check your email",
+      "requestAnother": "Request another link",
       "rememberPassword": "Remember your password?",
       "logIn": "Log in",
       "captchaError": "CAPTCHA verification failed. Please try again.",

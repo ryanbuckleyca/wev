@@ -12,6 +12,7 @@ import Heading from '@/components/Heading'
 import FormContainer from '@/components/FormContainer'
 import FormField from '@/components/FormField'
 import Button from '@/components/Button'
+import LinkButton from '@/components/LinkButton'
 import Message from '@/components/Message'
 
 export default function ForgotPasswordPage() {
@@ -19,7 +20,7 @@ export default function ForgotPasswordPage() {
   const locale = useLocale()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
@@ -28,7 +29,6 @@ export default function ForgotPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setMessage(null)
     setError(null)
 
     if (!captchaToken) {
@@ -45,11 +45,40 @@ export default function ForgotPasswordPage() {
 
     if (error) {
       setError(error.message)
+      setLoading(false)
     } else {
-      setMessage(t('auth.forgotPassword.emailSent'))
+      setSuccess(true)
+      setCaptchaToken(null)
+      setLoading(false)
     }
+  }
 
-    setLoading(false)
+  function handleRequestAnother() {
+    setSuccess(false)
+    setError(null)
+    setCaptchaToken(null)
+  }
+
+  if (success) {
+    return (
+      <PageLayout variant="centered">
+        <CardLayout>
+          <Heading level={1} className="text-center mb-3">{t('auth.forgotPassword.checkEmailTitle')}</Heading>
+          <p className="text-sm text-center mb-6" style={{ color: 'var(--muted-foreground)' }}>
+            {t('auth.forgotPassword.emailSent')}
+          </p>
+
+          <div className="space-y-3">
+            <Button variant="outline" onClick={handleRequestAnother} fullWidth>
+              {t('auth.forgotPassword.requestAnother')}
+            </Button>
+            <LinkButton href="/login" variant="outline" fullWidth>
+              {t('auth.forgotPassword.logIn')}
+            </LinkButton>
+          </div>
+        </CardLayout>
+      </PageLayout>
+    )
   }
 
   return (
@@ -92,9 +121,6 @@ export default function ForgotPasswordPage() {
 
         {error && (
           <Message variant="error">{error}</Message>
-        )}
-        {message && (
-          <Message variant="success">{message}</Message>
         )}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>

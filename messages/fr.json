@@ -218,6 +218,8 @@
       "submit": "Envoyer le lien de réinitialisation",
       "submitting": "Envoi...",
       "emailSent": "Vérifiez votre courriel pour un lien de réinitialisation de mot de passe.",
+      "checkEmailTitle": "Vérifiez votre courriel",
+      "requestAnother": "Demander un autre lien",
       "rememberPassword": "Vous vous souvenez de votre mot de passe ?",
       "logIn": "Se connecter",
       "captchaError": "La vérification CAPTCHA a échoué. Veuillez réessayer.",
