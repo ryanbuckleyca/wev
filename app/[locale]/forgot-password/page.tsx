@@ -12,7 +12,7 @@ import Heading from '@/components/Heading'
 import FormContainer from '@/components/FormContainer'
 import FormField from '@/components/FormField'
 import Button from '@/components/Button'
-import LinkButton from '@/components/LinkButton'
+import CheckEmailCard from '@/components/CheckEmailCard'
 import Message from '@/components/Message'
 
 export default function ForgotPasswordPage() {
@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
   const locale = useLocale()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [sentEmail, setSentEmail] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
@@ -45,40 +45,26 @@ export default function ForgotPasswordPage() {
 
     if (error) {
       setError(error.message)
-      setLoading(false)
     } else {
-      setSuccess(true)
+      setSentEmail(email)
       setCaptchaToken(null)
-      setLoading(false)
     }
+
+    setLoading(false)
   }
 
-  function handleRequestAnother() {
-    setSuccess(false)
-    setError(null)
-    setCaptchaToken(null)
+  const handleRequestAnother = async () => {
+    if (!sentEmail) return false
+    const baseUrl = getSiteBaseUrl()
+    const { error } = await supabase.auth.resetPasswordForEmail(sentEmail, {
+      redirectTo: `${baseUrl}/${locale}/reset-password`,
+      captchaToken: undefined,
+    })
+    return !error
   }
 
-  if (success) {
-    return (
-      <PageLayout variant="centered">
-        <CardLayout>
-          <Heading level={1} className="text-center mb-3">{t('auth.forgotPassword.checkEmailTitle')}</Heading>
-          <p className="text-sm text-center mb-6" style={{ color: 'var(--muted-foreground)' }}>
-            {t('auth.forgotPassword.emailSent')}
-          </p>
-
-          <div className="space-y-3">
-            <Button variant="outline" onClick={handleRequestAnother} fullWidth>
-              {t('auth.forgotPassword.requestAnother')}
-            </Button>
-            <LinkButton href="/login" variant="outline" fullWidth>
-              {t('auth.forgotPassword.logIn')}
-            </LinkButton>
-          </div>
-        </CardLayout>
-      </PageLayout>
-    )
+  if (sentEmail) {
+    return <CheckEmailCard onPrimaryAction={handleRequestAnother} />
   }
 
   return (

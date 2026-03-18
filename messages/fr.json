@@ -199,7 +199,6 @@
       "submitting": "Création du compte...",
       "hasAccount": "Vous avez déjà un compte ?",
       "logIn": "Se connecter",
-      "checkEmailTitle": "Vérifiez votre courriel",
       "checkEmailDescription": "Nous avons envoyé un lien de confirmation à {email}. Ouvrez-le pour terminer la création de votre compte.",
       "resendEmail": "Renvoyer le courriel",
       "resendIn": "Renvoyer dans {seconds}s",
@@ -211,6 +210,10 @@
       "captchaError": "La vérification CAPTCHA a échoué. Veuillez réessayer.",
       "captchaRequired": "Veuillez compléter la vérification CAPTCHA."
     },
+    "checkEmail": {
+      "title": "Vérifiez votre courriel",
+      "logIn": "Se connecter"
+    },
     "forgotPassword": {
       "title": "Mot de passe oublié ?",
       "description": "Entrez votre courriel, nous vous enverrons un lien de réinitialisation.",
@@ -218,7 +221,6 @@
       "submit": "Envoyer le lien de réinitialisation",
       "submitting": "Envoi...",
       "emailSent": "Vérifiez votre courriel pour un lien de réinitialisation de mot de passe.",
-      "checkEmailTitle": "Vérifiez votre courriel",
       "requestAnother": "Demander un autre lien",
       "rememberPassword": "Vous vous souvenez de votre mot de passe ?",
       "logIn": "Se connecter",
