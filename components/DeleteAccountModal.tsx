@@ -51,11 +51,14 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
         throw new Error(data.error || 'Failed to delete account')
       }
 
-      // Account deleted successfully - redirect immediately without trying to sign out
-      // The account is already gone, so signing out will fail
+      // Account deleted successfully
       toast.success(t('deleteAccount.success'))
       
-      // Hard redirect to clear any cached session data
+      // Sign out to clear the session
+      const supabase = createClient()
+      await supabase.auth.signOut()
+      
+      // Hard redirect to clear any cached data
       window.location.href = '/'
       
     } catch (err) {
