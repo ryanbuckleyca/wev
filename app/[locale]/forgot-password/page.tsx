@@ -36,8 +36,9 @@ export default function ForgotPasswordPage() {
       return
     }
 
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/${locale}/reset-password`,
+      redirectTo: `${baseUrl}/${locale}/reset-password`,
       captchaToken,
     })
 

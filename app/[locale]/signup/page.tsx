@@ -61,11 +61,12 @@ export default function SignupPage() {
       return
     }
 
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${baseUrl}/auth/callback`,
         captchaToken,
       },
     })
@@ -84,9 +85,11 @@ export default function SignupPage() {
     if (!successEmail) return
     setResendLoading(true)
     setResendFeedback(null)
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: successEmail,
+      options: { emailRedirectTo: `${baseUrl}/auth/callback` },
     })
     if (error) {
       setResendFeedback({ type: 'error', text: t('auth.signup.resendError') })
