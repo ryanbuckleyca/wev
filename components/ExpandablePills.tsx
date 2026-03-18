@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { ScrollablePills, ScrollablePillsItem } from '@/components/ui/ScrollablePills'
 
 export interface ExpandablePillGroup {

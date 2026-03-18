@@ -127,7 +127,7 @@ export default function JobCardFooter({
         : t('filters.workType.office')
     const tooltip = isMatched
       ? `${label} matches your current work-style filter.`
-      : `${label} is provided by this employer. Active filters take priority over saved preferences.`
+      : `Does not match filter preferences for location.`
 
     return {
       label,
