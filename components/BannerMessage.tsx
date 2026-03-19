@@ -23,7 +23,7 @@ export default function BannerMessage({ type, message, className = '' }: BannerM
     const colors = {
       success: 'text-[#4a7c48]',
       error: 'text-[#dc2626]',
-      warning: 'text-[#d97706]',
+      warning: 'text-[#C4941A]',
       info: 'text-[#1e40af]'
     }
     return colors[type]
@@ -33,7 +33,7 @@ export default function BannerMessage({ type, message, className = '' }: BannerM
     const colors = {
       success: 'text-[#4a7c48]',
       error: 'text-[#dc2626]',
-      warning: 'text-[#d97706]',
+      warning: 'text-[#C4941A]',
       info: 'text-[#1e40af]'
     }
     return colors[type]

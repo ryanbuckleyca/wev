@@ -1,4 +1,4 @@
-import { Card } from '@/components/ui/card'
+import { Card } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
 
 interface CardLayoutProps {

@@ -59,7 +59,8 @@ export default function FormTextarea({
         disabled={disabled}
         aria-invalid={isOverLimit}
         className={cn(
-          'px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors',
+          'px-4 py-3 text-[13px] font-medium border border-gray-100 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-200 focus:ring-2 focus:ring-gray-100/50 transition-all',
+          'dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-800/50',
           fullWidth ? 'w-full' : 'w-auto',
           className
         )}

@@ -11,6 +11,7 @@ import StyledLink from './StyledLink'
 import { JobPosting } from '@/lib/supabase'
 import { truncateMiddle } from '@/lib/string-utils'
 import { WORK_TYPES, normalizeWorkTypes, type WorkType } from '@/lib/work-types'
+import { Checkbox } from './ui/Checkbox'
 
 type PostedWithinOption = '1-week' | '2-weeks' | '3-weeks' | '1-month'
 
@@ -466,12 +467,10 @@ export default function JobFilters({
           {/* SSE filter */}
           <div className="mb-4">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showOnlySse}
-                onChange={(e) => onShowOnlySseChange(e.target.checked)}
-                className="wev-checkbox"
-              />
+                <Checkbox
+                  checked={showOnlySse}
+                  onChange={(e) => onShowOnlySseChange(e.target.checked)}
+                />
               <Lineicons icon={showOnlySse ? Leaf1Solid : Leaf1Outlined} size={16} className="shrink-0 text-primary" aria-hidden />
               <span className="text-sm font-semibold text-foreground">
                 {t('filters.sse.label')}
@@ -493,12 +492,10 @@ export default function JobFilters({
         {/* Jobs without salary filter */}
         <div className="mb-4">
           <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showJobsWithoutSalary}
-              onChange={(e) => onShowJobsWithoutSalaryChange(e.target.checked)}
-              className="wev-checkbox"
-            />
+              <Checkbox
+                checked={showJobsWithoutSalary}
+                onChange={(e) => onShowJobsWithoutSalaryChange(e.target.checked)}
+              />
             <span className="text-sm font-semibold text-foreground">
               {t('filters.salary.label')}
             </span>
@@ -601,16 +598,14 @@ export default function JobFilters({
                     key={province}
                     className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-primary-tint rounded px-2 transition-colors"
                   >
-                    <input
-                      type="checkbox"
-                      ref={(el) => {
-                        if (el) {
-                          el.indeterminate = isIndeterminate
-                        }
-                      }}
+                    <Checkbox
                       checked={selectedProvinces.includes(province)}
-                      onChange={() => handleProvinceToggle(province)}
-                      className="wev-checkbox"
+                      onChange={() => {
+                        const newProvinces = selectedProvinces.includes(province)
+                          ? selectedProvinces.filter((p) => p !== province)
+                          : [...selectedProvinces, province]
+                        onProvincesChange(newProvinces)
+                      }}
                     />
                     <span className="text-sm text-foreground">{province}</span>
                   </label>
@@ -636,12 +631,15 @@ export default function JobFilters({
                   key={type}
                   className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-primary-tint rounded px-2 transition-colors"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedEmploymentTypes.includes(type)}
-                    onChange={() => handleEmploymentTypeToggle(type)}
-                    className="wev-checkbox"
-                  />
+                    <Checkbox
+                      checked={selectedEmploymentTypes.includes(type)}
+                      onChange={() => {
+                        const newTypes = selectedEmploymentTypes.includes(type)
+                          ? selectedEmploymentTypes.filter((t) => t !== type)
+                          : [...selectedEmploymentTypes, type]
+                        onEmploymentTypesChange(newTypes)
+                      }}
+                    />
                   <span className="text-sm text-foreground">{type}</span>
                 </label>
               ))
@@ -695,12 +693,15 @@ export default function JobFilters({
                               : 'hover:bg-background opacity-75'
                           }`}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => handleMunicipalityToggle(municipality)}
-                            className="wev-checkbox"
-                          />
+                                                    <Checkbox
+                              checked={selectedMunicipalities.includes(municipality)}
+                              onChange={() => {
+                                const newMunicipalities = selectedMunicipalities.includes(municipality)
+                                  ? selectedMunicipalities.filter((m) => m !== municipality)
+                                  : [...selectedMunicipalities, municipality]
+                                onMunicipalitiesChange(newMunicipalities)
+                              }}
+                            />
                           <span className={`text-sm ${
                             isFromSelectedProvince ? 'text-foreground' : 'text-muted-foreground'
                           }`}>
@@ -728,12 +729,15 @@ export default function JobFilters({
                   key={org}
                   className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-primary-tint rounded px-2 transition-colors"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedOrganizations.includes(org)}
-                    onChange={() => handleOrganizationToggle(org)}
-                    className="wev-checkbox"
-                  />
+                      <Checkbox
+                        checked={selectedOrganizations.includes(org)}
+                        onChange={() => {
+                          const newOrgs = selectedOrganizations.includes(org)
+                            ? selectedOrganizations.filter((o) => o !== org)
+                            : [...selectedOrganizations, org]
+                          onOrganizationsChange(newOrgs)
+                        }}
+                      />
                   <span className="text-sm text-foreground">{org}</span>
                 </label>
               ))
@@ -757,12 +761,15 @@ export default function JobFilters({
                   key={source}
                   className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-primary-tint rounded px-2 transition-colors"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedSources.includes(source)}
-                    onChange={() => handleSourceToggle(source)}
-                    className="wev-checkbox"
-                  />
+                    <Checkbox
+                      checked={selectedSources.includes(source)}
+                      onChange={() => {
+                        const newSources = selectedSources.includes(source)
+                          ? selectedSources.filter((s) => s !== source)
+                          : [...selectedSources, source]
+                        onSourcesChange(newSources)
+                      }}
+                    />
                   <span className="text-sm text-foreground">{source}</span>
                 </label>
               ))

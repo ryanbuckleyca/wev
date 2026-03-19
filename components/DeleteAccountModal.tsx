@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from './ui/dialog'
+} from './ui/Dialog'
 
 interface DeleteAccountModalProps {
   isOpen: boolean

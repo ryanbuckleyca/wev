@@ -1,4 +1,4 @@
-import { Button as ShadcnButton } from '@/components/ui/button'
+import { Button as ShadcnButton } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
 interface ButtonProps {

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import RoundToggle from './RoundToggle'
+import { Lineicons } from '@lineiconshq/react-lineicons'
+import { MoonHalfRight5Solid, Sun1Solid } from '@lineiconshq/free-icons'
 
 const THEME_TRANSITION_MS = 300
 
@@ -79,7 +81,11 @@ export default function ThemeToggle() {
             theme === 'dark' ? 'ml-auto mr-0.5' : 'ml-0.5'
           } bg-card`}
         >
-          <span className="text-xl leading-none">{theme === 'dark' ? '☀️' : '🌙'}</span>
+          {theme === 'dark' ? (
+            <Lineicons icon={Sun1Solid} size={16} className="text-[#FCD34D]" />
+          ) : (
+            <Lineicons icon={MoonHalfRight5Solid} size={16} className="text-[#C4941A]" />
+          )}
         </span>
       </button>
     </RoundToggle>

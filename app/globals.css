@@ -34,9 +34,9 @@
   --destructive-tint: #F2D0CC;
   --destructive-foreground: #9E3A2E;
 
-  --warn-solid: #9A7209;
-  --warn-tint: #F5DEB3;
-  --warn-text: #6F4D06;
+  --warn-solid: #C4941A;
+  --warn-tint: #FEF3C7;
+  --warn-text: #7C5E10;
 
   --info-solid: #4A7A9E;
   --info-tint: #C3D9EB;
@@ -93,9 +93,9 @@
   --destructive-tint: #472622;
   --destructive-foreground: #E8857A;
 
-  --warn-solid: #9A7209;
-  --warn-tint: #3A2F0E;
-  --warn-text: #E8B53A;
+  --warn-solid: #C4941A;
+  --warn-tint: #451A03;
+  --warn-text: #FCD34D;
 
   --info-solid: #4A7A9E;
   --info-tint: #1D2D3C;
@@ -213,6 +213,12 @@ html.theme-switching *::after {
     border-color: var(--primary);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 10' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 5l3 3 7-7'/%3E%3C/svg%3E");
   }
+  .wev-checkbox:indeterminate {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='2' y1='6' x2='10' y2='6'/%3E%3C/svg%3E");
+    background-size: 10px 10px;
+  }
   .wev-checkbox:focus {
     outline: none;
   }
@@ -234,8 +240,10 @@ html.theme-switching *::after {
   border-radius: 12px;
   border: 1px solid;
   font-weight: 500;
+  font-size: 0.875rem;
   background: var(--card);
   color: var(--foreground);
+  margin-bottom: 1rem;
 }
 
 /* ========== Style guide page (/style-guide) ========== */
@@ -576,12 +584,12 @@ html.theme-switching *::after {
 
 .design-toast-warning {
   background: var(--warn-tint);
-  border-color: #fbbf7f;
+  border-color: #fcd34d;
   color: var(--foreground);
 }
 
 .design-toast-warning .design-toast-icon {
-  color: #d97706;
+  color: #C4941A;
 }
 
 .design-toast-info {
@@ -627,12 +635,12 @@ html.theme-switching *::after {
 
 .design-banner-warning {
   background: var(--warn-tint);
-  border: 1px solid #fbbf7f;
+  border: 1px solid #fcd34d;
   color: var(--foreground);
 }
 
 .design-banner-warning .font-bold {
-  color: #d97706;
+  color: #C4941A;
 }
 
 .design-banner-info {
