@@ -2,10 +2,14 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import ValuesSelector from './profile/ValuesSelector'
-import { VALUES_LIST, getValueDefinition } from '@/lib/values'
+import { VALUES_LIST, buildWorkValues } from '@/lib/values'
 
 describe('ValuesSelector', () => {
-  const mockValues = VALUES_LIST.map(id => getValueDefinition(id))
+  // Create mock translation functions
+  const mockTEn = (key: string, opts?: { defaultValue: string }) => opts?.defaultValue || key
+  const mockTFr = (key: string, opts?: { defaultValue: string }) => opts?.defaultValue || key
+  
+  const mockValues = buildWorkValues(mockTEn, mockTFr)
   const locale = 'en'
 
   describe('rendering', () => {
@@ -198,13 +202,10 @@ describe('ValuesSelector', () => {
       // The category checkbox should be indeterminate if there are multiple values
       if (valuesInCategory.length > 1) {
         const categoryCheckboxes = screen.getAllByRole('checkbox')
-        const firstCategoryCheckbox = categoryCheckboxes[0]
+        const firstCategoryCheckbox = categoryCheckboxes[0] as HTMLInputElement
         
-        // Check for indeterminate attribute or aria-checked="mixed"
-        expect(
-          firstCategoryCheckbox.hasAttribute('data-indeterminate') ||
-          firstCategoryCheckbox.getAttribute('aria-checked') === 'mixed'
-        ).toBe(true)
+        // Check the indeterminate property on the DOM element
+        expect(firstCategoryCheckbox.indeterminate).toBe(true)
       }
     })
   })
