@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase-server'
 
-// Cache the entire list for 24 hours at the Edge
-export const revalidate = 86400
+// Cache indefinitely - only revalidate on-demand when ESCO skills are updated
+export const revalidate = false
 
 export async function GET(request: Request) {
   try {
@@ -45,7 +45,8 @@ export async function GET(request: Request) {
       { skills },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=3600',
+          // Cache for 30 days, stale-while-revalidate for 7 days
+          'Cache-Control': 'public, s-maxage=2592000, stale-while-revalidate=604800',
         },
       }
     )
