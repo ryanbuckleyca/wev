@@ -37,6 +37,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} data-theme={theme} className={lexend.variable} suppressHydrationWarning>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         {/* Blocking script to apply persisted theme before first paint on
             hard navigations (cookie may not be set on very first visit). */}
         <script
