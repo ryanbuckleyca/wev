@@ -26,7 +26,7 @@ describe('ValuesSelector', () => {
       // Should render category headers
       const categories = new Set(mockValues.map(v => v.category[locale]))
       categories.forEach(category => {
-        expect(screen.getByText(category)).toBeInTheDocument()
+        expect(screen.getByText(category)).toBeVisible()
       })
     })
 
@@ -42,9 +42,13 @@ describe('ValuesSelector', () => {
       )
 
       // Should show "X / Y selected" for each category
-      expect(screen.getAllByText(/\d+ \/ \d+ selected/)).toHaveLength(
+      const selectionCounts = screen.getAllByText(/\d+ \/ \d+ selected/)
+      expect(selectionCounts.length).toBe(
         new Set(mockValues.map(v => v.category[locale])).size
       )
+      selectionCounts.forEach(count => {
+        expect(count).toBeVisible()
+      })
     })
 
     it('categories are collapsed by default', () => {
@@ -84,7 +88,7 @@ describe('ValuesSelector', () => {
       // Value labels should now be visible
       const valuesInCategory = mockValues.filter(v => v.category[locale] === firstCategory)
       valuesInCategory.forEach(value => {
-        expect(screen.getByText(value.label[locale])).toBeInTheDocument()
+        expect(screen.getByText(value.label[locale])).toBeVisible()
       })
     })
 
@@ -105,7 +109,7 @@ describe('ValuesSelector', () => {
       // Expand
       await user.click(categoryHeader)
       const firstValue = mockValues.find(v => v.category[locale] === firstCategory)!
-      expect(screen.getByText(firstValue.label[locale])).toBeInTheDocument()
+      expect(screen.getByText(firstValue.label[locale])).toBeVisible()
 
       // Collapse
       await user.click(categoryHeader)
@@ -224,7 +228,7 @@ describe('ValuesSelector', () => {
       // Should render French category names
       const categories = new Set(mockValues.map(v => v.category.fr))
       categories.forEach(category => {
-        expect(screen.getByText(category)).toBeInTheDocument()
+        expect(screen.getByText(category)).toBeVisible()
       })
     })
 
@@ -238,9 +242,13 @@ describe('ValuesSelector', () => {
         />
       )
 
-      expect(screen.getAllByText(/sélectionnés/)).toHaveLength(
+      const frenchText = screen.getAllByText(/sélectionnés/)
+      expect(frenchText.length).toBe(
         new Set(mockValues.map(v => v.category.fr)).size
       )
+      frenchText.forEach(text => {
+        expect(text).toBeVisible()
+      })
     })
   })
 })

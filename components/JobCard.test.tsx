@@ -184,9 +184,9 @@ describe('JobCard', () => {
     })
 
     // Check for the match percentage in the rendered output
-    expect(screen.getByText('80%')).toBeInTheDocument()
+    expect(screen.getByText('80%')).toBeVisible()
     // Check for the tooltip button (bookmark button is the only button visible)
-    expect(screen.getByRole('button', { name: 'Bookmark job' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Bookmark job' })).toBeVisible()
     vi.unstubAllGlobals()
   })
 
