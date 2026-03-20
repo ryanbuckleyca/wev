@@ -262,7 +262,7 @@
     "workEnvironmentCount": "{current}/{max} characters",
     "workEnvironmentMaxExceeded": "Please keep your work environment description under {max} characters.",
     "skills": "Skills",
-    "skillsPlaceholder": "Search skills...",
+    "skillsPlaceholder": "Search skills to add",
     "skillsPlaceholderShort": "Search...",
     "skillsEmptyState": "Type to search 13,485 ESCO skills",
     "skillsMinChars": "Type at least 2 characters to search.",

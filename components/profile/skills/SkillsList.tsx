@@ -39,7 +39,7 @@ export default function SkillsList({
   }
 
   return (
-    <Command.List className="max-h-[400px] overflow-y-auto overflow-x-hidden scroll-smooth pb-4">
+    <Command.List className="overflow-y-auto overflow-x-hidden scroll-smooth pb-4">
       {skills.map((skill) => (
         <SkillItem
           key={skill.uri}

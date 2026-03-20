@@ -262,7 +262,7 @@
     "workEnvironmentCount": "{current}/{max} caractères",
     "workEnvironmentMaxExceeded": "Veuillez limiter votre description de l'environnement de travail à moins de {max} caractères.",
     "skills": "Compétences",
-    "skillsPlaceholder": "Rechercher des compétences...",
+    "skillsPlaceholder": "Rechercher des compétences à ajouter",
     "skillsPlaceholderShort": "Rechercher…",
     "skillsEmptyState": "Tapez pour rechercher parmi 13 485 compétences ESCO",
     "skillsMinChars": "Tapez au moins 2 caractères pour rechercher.",
