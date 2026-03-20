@@ -109,26 +109,22 @@ export default function SkillsSelector({
 
   useEffect(() => {
     if (mobileOpen) {
-      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
-      document.body.style.overflow = 'hidden'
+      // Prevent body scroll when modal is open
+      const scrollY = window.scrollY
       document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
       document.body.style.width = '100%'
-      document.body.style.top = '0'
-      document.body.style.left = '0'
-      document.body.style.right = '0'
-      if (scrollbarWidth > 0) {
-        document.body.style.paddingRight = `${scrollbarWidth}px`
-      }
-      const t = setTimeout(() => mobileInputRef.current?.focus(), 50)
+      
+      // Focus search input
+      const timer = setTimeout(() => mobileInputRef.current?.focus(), 50)
+      
       return () => {
-        document.body.style.overflow = ''
+        // Restore scroll position
         document.body.style.position = ''
-        document.body.style.width = ''
         document.body.style.top = ''
-        document.body.style.left = ''
-        document.body.style.right = ''
-        document.body.style.paddingRight = ''
-        clearTimeout(t)
+        document.body.style.width = ''
+        window.scrollTo(0, scrollY)
+        clearTimeout(timer)
       }
     }
   }, [mobileOpen])

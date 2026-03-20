@@ -564,42 +564,42 @@ html.theme-switching *::after {
 
 .design-toast-success {
   background: var(--success-tint);
-  border-color: #a8d5a6;
+  border-color: var(--success-solid);
   color: var(--foreground);
 }
 
 .design-toast-success .design-toast-icon {
-  color: #4a7c48;
+  color: var(--success-text);
 }
 
 .design-toast-alert {
   background: var(--destructive-tint);
-  border-color: #ef8b8f;
+  border-color: var(--destructive);
   color: var(--foreground);
 }
 
 .design-toast-alert .design-toast-icon {
-  color: #dc2626;
+  color: var(--destructive-foreground);
 }
 
 .design-toast-warning {
   background: var(--warn-tint);
-  border-color: #fcd34d;
+  border-color: var(--warn-solid);
   color: var(--foreground);
 }
 
 .design-toast-warning .design-toast-icon {
-  color: #C4941A;
+  color: var(--warn-text);
 }
 
 .design-toast-info {
   background: var(--info-tint);
-  border-color: #93bed9;
+  border-color: var(--info-solid);
   color: var(--foreground);
 }
 
 .design-toast-info .design-toast-icon {
-  color: #1e40af;
+  color: var(--info-text);
 }
 
 /* Banners */
@@ -615,42 +615,42 @@ html.theme-switching *::after {
 
 .design-banner-success {
   background: var(--success-tint);
-  border: 1px solid #a8d5a6;
+  border: 1px solid var(--success-solid);
   color: var(--foreground);
 }
 
 .design-banner-success .font-bold {
-  color: #4a7c48;
+  color: var(--success-text);
 }
 
 .design-banner-alert {
   background: var(--destructive-tint);
-  border: 1px solid #ef8b8f;
+  border: 1px solid var(--destructive);
   color: var(--foreground);
 }
 
 .design-banner-alert .font-bold {
-  color: #dc2626;
+  color: var(--destructive-foreground);
 }
 
 .design-banner-warning {
   background: var(--warn-tint);
-  border: 1px solid #fcd34d;
+  border: 1px solid var(--warn-solid);
   color: var(--foreground);
 }
 
 .design-banner-warning .font-bold {
-  color: #C4941A;
+  color: var(--warn-text);
 }
 
 .design-banner-info {
   background: var(--info-tint);
-  border: 1px solid #93bed9;
+  border: 1px solid var(--info-solid);
   color: var(--foreground);
 }
 
 .design-banner-info .font-bold {
-  color: #1e40af;
+  color: var(--info-text);
 }
 
 /* Accent cards */
