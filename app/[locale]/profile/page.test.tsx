@@ -237,7 +237,7 @@ describe('ProfilePage skills integration', () => {
 
     render(<ProfilePage />)
 
-    const searchInput = await screen.findByPlaceholderText('Search skills...')
+    const searchInput = await screen.findByPlaceholderText('Search skills to add')
     await user.type(searchInput, 'da')
     await new Promise((resolve) => setTimeout(resolve, 350))
 
