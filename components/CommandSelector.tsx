@@ -5,7 +5,7 @@ import LoadingIndicator from '@/components/LoadingIndicator'
 import { Command } from 'cmdk'
 import Pill from '@/components/Pill'
 import InfoPopover from '@/components/InfoPopover'
-import { Checkbox } from '@/components/ui/Checkbox' // Added Checkbox import
+import { Checkbox } from '@/components/ui/Checkbox'
 
 export type Option = {
   value: string
