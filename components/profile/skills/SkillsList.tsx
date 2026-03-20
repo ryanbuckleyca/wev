@@ -4,7 +4,7 @@ import SkillItem from './SkillItem'
 import type { EscoSkill } from '../SkillsSelector'
 
 interface SkillsListProps {
-  skills: (EscoSkill & { label: string; internalMatchedAlias?: string })[]
+  skills: (EscoSkill & { label: string; internalMatchedAlias?: string | null })[]
   selectedUris: Set<string>
   onToggle: (skill: EscoSkill) => void
   locale: 'en' | 'fr'

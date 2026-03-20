@@ -7,7 +7,7 @@ import type { EscoSkill } from '../SkillsSelector'
 interface SkillItemProps {
   skill: EscoSkill & { 
     label: string
-    internalMatchedAlias?: string 
+    internalMatchedAlias?: string | null
   }
   isSelected: boolean
   onToggle: () => void

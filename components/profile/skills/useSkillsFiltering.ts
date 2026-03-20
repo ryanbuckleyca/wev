@@ -3,7 +3,7 @@ import type { EscoSkill } from '../SkillsSelector'
 
 interface FilteredSkill extends EscoSkill {
   label: string
-  internalMatchedAlias?: string
+  internalMatchedAlias?: string | null
   _score?: number
 }
 
