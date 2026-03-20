@@ -25,10 +25,10 @@ export default function Alert({
 
   const getIconColor = () => {
     const colors = {
-      success: 'text-[#4a7c48]',
-      error: 'text-[#dc2626]',
-      warning: 'text-[#C4941A]',
-      info: 'text-[#1e40af]'
+      success: 'text-[var(--success-text)]',
+      error: 'text-[var(--destructive-foreground)]',
+      warning: 'text-[var(--warn-text)]',
+      info: 'text-[var(--info-text)]'
     }
     return colors[variant]
   }

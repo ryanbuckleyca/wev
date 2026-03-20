@@ -82,9 +82,9 @@ export default function ThemeToggle() {
           } bg-card`}
         >
           {theme === 'dark' ? (
-            <Lineicons icon={Sun1Solid} size={16} className="text-[#FCD34D]" />
+            <Lineicons icon={Sun1Solid} size={16} className="text-[var(--warn-text)]" />
           ) : (
-            <Lineicons icon={MoonHalfRight5Solid} size={16} className="text-[#C4941A]" />
+            <Lineicons icon={MoonHalfRight5Solid} size={16} className="text-[var(--warn-solid)]" />
           )}
         </span>
       </button>
