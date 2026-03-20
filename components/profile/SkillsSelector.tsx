@@ -8,6 +8,7 @@ import InfoPopover from '@/components/InfoPopover'
 import Pill from '@/components/Pill'
 import { Checkbox } from '@/components/ui/Checkbox'
 import Alert from '@/components/ui/Alert'
+import { useTranslations } from 'next-intl'
 
 export interface EscoSkill {
   uri: string
@@ -62,6 +63,7 @@ export default function SkillsSelector({
   isSearching = false,
   allItems = [],
 }: SkillsSelectorProps) {
+  const t = useTranslations('profile')
   const isTouch = useTouchDevice()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -138,7 +140,7 @@ export default function SkillsSelector({
               ref={desktopInputRef}
               value={query}
               onValueChange={handleQueryChange}
-              placeholder={locale === 'fr' ? 'Rechercher des compétences…' : 'Search skills...'}
+              placeholder={t('skillsPlaceholder')}
               className="min-w-0 flex-1 bg-transparent text-[13px] font-medium text-foreground outline-none placeholder:text-gray-400"
             />
             {isSearching && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
@@ -198,9 +200,7 @@ export default function SkillsSelector({
           <div className="-mx-2 px-2">
             {!query ? (
               <div className="py-8 text-center text-sm text-gray-400">
-                {locale === 'fr' 
-                  ? 'Tapez pour rechercher parmi 13 485 compétences ESCO' 
-                  : 'Type to search 13,485 ESCO skills'}
+                {t('skillsEmptyState')}
               </div>
             ) : (() => {
               const lowerQuery = query.toLowerCase()
@@ -244,8 +244,8 @@ export default function SkillsSelector({
                   {displayResults.length === 0 && (
                     <div className="px-4 py-8 text-center text-sm text-gray-400">
                       {isSearching 
-                        ? (locale === 'fr' ? 'Recherche en cours...' : 'Searching...')
-                        : (locale === 'fr' ? 'Aucune compétence trouvée.' : 'No skills found.')
+                        ? t('skillsLoading')
+                        : t('skillsNoResults')
                       }
                     </div>
                   )}
@@ -279,7 +279,7 @@ export default function SkillsSelector({
                           )}
                           {skill.internalMatchedAlias && (
                             <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 inline-block px-2 py-0.5 rounded-md">
-                              {locale === 'fr' ? 'Correspondance : ' : 'Matches: '} 
+                              {t('skillsMatchedAlias')} 
                               &quot;{skill.internalMatchedAlias}&quot;
                             </p>
                           )}
@@ -314,7 +314,7 @@ export default function SkillsSelector({
           >
             <Search className="h-4 w-4 shrink-0 text-gray-400" />
             <span className="min-w-0 flex-1 text-[13px] font-medium text-gray-400">
-              {locale === 'fr' ? 'Rechercher des compétences…' : 'Search skills...'}
+              {t('skillsPlaceholder')}
             </span>
           </button>
 
@@ -346,7 +346,7 @@ export default function SkillsSelector({
                 <button 
                   onClick={handleDone}
                   className="shrink-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                  aria-label={locale === 'fr' ? 'Retour' : 'Back'}
+                  aria-label={t('skillsBack')}
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -356,7 +356,7 @@ export default function SkillsSelector({
                     ref={mobileInputRef}
                     value={query}
                     onValueChange={handleQueryChange}
-                    placeholder={locale === 'fr' ? 'Rechercher…' : 'Search...'}
+                    placeholder={t('skillsPlaceholderShort')}
                     className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-gray-400"
                   />
                   {isSearching && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
@@ -370,7 +370,7 @@ export default function SkillsSelector({
                   )}
                 </div>
                 <button onClick={handleDone} className="shrink-0 flex items-center gap-1.5 text-sm font-bold whitespace-nowrap" style={{ color: 'var(--info-solid)' }}>
-                  {locale === 'fr' ? 'Terminé' : 'Done'}
+                  {t('skillsDone')}
                   {selected.length > 0 && (
                     <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[11px] font-bold text-white" style={{ backgroundColor: 'var(--info-solid)' }}>
                       {selected.length}
@@ -382,10 +382,7 @@ export default function SkillsSelector({
               {selected.length > 15 && (
                 <div className="px-4 pt-3 pb-2">
                   <Alert variant="warning">
-                    {locale === 'fr' 
-                      ? `Vous avez sélectionné ${selected.length} compétences. Nous recommandons de limiter à 15 pour de meilleurs résultats de correspondance.`
-                      : `You've selected ${selected.length} skills. We recommend limiting to 15 for better matching results.`
-                    }
+                    {t('skillsSoftLimitWarning', { count: selected.length })}
                   </Alert>
                 </div>
               )}
@@ -437,9 +434,7 @@ export default function SkillsSelector({
                 <div className="px-2">
                   {!query ? (
                     <div className="py-8 text-center text-sm text-gray-400">
-                      {locale === 'fr' 
-                        ? 'Tapez pour rechercher parmi 13 485 compétences ESCO' 
-                        : 'Type to search 13,485 ESCO skills'}
+                      {t('skillsEmptyState')}
                     </div>
                   ) : (() => {
                     const lowerQuery = query.toLowerCase()
@@ -471,8 +466,8 @@ export default function SkillsSelector({
                       <Command.List className="overflow-y-auto overflow-x-hidden scroll-smooth pb-4">
                         <Command.Empty className="px-4 py-8 text-center text-sm text-gray-400">
                           {isSearching 
-                            ? (locale === 'fr' ? 'Recherche en cours...' : 'Searching...')
-                            : (locale === 'fr' ? 'Aucune compétence trouvée.' : 'No skills found.')
+                            ? t('skillsLoading')
+                            : t('skillsNoResults')
                           }
                         </Command.Empty>
 
@@ -505,7 +500,7 @@ export default function SkillsSelector({
                                 )}
                                 {skill.internalMatchedAlias && (
                                   <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 inline-block px-2 py-0.5 rounded-md dark:bg-blue-900/40 dark:text-blue-300 break-words">
-                                    {locale === 'fr' ? 'Correspondance : ' : 'Matches: '} 
+                                    {t('skillsMatchedAlias')} 
                                     &quot;{skill.internalMatchedAlias}&quot;
                                   </p>
                                 )}
