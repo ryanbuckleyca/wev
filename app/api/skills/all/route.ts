@@ -45,8 +45,9 @@ export async function GET(request: Request) {
       { skills },
       {
         headers: {
-          // Cache indefinitely at CDN - only revalidate via /api/skills/revalidate
-          'Cache-Control': 'public, s-maxage=31536000, stale-while-revalidate=86400',
+          // Cache indefinitely - only revalidate via /api/skills/revalidate
+          // immutable = never check for updates unless explicitly revalidated
+          'Cache-Control': 'public, max-age=31536000, immutable',
         },
       }
     )
