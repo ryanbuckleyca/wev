@@ -628,12 +628,7 @@ export default function JobFilters({
                 >
                     <Checkbox
                       checked={selectedEmploymentTypes.includes(type)}
-                      onChange={() => {
-                        const newTypes = selectedEmploymentTypes.includes(type)
-                          ? selectedEmploymentTypes.filter((t) => t !== type)
-                          : [...selectedEmploymentTypes, type]
-                        onEmploymentTypesChange(newTypes)
-                      }}
+                      onChange={() => handleEmploymentTypeToggle(type)}
                     />
                   <span className="text-sm text-foreground">{type}</span>
                 </label>
@@ -688,15 +683,10 @@ export default function JobFilters({
                               : 'hover:bg-background opacity-75'
                           }`}
                         >
-                                                    <Checkbox
-                              checked={selectedMunicipalities.includes(municipality)}
-                              onChange={() => {
-                                const newMunicipalities = selectedMunicipalities.includes(municipality)
-                                  ? selectedMunicipalities.filter((m) => m !== municipality)
-                                  : [...selectedMunicipalities, municipality]
-                                onMunicipalitiesChange(newMunicipalities)
-                              }}
-                            />
+                          <Checkbox
+                            checked={selectedMunicipalities.includes(municipality)}
+                            onChange={() => handleMunicipalityToggle(municipality)}
+                          />
                           <span className={`text-sm ${
                             isFromSelectedProvince ? 'text-foreground' : 'text-muted-foreground'
                           }`}>
@@ -724,15 +714,10 @@ export default function JobFilters({
                   key={org}
                   className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-primary-tint rounded px-2 transition-colors"
                 >
-                      <Checkbox
-                        checked={selectedOrganizations.includes(org)}
-                        onChange={() => {
-                          const newOrgs = selectedOrganizations.includes(org)
-                            ? selectedOrganizations.filter((o) => o !== org)
-                            : [...selectedOrganizations, org]
-                          onOrganizationsChange(newOrgs)
-                        }}
-                      />
+                  <Checkbox
+                    checked={selectedOrganizations.includes(org)}
+                    onChange={() => handleOrganizationToggle(org)}
+                  />
                   <span className="text-sm text-foreground">{org}</span>
                 </label>
               ))
@@ -756,15 +741,10 @@ export default function JobFilters({
                   key={source}
                   className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-primary-tint rounded px-2 transition-colors"
                 >
-                    <Checkbox
-                      checked={selectedSources.includes(source)}
-                      onChange={() => {
-                        const newSources = selectedSources.includes(source)
-                          ? selectedSources.filter((s) => s !== source)
-                          : [...selectedSources, source]
-                        onSourcesChange(newSources)
-                      }}
-                    />
+                  <Checkbox
+                    checked={selectedSources.includes(source)}
+                    onChange={() => handleSourceToggle(source)}
+                  />
                   <span className="text-sm text-foreground">{source}</span>
                 </label>
               ))
