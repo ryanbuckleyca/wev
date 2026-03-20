@@ -1,5 +1,11 @@
 import { Lineicons } from '@lineiconshq/react-lineicons'
-import { CheckOutlined } from '@lineiconshq/free-icons'
+import { 
+  CheckCircle1Solid, 
+  XmarkCircleSolid, 
+  QuestionMarkCircleSolid,
+  Bulb2Solid,
+  Flag1Solid
+} from '@lineiconshq/free-icons'
 
 interface StatusIconProps {
   type: 'success' | 'error' | 'warning' | 'info' | 'loading'
@@ -10,25 +16,21 @@ export default function StatusIcon({ type, className = '' }: StatusIconProps) {
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <Lineicons icon={CheckOutlined} size={16} className={className} />
+        return <Lineicons icon={CheckCircle1Solid} size={16} className={className} />
       case 'error':
-        return '✕'
+        return <Lineicons icon={XmarkCircleSolid} size={16} className={className} />
       case 'warning':
-        return '⚠'
+        return <Lineicons icon={Flag1Solid} size={16} className={className} />
       case 'info':
-        return 'ℹ'
+        return <Lineicons icon={Bulb2Solid} size={16} className={className} />
       case 'loading':
-        return 'ℹ'
       default:
-        return 'ℹ'
+        return <Lineicons icon={QuestionMarkCircleSolid} size={16} className={className} />
     }
   }
 
   const getClassName = () => {
-    if (type === 'success') return '' // Icon handles its own styling
-    const baseClass = 'font-bold'
-    const sizeClass = 'text-lg'
-    return `${baseClass} ${sizeClass} ${className}`.trim()
+    return className.trim()
   }
 
   return (

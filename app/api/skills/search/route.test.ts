@@ -13,7 +13,10 @@ describe('GET /api/skills/search', () => {
   })
 
   it('returns [] for empty/short query and does not error', async () => {
-    const response = await GET(new Request('http://localhost/api/skills/search?q=a'))
+    // Mock getSupabaseServer - won't be called for empty query
+    vi.mocked(getSupabaseServer).mockReturnValue({} as never)
+    
+    const response = await GET(new Request('http://localhost/api/skills/search?q='))
     expect(response.status).toBe(200)
 
     const body = await response.json()

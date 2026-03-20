@@ -3,6 +3,25 @@ import { cleanup } from '@testing-library/react'
 import { act } from 'react'
 import { beforeAll, afterAll, afterEach } from 'vitest'
 
+// Set up Supabase env vars for tests
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'test-key'
+
+// Mock matchMedia for useTouchDevice hook
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => true,
+  }),
+})
+
 class ResizeObserverMock {
   observe() {}
   unobserve() {}

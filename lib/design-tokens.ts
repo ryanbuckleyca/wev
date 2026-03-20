@@ -31,9 +31,9 @@ export const tokens = {
   alertTint: '#F2D0CC',
   alertText: '#9E3A2E',
 
-  warnSolid: '#9A7209',
-  warnTint: '#F5DEB3',
-  warnText: '#6F4D06',
+  warnSolid: '#C4941A',
+  warnTint: '#FEF3C7',
+  warnText: '#7C5E10',
 
   infoSolid: '#4A7A9E',
   infoTint: '#C3D9EB',

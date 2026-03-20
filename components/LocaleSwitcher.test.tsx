@@ -39,8 +39,8 @@ describe('LocaleSwitcher', () => {
     render(<LocaleSwitcher />)
 
     // Check that both EN and FR text segments are rendered
-    expect(screen.getByText('EN')).toBeInTheDocument()
-    expect(screen.getByText('FR')).toBeInTheDocument()
+    expect(screen.getByText('EN')).toBeVisible()
+    expect(screen.getByText('FR')).toBeVisible()
   })
 
   it('calls router.replace with French locale when clicking while in English', async () => {

@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase-server'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+// Removed dynamic constraints to allow Edge-Caching
+// export const dynamic = 'force-dynamic'
+// export const revalidate = 0
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 20
-const MIN_QUERY_LENGTH = 2
+const MIN_QUERY_LENGTH = 1
 
 type SkillSearchRow = {
   concept_uri: string
@@ -101,12 +102,20 @@ export async function GET(request: Request) {
       })
     }
 
-    return NextResponse.json({
-      query,
-      limit,
-      locale,
-      skills: dedupedResults,
-    })
+    return NextResponse.json(
+      {
+        query,
+        limit,
+        locale,
+        skills: dedupedResults,
+      },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, s-maxage=604800, stale-while-revalidate=86400',
+        },
+      }
+    )
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to search skills'
     return NextResponse.json({ error: message }, { status: 500 })

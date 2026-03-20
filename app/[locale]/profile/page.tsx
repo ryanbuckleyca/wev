@@ -5,8 +5,8 @@ import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfileForm, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES, MAX_PROFILE_WORK_ENV_CHARS } from '@/lib/hooks/useProfileForm';
 import { WORK_TYPES, type WorkType } from '@/lib/work-types';
 import FormTextarea from '@/components/FormTextarea';
-import ValuesSelector from '@/components/ValuesSelector';
-import SkillsSelector from '@/components/SkillsSelector';
+import SkillsSelector from '@/components/profile/SkillsSelector';
+import ValuesSelector from '@/components/profile/ValuesSelector';
 import LoadingState from '@/components/LoadingState';
 import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
@@ -17,6 +17,7 @@ import CardLayout from '@/components/CardLayout';
 import Heading from '@/components/Heading';
 import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
+import Alert from '@/components/ui/Alert';
 
 export default function ProfilePage() {
   const t = useTranslations();
@@ -30,7 +31,16 @@ export default function ProfilePage() {
     formData,
     setFormData,
     selectedSkills,
-    handleSkillsChange,
+    skillResults,
+    allSkills,
+    isLibraryLoading,
+    isSearchingSkills,
+    handleSkillSearch,
+    handleSkillSelect,
+    handleSkillRemove,
+    workValues,
+    handleValueToggle,
+    handleValueToggleMultiple,
     isSaving,
     fileInputRef,
     handleSaveProfile,
@@ -77,15 +87,15 @@ export default function ProfilePage() {
             <div>
               <FormLabel>{t('profile.profilePhoto')}</FormLabel>
               <div className="flex items-center gap-6">
-                <div className="w-24 h-24 rounded-lg bg-[var(--background)] border border-[var(--border)] flex items-center justify-center flex-shrink-0">
+                <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
                   {profile.profile_photo_url ? (
                     <img
                       src={profile.profile_photo_url}
                       alt={t('profile.profilePhoto')}
-                      className="w-full h-full object-cover rounded-lg"
+                      className="w-full h-full object-cover rounded-xl"
                     />
                   ) : (
-                    <span className="text-3xl font-bold text-[var(--muted-foreground)]">
+                    <span className="text-3xl font-bold text-gray-300">
                       {user.email?.[0].toUpperCase()}
                     </span>
                   )}
@@ -110,14 +120,14 @@ export default function ProfilePage() {
 
             {/* Bio */}
             <div>
-              <FormLabel htmlFor="bio">{t('profile.bio')}</FormLabel>
-              <textarea
-                id="bio"
+              <FormTextarea
+                htmlFor="bio"
+                label={t('profile.bio')}
                 value={formData.bio}
-                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                onChange={(value) => setFormData({ ...formData, bio: value })}
                 placeholder={t('profile.bioPlaceholder')}
                 rows={4}
-                className="w-full px-4 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+                showCount={false}
               />
             </div>
 
@@ -149,8 +159,8 @@ export default function ProfilePage() {
                       }}
                       className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
                         isSelected
-                          ? 'bg-primary text-white'
-                          : 'bg-background text-foreground border border-border hover:bg-primary-tint'
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'bg-gray-50 text-gray-700 border border-gray-100 hover:bg-gray-100'
                       }`}
                     >
                       {getWorkTypeLabel(workType)}
@@ -178,38 +188,72 @@ export default function ProfilePage() {
               />
             </div>
 
-            {/* Work Values */}
+            {/* Skills */}
             <div>
-              <FormLabel>{t('profile.workValues')}</FormLabel>
-              <ValuesSelector
-                selectedValues={formData.values}
-                onValuesChange={(values) => setFormData({ ...formData, values })}
-                isEditing={true}
-                softLimit={MAX_PROFILE_VALUES}
-                softLimitWarningText={t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="font-bold text-base">{t('profile.skills')}</h2>
+                {selectedSkills.length > 0 && (
+                  <span className={`text-xs font-semibold rounded-full px-3 py-1 transition-colors ${
+                    selectedSkills.length > MAX_PROFILE_SKILLS 
+                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' 
+                      : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
+                  }`}>
+                    {selectedSkills.length}
+                  </span>
+                )}
+              </div>
+
+              {selectedSkills.length > MAX_PROFILE_SKILLS && (
+                <Alert variant="warning">
+                  {t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
+                </Alert>
+              )}
+
+              <SkillsSelector
+                skills={skillResults}
+                allItems={allSkills}
+                selected={selectedSkills}
+                onSelect={handleSkillSelect}
+                onRemove={handleSkillRemove}
+                onSearch={handleSkillSearch}
+                locale={locale}
+                isSearching={isSearchingSkills || isLibraryLoading}
               />
             </div>
 
-            {/* Skills */}
+            {/* Work Values */}
             <div>
-              <FormLabel>{t('profile.skills')}</FormLabel>
-              <SkillsSelector
-                selectedSkills={selectedSkills}
-                onSkillsChange={handleSkillsChange}
-                placeholder={t('profile.skillsPlaceholder')}
-                minCharsText={t('profile.skillsMinChars')}
-                noResultsText={t('profile.skillsNoResults')}
-                loadingText={t('profile.skillsLoading')}
-                softLimit={MAX_PROFILE_SKILLS}
-                softLimitWarningText={t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="font-bold text-base">{t('profile.workValues')}</h2>
+                {formData.values.length > 0 && (
+                  <span className={`text-xs font-semibold rounded-full px-3 py-1 transition-colors ${
+                    formData.values.length > MAX_PROFILE_VALUES 
+                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' 
+                      : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
+                  }`}>
+                    {formData.values.length}
+                  </span>
+                )}
+              </div>
+
+              {formData.values.length > MAX_PROFILE_VALUES && (
+                <Alert variant="warning">
+                  {t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
+                </Alert>
+              )}
+
+              <ValuesSelector
+                values={workValues}
+                selected={formData.values}
+                onToggle={handleValueToggle}
+                onToggleMultiple={handleValueToggleMultiple}
                 locale={locale}
-                matchedAliasLabel={t('profile.skillsMatchedAlias')}
               />
             </div>
           </div>
 
           {/* Actions */}
-          <div className="pt-6 border-t border-[var(--border)]">
+          <div className="pt-6 border-t border-gray-100 dark:border-zinc-800">
             <div className="flex justify-between gap-3">
               <LinkButton href="/" variant="outline">{t('profile.backToJobs')}</LinkButton>
               <Button type="submit" disabled={isSaving} loading={isSaving}>

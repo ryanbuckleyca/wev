@@ -25,7 +25,7 @@ describe('ExpandablePills', () => {
   it('renders collapsed state by default', () => {
     render(<ExpandablePills groups={mockGroups} />)
     
-    expect(screen.getByText('3/9 values')).toBeInTheDocument()
+    expect(screen.getByText('3/9 values')).toBeVisible()
     expect(screen.queryByText('community')).not.toBeInTheDocument()
   })
 
@@ -36,9 +36,9 @@ describe('ExpandablePills', () => {
     const chevronButton = screen.getByLabelText('Expand')
     await user.click(chevronButton)
     
-    expect(screen.getByText('community')).toBeInTheDocument()
-    expect(screen.getByText('knowledge')).toBeInTheDocument()
-    expect(screen.getByText('challenge')).toBeInTheDocument()
+    expect(screen.getByText('community')).toBeVisible()
+    expect(screen.getByText('knowledge')).toBeVisible()
+    expect(screen.getByText('challenge')).toBeVisible()
   })
 
   it('shows collapse button at end when expanded', async () => {
@@ -56,7 +56,7 @@ describe('ExpandablePills', () => {
     render(<ExpandablePills groups={mockGroups} />)
     
     await user.click(screen.getByLabelText('Expand'))
-    expect(screen.getByText('community')).toBeInTheDocument()
+    expect(screen.getByText('community')).toBeVisible()
     
     const collapseButtons = screen.getAllByLabelText('Collapse')
     await user.click(collapseButtons[collapseButtons.length - 1]) // Click last one (end button)
@@ -114,7 +114,7 @@ describe('ExpandablePills', () => {
     const expandButtons = screen.getAllByLabelText('Expand')
     await user.click(expandButtons[0]) // Expand first group
     
-    expect(screen.getByText('community')).toBeInTheDocument()
+    expect(screen.getByText('community')).toBeVisible()
     expect(screen.queryByText('javascript')).not.toBeInTheDocument() // Second group still collapsed
   })
 

@@ -5,6 +5,7 @@ import LoadingIndicator from '@/components/LoadingIndicator'
 import { Command } from 'cmdk'
 import Pill from '@/components/Pill'
 import InfoPopover from '@/components/InfoPopover'
+import { Checkbox } from '@/components/ui/Checkbox'
 
 export type Option = {
   value: string
@@ -197,9 +198,8 @@ export default function CommandSelector<T extends Option>({
 
   const defaultRenderOption = (option: T, isSelected: boolean) => (
     <div className="flex items-start gap-3">
-      <input
-        type="checkbox"
-        className="wev-checkbox mt-0.5"
+      <Checkbox
+        className="mt-0.5"
         checked={isSelected}
         readOnly
         tabIndex={-1}

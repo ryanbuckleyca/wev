@@ -6,7 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   PopoverArrow,
-} from '@/components/ui/popover'
+} from '@/components/ui/Popover'
 
 interface InfoPopoverProps {
   children: React.ReactNode

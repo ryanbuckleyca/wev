@@ -7,6 +7,71 @@ export interface ValueDefinition {
   name?: string // Optional translated display name
   description: string
   example: string
+  category?: string
+}
+
+export interface WorkValue {
+  id: string
+  label: { en: string; fr: string }
+  summary: { en: string; fr: string }
+  category: { en: string; fr: string }
+}
+
+/**
+ * Category groupings for work values, inspired by O*NET work value clusters.
+ * Each category has bilingual labels.
+ */
+export const VALUE_CATEGORIES: Record<string, { en: string; fr: string }> = {
+  growth: { en: 'Growth & Achievement', fr: 'Croissance et accomplissement' },
+  creativity: { en: 'Creativity & Expression', fr: 'Créativité et expression' },
+  social: { en: 'Social & Relationships', fr: 'Social et relations' },
+  workstyle: { en: 'Work Style & Environment', fr: 'Style de travail et environnement' },
+  rewards: { en: 'Rewards & Recognition', fr: 'Récompenses et reconnaissance' },
+  stability: { en: 'Stability & Security', fr: 'Stabilité et sécurité' },
+}
+
+/** Maps each value key to its category key */
+const VALUE_TO_CATEGORY: Record<string, string> = {
+  Advancement: 'growth',
+  Challenge: 'growth',
+  Competence: 'growth',
+  Experience: 'growth',
+  Knowledge: 'growth',
+  'Decision Making': 'growth',
+  'Research and Development': 'growth',
+  Aesthetic: 'creativity',
+  'Artistic Creativity': 'creativity',
+  'Creative Expression': 'creativity',
+  Creativity: 'creativity',
+  'Precision Work': 'creativity',
+  Affiliation: 'social',
+  Community: 'social',
+  Friendship: 'social',
+  'Help Others': 'social',
+  'Help Society': 'social',
+  'Influence People': 'social',
+  'Public Contact': 'social',
+  'Work with Others': 'social',
+  'Change and Variety': 'workstyle',
+  Excitement: 'workstyle',
+  'Fast Pace': 'workstyle',
+  'Job Tranquility': 'workstyle',
+  Location: 'workstyle',
+  'Moral Fulfillment': 'workstyle',
+  Organization: 'workstyle',
+  'Physical Challenge': 'workstyle',
+  Supervision: 'workstyle',
+  'Time Freedom': 'workstyle',
+  'Work Alone': 'workstyle',
+  'Work Under Pressure': 'workstyle',
+  Competition: 'rewards',
+  'Financial Gain': 'rewards',
+  'High Earnings': 'rewards',
+  'Intellectual Status': 'rewards',
+  Recognition: 'rewards',
+  Status: 'rewards',
+  Security: 'stability',
+  Stability: 'stability',
 }
 
 export const VALUES_DICTIONARY = {
@@ -203,4 +268,36 @@ export function getValueDefinition(
   }
 
   return DEFAULT_VALUE_DEFINITION
+}
+
+/**
+ * Build the full WorkValue list for use with ValuesSelector.
+ * Requires a translation function `t(key)` that resolves keys under
+ * the `values` namespace (e.g. `values.Advancement.name`).
+ *
+ * @param tEn - Translation function for English locale
+ * @param tFr - Translation function for French locale
+ */
+export function buildWorkValues(
+  tEn: (key: string, opts?: { defaultValue: string }) => string,
+  tFr: (key: string, opts?: { defaultValue: string }) => string
+): WorkValue[] {
+  const uncategorised = { en: 'Other', fr: 'Autre' }
+  return VALUES_LIST.map((id) => {
+    const catKey = VALUE_TO_CATEGORY[id] ?? ''
+    const cat = VALUE_CATEGORIES[catKey] ?? uncategorised
+    const def = VALUES_DICTIONARY[id]
+    return {
+      id,
+      label: {
+        en: tEn(`${id}.name`, { defaultValue: id }),
+        fr: tFr(`${id}.name`, { defaultValue: id }),
+      },
+      summary: {
+        en: tEn(`${id}.description`, { defaultValue: def.description }),
+        fr: tFr(`${id}.description`, { defaultValue: def.description }),
+      },
+      category: cat,
+    }
+  })
 }
