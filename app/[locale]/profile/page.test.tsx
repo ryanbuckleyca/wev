@@ -105,6 +105,17 @@ describe('ProfilePage skills integration', () => {
           ],
         })
       }
+      if (url.startsWith('/api/skills/all?locale=en')) {
+        return jsonResponse([
+          {
+            uri: 'uri-1',
+            preferredLabel: { en: 'Data analysis', fr: 'Analyse de données' },
+            definition: { en: 'Analyze structured datasets.', fr: 'Analyser des ensembles de données structurées.' },
+            skillType: 'knowledge',
+            reuseLevel: 'cross-sector',
+          },
+        ])
+      }
       return Promise.reject(new Error(`Unexpected URL: ${url}`))
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -134,6 +145,17 @@ describe('ProfilePage skills integration', () => {
             },
           ],
         })
+      }
+      if (url.startsWith('/api/skills/all?locale=en')) {
+        return jsonResponse([
+          {
+            uri: 'uri-1',
+            preferredLabel: { en: 'Data analysis', fr: 'Analyse de données' },
+            definition: { en: 'Analyze structured datasets.', fr: 'Analyser des ensembles de données structurées.' },
+            skillType: 'knowledge',
+            reuseLevel: 'cross-sector',
+          },
+        ])
       }
       return Promise.reject(new Error(`Unexpected URL: ${url}`))
     })
@@ -175,6 +197,25 @@ describe('ProfilePage skills integration', () => {
           ],
         })
       }
+      if (url.startsWith('/api/skills/all?locale=en')) {
+        return jsonResponse([
+          {
+            uri: 'uri-1',
+            preferredLabel: { en: 'Data analysis', fr: 'Analyse de données' },
+            definition: { en: 'Analyze structured datasets.', fr: 'Analyser des ensembles de données structurées.' },
+            skillType: 'knowledge',
+            reuseLevel: 'cross-sector',
+          },
+          {
+            uri: 'uri-2',
+            preferredLabel: { en: 'Data governance', fr: 'Gouvernance des données' },
+            definition: { en: 'Manage data controls.', fr: 'Gérer les contrôles de données.' },
+            skillType: 'skill',
+            reuseLevel: 'transversal',
+            aliases: ['govern data'],
+          },
+        ])
+      }
       if (url.startsWith('/api/skills/search?')) {
         return jsonResponse({
           skills: [
@@ -200,11 +241,9 @@ describe('ProfilePage skills integration', () => {
     await user.type(searchInput, 'da')
     await new Promise((resolve) => setTimeout(resolve, 350))
 
+    // Now we expect /api/skills/all to be called (for client-side filtering)
     await waitFor(() => {
-        expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/api/skills/search?q=da&limit=20&locale=en'),
-        expect.anything()
-      )
+      expect(fetchMock).toHaveBeenCalledWith('/api/skills/all?locale=en')
     })
 
     await user.click(await screen.findByText('Data governance'))
@@ -250,6 +289,17 @@ describe('ProfilePage skills integration', () => {
             reuse_level: 'cross-sector',
           })),
         })
+      }
+      if (url.startsWith('/api/skills/all?locale=en')) {
+        return jsonResponse(
+          Array.from({ length: 7 }, (_, i) => ({
+            uri: `uri-${i + 1}`,
+            preferredLabel: { en: `Skill ${i + 1}`, fr: `Compétence ${i + 1}` },
+            definition: { en: null, fr: null },
+            skillType: 'skill',
+            reuseLevel: 'cross-sector',
+          }))
+        )
       }
       return Promise.reject(new Error(`Unexpected URL: ${url}`))
     })

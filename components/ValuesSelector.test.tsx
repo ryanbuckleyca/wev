@@ -1,185 +1,245 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
-import ValuesSelector from './ValuesSelector'
+import ValuesSelector from './profile/ValuesSelector'
 import { VALUES_LIST, getValueDefinition } from '@/lib/values'
 
 describe('ValuesSelector', () => {
-  describe('view mode (isEditing = false)', () => {
-    it('shows a dash when no values are selected', () => {
+  const mockValues = VALUES_LIST.map(id => getValueDefinition(id))
+  const locale = 'en'
+
+  describe('rendering', () => {
+    it('renders all category groups', () => {
       render(
         <ValuesSelector
-          selectedValues={[]}
-          onValuesChange={() => {}}
-          isEditing={false}
+          values={mockValues}
+          selected={[]}
+          onToggle={() => {}}
+          locale={locale}
         />
       )
 
-      expect(screen.getByText('-')).toBeVisible()
+      // Should render category headers
+      const categories = new Set(mockValues.map(v => v.category[locale]))
+      categories.forEach(category => {
+        expect(screen.getByText(category)).toBeInTheDocument()
+      })
     })
 
-    it('renders selected values with descriptions and examples', () => {
-      const values = [VALUES_LIST[0], VALUES_LIST[1]]
+    it('shows selection count for each category', () => {
+      const selectedIds = [mockValues[0].id, mockValues[1].id]
       render(
         <ValuesSelector
-          selectedValues={values}
-          onValuesChange={() => {}}
-          isEditing={false}
+          values={mockValues}
+          selected={selectedIds}
+          onToggle={() => {}}
+          locale={locale}
         />
       )
 
-      const firstDef = getValueDefinition(values[0])
-      const secondDef = getValueDefinition(values[1])
-
-      expect(screen.getByText(values[0])).toBeVisible()
-      expect(screen.getByText(firstDef.description)).toBeVisible()
-      expect(screen.getByText(firstDef.example)).toBeVisible()
-
-      expect(screen.getByText(values[1])).toBeVisible()
-      expect(screen.getByText(secondDef.description)).toBeVisible()
-      expect(screen.getByText(secondDef.example)).toBeVisible()
+      // Should show "X / Y selected" for each category
+      expect(screen.getAllByText(/\d+ \/ \d+ selected/)).toHaveLength(
+        new Set(mockValues.map(v => v.category[locale])).size
+      )
     })
 
-    it('does not render toggle buttons in view mode', () => {
+    it('categories are collapsed by default', () => {
       render(
         <ValuesSelector
-          selectedValues={[VALUES_LIST[0]]}
-          onValuesChange={() => {}}
-          isEditing={false}
+          values={mockValues}
+          selected={[]}
+          onToggle={() => {}}
+          locale={locale}
         />
       )
 
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+      // Value labels should not be visible when collapsed
+      mockValues.forEach(value => {
+        expect(screen.queryByText(value.label[locale])).not.toBeInTheDocument()
+      })
     })
   })
 
-  describe('edit mode (isEditing = true)', () => {
-    it('renders command selector in edit mode', () => {
-      render(
-        <ValuesSelector
-          selectedValues={[]}
-          onValuesChange={() => {}}
-          isEditing={true}
-        />
-      )
-
-      // Should render command selector instead of buttons
-      expect(screen.getByRole('combobox')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText(/search for values/i)).toBeInTheDocument()
-    })
-
-    it('shows selection count', () => {
-      render(
-        <ValuesSelector
-          selectedValues={[VALUES_LIST[0], VALUES_LIST[2]]}
-          onValuesChange={() => {}}
-          isEditing={true}
-        />
-      )
-
-      expect(screen.getByText(/2 selected/)).toBeVisible()
-    })
-
-    it('marks selected values with aria-pressed="true"', () => {
-      render(
-        <ValuesSelector
-          selectedValues={[VALUES_LIST[0]]}
-          onValuesChange={() => {}}
-          isEditing={true}
-        />
-      )
-
-      // In command selector mode, check that the value is selected
-      expect(screen.getByRole('combobox')).toBeInTheDocument()
-      expect(screen.getByText(VALUES_LIST[0])).toBeInTheDocument()
-    })
-
-    it('marks unselected values with aria-pressed="false"', () => {
-      render(
-        <ValuesSelector
-          selectedValues={[]}
-          onValuesChange={() => {}}
-          isEditing={true}
-        />
-      )
-
-      // In command selector mode, no values are selected
-      expect(screen.getByRole('combobox')).toBeInTheDocument()
-      expect(screen.queryByText(VALUES_LIST[0])).not.toBeInTheDocument()
-    })
-
-    it('uses command selector for value selection in edit mode', async () => {
+  describe('category expansion', () => {
+    it('expands category when clicked', async () => {
       const user = userEvent.setup()
-      const handleChange = vi.fn()
-
       render(
         <ValuesSelector
-          selectedValues={[VALUES_LIST[0]]}
-          onValuesChange={handleChange}
-          isEditing={true}
+          values={mockValues}
+          selected={[]}
+          onToggle={() => {}}
+          locale={locale}
         />
       )
 
-      // Should have command selector with selected value
-      expect(screen.getByRole('combobox')).toBeInTheDocument()
-      // The selected value should be visible in the command selector
-      expect(screen.getByText(VALUES_LIST[0])).toBeInTheDocument()
+      const firstCategory = mockValues[0].category[locale]
+      const categoryHeader = screen.getByText(firstCategory)
+      
+      await user.click(categoryHeader)
+
+      // Value labels should now be visible
+      const valuesInCategory = mockValues.filter(v => v.category[locale] === firstCategory)
+      valuesInCategory.forEach(value => {
+        expect(screen.getByText(value.label[locale])).toBeInTheDocument()
+      })
     })
 
-    it('calls onValuesChange to add a value when selecting a new value from the command selector', async () => {
+    it('collapses category when clicked again', async () => {
       const user = userEvent.setup()
-      const handleChange = vi.fn()
-
       render(
         <ValuesSelector
-          selectedValues={[VALUES_LIST[0]]}
-          onValuesChange={handleChange}
-          isEditing={true}
+          values={mockValues}
+          selected={[]}
+          onToggle={() => {}}
+          locale={locale}
         />
       )
 
-      // Should have command selector
-      expect(screen.getByRole('combobox')).toBeInTheDocument()
-      // For now, just verify the component renders correctly
-      expect(screen.getByText(VALUES_LIST[0])).toBeInTheDocument()
-    })
+      const firstCategory = mockValues[0].category[locale]
+      const categoryHeader = screen.getByText(firstCategory)
+      
+      // Expand
+      await user.click(categoryHeader)
+      const firstValue = mockValues.find(v => v.category[locale] === firstCategory)!
+      expect(screen.getByText(firstValue.label[locale])).toBeInTheDocument()
 
-    it('calls onValuesChange to remove a value when deselecting in command selector', async () => {
+      // Collapse
+      await user.click(categoryHeader)
+      expect(screen.queryByText(firstValue.label[locale])).not.toBeInTheDocument()
+    })
+  })
+
+  describe('value selection', () => {
+    it('calls onToggle when a value is clicked', async () => {
       const user = userEvent.setup()
-      const handleChange = vi.fn()
-      const toRemove = VALUES_LIST[0]
-
+      const handleToggle = vi.fn()
       render(
         <ValuesSelector
-          selectedValues={[toRemove, VALUES_LIST[1]]}
-          onValuesChange={handleChange}
-          isEditing={true}
+          values={mockValues}
+          selected={[]}
+          onToggle={handleToggle}
+          locale={locale}
         />
       )
 
-      // Should have command selector with multiple values
-      expect(screen.getByRole('combobox')).toBeInTheDocument()
-      expect(screen.getByText(toRemove)).toBeInTheDocument()
-      expect(screen.getByText(VALUES_LIST[1])).toBeInTheDocument()
+      // Expand first category
+      const firstCategory = mockValues[0].category[locale]
+      await user.click(screen.getByText(firstCategory))
+
+      // Click first value
+      const firstValue = mockValues.find(v => v.category[locale] === firstCategory)!
+      await user.click(screen.getByText(firstValue.label[locale]))
+
+      expect(handleToggle).toHaveBeenCalledWith(firstValue.id)
     })
 
-    it('does not display description/example in edit mode (uses command selector)', () => {
-      const value = VALUES_LIST[0]
-      const def = getValueDefinition(value)
-
+    it('shows checkboxes as checked for selected values', async () => {
+      const user = userEvent.setup()
+      const selectedValue = mockValues[0]
       render(
         <ValuesSelector
-          selectedValues={[]}
-          onValuesChange={() => {}}
-          isEditing={true}
+          values={mockValues}
+          selected={[selectedValue.id]}
+          onToggle={() => {}}
+          locale={locale}
         />
       )
 
-      // Should not render static description/example in edit mode
-      expect(screen.queryByText(def.description)).not.toBeInTheDocument()
-      expect(screen.queryByText(def.example)).not.toBeInTheDocument()
-      // Should render the command selector instead
-      expect(screen.getByPlaceholderText(/search for values/i)).toBeInTheDocument()
+      // Expand category
+      await user.click(screen.getByText(selectedValue.category[locale]))
+
+      // Find the checkbox for the selected value
+      const valueButton = screen.getByText(selectedValue.label[locale]).closest('button')
+      const checkbox = valueButton?.querySelector('input[type="checkbox"]')
+      expect(checkbox).toBeChecked()
+    })
+  })
+
+  describe('category-level selection', () => {
+    it('calls onToggleMultiple when category checkbox is clicked', async () => {
+      const user = userEvent.setup()
+      const handleToggleMultiple = vi.fn()
+      render(
+        <ValuesSelector
+          values={mockValues}
+          selected={[]}
+          onToggle={() => {}}
+          onToggleMultiple={handleToggleMultiple}
+          locale={locale}
+        />
+      )
+
+      // Find and click the first category checkbox
+      const checkboxes = screen.getAllByRole('checkbox')
+      await user.click(checkboxes[0])
+
+      expect(handleToggleMultiple).toHaveBeenCalled()
+      const [ids, shouldSelect] = handleToggleMultiple.mock.calls[0]
+      expect(Array.isArray(ids)).toBe(true)
+      expect(typeof shouldSelect).toBe('boolean')
+    })
+
+    it('shows indeterminate state when some values in category are selected', async () => {
+      const user = userEvent.setup()
+      const firstCategory = mockValues[0].category[locale]
+      const valuesInCategory = mockValues.filter(v => v.category[locale] === firstCategory)
+      
+      // Select only first value in category
+      render(
+        <ValuesSelector
+          values={mockValues}
+          selected={[valuesInCategory[0].id]}
+          onToggle={() => {}}
+          onToggleMultiple={() => {}}
+          locale={locale}
+        />
+      )
+
+      // The category checkbox should be indeterminate if there are multiple values
+      if (valuesInCategory.length > 1) {
+        const categoryCheckboxes = screen.getAllByRole('checkbox')
+        const firstCategoryCheckbox = categoryCheckboxes[0]
+        
+        // Check for indeterminate attribute or aria-checked="mixed"
+        expect(
+          firstCategoryCheckbox.hasAttribute('data-indeterminate') ||
+          firstCategoryCheckbox.getAttribute('aria-checked') === 'mixed'
+        ).toBe(true)
+      }
+    })
+  })
+
+  describe('localization', () => {
+    it('renders French labels when locale is fr', () => {
+      render(
+        <ValuesSelector
+          values={mockValues}
+          selected={[]}
+          onToggle={() => {}}
+          locale="fr"
+        />
+      )
+
+      // Should render French category names
+      const categories = new Set(mockValues.map(v => v.category.fr))
+      categories.forEach(category => {
+        expect(screen.getByText(category)).toBeInTheDocument()
+      })
+    })
+
+    it('shows "sélectionnés" in French', () => {
+      render(
+        <ValuesSelector
+          values={mockValues}
+          selected={[mockValues[0].id]}
+          onToggle={() => {}}
+          locale="fr"
+        />
+      )
+
+      expect(screen.getAllByText(/sélectionnés/)).toHaveLength(
+        new Set(mockValues.map(v => v.category.fr)).size
+      )
     })
   })
 })

@@ -6,7 +6,7 @@ interface SkillSearchInputProps {
   query: string
   onQueryChange: (value: string) => void
   isSearching: boolean
-  inputRef?: React.RefObject<HTMLInputElement>
+  inputRef?: React.RefObject<HTMLInputElement | null>
   onClear: () => void
   placeholder?: string
 }

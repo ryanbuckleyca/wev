@@ -23,6 +23,11 @@ export default function Pill({
 }: PillProps) {
   const t = useTranslations('ariaLabels.pill')
   
+  const handleRemove = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onRemove?.()
+  }
+  
   const baseClasses = 'inline-flex items-center font-medium rounded-full transition-colors'
   
   const sizeClasses = {
@@ -51,10 +56,7 @@ export default function Pill({
       {(removable || onRemove) && (
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onRemove?.()
-          }}
+          onClick={handleRemove}
           className={removable ? 'text-wev-text-tertiary hover:text-wev-brand-accent leading-none ml-1' : 'text-[var(--text-tertiary)] hover:text-[var(--foreground)] leading-none ml-1'}
           aria-label={t('remove', { label: String(children) })}
         >
