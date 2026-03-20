@@ -29,7 +29,7 @@ export default function SkillSearchInput({
         value={query}
         onValueChange={onQueryChange}
         placeholder={placeholder || t('skillsPlaceholder')}
-        className="min-w-0 flex-1 bg-transparent text-[13px] font-medium text-foreground outline-none placeholder:text-gray-400"
+        className="min-w-0 flex-1 bg-transparent text-base sm:text-[13px] font-medium text-foreground outline-none placeholder:text-gray-400"
       />
       {isSearching && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
       {query && !isSearching && (

@@ -127,13 +127,15 @@ export default function MobileSkillsModal({
       
       {/* Selected Pills */}
       {selected.length > 0 && (
-        <SelectedSkillsPills
-          skills={selected}
-          onRemove={onRemove}
-          locale={locale}
-          useHorizontalScroll={!!query}
-          fadeBackground="white"
-        />
+        <div className="px-3 pt-2">
+          <SelectedSkillsPills
+            skills={selected}
+            onRemove={onRemove}
+            locale={locale}
+            useHorizontalScroll={!!query}
+            fadeBackground="white"
+          />
+        </div>
       )}
       
       {/* Skills List */}
