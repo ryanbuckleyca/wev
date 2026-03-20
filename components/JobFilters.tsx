@@ -600,12 +600,7 @@ export default function JobFilters({
                   >
                     <Checkbox
                       checked={selectedProvinces.includes(province)}
-                      onChange={() => {
-                        const newProvinces = selectedProvinces.includes(province)
-                          ? selectedProvinces.filter((p) => p !== province)
-                          : [...selectedProvinces, province]
-                        onProvincesChange(newProvinces)
-                      }}
+                      onChange={() => handleProvinceToggle(province)}
                     />
                     <span className="text-sm text-foreground">{province}</span>
                   </label>
