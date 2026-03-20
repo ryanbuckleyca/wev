@@ -45,8 +45,8 @@ export async function GET(request: Request) {
       { skills },
       {
         headers: {
-          // Cache for 30 days, stale-while-revalidate for 7 days
-          'Cache-Control': 'public, s-maxage=2592000, stale-while-revalidate=604800',
+          // Cache indefinitely at CDN - only revalidate via /api/skills/revalidate
+          'Cache-Control': 'public, s-maxage=31536000, stale-while-revalidate=86400',
         },
       }
     )
