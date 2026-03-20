@@ -115,8 +115,8 @@ export default function SkillsSelector({
       document.body.style.top = `-${scrollY}px`
       document.body.style.width = '100%'
       
-      // Focus search input
-      const timer = setTimeout(() => mobileInputRef.current?.focus(), 50)
+      // Focus search input after render completes
+      mobileInputRef.current?.focus()
       
       return () => {
         // Restore scroll position
@@ -124,7 +124,6 @@ export default function SkillsSelector({
         document.body.style.top = ''
         document.body.style.width = ''
         window.scrollTo(0, scrollY)
-        clearTimeout(timer)
       }
     }
   }, [mobileOpen])
