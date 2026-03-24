@@ -2,13 +2,16 @@ import { NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase-server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import normalizeJobsWithSource from '@/lib/normalize-job'
+import { resolveSkillLabels, attachSkillLabels, parseLocale } from '@/lib/resolve-skill-labels'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export async function GET(req: Request) {
   try {
-    // Create a server client bound to the request cookies to detect the authenticated user
+    const { searchParams } = new URL(req.url)
+    const locale = parseLocale(searchParams.get('locale'))
+
     const serverSupabase = await createServerClient()
     const {
       data: { user },
@@ -18,7 +21,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    // Use admin client to perform a join between jobs and bookmarks for this user
     const adminClient = getSupabaseServer()
     const { data, error } = await adminClient
       .from('jobs')
@@ -32,10 +34,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Normalize jobs result similar to /api/bulletin
     const jobsWithSource = normalizeJobsWithSource(data)
+    const labelMap = await resolveSkillLabels(adminClient, jobsWithSource, locale)
+    const jobs = attachSkillLabels(jobsWithSource, labelMap)
 
-    return NextResponse.json({ jobs: jobsWithSource })
+    return NextResponse.json({ jobs })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to fetch bookmarked jobs'
     return NextResponse.json({ error: message }, { status: 500 })

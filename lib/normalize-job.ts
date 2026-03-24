@@ -1,4 +1,4 @@
-export function normalizeJobsWithSource(rows: unknown[] | null | undefined) {
+export function normalizeJobsWithSource(rows: unknown[] | null | undefined): Record<string, unknown>[] {
   return (rows ?? []).map((job: any) => {
     const sources = (job as { sources?: { name?: string } | { name?: string }[] }).sources
     const sourceName = Array.isArray(sources) ? sources[0]?.name : sources?.name

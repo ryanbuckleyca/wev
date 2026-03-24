@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import JobListings from '@/components/JobListings'
 import { createClient } from '@/lib/supabase/client'
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth'
@@ -11,6 +11,7 @@ import type { JobMatchData } from '@/lib/supabase'
 
 export default function BookmarksPage() {
   const t = useTranslations()
+  const locale = useLocale()
   const { user, loading } = useRequireAuth()
   const [jobs, setJobs] = useState<any[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +23,7 @@ export default function BookmarksPage() {
     let mounted = true
     ;(async () => {
       try {
-        const res = await fetch('/api/bookmarks', { cache: 'no-store' })
+        const res = await fetch(`/api/bookmarks?locale=${locale}`, { cache: 'no-store' })
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
           throw new Error(body.error || t('bookmarks.loadFailed'))
