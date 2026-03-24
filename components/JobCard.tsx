@@ -41,8 +41,24 @@ export default function JobCard({
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
   const [bookmarked, setBookmarked] = useState(initialBookmarked)
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
-  const [skillTerms, setSkillTerms] = useState<Record<string, string>>({})
-  const [skillDefinitions, setSkillDefinitions] = useState<Record<string, string>>({})
+
+  // Derive skill display maps from pre-resolved labels embedded in the job
+  const skillTerms: Record<string, string> = useMemo(() => {
+    const labels = job.skill_labels ?? {}
+    return Object.fromEntries(Object.entries(labels).map(([uri, l]) => [uri, l.term]))
+  }, [job.skill_labels])
+
+  const skillDefinitions: Record<string, string> = useMemo(() => {
+    const labels = job.skill_labels ?? {}
+    const result: Record<string, string> = {}
+    for (const [uri, l] of Object.entries(labels)) {
+      const parts = []
+      if (l.definition) parts.push(l.definition)
+      if (l.scope_note) parts.push(l.scope_note)
+      if (parts.length > 0) result[uri] = parts.join('<br/><br/>')
+    }
+    return result
+  }, [job.skill_labels])
 
   // Get user state
   const t = useTranslations()
@@ -92,55 +108,6 @@ export default function JobCard({
     setBookmarked(initialBookmarked)
   }, [initialBookmarked])
 
-  useEffect(() => {
-    const skills = job.skills ?? []
-    if (skills.length === 0) {
-      setSkillTerms({})
-      setSkillDefinitions({})
-      return
-    }
-
-    let cancelled = false
-    ;(async () => {
-      try {
-        const params = new URLSearchParams({
-          uris: skills.join(','),
-          locale,
-        })
-        const res = await fetch(`/api/skills/by-uri?${params.toString()}`, { cache: 'no-store' })
-        if (!res.ok) {
-          return
-        }
-        const body = await res.json()
-        if (cancelled) {
-          return
-        }
-        const nextTerms: Record<string, string> = {}
-        const nextDefinitions: Record<string, string> = {}
-        for (const row of body.skills ?? []) {
-          if (row?.concept_uri && row?.term) {
-            nextTerms[row.concept_uri] = row.term
-            // Build tooltip from definition and scope note
-            const parts = []
-            if (row.definition) parts.push(row.definition)
-            if (row.scope_note) parts.push(row.scope_note)
-            if (parts.length > 0) {
-              nextDefinitions[row.concept_uri] = parts.join('<br/><br/>')
-            }
-          }
-        }
-        setSkillTerms(nextTerms)
-        setSkillDefinitions(nextDefinitions)
-      } catch (error) {
-        console.error('Failed to fetch skill labels:', error)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [job.skills, locale])
-  
   const sse = !!job.is_sse
   
   const getCardSummary = (job: JobPosting) => {

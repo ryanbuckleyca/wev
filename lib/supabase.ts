@@ -21,6 +21,8 @@ export interface JobPosting {
   source?: string | null
   values?: string[]
   skills?: string[]
+  /** Pre-resolved skill labels keyed by concept URI, injected by /api/bulletin */
+  skill_labels?: Record<string, { term: string; definition: string | null; scope_note: string | null }>
 }
 
 export interface JobMatchData {

@@ -115,7 +115,7 @@ export default function Home() {
     }, 10000) // 10 second timeout
 
     try {
-      const res = await fetch('/api/bulletin')
+      const res = await fetch(`/api/bulletin?locale=${locale}`)
       clearTimeout(timeoutId)
       
       if (!res.ok) {

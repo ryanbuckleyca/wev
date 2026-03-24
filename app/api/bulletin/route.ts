@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase-server'
+import normalizeJobsWithSource from '@/lib/normalize-job'
+import { resolveSkillLabels, attachSkillLabels, parseLocale } from '@/lib/resolve-skill-labels'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const locale = parseLocale(searchParams.get('locale'))
+
     const supabase = getSupabaseServer()
     const { data: scrapeData, error: scrapeError } = await supabase
       .from('scrape_runs')
@@ -26,22 +31,12 @@ export async function GET() {
       return NextResponse.json({ error: jobsError.message }, { status: 500 })
     }
 
-    const jobsWithSource = (jobsData ?? []).map((job) => {
-      const sources = (job as { sources?: { name?: string } | { name?: string }[] }).sources
-      const sourceName = Array.isArray(sources) ? sources[0]?.name : sources?.name
-      const { sources: _sources, source_id: _sourceId, ...rest } = job as {
-        sources?: { name?: string } | { name?: string }[]
-        source_id?: string
-        [key: string]: unknown
-      }
-      return {
-        ...rest,
-        source: sourceName ?? null,
-      }
-    })
+    const jobsWithSource = normalizeJobsWithSource(jobsData)
+    const labelMap = await resolveSkillLabels(supabase, jobsWithSource, locale)
+    const jobs = attachSkillLabels(jobsWithSource, labelMap)
 
     return NextResponse.json({
-      jobs: jobsWithSource,
+      jobs,
       lastScrapeTime: scrapeData?.run_at ?? null,
     })
   } catch (err) {
