@@ -1,11 +1,14 @@
 import { createClient } from './client'
+import { type RatedValue, type RatedSkill } from '@/lib/value-ratings'
 
 export type Profile = {
   id: string
   full_name: string | null
   bio: string | null
   values: string[]
+  values_rated: RatedValue[] | null
   skills: string[]
+  skills_rated: RatedSkill[] | null
   work_types: string[]
   ideal_work_environment: string | null
   profile_photo_url: string | null
@@ -17,7 +20,9 @@ export type ProfileUpdateData = {
   full_name?: string | null
   bio?: string | null
   values?: string[]
+  values_rated?: RatedValue[] | null
   skills?: string[]
+  skills_rated?: RatedSkill[] | null
   work_types?: string[]
   ideal_work_environment?: string | null
   profile_photo_url?: string | null
@@ -48,7 +53,9 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   return {
     ...profile,
     values: profile.values ?? [],
+    values_rated: profile.values_rated ?? null,
     skills: profile.skills ?? [],
+    skills_rated: profile.skills_rated ?? null,
     work_types: profile.work_types ?? [],
     ideal_work_environment: profile.ideal_work_environment ?? null,
   }

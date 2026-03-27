@@ -25,26 +25,15 @@ export default function ProfilePage() {
   const { user, loading } = useRequireAuth();
 
   const {
-    profile,
-    profileLoading,
-    profileError,
-    formData,
-    setFormData,
-    selectedSkills,
-    skillResults,
-    allSkills,
-    isLibraryLoading,
-    isSearchingSkills,
-    handleSkillSearch,
-    handleSkillSelect,
-    handleSkillRemove,
+    profile, profileLoading, profileError,
+    formData, setFormData,
+    selectedSkills, skillCutoff,
+    skillResults, allSkills, isLibraryLoading, isSearchingSkills,
+    handleSkillSearch, handleSkillToggle, handleSkillReorder, handleSkillRemove,
     workValues,
-    handleValueToggle,
-    handleValueToggleMultiple,
-    isSaving,
-    fileInputRef,
-    handleSaveProfile,
-    handlePhotoUpload,
+    selectedValues, valueCutoff,
+    handleValueToggle, handleValueReorder, handleValueRemove,
+    isSaving, fileInputRef, handleSaveProfile, handlePhotoUpload,
   } = useProfileForm(user?.id, locale);
 
   const workEnvironmentCharCount = formData.ideal_work_environment.length;
@@ -194,8 +183,8 @@ export default function ProfilePage() {
                 <h2 className="font-bold text-base">{t('profile.skills')}</h2>
                 {selectedSkills.length > 0 && (
                   <span className={`text-xs font-semibold rounded-full px-3 py-1 transition-colors ${
-                    selectedSkills.length > MAX_PROFILE_SKILLS 
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' 
+                    selectedSkills.length > MAX_PROFILE_SKILLS
+                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
                       : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
                   }`}>
                     {selectedSkills.length}
@@ -212,8 +201,10 @@ export default function ProfilePage() {
               <SkillsSelector
                 skills={skillResults}
                 allItems={allSkills}
-                selected={selectedSkills}
-                onSelect={handleSkillSelect}
+                selectedSkills={selectedSkills}
+                skillCutoff={skillCutoff}
+                onToggle={handleSkillToggle}
+                onReorder={handleSkillReorder}
                 onRemove={handleSkillRemove}
                 onSearch={handleSkillSearch}
                 locale={locale}
@@ -225,18 +216,18 @@ export default function ProfilePage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <h2 className="font-bold text-base">{t('profile.workValues')}</h2>
-                {formData.values.length > 0 && (
+                {selectedValues.length > 0 && (
                   <span className={`text-xs font-semibold rounded-full px-3 py-1 transition-colors ${
-                    formData.values.length > MAX_PROFILE_VALUES 
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' 
+                    selectedValues.length > MAX_PROFILE_VALUES
+                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
                       : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
                   }`}>
-                    {formData.values.length}
+                    {selectedValues.length}
                   </span>
                 )}
               </div>
 
-              {formData.values.length > MAX_PROFILE_VALUES && (
+              {selectedValues.length > MAX_PROFILE_VALUES && (
                 <Alert variant="warning">
                   {t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
                 </Alert>
@@ -244,9 +235,11 @@ export default function ProfilePage() {
 
               <ValuesSelector
                 values={workValues}
-                selected={formData.values}
+                selectedValues={selectedValues}
+                valueCutoff={valueCutoff}
                 onToggle={handleValueToggle}
-                onToggleMultiple={handleValueToggleMultiple}
+                onReorder={handleValueReorder}
+                onRemove={handleValueRemove}
                 locale={locale}
               />
             </div>

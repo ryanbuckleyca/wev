@@ -1,4 +1,3 @@
-import { Command } from 'cmdk'
 import { useTranslations } from 'next-intl'
 import SkillItem from './SkillItem'
 import type { EscoSkill } from '../SkillsSelector'
@@ -39,7 +38,7 @@ export default function SkillsList({
   }
 
   return (
-    <Command.List className="overflow-y-auto overflow-x-hidden scroll-smooth pb-4">
+    <div className="max-h-72 overflow-y-auto overflow-x-hidden scroll-smooth pb-4">
       {skills.map((skill) => (
         <SkillItem
           key={skill.uri}
@@ -49,6 +48,6 @@ export default function SkillsList({
           locale={locale}
         />
       ))}
-    </Command.List>
+    </div>
   )
 }

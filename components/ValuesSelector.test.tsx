@@ -3,6 +3,7 @@ import { render, screen } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import ValuesSelector from './profile/ValuesSelector'
 import { VALUES_LIST, buildWorkValues } from '@/lib/values'
+import type { RatedValue } from '@/lib/value-ratings'
 
 describe('ValuesSelector', () => {
   // Create mock translation functions
@@ -211,6 +212,109 @@ describe('ValuesSelector', () => {
         // Check the indeterminate property on the DOM element
         expect(firstCategoryCheckbox.indeterminate).toBe(true)
       }
+    })
+  })
+
+  describe('tier selector', () => {
+    it('selecting a value shows tier buttons with none active (unrated)', async () => {
+      const user = userEvent.setup()
+      const firstValue = mockValues[0]
+      const handleTierChange = vi.fn()
+
+      render(
+        <ValuesSelector
+          values={mockValues}
+          selected={[firstValue.id]}
+          onToggle={() => {}}
+          locale={locale}
+          valuesRated={[{ value: firstValue.id }]}
+          onTierChange={handleTierChange}
+        />
+      )
+
+      // Expand the category so tier buttons are visible
+      await user.click(screen.getByText(firstValue.category[locale]))
+
+      // All four tier buttons should be present
+      const tierLabels = ['Most Important', 'More Important', 'Less Important', 'Least Important']
+      for (const label of tierLabels) {
+        const btn = screen.getByRole('button', { name: label })
+        expect(btn).toBeInTheDocument()
+        // None should be pressed (unrated)
+        expect(btn).toHaveAttribute('aria-pressed', 'false')
+      }
+    })
+
+    it('clicking a tier button calls onTierChange with correct valueId and tier', async () => {
+      const user = userEvent.setup()
+      const firstValue = mockValues[0]
+      const handleTierChange = vi.fn()
+
+      render(
+        <ValuesSelector
+          values={mockValues}
+          selected={[firstValue.id]}
+          onToggle={() => {}}
+          locale={locale}
+          valuesRated={[{ value: firstValue.id }]}
+          onTierChange={handleTierChange}
+        />
+      )
+
+      // Expand the category
+      await user.click(screen.getByText(firstValue.category[locale]))
+
+      // Click "Most Important"
+      await user.click(screen.getByRole('button', { name: 'Most Important' }))
+
+      expect(handleTierChange).toHaveBeenCalledOnce()
+      expect(handleTierChange).toHaveBeenCalledWith(firstValue.id, 'most_important')
+    })
+
+    it('deselecting a value hides its tier buttons', async () => {
+      const user = userEvent.setup()
+      const firstValue = mockValues[0]
+      const handleTierChange = vi.fn()
+      let selected = [firstValue.id]
+      const handleToggle = vi.fn((id: string) => {
+        selected = selected.filter(s => s !== id)
+      })
+
+      const { rerender } = render(
+        <ValuesSelector
+          values={mockValues}
+          selected={selected}
+          onToggle={handleToggle}
+          locale={locale}
+          valuesRated={[{ value: firstValue.id, tier: 'most_important' }]}
+          onTierChange={handleTierChange}
+        />
+      )
+
+      // Expand the category
+      await user.click(screen.getByText(firstValue.category[locale]))
+
+      // Tier buttons should be visible while selected
+      expect(screen.getByRole('button', { name: 'Most Important' })).toBeInTheDocument()
+
+      // Deselect the value
+      await user.click(screen.getByText(firstValue.label[locale]))
+      expect(handleToggle).toHaveBeenCalledWith(firstValue.id)
+
+      // Re-render with the value deselected and no tier
+      rerender(
+        <ValuesSelector
+          values={mockValues}
+          selected={[]}
+          onToggle={handleToggle}
+          locale={locale}
+          valuesRated={[]}
+          onTierChange={handleTierChange}
+        />
+      )
+
+      // Tier buttons should no longer be visible
+      expect(screen.queryByRole('button', { name: 'Most Important' })).not.toBeInTheDocument()
     })
   })
 

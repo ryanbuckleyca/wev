@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/client'
+import { RatedValue, getRankWeight, NEUTRAL_WEIGHT } from './value-ratings'
 
 interface UserProfile {
   id: string
   values: string[]
+  values_rated?: RatedValue[] | null
 }
 
 interface Job {
@@ -18,14 +20,33 @@ interface MatchResult {
 }
 
 /**
+ * Returns true when the array contains at least one RatedValue with a rank set.
+ * Used to decide between Flat_Match and Weighted_Match.
+ */
+function isRatedValueArray(values: string[] | RatedValue[]): values is RatedValue[] {
+  return (
+    values.length > 0 &&
+    typeof values[0] === 'object' &&
+    (values as unknown as RatedValue[]).some(v => v.rank != null)
+  )
+}
+
+/**
  * Calculate match score between user profile and job.
- * Formula (matches PL/pgSQL implementation in 20260305_optimize_match_triggers.sql;
- * legacy definition in 20260304_match_triggers.sql):
+ *
+ * Flat_Match (used when userValues is string[] OR all RatedValues have no rank):
  *   overlap = shared_count / user_values_count
  *   bonus   = min(shared_count * 0.1, 0.3)
  *   score   = min(overlap + bonus, 1.0)
+ *
+ * Weighted_Match (used when at least one RatedValue has a rank):
+ *   weight(rank) = linear decay from 1.0 (rank 1) to MIN_WEIGHT (rank N)
+ *   weighted_overlap = sum(weight for shared values) / sum(weight for all user values)
+ *   bonus            = min(shared_count * 0.1, 0.3)
+ *   score            = min(weighted_overlap + bonus, 1.0)
+ *   Unranked values use NEUTRAL_WEIGHT.
  */
-export function calculateMatch(userValues: string[], jobValues: string[]): {
+export function calculateMatch(userValues: string[] | RatedValue[], jobValues: string[]): {
   score: number
   shared_values: string[]
 } {
@@ -34,15 +55,47 @@ export function calculateMatch(userValues: string[], jobValues: string[]): {
   }
 
   const jobSet = new Set(jobValues)
-  const sharedValues = userValues.filter(v => jobSet.has(v))
-  const overlap = sharedValues.length / userValues.length
+
+  // Weighted_Match path: at least one RatedValue has a rank
+  if (isRatedValueArray(userValues)) {
+    const rated = userValues as RatedValue[]
+    const total = rated.length
+    const sharedValues: string[] = []
+    let weightedOverlapNumerator = 0
+    let weightedOverlapDenominator = 0
+
+    for (const rv of rated) {
+      const w = getRankWeight(rv.rank, total)
+      weightedOverlapDenominator += w
+      if (jobSet.has(rv.value)) {
+        sharedValues.push(rv.value)
+        weightedOverlapNumerator += w
+      }
+    }
+
+    if (weightedOverlapDenominator === 0) {
+      return { score: 0, shared_values: [] }
+    }
+
+    const overlap = weightedOverlapNumerator / weightedOverlapDenominator
+    const bonus = Math.min(sharedValues.length * 0.1, 0.3)
+    const score = Math.min(overlap + bonus, 1.0)
+
+    return { score, shared_values: sharedValues }
+  }
+
+  // Flat_Match path: plain string[] (or all-unrated RatedValue[] treated as strings)
+  const isObjectArray = userValues.length > 0 && typeof userValues[0] === 'object'
+  const plainValues = isObjectArray
+    ? (userValues as unknown as RatedValue[]).map(rv => rv.value)
+    : (userValues as unknown as string[])
+
+  const sharedValues = plainValues.filter(v => jobSet.has(v))
+  const overlap = sharedValues.length / plainValues.length
   const bonus = Math.min(sharedValues.length * 0.1, 0.3)
   const score = Math.min(overlap + bonus, 1.0)
 
-  return {
-    score,
-    shared_values: sharedValues
-  }
+  return { score, shared_values: sharedValues }
 }
 
 /**
@@ -55,11 +108,16 @@ export async function calculateUserMatches(userId: string): Promise<void> {
     // Get user profile values
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('values')
+      .select('values, values_rated')
       .eq('id', userId)
       .single()
 
-    if (profileError || !profile?.values?.length) {
+    const userValues: string[] | RatedValue[] =
+      profile?.values_rated?.length
+        ? (profile.values_rated as RatedValue[])
+        : (profile?.values ?? [])
+
+    if (profileError || !userValues.length) {
       console.log('No profile values found for user:', userId)
       return
     }
@@ -81,7 +139,7 @@ export async function calculateUserMatches(userId: string): Promise<void> {
     for (const job of jobs || []) {
       if (!job.values?.length) continue
       
-      const match = calculateMatch(profile.values, job.values)
+      const match = calculateMatch(userValues, job.values)
       
       matches.push({
         user_id: userId,
@@ -132,7 +190,7 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
     // Get all users with profile values
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, values')
+      .select('id, values, values_rated')
       .not('values', 'is', null)
 
     if (profilesError) {
@@ -144,9 +202,14 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
     const matches: MatchResult[] = []
     
     for (const profile of profiles || []) {
-      if (!profile.values?.length) continue
+      if (!profile.values?.length && !profile.values_rated?.length) continue
       
-      const match = calculateMatch(profile.values, job.values)
+      const profileValues: string[] | RatedValue[] =
+        profile.values_rated?.length
+          ? (profile.values_rated as RatedValue[])
+          : (profile.values ?? [])
+
+      const match = calculateMatch(profileValues, job.values)
       
       matches.push({
         user_id: profile.id,

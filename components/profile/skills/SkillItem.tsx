@@ -1,11 +1,10 @@
-import { Command } from 'cmdk'
 import { Badge } from '@/components/ui/Badge'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { useTranslations } from 'next-intl'
 import type { EscoSkill } from '../SkillsSelector'
 
 interface SkillItemProps {
-  skill: EscoSkill & { 
+  skill: EscoSkill & {
     label: string
     internalMatchedAlias?: string | null
   }
@@ -38,20 +37,15 @@ function formatEnumLabel(value: string | null | undefined): string {
 
 export default function SkillItem({ skill, isSelected, onToggle, locale }: SkillItemProps) {
   const t = useTranslations('profile')
-  const searchValue = `${skill.label} ${(skill.aliases || []).join(' ')}`.toLowerCase()
 
   return (
-    <Command.Item
-      key={skill.uri}
-      value={searchValue}
-      onSelect={onToggle}
-      className="flex cursor-pointer items-start gap-4 border-b border-gray-50 px-4 py-3.5 text-left transition-colors aria-selected:bg-gray-50 hover:bg-gray-50 dark:border-zinc-800/50 dark:aria-selected:bg-zinc-900/50 dark:hover:bg-zinc-900/50"
+    <div
+      role="option"
+      aria-selected={isSelected}
+      onClick={onToggle}
+      className="flex cursor-pointer items-start gap-4 border-b border-gray-50 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 dark:border-zinc-800/50 dark:hover:bg-zinc-900/50"
     >
-      <Checkbox 
-        checked={isSelected}
-        readOnly
-        className="mt-0.5 shrink-0"
-      />
+      <Checkbox checked={isSelected} readOnly className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1 overflow-hidden">
         <p className="text-[13px] font-bold text-gray-900 dark:text-zinc-100 break-words">
           {skill.label}
@@ -63,7 +57,7 @@ export default function SkillItem({ skill, isSelected, onToggle, locale }: Skill
         )}
         {skill.internalMatchedAlias && (
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 inline-block px-2 py-0.5 rounded-md dark:bg-blue-900/40 dark:text-blue-300 break-words">
-            {t('skillsMatchedAlias')} 
+            {t('skillsMatchedAlias')}
             &quot;{skill.internalMatchedAlias}&quot;
           </p>
         )}
@@ -80,6 +74,6 @@ export default function SkillItem({ skill, isSelected, onToggle, locale }: Skill
           )}
         </div>
       </div>
-    </Command.Item>
+    </div>
   )
 }

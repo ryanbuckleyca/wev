@@ -1,56 +1,31 @@
-import HorizontalScrollWithFades from '@/components/ui/HorizontalScrollWithFades'
-import InfoPopover from '@/components/InfoPopover'
-import Pill from '@/components/Pill'
+import SortableSelectedList from '../SortableSelectedList'
 import type { EscoSkill } from '../SkillsSelector'
 
 interface SelectedSkillsPillsProps {
   skills: EscoSkill[]
+  skillCutoff: number
+  onReorder: (from: number, to: number) => void
   onRemove: (uri: string) => void
   locale: 'en' | 'fr'
-  useHorizontalScroll?: boolean
-  fadeBackground?: string
 }
 
 export default function SelectedSkillsPills({
-  skills,
-  onRemove,
-  locale,
-  useHorizontalScroll = false,
-  fadeBackground = 'var(--card)',
+  skills, skillCutoff, onReorder, onRemove, locale,
 }: SelectedSkillsPillsProps) {
   if (skills.length === 0) return null
 
-  const pillElements = skills.map((skill) => (
-    <InfoPopover 
-      key={skill.uri} 
-      content={skill.description?.[locale] || skill.preferredLabel[locale]}
-      className={useHorizontalScroll ? 'shrink-0' : undefined}
-    >
-      <Pill
-        size="sm"
-        onRemove={() => onRemove(skill.uri)}
-        className="md:py-1 px-3"
-      >
-        {skill.preferredLabel[locale]}
-      </Pill>
-    </InfoPopover>
-  ))
-
-  if (useHorizontalScroll) {
-    return (
-      <HorizontalScrollWithFades 
-        containerClassName="shrink-0 border-b border-gray-100 dark:border-zinc-800 pb-1 pt-2"
-        className="px-4 pb-3 pt-1"
-        fadeBackground={fadeBackground}
-      >
-        {pillElements}
-      </HorizontalScrollWithFades>
-    )
-  }
+  const items = skills.map(s => ({
+    id: s.uri,
+    label: s.preferredLabel[locale],
+    sublabel: s.description?.[locale] ?? undefined,
+  }))
 
   return (
-    <div className="flex flex-wrap gap-2 pb-3 pt-1">
-      {pillElements}
-    </div>
+    <SortableSelectedList
+      items={items}
+      rankCutoff={skillCutoff}
+      onReorder={onReorder}
+      onRemove={onRemove}
+    />
   )
 }
