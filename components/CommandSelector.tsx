@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useMemo, useEffect, ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import LoadingIndicator from '@/components/LoadingIndicator'
 import { Command } from 'cmdk'
 import Pill from '@/components/Pill'
@@ -84,6 +85,7 @@ export default function CommandSelector<T extends Option>({
   availableOptions,
   renderOptionContent,
 }: CommandSelectorProps<T>) {
+  const t = useTranslations('ariaLabels.pill')
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
@@ -218,7 +220,11 @@ export default function CommandSelector<T extends Option>({
         <div className="flex flex-wrap gap-2">
           {selectedOptions.map((option) => (
             <InfoPopover key={option.value} content={option.tooltip || option.label}>
-              <Pill removable onRemove={() => removeOption(option.value)}>
+              <Pill 
+                removable 
+                onRemove={() => removeOption(option.value)}
+                removeAriaLabel={t('remove', { label: option.label })}
+              >
                 {option.label}
               </Pill>
             </InfoPopover>

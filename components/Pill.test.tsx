@@ -15,14 +15,13 @@ describe('Pill', () => {
   })
 
   it('shows a remove button when removable is true', () => {
-    render(<Pill removable onRemove={() => undefined}>Tag</Pill>)
+    render(<Pill removable onRemove={() => undefined} removeAriaLabel="Remove">Tag</Pill>)
     expect(screen.getByRole('button', { name: /remove/i })).toBeVisible()
   })
-
   it('calls onRemove when the remove button is clicked', async () => {
     const user = userEvent.setup()
     const handleRemove = vi.fn()
-    render(<Pill removable onRemove={handleRemove}>Tag</Pill>)
+    render(<Pill removable onRemove={handleRemove} removeAriaLabel="Remove">Tag</Pill>)
 
     await user.click(screen.getByRole('button', { name: /remove/i }))
     expect(handleRemove).toHaveBeenCalledOnce()

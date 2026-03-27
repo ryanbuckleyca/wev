@@ -95,6 +95,7 @@ export default function JobSearch({
                 key={chip.id}
                 removable
                 onRemove={chip.onRemove}
+                removeAriaLabel={t('ariaLabels.pill.remove', { label: chip.label })}
                 size="sm"
                 variant="secondary"
                 className="text-xs"

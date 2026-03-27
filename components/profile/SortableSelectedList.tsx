@@ -20,6 +20,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useTouchDevice } from '@/hooks/useTouchDevice'
 
 export interface SortableItem {
@@ -34,6 +35,8 @@ interface SortableSelectedListProps {
   rankCutoff: number
   onReorder: (fromIndex: number, toIndex: number, newCutoff?: number) => void
   onRemove: (id: string) => void
+  /** Which list is being ranked — drives empty-zone copy */
+  variant?: 'skills' | 'values'
 }
 
 function SortableRow({
@@ -112,17 +115,37 @@ function SortableRow({
   )
 }
 
-function SortableDivider({ id, rankCutoff, total }: { id: string; rankCutoff: number; total: number }) {
+function SortableDivider({
+  id,
+  rankCutoff,
+  total,
+  prioritisedLabel,
+  dragAboveLabel,
+  unorderedLabel,
+}: {
+  id: string
+  rankCutoff: number
+  total: number
+  prioritisedLabel: (count: number) => string
+  dragAboveLabel: string
+  unorderedLabel: (count: number) => string
+}) {
   const { setNodeRef, transform, transition } = useSortable({ id })
   // using Translate prevents weird scaling on the divider too
   const style = { transform: CSS.Translate.toString(transform), transition }
-  
+
+  const middle =
+    rankCutoff > 0
+      ? total - rankCutoff > 0 && rankCutoff > 0
+        ? `${prioritisedLabel(rankCutoff)} · ${unorderedLabel(total - rankCutoff)}`
+        : prioritisedLabel(rankCutoff)
+      : dragAboveLabel
+
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-2 py-1 select-none pointer-events-none">
       <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-700" />
       <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-zinc-500 whitespace-nowrap">
-        {rankCutoff > 0 ? `${rankCutoff} prioritised` : 'drag above to prioritise'}
-        {total - rankCutoff > 0 && rankCutoff > 0 ? ` · ${total - rankCutoff} unordered` : ''}
+        {middle}
       </span>
       <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-700" />
     </div>
@@ -147,8 +170,11 @@ export default function SortableSelectedList({
   rankCutoff,
   onReorder,
   onRemove,
+  variant = 'skills',
 }: SortableSelectedListProps) {
+  const t = useTranslations('profile')
   const isTouch = useTouchDevice()
+  const emptyRankedKey = variant === 'values' ? 'sortableDragValuesHere' : 'sortableDragSkillsHere'
   const sensors = useSensors(
     // On touch devices use TouchSensor (long-press); on desktop use PointerSensor (drag distance).
     ...(isTouch
@@ -206,13 +232,23 @@ export default function SortableSelectedList({
       <div className="flex flex-col gap-1.5">
         
         {rankCutoff === 0 && (
-          <StaticEmptyZone text="Drag skills here to prioritise" />
+          <StaticEmptyZone text={t(emptyRankedKey)} />
         )}
 
         <SortableContext items={workingItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
           {workingItems.map(item => {
             if (item.type === 'divider') {
-              return <SortableDivider key={item.id} id={item.id} rankCutoff={rankCutoff} total={items.length} />
+              return (
+                <SortableDivider
+                  key={item.id}
+                  id={item.id}
+                  rankCutoff={rankCutoff}
+                  total={items.length}
+                  prioritisedLabel={(count) => t('sortablePrioritised', { count })}
+                  dragAboveLabel={t('sortableDragAbove')}
+                  unorderedLabel={(count) => t('sortableUnordered', { count })}
+                />
+              )
             }
             return (
               <SortableRow
@@ -227,7 +263,7 @@ export default function SortableSelectedList({
         </SortableContext>
 
         {rankCutoff === items.length && items.length > 0 && (
-          <StaticEmptyZone text="Drag down here to unprioritise" />
+          <StaticEmptyZone text={t('sortableDragDownUnprioritise')} />
         )}
 
       </div>

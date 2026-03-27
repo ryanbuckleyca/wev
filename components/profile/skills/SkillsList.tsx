@@ -38,7 +38,7 @@ export default function SkillsList({
   }
 
   return (
-    <div className="max-h-72 overflow-y-auto overflow-x-hidden scroll-smooth pb-4">
+    <div className="overflow-x-hidden pb-4">
       {skills.map((skill) => (
         <SkillItem
           key={skill.uri}

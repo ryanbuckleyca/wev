@@ -1,42 +1,40 @@
 import { useTranslations } from 'next-intl'
 import HorizontalScrollWithFades from '@/components/ui/HorizontalScrollWithFades'
-import InfoPopover from '@/components/InfoPopover'
 import Pill from '@/components/Pill'
-import type { EscoSkill } from '../SkillsSelector'
+import type { WorkValue } from '@/lib/values'
 
-interface SelectedSkillsPillsProps {
-  skills: EscoSkill[]
-  onRemove: (uri: string) => void
+interface SelectedValuesPillsProps {
+  values: WorkValue[]
+  selectedIds: string[]
+  onRemove: (id: string) => void
   locale: 'en' | 'fr'
   useHorizontalScroll?: boolean
   fadeBackground?: string
 }
 
-export default function SelectedSkillsPills({
-  skills,
+export default function SelectedValuesPills({
+  values,
+  selectedIds,
   onRemove,
   locale,
   useHorizontalScroll = false,
   fadeBackground = 'var(--card)',
-}: SelectedSkillsPillsProps) {
+}: SelectedValuesPillsProps) {
   const t = useTranslations('ariaLabels.pill')
-  if (skills.length === 0) return null
+  const selectedValues = selectedIds.map(id => values.find(v => v.id === id)).filter(Boolean) as WorkValue[]
+  
+  if (selectedValues.length === 0) return null
 
-  const pillElements = skills.map((skill) => (
-    <InfoPopover 
-      key={skill.uri} 
-      content={skill.description?.[locale] || skill.preferredLabel[locale]}
-      className={useHorizontalScroll ? 'shrink-0' : undefined}
+  const pillElements = selectedValues.map((v) => (
+    <Pill
+      key={v.id}
+      size="sm"
+      onRemove={() => onRemove(v.id)}
+      removeAriaLabel={t('remove', { label: v.label[locale] })}
+      className="md:py-1 shrink-0"
     >
-      <Pill
-        size="sm"
-        onRemove={() => onRemove(skill.uri)}
-        removeAriaLabel={t('remove', { label: skill.preferredLabel[locale] })}
-        className="md:py-1"
-      >
-        {skill.preferredLabel[locale]}
-      </Pill>
-    </InfoPopover>
+      {v.label[locale]}
+    </Pill>
   ))
 
   if (useHorizontalScroll) {
@@ -57,4 +55,3 @@ export default function SelectedSkillsPills({
     </div>
   )
 }
-

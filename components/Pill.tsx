@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { cn } from '@/lib/utils'
 
 interface PillProps {
   children: any
@@ -9,6 +9,7 @@ interface PillProps {
   className?: string
   onRemove?: () => void
   removable?: boolean
+  removeAriaLabel?: string
   title?: string
 }
 
@@ -19,46 +20,47 @@ export default function Pill({
   className = '', 
   onRemove,
   removable = false,
+  removeAriaLabel,
   title
 }: PillProps) {
-  const t = useTranslations('ariaLabels.pill')
-  
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation()
     onRemove?.()
   }
   
-  const baseClasses = 'inline-flex items-center font-medium rounded-full transition-colors'
-  
-  const sizeClasses = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-3 py-1 text-sm'
-  }
+  const isRemovable = removable || !!onRemove
   
   const variantClasses = {
-    primary: 'bg-[var(--primary)] text-white',  // Dark teal
-    secondary: 'bg-[var(--primary-tint)] text-[var(--primary-text)]',  // Light teal
-    default: 'bg-card text-foreground border border-border',  // Tertiary (light gray with border)
-    disabled: 'bg-card text-wev-text-tertiary border border-border opacity-60'  // Disabled state
+    primary: 'bg-[var(--primary)] text-white',
+    secondary: 'bg-[var(--primary-tint)] text-[var(--primary-text)]',
+    default: 'bg-card text-foreground border border-border',
+    disabled: 'bg-card text-wev-text-tertiary border border-border opacity-60'
   }
 
-  // If the pill is removable, prefer the lavender accent styling used by the legacy FilterPill
   const removableClasses = 'border border-border bg-wev-brand-accent-tint text-wev-brand-accent'
-
-  const combinedClasses = `${baseClasses} ${sizeClasses[size]} ${removable ? removableClasses : variantClasses[variant]} ${className}`.trim()
 
   return (
     <span 
-      className={combinedClasses}
+      className={cn(
+        'inline-flex items-center font-medium rounded-full transition-colors',
+        size === 'sm' ? (isRemovable ? 'pl-3 pr-1 py-0.5 text-xs' : 'px-2 py-0.5 text-xs') : (isRemovable ? 'pl-3 pr-1 py-1 text-sm' : 'px-3 py-1 text-sm'),
+        removable ? removableClasses : variantClasses[variant],
+        className
+      )}
       title={title}
     >
       {children}
-      {(removable || onRemove) && (
+      {isRemovable && (
         <button
           type="button"
           onClick={handleRemove}
-          className={removable ? 'text-wev-text-tertiary hover:text-wev-brand-accent leading-none ml-1' : 'text-[var(--text-tertiary)] hover:text-[var(--foreground)] leading-none ml-1'}
-          aria-label={t('remove', { label: String(children) })}
+          className={cn(
+            'rounded px-1.5 transition-colors',
+            removable 
+              ? 'text-wev-text-tertiary hover:text-wev-brand-accent hover:bg-wev-brand-accent/10' 
+              : 'text-[var(--text-tertiary)] hover:text-[var(--foreground)] hover:bg-black/5 dark:hover:bg-white/5'
+          )}
+          aria-label={removeAriaLabel}
         >
           ×
         </button>

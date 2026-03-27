@@ -160,10 +160,10 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
         setSkillCutoff(c => idx < c ? c - 1 : c)
         return prev.filter(s => s.uri !== skill.uri)
       }
-      // Add to unranked (after cutoff)
-      return [...prev, skill]
+      // Add to unranked (at cutoff, so they appear first in the unranked list)
+      return [...prev.slice(0, skillCutoff), skill, ...prev.slice(skillCutoff)]
     })
-  }, [])
+  }, [skillCutoff])
 
   const handleSkillReorder = useCallback((from: number, to: number, explicitCutoff?: number) => {
     setSelectedSkills(prev => {
@@ -200,9 +200,10 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
         setValueCutoff(c => idx < c ? c - 1 : c)
         return prev.filter(v => v !== id)
       }
-      return [...prev, id]
+      // Add to unranked (at cutoff)
+      return [...prev.slice(0, valueCutoff), id, ...prev.slice(valueCutoff)]
     })
-  }, [])
+  }, [valueCutoff])
 
   const handleValueReorder = useCallback((from: number, to: number, explicitCutoff?: number) => {
     setSelectedValues(prev => {
