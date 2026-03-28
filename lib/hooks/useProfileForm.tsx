@@ -6,7 +6,6 @@ import { useProfile } from '@/lib/hooks/useProfile'
 import { type EscoSkill } from '@/components/profile/skills/SkillsSelector'
 import { type WorkValue, buildWorkValues, getValueDefinition } from '@/lib/values'
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types'
-import { createClient } from '@/lib/supabase/client'
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings'
 import toast from 'react-hot-toast'
 
@@ -16,18 +15,10 @@ export const MAX_PROFILE_SKILLS = 10
 export const MAX_PROFILE_VALUES = 5
 export const MAX_PROFILE_WORK_ENV_CHARS = 1500
 
-function debounce<T extends (...args: any[]) => any>(fn: T, ms: number): ((...args: Parameters<T>) => void) & { cancel: () => void } {
-  let timer: ReturnType<typeof setTimeout> | null = null
-  const debounced = (...args: Parameters<T>) => { if (timer) clearTimeout(timer); timer = setTimeout(() => fn(...args), ms) }
-  debounced.cancel = () => { if (timer) clearTimeout(timer) }
-  return debounced as ((...args: Parameters<T>) => void) & { cancel: () => void }
-}
-
 export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') {
   const t = useTranslations('profile')
   const tValues = useTranslations('values')
   const { profile, loading: profileLoading, error: profileError, updateProfile } = useProfile(userId)
-  const supabase = useMemo(() => createClient(), [])
 
   const [isSaving, setIsSaving] = useState(false)
 
@@ -39,8 +30,6 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
   const [selectedSkills, setSelectedSkills] = useState<EscoSkill[]>([])
   const [skillCutoff, setSkillCutoff] = useState(0)
 
-  const [skillResults, setSkillResults] = useState<EscoSkill[]>([])
-  const [isSearchingSkills, setIsSearchingSkills] = useState(false)
   const [allSkills, setAllSkills] = useState<EscoSkill[]>([])
   const [isLibraryLoading, setIsLibraryLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -128,26 +117,6 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
       .catch(err => console.error('Failed to pre-fetch skills library:', err))
       .finally(() => setIsLibraryLoading(false))
   }, [locale])
-
-  // ─── Skill search ─────────────────────────────────────────────────────
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const handleSkillSearch = useCallback(debounce(async (query: string) => {
-    if (!query) { setSkillResults([]); setIsSearchingSkills(false); return }
-    if (allSkills.length > 0) { setIsSearchingSkills(false); return }
-    setIsSearchingSkills(true)
-    try {
-      const res = await fetch(`/api/skills/search?${new URLSearchParams({ q: query, limit: '20', locale })}`)
-      if (!res.ok) throw new Error()
-      const data = await res.json() as { skills: Array<{ concept_uri: string; term: string; definition: string | null; skill_type: string | null; reuse_level: string | null }> }
-      setSkillResults((data.skills || []).map(r => ({
-        uri: r.concept_uri, preferredLabel: { en: r.term, fr: r.term },
-        description: { en: r.definition, fr: r.definition },
-        skillType: r.skill_type as EscoSkill['skillType'], reuseLevel: r.reuse_level as EscoSkill['reuseLevel'],
-      })))
-    } catch { setSkillResults([]) }
-    finally { setIsSearchingSkills(false) }
-  }, 400), [locale, allSkills.length])
 
   // Refs so event handlers can read the latest committed state without
   // needing to call setCutoff inside a setValue updater (React 19 can
@@ -262,8 +231,8 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     profile, profileLoading, profileError,
     formData, setFormData,
     selectedSkills, skillCutoff,
-    skillResults, allSkills, isLibraryLoading, isSearchingSkills,
-    handleSkillSearch, handleSkillToggle, handleSkillReorder, handleSkillRemove,
+    allSkills, isLibraryLoading,
+    handleSkillToggle, handleSkillReorder, handleSkillRemove,
     workValues,
     selectedValues, valueCutoff,
     handleValueToggle, handleValueReorder, handleValueRemove,

@@ -17,42 +17,25 @@ export interface EscoSkill {
 }
 
 interface SkillsSelectorProps {
-  skills: EscoSkill[]
   allItems?: EscoSkill[]
   selectedSkills: EscoSkill[]
   skillCutoff: number
   onToggle: (skill: EscoSkill) => void
   onReorder: (from: number, to: number) => void
   onRemove: (uri: string) => void
-  onSearch: (query: string) => void
   locale: 'en' | 'fr'
-  isSearching?: boolean
+  isLoading?: boolean
 }
 
 export default function SkillsSelector({
-  skills, allItems = [],
+  allItems = [],
   selectedSkills, skillCutoff,
   onToggle, onReorder, onRemove,
-  onSearch, locale, isSearching = false,
+  locale, isLoading = false,
 }: SkillsSelectorProps) {
   const t = useTranslations('profile')
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-
-  const isLibraryMode = allItems.length > 0
-
-  const handleQueryChange = (value: string) => {
-    setQuery(value)
-    if (!isLibraryMode) onSearch(value)
-  }
-
-  const handleClearQuery = () => {
-    setQuery(''); onSearch('')
-  }
-
-  const handleClose = () => {
-    setQuery(''); onSearch(''); setOpen(false)
-  }
 
   const sortableItems = selectedSkills.map((skill) => ({
     id: skill.uri,
@@ -79,15 +62,16 @@ export default function SkillsSelector({
       )}
       <SkillsModal
         isOpen={open}
-        onClose={handleClose}
+        onClose={() => { setQuery(''); setOpen(false) }}
         query={query}
-        onQueryChange={handleQueryChange}
-        onClearQuery={handleClearQuery}
+        onQueryChange={setQuery}
+        onClearQuery={() => setQuery('')}
         selected={selectedSkills}
         onRemove={onRemove}
         onToggle={onToggle}
-        skills={skills} allItems={allItems} isSearching={isSearching}
-        locale={locale} isLibraryMode={isLibraryMode}
+        allItems={allItems}
+        isLoading={isLoading}
+        locale={locale}
       />
     </div>
   )

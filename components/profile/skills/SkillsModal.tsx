@@ -12,43 +12,33 @@ const SKILLS_LISTBOX_ID = 'profile-skills-listbox'
 function filterSkills(
   query: string,
   allItems: EscoSkill[],
-  skills: EscoSkill[],
   locale: 'en' | 'fr',
-  isLibraryMode: boolean,
 ): (EscoSkill & { label: string; internalMatchedAlias?: string | null })[] {
   if (!query) return []
   const lowerQuery = query.toLowerCase()
 
-  if (isLibraryMode) {
-    return allItems
-      .map((skill) => {
-        const label = skill.preferredLabel[locale] || ''
-        const lowerLabel = label.toLowerCase()
+  return allItems
+    .map((skill) => {
+      const label = skill.preferredLabel[locale] || ''
+      const lowerLabel = label.toLowerCase()
 
-        let score = -1
-        let foundAlias: string | undefined
+      let score = -1
+      let foundAlias: string | undefined
 
-        if (lowerLabel.startsWith(lowerQuery)) score = 2
-        else if (lowerLabel.includes(lowerQuery)) score = 1
-        else {
-          foundAlias = skill.aliases?.find((a) => a.toLowerCase().includes(lowerQuery))
-          if (foundAlias) score = 0
-        }
+      if (lowerLabel.startsWith(lowerQuery)) score = 2
+      else if (lowerLabel.includes(lowerQuery)) score = 1
+      else {
+        foundAlias = skill.aliases?.find((a) => a.toLowerCase().includes(lowerQuery))
+        if (foundAlias) score = 0
+      }
 
-        if (score === -1) return null
-        return { ...skill, label, internalMatchedAlias: foundAlias, _score: score }
-      })
-      .filter((s): s is NonNullable<typeof s> => s !== null)
-      .sort((a, b) => b._score! - a._score!)
-      .slice(0, 100)
-      .map(({ _score, ...rest }) => rest)
-  }
-
-  return skills.map((skill) => ({
-    ...skill,
-    label: skill.preferredLabel[locale] || '',
-    internalMatchedAlias: skill.matchedAlias,
-  }))
+      if (score === -1) return null
+      return { ...skill, label, internalMatchedAlias: foundAlias, _score: score }
+    })
+    .filter((s): s is NonNullable<typeof s> => s !== null)
+    .sort((a, b) => b._score! - a._score!)
+    .slice(0, 100)
+    .map(({ _score, ...rest }) => rest)
 }
 
 interface SkillsModalProps {
@@ -60,11 +50,9 @@ interface SkillsModalProps {
   selected: EscoSkill[]
   onRemove: (uri: string) => void
   onToggle: (skill: EscoSkill) => void
-  skills: EscoSkill[]
   allItems: EscoSkill[]
-  isSearching: boolean
+  isLoading: boolean
   locale: 'en' | 'fr'
-  isLibraryMode: boolean
 }
 
 export default function SkillsModal({
@@ -76,15 +64,13 @@ export default function SkillsModal({
   selected,
   onRemove,
   onToggle,
-  skills,
   allItems,
-  isSearching,
+  isLoading,
   locale,
-  isLibraryMode,
 }: SkillsModalProps) {
   const t = useTranslations('profile')
   const inputRef = useRef<HTMLInputElement>(null)
-  const filteredSkills = filterSkills(query, allItems, skills, locale, isLibraryMode)
+  const filteredSkills = filterSkills(query, allItems, locale)
   const selectedUris = new Set(selected.map((s) => s.uri))
   const listboxInDom = Boolean(query && filteredSkills.length > 0)
 
@@ -108,7 +94,7 @@ export default function SkillsModal({
           <SearchInput
             query={query}
             onQueryChange={onQueryChange}
-            isSearching={isSearching}
+            isSearching={isLoading}
             inputRef={inputRef}
             onClear={onClearQuery}
             placeholder={t('skillsPlaceholderShort')}
@@ -153,7 +139,6 @@ export default function SkillsModal({
           selectedUris={selectedUris}
           onToggle={onToggle}
           locale={locale}
-          isSearching={isSearching}
           hasQuery={!!query}
         />
       </div>

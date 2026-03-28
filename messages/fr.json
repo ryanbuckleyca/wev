@@ -269,7 +269,7 @@
     "skillsListboxKbdHint": "Flèches pour parcourir les résultats, Espace ou Entrée pour basculer la sélection.",
     "skillsSelectedRegionLabel": "Compétences sélectionnées, {count, number} {count, plural, one {élément} other {éléments}}",
     "skillsSelectedRegionHint": "Entrée pour parcourir les compétences sélectionnées et les retirer. Tab pour aller aux résultats de recherche. Flèche bas place aussi le focus sur les résultats.",
-    "skillsLoading": "Recherche en cours...",
+
     "skillsSearching": "Recherche de compétences...",
     "skillsMaxReached": "Maximum de {max} compétences sélectionnées. Retirez-en une pour en ajouter une autre.",
     "skillsHardMaxReached": "Maximum de {max} compétences atteint. Retirez-en une pour en ajouter une autre.",

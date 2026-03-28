@@ -28,8 +28,8 @@ export default function ProfilePage() {
     profile, profileLoading, profileError,
     formData, setFormData,
     selectedSkills, skillCutoff,
-    skillResults, allSkills, isLibraryLoading, isSearchingSkills,
-    handleSkillSearch, handleSkillToggle, handleSkillReorder, handleSkillRemove,
+    allSkills, isLibraryLoading,
+    handleSkillToggle, handleSkillReorder, handleSkillRemove,
     workValues,
     selectedValues, valueCutoff,
     handleValueToggle, handleValueReorder, handleValueRemove,
@@ -178,16 +178,14 @@ export default function ProfilePage() {
               )}
 
               <SkillsSelector
-                skills={skillResults}
                 allItems={allSkills}
                 selectedSkills={selectedSkills}
                 skillCutoff={skillCutoff}
                 onToggle={handleSkillToggle}
                 onReorder={handleSkillReorder}
                 onRemove={handleSkillRemove}
-                onSearch={handleSkillSearch}
                 locale={locale}
-                isSearching={isSearchingSkills || isLibraryLoading}
+                isLoading={isLibraryLoading}
               />
             </div>
 

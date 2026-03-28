@@ -8,7 +8,6 @@ interface SkillsListProps {
   selectedUris: Set<string>
   onToggle: (skill: EscoSkill) => void
   locale: 'en' | 'fr'
-  isSearching: boolean
   hasQuery: boolean
   listboxId: string
   ariaDescribedBy?: string
@@ -19,7 +18,6 @@ export default function SkillsList({
   selectedUris,
   onToggle,
   locale,
-  isSearching,
   hasQuery,
   listboxId,
   ariaDescribedBy,
@@ -39,7 +37,7 @@ export default function SkillsList({
   if (skills.length === 0) {
     return (
       <div className="px-4 py-8 text-center text-sm text-gray-400">
-        {isSearching ? t('skillsLoading') : t('skillsNoResults')}
+        {t('skillsNoResults')}
       </div>
     )
   }

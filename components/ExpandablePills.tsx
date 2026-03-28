@@ -1,25 +1,11 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { ScrollablePills, ScrollablePillsItem } from '@/components/ui/ScrollablePills'
 
-/** Delay between mounting each segment while expanding */
 const EXPAND_STAGGER_MS = 88
 
-const EXPAND_PILL_ENTER_STYLE = `
-@keyframes wev-expand-pill-enter {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.wev-expand-pill-enter {
-  animation: wev-expand-pill-enter 280ms ease-out both;
-}
-@media (prefers-reduced-motion: reduce) {
-  .wev-expand-pill-enter {
-    animation: none;
-  }
-}
-`
+const PILL_ENTER = 'animate-pill-enter motion-reduce:animate-none'
 
 export interface ExpandablePillGroup {
   key: string
@@ -46,6 +32,14 @@ export default function ExpandablePills({
    * maxStage = items.length + 2 (summary + n items + collapse).
    */
   const [expandStage, setExpandStage] = useState<Record<string, number>>({})
+  const staggerTimers = useRef<Map<string, ReturnType<typeof setTimeout>[]>>(new Map())
+
+  useEffect(() => () => staggerTimers.current.forEach(t => t.forEach(clearTimeout)), [])
+
+  const cancelStagger = (key: string) => {
+    staggerTimers.current.get(key)?.forEach(clearTimeout)
+    staggerTimers.current.delete(key)
+  }
 
   const normalizedGroups = useMemo(
     () => groups.filter(group => group.summary || group.items.length > 0),
@@ -89,15 +83,12 @@ export default function ExpandablePills({
     const visibleItems = group.items.slice(0, sliceCount)
     const collapseShown = stage >= maxStage
 
-    const connectedItems = visibleItems.map((item, index, arr) => {
-      const isLast = index === arr.length - 1
-      return {
-        ...item,
-        groupKey: group.key,
-        groupId: clusterId,
-        className: `wev-expand-pill-enter rounded-none border border-border -ml-px border-l border-border ${isLast ? '' : ''}`,
-      }
-    })
+    const connectedItems = visibleItems.map((item) => ({
+      ...item,
+      groupKey: group.key,
+      groupId: clusterId,
+      className: `${PILL_ENTER} rounded-none border border-border -ml-px`,
+    }))
 
     const expandedSummaryTooltip = group.summary.tooltip
       ? group.summary.tooltip.replace(
@@ -115,10 +106,9 @@ export default function ExpandablePills({
       isExpanded: true,
       isMatched: Boolean(group.summary.isMatched),
       isCollapseButton: true,
-      className: 'wev-expand-pill-enter rounded-none rounded-r-full border border-border -ml-px',
+      className: `${PILL_ENTER} rounded-none rounded-r-full border border-border -ml-px`,
     }
 
-    /** No enter animation on summary — avoids flash when swapping from collapsed chip */
     const summaryPill: ScrollablePillsItem = {
       ...group.summary,
       tooltip: expandedSummaryTooltip,
@@ -139,27 +129,11 @@ export default function ExpandablePills({
     return [...preItems, ...groupedItems]
   }, [preItems, normalizedGroups, expandedGroups, expandStage])
 
-  /** Advance one segment per tick while expanding */
-  useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = []
-    normalizedGroups.forEach((group) => {
-      if (!group.summary) return
-      const key = group.key
-      if (!expandedGroups[key]) return
-      const maxStage = group.items.length + 2
-      const stage = expandStage[key]
-      if (stage === undefined || stage >= maxStage) return
-
-      const t = setTimeout(() => {
-        setExpandStage((prev) => ({
-          ...prev,
-          [key]: Math.min(maxStage, (prev[key] ?? 0) + 1),
-        }))
-      }, EXPAND_STAGGER_MS)
-      timers.push(t)
-    })
-    return () => timers.forEach(clearTimeout)
-  }, [expandedGroups, expandStage, normalizedGroups])
+  const collapseGroup = (key: string) => {
+    cancelStagger(key)
+    setExpandedGroups(prev => ({ ...prev, [key]: false }))
+    setExpandStage(prev => { const n = { ...prev }; delete n[key]; return n })
+  }
 
   const handleItemClick = (item: ScrollablePillsItem) => {
     const groupKey = item.groupKey
@@ -168,47 +142,36 @@ export default function ExpandablePills({
     if (!group?.summary) return
 
     if (item.type === 'summary') {
-      const willExpand = !expandedGroups[groupKey]
-      setExpandedGroups((prev) => ({
-        ...prev,
-        [groupKey]: !prev[groupKey],
-      }))
-      if (willExpand) {
-        setExpandStage((prev) => ({ ...prev, [groupKey]: 1 }))
-      } else {
-        setExpandStage((prev) => {
-          const next = { ...prev }
-          delete next[groupKey]
-          return next
-        })
+      if (expandedGroups[groupKey]) {
+        collapseGroup(groupKey)
+        return
       }
+
+      const maxStage = group.items.length + 2
+      setExpandedGroups(prev => ({ ...prev, [groupKey]: true }))
+      setExpandStage(prev => ({ ...prev, [groupKey]: 1 }))
+
+      const timers = Array.from({ length: maxStage - 1 }, (_, i) =>
+        setTimeout(
+          () => setExpandStage(prev => ({ ...prev, [groupKey]: i + 2 })),
+          (i + 1) * EXPAND_STAGGER_MS,
+        ),
+      )
+      staggerTimers.current.set(groupKey, timers)
       return
     }
 
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [groupKey]: false,
-    }))
-    setExpandStage((prev) => {
-      const next = { ...prev }
-      delete next[groupKey]
-      return next
-    })
+    collapseGroup(groupKey)
   }
 
-  if (inlineItems.length === 0) {
-    return null
-  }
+  if (inlineItems.length === 0) return null
 
   return (
-    <>
-      <style>{EXPAND_PILL_ENTER_STYLE}</style>
-      <ScrollablePills
-        items={inlineItems}
-        variant={variant}
-        fadeBackground={fadeBackground}
-        onItemClick={handleItemClick}
-      />
-    </>
+    <ScrollablePills
+      items={inlineItems}
+      variant={variant}
+      fadeBackground={fadeBackground}
+      onItemClick={handleItemClick}
+    />
   )
 }
