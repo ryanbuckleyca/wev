@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { useProfile } from '@/lib/hooks/useProfile'
 import { type EscoSkill } from '@/components/profile/skills/SkillsSelector'
@@ -149,20 +149,25 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     finally { setIsSearchingSkills(false) }
   }, 400), [locale, allSkills.length])
 
+  // Refs so event handlers can read the latest committed state without
+  // needing to call setCutoff inside a setValue updater (React 19 can
+  // split nested setState calls into separate renders).
+  const selectedSkillsRef = useRef(selectedSkills)
+  selectedSkillsRef.current = selectedSkills
+  const selectedValuesRef = useRef(selectedValues)
+  selectedValuesRef.current = selectedValues
+
   // ─── Skill handlers ───────────────────────────────────────────────────
 
   const handleSkillToggle = useCallback((skill: EscoSkill) => {
-    setSelectedSkills(prev => {
-      const exists = prev.some(s => s.uri === skill.uri)
-      if (exists) {
-        // Remove — adjust cutoff if it was ranked
-        const idx = prev.findIndex(s => s.uri === skill.uri)
-        setSkillCutoff(c => idx < c ? c - 1 : c)
-        return prev.filter(s => s.uri !== skill.uri)
-      }
-      // Add to unranked (at cutoff, so they appear first in the unranked list)
-      return [...prev.slice(0, skillCutoff), skill, ...prev.slice(skillCutoff)]
-    })
+    const current = selectedSkillsRef.current
+    const idx = current.findIndex(s => s.uri === skill.uri)
+    if (idx !== -1) {
+      setSelectedSkills(prev => prev.filter(s => s.uri !== skill.uri))
+      setSkillCutoff(c => idx < c ? c - 1 : c)
+    } else {
+      setSelectedSkills(prev => [...prev.slice(0, skillCutoff), skill, ...prev.slice(skillCutoff)])
+    }
   }, [skillCutoff])
 
   const handleSkillReorder = useCallback((from: number, to: number, explicitCutoff?: number) => {
@@ -174,35 +179,29 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     })
     setSkillCutoff(cutoff => {
       if (explicitCutoff !== undefined) return explicitCutoff
-      // Item dragged from unranked into ranked zone (including boundary position)
       if (from >= cutoff && to <= cutoff) return cutoff + 1
-      // Item dragged from ranked into unranked zone
       if (from < cutoff && to >= cutoff) return cutoff - 1
       return cutoff
     })
   }, [])
 
   const handleSkillRemove = useCallback((uri: string) => {
-    setSelectedSkills(prev => {
-      const idx = prev.findIndex(s => s.uri === uri)
-      setSkillCutoff(c => idx < c ? c - 1 : c)
-      return prev.filter(s => s.uri !== uri)
-    })
+    const idx = selectedSkillsRef.current.findIndex(s => s.uri === uri)
+    setSelectedSkills(prev => prev.filter(s => s.uri !== uri))
+    if (idx !== -1) setSkillCutoff(c => idx < c ? c - 1 : c)
   }, [])
 
   // ─── Value handlers ───────────────────────────────────────────────────
 
   const handleValueToggle = useCallback((id: string) => {
-    setSelectedValues(prev => {
-      const exists = prev.includes(id)
-      if (exists) {
-        const idx = prev.indexOf(id)
-        setValueCutoff(c => idx < c ? c - 1 : c)
-        return prev.filter(v => v !== id)
-      }
-      // Add to unranked (at cutoff)
-      return [...prev.slice(0, valueCutoff), id, ...prev.slice(valueCutoff)]
-    })
+    const current = selectedValuesRef.current
+    const idx = current.indexOf(id)
+    if (idx !== -1) {
+      setSelectedValues(prev => prev.filter(v => v !== id))
+      setValueCutoff(c => idx < c ? c - 1 : c)
+    } else {
+      setSelectedValues(prev => [...prev.slice(0, valueCutoff), id, ...prev.slice(valueCutoff)])
+    }
   }, [valueCutoff])
 
   const handleValueReorder = useCallback((from: number, to: number, explicitCutoff?: number) => {
@@ -221,11 +220,9 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
   }, [])
 
   const handleValueRemove = useCallback((id: string) => {
-    setSelectedValues(prev => {
-      const idx = prev.indexOf(id)
-      setValueCutoff(c => idx < c ? c - 1 : c)
-      return prev.filter(v => v !== id)
-    })
+    const idx = selectedValuesRef.current.indexOf(id)
+    setSelectedValues(prev => prev.filter(v => v !== id))
+    if (idx !== -1) setValueCutoff(c => idx < c ? c - 1 : c)
   }, [])
 
   // ─── Save ─────────────────────────────────────────────────────────────

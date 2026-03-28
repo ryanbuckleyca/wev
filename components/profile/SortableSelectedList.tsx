@@ -187,17 +187,15 @@ export default function SortableSelectedList({
   // The empty zones are now static visual areas completely outside the SortableContext.
   const workingItems = useMemo(() => {
     const arr: any[] = []
+    const clampedCutoff = Math.min(rankCutoff, items.length)
     
-    // Ranked items
-    for (let i = 0; i < rankCutoff; i++) {
+    for (let i = 0; i < clampedCutoff; i++) {
         arr.push({ ...items[i], type: 'item', isRanked: true, originalIndex: i })
     }
     
-    // The divider separating ranked from unranked
     arr.push({ id: '__divider__', type: 'divider' })
     
-    // Unranked items
-    for (let i = rankCutoff; i < items.length; i++) {
+    for (let i = clampedCutoff; i < items.length; i++) {
         arr.push({ ...items[i], type: 'item', isRanked: false, originalIndex: i })
     }
     
