@@ -21,7 +21,7 @@ interface SkillsSelectorProps {
   selectedSkills: EscoSkill[]
   skillCutoff: number
   onToggle: (skill: EscoSkill) => void
-  onReorder: (from: number, to: number) => void
+  onReorder: (from: number, to: number, newCutoff?: number) => void
   onRemove: (uri: string) => void
   locale: 'en' | 'fr'
   isLoading?: boolean

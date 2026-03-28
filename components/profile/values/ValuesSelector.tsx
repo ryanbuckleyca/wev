@@ -13,7 +13,7 @@ interface ValuesSelectorProps {
   values: WorkValue[]
   selectedValues?: string[]
   valueCutoff: number
-  onReorder: (from: number, to: number) => void
+  onReorder: (from: number, to: number, newCutoff?: number) => void
   onToggle: (id: string) => void
   onRemove: (id: string) => void
   locale: 'en' | 'fr'

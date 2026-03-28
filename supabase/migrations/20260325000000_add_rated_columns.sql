@@ -1,28 +1,30 @@
--- Expand migration: add values_rated JSONB columns to profiles and jobs.
--- Uses non-blocking ADD COLUMN IF NOT EXISTS (no table rewrite).
--- Backfills from existing values text[] columns.
+-- Add values_rated and skills_rated JSONB columns for rank-based prioritisation.
 --
--- profiles.values_rated: each string → { "value": "...", "tier": null }
--- jobs.values_rated:     each string → { "value": "...", "confidence": <1-based position> }
+-- profiles.values_rated: [{ "value": "...", "rank": 1 }, { "value": "..." }, ...]
+-- profiles.skills_rated: [{ "skill": "<ESCO URI>", "rank": 1 }, ...]
+-- jobs.values_rated:     [{ "value": "...", "confidence": 1 }, ...]
 --
--- Requirements: 4.1, 4.2, 4.3, 4.4
+-- Backfills existing profiles.values and jobs.values into the new columns.
 
 --------------------------------------------------------------------------------
--- 1. Add columns (non-blocking)
+-- 1. Add columns (non-blocking, idempotent)
 --------------------------------------------------------------------------------
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS values_rated jsonb;
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS skills_rated jsonb;
 
 ALTER TABLE public.jobs
   ADD COLUMN IF NOT EXISTS values_rated jsonb;
 
 --------------------------------------------------------------------------------
 -- 2. Backfill profiles.values_rated from profiles.values
---    Each string entry → { "value": "...", "tier": null }
+--    Existing values get no rank (unranked = neutral weight in matching).
 --------------------------------------------------------------------------------
 UPDATE public.profiles
 SET values_rated = (
-  SELECT jsonb_agg(jsonb_build_object('value', v, 'tier', NULL))
+  SELECT jsonb_agg(jsonb_build_object('value', v))
   FROM unnest("values") AS v
 )
 WHERE "values" IS NOT NULL
@@ -31,7 +33,7 @@ WHERE "values" IS NOT NULL
 
 --------------------------------------------------------------------------------
 -- 3. Backfill jobs.values_rated from jobs.values
---    Each string entry → { "value": "...", "confidence": <1-based position> }
+--    Position becomes confidence (1-based).
 --------------------------------------------------------------------------------
 UPDATE public.jobs
 SET values_rated = (

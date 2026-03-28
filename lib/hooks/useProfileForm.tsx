@@ -9,7 +9,7 @@ import { normalizeWorkTypes, type WorkType } from '@/lib/work-types'
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings'
 import toast from 'react-hot-toast'
 
-/** Must match DB `profiles_skills_max_10_check` (see `20260328000000_profiles_skills_max_10_restore.sql`). */
+/** Must match DB `profiles_skills_max_10_check` (see `202603061612_profiles_skills_max_10.sql`). */
 export const MAX_PROFILE_SKILLS = 10
 /** Must match product / DB limits for `profiles.values` (5). */
 export const MAX_PROFILE_VALUES = 5
