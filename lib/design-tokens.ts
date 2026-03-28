@@ -1,6 +1,16 @@
 // Design Tokens - Single Source of Truth
 // This file defines all design tokens used across the application
 
+export const zIndex = {
+  base: 0,
+  dropdown: 10,
+  sticky: 100,
+  header: 200,
+  modalOverlay: 300,
+  modal: 310,
+  popover: 400, // must be above modal
+} as const
+
 export const tokens = {
   // Background & Surface
   bg: '#FEFBF7',

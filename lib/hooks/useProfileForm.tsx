@@ -1,305 +1,234 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { useProfile } from '@/lib/hooks/useProfile'
-import { type EscoSkill } from '@/components/profile/SkillsSelector'
-import { type WorkValue, buildWorkValues, VALUES_LIST, getValueDefinition } from '@/lib/values'
+import { useRankedList } from '@/lib/hooks/useRankedList'
+import { type EscoSkill } from '@/lib/types/skills'
+import { type WorkValue, buildWorkValues, getValueDefinition } from '@/lib/values'
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types'
-import { createClient } from '@/lib/supabase/client'
+import { type RatedValue, type RatedSkill } from '@/lib/value-ratings'
+import { adjustCutoffOnRemove, adjustCutoffOnReorder } from '@/lib/ranked-list'
 import toast from 'react-hot-toast'
 
-export const MAX_PROFILE_SKILLS = 5
-export const MAX_PROFILE_VALUES = 10
+export { adjustCutoffOnRemove, adjustCutoffOnReorder }
+
+/** Must match DB `profiles_skills_max_10_check` and `profiles_skills_rated_max_10_check`. */
+export const MAX_PROFILE_SKILLS = 10
+/** Must match DB `profiles_values_max_5_check` and `profiles_values_rated_max_5_check`. */
+export const MAX_PROFILE_VALUES = 5
 export const MAX_PROFILE_WORK_ENV_CHARS = 1500
 
-function debounce<T extends (...args: any[]) => any>(
-  fn: T,
-  ms: number
-): ((...args: Parameters<T>) => void) & { cancel: () => void } {
-  let timer: ReturnType<typeof setTimeout> | null = null
-  const debounced = (...args: Parameters<T>) => {
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => fn(...args), ms)
-  }
-  debounced.cancel = () => {
-    if (timer) clearTimeout(timer)
-  }
-  return debounced as ((...args: Parameters<T>) => void) & { cancel: () => void }
+// ─── Skills API helpers ───────────────────────────────────────────────────────
+
+type RawSkillRow = {
+  concept_uri: string
+  term: string
+  definition: string | null
+  skill_type: string | null
+  reuse_level: string | null
 }
+
+type RawSkillLibraryRow = {
+  uri: string
+  term: string
+  definition: string | null
+  type: string | null
+  level: string | null
+  aliases?: string[]
+}
+
+function toEscoSkill(s: RawSkillRow): EscoSkill {
+  return {
+    uri: s.concept_uri,
+    preferredLabel: { en: s.term, fr: s.term },
+    description: { en: s.definition, fr: s.definition },
+    skillType: s.skill_type as EscoSkill['skillType'],
+    reuseLevel: s.reuse_level as EscoSkill['reuseLevel'],
+  }
+}
+
+function toEscoSkillFromLibrary(s: RawSkillLibraryRow): EscoSkill {
+  return {
+    uri: s.uri,
+    preferredLabel: { en: s.term, fr: s.term },
+    description: { en: s.definition, fr: s.definition },
+    skillType: s.type as EscoSkill['skillType'],
+    reuseLevel: s.level as EscoSkill['reuseLevel'],
+    aliases: s.aliases,
+  }
+}
+
+async function fetchSkillsByUri(uris: string[], locale: string): Promise<EscoSkill[]> {
+  const res = await fetch(`/api/skills/by-uri?${new URLSearchParams({ uris: uris.join(','), locale })}`)
+  const body: { skills?: RawSkillRow[] } = res.ok ? await res.json() : { skills: [] }
+  const seen = new Set<string>()
+  return (body.skills || []).map(toEscoSkill).filter(s => {
+    if (seen.has(s.uri)) return false
+    seen.add(s.uri)
+    return true
+  })
+}
+
+function partitionByRating(skills: EscoSkill[], skillsRated: RatedSkill[]): { sorted: EscoSkill[]; cutoff: number } {
+  const rankMap = new Map(skillsRated.map(sr => [sr.skill, sr.rank]))
+  const ranked: EscoSkill[] = []
+  const unranked: EscoSkill[] = []
+  for (const s of skills) {
+    if (rankMap.get(s.uri) != null) ranked.push(s)
+    else unranked.push(s)
+  }
+  ranked.sort((a, b) => rankMap.get(a.uri)! - rankMap.get(b.uri)!)
+  return { sorted: [...ranked, ...unranked], cutoff: ranked.length }
+}
+
+// ─── Profile validation ───────────────────────────────────────────────────────
+
+type ValidationError = { key: string; params?: Record<string, string | number> }
+
+export function validateProfileLimits(
+  selectedValues: string[],
+  selectedSkills: EscoSkill[],
+  workEnvironmentLength: number
+): ValidationError | null {
+  if (selectedValues.length > MAX_PROFILE_VALUES) {
+    return { key: 'valuesMaxExceeded', params: { max: MAX_PROFILE_VALUES, current: selectedValues.length - MAX_PROFILE_VALUES } }
+  }
+  if (selectedSkills.length > MAX_PROFILE_SKILLS) {
+    return { key: 'skillsMaxExceeded', params: { max: MAX_PROFILE_SKILLS, current: selectedSkills.length - MAX_PROFILE_SKILLS } }
+  }
+  if (workEnvironmentLength > MAX_PROFILE_WORK_ENV_CHARS) {
+    return { key: 'workEnvironmentMaxExceeded', params: { max: MAX_PROFILE_WORK_ENV_CHARS } }
+  }
+  return null
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') {
   const t = useTranslations('profile')
   const tValues = useTranslations('values')
-  const { profile, loading: profileLoading, error: profileError, updateProfile, uploadPhoto } = useProfile(userId)
-  const supabase = useMemo(() => createClient(), [])
+  const { profile, loading: profileLoading, error: profileError, updateProfile } = useProfile(userId)
 
   const [isSaving, setIsSaving] = useState(false)
-  const [selectedSkills, setSelectedSkills] = useState<EscoSkill[]>([])
-  const [skillResults, setSkillResults] = useState<EscoSkill[]>([])
-  const [isSearchingSkills, setIsSearchingSkills] = useState(false)
   const [allSkills, setAllSkills] = useState<EscoSkill[]>([])
   const [isLibraryLoading, setIsLibraryLoading] = useState(false)
   const [formData, setFormData] = useState({
     full_name: '',
     bio: '',
-    values: [] as string[],
-    skills: [] as string[],
     work_types: [] as WorkType[],
     ideal_work_environment: '',
   })
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Build WorkValue list from translations (uses English labels from values namespace)
+  const skills = useRankedList<EscoSkill>(s => s.uri)
+  const values = useRankedList<string>(v => v)
+
   const workValues: WorkValue[] = useMemo(() => {
-    // We only have the current locale's translation function, so
-    // use it for the current locale and fall back to English dictionary for the other.
-    const tCurrent = (key: string, opts?: { defaultValue: string }) =>
-      tValues(key, opts ?? {})
+    const tCurrent = (key: string, opts?: { defaultValue: string }) => tValues(key, opts ?? {})
     const tFallback = (key: string, opts?: { defaultValue: string }) => {
-      // For the non-current locale, fall back to the English dictionary value
-      const id = key.split('.')[0]
-      const field = key.split('.')[1]
+      const [id, field] = key.split('.')
       if (field === 'name') return opts?.defaultValue ?? id
       const def = getValueDefinition(id)
       if (field === 'description') return def.description
       return opts?.defaultValue ?? ''
     }
-
-    if (locale === 'en') {
-      return buildWorkValues(tCurrent, tFallback)
-    }
-    return buildWorkValues(tFallback, tCurrent)
+    return locale === 'en' ? buildWorkValues(tCurrent, tFallback) : buildWorkValues(tFallback, tCurrent)
   }, [tValues, locale])
 
-  // ─── Hydrate form data from profile ──────────────────────────────────
+  // ─── Hydrate from profile ─────────────────────────────────────────────
 
   useEffect(() => {
     if (!profile) return
 
-    const profileSkills = Array.from(new Set(profile.skills || [])).slice(0, MAX_PROFILE_SKILLS)
     setFormData({
       full_name: profile.full_name || '',
       bio: profile.bio || '',
-      values: profile.values || [],
-      skills: profileSkills,
       work_types: normalizeWorkTypes(profile.work_types),
       ideal_work_environment: profile.ideal_work_environment || '',
     })
 
+    const pvr = profile.values_rated
+    if (pvr && pvr.length > 0) {
+      const ranked = [...pvr].filter(rv => rv.rank != null).sort((a, b) => a.rank! - b.rank!)
+      const unranked = pvr.filter(rv => rv.rank == null)
+      values.setItems([...ranked.map(rv => rv.value), ...unranked.map(rv => rv.value)])
+      values.setCutoff(ranked.length)
+    } else {
+      values.setItems(profile.values || [])
+      values.setCutoff(0)
+    }
+
+    const profileSkills = Array.from(new Set(profile.skills || [])).slice(0, MAX_PROFILE_SKILLS)
     if (profileSkills.length === 0) {
-      setSelectedSkills([])
+      skills.setItems([])
+      skills.setCutoff(0)
       return
     }
 
-    // Hydrate selected skills from URIs
-    const params = new URLSearchParams({ uris: profileSkills.join(','), locale })
-    void fetch(`/api/skills/by-uri?${params.toString()}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to hydrate skills')
-        return res.json() as Promise<{
-          skills?: Array<{
-            concept_uri: string
-            term: string
-            definition: string | null
-            scope_note: string | null
-            skill_type: string | null
-            reuse_level: string | null
-          }>
-        }>
+    void fetchSkillsByUri(profileSkills, locale)
+      .then(fetched => {
+        const psr = profile.skills_rated
+        if (psr && psr.length > 0) {
+          const { sorted, cutoff } = partitionByRating(fetched, psr)
+          skills.setItems(sorted)
+          skills.setCutoff(cutoff)
+        } else {
+          skills.setItems(fetched)
+          skills.setCutoff(0)
+        }
       })
-      .then((body) => {
-        const hydrated: EscoSkill[] = (body.skills || []).map((skill) => ({
-          uri: skill.concept_uri,
-          preferredLabel: { en: skill.term, fr: skill.term }, // API returns locale-specific term
-          description: { en: skill.definition, fr: skill.definition },
-          skillType: skill.skill_type as EscoSkill['skillType'],
-          reuseLevel: skill.reuse_level as EscoSkill['reuseLevel'],
-        }))
-        // Dedupe by URI
-        const seen = new Set<string>()
-        const deduped = hydrated.filter((s) => {
-          if (seen.has(s.uri)) return false
-          seen.add(s.uri)
-          return true
-        })
-        setSelectedSkills(deduped)
-        setFormData((prev) => ({
-          ...prev,
-          skills: deduped.map((s) => s.uri),
-        }))
+      .catch(() => {
+        skills.setItems([])
+        skills.setCutoff(0)
       })
-      .catch(() => setSelectedSkills([]))
-  }, [profile, locale])
+  }, [profile, locale]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Fetch entire skills library for client-side search ─────────────
+  // ─── Skills library ───────────────────────────────────────────────────
 
   useEffect(() => {
     setIsLibraryLoading(true)
-    fetch(`/api/skills/all?locale=${locale}`)
+    fetch(`/api/skills/all?locale=${locale}&cb=${Date.now()}`)
       .then(res => res.ok ? res.json() : { skills: [] })
-      .then(data => {
-        const skills: EscoSkill[] = (data.skills || []).map((s: any) => ({
-          uri: s.uri,
-          preferredLabel: { en: s.term, fr: s.term },
-          description: { en: '', fr: '' }, // Compact library doesn't need descriptions
-          skillType: s.type,
-          reuseLevel: s.level,
-          aliases: s.aliases,
-        }))
-        setAllSkills(skills)
-      })
+      .then((data: { skills?: RawSkillLibraryRow[] }) =>
+        setAllSkills((data.skills || []).map(toEscoSkillFromLibrary))
+      )
       .catch(err => console.error('Failed to pre-fetch skills library:', err))
       .finally(() => setIsLibraryLoading(false))
   }, [locale])
 
-  // ─── Skill search ───────────────────────────────────────────────────
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const handleSkillSearch = useCallback(
-    debounce(async (query: string) => {
-      if (!query || query.length < 1) {
-        setSkillResults([])
-        setIsSearchingSkills(false)
-        return
-      }
-      
-      // If library is loaded, the component will handle filtering client-side.
-      // We only run the API search if the library is still loading or failed.
-      if (allSkills.length > 0) {
-        setIsSearchingSkills(false)
-        return
-      }
-
-      setIsSearchingSkills(true)
-      try {
-        const params = new URLSearchParams({
-          q: query,
-          limit: '20',
-          locale,
-        })
-        const res = await fetch(`/api/skills/search?${params.toString()}`)
-        if (!res.ok) throw new Error('Failed to search skills')
-        
-        const data = await res.json() as {
-          skills: Array<{
-            concept_uri: string
-            term: string
-            definition: string | null
-            skill_type: string | null
-            reuse_level: string | null
-          }>
-        }
-        
-        setSkillResults(
-          (data.skills || []).map((r) => ({
-            uri: r.concept_uri,
-            // API returns locale-specific strings, so we duplicate them for our generic EscoSkill interface
-            preferredLabel: { en: r.term, fr: r.term },
-            description: { en: r.definition, fr: r.definition },
-            skillType: r.skill_type as EscoSkill['skillType'],
-            reuseLevel: r.reuse_level as EscoSkill['reuseLevel'],
-          }))
-        )
-      } catch (err) {
-        console.error('Skill search error:', err)
-        setSkillResults([])
-      } finally {
-        setIsSearchingSkills(false)
-      }
-    }, 400),
-    [locale, allSkills.length]
-  )
-
-  const handleSkillSelect = useCallback(
-    (skill: EscoSkill) => {
-      setSelectedSkills((prev) => {
-        if (prev.some((s) => s.uri === skill.uri)) return prev
-        const next = [...prev, skill]
-        setFormData((fd) => ({ ...fd, skills: next.map((s) => s.uri) }))
-        return next
-      })
-    },
-    []
-  )
-
-  const handleSkillRemove = useCallback(
-    (uri: string) => {
-      setSelectedSkills((prev) => {
-        const next = prev.filter((s) => s.uri !== uri)
-        setFormData((fd) => ({ ...fd, skills: next.map((s) => s.uri) }))
-        return next
-      })
-    },
-    []
-  )
-
-  const handleValueToggle = useCallback(
-    (id: string) => {
-      setFormData((prev) => {
-        const isSelected = prev.values.includes(id)
-        const nextValues = isSelected
-          ? prev.values.filter((v) => v !== id)
-          : [...prev.values, id]
-        return { ...prev, values: nextValues }
-      })
-    },
-    []
-  )
-
-  const handleValueToggleMultiple = useCallback(
-    (ids: string[], shouldSelect: boolean) => {
-      setFormData((prev) => {
-        if (shouldSelect) {
-          const currentValues = new Set(prev.values)
-          const toAdd = ids.filter(id => !currentValues.has(id))
-          return { ...prev, values: [...prev.values, ...toAdd] }
-        } else {
-          const toRemove = new Set(ids)
-          return { ...prev, values: prev.values.filter(id => !toRemove.has(id)) }
-        }
-      })
-    },
-    []
-  )
-
-  // ─── Save ────────────────────────────────────────────────────────────
+  // ─── Save ─────────────────────────────────────────────────────────────
 
   const handleSaveProfile = async () => {
-    if (formData.skills.length > MAX_PROFILE_SKILLS) {
-      toast.error(t('skillsMaxExceeded', {
-        max: MAX_PROFILE_SKILLS,
-        current: formData.skills.length - MAX_PROFILE_SKILLS,
-      }))
-      return
-    }
-    if (formData.values.length > MAX_PROFILE_VALUES) {
-      toast.error(t('valuesMaxExceeded', {
-        max: MAX_PROFILE_VALUES,
-        current: formData.values.length - MAX_PROFILE_VALUES,
-      }))
-      return
-    }
-    if (formData.ideal_work_environment.length > MAX_PROFILE_WORK_ENV_CHARS) {
-      toast.error(t('workEnvironmentMaxExceeded', { max: MAX_PROFILE_WORK_ENV_CHARS }))
+    const validationError = validateProfileLimits(
+      values.items,
+      skills.items,
+      formData.ideal_work_environment.length
+    )
+    if (validationError) {
+      toast.error(t(validationError.key, validationError.params ?? {}))
       return
     }
 
     setIsSaving(true)
     try {
-      const updated = await updateProfile({
+      const valuesRated: RatedValue[] = values.items.map((v, i) =>
+        i < values.cutoff ? { value: v, rank: i + 1 } : { value: v }
+      )
+      const skillsRated: RatedSkill[] = skills.items.map((s, i) =>
+        i < skills.cutoff ? { skill: s.uri, rank: i + 1 } : { skill: s.uri }
+      )
+
+      await updateProfile({
         full_name: formData.full_name || null,
         bio: formData.bio || null,
-        values: Array.from(new Set(formData.values)).slice(0, MAX_PROFILE_VALUES),
-        skills: Array.from(new Set(formData.skills)).slice(0, MAX_PROFILE_SKILLS),
+        values: values.items.slice(0, MAX_PROFILE_VALUES),
+        values_rated: valuesRated,
+        skills: skills.items.map(s => s.uri).slice(0, MAX_PROFILE_SKILLS),
+        skills_rated: skillsRated,
         work_types: normalizeWorkTypes(formData.work_types),
         ideal_work_environment: formData.ideal_work_environment.trim() || null,
       })
-      if (updated) {
-        toast.success(t('updateSuccess'))
-      } else {
-        toast.error(profileError || t('updateFailed'))
-      }
+      toast.success(t('updateSuccess'))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('updateFailed'))
     } finally {
@@ -307,37 +236,21 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     }
   }
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    try {
-      await uploadPhoto(file)
-      toast.success(t('photoUploadSuccess'))
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('photoUploadFailed'))
-    }
-  }
-
   return {
-    profile,
-    profileLoading,
-    profileError,
-    formData,
-    setFormData,
-    selectedSkills,
-    skillResults,
-    allSkills,
-    isLibraryLoading,
-    isSearchingSkills,
-    handleSkillSearch,
-    handleSkillSelect,
-    handleSkillRemove,
+    profile, profileLoading, profileError,
+    formData, setFormData,
+    selectedSkills: skills.items,
+    skillCutoff: skills.cutoff,
+    allSkills, isLibraryLoading,
+    handleSkillToggle: skills.toggle,
+    handleSkillReorder: skills.reorder,
+    handleSkillRemove: skills.remove,
     workValues,
-    handleValueToggle,
-    handleValueToggleMultiple,
-    isSaving,
-    fileInputRef,
-    handleSaveProfile,
-    handlePhotoUpload,
+    selectedValues: values.items,
+    valueCutoff: values.cutoff,
+    handleValueToggle: values.toggle,
+    handleValueReorder: values.reorder,
+    handleValueRemove: values.remove,
+    isSaving, handleSaveProfile,
   }
 }

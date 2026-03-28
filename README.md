@@ -189,6 +189,12 @@ The application expects two tables in Supabase:
 - `errors` (text, nullable)
 - `run_at` (timestamp)
 
+### `job_matches`
+
+Stores user↔job **work-values** match scores (`user_id`, `job_id`, `score`, `shared_values`). Implementation and tests live in this repo: **`lib/match-calculator.ts`**, **`lib/value-ratings.ts`**, **`lib/match-calculator.test.ts`**, **`lib/sql-ts-parity.test.ts`**. Database triggers and functions are defined in **`supabase/migrations/`** (same DB as this app; apply via **`supabase/migrations/README.md`**).
+
+For **scraper scripts** that touch matching or bulk recompute, see **`wev-scraper/scripts/README.md`** (not duplicated here).
+
 ## Development
 
 Run the development server:

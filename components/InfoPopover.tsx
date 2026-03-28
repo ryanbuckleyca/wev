@@ -12,6 +12,8 @@ interface InfoPopoverProps {
   children: React.ReactNode
   content: React.ReactNode
   className?: string
+  /** Applied to the trigger wrapper (e.g. -1 to skip in tab order). */
+  triggerTabIndex?: number
 }
 
 /**
@@ -20,11 +22,38 @@ interface InfoPopoverProps {
  * Uses shadcn/ui Popover (Radix UI) for click/tap interactions.
  * Matches the exact structure from Radix UI documentation.
  */
-export default function InfoPopover({ children, content, className = '' }: InfoPopoverProps) {
+export default function InfoPopover({
+  children,
+  content,
+  className = '',
+  triggerTabIndex,
+}: InfoPopoverProps) {
+  const [open, setOpen] = React.useState(false)
+  const triggerRef = React.useRef<HTMLDivElement>(null)
+
+  // Close popover if trigger is not visible
+  React.useEffect(() => {
+    if (!open || !triggerRef.current) return
+
+    const observer = new window.IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) setOpen(false)
+      },
+      { threshold: 0.01 }
+    )
+    observer.observe(triggerRef.current)
+    return () => observer.disconnect()
+  }, [open])
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className={`inline-flex cursor-help ${className}`} style={{ touchAction: 'manipulation' }}>
+        <div
+          ref={triggerRef}
+          className={`inline-flex cursor-help ${className}`}
+          style={{ touchAction: 'manipulation' }}
+          tabIndex={triggerTabIndex}
+        >
           {children}
         </div>
       </PopoverTrigger>

@@ -1,14 +1,12 @@
-import { Command } from 'cmdk'
 import { Badge } from '@/components/ui/Badge'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { useTranslations } from 'next-intl'
-import type { EscoSkill } from '../SkillsSelector'
+import type { SkillMatch } from './SkillsModal'
 
 interface SkillItemProps {
-  skill: EscoSkill & { 
-    label: string
-    internalMatchedAlias?: string | null
-  }
+  id: string
+  skill: SkillMatch
+  isActive: boolean
   isSelected: boolean
   onToggle: () => void
   locale: 'en' | 'fr'
@@ -36,20 +34,33 @@ function formatEnumLabel(value: string | null | undefined): string {
     .join(' ')
 }
 
-export default function SkillItem({ skill, isSelected, onToggle, locale }: SkillItemProps) {
+export default function SkillItem({
+  id,
+  skill,
+  isActive,
+  isSelected,
+  onToggle,
+  locale,
+}: SkillItemProps) {
   const t = useTranslations('profile')
-  const searchValue = `${skill.label} ${(skill.aliases || []).join(' ')}`.toLowerCase()
 
   return (
-    <Command.Item
-      key={skill.uri}
-      value={searchValue}
-      onSelect={onToggle}
-      className="flex cursor-pointer items-start gap-4 border-b border-gray-50 px-4 py-3.5 text-left transition-colors aria-selected:bg-gray-50 hover:bg-gray-50 dark:border-zinc-800/50 dark:aria-selected:bg-zinc-900/50 dark:hover:bg-zinc-900/50"
+    <div
+      id={id}
+      role="option"
+      aria-selected={isSelected}
+      onClick={onToggle}
+      className={`flex cursor-pointer items-start gap-4 border-b border-gray-50 px-4 py-3.5 text-left transition-colors dark:border-zinc-800/50 ${
+        isActive
+          ? 'group-focus-within:bg-blue-50/80 dark:group-focus-within:bg-blue-900/20 hover:group-focus-within:bg-blue-100/70 dark:hover:group-focus-within:bg-blue-900/30'
+          : 'hover:bg-gray-50 dark:hover:bg-zinc-900/50'
+      }`}
     >
-      <Checkbox 
+      <Checkbox
         checked={isSelected}
         readOnly
+        tabIndex={-1}
+        aria-hidden
         className="mt-0.5 shrink-0"
       />
       <div className="min-w-0 flex-1 overflow-hidden">
@@ -61,10 +72,10 @@ export default function SkillItem({ skill, isSelected, onToggle, locale }: Skill
             {skill.description[locale]}
           </p>
         )}
-        {skill.internalMatchedAlias && (
+        {skill.matchedAlias && (
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 inline-block px-2 py-0.5 rounded-md dark:bg-blue-900/40 dark:text-blue-300 break-words">
-            {t('skillsMatchedAlias')} 
-            &quot;{skill.internalMatchedAlias}&quot;
+            {t('skillsMatchedAlias')}
+            &quot;{skill.matchedAlias}&quot;
           </p>
         )}
         <div className="mt-1.5 flex flex-wrap gap-1">
@@ -80,6 +91,6 @@ export default function SkillItem({ skill, isSelected, onToggle, locale }: Skill
           )}
         </div>
       </div>
-    </Command.Item>
+    </div>
   )
 }

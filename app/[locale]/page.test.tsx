@@ -60,7 +60,7 @@ vi.mock('nuqs', async () => {
           : parser?.defaultValue
       const [value, setValue] = React.useState(initial)
       const setter = (next: unknown) => {
-        setValue((prev) => (typeof next === 'function' ? (next as (p: unknown) => unknown)(prev) : next))
+        setValue((prev: unknown) => (typeof next === 'function' ? (next as (p: unknown) => unknown)(prev) : next))
       }
       return [value, setter] as const
     },
@@ -100,7 +100,7 @@ function jsonResponse(body: unknown) {
 describe('Home page work type defaults', () => {
   beforeEach(() => {
     mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never)
-    mockUseSearchParams.mockReturnValue(new URLSearchParams())
+    mockUseSearchParams.mockReturnValue(new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>)
 
     mockUseProfile.mockImplementation(() => {
       const [loading, setLoading] = useState(true)
@@ -116,7 +116,6 @@ describe('Home page work type defaults', () => {
           isUpdating: false,
           refresh: () => Promise.resolve(),
           updateProfile: () => Promise.resolve(null),
-          uploadPhoto: () => Promise.resolve(null),
         } as never
       }
 
@@ -127,7 +126,6 @@ describe('Home page work type defaults', () => {
         isUpdating: false,
         refresh: () => Promise.resolve(),
         updateProfile: () => Promise.resolve(null),
-        uploadPhoto: () => Promise.resolve(null),
       } as never
     })
 

@@ -1,7 +1,11 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { ScrollablePills, ScrollablePillsItem } from '@/components/ui/ScrollablePills'
+
+const EXPAND_STAGGER_MS = 88
+
+const PILL_ENTER = 'animate-pill-enter motion-reduce:animate-none'
 
 export interface ExpandablePillGroup {
   key: string
@@ -23,6 +27,19 @@ export default function ExpandablePills({
   fadeBackground = 'var(--card)',
 }: ExpandablePillsProps) {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  /**
+   * Per group: 1 = expanded summary only, 2.. = +items, max = +collapse.
+   * maxStage = items.length + 2 (summary + n items + collapse).
+   */
+  const [expandStage, setExpandStage] = useState<Record<string, number>>({})
+  const staggerTimers = useRef<Map<string, ReturnType<typeof setTimeout>[]>>(new Map())
+
+  useEffect(() => () => staggerTimers.current.forEach(t => t.forEach(clearTimeout)), [])
+
+  const cancelStagger = (key: string) => {
+    staggerTimers.current.get(key)?.forEach(clearTimeout)
+    staggerTimers.current.delete(key)
+  }
 
   const normalizedGroups = useMemo(
     () => groups.filter(group => group.summary || group.items.length > 0),
@@ -60,17 +77,19 @@ export default function ExpandablePills({
       ? `cluster-${group.key}-${group.summary.icon}`
       : `cluster-${group.key}`
 
-    const connectedItems = group.items.map((item, index, arr) => {
-      const isLast = index === arr.length - 1
-      return {
-        ...item,
-        groupKey: group.key,
-        groupId: clusterId,
-        className: `rounded-none border border-border -ml-px border-l border-border ${isLast ? '' : ''}`,
-      }
-    })
+    const maxStage = group.items.length + 2
+    const stage = expandStage[group.key] ?? maxStage
+    const sliceCount = Math.min(Math.max(0, stage - 1), group.items.length)
+    const visibleItems = group.items.slice(0, sliceCount)
+    const collapseShown = stage >= maxStage
 
-    // Update summary tooltip to show collapse instruction when expanded
+    const connectedItems = visibleItems.map((item) => ({
+      ...item,
+      groupKey: group.key,
+      groupId: clusterId,
+      className: `${PILL_ENTER} rounded-none border border-border -ml-px`,
+    }))
+
     const expandedSummaryTooltip = group.summary.tooltip
       ? group.summary.tooltip.replace(
           /<em>Click > to expand details<\/em>/,
@@ -78,7 +97,6 @@ export default function ExpandablePills({
         )
       : group.summary.tooltip
 
-    // Add collapse button at the end - inherit matched state from summary
     const collapseButton: ScrollablePillsItem = {
       label: '',
       groupKey: group.key,
@@ -86,30 +104,36 @@ export default function ExpandablePills({
       type: 'summary',
       expandable: true,
       isExpanded: true,
-      isMatched: Boolean(group.summary.isMatched), // Explicitly ensure boolean value
-      isCollapseButton: true, // Mark as collapse button for special styling
-      className: 'rounded-none rounded-r-full border border-border -ml-px',
+      isMatched: Boolean(group.summary.isMatched),
+      isCollapseButton: true,
+      className: `${PILL_ENTER} rounded-none rounded-r-full border border-border -ml-px`,
     }
 
-    return [
-      {
-        ...group.summary,
-        tooltip: expandedSummaryTooltip,
-        groupKey: group.key,
-        groupId: clusterId,
-        expandable: true,
-        isExpanded: true,
-        className: 'rounded-r-none pr-3 shadow-sm border border-border',
-      },
-      ...connectedItems,
-      collapseButton,
-    ]
+    const summaryPill: ScrollablePillsItem = {
+      ...group.summary,
+      tooltip: expandedSummaryTooltip,
+      groupKey: group.key,
+      groupId: clusterId,
+      expandable: true,
+      isExpanded: true,
+      className: 'rounded-r-none pr-3 shadow-sm border border-border',
+    }
+
+    return collapseShown
+      ? [summaryPill, ...connectedItems, collapseButton]
+      : [summaryPill, ...connectedItems]
   }
 
   const inlineItems = useMemo(() => {
     const groupedItems = normalizedGroups.flatMap(buildCluster)
     return [...preItems, ...groupedItems]
-  }, [preItems, normalizedGroups, expandedGroups])
+  }, [preItems, normalizedGroups, expandedGroups, expandStage])
+
+  const collapseGroup = (key: string) => {
+    cancelStagger(key)
+    setExpandedGroups(prev => ({ ...prev, [key]: false }))
+    setExpandStage(prev => { const n = { ...prev }; delete n[key]; return n })
+  }
 
   const handleItemClick = (item: ScrollablePillsItem) => {
     const groupKey = item.groupKey
@@ -118,22 +142,29 @@ export default function ExpandablePills({
     if (!group?.summary) return
 
     if (item.type === 'summary') {
-      setExpandedGroups(prev => ({
-        ...prev,
-        [groupKey]: !prev[groupKey],
-      }))
+      if (expandedGroups[groupKey]) {
+        collapseGroup(groupKey)
+        return
+      }
+
+      const maxStage = group.items.length + 2
+      setExpandedGroups(prev => ({ ...prev, [groupKey]: true }))
+      setExpandStage(prev => ({ ...prev, [groupKey]: 1 }))
+
+      const timers = Array.from({ length: maxStage - 1 }, (_, i) =>
+        setTimeout(
+          () => setExpandStage(prev => ({ ...prev, [groupKey]: i + 2 })),
+          (i + 1) * EXPAND_STAGGER_MS,
+        ),
+      )
+      staggerTimers.current.set(groupKey, timers)
       return
     }
 
-    setExpandedGroups(prev => ({
-      ...prev,
-      [groupKey]: false,
-    }))
+    collapseGroup(groupKey)
   }
 
-  if (inlineItems.length === 0) {
-    return null
-  }
+  if (inlineItems.length === 0) return null
 
   return (
     <ScrollablePills

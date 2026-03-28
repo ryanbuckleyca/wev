@@ -94,7 +94,7 @@ export async function GET(request: Request) {
       dedupedResults.push({
         concept_uri: row.concept_uri,
         term: row.term,
-        definition: row.definition,
+        definition: row.definition || row.scope_note,
         scope_note: row.scope_note,
         skill_type: row.skill_type,
         reuse_level: row.reuse_level,

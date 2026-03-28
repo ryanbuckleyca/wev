@@ -1,15 +1,16 @@
-import { Command } from 'cmdk'
 import { useTranslations } from 'next-intl'
 import SkillItem from './SkillItem'
-import type { EscoSkill } from '../SkillsSelector'
+import { useListbox } from '../useListbox'
+import type { SkillMatch } from './SkillsModal'
 
 interface SkillsListProps {
-  skills: (EscoSkill & { label: string; internalMatchedAlias?: string | null })[]
+  skills: SkillMatch[]
   selectedUris: Set<string>
-  onToggle: (skill: EscoSkill) => void
+  onToggle: (skill: SkillMatch) => void
   locale: 'en' | 'fr'
-  isSearching: boolean
   hasQuery: boolean
+  listboxId: string
+  ariaDescribedBy?: string
 }
 
 export default function SkillsList({
@@ -17,10 +18,13 @@ export default function SkillsList({
   selectedUris,
   onToggle,
   locale,
-  isSearching,
   hasQuery,
+  listboxId,
+  ariaDescribedBy,
 }: SkillsListProps) {
   const t = useTranslations('profile')
+  const optPrefix = `${listboxId}-opt`
+  const { activeIndex, activeDescendant, setActive, handleKeyDown } = useListbox(skills.length, optPrefix)
 
   if (!hasQuery) {
     return (
@@ -33,22 +37,39 @@ export default function SkillsList({
   if (skills.length === 0) {
     return (
       <div className="px-4 py-8 text-center text-sm text-gray-400">
-        {isSearching ? t('skillsLoading') : t('skillsNoResults')}
+        {t('skillsNoResults')}
       </div>
     )
   }
 
   return (
-    <Command.List className="overflow-y-auto overflow-x-hidden scroll-smooth pb-4">
-      {skills.map((skill) => (
-        <SkillItem
-          key={skill.uri}
-          skill={skill}
-          isSelected={selectedUris.has(skill.uri)}
-          onToggle={() => onToggle(skill)}
-          locale={locale}
-        />
-      ))}
-    </Command.List>
+    <div className="group relative flex min-h-0 flex-1 flex-col rounded-md">
+      <div
+        id={listboxId}
+        role="listbox"
+        tabIndex={0}
+        aria-label={t('skillsListboxLabel')}
+        aria-activedescendant={activeDescendant}
+        aria-describedby={ariaDescribedBy}
+        onKeyDown={(e) => handleKeyDown(e, (i) => onToggle(skills[i]))}
+        className="relative z-0 min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md pb-2 focus:outline-none"
+      >
+        {skills.map((skill, i) => (
+          <SkillItem
+            key={skill.uri}
+            id={`${optPrefix}-${i}`}
+            skill={skill}
+            isActive={i === activeIndex}
+            isSelected={selectedUris.has(skill.uri)}
+            onToggle={() => { setActive(i); onToggle(skill) }}
+            locale={locale}
+          />
+        ))}
+      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[1] rounded-md opacity-0 ring-2 ring-inset ring-blue-400/70 transition-opacity duration-150 group-focus-within:opacity-100"
+      />
+    </div>
   )
 }

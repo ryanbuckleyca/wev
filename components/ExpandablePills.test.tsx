@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ExpandablePills, { ExpandablePillGroup } from './ExpandablePills'
 
@@ -35,10 +35,10 @@ describe('ExpandablePills', () => {
     
     const chevronButton = screen.getByLabelText('Expand')
     await user.click(chevronButton)
-    
-    expect(screen.getByText('community')).toBeVisible()
-    expect(screen.getByText('knowledge')).toBeVisible()
-    expect(screen.getByText('challenge')).toBeVisible()
+
+    expect(await screen.findByText('community')).toBeVisible()
+    expect(await screen.findByText('knowledge')).toBeVisible()
+    expect(await screen.findByText('challenge')).toBeVisible()
   })
 
   it('shows collapse button at end when expanded', async () => {
@@ -46,9 +46,10 @@ describe('ExpandablePills', () => {
     render(<ExpandablePills groups={mockGroups} />)
     
     await user.click(screen.getByLabelText('Expand'))
-    
-    const collapseButtons = screen.getAllByLabelText('Collapse')
-    expect(collapseButtons.length).toBeGreaterThan(1) // Summary chevron + end button
+    await screen.findByText('challenge')
+    await waitFor(() => {
+      expect(screen.getAllByLabelText('Collapse').length).toBeGreaterThan(1)
+    })
   })
 
   it('collapses when end collapse button is clicked', async () => {
@@ -56,8 +57,8 @@ describe('ExpandablePills', () => {
     render(<ExpandablePills groups={mockGroups} />)
     
     await user.click(screen.getByLabelText('Expand'))
-    expect(screen.getByText('community')).toBeVisible()
-    
+    expect(await screen.findByText('community')).toBeVisible()
+
     const collapseButtons = screen.getAllByLabelText('Collapse')
     await user.click(collapseButtons[collapseButtons.length - 1]) // Click last one (end button)
     
@@ -80,7 +81,8 @@ describe('ExpandablePills', () => {
     const { container } = render(<ExpandablePills groups={mockGroups} />)
     
     await user.click(screen.getByLabelText('Expand'))
-    
+    await screen.findByText('challenge')
+
     // Collapse button should inherit matched state from summary
     const collapseButtons = container.querySelectorAll('[aria-label="Collapse"]')
     const endButton = collapseButtons[collapseButtons.length - 1]?.parentElement
@@ -113,8 +115,8 @@ describe('ExpandablePills', () => {
     
     const expandButtons = screen.getAllByLabelText('Expand')
     await user.click(expandButtons[0]) // Expand first group
-    
-    expect(screen.getByText('community')).toBeVisible()
+
+    expect(await screen.findByText('community')).toBeVisible()
     expect(screen.queryByText('javascript')).not.toBeInTheDocument() // Second group still collapsed
   })
 

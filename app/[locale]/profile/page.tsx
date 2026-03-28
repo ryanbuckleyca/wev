@@ -5,8 +5,8 @@ import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfileForm, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES, MAX_PROFILE_WORK_ENV_CHARS } from '@/lib/hooks/useProfileForm';
 import { WORK_TYPES, type WorkType } from '@/lib/work-types';
 import FormTextarea from '@/components/FormTextarea';
-import SkillsSelector from '@/components/profile/SkillsSelector';
-import ValuesSelector from '@/components/profile/ValuesSelector';
+import SkillsSelector from '@/components/profile/skills/SkillsSelector';
+import ValuesSelector from '@/components/profile/values/ValuesSelector';
 import LoadingState from '@/components/LoadingState';
 import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
@@ -25,26 +25,15 @@ export default function ProfilePage() {
   const { user, loading } = useRequireAuth();
 
   const {
-    profile,
-    profileLoading,
-    profileError,
-    formData,
-    setFormData,
-    selectedSkills,
-    skillResults,
-    allSkills,
-    isLibraryLoading,
-    isSearchingSkills,
-    handleSkillSearch,
-    handleSkillSelect,
-    handleSkillRemove,
+    profile, profileLoading, profileError,
+    formData, setFormData,
+    selectedSkills, skillCutoff,
+    allSkills, isLibraryLoading,
+    handleSkillToggle, handleSkillReorder, handleSkillRemove,
     workValues,
-    handleValueToggle,
-    handleValueToggleMultiple,
-    isSaving,
-    fileInputRef,
-    handleSaveProfile,
-    handlePhotoUpload,
+    selectedValues, valueCutoff,
+    handleValueToggle, handleValueReorder, handleValueRemove,
+    isSaving, handleSaveProfile,
   } = useProfileForm(user?.id, locale);
 
   const workEnvironmentCharCount = formData.ideal_work_environment.length;
@@ -83,30 +72,6 @@ export default function ProfilePage() {
 
         <FormContainer onSubmit={handleSaveProfile}>
           <div className="space-y-6">
-            {/* Profile Photo */}
-            <div>
-              <FormLabel>{t('profile.profilePhoto')}</FormLabel>
-              <div className="flex items-center gap-6">
-                <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
-                  {profile.profile_photo_url ? (
-                    <img
-                      src={profile.profile_photo_url}
-                      alt={t('profile.profilePhoto')}
-                      className="w-full h-full object-cover rounded-xl"
-                    />
-                  ) : (
-                    <span className="text-3xl font-bold text-gray-300">
-                      {user.email?.[0].toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <Button onClick={() => fileInputRef.current?.click()} variant="secondary" type="button">
-                  {t('profile.uploadPhoto')}
-                </Button>
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-              </div>
-            </div>
-
             {/* Full Name */}
             <FormField
               label={t('profile.fullName')}
@@ -190,63 +155,71 @@ export default function ProfilePage() {
 
             {/* Skills */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="font-bold text-base">{t('profile.skills')}</h2>
-                {selectedSkills.length > 0 && (
-                  <span className={`text-xs font-semibold rounded-full px-3 py-1 transition-colors ${
-                    selectedSkills.length > MAX_PROFILE_SKILLS 
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' 
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-sm font-semibold leading-none text-foreground">
+                  {t('profile.skills')}
+                </h2>
+                <span
+                  className={`text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors ${
+                    selectedSkills.length > MAX_PROFILE_SKILLS
+                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
                       : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
-                  }`}>
-                    {selectedSkills.length}
-                  </span>
-                )}
+                  }`}
+                  aria-label={`${selectedSkills.length}/${MAX_PROFILE_SKILLS}`}
+                >
+                  {selectedSkills.length}/{MAX_PROFILE_SKILLS}
+                </span>
               </div>
 
               {selectedSkills.length > MAX_PROFILE_SKILLS && (
-                <Alert variant="warning">
+                <Alert variant="warning" className="mb-2">
                   {t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
                 </Alert>
               )}
 
               <SkillsSelector
-                skills={skillResults}
                 allItems={allSkills}
-                selected={selectedSkills}
-                onSelect={handleSkillSelect}
+                selectedSkills={selectedSkills}
+                skillCutoff={skillCutoff}
+                onToggle={handleSkillToggle}
+                onReorder={handleSkillReorder}
                 onRemove={handleSkillRemove}
-                onSearch={handleSkillSearch}
                 locale={locale}
-                isSearching={isSearchingSkills || isLibraryLoading}
+                isLoading={isLibraryLoading}
               />
             </div>
 
             {/* Work Values */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="font-bold text-base">{t('profile.workValues')}</h2>
-                {formData.values.length > 0 && (
-                  <span className={`text-xs font-semibold rounded-full px-3 py-1 transition-colors ${
-                    formData.values.length > MAX_PROFILE_VALUES 
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' 
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-sm font-semibold leading-none text-foreground">
+                  {t('profile.workValues')}
+                </h2>
+                <span
+                  className={`text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors ${
+                    selectedValues.length > MAX_PROFILE_VALUES
+                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
                       : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
-                  }`}>
-                    {formData.values.length}
-                  </span>
-                )}
+                  }`}
+                  aria-label={`${selectedValues.length}/${MAX_PROFILE_VALUES}`}
+                >
+                  {selectedValues.length}/{MAX_PROFILE_VALUES}
+                </span>
               </div>
 
-              {formData.values.length > MAX_PROFILE_VALUES && (
-                <Alert variant="warning">
+              {selectedValues.length > MAX_PROFILE_VALUES && (
+                <Alert variant="warning" className="mb-2">
                   {t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
                 </Alert>
               )}
 
               <ValuesSelector
                 values={workValues}
-                selected={formData.values}
+                selectedValues={selectedValues}
+                valueCutoff={valueCutoff}
                 onToggle={handleValueToggle}
-                onToggleMultiple={handleValueToggleMultiple}
+                onReorder={handleValueReorder}
+                onRemove={handleValueRemove}
                 locale={locale}
               />
             </div>

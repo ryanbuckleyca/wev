@@ -24,9 +24,12 @@ const MIGRATIONS_DIR = path.join(__dirname, '../supabase/migrations')
 
 // Migrations to apply in order
 const MIGRATIONS = [
-  '202603071700_esco_skills_bilingual_reset.sql',
-  '202603061612_profiles_skills_max_10.sql',
-  '202603071800_jobs_skills_and_extended_matching.sql',
+  '20260307170000_esco_skills_bilingual_reset.sql',
+  '20260306161200_profiles_skills_max_10.sql',
+  '20260307180000_jobs_skills_and_extended_matching.sql',
+  '20260325000000_add_rated_columns.sql',
+  '20260328000000_job_confidence_in_matching.sql',
+  '20260328120000_grant_recalculate_match_rpcs.sql',
 ]
 
 async function applyMigration(filename) {

@@ -77,7 +77,19 @@ module.exports = {
       boxShadow: {
         'wev-dropdown': '0 4px 12px rgba(0,0,0,0.1197), 0 2px 4px rgba(0,0,0,0.0812)',
       },
+      keyframes: {
+        'pill-enter': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
+      },
+      animation: {
+        'pill-enter': 'pill-enter 280ms ease-out both',
+      },
     },
   },
-  plugins: [require("tailwind-scrollbar-hide")],
+  plugins: [
+    // v4 package is ESM with default export; plain require() yields { default } — register the function or utilities are missing.
+    require('tailwind-scrollbar-hide').default ?? require('tailwind-scrollbar-hide'),
+  ],
 }

@@ -5,7 +5,7 @@ This document outlines the skills-based matching system implementation and setup
 ## What Was Built
 
 ### 1. **Bilingual ESCO Skills Infrastructure** ✅
-- **Migration**: `202603071700_esco_skills_bilingual_reset.sql`
+- **Migration**: `20260307170000_esco_skills_bilingual_reset.sql`
   - Table: `esco_skills` with EN/FR columns for labels, descriptions, scope notes
   - Function: `search_esco_skills(query, limit, locale)` - locale-aware search with fallback
   - Indexes on preferred labels and alternative labels (GIN)
@@ -18,9 +18,9 @@ This document outlines the skills-based matching system implementation and setup
   - Can upsert directly to Supabase with `--upsert-db` flag
 
 ### 2. **User Skills (Max 10)** ✅
-- **Migration**: `202603061612_profiles_skills_max_10.sql`
+- **Migration**: `20260306161200_profiles_skills_max_10.sql`
   - Constraint: `profiles.skills` max 10 concept URIs
-  - Auto-trims existing arrays to first 10
+  - Enforces a max of 10 concept URIs
 
 - **UI Component**: `components/SkillsSelector.tsx`
   - Multi-select dropdown with search
@@ -29,7 +29,7 @@ This document outlines the skills-based matching system implementation and setup
   - Enforces max 10 selection in UI
 
 ### 3. **Job Skills & Extended Matching** ✅
-- **Migration**: `202603071800_jobs_skills_and_extended_matching.sql`
+- **Migration**: `20260307180000_jobs_skills_and_extended_matching.sql`
   - Added `jobs.skills` column (max 10 concept URIs)
   - Extended `job_matches` table:
     - `value_score` (0-1, null if no values)
@@ -90,11 +90,11 @@ npx supabase db push
 ```
 
 **Migrations to apply** (in order):
-1. `202603061611_search_esco_skills.sql` (if not already applied)
-2. `20260306_esco_skills_index.sql` (if not already applied)
-3. `202603071700_esco_skills_bilingual_reset.sql` ⚠️ **Drops and recreates esco_skills table**
-4. `202603061612_profiles_skills_max_10.sql`
-5. `202603071800_jobs_skills_and_extended_matching.sql`
+1. `20260306161000_profiles_skills.sql`
+2. `20260306161200_profiles_skills_max_10.sql`
+3. `20260307170000_esco_skills_bilingual_reset.sql`
+4. `20260307180000_jobs_skills_and_extended_matching.sql`
+5. `20260328000000_job_confidence_in_matching.sql`
 
 ### 4. Index ESCO Skills Data
 Fetch and load bilingual ESCO skills from the API:
@@ -310,7 +310,7 @@ Test files:
 - Add to `.env.test`: `GROQ_API_KEY=gsk_...`
 
 **"search_esco_skills function does not exist"**
-- Apply migration `202603071700_esco_skills_bilingual_reset.sql`
+- Apply migration `20260307170000_esco_skills_bilingual_reset.sql`
 - Run `npx supabase db push`
 
 **"esco_skills table is empty"**

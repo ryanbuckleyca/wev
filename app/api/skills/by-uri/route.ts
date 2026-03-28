@@ -102,7 +102,7 @@ export async function GET(request: Request) {
         return {
           concept_uri: row.concept_uri,
           term,
-          definition,
+          definition: definition || scope_note,
           scope_note,
           skill_type: row.skill_type,
           reuse_level: row.reuse_level,
