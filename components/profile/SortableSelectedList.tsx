@@ -136,7 +136,7 @@ function SortableDivider({
 
   const middle =
     rankCutoff > 0
-      ? total - rankCutoff > 0 && rankCutoff > 0
+      ? total - rankCutoff > 0
         ? `${prioritisedLabel(rankCutoff)} · ${unorderedLabel(total - rankCutoff)}`
         : prioritisedLabel(rankCutoff)
       : dragAboveLabel
