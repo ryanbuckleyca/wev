@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';
 import { getSupabaseServer } from '@/lib/supabase-server';
-import { createClient as createServerClient } from '@/lib/supabase/server';
 import normalizeJobsWithSource from '@/lib/normalize-job';
 import { resolveSkillLabels, attachSkillLabels, parseLocale } from '@/lib/resolve-skill-labels';
 
@@ -13,15 +13,12 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const locale = parseLocale(searchParams.get('locale'));
 
-    const serverSupabase = await createServerClient();
-    const {
-      data: { user },
-    } = await serverSupabase.auth.getUser();
-
-    if (!user) {
+    const auth = await getRequestUser();
+    if (!auth.ok) {
       return unauthorizedResponse('Not authenticated');
     }
 
+    const { user } = auth;
     const adminClient = getSupabaseServer();
     const { data, error } = await adminClient
       .from('jobs')

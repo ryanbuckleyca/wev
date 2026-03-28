@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterAll, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@/test-utils';
 import { useEffect, useState, type ReactNode } from 'react';
-import Home from './page';
 import { MOCK_AUTH_USER } from '@/test-stubs/constants';
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -78,6 +77,8 @@ import { useSearchParams } from 'next/navigation';
 const mockUseAuth = vi.mocked(useAuth);
 const mockUseProfile = vi.mocked(useProfile);
 const mockUseSearchParams = vi.mocked(useSearchParams);
+const mockFetch = vi.fn();
+let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
 const profileWithWorkType = {
   id: 'user-1',
@@ -102,6 +103,11 @@ function jsonResponse(body: unknown) {
 }
 
 describe('Home page work type defaults', () => {
+  beforeAll(() => {
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal('fetch', mockFetch);
+  });
+
   beforeEach(() => {
     mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never);
     mockUseSearchParams.mockReturnValue(
@@ -135,19 +141,27 @@ describe('Home page work type defaults', () => {
       } as never;
     });
 
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => jsonResponse({ jobs: [], lastScrapeTime: null })),
-    );
+    mockFetch.mockReset();
+    mockFetch.mockImplementation(() => jsonResponse({ jobs: [], lastScrapeTime: null }));
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 
+  afterAll(() => {
+    consoleErrorSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
   it('adds the profile work type to default filters after the profile loads', async () => {
+    const { default: Home } = await import('./page');
+
     render(<Home />);
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled();
+    });
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Remove Hybrid' })).toBeVisible();

@@ -1,8 +1,9 @@
+import 'server-only';
 import type { NextResponse } from 'next/server';
 import type { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/server';
 import { forbiddenResponse, unauthorizedResponse } from '@/lib/http-errors';
 import { logger } from '@/lib/logger';
+import { getRequestUser } from './request-user';
 import { fetchUserRolesFromService } from './server-user-roles';
 import { rolesIncludeAdmin } from './user-roles';
 
@@ -15,16 +16,12 @@ export type AdminSessionResult =
  * in `user_roles` (service-role read). Use on mutating or expensive admin-only routes.
  */
 export async function requireAdminSession(): Promise<AdminSessionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  const auth = await getRequestUser();
+  if (!auth.ok) {
     return { ok: false, response: unauthorizedResponse() };
   }
 
+  const { user } = auth;
   const loaded = await fetchUserRolesFromService(user.id);
   if (!loaded.ok) {
     logger.error({ err: loaded.error, userId: user.id }, 'user_roles load failed');

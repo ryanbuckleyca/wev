@@ -168,6 +168,7 @@ describe('DeleteAccountModal', () => {
   });
 
   it('handles API error', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 400,
@@ -187,6 +188,8 @@ describe('DeleteAccountModal', () => {
     await waitFor(() => {
       expect(screen.getByText(/invalid password/i)).toBeVisible();
     });
+
+    consoleErrorSpy.mockRestore();
   });
 
   it('shows loading state during deletion', async () => {

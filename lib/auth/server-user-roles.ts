@@ -1,3 +1,4 @@
+import 'server-only';
 import { getSupabaseServer } from '@/lib/supabase-server';
 import { parseRolesColumn } from './user-roles';
 

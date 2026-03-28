@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';
 import { logger } from '@/lib/logger';
 import { getSupabaseServer } from '@/lib/supabase-server';
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Get authenticated user
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      logger.warn({ err: authError }, 'Account delete: unauthenticated');
+    const auth = await getRequestUser();
+    if (!auth.ok) {
+      logger.warn({ err: auth.authError }, 'Account delete: unauthenticated');
       return unauthorizedResponse();
     }
 
+    const { user } = auth;
     // Verify password for security
     const body = await request.json();
     const { password } = body;

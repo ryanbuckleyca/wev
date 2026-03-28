@@ -1,17 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { requireAdminResponse, requireAdminSession } from './require-admin';
 
-const mockGetUser = vi.fn();
 const { mockFetchUserRolesFromService } = vi.hoisted(() => ({
   mockFetchUserRolesFromService: vi.fn(),
 }));
+const { mockGetRequestUser } = vi.hoisted(() => ({
+  mockGetRequestUser: vi.fn(),
+}));
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(() => ({
-    auth: {
-      getUser: mockGetUser,
-    },
-  })),
+vi.mock('./request-user', () => ({
+  getRequestUser: mockGetRequestUser,
 }));
 
 vi.mock('@/lib/auth/server-user-roles', () => ({
@@ -24,9 +22,9 @@ describe('requireAdminSession', () => {
   });
 
   it('returns 401 when there is no session', async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: null },
-      error: new Error('Not authenticated'),
+    mockGetRequestUser.mockResolvedValue({
+      ok: false,
+      authError: new Error('Not authenticated'),
     });
 
     const result = await requireAdminSession();
@@ -37,9 +35,9 @@ describe('requireAdminSession', () => {
   });
 
   it('returns 403 when user_roles cannot be loaded', async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: 'u1' } },
-      error: null,
+    mockGetRequestUser.mockResolvedValue({
+      ok: true,
+      user: { id: 'u1' },
     });
     mockFetchUserRolesFromService.mockResolvedValue({ ok: false, error: new Error('db') });
 
@@ -51,9 +49,9 @@ describe('requireAdminSession', () => {
   });
 
   it('returns 403 when roles do not include admin', async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: 'u1' } },
-      error: null,
+    mockGetRequestUser.mockResolvedValue({
+      ok: true,
+      user: { id: 'u1' },
     });
     mockFetchUserRolesFromService.mockResolvedValue({ ok: true, roles: ['user'] });
 
@@ -64,9 +62,9 @@ describe('requireAdminSession', () => {
   });
 
   it('returns the user when session is admin', async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: 'admin-id' } },
-      error: null,
+    mockGetRequestUser.mockResolvedValue({
+      ok: true,
+      user: { id: 'admin-id' },
     });
     mockFetchUserRolesFromService.mockResolvedValue({ ok: true, roles: ['admin'] });
 
@@ -83,9 +81,9 @@ describe('requireAdminResponse', () => {
   });
 
   it('returns NextResponse when not admin', async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: null },
-      error: null,
+    mockGetRequestUser.mockResolvedValue({
+      ok: false,
+      authError: null,
     });
 
     const denied = await requireAdminResponse();
@@ -94,9 +92,9 @@ describe('requireAdminResponse', () => {
   });
 
   it('returns null when admin', async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: 'a' } },
-      error: null,
+    mockGetRequestUser.mockResolvedValue({
+      ok: true,
+      user: { id: 'a' },
     });
     mockFetchUserRolesFromService.mockResolvedValue({ ok: true, roles: ['admin'] });
 
