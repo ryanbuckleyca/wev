@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { adjustCutoffOnRemove, adjustCutoffOnReorder } from '@/lib/ranked-list'
 
 /**
@@ -14,9 +14,15 @@ export function useRankedList<T>(getId: (item: T) => string) {
   // Refs so handlers always read the latest committed state without stale closures.
   // (React 19 can split nested setState calls into separate renders.)
   const itemsRef = useRef(items)
-  itemsRef.current = items
   const cutoffRef = useRef(cutoff)
-  cutoffRef.current = cutoff
+
+  useEffect(() => {
+    itemsRef.current = items
+  }, [items])
+
+  useEffect(() => {
+    cutoffRef.current = cutoff
+  }, [cutoff])
 
   const toggle = useCallback((item: T) => {
     const id = getId(item)

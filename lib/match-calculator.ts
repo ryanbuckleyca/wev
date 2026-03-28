@@ -1,18 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { RatedValue, JobRatedValue, getRankWeight } from './value-ratings'
 
-interface UserProfile {
-  id: string
-  values: string[]
-  values_rated?: RatedValue[] | null
-}
-
-interface Job {
-  id: string
-  values: string[]
-  values_rated?: JobRatedValue[] | null
-}
-
 interface MatchResult {
   user_id: string
   job_id: string

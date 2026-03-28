@@ -106,12 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<string[]>(['user'])
   const [loading, setLoading] = useState(true)
   const supabaseRef = useRef(createClient())
-  const supabase = supabaseRef.current
   const userIdRef = useRef<string | null>(null)
   const rolesResolvedForRef = useRef<string | null>(null)
 
   useEffect(() => {
     let mounted = true
+    const supabase = supabaseRef.current
     const loadAuthState = async () => {
       try {
         let resolvedUser: User | null = null

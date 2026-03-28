@@ -11,10 +11,19 @@ export default defineConfig([
       'react/prop-types': 'off',
     },
   },
+  {
+    files: ['next.config.js'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
   globalIgnores([
     '.next/**',
     'out/**',
     'build/**',
     'next-env.d.ts',
+    'scripts/**/*.js',
+    'supabase/**/*.js',
+    'tailwind.config.js',
   ]),
 ])

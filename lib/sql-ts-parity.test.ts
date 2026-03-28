@@ -574,7 +574,6 @@ describe('SQL / TypeScript parity', () => {
 
       const sqlWithConf = sqlFormula(valuesRated, plain, job, jobRated)
       const tsWithConf = tsMatch(valuesRated, plain, job, jobRated)
-      const sqlWithout = sqlFormula(valuesRated, plain, job, null)
 
       expect(tsWithConf.score).toBeCloseTo(sqlWithConf.score, 10)
       // Single job value → getRankWeight(1, 1) = NEUTRAL_WEIGHT = 0.5,

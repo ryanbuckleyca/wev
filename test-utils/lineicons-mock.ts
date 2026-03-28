@@ -1,9 +1,7 @@
 import React from 'react'
 
-export const Lineicons = ({ children, icon, size, className }: { 
+export const Lineicons = ({ children, className }: { 
   children?: React.ReactNode
-  icon?: any
-  size?: number
   className?: string 
 }) => React.createElement('span', { className }, children)
 
