@@ -1,6 +1,6 @@
 interface HeadingProps {
   level: 1 | 2 | 3 | 4
-  children: any
+  children: React.ReactNode
   className?: string
 }
 

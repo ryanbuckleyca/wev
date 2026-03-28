@@ -1,5 +1,5 @@
 interface MessageProps {
-  children: any
+  children: React.ReactNode
   variant?: 'success' | 'error' | 'info'
   className?: string
 }

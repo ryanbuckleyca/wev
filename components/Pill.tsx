@@ -4,7 +4,7 @@ import type { MouseEvent, Ref } from 'react'
 import { cn } from '@/lib/utils'
 
 interface PillProps {
-  children: any
+  children: React.ReactNode
   variant?: 'default' | 'primary' | 'secondary' | 'disabled'
   size?: 'sm' | 'md'
   className?: string

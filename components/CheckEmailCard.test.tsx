@@ -4,7 +4,7 @@ import { render, screen } from '@/test-utils'
 import CheckEmailCard from './CheckEmailCard'
 
 vi.mock('@/i18n/navigation', () => ({
-  Link: ({ href, children, prefetch: _prefetch, ...props }: { href: string; children: React.ReactNode; prefetch?: boolean }) => (
+  Link: ({ href, children, ...props }: { href: string; children: React.ReactNode; prefetch?: boolean }) => (
     <a href={href} {...props}>
       {children}
     </a>

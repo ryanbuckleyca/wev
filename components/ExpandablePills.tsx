@@ -127,7 +127,7 @@ export default function ExpandablePills({
   const inlineItems = useMemo(() => {
     const groupedItems = normalizedGroups.flatMap(buildCluster)
     return [...preItems, ...groupedItems]
-  }, [preItems, normalizedGroups, expandedGroups, expandStage])
+  }, [preItems, normalizedGroups, expandedGroups, expandStage, buildCluster])
 
   const collapseGroup = (key: string) => {
     cancelStagger(key)

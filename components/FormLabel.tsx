@@ -1,7 +1,7 @@
 import { Label } from '@/components/ui/Label'
 
 interface FormLabelProps {
-  children: any
+  children: React.ReactNode
   htmlFor?: string
   required?: boolean
 }

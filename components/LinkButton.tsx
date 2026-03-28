@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 
 interface LinkButtonProps {
   href: string
-  children: any
+  children: React.ReactNode
   variant?: 'primary' | 'secondary' | 'outline'
   size?: 'sm' | 'md' | 'lg'
   fullWidth?: boolean

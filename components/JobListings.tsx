@@ -6,7 +6,6 @@ import { JobPosting, JobMatchData } from '@/lib/supabase'
 import JobCard from './JobCard'
 import { useAuth } from '@/contexts/AuthContext'
 import LoadingIndicator from './LoadingIndicator'
-import Button from './Button'
 
 interface JobListingsProps {
   jobs: JobPosting[]
@@ -47,31 +46,6 @@ export default function JobListings({ jobs, loading, error, onJobSseChange, onJo
     }
   }
 
-  const formatDate = (dateString: string): string => {
-    // Parse date string - if it doesn't have timezone, treat as UTC
-    let date: Date
-    if (
-      typeof dateString === 'string' &&
-      !dateString.endsWith('Z') &&
-      !dateString.match(/[+-]\d{2}:\d{2}$/)
-    ) {
-      date = new Date(dateString + 'Z')
-    } else {
-      date = new Date(dateString)
-    }
-    // Map locale to appropriate locale string for toLocaleDateString
-    const localeMap: Record<string, string> = {
-      en: 'en-CA',
-      fr: 'fr-CA',
-    }
-    const dateLocale = localeMap[locale] || 'en-CA'
-    return date.toLocaleDateString(dateLocale, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'America/New_York',
-    })
-  }
 
   if (error) {
     return (

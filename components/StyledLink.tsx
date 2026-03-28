@@ -2,7 +2,7 @@ import { Link } from '@/i18n/navigation'
 
 interface StyledLinkProps {
   href: string
-  children: any
+  children: React.ReactNode
   variant?: 'primary' | 'secondary' | 'outline' | 'text'
   size?: 'sm' | 'md' | 'lg'
   fullWidth?: boolean

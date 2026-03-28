@@ -1,5 +1,5 @@
 interface ErrorMessageProps {
-  children: any
+  children: React.ReactNode
   className?: string
 }
 

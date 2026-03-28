@@ -1,17 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations, useLocale } from 'next-intl'
+import { useTranslations } from 'next-intl'
+import { useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getSiteBaseUrl } from '@/lib/site-url'
 import type { User } from '@supabase/supabase-js'
 import LinkButton from '@/components/LinkButton'
 import Button from '@/components/Button'
 import notify from '@/lib/toast'
 
 export default function AuthStatus() {
+  const router = useRouter()
   const t = useTranslations()
-  const locale = useLocale()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -30,14 +30,14 @@ export default function AuthStatus() {
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase.auth])
+  }, [])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
       await supabase.auth.signOut()
-      const base = getSiteBaseUrl() || window.location.origin
-      window.location.href = `${base.replace(/\/$/, '')}/${locale}`
+      notify.success(t('userProfile.logoutSuccess'))
+      router.push('/')
     } catch (err) {
       notify.error(err instanceof Error ? err.message : t('userProfile.logoutFailed'))
       setIsLoggingOut(false)
@@ -57,6 +57,7 @@ export default function AuthStatus() {
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm text-muted-foreground">
+xt-secondary)' }}>
         {user.email}
       </span>
       <Button

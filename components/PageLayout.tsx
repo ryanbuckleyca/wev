@@ -1,5 +1,5 @@
 interface PageLayoutProps {
-  children: any
+  children: React.ReactNode
   variant?: 'centered' | 'sidebar'
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string

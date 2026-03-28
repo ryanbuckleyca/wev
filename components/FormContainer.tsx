@@ -1,5 +1,5 @@
 interface FormContainerProps {
-  children: any
+  children: React.ReactNode
   onSubmit?: (e: React.FormEvent) => void
   className?: string
 }

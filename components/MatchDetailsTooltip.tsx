@@ -27,7 +27,6 @@ export default function MatchDetailsTooltip({
   skillTerms,
   translate,
 }: MatchDetailsTooltipProps) {
-  const primaryColor = 'rgb(var(--primary))'
   const textColor = 'rgb(var(--foreground))'
 
   const formatValueLabel = (value: string) =>

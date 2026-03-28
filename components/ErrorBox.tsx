@@ -1,5 +1,5 @@
 interface ErrorBoxProps {
-  children: any
+  children: React.ReactNode
   className?: string
 }
 
