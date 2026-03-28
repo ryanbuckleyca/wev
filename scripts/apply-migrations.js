@@ -47,7 +47,7 @@ async function applyMigration(filename) {
   
   try {
     // Execute SQL using Supabase REST API
-    const { data, error } = await supabase.rpc('exec_sql', { sql_string: sql })
+    const { error } = await supabase.rpc('exec_sql', { sql_string: sql })
     
     if (error) {
       // If exec_sql function doesn't exist, try alternative approach
