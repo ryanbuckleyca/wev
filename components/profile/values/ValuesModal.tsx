@@ -1,8 +1,8 @@
 import { useRef, type RefObject } from 'react'
 import { useTranslations } from 'next-intl'
 import SearchInput from '../SearchInput'
+import SelectedPillsStrip from '../SelectedPillsStrip'
 import ValuesList from './ValuesList'
-import SelectedValuesPills from './SelectedValuesPills'
 import SelectionBrowseModal from '../SelectionBrowseModal'
 import type { WorkValue } from '@/lib/values'
 
@@ -74,14 +74,16 @@ export default function ValuesModal({
             <span id={selectedHintId} className="sr-only">
               {t('valuesSelectedRegionHint')}
             </span>
-            <SelectedValuesPills
-              values={values}
-              selectedIds={selectedIds}
+            <SelectedPillsStrip
+              items={selectedIds
+                .map((id) => { const v = values.find((val) => val.id === id); return v ? { key: v.id, label: v.label[locale], removeArg: v.id } : null })
+                .filter(Boolean) as { key: string; label: string; removeArg: string }[]}
               onRemove={onRemove}
-              locale={locale}
+              ariaLabel={t('valuesSelectedRegionLabel', { count: selectedSet.size })}
+              optPrefix="values-pill"
+              regionHintId={selectedHintId}
               useHorizontalScroll={!!query}
               fadeBackground="var(--card)"
-              regionHintId={selectedHintId}
             />
           </>
         ) : undefined

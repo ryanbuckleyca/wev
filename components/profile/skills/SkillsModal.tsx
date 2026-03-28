@@ -1,8 +1,9 @@
 import { useRef, type RefObject } from 'react'
 import { useTranslations } from 'next-intl'
+import InfoPopover from '@/components/InfoPopover'
 import SearchInput from '../SearchInput'
+import SelectedPillsStrip from '../SelectedPillsStrip'
 import SkillsList from './SkillsList'
-import SelectedSkillsPills from './SelectedSkillsPills'
 import type { EscoSkill } from './SkillsSelector'
 import SelectionBrowseModal from '../SelectionBrowseModal'
 
@@ -125,13 +126,23 @@ export default function SkillsModal({
             <span id={selectedHintId} className="sr-only">
               {t('skillsSelectedRegionHint')}
             </span>
-            <SelectedSkillsPills
-              skills={selected}
+            <SelectedPillsStrip
+              items={selected.map((s) => ({ key: s.uri, label: s.preferredLabel[locale], removeArg: s.uri }))}
               onRemove={onRemove}
-              locale={locale}
+              ariaLabel={t('skillsSelectedRegionLabel', { count: selected.length })}
+              optPrefix="skills-pill"
+              regionHintId={selectedHintId}
               useHorizontalScroll={!!query}
               fadeBackground="var(--card)"
-              regionHintId={selectedHintId}
+              wrapPill={(pill, _item, i) => (
+                <InfoPopover
+                  content={selected[i].description?.[locale] || selected[i].preferredLabel[locale]}
+                  className={query ? 'shrink-0' : undefined}
+                  triggerTabIndex={-1}
+                >
+                  {pill}
+                </InfoPopover>
+              )}
             />
           </>
         ) : undefined
