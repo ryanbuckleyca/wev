@@ -1,14 +1,11 @@
 import { Badge } from '@/components/ui/Badge'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { useTranslations } from 'next-intl'
-import type { EscoSkill } from './SkillsSelector'
+import type { SkillMatch } from './SkillsModal'
 
 interface SkillItemProps {
   id: string
-  skill: EscoSkill & {
-    label: string
-    internalMatchedAlias?: string | null
-  }
+  skill: SkillMatch
   isActive: boolean
   isSelected: boolean
   onToggle: () => void
@@ -75,10 +72,10 @@ export default function SkillItem({
             {skill.description[locale]}
           </p>
         )}
-        {skill.internalMatchedAlias && (
+        {skill.matchedAlias && (
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 inline-block px-2 py-0.5 rounded-md dark:bg-blue-900/40 dark:text-blue-300 break-words">
             {t('skillsMatchedAlias')}
-            &quot;{skill.internalMatchedAlias}&quot;
+            &quot;{skill.matchedAlias}&quot;
           </p>
         )}
         <div className="mt-1.5 flex flex-wrap gap-1">

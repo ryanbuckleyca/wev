@@ -1,12 +1,12 @@
 import { useTranslations } from 'next-intl'
 import SkillItem from './SkillItem'
 import { useListbox } from '../useListbox'
-import type { EscoSkill } from './SkillsSelector'
+import type { SkillMatch } from './SkillsModal'
 
 interface SkillsListProps {
-  skills: (EscoSkill & { label: string; internalMatchedAlias?: string | null })[]
+  skills: SkillMatch[]
   selectedUris: Set<string>
-  onToggle: (skill: EscoSkill) => void
+  onToggle: (skill: SkillMatch) => void
   locale: 'en' | 'fr'
   hasQuery: boolean
   listboxId: string
