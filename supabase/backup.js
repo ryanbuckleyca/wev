@@ -48,16 +48,34 @@ function getAllTablesFromMigrations(migrationsDir) {
       }
     }
   }
+  // Migrations also use `CREATE TABLE name` / `CREATE TABLE public.name` (no quoted schema.table).
+  // Those are not matched above; merge known public tables so backups stay complete.
+  const extraPublic = ['job_matches', 'bookmarks', 'job_skills', 'esco_skills'];
+  for (const table of extraPublic) {
+    const key = `public.${table}`;
+    if (!tableMap.has(key)) tableMap.set(key, { schema: 'public', table });
+  }
   return Array.from(tableMap.values());
 }
+
+const PAGE = 1000;
 
 async function backupTable(table, schema = 'public') {
   // Use only schema.table for Supabase REST API
   const tableRef = `${schema === 'public' ? table : schema + '.' + table}`;
-  const { data, error } = await supabase.from(tableRef).select('*');
-  if (error) {
-    console.error(`Error backing up ${tableRef}:`, error.message);
-    return;
+  const data = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data: chunk, error } = await supabase
+      .from(tableRef)
+      .select('*')
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error(`Error backing up ${tableRef}:`, error.message);
+      return;
+    }
+    if (!chunk?.length) break;
+    data.push(...chunk);
+    if (chunk.length < PAGE) break;
   }
   // Ensure backups directory exists
   const backupDir = path.resolve(__dirname, 'backups');
@@ -74,15 +92,7 @@ async function backupTable(table, schema = 'public') {
   const migrationsDir = path.resolve(__dirname, 'migrations');
   let allTables = getAllTablesFromMigrations(migrationsDir);
   // Always include auth.users and auth.identities
-  const mustHave = [
-    { schema: 'auth', table: 'users' },
-    { schema: 'auth', table: 'identities' }
-  ];
-  for (const t of mustHave) {
-    if (!allTables.some(x => x.schema === t.schema && x.table === t.table)) {
-      allTables.push(t);
-    }
-  }
+  // auth.* is not exposed to PostgREST; .from('auth.users') fails — export users from the dashboard if needed (see backup.md).
   for (const { schema, table } of allTables) {
     await backupTable(table, schema);
   }
