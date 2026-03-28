@@ -78,7 +78,7 @@ export default function BookmarksPage() {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user, locale, t]);
 
   if (loading) return <LoadingState message={t('common.loading')} />;
 

@@ -13,8 +13,6 @@ interface JobCardFooterProps {
   skills: string[];
   sharedValues: string[];
   sharedSkills: string[];
-  isValueMatched: (value: string) => boolean;
-  isSkillMatched: (skill: string) => boolean;
   skillTerms: Record<string, string>;
   skillDefinitions: Record<string, string>;
   totalMatchPercentage: number;
@@ -30,8 +28,6 @@ export default function JobCardFooter({
   skills,
   sharedValues,
   sharedSkills,
-  isValueMatched,
-  isSkillMatched,
   skillTerms,
   skillDefinitions,
   totalMatchPercentage,

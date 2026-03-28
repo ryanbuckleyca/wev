@@ -5,17 +5,10 @@ export function normalizeJobsWithSource(
     const jobRecord = job as Record<string, unknown>;
     const sources = (jobRecord as { sources?: { name?: string } | { name?: string }[] }).sources;
     const sourceName = Array.isArray(sources) ? sources[0]?.name : sources?.name;
-    const {
-      sources: _sources,
-      source_id: _sourceId,
-      bookmarks: _bookmarks,
-      ...rest
-    } = jobRecord as {
-      sources?: { name?: string } | { name?: string }[];
-      source_id?: string;
-      bookmarks?: unknown;
-      [key: string]: unknown;
-    };
+    const rest = { ...jobRecord } as Record<string, unknown>;
+    delete rest.sources;
+    delete rest.source_id;
+    delete rest.bookmarks;
     return {
       ...rest,
       source: sourceName ?? null,

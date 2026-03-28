@@ -650,7 +650,6 @@ export default function JobFilters({
             <div className="max-h-32 overflow-y-auto border border-border rounded-wev-btn p-2 bg-background">
               {provinces.length > 0 ? (
                 provinces.map((province) => {
-                  const isIndeterminate = indeterminateProvinces.has(province);
                   return (
                     <label
                       key={province}
@@ -658,6 +657,7 @@ export default function JobFilters({
                     >
                       <Checkbox
                         checked={selectedProvinces.includes(province)}
+                        indeterminate={indeterminateProvinces.has(province)}
                         onChange={() => handleProvinceToggle(province)}
                       />
                       <span className="text-sm text-foreground">{province}</span>
@@ -749,7 +749,7 @@ export default function JobFilters({
                               }`}
                             >
                               <Checkbox
-                                checked={selectedMunicipalities.includes(municipality)}
+                                checked={isSelected}
                                 onChange={() => handleMunicipalityToggle(municipality)}
                               />
                               <span

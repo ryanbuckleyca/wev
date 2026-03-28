@@ -41,7 +41,7 @@ export default function ResetPasswordPage() {
       }
     };
     checkSession();
-  }, [supabase.auth]);
+  }, [supabase.auth, t]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

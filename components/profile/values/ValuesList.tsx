@@ -109,7 +109,11 @@ export default function ValuesList({
     if (row.kind === 'group') {
       setCollapsed((prev) => {
         const next = new Set(prev);
-        next.has(row.category) ? next.delete(row.category) : next.add(row.category);
+        if (next.has(row.category)) {
+          next.delete(row.category);
+        } else {
+          next.add(row.category);
+        }
         return next;
       });
     } else {

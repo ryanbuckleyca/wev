@@ -75,8 +75,6 @@ export default function JobCard({
     matchProp?.value_score != null ? Math.round(matchProp.value_score * 100) : 0;
   const skillMatchPercentage =
     matchProp?.skill_score != null ? Math.round(matchProp.skill_score * 100) : 0;
-  const isValueMatched = (value: string) => matchProp?.shared_values?.includes(value) ?? false;
-  const isSkillMatched = (skill: string) => matchProp?.shared_skills?.includes(skill) ?? false;
   const matchTooltipContent = useMemo<ReactNode | null>(() => {
     if (!matchProp) return null;
 
@@ -324,8 +322,6 @@ export default function JobCard({
             skills={job.skills || []}
             sharedValues={matchProp?.shared_values || []}
             sharedSkills={matchProp?.shared_skills || []}
-            isValueMatched={isValueMatched}
-            isSkillMatched={isSkillMatched}
             skillTerms={skillTerms}
             skillDefinitions={skillDefinitions}
             totalMatchPercentage={totalMatchPercentage}

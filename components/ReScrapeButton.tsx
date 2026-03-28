@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import notify from '@/lib/toast';
 import Button from './Button';
 import { Lineicons } from '@lineiconshq/react-lineicons';
@@ -49,7 +49,6 @@ function clearScrapeState() {
 export default function ReScrapeButton({ onComplete, buttonClassName }: ReScrapeButtonProps) {
   const t = useTranslations();
   const tReScrape = useTranslations('reScrape');
-  const locale = useLocale();
   const [loading, setLoading] = useState(() => !!loadScrapeState());
   const [statusState, setStatusState] = useState<'idle' | 'starting' | 'queued' | 'running'>(() => {
     const saved = loadScrapeState();
@@ -65,7 +64,7 @@ export default function ReScrapeButton({ onComplete, buttonClassName }: ReScrape
     if (statusState === 'starting') return t('buttons.reScrapeStarting');
     if (statusState === 'running') return t('buttons.reScrapeRunning');
     return t('buttons.reScrapeQueued');
-  }, [statusState, t, locale]);
+  }, [statusState, t]);
 
   const stopPolling = useCallback(() => {
     if (pollTimeoutRef.current) {

@@ -11,6 +11,7 @@ import {
   useQueryState,
 } from 'nuqs';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import JobListings from '@/components/JobListings';
 import JobFilters from '@/components/JobFilters';
 import { useProfile } from '@/lib/hooks/useProfile';
@@ -26,6 +27,9 @@ import Pagination from '@/components/Pagination';
 import { normalizeWorkTypes } from '@/lib/work-types';
 
 const ITEMS_PER_PAGE = 20;
+
+const HOME_LOGOTYPE_URL =
+  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';
 
 export default function Home() {
   const t = useTranslations();
@@ -115,6 +119,7 @@ export default function Home() {
     searchParams,
     selectedWorkTypes.length,
     setSelectedWorkTypes,
+    profileLoading,
   ]);
 
   const handleResetToProfileWorkTypes = useCallback(() => {
@@ -142,12 +147,7 @@ export default function Home() {
   // Bookmarked job IDs (batch-fetched for logged-in users)
   const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(new Set());
 
-  const handleExpandAll = (expanded: boolean) => {
-    console.log('handleExpandAll called:', expanded);
-    setAllJobsExpanded(expanded);
-  };
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -214,10 +214,10 @@ export default function Home() {
       clearTimeout(timeoutId);
       setLoading(false);
     }
-  };
+  }, [locale, t, setCurrentPage]);
 
   // Fetch bookmarks for job IDs (only when user is logged in)
-  const fetchBookmarks = async (jobIds: string[]) => {
+  const fetchBookmarks = useCallback(async (jobIds: string[]) => {
     if (!user || jobIds.length === 0) return new Set<string>();
     try {
       const supabase = createClient();
@@ -236,10 +236,10 @@ export default function Home() {
       console.error('Error fetching bookmarks:', error);
       return new Set<string>();
     }
-  };
+  }, [user]);
 
   // Fetch match data for all jobs (only when user is logged in)
-  const fetchMatchData = async (jobs: JobPosting[]) => {
+  const fetchMatchData = useCallback(async (jobs: JobPosting[]) => {
     if (!user) return new Map();
 
     try {
@@ -277,7 +277,7 @@ export default function Home() {
       console.error('Error fetching match data:', error);
       return new Map();
     }
-  };
+  }, [user]);
 
   // Filter and sort jobs based on search, filters, and sort option
   const filteredJobs = useMemo(() => {
@@ -439,6 +439,8 @@ export default function Home() {
       setCurrentPage(1);
     }
   }, [
+    currentPage,
+    setCurrentPage,
     searchQuery,
     selectedOrganizations,
     selectedProvinces,
@@ -453,8 +455,8 @@ export default function Home() {
   ]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    void fetchData();
+  }, [fetchData]);
 
   // Refetch match data and bookmarks when user changes (by id, not object reference)
   // Using user?.id avoids refetch on token refresh when switching tabs
@@ -471,7 +473,7 @@ export default function Home() {
       setMatchData(new Map());
       setBookmarkedJobIds(new Set());
     }
-  }, [userId, allJobs.length]);
+  }, [userId, allJobs, fetchBookmarks, fetchMatchData]);
 
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE);
 
@@ -486,10 +488,13 @@ export default function Home() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
         {/* Home page hero section */}
         <header className="mb-8">
-          <img
-            src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png"
+          <Image
+            src={HOME_LOGOTYPE_URL}
             alt="wev"
+            width={100}
+            height={40}
             className="main-logo wev-logotype w-[100px] h-auto mb-2"
+            priority
           />
           <p className="text-xl font-medium text-primary">{t('home.heading')}</p>
         </header>

@@ -13,17 +13,20 @@ vi.mock('@/i18n/navigation', () => ({
   Link: ({
     href,
     children,
-    prefetch: _prefetch,
+    prefetch,
     ...props
   }: {
     href: string;
     children: ReactNode;
     prefetch?: boolean;
-  }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
+  }) => {
+    void prefetch;
+    return (
+      <a href={href} {...props}>
+        {children}
+      </a>
+    );
+  },
 }));
 
 vi.mock('@/components/TurnstileWidget', () => ({

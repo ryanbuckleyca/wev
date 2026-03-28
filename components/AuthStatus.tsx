@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -15,7 +15,7 @@ export default function AuthStatus() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -30,7 +30,7 @@ export default function AuthStatus() {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)

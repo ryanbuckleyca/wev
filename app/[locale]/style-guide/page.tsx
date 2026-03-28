@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
 import StyledLink from '@/components/StyledLink';
 import ButtonLink from '@/components/ButtonLink';
-import StatusIcon from '@/components/StatusIcon';
 import BannerMessage from '@/components/BannerMessage';
 import notify from '@/lib/toast';
 import { useState, useEffect } from 'react';
@@ -45,7 +45,7 @@ interface Token {
 }
 
 export default function StyleGuidePage() {
-  const [groupedColors, setGroupedColors] = useState<Record<string, Array<{name: string, value: string, prefix: string}>>>(() => {
+  const [groupedColors] = useState<Record<string, Array<{ name: string; value: string; prefix: string }>>>(() => {
     // Helper function to get common prefix from variable name
     const getCommonPrefix = (varName: string) => {
       const parts = varName.split('-');
@@ -119,7 +119,7 @@ export default function StyleGuidePage() {
 
     return getGroupedColors();
   });
-  const [allTokens, setAllTokens] = useState<Token[]>(() => {
+  const [allTokens] = useState<Token[]>(() => {
     // Helper function to get common prefix from variable name
     const getCommonPrefix = (varName: string) => {
       const parts = varName.split('-');
@@ -193,7 +193,13 @@ export default function StyleGuidePage() {
       <div className="design-hero">
         <div className="design-hero-content">
           <div className="logo-display">
-            <img src={LOGO_LOGOTYPE} alt="wev logo" className="wev-logotype" />
+            <Image
+              src={LOGO_LOGOTYPE}
+              alt="wev logo"
+              width={160}
+              height={64}
+              className="wev-logotype"
+            />
           </div>
           <p className="design-subtitle">Style Guide</p>
           <p className="design-version">Version 1.0 • February 2026</p>
@@ -725,7 +731,13 @@ export default function StyleGuidePage() {
           <div className="design-logo-grid">
             <div className="design-logo-showcase design-logo-bg-light">
               <div className="design-logo-placeholder">
-                <img src={LOGO_LOGOTYPE} alt="wev logo" className="wev-logotype" />
+                <Image
+                  src={LOGO_LOGOTYPE}
+                  alt="wev logo"
+                  width={200}
+                  height={80}
+                  className="wev-logotype"
+                />
               </div>
               <div className="design-logo-title">Primary Logotype</div>
               <p className="design-logo-description">
@@ -735,7 +747,7 @@ export default function StyleGuidePage() {
 
             <div className="design-logo-showcase design-logo-bg-light">
               <div className="design-logo-placeholder">
-                <img src={LOGO_MARK} alt="wev logo mark" />
+                <Image src={LOGO_MARK} alt="wev logo mark" width={120} height={120} />
               </div>
               <div className="design-logo-title">Logo Mark</div>
               <p className="design-logo-description">

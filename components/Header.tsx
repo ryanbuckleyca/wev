@@ -1,12 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useLocale } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
 import UserProfile from './UserProfile';
 import ThemeToggle from './ThemeToggle';
 import LocaleSwitcher from './LocaleSwitcher';
 import { zIndex } from '@/lib/design-tokens';
+
+const HEADER_LOGOTYPE_URL =
+  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';
 
 export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false);
@@ -59,9 +63,11 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
           className={`transition-opacity duration-200 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
           <Link href="/">
-            <img
-              src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png"
+            <Image
+              src={HEADER_LOGOTYPE_URL}
               alt="wev"
+              width={60}
+              height={24}
               className="wev-logotype w-[60px] h-auto cursor-pointer"
             />
           </Link>

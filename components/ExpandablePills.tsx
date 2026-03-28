@@ -51,83 +51,83 @@ export default function ExpandablePills({
     [normalizedGroups],
   );
 
-  const buildCluster = (group: ExpandablePillGroup): ScrollablePillsItem[] => {
-    if (!group.summary) {
-      return group.items.map((item) => ({
+  const inlineItems = useMemo(() => {
+    const buildCluster = (group: ExpandablePillGroup): ScrollablePillsItem[] => {
+      if (!group.summary) {
+        return group.items.map((item) => ({
+          ...item,
+          groupKey: group.key,
+        }));
+      }
+
+      const isExpanded = Boolean(expandedGroups[group.key]) && group.items.length > 0;
+      if (!isExpanded) {
+        return [
+          {
+            ...group.summary,
+            groupKey: group.key,
+            groupId: undefined,
+            expandable: true,
+            isExpanded: false,
+            className: 'transition-colors border border-border rounded-full',
+          },
+        ];
+      }
+
+      const clusterId = group.summary.icon
+        ? `cluster-${group.key}-${group.summary.icon}`
+        : `cluster-${group.key}`;
+
+      const maxStage = group.items.length + 2;
+      const stage = expandStage[group.key] ?? maxStage;
+      const sliceCount = Math.min(Math.max(0, stage - 1), group.items.length);
+      const visibleItems = group.items.slice(0, sliceCount);
+      const collapseShown = stage >= maxStage;
+
+      const connectedItems = visibleItems.map((item) => ({
         ...item,
         groupKey: group.key,
+        groupId: clusterId,
+        className: `${PILL_ENTER} rounded-none border border-border -ml-px`,
       }));
-    }
 
-    const isExpanded = Boolean(expandedGroups[group.key]) && group.items.length > 0;
-    if (!isExpanded) {
-      return [
-        {
-          ...group.summary,
-          groupKey: group.key,
-          groupId: undefined,
-          expandable: true,
-          isExpanded: false,
-          className: 'transition-colors border border-border rounded-full',
-        },
-      ];
-    }
+      const expandedSummaryTooltip = group.summary.tooltip
+        ? group.summary.tooltip.replace(
+            /<em>Click > to expand details<\/em>/,
+            '<em>Click < to collapse</em>',
+          )
+        : group.summary.tooltip;
 
-    const clusterId = group.summary.icon
-      ? `cluster-${group.key}-${group.summary.icon}`
-      : `cluster-${group.key}`;
+      const collapseButton: ScrollablePillsItem = {
+        label: '',
+        groupKey: group.key,
+        groupId: clusterId,
+        type: 'summary',
+        expandable: true,
+        isExpanded: true,
+        isMatched: Boolean(group.summary.isMatched),
+        isCollapseButton: true,
+        className: `${PILL_ENTER} rounded-none rounded-r-full border border-border -ml-px`,
+      };
 
-    const maxStage = group.items.length + 2;
-    const stage = expandStage[group.key] ?? maxStage;
-    const sliceCount = Math.min(Math.max(0, stage - 1), group.items.length);
-    const visibleItems = group.items.slice(0, sliceCount);
-    const collapseShown = stage >= maxStage;
+      const summaryPill: ScrollablePillsItem = {
+        ...group.summary,
+        tooltip: expandedSummaryTooltip,
+        groupKey: group.key,
+        groupId: clusterId,
+        expandable: true,
+        isExpanded: true,
+        className: 'rounded-r-none pr-3 shadow-sm border border-border',
+      };
 
-    const connectedItems = visibleItems.map((item) => ({
-      ...item,
-      groupKey: group.key,
-      groupId: clusterId,
-      className: `${PILL_ENTER} rounded-none border border-border -ml-px`,
-    }));
-
-    const expandedSummaryTooltip = group.summary.tooltip
-      ? group.summary.tooltip.replace(
-          /<em>Click > to expand details<\/em>/,
-          '<em>Click < to collapse</em>',
-        )
-      : group.summary.tooltip;
-
-    const collapseButton: ScrollablePillsItem = {
-      label: '',
-      groupKey: group.key,
-      groupId: clusterId,
-      type: 'summary',
-      expandable: true,
-      isExpanded: true,
-      isMatched: Boolean(group.summary.isMatched),
-      isCollapseButton: true,
-      className: `${PILL_ENTER} rounded-none rounded-r-full border border-border -ml-px`,
+      return collapseShown
+        ? [summaryPill, ...connectedItems, collapseButton]
+        : [summaryPill, ...connectedItems];
     };
 
-    const summaryPill: ScrollablePillsItem = {
-      ...group.summary,
-      tooltip: expandedSummaryTooltip,
-      groupKey: group.key,
-      groupId: clusterId,
-      expandable: true,
-      isExpanded: true,
-      className: 'rounded-r-none pr-3 shadow-sm border border-border',
-    };
-
-    return collapseShown
-      ? [summaryPill, ...connectedItems, collapseButton]
-      : [summaryPill, ...connectedItems];
-  };
-
-  const inlineItems = useMemo(() => {
     const groupedItems = normalizedGroups.flatMap(buildCluster);
     return [...preItems, ...groupedItems];
-  }, [preItems, normalizedGroups, expandedGroups, expandStage, buildCluster]);
+  }, [preItems, normalizedGroups, expandedGroups, expandStage]);
 
   const collapseGroup = (key: string) => {
     cancelStagger(key);

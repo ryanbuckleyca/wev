@@ -8,6 +8,15 @@ config({ path: path.join(process.cwd(), '.env') });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'teuvfoftdjfsnkkbnzps.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
   reactStrictMode: true,
   // Removed 'output: export' to enable SSR/hybrid mode
   // This allows API routes and server-side rendering
