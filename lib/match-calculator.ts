@@ -175,7 +175,6 @@ export async function calculateUserMatches(userId: string): Promise<void> {
         : (profile?.values ?? [])
 
     if (profileError || !userValues.length) {
-      console.log('No profile values found for user:', userId)
       return
     }
 
@@ -220,8 +219,6 @@ export async function calculateUserMatches(userId: string): Promise<void> {
 
       if (upsertError) {
         console.error('Error upserting matches:', upsertError)
-      } else {
-        console.log(`Updated ${matches.length} matches for user ${userId}`)
       }
     }
   } catch (error) {
@@ -244,7 +241,6 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
       .single()
 
     if (jobError || !job?.values?.length) {
-      console.log('No job values found for job:', jobId)
       return
     }
 
@@ -292,8 +288,6 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
 
       if (upsertError) {
         console.error('Error upserting matches:', upsertError)
-      } else {
-        console.log(`Updated ${matches.length} matches for job ${jobId}`)
       }
     }
   } catch (error) {

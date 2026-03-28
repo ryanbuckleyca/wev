@@ -9,7 +9,7 @@ import { normalizeWorkTypes, type WorkType } from '@/lib/work-types'
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings'
 import toast from 'react-hot-toast'
 
-/** Must match DB `profiles_skills_max_10_check` (see `202603061612_profiles_skills_max_10.sql`). */
+/** Must match DB `profiles_skills_max_10_check` (see `202603061612_profiles_skills_max_10.sql`) and `profiles_skills_rated_max_10_check` (see `20260328150000_profiles_skills_rated_max_10_check.sql`). */
 export const MAX_PROFILE_SKILLS = 10
 /** Must match DB `profiles_values_max_5_check` / `profiles_values_rated_max_5_check` (see `20260328130000_profiles_values_max_5_check.sql`). */
 export const MAX_PROFILE_VALUES = 5
@@ -89,7 +89,7 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
         const seen = new Set<string>()
         const deduped = hydrated.filter(s => { if (seen.has(s.uri)) return false; seen.add(s.uri); return true })
 
-        const psr = (profile as any).skills_rated as RatedSkill[] | null | undefined
+        const psr = profile.skills_rated
         if (psr && psr.length > 0) {
           const rankMap = new Map(psr.map(sr => [sr.skill, sr.rank]))
           const ranked = deduped.filter(s => rankMap.get(s.uri) != null).sort((a, b) => rankMap.get(a.uri)! - rankMap.get(b.uri)!)
