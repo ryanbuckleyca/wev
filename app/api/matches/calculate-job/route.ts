@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getSupabaseServer } from '@/lib/supabase-server';
 import { requireAdminResponse } from '@/lib/auth/require-admin';
 import { logger } from '@/lib/logger';
 import { calculateJobMatches } from '@/lib/match-calculator';
@@ -18,8 +18,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'jobId is required' }, { status: 400 });
     }
 
-    // Verify the job exists
-    const supabase = await createClient();
+    // Verify the job exists (service role; consistent with match-calculator)
+    const supabase = getSupabaseServer();
     const { data: job, error: jobError } = await supabase
       .from('jobs')
       .select('id')

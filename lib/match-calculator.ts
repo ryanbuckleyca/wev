@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseServer } from '@/lib/supabase-server';
 import { logger } from '@/lib/logger';
 import { RatedValue, JobRatedValue, getRankWeight } from './value-ratings';
 
@@ -145,10 +145,11 @@ export function calculateMatch(
 }
 
 /**
- * Calculate matches for a single user against all jobs
+ * Calculate matches for a single user against all jobs.
+ * Uses the service Supabase client so reads/writes are not limited to the caller’s RLS scope.
  */
 export async function calculateUserMatches(userId: string): Promise<void> {
-  const supabase = createClient();
+  const supabase = getSupabaseServer();
 
   try {
     // Get user profile values
@@ -213,10 +214,11 @@ export async function calculateUserMatches(userId: string): Promise<void> {
 }
 
 /**
- * Calculate matches for a single job against all users
+ * Calculate matches for a single job against all users.
+ * Uses the service Supabase client so reads/writes are not limited to the caller’s RLS scope.
  */
 export async function calculateJobMatches(jobId: string): Promise<void> {
-  const supabase = createClient();
+  const supabase = getSupabaseServer();
 
   try {
     // Get job values

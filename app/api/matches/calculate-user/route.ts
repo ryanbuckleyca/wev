@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getSupabaseServer } from '@/lib/supabase-server';
 import { requireAdminResponse } from '@/lib/auth/require-admin';
 import { logger } from '@/lib/logger';
 import { calculateUserMatches } from '@/lib/match-calculator';
@@ -18,8 +18,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
-    // Verify the user exists
-    const supabase = await createClient();
+    // Verify the user exists (service role bypasses RLS so any profile id is visible to admins)
+    const supabase = getSupabaseServer();
     const { data: user, error: userError } = await supabase
       .from('profiles')
       .select('id')
