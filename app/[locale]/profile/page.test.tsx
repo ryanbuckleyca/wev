@@ -8,7 +8,7 @@ import { useProfile } from '@/lib/hooks/useProfile'
 import { MAX_PROFILE_SKILLS } from '@/lib/hooks/useProfileForm'
 import ProfilePage from './page'
 
-/** Matches `messages/en.json` `profile.skillsPlaceholder` (Unicode ellipsis). */
+/** Matches `messages/en.json` `profile.skillsPlaceholderShort` (modal search; Unicode ellipsis). */
 const SKILLS_SEARCH_PLACEHOLDER = 'Search to add skills…'
 
 vi.mock('@/lib/hooks/useRequireAuth', () => ({
@@ -51,7 +51,6 @@ const baseProfile = {
   skills: ['uri-1'],
   work_types: ['remote'],
   ideal_work_environment: 'Calm, collaborative, flexible hours.',
-  profile_photo_url: null,
   created_at: '2026-03-06T00:00:00.000Z',
   updated_at: '2026-03-06T00:00:00.000Z',
 }
@@ -240,7 +239,7 @@ describe('ProfilePage skills integration', () => {
       )
     })
 
-    await user.click(screen.getByRole('button', { name: /search to add skills/i }))
+    await user.click(screen.getByRole('button', { name: /search and add skills/i }))
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER)
     await user.type(searchInput, 'da')
     await user.click(await screen.findByRole('option', { name: /Data governance/i }))
@@ -319,7 +318,7 @@ describe('ProfilePage skills integration', () => {
       expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/api/skills/all'))).toBe(true),
     )
 
-    await user.click(screen.getByRole('button', { name: /search to add skills/i }))
+    await user.click(screen.getByRole('button', { name: /search and add skills/i }))
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER)
     await user.type(searchInput, 'Extra')
     await user.click(await screen.findByRole('option', { name: /Extra skill/i }))

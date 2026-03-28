@@ -155,8 +155,10 @@ export default function ProfilePage() {
 
             {/* Skills */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="font-bold text-base">{t('profile.skills')}</h2>
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-sm font-semibold leading-none text-foreground">
+                  {t('profile.skills')}
+                </h2>
                 <span
                   className={`text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors ${
                     selectedSkills.length > MAX_PROFILE_SKILLS
@@ -170,7 +172,7 @@ export default function ProfilePage() {
               </div>
 
               {selectedSkills.length > MAX_PROFILE_SKILLS && (
-                <Alert variant="warning">
+                <Alert variant="warning" className="mb-2">
                   {t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
                 </Alert>
               )}
@@ -191,8 +193,10 @@ export default function ProfilePage() {
 
             {/* Work Values */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="font-bold text-base">{t('profile.workValues')}</h2>
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-sm font-semibold leading-none text-foreground">
+                  {t('profile.workValues')}
+                </h2>
                 <span
                   className={`text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors ${
                     selectedValues.length > MAX_PROFILE_VALUES
@@ -206,7 +210,7 @@ export default function ProfilePage() {
               </div>
 
               {selectedValues.length > MAX_PROFILE_VALUES && (
-                <Alert variant="warning">
+                <Alert variant="warning" className="mb-2">
                   {t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
                 </Alert>
               )}

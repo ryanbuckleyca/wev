@@ -8,6 +8,10 @@ interface SkillSearchInputProps {
   inputRef?: React.RefObject<HTMLInputElement | null>
   onClear: () => void
   placeholder?: string
+  /** When set, links this field to the skills listbox (aria-controls). */
+  listboxId?: string
+  /** Optional id of element describing keyboard usage (e.g. sr-only hint). */
+  ariaDescribedBy?: string
 }
 
 export default function SkillSearchInput({
@@ -17,6 +21,8 @@ export default function SkillSearchInput({
   inputRef,
   onClear,
   placeholder,
+  listboxId,
+  ariaDescribedBy,
 }: SkillSearchInputProps) {
   const t = useTranslations('profile')
 
@@ -29,6 +35,10 @@ export default function SkillSearchInput({
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder={placeholder || t('skillsPlaceholder')}
+        autoComplete="off"
+        aria-controls={listboxId}
+        aria-autocomplete="list"
+        aria-describedby={ariaDescribedBy}
         className="min-w-0 flex-1 bg-transparent text-base sm:text-[13px] font-medium text-foreground outline-none placeholder:text-gray-400"
       />
       {isSearching && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}

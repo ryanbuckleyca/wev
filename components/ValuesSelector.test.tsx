@@ -26,7 +26,7 @@ describe('ValuesSelector', () => {
 
   async function openModal(user: ReturnType<typeof userEvent.setup>) {
     const trigger = screen.getByRole('button', {
-      name: enMessages.profile.valuesPlaceholder,
+      name: enMessages.profile.valuesModalTriggerLabel,
     })
     await user.click(trigger)
   }
@@ -37,7 +37,7 @@ describe('ValuesSelector', () => {
 
       expect(
         screen.getByRole('button', {
-          name: enMessages.profile.valuesPlaceholder,
+          name: enMessages.profile.valuesModalTriggerLabel,
         }),
       ).toBeVisible()
     })
@@ -165,7 +165,7 @@ describe('ValuesSelector', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: frMessages.profile.valuesPlaceholder,
+          name: frMessages.profile.valuesModalTriggerLabel,
         }),
       )
 
@@ -184,7 +184,7 @@ describe('ValuesSelector', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: frMessages.profile.valuesPlaceholder,
+          name: frMessages.profile.valuesModalTriggerLabel,
         }),
       )
 

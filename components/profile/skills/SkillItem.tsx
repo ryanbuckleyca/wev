@@ -4,12 +4,17 @@ import { useTranslations } from 'next-intl'
 import type { EscoSkill } from '../SkillsSelector'
 
 interface SkillItemProps {
+  id: string
+  /** Visual + SR highlight for aria-activedescendant target */
+  isActive: boolean
   skill: EscoSkill & {
     label: string
     internalMatchedAlias?: string | null
   }
   isSelected: boolean
   onToggle: () => void
+  /** Sync keyboard active index when clicking a row */
+  onActivate: () => void
   locale: 'en' | 'fr'
 }
 
@@ -35,17 +40,41 @@ function formatEnumLabel(value: string | null | undefined): string {
     .join(' ')
 }
 
-export default function SkillItem({ skill, isSelected, onToggle, locale }: SkillItemProps) {
+export default function SkillItem({
+  id,
+  isActive,
+  skill,
+  isSelected,
+  onToggle,
+  onActivate,
+  locale,
+}: SkillItemProps) {
   const t = useTranslations('profile')
 
   return (
     <div
+      id={id}
       role="option"
       aria-selected={isSelected}
-      onClick={onToggle}
-      className="flex cursor-pointer items-start gap-4 border-b border-gray-50 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 dark:border-zinc-800/50 dark:hover:bg-zinc-900/50"
+      onClick={(e) => {
+        onActivate()
+        onToggle()
+        const listbox = e.currentTarget.closest('[role="listbox"]') as HTMLElement | null
+        listbox?.focus()
+      }}
+      className={`flex cursor-pointer items-start gap-4 border-b border-gray-50 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 dark:border-zinc-800/50 dark:hover:bg-zinc-900/50 ${
+        isActive
+          ? 'bg-gray-50 ring-2 ring-inset ring-gray-300 dark:bg-zinc-900/80 dark:ring-zinc-600'
+          : ''
+      }`}
     >
-      <Checkbox checked={isSelected} readOnly className="mt-0.5 shrink-0" />
+      <Checkbox
+        checked={isSelected}
+        readOnly
+        tabIndex={-1}
+        aria-hidden
+        className="mt-0.5 shrink-0 pointer-events-none"
+      />
       <div className="min-w-0 flex-1 overflow-hidden">
         <p className="text-[13px] font-bold text-gray-900 dark:text-zinc-100 break-words">
           {skill.label}

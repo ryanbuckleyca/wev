@@ -9,6 +9,8 @@ interface HorizontalScrollWithFadesProps {
   fadeBackground?: string // CSS color value (e.g. "var(--background)", "white")
   className?: string      // Applied to the scrollable container
   containerClassName?: string // Applied to the relative wrapper
+  /** When false, scroll chevrons are never in tab order (e.g. modal chip strip). */
+  chevronsTabbable?: boolean
 }
 
 /**
@@ -35,6 +37,7 @@ export default function HorizontalScrollWithFades({
   fadeBackground = 'var(--background)',
   className = '',
   containerClassName = '',
+  chevronsTabbable = true,
 }: HorizontalScrollWithFadesProps) {
   const { ref, fades } = useScrollFades()
 
@@ -65,7 +68,7 @@ export default function HorizontalScrollWithFades({
         <button
           type="button"
           onClick={() => scrollBy('left')}
-          tabIndex={fades.left ? 0 : -1}
+          tabIndex={chevronsTabbable && fades.left ? 0 : -1}
           className="absolute left-1 top-1/2 z-[1] h-6 w-6 -translate-y-1/2 rounded-full border border-border bg-background/90 shadow-sm flex items-center justify-center text-foreground hover:bg-background"
           style={{
             opacity: fades.left ? 1 : 0,
@@ -101,7 +104,7 @@ export default function HorizontalScrollWithFades({
         <button
           type="button"
           onClick={() => scrollBy('right')}
-          tabIndex={fades.right ? 0 : -1}
+          tabIndex={chevronsTabbable && fades.right ? 0 : -1}
           className="absolute right-1 top-1/2 z-[1] h-6 w-6 -translate-y-1/2 rounded-full border border-border bg-background/90 shadow-sm flex items-center justify-center text-foreground hover:bg-background"
           style={{
             opacity: fades.right ? 1 : 0,

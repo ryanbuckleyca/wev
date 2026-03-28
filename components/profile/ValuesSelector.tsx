@@ -141,9 +141,13 @@ export default function ValuesSelector({
   const t = useTranslations('profile')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const browseTriggerRef = useRef<HTMLButtonElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const selectedSet = useMemo(() => new Set(selectedValues), [selectedValues])
+  const selectedIdsOrdered = useMemo(() => [...selectedValues], [selectedValues])
+  const valuesBrowseRef = useRef<HTMLDivElement>(null)
+  const VALUES_SELECTED_HINT_ID = 'profile-values-selected-hint'
 
   const valueMap = useMemo(() => {
     const m = new Map<string, WorkValue>()
@@ -177,17 +181,27 @@ export default function ValuesSelector({
 
   return (
     <div className="flex flex-col gap-4">
-      <button type="button" onClick={() => setMobileOpen(true)}
+      <button
+        ref={browseTriggerRef}
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        aria-haspopup="dialog"
+        aria-expanded={mobileOpen}
+        aria-label={t('valuesModalTriggerLabel')}
         className="flex w-full items-center gap-2 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 text-left transition-all hover:border-gray-200 dark:bg-zinc-900/50 dark:border-zinc-800 dark:hover:border-zinc-700"
       >
-        <Search className="h-4 w-4 shrink-0 text-gray-400" />
-        <span className="min-w-0 flex-1 text-[13px] font-medium text-gray-400">{t('valuesPlaceholder')}</span>
+        <Search className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+        <span className="min-w-0 flex-1 text-[13px] font-medium text-gray-400" aria-hidden>
+          {t('valuesPlaceholder')}
+        </span>
       </button>
       {selectedSection}
       <SelectionBrowseModal
         isOpen={mobileOpen}
         onClose={handleCloseModal}
         searchInputRef={searchInputRef}
+        returnFocusRef={browseTriggerRef}
+        dialogAriaLabel={t('valuesBrowseDialogLabel')}
         backAriaLabel={t('valuesBack')}
         doneLabel={t('valuesDone')}
         selectedCount={selectedSet.size}
@@ -207,25 +221,37 @@ export default function ValuesSelector({
         selectedPills={
           selectedSet.size > 0 ? (
             <div className="px-3 pt-2 shrink-0">
+              <span id={VALUES_SELECTED_HINT_ID} className="sr-only">
+                {t('valuesSelectedRegionHint')}
+              </span>
               <SelectedValuesPills
                 values={values}
-                selectedIds={Array.from(selectedSet)}
+                selectedIds={selectedIdsOrdered}
                 onRemove={onRemove}
                 locale={locale}
                 useHorizontalScroll={!!query}
                 fadeBackground="var(--card)"
+                resultsListRef={valuesBrowseRef}
+                regionHintId={VALUES_SELECTED_HINT_ID}
               />
             </div>
           ) : undefined
         }
       >
-        <ValuesBrowse
-          values={values}
-          selectedSet={selectedSet}
-          query={query}
-          locale={locale}
-          onToggle={onToggle}
-        />
+        <div
+          ref={valuesBrowseRef}
+          id="profile-values-browse"
+          tabIndex={0}
+          className="min-h-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-200 focus-visible:ring-inset dark:focus-visible:ring-zinc-600"
+        >
+          <ValuesBrowse
+            values={values}
+            selectedSet={selectedSet}
+            query={query}
+            locale={locale}
+            onToggle={onToggle}
+          />
+        </div>
       </SelectionBrowseModal>
     </div>
   )

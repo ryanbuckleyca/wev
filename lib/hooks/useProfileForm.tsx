@@ -255,7 +255,7 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
         ideal_work_environment: formData.ideal_work_environment.trim() || null,
       })
       if (updated) toast.success(t('updateSuccess'))
-      else toast.error(profileError || t('updateFailed'))
+      else toast.error(t('updateFailed'))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('updateFailed'))
     } finally { setIsSaving(false) }

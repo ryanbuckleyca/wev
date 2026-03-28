@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronLeft } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 
@@ -12,12 +13,22 @@ export interface SelectionBrowseModalProps {
   onClose: () => void
   /** Primary search input ref — focused when the modal opens (desktop + mobile keyboard) */
   searchInputRef?: RefObject<HTMLInputElement | null>
+  /** Focus returns here when the modal closes (dialog pattern). */
+  returnFocusRef?: RefObject<HTMLElement | null>
+  /** Accessible name for the dialog surface (`role="dialog"`). */
+  dialogAriaLabel: string
   backAriaLabel: string
   doneLabel: string
   selectedCount: number
   /** Search / filter control (typically flex-1) */
   headerCenter: ReactNode
   selectedPills?: ReactNode
+  /**
+   * When true, selectedPills render below the scrollable list instead of above.
+   * Improves keyboard tab order (reach results before selected chips) for pickers
+   * that use a focusable list inside children (e.g. skills listbox).
+   */
+  selectedPillsAfterList?: boolean
   children: ReactNode
 }
 
@@ -29,11 +40,14 @@ export default function SelectionBrowseModal({
   isOpen,
   onClose,
   searchInputRef,
+  returnFocusRef,
+  dialogAriaLabel,
   backAriaLabel,
   doneLabel,
   selectedCount,
   headerCenter,
   selectedPills,
+  selectedPillsAfterList = false,
   children,
 }: SelectionBrowseModalProps) {
   const isMdUp = useMediaQuery('(min-width: 768px)')
@@ -110,14 +124,17 @@ export default function SelectionBrowseModal({
         document.body.style.overflow = ''
         document.documentElement.style.overflow = ''
       }
-      // Restore after styles so layout uses full document scroll again
+      // Restore after styles so layout uses full document scroll again; then return focus to opener.
       requestAnimationFrame(() => {
         window.scrollTo({ top: restoreY, left: 0, behavior: 'auto' })
+        returnFocusRef?.current?.focus({ preventScroll: true })
       })
     }
-  }, [isOpen, useMobileFullScreenShell, onClose, searchInputRef])
+  }, [isOpen, useMobileFullScreenShell, onClose, searchInputRef, returnFocusRef])
 
   if (!isOpen) return null
+
+  if (typeof document === 'undefined') return null
 
   const inner = (
     <>
@@ -149,15 +166,27 @@ export default function SelectionBrowseModal({
         </button>
       </div>
 
-      {selectedPills}
-
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">{children}</div>
+      {selectedPillsAfterList ? (
+        <>
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">{children}</div>
+          {selectedPills}
+        </>
+      ) : (
+        <>
+          {selectedPills}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">{children}</div>
+        </>
+      )}
     </>
   )
 
-  return (
+  return createPortal(
     <>
-      <div className="fixed inset-0 z-[9998] hidden bg-black/40 backdrop-blur-sm md:block" onClick={onClose} />
+      <div
+        className="fixed inset-0 z-[9998] hidden bg-black/40 backdrop-blur-sm md:block"
+        onClick={onClose}
+        aria-hidden
+      />
       {useMobileFullScreenShell ? (
         <div
           style={{
@@ -169,6 +198,9 @@ export default function SelectionBrowseModal({
             top: 0,
           }}
           className={mobileShellClassName}
+          role="dialog"
+          aria-modal="true"
+          aria-label={dialogAriaLabel}
         >
           {inner}
         </div>
@@ -180,11 +212,18 @@ export default function SelectionBrowseModal({
             paddingBottom: '1rem',
           }}
         >
-          <div className={desktopCardClassName} style={desktopCardStyle}>
+          <div
+            className={desktopCardClassName}
+            style={desktopCardStyle}
+            role="dialog"
+            aria-modal="true"
+            aria-label={dialogAriaLabel}
+          >
             {inner}
           </div>
         </div>
       )}
-    </>
+    </>,
+    document.body,
   )
 }

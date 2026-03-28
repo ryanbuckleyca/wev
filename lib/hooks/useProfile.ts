@@ -76,7 +76,7 @@ export function useProfile(userId: string | undefined): UseProfileState & UsePro
           error: message,
           isUpdating: false,
         }))
-        return null
+        throw new Error(message)
       }
     },
     [userId]
