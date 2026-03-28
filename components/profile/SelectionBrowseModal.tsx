@@ -5,38 +5,22 @@ import { createPortal } from 'react-dom'
 import { ChevronLeft } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 
-/** Keep a stable ref so the open/lock effect doesn't re-run when the caller re-renders. */
-function useStableRef<T>(value: T) {
-  const ref = useRef(value)
-  ref.current = value
-  return ref
-}
-
-/** Matches `Header`: py-4 + ~60px logo + border — keeps modal below the fixed site header on desktop */
 const HEADER_OFFSET_REM = '5.75rem'
 
 export interface SelectionBrowseModalProps {
   isOpen: boolean
   onClose: () => void
-  /** Primary search input ref — focused when the modal opens (desktop + mobile keyboard) */
   searchInputRef?: RefObject<HTMLInputElement | null>
-  /** Focus returns here when the modal closes (dialog pattern). */
   returnFocusRef?: RefObject<HTMLElement | null>
-  /** Accessible name for the dialog surface (`role="dialog"`). */
   dialogAriaLabel: string
   backAriaLabel: string
   doneLabel: string
   selectedCount: number
-  /** Search / filter control (typically flex-1) */
   headerCenter: ReactNode
   selectedPills?: ReactNode
   children: ReactNode
 }
 
-/**
- * Shared shell for profile “browse & select” flows: full-screen on narrow viewports,
- * centered card from `md` breakpoint up (matches Tailwind `md:` = 768px).
- */
 export default function SelectionBrowseModal({
   isOpen,
   onClose,
@@ -50,92 +34,70 @@ export default function SelectionBrowseModal({
   selectedPills,
   children,
 }: SelectionBrowseModalProps) {
-  const isMdUp = useMediaQuery('(min-width: 768px)')
-  const useMobileFullScreenShell = !isMdUp
+  const isMobile = !useMediaQuery('(min-width: 768px)')
   const [viewportHeight, setViewportHeight] = useState(() =>
     typeof window === 'undefined' ? 600 : (window.visualViewport?.height ?? window.innerHeight)
   )
-  /** Scroll position before modal opened — restored on close (do not scroll-to-top on open). */
-  const savedScrollYRef = useRef(0)
 
-  const mobileShellClassName =
-    'z-[9999] fixed flex w-full flex-col overflow-hidden bg-card inset-0'
-
-  /** Desktop card: height fits under fixed header + wrapper padding (inline — avoids Tailwind purge issues) */
-  const desktopCardStyle: CSSProperties = {
-    height: 'min(800px, calc(100dvh - 7.25rem))',
-    maxHeight: 'min(800px, calc(100dvh - 7.25rem))',
-  }
-  const desktopCardClassName =
-    'flex w-full max-w-[600px] flex-col overflow-hidden bg-card rounded-2xl border border-gray-200 shadow-2xl dark:border-zinc-800 pointer-events-auto'
-
-  useEffect(() => {
-    if (!useMobileFullScreenShell) return
-    const update = () => {
-      setViewportHeight(window.visualViewport?.height ?? window.innerHeight)
-    }
-    update()
-    const vp = window.visualViewport
-    if (vp) {
-      vp.addEventListener('resize', update)
-      vp.addEventListener('scroll', update)
-      return () => {
-        vp.removeEventListener('resize', update)
-        vp.removeEventListener('scroll', update)
-      }
-    }
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [useMobileFullScreenShell])
-
-  const onCloseRef = useStableRef(onClose)
-  const returnFocusRefStable = useStableRef(returnFocusRef)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+  const returnFocusRefStable = useRef(returnFocusRef)
+  returnFocusRefStable.current = returnFocusRef
 
   useEffect(() => {
     if (!isOpen) return
 
-    savedScrollYRef.current = window.scrollY
+    const savedY = window.scrollY
+    const updateHeight = () => setViewportHeight(window.visualViewport?.height ?? window.innerHeight)
 
-    const focusSearch = () => {
-      searchInputRef?.current?.focus({ preventScroll: true })
-    }
-    if (useMobileFullScreenShell) {
-      const y = savedScrollYRef.current
-      document.body.style.cssText = `position:fixed;top:-${y}px;width:100%;overflow:hidden`
-      document.documentElement.style.overflow = 'hidden'
-      setTimeout(() => {
-        setViewportHeight(window.visualViewport?.height ?? window.innerHeight)
-        focusSearch()
-      }, 50)
+    // Lock scroll
+    if (isMobile) {
+      document.body.style.cssText = `position:fixed;top:-${savedY}px;width:100%;overflow:hidden`
     } else {
       document.body.style.overflow = 'hidden'
-      document.documentElement.style.overflow = 'hidden'
-      setTimeout(focusSearch, 50)
     }
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseRef.current()
+    document.documentElement.style.overflow = 'hidden'
+
+    // Focus search input after layout settles
+    setTimeout(() => {
+      if (isMobile) updateHeight()
+      searchInputRef?.current?.focus({ preventScroll: true })
+    }, 50)
+
+    // Track viewport resize (mobile virtual keyboard)
+    const vp = isMobile ? window.visualViewport : null
+    if (vp) {
+      vp.addEventListener('resize', updateHeight)
+      vp.addEventListener('scroll', updateHeight)
+    } else if (isMobile) {
+      window.addEventListener('resize', updateHeight)
     }
-    window.addEventListener('keydown', handleKeyDown)
+
+    // Escape to close
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current() }
+    window.addEventListener('keydown', onKeyDown)
+
     return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      const restoreY = savedScrollYRef.current
-      if (useMobileFullScreenShell) {
-        document.body.style.cssText = ''
-        document.documentElement.style.overflow = ''
-      } else {
-        document.body.style.overflow = ''
-        document.documentElement.style.overflow = ''
+      window.removeEventListener('keydown', onKeyDown)
+      if (vp) {
+        vp.removeEventListener('resize', updateHeight)
+        vp.removeEventListener('scroll', updateHeight)
+      } else if (isMobile) {
+        window.removeEventListener('resize', updateHeight)
       }
+
+      // Unlock scroll
+      document.body.style.cssText = ''
+      document.documentElement.style.overflow = ''
+
       requestAnimationFrame(() => {
-        window.scrollTo({ top: restoreY, left: 0, behavior: 'auto' })
+        window.scrollTo({ top: savedY, behavior: 'auto' })
         returnFocusRefStable.current?.current?.focus({ preventScroll: true })
       })
     }
-  }, [isOpen, useMobileFullScreenShell, searchInputRef, onCloseRef, returnFocusRefStable])
+  }, [isOpen, isMobile, searchInputRef])
 
-  if (!isOpen) return null
-
-  if (typeof document === 'undefined') return null
+  if (!isOpen || typeof document === 'undefined') return null
 
   const inner = (
     <>
@@ -172,6 +134,11 @@ export default function SelectionBrowseModal({
     </>
   )
 
+  const desktopCardStyle: CSSProperties = {
+    height: 'min(800px, calc(100dvh - 7.25rem))',
+    maxHeight: 'min(800px, calc(100dvh - 7.25rem))',
+  }
+
   return createPortal(
     <>
       <div
@@ -179,17 +146,10 @@ export default function SelectionBrowseModal({
         onClick={onClose}
         aria-hidden
       />
-      {useMobileFullScreenShell ? (
+      {isMobile ? (
         <div
-          style={{
-            height: `${viewportHeight}px`,
-            width: '100vw',
-            maxWidth: '100%',
-            position: 'fixed',
-            left: 0,
-            top: 0,
-          }}
-          className={mobileShellClassName}
+          style={{ height: `${viewportHeight}px`, width: '100vw', maxWidth: '100%', position: 'fixed', left: 0, top: 0 }}
+          className="z-[9999] fixed flex w-full flex-col overflow-hidden bg-card inset-0"
           role="dialog"
           aria-modal="true"
           aria-label={dialogAriaLabel}
@@ -199,13 +159,10 @@ export default function SelectionBrowseModal({
       ) : (
         <div
           className="fixed inset-0 z-[9999] hidden md:flex md:items-center md:justify-center md:p-4 pointer-events-none"
-          style={{
-            paddingTop: `calc(${HEADER_OFFSET_REM} + 0.5rem)`,
-            paddingBottom: '1rem',
-          }}
+          style={{ paddingTop: `calc(${HEADER_OFFSET_REM} + 0.5rem)`, paddingBottom: '1rem' }}
         >
           <div
-            className={desktopCardClassName}
+            className="flex w-full max-w-[600px] flex-col overflow-hidden bg-card rounded-2xl border border-gray-200 shadow-2xl dark:border-zinc-800 pointer-events-auto"
             style={desktopCardStyle}
             role="dialog"
             aria-modal="true"
