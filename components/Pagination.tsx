@@ -3,8 +3,6 @@
 import { useTranslations } from 'next-intl'
 import Button from './Button'
 
-import { useState } from 'react'
-
 interface PaginationProps {
   currentPage: number
   totalPages: number

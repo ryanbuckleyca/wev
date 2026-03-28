@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import RoundToggle from './RoundToggle'
 import { Lineicons } from '@lineiconshq/react-lineicons'
@@ -18,17 +18,7 @@ function getInitialTheme(): 'light' | 'dark' {
 export default function ThemeToggle() {
   const t = useTranslations('ariaLabels.themeToggle')
   const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme)
-  const [mounted] = useState(() => typeof window !== 'undefined')
   const transitionTimeoutRef = useRef<number | null>(null)
-
-  // Sync React state with localStorage on mount (the inline script in the
-  // layout already applied data-theme to the DOM before hydration).
-  useEffect(() => {
-    const stored = localStorage.getItem('theme')
-    if (stored === 'dark' || stored === 'light') {
-      setTheme(stored)
-    }
-  }, [])
 
   useEffect(() => {
     return () => {
@@ -62,8 +52,6 @@ export default function ThemeToggle() {
       transitionTimeoutRef.current = null
     }, THEME_TRANSITION_MS)
   }
-
-  if (!mounted) return null
 
   return (
     <RoundToggle>

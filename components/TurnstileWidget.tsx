@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Turnstile } from '@marsidev/react-turnstile'
 import { useTheme } from '@/lib/hooks/useTheme'
 

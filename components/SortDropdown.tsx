@@ -78,7 +78,7 @@ export default function SortDropdown({ sortBy, onChange, showMatchOption }: Sort
           boxShadow: 'var(--tw-shadow-wev-dropdown)',
         }}
       >
-        {optionsToShow.map((opt, idx) => (
+        {optionsToShow.map((opt) => (
           <div
             key={opt.value}
             className="px-3 py-2 rounded-md cursor-pointer transition-colors text-xs p-2 rounded-lg"
