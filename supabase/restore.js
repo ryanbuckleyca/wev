@@ -54,12 +54,12 @@ async function restoreTable(table, schema = 'public') {
   
   for (let i = 0; i < backupData.length; i += batchSize) {
     const batch = backupData.slice(i, i + batchSize);
-    const { data, error } = await supabase.from(table).insert(batch);
+    const { error } = await supabase.from(table).insert(batch);
     if (error) {
       console.error(`Error restoring batch ${i/batchSize + 1} for ${schema}.${table}:`, error.message);
       // Try individual inserts for problematic data
       for (const row of batch) {
-        const { data: singleData, error: singleError } = await supabase.from(table).insert(row);
+        const { error: singleError } = await supabase.from(table).insert(row);
         if (!singleError) {
           successCount++;
         } else {
