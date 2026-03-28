@@ -5,16 +5,9 @@ import { useTranslations } from 'next-intl'
 import BrowseTrigger from '../BrowseTrigger'
 import SkillsModal from './SkillsModal'
 import SortableSelectedList from '../SortableSelectedList'
+import type { EscoSkill } from '@/lib/types/skills'
 
-export interface EscoSkill {
-  uri: string
-  preferredLabel: { en: string; fr: string }
-  description?: { en: string | null; fr: string | null }
-  skillType: 'skill' | 'knowledge' | null
-  reuseLevel: 'transversal' | 'cross-sector' | 'sector-specific' | 'occupation-specific' | null
-  matchedAlias?: string | null
-  aliases?: string[]
-}
+export type { EscoSkill }
 
 interface SkillsSelectorProps {
   allItems?: EscoSkill[]
@@ -36,6 +29,11 @@ export default function SkillsSelector({
   const t = useTranslations('profile')
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+
+  const handleClose = () => {
+    setQuery('')
+    setOpen(false)
+  }
 
   const sortableItems = selectedSkills.map((skill) => ({
     id: skill.uri,
@@ -62,7 +60,7 @@ export default function SkillsSelector({
       )}
       <SkillsModal
         isOpen={open}
-        onClose={() => { setQuery(''); setOpen(false) }}
+        onClose={handleClose}
         query={query}
         onQueryChange={setQuery}
         onClearQuery={() => setQuery('')}

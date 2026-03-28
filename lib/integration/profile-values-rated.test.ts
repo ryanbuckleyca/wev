@@ -11,11 +11,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { type RatedValue } from '@/lib/value-ratings'
 import { type Profile, type ProfileUpdateData } from '@/lib/supabase/profiles'
+import { MAX_PROFILE_VALUES } from '@/lib/hooks/useProfileForm'
 
 // ─── Helpers mirroring useProfileForm logic ──────────────────────────────────
-
-const MAX_PROFILE_VALUES = 10
-const MAX_PROFILE_SKILLS = 5
 
 /**
  * Mirrors the save payload construction in handleSaveProfile.
@@ -26,7 +24,7 @@ function buildSavePayload(
   valuesRated: RatedValue[],
   overrides: Partial<ProfileUpdateData> = {}
 ): ProfileUpdateData {
-  const selectedValuesSet = new Set(Array.from(new Set(selectedValues)).slice(0, MAX_PROFILE_VALUES))
+  const selectedValuesSet = new Set(selectedValues.slice(0, MAX_PROFILE_VALUES))
   const filteredValuesRated = valuesRated.filter((rv) => selectedValuesSet.has(rv.value))
   return {
     values: Array.from(selectedValuesSet),
@@ -53,7 +51,7 @@ function createMockUpdateProfile() {
   let capturedPayload: ProfileUpdateData | null = null
 
   const mockUpdateProfile = vi.fn(
-    async (_userId: string, data: ProfileUpdateData): Promise<Profile | null> => {
+    async (data: ProfileUpdateData): Promise<Profile | null> => {
       capturedPayload = data
       return {
         id: 'user-123',
@@ -76,14 +74,26 @@ function createMockUpdateProfile() {
 }
 
 function createMockGetProfile(savedProfile: Profile) {
-  return vi.fn(async (_userId: string): Promise<Profile | null> => savedProfile)
+  return vi.fn(async (): Promise<Profile | null> => savedProfile)
+}
+
+async function saveAndReload(
+  selectedValues: string[],
+  valuesRated: RatedValue[]
+): Promise<{ captured: ProfileUpdateData; hydrated: RatedValue[] }> {
+  const savePayload = buildSavePayload(selectedValues, valuesRated)
+  const { mockUpdateProfile, getCaptured } = createMockUpdateProfile()
+  const savedProfile = await mockUpdateProfile(savePayload)
+  const reloadedProfile = await createMockGetProfile(savedProfile!)()
+  return {
+    captured: getCaptured()!,
+    hydrated: hydrateValuesRated(reloadedProfile!),
+  }
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('Profile save/load cycle — values_rated round-trip', () => {
-  const userId = 'user-123'
-
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -102,21 +112,8 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
         { value: 'Autonomy', rank: 3 },
       ]
 
-      const savePayload = buildSavePayload(selectedValues, valuesRated)
-      const { mockUpdateProfile, getCaptured } = createMockUpdateProfile()
-      const savedProfile = await mockUpdateProfile(userId, savePayload)
-
-      expect(getCaptured()).not.toBeNull()
-      expect(savedProfile).not.toBeNull()
-
-      const mockGetProfile = createMockGetProfile(savedProfile!)
-      const reloadedProfile = await mockGetProfile(userId)
-
-      expect(reloadedProfile).not.toBeNull()
-
-      const hydratedValuesRated = hydrateValuesRated(reloadedProfile!)
-
-      expect(hydratedValuesRated).toEqual(valuesRated)
+      const { hydrated } = await saveAndReload(selectedValues, valuesRated)
+      expect(hydrated).toEqual(valuesRated)
     })
 
     it('round-trips a mix of rated and unrated values', async () => {
@@ -127,32 +124,13 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
         { value: 'Autonomy', rank: 3 },
       ]
 
-      const savePayload = buildSavePayload(selectedValues, valuesRated)
-      const { mockUpdateProfile } = createMockUpdateProfile()
-      const savedProfile = await mockUpdateProfile(userId, savePayload)
-
-      const mockGetProfile = createMockGetProfile(savedProfile!)
-      const reloadedProfile = await mockGetProfile(userId)
-
-      const hydratedValuesRated = hydrateValuesRated(reloadedProfile!)
-
-      expect(hydratedValuesRated).toEqual(valuesRated)
+      const { hydrated } = await saveAndReload(selectedValues, valuesRated)
+      expect(hydrated).toEqual(valuesRated)
     })
 
     it('round-trips an empty values_rated when no values are selected', async () => {
-      const selectedValues: string[] = []
-      const valuesRated: RatedValue[] = []
-
-      const savePayload = buildSavePayload(selectedValues, valuesRated)
-      const { mockUpdateProfile } = createMockUpdateProfile()
-      const savedProfile = await mockUpdateProfile(userId, savePayload)
-
-      const mockGetProfile = createMockGetProfile(savedProfile!)
-      const reloadedProfile = await mockGetProfile(userId)
-
-      const hydratedValuesRated = hydrateValuesRated(reloadedProfile!)
-
-      expect(hydratedValuesRated).toEqual([])
+      const { hydrated } = await saveAndReload([], [])
+      expect(hydrated).toEqual([])
     })
 
     it('excludes deselected values from the saved values_rated', async () => {
@@ -163,20 +141,11 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
         { value: 'Autonomy', rank: 3 },
       ]
 
-      const savePayload = buildSavePayload(selectedValues, valuesRated)
-      const { mockUpdateProfile, getCaptured } = createMockUpdateProfile()
-      const savedProfile = await mockUpdateProfile(userId, savePayload)
+      const { captured, hydrated } = await saveAndReload(selectedValues, valuesRated)
 
-      expect(getCaptured()!.values_rated).not.toContainEqual(
-        expect.objectContaining({ value: 'Creativity' })
-      )
-
-      const mockGetProfile = createMockGetProfile(savedProfile!)
-      const reloadedProfile = await mockGetProfile(userId)
-      const hydratedValuesRated = hydrateValuesRated(reloadedProfile!)
-
-      expect(hydratedValuesRated).toHaveLength(2)
-      expect(hydratedValuesRated.map((rv) => rv.value)).toEqual(['Community', 'Autonomy'])
+      expect(captured.values_rated).not.toContainEqual(expect.objectContaining({ value: 'Creativity' }))
+      expect(hydrated).toHaveLength(2)
+      expect(hydrated.map((rv) => rv.value)).toEqual(['Community', 'Autonomy'])
     })
   })
 
@@ -196,7 +165,7 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
 
       const savePayload = buildSavePayload(selectedValues, valuesRated)
       const { mockUpdateProfile } = createMockUpdateProfile()
-      await mockUpdateProfile(userId, savePayload)
+      await mockUpdateProfile(savePayload)
 
       const savedValues = savePayload.values ?? []
       const savedValuesRatedKeys = (savePayload.values_rated ?? []).map((rv) => rv.value)
@@ -249,7 +218,7 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
 
       const savePayload = buildSavePayload(selectedValues, valuesRated)
       const { mockUpdateProfile, getCaptured } = createMockUpdateProfile()
-      await mockUpdateProfile(userId, savePayload)
+      await mockUpdateProfile(savePayload)
 
       const captured = getCaptured()!
       expect(captured).toHaveProperty('values')

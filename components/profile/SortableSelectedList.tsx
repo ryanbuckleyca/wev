@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -28,6 +28,10 @@ export interface SortableItem {
   label: string
   sublabel?: string
 }
+
+type WorkingItem =
+  | (SortableItem & { type: 'item'; isRanked: boolean; originalIndex: number })
+  | { id: string; type: 'divider' }
 
 interface SortableSelectedListProps {
   items: SortableItem[]
@@ -119,27 +123,23 @@ function SortableDivider({
   id,
   rankCutoff,
   total,
-  prioritisedLabel,
-  dragAboveLabel,
-  unorderedLabel,
 }: {
   id: string
   rankCutoff: number
   total: number
-  prioritisedLabel: (count: number) => string
-  dragAboveLabel: string
-  unorderedLabel: (count: number) => string
 }) {
+  const t = useTranslations('profile')
   const { setNodeRef, transform, transition } = useSortable({ id })
   // using Translate prevents weird scaling on the divider too
   const style = { transform: CSS.Translate.toString(transform), transition }
 
+  const unrankedCount = total - rankCutoff
   const middle =
     rankCutoff > 0
-      ? total - rankCutoff > 0
-        ? `${prioritisedLabel(rankCutoff)} · ${unorderedLabel(total - rankCutoff)}`
-        : prioritisedLabel(rankCutoff)
-      : dragAboveLabel
+      ? unrankedCount > 0
+        ? `${t('sortablePrioritised', { count: rankCutoff })} · ${t('sortableUnordered', { count: unrankedCount })}`
+        : t('sortablePrioritised', { count: rankCutoff })
+      : t('sortableDragAbove')
 
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-2 py-1 select-none pointer-events-none">
@@ -155,12 +155,10 @@ function SortableDivider({
 function StaticEmptyZone({ text }: { text: string }) {
   // Purely visual element, no droppable physics or active hover styling
   return (
-    <div>
-      <div className="flex items-center justify-center rounded-lg border-2 border-dashed py-4 border-gray-200 bg-gray-50/30 dark:border-zinc-700 dark:bg-zinc-900/20">
-        <span className="text-[11px] font-medium text-gray-400 dark:text-zinc-500">
-          {text}
-        </span>
-      </div>
+    <div className="flex items-center justify-center rounded-lg border-2 border-dashed py-4 border-gray-200 bg-gray-50/30 dark:border-zinc-700 dark:bg-zinc-900/20">
+      <span className="text-[11px] font-medium text-gray-400 dark:text-zinc-500">
+        {text}
+      </span>
     </div>
   )
 }
@@ -174,7 +172,6 @@ export default function SortableSelectedList({
 }: SortableSelectedListProps) {
   const t = useTranslations('profile')
   const isTouch = useTouchDevice()
-  const emptyRankedKey = variant === 'values' ? 'sortableDragValuesHere' : 'sortableDragSkillsHere'
   const sensors = useSensors(
     // On touch devices use TouchSensor (long-press); on desktop use PointerSensor (drag distance).
     ...(isTouch
@@ -185,26 +182,19 @@ export default function SortableSelectedList({
 
   // We map the real items and inject a special "dummy" item for the divider.
   // The empty zones are now static visual areas completely outside the SortableContext.
-  const workingItems = useMemo(() => {
-    const arr: any[] = []
+  const workingItems = useMemo<WorkingItem[]>(() => {
     const clampedCutoff = Math.min(rankCutoff, items.length)
-    
-    for (let i = 0; i < clampedCutoff; i++) {
-        arr.push({ ...items[i], type: 'item', isRanked: true, originalIndex: i })
-    }
-    
-    arr.push({ id: '__divider__', type: 'divider' })
-    
-    for (let i = clampedCutoff; i < items.length; i++) {
-        arr.push({ ...items[i], type: 'item', isRanked: false, originalIndex: i })
-    }
-    
-    return arr
+    const ranked: WorkingItem[] = items.slice(0, clampedCutoff).map((item, i) => ({ ...item, type: 'item', isRanked: true, originalIndex: i }))
+    const divider: WorkingItem = { id: '__divider__', type: 'divider' }
+    const unranked: WorkingItem[] = items.slice(clampedCutoff).map((item, i) => ({ ...item, type: 'item', isRanked: false, originalIndex: clampedCutoff + i }))
+    return [...ranked, divider, ...unranked]
   }, [items, rankCutoff])
+
+  const sortableIds = useMemo(() => workingItems.map(i => i.id), [workingItems])
 
   if (items.length === 0) return null
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
@@ -214,26 +204,26 @@ export default function SortableSelectedList({
 
     // Apply the reorder to our virtual list containing the dummy divider
     const newWorkingOrder = arrayMove(workingItems, oldIndex, newIndex)
-    
+
     // The new rankCutoff is exactly where the divider ended up
     const newCutoff = newWorkingOrder.findIndex(i => i.type === 'divider')
     const realItems = newWorkingOrder.filter(i => i.type !== 'divider')
-    
+
     const fromIndex = items.findIndex(i => i.id === active.id)
     const toIndex = realItems.findIndex(i => i.id === active.id)
 
     onReorder(fromIndex, toIndex, newCutoff)
-  }
+  }, [workingItems, items, onReorder])
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div className="flex flex-col gap-1.5">
-        
+
         {rankCutoff === 0 && (
-          <StaticEmptyZone text={t(emptyRankedKey)} />
+          <StaticEmptyZone text={t(variant === 'values' ? 'sortableDragValuesHere' : 'sortableDragSkillsHere')} />
         )}
 
-        <SortableContext items={workingItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
           {workingItems.map(item => {
             if (item.type === 'divider') {
               return (
@@ -242,16 +232,13 @@ export default function SortableSelectedList({
                   id={item.id}
                   rankCutoff={rankCutoff}
                   total={items.length}
-                  prioritisedLabel={(count) => t('sortablePrioritised', { count })}
-                  dragAboveLabel={t('sortableDragAbove')}
-                  unorderedLabel={(count) => t('sortableUnordered', { count })}
                 />
               )
             }
             return (
               <SortableRow
                 key={item.id}
-                item={item as SortableItem}
+                item={item}
                 index={item.originalIndex}
                 isRanked={item.isRanked}
                 onRemove={onRemove}

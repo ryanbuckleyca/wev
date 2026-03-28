@@ -32,8 +32,7 @@ export default function ValuesSelector({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
 
-  const valueMap = new Map<string, WorkValue>()
-  for (const v of values) valueMap.set(v.id, v)
+  const valueMap = new Map<string, WorkValue>(values.map((v) => [v.id, v]))
 
   const sortableItems = selectedValues
     .map((id) => {
@@ -41,7 +40,7 @@ export default function ValuesSelector({
       if (!v) return null
       return { id, label: v.label[locale], sublabel: v.summary[locale] }
     })
-    .filter(Boolean) as { id: string; label: string; sublabel: string }[]
+    .filter((x): x is { id: string; label: string; sublabel: string } => x !== null)
 
   const handleClose = () => {
     setQuery('')

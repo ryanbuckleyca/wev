@@ -1,15 +1,296 @@
--- Canonical match recalculation logic.
---
--- Values:
---   Weighted_Match uses profiles.values_rated ranks and jobs.values_rated confidence.
---   Flat_Match falls back to plain values[] when no profile rank is present.
---
--- Skills:
---   Uses flat overlap scoring on profiles.skills and jobs.skills.
---
--- Combined score:
---   value_score * 0.6 + skill_score * 0.4 when both are present,
---   otherwise whichever signal is available.
+-- Reconcile older live schema drift to the current branch shape.
+-- Schema-only: no application data rows are updated or deleted here.
+-- Run the paired preflight first:
+--   supabase/checks/20260328160000_reconcile_schema_preflight.sql
+
+--------------------------------------------------------------------------------
+-- 1. Remove legacy remote-only normalization objects
+--------------------------------------------------------------------------------
+DROP EVENT TRIGGER IF EXISTS ensure_rls;
+DROP FUNCTION IF EXISTS public.rls_auto_enable();
+
+DROP INDEX IF EXISTS public.idx_scrape_runs_source_id;
+
+ALTER TABLE public.jobs
+  DROP CONSTRAINT IF EXISTS jobs_source_id_fkey;
+
+ALTER TABLE public.jobs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.organizations DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.scrape_runs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sources DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_roles DISABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "users_can_view_own_roles" ON public.user_roles;
+
+--------------------------------------------------------------------------------
+-- 2. Normalize profile policies to the current branch set
+--------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own profile"
+  ON public.profiles FOR SELECT
+  USING (auth.uid() = id);
+
+CREATE POLICY "Users can update their own profile"
+  ON public.profiles FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+--------------------------------------------------------------------------------
+-- 3. Reassert current-branch columns and constraints
+--------------------------------------------------------------------------------
+ALTER TABLE public.jobs
+  ADD COLUMN IF NOT EXISTS skills text[] NOT NULL DEFAULT '{}'::text[];
+
+COMMENT ON COLUMN public.jobs.skills IS 'ESCO skill concept URIs tagged to this job (max 10).';
+
+ALTER TABLE public.jobs
+  DROP CONSTRAINT IF EXISTS jobs_skills_max_10_check;
+
+ALTER TABLE public.jobs
+  ADD CONSTRAINT jobs_skills_max_10_check
+  CHECK (coalesce(array_length(skills, 1), 0) <= 10);
+
+ALTER TABLE public.job_matches
+  ADD COLUMN IF NOT EXISTS value_score float,
+  ADD COLUMN IF NOT EXISTS skill_score float,
+  ADD COLUMN IF NOT EXISTS shared_skills text[] NOT NULL DEFAULT '{}'::text[];
+
+COMMENT ON COLUMN public.job_matches.value_score IS 'Match score based on shared values (0-1, null if no values present).';
+COMMENT ON COLUMN public.job_matches.skill_score IS 'Match score based on shared skills (0-1, null if no skills present).';
+COMMENT ON COLUMN public.job_matches.shared_skills IS 'ESCO concept URIs shared between user and job.';
+
+ALTER TABLE public.job_matches
+  DROP CONSTRAINT IF EXISTS job_matches_score_check;
+
+ALTER TABLE public.job_matches
+  ALTER COLUMN score DROP NOT NULL;
+
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_skills_max_5_check;
+
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_skills_max_10_check;
+
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_skills_max_10_check
+  CHECK (coalesce(array_length(skills, 1), 0) <= 10);
+
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_values_max_5_check;
+
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_values_max_5_check
+  CHECK (coalesce(array_length("values", 1), 0) <= 5);
+
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_values_rated_max_5_check;
+
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_values_rated_max_5_check
+  CHECK (
+    values_rated IS NULL
+    OR (
+      jsonb_typeof(values_rated) = 'array'
+      AND jsonb_array_length(values_rated) <= 5
+    )
+  );
+
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_skills_rated_max_10_check;
+
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_skills_rated_max_10_check
+  CHECK (
+    skills_rated IS NULL
+    OR (
+      jsonb_typeof(skills_rated) = 'array'
+      AND jsonb_array_length(skills_rated) <= 10
+    )
+  );
+
+--------------------------------------------------------------------------------
+-- 4. Reapply the branch-canonical ESCO search function
+--------------------------------------------------------------------------------
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX IF NOT EXISTS idx_esco_skills_pref_en_trgm
+  ON public.esco_skills USING gin (lower(preferred_label_en) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_esco_skills_pref_fr_trgm
+  ON public.esco_skills USING gin (lower(preferred_label_fr) gin_trgm_ops);
+
+CREATE OR REPLACE FUNCTION public.search_esco_skills(
+  p_query text,
+  p_limit integer DEFAULT 20,
+  p_locale text DEFAULT 'en'
+)
+RETURNS TABLE (
+  concept_uri text,
+  term text,
+  definition text,
+  scope_note text,
+  skill_type text,
+  reuse_level text,
+  matched_alias text,
+  score integer
+)
+LANGUAGE sql
+STABLE
+AS $$
+  WITH params AS (
+    SELECT
+      NULLIF(lower(trim(coalesce(p_query, ''))), '') AS q,
+      CASE
+        WHEN lower(coalesce(p_locale, 'en')) = 'fr' THEN 'fr'
+        ELSE 'en'
+      END AS loc,
+      greatest(1, least(coalesce(p_limit, 20), 20)) AS lim
+  ),
+  localized AS (
+    SELECT
+      e.concept_uri,
+      CASE
+        WHEN p.loc = 'fr' THEN coalesce(e.preferred_label_fr, e.preferred_label_en)
+        ELSE coalesce(e.preferred_label_en, e.preferred_label_fr)
+      END AS term,
+      CASE
+        WHEN p.loc = 'fr' THEN coalesce(e.description_fr, e.description_en)
+        ELSE coalesce(e.description_en, e.description_fr)
+      END AS definition,
+      CASE
+        WHEN p.loc = 'fr' THEN coalesce(e.scope_note_fr, e.scope_note_en)
+        ELSE coalesce(e.scope_note_en, e.scope_note_fr)
+      END AS scope_note,
+      e.skill_type,
+      e.reuse_level,
+      CASE
+        WHEN p.loc = 'fr' THEN
+          array_remove(
+            coalesce(e.alternative_label_fr, '{}'::text[])
+            || coalesce(e.alternative_label_en, '{}'::text[]),
+            ''
+          )
+        ELSE
+          array_remove(
+            coalesce(e.alternative_label_en, '{}'::text[])
+            || coalesce(e.alternative_label_fr, '{}'::text[]),
+            ''
+          )
+      END AS aliases,
+      p.q
+    FROM public.esco_skills AS e
+    CROSS JOIN params AS p
+    WHERE p.q IS NOT NULL
+      AND (
+        (p.loc = 'en' AND (
+          lower(e.preferred_label_en) LIKE '%' || p.q || '%'
+          OR EXISTS (
+            SELECT 1
+            FROM unnest(e.alternative_label_en) ext
+            WHERE lower(ext) LIKE '%' || p.q || '%'
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM unnest(e.alternative_label_fr) ext
+            WHERE lower(ext) LIKE '%' || p.q || '%'
+          )
+        ))
+        OR
+        (p.loc = 'fr' AND (
+          lower(e.preferred_label_fr) LIKE '%' || p.q || '%'
+          OR EXISTS (
+            SELECT 1
+            FROM unnest(e.alternative_label_fr) ext
+            WHERE lower(ext) LIKE '%' || p.q || '%'
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM unnest(e.alternative_label_en) ext
+            WHERE lower(ext) LIKE '%' || p.q || '%'
+          )
+        ))
+      )
+  ),
+  scored AS (
+    SELECT
+      l.concept_uri,
+      l.term,
+      l.definition,
+      l.scope_note,
+      l.skill_type,
+      l.reuse_level,
+      (
+        SELECT alt
+        FROM unnest(l.aliases) AS alt
+        WHERE
+          lower(alt) = l.q
+          OR lower(alt) LIKE l.q || '%'
+          OR lower(alt) LIKE '%' || l.q || '%'
+        ORDER BY
+          CASE
+            WHEN lower(alt) = l.q THEN 1
+            WHEN lower(alt) LIKE l.q || '%' THEN 2
+            ELSE 3
+          END,
+          length(alt)
+        LIMIT 1
+      ) AS matched_alias,
+      CASE
+        WHEN lower(l.term) = l.q THEN 700
+        WHEN EXISTS (
+          SELECT 1
+          FROM unnest(l.aliases) AS alt
+          WHERE lower(alt) = l.q
+        ) THEN 650
+        WHEN lower(l.term) LIKE l.q || '%' THEN 600
+        WHEN EXISTS (
+          SELECT 1
+          FROM unnest(l.aliases) AS alt
+          WHERE lower(alt) LIKE l.q || '%'
+        ) THEN 550
+        WHEN lower(l.term) LIKE '%' || l.q || '%' THEN 500
+        WHEN EXISTS (
+          SELECT 1
+          FROM unnest(l.aliases) AS alt
+          WHERE lower(alt) LIKE '%' || l.q || '%'
+        ) THEN 450
+        WHEN lower(coalesce(l.definition, '')) LIKE '%' || l.q || '%' THEN 200
+        WHEN lower(coalesce(l.scope_note, '')) LIKE '%' || l.q || '%' THEN 150
+        ELSE 0
+      END AS score
+    FROM localized AS l
+  )
+  SELECT
+    s.concept_uri,
+    s.term,
+    s.definition,
+    s.scope_note,
+    s.skill_type,
+    s.reuse_level,
+    s.matched_alias,
+    s.score
+  FROM scored AS s
+  WHERE s.score > 0
+  ORDER BY s.score DESC, s.term ASC
+  LIMIT (SELECT lim FROM params);
+$$;
+
+GRANT EXECUTE ON FUNCTION public.search_esco_skills(text, integer, text)
+TO anon, authenticated, service_role;
+
+--------------------------------------------------------------------------------
+-- 5. Replace the legacy tier-based matching engine
+--------------------------------------------------------------------------------
+DROP TRIGGER IF EXISTS trg_job_values_changed ON public.jobs;
+DROP TRIGGER IF EXISTS trg_profile_values_changed ON public.profiles;
+
+DROP FUNCTION IF EXISTS public.value_tier_weight(text);
 
 --------------------------------------------------------------------------------
 -- Helper: rank -> weight (mirrors getRankWeight in value-ratings.ts)
@@ -602,7 +883,7 @@ END;
 $func$;
 
 --------------------------------------------------------------------------------
--- Trigger: fires when jobs.values, jobs.values_rated, or jobs.skills changes
+-- Trigger functions and trigger attachment
 --------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trigger_recalculate_job_matches()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $func$
@@ -632,9 +913,6 @@ BEGIN
 END;
 $func$;
 
---------------------------------------------------------------------------------
--- Trigger: fires when profiles.values, profiles.values_rated, or profiles.skills changes
---------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trigger_recalculate_user_matches()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $func$
 BEGIN
@@ -663,15 +941,13 @@ BEGIN
 END;
 $func$;
 
---------------------------------------------------------------------------------
--- Re-attach triggers with the canonical watched columns
---------------------------------------------------------------------------------
-DROP TRIGGER IF EXISTS trg_job_values_changed ON jobs;
 CREATE TRIGGER trg_job_values_changed
-  AFTER INSERT OR UPDATE OF "values", values_rated, skills ON jobs
+  AFTER INSERT OR UPDATE OF "values", values_rated, skills ON public.jobs
   FOR EACH ROW EXECUTE FUNCTION trigger_recalculate_job_matches();
 
-DROP TRIGGER IF EXISTS trg_profile_values_changed ON profiles;
 CREATE TRIGGER trg_profile_values_changed
-  AFTER INSERT OR UPDATE OF "values", values_rated, skills ON profiles
+  AFTER INSERT OR UPDATE OF "values", values_rated, skills ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION trigger_recalculate_user_matches();
+
+GRANT EXECUTE ON FUNCTION public.recalculate_matches_for_user(UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION public.recalculate_matches_for_job(UUID) TO service_role;

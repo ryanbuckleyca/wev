@@ -4,7 +4,7 @@ import InfoPopover from '@/components/InfoPopover'
 import SearchInput from '../SearchInput'
 import SelectedPillsStrip from '../SelectedPillsStrip'
 import SkillsList from './SkillsList'
-import type { EscoSkill } from './SkillsSelector'
+import type { EscoSkill } from '@/lib/types/skills'
 import SelectionBrowseModal from '../SelectionBrowseModal'
 
 const ID = 'profile-skills-listbox'

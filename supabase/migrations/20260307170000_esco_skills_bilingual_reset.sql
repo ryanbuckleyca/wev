@@ -34,10 +34,16 @@ COMMENT ON COLUMN public.esco_skills.description_fr IS 'Description in French.';
 COMMENT ON COLUMN public.esco_skills.scope_note_en IS 'Scope note in English.';
 COMMENT ON COLUMN public.esco_skills.scope_note_fr IS 'Scope note in French.';
 
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE INDEX idx_esco_skills_pref_en_lower ON public.esco_skills ((lower(preferred_label_en)));
 CREATE INDEX idx_esco_skills_pref_fr_lower ON public.esco_skills ((lower(preferred_label_fr)));
 CREATE INDEX idx_esco_skills_alt_en_gin ON public.esco_skills USING gin (alternative_label_en);
 CREATE INDEX idx_esco_skills_alt_fr_gin ON public.esco_skills USING gin (alternative_label_fr);
+CREATE INDEX IF NOT EXISTS idx_esco_skills_pref_en_trgm
+  ON public.esco_skills USING gin (lower(preferred_label_en) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_esco_skills_pref_fr_trgm
+  ON public.esco_skills USING gin (lower(preferred_label_fr) gin_trgm_ops);
 
 ALTER TABLE public.esco_skills ENABLE ROW LEVEL SECURITY;
 
@@ -110,6 +116,35 @@ AS $$
     FROM public.esco_skills AS e
     CROSS JOIN params AS p
     WHERE p.q IS NOT NULL
+      AND (
+        (p.loc = 'en' AND (
+          lower(e.preferred_label_en) LIKE '%' || p.q || '%'
+          OR EXISTS (
+            SELECT 1
+            FROM unnest(e.alternative_label_en) ext
+            WHERE lower(ext) LIKE '%' || p.q || '%'
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM unnest(e.alternative_label_fr) ext
+            WHERE lower(ext) LIKE '%' || p.q || '%'
+          )
+        ))
+        OR
+        (p.loc = 'fr' AND (
+          lower(e.preferred_label_fr) LIKE '%' || p.q || '%'
+          OR EXISTS (
+            SELECT 1
+            FROM unnest(e.alternative_label_fr) ext
+            WHERE lower(ext) LIKE '%' || p.q || '%'
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM unnest(e.alternative_label_en) ext
+            WHERE lower(ext) LIKE '%' || p.q || '%'
+          )
+        ))
+      )
   ),
   scored AS (
     SELECT
