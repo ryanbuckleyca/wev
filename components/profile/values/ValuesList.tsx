@@ -41,18 +41,31 @@ export default function ValuesList({
       )
     : values
 
-  // Auto-expand groups with matches when searching
+  // Auto-expand groups with matches when searching (fix infinite loop)
   useEffect(() => {
     if (!q) return
     // Find all categories with a match
-    const matchedCategories = new Set(filtered.map((v) => v.category[locale]))
+    const matchedCategories = new Set(
+      values
+        .filter(
+          (v) =>
+            v.label[locale].toLowerCase().includes(q) ||
+            v.summary[locale].toLowerCase().includes(q)
+        )
+        .map((v) => v.category[locale])
+    )
     setCollapsed((prev) => {
-      // Remove matched categories from collapsed set
+      let changed = false
       const next = new Set(prev)
-      matchedCategories.forEach((cat) => next.delete(cat))
-      return next
+      matchedCategories.forEach((cat) => {
+        if (next.has(cat)) {
+          next.delete(cat)
+          changed = true
+        }
+      })
+      return changed ? next : prev
     })
-  }, [q, locale, filtered])
+  }, [q, locale, values])
 
   if (filtered.length === 0) {
     return <p className="px-4 py-8 text-center text-sm text-gray-400 dark:text-zinc-500">{t('valuesNoResults')}</p>
