@@ -1,50 +1,58 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { useLocale } from 'next-intl'
-import { Link, usePathname } from '@/i18n/navigation'
-import UserProfile from './UserProfile'
-import ThemeToggle from './ThemeToggle'
-import LocaleSwitcher from './LocaleSwitcher'
-import { zIndex } from '@/lib/design-tokens'
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { useLocale } from 'next-intl';
+import { Link, usePathname } from '@/i18n/navigation';
+import UserProfile from './UserProfile';
+import ThemeToggle from './ThemeToggle';
+import LocaleSwitcher from './LocaleSwitcher';
+import { zIndex } from '@/lib/design-tokens';
 
-export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
-  const [shouldShowHeader, setShouldShowHeader] = useState(false)
-  const pathname = usePathname()
-  const locale = useLocale()
+const HEADER_LOGOTYPE_URL =
+  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';
+
+export default function Header({
+  hasBanner,
+  initialTheme = 'light',
+}: { hasBanner?: boolean; initialTheme?: 'light' | 'dark' } = {}) {
+  const [shouldShowHeader, setShouldShowHeader] = useState(false);
+  const pathname = usePathname();
+  const locale = useLocale();
   // Check if we're on the home page (with or without locale prefix)
-  const isHomePage = pathname === '/' || pathname === `/${locale}` || pathname.match(/^\/[a-z]{2}$/)
+  const isHomePage =
+    pathname === '/' || pathname === `/${locale}` || pathname.match(/^\/[a-z]{2}$/);
 
   useEffect(() => {
     const handleScroll = () => {
       if (isHomePage) {
         // On home page, show header when main logo scrolls out of view
-        const mainLogo = document.querySelector('.main-logo')
+        const mainLogo = document.querySelector('.main-logo');
         if (mainLogo) {
-          const rect = mainLogo.getBoundingClientRect()
-          const logoOutOfView = rect.bottom < 0
-          setShouldShowHeader(logoOutOfView)
+          const rect = mainLogo.getBoundingClientRect();
+          const logoOutOfView = rect.bottom < 0;
+          setShouldShowHeader(logoOutOfView);
         }
       }
       // On other pages, header is always shown by default - no scroll logic needed
-    }
+    };
 
     if (isHomePage) {
-      window.addEventListener('scroll', handleScroll)
+      window.addEventListener('scroll', handleScroll);
       // Initial check for home page
-      handleScroll()
-      
-      return () => window.removeEventListener('scroll', handleScroll)
+      handleScroll();
+
+      return () => window.removeEventListener('scroll', handleScroll);
     }
     // For non-home pages, no scroll listener needed
-  }, [isHomePage])
+  }, [isHomePage]);
 
   // On non-home pages, show header by default
   // On home page, show based on scroll position
-  const showHeader = !isHomePage || shouldShowHeader
+  const showHeader = !isHomePage || shouldShowHeader;
 
   // Offset header if any banner is present
-  const topOffset = hasBanner ? 'top-[22px]' : 'top-0'
+  const topOffset = hasBanner ? 'top-[22px]' : 'top-0';
 
   return (
     <header
@@ -54,11 +62,15 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
       style={{ zIndex: zIndex.header }}
     >
       <div className="flex items-center justify-between px-4 py-4">
-        <div className={`transition-opacity duration-200 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <div
+          className={`transition-opacity duration-200 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        >
           <Link href="/">
-            <img
-              src="https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png"
+            <Image
+              src={HEADER_LOGOTYPE_URL}
               alt="wev"
+              width={60}
+              height={24}
               className="wev-logotype w-[60px] h-auto cursor-pointer"
             />
           </Link>
@@ -69,25 +81,27 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
               <LocaleSwitcher />
             </div>
             <div className="hidden md:block">
-              <ThemeToggle />
+              <ThemeToggle initialTheme={initialTheme} />
             </div>
           </div>
           {/* Mobile menu - show theme/locale when hidden from header */}
           <div className="sm:hidden">
-            <UserProfile 
+            <UserProfile
               showThemeInMenu={true}
               showLocaleInMenu={true}
+              initialTheme={initialTheme}
             />
           </div>
           {/* Desktop menu - don't show theme/locale */}
           <div className="hidden sm:block">
-            <UserProfile 
+            <UserProfile
               showThemeInMenu={false}
               showLocaleInMenu={false}
+              initialTheme={initialTheme}
             />
           </div>
         </div>
       </div>
     </header>
-  )
+  );
 }

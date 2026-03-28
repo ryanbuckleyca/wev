@@ -15,12 +15,14 @@ curl -I "http://localhost:3000/api/skills/all?locale=en"
 ### 2. Test Cache Hit/Miss
 
 **First request (cache miss):**
+
 ```bash
 time curl "http://localhost:3000/api/skills/all?locale=en" > /dev/null
 # Note the time - should be slower (fetching from DB)
 ```
 
 **Second request (cache hit):**
+
 ```bash
 time curl "http://localhost:3000/api/skills/all?locale=en" > /dev/null
 # Should be much faster (served from cache)
@@ -33,15 +35,16 @@ Temporarily add a timestamp to the API response to see when it was generated:
 ```typescript
 // In wev-bulletin/app/api/skills/all/route.ts
 return NextResponse.json(
-  { 
+  {
     skills,
-    _cached_at: new Date().toISOString() // Add this temporarily
+    _cached_at: new Date().toISOString(), // Add this temporarily
   },
   // ... rest of code
-)
+);
 ```
 
 Then make multiple requests:
+
 ```bash
 curl "http://localhost:3000/api/skills/all?locale=en" | jq '._cached_at'
 # Wait a few seconds
@@ -52,18 +55,21 @@ curl "http://localhost:3000/api/skills/all?locale=en" | jq '._cached_at'
 ### 4. Test Manual Revalidation
 
 **Step 1: Get initial cached timestamp**
+
 ```bash
 curl "http://localhost:3000/api/skills/all?locale=en" | jq '._cached_at'
 # Note the timestamp
 ```
 
 **Step 2: Trigger revalidation**
+
 ```bash
 curl -X POST "http://localhost:3000/api/skills/revalidate?secret=R95F3DQ8nuPr"
 # Should return: {"revalidated":true,"timestamp":"..."}
 ```
 
 **Step 3: Fetch again to see new timestamp**
+
 ```bash
 curl "http://localhost:3000/api/skills/all?locale=en" | jq '._cached_at'
 # Should show a NEW timestamp (proving cache was cleared)

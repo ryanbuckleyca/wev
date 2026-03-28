@@ -1,8 +1,8 @@
-import toast from 'react-hot-toast'
-import BannerMessage from '@/components/BannerMessage'
+import toast from 'react-hot-toast';
+import BannerMessage from '@/components/BannerMessage';
 
 interface ToastOptions {
-  duration?: number
+  duration?: number;
 }
 
 const notify = {
@@ -23,8 +23,8 @@ const notify = {
       ),
       {
         duration: options?.duration || 4000,
-      }
-    )
+      },
+    );
   },
 
   error: (message: string, options?: ToastOptions) => {
@@ -44,8 +44,8 @@ const notify = {
       ),
       {
         duration: options?.duration || 4000,
-      }
-    )
+      },
+    );
   },
 
   warning: (message: string, options?: ToastOptions) => {
@@ -65,8 +65,8 @@ const notify = {
       ),
       {
         duration: options?.duration || 4000,
-      }
-    )
+      },
+    );
   },
 
   info: (message: string, options?: ToastOptions) => {
@@ -86,9 +86,9 @@ const notify = {
       ),
       {
         duration: options?.duration || 4000,
-      }
-    )
+      },
+    );
   },
-}
+};
 
-export default notify
+export default notify;

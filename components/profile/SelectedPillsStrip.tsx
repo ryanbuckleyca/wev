@@ -1,27 +1,27 @@
-'use client'
+'use client';
 
-import type { ReactNode } from 'react'
-import { useTranslations } from 'next-intl'
-import Pill from '@/components/Pill'
-import HorizontalScrollWithFades from '@/components/ui/HorizontalScrollWithFades'
-import { useListbox } from './useListbox'
+import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
+import Pill from '@/components/Pill';
+import HorizontalScrollWithFades from '@/components/ui/HorizontalScrollWithFades';
+import { useListbox } from './useListbox';
 
 export interface PillItem {
-  key: string
-  label: string
-  removeArg: string
+  key: string;
+  label: string;
+  removeArg: string;
 }
 
 interface SelectedPillsStripProps {
-  items: PillItem[]
-  onRemove: (arg: string) => void
-  ariaLabel: string
-  optPrefix: string
-  regionHintId: string
-  useHorizontalScroll?: boolean
-  fadeBackground?: string
+  items: PillItem[];
+  onRemove: (arg: string) => void;
+  ariaLabel: string;
+  optPrefix: string;
+  regionHintId: string;
+  useHorizontalScroll?: boolean;
+  fadeBackground?: string;
   /** Wrap each pill (e.g. in an InfoPopover). Receives the Pill element and item index. */
-  wrapPill?: (pill: ReactNode, item: PillItem, index: number) => ReactNode
+  wrapPill?: (pill: ReactNode, item: PillItem, index: number) => ReactNode;
 }
 
 export default function SelectedPillsStrip({
@@ -34,10 +34,14 @@ export default function SelectedPillsStrip({
   fadeBackground = 'var(--card)',
   wrapPill,
 }: SelectedPillsStripProps) {
-  const t = useTranslations('ariaLabels.pill')
-  const { activeIndex, activeDescendant, handleKeyDown } = useListbox(items.length, optPrefix, true)
+  const t = useTranslations('ariaLabels.pill');
+  const { activeIndex, activeDescendant, handleKeyDown } = useListbox(
+    items.length,
+    optPrefix,
+    true,
+  );
 
-  if (items.length === 0) return null
+  if (items.length === 0) return null;
 
   const pills = items.map((item, i) => {
     const pill = (
@@ -50,7 +54,7 @@ export default function SelectedPillsStrip({
       >
         {item.label}
       </Pill>
-    )
+    );
 
     return (
       <div
@@ -64,8 +68,8 @@ export default function SelectedPillsStrip({
       >
         {wrapPill ? wrapPill(pill, item, i) : pill}
       </div>
-    )
-  })
+    );
+  });
 
   return (
     <section
@@ -75,7 +79,13 @@ export default function SelectedPillsStrip({
       aria-describedby={regionHintId}
       aria-activedescendant={activeDescendant}
       aria-orientation="horizontal"
-      onKeyDown={(e) => handleKeyDown(e, (i) => onRemove(items[i].removeArg), (i) => onRemove(items[i].removeArg))}
+      onKeyDown={(e) =>
+        handleKeyDown(
+          e,
+          (i) => onRemove(items[i].removeArg),
+          (i) => onRemove(items[i].removeArg),
+        )
+      }
       className="group shrink-0 border-b border-gray-100 px-1 py-2 dark:border-zinc-800 rounded-md"
     >
       {useHorizontalScroll ? (
@@ -92,5 +102,5 @@ export default function SelectedPillsStrip({
         <div className="flex flex-wrap gap-2 px-2 pb-3 pt-1">{pills}</div>
       )}
     </section>
-  )
+  );
 }

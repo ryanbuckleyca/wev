@@ -1,16 +1,14 @@
-'use client'
+'use client';
 
-import { useTranslations } from 'next-intl'
-import Button from './Button'
-
-import { useState } from 'react'
+import { useTranslations } from 'next-intl';
+import Button from './Button';
 
 interface PaginationProps {
-  currentPage: number
-  totalPages: number
-  onPageChange: (page: number) => void
-  totalItems: number
-  itemsPerPage: number
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  totalItems: number;
+  itemsPerPage: number;
 }
 
 export default function Pagination({
@@ -20,75 +18,77 @@ export default function Pagination({
   totalItems,
   itemsPerPage,
 }: PaginationProps) {
-  const t = useTranslations()
-  const startItem = (currentPage - 1) * itemsPerPage + 1
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems)
+  const t = useTranslations();
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   if (totalPages <= 1) {
     return (
       <div className="text-sm text-foreground text-center py-4">
-        {t('pagination.showing')} {totalItems} {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
+        {t('pagination.showing')} {totalItems}{' '}
+        {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
       </div>
-    )
+    );
   }
 
   const getPageNumbers = () => {
-    const pages: (number | string)[] = []
-    const maxVisible = 5
+    const pages: (number | string)[] = [];
+    const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
       // Show all pages if total is small
       for (let i = 1; i <= totalPages; i++) {
-        pages.push(i)
+        pages.push(i);
       }
     } else {
       // Always show first page
-      pages.push(1)
+      pages.push(1);
 
       // Calculate start and end of middle section
-      let start = Math.max(2, currentPage - 1)
-      let end = Math.min(totalPages - 1, currentPage + 1)
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
 
       // Adjust if we're near the start
       if (currentPage <= 3) {
-        end = 4
+        end = 4;
       }
 
       // Adjust if we're near the end
       if (currentPage >= totalPages - 2) {
-        start = totalPages - 3
+        start = totalPages - 3;
       }
 
       // Add ellipsis after first page if needed
       if (start > 2) {
-        pages.push('...')
+        pages.push('...');
       }
 
       // Add middle pages
       for (let i = start; i <= end; i++) {
         if (i !== 1 && i !== totalPages) {
-          pages.push(i)
+          pages.push(i);
         }
       }
 
       // Add ellipsis before last page if needed
       if (end < totalPages - 1) {
-        pages.push('...')
+        pages.push('...');
       }
 
       // Always show last page
       if (totalPages > 1) {
-        pages.push(totalPages)
+        pages.push(totalPages);
       }
     }
 
-    return pages
-  }
+    return pages;
+  };
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
       <div className="text-sm text-foreground">
-        {t('pagination.showing')} {startItem}-{endItem} {t('pagination.of')} {totalItems} {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
+        {t('pagination.showing')} {startItem}-{endItem} {t('pagination.of')} {totalItems}{' '}
+        {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
       </div>
 
       <div className="flex items-center gap-2">
@@ -109,11 +109,11 @@ export default function Pagination({
                 <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">
                   ...
                 </span>
-              )
+              );
             }
 
-            const pageNum = page as number
-            const isActive = pageNum === currentPage
+            const pageNum = page as number;
+            const isActive = pageNum === currentPage;
 
             return (
               <Button
@@ -125,7 +125,7 @@ export default function Pagination({
               >
                 {pageNum}
               </Button>
-            )
+            );
           })}
         </div>
 
@@ -140,5 +140,5 @@ export default function Pagination({
         </Button>
       </div>
     </div>
-  )
+  );
 }

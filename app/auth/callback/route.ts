@@ -1,22 +1,22 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { getSiteBaseUrlFromRequest } from '@/lib/site-url'
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { getSiteBaseUrlFromRequest } from '@/lib/site-url';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const code = searchParams.get('code')
+  const { searchParams } = new URL(request.url);
+  const code = searchParams.get('code');
   // "next" param allows redirecting to a specific page after login
-  const next = searchParams.get('next') ?? '/'
-  const base = getSiteBaseUrlFromRequest(request)
+  const next = searchParams.get('next') ?? '/';
+  const base = getSiteBaseUrlFromRequest(request);
 
   if (code) {
-    const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const supabase = await createClient();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${base}${next}`)
+      return NextResponse.redirect(`${base}${next}`);
     }
   }
 
   // Return the user to an error page with instructions
-  return NextResponse.redirect(`${base}/auth/auth-code-error`)
+  return NextResponse.redirect(`${base}/auth/auth-code-error`);
 }

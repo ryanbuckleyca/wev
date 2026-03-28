@@ -1,11 +1,11 @@
-import { forwardRef } from 'react'
-import { Search } from 'lucide-react'
+import { forwardRef } from 'react';
+import { Search } from 'lucide-react';
 
 interface BrowseTriggerProps {
-  onClick: () => void
-  isOpen: boolean
-  ariaLabel: string
-  placeholder: string
+  onClick: () => void;
+  isOpen: boolean;
+  ariaLabel: string;
+  placeholder: string;
 }
 
 const BrowseTrigger = forwardRef<HTMLButtonElement, BrowseTriggerProps>(
@@ -25,8 +25,8 @@ const BrowseTrigger = forwardRef<HTMLButtonElement, BrowseTriggerProps>(
       </span>
     </button>
   ),
-)
+);
 
-BrowseTrigger.displayName = 'BrowseTrigger'
+BrowseTrigger.displayName = 'BrowseTrigger';
 
-export default BrowseTrigger
+export default BrowseTrigger;

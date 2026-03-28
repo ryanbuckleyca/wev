@@ -1,24 +1,24 @@
-'use client'
+'use client';
 
-import { useEffect, useState, type ReactNode, type RefObject } from 'react'
-import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { ChevronLeft } from 'lucide-react'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { zIndex } from '@/lib/design-tokens'
+import { useEffect, useState, type ReactNode, type RefObject } from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { ChevronLeft } from 'lucide-react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { zIndex } from '@/lib/design-tokens';
 
-const HEADER_OFFSET_REM = '5.75rem'
+const HEADER_OFFSET_REM = '5.75rem';
 
 export interface SelectionBrowseModalProps {
-  isOpen: boolean
-  onClose: () => void
-  searchInputRef?: RefObject<HTMLInputElement | null>
-  dialogAriaLabel: string
-  backAriaLabel: string
-  doneLabel: string
-  selectedCount: number
-  headerCenter: ReactNode
-  selectedPills?: ReactNode
-  children: ReactNode
+  isOpen: boolean;
+  onClose: () => void;
+  searchInputRef?: RefObject<HTMLInputElement | null>;
+  dialogAriaLabel: string;
+  backAriaLabel: string;
+  doneLabel: string;
+  selectedCount: number;
+  headerCenter: ReactNode;
+  selectedPills?: ReactNode;
+  children: ReactNode;
 }
 
 export default function SelectionBrowseModal({
@@ -33,31 +33,38 @@ export default function SelectionBrowseModal({
   selectedPills,
   children,
 }: SelectionBrowseModalProps) {
-  const isMobile = !useMediaQuery('(min-width: 768px)')
+  const isMobile = !useMediaQuery('(min-width: 768px)');
   const [viewportHeight, setViewportHeight] = useState(() =>
     typeof window === 'undefined' ? 600 : (window.visualViewport?.height ?? window.innerHeight),
-  )
+  );
 
   // Track visual viewport for mobile virtual keyboard
   useEffect(() => {
-    if (!isOpen || !isMobile) return
-    const update = () => setViewportHeight(window.visualViewport?.height ?? window.innerHeight)
-    update()
-    const vp = window.visualViewport
+    if (!isOpen || !isMobile) return;
+    const update = () => setViewportHeight(window.visualViewport?.height ?? window.innerHeight);
+    update();
+    const vp = window.visualViewport;
     if (vp) {
-      vp.addEventListener('resize', update)
-      vp.addEventListener('scroll', update)
-      return () => { vp.removeEventListener('resize', update); vp.removeEventListener('scroll', update) }
+      vp.addEventListener('resize', update);
+      vp.addEventListener('scroll', update);
+      return () => {
+        vp.removeEventListener('resize', update);
+        vp.removeEventListener('scroll', update);
+      };
     }
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [isOpen, isMobile])
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [isOpen, isMobile]);
 
   const inner = (
     <>
       <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-3 bg-card dark:border-zinc-800 shrink-0">
         <DialogPrimitive.Close asChild>
-          <button type="button" className="shrink-0 text-gray-600 dark:text-gray-400" aria-label={backAriaLabel}>
+          <button
+            type="button"
+            className="shrink-0 text-gray-600 dark:text-gray-400"
+            aria-label={backAriaLabel}
+          >
             <ChevronLeft className="h-5 w-5" />
           </button>
         </DialogPrimitive.Close>
@@ -85,10 +92,15 @@ export default function SelectionBrowseModal({
           pb-2 insets results + ring from the modal card bottom. */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-2">{children}</div>
     </>
-  )
+  );
 
   return (
-    <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
+    <DialogPrimitive.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
           className="fixed inset-0 bg-black/40 backdrop-blur-sm hidden md:block"
@@ -97,8 +109,8 @@ export default function SelectionBrowseModal({
         <DialogPrimitive.Content
           aria-describedby={undefined}
           onOpenAutoFocus={(e) => {
-            e.preventDefault()
-            setTimeout(() => searchInputRef?.current?.focus({ preventScroll: true }), 50)
+            e.preventDefault();
+            setTimeout(() => searchInputRef?.current?.focus({ preventScroll: true }), 50);
           }}
           className={
             isMobile
@@ -108,7 +120,11 @@ export default function SelectionBrowseModal({
           style={
             isMobile
               ? { zIndex: zIndex.modal, height: `${viewportHeight}px` }
-              : { zIndex: zIndex.modal, paddingTop: `calc(${HEADER_OFFSET_REM} + 0.5rem)`, paddingBottom: '1rem' }
+              : {
+                  zIndex: zIndex.modal,
+                  paddingTop: `calc(${HEADER_OFFSET_REM} + 0.5rem)`,
+                  paddingBottom: '1rem',
+                }
           }
         >
           <DialogPrimitive.Title className="sr-only">{dialogAriaLabel}</DialogPrimitive.Title>
@@ -117,7 +133,10 @@ export default function SelectionBrowseModal({
           ) : (
             <div
               className="flex w-full max-w-[600px] flex-col overflow-hidden bg-card rounded-2xl border border-gray-200 shadow-2xl dark:border-zinc-800 pointer-events-auto"
-              style={{ height: 'min(800px, calc(100dvh - 7.25rem))', maxHeight: 'min(800px, calc(100dvh - 7.25rem))' }}
+              style={{
+                height: 'min(800px, calc(100dvh - 7.25rem))',
+                maxHeight: 'min(800px, calc(100dvh - 7.25rem))',
+              }}
             >
               {inner}
             </div>
@@ -125,5 +144,5 @@ export default function SelectionBrowseModal({
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
-  )
+  );
 }

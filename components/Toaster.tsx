@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { Toaster } from 'react-hot-toast'
+import { Toaster } from 'react-hot-toast';
 
 export default function ToasterProvider() {
   return (
@@ -55,5 +55,5 @@ export default function ToasterProvider() {
         right: 20,
       }}
     />
-  )
+  );
 }

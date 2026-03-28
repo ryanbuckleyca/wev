@@ -1,55 +1,51 @@
-import { createClient } from './client'
-import { type RatedValue, type RatedSkill } from '@/lib/value-ratings'
+import { createClient } from './client';
+import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 
 export type Profile = {
-  id: string
-  full_name: string | null
-  bio: string | null
-  values: string[]
-  values_rated: RatedValue[] | null
-  skills: string[]
-  skills_rated: RatedSkill[] | null
-  work_types: string[]
-  ideal_work_environment: string | null
-  profile_photo_url: string | null
-  created_at: string
-  updated_at: string
-}
+  id: string;
+  full_name: string | null;
+  bio: string | null;
+  values: string[];
+  values_rated: RatedValue[] | null;
+  skills: string[];
+  skills_rated: RatedSkill[] | null;
+  work_types: string[];
+  ideal_work_environment: string | null;
+  profile_photo_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 export type ProfileUpdateData = {
-  full_name?: string | null
-  bio?: string | null
-  values?: string[]
-  values_rated?: RatedValue[] | null
-  skills?: string[]
-  skills_rated?: RatedSkill[] | null
-  work_types?: string[]
-  ideal_work_environment?: string | null
-  profile_photo_url?: string | null
-}
+  full_name?: string | null;
+  bio?: string | null;
+  values?: string[];
+  values_rated?: RatedValue[] | null;
+  skills?: string[];
+  skills_rated?: RatedSkill[] | null;
+  work_types?: string[];
+  ideal_work_environment?: string | null;
+  profile_photo_url?: string | null;
+};
 
 /**
  * Fetch a user's profile
  */
 export async function getProfile(userId: string): Promise<Profile | null> {
-  const supabase = createClient()
+  const supabase = createClient();
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .limit(1)
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).limit(1);
 
   if (error) {
-    console.error('Error fetching profile:', error)
-    return null
+    console.error('Error fetching profile:', error);
+    return null;
   }
 
   if (!data || data.length === 0) {
-    return null
+    return null;
   }
 
-  const profile = data[0] as Profile
+  const profile = data[0] as Profile;
   return {
     ...profile,
     values: profile.values ?? [],
@@ -58,17 +54,14 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     skills_rated: profile.skills_rated ?? null,
     work_types: profile.work_types ?? [],
     ideal_work_environment: profile.ideal_work_environment ?? null,
-  }
+  };
 }
 
 /**
  * Update a user's profile
  */
-export async function updateProfile(
-  userId: string,
-  updates: ProfileUpdateData
-): Promise<Profile> {
-  const supabase = createClient()
+export async function updateProfile(userId: string, updates: ProfileUpdateData): Promise<Profile> {
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from('profiles')
@@ -78,13 +71,15 @@ export async function updateProfile(
     })
     .eq('id', userId)
     .select()
-    .single()
+    .single();
 
   if (error) {
-    console.error('Error updating profile:', error)
-    const msg = [error.message, (error as { details?: string }).details].filter(Boolean).join(' — ')
-    throw new Error(msg || 'Failed to update profile')
+    console.error('Error updating profile:', error);
+    const msg = [error.message, (error as { details?: string }).details]
+      .filter(Boolean)
+      .join(' — ');
+    throw new Error(msg || 'Failed to update profile');
   }
 
-  return data as Profile
+  return data as Profile;
 }

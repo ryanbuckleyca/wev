@@ -1,15 +1,19 @@
-'use client'
+'use client';
 
-import { Lineicons } from '@lineiconshq/react-lineicons'
-import { Funnel1Outlined } from '@lineiconshq/free-icons'
+import { Lineicons } from '@lineiconshq/react-lineicons';
+import { Funnel1Outlined } from '@lineiconshq/free-icons';
 
 interface FilterIconProps {
-  className?: string
-  reversed?: boolean
-  ariaHidden?: boolean
+  className?: string;
+  reversed?: boolean;
+  ariaHidden?: boolean;
 }
 
-export default function FilterIcon({ className = '', reversed = false, ariaHidden = false }: FilterIconProps) {
+export default function FilterIcon({
+  className = '',
+  reversed = false,
+  ariaHidden = false,
+}: FilterIconProps) {
   return (
     <Lineicons
       icon={Funnel1Outlined}
@@ -17,5 +21,5 @@ export default function FilterIcon({ className = '', reversed = false, ariaHidde
       className={`${className} ${reversed ? 'rotate-180' : ''}`}
       aria-hidden={ariaHidden}
     />
-  )
+  );
 }

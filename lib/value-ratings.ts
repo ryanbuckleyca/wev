@@ -37,4 +37,3 @@ export function getRankWeight(rank: number | undefined, total: number): number {
   // Linear interpolation: rank 1 → 1.0, rank total → MIN_WEIGHT
   return 1.0 - ((clamped - 1) / (total - 1)) * (1.0 - MIN_WEIGHT);
 }
-

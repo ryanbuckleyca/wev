@@ -2,27 +2,27 @@
 
 ## Why We Write Tests
 
-Every test we write should serve at least one of these purposes. When deciding *how* to test something, consider which factors matter most for that piece of code.
+Every test we write should serve at least one of these purposes. When deciding _how_ to test something, consider which factors matter most for that piece of code.
 
-| # | Good tests can… | What it means |
-|---|---|---|
-| 1 | **Verify the code is working correctly** | Confirm the current implementation does what we expect right now. |
-| 2 | **Prevent future regressions** | Catch breakage when someone changes code later — the safety net. |
-| 3 | **Document the code's behaviour** | A well-named test suite is living documentation — it tells the next developer what the code is *supposed* to do, without reading the implementation. |
-| 4 | **Provide design guidance** | If something is hard to test, it's often hard to use. Writing tests pushes us toward simpler interfaces, smaller functions, and clearer boundaries. |
+| #   | Good tests can…                          | What it means                                                                                                                                        |
+| --- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Verify the code is working correctly** | Confirm the current implementation does what we expect right now.                                                                                    |
+| 2   | **Prevent future regressions**           | Catch breakage when someone changes code later — the safety net.                                                                                     |
+| 3   | **Document the code's behaviour**        | A well-named test suite is living documentation — it tells the next developer what the code is _supposed_ to do, without reading the implementation. |
+| 4   | **Provide design guidance**              | If something is hard to test, it's often hard to use. Writing tests pushes us toward simpler interfaces, smaller functions, and clearer boundaries.  |
 
 Factors 1 and 2 are the standard reasons everyone cites. But the debates we have about testing — within teams and endlessly on the internet — usually stem from unarticulated differences in how we weigh factors 3 and 4. Keep all four in mind when choosing what and how to test.
 
-*Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.com/post/PrinciplesofAutomatedTesting.html).*
+_Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.com/post/PrinciplesofAutomatedTesting.html)._
 
 ## Stack
 
-| Tool | Purpose |
-|---|---|
-| [Vitest](https://vitest.dev/) | Fast, ESM-native test runner (Jest-compatible) |
-| [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro) | Render & query React components by user-visible behaviour |
-| [@testing-library/user-event](https://testing-library.com/docs/user-event/intro) | Simulate realistic user interactions (clicks, typing, etc.) |
-| [@testing-library/jest-dom](https://testing-library.com/docs/ecosystem-jest-dom) | DOM matchers like `toBeVisible()`, `toBeDisabled()` |
+| Tool                                                                                   | Purpose                                                     |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [Vitest](https://vitest.dev/)                                                          | Fast, ESM-native test runner (Jest-compatible)              |
+| [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro) | Render & query React components by user-visible behaviour   |
+| [@testing-library/user-event](https://testing-library.com/docs/user-event/intro)       | Simulate realistic user interactions (clicks, typing, etc.) |
+| [@testing-library/jest-dom](https://testing-library.com/docs/ecosystem-jest-dom)       | DOM matchers like `toBeVisible()`, `toBeDisabled()`         |
 
 ## Guiding Principles
 
@@ -40,10 +40,10 @@ Focus on **what the component renders** and **how it behaves**, not how it achie
 
 ```tsx
 // ❌ Bad — testing internal state / implementation
-expect(component.state.isOpen).toBe(true)
+expect(component.state.isOpen).toBe(true);
 
 // ✅ Good — testing what the user sees
-expect(screen.getByRole('dialog')).toBeVisible()
+expect(screen.getByRole('dialog')).toBeVisible();
 ```
 
 Avoid accessing component internals, refs, or state directly. Interact with the component through the DOM, just as a user would.
@@ -54,31 +54,31 @@ Always use the `screen` object from `@testing-library/react` for queries. This r
 
 ```tsx
 // ❌ Avoid destructuring render
-const { getByText } = render(<MyComponent />)
+const { getByText } = render(<MyComponent />);
 
 // ✅ Prefer screen
-render(<MyComponent />)
-expect(screen.getByText('Hello')).toBeVisible()
+render(<MyComponent />);
+expect(screen.getByText('Hello')).toBeVisible();
 ```
 
 ### 3. Prefer Accessible Queries
 
 Choose queries that reflect how users (and assistive technology) find elements. The recommended priority:
 
-| Priority | Query | When to use |
-|---|---|---|
-| 1st | `getByRole` | Buttons, links, headings, form controls |
-| 2nd | `getByLabelText` | Form fields with labels |
-| 3rd | `getByPlaceholderText` | Inputs with placeholder text |
-| 4th | `getByText` | Non-interactive text content |
-| 5th | `getByTestId` | Last resort only |
+| Priority | Query                  | When to use                             |
+| -------- | ---------------------- | --------------------------------------- |
+| 1st      | `getByRole`            | Buttons, links, headings, form controls |
+| 2nd      | `getByLabelText`       | Form fields with labels                 |
+| 3rd      | `getByPlaceholderText` | Inputs with placeholder text            |
+| 4th      | `getByText`            | Non-interactive text content            |
+| 5th      | `getByTestId`          | Last resort only                        |
 
 ```tsx
 // ❌ Fragile — tied to test IDs or CSS classes
-screen.getByTestId('submit-btn')
+screen.getByTestId('submit-btn');
 
 // ✅ Accessible — matches how users find the button
-screen.getByRole('button', { name: 'Submit' })
+screen.getByRole('button', { name: 'Submit' });
 ```
 
 ### 4. Use `toBeVisible()` Over `toBeInTheDocument()`
@@ -87,10 +87,10 @@ Elements can exist in the DOM but be hidden (`display: none`, `visibility: hidde
 
 ```tsx
 // ❌ Only checks DOM presence — element could be hidden
-expect(screen.getByText('Success')).toBeInTheDocument()
+expect(screen.getByText('Success')).toBeInTheDocument();
 
 // ✅ Confirms the element is visible to the user
-expect(screen.getByText('Success')).toBeVisible()
+expect(screen.getByText('Success')).toBeVisible();
 ```
 
 Use `not.toBeInTheDocument()` when asserting an element is **completely absent** from the DOM (e.g. conditionally rendered content).
@@ -101,11 +101,11 @@ Use `not.toBeInTheDocument()` when asserting an element is **completely absent**
 
 ```tsx
 // ❌ fireEvent dispatches a single event — incomplete simulation
-fireEvent.click(button)
+fireEvent.click(button);
 
 // ✅ userEvent simulates the full interaction
-const user = userEvent.setup()
-await user.click(button)
+const user = userEvent.setup();
+await user.click(button);
 ```
 
 Always call `userEvent.setup()` at the top of each test that uses it.
@@ -124,10 +124,10 @@ Use real modules and dependencies where possible to ensure tests are meaningful 
 
 ```tsx
 // ❌ Over-mocking — mocking your own utility
-vi.mock('./calculateMatch', () => ({ calculateMatch: vi.fn() }))
+vi.mock('./calculateMatch', () => ({ calculateMatch: vi.fn() }));
 
 // ✅ Better — use the real function, mock only the external boundary
-vi.mock('@/lib/supabase/client')
+vi.mock('@/lib/supabase/client');
 ```
 
 ### 8. Avoid Shared Mutable Variables
@@ -137,29 +137,29 @@ Each test should be fully isolated. Don't share mutable state (`let` variables, 
 ```tsx
 // ❌ Bad — shared mutable variable across tests
 describe('MyComponent', () => {
-  let handler: ReturnType<typeof vi.fn>
+  let handler: ReturnType<typeof vi.fn>;
   beforeEach(() => {
-    handler = vi.fn()
-  })
+    handler = vi.fn();
+  });
 
   it('calls handler on click', async () => {
-    const user = userEvent.setup()
-    render(<MyComponent onClick={handler} />)
-    await user.click(screen.getByRole('button'))
-    expect(handler).toHaveBeenCalled()
-  })
-})
+    const user = userEvent.setup();
+    render(<MyComponent onClick={handler} />);
+    await user.click(screen.getByRole('button'));
+    expect(handler).toHaveBeenCalled();
+  });
+});
 
 // ✅ Good — each test creates its own state
 describe('MyComponent', () => {
   it('calls handler on click', async () => {
-    const user = userEvent.setup()
-    const handleClick = vi.fn()
-    render(<MyComponent onClick={handleClick} />)
-    await user.click(screen.getByRole('button'))
-    expect(handleClick).toHaveBeenCalledOnce()
-  })
-})
+    const user = userEvent.setup();
+    const handleClick = vi.fn();
+    render(<MyComponent onClick={handleClick} />);
+    await user.click(screen.getByRole('button'));
+    expect(handleClick).toHaveBeenCalledOnce();
+  });
+});
 ```
 
 **Exception:** Immutable shared config (like a `defaultProps` object with plain values) is fine in the top scope as a convenience, since it cannot be mutated between tests.
@@ -172,7 +172,7 @@ const defaultProps = {
   onPageChange: () => {},
   totalItems: 50,
   itemsPerPage: 10,
-}
+};
 ```
 
 ### 9. Only Use `vi.fn()` for Functions You Assert On
@@ -181,17 +181,17 @@ const defaultProps = {
 
 ```tsx
 // ❌ Bad — vi.fn() used but never asserted on
-render(<Pagination onPageChange={vi.fn()} />)
+render(<Pagination onPageChange={vi.fn()} />);
 // test only checks DOM text, never checks onPageChange
 
 // ✅ Good — plain no-op for non-asserted callbacks
-render(<Pagination onPageChange={() => {}} />)
+render(<Pagination onPageChange={() => {}} />);
 
 // ✅ Good — vi.fn() used AND asserted on
-const handleChange = vi.fn()
-render(<Pagination onPageChange={handleChange} />)
-await user.click(screen.getByRole('button', { name: 'Next' }))
-expect(handleChange).toHaveBeenCalledWith(2)
+const handleChange = vi.fn();
+render(<Pagination onPageChange={handleChange} />);
+await user.click(screen.getByRole('button', { name: 'Next' }));
+expect(handleChange).toHaveBeenCalledWith(2);
 ```
 
 ### 10. Keep Helpers and Constants in the Top Scope
@@ -202,39 +202,39 @@ Sub-describe blocks may define their own helpers. Single-use helpers belong insi
 
 ```tsx
 // ✅ Preferred — helpers at top scope
-import { render, screen } from '@testing-library/react'
-import MyComponent from './MyComponent'
+import { render, screen } from '@testing-library/react';
+import MyComponent from './MyComponent';
 
-const defaultProps = { title: 'Hello', count: 5 }
+const defaultProps = { title: 'Hello', count: 5 };
 
 function renderWithProps(overrides = {}) {
-  return render(<MyComponent {...defaultProps} {...overrides} />)
+  return render(<MyComponent {...defaultProps} {...overrides} />);
 }
 
 describe('MyComponent', () => {
   it('renders the title', () => {
-    renderWithProps()
-    expect(screen.getByText('Hello')).toBeVisible()
-  })
-})
+    renderWithProps();
+    expect(screen.getByText('Hello')).toBeVisible();
+  });
+});
 ```
 
 ### 11. Don't Loop Over Assertions
 
-Avoid `for` / `forEach` loops around `expect()` calls. When a loop-based assertion fails, the error message doesn't tell you *which* iteration broke. Write each expectation explicitly — it's more readable and produces clear failure output.
+Avoid `for` / `forEach` loops around `expect()` calls. When a loop-based assertion fails, the error message doesn't tell you _which_ iteration broke. Write each expectation explicitly — it's more readable and produces clear failure output.
 
 ```tsx
 // ❌ Bad — which iteration failed?
 for (let i = 1; i <= 5; i++) {
-  expect(screen.getByRole('button', { name: String(i) })).toBeVisible()
+  expect(screen.getByRole('button', { name: String(i) })).toBeVisible();
 }
 
 // ✅ Good — each assertion is explicit and self-describing
-expect(screen.getByRole('button', { name: '1' })).toBeVisible()
-expect(screen.getByRole('button', { name: '2' })).toBeVisible()
-expect(screen.getByRole('button', { name: '3' })).toBeVisible()
-expect(screen.getByRole('button', { name: '4' })).toBeVisible()
-expect(screen.getByRole('button', { name: '5' })).toBeVisible()
+expect(screen.getByRole('button', { name: '1' })).toBeVisible();
+expect(screen.getByRole('button', { name: '2' })).toBeVisible();
+expect(screen.getByRole('button', { name: '3' })).toBeVisible();
+expect(screen.getByRole('button', { name: '4' })).toBeVisible();
+expect(screen.getByRole('button', { name: '5' })).toBeVisible();
 ```
 
 ## File Structure
@@ -270,60 +270,60 @@ npm run test:coverage
 ## Writing a Test — Template
 
 ```tsx
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import MyComponent from './MyComponent'
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import MyComponent from './MyComponent';
 
 describe('MyComponent', () => {
   it('renders the heading', () => {
-    render(<MyComponent title="Hello" />)
-    expect(screen.getByRole('heading', { name: 'Hello' })).toBeVisible()
-  })
+    render(<MyComponent title="Hello" />);
+    expect(screen.getByRole('heading', { name: 'Hello' })).toBeVisible();
+  });
 
   it('calls onSubmit when the form is submitted', async () => {
-    const user = userEvent.setup()
-    const handleSubmit = vi.fn()
+    const user = userEvent.setup();
+    const handleSubmit = vi.fn();
 
-    render(<MyComponent onSubmit={handleSubmit} />)
+    render(<MyComponent onSubmit={handleSubmit} />);
 
-    await user.type(screen.getByLabelText('Email'), 'test@example.com')
-    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await user.type(screen.getByLabelText('Email'), 'test@example.com');
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-    expect(handleSubmit).toHaveBeenCalledWith('test@example.com')
-  })
+    expect(handleSubmit).toHaveBeenCalledWith('test@example.com');
+  });
 
   it('shows an error when input is empty', async () => {
-    const user = userEvent.setup()
-    render(<MyComponent />)
+    const user = userEvent.setup();
+    render(<MyComponent />);
 
-    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-    expect(screen.getByText('Email is required')).toBeVisible()
-  })
+    expect(screen.getByText('Email is required')).toBeVisible();
+  });
 
   it('does not render the modal initially', () => {
-    render(<MyComponent />)
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
-})
+    render(<MyComponent />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
 ```
 
 ## Quick Reference
 
-| Do | Don't |
-|---|---|
-| Query by role, label, text | Query by test ID or class name |
-| Assert with `toBeVisible()` | Assert with `toBeInTheDocument()` for visible content |
-| Use `userEvent.setup()` | Use `fireEvent` for user interactions |
-| Test what renders and what the user sees | Test internal state or implementation |
-| Colocate test files with source | Put tests in separate `__tests__` folders |
-| Mock at boundaries (network, DB) | Mock your own utilities and functions |
-| Write integration-style tests | Over-isolate every unit |
-| Create all state inside each `it()` block | Share mutable `let` variables across tests |
-| Use `vi.fn()` only when you assert on it | Create tracked mocks you never check |
-| Put helpers/constants at top scope | Nest shared helpers inside `describe` |
-| Write each assertion explicitly | Loop over `expect()` calls with `for`/`forEach` |
+| Do                                        | Don't                                                 |
+| ----------------------------------------- | ----------------------------------------------------- |
+| Query by role, label, text                | Query by test ID or class name                        |
+| Assert with `toBeVisible()`               | Assert with `toBeInTheDocument()` for visible content |
+| Use `userEvent.setup()`                   | Use `fireEvent` for user interactions                 |
+| Test what renders and what the user sees  | Test internal state or implementation                 |
+| Colocate test files with source           | Put tests in separate `__tests__` folders             |
+| Mock at boundaries (network, DB)          | Mock your own utilities and functions                 |
+| Write integration-style tests             | Over-isolate every unit                               |
+| Create all state inside each `it()` block | Share mutable `let` variables across tests            |
+| Use `vi.fn()` only when you assert on it  | Create tracked mocks you never check                  |
+| Put helpers/constants at top scope        | Nest shared helpers inside `describe`                 |
+| Write each assertion explicitly           | Loop over `expect()` calls with `for`/`forEach`       |
 
 ## Further Reading
 

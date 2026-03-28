@@ -15,23 +15,25 @@ This folder contains scripts and instructions for backing up your Supabase datab
 1. Ensure your `.env` file in the project root contains valid `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
 2. Run the backup script from the project root:
 
-    ```sh
-    node supabase/backup.js
-    ```
+   ```sh
+   node supabase/backup.js
+   ```
 
    - Backup files will be saved in `supabase/backups/`.
 
 3. (Optional) Add a script to `package.json` for convenience:
 
-    ```json
-    "scripts": {
-      "backup": "node supabase/backup.js"
-    }
-    ```
-    Then run:
-    ```sh
-    npm run backup
-    ```
+   ```json
+   "scripts": {
+     "backup": "node supabase/backup.js"
+   }
+   ```
+
+   Then run:
+
+   ```sh
+   npm run backup
+   ```
 
 ## Exporting Users (auth.users)
 

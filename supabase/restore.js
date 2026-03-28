@@ -8,13 +8,16 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://monvruedailbkcekicbl.s
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SECRET_KEY || '<YOUR_SERVICE_ROLE_KEY>';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false }
+  auth: { persistSession: false },
 });
 
 async function clearTable(table) {
   try {
     // Use TRUNCATE-like behavior by deleting all rows
-    const { error } = await supabase.from(table).delete().gte('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await supabase
+      .from(table)
+      .delete()
+      .gte('id', '00000000-0000-0000-0000-000000000000');
     if (error) {
       console.log(`Warning: Could not clear ${table}: ${error.message}`);
       return false;
@@ -29,14 +32,14 @@ async function clearTable(table) {
 
 async function restoreTable(table, schema = 'public') {
   const backupFile = path.resolve(__dirname, 'backups', `backup_${schema}_${table}.json`);
-  
+
   if (!fs.existsSync(backupFile)) {
     console.log(`No backup file found for ${schema}.${table}, skipping...`);
     return;
   }
 
   const backupData = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
-  
+
   if (backupData.length === 0) {
     console.log(`No data to restore for ${schema}.${table}, skipping...`);
     return;
@@ -51,15 +54,18 @@ async function restoreTable(table, schema = 'public') {
   // Insert backup data in smaller batches
   const batchSize = 10;
   let successCount = 0;
-  
+
   for (let i = 0; i < backupData.length; i += batchSize) {
     const batch = backupData.slice(i, i + batchSize);
-    const { data, error } = await supabase.from(table).insert(batch);
+    const { error } = await supabase.from(table).insert(batch);
     if (error) {
-      console.error(`Error restoring batch ${i/batchSize + 1} for ${schema}.${table}:`, error.message);
+      console.error(
+        `Error restoring batch ${i / batchSize + 1} for ${schema}.${table}:`,
+        error.message,
+      );
       // Try individual inserts for problematic data
       for (const row of batch) {
-        const { data: singleData, error: singleError } = await supabase.from(table).insert(row);
+        const { error: singleError } = await supabase.from(table).insert(row);
         if (!singleError) {
           successCount++;
         } else {
@@ -68,7 +74,9 @@ async function restoreTable(table, schema = 'public') {
       }
     } else {
       successCount += batch.length;
-      console.log(`Restored batch ${i/batchSize + 1}/${Math.ceil(backupData.length/batchSize)} for ${schema}.${table}`);
+      console.log(
+        `Restored batch ${i / batchSize + 1}/${Math.ceil(backupData.length / batchSize)} for ${schema}.${table}`,
+      );
     }
   }
 
@@ -77,26 +85,28 @@ async function restoreTable(table, schema = 'public') {
 
 (async () => {
   const backupDir = path.resolve(__dirname, 'backups');
-  const backupFiles = fs.readdirSync(backupDir).filter(f => f.startsWith('backup_') && f.endsWith('.json'));
-  
+  const backupFiles = fs
+    .readdirSync(backupDir)
+    .filter((f) => f.startsWith('backup_') && f.endsWith('.json'));
+
   console.log(`Found ${backupFiles.length} backup files to restore...`);
-  
+
   // Define restore order to handle foreign key constraints
   const restoreOrder = [
     'organizations',
-    'sources', 
+    'sources',
     'user_roles',
     'profiles',
     'jobs',
-    'scrape_runs'
+    'scrape_runs',
   ];
-  
+
   for (const table of restoreOrder) {
     const backupFile = `backup_public_${table}.json`;
     if (backupFiles.includes(backupFile)) {
       await restoreTable(table, 'public');
     }
   }
-  
+
   console.log('Restore complete.');
 })();

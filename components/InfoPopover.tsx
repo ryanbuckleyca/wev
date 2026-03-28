@@ -1,24 +1,19 @@
-'use client'
+'use client';
 
-import * as React from 'react'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  PopoverArrow,
-} from '@/components/ui/Popover'
+import * as React from 'react';
+import { Popover, PopoverContent, PopoverTrigger, PopoverArrow } from '@/components/ui/Popover';
 
 interface InfoPopoverProps {
-  children: React.ReactNode
-  content: React.ReactNode
-  className?: string
+  children: React.ReactNode;
+  content: React.ReactNode;
+  className?: string;
   /** Applied to the trigger wrapper (e.g. -1 to skip in tab order). */
-  triggerTabIndex?: number
+  triggerTabIndex?: number;
 }
 
 /**
  * InfoPopover Component
- * 
+ *
  * Uses shadcn/ui Popover (Radix UI) for click/tap interactions.
  * Matches the exact structure from Radix UI documentation.
  */
@@ -28,22 +23,22 @@ export default function InfoPopover({
   className = '',
   triggerTabIndex,
 }: InfoPopoverProps) {
-  const [open, setOpen] = React.useState(false)
-  const triggerRef = React.useRef<HTMLDivElement>(null)
+  const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLDivElement>(null);
 
   // Close popover if trigger is not visible
   React.useEffect(() => {
-    if (!open || !triggerRef.current) return
+    if (!open || !triggerRef.current) return;
 
     const observer = new window.IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting) setOpen(false)
+        if (!entry.isIntersecting) setOpen(false);
       },
-      { threshold: 0.01 }
-    )
-    observer.observe(triggerRef.current)
-    return () => observer.disconnect()
-  }, [open])
+      { threshold: 0.01 },
+    );
+    observer.observe(triggerRef.current);
+    return () => observer.disconnect();
+  }, [open]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -57,7 +52,7 @@ export default function InfoPopover({
           {children}
         </div>
       </PopoverTrigger>
-      <PopoverContent 
+      <PopoverContent
         side="top"
         sideOffset={5}
         collisionPadding={16}
@@ -71,5 +66,5 @@ export default function InfoPopover({
         <PopoverArrow className="fill-border h-1 w-3" />
       </PopoverContent>
     </Popover>
-  )
+  );
 }

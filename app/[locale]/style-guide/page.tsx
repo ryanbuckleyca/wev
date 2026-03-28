@@ -1,136 +1,193 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import Button from '@/components/Button'
-import LinkButton from '@/components/LinkButton'
-import StyledLink from '@/components/StyledLink'
-import ButtonLink from '@/components/ButtonLink'
-import StatusIcon from '@/components/StatusIcon'
-import BannerMessage from '@/components/BannerMessage'
-import notify from '@/lib/toast'
-import { useState, useEffect } from 'react'
+import Link from 'next/link';
+import Image from 'next/image';
+import Button from '@/components/Button';
+import LinkButton from '@/components/LinkButton';
+import StyledLink from '@/components/StyledLink';
+import ButtonLink from '@/components/ButtonLink';
+import BannerMessage from '@/components/BannerMessage';
+import notify from '@/lib/toast';
+import { useState, useEffect } from 'react';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 const LOGO_LOGOTYPE =
-  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png'
+  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';
 const LOGO_MARK =
-  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logo.png'
+  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logo.png';
 
 // Helper function to convert hex to RGB
 const hexToRgb = (hex: string) => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-  return result ? 
-    `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : 
-    ''
-}
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+    : '';
+};
 
 // Helper function to format CSS variable name to readable name
 const formatVarName = (cssVar: string) => {
   // Extract variable name (remove "var(" and ")" and trim)
-  const varName = cssVar.replace('var(', '').replace(')', '').trim()
-  
+  const varName = cssVar.replace('var(', '').replace(')', '').trim();
+
   // Remove dashes and convert to Title Case
   return varName
     .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join('')
-}
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+};
 
 interface Token {
-  name: string
-  value: string
-  swatch: string
-  border: boolean
+  name: string;
+  value: string;
+  swatch: string;
+  border: boolean;
 }
 
 export default function StyleGuidePage() {
-  const [groupedColors, setGroupedColors] = useState<Record<string, any>>({})
-  const [allTokens, setAllTokens] = useState<Token[]>([])
-
-  useEffect(() => {
+  const [groupedColors] = useState<
+    Record<string, Array<{ name: string; value: string; prefix: string }>>
+  >(() => {
     // Helper function to get common prefix from variable name
     const getCommonPrefix = (varName: string) => {
-      const parts = varName.split('-')
-      if (parts.length <= 2) return 'Other'
-      
+      const parts = varName.split('-');
+      if (parts.length <= 2) return 'Other';
+
       // Get first two parts as prefix and remove dashes, convert to TitleCase
-      const prefix = parts.slice(1, 3).join('-')
+      const prefix = parts.slice(1, 3).join('-');
       return prefix
         .split('-')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join('')
-    }
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('');
+    };
 
     // Helper function to get all CSS color variables automatically
     const getAllColorVariables = () => {
-      const style = getComputedStyle(document.documentElement)
-      const colorVars: Array<{name: string, value: string, prefix: string}> = []
-      
-      // Get all properties that look like color variables
+      const style = getComputedStyle(document.documentElement);
+      const colorVars: Array<{ name: string; value: string; prefix: string }> = [];
+
+      // Iterate through all CSS properties and filter color variables
       for (let i = 0; i < style.length; i++) {
-        const prop = style[i]
-        if (prop.startsWith('--')) {
-          const value = style.getPropertyValue(prop).trim()
-          
-          // Check if it's actually a color value (hex, rgb, rgba, hsl, etc.)
-          if (value && (
-            value.startsWith('#') || 
-            value.startsWith('rgb') || 
-            value.startsWith('hsl')
-          )) {
+        const prop = style[i];
+        if (
+          prop.startsWith('--') &&
+          (prop.includes('primary') ||
+            prop.includes('secondary') ||
+            prop.includes('accent') ||
+            prop.includes('neutral') ||
+            prop.includes('success') ||
+            prop.includes('warning') ||
+            prop.includes('error') ||
+            prop.includes('background') ||
+            prop.includes('foreground') ||
+            prop.includes('muted') ||
+            prop.includes('border') ||
+            prop.includes('input') ||
+            prop.includes('ring') ||
+            prop.includes('card') ||
+            prop.includes('popover') ||
+            prop.includes('text'))
+        ) {
+          const value = style.getPropertyValue(prop);
+          if (value && value !== 'initial' && value !== 'inherit') {
             colorVars.push({
               name: prop,
-              value: value,
-              prefix: getCommonPrefix(prop)
-            })
+              value: value.trim(),
+              prefix: getCommonPrefix(prop),
+            });
           }
         }
       }
-      
-      return colorVars
-    }
+
+      return colorVars;
+    };
 
     // Helper function to group colors by prefix
     const getGroupedColors = () => {
-      const colorVars = getAllColorVariables()
-      
-      return colorVars.reduce((groups, colorVar) => {
-        const prefix = colorVar.prefix
-        if (!groups[prefix]) {
-          groups[prefix] = []
+      const colorVars = getAllColorVariables();
+
+      return colorVars.reduce(
+        (groups, colorVar) => {
+          const prefix = colorVar.prefix;
+          if (!groups[prefix]) {
+            groups[prefix] = [];
+          }
+          groups[prefix].push(colorVar);
+          return groups;
+        },
+        {} as Record<string, typeof colorVars>,
+      );
+    };
+
+    return getGroupedColors();
+  });
+  const [allTokens] = useState<Token[]>(() => {
+    // Helper function to get common prefix from variable name
+    const getCommonPrefix = (varName: string) => {
+      const parts = varName.split('-');
+      if (parts.length <= 2) return 'Other';
+
+      // Get first two parts as prefix and remove dashes, convert to TitleCase
+      const prefix = parts.slice(1, 3).join('-');
+      return prefix
+        .split('-')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('');
+    };
+
+    // Helper function to get all CSS color variables automatically
+    const getAllColorVariables = () => {
+      const style = getComputedStyle(document.documentElement);
+      const colorVars: Array<{ name: string; value: string; prefix: string }> = [];
+
+      // Get all properties that look like color variables
+      for (let i = 0; i < style.length; i++) {
+        const prop = style[i];
+        if (prop.startsWith('--')) {
+          const value = style.getPropertyValue(prop).trim();
+
+          // Check if it's actually a color value (hex, rgb, rgba, hsl, etc.)
+          if (
+            value &&
+            (value.startsWith('#') || value.startsWith('rgb') || value.startsWith('hsl'))
+          ) {
+            colorVars.push({
+              name: prop,
+              value: value,
+              prefix: getCommonPrefix(prop),
+            });
+          }
         }
-        groups[prefix].push(colorVar)
-        return groups
-      }, {} as Record<string, typeof colorVars>)
-    }
+      }
+
+      return colorVars;
+    };
 
     // Helper function to format CSS variable name to readable name
     const formatTokenName = (cssVar: string) => {
       // Extract variable name (remove "--" and trim)
-      const varName = cssVar.replace('--', '').trim()
-      
+      const varName = cssVar.replace('--', '').trim();
+
       // Remove dashes and convert to TitleCase
       return varName
         .split('-')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join('')
-    }
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('');
+    };
 
     // Get all tokens for TokenRows
     const getAllTokens = (): Token[] => {
-      const colorVars = getAllColorVariables()
-      return colorVars.map(colorVar => ({
+      const colorVars = getAllColorVariables();
+      return colorVars.map((colorVar) => ({
         name: formatTokenName(colorVar.name),
         value: `var(${colorVar.name})`,
         swatch: `var(${colorVar.name})`,
-        border: colorVar.name.includes('border')
-      }))
-    }
+        border: colorVar.name.includes('border'),
+      }));
+    };
 
-    setGroupedColors(getGroupedColors())
-    setAllTokens(getAllTokens())
-  }, [])
+    return getAllTokens();
+  });
 
   return (
     <>
@@ -138,7 +195,13 @@ export default function StyleGuidePage() {
       <div className="design-hero">
         <div className="design-hero-content">
           <div className="logo-display">
-            <img src={LOGO_LOGOTYPE} alt="wev logo" className="wev-logotype" />
+            <Image
+              src={LOGO_LOGOTYPE}
+              alt="wev logo"
+              width={160}
+              height={64}
+              className="wev-logotype"
+            />
           </div>
           <p className="design-subtitle">Style Guide</p>
           <p className="design-version">Version 1.0 • February 2026</p>
@@ -213,12 +276,8 @@ export default function StyleGuidePage() {
               <div key={prefix}>
                 <h3>{prefix} Colors</h3>
                 <div className="design-color-grid">
-                  {colors.map((colorVar: any) => (
-                    <ColorCard
-                      key={colorVar.name}
-                      swatch={`var(${colorVar.name})`}
-                      tag={prefix}
-                    />
+                  {colors.map((colorVar: { name: string; value: string }) => (
+                    <ColorCard key={colorVar.name} swatch={`var(${colorVar.name})`} tag={prefix} />
                   ))}
                 </div>
               </div>
@@ -231,26 +290,22 @@ export default function StyleGuidePage() {
         <div className="design-container">
           <h2>Component System</h2>
           <p className="design-section-intro">
-            We use four distinct components for interaction patterns: Button for actions, LinkButton for navigation that looks like buttons,
-            StyledLink for navigation with flexible styling, and ButtonLink for actions that should look like inline links.
+            We use four distinct components for interaction patterns: Button for actions, LinkButton
+            for navigation that looks like buttons, StyledLink for navigation with flexible styling,
+            and ButtonLink for actions that should look like inline links.
           </p>
 
           <div className="design-button-grid">
             <div className="design-button-example">
               <div className="design-button-label">Button Component</div>
               <p className="design-button-description">
-                Pure actions that don't navigate. Form submission, modals, API calls, state changes.
+                Pure actions that don&apos;t navigate. Form submission, modals, API calls, state
+                changes.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button type="button">
-                  Save Changes
-                </Button>
-                <Button variant="secondary">
-                  Copy to Clipboard
-                </Button>
-                <Button variant="outline">
-                  Cancel
-                </Button>
+                <Button type="button">Save Changes</Button>
+                <Button variant="secondary">Copy to Clipboard</Button>
+                <Button variant="outline">Cancel</Button>
               </div>
               <div className="design-usage-examples">
                 <p className="text-sm text-muted-foreground mt-4">
@@ -265,9 +320,7 @@ export default function StyleGuidePage() {
                 Navigation that looks exactly like a button. Same visual variants as Button.
               </p>
               <div className="flex flex-wrap gap-2">
-                <LinkButton href="/profile">
-                  View Profile
-                </LinkButton>
+                <LinkButton href="/profile">View Profile</LinkButton>
                 <LinkButton href="/" variant="secondary">
                   Back to Jobs
                 </LinkButton>
@@ -311,12 +364,11 @@ export default function StyleGuidePage() {
             <div className="design-button-example">
               <div className="design-button-label">ButtonLink Component</div>
               <p className="design-button-description">
-                Actions that should look like links (toggle/collapse, clear, reset). This stays a semantic button.
+                Actions that should look like links (toggle/collapse, clear, reset). This stays a
+                semantic button.
               </p>
               <div className="flex flex-wrap gap-3 items-center">
-                <ButtonLink onClick={() => undefined}>
-                  Collapse all
-                </ButtonLink>
+                <ButtonLink onClick={() => undefined}>Collapse all</ButtonLink>
                 <ButtonLink tone="muted" size="xs" className="underline" onClick={() => undefined}>
                   Show all jobs
                 </ButtonLink>
@@ -344,20 +396,25 @@ export default function StyleGuidePage() {
                   <LinkButton href="/" variant="outline">
                     Back to Jobs
                   </LinkButton>
-                  <Button type="submit">
-                    Save Profile
-                  </Button>
+                  <Button type="submit">Save Profile</Button>
                 </div>
               </div>
               <div className="design-layout-code">
                 <code className="text-xs bg-card p-2 rounded block">
-                  &lt;div className="flex justify-between gap-3"&gt;<br/>
-                  &nbsp;&nbsp;&lt;LinkButton href="/" variant="outline"&gt;<br/>
-                  &nbsp;&nbsp;&nbsp;&nbsp;Back to Jobs<br/>
-                  &nbsp;&nbsp;&lt;/LinkButton&gt;<br/>
-                  &nbsp;&nbsp;&lt;Button type="submit"&gt;<br/>
-                  &nbsp;&nbsp;&nbsp;&nbsp;Save Profile<br/>
-                  &nbsp;&nbsp;&lt;/Button&gt;<br/>
+                  &lt;div className="flex justify-between gap-3"&gt;
+                  <br />
+                  &nbsp;&nbsp;&lt;LinkButton href="/" variant="outline"&gt;
+                  <br />
+                  &nbsp;&nbsp;&nbsp;&nbsp;Back to Jobs
+                  <br />
+                  &nbsp;&nbsp;&lt;/LinkButton&gt;
+                  <br />
+                  &nbsp;&nbsp;&lt;Button type="submit"&gt;
+                  <br />
+                  &nbsp;&nbsp;&nbsp;&nbsp;Save Profile
+                  <br />
+                  &nbsp;&nbsp;&lt;/Button&gt;
+                  <br />
                   &lt;/div&gt;
                 </code>
               </div>
@@ -370,17 +427,19 @@ export default function StyleGuidePage() {
               </p>
               <div className="design-layout-preview">
                 <div className="flex justify-end gap-3">
-                  <Button type="submit">
-                    Submit Application
-                  </Button>
+                  <Button type="submit">Submit Application</Button>
                 </div>
               </div>
               <div className="design-layout-code">
                 <code className="text-xs bg-card p-2 rounded block">
-                  &lt;div className="flex justify-end gap-3"&gt;<br/>
-                  &nbsp;&nbsp;&lt;Button type="submit"&gt;<br/>
-                  &nbsp;&nbsp;&nbsp;&nbsp;Submit Application<br/>
-                  &nbsp;&nbsp;&lt;/Button&gt;<br/>
+                  &lt;div className="flex justify-end gap-3"&gt;
+                  <br />
+                  &nbsp;&nbsp;&lt;Button type="submit"&gt;
+                  <br />
+                  &nbsp;&nbsp;&nbsp;&nbsp;Submit Application
+                  <br />
+                  &nbsp;&nbsp;&lt;/Button&gt;
+                  <br />
                   &lt;/div&gt;
                 </code>
               </div>
@@ -405,9 +464,7 @@ export default function StyleGuidePage() {
                 Main action, one per view. Uses Muted Teal.
               </p>
               <div className="space-y-2">
-                <Button type="button">
-                  Save Changes
-                </Button>
+                <Button type="button">Save Changes</Button>
                 <Button type="button" disabled>
                   Disabled
                 </Button>
@@ -416,11 +473,11 @@ export default function StyleGuidePage() {
 
             <div className="design-button-example">
               <div className="design-button-label">Secondary Button</div>
-              <p className="design-button-description">Supporting action with teal outline and fill on hover.</p>
+              <p className="design-button-description">
+                Supporting action with teal outline and fill on hover.
+              </p>
               <div className="space-y-2">
-                <Button variant="secondary">
-                  Copy to Clipboard
-                </Button>
+                <Button variant="secondary">Copy to Clipboard</Button>
                 <Button variant="secondary" disabled>
                   Disabled
                 </Button>
@@ -431,9 +488,7 @@ export default function StyleGuidePage() {
               <div className="design-button-label">Outline Button</div>
               <p className="design-button-description">Low-emphasis, border-only style.</p>
               <div className="space-y-2">
-                <Button variant="outline">
-                  Cancel
-                </Button>
+                <Button variant="outline">Cancel</Button>
                 <Button variant="outline" disabled>
                   Disabled
                 </Button>
@@ -443,7 +498,8 @@ export default function StyleGuidePage() {
 
           <h3>Navigation Components</h3>
           <p className="design-section-intro">
-            Navigation components use the same visual styles as buttons but include prefetch for performance.
+            Navigation components use the same visual styles as buttons but include prefetch for
+            performance.
           </p>
 
           <div className="design-button-grid">
@@ -453,9 +509,7 @@ export default function StyleGuidePage() {
                 Navigation that looks like a primary button.
               </p>
               <div className="space-y-2">
-                <LinkButton href="/profile">
-                  View Profile
-                </LinkButton>
+                <LinkButton href="/profile">View Profile</LinkButton>
                 <LinkButton href="/profile" className="opacity-50">
                   Disabled State
                 </LinkButton>
@@ -464,7 +518,9 @@ export default function StyleGuidePage() {
 
             <div className="design-button-example">
               <div className="design-button-label">LinkButton (Secondary)</div>
-              <p className="design-button-description">Navigation with teal outline and fill on hover.</p>
+              <p className="design-button-description">
+                Navigation with teal outline and fill on hover.
+              </p>
               <div className="space-y-2">
                 <LinkButton href="/" variant="secondary">
                   Back to Jobs
@@ -497,9 +553,7 @@ export default function StyleGuidePage() {
           <div className="design-button-grid">
             <div className="design-button-example">
               <div className="design-button-label">StyledLink (Text)</div>
-              <p className="design-button-description">
-                Text-style navigation with theme colors.
-              </p>
+              <p className="design-button-description">Text-style navigation with theme colors.</p>
               <div className="space-y-2">
                 <StyledLink href="/docs" variant="text">
                   Documentation
@@ -513,15 +567,21 @@ export default function StyleGuidePage() {
 
             <div className="design-button-example">
               <div className="design-button-label">Standard Link</div>
-              <p className="design-button-description">
-                Basic text links with theme colors.
-              </p>
+              <p className="design-button-description">Basic text links with theme colors.</p>
               <div className="space-y-2">
-                <Link href="/profile" className="text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]" prefetch={true}>
+                <Link
+                  href="/profile"
+                  className="text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]"
+                  prefetch={true}
+                >
                   View Profile
                 </Link>
                 <br />
-                <Link href="/help" className="text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]" prefetch={true}>
+                <Link
+                  href="/help"
+                  className="text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]"
+                  prefetch={true}
+                >
                   Help Documentation
                 </Link>
               </div>
@@ -541,29 +601,17 @@ export default function StyleGuidePage() {
 
           <h3>Toast Messages</h3>
           <div className="design-toast-grid">
-            <BannerMessage 
-              type="success" 
-              message="Your changes have been saved successfully" 
-            />
-            <BannerMessage 
-              type="error" 
-              message="There was an error processing your request" 
-            />
-            <BannerMessage 
-              type="warning" 
-              message="Your session will expire in 5 minutes" 
-            />
-            <BannerMessage 
-              type="info" 
-              message="New features are now available in your dashboard" 
-            />
+            <BannerMessage type="success" message="Your changes have been saved successfully" />
+            <BannerMessage type="error" message="There was an error processing your request" />
+            <BannerMessage type="warning" message="Your session will expire in 5 minutes" />
+            <BannerMessage type="info" message="New features are now available in your dashboard" />
           </div>
 
           <h4>Try It Out</h4>
           <p className="design-section-intro">
             Click the links below to see each toast type in action with the live styling.
           </p>
-          
+
           <div className="design-button-grid">
             <div className="design-button-example">
               <div className="design-button-label">Success Toast</div>
@@ -572,7 +620,7 @@ export default function StyleGuidePage() {
               </p>
               <button
                 onClick={() => {
-                  notify.success('Your profile has been updated successfully!')
+                  notify.success('Your profile has been updated successfully!');
                 }}
                 className="text-[var(--primary)] hover:underline"
               >
@@ -587,7 +635,7 @@ export default function StyleGuidePage() {
               </p>
               <button
                 onClick={() => {
-                  notify.error('Failed to save changes. Please try again.')
+                  notify.error('Failed to save changes. Please try again.');
                 }}
                 className="text-[var(--primary)] hover:underline"
               >
@@ -602,7 +650,7 @@ export default function StyleGuidePage() {
               </p>
               <button
                 onClick={() => {
-                  notify.warning('Your session will expire in 5 minutes.')
+                  notify.warning('Your session will expire in 5 minutes.');
                 }}
                 className="text-[var(--primary)] hover:underline"
               >
@@ -617,7 +665,7 @@ export default function StyleGuidePage() {
               </p>
               <button
                 onClick={() => {
-                  notify.info('Processing your request...')
+                  notify.info('Processing your request...');
                 }}
                 className="text-[var(--primary)] hover:underline"
               >
@@ -627,22 +675,10 @@ export default function StyleGuidePage() {
           </div>
 
           <h3>Banner Messages</h3>
-          <BannerMessage 
-            type="success" 
-            message="Success: Your profile has been updated" 
-          />
-          <BannerMessage 
-            type="error" 
-            message="Alert: Unable to connect to server" 
-          />
-          <BannerMessage 
-            type="warning" 
-            message="Warning: Unsaved changes will be lost" 
-          />
-          <BannerMessage 
-            type="info" 
-            message="Info: Maintenance scheduled for tonight" 
-          />
+          <BannerMessage type="success" message="Success: Your profile has been updated" />
+          <BannerMessage type="error" message="Alert: Unable to connect to server" />
+          <BannerMessage type="warning" message="Warning: Unsaved changes will be lost" />
+          <BannerMessage type="info" message="Info: Maintenance scheduled for tonight" />
         </div>
       </section>
 
@@ -698,7 +734,13 @@ export default function StyleGuidePage() {
           <div className="design-logo-grid">
             <div className="design-logo-showcase design-logo-bg-light">
               <div className="design-logo-placeholder">
-                <img src={LOGO_LOGOTYPE} alt="wev logo" className="wev-logotype" />
+                <Image
+                  src={LOGO_LOGOTYPE}
+                  alt="wev logo"
+                  width={200}
+                  height={80}
+                  className="wev-logotype"
+                />
               </div>
               <div className="design-logo-title">Primary Logotype</div>
               <p className="design-logo-description">
@@ -708,7 +750,7 @@ export default function StyleGuidePage() {
 
             <div className="design-logo-showcase design-logo-bg-light">
               <div className="design-logo-placeholder">
-                <img src={LOGO_MARK} alt="wev logo mark" />
+                <Image src={LOGO_MARK} alt="wev logo mark" width={120} height={120} />
               </div>
               <div className="design-logo-title">Logo Mark</div>
               <p className="design-logo-description">
@@ -721,8 +763,8 @@ export default function StyleGuidePage() {
           <div className="mt-8">
             <h4>Clear Space</h4>
             <p className="text-muted-foreground mb-8">
-              Maintain clear space around the logo equal to the height of the 'w'. This
-              ensures visual distinction.
+              Maintain clear space around the logo equal to the height of the 'w'. This ensures
+              visual distinction.
             </p>
 
             <h4>Minimum Size</h4>
@@ -752,8 +794,7 @@ export default function StyleGuidePage() {
             Our dark mode palette maintains brand identity while optimizing for low-light
             environments. All colors meet WCAG 2.1 Level AA contrast requirements for accessibility.
           </p>
-
-                  </div>
+        </div>
       </section>
 
       {/* Accessibility */}
@@ -902,24 +943,36 @@ export default function StyleGuidePage() {
           <div className="design-token-sheet">
             {(() => {
               // Group tokens by category for better organization
-              const tokenCategories = allTokens.reduce((categories: Record<string, Token[]>, token: Token) => {
-                let category = 'Other'
-                if (token.name.includes('Bg') || token.name.includes('Surface') || token.name.includes('Border')) {
-                  category = 'Background & Surface'
-                } else if (token.name.includes('Text')) {
-                  category = 'Text Colors'
-                } else if (token.name.includes('Primary') || token.name.includes('Accent')) {
-                  category = 'Brand Colors'
-                } else if (token.name.includes('Success') || token.name.includes('Alert') || token.name.includes('Warn') || token.name.includes('Info')) {
-                  category = 'Semantic Colors'
-                }
-                
-                if (!categories[category]) {
-                  categories[category] = []
-                }
-                categories[category].push(token)
-                return categories
-              }, {} as Record<string, Token[]>)
+              const tokenCategories = allTokens.reduce(
+                (categories: Record<string, Token[]>, token: Token) => {
+                  let category = 'Other';
+                  if (
+                    token.name.includes('Bg') ||
+                    token.name.includes('Surface') ||
+                    token.name.includes('Border')
+                  ) {
+                    category = 'Background & Surface';
+                  } else if (token.name.includes('Text')) {
+                    category = 'Text Colors';
+                  } else if (token.name.includes('Primary') || token.name.includes('Accent')) {
+                    category = 'Brand Colors';
+                  } else if (
+                    token.name.includes('Success') ||
+                    token.name.includes('Alert') ||
+                    token.name.includes('Warn') ||
+                    token.name.includes('Info')
+                  ) {
+                    category = 'Semantic Colors';
+                  }
+
+                  if (!categories[category]) {
+                    categories[category] = [];
+                  }
+                  categories[category].push(token);
+                  return categories;
+                },
+                {} as Record<string, Token[]>,
+              );
 
               return Object.entries(tokenCategories)
                 .sort(([a], [b]) => a.localeCompare(b))
@@ -927,16 +980,16 @@ export default function StyleGuidePage() {
                   <div key={category} className="design-token-category">
                     <div className="design-token-category-title">{category}</div>
                     {tokens.map((token) => (
-                      <TokenRow 
+                      <TokenRow
                         key={token.name}
-                        name={token.name} 
-                        value={token.value} 
-                        swatch={token.swatch} 
+                        name={token.name}
+                        value={token.value}
+                        swatch={token.swatch}
                         border={token.border}
                       />
                     ))}
                   </div>
-                ))
+                ));
             })()}
           </div>
         </div>
@@ -948,45 +1001,45 @@ export default function StyleGuidePage() {
           <p>wev Style Guide • Version 1.0 • February 2026</p>
           <p>For questions about brand implementation, contact the design team</p>
           <p className="mt-4">
-            <Link href="/" className="underline opacity-80 hover:opacity-100" style={{ color: 'var(--background)' }}>
+            <Link
+              href="/"
+              className="underline opacity-80 hover:opacity-100"
+              style={{ color: 'var(--background)' }}
+            >
               ← Back to Bulletin
             </Link>
           </p>
         </div>
       </section>
     </>
-  )
+  );
 }
 
-function ColorCard({
-  swatch,
-  tag,
-}: {
-  swatch: string
-  tag: string
-}) {
+function ColorCard({ swatch, tag }: { swatch: string; tag: string }) {
   const [colorData, setColorData] = useState({
     hex: '',
-    rgb: ''
-  })
+    rgb: '',
+  });
 
   useEffect(() => {
     // Extract CSS variable name from swatch string
-    const cssVarName = swatch.replace('var(', '').replace(')', '').trim()
-    
+    const cssVarName = swatch.replace('var(', '').replace(')', '').trim();
+
     // Get actual CSS variable value
-    const value = getComputedStyle(document.documentElement)
-      .getPropertyValue(cssVarName)
-      .trim()
-    
-    setColorData({
-      hex: value,
-      rgb: hexToRgb(value)
-    })
-  }, [swatch])
+    const value = getComputedStyle(document.documentElement).getPropertyValue(cssVarName).trim();
+
+    setTimeout(
+      () =>
+        setColorData({
+          hex: value,
+          rgb: hexToRgb(value),
+        }),
+      0,
+    );
+  }, [swatch]);
 
   // Auto-generate name from CSS variable
-  const name = formatVarName(swatch)
+  const name = formatVarName(swatch);
 
   return (
     <div className="design-color-card">
@@ -1004,7 +1057,7 @@ function ColorCard({
         <div className="design-usage-tag">{tag}</div>
       </div>
     </div>
-  )
+  );
 }
 
 function ContrastCard({
@@ -1014,18 +1067,15 @@ function ContrastCard({
   ratio,
   badge,
 }: {
-  bg: string
-  color: string
-  text: string
-  ratio: string
-  badge: string
+  bg: string;
+  color: string;
+  text: string;
+  ratio: string;
+  badge: string;
 }) {
   return (
     <div className="design-contrast-card">
-      <div
-        className="design-contrast-preview"
-        style={{ background: bg, color }}
-      >
+      <div className="design-contrast-preview" style={{ background: bg, color }}>
         {text}
       </div>
       <div className="design-contrast-info">
@@ -1033,7 +1083,7 @@ function ContrastCard({
         <span className="design-contrast-badge">{badge}</span>
       </div>
     </div>
-  )
+  );
 }
 
 function TokenRow({
@@ -1042,10 +1092,10 @@ function TokenRow({
   swatch,
   border,
 }: {
-  name: string
-  value: string
-  swatch: string
-  border?: boolean
+  name: string;
+  value: string;
+  swatch: string;
+  border?: boolean;
 }) {
   return (
     <div className="design-token-row">
@@ -1059,5 +1109,5 @@ function TokenRow({
         }}
       />
     </div>
-  )
+  );
 }

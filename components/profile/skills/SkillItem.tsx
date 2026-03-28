@@ -1,37 +1,37 @@
-import { Badge } from '@/components/ui/Badge'
-import { Checkbox } from '@/components/ui/Checkbox'
-import { useTranslations } from 'next-intl'
-import type { SkillMatch } from './SkillsModal'
+import { Badge } from '@/components/ui/Badge';
+import { Checkbox } from '@/components/ui/Checkbox';
+import { useTranslations } from 'next-intl';
+import type { SkillMatch } from './SkillsModal';
 
 interface SkillItemProps {
-  id: string
-  skill: SkillMatch
-  isActive: boolean
-  isSelected: boolean
-  onToggle: () => void
-  locale: 'en' | 'fr'
+  id: string;
+  skill: SkillMatch;
+  isActive: boolean;
+  isSelected: boolean;
+  onToggle: () => void;
+  locale: 'en' | 'fr';
 }
 
 const SKILL_TYPE_COLOURS: Record<string, string> = {
   skill: 'bg-green-50 text-green-700 border-green-200',
   knowledge: 'bg-yellow-50 text-yellow-800 border-yellow-200',
-}
+};
 
 const REUSE_LEVEL_COLOURS: Record<string, string> = {
   transversal: 'bg-green-50 text-green-700 border-green-200',
   'cross-sector': 'bg-blue-50 text-blue-700 border-blue-200',
   'sector-specific': 'bg-purple-50 text-purple-700 border-purple-200',
   'occupation-specific': 'bg-orange-50 text-orange-700 border-orange-200',
-}
+};
 
 function formatEnumLabel(value: string | null | undefined): string {
-  const clean = (value ?? '').trim()
-  if (!clean) return ''
+  const clean = (value ?? '').trim();
+  if (!clean) return '';
   return clean
     .replace(/[_-]+/g, ' ')
     .split(' ')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+    .join(' ');
 }
 
 export default function SkillItem({
@@ -42,7 +42,7 @@ export default function SkillItem({
   onToggle,
   locale,
 }: SkillItemProps) {
-  const t = useTranslations('profile')
+  const t = useTranslations('profile');
 
   return (
     <div
@@ -80,17 +80,23 @@ export default function SkillItem({
         )}
         <div className="mt-1.5 flex flex-wrap gap-1">
           {skill.skillType && (
-            <Badge variant="outline" className={`text-[10px] ${SKILL_TYPE_COLOURS[skill.skillType] || ''}`}>
+            <Badge
+              variant="outline"
+              className={`text-[10px] ${SKILL_TYPE_COLOURS[skill.skillType] || ''}`}
+            >
               {formatEnumLabel(skill.skillType)}
             </Badge>
           )}
           {skill.reuseLevel && (
-            <Badge variant="outline" className={`text-[10px] ${REUSE_LEVEL_COLOURS[skill.reuseLevel] || ''}`}>
+            <Badge
+              variant="outline"
+              className={`text-[10px] ${REUSE_LEVEL_COLOURS[skill.reuseLevel] || ''}`}
+            >
               {formatEnumLabel(skill.reuseLevel)}
             </Badge>
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }

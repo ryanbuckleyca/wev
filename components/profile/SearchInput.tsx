@@ -1,14 +1,14 @@
-import { Search, X, Loader2 } from 'lucide-react'
+import { Search, X, Loader2 } from 'lucide-react';
 
 interface SearchInputProps {
-  query: string
-  onQueryChange: (value: string) => void
-  inputRef?: React.RefObject<HTMLInputElement | null>
-  onClear: () => void
-  placeholder?: string
-  isSearching?: boolean
-  listboxId?: string
-  ariaDescribedBy?: string
+  query: string;
+  onQueryChange: (value: string) => void;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+  onClear: () => void;
+  placeholder?: string;
+  isSearching?: boolean;
+  listboxId?: string;
+  ariaDescribedBy?: string;
 }
 
 export default function SearchInput({
@@ -47,5 +47,5 @@ export default function SearchInput({
         </button>
       )}
     </div>
-  )
+  );
 }

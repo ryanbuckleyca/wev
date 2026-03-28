@@ -1,34 +1,14 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react';
 
 export function useTheme() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  const [mounted, setMounted] = useState(false)
+  const [theme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'light';
+    const current = document.documentElement.getAttribute('data-theme') as 'light' | 'dark';
+    return current === 'dark' || current === 'light' ? current : 'light';
+  });
+  const [mounted] = useState(() => typeof window !== 'undefined');
 
-  useEffect(() => {
-    setMounted(true)
-    const current = document.documentElement.getAttribute('data-theme') as 'light' | 'dark'
-    if (current === 'dark' || current === 'light') {
-      setTheme(current)
-    }
-  }, [])
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const current = document.documentElement.getAttribute('data-theme') as 'light' | 'dark'
-      if (current === 'dark' || current === 'light') {
-        setTheme(current)
-      }
-    })
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme']
-    })
-
-    return () => observer.disconnect()
-  }, [])
-
-  return { theme, mounted }
+  return { theme, mounted };
 }

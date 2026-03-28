@@ -11,7 +11,7 @@
  * Reading `.value` from each object must reproduce the original string set.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // The backfill logic under test (mirrors the SQL migration exactly):
@@ -19,15 +19,15 @@ import { describe, it, expect } from 'vitest'
 // ---------------------------------------------------------------------------
 
 interface BackfilledValue {
-  value: string
+  value: string;
 }
 
 function backfillValuesRated(values: string[]): BackfilledValue[] {
-  return values.map((v) => ({ value: v }))
+  return values.map((v) => ({ value: v }));
 }
 
 function extractValues(valuesRated: BackfilledValue[]): string[] {
-  return valuesRated.map((r) => r.value)
+  return valuesRated.map((r) => r.value);
 }
 
 // ---------------------------------------------------------------------------
@@ -35,14 +35,14 @@ function extractValues(valuesRated: BackfilledValue[]): string[] {
 // ---------------------------------------------------------------------------
 
 function assertRoundTrip(input: string[]): void {
-  const valuesRated = backfillValuesRated(input)
-  const extracted = extractValues(valuesRated)
+  const valuesRated = backfillValuesRated(input);
+  const extracted = extractValues(valuesRated);
 
-  expect(new Set(extracted)).toEqual(new Set(input))
-  expect(extracted).toHaveLength(input.length)
+  expect(new Set(extracted)).toEqual(new Set(input));
+  expect(extracted).toHaveLength(input.length);
 
   for (let i = 0; i < input.length; i++) {
-    expect(extracted[i]).toBe(input[i])
+    expect(extracted[i]).toBe(input[i]);
   }
 }
 
@@ -92,23 +92,23 @@ describe('migration backfill round-trip (profiles.values → values_rated[*].val
     },
     { label: 'empty string value', input: [''] },
     { label: 'mixed empty and non-empty', input: ['', 'Community', ''] },
-  ]
+  ];
 
   it.each(cases)('round-trip holds for: $label', ({ input }) => {
-    assertRoundTrip(input)
-  })
+    assertRoundTrip(input);
+  });
 
   it('each backfilled object has exactly the key "value"', () => {
-    const input = ['Community', 'Creativity']
-    const valuesRated = backfillValuesRated(input)
+    const input = ['Community', 'Creativity'];
+    const valuesRated = backfillValuesRated(input);
     for (const entry of valuesRated) {
-      expect(Object.keys(entry)).toEqual(['value'])
+      expect(Object.keys(entry)).toEqual(['value']);
     }
-  })
+  });
 
   it('order is preserved after backfill', () => {
-    const input = ['Creativity', 'Community', 'Challenge']
-    const extracted = extractValues(backfillValuesRated(input))
-    expect(extracted).toEqual(input)
-  })
-})
+    const input = ['Creativity', 'Community', 'Challenge'];
+    const extracted = extractValues(backfillValuesRated(input));
+    expect(extracted).toEqual(input);
+  });
+});

@@ -1,49 +1,46 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
-import { Link, useRouter } from '@/i18n/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { useAuth } from '@/contexts/AuthContext'
-import TurnstileWidget from '@/components/TurnstileWidget'
-import PageLayout from '@/components/PageLayout'
-import CardLayout from '@/components/CardLayout'
-import Heading from '@/components/Heading'
-import FormContainer from '@/components/FormContainer'
-import FormField from '@/components/FormField'
-import FormLabel from '@/components/FormLabel'
-import FormInput from '@/components/FormInput'
-import Button from '@/components/Button'
-import ErrorBox from '@/components/ErrorBox'
-import LinkButton from '@/components/LinkButton'
+import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Link, useRouter } from '@/i18n/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import TurnstileWidget from '@/components/TurnstileWidget';
+import PageLayout from '@/components/PageLayout';
+import CardLayout from '@/components/CardLayout';
+import Heading from '@/components/Heading';
+import FormContainer from '@/components/FormContainer';
+import FormField from '@/components/FormField';
+import Button from '@/components/Button';
+import ErrorBox from '@/components/ErrorBox';
 
 export default function LoginPage() {
-  const t = useTranslations()
-  const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const t = useTranslations();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
-  const supabase = createClient()
+  const supabase = createClient();
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace('/')
+      router.replace('/');
     }
-  }, [authLoading, user, router])
+  }, [authLoading, user, router]);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
     if (!captchaToken) {
-      setError(t('auth.login.captchaRequired'))
-      setLoading(false)
-      return
+      setError(t('auth.login.captchaRequired'));
+      setLoading(false);
+      return;
     }
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -52,20 +49,22 @@ export default function LoginPage() {
       options: {
         captchaToken,
       },
-    })
+    });
     if (error) {
-      setError(error.message)
+      setError(error.message);
     } else {
-      router.replace('/')
+      router.replace('/');
     }
 
-    setLoading(false)
+    setLoading(false);
   }
 
   return (
     <PageLayout variant="centered">
       <CardLayout>
-        <Heading level={1} className="text-center mb-6">{t('auth.login.title')}</Heading>
+        <Heading level={1} className="text-center mb-6">
+          {t('auth.login.title')}
+        </Heading>
 
         <FormContainer onSubmit={handleSubmit}>
           <FormField
@@ -100,25 +99,18 @@ export default function LoginPage() {
           <TurnstileWidget
             onSuccess={(token) => setCaptchaToken(token)}
             onError={() => {
-              setCaptchaToken(null)
-              setError(t('auth.login.captchaError'))
+              setCaptchaToken(null);
+              setError(t('auth.login.captchaError'));
             }}
             onExpire={() => setCaptchaToken(null)}
           />
 
-          <Button
-            type="submit"
-            disabled={loading || !captchaToken}
-            loading={loading}
-            fullWidth
-          >
+          <Button type="submit" disabled={loading || !captchaToken} loading={loading} fullWidth>
             {loading ? t('auth.login.submitting') : t('auth.login.submit')}
           </Button>
         </FormContainer>
 
-        {error && (
-          <ErrorBox className="mt-4">{error}</ErrorBox>
-        )}
+        {error && <ErrorBox className="mt-4">{error}</ErrorBox>}
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--muted-foreground)' }}>
           {t('auth.login.noAccount')}{' '}
@@ -132,5 +124,5 @@ export default function LoginPage() {
         </p>
       </CardLayout>
     </PageLayout>
-  )
+  );
 }

@@ -1,30 +1,30 @@
-'use client'
+'use client';
 
-import { useLocale, useTranslations } from 'next-intl'
-import { usePathname, useRouter } from '@/i18n/navigation'
-import { useSearchParams } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl';
+import { usePathname, useRouter } from '@/i18n/navigation';
+import { useSearchParams } from 'next/navigation';
 
 export default function LocaleSwitcher() {
-  const locale = useLocale()
-  const pathname = usePathname()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const t = useTranslations()
+  const locale = useLocale();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const t = useTranslations();
 
   const toggleLocale = () => {
-    const newLocale = locale === 'en' ? 'fr' : 'en'
-    
+    const newLocale = locale === 'en' ? 'fr' : 'en';
+
     // Preserve query parameters when switching locales
-    const queryString = searchParams.toString()
-    
+    const queryString = searchParams.toString();
+
     // usePathname() returns pathname without locale prefix (e.g., "/" or "/profile")
     // router.replace with { locale } option will add the locale prefix automatically
     if (queryString) {
-      router.replace(`${pathname}?${queryString}`, { locale: newLocale })
+      router.replace(`${pathname}?${queryString}`, { locale: newLocale });
     } else {
-      router.replace(pathname, { locale: newLocale })
+      router.replace(pathname, { locale: newLocale });
     }
-  }
+  };
 
   return (
     <button
@@ -53,5 +53,5 @@ export default function LocaleSwitcher() {
         </div>
       </div>
     </button>
-  )
+  );
 }

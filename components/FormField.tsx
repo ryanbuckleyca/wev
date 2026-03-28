@@ -1,21 +1,21 @@
-import FormLabel from '@/components/FormLabel'
-import FormInput from '@/components/FormInput'
-import ErrorMessage from '@/components/ErrorMessage'
+import FormLabel from '@/components/FormLabel';
+import FormInput from '@/components/FormInput';
+import ErrorMessage from '@/components/ErrorMessage';
 
 interface FormFieldProps {
-  label: string
-  type?: 'text' | 'email' | 'password'
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  required?: boolean
-  disabled?: boolean
-  error?: string
-  fullWidth?: boolean
-  htmlFor?: string
+  label: string;
+  type?: 'text' | 'email' | 'password';
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  error?: string;
+  fullWidth?: boolean;
+  htmlFor?: string;
 }
 
-export default function FormField({ 
+export default function FormField({
   label,
   type = 'text',
   value,
@@ -25,7 +25,7 @@ export default function FormField({
   disabled = false,
   error,
   fullWidth = false,
-  htmlFor
+  htmlFor,
 }: FormFieldProps) {
   return (
     <div className="space-y-2">
@@ -43,5 +43,5 @@ export default function FormField({
       />
       {error && <ErrorMessage>{error}</ErrorMessage>}
     </div>
-  )
+  );
 }

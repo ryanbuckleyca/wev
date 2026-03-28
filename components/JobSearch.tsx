@@ -1,31 +1,31 @@
-'use client'
+'use client';
 
-import { useTranslations } from 'next-intl'
-import Pill from './Pill'
-import ButtonLink from './ButtonLink'
-import FilterIcon from './FilterIcon'
-import { Lineicons } from '@lineiconshq/react-lineicons'
-import { Search1Outlined } from '@lineiconshq/free-icons'
+import { useTranslations } from 'next-intl';
+import Pill from './Pill';
+import ButtonLink from './ButtonLink';
+import FilterIcon from './FilterIcon';
+import { Lineicons } from '@lineiconshq/react-lineicons';
+import { Search1Outlined } from '@lineiconshq/free-icons';
 
 export interface ActiveFilterChip {
-  id: string
-  label: string
-  onRemove?: () => void
-  title?: string
+  id: string;
+  label: string;
+  onRemove?: () => void;
+  title?: string;
 }
 
 interface JobSearchProps {
-  searchQuery: string
-  onSearchChange: (query: string) => void
-  filtersExpanded: boolean
-  onFiltersExpandedChange: (expanded: boolean) => void
-  activeFilterChips: ActiveFilterChip[]
-  filteredJobsCount: number
-  totalJobsCount: number
-  hasAnyFilters: boolean
-  isSuggestedDefaults: boolean
-  onClearAllFilters: () => void
-  onApplySuggestedDefaults: () => void
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  filtersExpanded: boolean;
+  onFiltersExpandedChange: (expanded: boolean) => void;
+  activeFilterChips: ActiveFilterChip[];
+  filteredJobsCount: number;
+  totalJobsCount: number;
+  hasAnyFilters: boolean;
+  isSuggestedDefaults: boolean;
+  onClearAllFilters: () => void;
+  onApplySuggestedDefaults: () => void;
 }
 
 export default function JobSearch({
@@ -41,8 +41,8 @@ export default function JobSearch({
   onClearAllFilters,
   onApplySuggestedDefaults,
 }: JobSearchProps) {
-  const t = useTranslations()
-  const placeholder = t('search.placeholder')
+  const t = useTranslations();
+  const placeholder = t('search.placeholder');
   return (
     <>
       <div className="p-3 sm:p-4">
@@ -75,7 +75,9 @@ export default function JobSearch({
             aria-controls="job-filters-content"
           >
             <FilterIcon className="w-4 h-4" aria-hidden />
-            <span className="max-[519px]:hidden">{filtersExpanded ? t('filters.hideFilters') : t('filters.showFilters')}</span>
+            <span className="max-[519px]:hidden">
+              {filtersExpanded ? t('filters.hideFilters') : t('filters.showFilters')}
+            </span>
             <span className="inline-flex min-w-[1.25rem] h-5 px-1.5 items-center justify-center rounded-full bg-primary text-white text-xs font-semibold">
               {activeFilterChips.length}
             </span>
@@ -86,7 +88,8 @@ export default function JobSearch({
       <div className="px-3 sm:px-4 py-2.5 bg-muted border-t border-border flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted-foreground whitespace-nowrap">
-            <strong className="font-semibold text-foreground">{filteredJobsCount}</strong> {t('pagination.of')} {totalJobsCount}{' '}
+            <strong className="font-semibold text-foreground">{filteredJobsCount}</strong>{' '}
+            {t('pagination.of')} {totalJobsCount}{' '}
             {totalJobsCount === 1 ? t('pagination.job') : t('pagination.jobs')}
           </span>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -108,12 +111,7 @@ export default function JobSearch({
         {(hasAnyFilters || !isSuggestedDefaults) && (
           <div className="flex flex-wrap items-center gap-3">
             {hasAnyFilters && (
-              <ButtonLink
-                onClick={onClearAllFilters}
-                tone="muted"
-                size="xs"
-                className="underline"
-              >
+              <ButtonLink onClick={onClearAllFilters} tone="muted" size="xs" className="underline">
                 {t('filters.showAllJobs')}
               </ButtonLink>
             )}
@@ -131,5 +129,5 @@ export default function JobSearch({
         )}
       </div>
     </>
-  )
+  );
 }

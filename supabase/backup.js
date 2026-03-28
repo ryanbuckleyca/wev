@@ -8,16 +8,15 @@ const SUPABASE_URL = process.env.SUPABASE_PROD_URL || 'https://teuvfoftdjfsnkkbn
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_PROD_SECRET_KEY || '<YOUR_SERVICE_ROLE_KEY>';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false }
+  auth: { persistSession: false },
 });
-
-
 
 // Dynamically extract table names from all migration .sql files
 function getAllMigrationFiles(migrationsDir) {
-  return fs.readdirSync(migrationsDir)
-    .filter(f => f.endsWith('.sql'))
-    .map(f => path.join(migrationsDir, f));
+  return fs
+    .readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .map((f) => path.join(migrationsDir, f));
 }
 
 function extractTablesFromSql(sql) {
@@ -82,10 +81,12 @@ async function backupTable(table, schema = 'public') {
   if (!fs.existsSync(backupDir)) {
     fs.mkdirSync(backupDir, { recursive: true });
   }
-  fs.writeFileSync(path.join(backupDir, `backup_${schema}_${table}.json`), JSON.stringify(data, null, 2));
+  fs.writeFileSync(
+    path.join(backupDir, `backup_${schema}_${table}.json`),
+    JSON.stringify(data, null, 2),
+  );
   console.log(`Backed up ${tableRef} (${data.length} rows)`);
 }
-
 
 // Adjust path: migrations are at ./migrations
 (async () => {

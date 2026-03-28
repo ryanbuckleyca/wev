@@ -1,44 +1,38 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useTranslations } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
-import Button from './Button'
-import FormField from './FormField'
-import ErrorMessage from './ErrorMessage'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from './ui/Dialog'
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { createClient } from '@/lib/supabase/client';
+import Button from './Button';
+import FormField from './FormField';
+import ErrorMessage from './ErrorMessage';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/Dialog';
 
 interface DeleteAccountModalProps {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps) {
-  const t = useTranslations()
-  const [password, setPassword] = useState('')
-  const [confirmText, setConfirmText] = useState('')
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [error, setError] = useState('')
+  const t = useTranslations();
+  const [password, setPassword] = useState('');
+  const [confirmText, setConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleDelete = async () => {
     if (!password.trim()) {
-      setError(t('deleteAccount.passwordRequired'))
-      return
+      setError(t('deleteAccount.passwordRequired'));
+      return;
     }
 
     if (confirmText !== 'DELETE' && confirmText !== 'SUPPRIMER') {
-      setError(t('deleteAccount.confirmationRequired'))
-      return
+      setError(t('deleteAccount.confirmationRequired'));
+      return;
     }
 
-    setIsDeleting(true)
-    setError('')
+    setIsDeleting(true);
+    setError('');
 
     try {
       const response = await fetch('/api/account/delete', {
@@ -47,51 +41,46 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ password }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete account')
+        throw new Error(data.error || 'Failed to delete account');
       }
 
       // Sign out to clear the session
-      const supabase = createClient()
-      await supabase.auth.signOut()
-      
+      const supabase = createClient();
+      await supabase.auth.signOut();
+
       // Hard redirect to clear any cached data
-      window.location.href = '/'
-      
+      window.location.href = '/';
     } catch (err) {
-      console.error('Delete account error:', err)
-      setError(err instanceof Error ? err.message : t('deleteAccount.error'))
+      console.error('Delete account error:', err);
+      setError(err instanceof Error ? err.message : t('deleteAccount.error'));
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
+  };
 
   const handleOpenChange = (open: boolean) => {
     if (!open && !isDeleting) {
-      setPassword('')
-      setConfirmText('')
-      setError('')
-      onClose()
+      setPassword('');
+      setConfirmText('');
+      setError('');
+      onClose();
     }
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle className="text-red-600">
-            {t('deleteAccount.title')}
-          </DialogTitle>
+          <DialogTitle className="text-red-600">{t('deleteAccount.title')}</DialogTitle>
         </DialogHeader>
-        
+
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-800 mb-2">
-            {t('deleteAccount.warning')}
-          </p>
+          <p className="text-sm text-red-800 mb-2">{t('deleteAccount.warning')}</p>
           <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
             <li>{t('deleteAccount.warningProfile')}</li>
             <li>{t('deleteAccount.warningBookmarks')}</li>
@@ -117,13 +106,13 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
               type="text"
               value={confirmText}
               onChange={setConfirmText}
-              placeholder={t('deleteAccount.confirmLabel').includes('SUPPRIMER') ? 'SUPPRIMER' : 'DELETE'}
+              placeholder={
+                t('deleteAccount.confirmLabel').includes('SUPPRIMER') ? 'SUPPRIMER' : 'DELETE'
+              }
               disabled={isDeleting}
               htmlFor="delete-confirm"
             />
-            <p className="text-sm text-gray-600">
-              {t('deleteAccount.confirmHelp')}
-            </p>
+            <p className="text-sm text-gray-600">{t('deleteAccount.confirmHelp')}</p>
           </div>
 
           {error && <ErrorMessage>{error}</ErrorMessage>}
@@ -148,5 +137,5 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

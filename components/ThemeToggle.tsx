@@ -1,70 +1,67 @@
-'use client'
+'use client';
 
-import { useEffect, useRef, useState } from 'react'
-import { useTranslations } from 'next-intl'
-import RoundToggle from './RoundToggle'
-import { Lineicons } from '@lineiconshq/react-lineicons'
-import { MoonHalfRight5Solid, Sun1Solid } from '@lineiconshq/free-icons'
+import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
+import RoundToggle from './RoundToggle';
+import { Lineicons } from '@lineiconshq/react-lineicons';
+import { MoonHalfRight5Solid, Sun1Solid } from '@lineiconshq/free-icons';
 
-const THEME_TRANSITION_MS = 300
+const THEME_TRANSITION_MS = 300;
 
-function getInitialTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light'
-  const stored = localStorage.getItem('theme')
-  if (stored === 'dark' || stored === 'light') return stored
-  return 'light'
-}
+export type ThemePreference = 'light' | 'dark';
 
-export default function ThemeToggle() {
-  const t = useTranslations('ariaLabels.themeToggle')
-  const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme)
-  const [mounted, setMounted] = useState(false)
-  const transitionTimeoutRef = useRef<number | null>(null)
+type ThemeToggleProps = {
+  /** Must match server `<html data-theme>` (from `theme` cookie in locale layout) so SSR and hydration agree. */
+  initialTheme?: ThemePreference;
+};
 
-  // Sync React state with localStorage on mount (the inline script in the
-  // layout already applied data-theme to the DOM before hydration).
+export default function ThemeToggle({ initialTheme = 'light' }: ThemeToggleProps) {
+  const t = useTranslations('ariaLabels.themeToggle');
+  const [theme, setTheme] = useState<ThemePreference>(initialTheme);
+  const transitionTimeoutRef = useRef<number | null>(null);
+
+  // After hydration, sync with `data-theme` on `<html>` (blocking script may apply localStorage).
   useEffect(() => {
-    setMounted(true)
-    const stored = localStorage.getItem('theme')
-    if (stored === 'dark' || stored === 'light') {
-      setTheme(stored)
-    }
-  }, [])
+    const fromDom = document.documentElement.getAttribute('data-theme');
+    if (fromDom !== 'dark' && fromDom !== 'light') return;
+    const frame = requestAnimationFrame(() => {
+      setTheme((current) => (current === fromDom ? current : fromDom));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     return () => {
       if (transitionTimeoutRef.current !== null) {
-        window.clearTimeout(transitionTimeoutRef.current)
+        window.clearTimeout(transitionTimeoutRef.current);
       }
-      document.documentElement.classList.remove('theme-switching')
-    }
-  }, [])
+      document.documentElement.classList.remove('theme-switching');
+    };
+  }, []);
 
   const toggle = () => {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    const root = document.documentElement
-    setTheme(next)
+    const next = theme === 'dark' ? 'light' : 'dark';
+    const root = document.documentElement;
+    setTheme(next);
 
-    root.classList.add('theme-switching')
+    root.classList.add('theme-switching');
     // Force style recalculation so transition styles apply before theme vars change.
-    void document.body.offsetHeight
+    void document.body.offsetHeight;
 
-    root.setAttribute('data-theme', next)
-    localStorage.setItem('theme', next)
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
     // Persist to cookie so the server layout can include data-theme on <html>
     // during soft navigations (e.g. locale switches).
-    document.cookie = `theme=${next};path=/;max-age=31536000;SameSite=Lax`
+    document.cookie = `theme=${next};path=/;max-age=31536000;SameSite=Lax`;
 
     if (transitionTimeoutRef.current !== null) {
-      window.clearTimeout(transitionTimeoutRef.current)
+      window.clearTimeout(transitionTimeoutRef.current);
     }
     transitionTimeoutRef.current = window.setTimeout(() => {
-      root.classList.remove('theme-switching')
-      transitionTimeoutRef.current = null
-    }, THEME_TRANSITION_MS)
-  }
-
-  if (!mounted) return null
+      root.classList.remove('theme-switching');
+      transitionTimeoutRef.current = null;
+    }, THEME_TRANSITION_MS);
+  };
 
   return (
     <RoundToggle>
@@ -89,5 +86,5 @@ export default function ThemeToggle() {
         </span>
       </button>
     </RoundToggle>
-  )
+  );
 }

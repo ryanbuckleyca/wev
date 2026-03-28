@@ -4,17 +4,17 @@
  */
 
 export interface ValueDefinition {
-  name?: string // Optional translated display name
-  description: string
-  example: string
-  category?: string
+  name?: string; // Optional translated display name
+  description: string;
+  example: string;
+  category?: string;
 }
 
 export interface WorkValue {
-  id: string
-  label: { en: string; fr: string }
-  summary: { en: string; fr: string }
-  category: { en: string; fr: string }
+  id: string;
+  label: { en: string; fr: string };
+  summary: { en: string; fr: string };
+  category: { en: string; fr: string };
 }
 
 /**
@@ -28,7 +28,7 @@ export const VALUE_CATEGORIES: Record<string, { en: string; fr: string }> = {
   workstyle: { en: 'Work Style & Environment', fr: 'Style de travail et environnement' },
   rewards: { en: 'Rewards & Recognition', fr: 'Récompenses et reconnaissance' },
   stability: { en: 'Stability & Security', fr: 'Stabilité et sécurité' },
-}
+};
 
 /** Maps each value key to its category key */
 const VALUE_TO_CATEGORY: Record<string, string> = {
@@ -72,7 +72,7 @@ const VALUE_TO_CATEGORY: Record<string, string> = {
   Status: 'rewards',
   Security: 'stability',
   Stability: 'stability',
-}
+};
 
 export const VALUES_DICTIONARY = {
   Advancement: {
@@ -231,16 +231,16 @@ export const VALUES_DICTIONARY = {
     description: 'Collaborating closely and regularly with teammates or partners.',
     example: 'Example: planning and executing work through shared responsibility.',
   },
-} as const satisfies Record<string, ValueDefinition>
+} as const satisfies Record<string, ValueDefinition>;
 
-export type Value = keyof typeof VALUES_DICTIONARY
+export type Value = keyof typeof VALUES_DICTIONARY;
 
-export const VALUES_LIST = Object.keys(VALUES_DICTIONARY) as Value[]
+export const VALUES_LIST = Object.keys(VALUES_DICTIONARY) as Value[];
 
 const DEFAULT_VALUE_DEFINITION: ValueDefinition = {
   description: 'A work-related outcome or condition someone may prioritize in a job.',
   example: 'Example: choosing roles that better match personal motivation and needs.',
-}
+};
 
 /**
  * Get value definition with optional translations.
@@ -249,25 +249,25 @@ const DEFAULT_VALUE_DEFINITION: ValueDefinition = {
 export function getValueDefinition(
   value: string,
   translations?: {
-    name?: string
-    description: string
-    example: string
-  }
+    name?: string;
+    description: string;
+    example: string;
+  },
 ): ValueDefinition {
   if (translations) {
     return {
       name: translations.name,
       description: translations.description,
       example: translations.example,
-    }
+    };
   }
 
   // Fallback to English dictionary
   if (Object.prototype.hasOwnProperty.call(VALUES_DICTIONARY, value)) {
-    return VALUES_DICTIONARY[value as Value]
+    return VALUES_DICTIONARY[value as Value];
   }
 
-  return DEFAULT_VALUE_DEFINITION
+  return DEFAULT_VALUE_DEFINITION;
 }
 
 /**
@@ -280,13 +280,13 @@ export function getValueDefinition(
  */
 export function buildWorkValues(
   tEn: (key: string, opts?: { defaultValue: string }) => string,
-  tFr: (key: string, opts?: { defaultValue: string }) => string
+  tFr: (key: string, opts?: { defaultValue: string }) => string,
 ): WorkValue[] {
-  const uncategorised = { en: 'Other', fr: 'Autre' }
+  const uncategorised = { en: 'Other', fr: 'Autre' };
   return VALUES_LIST.map((id) => {
-    const catKey = VALUE_TO_CATEGORY[id] ?? ''
-    const cat = VALUE_CATEGORIES[catKey] ?? uncategorised
-    const def = VALUES_DICTIONARY[id]
+    const catKey = VALUE_TO_CATEGORY[id] ?? '';
+    const cat = VALUE_CATEGORIES[catKey] ?? uncategorised;
+    const def = VALUES_DICTIONARY[id];
     return {
       id,
       label: {
@@ -298,6 +298,6 @@ export function buildWorkValues(
         fr: tFr(`${id}.description`, { defaultValue: def.description }),
       },
       category: cat,
-    }
-  })
+    };
+  });
 }

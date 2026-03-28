@@ -2,7 +2,12 @@
 
 import { useLocale, useTranslations } from 'next-intl';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
-import { useProfileForm, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES, MAX_PROFILE_WORK_ENV_CHARS } from '@/lib/hooks/useProfileForm';
+import {
+  useProfileForm,
+  MAX_PROFILE_SKILLS,
+  MAX_PROFILE_VALUES,
+  MAX_PROFILE_WORK_ENV_CHARS,
+} from '@/lib/hooks/useProfileForm';
 import { WORK_TYPES, type WorkType } from '@/lib/work-types';
 import FormTextarea from '@/components/FormTextarea';
 import SkillsSelector from '@/components/profile/skills/SkillsSelector';
@@ -25,15 +30,26 @@ export default function ProfilePage() {
   const { user, loading } = useRequireAuth();
 
   const {
-    profile, profileLoading, profileError,
-    formData, setFormData,
-    selectedSkills, skillCutoff,
-    allSkills, isLibraryLoading,
-    handleSkillToggle, handleSkillReorder, handleSkillRemove,
+    profile,
+    profileLoading,
+    profileError,
+    formData,
+    setFormData,
+    selectedSkills,
+    skillCutoff,
+    allSkills,
+    isLibraryLoading,
+    handleSkillToggle,
+    handleSkillReorder,
+    handleSkillRemove,
     workValues,
-    selectedValues, valueCutoff,
-    handleValueToggle, handleValueReorder, handleValueRemove,
-    isSaving, handleSaveProfile,
+    selectedValues,
+    valueCutoff,
+    handleValueToggle,
+    handleValueReorder,
+    handleValueRemove,
+    isSaving,
+    handleSaveProfile,
   } = useProfileForm(user?.id, locale);
 
   const workEnvironmentCharCount = formData.ideal_work_environment.length;
@@ -55,7 +71,9 @@ export default function ProfilePage() {
     return (
       <PageLayout maxWidth="md">
         <CardLayout>
-          <Heading level={1} className="mb-4">{t('profile.noProfileFound')}</Heading>
+          <Heading level={1} className="mb-4">
+            {t('profile.noProfileFound')}
+          </Heading>
           <p className="text-[var(--muted-foreground)] mb-6">{t('profile.noProfileDescription')}</p>
           <LinkButton href="/">{t('profile.backToJobs')}</LinkButton>
         </CardLayout>
@@ -66,7 +84,9 @@ export default function ProfilePage() {
   return (
     <PageLayout maxWidth="md">
       <CardLayout>
-        <Heading level={1} className="mb-6">{t('profile.title')}</Heading>
+        <Heading level={1} className="mb-6">
+          {t('profile.title')}
+        </Heading>
 
         {profileError && <ErrorBox>{profileError}</ErrorBox>}
 
@@ -99,12 +119,10 @@ export default function ProfilePage() {
             {/* Work Type Preference */}
             <div>
               <FormLabel>{t('profile.workType')}</FormLabel>
-              <p className="text-xs text-muted-foreground mb-2">
-                {t('profile.workTypeHint')}
-              </p>
+              <p className="text-xs text-muted-foreground mb-2">{t('profile.workTypeHint')}</p>
               <div className="flex gap-2 flex-wrap">
                 {WORK_TYPES.map((workType) => {
-                  const isSelected = formData.work_types.includes(workType)
+                  const isSelected = formData.work_types.includes(workType);
                   return (
                     <button
                       key={workType}
@@ -114,12 +132,12 @@ export default function ProfilePage() {
                           setFormData({
                             ...formData,
                             work_types: formData.work_types.filter((wt) => wt !== workType),
-                          })
+                          });
                         } else {
                           setFormData({
                             ...formData,
                             work_types: [...formData.work_types, workType],
-                          })
+                          });
                         }
                       }}
                       className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
@@ -130,7 +148,7 @@ export default function ProfilePage() {
                     >
                       {getWorkTypeLabel(workType)}
                     </button>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -149,7 +167,11 @@ export default function ProfilePage() {
                 rows={6}
                 charLimit={MAX_PROFILE_WORK_ENV_CHARS}
                 countLabel={(current, max) => t('profile.workEnvironmentCount', { current, max })}
-                className={isWorkEnvironmentOverLimit ? 'border-destructive-foreground focus:border-destructive-foreground' : ''}
+                className={
+                  isWorkEnvironmentOverLimit
+                    ? 'border-destructive-foreground focus:border-destructive-foreground'
+                    : ''
+                }
               />
             </div>
 
@@ -228,7 +250,9 @@ export default function ProfilePage() {
           {/* Actions */}
           <div className="pt-6 border-t border-gray-100 dark:border-zinc-800">
             <div className="flex justify-between gap-3">
-              <LinkButton href="/" variant="outline">{t('profile.backToJobs')}</LinkButton>
+              <LinkButton href="/" variant="outline">
+                {t('profile.backToJobs')}
+              </LinkButton>
               <Button type="submit" disabled={isSaving} loading={isSaving}>
                 {isSaving ? t('profile.saving') : t('profile.saveProfile')}
               </Button>

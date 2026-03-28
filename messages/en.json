@@ -591,11 +591,11 @@
       "example": "Example: choosing projects that match your values and integrity standards."
     },
     "Organization": {
-    "name": "Organization",
-    "description": "Working within structured organizational systems and hierarchies.",
-    "example": "Example: operating within established companies, institutions, or formal departments."
-  },
-  "Physical Challenge": {
+      "name": "Organization",
+      "description": "Working within structured organizational systems and hierarchies.",
+      "example": "Example: operating within established companies, institutions, or formal departments."
+    },
+    "Physical Challenge": {
       "name": "Physical Challenge",
       "description": "Engaging the body through strength, movement, stamina, or coordination.",
       "example": "Example: active work with meaningful physical demands."
