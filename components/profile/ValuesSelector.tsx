@@ -14,7 +14,8 @@ export type { WorkValue }
 
 interface ValuesSelectorProps {
   values: WorkValue[]
-  selectedValues: string[]
+  /** Defaults to [] when omitted (e.g. tests or partial props). */
+  selectedValues?: string[]
   valueCutoff: number
   onReorder: (from: number, to: number) => void
   onToggle: (id: string) => void
@@ -129,8 +130,13 @@ function ValuesBrowse({
 }
 
 export default function ValuesSelector({
-  values, selectedValues, valueCutoff,
-  onReorder, onToggle, onRemove, locale,
+  values,
+  selectedValues = [],
+  valueCutoff,
+  onReorder,
+  onToggle,
+  onRemove,
+  locale,
 }: ValuesSelectorProps) {
   const t = useTranslations('profile')
   const [mobileOpen, setMobileOpen] = useState(false)

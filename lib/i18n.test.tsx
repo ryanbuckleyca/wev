@@ -57,8 +57,16 @@ describe('i18n integration', () => {
     })
 
     it('renders Pill with English remove label', () => {
-      render(<Pill removable onRemove={() => {}}>Tag</Pill>)
-      expect(screen.getByRole('button', { name: /remove/i })).toBeVisible()
+      const removeLabel = enMessages.ariaLabels.pill.remove.replace(
+        '{label}',
+        'Tag',
+      )
+      render(
+        <Pill removable onRemove={() => {}} removeAriaLabel={removeLabel}>
+          Tag
+        </Pill>,
+      )
+      expect(screen.getByRole('button', { name: /remove tag/i })).toBeVisible()
     })
   })
 
@@ -72,11 +80,19 @@ describe('i18n integration', () => {
     })
 
     it('renders Pill with French remove label', () => {
+      const removeLabel = frMessages.ariaLabels.pill.remove.replace(
+        '{label}',
+        'Étiquette',
+      )
       renderWithLocale(
-        <Pill removable onRemove={() => {}}>Étiquette</Pill>,
+        <Pill removable onRemove={() => {}} removeAriaLabel={removeLabel}>
+          Étiquette
+        </Pill>,
         'fr',
       )
-      expect(screen.getByRole('button', { name: /supprimer|retirer/i })).toBeVisible()
+      expect(
+        screen.getByRole('button', { name: /retirer étiquette/i }),
+      ).toBeVisible()
     })
   })
 
