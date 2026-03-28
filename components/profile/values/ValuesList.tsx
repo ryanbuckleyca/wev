@@ -29,7 +29,8 @@ export default function ValuesList({
   ariaDescribedBy,
 }: ValuesListProps) {
   const t = useTranslations('profile')
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const allCategories = new Set(values.map((v) => v.category[locale]))
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(allCategories))
   const q = query.toLowerCase().trim()
   const filtered = q
     ? values.filter(

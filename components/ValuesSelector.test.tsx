@@ -142,16 +142,11 @@ describe('ValuesSelector', () => {
       await user.click(screen.getByText(selectedValue.category[locale]))
 
       const label = selectedValue.label[locale]
-      const rowWithCheckbox = screen
-        .getAllByRole('button')
-        .find(
-          (b) =>
-            b.querySelector('input[type="checkbox"]') !== null &&
-            b.textContent?.includes(label),
-        )
-      expect(rowWithCheckbox).toBeTruthy()
-      const checkbox = rowWithCheckbox!.querySelector('input[type="checkbox"]')
-      expect(checkbox).toBeChecked()
+      const row = screen
+        .getAllByRole('option')
+        .find((el) => el.textContent?.includes(label))
+      expect(row).toBeTruthy()
+      expect(row).toHaveAttribute('aria-selected', 'true')
     })
   })
 
