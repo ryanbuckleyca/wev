@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import Pill from '@/components/Pill'
-import ModalSelectedStrip from './ModalSelectedStrip'
+import HorizontalScrollWithFades from '@/components/ui/HorizontalScrollWithFades'
 import { useListbox } from './useListbox'
 
 interface PillItem {
@@ -39,45 +39,56 @@ export default function SelectedPillsStrip({
 
   if (items.length === 0) return null
 
-  return (
-    <ModalSelectedStrip
-      regionHintId={regionHintId}
-      ariaLabel={ariaLabel}
-      useHorizontalScroll={useHorizontalScroll}
-      fadeBackground={fadeBackground}
-      listboxProps={{
-        role: 'listbox',
-        tabIndex: 0,
-        'aria-activedescendant': activeDescendant,
-        'aria-orientation': 'horizontal',
-      }}
-      onSectionKeyDown={(e) => handleKeyDown(e, (i) => onRemove(items[i].removeArg), (i) => onRemove(items[i].removeArg))}
-    >
-      {items.map((item, i) => {
-        const pill = (
-          <Pill
-            size="sm"
-            onRemove={() => onRemove(item.removeArg)}
-            removeAriaLabel={t('remove', { label: item.label })}
-            removeTabIndex={-1}
-            className="md:py-1 shrink-0"
-          >
-            {item.label}
-          </Pill>
-        )
+  const pills = items.map((item, i) => {
+    const pill = (
+      <Pill
+        size="sm"
+        onRemove={() => onRemove(item.removeArg)}
+        removeAriaLabel={t('remove', { label: item.label })}
+        removeTabIndex={-1}
+        className="md:py-1 shrink-0"
+      >
+        {item.label}
+      </Pill>
+    )
 
-        return (
-          <div
-            key={item.key}
-            id={`${optPrefix}-${i}`}
-            role="option"
-            aria-selected
-            className={`shrink-0 inline-flex rounded-full ${i === activeIndex ? 'ring-2 ring-blue-400/60' : ''}`}
+    return (
+      <div
+        key={item.key}
+        id={`${optPrefix}-${i}`}
+        role="option"
+        aria-selected
+        className={`shrink-0 inline-flex rounded-full ${i === activeIndex ? 'ring-2 ring-blue-400/60' : ''}`}
+      >
+        {wrapPill ? wrapPill(pill, item, i) : pill}
+      </div>
+    )
+  })
+
+  return (
+    <section
+      role="listbox"
+      tabIndex={0}
+      aria-label={ariaLabel}
+      aria-describedby={regionHintId}
+      aria-activedescendant={activeDescendant}
+      aria-orientation="horizontal"
+      onKeyDown={(e) => handleKeyDown(e, (i) => onRemove(items[i].removeArg), (i) => onRemove(items[i].removeArg))}
+      className="shrink-0 border-b border-gray-100 px-1 py-2 dark:border-zinc-800 rounded-md"
+    >
+      {useHorizontalScroll ? (
+        <div className="px-2 py-1">
+          <HorizontalScrollWithFades
+            className="items-center"
+            fadeBackground={fadeBackground}
+            chevronsTabbable={false}
           >
-            {wrapPill ? wrapPill(pill, item, i) : pill}
-          </div>
-        )
-      })}
-    </ModalSelectedStrip>
+            {pills}
+          </HorizontalScrollWithFades>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2 px-2 pb-3 pt-1">{pills}</div>
+      )}
+    </section>
   )
 }
