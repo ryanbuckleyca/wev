@@ -2,7 +2,7 @@ import { Button as ShadcnButton } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
 interface ButtonProps {
-  children: any
+  children: React.ReactNode
   onClick?: () => void
   type?: 'button' | 'submit' | 'reset'
   disabled?: boolean

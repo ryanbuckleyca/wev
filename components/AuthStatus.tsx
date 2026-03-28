@@ -30,7 +30,7 @@ export default function AuthStatus() {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase.auth])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)

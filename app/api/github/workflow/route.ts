@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const githubToken = process.env.WEV_GITHUB_TOKEN
     const repoOwner = "ryanbuckleyca"

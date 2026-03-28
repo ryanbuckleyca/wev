@@ -29,15 +29,6 @@ export default function BannerMessage({ type, message, className = '' }: BannerM
     return colors[type]
   }
 
-  const getTextColor = () => {
-    const colors = {
-      success: 'text-[var(--success-text)]',
-      error: 'text-[var(--destructive-foreground)]',
-      warning: 'text-[var(--warn-text)]',
-      info: 'text-[var(--info-text)]'
-    }
-    return colors[type]
-  }
 
   return (
     <div className={getBaseClasses()}>

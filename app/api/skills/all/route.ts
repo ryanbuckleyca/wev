@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     
     const supabase = getSupabaseServer()
 
-    let allData: any[] = []
+    let allData: unknown[] = []
     let from = 0
     const pageSize = 1000
 

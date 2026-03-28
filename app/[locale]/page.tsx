@@ -224,7 +224,7 @@ export default function Home() {
 
   // Filter and sort jobs based on search, filters, and sort option
   const filteredJobs = useMemo(() => {
-    let filtered = allJobs.filter((job) => {
+    const filtered = allJobs.filter((job) => {
       // Search filter (case-insensitive)
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
