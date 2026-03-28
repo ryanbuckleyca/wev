@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import BrowseTrigger from '../BrowseTrigger'
 import ValuesModal from './ValuesModal'
@@ -29,7 +29,6 @@ export default function ValuesSelector({
   locale,
 }: ValuesSelectorProps) {
   const t = useTranslations('profile')
-  const browseTriggerRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
 
@@ -52,7 +51,6 @@ export default function ValuesSelector({
   return (
     <div className="flex flex-col gap-4">
       <BrowseTrigger
-        ref={browseTriggerRef}
         onClick={() => setOpen(true)}
         isOpen={open}
         ariaLabel={t('valuesModalTriggerLabel')}
@@ -70,7 +68,6 @@ export default function ValuesSelector({
       <ValuesModal
         isOpen={open}
         onClose={handleClose}
-        returnFocusRef={browseTriggerRef}
         query={query}
         onQueryChange={setQuery}
         onClearQuery={() => setQuery('')}

@@ -1,4 +1,4 @@
-import { useRef, type RefObject } from 'react'
+import { useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import InfoPopover from '@/components/InfoPopover'
 import SearchInput from '../SearchInput'
@@ -54,7 +54,6 @@ function filterSkills(
 interface SkillsModalProps {
   isOpen: boolean
   onClose: () => void
-  returnFocusRef?: RefObject<HTMLElement | null>
   query: string
   onQueryChange: (value: string) => void
   onClearQuery: () => void
@@ -71,7 +70,6 @@ interface SkillsModalProps {
 export default function SkillsModal({
   isOpen,
   onClose,
-  returnFocusRef,
   query,
   onQueryChange,
   onClearQuery,
@@ -98,7 +96,6 @@ export default function SkillsModal({
       isOpen={isOpen}
       onClose={onClose}
       searchInputRef={inputRef}
-      returnFocusRef={returnFocusRef}
       dialogAriaLabel={t('skillsBrowseDialogLabel')}
       backAriaLabel={t('skillsBack')}
       doneLabel={t('skillsDone')}

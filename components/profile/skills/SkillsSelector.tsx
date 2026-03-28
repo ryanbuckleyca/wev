@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import BrowseTrigger from '../BrowseTrigger'
 import SkillsModal from './SkillsModal'
@@ -36,7 +36,6 @@ export default function SkillsSelector({
   onSearch, locale, isSearching = false,
 }: SkillsSelectorProps) {
   const t = useTranslations('profile')
-  const browseTriggerRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
 
@@ -64,7 +63,6 @@ export default function SkillsSelector({
   return (
     <div className="flex flex-col gap-3">
       <BrowseTrigger
-        ref={browseTriggerRef}
         onClick={() => setOpen(true)}
         isOpen={open}
         ariaLabel={t('skillsModalTriggerLabel')}
@@ -82,7 +80,6 @@ export default function SkillsSelector({
       <SkillsModal
         isOpen={open}
         onClose={handleClose}
-        returnFocusRef={browseTriggerRef}
         query={query}
         onQueryChange={handleQueryChange}
         onClearQuery={handleClearQuery}

@@ -1,4 +1,4 @@
-import { useRef, type RefObject } from 'react'
+import { useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import SearchInput from '../SearchInput'
 import SelectedPillsStrip from '../SelectedPillsStrip'
@@ -11,7 +11,6 @@ const VALUES_LISTBOX_ID = 'profile-values-listbox'
 interface ValuesModalProps {
   isOpen: boolean
   onClose: () => void
-  returnFocusRef?: RefObject<HTMLElement | null>
   query: string
   onQueryChange: (value: string) => void
   onClearQuery: () => void
@@ -25,7 +24,6 @@ interface ValuesModalProps {
 export default function ValuesModal({
   isOpen,
   onClose,
-  returnFocusRef,
   query,
   onQueryChange,
   onClearQuery,
@@ -47,7 +45,6 @@ export default function ValuesModal({
       isOpen={isOpen}
       onClose={onClose}
       searchInputRef={inputRef}
-      returnFocusRef={returnFocusRef}
       dialogAriaLabel={t('valuesBrowseDialogLabel')}
       backAriaLabel={t('valuesBack')}
       doneLabel={t('valuesDone')}
