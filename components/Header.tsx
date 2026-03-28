@@ -94,7 +94,11 @@ export default function Header({
           </div>
           {/* Desktop menu - don't show theme/locale */}
           <div className="hidden sm:block">
-            <UserProfile showThemeInMenu={false} showLocaleInMenu={false} initialTheme={initialTheme} />
+            <UserProfile
+              showThemeInMenu={false}
+              showLocaleInMenu={false}
+              initialTheme={initialTheme}
+            />
           </div>
         </div>
       </div>
