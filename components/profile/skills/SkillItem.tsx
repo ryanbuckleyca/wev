@@ -52,7 +52,7 @@ export default function SkillItem({
       onClick={onToggle}
       className={`flex cursor-pointer items-start gap-4 border-b border-gray-50 px-4 py-3.5 text-left transition-colors dark:border-zinc-800/50 ${
         isActive
-          ? 'bg-blue-50/80 dark:bg-blue-900/20'
+          ? 'group-focus-within:bg-blue-50/80 dark:group-focus-within:bg-blue-900/20 hover:group-focus-within:bg-blue-100/70 dark:hover:group-focus-within:bg-blue-900/30'
           : 'hover:bg-gray-50 dark:hover:bg-zinc-900/50'
       }`}
     >

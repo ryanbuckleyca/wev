@@ -109,7 +109,7 @@ export default function SkillsModal({
         ) : undefined
       }
     >
-      <div className="px-2">
+      <div className="flex min-h-0 flex-1 flex-col px-2">
         <SkillsList
           listboxId={ID}
           ariaDescribedBy={`${ID}-kbd-hint`}

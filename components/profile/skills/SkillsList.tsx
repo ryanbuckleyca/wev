@@ -43,27 +43,33 @@ export default function SkillsList({
   }
 
   return (
-    <div
-      id={listboxId}
-      role="listbox"
-      tabIndex={0}
-      aria-label={t('skillsListboxLabel')}
-      aria-activedescendant={activeDescendant}
-      aria-describedby={ariaDescribedBy}
-      onKeyDown={(e) => handleKeyDown(e, (i) => onToggle(skills[i]))}
-      className="overflow-x-hidden pb-4 rounded-md focus:outline-none"
-    >
-      {skills.map((skill, i) => (
-        <SkillItem
-          key={skill.uri}
-          id={`${optPrefix}-${i}`}
-          skill={skill}
-          isActive={i === activeIndex}
-          isSelected={selectedUris.has(skill.uri)}
-          onToggle={() => { setActive(i); onToggle(skill) }}
-          locale={locale}
-        />
-      ))}
+    <div className="group relative flex min-h-0 flex-1 flex-col rounded-md">
+      <div
+        id={listboxId}
+        role="listbox"
+        tabIndex={0}
+        aria-label={t('skillsListboxLabel')}
+        aria-activedescendant={activeDescendant}
+        aria-describedby={ariaDescribedBy}
+        onKeyDown={(e) => handleKeyDown(e, (i) => onToggle(skills[i]))}
+        className="relative z-0 min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md pb-2 focus:outline-none"
+      >
+        {skills.map((skill, i) => (
+          <SkillItem
+            key={skill.uri}
+            id={`${optPrefix}-${i}`}
+            skill={skill}
+            isActive={i === activeIndex}
+            isSelected={selectedUris.has(skill.uri)}
+            onToggle={() => { setActive(i); onToggle(skill) }}
+            locale={locale}
+          />
+        ))}
+      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[1] rounded-md opacity-0 ring-2 ring-inset ring-blue-400/70 transition-opacity duration-150 group-focus-within:opacity-100"
+      />
     </div>
   )
 }

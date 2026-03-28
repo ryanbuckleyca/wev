@@ -25,7 +25,9 @@ export default function ValueItem({
       aria-selected={isSelected}
       onClick={onToggle}
       className={`flex cursor-pointer items-start gap-4 pl-8 pr-4 py-3.5 transition-colors ${
-        isActive ? 'bg-blue-50/60 dark:bg-blue-900/20' : 'hover:bg-gray-50/80 dark:hover:bg-zinc-800/50'
+        isActive
+          ? 'group-focus-within:bg-blue-50/60 dark:group-focus-within:bg-blue-900/20 hover:group-focus-within:bg-blue-100/50 dark:hover:group-focus-within:bg-blue-900/30'
+          : 'hover:bg-gray-50/80 dark:hover:bg-zinc-800/50'
       }`}
     >
       <Checkbox checked={isSelected} readOnly tabIndex={-1} aria-hidden className="mt-0.5 shrink-0" />

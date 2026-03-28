@@ -81,17 +81,19 @@ export default function ValuesList({
   }
 
   return (
-    <div
-      id={listboxId}
-      role="listbox"
-      tabIndex={0}
-      aria-label={t('valuesListboxLabel')}
-      aria-activedescendant={activeDescendant}
-      aria-describedby={ariaDescribedBy}
-      onKeyDown={(e) => handleKeyDown(e, activate)}
-      className="overflow-x-hidden pb-2 rounded-md focus:outline-none"
-    >
-      {rows.map((row, i) => {
+    <div className="flex min-h-0 flex-1 flex-col px-2">
+      <div className="group relative flex min-h-0 flex-1 flex-col rounded-md">
+      <div
+        id={listboxId}
+        role="listbox"
+        tabIndex={0}
+        aria-label={t('valuesListboxLabel')}
+        aria-activedescendant={activeDescendant}
+        aria-describedby={ariaDescribedBy}
+        onKeyDown={(e) => handleKeyDown(e, activate)}
+        className="relative z-0 min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md pb-2 focus:outline-none"
+      >
+        {rows.map((row, i) => {
         const active = i === activeIndex
         if (row.kind === 'group') {
           return (
@@ -102,7 +104,9 @@ export default function ValuesList({
               aria-selected={false}
               onClick={() => { setActive(i); activate(i) }}
               className={`cursor-pointer px-4 py-3 border-b border-gray-50 dark:border-zinc-800/60 ${
-                active ? 'bg-blue-50/60 dark:bg-blue-900/20' : 'hover:bg-gray-50/80 dark:hover:bg-zinc-800/50'
+                active
+                  ? 'group-focus-within:bg-blue-50/60 dark:group-focus-within:bg-blue-900/20 hover:group-focus-within:bg-blue-100/50 dark:hover:group-focus-within:bg-blue-900/30'
+                  : 'hover:bg-gray-50/80 dark:hover:bg-zinc-800/50'
               }`}
             >
               <div className="flex items-center justify-between gap-3">
@@ -131,6 +135,13 @@ export default function ValuesList({
           />
         )
       })}
+      </div>
+      {/* Ring on a layer above scrolling rows — inset box-shadow on the scroller paints under descendants */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[1] rounded-md opacity-0 ring-2 ring-inset ring-blue-400/70 transition-opacity duration-150 group-focus-within:opacity-100"
+      />
+      </div>
     </div>
   )
 }

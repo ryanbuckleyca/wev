@@ -58,7 +58,9 @@ export default function SelectedPillsStrip({
         id={`${optPrefix}-${i}`}
         role="option"
         aria-selected
-        className={`shrink-0 inline-flex rounded-full ${i === activeIndex ? 'ring-2 ring-blue-400/60' : ''}`}
+        className={`shrink-0 inline-flex rounded-full ${
+          i === activeIndex ? 'group-focus-within:ring-2 group-focus-within:ring-blue-400/60' : ''
+        }`}
       >
         {wrapPill ? wrapPill(pill, item, i) : pill}
       </div>
@@ -74,7 +76,7 @@ export default function SelectedPillsStrip({
       aria-activedescendant={activeDescendant}
       aria-orientation="horizontal"
       onKeyDown={(e) => handleKeyDown(e, (i) => onRemove(items[i].removeArg), (i) => onRemove(items[i].removeArg))}
-      className="shrink-0 border-b border-gray-100 px-1 py-2 dark:border-zinc-800 rounded-md"
+      className="group shrink-0 border-b border-gray-100 px-1 py-2 dark:border-zinc-800 rounded-md"
     >
       {useHorizontalScroll ? (
         <div className="px-2 py-1">

@@ -81,7 +81,9 @@ export default function SelectionBrowseModal({
         </DialogPrimitive.Close>
       </div>
       {selectedPills}
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">{children}</div>
+      {/* Scroll lives inside children (e.g. listbox) so focus ring matches the visible viewport.
+          pb-2 insets results + ring from the modal card bottom. */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-2">{children}</div>
     </>
   )
 
