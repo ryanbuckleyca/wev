@@ -12,12 +12,7 @@ interface TurnstileWidgetProps {
 
 export default function TurnstileWidget({ onSuccess, onError, onExpire }: TurnstileWidgetProps) {
   const { theme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  // Ensure component is mounted before rendering Turnstile
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const [mounted] = useState(() => typeof window !== 'undefined')
 
   if (!mounted) {
     return (

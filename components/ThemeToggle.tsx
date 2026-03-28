@@ -18,13 +18,12 @@ function getInitialTheme(): 'light' | 'dark' {
 export default function ThemeToggle() {
   const t = useTranslations('ariaLabels.themeToggle')
   const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme)
-  const [mounted, setMounted] = useState(false)
+  const [mounted] = useState(() => typeof window !== 'undefined')
   const transitionTimeoutRef = useRef<number | null>(null)
 
   // Sync React state with localStorage on mount (the inline script in the
   // layout already applied data-theme to the DOM before hydration).
   useEffect(() => {
-    setMounted(true)
     const stored = localStorage.getItem('theme')
     if (stored === 'dark' || stored === 'light') {
       setTheme(stored)

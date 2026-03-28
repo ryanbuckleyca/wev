@@ -7,16 +7,12 @@ export function useTheme() {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!mounted) return
     const current = document.documentElement.getAttribute('data-theme') as 'light' | 'dark'
     if (current === 'dark' || current === 'light') {
       setTheme(current)
     }
-  }, [mounted])
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const observer = new MutationObserver(() => {

@@ -162,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
 
       const nextUser = session?.user ?? null
@@ -178,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (userChanged) {
         rolesResolvedForRef.current = null
         setRoles(['user'])
-        fetchRolesForUser(supabase, nextUser.id)
+        fetchRolesForUser(supabaseRef.current, nextUser.id)
           .then((resolvedRoles) => {
             if (!mounted) return
             rolesResolvedForRef.current = nextUser.id
@@ -192,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Same user, token just refreshed (e.g. tab switch) — roles haven't changed,
         // skip refetch to avoid a transient downgrade if the API races the refresh.
       } else if (rolesResolvedForRef.current !== nextUser.id) {
-        fetchRolesForUser(supabase, nextUser.id)
+        fetchRolesForUser(supabaseRef.current, nextUser.id)
           .then((resolvedRoles) => {
             if (!mounted) return
             rolesResolvedForRef.current = nextUser.id
@@ -209,7 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false
       subscription.unsubscribe()
     }
-  }, [supabase])
+  }, [])
 
   const value = useMemo<AuthContextValue>(() => {
     return {
