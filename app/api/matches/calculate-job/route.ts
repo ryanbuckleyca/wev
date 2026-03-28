@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdminResponse } from '@/lib/auth/require-admin';
+import { logger } from '@/lib/logger';
 import { calculateJobMatches } from '@/lib/match-calculator';
 
 export const dynamic = 'force-dynamic';
@@ -7,6 +9,9 @@ export const revalidate = 0;
 
 export async function POST(request: Request) {
   try {
+    const denied = await requireAdminResponse();
+    if (denied) return denied;
+
     const { jobId } = await request.json();
 
     if (!jobId) {
@@ -30,7 +35,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, message: 'Job matches calculated' });
   } catch (error) {
-    console.error('Error calculating job matches:', error);
+    logger.error({ err: error }, 'Error in calculate-job match route');
     return NextResponse.json({ error: 'Failed to calculate job matches' }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { unauthorizedResponse } from '@/lib/http-errors';
 import { getSupabaseServer } from '@/lib/supabase-server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import normalizeJobsWithSource from '@/lib/normalize-job';
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
     } = await serverSupabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      return unauthorizedResponse('Not authenticated');
     }
 
     const adminClient = getSupabaseServer();

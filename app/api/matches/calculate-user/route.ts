@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdminResponse } from '@/lib/auth/require-admin';
+import { logger } from '@/lib/logger';
 import { calculateUserMatches } from '@/lib/match-calculator';
 
 export const dynamic = 'force-dynamic';
@@ -7,13 +9,16 @@ export const revalidate = 0;
 
 export async function POST(request: Request) {
   try {
+    const denied = await requireAdminResponse();
+    if (denied) return denied;
+
     const { userId } = await request.json();
 
     if (!userId) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
-    // Verify the user exists and has permission
+    // Verify the user exists
     const supabase = await createClient();
     const { data: user, error: userError } = await supabase
       .from('profiles')
@@ -30,7 +35,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, message: 'User matches calculated' });
   } catch (error) {
-    console.error('Error calculating user matches:', error);
+    logger.error({ err: error }, 'Error in calculate-user match route');
     return NextResponse.json({ error: 'Failed to calculate user matches' }, { status: 500 });
   }
 }

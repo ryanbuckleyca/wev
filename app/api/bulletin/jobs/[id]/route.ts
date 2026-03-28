@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase-server';
+import { requireAdminResponse } from '@/lib/auth/require-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const denied = await requireAdminResponse();
+    if (denied) return denied;
+
     const { id } = await params;
     const body = await _request.json();
     const isSse = body?.is_sse;

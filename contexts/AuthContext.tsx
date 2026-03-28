@@ -11,6 +11,7 @@ import {
 } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
+import { parseRolesColumn } from '@/lib/auth';
 
 export type UserRole = 'admin' | 'moderator' | 'user';
 
@@ -43,21 +44,6 @@ function deriveRole(roles: string[]): UserRole {
   if (normalized.includes('admin')) return 'admin';
   if (normalized.includes('moderator')) return 'moderator';
   return 'user';
-}
-
-function parseRolesColumn(roles: unknown): string[] {
-  if (Array.isArray(roles)) {
-    const parsed = roles
-      .filter((item): item is string => typeof item === 'string')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-
-    if (parsed.length > 0) {
-      return normalizeRoles(parsed);
-    }
-  }
-
-  return ['user'];
 }
 
 async function fetchRolesForUser(

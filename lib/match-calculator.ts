@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 import { RatedValue, JobRatedValue, getRankWeight } from './value-ratings';
 
 interface MatchResult {
@@ -172,7 +173,7 @@ export async function calculateUserMatches(userId: string): Promise<void> {
       .not('values', 'is', null);
 
     if (jobsError) {
-      console.error('Error fetching jobs for matching:', jobsError);
+      logger.error({ err: jobsError }, 'Error fetching jobs for matching');
       return;
     }
 
@@ -203,11 +204,11 @@ export async function calculateUserMatches(userId: string): Promise<void> {
       });
 
       if (upsertError) {
-        console.error('Error upserting matches:', upsertError);
+        logger.error({ err: upsertError }, 'Error upserting matches (user batch)');
       }
     }
   } catch (error) {
-    console.error('Error calculating user matches:', error);
+    logger.error({ err: error }, 'Error calculating user matches');
   }
 }
 
@@ -238,7 +239,7 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
       .not('values', 'is', null);
 
     if (profilesError) {
-      console.error('Error fetching profiles for matching:', profilesError);
+      logger.error({ err: profilesError }, 'Error fetching profiles for matching');
       return;
     }
 
@@ -269,10 +270,10 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
       });
 
       if (upsertError) {
-        console.error('Error upserting matches:', upsertError);
+        logger.error({ err: upsertError }, 'Error upserting matches (job batch)');
       }
     }
   } catch (error) {
-    console.error('Error calculating job matches:', error);
+    logger.error({ err: error }, 'Error calculating job matches');
   }
 }

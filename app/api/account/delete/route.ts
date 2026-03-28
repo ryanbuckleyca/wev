@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { unauthorizedResponse } from '@/lib/http-errors';
+import { logger } from '@/lib/logger';
 import { getSupabaseServer } from '@/lib/supabase-server';
 
 export async function DELETE(request: NextRequest) {
@@ -12,8 +14,8 @@ export async function DELETE(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      console.error('Auth error:', authError);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      logger.warn({ err: authError }, 'Account delete: unauthenticated');
+      return unauthorizedResponse();
     }
 
     // Verify password for security
@@ -46,16 +48,15 @@ export async function DELETE(request: NextRequest) {
     const { error: deleteError } = await adminSupabase.auth.admin.deleteUser(userId);
 
     if (deleteError) {
-      console.error('Error deleting user:', deleteError);
+      logger.error({ err: deleteError, userId }, 'Account delete: auth.admin.deleteUser failed');
       return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 });
     }
 
-    // Log the deletion for audit purposes
-    console.log(`Account deleted for user ${userId} at ${new Date().toISOString()}`);
+    logger.info({ userId, at: new Date().toISOString() }, 'Account deleted');
 
     return NextResponse.json({ message: 'Account successfully deleted' }, { status: 200 });
   } catch (error) {
-    console.error('Account deletion error:', error);
+    logger.error({ err: error }, 'Account deletion error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
