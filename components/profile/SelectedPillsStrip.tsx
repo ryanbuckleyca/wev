@@ -6,7 +6,7 @@ import Pill from '@/components/Pill'
 import HorizontalScrollWithFades from '@/components/ui/HorizontalScrollWithFades'
 import { useListbox } from './useListbox'
 
-interface PillItem {
+export interface PillItem {
   key: string
   label: string
   removeArg: string
