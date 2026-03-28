@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { calculateMatch } from './match-calculator'
-import type { RatedValue } from './value-ratings'
+import type { RatedValue, JobRatedValue } from './value-ratings'
 
 describe('calculateMatch', () => {
   it('returns score 0 and empty shared_values when user has no values', () => {
@@ -55,6 +55,117 @@ describe('calculateMatch', () => {
     const result = calculateMatch(['Community'], ['Community'])
     expect(result.score).toBe(1)
     expect(result.shared_values).toEqual(['Community'])
+  })
+})
+
+/**
+ * Job confidence weighting tests
+ *
+ * Validates that jobValuesRated.confidence affects the match score.
+ */
+describe('calculateMatch with jobValuesRated', () => {
+  it('returns same score when jobValuesRated is null (backward compat)', () => {
+    const userValues = ['Community', 'Creativity', 'Challenge', 'Knowledge']
+    const jobValues = ['Community', 'Creativity', 'Security']
+
+    const withNull = calculateMatch(userValues, jobValues, null)
+    const withUndefined = calculateMatch(userValues, jobValues, undefined)
+    const withoutArg = calculateMatch(userValues, jobValues)
+
+    expect(withNull.score).toBe(withoutArg.score)
+    expect(withUndefined.score).toBe(withoutArg.score)
+  })
+
+  it('high-confidence shared value scores higher than low-confidence (flat path)', () => {
+    const userValues = ['Community', 'Creativity', 'Challenge']
+    const jobValues = ['Community', 'Security', 'Balance']
+
+    const highConf: JobRatedValue[] = [
+      { value: 'Community', confidence: 1 },
+      { value: 'Security', confidence: 2 },
+      { value: 'Balance', confidence: 3 },
+    ]
+    const lowConf: JobRatedValue[] = [
+      { value: 'Security', confidence: 1 },
+      { value: 'Balance', confidence: 2 },
+      { value: 'Community', confidence: 3 },
+    ]
+
+    const highResult = calculateMatch(userValues, jobValues, highConf)
+    const lowResult = calculateMatch(userValues, jobValues, lowConf)
+
+    expect(highResult.score).toBeGreaterThan(lowResult.score)
+    expect(highResult.shared_values).toEqual(lowResult.shared_values)
+  })
+
+  it('high-confidence shared value scores higher than low-confidence (weighted path)', () => {
+    const userValues: RatedValue[] = [
+      { value: 'Community', rank: 1 },
+      { value: 'Creativity', rank: 2 },
+      { value: 'Challenge', rank: 3 },
+    ]
+    const jobValues = ['Community', 'Security', 'Balance']
+
+    const highConf: JobRatedValue[] = [
+      { value: 'Community', confidence: 1 },
+      { value: 'Security', confidence: 2 },
+      { value: 'Balance', confidence: 3 },
+    ]
+    const lowConf: JobRatedValue[] = [
+      { value: 'Security', confidence: 1 },
+      { value: 'Balance', confidence: 2 },
+      { value: 'Community', confidence: 3 },
+    ]
+
+    const highResult = calculateMatch(userValues, jobValues, highConf)
+    const lowResult = calculateMatch(userValues, jobValues, lowConf)
+
+    expect(highResult.score).toBeGreaterThan(lowResult.score)
+  })
+
+  it('score stays in [0, 1] with job confidence', () => {
+    const userValues: RatedValue[] = [
+      { value: 'V0', rank: 1 },
+      { value: 'V1', rank: 2 },
+      { value: 'V2', rank: 3 },
+      { value: 'V3', rank: 4 },
+    ]
+    const jobValues = ['V0', 'V1', 'V2', 'V3']
+    const jobRated: JobRatedValue[] = jobValues.map((v, i) => ({
+      value: v, confidence: i + 1,
+    }))
+
+    const result = calculateMatch(userValues, jobValues, jobRated)
+    expect(result.score).toBeGreaterThanOrEqual(0)
+    expect(result.score).toBeLessThanOrEqual(1)
+  })
+
+  it('empty jobValuesRated array treated same as null', () => {
+    const userValues = ['Community', 'Creativity']
+    const jobValues = ['Community', 'Security']
+
+    const withEmpty = calculateMatch(userValues, jobValues, [])
+    const withNull = calculateMatch(userValues, jobValues, null)
+
+    expect(withEmpty.score).toBe(withNull.score)
+  })
+
+  it('job confidence does not change which values are shared', () => {
+    const userValues: RatedValue[] = [
+      { value: 'Community', rank: 1 },
+      { value: 'Creativity', rank: 2 },
+    ]
+    const jobValues = ['Community', 'Creativity', 'Security']
+    const jobRated: JobRatedValue[] = [
+      { value: 'Community', confidence: 1 },
+      { value: 'Creativity', confidence: 2 },
+      { value: 'Security', confidence: 3 },
+    ]
+
+    const without = calculateMatch(userValues, jobValues)
+    const withConf = calculateMatch(userValues, jobValues, jobRated)
+
+    expect(withConf.shared_values.sort()).toEqual(without.shared_values.sort())
   })
 })
 

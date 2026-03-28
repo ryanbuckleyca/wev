@@ -197,9 +197,24 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
   // ─── Save ─────────────────────────────────────────────────────────────
 
   const handleSaveProfile = async () => {
-    if (selectedValues.length > MAX_PROFILE_VALUES) { toast.error(t('valuesMaxExceeded', { max: MAX_PROFILE_VALUES, current: selectedValues.length - MAX_PROFILE_VALUES })); return }
-    if (selectedSkills.length > MAX_PROFILE_SKILLS) { toast.error(t('skillsMaxExceeded', { max: MAX_PROFILE_SKILLS, current: selectedSkills.length - MAX_PROFILE_SKILLS })); return }
-    if (formData.ideal_work_environment.length > MAX_PROFILE_WORK_ENV_CHARS) { toast.error(t('workEnvironmentMaxExceeded', { max: MAX_PROFILE_WORK_ENV_CHARS })); return }
+    if (selectedValues.length > MAX_PROFILE_VALUES) {
+      toast.error(t('valuesMaxExceeded', {
+        max: MAX_PROFILE_VALUES,
+        current: selectedValues.length - MAX_PROFILE_VALUES,
+      }))
+      return
+    }
+    if (selectedSkills.length > MAX_PROFILE_SKILLS) {
+      toast.error(t('skillsMaxExceeded', {
+        max: MAX_PROFILE_SKILLS,
+        current: selectedSkills.length - MAX_PROFILE_SKILLS,
+      }))
+      return
+    }
+    if (formData.ideal_work_environment.length > MAX_PROFILE_WORK_ENV_CHARS) {
+      toast.error(t('workEnvironmentMaxExceeded', { max: MAX_PROFILE_WORK_ENV_CHARS }))
+      return
+    }
 
     setIsSaving(true)
     try {

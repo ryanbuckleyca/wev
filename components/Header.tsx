@@ -6,6 +6,7 @@ import { Link, usePathname } from '@/i18n/navigation'
 import UserProfile from './UserProfile'
 import ThemeToggle from './ThemeToggle'
 import LocaleSwitcher from './LocaleSwitcher'
+import { zIndex } from '@/lib/design-tokens'
 
 export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false)
@@ -47,9 +48,10 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
 
   return (
     <header
-      className={`fixed ${topOffset} right-0 left-0 z-[9999] transition-all duration-200 ${
+      className={`fixed ${topOffset} right-0 left-0 transition-all duration-200 ${
         showHeader ? 'bg-card border-b border-border' : 'bg-transparent'
       }`}
+      style={{ zIndex: zIndex.header }}
     >
       <div className="flex items-center justify-between px-4 py-4">
         <div className={`transition-opacity duration-200 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>

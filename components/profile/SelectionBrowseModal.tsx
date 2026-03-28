@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode, type RefObject } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { ChevronLeft } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { zIndex } from '@/lib/design-tokens'
 
 const HEADER_OFFSET_REM = '5.75rem'
 
@@ -87,7 +88,10 @@ export default function SelectionBrowseModal({
   return (
     <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-sm hidden md:block" />
+        <DialogPrimitive.Overlay
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm hidden md:block"
+          style={{ zIndex: zIndex.modalOverlay }}
+        />
         <DialogPrimitive.Content
           aria-describedby={undefined}
           onOpenAutoFocus={(e) => {
@@ -96,13 +100,13 @@ export default function SelectionBrowseModal({
           }}
           className={
             isMobile
-              ? 'fixed inset-0 z-[9999] flex flex-col overflow-hidden bg-card outline-none'
-              : 'fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none outline-none'
+              ? 'fixed inset-0 flex flex-col overflow-hidden bg-card outline-none'
+              : 'fixed inset-0 flex items-center justify-center p-4 pointer-events-none outline-none'
           }
           style={
             isMobile
-              ? { height: `${viewportHeight}px` }
-              : { paddingTop: `calc(${HEADER_OFFSET_REM} + 0.5rem)`, paddingBottom: '1rem' }
+              ? { zIndex: zIndex.modal, height: `${viewportHeight}px` }
+              : { zIndex: zIndex.modal, paddingTop: `calc(${HEADER_OFFSET_REM} + 0.5rem)`, paddingBottom: '1rem' }
           }
         >
           <DialogPrimitive.Title className="sr-only">{dialogAriaLabel}</DialogPrimitive.Title>
