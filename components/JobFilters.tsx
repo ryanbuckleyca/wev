@@ -12,6 +12,16 @@ import { JobPosting } from '@/lib/supabase';
 import { truncateMiddle } from '@/lib/string-utils';
 import { WORK_TYPES, normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import { Checkbox } from './ui/Checkbox';
+import {
+  buildFilterOptions,
+  getAllMunicipalities,
+  getIndeterminateProvinces,
+  getVisibleMunicipalitiesByProvince,
+  toggleMunicipalitySelection,
+  toggleProvinceSelection,
+  toggleSelection,
+} from '@/lib/bulletin/filter-options';
+import type { PostedWithinSelection } from '@/lib/bulletin/job-query';
 
 type PostedWithinOption = '1-week' | '2-weeks' | '3-weeks' | '1-month';
 
@@ -43,8 +53,6 @@ const postedWithinOptions: Record<PostedWithinOption, PostedWithinLabel> = {
     fallbackShort: '1 mo',
   },
 };
-
-type PostedWithinSelection = PostedWithinOption | 'any';
 
 interface JobFiltersProps {
   jobs: JobPosting[];
@@ -316,94 +324,38 @@ export default function JobFilters({
 
   // Extract unique values for filter options
   const { organizations, provinces, municipalitiesByProvince, employmentTypes, sources } =
-    useMemo(() => {
-      const orgs = new Set<string>();
-      const provs = new Set<string>();
-      const munisByProv: Record<string, Set<string>> = {};
-      const types = new Set<string>();
-      const sourceSet = new Set<string>();
-
-      jobs.forEach((job) => {
-        if (job.organization) orgs.add(job.organization);
-        if (job.source) sourceSet.add(job.source);
-        if (job.province) {
-          provs.add(job.province);
-          if (!munisByProv[job.province]) {
-            munisByProv[job.province] = new Set<string>();
-          }
-          if (job.municipality) {
-            munisByProv[job.province].add(job.municipality);
-          }
-        }
-        if (job.employment_type) types.add(job.employment_type);
-      });
-
-      // Convert Sets to sorted arrays
-      const sortedMunisByProv: Record<string, string[]> = {};
-      Object.keys(munisByProv)
-        .sort()
-        .forEach((prov) => {
-          sortedMunisByProv[prov] = Array.from(munisByProv[prov]).sort();
-        });
-
-      return {
-        organizations: Array.from(orgs).sort(),
-        sources: Array.from(sourceSet).sort(),
-        provinces: Array.from(provs).sort(),
-        municipalitiesByProvince: sortedMunisByProv,
-        employmentTypes: Array.from(types).sort(),
-      };
-    }, [jobs]);
+    useMemo(() => buildFilterOptions(jobs), [jobs]);
 
   const handleOrganizationToggle = (org: string) => {
-    if (selectedOrganizations.includes(org)) {
-      onOrganizationsChange(selectedOrganizations.filter((o) => o !== org));
-    } else {
-      onOrganizationsChange([...selectedOrganizations, org]);
-    }
+    onOrganizationsChange(toggleSelection(selectedOrganizations, org));
   };
 
   const handleProvinceToggle = (province: string) => {
-    if (selectedProvinces.includes(province)) {
-      // Deselecting province: remove it and all its municipalities
-      onProvincesChange(selectedProvinces.filter((p) => p !== province));
-      const municipalitiesInProvince = municipalitiesByProvince[province] || [];
-      onMunicipalitiesChange(
-        selectedMunicipalities.filter((m) => !municipalitiesInProvince.includes(m)),
-      );
-    } else {
-      // Selecting province: add it and all its municipalities
-      onProvincesChange([...selectedProvinces, province]);
-      const municipalitiesInProvince = municipalitiesByProvince[province] || [];
-      // Combine and deduplicate municipalities
-      const combined = [...selectedMunicipalities, ...municipalitiesInProvince];
-      const newMunicipalities = combined.filter((m, index) => combined.indexOf(m) === index);
-      onMunicipalitiesChange(newMunicipalities);
-    }
+    const next = toggleProvinceSelection({
+      province,
+      selectedProvinces,
+      selectedMunicipalities,
+      municipalitiesByProvince,
+    });
+
+    onProvincesChange(next.provinces);
+    onMunicipalitiesChange(next.municipalities);
   };
 
   const handleMunicipalityToggle = (municipality: string) => {
-    if (selectedMunicipalities.includes(municipality)) {
-      onMunicipalitiesChange(selectedMunicipalities.filter((m) => m !== municipality));
-    } else {
-      onMunicipalitiesChange([...selectedMunicipalities, municipality]);
-    }
+    onMunicipalitiesChange(toggleMunicipalitySelection(selectedMunicipalities, municipality));
   };
 
   const handleEmploymentTypeToggle = (type: string) => {
-    if (selectedEmploymentTypes.includes(type)) {
-      onEmploymentTypesChange(selectedEmploymentTypes.filter((t) => t !== type));
-    } else {
-      onEmploymentTypesChange([...selectedEmploymentTypes, type]);
-    }
+    onEmploymentTypesChange(toggleSelection(selectedEmploymentTypes, type));
   };
 
   const handleSourceToggle = (source: string) => {
-    if (selectedSources.includes(source)) {
-      onSourcesChange(selectedSources.filter((s) => s !== source));
-    } else {
-      onSourcesChange([...selectedSources, source]);
-    }
+    onSourcesChange(toggleSelection(selectedSources, source));
+  };
+
+  const handleWorkTypeToggle = (workType: WorkType) => {
+    onWorkTypesChange(toggleSelection(selectedWorkTypes, workType));
   };
 
   const clearAllFilters = () => {
@@ -434,59 +386,32 @@ export default function JobFilters({
 
   // Get municipalities to display based on selected provinces
   // Shows: municipalities from selected provinces + any already-selected municipalities
-  const visibleMunicipalitiesByProvince = useMemo(() => {
-    const visible: Record<string, string[]> = {};
-
-    Object.entries(municipalitiesByProvince).forEach(([province, municipalities]) => {
-      // Show municipalities from this province if:
-      // 1. No provinces selected (show all), OR
-      // 2. This province is selected, OR
-      // 3. Any municipality from this province is already selected
-      const hasSelectedMunicipality = municipalities.some((m) =>
-        selectedMunicipalities.includes(m),
-      );
-      const shouldShow =
-        selectedProvinces.length === 0 ||
-        selectedProvinces.includes(province) ||
-        hasSelectedMunicipality;
-
-      if (shouldShow) {
-        visible[province] = municipalities;
-      }
-    });
-
-    return visible;
-  }, [municipalitiesByProvince, selectedProvinces, selectedMunicipalities]);
+  const visibleMunicipalitiesByProvince = useMemo(
+    () =>
+      getVisibleMunicipalitiesByProvince({
+        municipalitiesByProvince,
+        selectedProvinces,
+        selectedMunicipalities,
+      }),
+    [municipalitiesByProvince, selectedProvinces, selectedMunicipalities],
+  );
 
   // Get all municipalities for count
-  const allMunicipalities = useMemo(() => {
-    const all: string[] = [];
-    Object.values(municipalitiesByProvince).forEach((munis) => {
-      all.push(...munis);
-    });
-    return all.sort();
-  }, [municipalitiesByProvince]);
+  const allMunicipalities = useMemo(
+    () => getAllMunicipalities(municipalitiesByProvince),
+    [municipalitiesByProvince],
+  );
 
   // Calculate which provinces are in indeterminate state (some but not all municipalities selected)
-  const indeterminateProvinces = useMemo(() => {
-    const indeterminate = new Set<string>();
-
-    provinces.forEach((province) => {
-      const municipalitiesInProvince = municipalitiesByProvince[province] || [];
-      if (municipalitiesInProvince.length === 0) return;
-
-      const selectedCount = municipalitiesInProvince.filter((m) =>
-        selectedMunicipalities.includes(m),
-      ).length;
-
-      // Indeterminate if some but not all municipalities are selected
-      if (selectedCount > 0 && selectedCount < municipalitiesInProvince.length) {
-        indeterminate.add(province);
-      }
-    });
-
-    return indeterminate;
-  }, [provinces, municipalitiesByProvince, selectedMunicipalities]);
+  const indeterminateProvinces = useMemo(
+    () =>
+      getIndeterminateProvinces({
+        provinces,
+        municipalitiesByProvince,
+        selectedMunicipalities,
+      }),
+    [provinces, municipalitiesByProvince, selectedMunicipalities],
+  );
 
   return (
     <div className="bg-card border border-border rounded-wev-card mb-4 overflow-hidden">
@@ -620,13 +545,7 @@ export default function JobFilters({
                 <button
                   key={workType}
                   type="button"
-                  onClick={() => {
-                    if (isSelected) {
-                      onWorkTypesChange(selectedWorkTypes.filter((wt) => wt !== workType));
-                    } else {
-                      onWorkTypesChange([...selectedWorkTypes, workType]);
-                    }
-                  }}
+                  onClick={() => handleWorkTypeToggle(workType)}
                   className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
                     isSelected
                       ? 'bg-primary text-white'

@@ -15,7 +15,6 @@ import Image from 'next/image';
 import JobListings from '@/components/JobListings';
 import JobFilters from '@/components/JobFilters';
 import { useProfile } from '@/lib/hooks/useProfile';
-import { createClient } from '@/lib/supabase/client';
 import type { JobPosting, JobMatchData } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import SortDropdown from '@/components/SortDropdown';
@@ -25,6 +24,14 @@ import ReScrapeButton from '@/components/ReScrapeButton';
 import CopyAllJobsButton from '@/components/CopyAllJobsButton';
 import Pagination from '@/components/Pagination';
 import { normalizeWorkTypes } from '@/lib/work-types';
+import {
+  filterJobs,
+  JOB_SORT_OPTIONS,
+  POSTED_WITHIN_FILTER_OPTIONS,
+  sortJobs,
+} from '@/lib/bulletin/job-query';
+import { fetchMatchMapForJobs } from '@/lib/bulletin/match-map';
+import { fetchBookmarkedJobIds, formatLastScrapeTime } from '@/lib/bulletin/client-data';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -75,9 +82,7 @@ export default function Home() {
   );
   const [postedWithin, setPostedWithin] = useQueryState(
     'posted',
-    parseAsStringLiteral(['1-week', '2-weeks', '3-weeks', '1-month', 'any'] as const).withDefault(
-      '2-weeks',
-    ),
+    parseAsStringLiteral(POSTED_WITHIN_FILTER_OPTIONS).withDefault('2-weeks'),
   );
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
@@ -130,16 +135,7 @@ export default function Home() {
   // Sort state
   const [sortBy, setSortBy] = useQueryState(
     'sort',
-    parseAsStringLiteral([
-      'date-desc',
-      'date-asc',
-      'match-desc',
-      'value-match-desc',
-      'skill-match-desc',
-      'salary-desc',
-      'salary-asc',
-      'org-asc',
-    ] as const).withDefault('date-desc'),
+    parseAsStringLiteral(JOB_SORT_OPTIONS).withDefault('date-desc'),
   );
 
   // Match data state
@@ -168,34 +164,7 @@ export default function Home() {
       }
       const { jobs: jobsData, lastScrapeTime: rawScrapeTime } = await res.json();
 
-      if (rawScrapeTime) {
-        const timestamp = rawScrapeTime;
-        let date: Date;
-        if (typeof timestamp === 'string') {
-          if (!timestamp.endsWith('Z') && !timestamp.match(/[+-]\d{2}:\d{2}$/)) {
-            date = new Date(timestamp + 'Z');
-          } else {
-            date = new Date(timestamp);
-          }
-        } else {
-          date = new Date(timestamp);
-        }
-        // Map locale to proper locale code for date formatting
-        const dateLocale = locale === 'fr' ? 'fr-CA' : 'en-CA';
-        setLastScrapeTime(
-          date.toLocaleString(dateLocale, {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: 'America/New_York',
-            timeZoneName: 'short',
-          }),
-        );
-      } else {
-        setLastScrapeTime(null);
-      }
+      setLastScrapeTime(formatLastScrapeTime(rawScrapeTime, locale));
 
       setAllJobs(jobsData ?? []);
       setCurrentPage(1);
@@ -220,23 +189,7 @@ export default function Home() {
   const fetchBookmarks = useCallback(
     async (jobIds: string[]) => {
       if (!user || jobIds.length === 0) return new Set<string>();
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('bookmarks')
-          .select('job_id')
-          .eq('user_id', user.id)
-          .in('job_id', jobIds);
-
-        if (error) {
-          console.error('Error fetching bookmarks:', error);
-          return new Set<string>();
-        }
-        return new Set((data ?? []).map((b: { job_id: string }) => b.job_id));
-      } catch (error) {
-        console.error('Error fetching bookmarks:', error);
-        return new Set<string>();
-      }
+      return fetchBookmarkedJobIds(user.id, jobIds);
     },
     [user],
   );
@@ -245,177 +198,32 @@ export default function Home() {
   const fetchMatchData = useCallback(
     async (jobs: JobPosting[]) => {
       if (!user) return new Map();
-
-      try {
-        const supabase = createClient();
-        const { data: matches, error } = await supabase
-          .from('job_matches')
-          .select('job_id, score, value_score, skill_score, shared_values, shared_skills')
-          .eq('user_id', user.id)
-          .in(
-            'job_id',
-            jobs.map((job) => job.id),
-          );
-
-        if (error) {
-          console.error('Error fetching match data:', error);
-          return new Map();
-        }
-
-        const matchMap = new Map();
-        matches?.forEach(
-          (match: {
-            job_id: string;
-            score: number;
-            value_score?: number | null;
-            skill_score?: number | null;
-            shared_values: string[];
-            shared_skills?: string[];
-          }) => {
-            matchMap.set(match.job_id, match);
-          },
-        );
-
-        return matchMap;
-      } catch (error) {
-        console.error('Error fetching match data:', error);
-        return new Map();
-      }
+      return fetchMatchMapForJobs(
+        user.id,
+        jobs.map((job) => job.id),
+      );
     },
     [user],
   );
 
   // Filter and sort jobs based on search, filters, and sort option
   const filteredJobs = useMemo(() => {
-    const filtered = allJobs.filter((job) => {
-      // Search filter (case-insensitive)
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch =
-          job.job_title.toLowerCase().includes(query) ||
-          (job.summary && job.summary.toLowerCase().includes(query)) ||
-          job.organization.toLowerCase().includes(query) ||
-          (job.location && job.location.toLowerCase().includes(query)) ||
-          (job.municipality && job.municipality.toLowerCase().includes(query)) ||
-          (job.province && job.province.toLowerCase().includes(query));
-        if (!matchesSearch) return false;
-      }
-
-      // Organization filter
-      if (selectedOrganizations.length > 0) {
-        if (!selectedOrganizations.includes(job.organization)) return false;
-      }
-
-      // Work type filter (remote/hybrid/office)
-      if (selectedWorkTypes.length > 0) {
-        if (!selectedWorkTypes.includes(job.work_type)) return false;
-      }
-
-      // SSE filter: when "show only SSE" is on, hide jobs not flagged as SSE
-      if (showOnlySse && !job.is_sse) {
-        return false;
-      }
-
-      // Salary filter: when "show jobs without salary" is off, hide jobs with no wage
-      if (!showJobsWithoutSalary) {
-        if (!job.wage || !String(job.wage).trim()) return false;
-      }
-
-      // Posted-within filter: hide jobs older than the selected window
-      if (postedWithin !== 'any') {
-        const daysAgo =
-          postedWithin === '1-week'
-            ? 7
-            : postedWithin === '2-weeks'
-              ? 14
-              : postedWithin === '3-weeks'
-                ? 21
-                : 30;
-        const cutoffMs = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
-        let postedMs: number;
-        try {
-          const raw = job.date_posted;
-          const str =
-            typeof raw === 'string' && !raw.endsWith('Z') && !raw.match(/[+-]\d{2}:\d{2}$/)
-              ? `${raw}Z`
-              : raw;
-          postedMs = new Date(str).getTime();
-        } catch {
-          postedMs = 0;
-        }
-        if (Number.isNaN(postedMs) || postedMs < cutoffMs) return false;
-      }
-
-      // Province filter
-      // Jobs with null province should show when filters are applied (null doesn't narrow down)
-      if (selectedProvinces.length > 0) {
-        if (job.province && !selectedProvinces.includes(job.province)) return false;
-        // If job.province is null, it passes (shows for any province filter)
-      }
-
-      // Municipality filter
-      // Jobs with null municipality should show when filters are applied (null doesn't narrow down)
-      if (selectedMunicipalities.length > 0) {
-        if (job.municipality && !selectedMunicipalities.includes(job.municipality)) return false;
-        // If job.municipality is null, it passes (shows for any municipality filter)
-      }
-
-      // Employment type filter
-      if (selectedEmploymentTypes.length > 0) {
-        if (!job.employment_type || !selectedEmploymentTypes.includes(job.employment_type)) {
-          return false;
-        }
-      }
-
-      // Source filter
-      if (selectedSources.length > 0) {
-        if (!job.source || !selectedSources.includes(job.source)) return false;
-      }
-
-      return true;
-    });
-
-    // Sort jobs
-    return filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'date-desc':
-          return new Date(b.date_posted).getTime() - new Date(a.date_posted).getTime();
-        case 'date-asc':
-          return new Date(a.date_posted).getTime() - new Date(b.date_posted).getTime();
-        case 'match-desc': {
-          const aMatch = matchData.get(a.id)?.score || 0;
-          const bMatch = matchData.get(b.id)?.score || 0;
-          return bMatch - aMatch;
-        }
-        case 'value-match-desc': {
-          const aValueMatch = matchData.get(a.id)?.value_score || 0;
-          const bValueMatch = matchData.get(b.id)?.value_score || 0;
-          return bValueMatch - aValueMatch;
-        }
-        case 'skill-match-desc': {
-          const aSkillMatch = matchData.get(a.id)?.skill_score || 0;
-          const bSkillMatch = matchData.get(b.id)?.skill_score || 0;
-          return bSkillMatch - aSkillMatch;
-        }
-        case 'salary-desc': {
-          // Sort by salary high to low (jobs without salary go to end)
-          const aSalary = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : -1;
-          const bSalary = b.wage ? parseFloat(b.wage.replace(/[^0-9.-]/g, '')) || 0 : -1;
-          return bSalary - aSalary;
-        }
-        case 'salary-asc': {
-          // Sort by salary low to high (jobs without salary go to end)
-          const aSalaryAsc = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : Infinity;
-          const bSalaryAsc = b.wage ? parseFloat(b.wage.replace(/[^0-9.-]/g, '')) || 0 : Infinity;
-          return aSalaryAsc - bSalaryAsc;
-        }
-        case 'org-asc':
-          // Sort by organization A-Z
-          return a.organization.localeCompare(b.organization);
-        default:
-          return 0;
-      }
-    });
+    return sortJobs(
+      filterJobs(allJobs, {
+        searchQuery,
+        selectedOrganizations,
+        selectedProvinces,
+        selectedMunicipalities,
+        selectedEmploymentTypes,
+        selectedSources,
+        selectedWorkTypes,
+        showOnlySse,
+        showJobsWithoutSalary,
+        postedWithin,
+      }),
+      sortBy,
+      matchData,
+    );
   }, [
     allJobs,
     searchQuery,

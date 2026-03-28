@@ -1,0 +1,172 @@
+import type { JobMatchData, JobPosting } from '@/lib/supabase';
+
+export const POSTED_WITHIN_FILTER_OPTIONS = [
+  '1-week',
+  '2-weeks',
+  '3-weeks',
+  '1-month',
+  'any',
+] as const;
+
+export type PostedWithinSelection = (typeof POSTED_WITHIN_FILTER_OPTIONS)[number];
+
+export const JOB_SORT_OPTIONS = [
+  'date-desc',
+  'date-asc',
+  'match-desc',
+  'value-match-desc',
+  'skill-match-desc',
+  'salary-desc',
+  'salary-asc',
+  'org-asc',
+] as const;
+
+export type JobSortOption = (typeof JOB_SORT_OPTIONS)[number];
+
+export type BulletinFilters = {
+  searchQuery: string;
+  selectedOrganizations: string[];
+  selectedProvinces: string[];
+  selectedMunicipalities: string[];
+  selectedEmploymentTypes: string[];
+  selectedSources: string[];
+  selectedWorkTypes: string[];
+  showOnlySse: boolean;
+  showJobsWithoutSalary: boolean;
+  postedWithin: PostedWithinSelection;
+  now?: number;
+};
+
+const POSTED_WITHIN_DAYS: Record<Exclude<PostedWithinSelection, 'any'>, number> = {
+  '1-week': 7,
+  '2-weeks': 14,
+  '3-weeks': 21,
+  '1-month': 30,
+};
+
+function normalizePostedTimestamp(raw: string): number {
+  const normalized =
+    !raw.endsWith('Z') && !raw.match(/[+-]\d{2}:\d{2}$/) ? `${raw}Z` : raw;
+  return new Date(normalized).getTime();
+}
+
+function parseSalaryValue(wage: string | null | undefined, missingValue: number): number {
+  if (!wage) return missingValue;
+  const numericValue = parseFloat(wage.replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(numericValue) ? numericValue : missingValue;
+}
+
+function matchesSearch(job: JobPosting, searchQuery: string): boolean {
+  if (!searchQuery) return true;
+
+  const query = searchQuery.toLowerCase();
+  return Boolean(
+    job.job_title.toLowerCase().includes(query) ||
+      (job.summary && job.summary.toLowerCase().includes(query)) ||
+    job.organization.toLowerCase().includes(query) ||
+      (job.location && job.location.toLowerCase().includes(query)) ||
+      (job.municipality && job.municipality.toLowerCase().includes(query)) ||
+      (job.province && job.province.toLowerCase().includes(query)),
+  );
+}
+
+function matchesNullableSelection(
+  value: string | null | undefined,
+  selectedValues: string[],
+): boolean {
+  if (selectedValues.length === 0) return true;
+  if (!value) return true;
+  return selectedValues.includes(value);
+}
+
+export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPosting[] {
+  return jobs.filter((job) => {
+    if (!matchesSearch(job, filters.searchQuery)) return false;
+
+    if (
+      filters.selectedOrganizations.length > 0 &&
+      !filters.selectedOrganizations.includes(job.organization)
+    ) {
+      return false;
+    }
+
+    if (
+      filters.selectedWorkTypes.length > 0 &&
+      !filters.selectedWorkTypes.includes(job.work_type)
+    ) {
+      return false;
+    }
+
+    if (filters.showOnlySse && !job.is_sse) {
+      return false;
+    }
+
+    if (!filters.showJobsWithoutSalary && !job.wage?.trim()) {
+      return false;
+    }
+
+    if (filters.postedWithin !== 'any') {
+      const cutoffMs =
+        (filters.now ?? Date.now()) - POSTED_WITHIN_DAYS[filters.postedWithin] * 24 * 60 * 60 * 1000;
+      const postedMs = normalizePostedTimestamp(job.date_posted);
+      if (Number.isNaN(postedMs) || postedMs < cutoffMs) {
+        return false;
+      }
+    }
+
+    if (!matchesNullableSelection(job.province, filters.selectedProvinces)) {
+      return false;
+    }
+
+    if (!matchesNullableSelection(job.municipality, filters.selectedMunicipalities)) {
+      return false;
+    }
+
+    if (filters.selectedEmploymentTypes.length > 0) {
+      if (
+        !job.employment_type ||
+        !filters.selectedEmploymentTypes.includes(job.employment_type)
+      ) {
+        return false;
+      }
+    }
+
+    if (filters.selectedSources.length > 0) {
+      if (!job.source || !filters.selectedSources.includes(job.source)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+export function sortJobs(
+  jobs: JobPosting[],
+  sortBy: JobSortOption,
+  matchData: Map<string, JobMatchData>,
+): JobPosting[] {
+  return [...jobs].sort((a, b) => {
+    switch (sortBy) {
+      case 'date-desc':
+        return new Date(b.date_posted).getTime() - new Date(a.date_posted).getTime();
+      case 'date-asc':
+        return new Date(a.date_posted).getTime() - new Date(b.date_posted).getTime();
+      case 'match-desc':
+        return (matchData.get(b.id)?.score ?? 0) - (matchData.get(a.id)?.score ?? 0);
+      case 'value-match-desc':
+        return (matchData.get(b.id)?.value_score ?? 0) - (matchData.get(a.id)?.value_score ?? 0);
+      case 'skill-match-desc':
+        return (matchData.get(b.id)?.skill_score ?? 0) - (matchData.get(a.id)?.skill_score ?? 0);
+      case 'salary-desc':
+        return parseSalaryValue(b.wage, -1) - parseSalaryValue(a.wage, -1);
+      case 'salary-asc':
+        return parseSalaryValue(a.wage, Number.POSITIVE_INFINITY) -
+          parseSalaryValue(b.wage, Number.POSITIVE_INFINITY);
+      case 'org-asc':
+        return a.organization.localeCompare(b.organization);
+      default:
+        return 0;
+    }
+  });
+}
