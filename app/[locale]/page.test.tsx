@@ -116,7 +116,6 @@ describe('Home page work type defaults', () => {
           isUpdating: false,
           refresh: () => Promise.resolve(),
           updateProfile: () => Promise.resolve(null),
-          uploadPhoto: () => Promise.resolve(null),
         } as never
       }
 
@@ -127,7 +126,6 @@ describe('Home page work type defaults', () => {
         isUpdating: false,
         refresh: () => Promise.resolve(),
         updateProfile: () => Promise.resolve(null),
-        uploadPhoto: () => Promise.resolve(null),
       } as never
     })
 

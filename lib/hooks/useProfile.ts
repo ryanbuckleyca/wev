@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { Profile, ProfileUpdateData } from '@/lib/supabase/profiles'
-import { getProfile, updateProfile, uploadProfilePhoto } from '@/lib/supabase/profiles'
+import { getProfile, updateProfile } from '@/lib/supabase/profiles'
 
 type UseProfileState = {
   profile: Profile | null
@@ -12,7 +12,6 @@ type UseProfileState = {
 type UseProfileActions = {
   refresh: () => Promise<void>
   updateProfile: (data: ProfileUpdateData) => Promise<Profile | null>
-  uploadPhoto: (file: File) => Promise<{ url: string; path: string } | null>
 }
 
 export function useProfile(userId: string | undefined): UseProfileState & UseProfileActions {
@@ -82,33 +81,9 @@ export function useProfile(userId: string | undefined): UseProfileState & UsePro
     [userId]
   )
 
-  const handleUploadPhoto = useCallback(
-    async (file: File) => {
-      if (!userId) return null
-
-      setState((prev) => ({ ...prev, isUpdating: true, error: null }))
-      try {
-        const result = await uploadProfilePhoto(userId, file)
-        // Refresh profile to get updated photo URL
-        await refresh()
-        setState((prev) => ({ ...prev, isUpdating: false }))
-        return result
-      } catch (err) {
-        setState((prev) => ({
-          ...prev,
-          error: err instanceof Error ? err.message : 'Failed to upload photo',
-          isUpdating: false,
-        }))
-        return null
-      }
-    },
-    [userId, refresh]
-  )
-
   return {
     ...state,
     refresh,
     updateProfile: handleUpdateProfile,
-    uploadPhoto: handleUploadPhoto,
   }
 }

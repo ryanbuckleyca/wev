@@ -80,7 +80,6 @@ describe('ProfilePage skills integration', () => {
       isUpdating: false,
       refresh: vi.fn(),
       updateProfile: mockUpdateProfile,
-      uploadPhoto: vi.fn(),
     } as never)
     mockUpdateProfile.mockResolvedValue(baseProfile)
   })
@@ -269,7 +268,6 @@ describe('ProfilePage skills integration', () => {
       isUpdating: false,
       refresh: vi.fn(),
       updateProfile: mockUpdateProfile,
-      uploadPhoto: vi.fn(),
     } as never)
 
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
