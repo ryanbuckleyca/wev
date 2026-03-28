@@ -1,9 +1,9 @@
-import { Label } from '@/components/ui/Label'
+import { Label } from '@/components/ui/Label';
 
 interface FormLabelProps {
-  children: React.ReactNode
-  htmlFor?: string
-  required?: boolean
+  children: React.ReactNode;
+  htmlFor?: string;
+  required?: boolean;
 }
 
 export default function FormLabel({ children, htmlFor, required = false }: FormLabelProps) {
@@ -12,5 +12,5 @@ export default function FormLabel({ children, htmlFor, required = false }: FormL
       {children}
       {required && <span className="text-destructive-foreground ml-1">*</span>}
     </Label>
-  )
+  );
 }

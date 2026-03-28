@@ -5,6 +5,7 @@ This document outlines the skills-based matching system implementation and setup
 ## What Was Built
 
 ### 1. **Bilingual ESCO Skills Infrastructure** ✅
+
 - **Migration**: `20260307170000_esco_skills_bilingual_reset.sql`
   - Table: `esco_skills` with EN/FR columns for labels, descriptions, scope notes
   - Function: `search_esco_skills(query, limit, locale)` - locale-aware search with fallback
@@ -18,6 +19,7 @@ This document outlines the skills-based matching system implementation and setup
   - Can upsert directly to Supabase with `--upsert-db` flag
 
 ### 2. **User Skills (Max 10)** ✅
+
 - **Migration**: `20260306161200_profiles_skills_max_10.sql`
   - Constraint: `profiles.skills` max 10 concept URIs
   - Enforces a max of 10 concept URIs
@@ -29,6 +31,7 @@ This document outlines the skills-based matching system implementation and setup
   - Enforces max 10 selection in UI
 
 ### 3. **Job Skills & Extended Matching** ✅
+
 - **Migration**: `20260307180000_jobs_skills_and_extended_matching.sql`
   - Added `jobs.skills` column (max 10 concept URIs)
   - Extended `job_matches` table:
@@ -36,9 +39,8 @@ This document outlines the skills-based matching system implementation and setup
     - `skill_score` (0-1, null if no skills)
     - `shared_skills` (concept URIs array)
     - `score` (combined weighted score)
-  
 - **Matching Logic**:
-  - **Value score**: `overlap + bonus` (bonus = min(shared_count * 0.1, 0.3))
+  - **Value score**: `overlap + bonus` (bonus = min(shared_count \* 0.1, 0.3))
   - **Skill score**: same formula as values
   - **Combined score**:
     - Both signals: 60% values + 40% skills
@@ -48,14 +50,13 @@ This document outlines the skills-based matching system implementation and setup
 - **Triggers**: Fire only on `UPDATE OF values, skills` (not every profile/job save)
 
 ### 4. **Groq-Assisted Job Skill Tagging** ✅
+
 - **API**: `POST /api/skills/extract`
   - Request: `{ text: string, locale?: 'en' | 'fr' }`
   - Response: `{ skills: string[] }` (concept URIs)
-  
 - **2-Stage Pipeline**:
   1. **DB Shortlist**: Extract keywords from text, search ESCO DB, build ~150 candidates
   2. **LLM Selection**: Send shortlist to Groq (llama-3.3-70b-versatile), get final max 10 skills
-  
 - **Benefits**:
   - Avoids sending 13k+ skills to LLM (token limit + cost)
   - Deterministic DB search + smart LLM filtering
@@ -64,6 +65,7 @@ This document outlines the skills-based matching system implementation and setup
 ## Setup Steps
 
 ### 1. Install Dependencies
+
 ```bash
 cd wev-bulletin
 npm install
@@ -72,6 +74,7 @@ npm install
 This will install `groq-sdk@^0.8.0` added to `package.json`.
 
 ### 2. Set Environment Variables
+
 Add to your `.env.test` (for wev-test) or `.env` (for wev-prod):
 
 ```bash
@@ -80,6 +83,7 @@ GROQ_API_KEY=gsk_...
 ```
 
 ### 3. Apply Database Migrations
+
 ```bash
 # Apply to wev-test (default)
 npx supabase db push
@@ -90,6 +94,7 @@ npx supabase db push
 ```
 
 **Migrations to apply** (in order):
+
 1. `20260306161000_profiles_skills.sql`
 2. `20260306161200_profiles_skills_max_10.sql`
 3. `20260307170000_esco_skills_bilingual_reset.sql`
@@ -97,6 +102,7 @@ npx supabase db push
 5. `20260328000000_job_confidence_in_matching.sql`
 
 ### 4. Index ESCO Skills Data
+
 Fetch and load bilingual ESCO skills from the API:
 
 ```bash
@@ -120,6 +126,7 @@ npm run skills:index -- \
 **Note**: The script reads env vars from `.env.test` or `.env` automatically if you don't pass flags.
 
 ### 5. Verify Setup
+
 ```bash
 # Start dev server
 npm run dev
@@ -136,37 +143,47 @@ curl -X POST http://localhost:3000/api/skills/extract \
 ## Usage
 
 ### User Profile Skills
+
 Users can select up to 10 skills on their profile page (`/profile`):
+
 - Search by keyword (min 2 chars)
 - Bilingual support (EN/FR)
 - Shows skill definitions and types
 - Auto-saves on profile update
 
 ### Job Skill Tagging (Future UI)
+
 You'll need to build a UI for employers to tag jobs with skills. Two approaches:
 
 **Option A: Manual Selection** (like user profile)
+
 - Reuse `SkillsSelector` component
 - Add to job creation/edit form
 - Save to `jobs.skills` array
 
 **Option B: AI-Assisted Extraction**
+
 - Add "Extract from description" button
 - Call `POST /api/skills/extract` with job description text
 - Show suggested skills (pre-checked in selector)
 - User confirms/adjusts before saving
 
 ### Matching Behavior
+
 Matches recalculate automatically when:
+
 - User updates their `values` or `skills` (profile save)
 - Job updates its `values` or `skills` (job edit)
 
 **Not triggered by**:
+
 - Profile name/bio changes
 - Job title/location changes (unless values/skills also change)
 
 ### Match Score Breakdown
+
 Query `job_matches` to see:
+
 - `score`: Combined weighted score (used for ranking)
 - `value_score`: Match based on shared values (0-1 or null)
 - `skill_score`: Match based on shared skills (0-1 or null)
@@ -174,8 +191,9 @@ Query `job_matches` to see:
 - `shared_skills`: Array of shared ESCO concept URIs
 
 Example query:
+
 ```sql
-SELECT 
+SELECT
   jm.score,
   jm.value_score,
   jm.skill_score,
@@ -192,14 +210,17 @@ LIMIT 20;
 ## API Reference
 
 ### `GET /api/skills/search`
+
 Search ESCO skills by keyword.
 
 **Query Params**:
+
 - `q` (required): Search query (min 2 chars)
 - `limit` (optional): Max results (default 20, max 20)
 - `locale` (optional): `en` or `fr` (default `en`)
 
 **Response**:
+
 ```json
 {
   "query": "javascript",
@@ -220,13 +241,16 @@ Search ESCO skills by keyword.
 ```
 
 ### `GET /api/skills/by-uri`
+
 Fetch skills by concept URIs.
 
 **Query Params**:
+
 - `uris` (required): Comma-separated concept URIs
 - `locale` (optional): `en` or `fr` (default `en`)
 
 **Response**:
+
 ```json
 {
   "skills": [
@@ -243,9 +267,11 @@ Fetch skills by concept URIs.
 ```
 
 ### `POST /api/skills/extract`
+
 Extract relevant skills from job description or resume text using Groq LLM.
 
 **Request Body**:
+
 ```json
 {
   "text": "We are looking for a senior developer with 5+ years of JavaScript, React, and Node.js experience...",
@@ -254,16 +280,15 @@ Extract relevant skills from job description or resume text using Groq LLM.
 ```
 
 **Response**:
+
 ```json
 {
-  "skills": [
-    "http://data.europa.eu/esco/skill/...",
-    "http://data.europa.eu/esco/skill/..."
-  ]
+  "skills": ["http://data.europa.eu/esco/skill/...", "http://data.europa.eu/esco/skill/..."]
 }
 ```
 
 **Error Response**:
+
 ```json
 {
   "error": "GROQ_API_KEY environment variable is not set"
@@ -273,11 +298,13 @@ Extract relevant skills from job description or resume text using Groq LLM.
 ## Testing
 
 Run tests:
+
 ```bash
 npm test
 ```
 
 Test files:
+
 - `app/api/skills/search/route.test.ts`
 - `app/api/skills/extract/route.test.ts`
 - `app/[locale]/profile/page.test.tsx` (includes max 10 skills test)
@@ -303,19 +330,24 @@ Test files:
 ## Troubleshooting
 
 **"Cannot find module 'groq-sdk'"**
+
 - Run `npm install` to install dependencies
 
 **"GROQ_API_KEY environment variable is not set"**
+
 - Get API key from https://console.groq.com
 - Add to `.env.test`: `GROQ_API_KEY=gsk_...`
 
 **"search_esco_skills function does not exist"**
+
 - Apply migration `20260307170000_esco_skills_bilingual_reset.sql`
 - Run `npx supabase db push`
 
 **"esco_skills table is empty"**
+
 - Run indexing script: `npm run skills:index -- --upsert-db`
 
 **Matches not updating**
+
 - Check triggers are attached: `\df trigger_recalculate_*` in psql
 - Verify you're changing `values` or `skills` columns (not just other fields)

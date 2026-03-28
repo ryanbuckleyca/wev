@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
 
 function computeFades(el: HTMLDivElement) {
   const { scrollLeft, scrollWidth, clientWidth } = el;
@@ -31,8 +31,8 @@ export function useScrollFades() {
 
     update();
 
-    el.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
 
     const ro = new ResizeObserver(update);
     ro.observe(el);
@@ -46,8 +46,8 @@ export function useScrollFades() {
     mo.observe(el, { childList: true, subtree: true });
 
     return () => {
-      el.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
+      el.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
       ro.disconnect();
       mo.disconnect();
     };

@@ -1,8 +1,8 @@
-import * as React from 'react'
-import StatusIcon from '@/components/StatusIcon'
+import * as React from 'react';
+import StatusIcon from '@/components/StatusIcon';
 
 interface AlertProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'warning' | 'info' | 'error' | 'success'
+  variant?: 'warning' | 'info' | 'error' | 'success';
 }
 
 export default function Alert({
@@ -13,25 +13,25 @@ export default function Alert({
 }: AlertProps) {
   // Use the same CSS classes as BannerMessage/ToastMessage from style guide
   const getBaseClasses = () => {
-    const base = 'design-toast'
+    const base = 'design-toast';
     const typeClasses = {
       success: 'design-toast-success',
       error: 'design-toast-alert',
       warning: 'design-toast-warning',
-      info: 'design-toast-info'
-    }
-    return `${base} ${typeClasses[variant]} ${className}`.trim()
-  }
+      info: 'design-toast-info',
+    };
+    return `${base} ${typeClasses[variant]} ${className}`.trim();
+  };
 
   const getIconColor = () => {
     const colors = {
       success: 'text-[var(--success-text)]',
       error: 'text-[var(--destructive-foreground)]',
       warning: 'text-[var(--warn-text)]',
-      info: 'text-[var(--info-text)]'
-    }
-    return colors[variant]
-  }
+      info: 'text-[var(--info-text)]',
+    };
+    return colors[variant];
+  };
 
   return (
     <div className={getBaseClasses()} {...props}>
@@ -40,5 +40,5 @@ export default function Alert({
       </span>
       <span>{children}</span>
     </div>
-  )
+  );
 }

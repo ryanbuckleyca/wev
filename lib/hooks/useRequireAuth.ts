@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { useRouter } from '@/i18n/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useEffect } from 'react';
+import { useRouter } from '@/i18n/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Hook for pages that require authentication.
@@ -10,18 +10,18 @@ import { useAuth } from '@/contexts/AuthContext'
  * Returns the authenticated user once confirmed, or null while loading.
  */
 export function useRequireAuth() {
-  const { user, loading } = useAuth()
-  const router = useRouter()
-  const shouldRedirect = !loading && !user
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const shouldRedirect = !loading && !user;
 
   useEffect(() => {
     if (shouldRedirect) {
-      router.replace('/login')
+      router.replace('/login');
     }
-  }, [shouldRedirect, router])
+  }, [shouldRedirect, router]);
 
   return {
     user,
     loading: loading || shouldRedirect,
-  }
+  };
 }

@@ -1,15 +1,15 @@
-'use client'
+'use client';
 
-import { useRef } from 'react'
+import { useRef } from 'react';
 
 interface CollapsibleProps {
-  isOpen: boolean
-  children: React.ReactNode
-  className?: string
+  isOpen: boolean;
+  children: React.ReactNode;
+  className?: string;
 }
 
 export default function Collapsible({ isOpen, children, className }: CollapsibleProps) {
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLDivElement>(null);
 
   return (
     <div
@@ -23,5 +23,5 @@ export default function Collapsible({ isOpen, children, className }: Collapsible
         {children}
       </div>
     </div>
-  )
+  );
 }

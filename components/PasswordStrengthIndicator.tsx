@@ -1,15 +1,17 @@
-import { useTranslations } from 'next-intl'
-import type { PasswordStrengthResult } from '@/hooks/usePasswordStrength'
+import { useTranslations } from 'next-intl';
+import type { PasswordStrengthResult } from '@/hooks/usePasswordStrength';
 
 interface PasswordStrengthIndicatorProps {
-  passwordStrength: PasswordStrengthResult | null
+  passwordStrength: PasswordStrengthResult | null;
 }
 
-export default function PasswordStrengthIndicator({ passwordStrength }: PasswordStrengthIndicatorProps) {
-  const t = useTranslations('passwordStrength')
-  
+export default function PasswordStrengthIndicator({
+  passwordStrength,
+}: PasswordStrengthIndicatorProps) {
+  const t = useTranslations('passwordStrength');
+
   if (!passwordStrength) {
-    return null
+    return null;
   }
 
   return (
@@ -21,9 +23,7 @@ export default function PasswordStrengthIndicator({ passwordStrength }: Password
             className="flex-1 h-2 rounded-full transition-colors"
             style={{
               backgroundColor:
-                i <= passwordStrength.score
-                  ? passwordStrength.color
-                  : 'var(--border)',
+                i <= passwordStrength.score ? passwordStrength.color : 'var(--border)',
             }}
           />
         ))}
@@ -37,17 +37,13 @@ export default function PasswordStrengthIndicator({ passwordStrength }: Password
           </span>
         </span>
         {passwordStrength.isAcceptable && (
-          <span className="text-xs text-[var(--success-solid)]">
-            {t('acceptable')}
-          </span>
+          <span className="text-xs text-[var(--success-solid)]">{t('acceptable')}</span>
         )}
       </div>
 
       {passwordStrength.feedback && !passwordStrength.isAcceptable && (
-        <p className="text-xs text-[var(--warn-solid)]">
-          {passwordStrength.feedback}
-        </p>
+        <p className="text-xs text-[var(--warn-solid)]">{passwordStrength.feedback}</p>
       )}
     </div>
-  )
+  );
 }

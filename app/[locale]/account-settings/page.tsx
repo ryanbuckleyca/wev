@@ -1,7 +1,6 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
@@ -34,18 +33,6 @@ export default function AccountSettingsPage() {
   const [passwordChanged, setPasswordChanged] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Map Supabase error messages to translation keys
-  const mapErrorToTranslationKey = (error: string): string => {
-    if (error.toLowerCase().includes('new password should be different from old password')) {
-      return t('accountSettings.passwordSameAsOld');
-    }
-    if (error.toLowerCase().includes('weak password')) {
-      return t('accountSettings.passwordWeak');
-    }
-    // Default to generic error
-    return t('accountSettings.passwordUpdateFailed');
-  };
-
   useEffect(() => {
     if (user?.email && !newEmail) {
       setNewEmail(user.email);
@@ -65,7 +52,7 @@ export default function AccountSettingsPage() {
 
   const validatePasswordForm = (): boolean => {
     const errors: string[] = [];
-    
+
     if (!currentPassword) {
       errors.push(t('accountSettings.currentPasswordRequired'));
     }
@@ -81,56 +68,56 @@ export default function AccountSettingsPage() {
     if (newPassword && (!newPasswordStrength || !newPasswordStrength.isAcceptable)) {
       errors.push(t('accountSettings.passwordWeak'));
     }
-    
+
     setPasswordErrors(errors);
     return errors.length === 0;
   };
 
   const validateEmailForm = (): boolean => {
     setEmailError('');
-    
+
     if (!newEmail) {
       setEmailError(t('accountSettings.emailRequired'));
       return false;
     }
-    
+
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail)) {
       setEmailError(t('accountSettings.invalidEmailFormat'));
       return false;
     }
-    
+
     if (user?.email === newEmail) {
       setEmailError(t('accountSettings.emailMustBeDifferent'));
       return false;
     }
-    
+
     return true;
   };
 
   const handleUpdateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const hasEmailChanges = emailChanged;
     const hasPasswordChanges = passwordChanged;
-    
+
     if (!hasEmailChanges && !hasPasswordChanges) {
       toast.error(t('accountSettings.noChanges'));
       return;
     }
-    
+
     // Validate based on what's being changed
     if (hasPasswordChanges && !validatePasswordForm()) {
       return;
     }
-    
+
     if (hasEmailChanges && !validateEmailForm()) {
       return;
     }
 
     setIsUpdating(true);
-    
+
     try {
       // Update email if changed
       if (hasEmailChanges) {
@@ -160,14 +147,13 @@ export default function AccountSettingsPage() {
       if (hasEmailChanges) {
         toast.success(t('accountSettings.emailUpdateSuccess'));
       }
-      
+
       if (hasPasswordChanges) {
         toast.success(t('accountSettings.passwordUpdateSuccess'));
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
       }
-      
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('accountSettings.updateFailed'));
     } finally {
@@ -186,13 +172,17 @@ export default function AccountSettingsPage() {
   return (
     <PageLayout maxWidth="md">
       <CardLayout>
-        <Heading level={1} className="mb-6">{t('accountSettings.title')}</Heading>
+        <Heading level={1} className="mb-6">
+          {t('accountSettings.title')}
+        </Heading>
 
         <FormContainer onSubmit={handleUpdateAccount}>
           <div className="space-y-6">
             {/* Change Email */}
             <div>
-              <Heading level={2} className="mb-4">{t('accountSettings.emailAddress')}</Heading>
+              <Heading level={2} className="mb-4">
+                {t('accountSettings.emailAddress')}
+              </Heading>
               <FormField
                 label={t('accountSettings.newEmail')}
                 type="email"
@@ -204,7 +194,8 @@ export default function AccountSettingsPage() {
                 htmlFor="email"
               />
               <p className="text-sm text-[var(--muted-foreground)] mt-2">
-                {t('accountSettings.currentEmail')} <span className="font-semibold">{user.email}</span>
+                {t('accountSettings.currentEmail')}{' '}
+                <span className="font-semibold">{user.email}</span>
               </p>
             </div>
 
@@ -212,7 +203,9 @@ export default function AccountSettingsPage() {
 
             {/* Change Password */}
             <div>
-              <Heading level={2} className="mb-4">{t('accountSettings.changePassword')}</Heading>
+              <Heading level={2} className="mb-4">
+                {t('accountSettings.changePassword')}
+              </Heading>
               <ErrorList errors={passwordErrors} />
 
               <FormField
@@ -259,7 +252,11 @@ export default function AccountSettingsPage() {
             <div className="flex justify-end">
               <Button
                 type="submit"
-                disabled={isUpdating || (!emailChanged && !passwordChanged) || (passwordChanged && !newPasswordStrength?.isAcceptable)}
+                disabled={
+                  isUpdating ||
+                  (!emailChanged && !passwordChanged) ||
+                  (passwordChanged && !newPasswordStrength?.isAcceptable)
+                }
                 loading={isUpdating}
               >
                 {isUpdating ? t('accountSettings.saving') : t('accountSettings.saveChanges')}
@@ -270,10 +267,10 @@ export default function AccountSettingsPage() {
 
         {/* Delete Account Section */}
         <div className="mt-8 p-6 border border-red-200 rounded-lg bg-red-50">
-          <Heading level={2} className="mb-4 text-red-800">{t('deleteAccount.title')}</Heading>
-          <p className="text-sm text-red-700 mb-4">
-            {t('deleteAccount.description')}
-          </p>
+          <Heading level={2} className="mb-4 text-red-800">
+            {t('deleteAccount.title')}
+          </Heading>
+          <p className="text-sm text-red-700 mb-4">{t('deleteAccount.description')}</p>
           <Button
             onClick={() => setShowDeleteModal(true)}
             disabled={isUpdating}
@@ -283,11 +280,8 @@ export default function AccountSettingsPage() {
           </Button>
         </div>
 
-        <DeleteAccountModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-        />
-        </CardLayout>
+        <DeleteAccountModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} />
+      </CardLayout>
     </PageLayout>
   );
 }

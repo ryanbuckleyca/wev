@@ -1,15 +1,15 @@
-import { Lineicons } from '@lineiconshq/react-lineicons'
-import { 
-  CheckCircle1Solid, 
-  XmarkCircleSolid, 
+import { Lineicons } from '@lineiconshq/react-lineicons';
+import {
+  CheckCircle1Solid,
+  XmarkCircleSolid,
   QuestionMarkCircleSolid,
   Bulb2Solid,
-  Flag1Solid
-} from '@lineiconshq/free-icons'
+  Flag1Solid,
+} from '@lineiconshq/free-icons';
 
 interface StatusIconProps {
-  type: 'success' | 'error' | 'warning' | 'info' | 'loading'
-  className?: string
+  type: 'success' | 'error' | 'warning' | 'info' | 'loading';
+  className?: string;
 }
 
 export default function StatusIcon({ type, className = '' }: StatusIconProps) {
@@ -27,15 +27,11 @@ export default function StatusIcon({ type, className = '' }: StatusIconProps) {
       default:
         return <Lineicons icon={QuestionMarkCircleSolid} size={16} className={className} />;
     }
-  }
+  };
 
   const getClassName = () => {
-    return className.trim()
-  }
+    return className.trim();
+  };
 
-  return (
-    <span className={getClassName()}>
-      {getIcon()}
-    </span>
-  )
+  return <span className={getClassName()}>{getIcon()}</span>;
 }

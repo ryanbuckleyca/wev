@@ -1,22 +1,22 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useTranslations } from 'next-intl'
-import BrowseTrigger from '../BrowseTrigger'
-import ValuesModal from './ValuesModal'
-import SortableSelectedList from '../SortableSelectedList'
-import type { WorkValue } from '@/lib/values'
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import BrowseTrigger from '../BrowseTrigger';
+import ValuesModal from './ValuesModal';
+import SortableSelectedList from '../SortableSelectedList';
+import type { WorkValue } from '@/lib/values';
 
-export type { WorkValue }
+export type { WorkValue };
 
 interface ValuesSelectorProps {
-  values: WorkValue[]
-  selectedValues?: string[]
-  valueCutoff: number
-  onReorder: (from: number, to: number, newCutoff?: number) => void
-  onToggle: (id: string) => void
-  onRemove: (id: string) => void
-  locale: 'en' | 'fr'
+  values: WorkValue[];
+  selectedValues?: string[];
+  valueCutoff: number;
+  onReorder: (from: number, to: number, newCutoff?: number) => void;
+  onToggle: (id: string) => void;
+  onRemove: (id: string) => void;
+  locale: 'en' | 'fr';
 }
 
 export default function ValuesSelector({
@@ -28,24 +28,24 @@ export default function ValuesSelector({
   onRemove,
   locale,
 }: ValuesSelectorProps) {
-  const t = useTranslations('profile')
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
+  const t = useTranslations('profile');
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
 
-  const valueMap = new Map<string, WorkValue>(values.map((v) => [v.id, v]))
+  const valueMap = new Map<string, WorkValue>(values.map((v) => [v.id, v]));
 
   const sortableItems = selectedValues
     .map((id) => {
-      const v = valueMap.get(id)
-      if (!v) return null
-      return { id, label: v.label[locale], sublabel: v.summary[locale] }
+      const v = valueMap.get(id);
+      if (!v) return null;
+      return { id, label: v.label[locale], sublabel: v.summary[locale] };
     })
-    .filter((x): x is { id: string; label: string; sublabel: string } => x !== null)
+    .filter((x): x is { id: string; label: string; sublabel: string } => x !== null);
 
   const handleClose = () => {
-    setQuery('')
-    setOpen(false)
-  }
+    setQuery('');
+    setOpen(false);
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -77,5 +77,5 @@ export default function ValuesSelector({
         locale={locale}
       />
     </div>
-  )
+  );
 }

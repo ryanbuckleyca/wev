@@ -1,20 +1,20 @@
-'use client'
+'use client';
 
-import type { MouseEvent, Ref } from 'react'
-import { cn } from '@/lib/utils'
+import type { MouseEvent, Ref } from 'react';
+import { cn } from '@/lib/utils';
 
 interface PillProps {
-  children: React.ReactNode
-  variant?: 'default' | 'primary' | 'secondary' | 'disabled'
-  size?: 'sm' | 'md'
-  className?: string
-  onRemove?: () => void
-  removable?: boolean
-  removeAriaLabel?: string
+  children: React.ReactNode;
+  variant?: 'default' | 'primary' | 'secondary' | 'disabled';
+  size?: 'sm' | 'md';
+  className?: string;
+  onRemove?: () => void;
+  removable?: boolean;
+  removeAriaLabel?: string;
   /** Override remove button tabIndex (e.g. roving focus in a composite region). */
-  removeTabIndex?: number
-  removeRef?: Ref<HTMLButtonElement | null>
-  title?: string
+  removeTabIndex?: number;
+  removeRef?: Ref<HTMLButtonElement | null>;
+  title?: string;
 }
 
 export default function Pill({
@@ -30,20 +30,20 @@ export default function Pill({
   title,
 }: PillProps) {
   const handleRemove = (e: MouseEvent) => {
-    e.stopPropagation()
-    onRemove?.()
-  }
+    e.stopPropagation();
+    onRemove?.();
+  };
 
-  const isRemovable = removable || !!onRemove
+  const isRemovable = removable || !!onRemove;
 
   const variantClasses = {
     primary: 'bg-[var(--primary)] text-white',
     secondary: 'bg-[var(--primary-tint)] text-[var(--primary-text)]',
     default: 'bg-card text-foreground border border-border',
     disabled: 'bg-card text-wev-text-tertiary border border-border opacity-60',
-  }
+  };
 
-  const removableClasses = 'border border-border bg-wev-brand-accent-tint text-wev-brand-accent'
+  const removableClasses = 'border border-border bg-wev-brand-accent-tint text-wev-brand-accent';
 
   return (
     <span
@@ -80,5 +80,5 @@ export default function Pill({
         </button>
       )}
     </span>
-  )
+  );
 }

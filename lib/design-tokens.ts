@@ -9,7 +9,7 @@ export const zIndex = {
   modalOverlay: 300,
   modal: 310,
   popover: 400, // must be above modal
-} as const
+} as const;
 
 export const tokens = {
   // Background & Surface
@@ -62,13 +62,13 @@ export const tokens = {
   // Opacity Values
   lavenderOpacity: {
     light: 0.228,
-    dark: 0.095
+    dark: 0.095,
   },
   blueOpacity: {
     light: 0.2,
-    dark: 0.08
-  }
-}
+    dark: 0.08,
+  },
+};
 
 // Dark mode overrides
 export const darkTokens = {
@@ -86,15 +86,15 @@ export const darkTokens = {
   gradientBg: '#0d0d0d',
   gradientLp: '#c96fa0',
   gradientTl: '#4eb8b8',
-  gradientMb: '#5a9ec9'
-}
+  gradientMb: '#5a9ec9',
+};
 
 // Helper functions
-export const getTokens = (isDark = false) => isDark ? darkTokens : tokens
+export const getTokens = (isDark = false) => (isDark ? darkTokens : tokens);
 
 export const getOpacity = (color: 'lavender' | 'blue', isDark = false) => {
   if (color === 'lavender') {
-    return isDark ? tokens.lavenderOpacity.dark : tokens.lavenderOpacity.light
+    return isDark ? tokens.lavenderOpacity.dark : tokens.lavenderOpacity.light;
   }
-  return isDark ? tokens.blueOpacity.dark : tokens.blueOpacity.light
-}
+  return isDark ? tokens.blueOpacity.dark : tokens.blueOpacity.light;
+};

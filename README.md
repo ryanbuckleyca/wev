@@ -15,6 +15,7 @@ npx shadcn@latest add <component-name>
 ```
 
 Example:
+
 ```bash
 npx shadcn@latest add tooltip
 npx shadcn@latest add button
@@ -29,25 +30,30 @@ Installed components are added to `components/ui/` and can be customized as need
 This application uses three distinct components for different purposes:
 
 **Button Component**
+
 - **Purpose:** Pure actions that don't navigate
 - **Use for:** Form submission, modal triggers, API calls, state toggles, clipboard operations
 - **Behavior:** Triggers onClick handlers, no navigation
 - **Appearance:** Button styling with variants (primary, secondary, outline)
 
-**LinkButton Component** 
+**LinkButton Component**
+
 - **Purpose:** Navigation that looks like a button
 - **Use for:** Page navigation where button appearance is desired
 - **Behavior:** Navigates to new page, includes prefetch on hover
 - **Appearance:** Identical to Button component styling
 
 **Link Component**
+
 - **Purpose:** Navigation that looks like text
 - **Use for:** Text links within content, secondary navigation
 - **Behavior:** Navigates to new page, includes prefetch on hover
 - **Appearance:** Text styling with underline on hover
 
 #### Button Component
+
 Use `<Button>` for actions that modify state or trigger events:
+
 - Form submission (Save, Update, Delete)
 - Modal/dropdown triggers
 - API calls and workflows
@@ -60,7 +66,7 @@ import Button from '@/components/Button'
 // ✅ Correct: Form action
 <Button type="submit">Save Profile</Button>
 
-// ✅ Correct: API action  
+// ✅ Correct: API action
 <Button onClick={handleCopy}>Copy to Clipboard</Button>
 
 // ✅ Correct: Modal trigger
@@ -68,7 +74,9 @@ import Button from '@/components/Button'
 ```
 
 #### LinkButton Component
+
 Use `<LinkButton>` for navigation between pages when button appearance is desired:
+
 - Page navigation (Profile, Settings, Login)
 - Primary navigation actions
 - Any navigation that needs button styling
@@ -88,7 +96,9 @@ import LinkButton from '@/components/LinkButton'
 ```
 
 #### Link Component
+
 Use `<Link>` for text-style navigation:
+
 - Links within content paragraphs
 - Secondary navigation
 - Cross-references in help text
@@ -112,15 +122,19 @@ import Link from 'next/link'
 Follow our **left-secondary, right-primary** pattern for consistent UX:
 
 #### Two-Button Layouts
+
 ```tsx
 // ✅ Correct: Secondary on left, Primary on right
 <div className="flex justify-between gap-3">
-  <LinkButton href="/" variant="outline">Back to Jobs</LinkButton>
+  <LinkButton href="/" variant="outline">
+    Back to Jobs
+  </LinkButton>
   <Button type="submit">Save Profile</Button>
 </div>
 ```
 
 #### Single Action Forms
+
 ```tsx
 // ✅ Correct: Center single primary action
 <div className="text-center">
@@ -129,6 +143,7 @@ Follow our **left-secondary, right-primary** pattern for consistent UX:
 ```
 
 #### Layout Rules
+
 - **Left side**: Secondary actions (cancel, back, navigate away)
 - **Right side**: Primary actions (save, submit, confirm)
 - **Spacing**: Use `gap-3` or `gap-4` for consistent spacing
@@ -144,30 +159,34 @@ Follow our **left-secondary, right-primary** pattern for consistent UX:
 ## Setup
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Create a `.env` file in the project root (`/wev/.env`) that both projects can share:
+
 ```bash
 # From the wev directory (project root)
 cp .env.example .env
 ```
 
 3. Fill in your environment variables in the root `.env` file:
+
 - **wev-bulletin (Next.js)** — server-only (do not use `` for the key):
   - `SUPABASE_URL`: Your Supabase project URL
   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (used only in API routes; never exposed to the browser)
 - **wev-scraper** (if using the same env): `SUPABASE_URL` / `SUPABASE_SECRET_KEY` (or scraper-specific env)
 - `WEV_GITHUB_TOKEN`: A GitHub personal access token with `actions:write` permission
 
-**Note:** The Supabase service role key must never be prefixed with `` — it is only used server-side in wev-bulletin (e.g. `/api/bulletin`). The `.env` file can live in the project root so both apps can access it; Next.js can load from the parent directory.
+**Note:** The Supabase service role key must never be prefixed with ``— it is only used server-side in wev-bulletin (e.g.`/api/bulletin`). The `.env` file can live in the project root so both apps can access it; Next.js can load from the parent directory.
 
 ## Database Schema
 
 The application expects two tables in Supabase:
 
 ### `jobs`
+
 - `id` (uuid, primary key)
 - `source_id` (uuid, foreign key to sources table)
 - `job_title` (text)
@@ -182,6 +201,7 @@ The application expects two tables in Supabase:
 - `scraped_at` (timestamp)
 
 ### `scrape_runs`
+
 - `id` (uuid, primary key)
 - `source_id` (uuid, foreign key to sources table)
 - `jobs_found` (integer)
@@ -198,6 +218,7 @@ For **scraper scripts** that touch matching or bulk recompute, see **`wev-scrape
 ## Development
 
 Run the development server:
+
 ```bash
 npm run dev
 ```
@@ -213,12 +234,14 @@ npm run skills:index
 ```
 
 This script:
+
 - Deduplicates by `concept URI`
 - Keeps canonical label
 - Merges alt labels (`altLabel` + `hiddenLabel`)
 - Chooses best definition by priority: `description > scopeNote > definition`
 
 Output JSON:
+
 - `supabase/seed/esco_skills_index.json`
 
 Optional DB upsert:
@@ -268,6 +291,7 @@ To create a GitHub personal access token:
 This application requires environment variables in **both GitHub Actions (build time)** and **Northflank (runtime)**:
 
 #### GitHub Actions (Build Time)
+
 Add these secrets to your repository → Settings → Secrets and variables → Actions:
 
 ```bash
@@ -277,12 +301,13 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 # Auth email links (signup, password reset) redirect here. Set to production URL so links work even when testing from localhost.
 NEXT_PUBLIC_SITE_URL=https://bulletin.wevchange.org
 
-# Server-side variables  
+# Server-side variables
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
 #### Northflank (Runtime)
+
 Add the same environment variables to your Northflank service environment:
 
 ```bash

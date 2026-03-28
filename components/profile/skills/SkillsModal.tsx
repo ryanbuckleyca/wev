@@ -1,63 +1,79 @@
-import { useRef } from 'react'
-import { useTranslations } from 'next-intl'
-import InfoPopover from '@/components/InfoPopover'
-import SearchInput from '../SearchInput'
-import SelectedPillsStrip from '../SelectedPillsStrip'
-import SkillsList from './SkillsList'
-import type { EscoSkill } from '@/lib/types/skills'
-import SelectionBrowseModal from '../SelectionBrowseModal'
+import { useRef } from 'react';
+import { useTranslations } from 'next-intl';
+import InfoPopover from '@/components/InfoPopover';
+import SearchInput from '../SearchInput';
+import SelectedPillsStrip from '../SelectedPillsStrip';
+import SkillsList from './SkillsList';
+import type { EscoSkill } from '@/lib/types/skills';
+import SelectionBrowseModal from '../SelectionBrowseModal';
 
-const ID = 'profile-skills-listbox'
+const ID = 'profile-skills-listbox';
 
 export interface SkillMatch extends EscoSkill {
-  label: string
-  matchedAlias?: string | null
+  label: string;
+  matchedAlias?: string | null;
 }
 
 function filterSkills(query: string, allItems: EscoSkill[], locale: 'en' | 'fr'): SkillMatch[] {
-  if (!query) return []
-  const q = query.toLowerCase()
-  const hits: { skill: SkillMatch; score: number }[] = []
+  if (!query) return [];
+  const q = query.toLowerCase();
+  const hits: { skill: SkillMatch; score: number }[] = [];
 
   for (const skill of allItems) {
-    const label = skill.preferredLabel[locale] || ''
-    const lower = label.toLowerCase()
+    const label = skill.preferredLabel[locale] || '';
+    const lower = label.toLowerCase();
 
-    if (lower.startsWith(q)) { hits.push({ skill: { ...skill, label }, score: 2 }); continue }
-    if (lower.includes(q)) { hits.push({ skill: { ...skill, label }, score: 1 }); continue }
+    if (lower.startsWith(q)) {
+      hits.push({ skill: { ...skill, label }, score: 2 });
+      continue;
+    }
+    if (lower.includes(q)) {
+      hits.push({ skill: { ...skill, label }, score: 1 });
+      continue;
+    }
 
-    const alias = skill.aliases?.find((a) => a.toLowerCase().includes(q))
-    if (alias) hits.push({ skill: { ...skill, label, matchedAlias: alias }, score: 0 })
+    const alias = skill.aliases?.find((a) => a.toLowerCase().includes(q));
+    if (alias) hits.push({ skill: { ...skill, label, matchedAlias: alias }, score: 0 });
   }
 
-  return hits.sort((a, b) => b.score - a.score).slice(0, 100).map((h) => h.skill)
+  return hits
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 100)
+    .map((h) => h.skill);
 }
 
 interface SkillsModalProps {
-  isOpen: boolean
-  onClose: () => void
-  query: string
-  onQueryChange: (value: string) => void
-  onClearQuery: () => void
-  selected: EscoSkill[]
-  onRemove: (uri: string) => void
-  onToggle: (skill: EscoSkill) => void
-  allItems: EscoSkill[]
-  isLoading: boolean
-  locale: 'en' | 'fr'
+  isOpen: boolean;
+  onClose: () => void;
+  query: string;
+  onQueryChange: (value: string) => void;
+  onClearQuery: () => void;
+  selected: EscoSkill[];
+  onRemove: (uri: string) => void;
+  onToggle: (skill: EscoSkill) => void;
+  allItems: EscoSkill[];
+  isLoading: boolean;
+  locale: 'en' | 'fr';
 }
 
 export default function SkillsModal({
-  isOpen, onClose,
-  query, onQueryChange, onClearQuery,
-  selected, onRemove, onToggle,
-  allItems, isLoading, locale,
+  isOpen,
+  onClose,
+  query,
+  onQueryChange,
+  onClearQuery,
+  selected,
+  onRemove,
+  onToggle,
+  allItems,
+  isLoading,
+  locale,
 }: SkillsModalProps) {
-  const t = useTranslations('profile')
-  const inputRef = useRef<HTMLInputElement>(null)
-  const filteredSkills = filterSkills(query, allItems, locale)
-  const selectedUris = new Set(selected.map((s) => s.uri))
-  const listboxInDom = query && filteredSkills.length > 0
+  const t = useTranslations('profile');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const filteredSkills = filterSkills(query, allItems, locale);
+  const selectedUris = new Set(selected.map((s) => s.uri));
+  const listboxInDom = query && filteredSkills.length > 0;
 
   return (
     <SelectionBrowseModal
@@ -70,7 +86,9 @@ export default function SkillsModal({
       selectedCount={selected.length}
       headerCenter={
         <>
-          <span id={`${ID}-kbd-hint`} className="sr-only">{t('skillsListboxKbdHint')}</span>
+          <span id={`${ID}-kbd-hint`} className="sr-only">
+            {t('skillsListboxKbdHint')}
+          </span>
           <SearchInput
             query={query}
             onQueryChange={onQueryChange}
@@ -86,9 +104,15 @@ export default function SkillsModal({
       selectedPills={
         selected.length > 0 ? (
           <>
-            <span id={`${ID}-selected-hint`} className="sr-only">{t('skillsSelectedRegionHint')}</span>
+            <span id={`${ID}-selected-hint`} className="sr-only">
+              {t('skillsSelectedRegionHint')}
+            </span>
             <SelectedPillsStrip
-              items={selected.map((s) => ({ key: s.uri, label: s.preferredLabel[locale], removeArg: s.uri }))}
+              items={selected.map((s) => ({
+                key: s.uri,
+                label: s.preferredLabel[locale],
+                removeArg: s.uri,
+              }))}
               onRemove={onRemove}
               ariaLabel={t('skillsSelectedRegionLabel', { count: selected.length })}
               optPrefix="skills-pill"
@@ -121,5 +145,5 @@ export default function SkillsModal({
         />
       </div>
     </SelectionBrowseModal>
-  )
+  );
 }

@@ -1,51 +1,51 @@
-import { describe, it, expect } from 'vitest'
-import { VALUES_DICTIONARY, VALUES_LIST, getValueDefinition } from './values'
+import { describe, it, expect } from 'vitest';
+import { VALUES_DICTIONARY, VALUES_LIST, getValueDefinition } from './values';
 
 describe('VALUES_DICTIONARY', () => {
   it('contains a non-empty set of values', () => {
-    expect(Object.keys(VALUES_DICTIONARY).length).toBeGreaterThan(0)
-  })
+    expect(Object.keys(VALUES_DICTIONARY).length).toBeGreaterThan(0);
+  });
 
   it('every entry has a description and example string', () => {
-    const entries = Object.entries(VALUES_DICTIONARY)
+    const entries = Object.entries(VALUES_DICTIONARY);
     const invalidEntries = entries.filter(
       ([, def]) =>
         typeof def.description !== 'string' ||
         !def.description ||
         typeof def.example !== 'string' ||
-        !def.example
-    )
-    expect(invalidEntries).toEqual([])
-  })
-})
+        !def.example,
+    );
+    expect(invalidEntries).toEqual([]);
+  });
+});
 
 describe('VALUES_LIST', () => {
   it('is an array matching the dictionary keys', () => {
-    expect(VALUES_LIST).toEqual(Object.keys(VALUES_DICTIONARY))
-  })
+    expect(VALUES_LIST).toEqual(Object.keys(VALUES_DICTIONARY));
+  });
 
   it('contains well-known values', () => {
-    expect(VALUES_LIST).toContain('Community')
-    expect(VALUES_LIST).toContain('Creativity')
-    expect(VALUES_LIST).toContain('Challenge')
-  })
-})
+    expect(VALUES_LIST).toContain('Community');
+    expect(VALUES_LIST).toContain('Creativity');
+    expect(VALUES_LIST).toContain('Challenge');
+  });
+});
 
 describe('getValueDefinition', () => {
   it('returns the correct definition for a known value', () => {
-    const def = getValueDefinition('Community')
-    expect(def.description).toContain('community')
-  })
+    const def = getValueDefinition('Community');
+    expect(def.description).toContain('community');
+  });
 
   it('returns a default definition for an unknown value', () => {
-    const def = getValueDefinition('TotallyMadeUp')
-    expect(def.description).toBeTruthy()
-    expect(def.example).toBeTruthy()
-  })
+    const def = getValueDefinition('TotallyMadeUp');
+    expect(def.description).toBeTruthy();
+    expect(def.example).toBeTruthy();
+  });
 
   it('returns the same default for any unknown value', () => {
-    const a = getValueDefinition('Foo')
-    const b = getValueDefinition('Bar')
-    expect(a).toEqual(b)
-  })
-})
+    const a = getValueDefinition('Foo');
+    const b = getValueDefinition('Bar');
+    expect(a).toEqual(b);
+  });
+});

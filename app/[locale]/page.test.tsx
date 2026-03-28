@@ -1,50 +1,41 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@/test-utils'
-import { useEffect, useState, type ReactNode } from 'react'
-import Home from './page'
-import { MOCK_AUTH_USER } from '@/test-stubs/constants'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@/test-utils';
+import { useEffect, useState, type ReactNode } from 'react';
+import Home from './page';
+import { MOCK_AUTH_USER } from '@/test-stubs/constants';
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(),
-}))
+}));
 
 vi.mock('@/lib/hooks/useProfile', () => ({
   useProfile: vi.fn(),
-}))
+}));
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
-}))
+}));
 
 vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(),
-}))
+}));
 
 vi.mock('@/i18n/navigation', () => ({
-  Link: ({
-    href,
-    children,
-    prefetch: _prefetch,
-    ...props
-  }: {
-    href: string
-    children: ReactNode
-    prefetch?: boolean
-  }) => (
+  Link: ({ href, children, ...props }: { href: string; children: ReactNode }) => (
     <a href={href} {...props}>
       {children}
     </a>
   ),
-}))
+}));
 
 vi.mock('nuqs', async () => {
-  const React = await import('react')
+  const React = await import('react');
 
   function makeParser<T>(defaultValue?: T) {
     return {
       defaultValue,
       withDefault: (value: T) => makeParser(value),
-    }
+    };
   }
 
   return {
@@ -54,26 +45,27 @@ vi.mock('nuqs', async () => {
     parseAsStringLiteral: (values: string[]) => makeParser(values[0]),
     parseAsArrayOf: () => makeParser([] as string[]),
     useQueryState: (key: string, parser?: { defaultValue?: unknown }) => {
-      const initial =
-        Array.isArray(parser?.defaultValue)
-          ? [...parser.defaultValue]
-          : parser?.defaultValue
-      const [value, setValue] = React.useState(initial)
+      const initial = Array.isArray(parser?.defaultValue)
+        ? [...parser.defaultValue]
+        : parser?.defaultValue;
+      const [value, setValue] = React.useState(initial);
       const setter = (next: unknown) => {
-        setValue((prev: unknown) => (typeof next === 'function' ? (next as (p: unknown) => unknown)(prev) : next))
-      }
-      return [value, setter] as const
+        setValue((prev: unknown) =>
+          typeof next === 'function' ? (next as (p: unknown) => unknown)(prev) : next,
+        );
+      };
+      return [value, setter] as const;
     },
-  }
-})
+  };
+});
 
-import { useAuth } from '@/contexts/AuthContext'
-import { useProfile } from '@/lib/hooks/useProfile'
-import { useSearchParams } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/lib/hooks/useProfile';
+import { useSearchParams } from 'next/navigation';
 
-const mockUseAuth = vi.mocked(useAuth)
-const mockUseProfile = vi.mocked(useProfile)
-const mockUseSearchParams = vi.mocked(useSearchParams)
+const mockUseAuth = vi.mocked(useAuth);
+const mockUseProfile = vi.mocked(useProfile);
+const mockUseSearchParams = vi.mocked(useSearchParams);
 
 const profileWithWorkType = {
   id: 'user-1',
@@ -86,27 +78,29 @@ const profileWithWorkType = {
   profile_photo_url: null,
   created_at: '2026-03-06T00:00:00.000Z',
   updated_at: '2026-03-06T00:00:00.000Z',
-}
+};
 
 function jsonResponse(body: unknown) {
   return Promise.resolve(
     new Response(JSON.stringify(body), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-    })
-  )
+    }),
+  );
 }
 
 describe('Home page work type defaults', () => {
   beforeEach(() => {
-    mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never)
-    mockUseSearchParams.mockReturnValue(new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>)
+    mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never);
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
+    );
 
     mockUseProfile.mockImplementation(() => {
-      const [loading, setLoading] = useState(true)
+      const [loading, setLoading] = useState(true);
       useEffect(() => {
-        setLoading(false)
-      }, [])
+        setLoading(false);
+      }, []);
 
       if (loading) {
         return {
@@ -116,7 +110,7 @@ describe('Home page work type defaults', () => {
           isUpdating: false,
           refresh: () => Promise.resolve(),
           updateProfile: () => Promise.resolve(null),
-        } as never
+        } as never;
       }
 
       return {
@@ -126,25 +120,25 @@ describe('Home page work type defaults', () => {
         isUpdating: false,
         refresh: () => Promise.resolve(),
         updateProfile: () => Promise.resolve(null),
-      } as never
-    })
+      } as never;
+    });
 
     vi.stubGlobal(
       'fetch',
-      vi.fn(() => jsonResponse({ jobs: [], lastScrapeTime: null }))
-    )
-  })
+      vi.fn(() => jsonResponse({ jobs: [], lastScrapeTime: null })),
+    );
+  });
 
   afterEach(() => {
-    vi.unstubAllGlobals()
-    vi.clearAllMocks()
-  })
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
 
   it('adds the profile work type to default filters after the profile loads', async () => {
-    render(<Home />)
+    render(<Home />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Remove Hybrid' })).toBeVisible()
-    })
-  })
-})
+      expect(screen.getByRole('button', { name: 'Remove Hybrid' })).toBeVisible();
+    });
+  });
+});

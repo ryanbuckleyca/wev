@@ -1,30 +1,30 @@
-import { Button as ShadcnButton } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
+import { Button as ShadcnButton } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 
 interface ButtonProps {
-  children: React.ReactNode
-  onClick?: () => void
-  type?: 'button' | 'submit' | 'reset'
-  disabled?: boolean
-  loading?: boolean
-  variant?: 'primary' | 'secondary' | 'outline'
-  size?: 'sm' | 'md' | 'lg'
-  fullWidth?: boolean
-  className?: string
-  style?: React.CSSProperties
+  children: React.ReactNode;
+  onClick?: () => void;
+  type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean;
+  loading?: boolean;
+  variant?: 'primary' | 'secondary' | 'outline';
+  size?: 'sm' | 'md' | 'lg';
+  fullWidth?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 const variantMap = {
   primary: 'default',
   secondary: 'secondary',
   outline: 'outline',
-} as const
+} as const;
 
 const sizeMap = {
   sm: 'sm',
   md: 'default',
   lg: 'lg',
-} as const
+} as const;
 
 export default function Button({
   children,
@@ -50,5 +50,5 @@ export default function Button({
     >
       {children}
     </ShadcnButton>
-  )
+  );
 }

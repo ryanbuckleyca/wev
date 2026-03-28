@@ -1,8 +1,13 @@
-import { useMemo } from "react";
-import { Lineicons } from "@lineiconshq/react-lineicons";
-import { HeartSolid, Briefcase2Solid, LocationArrowRightSolid, ChevronDownOutlined } from "@lineiconshq/free-icons";
-import HorizontalScrollWithFades from "./HorizontalScrollWithFades";
-import InfoPopover from "@/components/InfoPopover";
+import { useMemo } from 'react';
+import { Lineicons } from '@lineiconshq/react-lineicons';
+import {
+  HeartSolid,
+  Briefcase2Solid,
+  LocationArrowRightSolid,
+  ChevronDownOutlined,
+} from '@lineiconshq/free-icons';
+import HorizontalScrollWithFades from './HorizontalScrollWithFades';
+import InfoPopover from '@/components/InfoPopover';
 
 export interface ScrollablePillsItem {
   label: string;
@@ -20,48 +25,49 @@ export interface ScrollablePillsItem {
 
 interface ScrollablePillsProps {
   items: string[] | ScrollablePillsItem[];
-  variant?: "default" | "pink" | "gray";
+  variant?: 'default' | 'pink' | 'gray';
   className?: string;
   fadeBackground?: string; // CSS color value matching the surrounding background, default "var(--card)"
   onItemClick?: (item: ScrollablePillsItem, index: number) => void;
   tight?: boolean;
 }
 
-
-
 export function ScrollablePills({
   items,
   className,
-  fadeBackground = "var(--card)",
+  fadeBackground = 'var(--card)',
   onItemClick,
   tight = false,
 }: ScrollablePillsProps) {
-
   // Normalize items to always be objects
-  const normalizedItems: ScrollablePillsItem[] = items.map(item => 
-    typeof item === 'string' ? { label: item, isMatched: true } : item
+  const normalizedItems: ScrollablePillsItem[] = items.map((item) =>
+    typeof item === 'string' ? { label: item, isMatched: true } : item,
   );
 
-  const normalizedWithIndex = useMemo(() => normalizedItems.map((item, index) => ({ item, index })), [normalizedItems]);
+  const normalizedWithIndex = useMemo(
+    () => normalizedItems.map((item, index) => ({ item, index })),
+    [normalizedItems],
+  );
 
   // Update logic no longer needs manual trigger as HorizontalScrollWithFades handles its own lifecycle
 
   const groupedItems = useMemo(() => {
-    const groups: { groupId?: string; entries: { item: ScrollablePillsItem; index: number }[] }[] = []
-    normalizedWithIndex.forEach(entry => {
-      const groupKey = entry.item.groupId
-      const lastGroup = groups[groups.length - 1]
+    const groups: { groupId?: string; entries: { item: ScrollablePillsItem; index: number }[] }[] =
+      [];
+    normalizedWithIndex.forEach((entry) => {
+      const groupKey = entry.item.groupId;
+      const lastGroup = groups[groups.length - 1];
       if (groupKey && lastGroup && lastGroup.groupId === groupKey) {
-        lastGroup.entries.push(entry)
+        lastGroup.entries.push(entry);
       } else {
-        groups.push({ groupId: groupKey, entries: [entry] })
+        groups.push({ groupId: groupKey, entries: [entry] });
       }
-    })
-    return groups
-  }, [normalizedWithIndex])
+    });
+    return groups;
+  }, [normalizedWithIndex]);
 
   const getVariantClass = (isMatched: boolean = true) => {
-    const baseClasses = "border transition-colors";
+    const baseClasses = 'border transition-colors';
     if (!isMatched) {
       return `${baseClasses} bg-muted text-muted-foreground border-border opacity-60`;
     }
@@ -76,7 +82,7 @@ export function ScrollablePills({
     >
       {groupedItems.map((group, groupIndex) => {
         const renderButton = (entry: { item: ScrollablePillsItem; index: number }) => {
-          const { item, index } = entry
+          const { item, index } = entry;
           const button = (
             <div
               key={item.label + index}
@@ -106,44 +112,50 @@ export function ScrollablePills({
               {item.expandable && (
                 <button
                   type="button"
-                  onClick={e => {
+                  onClick={(e) => {
                     e.stopPropagation();
                     onItemClick?.(item, index);
                   }}
                   className="flex items-center focus:outline-none -mr-1 pl-0.5"
                   aria-label={item.isExpanded ? 'Collapse' : 'Expand'}
                 >
-                  <div style={{ transition: 'transform 0.2s ease', transform: item.isExpanded ? 'rotate(90deg)' : 'rotate(-90deg)' }}>
-                    <Lineicons icon={ChevronDownOutlined} size={11} className="text-muted-foreground" />
+                  <div
+                    style={{
+                      transition: 'transform 0.2s ease',
+                      transform: item.isExpanded ? 'rotate(90deg)' : 'rotate(-90deg)',
+                    }}
+                  >
+                    <Lineicons
+                      icon={ChevronDownOutlined}
+                      size={11}
+                      className="text-muted-foreground"
+                    />
                   </div>
                 </button>
               )}
             </div>
-          )
+          );
 
           if (item.tooltip) {
             return (
-              <InfoPopover
-                key={item.label + index}
-                content={item.tooltip}
-              >
+              <InfoPopover key={item.label + index} content={item.tooltip}>
                 {button}
               </InfoPopover>
-            )
+            );
           }
 
-          return button
-        }
+          return button;
+        };
 
         if (group.groupId && group.entries.length > 1) {
           return (
             <div key={`group-${group.groupId}-${groupIndex}`} className="flex items-center gap-0">
               {group.entries.map(renderButton)}
             </div>
-          )
+          );
         }
 
-        return group.entries.map(entry => renderButton(entry))
+        return group.entries.map((entry) => renderButton(entry));
       })}
     </HorizontalScrollWithFades>
   );

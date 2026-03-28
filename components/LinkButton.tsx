@@ -1,29 +1,29 @@
-import { Link } from '@/i18n/navigation'
-import { buttonVariants } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
+import { Link } from '@/i18n/navigation';
+import { buttonVariants } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 
 interface LinkButtonProps {
-  href: string
-  children: React.ReactNode
-  variant?: 'primary' | 'secondary' | 'outline'
-  size?: 'sm' | 'md' | 'lg'
-  fullWidth?: boolean
-  className?: string
-  prefetch?: boolean
-  onClick?: () => void
+  href: string;
+  children: React.ReactNode;
+  variant?: 'primary' | 'secondary' | 'outline';
+  size?: 'sm' | 'md' | 'lg';
+  fullWidth?: boolean;
+  className?: string;
+  prefetch?: boolean;
+  onClick?: () => void;
 }
 
 const variantMap = {
   primary: 'default',
   secondary: 'secondary',
   outline: 'outline',
-} as const
+} as const;
 
 const sizeMap = {
   sm: 'sm',
   md: 'default',
   lg: 'lg',
-} as const
+} as const;
 
 export default function LinkButton({
   href,
@@ -41,12 +41,12 @@ export default function LinkButton({
       className={cn(
         buttonVariants({ variant: variantMap[variant], size: sizeMap[size] }),
         fullWidth && 'w-full',
-        className
+        className,
       )}
       prefetch={prefetch}
       onClick={onClick}
     >
       {children}
     </Link>
-  )
+  );
 }

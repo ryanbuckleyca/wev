@@ -1,28 +1,28 @@
-"use client"
+'use client';
 
-import { ReactNode, useMemo } from 'react'
-import { useTranslations } from 'next-intl'
-import InfoPopover from './InfoPopover'
-import ProgressDonut from './ProgressDonut'
-import ExpandablePills, { ExpandablePillGroup } from './ExpandablePills'
-import { ScrollablePillsItem } from '@/components/ui/ScrollablePills'
-import { getValueDefinition } from '@/lib/values'
+import { ReactNode, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
+import InfoPopover from './InfoPopover';
+import ProgressDonut from './ProgressDonut';
+import ExpandablePills, { ExpandablePillGroup } from './ExpandablePills';
+import { ScrollablePillsItem } from '@/components/ui/ScrollablePills';
+import { getValueDefinition } from '@/lib/values';
 
 interface JobCardFooterProps {
-  values: string[]
-  skills: string[]
-  sharedValues: string[]
-  sharedSkills: string[]
-  isValueMatched: (value: string) => boolean
-  isSkillMatched: (skill: string) => boolean
-  skillTerms: Record<string, string>
-  skillDefinitions: Record<string, string>
-  totalMatchPercentage: number
-  matchTooltipContent: ReactNode | null
-  showTooltip: boolean
-  fadeBackground?: string
-  workType?: 'remote' | 'hybrid' | 'office'
-  selectedWorkTypes?: string[]
+  values: string[];
+  skills: string[];
+  sharedValues: string[];
+  sharedSkills: string[];
+  isValueMatched: (value: string) => boolean;
+  isSkillMatched: (skill: string) => boolean;
+  skillTerms: Record<string, string>;
+  skillDefinitions: Record<string, string>;
+  totalMatchPercentage: number;
+  matchTooltipContent: ReactNode | null;
+  showTooltip: boolean;
+  fadeBackground?: string;
+  workType?: 'remote' | 'hybrid' | 'office';
+  selectedWorkTypes?: string[];
 }
 
 export default function JobCardFooter({
@@ -41,52 +41,52 @@ export default function JobCardFooter({
   workType,
   selectedWorkTypes = [],
 }: JobCardFooterProps) {
-  const t = useTranslations()
-  const tValues = useTranslations('values')
+  const t = useTranslations();
+  const tValues = useTranslations('values');
 
   const formatValueLabel = (value: string) => {
     return value
       .replace(/_/g, ' ')
       .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .toLowerCase()
-  }
+      .toLowerCase();
+  };
 
   const getValueTranslations = (value: string) => {
-    const fallbackDefinition = getValueDefinition(value)
-    const fallbackName = formatValueLabel(value)
+    const fallbackDefinition = getValueDefinition(value);
+    const fallbackName = formatValueLabel(value);
 
-    const nameKey = `${value}.name`
-    const descriptionKey = `${value}.description`
-    const exampleKey = `${value}.example`
+    const nameKey = `${value}.name`;
+    const descriptionKey = `${value}.description`;
+    const exampleKey = `${value}.example`;
 
-    const name = tValues.has(nameKey) ? tValues(nameKey) : fallbackName
+    const name = tValues.has(nameKey) ? tValues(nameKey) : fallbackName;
     const description = tValues.has(descriptionKey)
       ? tValues(descriptionKey)
-      : fallbackDefinition.description
-    const example = tValues.has(exampleKey) ? tValues(exampleKey) : fallbackDefinition.example
+      : fallbackDefinition.description;
+    const example = tValues.has(exampleKey) ? tValues(exampleKey) : fallbackDefinition.example;
 
     return {
       label: name.toLowerCase(),
       description,
       example,
-    }
-  }
+    };
+  };
 
   const formatSkillLabel = (skill: string) => {
-    if (skillTerms[skill]) return skillTerms[skill]
+    if (skillTerms[skill]) return skillTerms[skill];
     try {
-      const parsed = new URL(skill)
-      const slug = decodeURIComponent(parsed.pathname.split('/').pop() || skill)
-      return slug.replace(/[-_]/g, ' ')
+      const parsed = new URL(skill);
+      const slug = decodeURIComponent(parsed.pathname.split('/').pop() || skill);
+      return slug.replace(/[-_]/g, ' ');
     } catch {
-      return skill
+      return skill;
     }
-  }
+  };
 
-  const matchedValueCount = sharedValues.length
-  const totalValueCount = values.length
-  const matchedSkillCount = sharedSkills.filter(skill => skills.includes(skill)).length
-  const totalSkillCount = skills.length
+  const matchedValueCount = sharedValues.length;
+  const totalValueCount = values.length;
+  const matchedSkillCount = sharedSkills.filter((skill) => skills.includes(skill)).length;
+  const totalSkillCount = skills.length;
 
   const buildSummaryPill = (
     matchedCount: number,
@@ -94,18 +94,18 @@ export default function JobCardFooter({
     matchedNames: string,
     unmatchedNames: string,
     label: string,
-    icon: 'heart' | 'briefcase'
+    icon: 'heart' | 'briefcase',
   ): ScrollablePillsItem | null => {
-    if (totalCount === 0) return null
+    if (totalCount === 0) return null;
 
-    let tooltip = `${matchedCount} of ${totalCount} ${label} match your profile`
+    let tooltip = `${matchedCount} of ${totalCount} ${label} match your profile`;
     if (matchedNames) {
-      tooltip += `<br/><br/><strong>Matched:</strong> ${matchedNames}`
+      tooltip += `<br/><br/><strong>Matched:</strong> ${matchedNames}`;
     }
     if (unmatchedNames) {
-      tooltip += `<br/><br /><strong>Unmatched:</strong> ${unmatchedNames}`
+      tooltip += `<br/><br /><strong>Unmatched:</strong> ${unmatchedNames}`;
     }
-    tooltip += `<br/><br/><em>Click > to expand details</em>`
+    tooltip += `<br/><br/><em>Click > to expand details</em>`;
 
     return {
       label: `${matchedCount}/${totalCount} ${label}`,
@@ -113,21 +113,22 @@ export default function JobCardFooter({
       isMatched: matchedCount > 0,
       icon,
       type: 'summary',
-    }
-  }
+    };
+  };
 
   const buildWorkTypePill = (): ScrollablePillsItem | undefined => {
-    if (!workType) return undefined
+    if (!workType) return undefined;
 
-    const isMatched = selectedWorkTypes.includes(workType)
-    const label = workType === 'remote'
-      ? t('filters.workType.remote')
-      : workType === 'hybrid'
-        ? t('filters.workType.hybrid')
-        : t('filters.workType.office')
+    const isMatched = selectedWorkTypes.includes(workType);
+    const label =
+      workType === 'remote'
+        ? t('filters.workType.remote')
+        : workType === 'hybrid'
+          ? t('filters.workType.hybrid')
+          : t('filters.workType.office');
     const tooltip = isMatched
       ? `${label} matches your current work-style filter.`
-      : `Does not match filter preferences for location.`
+      : `Does not match filter preferences for location.`;
 
     return {
       label,
@@ -135,27 +136,29 @@ export default function JobCardFooter({
       isMatched,
       icon: 'location' as const,
       type: 'workType' as const,
-    }
-  }
+    };
+  };
 
   const summaryItems = useMemo(() => {
-    const matchedValueNames = sharedValues.map(value => getValueTranslations(value).label).join(', ')
+    const matchedValueNames = sharedValues
+      .map((value) => getValueTranslations(value).label)
+      .join(', ');
     const unmatchedValueNames = values
-      .filter(value => !sharedValues.includes(value))
-      .map(value => getValueTranslations(value).label)
-      .join(', ')
+      .filter((value) => !sharedValues.includes(value))
+      .map((value) => getValueTranslations(value).label)
+      .join(', ');
 
     const matchedSkillNames = sharedSkills
-      .filter(skill => skills.includes(skill))
-      .map(skill => formatSkillLabel(skill).toLowerCase())
-      .join(', ')
+      .filter((skill) => skills.includes(skill))
+      .map((skill) => formatSkillLabel(skill).toLowerCase())
+      .join(', ');
     const unmatchedSkillNames = skills
-      .filter(skill => !sharedSkills.includes(skill))
-      .map(skill => formatSkillLabel(skill).toLowerCase())
-      .join(', ')
+      .filter((skill) => !sharedSkills.includes(skill))
+      .map((skill) => formatSkillLabel(skill).toLowerCase())
+      .join(', ');
 
-    const valueSummaryLabel = t('matchDetails.values').toLowerCase()
-    const skillSummaryLabel = t('matchDetails.skills').toLowerCase()
+    const valueSummaryLabel = t('matchDetails.values').toLowerCase();
+    const skillSummaryLabel = t('matchDetails.skills').toLowerCase();
 
     return [
       buildSummaryPill(
@@ -164,7 +167,7 @@ export default function JobCardFooter({
         matchedValueNames,
         unmatchedValueNames,
         valueSummaryLabel,
-        'heart'
+        'heart',
       ),
       buildSummaryPill(
         matchedSkillCount,
@@ -172,9 +175,9 @@ export default function JobCardFooter({
         matchedSkillNames,
         unmatchedSkillNames,
         skillSummaryLabel,
-        'briefcase'
+        'briefcase',
       ),
-    ].filter(Boolean) as ScrollablePillsItem[]
+    ].filter(Boolean) as ScrollablePillsItem[];
   }, [
     matchedValueCount,
     totalValueCount,
@@ -187,55 +190,55 @@ export default function JobCardFooter({
     skillTerms,
     t,
     tValues,
-  ])
+  ]);
 
   const valueItems = useMemo(() => {
-    const sharedSet = new Set(sharedValues)
+    const sharedSet = new Set(sharedValues);
     const orderedValues = [
-      ...values.filter(value => sharedSet.has(value)),
-      ...values.filter(value => !sharedSet.has(value)),
-    ]
+      ...values.filter((value) => sharedSet.has(value)),
+      ...values.filter((value) => !sharedSet.has(value)),
+    ];
 
-    return orderedValues.map(value => {
-      const valueTranslations = getValueTranslations(value)
-      const isMatched = sharedSet.has(value)
+    return orderedValues.map((value) => {
+      const valueTranslations = getValueTranslations(value);
+      const isMatched = sharedSet.has(value);
       return {
         label: valueTranslations.label,
         tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em>`,
         isMatched,
         type: 'value' as const,
-      }
-    })
-  }, [values, sharedValues, tValues])
+      };
+    });
+  }, [values, sharedValues, tValues]);
 
   const skillItems = useMemo(() => {
-    const sharedSet = new Set(sharedSkills)
+    const sharedSet = new Set(sharedSkills);
     const orderedSkills = [
-      ...skills.filter(skill => sharedSet.has(skill)),
-      ...skills.filter(skill => !sharedSet.has(skill)),
-    ]
+      ...skills.filter((skill) => sharedSet.has(skill)),
+      ...skills.filter((skill) => !sharedSet.has(skill)),
+    ];
 
-    return orderedSkills.map(skill => {
-      const skillLabel = formatSkillLabel(skill).toLowerCase()
-      const skillTooltip = skillDefinitions[skill]
-      const isMatched = sharedSet.has(skill)
+    return orderedSkills.map((skill) => {
+      const skillLabel = formatSkillLabel(skill).toLowerCase();
+      const skillTooltip = skillDefinitions[skill];
+      const isMatched = sharedSet.has(skill);
       return {
         label: skillLabel,
         tooltip: skillTooltip,
         isMatched,
         type: 'skill' as const,
-      }
-    })
-  }, [skills, sharedSkills, skillTerms, skillDefinitions])
+      };
+    });
+  }, [skills, sharedSkills, skillTerms, skillDefinitions]);
 
-  const valueSummaryPill = summaryItems.find(item => item.icon === 'heart')
-  const skillSummaryPill = summaryItems.find(item => item.icon === 'briefcase')
-  const workTypePill = workType ? buildWorkTypePill() : undefined
+  const valueSummaryPill = summaryItems.find((item) => item.icon === 'heart');
+  const skillSummaryPill = summaryItems.find((item) => item.icon === 'briefcase');
+  const workTypePill = workType ? buildWorkTypePill() : undefined;
 
   const groups: ExpandablePillGroup[] = [
     { key: 'values', summary: valueSummaryPill, items: valueItems },
     { key: 'skills', summary: skillSummaryPill, items: skillItems },
-  ]
+  ];
 
   return (
     <div className="flex gap-4">
@@ -259,5 +262,5 @@ export default function JobCardFooter({
         />
       </div>
     </div>
-  )
+  );
 }

@@ -1,13 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import userEvent from '@testing-library/user-event'
-import type { ReactNode } from 'react'
-import { render, screen, waitFor } from '@/test-utils'
-import SignupPage from './page'
-import { createClient } from '@/lib/supabase/client'
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
+import { render, screen, waitFor } from '@/test-utils';
+import SignupPage from './page';
+import { createClient } from '@/lib/supabase/client';
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
-}))
+}));
 
 vi.mock('@/i18n/navigation', () => ({
   Link: ({
@@ -16,15 +16,15 @@ vi.mock('@/i18n/navigation', () => ({
     prefetch: _prefetch,
     ...props
   }: {
-    href: string
-    children: ReactNode
-    prefetch?: boolean
+    href: string;
+    children: ReactNode;
+    prefetch?: boolean;
   }) => (
     <a href={href} {...props}>
       {children}
     </a>
   ),
-}))
+}));
 
 vi.mock('@/components/TurnstileWidget', () => ({
   default: ({ onSuccess }: { onSuccess: (token: string) => void }) => (
@@ -32,7 +32,7 @@ vi.mock('@/components/TurnstileWidget', () => ({
       Complete CAPTCHA
     </button>
   ),
-}))
+}));
 
 vi.mock('@/hooks/usePasswordStrength', () => ({
   usePasswordStrength: () => ({
@@ -42,30 +42,30 @@ vi.mock('@/hooks/usePasswordStrength', () => ({
     isAcceptable: true,
     feedback: '',
   }),
-}))
+}));
 
-const mockSignUp = vi.fn()
+const mockSignUp = vi.fn();
 
 describe('SignupPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockSignUp.mockResolvedValue({ error: null })
+    vi.clearAllMocks();
+    mockSignUp.mockResolvedValue({ error: null });
     vi.mocked(createClient).mockReturnValue({
       auth: {
         signUp: mockSignUp,
         resend: vi.fn(),
       },
-    } as never)
-  })
+    } as never);
+  });
 
   it('shows the inline success state after signup', async () => {
-    const user = userEvent.setup()
-    render(<SignupPage />)
+    const user = userEvent.setup();
+    render(<SignupPage />);
 
-    await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
-    await user.type(screen.getByPlaceholderText('•••••••••••'), 'StrongPass123!')
-    await user.click(screen.getByRole('button', { name: /complete captcha/i }))
-    await user.click(screen.getByRole('button', { name: /create account/i }))
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com');
+    await user.type(screen.getByPlaceholderText('•••••••••••'), 'StrongPass123!');
+    await user.click(screen.getByRole('button', { name: /complete captcha/i }));
+    await user.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
       expect(mockSignUp).toHaveBeenCalledWith({
@@ -75,13 +75,13 @@ describe('SignupPage', () => {
           emailRedirectTo: expect.any(String),
           captchaToken: 'turnstile-token',
         }),
-      })
-    })
+      });
+    });
 
-    expect(screen.getByRole('heading', { name: /check your email/i })).toBeVisible()
-    expect(screen.getByText(/we sent you an email with a link/i)).toBeVisible()
-    expect(screen.getByRole('button', { name: /try again in 30s/i })).toBeVisible()
-    expect(screen.getByRole('link', { name: /log in/i })).toBeVisible()
-    expect(screen.queryByRole('button', { name: /create account/i })).not.toBeInTheDocument()
-  })
-})
+    expect(screen.getByRole('heading', { name: /check your email/i })).toBeVisible();
+    expect(screen.getByText(/we sent you an email with a link/i)).toBeVisible();
+    expect(screen.getByRole('button', { name: /try again in 30s/i })).toBeVisible();
+    expect(screen.getByRole('link', { name: /log in/i })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /create account/i })).not.toBeInTheDocument();
+  });
+});

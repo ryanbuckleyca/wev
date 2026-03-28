@@ -1,14 +1,14 @@
-import { Input } from '@/components/ui/Input'
-import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/Input';
+import { cn } from '@/lib/utils';
 
 interface FormInputProps {
-  type: 'text' | 'email' | 'password'
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  required?: boolean
-  disabled?: boolean
-  fullWidth?: boolean
+  type: 'text' | 'email' | 'password';
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  fullWidth?: boolean;
 }
 
 export default function FormInput({
@@ -30,5 +30,5 @@ export default function FormInput({
       placeholder={placeholder}
       className={cn(!fullWidth && 'w-auto')}
     />
-  )
+  );
 }

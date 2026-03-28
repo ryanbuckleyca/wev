@@ -1,6 +1,6 @@
 interface ErrorMessageProps {
-  children: React.ReactNode
-  className?: string
+  children: React.ReactNode;
+  className?: string;
 }
 
 export default function ErrorMessage({ children, className = '' }: ErrorMessageProps) {
@@ -8,5 +8,5 @@ export default function ErrorMessage({ children, className = '' }: ErrorMessageP
     <p className={`text-[var(--destructive-foreground)] text-sm mt-2 ${className}`.trim()}>
       {children}
     </p>
-  )
+  );
 }

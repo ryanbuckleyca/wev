@@ -1,22 +1,22 @@
-import FormLabel from '@/components/FormLabel'
-import ErrorMessage from '@/components/ErrorMessage'
-import { cn } from '@/lib/utils'
+import FormLabel from '@/components/FormLabel';
+import ErrorMessage from '@/components/ErrorMessage';
+import { cn } from '@/lib/utils';
 
 interface FormTextareaProps {
-  label?: string
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  required?: boolean
-  disabled?: boolean
-  fullWidth?: boolean
-  htmlFor?: string
-  rows?: number
-  charLimit?: number
-  showCount?: boolean
-  countLabel?: (current: number, max: number) => string
-  error?: string
-  className?: string
+  label?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  fullWidth?: boolean;
+  htmlFor?: string;
+  rows?: number;
+  charLimit?: number;
+  showCount?: boolean;
+  countLabel?: (current: number, max: number) => string;
+  error?: string;
+  className?: string;
 }
 
 export default function FormTextarea({
@@ -35,12 +35,12 @@ export default function FormTextarea({
   error,
   className = '',
 }: FormTextareaProps) {
-  const count = value.length
-  const isOverLimit = typeof charLimit === 'number' && count > charLimit
-  const showCounter = typeof charLimit === 'number' && showCount
+  const count = value.length;
+  const isOverLimit = typeof charLimit === 'number' && count > charLimit;
+  const showCounter = typeof charLimit === 'number' && showCount;
   const countText = showCounter
-    ? countLabel?.(count, charLimit) ?? `${count}/${charLimit} characters`
-    : null
+    ? (countLabel?.(count, charLimit) ?? `${count}/${charLimit} characters`)
+    : null;
 
   return (
     <div className="space-y-0">
@@ -62,15 +62,20 @@ export default function FormTextarea({
           'px-4 py-3 text-[13px] font-medium border border-gray-100 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-200 focus:ring-2 focus:ring-gray-100/50 transition-all',
           'dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-800/50',
           fullWidth ? 'w-full' : 'w-auto',
-          className
+          className,
         )}
       />
       {showCounter && (
-        <p className={cn('text-xs', isOverLimit ? 'text-destructive-foreground' : 'text-muted-foreground')}>
+        <p
+          className={cn(
+            'text-xs',
+            isOverLimit ? 'text-destructive-foreground' : 'text-muted-foreground',
+          )}
+        >
           {countText}
         </p>
       )}
       {error && <ErrorMessage>{error}</ErrorMessage>}
     </div>
-  )
+  );
 }

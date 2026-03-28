@@ -1,77 +1,89 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from 'react'
-import { useTranslations, useLocale } from 'next-intl'
-import JobListings from '@/components/JobListings'
-import { createClient } from '@/lib/supabase/client'
-import { useRequireAuth } from '@/lib/hooks/useRequireAuth'
-import LoadingState from '@/components/LoadingState'
-import PageLayout from '@/components/PageLayout'
-import type { JobMatchData } from '@/lib/supabase'
+import { useEffect, useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
+import JobListings from '@/components/JobListings';
+import { createClient } from '@/lib/supabase/client';
+import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
+import LoadingState from '@/components/LoadingState';
+import PageLayout from '@/components/PageLayout';
+import type { JobPosting, JobMatchData } from '@/lib/supabase';
 
 export default function BookmarksPage() {
-  const t = useTranslations()
-  const locale = useLocale()
-  const { user, loading } = useRequireAuth()
-  const [jobs, setJobs] = useState<any[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(new Map())
+  const t = useTranslations();
+  const locale = useLocale();
+  const { user, loading } = useRequireAuth();
+  const [jobs, setJobs] = useState<JobPosting[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(new Map());
 
   useEffect(() => {
-    if (!user) return
+    if (!user) return;
 
-    let mounted = true
-    ;(async () => {
+    let mounted = true;
+    (async () => {
       try {
-        const res = await fetch(`/api/bookmarks?locale=${locale}`, { cache: 'no-store' })
+        const res = await fetch(`/api/bookmarks?locale=${locale}`, { cache: 'no-store' });
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}))
-          throw new Error(body.error || t('bookmarks.loadFailed'))
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || t('bookmarks.loadFailed'));
         }
 
-        const { jobs: bookmarkedJobs } = await res.json()
-        if (!mounted) return
+        const { jobs: bookmarkedJobs } = await res.json();
+        if (!mounted) return;
 
-        setJobs(bookmarkedJobs)
+        setJobs(bookmarkedJobs);
 
         // Batch-fetch match data for bookmarked jobs
         if (bookmarkedJobs?.length > 0) {
-          const supabase = createClient()
+          const supabase = createClient();
           const { data: matches, error: matchError } = await supabase
             .from('job_matches')
             .select('job_id, score, value_score, skill_score, shared_values, shared_skills')
             .eq('user_id', user.id)
-            .in('job_id', bookmarkedJobs.map((j: { id: string }) => j.id))
+            .in(
+              'job_id',
+              bookmarkedJobs.map((j: { id: string }) => j.id),
+            );
 
           if (!matchError && mounted) {
-            const matchMap = new Map<string, JobMatchData>()
-            matches?.forEach((m: { job_id: string; score: number; value_score?: number | null; skill_score?: number | null; shared_values: string[]; shared_skills?: string[] }) => {
-              matchMap.set(m.job_id, {
-                score: m.score,
-                value_score: m.value_score,
-                skill_score: m.skill_score,
-                shared_values: m.shared_values || [],
-                shared_skills: m.shared_skills || [],
-              })
-            })
-            setMatchData(matchMap)
+            const matchMap = new Map<string, JobMatchData>();
+            matches?.forEach(
+              (m: {
+                job_id: string;
+                score: number;
+                value_score?: number | null;
+                skill_score?: number | null;
+                shared_values: string[];
+                shared_skills?: string[];
+              }) => {
+                matchMap.set(m.job_id, {
+                  score: m.score,
+                  value_score: m.value_score,
+                  skill_score: m.skill_score,
+                  shared_values: m.shared_values || [],
+                  shared_skills: m.shared_skills || [],
+                });
+              },
+            );
+            setMatchData(matchMap);
           }
         }
       } catch (err) {
-        console.error('Failed to load bookmarks:', err)
-        if (mounted) setError(err instanceof Error ? err.message : String(err))
+        console.error('Failed to load bookmarks:', err);
+        if (mounted) setError(err instanceof Error ? err.message : String(err));
       }
-    })()
+    })();
 
     return () => {
-      mounted = false
-    }
-  }, [user])
+      mounted = false;
+    };
+  }, [user]);
 
-  if (loading) return <LoadingState message={t('common.loading')} />
+  if (loading) return <LoadingState message={t('common.loading')} />;
 
   if (!user) {
-    return null
+    return null;
   }
 
   return (
@@ -100,12 +112,11 @@ export default function BookmarksPage() {
             matchData={matchData}
             bookmarkedJobIds={new Set(jobs.map((j: { id: string }) => j.id))}
             onJobBookmarkChange={(job, bookmarked) => {
-              if (!bookmarked) setJobs((prev) => (prev ?? []).filter((j) => j.id !== job.id))
+              if (!bookmarked) setJobs((prev) => (prev ?? []).filter((j) => j.id !== job.id));
             }}
           />
         )}
       </div>
     </PageLayout>
-  )
+  );
 }
-
