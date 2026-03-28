@@ -85,15 +85,18 @@ BEGIN
       WHERE "values" IS NOT NULL AND array_length("values", 1) IS NOT NULL
     ),
     job_value_weights AS (
-      SELECT
-        vj.id AS job_id,
-        elem->>'value' AS val,
-        rank_weight((elem->>'confidence')::int, jsonb_array_length(vj.job_rated)) AS job_w
+      SELECT vj.id AS job_id, x.val, MIN(x.job_w) AS job_w
       FROM valid_jobs vj
-      CROSS JOIN LATERAL jsonb_array_elements(vj.job_rated) AS elem
+      CROSS JOIN LATERAL (
+        SELECT
+          elem->>'value' AS val,
+          rank_weight((elem->>'confidence')::int, jsonb_array_length(vj.job_rated)) AS job_w
+        FROM jsonb_array_elements(vj.job_rated) AS elem
+        WHERE (elem->>'value') IS NOT NULL
+      ) x
       WHERE vj.job_rated IS NOT NULL
         AND jsonb_array_length(vj.job_rated) > 0
-        AND (elem->>'value') IS NOT NULL
+      GROUP BY vj.id, x.val
     ),
     computed AS (
       SELECT
@@ -135,15 +138,18 @@ BEGIN
       WHERE "values" IS NOT NULL AND array_length("values", 1) IS NOT NULL
     ),
     job_value_weights AS (
-      SELECT
-        vj.id AS job_id,
-        elem->>'value' AS val,
-        rank_weight((elem->>'confidence')::int, jsonb_array_length(vj.job_rated)) AS job_w
+      SELECT vj.id AS job_id, x.val, MIN(x.job_w) AS job_w
       FROM valid_jobs vj
-      CROSS JOIN LATERAL jsonb_array_elements(vj.job_rated) AS elem
+      CROSS JOIN LATERAL (
+        SELECT
+          elem->>'value' AS val,
+          rank_weight((elem->>'confidence')::int, jsonb_array_length(vj.job_rated)) AS job_w
+        FROM jsonb_array_elements(vj.job_rated) AS elem
+        WHERE (elem->>'value') IS NOT NULL
+      ) x
       WHERE vj.job_rated IS NOT NULL
         AND jsonb_array_length(vj.job_rated) > 0
-        AND (elem->>'value') IS NOT NULL
+      GROUP BY vj.id, x.val
     ),
     computed AS (
       SELECT
@@ -190,12 +196,17 @@ BEGIN
   INSERT INTO job_matches (user_id, job_id, score, shared_values, updated_at)
   WITH
   job_value_weights AS (
-    SELECT elem->>'value' AS val,
-           rank_weight((elem->>'confidence')::int, jsonb_array_length(v_job_rated)) AS job_w
-    FROM jsonb_array_elements(COALESCE(v_job_rated, '[]'::jsonb)) AS elem
-    WHERE v_job_rated IS NOT NULL
-      AND jsonb_array_length(v_job_rated) > 0
-      AND (elem->>'value') IS NOT NULL
+    SELECT x.val, MIN(x.job_w) AS job_w
+    FROM (
+      SELECT
+        elem->>'value' AS val,
+        rank_weight((elem->>'confidence')::int, jsonb_array_length(v_job_rated)) AS job_w
+      FROM jsonb_array_elements(COALESCE(v_job_rated, '[]'::jsonb)) AS elem
+      WHERE v_job_rated IS NOT NULL
+        AND jsonb_array_length(v_job_rated) > 0
+        AND (elem->>'value') IS NOT NULL
+    ) x
+    GROUP BY x.val
   ),
   weighted_profiles AS (
     SELECT p.id AS profile_id, p.values_rated
