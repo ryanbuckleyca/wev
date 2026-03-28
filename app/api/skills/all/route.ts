@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase-server';
 
+/** Row shape for `esco_skills` columns selected below (localized ESCO fields). */
+type EscoSkillRow = {
+  concept_uri: string;
+  preferred_label_en: string | null;
+  preferred_label_fr: string | null;
+  alternative_label_en: string[] | null;
+  alternative_label_fr: string[] | null;
+  skill_type: string | null;
+  reuse_level: string | null;
+  description_en: string | null;
+  description_fr: string | null;
+  scope_note_en: string | null;
+  scope_note_fr: string | null;
+};
+
 // Cache indefinitely - only revalidate on-demand when ESCO skills are updated
 export const revalidate = 0;
 
@@ -11,7 +26,7 @@ export async function GET(request: Request) {
 
     const supabase = getSupabaseServer();
 
-    let allData: unknown[] = [];
+    let allData: EscoSkillRow[] = [];
     let from = 0;
     const pageSize = 1000;
 
@@ -27,7 +42,7 @@ export async function GET(request: Request) {
       if (error) throw error;
       if (!data || data.length === 0) break;
 
-      allData = [...allData, ...data];
+      allData = [...allData, ...(data as EscoSkillRow[])];
       if (data.length < pageSize) break;
       from += pageSize;
     }
