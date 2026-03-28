@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { DELETE } from './route';
 import { NextRequest } from 'next/server';
+import { PATCH } from './route';
 import { getRequestUser } from '@/lib/auth/request-user';
 
 const mockSignInWithPassword = vi.fn();
-const mockDeleteUser = vi.fn();
+const mockUpdateUser = vi.fn();
 const mockAdminSignOut = vi.fn();
 
 vi.mock('@/lib/auth/request-user', () => ({
@@ -19,12 +19,19 @@ vi.mock('@supabase/supabase-js', () => ({
   })),
 }));
 
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(() => ({
+    auth: {
+      updateUser: mockUpdateUser,
+    },
+  })),
+}));
+
 vi.mock('@/lib/supabase-server', () => ({
   getSupabaseServer: vi.fn(() => ({
     auth: {
       admin: {
         signOut: mockAdminSignOut,
-        deleteUser: mockDeleteUser,
       },
     },
   })),
@@ -32,7 +39,7 @@ vi.mock('@/lib/supabase-server', () => ({
 
 const mockGetRequestUser = vi.mocked(getRequestUser);
 
-describe('/api/account/delete', () => {
+describe('/api/account PATCH', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSignInWithPassword.mockResolvedValue({
@@ -42,31 +49,35 @@ describe('/api/account/delete', () => {
       },
       error: null,
     });
+    mockUpdateUser.mockResolvedValue({
+      data: { user: { id: 'user-123' } },
+      error: null,
+    });
     mockAdminSignOut.mockResolvedValue({
       data: null,
       error: null,
     });
   });
 
-  it('should require authentication', async () => {
+  it('requires authentication', async () => {
     mockGetRequestUser.mockResolvedValue({
       ok: false,
       authError: new Error('Not authenticated'),
     });
 
-    const request = new NextRequest('http://localhost:3000/api/account/delete', {
-      method: 'DELETE',
-      body: JSON.stringify({ password: 'test123' }),
+    const request = new NextRequest('http://localhost:3000/api/account', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword: 'old-pass', newPassword: 'new-pass' }),
     });
 
-    const response = await DELETE(request);
+    const response = await PATCH(request);
     const data = await response.json();
 
     expect(response.status).toBe(401);
     expect(data.error).toBe('Unauthorized');
   });
 
-  it('should require password', async () => {
+  it('requires the current password', async () => {
     mockGetRequestUser.mockResolvedValue({
       ok: true,
       user: {
@@ -75,19 +86,19 @@ describe('/api/account/delete', () => {
       } as never,
     });
 
-    const request = new NextRequest('http://localhost:3000/api/account/delete', {
-      method: 'DELETE',
-      body: JSON.stringify({}), // No password
+    const request = new NextRequest('http://localhost:3000/api/account', {
+      method: 'PATCH',
+      body: JSON.stringify({ newPassword: 'new-pass' }),
     });
 
-    const response = await DELETE(request);
+    const response = await PATCH(request);
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toBe('Password required for account deletion');
+    expect(data.error).toBe('Current password is required.');
   });
 
-  it('should reject an invalid password', async () => {
+  it('rejects an invalid current password', async () => {
     mockGetRequestUser.mockResolvedValue({
       ok: true,
       user: {
@@ -103,21 +114,21 @@ describe('/api/account/delete', () => {
       },
     });
 
-    const request = new NextRequest('http://localhost:3000/api/account/delete', {
-      method: 'DELETE',
-      body: JSON.stringify({ password: 'wrong-password' }),
+    const request = new NextRequest('http://localhost:3000/api/account', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword: 'wrong-pass', newPassword: 'new-pass' }),
     });
 
-    const response = await DELETE(request);
+    const response = await PATCH(request);
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toBe('Invalid password');
-    expect(mockDeleteUser).not.toHaveBeenCalled();
+    expect(data.error).toBe('Current password is incorrect.');
+    expect(mockUpdateUser).not.toHaveBeenCalled();
     expect(mockAdminSignOut).not.toHaveBeenCalled();
   });
 
-  it('should return a server error when password verification fails for other reasons', async () => {
+  it('returns a server error when password verification fails for other reasons', async () => {
     mockGetRequestUser.mockResolvedValue({
       ok: true,
       user: {
@@ -133,21 +144,21 @@ describe('/api/account/delete', () => {
       },
     });
 
-    const request = new NextRequest('http://localhost:3000/api/account/delete', {
-      method: 'DELETE',
-      body: JSON.stringify({ password: 'wrong-password' }),
+    const request = new NextRequest('http://localhost:3000/api/account', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword: 'old-pass', newPassword: 'new-pass' }),
     });
 
-    const response = await DELETE(request);
+    const response = await PATCH(request);
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.error).toBe('Internal server error');
-    expect(mockDeleteUser).not.toHaveBeenCalled();
+    expect(data.error).toBe('Failed to update account');
+    expect(mockUpdateUser).not.toHaveBeenCalled();
     expect(mockAdminSignOut).not.toHaveBeenCalled();
   });
 
-  it('should successfully delete account with a valid password', async () => {
+  it('updates the password when the current password is valid', async () => {
     mockGetRequestUser.mockResolvedValue({
       ok: true,
       user: {
@@ -156,23 +167,17 @@ describe('/api/account/delete', () => {
       } as never,
     });
 
-    // Mock successful user deletion
-    mockDeleteUser.mockResolvedValue({
-      data: {},
-      error: null,
+    const request = new NextRequest('http://localhost:3000/api/account', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword: 'old-pass', newPassword: 'new-pass' }),
     });
 
-    const request = new NextRequest('http://localhost:3000/api/account/delete', {
-      method: 'DELETE',
-      body: JSON.stringify({ password: 'anypassword' }),
-    });
-
-    const response = await DELETE(request);
+    const response = await PATCH(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.message).toBe('Account successfully deleted');
+    expect(data.message).toBe('Password updated successfully');
     expect(mockAdminSignOut).toHaveBeenCalledWith('verification-token', 'local');
-    expect(mockDeleteUser).toHaveBeenCalledWith('user-123');
+    expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'new-pass' });
   });
 });

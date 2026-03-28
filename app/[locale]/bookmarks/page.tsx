@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import JobListings from '@/components/JobListings';
-import { createClient } from '@/lib/supabase/client';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import LoadingState from '@/components/LoadingState';
 import PageLayout from '@/components/PageLayout';
 import type { JobPosting, JobMatchData } from '@/lib/supabase';
+import { fetchMatchMapForJobs } from '@/lib/bulletin/match-map';
 
 export default function BookmarksPage() {
   const t = useTranslations();
@@ -36,38 +36,15 @@ export default function BookmarksPage() {
 
         // Batch-fetch match data for bookmarked jobs
         if (bookmarkedJobs?.length > 0) {
-          const supabase = createClient();
-          const { data: matches, error: matchError } = await supabase
-            .from('job_matches')
-            .select('job_id, score, value_score, skill_score, shared_values, shared_skills')
-            .eq('user_id', user.id)
-            .in(
-              'job_id',
-              bookmarkedJobs.map((j: { id: string }) => j.id),
-            );
-
-          if (!matchError && mounted) {
-            const matchMap = new Map<string, JobMatchData>();
-            matches?.forEach(
-              (m: {
-                job_id: string;
-                score: number;
-                value_score?: number | null;
-                skill_score?: number | null;
-                shared_values: string[];
-                shared_skills?: string[];
-              }) => {
-                matchMap.set(m.job_id, {
-                  score: m.score,
-                  value_score: m.value_score,
-                  skill_score: m.skill_score,
-                  shared_values: m.shared_values || [],
-                  shared_skills: m.shared_skills || [],
-                });
-              },
-            );
+          const matchMap = await fetchMatchMapForJobs(
+            user.id,
+            bookmarkedJobs.map((job: { id: string }) => job.id),
+          );
+          if (mounted) {
             setMatchData(matchMap);
           }
+        } else if (mounted) {
+          setMatchData(new Map<string, JobMatchData>());
         }
       } catch (err) {
         console.error('Failed to load bookmarks:', err);

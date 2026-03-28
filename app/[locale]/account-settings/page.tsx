@@ -119,6 +119,28 @@ export default function AccountSettingsPage() {
     setIsUpdating(true);
 
     try {
+      let passwordUpdated = false;
+
+      if (hasPasswordChanges) {
+        const passwordResponse = await fetch('/api/account', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            currentPassword,
+            newPassword,
+          }),
+        });
+
+        if (!passwordResponse.ok) {
+          const body = await passwordResponse.json().catch(() => ({}));
+          throw new Error(body.error || t('accountSettings.passwordUpdateFailed'));
+        }
+
+        passwordUpdated = true;
+      }
+
       // Update email if changed
       if (hasEmailChanges) {
         const { error: emailError } = await supabase.auth.updateUser({
@@ -126,19 +148,14 @@ export default function AccountSettingsPage() {
         });
 
         if (emailError) {
+          if (passwordUpdated) {
+            toast.success(t('accountSettings.passwordUpdateSuccess'));
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+            setPasswordErrors([]);
+          }
           toast.error(emailError.message || t('accountSettings.emailUpdateFailed'));
-          return;
-        }
-      }
-
-      // Update password if changed
-      if (hasPasswordChanges) {
-        const { error: passwordError } = await supabase.auth.updateUser({
-          password: newPassword,
-        });
-
-        if (passwordError) {
-          toast.error(passwordError.message || t('accountSettings.passwordUpdateFailed'));
           return;
         }
       }
@@ -148,11 +165,12 @@ export default function AccountSettingsPage() {
         toast.success(t('accountSettings.emailUpdateSuccess'));
       }
 
-      if (hasPasswordChanges) {
+      if (passwordUpdated) {
         toast.success(t('accountSettings.passwordUpdateSuccess'));
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
+        setPasswordErrors([]);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('accountSettings.updateFailed'));
