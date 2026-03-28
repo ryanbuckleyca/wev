@@ -55,7 +55,6 @@ function createMockUpdateProfile() {
   const mockUpdateProfile = vi.fn(
     async (_userId: string, data: ProfileUpdateData): Promise<Profile | null> => {
       capturedPayload = data
-      // Return a profile that reflects what was saved
       return {
         id: 'user-123',
         full_name: null,
@@ -63,6 +62,7 @@ function createMockUpdateProfile() {
         values: data.values ?? [],
         values_rated: data.values_rated ?? null,
         skills: data.skills ?? [],
+        skills_rated: data.skills_rated ?? null,
         work_types: data.work_types ?? [],
         ideal_work_environment: null,
         profile_photo_url: null,
@@ -97,40 +97,34 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
     it('round-trips a fully rated values_rated array', async () => {
       const selectedValues = ['Community', 'Creativity', 'Autonomy']
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' },
-        { value: 'Autonomy', tier: 'less_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
+        { value: 'Autonomy', rank: 3 },
       ]
 
-      // Step 1: build the save payload (mirrors handleSaveProfile)
       const savePayload = buildSavePayload(selectedValues, valuesRated)
-
-      // Step 2: mock updateProfile capturing what was passed
       const { mockUpdateProfile, getCaptured } = createMockUpdateProfile()
       const savedProfile = await mockUpdateProfile(userId, savePayload)
 
       expect(getCaptured()).not.toBeNull()
       expect(savedProfile).not.toBeNull()
 
-      // Step 3: mock getProfile returning the saved data
       const mockGetProfile = createMockGetProfile(savedProfile!)
       const reloadedProfile = await mockGetProfile(userId)
 
       expect(reloadedProfile).not.toBeNull()
 
-      // Step 4: hydrate valuesRated from the reloaded profile (mirrors useEffect)
       const hydratedValuesRated = hydrateValuesRated(reloadedProfile!)
 
-      // Verify round-trip: what was saved matches what is loaded
       expect(hydratedValuesRated).toEqual(valuesRated)
     })
 
     it('round-trips a mix of rated and unrated values', async () => {
       const selectedValues = ['Community', 'Creativity', 'Autonomy']
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity' }, // unrated
-        { value: 'Autonomy', tier: 'least_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity' },
+        { value: 'Autonomy', rank: 3 },
       ]
 
       const savePayload = buildSavePayload(selectedValues, valuesRated)
@@ -162,19 +156,17 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
     })
 
     it('excludes deselected values from the saved values_rated', async () => {
-      // User had 3 values rated, then deselected 'Creativity' before saving
       const selectedValues = ['Community', 'Autonomy']
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' }, // deselected — should be filtered out
-        { value: 'Autonomy', tier: 'less_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
+        { value: 'Autonomy', rank: 3 },
       ]
 
       const savePayload = buildSavePayload(selectedValues, valuesRated)
       const { mockUpdateProfile, getCaptured } = createMockUpdateProfile()
       const savedProfile = await mockUpdateProfile(userId, savePayload)
 
-      // Verify the deselected value was not saved
       expect(getCaptured()!.values_rated).not.toContainEqual(
         expect.objectContaining({ value: 'Creativity' })
       )
@@ -192,15 +184,13 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
    * Test 2: values array matches keys in values_rated
    *
    * Requirements 2.6, 2.7, 4.5
-   * WHEN values_rated is written, THE Profile SHALL also write the plain string
-   * array to profiles.values (backward compatibility).
    */
   describe('values array matches keys in values_rated', () => {
     it('values contains exactly the same IDs as values_rated[*].value', async () => {
       const selectedValues = ['Community', 'Creativity', 'Autonomy']
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
         { value: 'Autonomy' },
       ]
 
@@ -211,17 +201,15 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
       const savedValues = savePayload.values ?? []
       const savedValuesRatedKeys = (savePayload.values_rated ?? []).map((rv) => rv.value)
 
-      // Both arrays must contain the same set of value IDs
       expect(new Set(savedValues)).toEqual(new Set(savedValuesRatedKeys))
     })
 
     it('values and values_rated keys stay in sync after deselection', async () => {
-      // Start with 3 selected, deselect one
-      const selectedValues = ['Community', 'Autonomy'] // 'Creativity' was removed
+      const selectedValues = ['Community', 'Autonomy']
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' }, // stale — not in selectedValues
-        { value: 'Autonomy', tier: 'less_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
+        { value: 'Autonomy', rank: 3 },
       ]
 
       const savePayload = buildSavePayload(selectedValues, valuesRated)
@@ -244,31 +232,30 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
     it('values contains no duplicates even if selectedValues had duplicates', async () => {
       const selectedValues = ['Community', 'Community', 'Creativity']
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
+        { value: 'Community', rank: 1 },
         { value: 'Creativity' },
       ]
 
       const savePayload = buildSavePayload(selectedValues, valuesRated)
 
       const savedValues = savePayload.values ?? []
-      expect(savedValues).toHaveLength(new Set(savedValues).size) // no duplicates
+      expect(savedValues).toHaveLength(new Set(savedValues).size)
       expect(new Set(savedValues)).toEqual(new Set((savePayload.values_rated ?? []).map((rv) => rv.value)))
     })
 
     it('both values and values_rated are written on every save (backward compat)', async () => {
       const selectedValues = ['Community']
-      const valuesRated: RatedValue[] = [{ value: 'Community', tier: 'most_important' }]
+      const valuesRated: RatedValue[] = [{ value: 'Community', rank: 1 }]
 
       const savePayload = buildSavePayload(selectedValues, valuesRated)
       const { mockUpdateProfile, getCaptured } = createMockUpdateProfile()
       await mockUpdateProfile(userId, savePayload)
 
       const captured = getCaptured()!
-      // Requirement 4.5: both fields must be present on every save
       expect(captured).toHaveProperty('values')
       expect(captured).toHaveProperty('values_rated')
       expect(captured.values).toEqual(['Community'])
-      expect(captured.values_rated).toEqual([{ value: 'Community', tier: 'most_important' }])
+      expect(captured.values_rated).toEqual([{ value: 'Community', rank: 1 }])
     })
   })
 
@@ -297,7 +284,6 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
 
       const hydrated = hydrateValuesRated(profile)
 
-      // Empty values_rated triggers backfill from values
       expect(hydrated).toEqual([{ value: 'Community' }])
     })
 
@@ -305,8 +291,8 @@ describe('Profile save/load cycle — values_rated round-trip', () => {
       const profile: Pick<Profile, 'values' | 'values_rated'> = {
         values: ['Community', 'Creativity'],
         values_rated: [
-          { value: 'Community', tier: 'most_important' },
-          { value: 'Creativity', tier: 'less_important' },
+          { value: 'Community', rank: 1 },
+          { value: 'Creativity', rank: 2 },
         ],
       }
 

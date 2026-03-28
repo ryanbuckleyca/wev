@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { calculateMatch } from './match-calculator'
 import type { RatedValue } from './value-ratings'
-import { TIER_WEIGHTS } from './value-ratings'
 
 describe('calculateMatch', () => {
   it('returns score 0 and empty shared_values when user has no values', () => {
@@ -60,22 +59,20 @@ describe('calculateMatch', () => {
 })
 
 /**
- * Property test: all-unrated Weighted_Match equals Flat_Match
+ * Property test: all-unranked Weighted_Match equals Flat_Match
  *
  * Validates: Requirements 3.9
  *
- * For any profile where every value has no tier, the score from
+ * For any profile where every value has no rank, the score from
  * calculateMatch(ratedValues, jobValues) MUST equal the score from
  * calculateMatch(plainValues, jobValues).
  */
-describe('Property: all-unrated RatedValue[] score equals plain string[] score', () => {
+describe('Property: all-unranked RatedValue[] score equals plain string[] score', () => {
   const cases: Array<{ label: string; userValues: string[]; jobValues: string[] }> = [
-    // empty arrays
     { label: 'both empty', userValues: [], jobValues: [] },
     { label: 'empty user values', userValues: [], jobValues: ['Community', 'Creativity'] },
     { label: 'empty job values', userValues: ['Community', 'Creativity'], jobValues: [] },
 
-    // no overlap
     { label: 'no overlap (single)', userValues: ['Community'], jobValues: ['Security'] },
     {
       label: 'no overlap (multiple)',
@@ -83,7 +80,6 @@ describe('Property: all-unrated RatedValue[] score equals plain string[] score',
       jobValues: ['Security', 'Knowledge', 'Stability'],
     },
 
-    // partial overlap
     {
       label: 'partial overlap (2 of 4)',
       userValues: ['Community', 'Creativity', 'Challenge', 'Knowledge'],
@@ -95,7 +91,6 @@ describe('Property: all-unrated RatedValue[] score equals plain string[] score',
       jobValues: ['Challenge', 'Security', 'Stability'],
     },
 
-    // full overlap
     {
       label: 'full overlap (exact match)',
       userValues: ['Community', 'Creativity', 'Challenge'],
@@ -107,7 +102,6 @@ describe('Property: all-unrated RatedValue[] score equals plain string[] score',
       jobValues: ['Community', 'Creativity', 'Security', 'Knowledge', 'Challenge'],
     },
 
-    // various sizes
     { label: 'single value match', userValues: ['Community'], jobValues: ['Community'] },
     {
       label: 'large user set, partial overlap',
@@ -122,7 +116,6 @@ describe('Property: all-unrated RatedValue[] score equals plain string[] score',
   ]
 
   it.each(cases)('$label', ({ userValues, jobValues }) => {
-    // Build all-unrated RatedValue[] (no tier property set)
     const ratedValues: RatedValue[] = userValues.map(v => ({ value: v }))
 
     const ratedResult = calculateMatch(ratedValues, jobValues)
@@ -141,8 +134,6 @@ describe('Property: all-unrated RatedValue[] score equals plain string[] score',
  * calculateMatch MUST satisfy 0 <= score <= 1.
  */
 describe('Property: score is always in [0.0, 1.0]', () => {
-  const tiers = Object.keys(TIER_WEIGHTS) as Array<keyof typeof TIER_WEIGHTS>
-
   type Case = { label: string; userValues: string[] | RatedValue[]; jobValues: string[] }
 
   const cases: Case[] = [
@@ -152,7 +143,7 @@ describe('Property: score is always in [0.0, 1.0]', () => {
     { label: 'empty user, non-empty job (plain)', userValues: [], jobValues: ['Community'] },
     { label: 'empty job, non-empty user (plain)', userValues: ['Community'], jobValues: [] },
     { label: 'empty user, non-empty job (rated)', userValues: [] as RatedValue[], jobValues: ['Community'] },
-    { label: 'empty job, non-empty user (rated)', userValues: [{ value: 'Community', tier: 'most_important' }], jobValues: [] },
+    { label: 'empty job, non-empty user (rated)', userValues: [{ value: 'Community', rank: 1 }], jobValues: [] },
 
     // ── Plain string[] ────────────────────────────────────────────────────────
     { label: 'plain: single value, no overlap', userValues: ['Community'], jobValues: ['Security'] },
@@ -163,67 +154,61 @@ describe('Property: score is always in [0.0, 1.0]', () => {
     { label: 'plain: full overlap (job superset)', userValues: ['Community', 'Creativity'], jobValues: ['Community', 'Creativity', 'Security', 'Knowledge', 'Challenge'] },
     { label: 'plain: large user set, partial overlap', userValues: ['Community', 'Creativity', 'Challenge', 'Knowledge', 'Security', 'Stability', 'Growth'], jobValues: ['Community', 'Knowledge', 'Growth'] },
 
-    // ── All-unrated RatedValue[] ──────────────────────────────────────────────
-    { label: 'all-unrated: single, no overlap', userValues: [{ value: 'Community' }], jobValues: ['Security'] },
-    { label: 'all-unrated: single, full overlap', userValues: [{ value: 'Community' }], jobValues: ['Community'] },
-    { label: 'all-unrated: no overlap', userValues: [{ value: 'Community' }, { value: 'Creativity' }], jobValues: ['Security', 'Stability'] },
-    { label: 'all-unrated: partial overlap', userValues: [{ value: 'Community' }, { value: 'Creativity' }, { value: 'Challenge' }], jobValues: ['Community', 'Security'] },
-    { label: 'all-unrated: full overlap', userValues: [{ value: 'Community' }, { value: 'Creativity' }], jobValues: ['Community', 'Creativity'] },
+    // ── All-unranked RatedValue[] ─────────────────────────────────────────────
+    { label: 'all-unranked: single, no overlap', userValues: [{ value: 'Community' }], jobValues: ['Security'] },
+    { label: 'all-unranked: single, full overlap', userValues: [{ value: 'Community' }], jobValues: ['Community'] },
+    { label: 'all-unranked: no overlap', userValues: [{ value: 'Community' }, { value: 'Creativity' }], jobValues: ['Security', 'Stability'] },
+    { label: 'all-unranked: partial overlap', userValues: [{ value: 'Community' }, { value: 'Creativity' }, { value: 'Challenge' }], jobValues: ['Community', 'Security'] },
+    { label: 'all-unranked: full overlap', userValues: [{ value: 'Community' }, { value: 'Creativity' }], jobValues: ['Community', 'Creativity'] },
 
-    // ── All-rated RatedValue[] (all four tiers) ───────────────────────────────
-    { label: 'all-rated most_important: no overlap', userValues: [{ value: 'Community', tier: 'most_important' }, { value: 'Creativity', tier: 'most_important' }], jobValues: ['Security'] },
-    { label: 'all-rated most_important: full overlap', userValues: [{ value: 'Community', tier: 'most_important' }, { value: 'Creativity', tier: 'most_important' }], jobValues: ['Community', 'Creativity'] },
-    { label: 'all-rated more_important: partial overlap', userValues: [{ value: 'Community', tier: 'more_important' }, { value: 'Creativity', tier: 'more_important' }, { value: 'Challenge', tier: 'more_important' }], jobValues: ['Community', 'Security'] },
-    { label: 'all-rated less_important: partial overlap', userValues: [{ value: 'Community', tier: 'less_important' }, { value: 'Creativity', tier: 'less_important' }, { value: 'Challenge', tier: 'less_important' }], jobValues: ['Community', 'Security'] },
-    { label: 'all-rated least_important: full overlap', userValues: [{ value: 'Community', tier: 'least_important' }, { value: 'Creativity', tier: 'least_important' }], jobValues: ['Community', 'Creativity'] },
+    // ── All-ranked RatedValue[] ───────────────────────────────────────────────
+    { label: 'all-ranked: 2 values, no overlap', userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity', rank: 2 }], jobValues: ['Security'] },
+    { label: 'all-ranked: 2 values, full overlap', userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity', rank: 2 }], jobValues: ['Community', 'Creativity'] },
+    { label: 'all-ranked: 3 values, partial overlap', userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity', rank: 2 }, { value: 'Challenge', rank: 3 }], jobValues: ['Community', 'Security'] },
+    { label: 'all-ranked: 4 values, full overlap', userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity', rank: 2 }, { value: 'Challenge', rank: 3 }, { value: 'Knowledge', rank: 4 }], jobValues: ['Community', 'Creativity', 'Challenge', 'Knowledge'] },
     {
-      label: 'all-rated: one of each tier, no overlap',
-      userValues: tiers.map((tier, i) => ({ value: `Value${i}`, tier })),
+      label: 'all-ranked: 4 values, no overlap',
+      userValues: [{ value: 'V0', rank: 1 }, { value: 'V1', rank: 2 }, { value: 'V2', rank: 3 }, { value: 'V3', rank: 4 }],
       jobValues: ['Security', 'Stability'],
     },
     {
-      label: 'all-rated: one of each tier, full overlap',
-      userValues: tiers.map((tier, i) => ({ value: `Value${i}`, tier })),
-      jobValues: tiers.map((_, i) => `Value${i}`),
-    },
-    {
-      label: 'all-rated: one of each tier, partial overlap',
-      userValues: tiers.map((tier, i) => ({ value: `Value${i}`, tier })),
-      jobValues: ['Value0', 'Value1', 'Security'],
+      label: 'all-ranked: 4 values, partial overlap',
+      userValues: [{ value: 'V0', rank: 1 }, { value: 'V1', rank: 2 }, { value: 'V2', rank: 3 }, { value: 'V3', rank: 4 }],
+      jobValues: ['V0', 'V1', 'Security'],
     },
 
-    // ── Mixed rated/unrated RatedValue[] ─────────────────────────────────────
-    { label: 'mixed: one rated, one unrated, no overlap', userValues: [{ value: 'Community', tier: 'most_important' }, { value: 'Creativity' }], jobValues: ['Security'] },
-    { label: 'mixed: one rated, one unrated, full overlap', userValues: [{ value: 'Community', tier: 'most_important' }, { value: 'Creativity' }], jobValues: ['Community', 'Creativity'] },
-    { label: 'mixed: one rated, one unrated, partial overlap (rated shared)', userValues: [{ value: 'Community', tier: 'most_important' }, { value: 'Creativity' }], jobValues: ['Community', 'Security'] },
-    { label: 'mixed: one rated, one unrated, partial overlap (unrated shared)', userValues: [{ value: 'Community', tier: 'most_important' }, { value: 'Creativity' }], jobValues: ['Creativity', 'Security'] },
+    // ── Mixed ranked/unranked RatedValue[] ────────────────────────────────────
+    { label: 'mixed: one ranked, one unranked, no overlap', userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity' }], jobValues: ['Security'] },
+    { label: 'mixed: one ranked, one unranked, full overlap', userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity' }], jobValues: ['Community', 'Creativity'] },
+    { label: 'mixed: one ranked, one unranked, partial overlap (ranked shared)', userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity' }], jobValues: ['Community', 'Security'] },
+    { label: 'mixed: one ranked, one unranked, partial overlap (unranked shared)', userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity' }], jobValues: ['Creativity', 'Security'] },
     {
-      label: 'mixed: multiple tiers and unrated, partial overlap',
+      label: 'mixed: multiple ranks and unranked, partial overlap',
       userValues: [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
         { value: 'Challenge' },
-        { value: 'Knowledge', tier: 'least_important' },
+        { value: 'Knowledge', rank: 4 },
         { value: 'Stability' },
       ],
       jobValues: ['Community', 'Challenge', 'Security'],
     },
     {
-      label: 'mixed: multiple tiers and unrated, full overlap',
+      label: 'mixed: multiple ranks and unranked, full overlap',
       userValues: [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'less_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
         { value: 'Challenge' },
       ],
       jobValues: ['Community', 'Creativity', 'Challenge', 'Security'],
     },
     {
-      label: 'mixed: large set, all tiers + unrated, no overlap',
+      label: 'mixed: large set, ranks + unranked, no overlap',
       userValues: [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' },
-        { value: 'Challenge', tier: 'less_important' },
-        { value: 'Knowledge', tier: 'least_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
+        { value: 'Challenge', rank: 3 },
+        { value: 'Knowledge', rank: 4 },
         { value: 'Stability' },
         { value: 'Growth' },
       ],
@@ -242,63 +227,45 @@ describe('Property: score is always in [0.0, 1.0]', () => {
  * Unit tests: fallback behaviour
  *
  * Validates: Requirements 5.1, 5.2, 5.3
- *
- * These tests call calculateMatch directly to simulate the fallback logic
- * that calculateUserMatches / calculateJobMatches apply when reading from
- * the database (values_rated null → fall back to values, etc.).
  */
 describe('Fallback behaviour', () => {
-  // Simulates: profile.values_rated is null/undefined → caller passes profile.values (string[])
   it('uses plain values (string[]) when values_rated is null/undefined', () => {
     const valuesRated = null
     const values = ['Community', 'Creativity', 'Challenge']
     const jobValues = ['Community', 'Creativity', 'Security']
 
-    // Replicate the fallback logic from calculateUserMatches / calculateJobMatches:
-    //   const userValues = profile.values_rated?.length ? profile.values_rated : profile.values
     const userValues: string[] = valuesRated ?? values
 
     const result = calculateMatch(userValues, jobValues)
 
-    // shared = 2, overlap = 2/3, bonus = 0.2 → score ≈ 0.867
     expect(result.shared_values).toEqual(['Community', 'Creativity'])
     expect(result.score).toBeGreaterThan(0)
   })
 
-  // Simulates: profile.values_rated is present → caller passes it (RatedValue[]) instead of plain values
   it('prefers values_rated (RatedValue[]) over plain values when values_rated is present', () => {
-    const valuesRated: import('./value-ratings').RatedValue[] = [
-      { value: 'Community', tier: 'most_important' },
-      { value: 'Creativity', tier: 'more_important' },
+    const valuesRated: RatedValue[] = [
+      { value: 'Community', rank: 1 },
+      { value: 'Creativity', rank: 2 },
     ]
     const values = ['Community', 'Creativity', 'OldValue']
     const jobValues = ['Community', 'Creativity', 'Security']
 
-    // Replicate the fallback logic: prefer values_rated when present
     const userValues = valuesRated.length ? valuesRated : values
 
     const ratedResult = calculateMatch(userValues, jobValues)
     const plainResult = calculateMatch(values, jobValues)
 
-    // Both share Community + Creativity with the job, but the rated path uses
-    // weighted overlap while the plain path uses flat overlap — scores differ
-    // because the denominator weights differ. The key assertion is that the
-    // rated path is used (shared_values still correct) and no error is thrown.
     expect(ratedResult.shared_values).toEqual(['Community', 'Creativity'])
     expect(ratedResult.score).toBeGreaterThan(0)
 
-    // The rated result should differ from the plain result because 'OldValue'
-    // is excluded from the rated path (it's not in values_rated).
     expect(ratedResult.score).not.toBe(plainResult.score)
   })
 
-  // Simulates: both values_rated and values are absent/empty
   it('returns score 0 and no error when both values_rated and values are absent/empty', () => {
-    const valuesRated: import('./value-ratings').RatedValue[] | null = null
+    const valuesRated: RatedValue[] | null = null
     const values: string[] = []
     const jobValues = ['Community', 'Creativity']
 
-    // Replicate the fallback logic: both absent → empty array
     const userValues: string[] = (valuesRated ?? values)
 
     expect(() => {

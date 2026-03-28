@@ -3,24 +3,24 @@
  *
  * Validates: Requirements 3.7, 3.9
  *
- * The SQL trigger functions in 20260326000000_weighted_match_triggers.sql
+ * The SQL trigger functions in 20260326000000_rank_weighted_match_triggers.sql
  * implement the same formula as the TypeScript `calculateMatch` in
  * match-calculator.ts.  These tests verify parity by re-implementing the SQL
  * formula in TypeScript (as a reference implementation) and asserting it
  * produces the same score as `calculateMatch`.
  *
  * SQL formula (from the migration file):
- *   tier weights: most_important=1.0, more_important=0.75,
- *                 less_important=0.5, least_important=0.25
- *   unrated / unknown tier → neutral weight 0.5
+ *   rank_weight(rank, total):
+ *     rank IS NULL OR total <= 1 → 0.5 (NEUTRAL_WEIGHT)
+ *     else → 1.0 - ((clamp(rank,1,total) - 1) / (total - 1)) * 0.75
  *
- *   Weighted_Match (when values_rated has ≥1 entry with a non-null tier):
+ *   Weighted_Match (when values_rated has ≥1 entry with a non-null rank):
  *     total_w        = SUM(weight for all user values)
  *     overlap_num    = SUM(weight for shared values)
  *     shared_count   = COUNT(shared values)
  *     score          = LEAST((overlap_num / total_w) + LEAST(shared_count * 0.1, 0.3), 1.0)
  *
- *   Flat_Match (fallback when values_rated is null or all tiers are null):
+ *   Flat_Match (fallback when values_rated is null or all ranks are null):
  *     shared_count   = COUNT(shared values)
  *     user_count     = COUNT(user values)
  *     score          = LEAST((shared_count / user_count) + LEAST(shared_count * 0.1, 0.3), 1.0)
@@ -29,28 +29,28 @@
 import { describe, it, expect } from 'vitest'
 import { calculateMatch } from './match-calculator'
 import type { RatedValue } from './value-ratings'
-import { getTierWeight } from './value-ratings'
+import { getRankWeight } from './value-ratings'
 
 // ---------------------------------------------------------------------------
 // Reference implementation of the SQL formula in TypeScript
 // ---------------------------------------------------------------------------
 
 /**
- * Returns true when values_rated has at least one entry with a non-null tier —
+ * Returns true when values_rated has at least one entry with a non-null rank —
  * mirroring the SQL EXISTS check.
  */
 function sqlUsesWeighted(valuesRated: RatedValue[] | null | undefined): boolean {
   return (
     valuesRated != null &&
     valuesRated.length > 0 &&
-    valuesRated.some(rv => rv.tier != null)
+    valuesRated.some(rv => rv.rank != null)
   )
 }
 
 /**
  * Reference implementation of the SQL score formula.
  *
- * When values_rated is present and has ≥1 rated entry → Weighted_Match.
+ * When values_rated is present and has ≥1 ranked entry → Weighted_Match.
  * Otherwise → Flat_Match using the plain values array.
  */
 function sqlFormula(
@@ -61,15 +61,15 @@ function sqlFormula(
   const jobSet = new Set(jobValues)
 
   if (sqlUsesWeighted(valuesRated)) {
-    // Weighted_Match path
     const rated = valuesRated!
+    const total = rated.length
     let totalW = 0
     let overlapNum = 0
     const sharedValues: string[] = []
 
     for (const rv of rated) {
       if (!rv.value) continue
-      const w = getTierWeight(rv.tier)
+      const w = getRankWeight(rv.rank, total)
       totalW += w
       if (jobSet.has(rv.value)) {
         overlapNum += w
@@ -112,13 +112,13 @@ function tsUserValues(
 
 describe('SQL / TypeScript parity', () => {
   /**
-   * Case 1 — All-rated: every value has a tier → Weighted_Match
+   * Case 1 — All-ranked: every value has a rank → Weighted_Match
    *
    * Validates: Requirements 3.7
    */
-  describe('Case 1: all-rated (Weighted_Match)', () => {
-    it('single value, most_important, shared', () => {
-      const valuesRated: RatedValue[] = [{ value: 'Community', tier: 'most_important' }]
+  describe('Case 1: all-ranked (Weighted_Match)', () => {
+    it('single value, rank 1, shared', () => {
+      const valuesRated: RatedValue[] = [{ value: 'Community', rank: 1 }]
       const plain = ['Community']
       const job = ['Community', 'Creativity']
 
@@ -129,12 +129,12 @@ describe('SQL / TypeScript parity', () => {
       expect(ts.shared_values).toEqual(sql.shared_values)
     })
 
-    it('four values, one of each tier, partial overlap', () => {
+    it('four values, ranked 1-4, partial overlap', () => {
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' },
-        { value: 'Challenge', tier: 'less_important' },
-        { value: 'Knowledge', tier: 'least_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
+        { value: 'Challenge', rank: 3 },
+        { value: 'Knowledge', rank: 4 },
       ]
       const plain = valuesRated.map(rv => rv.value)
       const job = ['Community', 'Creativity', 'Security']
@@ -146,12 +146,12 @@ describe('SQL / TypeScript parity', () => {
       expect(ts.shared_values).toEqual(sql.shared_values)
     })
 
-    it('four values, one of each tier, full overlap', () => {
+    it('four values, ranked 1-4, full overlap', () => {
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' },
-        { value: 'Challenge', tier: 'less_important' },
-        { value: 'Knowledge', tier: 'least_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
+        { value: 'Challenge', rank: 3 },
+        { value: 'Knowledge', rank: 4 },
       ]
       const plain = valuesRated.map(rv => rv.value)
       const job = valuesRated.map(rv => rv.value)
@@ -163,12 +163,12 @@ describe('SQL / TypeScript parity', () => {
       expect(ts.shared_values.sort()).toEqual(sql.shared_values.sort())
     })
 
-    it('four values, one of each tier, no overlap', () => {
+    it('four values, ranked 1-4, no overlap', () => {
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' },
-        { value: 'Challenge', tier: 'less_important' },
-        { value: 'Knowledge', tier: 'least_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
+        { value: 'Challenge', rank: 3 },
+        { value: 'Knowledge', rank: 4 },
       ]
       const plain = valuesRated.map(rv => rv.value)
       const job = ['Security', 'Stability', 'Growth']
@@ -181,11 +181,10 @@ describe('SQL / TypeScript parity', () => {
     })
 
     it('score is capped at 1.0 when overlap + bonus would exceed it', () => {
-      // 3 most_important values all shared → overlap=1.0, bonus=0.3 → capped at 1.0
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'most_important' },
-        { value: 'Challenge', tier: 'most_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
+        { value: 'Challenge', rank: 3 },
       ]
       const plain = valuesRated.map(rv => rv.value)
       const job = ['Community', 'Creativity', 'Challenge', 'Security']
@@ -199,11 +198,11 @@ describe('SQL / TypeScript parity', () => {
   })
 
   /**
-   * Case 2 — All-unrated: no values have tiers → Flat_Match
+   * Case 2 — All-unranked: no values have ranks → Flat_Match
    *
    * Validates: Requirements 3.7, 3.9
    */
-  describe('Case 2: all-unrated (Flat_Match via RatedValue[] with no tiers)', () => {
+  describe('Case 2: all-unranked (Flat_Match via RatedValue[] with no ranks)', () => {
     it('partial overlap', () => {
       const valuesRated: RatedValue[] = [
         { value: 'Community' },
@@ -245,7 +244,7 @@ describe('SQL / TypeScript parity', () => {
       expect(ts.shared_values).toEqual(sql.shared_values)
     })
 
-    it('all-unrated score equals plain string[] score (equivalence property)', () => {
+    it('all-unranked score equals plain string[] score (equivalence property)', () => {
       const plain = ['Community', 'Creativity', 'Challenge']
       const valuesRated: RatedValue[] = plain.map(v => ({ value: v }))
       const job = ['Community', 'Security']
@@ -254,22 +253,21 @@ describe('SQL / TypeScript parity', () => {
       const sqlPlain = sqlFormula(null, plain, job)
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job)
 
-      // SQL rated (all-unrated) == SQL plain == TS
       expect(sqlRated.score).toBeCloseTo(sqlPlain.score, 10)
       expect(ts.score).toBeCloseTo(sqlRated.score, 10)
     })
   })
 
   /**
-   * Case 3 — Mixed: some values have tiers, some don't → Weighted_Match
+   * Case 3 — Mixed: some values have ranks, some don't → Weighted_Match
    *
    * Validates: Requirements 3.7
    */
-  describe('Case 3: mixed rated/unrated (Weighted_Match)', () => {
-    it('one rated, one unrated, rated value shared', () => {
+  describe('Case 3: mixed ranked/unranked (Weighted_Match)', () => {
+    it('one ranked, one unranked, ranked value shared', () => {
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity' }, // unrated → neutral weight 0.5
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity' },
       ]
       const plain = valuesRated.map(rv => rv.value)
       const job = ['Community', 'Security']
@@ -281,10 +279,10 @@ describe('SQL / TypeScript parity', () => {
       expect(ts.shared_values).toEqual(sql.shared_values)
     })
 
-    it('one rated, one unrated, unrated value shared', () => {
+    it('one ranked, one unranked, unranked value shared', () => {
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity' }, // unrated → neutral weight 0.5
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity' },
       ]
       const plain = valuesRated.map(rv => rv.value)
       const job = ['Creativity', 'Security']
@@ -296,13 +294,13 @@ describe('SQL / TypeScript parity', () => {
       expect(ts.shared_values).toEqual(sql.shared_values)
     })
 
-    it('multiple tiers and unrated values, partial overlap', () => {
+    it('multiple ranks and unranked values, partial overlap', () => {
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' },
-        { value: 'Challenge' }, // unrated
-        { value: 'Knowledge', tier: 'least_important' },
-        { value: 'Stability' }, // unrated
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
+        { value: 'Challenge' },
+        { value: 'Knowledge', rank: 4 },
+        { value: 'Stability' },
       ]
       const plain = valuesRated.map(rv => rv.value)
       const job = ['Community', 'Challenge', 'Security']
@@ -314,11 +312,11 @@ describe('SQL / TypeScript parity', () => {
       expect(ts.shared_values.sort()).toEqual(sql.shared_values.sort())
     })
 
-    it('multiple tiers and unrated values, no overlap', () => {
+    it('multiple ranks and unranked values, no overlap', () => {
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
+        { value: 'Community', rank: 1 },
         { value: 'Creativity' },
-        { value: 'Challenge', tier: 'less_important' },
+        { value: 'Challenge', rank: 3 },
       ]
       const plain = valuesRated.map(rv => rv.value)
       const job = ['Security', 'Stability', 'Growth']

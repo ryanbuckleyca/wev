@@ -36,18 +36,18 @@ function filterValuesRated(
 
 describe('useProfileForm — valuesRated state transitions', () => {
   // Requirement 2.3: WHEN a value is deselected, THE ValuesSelector SHALL remove
-  // its tier assignment from the form state.
-  describe('deselect value → tier removed from valuesRated', () => {
+  // its rank assignment from the form state.
+  describe('deselect value → rank removed from valuesRated', () => {
     it('removes the entry for the deselected value', () => {
-      const initial: RatedValue[] = [{ value: 'Community', tier: 'most_important' }]
+      const initial: RatedValue[] = [{ value: 'Community', rank: 1 }]
       const result = deselectValue(initial, 'Community')
       expect(result.some((rv) => rv.value === 'Community')).toBe(false)
     })
 
     it('leaves other values untouched when one is deselected', () => {
       const initial: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
       ]
       const result = deselectValue(initial, 'Community')
       expect(result).toHaveLength(1)
@@ -72,7 +72,7 @@ describe('useProfileForm — valuesRated state transitions', () => {
     })
 
     it('produces an empty filteredValuesRated when no values are selected', () => {
-      const valuesRated: RatedValue[] = [{ value: 'Community', tier: 'most_important' }]
+      const valuesRated: RatedValue[] = [{ value: 'Community', rank: 1 }]
       const selectedValues: string[] = []
       const filteredValuesRated = filterValuesRated(valuesRated, selectedValues)
       expect(filteredValuesRated).toEqual([])
@@ -84,20 +84,18 @@ describe('useProfileForm — valuesRated state transitions', () => {
   // write the plain string array to profiles.values.
   describe('save writes both values_rated and values', () => {
     it('filteredValuesRated contains only entries for selected values', () => {
-      const valuesRated: RatedValue[] = [{ value: 'Community', tier: 'most_important' }]
+      const valuesRated: RatedValue[] = [{ value: 'Community', rank: 1 }]
       const selectedValues = ['Community']
       const filteredValuesRated = filterValuesRated(valuesRated, selectedValues)
-      expect(filteredValuesRated).toEqual([{ value: 'Community', tier: 'most_important' }])
-      // values (plain string array) is derived directly from selectedValues
+      expect(filteredValuesRated).toEqual([{ value: 'Community', rank: 1 }])
       expect(selectedValues).toEqual(['Community'])
     })
 
     it('excludes deselected values from filteredValuesRated', () => {
       const valuesRated: RatedValue[] = [
-        { value: 'Community', tier: 'most_important' },
-        { value: 'Creativity', tier: 'more_important' },
+        { value: 'Community', rank: 1 },
+        { value: 'Creativity', rank: 2 },
       ]
-      // Only 'Community' is still selected
       const selectedValues = ['Community']
       const filteredValuesRated = filterValuesRated(valuesRated, selectedValues)
       expect(filteredValuesRated).toHaveLength(1)
@@ -105,7 +103,7 @@ describe('useProfileForm — valuesRated state transitions', () => {
       expect(filteredValuesRated.some((rv) => rv.value === 'Creativity')).toBe(false)
     })
 
-    it('preserves unrated entries (no tier) in filteredValuesRated', () => {
+    it('preserves unrated entries (no rank) in filteredValuesRated', () => {
       const valuesRated: RatedValue[] = [{ value: 'Community' }]
       const selectedValues = ['Community']
       const filteredValuesRated = filterValuesRated(valuesRated, selectedValues)
