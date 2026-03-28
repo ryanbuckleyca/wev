@@ -9,6 +9,10 @@ export const revalidate = 0;
 
 export async function POST(request: Request) {
   try {
+    // This is an admin/maintenance escape hatch for recalculating any user's matches.
+    // Normal users get match recalculation through the DB trigger on `profiles` when
+    // they update their own profile. If matching starts using `work_types` or
+    // `ideal_work_environment`, keep that trigger's watched columns in sync.
     const denied = await requireAdminResponse();
     if (denied) return denied;
 

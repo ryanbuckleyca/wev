@@ -63,6 +63,9 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 export async function updateProfile(userId: string, updates: ProfileUpdateData): Promise<Profile> {
   const supabase = createClient();
 
+  // Match recalculation for user-driven profile edits is handled by the DB trigger on
+  // `profiles`, not by calling `/api/matches/calculate-user`. If matching expands to
+  // `work_types` or `ideal_work_environment`, update that trigger's watched columns too.
   const { data, error } = await supabase
     .from('profiles')
     .update({
