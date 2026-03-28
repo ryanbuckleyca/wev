@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { Leaf1Outlined, Leaf1Solid, CheckOutlined } from '@lineiconshq/free-icons';
@@ -150,10 +150,13 @@ export default function JobFilters({
   const filteredJobsCountResolved = filteredJobsCount ?? jobs.length;
   const totalJobsCountResolved = totalJobsCount ?? jobs.length;
 
-  const getTranslationOrFallback = (key: string, fallback: string) => {
-    const translation = t(key);
-    return translation === key ? fallback : translation;
-  };
+  const getTranslationOrFallback = useCallback(
+    (key: string, fallback: string) => {
+      const translation = t(key);
+      return translation === key ? fallback : translation;
+    },
+    [t],
+  );
 
   const activeFilterChips = useMemo(() => {
     const chips: ActiveFilterChip[] = [];
@@ -287,6 +290,7 @@ export default function JobFilters({
 
     return chips;
   }, [
+    getTranslationOrFallback,
     onEmploymentTypesChange,
     onMunicipalitiesChange,
     onOrganizationsChange,
@@ -299,14 +303,15 @@ export default function JobFilters({
     onWorkTypesChange,
     postedWithin,
     searchQuery,
-    selectedEmploymentTypes.length,
-    selectedMunicipalities.length,
-    selectedOrganizations.length,
-    selectedProvinces.length,
-    selectedSources.length,
+    selectedEmploymentTypes,
+    selectedMunicipalities,
+    selectedOrganizations,
+    selectedProvinces,
+    selectedSources,
     selectedWorkTypes,
     showJobsWithoutSalary,
     showOnlySse,
+    t,
   ]);
 
   // Extract unique values for filter options

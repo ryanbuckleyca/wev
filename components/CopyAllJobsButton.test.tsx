@@ -7,6 +7,15 @@ const originalClipboard = navigator.clipboard;
 const originalClipboardItem = globalThis.ClipboardItem;
 const originalBlob = globalThis.Blob;
 
+type MockClipboardWriteItem = {
+  items?: Record<string, { content: string }>;
+};
+
+type GlobalWithClipboardMocks = typeof globalThis & {
+  ClipboardItem?: typeof ClipboardItem;
+  Blob?: typeof Blob;
+};
+
 describe('CopyAllJobsButton', () => {
   const writeMock = vi.fn().mockResolvedValue(undefined);
   let capturedPlainText = '';
@@ -33,7 +42,7 @@ describe('CopyAllJobsButton', () => {
     };
 
     writeMock.mockReset();
-    writeMock.mockImplementation(async (items: any[]) => {
+    writeMock.mockImplementation(async (items: MockClipboardWriteItem[]) => {
       const item = items[0];
       if (item?.items?.['text/plain']) {
         capturedPlainText = item.items['text/plain'].content;
@@ -55,19 +64,20 @@ describe('CopyAllJobsButton', () => {
         configurable: true,
       });
     } else {
-      delete (navigator as any).clipboard;
+      Reflect.deleteProperty(navigator, 'clipboard');
     }
 
+    const g = globalThis as GlobalWithClipboardMocks;
     if (originalClipboardItem) {
-      (globalThis as any).ClipboardItem = originalClipboardItem;
+      g.ClipboardItem = originalClipboardItem;
     } else {
-      delete (globalThis as any).ClipboardItem;
+      Reflect.deleteProperty(g, 'ClipboardItem');
     }
 
     if (originalBlob) {
-      (globalThis as any).Blob = originalBlob;
+      g.Blob = originalBlob;
     } else {
-      delete (globalThis as any).Blob;
+      Reflect.deleteProperty(g, 'Blob');
     }
 
     vi.clearAllMocks();

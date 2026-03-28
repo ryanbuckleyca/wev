@@ -13,9 +13,12 @@ export default function Collapsible({ isOpen, children, className }: Collapsible
   const [height, setHeight] = useState('0px');
 
   useEffect(() => {
-    if (ref.current) {
-      setHeight(isOpen ? `${ref.current.scrollHeight}px` : '0px');
-    }
+    const el = ref.current;
+    if (!el) return;
+    const frame = requestAnimationFrame(() => {
+      setHeight(isOpen ? `${el.scrollHeight}px` : '0px');
+    });
+    return () => cancelAnimationFrame(frame);
   }, [isOpen]);
 
   return (

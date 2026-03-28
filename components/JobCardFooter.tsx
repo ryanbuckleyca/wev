@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useMemo } from 'react';
+import { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import InfoPopover from './InfoPopover';
 import ProgressDonut from './ProgressDonut';
@@ -139,97 +139,79 @@ export default function JobCardFooter({
     };
   };
 
-  const summaryItems = useMemo(() => {
-    const matchedValueNames = sharedValues
-      .map((value) => getValueTranslations(value).label)
-      .join(', ');
-    const unmatchedValueNames = values
-      .filter((value) => !sharedValues.includes(value))
-      .map((value) => getValueTranslations(value).label)
-      .join(', ');
+  const matchedValueNames = sharedValues
+    .map((value) => getValueTranslations(value).label)
+    .join(', ');
+  const unmatchedValueNames = values
+    .filter((value) => !sharedValues.includes(value))
+    .map((value) => getValueTranslations(value).label)
+    .join(', ');
 
-    const matchedSkillNames = sharedSkills
-      .filter((skill) => skills.includes(skill))
-      .map((skill) => formatSkillLabel(skill).toLowerCase())
-      .join(', ');
-    const unmatchedSkillNames = skills
-      .filter((skill) => !sharedSkills.includes(skill))
-      .map((skill) => formatSkillLabel(skill).toLowerCase())
-      .join(', ');
+  const matchedSkillNames = sharedSkills
+    .filter((skill) => skills.includes(skill))
+    .map((skill) => formatSkillLabel(skill).toLowerCase())
+    .join(', ');
+  const unmatchedSkillNames = skills
+    .filter((skill) => !sharedSkills.includes(skill))
+    .map((skill) => formatSkillLabel(skill).toLowerCase())
+    .join(', ');
 
-    const valueSummaryLabel = t('matchDetails.values').toLowerCase();
-    const skillSummaryLabel = t('matchDetails.skills').toLowerCase();
+  const valueSummaryLabel = t('matchDetails.values').toLowerCase();
+  const skillSummaryLabel = t('matchDetails.skills').toLowerCase();
 
-    return [
-      buildSummaryPill(
-        matchedValueCount,
-        totalValueCount,
-        matchedValueNames,
-        unmatchedValueNames,
-        valueSummaryLabel,
-        'heart',
-      ),
-      buildSummaryPill(
-        matchedSkillCount,
-        totalSkillCount,
-        matchedSkillNames,
-        unmatchedSkillNames,
-        skillSummaryLabel,
-        'briefcase',
-      ),
-    ].filter(Boolean) as ScrollablePillsItem[];
-  }, [
-    matchedValueCount,
-    totalValueCount,
-    matchedSkillCount,
-    totalSkillCount,
-    sharedValues,
-    sharedSkills,
-    values,
-    skills,
-    skillTerms,
-    t,
-    tValues,
-  ]);
+  const summaryItems = [
+    buildSummaryPill(
+      matchedValueCount,
+      totalValueCount,
+      matchedValueNames,
+      unmatchedValueNames,
+      valueSummaryLabel,
+      'heart',
+    ),
+    buildSummaryPill(
+      matchedSkillCount,
+      totalSkillCount,
+      matchedSkillNames,
+      unmatchedSkillNames,
+      skillSummaryLabel,
+      'briefcase',
+    ),
+  ].filter(Boolean) as ScrollablePillsItem[];
 
-  const valueItems = useMemo(() => {
-    const sharedSet = new Set(sharedValues);
-    const orderedValues = [
-      ...values.filter((value) => sharedSet.has(value)),
-      ...values.filter((value) => !sharedSet.has(value)),
-    ];
+  const valueSharedSet = new Set(sharedValues);
+  const orderedValues = [
+    ...values.filter((value) => valueSharedSet.has(value)),
+    ...values.filter((value) => !valueSharedSet.has(value)),
+  ];
 
-    return orderedValues.map((value) => {
-      const valueTranslations = getValueTranslations(value);
-      const isMatched = sharedSet.has(value);
-      return {
-        label: valueTranslations.label,
-        tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em>`,
-        isMatched,
-        type: 'value' as const,
-      };
-    });
-  }, [values, sharedValues, tValues]);
+  const valueItems = orderedValues.map((value) => {
+    const valueTranslations = getValueTranslations(value);
+    const isMatched = valueSharedSet.has(value);
+    return {
+      label: valueTranslations.label,
+      tooltip: `${valueTranslations.description}<br/><br/><em>${valueTranslations.example}</em>`,
+      isMatched,
+      type: 'value' as const,
+    };
+  });
 
-  const skillItems = useMemo(() => {
-    const sharedSet = new Set(sharedSkills);
-    const orderedSkills = [
-      ...skills.filter((skill) => sharedSet.has(skill)),
-      ...skills.filter((skill) => !sharedSet.has(skill)),
-    ];
+  const skillSharedSet = new Set(sharedSkills);
+  const orderedSkills = [
+    ...skills.filter((skill) => skillSharedSet.has(skill)),
+    ...skills.filter((skill) => !skillSharedSet.has(skill)),
+  ];
 
-    return orderedSkills.map((skill) => {
-      const skillLabel = formatSkillLabel(skill).toLowerCase();
-      const skillTooltip = skillDefinitions[skill];
-      const isMatched = sharedSet.has(skill);
-      return {
-        label: skillLabel,
-        tooltip: skillTooltip,
-        isMatched,
-        type: 'skill' as const,
-      };
-    });
-  }, [skills, sharedSkills, skillTerms, skillDefinitions]);
+  const skillItems = orderedSkills.map((skill) => {
+    const skillLabel = formatSkillLabel(skill).toLowerCase();
+    const skillTooltip = skillDefinitions[skill];
+    const isMatched = skillSharedSet.has(skill);
+    return {
+      label: skillLabel,
+      tooltip: skillTooltip,
+      isMatched,
+      type: 'skill' as const,
+    };
+  });
 
   const valueSummaryPill = summaryItems.find((item) => item.icon === 'heart');
   const skillSummaryPill = summaryItems.find((item) => item.icon === 'briefcase');

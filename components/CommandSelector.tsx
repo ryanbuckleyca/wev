@@ -145,7 +145,7 @@ export default function CommandSelector<T extends Option>({
   }, [open]);
 
   // Handle click outside to close
-  useState(() => {
+  useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
       if (!containerRef.current) {
         return;
@@ -161,12 +161,13 @@ export default function CommandSelector<T extends Option>({
     return () => {
       document.removeEventListener('pointerdown', onPointerDown);
     };
-  });
+  }, []);
 
   // Keep dropdown open while input is focused and there's something to show
   useEffect(() => {
     if (inputFocused && (availableOptions.length > 0 || loading || query.trim().length > 0)) {
-      setOpen(true);
+      const frame = requestAnimationFrame(() => setOpen(true));
+      return () => cancelAnimationFrame(frame);
     }
   }, [availableOptions.length, loading, query, inputFocused]);
 

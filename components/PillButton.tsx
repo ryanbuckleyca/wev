@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import React, { type ReactElement, type ReactNode } from 'react';
 
 interface PillButtonProps {
   children: ReactNode;
@@ -23,11 +23,18 @@ export default function PillButton({
 
   return (
     <div className={combinedClasses}>
-      {React.cloneElement(children as React.ReactElement<any>, {
-        onClick,
-        'aria-label': ariaLabel,
-        'aria-pressed': ariaPressed,
-      })}
+      {React.cloneElement(
+        children as ReactElement<{
+          onClick?: () => void;
+          'aria-label'?: string;
+          'aria-pressed'?: boolean;
+        }>,
+        {
+          onClick,
+          'aria-label': ariaLabel,
+          'aria-pressed': ariaPressed,
+        },
+      )}
     </div>
   );
 }
