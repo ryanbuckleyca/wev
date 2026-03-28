@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { useProfile } from '@/lib/hooks/useProfile'
 import { type EscoSkill } from '@/components/profile/SkillsSelector'
@@ -10,7 +10,9 @@ import { createClient } from '@/lib/supabase/client'
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings'
 import toast from 'react-hot-toast'
 
+/** Must match DB `profiles_skills_max_10_check` (see `20260328000000_profiles_skills_max_10_restore.sql`). */
 export const MAX_PROFILE_SKILLS = 10
+/** Must match product / DB limits for `profiles.values` (5). */
 export const MAX_PROFILE_VALUES = 5
 export const MAX_PROFILE_WORK_ENV_CHARS = 1500
 
@@ -24,7 +26,7 @@ function debounce<T extends (...args: any[]) => any>(fn: T, ms: number): ((...ar
 export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') {
   const t = useTranslations('profile')
   const tValues = useTranslations('values')
-  const { profile, loading: profileLoading, error: profileError, updateProfile, uploadPhoto } = useProfile(userId)
+  const { profile, loading: profileLoading, error: profileError, updateProfile } = useProfile(userId)
   const supabase = useMemo(() => createClient(), [])
 
   const [isSaving, setIsSaving] = useState(false)
@@ -47,8 +49,6 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     work_types: [] as WorkType[],
     ideal_work_environment: '',
   })
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
   const workValues: WorkValue[] = useMemo(() => {
     const tCurrent = (key: string, opts?: { defaultValue: string }) => tValues(key, opts ?? {})
     const tFallback = (key: string, opts?: { defaultValue: string }) => {
@@ -261,12 +261,6 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     } finally { setIsSaving(false) }
   }
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return
-    try { await uploadPhoto(file); toast.success(t('photoUploadSuccess')) }
-    catch (err) { toast.error(err instanceof Error ? err.message : t('photoUploadFailed')) }
-  }
-
   return {
     profile, profileLoading, profileError,
     formData, setFormData,
@@ -276,6 +270,6 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     workValues,
     selectedValues, valueCutoff,
     handleValueToggle, handleValueReorder, handleValueRemove,
-    isSaving, fileInputRef, handleSaveProfile, handlePhotoUpload,
+    isSaving, handleSaveProfile,
   }
 }

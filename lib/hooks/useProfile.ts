@@ -67,23 +67,13 @@ export function useProfile(userId: string | undefined): UseProfileState & UsePro
       setState((prev) => ({ ...prev, isUpdating: true, error: null }))
       try {
         const updated = await updateProfile(userId, data)
-        if (updated) {
-          setState((prev) => ({ ...prev, profile: updated, isUpdating: false }))
-          // Match recalculation is handled by Supabase database triggers
-          // when profiles.values changes — no client-side call needed.
-          return updated
-        } else {
-          setState((prev) => ({
-            ...prev,
-            error: 'Failed to update profile',
-            isUpdating: false,
-          }))
-          return null
-        }
+        setState((prev) => ({ ...prev, profile: updated, isUpdating: false }))
+        return updated
       } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to update profile'
         setState((prev) => ({
           ...prev,
-          error: err instanceof Error ? err.message : 'Failed to update profile',
+          error: message,
           isUpdating: false,
         }))
         return null

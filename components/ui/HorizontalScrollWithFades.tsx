@@ -24,6 +24,10 @@ const scrollbarHideStyle = `
     -ms-overflow-style: none; 
     scrollbar-width: none; 
   }
+  /* Gradient: no transition — instant on/off */
+  .wev-hscroll-fade {
+    transition: none !important;
+  }
 `;
 
 export default function HorizontalScrollWithFades({
@@ -48,46 +52,64 @@ export default function HorizontalScrollWithFades({
     <div className={`relative ${containerClassName}`}>
       <style>{scrollbarHideStyle}</style>
       
-      {/* Left fade + Chevron */}
-      <div
-        className="absolute left-0 -top-[0.5px] -bottom-[0.125px] w-16 pointer-events-none z-10 transition-opacity duration-200 flex items-center justify-start pb-2"
-        style={{
-          background: `linear-gradient(to right, ${fadeBackground}, ${fadeBackground} 50%, transparent)`,
-          opacity: fades.left ? 1 : 0,
-        }}
-      >
+      {/* Left: gradient instant; chevron fades in */}
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16">
+        <div
+          className="wev-hscroll-fade absolute inset-0"
+          style={{
+            background: `linear-gradient(to right, ${fadeBackground}, ${fadeBackground} 50%, transparent)`,
+            opacity: fades.left ? 1 : 0,
+          }}
+          aria-hidden
+        />
         <button
           type="button"
           onClick={() => scrollBy('left')}
-          className="pointer-events-auto absolute left-1 h-6 w-6 rounded-full bg-background/90 border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-background transition-colors"
+          tabIndex={fades.left ? 0 : -1}
+          className="absolute left-1 top-1/2 z-[1] h-6 w-6 -translate-y-1/2 rounded-full border border-border bg-background/90 shadow-sm flex items-center justify-center text-foreground hover:bg-background"
+          style={{
+            opacity: fades.left ? 1 : 0,
+            transition: 'opacity 200ms ease-out, background-color 150ms ease',
+            pointerEvents: fades.left ? 'auto' : 'none',
+          }}
           aria-label="Scroll left"
+          aria-hidden={!fades.left}
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Scrollable Row */}
+      {/* Scrollable Row — z-0 keeps edge overlays above */}
       <div
         ref={ref}
-        className={`flex gap-2 overflow-x-auto scrollbar-hide hide-scrollbar ${className}`}
+        className={`relative z-0 flex gap-2 overflow-x-auto scrollbar-hide hide-scrollbar ${className}`}
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {children}
       </div>
 
-      {/* Right fade + Chevron */}
-      <div
-        className="absolute right-0 -top-[0.5px] -bottom-[0.125px] w-16 pointer-events-none z-10 transition-opacity duration-200 flex items-center justify-end pb-2"
-        style={{
-          background: `linear-gradient(to left, ${fadeBackground}, ${fadeBackground} 50%, transparent)`,
-          opacity: fades.right ? 1 : 0,
-        }}
-      >
+      {/* Right: gradient instant; chevron fades in */}
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16">
+        <div
+          className="wev-hscroll-fade absolute inset-0"
+          style={{
+            background: `linear-gradient(to left, ${fadeBackground}, ${fadeBackground} 50%, transparent)`,
+            opacity: fades.right ? 1 : 0,
+          }}
+          aria-hidden
+        />
         <button
           type="button"
           onClick={() => scrollBy('right')}
-          className="pointer-events-auto absolute right-1 h-6 w-6 rounded-full bg-background/90 border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-background transition-colors"
+          tabIndex={fades.right ? 0 : -1}
+          className="absolute right-1 top-1/2 z-[1] h-6 w-6 -translate-y-1/2 rounded-full border border-border bg-background/90 shadow-sm flex items-center justify-center text-foreground hover:bg-background"
+          style={{
+            opacity: fades.right ? 1 : 0,
+            transition: 'opacity 200ms ease-out, background-color 150ms ease',
+            pointerEvents: fades.right ? 'auto' : 'none',
+          }}
           aria-label="Scroll right"
+          aria-hidden={!fades.right}
         >
           <ChevronRight className="h-4 w-4" />
         </button>

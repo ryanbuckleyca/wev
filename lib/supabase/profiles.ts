@@ -67,7 +67,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 export async function updateProfile(
   userId: string,
   updates: ProfileUpdateData
-): Promise<Profile | null> {
+): Promise<Profile> {
   const supabase = createClient()
 
   const { data, error } = await supabase
@@ -82,10 +82,11 @@ export async function updateProfile(
 
   if (error) {
     console.error('Error updating profile:', error)
-    return null
+    const msg = [error.message, (error as { details?: string }).details].filter(Boolean).join(' — ')
+    throw new Error(msg || 'Failed to update profile')
   }
 
-  return data
+  return data as Profile
 }
 
 /**

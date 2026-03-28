@@ -39,13 +39,11 @@ export default function SelectedValuesPills({
 
   if (useHorizontalScroll) {
     return (
-      <HorizontalScrollWithFades 
-        containerClassName="shrink-0 border-b border-gray-100 dark:border-zinc-800"
-        className="pb-2 items-center"
-        fadeBackground={fadeBackground}
-      >
-        {pillElements}
-      </HorizontalScrollWithFades>
+      <div className="shrink-0 border-b border-gray-100 pb-2 dark:border-zinc-800">
+        <HorizontalScrollWithFades className="items-center" fadeBackground={fadeBackground}>
+          {pillElements}
+        </HorizontalScrollWithFades>
+      </div>
     )
   }
 

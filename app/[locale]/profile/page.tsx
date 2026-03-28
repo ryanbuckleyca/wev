@@ -33,7 +33,7 @@ export default function ProfilePage() {
     workValues,
     selectedValues, valueCutoff,
     handleValueToggle, handleValueReorder, handleValueRemove,
-    isSaving, fileInputRef, handleSaveProfile, handlePhotoUpload,
+    isSaving, handleSaveProfile,
   } = useProfileForm(user?.id, locale);
 
   const workEnvironmentCharCount = formData.ideal_work_environment.length;
@@ -72,30 +72,6 @@ export default function ProfilePage() {
 
         <FormContainer onSubmit={handleSaveProfile}>
           <div className="space-y-6">
-            {/* Profile Photo */}
-            <div>
-              <FormLabel>{t('profile.profilePhoto')}</FormLabel>
-              <div className="flex items-center gap-6">
-                <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
-                  {profile.profile_photo_url ? (
-                    <img
-                      src={profile.profile_photo_url}
-                      alt={t('profile.profilePhoto')}
-                      className="w-full h-full object-cover rounded-xl"
-                    />
-                  ) : (
-                    <span className="text-3xl font-bold text-gray-300">
-                      {user.email?.[0].toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <Button onClick={() => fileInputRef.current?.click()} variant="secondary" type="button">
-                  {t('profile.uploadPhoto')}
-                </Button>
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-              </div>
-            </div>
-
             {/* Full Name */}
             <FormField
               label={t('profile.fullName')}
@@ -181,15 +157,16 @@ export default function ProfilePage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <h2 className="font-bold text-base">{t('profile.skills')}</h2>
-                {selectedSkills.length > 0 && (
-                  <span className={`text-xs font-semibold rounded-full px-3 py-1 transition-colors ${
+                <span
+                  className={`text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors ${
                     selectedSkills.length > MAX_PROFILE_SKILLS
                       ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
                       : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
-                  }`}>
-                    {selectedSkills.length}
-                  </span>
-                )}
+                  }`}
+                  aria-label={`${selectedSkills.length}/${MAX_PROFILE_SKILLS}`}
+                >
+                  {selectedSkills.length}/{MAX_PROFILE_SKILLS}
+                </span>
               </div>
 
               {selectedSkills.length > MAX_PROFILE_SKILLS && (
@@ -216,15 +193,16 @@ export default function ProfilePage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <h2 className="font-bold text-base">{t('profile.workValues')}</h2>
-                {selectedValues.length > 0 && (
-                  <span className={`text-xs font-semibold rounded-full px-3 py-1 transition-colors ${
+                <span
+                  className={`text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors ${
                     selectedValues.length > MAX_PROFILE_VALUES
                       ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
                       : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
-                  }`}>
-                    {selectedValues.length}
-                  </span>
-                )}
+                  }`}
+                  aria-label={`${selectedValues.length}/${MAX_PROFILE_VALUES}`}
+                >
+                  {selectedValues.length}/{MAX_PROFILE_VALUES}
+                </span>
               </div>
 
               {selectedValues.length > MAX_PROFILE_VALUES && (
