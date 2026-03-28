@@ -42,7 +42,7 @@ export default async function LocaleLayout({
             hard navigations (cookie may not be set on very first visit). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t)}}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t)}}catch(e){/* ignore theme errors */}})()`,
           }}
         />
       </head>
