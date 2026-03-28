@@ -74,7 +74,7 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="text-red-600">{t('deleteAccount.title')}</DialogTitle>
         </DialogHeader>
