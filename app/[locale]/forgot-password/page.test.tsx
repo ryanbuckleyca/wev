@@ -10,11 +10,23 @@ vi.mock('@/lib/supabase/client', () => ({
 }));
 
 vi.mock('@/i18n/navigation', () => ({
-  Link: ({ href, children, ...props }: { href: string; children: ReactNode }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
+  Link: ({
+    href,
+    children,
+    prefetch,
+    ...props
+  }: {
+    href: string;
+    children: ReactNode;
+    prefetch?: boolean;
+  }) => {
+    void prefetch;
+    return (
+      <a href={href} {...props}>
+        {children}
+      </a>
+    );
+  },
 }));
 
 vi.mock('@/components/TurnstileWidget', () => ({
