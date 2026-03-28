@@ -30,12 +30,6 @@ export interface SelectionBrowseModalProps {
   /** Search / filter control (typically flex-1) */
   headerCenter: ReactNode
   selectedPills?: ReactNode
-  /**
-   * When true, selectedPills render below the scrollable list instead of above.
-   * Improves keyboard tab order (reach results before selected chips) for pickers
-   * that use a focusable list inside children (e.g. skills listbox).
-   */
-  selectedPillsAfterList?: boolean
   children: ReactNode
 }
 
@@ -54,7 +48,6 @@ export default function SelectionBrowseModal({
   selectedCount,
   headerCenter,
   selectedPills,
-  selectedPillsAfterList = false,
   children,
 }: SelectionBrowseModalProps) {
   const isMdUp = useMediaQuery('(min-width: 768px)')
@@ -174,17 +167,8 @@ export default function SelectionBrowseModal({
         </button>
       </div>
 
-      {selectedPillsAfterList ? (
-        <>
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">{children}</div>
-          {selectedPills}
-        </>
-      ) : (
-        <>
-          {selectedPills}
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">{children}</div>
-        </>
-      )}
+      {selectedPills}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">{children}</div>
     </>
   )
 

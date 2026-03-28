@@ -283,6 +283,8 @@
     "valuesPlaceholder": "Search to add values…",
     "valuesPlaceholderShort": "Search to add values…",
     "valuesEmptyState": "Type to search work values",
+    "valuesNoResults": "No values match.",
+    "valuesListboxKbdHint": "Use Arrow keys to move through results, Space or Enter to toggle selection.",
     "valuesDone": "Done",
     "valuesBack": "Back",
     "valuesModalTriggerLabel": "Search and add work values, opens dialog",

@@ -1,12 +1,11 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Search } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import BrowseTrigger from '../BrowseTrigger'
 import ValuesModal from './ValuesModal'
 import SortableSelectedList from '../SortableSelectedList'
 import type { WorkValue } from '@/lib/values'
-import type { RatedValue } from '@/lib/value-ratings'
 
 export type { WorkValue }
 
@@ -18,7 +17,6 @@ interface ValuesSelectorProps {
   onToggle: (id: string) => void
   onRemove: (id: string) => void
   locale: 'en' | 'fr'
-  valuesRated?: RatedValue[]
 }
 
 export default function ValuesSelector({
@@ -32,7 +30,7 @@ export default function ValuesSelector({
 }: ValuesSelectorProps) {
   const t = useTranslations('profile')
   const browseTriggerRef = useRef<HTMLButtonElement>(null)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
 
   const valueMap = new Map<string, WorkValue>()
@@ -46,53 +44,36 @@ export default function ValuesSelector({
     })
     .filter(Boolean) as { id: string; label: string; sublabel: string }[]
 
-  const handleQueryChange = (value: string) => {
-    setQuery(value)
-  }
-
-  const handleClearQuery = () => {
+  const handleClose = () => {
     setQuery('')
+    setOpen(false)
   }
-
-  const handleMobileClose = () => {
-    setQuery('')
-    setMobileOpen(false)
-  }
-
-  const selectedSection = sortableItems.length > 0 && (
-    <SortableSelectedList
-      variant="values"
-      items={sortableItems}
-      rankCutoff={valueCutoff}
-      onReorder={onReorder}
-      onRemove={onRemove}
-    />
-  )
 
   return (
     <div className="flex flex-col gap-4">
-      <button
+      <BrowseTrigger
         ref={browseTriggerRef}
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        aria-haspopup="dialog"
-        aria-expanded={mobileOpen}
-        aria-label={t('valuesModalTriggerLabel')}
-        className="flex w-full items-center gap-2 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 text-left transition-all hover:border-gray-200 dark:bg-zinc-900/50 dark:border-zinc-800 dark:hover:border-zinc-700"
-      >
-        <Search className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
-        <span className="min-w-0 flex-1 text-[13px] font-medium text-gray-400" aria-hidden>
-          {t('valuesPlaceholder')}
-        </span>
-      </button>
-      {selectedSection}
+        onClick={() => setOpen(true)}
+        isOpen={open}
+        ariaLabel={t('valuesModalTriggerLabel')}
+        placeholder={t('valuesPlaceholder')}
+      />
+      {sortableItems.length > 0 && (
+        <SortableSelectedList
+          variant="values"
+          items={sortableItems}
+          rankCutoff={valueCutoff}
+          onReorder={onReorder}
+          onRemove={onRemove}
+        />
+      )}
       <ValuesModal
-        isOpen={mobileOpen}
-        onClose={handleMobileClose}
+        isOpen={open}
+        onClose={handleClose}
         returnFocusRef={browseTriggerRef}
         query={query}
-        onQueryChange={handleQueryChange}
-        onClearQuery={handleClearQuery}
+        onQueryChange={setQuery}
+        onClearQuery={() => setQuery('')}
         values={values}
         selectedIds={selectedValues}
         onToggle={onToggle}

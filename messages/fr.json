@@ -283,6 +283,8 @@
     "valuesPlaceholder": "Rechercher des valeurs à ajouter",
     "valuesPlaceholderShort": "Rechercher des valeurs à ajouter",
     "valuesEmptyState": "Saisissez du texte pour rechercher des valeurs de travail",
+    "valuesNoResults": "Aucune valeur trouvée.",
+    "valuesListboxKbdHint": "Flèches pour parcourir les résultats, Espace ou Entrée pour basculer la sélection.",
     "valuesDone": "Terminé",
     "valuesBack": "Retour",
     "valuesModalTriggerLabel": "Rechercher et ajouter des valeurs de travail, ouvre une boîte de dialogue",
