@@ -67,10 +67,6 @@ export default function ValuesList({
     })
   }, [q, locale, values])
 
-  if (filtered.length === 0) {
-    return <p className="px-4 py-8 text-center text-sm text-gray-400 dark:text-zinc-500">{t('valuesNoResults')}</p>
-  }
-
   const grouped = new Map<string, WorkValue[]>()
   for (const v of filtered) {
     const cat = v.category[locale]
@@ -93,6 +89,10 @@ export default function ValuesList({
 
   const optPrefix = `${listboxId}-opt`
   const { activeIndex, activeDescendant, setActive, handleKeyDown } = useListbox(rows.length, optPrefix)
+
+  if (filtered.length === 0) {
+    return <p className="px-4 py-8 text-center text-sm text-gray-400 dark:text-zinc-500">{t('valuesNoResults')}</p>
+  }
 
   function activate(i: number) {
     const row = rows[i]

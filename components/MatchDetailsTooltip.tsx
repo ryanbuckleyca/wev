@@ -2,7 +2,7 @@ import { Lineicons } from '@lineiconshq/react-lineicons'
 import { HeartSolid, Briefcase2Solid, CheckOutlined, XmarkOutlined } from '@lineiconshq/free-icons'
 import ProgressDonut from './ProgressDonut'
 
-type TranslateFn = (key: string, values?: Record<string, any>) => string
+type TranslateFn = (key: string, values?: Record<string, string | number>) => string
 
 interface MatchDetailsTooltipProps {
   totalMatchPercentage: number

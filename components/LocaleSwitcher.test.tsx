@@ -51,7 +51,7 @@ describe('LocaleSwitcher', () => {
     vi.mocked(useSearchParams).mockReturnValue({
       toString: () => '',
       get: () => null,
-    } as any)
+    } as unknown as ReturnType<typeof useSearchParams>)
 
     render(<LocaleSwitcher />)
 
@@ -68,7 +68,7 @@ describe('LocaleSwitcher', () => {
     vi.mocked(useSearchParams).mockReturnValue({
       toString: () => 'tab=settings',
       get: () => 'settings',
-    } as any)
+    } as unknown as ReturnType<typeof useSearchParams>)
 
     render(<LocaleSwitcher />)
 
@@ -86,7 +86,7 @@ describe('LocaleSwitcher', () => {
     vi.mocked(useSearchParams).mockReturnValue({
       toString: () => '',
       get: () => null,
-    } as any)
+    } as unknown as ReturnType<typeof useSearchParams>)
 
     render(<LocaleSwitcher />)
 
@@ -105,7 +105,7 @@ describe('LocaleSwitcher', () => {
     vi.mocked(useSearchParams).mockReturnValue({
       toString: () => 'q=engineer&location=ottawa',
       get: () => 'engineer',
-    } as any)
+    } as unknown as ReturnType<typeof useSearchParams>)
 
     render(<LocaleSwitcher />)
 

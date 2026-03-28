@@ -172,12 +172,14 @@ export default function SortableSelectedList({
 }: SortableSelectedListProps) {
   const t = useTranslations('profile')
   const isTouch = useTouchDevice()
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  const keyboardSensor = useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  
   const sensors = useSensors(
     // On touch devices use TouchSensor (long-press); on desktop use PointerSensor (drag distance).
-    ...(isTouch
-      ? [useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })]
-      : [useSensor(PointerSensor, { activationConstraint: { distance: 8 } })]),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    ...(isTouch ? [touchSensor] : [pointerSensor]),
+    keyboardSensor
   )
 
   // We map the real items and inject a special "dummy" item for the divider.
@@ -191,8 +193,6 @@ export default function SortableSelectedList({
   }, [items, rankCutoff])
 
   const sortableIds = useMemo(() => workingItems.map(i => i.id), [workingItems])
-
-  if (items.length === 0) return null
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event
@@ -214,6 +214,8 @@ export default function SortableSelectedList({
 
     onReorder(fromIndex, toIndex, newCutoff)
   }, [workingItems, items, onReorder])
+
+  if (items.length === 0) return null
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

@@ -12,7 +12,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['next.config.js'],
+    files: ['next.config.mjs'],
   },
   globalIgnores([
     '.next/**',

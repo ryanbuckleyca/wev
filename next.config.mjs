@@ -1,9 +1,10 @@
-const path = require('path')
-const createNextIntlPlugin = require('next-intl/plugin')
+import path from 'path'
+import createNextIntlPlugin from 'next-intl/plugin'
+import { config } from 'dotenv'
 
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') })
+config({ path: path.join(process.cwd(), '..', '.env') })
 // Also try loading from current directory as fallback
-require('dotenv').config({ path: path.join(__dirname, '.env') })
+config({ path: path.join(process.cwd(), '.env') })
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -11,10 +12,10 @@ const nextConfig = {
   // Removed 'output: export' to enable SSR/hybrid mode
   // This allows API routes and server-side rendering
   turbopack: {
-    root: __dirname,
+    root: process.cwd(),
   },
 }
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
-module.exports = withNextIntl(nextConfig)
+export default withNextIntl(nextConfig)
