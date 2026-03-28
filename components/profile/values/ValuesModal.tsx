@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import InfoPopover from '@/components/InfoPopover'
 import { useTranslations } from 'next-intl'
 import SearchInput from '../SearchInput'
 import SelectedPillsStrip, { type PillItem } from '../SelectedPillsStrip'
@@ -36,6 +37,8 @@ export default function ValuesModal({
   const inputRef = useRef<HTMLInputElement>(null)
   const selectedSet = new Set(selectedIds)
   const pillItems = selectedIds.map((id) => toPillItem(id, values, locale)).filter((p): p is PillItem => p !== null)
+  // Map from id to WorkValue for popover content
+  const valueMap = Object.fromEntries(values.map(v => [v.id, v]))
 
   return (
     <SelectionBrowseModal
@@ -72,6 +75,17 @@ export default function ValuesModal({
               regionHintId={`${ID}-selected-hint`}
               useHorizontalScroll
               fadeBackground="var(--card)"
+              wrapPill={(pill, item) => {
+                const v = valueMap[item.key]
+                return (
+                  <InfoPopover
+                    content={v?.summary?.[locale] || v?.label?.[locale]}
+                    triggerTabIndex={-1}
+                  >
+                    {pill}
+                  </InfoPopover>
+                )
+              }}
             />
           </>
         ) : undefined

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import Chevron from '@/components/Chevron'
 import { useListbox } from '../useListbox'
@@ -29,6 +29,7 @@ export default function ValuesList({
   ariaDescribedBy,
 }: ValuesListProps) {
   const t = useTranslations('profile')
+
   const allCategories = new Set(values.map((v) => v.category[locale]))
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(allCategories))
   const q = query.toLowerCase().trim()
@@ -39,6 +40,19 @@ export default function ValuesList({
           v.summary[locale].toLowerCase().includes(q),
       )
     : values
+
+  // Auto-expand groups with matches when searching
+  useEffect(() => {
+    if (!q) return
+    // Find all categories with a match
+    const matchedCategories = new Set(filtered.map((v) => v.category[locale]))
+    setCollapsed((prev) => {
+      // Remove matched categories from collapsed set
+      const next = new Set(prev)
+      matchedCategories.forEach((cat) => next.delete(cat))
+      return next
+    })
+  }, [q, locale, filtered])
 
   if (filtered.length === 0) {
     return <p className="px-4 py-8 text-center text-sm text-gray-400 dark:text-zinc-500">{t('valuesNoResults')}</p>
@@ -103,10 +117,10 @@ export default function ValuesList({
               role="option"
               aria-selected={false}
               onClick={() => { setActive(i); activate(i) }}
-              className={`cursor-pointer px-4 py-3 border-b border-gray-50 dark:border-zinc-800/60 ${
+              className={`cursor-pointer px-4 py-3 border-b border-gray-50 dark:border-zinc-800/60 bg-muted dark:bg-zinc-800/60 ${
                 active
                   ? 'group-focus-within:bg-blue-50/60 dark:group-focus-within:bg-blue-900/20 hover:group-focus-within:bg-blue-100/50 dark:hover:group-focus-within:bg-blue-900/30'
-                  : 'hover:bg-gray-50/80 dark:hover:bg-zinc-800/50'
+                  : 'hover:bg-gray-100/90 dark:hover:bg-zinc-700/70'
               }`}
             >
               <div className="flex items-center justify-between gap-3">

@@ -110,7 +110,10 @@ export function ScrollablePills({
               {item.expandable && (
                 <button
                   type="button"
-                  onClick={() => onItemClick?.(item, index)}
+                  onClick={e => {
+                    e.stopPropagation();
+                    onItemClick?.(item, index);
+                  }}
                   className="flex items-center focus:outline-none -mr-1 pl-0.5"
                   aria-label={item.isExpanded ? 'Collapse' : 'Expand'}
                 >
