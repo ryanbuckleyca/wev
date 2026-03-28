@@ -45,7 +45,9 @@ interface Token {
 }
 
 export default function StyleGuidePage() {
-  const [groupedColors] = useState<Record<string, Array<{ name: string; value: string; prefix: string }>>>(() => {
+  const [groupedColors] = useState<
+    Record<string, Array<{ name: string; value: string; prefix: string }>>
+  >(() => {
     // Helper function to get common prefix from variable name
     const getCommonPrefix = (varName: string) => {
       const parts = varName.split('-');
@@ -297,7 +299,8 @@ export default function StyleGuidePage() {
             <div className="design-button-example">
               <div className="design-button-label">Button Component</div>
               <p className="design-button-description">
-                Pure actions that don&apos;t navigate. Form submission, modals, API calls, state changes.
+                Pure actions that don&apos;t navigate. Form submission, modals, API calls, state
+                changes.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button type="button">Save Changes</Button>

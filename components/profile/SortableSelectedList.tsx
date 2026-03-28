@@ -199,14 +199,12 @@ export default function SortableSelectedList({
       .slice(0, clampedCutoff)
       .map((item, i) => ({ ...item, type: 'item', isRanked: true, originalIndex: i }));
     const divider: WorkingItem = { id: '__divider__', type: 'divider' };
-    const unranked: WorkingItem[] = items
-      .slice(clampedCutoff)
-      .map((item, i) => ({
-        ...item,
-        type: 'item',
-        isRanked: false,
-        originalIndex: clampedCutoff + i,
-      }));
+    const unranked: WorkingItem[] = items.slice(clampedCutoff).map((item, i) => ({
+      ...item,
+      type: 'item',
+      isRanked: false,
+      originalIndex: clampedCutoff + i,
+    }));
     return [...ranked, divider, ...unranked];
   }, [items, rankCutoff]);
 

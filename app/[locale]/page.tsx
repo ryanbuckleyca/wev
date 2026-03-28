@@ -217,67 +217,73 @@ export default function Home() {
   }, [locale, t, setCurrentPage]);
 
   // Fetch bookmarks for job IDs (only when user is logged in)
-  const fetchBookmarks = useCallback(async (jobIds: string[]) => {
-    if (!user || jobIds.length === 0) return new Set<string>();
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('bookmarks')
-        .select('job_id')
-        .eq('user_id', user.id)
-        .in('job_id', jobIds);
+  const fetchBookmarks = useCallback(
+    async (jobIds: string[]) => {
+      if (!user || jobIds.length === 0) return new Set<string>();
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('bookmarks')
+          .select('job_id')
+          .eq('user_id', user.id)
+          .in('job_id', jobIds);
 
-      if (error) {
+        if (error) {
+          console.error('Error fetching bookmarks:', error);
+          return new Set<string>();
+        }
+        return new Set((data ?? []).map((b: { job_id: string }) => b.job_id));
+      } catch (error) {
         console.error('Error fetching bookmarks:', error);
         return new Set<string>();
       }
-      return new Set((data ?? []).map((b: { job_id: string }) => b.job_id));
-    } catch (error) {
-      console.error('Error fetching bookmarks:', error);
-      return new Set<string>();
-    }
-  }, [user]);
+    },
+    [user],
+  );
 
   // Fetch match data for all jobs (only when user is logged in)
-  const fetchMatchData = useCallback(async (jobs: JobPosting[]) => {
-    if (!user) return new Map();
+  const fetchMatchData = useCallback(
+    async (jobs: JobPosting[]) => {
+      if (!user) return new Map();
 
-    try {
-      const supabase = createClient();
-      const { data: matches, error } = await supabase
-        .from('job_matches')
-        .select('job_id, score, value_score, skill_score, shared_values, shared_skills')
-        .eq('user_id', user.id)
-        .in(
-          'job_id',
-          jobs.map((job) => job.id),
+      try {
+        const supabase = createClient();
+        const { data: matches, error } = await supabase
+          .from('job_matches')
+          .select('job_id, score, value_score, skill_score, shared_values, shared_skills')
+          .eq('user_id', user.id)
+          .in(
+            'job_id',
+            jobs.map((job) => job.id),
+          );
+
+        if (error) {
+          console.error('Error fetching match data:', error);
+          return new Map();
+        }
+
+        const matchMap = new Map();
+        matches?.forEach(
+          (match: {
+            job_id: string;
+            score: number;
+            value_score?: number | null;
+            skill_score?: number | null;
+            shared_values: string[];
+            shared_skills?: string[];
+          }) => {
+            matchMap.set(match.job_id, match);
+          },
         );
 
-      if (error) {
+        return matchMap;
+      } catch (error) {
         console.error('Error fetching match data:', error);
         return new Map();
       }
-
-      const matchMap = new Map();
-      matches?.forEach(
-        (match: {
-          job_id: string;
-          score: number;
-          value_score?: number | null;
-          skill_score?: number | null;
-          shared_values: string[];
-          shared_skills?: string[];
-        }) => {
-          matchMap.set(match.job_id, match);
-        },
-      );
-
-      return matchMap;
-    } catch (error) {
-      console.error('Error fetching match data:', error);
-      return new Map();
-    }
-  }, [user]);
+    },
+    [user],
+  );
 
   // Filter and sort jobs based on search, filters, and sort option
   const filteredJobs = useMemo(() => {
