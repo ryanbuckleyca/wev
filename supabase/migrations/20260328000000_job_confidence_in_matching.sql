@@ -1,9 +1,8 @@
 -- Use job values_rated.confidence in match scoring.
 --
--- Adds a helper function job_confidence_weight() that maps a job value's
--- confidence position to a weight via rank_weight().  Updates both
--- recalculate_matches_for_user and recalculate_matches_for_job to multiply
--- the overlap contribution of each shared value by its job confidence weight.
+-- Adds a helper function job_confidence_weight() for ad-hoc lookups.  The
+-- recalculate_* functions pre-materialize per-(job,value) weights in a CTE
+-- and JOIN once, avoiding repeated jsonb_array_elements per aggregate row.
 --
 -- Updated formula:
 --
@@ -17,11 +16,11 @@
 --     user_count  = COUNT(user values)
 --     score       = LEAST(overlap_num / user_count + LEAST(shared_count * 0.1, 0.3), 1.0)
 --
--- When a job has no values_rated (NULL or empty), job_confidence_weight
--- returns 1.0 — preserving the previous behaviour.
+-- When a job has no values_rated (NULL or empty), LEFT JOIN misses and COALESCE(..., 1.0)
+-- preserves the previous behaviour.
 
 --------------------------------------------------------------------------------
--- Helper: look up job confidence weight for a single value name
+-- Helper: look up job confidence weight for a single value name (optional / ad hoc)
 --------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION job_confidence_weight(p_job_rated jsonb, p_value text)
 RETURNS float LANGUAGE sql STABLE AS $$
@@ -85,20 +84,33 @@ BEGIN
       FROM jobs
       WHERE "values" IS NOT NULL AND array_length("values", 1) IS NOT NULL
     ),
+    job_value_weights AS (
+      SELECT
+        vj.id AS job_id,
+        elem->>'value' AS val,
+        rank_weight((elem->>'confidence')::int, jsonb_array_length(vj.job_rated)) AS job_w
+      FROM valid_jobs vj
+      CROSS JOIN LATERAL jsonb_array_elements(vj.job_rated) AS elem
+      WHERE vj.job_rated IS NOT NULL
+        AND jsonb_array_length(vj.job_rated) > 0
+        AND (elem->>'value') IS NOT NULL
+    ),
     computed AS (
       SELECT
         p_user_id AS user_id,
         vj.id AS job_id,
         COALESCE(
-          SUM(uw.weight * job_confidence_weight(vj.job_rated, uw.val))
+          SUM(uw.weight * COALESCE(jvw.job_w, 1.0))
             FILTER (WHERE uw.val = ANY(vj.job_values)),
           0
         ) AS overlap_num,
         COUNT(*) FILTER (WHERE uw.val = ANY(vj.job_values))::int AS shared_count,
         (SELECT w FROM total_weight) AS total_w,
         ARRAY(SELECT uw2.val FROM user_weights uw2 WHERE uw2.val = ANY(vj.job_values)) AS shared_values
-      FROM valid_jobs vj CROSS JOIN user_weights uw
-      GROUP BY vj.id, vj.job_values, vj.job_rated
+      FROM valid_jobs vj
+      CROSS JOIN user_weights uw
+      LEFT JOIN job_value_weights jvw ON jvw.job_id = vj.id AND jvw.val = uw.val
+      GROUP BY vj.id, vj.job_values
     )
     SELECT
       user_id, job_id,
@@ -122,14 +134,26 @@ BEGIN
       FROM jobs
       WHERE "values" IS NOT NULL AND array_length("values", 1) IS NOT NULL
     ),
+    job_value_weights AS (
+      SELECT
+        vj.id AS job_id,
+        elem->>'value' AS val,
+        rank_weight((elem->>'confidence')::int, jsonb_array_length(vj.job_rated)) AS job_w
+      FROM valid_jobs vj
+      CROSS JOIN LATERAL jsonb_array_elements(vj.job_rated) AS elem
+      WHERE vj.job_rated IS NOT NULL
+        AND jsonb_array_length(vj.job_rated) > 0
+        AND (elem->>'value') IS NOT NULL
+    ),
     computed AS (
       SELECT
         p_user_id AS user_id, vj.id AS job_id,
         shared_arr.v AS shared_values,
         LEAST(
           (COALESCE(
-            (SELECT SUM(job_confidence_weight(vj.job_rated, sv))
-             FROM unnest(shared_arr.v) AS sv),
+            (SELECT SUM(COALESCE(jvw.job_w, 1.0))
+             FROM unnest(shared_arr.v) AS sv
+             LEFT JOIN job_value_weights jvw ON jvw.job_id = vj.id AND jvw.val = sv),
             0
           ) / array_length(v_user_values, 1)::float)
           + LEAST(COALESCE(array_length(shared_arr.v, 1), 0) * 0.1, 0.3), 1.0
@@ -165,6 +189,14 @@ BEGIN
 
   INSERT INTO job_matches (user_id, job_id, score, shared_values, updated_at)
   WITH
+  job_value_weights AS (
+    SELECT elem->>'value' AS val,
+           rank_weight((elem->>'confidence')::int, jsonb_array_length(v_job_rated)) AS job_w
+    FROM jsonb_array_elements(COALESCE(v_job_rated, '[]'::jsonb)) AS elem
+    WHERE v_job_rated IS NOT NULL
+      AND jsonb_array_length(v_job_rated) > 0
+      AND (elem->>'value') IS NOT NULL
+  ),
   weighted_profiles AS (
     SELECT p.id AS profile_id, p.values_rated
     FROM profiles p
@@ -180,7 +212,7 @@ BEGIN
       wp.profile_id,
       elem->>'value' AS val,
       (elem->>'rank')::int AS rnk,
-      (SELECT count(*) FROM jsonb_array_elements(wp.values_rated))::int AS total
+      jsonb_array_length(wp.values_rated)::int AS total
     FROM weighted_profiles wp
     CROSS JOIN jsonb_array_elements(wp.values_rated) AS elem
     WHERE (elem->>'value') IS NOT NULL
@@ -195,16 +227,17 @@ BEGIN
       p_job_id AS job_id,
       SUM(wr.weight) AS total_w,
       COALESCE(
-        SUM(wr.weight * job_confidence_weight(v_job_rated, wr.val))
+        SUM(wr.weight * COALESCE(jvw.job_w, 1.0))
           FILTER (WHERE wr.val = ANY(v_job_values)),
         0
       ) AS overlap_num,
       COUNT(*) FILTER (WHERE wr.val = ANY(v_job_values))::int AS shared_count,
-      ARRAY(
-        SELECT DISTINCT wr2.val FROM weighted_rows wr2
-        WHERE wr2.profile_id = wr.profile_id AND wr2.val = ANY(v_job_values)
+      COALESCE(
+        array_agg(DISTINCT wr.val) FILTER (WHERE wr.val = ANY(v_job_values)),
+        '{}'::text[]
       ) AS shared_values
     FROM weighted_rows wr
+    LEFT JOIN job_value_weights jvw ON jvw.val = wr.val
     GROUP BY wr.profile_id
   ),
   flat_profiles AS (
@@ -220,8 +253,9 @@ BEGIN
       shared_arr.v AS shared_values,
       LEAST(
         (COALESCE(
-          (SELECT SUM(job_confidence_weight(v_job_rated, sv))
-           FROM unnest(shared_arr.v) AS sv),
+          (SELECT SUM(COALESCE(jvw.job_w, 1.0))
+           FROM unnest(shared_arr.v) AS sv
+           LEFT JOIN job_value_weights jvw ON jvw.val = sv),
           0
         ) / array_length(fp.user_values, 1)::float)
         + LEAST(COALESCE(array_length(shared_arr.v, 1), 0) * 0.1, 0.3), 1.0

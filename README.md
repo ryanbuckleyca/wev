@@ -189,6 +189,17 @@ The application expects two tables in Supabase:
 - `errors` (text, nullable)
 - `run_at` (timestamp)
 
+### Job value matching (`job_matches`)
+
+Scores for how well a user’s work values align with a job’s values are stored in **`job_matches`** (`user_id`, `job_id`, `score` 0–1, `shared_values`).
+
+- **Application logic:** `lib/match-calculator.ts` and `lib/value-ratings.ts` (user ranks and job confidence share the same weight curve).
+- **Database:** PL/pgSQL functions and triggers in migrations `20260326000000_rank_weighted_match_triggers.sql` and `20260328000000_job_confidence_in_matching.sql` keep `job_matches` updated when `profiles` / `jobs` change (`values` and `values_rated`).
+- **Data:** Profiles use `values_rated` with optional `rank` for weighted matching; jobs use `values` for membership and optional `values_rated` with `confidence` per value (missing or empty `values_rated` → job weight 1.0 for every shared value).
+- **Tests:** `lib/match-calculator.test.ts`, `lib/sql-ts-parity.test.ts`.
+
+Longer operational notes (scraper scripts, legacy Python bulk matcher) are in **`wev-scraper/scripts/README.md`**.
+
 ## Development
 
 Run the development server:
