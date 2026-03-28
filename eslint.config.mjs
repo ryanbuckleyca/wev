@@ -5,6 +5,12 @@ import nextTs from 'eslint-config-next/typescript'
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    rules: {
+      'react/prop-types': 'off',
+    },
+  },
   globalIgnores([
     '.next/**',
     'out/**',
