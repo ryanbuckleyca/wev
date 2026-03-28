@@ -84,6 +84,7 @@ BEGIN
       FROM jobs
       WHERE "values" IS NOT NULL AND array_length("values", 1) IS NOT NULL
     ),
+    -- Duplicate `value` in values_rated: MIN(job_w) matches match-calculator buildJobConfidenceMap.
     job_value_weights AS (
       SELECT vj.id AS job_id, x.val, MIN(x.job_w) AS job_w
       FROM valid_jobs vj

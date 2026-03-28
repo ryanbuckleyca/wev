@@ -11,7 +11,7 @@ import toast from 'react-hot-toast'
 
 /** Must match DB `profiles_skills_max_10_check` (see `202603061612_profiles_skills_max_10.sql`). */
 export const MAX_PROFILE_SKILLS = 10
-/** Must match product / DB limits for `profiles.values` (5). */
+/** Must match DB `profiles_values_max_5_check` / `profiles_values_rated_max_5_check` (see `20260328130000_profiles_values_max_5_check.sql`). */
 export const MAX_PROFILE_VALUES = 5
 export const MAX_PROFILE_WORK_ENV_CHARS = 1500
 

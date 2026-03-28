@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { calculateMatch } from './match-calculator'
 import type { RatedValue, JobRatedValue } from './value-ratings'
+import { getRankWeight } from './value-ratings'
 
 describe('calculateMatch', () => {
   it('returns score 0 and empty shared_values when user has no values', () => {
@@ -55,6 +56,27 @@ describe('calculateMatch', () => {
     const result = calculateMatch(['Community'], ['Community'])
     expect(result.score).toBe(1)
     expect(result.shared_values).toEqual(['Community'])
+  })
+
+  it('weighted path when a later entry has rank even if the first element is a string (raw JSON)', () => {
+    const jobValues = ['Community', 'Creativity']
+    const mixed = ['Creativity', { value: 'Community', rank: 1 }] as (string | RatedValue)[]
+    const canonical: RatedValue[] = [
+      { value: 'Creativity' },
+      { value: 'Community', rank: 1 },
+    ]
+    expect(calculateMatch(mixed as string[] | RatedValue[], jobValues).score).toBeCloseTo(
+      calculateMatch(canonical, jobValues).score,
+      10,
+    )
+  })
+
+  it('flat path maps each element to a plain value regardless of first-element shape', () => {
+    const userValues = ['Creativity', { value: 'Community' }] as (string | RatedValue)[]
+    const plain = ['Creativity', 'Community']
+    expect(calculateMatch(userValues as string[] | RatedValue[], ['Community']).score).toBe(
+      calculateMatch(plain, ['Community']).score,
+    )
   })
 })
 
@@ -166,6 +188,21 @@ describe('calculateMatch with jobValuesRated', () => {
     const withConf = calculateMatch(userValues, jobValues, jobRated)
 
     expect(withConf.shared_values.sort()).toEqual(without.shared_values.sort())
+  })
+
+  it('duplicate job value labels use MIN confidence weight (matches SQL job_value_weights)', () => {
+    const userValues = ['Community']
+    const jobValues = ['Community']
+    const dupRated: JobRatedValue[] = [
+      { value: 'Community', confidence: 1 },
+      { value: 'Community', confidence: 2 },
+    ]
+    const total = dupRated.length
+    const wMin = Math.min(getRankWeight(1, total), getRankWeight(2, total))
+    const expectedScore = Math.min(wMin / userValues.length + 0.1, 1.0)
+    expect(calculateMatch(userValues, jobValues, dupRated).score).toBeCloseTo(expectedScore, 10)
+    const wMax = Math.max(getRankWeight(1, total), getRankWeight(2, total))
+    expect(wMin).toBeLessThan(wMax)
   })
 })
 

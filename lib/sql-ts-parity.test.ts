@@ -52,16 +52,22 @@ function sqlUsesWeighted(valuesRated: RatedValue[] | null | undefined): boolean 
 }
 
 /**
- * Mirrors SQL job_confidence_weight(p_job_rated, p_value).
+ * Mirrors SQL job_confidence_weight / job_value_weights: duplicate `value` → MIN(weight).
  */
 function sqlJobConfidenceWeight(
   jobRated: JobRatedValue[] | null | undefined,
   value: string
 ): number {
   if (!jobRated?.length) return 1.0
-  const entry = jobRated.find(jv => jv.value === value)
-  if (!entry) return 1.0
-  return getRankWeight(entry.confidence, jobRated.length)
+  const total = jobRated.length
+  let minW: number | null = null
+  for (const jv of jobRated) {
+    if (jv.value !== value) continue
+    const w = getRankWeight(jv.confidence, total)
+    minW = minW === null ? w : Math.min(minW, w)
+  }
+  if (minW === null) return 1.0
+  return minW
 }
 
 /**

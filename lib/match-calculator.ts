@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import { RatedValue, JobRatedValue, getRankWeight, NEUTRAL_WEIGHT } from './value-ratings'
+import { RatedValue, JobRatedValue, getRankWeight } from './value-ratings'
 
 interface UserProfile {
   id: string
@@ -20,28 +20,54 @@ interface MatchResult {
   shared_values: string[]
 }
 
-/**
- * Returns true when the array contains at least one RatedValue with a rank set.
- * Used to decide between Flat_Match and Weighted_Match.
- */
-function isRatedValueArray(values: string[] | RatedValue[]): values is RatedValue[] {
+/** Non-null object with string `value` (RatedValue-shaped; tolerates raw JSON). */
+function isRatedValueShape(v: unknown): v is RatedValue {
   return (
-    values.length > 0 &&
-    typeof values[0] === 'object' &&
-    (values as unknown as RatedValue[]).some(v => v.rank != null)
+    v !== null &&
+    typeof v === 'object' &&
+    !Array.isArray(v) &&
+    typeof (v as RatedValue).value === 'string'
   )
+}
+
+function userValueEntryToRated(v: unknown): RatedValue {
+  if (typeof v === 'string') return { value: v }
+  if (isRatedValueShape(v)) {
+    const r = v.rank
+    return { value: v.value, rank: typeof r === 'number' ? r : undefined }
+  }
+  return { value: '' }
+}
+
+function userValueEntryToPlain(v: unknown): string {
+  if (typeof v === 'string') return v
+  if (isRatedValueShape(v)) return v.value
+  return ''
+}
+
+/**
+ * True when any element is RatedValue-shaped with `rank` set (scanned in full; order-safe).
+ * Raw API / JSON can place strings before objects; we still take Weighted_Match when any rank exists.
+ */
+function shouldUseWeightedUserMatch(values: string[] | RatedValue[]): boolean {
+  return (values as unknown[]).some(v => isRatedValueShape(v) && v.rank != null)
 }
 
 /**
  * Build a map from value name → confidence weight for a job's rated values.
  * Returns null when the job has no rated values (all weights default to 1.0).
+ *
+ * Duplicate `value` strings in `jobValuesRated` use MIN(weight), matching SQL
+ * `job_value_weights` (MIN(job_w) per job_id, val) and `job_confidence_weight`.
  */
 function buildJobConfidenceMap(jobValuesRated?: JobRatedValue[] | null): Map<string, number> | null {
   if (!jobValuesRated?.length) return null
   const total = jobValuesRated.length
   const map = new Map<string, number>()
   for (const jv of jobValuesRated) {
-    map.set(jv.value, getRankWeight(jv.confidence, total))
+    const w = getRankWeight(jv.confidence, total)
+    const prev = map.get(jv.value)
+    map.set(jv.value, prev === undefined ? w : Math.min(prev, w))
   }
   return map
 }
@@ -88,8 +114,8 @@ export function calculateMatch(
   const confidenceMap = buildJobConfidenceMap(jobValuesRated)
 
   // Weighted_Match path: at least one RatedValue has a rank
-  if (isRatedValueArray(userValues)) {
-    const rated = userValues as RatedValue[]
+  if (shouldUseWeightedUserMatch(userValues)) {
+    const rated = (userValues as unknown[]).map(userValueEntryToRated)
     const total = rated.length
     const sharedValues: string[] = []
     let weightedOverlapNumerator = 0
@@ -115,11 +141,8 @@ export function calculateMatch(
     return { score, shared_values: sharedValues }
   }
 
-  // Flat_Match path: plain string[] (or all-unrated RatedValue[] treated as strings)
-  const isObjectArray = userValues.length > 0 && typeof userValues[0] === 'object'
-  const plainValues = isObjectArray
-    ? (userValues as unknown as RatedValue[]).map(rv => rv.value)
-    : (userValues as unknown as string[])
+  // Flat_Match path: plain string[] (or all-unrated RatedValue[]); per-element so order vs shape mismatches are safe
+  const plainValues = (userValues as unknown[]).map(userValueEntryToPlain)
 
   const sharedValues = plainValues.filter(v => jobSet.has(v))
   const overlapNumerator = sharedValues.reduce(
