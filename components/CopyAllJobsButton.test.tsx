@@ -13,13 +13,17 @@ describe('CopyAllJobsButton', () => {
 
   beforeEach(() => {
     capturedPlainText = '';
-    (globalThis as any).ClipboardItem = class {
+    const globalAny = globalThis as unknown as {
+      ClipboardItem?: new (items: Record<string, Blob>) => { items: Record<string, Blob> };
+      Blob?: new (parts: string[], opts?: { type?: string }) => { content: string; type: string };
+    };
+    globalAny.ClipboardItem = class {
       items: Record<string, Blob>;
       constructor(items: Record<string, Blob>) {
         this.items = items;
       }
     };
-    (globalThis as any).Blob = class {
+    globalAny.Blob = class {
       content: string;
       type: string;
       constructor(parts: string[], opts?: { type?: string }) {

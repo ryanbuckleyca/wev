@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 interface CollapsibleProps {
   isOpen: boolean;
@@ -10,12 +10,19 @@ interface CollapsibleProps {
 
 export default function Collapsible({ isOpen, children, className }: CollapsibleProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState('0px');
+
+  useEffect(() => {
+    if (ref.current) {
+      setHeight(isOpen ? `${ref.current.scrollHeight}px` : '0px');
+    }
+  }, [isOpen]);
 
   return (
     <div
       style={{
         overflow: 'hidden',
-        maxHeight: isOpen ? `${ref.current?.scrollHeight ?? 9999}px` : '0px',
+        maxHeight: height,
         transition: 'max-height 0.3s ease-in-out',
       }}
     >

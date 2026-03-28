@@ -9,6 +9,7 @@ export default defineConfig([
     files: ['**/*.ts', '**/*.tsx'],
     rules: {
       'react/prop-types': 'off',
+      'react/no-unescaped-entities': 'off',
     },
   },
   {

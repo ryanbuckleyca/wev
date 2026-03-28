@@ -57,7 +57,6 @@ export default function AuthStatus() {
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm text-muted-foreground">
-xt-secondary)' }}>
         {user.email}
       </span>
       <Button
