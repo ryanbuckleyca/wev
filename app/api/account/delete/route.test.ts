@@ -5,6 +5,7 @@ import { getRequestUser } from '@/lib/auth/request-user';
 
 const mockSignInWithPassword = vi.fn();
 const mockDeleteUser = vi.fn();
+const mockAdminSignOut = vi.fn();
 
 vi.mock('@/lib/auth/request-user', () => ({
   getRequestUser: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock('@/lib/supabase-server', () => ({
   getSupabaseServer: vi.fn(() => ({
     auth: {
       admin: {
+        signOut: mockAdminSignOut,
         deleteUser: mockDeleteUser,
       },
     },
@@ -34,7 +36,14 @@ describe('/api/account/delete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSignInWithPassword.mockResolvedValue({
-      data: { user: { id: 'user-123' } },
+      data: {
+        user: { id: 'user-123' },
+        session: { access_token: 'verification-token' },
+      },
+      error: null,
+    });
+    mockAdminSignOut.mockResolvedValue({
+      data: null,
       error: null,
     });
   });
@@ -88,7 +97,10 @@ describe('/api/account/delete', () => {
     });
     mockSignInWithPassword.mockResolvedValue({
       data: { user: null },
-      error: new Error('Invalid login credentials'),
+      error: {
+        code: 'invalid_credentials',
+        message: 'Invalid login credentials',
+      },
     });
 
     const request = new NextRequest('http://localhost:3000/api/account/delete', {
@@ -102,6 +114,37 @@ describe('/api/account/delete', () => {
     expect(response.status).toBe(400);
     expect(data.error).toBe('Invalid password');
     expect(mockDeleteUser).not.toHaveBeenCalled();
+    expect(mockAdminSignOut).not.toHaveBeenCalled();
+  });
+
+  it('should return a server error when password verification fails for other reasons', async () => {
+    mockGetRequestUser.mockResolvedValue({
+      ok: true,
+      user: {
+        id: 'user-123',
+        email: 'test@example.com',
+      } as never,
+    });
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: null, session: null },
+      error: {
+        code: 'over_request_rate_limit',
+        message: 'Rate limit exceeded',
+      },
+    });
+
+    const request = new NextRequest('http://localhost:3000/api/account/delete', {
+      method: 'DELETE',
+      body: JSON.stringify({ password: 'wrong-password' }),
+    });
+
+    const response = await DELETE(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toBe('Internal server error');
+    expect(mockDeleteUser).not.toHaveBeenCalled();
+    expect(mockAdminSignOut).not.toHaveBeenCalled();
   });
 
   it('should successfully delete account with a valid password', async () => {
@@ -129,6 +172,7 @@ describe('/api/account/delete', () => {
 
     expect(response.status).toBe(200);
     expect(data.message).toBe('Account successfully deleted');
+    expect(mockAdminSignOut).toHaveBeenCalledWith('verification-token', 'local');
     expect(mockDeleteUser).toHaveBeenCalledWith('user-123');
   });
 });

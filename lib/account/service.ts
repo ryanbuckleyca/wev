@@ -39,19 +39,44 @@ function requirePasswordVerificationEmail(userEmail?: string | null): string {
   return userEmail;
 }
 
+function getAuthErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return undefined;
+  }
+
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
+}
+
 async function assertPasswordVerified(
   userEmail: string,
   password: string,
   invalidPasswordMessage: string,
 ) {
   const verifier = getPasswordVerificationClient();
-  const { error } = await verifier.auth.signInWithPassword({
+  const { data, error } = await verifier.auth.signInWithPassword({
     email: userEmail,
     password,
   });
 
   if (error) {
-    throw new AccountServiceError(invalidPasswordMessage);
+    if (getAuthErrorCode(error) === 'invalid_credentials') {
+      throw new AccountServiceError(invalidPasswordMessage);
+    }
+
+    throw error;
+  }
+
+  const accessToken = data.session?.access_token;
+  if (!accessToken) {
+    throw new Error('Password verification did not return a session token.');
+  }
+
+  const adminSupabase = getSupabaseServer();
+  const { error: revokeError } = await adminSupabase.auth.admin.signOut(accessToken, 'local');
+
+  if (revokeError) {
+    throw revokeError;
   }
 }
 

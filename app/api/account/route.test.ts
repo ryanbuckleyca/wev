@@ -5,6 +5,7 @@ import { getRequestUser } from '@/lib/auth/request-user';
 
 const mockSignInWithPassword = vi.fn();
 const mockUpdateUser = vi.fn();
+const mockAdminSignOut = vi.fn();
 
 vi.mock('@/lib/auth/request-user', () => ({
   getRequestUser: vi.fn(),
@@ -26,17 +27,34 @@ vi.mock('@/lib/supabase/server', () => ({
   })),
 }));
 
+vi.mock('@/lib/supabase-server', () => ({
+  getSupabaseServer: vi.fn(() => ({
+    auth: {
+      admin: {
+        signOut: mockAdminSignOut,
+      },
+    },
+  })),
+}));
+
 const mockGetRequestUser = vi.mocked(getRequestUser);
 
 describe('/api/account PATCH', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSignInWithPassword.mockResolvedValue({
-      data: { user: { id: 'user-123' } },
+      data: {
+        user: { id: 'user-123' },
+        session: { access_token: 'verification-token' },
+      },
       error: null,
     });
     mockUpdateUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
+      error: null,
+    });
+    mockAdminSignOut.mockResolvedValue({
+      data: null,
       error: null,
     });
   });
@@ -90,7 +108,10 @@ describe('/api/account PATCH', () => {
     });
     mockSignInWithPassword.mockResolvedValue({
       data: { user: null },
-      error: new Error('Invalid login credentials'),
+      error: {
+        code: 'invalid_credentials',
+        message: 'Invalid login credentials',
+      },
     });
 
     const request = new NextRequest('http://localhost:3000/api/account', {
@@ -104,6 +125,37 @@ describe('/api/account PATCH', () => {
     expect(response.status).toBe(400);
     expect(data.error).toBe('Current password is incorrect.');
     expect(mockUpdateUser).not.toHaveBeenCalled();
+    expect(mockAdminSignOut).not.toHaveBeenCalled();
+  });
+
+  it('returns a server error when password verification fails for other reasons', async () => {
+    mockGetRequestUser.mockResolvedValue({
+      ok: true,
+      user: {
+        id: 'user-123',
+        email: 'test@example.com',
+      } as never,
+    });
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: null, session: null },
+      error: {
+        code: 'over_request_rate_limit',
+        message: 'Rate limit exceeded',
+      },
+    });
+
+    const request = new NextRequest('http://localhost:3000/api/account', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword: 'old-pass', newPassword: 'new-pass' }),
+    });
+
+    const response = await PATCH(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toBe('Failed to update account');
+    expect(mockUpdateUser).not.toHaveBeenCalled();
+    expect(mockAdminSignOut).not.toHaveBeenCalled();
   });
 
   it('updates the password when the current password is valid', async () => {
@@ -125,6 +177,7 @@ describe('/api/account PATCH', () => {
 
     expect(response.status).toBe(200);
     expect(data.message).toBe('Password updated successfully');
+    expect(mockAdminSignOut).toHaveBeenCalledWith('verification-token', 'local');
     expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'new-pass' });
   });
 });
