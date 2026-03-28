@@ -10,6 +10,7 @@
     "start": "next start",
     "skills:index": "python3 scripts/build_esco_skills_index.py",
     "lint": "next lint",
+    "tsc": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
