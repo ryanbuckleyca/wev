@@ -8,6 +8,7 @@ export const zIndex = {
   header: 200,
   modalOverlay: 300,
   modal: 310,
+  popover: 400, // must be above modal
 } as const
 
 export const tokens = {
