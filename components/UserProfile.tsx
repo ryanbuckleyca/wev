@@ -17,11 +17,13 @@ import LocaleSwitcher from './LocaleSwitcher';
 interface UserProfileProps {
   showThemeInMenu?: boolean;
   showLocaleInMenu?: boolean;
+  initialTheme?: 'light' | 'dark';
 }
 
 export default function UserProfile({
   showThemeInMenu = false,
   showLocaleInMenu = false,
+  initialTheme = 'light',
 }: UserProfileProps) {
   const t = useTranslations();
   const locale = useLocale();
@@ -129,7 +131,7 @@ export default function UserProfile({
                     <div className="space-y-3">
                       {showThemeInMenu && (
                         <div className="flex items-center gap-3 transition-colors duration-700 ease-in-out">
-                          <ThemeToggle />
+                          <ThemeToggle initialTheme={initialTheme} />
                           <span className="text-sm text-muted-foreground transition-colors duration-700 ease-in-out">
                             {t('userProfile.theme')}
                           </span>
@@ -210,7 +212,7 @@ export default function UserProfile({
               <div className="p-3 border-t border-border space-y-3 transition-colors duration-700 ease-in-out">
                 {showThemeInMenu && (
                   <div className="flex items-center gap-3 transition-colors duration-700 ease-in-out">
-                    <ThemeToggle />
+                    <ThemeToggle initialTheme={initialTheme} />
                     <span className="text-sm text-muted-foreground transition-colors duration-700 ease-in-out">
                       {t('userProfile.theme')}
                     </span>

@@ -50,7 +50,7 @@ export default async function LocaleLayout({
         <NuqsAdapter>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <AuthProvider>
-              <Header />
+              <Header initialTheme={theme} />
               {children}
               <Toaster />
             </AuthProvider>

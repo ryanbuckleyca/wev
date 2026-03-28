@@ -12,7 +12,10 @@ import { zIndex } from '@/lib/design-tokens';
 const HEADER_LOGOTYPE_URL =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';
 
-export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
+export default function Header({
+  hasBanner,
+  initialTheme = 'light',
+}: { hasBanner?: boolean; initialTheme?: 'light' | 'dark' } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false);
   const pathname = usePathname();
   const locale = useLocale();
@@ -78,16 +81,20 @@ export default function Header({ hasBanner }: { hasBanner?: boolean } = {}) {
               <LocaleSwitcher />
             </div>
             <div className="hidden md:block">
-              <ThemeToggle />
+              <ThemeToggle initialTheme={initialTheme} />
             </div>
           </div>
           {/* Mobile menu - show theme/locale when hidden from header */}
           <div className="sm:hidden">
-            <UserProfile showThemeInMenu={true} showLocaleInMenu={true} />
+            <UserProfile
+              showThemeInMenu={true}
+              showLocaleInMenu={true}
+              initialTheme={initialTheme}
+            />
           </div>
           {/* Desktop menu - don't show theme/locale */}
           <div className="hidden sm:block">
-            <UserProfile showThemeInMenu={false} showLocaleInMenu={false} />
+            <UserProfile showThemeInMenu={false} showLocaleInMenu={false} initialTheme={initialTheme} />
           </div>
         </div>
       </div>

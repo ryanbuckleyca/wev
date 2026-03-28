@@ -8,17 +8,27 @@ import { MoonHalfRight5Solid, Sun1Solid } from '@lineiconshq/free-icons';
 
 const THEME_TRANSITION_MS = 300;
 
-function getInitialTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light';
-  const stored = localStorage.getItem('theme');
-  if (stored === 'dark' || stored === 'light') return stored;
-  return 'light';
-}
+export type ThemePreference = 'light' | 'dark';
 
-export default function ThemeToggle() {
+type ThemeToggleProps = {
+  /** Must match server `<html data-theme>` (from `theme` cookie in locale layout) so SSR and hydration agree. */
+  initialTheme?: ThemePreference;
+};
+
+export default function ThemeToggle({ initialTheme = 'light' }: ThemeToggleProps) {
   const t = useTranslations('ariaLabels.themeToggle');
-  const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme);
+  const [theme, setTheme] = useState<ThemePreference>(initialTheme);
   const transitionTimeoutRef = useRef<number | null>(null);
+
+  // After hydration, sync with `data-theme` on `<html>` (blocking script may apply localStorage).
+  useEffect(() => {
+    const fromDom = document.documentElement.getAttribute('data-theme');
+    if (fromDom !== 'dark' && fromDom !== 'light') return;
+    const frame = requestAnimationFrame(() => {
+      setTheme((current) => (current === fromDom ? current : fromDom));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     return () => {
