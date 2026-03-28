@@ -38,13 +38,3 @@ export function getRankWeight(rank: number | undefined, total: number): number {
   return 1.0 - ((clamped - 1) / (total - 1)) * (1.0 - MIN_WEIGHT);
 }
 
-/** @deprecated Use getRankWeight. Kept for backward compat with old tier strings. */
-export type ValueTier = "essential" | "nice_to_have";
-export const TIER_WEIGHTS: Record<ValueTier, number> = {
-  essential: 1.0,
-  nice_to_have: MIN_WEIGHT,
-};
-export function getTierWeight(tier: ValueTier | string | undefined): number {
-  if (tier === undefined || tier === null) return NEUTRAL_WEIGHT;
-  return (TIER_WEIGHTS as Record<string, number>)[tier] ?? NEUTRAL_WEIGHT;
-}
