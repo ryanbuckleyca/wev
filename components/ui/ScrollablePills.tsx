@@ -1,9 +1,7 @@
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo } from "react";
 import { Lineicons } from "@lineiconshq/react-lineicons";
 import { HeartSolid, Briefcase2Solid, LocationArrowRightSolid, ChevronDownOutlined } from "@lineiconshq/free-icons";
-import { useScrollFades } from "@/hooks/useScrollFades";
 import HorizontalScrollWithFades from "./HorizontalScrollWithFades";
-import Pill from "@/components/Pill";
 import InfoPopover from "@/components/InfoPopover";
 
 export interface ScrollablePillsItem {
@@ -33,13 +31,11 @@ interface ScrollablePillsProps {
 
 export function ScrollablePills({
   items,
-  variant = "default",
   className,
   fadeBackground = "var(--card)",
   onItemClick,
   tight = false,
 }: ScrollablePillsProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Normalize items to always be objects
   const normalizedItems: ScrollablePillsItem[] = items.map(item => 
@@ -64,7 +60,7 @@ export function ScrollablePills({
     return groups
   }, [normalizedWithIndex])
 
-  const getVariantClass = (isMatched: boolean = true, type?: 'value' | 'skill' | 'summary' | 'workType', isCollapseButton?: boolean) => {
+  const getVariantClass = (isMatched: boolean = true) => {
     const baseClasses = "border transition-colors";
     if (!isMatched) {
       return `${baseClasses} bg-muted text-muted-foreground border-border opacity-60`;
@@ -84,7 +80,7 @@ export function ScrollablePills({
           const button = (
             <div
               key={item.label + index}
-              className={`shrink-0 inline-flex items-center ${item.isCollapseButton ? 'gap-0 pl-0 pr-2.5' : 'gap-1.5 px-2.5'} py-1 rounded-full text-xs font-medium whitespace-nowrap ${getVariantClass(item.isMatched, item.type, item.isCollapseButton)} ${item.className || ''}`}
+              className={`shrink-0 inline-flex items-center ${item.isCollapseButton ? 'gap-0 pl-0 pr-2.5' : 'gap-1.5 px-2.5'} py-1 rounded-full text-xs font-medium whitespace-nowrap ${getVariantClass(item.isMatched)} ${item.className || ''}`}
               style={{ touchAction: 'manipulation' }}
             >
               {item.icon === 'heart' ? (

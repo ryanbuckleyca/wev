@@ -21,7 +21,6 @@ interface JobListingsProps {
 
 export default function JobListings({ jobs, loading, error, onJobSseChange, onJobBookmarkChange, allExpanded = true, matchData, bookmarkedJobIds, selectedWorkTypes }: JobListingsProps) {
   const t = useTranslations()
-  const locale = useLocale()
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const { role } = useAuth()
 
