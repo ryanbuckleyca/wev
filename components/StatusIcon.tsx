@@ -16,16 +16,16 @@ export default function StatusIcon({ type, className = '' }: StatusIconProps) {
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <Lineicons icon={CheckCircle1Solid} size={16} className={className} />
+        return <Lineicons icon={CheckCircle1Solid} size={16} className={className} />;
       case 'error':
-        return <Lineicons icon={XmarkCircleSolid} size={16} className={className} />
+        return <Lineicons icon={XmarkCircleSolid} size={16} className={className} />;
       case 'warning':
-        return <Lineicons icon={Flag1Solid} size={16} className={className} />
+        return <Lineicons icon={Flag1Solid} size={16} className={className} />;
       case 'info':
-        return <Lineicons icon={Bulb2Solid} size={16} className={className} />
+        return <Lineicons icon={Bulb2Solid} size={16} className={className} />;
       case 'loading':
       default:
-        return <Lineicons icon={QuestionMarkCircleSolid} size={16} className={className} />
+        return <Lineicons icon={QuestionMarkCircleSolid} size={16} className={className} />;
     }
   }
 

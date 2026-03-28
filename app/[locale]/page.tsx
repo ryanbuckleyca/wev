@@ -306,36 +306,41 @@ export default function Home() {
     return filtered.sort((a, b) => {
       switch (sortBy) {
         case 'date-desc':
-          return new Date(b.date_posted).getTime() - new Date(a.date_posted).getTime()
+          return new Date(b.date_posted).getTime() - new Date(a.date_posted).getTime();
         case 'date-asc':
-          return new Date(a.date_posted).getTime() - new Date(b.date_posted).getTime()
-        case 'match-desc':
-          const aMatch = matchData.get(a.id)?.score || 0
-          const bMatch = matchData.get(b.id)?.score || 0
-          return bMatch - aMatch
-        case 'value-match-desc':
-          const aValueMatch = matchData.get(a.id)?.value_score || 0
-          const bValueMatch = matchData.get(b.id)?.value_score || 0
-          return bValueMatch - aValueMatch
-        case 'skill-match-desc':
-          const aSkillMatch = matchData.get(a.id)?.skill_score || 0
-          const bSkillMatch = matchData.get(b.id)?.skill_score || 0
-          return bSkillMatch - aSkillMatch
-        case 'salary-desc':
+          return new Date(a.date_posted).getTime() - new Date(b.date_posted).getTime();
+        case 'match-desc': {
+          const aMatch = matchData.get(a.id)?.score || 0;
+          const bMatch = matchData.get(b.id)?.score || 0;
+          return bMatch - aMatch;
+        }
+        case 'value-match-desc': {
+          const aValueMatch = matchData.get(a.id)?.value_score || 0;
+          const bValueMatch = matchData.get(b.id)?.value_score || 0;
+          return bValueMatch - aValueMatch;
+        }
+        case 'skill-match-desc': {
+          const aSkillMatch = matchData.get(a.id)?.skill_score || 0;
+          const bSkillMatch = matchData.get(b.id)?.skill_score || 0;
+          return bSkillMatch - aSkillMatch;
+        }
+        case 'salary-desc': {
           // Sort by salary high to low (jobs without salary go to end)
-          const aSalary = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : -1
-          const bSalary = b.wage ? parseFloat(b.wage.replace(/[^0-9.-]/g, '')) || 0 : -1
-          return bSalary - aSalary
-        case 'salary-asc':
+          const aSalary = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : -1;
+          const bSalary = b.wage ? parseFloat(b.wage.replace(/[^0-9.-]/g, '')) || 0 : -1;
+          return bSalary - aSalary;
+        }
+        case 'salary-asc': {
           // Sort by salary low to high (jobs without salary go to end)
-          const aSalaryAsc = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : Infinity
-          const bSalaryAsc = b.wage ? parseFloat(b.wage.replace(/[^0-9.-]/g, '')) || 0 : Infinity
-          return aSalaryAsc - bSalaryAsc
+          const aSalaryAsc = a.wage ? parseFloat(a.wage.replace(/[^0-9.-]/g, '')) || 0 : Infinity;
+          const bSalaryAsc = b.wage ? parseFloat(b.wage.replace(/[^0-9.-]/g, '')) || 0 : Infinity;
+          return aSalaryAsc - bSalaryAsc;
+        }
         case 'org-asc':
           // Sort by organization A-Z
-          return a.organization.localeCompare(b.organization)
+          return a.organization.localeCompare(b.organization);
         default:
-          return 0
+          return 0;
       }
     })
   }, [allJobs, searchQuery, selectedOrganizations, selectedProvinces, selectedMunicipalities, selectedEmploymentTypes, selectedSources, selectedWorkTypes, showOnlySse, showJobsWithoutSalary, postedWithin, sortBy, matchData])
