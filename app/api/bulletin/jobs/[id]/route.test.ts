@@ -1,19 +1,14 @@
+import { mockRequireAdminResponse } from '@/test-utils/require-admin-mock';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { PATCH } from './route';
-import { requireAdminResponse } from '@/lib/auth/require-admin';
 import { getSupabaseServer } from '@/lib/supabase-server';
 import { adminGateUnauthorized } from '@/test-utils/admin-route';
-
-vi.mock('@/lib/auth/require-admin', () => ({
-  requireAdminResponse: vi.fn(),
-}));
 
 vi.mock('@/lib/supabase-server', () => ({
   getSupabaseServer: vi.fn(),
 }));
 
-const mockRequireAdminResponse = vi.mocked(requireAdminResponse);
 const mockGetSupabaseServer = vi.mocked(getSupabaseServer);
 
 describe('PATCH /api/bulletin/jobs/[id]', () => {

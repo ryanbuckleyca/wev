@@ -1,13 +1,9 @@
+import { mockRequireAdminResponse } from '@/test-utils/require-admin-mock';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from './route';
-import { requireAdminResponse } from '@/lib/auth/require-admin';
 import { calculateJobMatches } from '@/lib/match-calculator';
 import { createClient } from '@/lib/supabase/server';
 import { adminGateUnauthorized } from '@/test-utils/admin-route';
-
-vi.mock('@/lib/auth/require-admin', () => ({
-  requireAdminResponse: vi.fn(),
-}));
 
 vi.mock('@/lib/match-calculator', () => ({
   calculateJobMatches: vi.fn(),
@@ -17,7 +13,6 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }));
 
-const mockRequireAdminResponse = vi.mocked(requireAdminResponse);
 const mockCalculateJobMatches = vi.mocked(calculateJobMatches);
 const mockCreateClient = vi.mocked(createClient);
 

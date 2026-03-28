@@ -1,13 +1,8 @@
+import { mockRequireAdminResponse } from '@/test-utils/require-admin-mock';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { POST } from './route';
-import { requireAdminResponse } from '@/lib/auth/require-admin';
 import { adminGateUnauthorized } from '@/test-utils/admin-route';
 
-vi.mock('@/lib/auth/require-admin', () => ({
-  requireAdminResponse: vi.fn(),
-}));
-
-const mockRequireAdminResponse = vi.mocked(requireAdminResponse);
 const mockFetch = vi.fn();
 
 describe('POST /api/github/workflow', () => {
