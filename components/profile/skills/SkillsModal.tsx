@@ -1,15 +1,56 @@
 import { useRef, type RefObject } from 'react'
 import { useTranslations } from 'next-intl'
-import SkillSearchInput from './SkillSearchInput'
+import SearchInput from '../SearchInput'
 import SkillsList from './SkillsList'
 import SelectedSkillsPills from './SelectedSkillsPills'
-import { useSkillsFiltering } from './useSkillsFiltering'
-import type { EscoSkill } from '../SkillsSelector'
+import type { EscoSkill } from './SkillsSelector'
 import SelectionBrowseModal from '../SelectionBrowseModal'
 
 const SKILLS_LISTBOX_ID = 'profile-skills-listbox'
 
-interface MobileSkillsModalProps {
+function filterSkills(
+  query: string,
+  allItems: EscoSkill[],
+  skills: EscoSkill[],
+  locale: 'en' | 'fr',
+  isLibraryMode: boolean,
+): (EscoSkill & { label: string; internalMatchedAlias?: string | null })[] {
+  if (!query) return []
+  const lowerQuery = query.toLowerCase()
+
+  if (isLibraryMode) {
+    return allItems
+      .map((skill) => {
+        const label = skill.preferredLabel[locale] || ''
+        const lowerLabel = label.toLowerCase()
+
+        let score = -1
+        let foundAlias: string | undefined
+
+        if (lowerLabel.startsWith(lowerQuery)) score = 2
+        else if (lowerLabel.includes(lowerQuery)) score = 1
+        else {
+          foundAlias = skill.aliases?.find((a) => a.toLowerCase().includes(lowerQuery))
+          if (foundAlias) score = 0
+        }
+
+        if (score === -1) return null
+        return { ...skill, label, internalMatchedAlias: foundAlias, _score: score }
+      })
+      .filter((s): s is NonNullable<typeof s> => s !== null)
+      .sort((a, b) => b._score! - a._score!)
+      .slice(0, 100)
+      .map(({ _score, ...rest }) => rest)
+  }
+
+  return skills.map((skill) => ({
+    ...skill,
+    label: skill.preferredLabel[locale] || '',
+    internalMatchedAlias: skill.matchedAlias,
+  }))
+}
+
+interface SkillsModalProps {
   isOpen: boolean
   onClose: () => void
   returnFocusRef?: RefObject<HTMLElement | null>
@@ -26,7 +67,7 @@ interface MobileSkillsModalProps {
   isLibraryMode: boolean
 }
 
-export default function MobileSkillsModal({
+export default function SkillsModal({
   isOpen,
   onClose,
   returnFocusRef,
@@ -41,12 +82,10 @@ export default function MobileSkillsModal({
   isSearching,
   locale,
   isLibraryMode,
-}: MobileSkillsModalProps) {
+}: SkillsModalProps) {
   const t = useTranslations('profile')
   const inputRef = useRef<HTMLInputElement>(null)
-  const listboxRef = useRef<HTMLDivElement>(null)
-
-  const filteredSkills = useSkillsFiltering(query, allItems, skills, locale, isLibraryMode)
+  const filteredSkills = filterSkills(query, allItems, skills, locale, isLibraryMode)
   const selectedUris = new Set(selected.map((s) => s.uri))
   const listboxInDom = Boolean(query && filteredSkills.length > 0)
 
@@ -68,7 +107,7 @@ export default function MobileSkillsModal({
           <span id={kbdHintId} className="sr-only">
             {t('skillsListboxKbdHint')}
           </span>
-          <SkillSearchInput
+          <SearchInput
             query={query}
             onQueryChange={onQueryChange}
             isSearching={isSearching}
@@ -92,7 +131,6 @@ export default function MobileSkillsModal({
               locale={locale}
               useHorizontalScroll={!!query}
               fadeBackground="var(--card)"
-              resultsListRef={listboxRef}
               regionHintId={selectedHintId}
             />
           </>
@@ -101,7 +139,6 @@ export default function MobileSkillsModal({
     >
       <div className="px-2">
         <SkillsList
-          ref={listboxRef}
           listboxId={SKILLS_LISTBOX_ID}
           ariaDescribedBy={kbdHintId}
           skills={filteredSkills}

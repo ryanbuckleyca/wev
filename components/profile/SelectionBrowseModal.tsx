@@ -5,6 +5,13 @@ import { createPortal } from 'react-dom'
 import { ChevronLeft } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 
+/** Keep a stable ref so the open/lock effect doesn't re-run when the caller re-renders. */
+function useStableRef<T>(value: T) {
+  const ref = useRef(value)
+  ref.current = value
+  return ref
+}
+
 /** Matches `Header`: py-4 + ~60px logo + border — keeps modal below the fixed site header on desktop */
 const HEADER_OFFSET_REM = '5.75rem'
 
@@ -88,6 +95,9 @@ export default function SelectionBrowseModal({
     return () => window.removeEventListener('resize', update)
   }, [useMobileFullScreenShell])
 
+  const onCloseRef = useStableRef(onClose)
+  const returnFocusRefStable = useStableRef(returnFocusRef)
+
   useEffect(() => {
     if (!isOpen) return
 
@@ -100,7 +110,6 @@ export default function SelectionBrowseModal({
       const y = savedScrollYRef.current
       document.body.style.cssText = `position:fixed;top:-${y}px;width:100%;overflow:hidden`
       document.documentElement.style.overflow = 'hidden'
-      // After layout + body lock; focus opens the virtual keyboard on most mobile browsers
       setTimeout(() => {
         setViewportHeight(window.visualViewport?.height ?? window.innerHeight)
         focusSearch()
@@ -111,7 +120,7 @@ export default function SelectionBrowseModal({
       setTimeout(focusSearch, 50)
     }
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => {
@@ -124,13 +133,12 @@ export default function SelectionBrowseModal({
         document.body.style.overflow = ''
         document.documentElement.style.overflow = ''
       }
-      // Restore after styles so layout uses full document scroll again; then return focus to opener.
       requestAnimationFrame(() => {
         window.scrollTo({ top: restoreY, left: 0, behavior: 'auto' })
-        returnFocusRef?.current?.focus({ preventScroll: true })
+        returnFocusRefStable.current?.current?.focus({ preventScroll: true })
       })
     }
-  }, [isOpen, useMobileFullScreenShell, onClose, searchInputRef, returnFocusRef])
+  }, [isOpen, useMobileFullScreenShell, searchInputRef, onCloseRef, returnFocusRefStable])
 
   if (!isOpen) return null
 

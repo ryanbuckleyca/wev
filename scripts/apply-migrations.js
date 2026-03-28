@@ -27,6 +27,7 @@ const MIGRATIONS = [
   '202603071700_esco_skills_bilingual_reset.sql',
   '202603061612_profiles_skills_max_10.sql',
   '202603071800_jobs_skills_and_extended_matching.sql',
+  '20260328000000_profiles_skills_max_10_restore.sql',
 ]
 
 async function applyMigration(filename) {

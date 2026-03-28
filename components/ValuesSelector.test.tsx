@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, renderWithLocale } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
-import ValuesSelector from './profile/ValuesSelector'
+import ValuesSelector from './profile/values/ValuesSelector'
 import { buildWorkValues } from '@/lib/values'
 import enMessages from '@/messages/en.json'
 import frMessages from '@/messages/fr.json'

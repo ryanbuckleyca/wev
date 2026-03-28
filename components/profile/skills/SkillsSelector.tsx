@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Search } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import MobileSkillsModal from './skills/MobileSkillsModal'
-import SortableSelectedList from './SortableSelectedList'
+import SkillsModal from './SkillsModal'
+import SortableSelectedList from '../SortableSelectedList'
 
 export interface EscoSkill {
   uri: string
@@ -44,28 +44,24 @@ export default function SkillsSelector({
 
   const isLibraryMode = allItems.length > 0
 
-  const handleQueryChange = useCallback((value: string) => {
+  const handleQueryChange = (value: string) => {
     setQuery(value)
     if (!isLibraryMode) onSearch(value)
-  }, [onSearch, isLibraryMode])
+  }
 
-  const handleClearQuery = useCallback(() => {
+  const handleClearQuery = () => {
     setQuery(''); onSearch('')
-  }, [onSearch])
+  }
 
-  const handleMobileClose = useCallback(() => {
+  const handleMobileClose = () => {
     setQuery(''); onSearch(''); setMobileOpen(false)
-  }, [onSearch])
+  }
 
-  const sortableItems = useMemo(
-    () =>
-      selectedSkills.map((skill) => ({
-        id: skill.uri,
-        label: skill.preferredLabel[locale],
-        sublabel: skill.description?.[locale] || undefined,
-      })),
-    [selectedSkills, locale]
-  )
+  const sortableItems = selectedSkills.map((skill) => ({
+    id: skill.uri,
+    label: skill.preferredLabel[locale],
+    sublabel: skill.description?.[locale] || undefined,
+  }))
 
   const selectedSection = sortableItems.length > 0 && (
     <SortableSelectedList
@@ -94,7 +90,7 @@ export default function SkillsSelector({
         </span>
       </button>
       {selectedSection}
-      <MobileSkillsModal
+      <SkillsModal
         isOpen={mobileOpen}
         onClose={handleMobileClose}
         returnFocusRef={browseTriggerRef}
@@ -110,3 +106,4 @@ export default function SkillsSelector({
     </div>
   )
 }
+

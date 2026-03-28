@@ -85,6 +85,7 @@ export default function HorizontalScrollWithFades({
       {/* Scrollable Row — z-0 keeps edge overlays above */}
       <div
         ref={ref}
+        tabIndex={chevronsTabbable ? undefined : -1}
         className={`relative z-0 flex gap-2 overflow-x-auto scrollbar-hide hide-scrollbar ${className}`}
         style={{ WebkitOverflowScrolling: 'touch' }}
       >

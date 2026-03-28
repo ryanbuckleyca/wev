@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { useProfile } from '@/lib/hooks/useProfile'
-import { type EscoSkill } from '@/components/profile/SkillsSelector'
+import { type EscoSkill } from '@/components/profile/skills/SkillsSelector'
 import { type WorkValue, buildWorkValues, getValueDefinition } from '@/lib/values'
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types'
 import { createClient } from '@/lib/supabase/client'

@@ -1,7 +1,7 @@
-import { forwardRef, useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import SkillItem from './SkillItem'
-import type { EscoSkill } from '../SkillsSelector'
+import { useListbox } from '../useListbox'
+import type { EscoSkill } from './SkillsSelector'
 
 interface SkillsListProps {
   skills: (EscoSkill & { label: string; internalMatchedAlias?: string | null })[]
@@ -10,76 +10,23 @@ interface SkillsListProps {
   locale: 'en' | 'fr'
   isSearching: boolean
   hasQuery: boolean
-  /** DOM id for listbox (link from search field with aria-controls). */
   listboxId: string
-  /** Optional id of sr-only keyboard hint (aria-describedby). */
   ariaDescribedBy?: string
 }
 
-const SkillsList = forwardRef<HTMLDivElement, SkillsListProps>(function SkillsList(
-  {
-    skills,
-    selectedUris,
-    onToggle,
-    locale,
-    isSearching,
-    hasQuery,
-    listboxId,
-    ariaDescribedBy,
-  },
-  ref,
-) {
+export default function SkillsList({
+  skills,
+  selectedUris,
+  onToggle,
+  locale,
+  isSearching,
+  hasQuery,
+  listboxId,
+  ariaDescribedBy,
+}: SkillsListProps) {
   const t = useTranslations('profile')
-  const [activeIndex, setActiveIndex] = useState(0)
-
-  const skillKey = skills.map((s) => s.uri).join('\0')
-
-  useEffect(() => {
-    setActiveIndex(0)
-  }, [skillKey])
-
-  useEffect(() => {
-    if (activeIndex < 0 || activeIndex >= skills.length) return
-    const el = document.getElementById(`${listboxId}-opt-${activeIndex}`)
-    el?.scrollIntoView?.({ block: 'nearest' })
-  }, [activeIndex, listboxId, skills.length])
-
-  const handleListKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (skills.length === 0) return
-      const last = skills.length - 1
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault()
-          setActiveIndex((i) => Math.min(i + 1, last))
-          break
-        case 'ArrowUp':
-          e.preventDefault()
-          setActiveIndex((i) => Math.max(i - 1, 0))
-          break
-        case 'Home':
-          e.preventDefault()
-          setActiveIndex(0)
-          break
-        case 'End':
-          e.preventDefault()
-          setActiveIndex(last)
-          break
-        case ' ':
-        case 'Spacebar':
-          e.preventDefault()
-          onToggle(skills[activeIndex])
-          break
-        case 'Enter':
-          e.preventDefault()
-          onToggle(skills[activeIndex])
-          break
-        default:
-          break
-      }
-    },
-    [activeIndex, onToggle, skills],
-  )
+  const optPrefix = `${listboxId}-opt`
+  const { activeIndex, activeDescendant, setActive, handleKeyDown } = useListbox(skills.length, optPrefix)
 
   if (!hasQuery) {
     return (
@@ -97,38 +44,28 @@ const SkillsList = forwardRef<HTMLDivElement, SkillsListProps>(function SkillsLi
     )
   }
 
-  const activeDescendantId =
-    activeIndex >= 0 && activeIndex < skills.length
-      ? `${listboxId}-opt-${activeIndex}`
-      : undefined
-
   return (
     <div
-      ref={ref}
       id={listboxId}
       role="listbox"
       tabIndex={0}
       aria-label={t('skillsListboxLabel')}
+      aria-activedescendant={activeDescendant}
       aria-describedby={ariaDescribedBy}
-      aria-multiselectable="true"
-      aria-activedescendant={activeDescendantId}
-      onKeyDown={handleListKeyDown}
-      className="overflow-x-hidden pb-4 outline-none focus-visible:ring-2 focus-visible:ring-gray-200 focus-visible:ring-offset-2 dark:focus-visible:ring-zinc-600 dark:focus-visible:ring-offset-zinc-950 rounded-md"
+      onKeyDown={(e) => handleKeyDown(e, (i) => onToggle(skills[i]))}
+      className="overflow-x-hidden pb-4 rounded-md focus:outline-none"
     >
-      {skills.map((skill, index) => (
+      {skills.map((skill, i) => (
         <SkillItem
           key={skill.uri}
-          id={`${listboxId}-opt-${index}`}
-          isActive={index === activeIndex}
+          id={`${optPrefix}-${i}`}
           skill={skill}
+          isActive={i === activeIndex}
           isSelected={selectedUris.has(skill.uri)}
-          onToggle={() => onToggle(skill)}
-          onActivate={() => setActiveIndex(index)}
+          onToggle={() => { setActive(i); onToggle(skill) }}
           locale={locale}
         />
       ))}
     </div>
   )
-})
-
-export default SkillsList
+}
