@@ -1,15 +1,72 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../wev-scraper/.env') });
+const readline = require('readline');
 const { createClient } = require('@supabase/supabase-js');
+const { getSupabaseScriptConfig } = require('./script-config');
 
-// Use local development database
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://monvruedailbkcekicbl.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SECRET_KEY || '<YOUR_SERVICE_ROLE_KEY>';
+function parseArgs(argv) {
+  return {
+    prod: argv.includes('--prod'),
+  };
+}
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false },
-});
+async function confirmProductionRun() {
+  if (process.env.CONFIRM_PROD_RUN === 'YES') {
+    console.log('🔥 Using PRODUCTION database (confirmation skipped)');
+    return;
+  }
 
-async function cleanupDuplicates(tableName, uniqueField) {
+  if (!process.stdin.isTTY) {
+    console.error(
+      'Refusing to run against production in non-interactive mode. Set CONFIRM_PROD_RUN=YES to override.',
+    );
+    process.exit(1);
+  }
+
+  console.log('\nWARNING: You are about to run against the PRODUCTION database.');
+  console.log('This will delete real duplicate records.\n');
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  try {
+    const response = await new Promise((resolve) => {
+      rl.question('Type YES to continue, anything else to abort: ', resolve);
+    });
+
+    if (response.trim() !== 'YES') {
+      console.log('Aborted.');
+      process.exit(1);
+    }
+  } finally {
+    rl.close();
+  }
+
+  console.log('🔥 Using PRODUCTION database');
+}
+
+function createSupabaseClient({ prod }) {
+  const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } = getSupabaseScriptConfig(
+    'cleanup-duplicates.js',
+    prod
+      ? {
+          urlEnv: 'SUPABASE_PROD_URL',
+          keyEnvNames: ['SUPABASE_PROD_SECRET_KEY'],
+          keyDescription: 'production service role key',
+        }
+      : {
+          urlEnv: 'SUPABASE_URL',
+          keyEnvNames: ['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY'],
+          keyDescription: 'local service role key',
+        },
+  );
+
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+}
+
+async function cleanupDuplicates(supabase, tableName, uniqueField) {
   console.log(`🧹 Cleaning duplicates in ${tableName}...`);
 
   // Get all records
@@ -64,15 +121,30 @@ async function cleanupDuplicates(tableName, uniqueField) {
   console.log(`✅ Removed ${duplicates.length} duplicates from ${tableName}`);
 }
 
-async function cleanupAll() {
+async function cleanupAll(supabase, { prod }) {
   console.log('🚀 Starting duplicate cleanup...\n');
+  console.log(prod ? '🔥 Target: production database\n' : '🧪 Target: local database\n');
 
   // Clean up tables that might have duplicates
-  await cleanupDuplicates('jobs', 'job_title'); // Assuming job_title should be unique per scrape
-  await cleanupDuplicates('organizations', 'name');
-  await cleanupDuplicates('sources', 'url');
+  await cleanupDuplicates(supabase, 'jobs', 'job_title'); // Assuming job_title should be unique per scrape
+  await cleanupDuplicates(supabase, 'organizations', 'name');
+  await cleanupDuplicates(supabase, 'sources', 'url');
 
   console.log('\n✨ Cleanup complete!');
 }
 
-cleanupAll().catch(console.error);
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+
+  if (args.prod) {
+    await confirmProductionRun();
+  }
+
+  const supabase = createSupabaseClient(args);
+  await cleanupAll(supabase, args);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

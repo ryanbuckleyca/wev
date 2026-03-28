@@ -1,11 +1,16 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../wev-scraper/.env') });
 const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const { getSupabaseScriptConfig } = require('./script-config');
 
-// Use production database for backup
-const SUPABASE_URL = process.env.SUPABASE_PROD_URL || 'https://teuvfoftdjfsnkkbnzps.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_PROD_SECRET_KEY || '<YOUR_SERVICE_ROLE_KEY>';
+const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } = getSupabaseScriptConfig(
+  'backup.js',
+  {
+    urlEnv: 'SUPABASE_PROD_URL',
+    keyEnvNames: ['SUPABASE_PROD_SECRET_KEY'],
+    keyDescription: 'production service role key',
+  },
+);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },

@@ -1,11 +1,16 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../wev-scraper/.env') });
 const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const { getSupabaseScriptConfig } = require('./script-config');
 
-// Use local development database for restore
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://monvruedailbkcekicbl.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SECRET_KEY || '<YOUR_SERVICE_ROLE_KEY>';
+const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } = getSupabaseScriptConfig(
+  'restore.js',
+  {
+    urlEnv: 'SUPABASE_URL',
+    keyEnvNames: ['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY'],
+    keyDescription: 'local service role key',
+  },
+);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
