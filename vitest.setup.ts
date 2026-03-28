@@ -1,11 +1,17 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { act } from 'react';
-import { beforeAll, afterAll, afterEach } from 'vitest';
+import { beforeAll, afterAll, afterEach, vi } from 'vitest';
+
+// `server-only` throws when imported outside Next server; Vitest runs in Node.
+vi.mock('server-only', () => ({}));
 
 // Set up Supabase env vars for tests
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'test-key';
+
+process.env.VITEST = 'true';
+process.env.LOG_LEVEL = 'silent';
 
 // Mock matchMedia for useTouchDevice hook
 Object.defineProperty(window, 'matchMedia', {

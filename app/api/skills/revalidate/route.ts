@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
+import { unauthorizedResponse } from '@/lib/http-errors';
+import { logger } from '@/lib/logger';
 
 /**
  * On-demand revalidation endpoint for ESCO skills cache
@@ -14,7 +16,7 @@ export async function POST(request: Request) {
 
     // Verify secret token (set this in your environment variables)
     if (secret !== process.env.REVALIDATION_SECRET) {
-      return NextResponse.json({ error: 'Invalid secret' }, { status: 401 });
+      return unauthorizedResponse('Invalid secret');
     }
 
     // Revalidate the skills cache
@@ -25,7 +27,7 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    console.error('Revalidation error:', err);
+    logger.error({ err }, 'Skills revalidation error');
     return NextResponse.json({ error: 'Failed to revalidate' }, { status: 500 });
   }
 }

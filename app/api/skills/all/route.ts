@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { getSupabaseServer } from '@/lib/supabase-server';
 
 /** Row shape for `esco_skills` columns selected below (localized ESCO fields). */
@@ -73,7 +74,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ skills });
   } catch (err) {
-    console.error('Fetch all skills error:', err);
+    logger.error({ err }, 'Fetch all skills error');
     return NextResponse.json({ error: 'Failed to fetch skills' }, { status: 500 });
   }
 }

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminResponse } from '@/lib/auth/require-admin';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
+    const denied = await requireAdminResponse();
+    if (denied) return denied;
+
     const githubToken = process.env.WEV_GITHUB_TOKEN;
     const repoOwner = 'ryanbuckleyca';
     const repoName = 'wev-scraper';
@@ -75,7 +80,7 @@ export async function GET(request: NextRequest) {
       updatedAt: latestRun.updated_at,
     });
   } catch (error) {
-    console.error('Error checking workflow status:', error);
+    logger.error({ err: error }, 'Error checking GitHub workflow status');
     return NextResponse.json({ error: 'Failed to check workflow status' }, { status: 500 });
   }
 }

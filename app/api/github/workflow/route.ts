@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
+import { requireAdminResponse } from '@/lib/auth/require-admin';
+import { logger } from '@/lib/logger';
 
 export async function POST() {
   try {
+    const denied = await requireAdminResponse();
+    if (denied) return denied;
+
     const githubToken = process.env.WEV_GITHUB_TOKEN;
     const repoOwner = 'ryanbuckleyca';
     const repoName = 'wev-scraper';
@@ -55,7 +60,7 @@ export async function POST() {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error triggering workflow:', error);
+    logger.error({ err: error }, 'Error triggering GitHub workflow');
     return NextResponse.json({ error: 'Failed to trigger workflow' }, { status: 500 });
   }
 }

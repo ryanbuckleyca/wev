@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getSupabaseServer } from '@/lib/supabase-server';
+import { requireAdminResponse } from '@/lib/auth/require-admin';
+import { logger } from '@/lib/logger';
 import { calculateUserMatches } from '@/lib/match-calculator';
 
 export const dynamic = 'force-dynamic';
@@ -7,14 +9,21 @@ export const revalidate = 0;
 
 export async function POST(request: Request) {
   try {
+    // This is an admin/maintenance escape hatch for recalculating any user's matches.
+    // Normal users get match recalculation through the DB trigger on `profiles` when
+    // they update their own profile. If matching starts using `work_types` or
+    // `ideal_work_environment`, keep that trigger's watched columns in sync.
+    const denied = await requireAdminResponse();
+    if (denied) return denied;
+
     const { userId } = await request.json();
 
     if (!userId) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
-    // Verify the user exists and has permission
-    const supabase = await createClient();
+    // Verify the user exists (service role bypasses RLS so any profile id is visible to admins)
+    const supabase = getSupabaseServer();
     const { data: user, error: userError } = await supabase
       .from('profiles')
       .select('id')
@@ -30,7 +39,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, message: 'User matches calculated' });
   } catch (error) {
-    console.error('Error calculating user matches:', error);
+    logger.error({ err: error }, 'Error in calculate-user match route');
     return NextResponse.json({ error: 'Failed to calculate user matches' }, { status: 500 });
   }
 }

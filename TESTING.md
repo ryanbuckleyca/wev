@@ -130,6 +130,25 @@ vi.mock('./calculateMatch', () => ({ calculateMatch: vi.fn() }));
 vi.mock('@/lib/supabase/client');
 ```
 
+### API route tests: admin gate (`requireAdminResponse`)
+
+Routes that call `requireAdminResponse()` from `@/lib/auth/require-admin` should **not** hit real Supabase session/role logic in unit tests. Use the shared mock:
+
+1. Import **`@/test-utils/require-admin-mock` first** (before importing the `route` handler) so Vitest registers the mock.
+2. Use the exported **`mockRequireAdminResponse`** — e.g. `mockResolvedValue(null)` when the handler should proceed as admin, or `mockResolvedValue(adminGateUnauthorized())` for a 401-style denial (see `@/test-utils/admin-route`).
+
+```ts
+import { mockRequireAdminResponse } from '@/test-utils/require-admin-mock';
+import { POST } from './route';
+import { adminGateUnauthorized } from '@/test-utils/admin-route';
+
+// …
+
+mockRequireAdminResponse.mockResolvedValue(adminGateUnauthorized());
+```
+
+Do **not** duplicate `vi.mock('@/lib/auth/require-admin', …)` in each file — use `test-utils/require-admin-mock.ts`, which registers the mock and exports **`mockRequireAdminResponse`** (`vi.mocked(requireAdminResponse)`).
+
 ### 8. Avoid Shared Mutable Variables
 
 Each test should be fully isolated. Don't share mutable state (`let` variables, mock instances) between tests — it couples them and makes failures hard to trace. Define everything a test needs **inside the `it()` block**.
