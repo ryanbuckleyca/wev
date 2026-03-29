@@ -113,25 +113,47 @@ export function useBulletinData(
     void refresh();
   }, [refresh]);
 
-  useEffect(() => {
-    if (currentPage === 1) return;
+  const filterSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        searchQuery: filters.searchQuery,
+        selectedOrganizations: filters.selectedOrganizations,
+        selectedProvinces: filters.selectedProvinces,
+        selectedMunicipalities: filters.selectedMunicipalities,
+        selectedEmploymentTypes: filters.selectedEmploymentTypes,
+        selectedSources: filters.selectedSources,
+        selectedWorkTypes: filters.selectedWorkTypes,
+        showOnlySse: filters.showOnlySse,
+        showJobsWithoutSalary: filters.showJobsWithoutSalary,
+        postedWithin: filters.postedWithin,
+        sortBy,
+      }),
+    [
+      filters.searchQuery,
+      filters.selectedOrganizations,
+      filters.selectedProvinces,
+      filters.selectedMunicipalities,
+      filters.selectedEmploymentTypes,
+      filters.selectedSources,
+      filters.selectedWorkTypes,
+      filters.showOnlySse,
+      filters.showJobsWithoutSalary,
+      filters.postedWithin,
+      sortBy,
+    ],
+  );
 
-    void setCurrentPage(1);
-  }, [
-    currentPage,
-    filters.searchQuery,
-    filters.selectedOrganizations,
-    filters.selectedProvinces,
-    filters.selectedMunicipalities,
-    filters.selectedEmploymentTypes,
-    filters.selectedSources,
-    filters.selectedWorkTypes,
-    filters.showOnlySse,
-    filters.showJobsWithoutSalary,
-    filters.postedWithin,
-    sortBy,
-    setCurrentPage,
-  ]);
+  const previousFilterSnapshot = useRef(filterSnapshot);
+
+  useEffect(() => {
+    if (previousFilterSnapshot.current === filterSnapshot) return;
+
+    previousFilterSnapshot.current = filterSnapshot;
+
+    if (currentPage !== 1) {
+      void setCurrentPage(1);
+    }
+  }, [filterSnapshot, currentPage, setCurrentPage]);
 
   useEffect(() => {
     if (!userId || allJobs.length === 0) {
@@ -164,6 +186,19 @@ export function useBulletinData(
   );
 
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    if (totalPages === 0) {
+      if (currentPage !== 1) {
+        void setCurrentPage(1);
+      }
+      return;
+    }
+
+    if (currentPage > totalPages) {
+      void setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages, setCurrentPage]);
 
   const paginatedJobs = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
