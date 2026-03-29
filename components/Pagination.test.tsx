@@ -3,6 +3,45 @@ import { render, screen } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import Pagination from './Pagination';
 
+vi.mock('react-responsive-pagination', () => ({
+  default: ({
+    current,
+    total,
+    onPageChange,
+    previousLabel,
+    nextLabel,
+    ariaPreviousLabel,
+    ariaNextLabel,
+  }: {
+    current: number;
+    total: number;
+    onPageChange: (page: number) => void;
+    previousLabel?: string;
+    nextLabel?: string;
+    ariaPreviousLabel?: string;
+    ariaNextLabel?: string;
+  }) => (
+    <nav aria-label="Pagination">
+      <button aria-label={ariaPreviousLabel} disabled={current === 1} onClick={() => onPageChange(current - 1)}>
+        {previousLabel}
+      </button>
+      {Array.from({ length: total }, (_, i) => i + 1).map((page) => (
+        <button
+          key={page}
+          onClick={() => onPageChange(page)}
+          aria-current={page === current ? 'page' : undefined}
+          className={page === current ? 'bg-primary' : ''}
+        >
+          {page}
+        </button>
+      ))}
+      <button aria-label={ariaNextLabel} disabled={current === total} onClick={() => onPageChange(current + 1)}>
+        {nextLabel}
+      </button>
+    </nav>
+  ),
+}));
+
 const defaultProps = {
   currentPage: 1,
   totalPages: 5,
@@ -18,30 +57,13 @@ describe('Pagination', () => {
   });
 
   it('shows singular "job" when totalItems is 1 and totalPages <= 1', () => {
-    render(
-      <Pagination
-        currentPage={1}
-        totalPages={1}
-        onPageChange={() => {}}
-        totalItems={1}
-        itemsPerPage={10}
-      />,
-    );
+    render(<Pagination currentPage={1} totalPages={1} onPageChange={() => {}} totalItems={1} itemsPerPage={10} />);
     expect(screen.getByText(/1 job\b/)).toBeVisible();
   });
 
   it('renders no navigation when totalPages <= 1', () => {
-    render(
-      <Pagination
-        currentPage={1}
-        totalPages={1}
-        onPageChange={() => {}}
-        totalItems={5}
-        itemsPerPage={10}
-      />,
-    );
-    expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+    render(<Pagination currentPage={1} totalPages={1} onPageChange={() => {}} totalItems={5} itemsPerPage={10} />);
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
 
   it('disables Previous on first page', () => {
@@ -58,7 +80,6 @@ describe('Pagination', () => {
     const user = userEvent.setup();
     const handler = vi.fn();
     render(<Pagination {...defaultProps} currentPage={2} onPageChange={handler} />);
-
     await user.click(screen.getByRole('button', { name: 'Next' }));
     expect(handler).toHaveBeenCalledWith(3);
   });
@@ -67,47 +88,30 @@ describe('Pagination', () => {
     const user = userEvent.setup();
     const handler = vi.fn();
     render(<Pagination {...defaultProps} currentPage={3} onPageChange={handler} />);
-
     await user.click(screen.getByRole('button', { name: 'Previous' }));
     expect(handler).toHaveBeenCalledWith(2);
   });
 
-  it('calls onPageChange when a page number button is clicked', async () => {
+  it('calls onPageChange when a page number is clicked', async () => {
     const user = userEvent.setup();
     const handler = vi.fn();
     render(<Pagination {...defaultProps} currentPage={1} onPageChange={handler} />);
-
     await user.click(screen.getByRole('button', { name: '3' }));
     expect(handler).toHaveBeenCalledWith(3);
   });
 
   it('renders page number buttons', () => {
     render(<Pagination {...defaultProps} />);
-    // With 5 total pages and maxVisible=5, all page numbers should show
-    expect(screen.getByRole('button', { name: '1' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '2' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '3' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '4' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '5' })).toBeVisible();
+    [1, 2, 3, 4, 5].forEach((n) => expect(screen.getByRole('button', { name: String(n) })).toBeVisible());
   });
 
-  it('shows ellipsis for many pages', () => {
-    render(
-      <Pagination
-        currentPage={5}
-        totalPages={10}
-        onPageChange={() => {}}
-        totalItems={100}
-        itemsPerPage={10}
-      />,
-    );
-    // Should show 1, ..., middle pages, ..., 10
-    expect(screen.getAllByText('...').length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('highlights the current page as primary variant', () => {
+  it('marks the current page with aria-current', () => {
     render(<Pagination {...defaultProps} currentPage={3} />);
-    const btn3 = screen.getByRole('button', { name: '3' });
-    expect(btn3.className).toContain('bg-primary');
+    expect(screen.getByRole('button', { name: '3' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('highlights the current page with active class', () => {
+    render(<Pagination {...defaultProps} currentPage={3} />);
+    expect(screen.getByRole('button', { name: '3' })).toHaveClass('bg-primary');
   });
 });

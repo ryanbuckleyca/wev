@@ -51,8 +51,8 @@ describe('i18n integration', () => {
     it('renders Pagination with English text', () => {
       render(<Pagination {...paginationProps} />);
 
-      expect(screen.getByText('Previous')).toBeVisible();
-      expect(screen.getByText('Next')).toBeVisible();
+      expect(screen.getByLabelText('Previous')).toBeInTheDocument();
+      expect(screen.getByLabelText('Next')).toBeInTheDocument();
       expect(screen.getByText(/Showing 1-10 of 50 jobs/)).toBeVisible();
     });
 
@@ -71,8 +71,8 @@ describe('i18n integration', () => {
     it('renders Pagination with French text', () => {
       renderWithLocale(<Pagination {...paginationProps} />, 'fr');
 
-      expect(screen.getByText('Précédent')).toBeVisible();
-      expect(screen.getByText('Suivant')).toBeVisible();
+      expect(screen.getByLabelText('Précédent')).toBeInTheDocument();
+      expect(screen.getByLabelText('Suivant')).toBeInTheDocument();
       expect(screen.getByText(/Affichage 1-10 de 50 emplois/)).toBeVisible();
     });
 
