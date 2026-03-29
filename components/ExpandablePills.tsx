@@ -117,7 +117,8 @@ export default function ExpandablePills({
         groupId: clusterId,
         expandable: true,
         isExpanded: true,
-        className: 'rounded-r-none pr-3 shadow-sm border border-border',
+        // Match the default pill background and border
+        className: 'rounded-r-none pr-3 bg-card text-foreground border border-border',
       };
 
       return collapseShown

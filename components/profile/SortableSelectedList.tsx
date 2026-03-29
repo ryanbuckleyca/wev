@@ -178,9 +178,9 @@ export default function SortableSelectedList({
   const t = useTranslations('profile');
   const isTouch = useTouchDevice();
   const touchSensor = useSensor(TouchSensor, {
-    activationConstraint: { delay: 200, tolerance: 8 },
+    activationConstraint: { delay: 80, tolerance: 4 },
   });
-  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 8 } });
+  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 2 } });
   const keyboardSensor = useSensor(KeyboardSensor, {
     coordinateGetter: sortableKeyboardCoordinates,
   });
