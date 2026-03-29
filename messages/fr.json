@@ -122,7 +122,9 @@
     "job": "emploi",
     "jobs": "emplois",
     "previous": "Précédent",
-    "next": "Suivant"
+    "next": "Suivant",
+    "label": "Pagination",
+    "page": "Page"
   },
   "jobListings": {
     "loading": "Chargement des emplois...",

@@ -97,5 +97,6 @@ module.exports = {
   plugins: [
     // v4 package is ESM with default export; plain require() yields { default } — register the function or utilities are missing.
     require('tailwind-scrollbar-hide').default ?? require('tailwind-scrollbar-hide'),
+    require('@tailwindcss/container-queries'),
   ],
 };
