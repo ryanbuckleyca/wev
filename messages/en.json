@@ -122,9 +122,7 @@
     "job": "job",
     "jobs": "jobs",
     "previous": "Previous",
-    "next": "Next",
-    "label": "Pagination",
-    "page": "Page"
+    "next": "Next"
   },
   "jobListings": {
     "loading": "Loading jobs...",
