@@ -432,6 +432,7 @@ export default function Home() {
     matchData,
   ]);
 
+
   // Paginate filtered jobs
   const paginatedJobs = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -439,13 +440,15 @@ export default function Home() {
     return filteredJobs.slice(startIndex, endIndex);
   }, [filteredJobs, currentPage]);
 
+  // Total pages for pagination controls
+  const totalPages = useMemo(() => Math.ceil(filteredJobs.length / ITEMS_PER_PAGE), [filteredJobs]);
+
   // Reset to page 1 when filters or sort change (only if not already on page 1)
   useEffect(() => {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
   }, [
-    currentPage,
     setCurrentPage,
     searchQuery,
     selectedOrganizations,
@@ -459,6 +462,13 @@ export default function Home() {
     postedWithin,
     sortBy,
   ]);
+
+  // Clamp currentPage to totalPages if out of range
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages, setCurrentPage]);
 
   useEffect(() => {
     void fetchData();
@@ -480,8 +490,6 @@ export default function Home() {
       setBookmarkedJobIds(new Set());
     }
   }, [userId, allJobs, fetchBookmarks, fetchMatchData]);
-
-  const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE);
 
   return (
     <main
