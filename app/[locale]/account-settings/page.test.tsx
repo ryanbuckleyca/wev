@@ -1,7 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import AccountSettingsPage from './page';
+
+const mockUpdateUser = vi.fn();
+const mockFetch = vi.fn();
 
 // Mock the auth hook
 vi.mock('@/lib/hooks/useRequireAuth', () => ({
@@ -18,7 +21,7 @@ vi.mock('@/lib/hooks/useRequireAuth', () => ({
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(() => ({
     auth: {
-      updateUser: vi.fn(),
+      updateUser: mockUpdateUser,
     },
   })),
 }));
@@ -55,6 +58,16 @@ describe('AccountSettingsPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockReset();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: 'Password updated successfully' }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('renders account settings form', () => {
@@ -159,5 +172,29 @@ describe('AccountSettingsPage', () => {
 
     const emailInput = screen.getByPlaceholderText(/enter new email/i);
     expect(emailInput).toHaveValue('test@example.com');
+  });
+
+  it('sends password changes through the account API route', async () => {
+    render(<AccountSettingsPage />);
+
+    await user.type(screen.getByPlaceholderText(/enter current password/i), 'old-pass');
+    await user.type(screen.getByPlaceholderText(/enter new password/i), 'new-pass-123');
+    await user.type(screen.getByPlaceholderText(/confirm new password/i), 'new-pass-123');
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/account', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: 'old-pass',
+          newPassword: 'new-pass-123',
+        }),
+      });
+    });
+
+    expect(mockUpdateUser).not.toHaveBeenCalled();
   });
 });
