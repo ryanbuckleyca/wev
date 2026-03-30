@@ -3,6 +3,13 @@
  * Do not add any env vars or createClient here; they would be exposed to the client bundle.
  */
 
+export interface CompensationMeta {
+  confidence: number
+  raw: string
+  currency: string | null
+  notes?: string
+}
+
 export interface JobPosting {
   id: string;
   job_title: string;
@@ -26,6 +33,11 @@ export interface JobPosting {
     string,
     { term: string; definition: string | null; scope_note: string | null }
   >;
+  unit_text?: 'HOUR' | 'DAY' | 'WEEK' | 'MONTH' | 'YEAR' | null;
+  min_value?: number | null;
+  max_value?: number | null;
+  hours_per_week?: number | null;
+  compensation_meta?: CompensationMeta | null;
 }
 
 export interface JobMatchData {
