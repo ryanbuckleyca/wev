@@ -1,11 +1,11 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import toast from 'react-hot-toast';
 import { render, screen, waitFor } from '@/test-utils';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfile } from '@/lib/hooks/useProfile';
 import { MAX_PROFILE_SKILLS } from '@/lib/hooks/useProfileForm';
+import notify from '@/lib/toast';
 import ProfilePage from './page';
 
 /** Matches `messages/en.json` `profile.skillsPlaceholderShort` (modal search; Unicode ellipsis). */
@@ -19,7 +19,7 @@ vi.mock('@/lib/hooks/useProfile', () => ({
   useProfile: vi.fn(),
 }));
 
-vi.mock('react-hot-toast', () => ({
+vi.mock('@/lib/toast', () => ({
   default: {
     success: vi.fn(),
     error: vi.fn(),
@@ -331,6 +331,6 @@ describe('ProfilePage skills integration', () => {
     await waitFor(() => {
       expect(mockUpdateProfile).not.toHaveBeenCalled();
     });
-    expect(toast.error).toHaveBeenCalled();
+    expect(notify.error).toHaveBeenCalled();
   });
 });
