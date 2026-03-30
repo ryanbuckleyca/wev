@@ -86,6 +86,7 @@ export default function BookmarksPage() {
             jobs={jobs}
             loading={false}
             error={null}
+            profile={null}
             matchData={matchData}
             bookmarkedJobIds={new Set(jobs.map((j: { id: string }) => j.id))}
             onJobBookmarkChange={(job, bookmarked) => {
