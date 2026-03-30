@@ -8,24 +8,40 @@ interface MatchDetailsTooltipProps {
   totalMatchPercentage: number;
   valueMatchPercentage: number;
   skillMatchPercentage: number;
+  workTypeMatchPercentage?: number;
+  locationMatchPercentage?: number;
   values: string[];
   skills: string[];
   sharedValues: string[];
   sharedSkills: string[];
   skillTerms: Record<string, string>;
   translate: TranslateFn;
+  jobWorkType?: string | null;
+  profileWorkTypes?: string[];
+  profileIdealWorkEnvironment?: string | null;
+  profileHasLocationValue?: boolean;
+  matchedLocationTokens?: string[];
+  unmatchedLocationTokens?: string[];
 }
 
 export default function MatchDetailsTooltip({
   totalMatchPercentage,
   valueMatchPercentage,
   skillMatchPercentage,
+  workTypeMatchPercentage,
+  locationMatchPercentage,
   values,
   skills,
   sharedValues,
   sharedSkills,
   skillTerms,
   translate,
+  jobWorkType,
+  profileWorkTypes,
+  profileIdealWorkEnvironment,
+  profileHasLocationValue,
+  matchedLocationTokens,
+  unmatchedLocationTokens,
 }: MatchDetailsTooltipProps) {
   const textColor = 'rgb(var(--foreground))';
 
@@ -70,6 +86,8 @@ export default function MatchDetailsTooltip({
           text={`${totalMatchPercentage}%`}
         />
         <div className="text-xs opacity-75 lowercase">{translate('matchDetails.totalMatch')}</div>
+        <div className="text-xs opacity-75 lowercase mt-1">{translate('matchDetails.breakdown')}</div>
+        <div className="text-xs opacity-60 lowercase">{translate('matchDetails.weightsNote')}</div>
       </div>
 
       {orderedValues.length > 0 && (
@@ -108,6 +126,50 @@ export default function MatchDetailsTooltip({
             return renderListItem(skillName, `skill-${skill}`, isMatched);
           })}
         </div>
+      )}
+
+      {typeof workTypeMatchPercentage === 'number' && (
+        <div className="space-y-1">
+          <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
+            <span>
+              {translate('matchDetails.workType')}: {Math.round(workTypeMatchPercentage)}%
+            </span>
+          </div>
+          {jobWorkType && (
+            <div className="pl-3">
+              {renderListItem(
+                jobWorkType === 'remote'
+                  ? translate('filters.workType.remote')
+                  : jobWorkType === 'hybrid'
+                  ? translate('filters.workType.hybrid')
+                  : translate('filters.workType.office'),
+                `worktype-${jobWorkType}`,
+                // matched when profileWorkTypes empty (treated as all selected) or contains jobWorkType
+                !(profileWorkTypes && profileWorkTypes.length > 0) || (profileWorkTypes || []).includes(jobWorkType),
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {typeof locationMatchPercentage === 'number' && (
+        <div className="space-y-1">
+          <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
+            <span>
+              {translate('matchDetails.location')}: {Math.round(locationMatchPercentage)}%
+            </span>
+          </div>
+          {(matchedLocationTokens?.length || unmatchedLocationTokens?.length) && (
+            <div className="pl-3">
+              {matchedLocationTokens?.map((tok, i) => renderListItem(tok, `loc-match-${i}`, true))}
+              {unmatchedLocationTokens?.map((tok, i) => renderListItem(tok, `loc-unmatch-${i}`, false))}
+            </div>
+          )}
+        </div>
+      )}
+      {/* If user selected 'location' but didn't provide an ideal work environment, show a hint */}
+      {profileHasLocationValue && (!profileIdealWorkEnvironment || profileIdealWorkEnvironment.trim().length === 0) && (
+        <div className="text-xs text-yellow-600 lowercase">{translate('matchDetails.locationRequiresProfile')}</div>
       )}
     </div>
   );

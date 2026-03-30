@@ -110,7 +110,12 @@
   "matchDetails": {
     "totalMatch": "Total Match",
     "values": "Values",
-    "skills": "Skills"
+    "skills": "Skills",
+    "workType": "Work type",
+    "location": "Location",
+    "breakdown": "Breakdown: Values 55% • Skills 35% • Work type 5% • Location 5%",
+    "weightsNote": "Weights are adjusted when some signals are missing."
+    ,"locationRequiresProfile": "You selected 'Location' in your profile — add an Ideal Work Environment description to enable location matching."
   },
   "expand": {
     "expandAll": "Expand all",
@@ -151,6 +156,8 @@
     "howMuch": "How much:",
     "perYear": "/ year",
     "perHour": "/ hour",
+    "volunteer": "Volunteer",
+    "internship": "Internship",
     "statedHoursPerWeek": "(stated {hours}h/week)",
     "match": "% match:",
     "valuesMatch": "% values match:",
@@ -465,203 +472,219 @@
   "values": {
     "Advancement": {
       "name": "Advancement",
-      "description": "Progressing to higher levels of responsibility, authority, or scope.",
-      "example": "Example: opportunities to move from specialist to manager over time."
+      "description": "Be able to get ahead rapidly, gaining opportunities for growth and seniority from work well-done."
+    },
+    "Adventure": {
+      "name": "Adventure",
+      "description": "Have job duties which involve frequent risk-taking."
     },
     "Aesthetic": {
-      "name": "Aesthetic",
-      "description": "Working in environments where beauty, design, and form matter.",
-      "example": "Example: creating polished visual work and improving how things look and feel."
+      "name": "Aesthetics",
+      "description": "Be involved in studying or appreciating the beauty of things or ideas."
     },
     "Affiliation": {
       "name": "Affiliation",
-      "description": "Feeling accepted and connected to a supportive work group.",
-      "example": "Example: being part of a close, collaborative team culture."
+      "description": "Be recognized as a member of a particular organization."
     },
     "Artistic Creativity": {
-      "name": "Artistic Creativity",
-      "description": "Producing original artistic work with room for imagination and style.",
-      "example": "Example: creating unique illustrations, writing, music, or multimedia work."
+      "name": "Artistic creativity",
+      "description": "Engage in creative work in any of several art forms."
     },
     "Challenge": {
-      "name": "Challenge",
-      "description": "Taking on difficult goals that stretch skills and problem-solving ability.",
-      "example": "Example: solving complex problems with no obvious solution path."
+      "name": "Challenging problems",
+      "description": "Engage continually with complex questions and demanding tasks, trouble-shooting and problem-solving as a core part of my job."
     },
     "Change and Variety": {
-      "name": "Change and Variety",
-      "description": "Having different tasks, contexts, or priorities instead of repetition.",
-      "example": "Example: shifting between projects and learning new tools often."
+      "name": "Change and variety",
+      "description": "Have work responsibilities frequently changed in content or setting."
     },
     "Community": {
       "name": "Community",
-      "description": "Feeling rooted in and connected to a broader local or professional community.",
-      "example": "Example: work that builds stronger neighborhoods or community programs."
+      "description": "Live in a town or city where I can meet my neighbors and become active in local politics or service projects."
     },
     "Competition": {
       "name": "Competition",
-      "description": "Measuring performance against peers and aiming to win or outperform.",
-      "example": "Example: sales targets, rankings, or performance leaderboards."
+      "description": "Engage in activities which pit my abilities against others."
     },
     "Competence": {
-      "name": "Competence",
-      "description": "Using skills effectively and being trusted for high-quality execution.",
-      "example": "Example: being known as reliable and technically strong in core tasks."
+      "name": "Exercise competence",
+      "description": "Demonstrate a high degree of proficiency in job skills and knowledge; show above average effectiveness."
     },
     "Creative Expression": {
-      "name": "Creative Expression",
-      "description": "Expressing personal ideas, voice, and perspective through work output.",
-      "example": "Example: shaping content, messaging, or design in your own style."
+      "name": "Creative expression",
+      "description": "Be able to express in writing and in person my ideas concerning my job and how I might improve it; have opportunities for experimentation and innovation."
     },
     "Creativity": {
-      "name": "Creativity",
-      "description": "Generating novel and useful ideas, methods, or solutions.",
-      "example": "Example: inventing new approaches that improve outcomes."
+      "name": "Creativity (general)",
+      "description": "Create new ideas, programs, organized structures or anything else not following a format developed by others."
     },
     "Decision Making": {
-      "name": "Decision Making",
-      "description": "Having authority to make meaningful choices that affect outcomes.",
-      "example": "Example: owning project direction, priorities, or resource tradeoffs."
+      "name": "Make decisions",
+      "description": "Have the power to decide courses of action, policies, etc — a judgement job."
+    },
+    "Diversity": {
+      "name": "Diversity",
+      "description": "Work in a setting that includes individuals of diverse religious, racial or social backgrounds."
+    },
+    "Environment": {
+      "name": "Environment",
+      "description": "Work on tasks that have a positive effect on the natural environment."
     },
     "Excitement": {
       "name": "Excitement",
-      "description": "Experiencing energy, stimulation, and novelty in day-to-day work.",
-      "example": "Example: high-engagement work with visible momentum and action."
+      "description": "Experience a high degree of stimulation or frequent novelty and drama on the job."
     },
-    "Experience": {
-      "name": "Experience",
-      "description": "Building broad real-world exposure to roles, systems, and situations.",
-      "example": "Example: rotating across functions to gain practical perspective."
+    "Family": {
+      "name": "Family",
+      "description": "Insure that the type of work I do and the hours I work fit with my family responsibilities."
     },
     "Fast Pace": {
-      "name": "Fast Pace",
-      "description": "Working quickly with short cycles, tight timelines, and rapid feedback.",
-      "example": "Example: handling frequent deliverables in a high-tempo environment."
+      "name": "Fast pace",
+      "description": "Work in circumstances where there is a high pace of activity and work is done rapidly."
     },
     "Financial Gain": {
-      "name": "Financial Gain",
-      "description": "Increasing income through performance, growth, or financial upside.",
-      "example": "Example: bonus structures, commissions, equity, or profit sharing."
+      "name": "Profit, gain",
+      "description": "Have a strong likelihood of accumulating large amounts of money or other material gain through ownership, profit-sharing, commissions, merit increases, etc."
     },
     "Friendship": {
-      "name": "Friendship",
-      "description": "Forming warm, personal relationships with coworkers at work.",
-      "example": "Example: enjoying genuine day-to-day friendships on the team."
+      "name": "Friendships",
+      "description": "Develop close personal relationships with people as a result of work activity."
+    },
+    "Fun and Humor": {
+      "name": "Fun and Humor",
+      "description": "Work in a setting where it is possible (and appropriate) to joke and have fun."
+    },
+    "Group & Team": {
+      "name": "Group & Team",
+      "description": "Work with a group to obtain team (rather than individual) results."
     },
     "Help Others": {
-      "name": "Help Others",
-      "description": "Providing direct support that improves another person's well-being or success.",
-      "example": "Example: coaching, mentoring, advising, or solving client problems."
+      "name": "Help others",
+      "description": "Be involved in helping people directly, either individually or in small groups."
     },
     "Help Society": {
-      "name": "Help Society",
-      "description": "Contributing to social good and positive impact at a broader level.",
-      "example": "Example: work that advances health, equity, education, or sustainability."
+      "name": "Help society",
+      "description": "Do something to contribute to the betterment of the world."
     },
     "High Earnings": {
-      "name": "High Earnings",
-      "description": "Prioritizing a top-tier salary compared with alternatives.",
-      "example": "Example: choosing roles known for strong compensation ceilings."
+      "name": "High earnings anticipated",
+      "description": "Be able to purchase essentials and the luxuries of life that I wish."
+    },
+    "Honesty and Integrity": {
+      "name": "Honesty and Integrity",
+      "description": "Work in a setting where honesty and integrity are assets."
+    },
+    "Independence": {
+      "name": "Independence",
+      "description": "Be able to determine the nature of my work without significant direction of others. Not have to follow instructions or to conform to regulations."
     },
     "Influence People": {
-      "name": "Influence People",
-      "description": "Persuading others and shaping decisions, priorities, or behavior.",
-      "example": "Example: guiding stakeholders to align on a proposed direction."
+      "name": "Influence people",
+      "description": "Be in a position to change attitudes or opinions of others."
     },
     "Intellectual Status": {
-      "name": "Intellectual Status",
-      "description": "Being respected for expertise, insight, and intellectual contribution.",
-      "example": "Example: recognition as a thought partner in complex domains."
+      "name": "Intellectual status",
+      "description": "Be regarded as very well-informed and strong theorist, as one acknowledged expert in a given field."
     },
     "Job Tranquility": {
-      "name": "Job Tranquility",
-      "description": "Maintaining low stress, emotional calm, and predictable work pressure.",
-      "example": "Example: steady workloads with limited urgency and crisis response."
+      "name": "Job tranquility",
+      "description": "Avoid pressure and the rat race in my job role and work setting."
     },
     "Knowledge": {
       "name": "Knowledge",
-      "description": "Continually learning, understanding, and mastering new information.",
-      "example": "Example: roles that reward study, analysis, and deep domain learning."
+      "description": "Engage myself in pursuit of knowledge, truth and understanding."
     },
     "Location": {
       "name": "Location",
-      "description": "Working in a preferred geographic setting or physical environment.",
-      "example": "Example: staying in a specific city, region, or remote setup."
+      "description": "Find a place to live (town or geographic area) conducive to my lifestyle, a desirable home base for my leisure, learning and work life."
     },
     "Moral Fulfillment": {
-      "name": "Moral Fulfillment",
-      "description": "Doing work that aligns with personal ethics and sense of right action.",
-      "example": "Example: choosing projects that match your values and integrity standards."
+      "name": "Moral fulfillment",
+      "description": "Feel that my work is contributing to ideals I feel are very important."
     },
-    "Organization": {
-      "name": "Organization",
-      "description": "Working within structured organizational systems and hierarchies.",
-      "example": "Example: operating within established companies, institutions, or formal departments."
+    "Personal Safety": {
+      "name": "Personal safety",
+      "description": "Have a high probability of being safe and healthy at work."
     },
     "Physical Challenge": {
-      "name": "Physical Challenge",
-      "description": "Engaging the body through strength, movement, stamina, or coordination.",
-      "example": "Example: active work with meaningful physical demands."
+      "name": "Physical challenge",
+      "description": "Have a job that requires bodily strength, speed, dexterity or agility."
+    },
+    "Power and Authority": {
+      "name": "Power and authority",
+      "description": "Control the work activities or destinies of others."
+    },
+    "Practicality": {
+      "name": "Practicality",
+      "description": "Be involved in work that yields a practical or useful result."
     },
     "Precision Work": {
-      "name": "Precision Work",
-      "description": "Producing accurate, detail-oriented output with minimal errors.",
-      "example": "Example: tasks where quality depends on careful, exact execution."
+      "name": "Precision work",
+      "description": "Deal with tasks that have exact specifications, that require careful, accurate attention to detail."
     },
     "Public Contact": {
-      "name": "Public Contact",
-      "description": "Interacting frequently with clients, customers, or the general public.",
-      "example": "Example: front-facing roles with regular external communication."
+      "name": "Public contact",
+      "description": "Have a lot of day-to-day contact with people."
     },
     "Recognition": {
       "name": "Recognition",
-      "description": "Receiving visible appreciation, credit, and acknowledgment for work.",
-      "example": "Example: public praise, awards, or clear attribution for contributions."
+      "description": "Get positive feedback and public credit for work well done."
     },
     "Research and Development": {
-      "name": "Research and Development",
-      "description": "Investigating ideas, testing hypotheses, and creating new capabilities.",
-      "example": "Example: experimentation and prototyping to develop future solutions."
+      "name": "Work on the frontiers of knowledge",
+      "description": "Work in research and development, generating information and new ideas in the academic, scientific, or business communities."
     },
     "Security": {
       "name": "Security",
-      "description": "Having confidence in continued employment and dependable income.",
-      "example": "Example: stable organizations with low perceived layoff risk."
+      "description": "Be assured of keeping my job and a reasonable financial reward."
+    },
+    "Spirituality": {
+      "name": "Spirituality",
+      "description": "Work in a setting that is supportive of my spiritual beliefs."
     },
     "Stability": {
       "name": "Stability",
-      "description": "Working within consistent routines, structures, and expectations.",
-      "example": "Example: predictable schedules and clearly defined processes."
+      "description": "Have a work routine and job duties that are largely predictable and not likely to change over a long period of time."
     },
     "Status": {
       "name": "Status",
-      "description": "Holding a respected position with visible prestige or standing.",
-      "example": "Example: title, role visibility, and perceived importance in an organization."
+      "description": "Impress or gain the respect of friends, family and community by the nature and/or level of responsibility of my work."
+    },
+    "Steep Learning Curve": {
+      "name": "Steep learning curve",
+      "description": "Be presented with new, unique or difficult tasks to be quickly mastered."
+    },
+    "Structure and Predictability": {
+      "name": "Structure and Predictability",
+      "description": "Do work with a high level of structure and predictability."
     },
     "Supervision": {
       "name": "Supervision",
-      "description": "Leading, directing, and developing the work of other people.",
-      "example": "Example: managing a team and being accountable for team outcomes."
+      "description": "Have a job in which I am directly responsible for work done by others."
     },
     "Time Freedom": {
-      "name": "Time Freedom",
-      "description": "Controlling when work is done, including schedule flexibility.",
-      "example": "Example: setting your own hours or adjusting work around life demands."
+      "name": "Time freedom",
+      "description": "Have responsibilities at which I can work according to my time schedule; no specific working hours required."
+    },
+    "Tradition": {
+      "name": "Tradition",
+      "description": "Be involved in work that is consistent with the social traditions in which I was brought up with."
     },
     "Work Alone": {
-      "name": "Work Alone",
-      "description": "Having focused, independent work with minimal collaboration demands.",
-      "example": "Example: long stretches of autonomous work and individual ownership."
+      "name": "Work alone",
+      "description": "Do projects by myself, without any amount of contact or input from others."
     },
     "Work Under Pressure": {
-      "name": "Work Under Pressure",
-      "description": "Performing effectively in urgent, high-stakes, or deadline-driven situations.",
-      "example": "Example: staying effective during peak load and time-critical decisions."
+      "name": "Work under pressure",
+      "description": "Work in time-pressured circumstances, where there is little or no margin for error, or with demanding personal relationships."
     },
     "Work with Others": {
-      "name": "Work with Others",
-      "description": "Collaborating closely and regularly with teammates or partners.",
-      "example": "Example: planning and executing work through shared responsibility."
+      "name": "Work with others",
+      "description": "Have close working relations with a group and work as a team to common goals."
+    },
+    "Work-Life Balance": {
+      "name": "Work-life balance",
+      "description": "A job that allows me adequate time for my family, hobbies and social activities."
     },
     "default": {
       "description": "A work-related outcome or condition someone may prioritize in a job.",

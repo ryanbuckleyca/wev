@@ -22,7 +22,7 @@ export function useJobMatch(jobId: string) {
         const supabase = createClient();
         const { data, error } = await supabase
           .from('job_matches')
-          .select('score, value_score, skill_score, shared_values, shared_skills')
+          .select('score, value_score, skill_score, work_type_score, location_score, shared_values, shared_skills')
           .eq('user_id', user.id)
           .eq('job_id', jobId)
           .maybeSingle();
@@ -35,6 +35,8 @@ export function useJobMatch(jobId: string) {
             score: data.score,
             value_score: data.value_score,
             skill_score: data.skill_score,
+            work_type_score: data.work_type_score,
+            location_score: data.location_score,
             shared_values: data.shared_values || [],
             shared_skills: data.shared_skills || [],
           });

@@ -37,6 +37,8 @@ export type CompensationTranslations = {
   perYear: string
   perHour: string
   statedHoursPerWeek: (hours: number) => string
+  volunteer?: string
+  internship?: string
 }
 
 function createCurrencyFormatter(locale: string): Intl.NumberFormat {
@@ -76,6 +78,15 @@ export function formatCompensation(
 
   // Fallback: unstructured data
   if (job.min_value == null || job.unit_text == null) {
+    // If employment_type explicitly indicates volunteer or internship, show that
+    const emp = job.employment_type ? String(job.employment_type).toLowerCase() : ''
+    if (emp.includes('volunt')) {
+      return { primary: t?.volunteer ?? 'Volunteer', isInferred: false, isStructured: false }
+    }
+    if (emp.includes('intern') || emp.includes('stage')) {
+      return { primary: t?.internship ?? 'Internship', isInferred: false, isStructured: false }
+    }
+
     return {
       primary: job.wage ?? 'N/A',
       isInferred: false,
