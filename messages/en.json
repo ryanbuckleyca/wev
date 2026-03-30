@@ -398,7 +398,8 @@
   "common": {
     "loading": "Loading...",
     "close": "Close",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "confirm": "Confirm"
   },
   "ariaLabels": {
     "themeToggle": {

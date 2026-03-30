@@ -1,10 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
+const { mockRpc } = vi.hoisted(() => ({ mockRpc: vi.fn() }));
+
 vi.mock('@/lib/supabase-server', () => ({
-  getSupabaseServer: vi.fn(),
+  supabaseServer: { rpc: mockRpc },
 }));
 
-import { getSupabaseServer } from '@/lib/supabase-server';
 import { GET } from './route';
 
 describe('GET /api/skills/search', () => {
@@ -12,20 +13,17 @@ describe('GET /api/skills/search', () => {
     vi.clearAllMocks();
   });
 
-  it('returns [] for empty/short query and does not error', async () => {
-    // Mock getSupabaseServer - won't be called for empty query
-    vi.mocked(getSupabaseServer).mockReturnValue({} as never);
-
+  it('returns [] for empty/short query and does not call supabase', async () => {
     const response = await GET(new Request('http://localhost/api/skills/search?q='));
     expect(response.status).toBe(200);
 
     const body = await response.json();
     expect(body.skills).toEqual([]);
-    expect(getSupabaseServer).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it('ranks term matches above definition-only matches', async () => {
-    const rpc = vi.fn().mockResolvedValue({
+    mockRpc.mockResolvedValue({
       data: [
         {
           concept_uri: 'skill-def',
@@ -51,8 +49,6 @@ describe('GET /api/skills/search', () => {
       error: null,
     });
 
-    vi.mocked(getSupabaseServer).mockReturnValue({ rpc } as never);
-
     const response = await GET(new Request('http://localhost/api/skills/search?q=data'));
     expect(response.status).toBe(200);
 
@@ -69,7 +65,7 @@ describe('GET /api/skills/search', () => {
   });
 
   it('dedupes identical term+definition rows and keeps the highest-ranked one', async () => {
-    const rpc = vi.fn().mockResolvedValue({
+    mockRpc.mockResolvedValue({
       data: [
         {
           concept_uri: 'skill-dup-low',
@@ -104,8 +100,6 @@ describe('GET /api/skills/search', () => {
       ],
       error: null,
     });
-
-    vi.mocked(getSupabaseServer).mockReturnValue({ rpc } as never);
 
     const response = await GET(new Request('http://localhost/api/skills/search?q=consult'));
     expect(response.status).toBe(200);

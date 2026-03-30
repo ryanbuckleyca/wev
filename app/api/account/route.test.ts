@@ -3,9 +3,11 @@ import { NextRequest } from 'next/server';
 import { PATCH } from './route';
 import { getRequestUser } from '@/lib/auth/request-user';
 
-const mockSignInWithPassword = vi.fn();
-const mockUpdateUser = vi.fn();
-const mockAdminSignOut = vi.fn();
+const { mockSignInWithPassword, mockUpdateUser, mockAdminSignOut } = vi.hoisted(() => ({
+  mockSignInWithPassword: vi.fn(),
+  mockUpdateUser: vi.fn(),
+  mockAdminSignOut: vi.fn(),
+}));
 
 vi.mock('@/lib/auth/request-user', () => ({
   getRequestUser: vi.fn(),
@@ -28,13 +30,13 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 
 vi.mock('@/lib/supabase-server', () => ({
-  getSupabaseServer: vi.fn(() => ({
+  supabaseServer: {
     auth: {
       admin: {
         signOut: mockAdminSignOut,
       },
     },
-  })),
+  },
 }));
 
 const mockGetRequestUser = vi.mocked(getRequestUser);

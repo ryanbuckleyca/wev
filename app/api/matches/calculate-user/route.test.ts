@@ -2,36 +2,42 @@ import { mockRequireAdminResponse } from '@/test-utils/require-admin-mock';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from './route';
 import { calculateUserMatches } from '@/lib/match-calculator';
-import { getSupabaseServer } from '@/lib/supabase-server';
 import { adminGateUnauthorized } from '@/test-utils/admin-route';
 
 vi.mock('@/lib/match-calculator', () => ({
   calculateUserMatches: vi.fn(),
 }));
 
+const { mockSingle, mockSupabase } = vi.hoisted(() => {
+  const mockSingle = vi.fn();
+  const mockSupabase = {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: mockSingle,
+        })),
+      })),
+    })),
+  };
+  return { mockSingle, mockSupabase };
+});
+
 vi.mock('@/lib/supabase-server', () => ({
-  getSupabaseServer: vi.fn(),
+  supabaseServer: mockSupabase,
 }));
 
 const mockCalculateUserMatches = vi.mocked(calculateUserMatches);
-const mockGetSupabaseServer = vi.mocked(getSupabaseServer);
-
-const mockSingle = vi.fn();
 
 describe('POST /api/matches/calculate-user', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetSupabaseServer.mockReturnValue({
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            single: mockSingle,
-          })),
-        })),
-      })),
-    } as never);
     mockSingle.mockResolvedValue({ data: { id: 'user-1' }, error: null });
     mockCalculateUserMatches.mockResolvedValue(undefined);
+    mockSupabase.from.mockReturnValue({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({ single: mockSingle })),
+      })),
+    });
   });
 
   it('returns admin gate without calculating matches', async () => {

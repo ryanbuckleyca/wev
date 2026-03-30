@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { JobPosting, JobMatchData } from '@/lib/supabase';
+import type { Profile } from '@/lib/supabase/profiles';
 import JobCard from './JobCard';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingIndicator from './LoadingIndicator';
@@ -11,6 +12,7 @@ interface JobListingsProps {
   jobs: JobPosting[];
   loading: boolean;
   error: string | null;
+  profile: Profile | null;
   onJobSseChange?: (jobId: string, isSse: boolean) => void;
   onJobBookmarkChange?: (job: JobPosting, bookmarked: boolean) => void;
   allExpanded?: boolean;
@@ -23,6 +25,7 @@ export default function JobListings({
   jobs,
   loading,
   error,
+  profile,
   onJobSseChange,
   onJobBookmarkChange,
   allExpanded = true,
@@ -92,6 +95,7 @@ export default function JobListings({
             key={job.id}
             job={job}
             isAdmin={isAdmin}
+            profile={profile}
             onSseToggle={handleSseToggle}
             onBookmarkToggle={onJobBookmarkChange}
             updatingId={updatingId}

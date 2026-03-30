@@ -2,35 +2,44 @@ import { mockRequireAdminResponse } from '@/test-utils/require-admin-mock';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { PATCH } from './route';
-import { getSupabaseServer } from '@/lib/supabase-server';
 import { adminGateUnauthorized } from '@/test-utils/admin-route';
 
+const { mockSingle, mockSupabase } = vi.hoisted(() => {
+  const mockSingle = vi.fn();
+  const mockSupabase = {
+    from: vi.fn(() => ({
+      update: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          select: vi.fn(() => ({
+            single: mockSingle,
+          })),
+        })),
+      })),
+    })),
+  };
+  return { mockSingle, mockSupabase };
+});
+
 vi.mock('@/lib/supabase-server', () => ({
-  getSupabaseServer: vi.fn(),
+  supabaseServer: mockSupabase,
 }));
 
-const mockGetSupabaseServer = vi.mocked(getSupabaseServer);
-
 describe('PATCH /api/bulletin/jobs/[id]', () => {
-  const mockSingle = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockSingle.mockResolvedValue({
       data: { id: 'job-1', is_sse: true },
       error: null,
     });
-    mockGetSupabaseServer.mockReturnValue({
-      from: vi.fn(() => ({
-        update: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            select: vi.fn(() => ({
-              single: mockSingle,
-            })),
+    mockSupabase.from.mockReturnValue({
+      update: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          select: vi.fn(() => ({
+            single: mockSingle,
           })),
         })),
       })),
-    } as unknown as ReturnType<typeof getSupabaseServer>);
+    });
   });
 
   it('returns the admin gate response when not authorized', async () => {
@@ -43,7 +52,7 @@ describe('PATCH /api/bulletin/jobs/[id]', () => {
 
     const response = await PATCH(request, { params: Promise.resolve({ id: 'job-1' }) });
     expect(response.status).toBe(401);
-    expect(mockGetSupabaseServer).not.toHaveBeenCalled();
+    expect(mockSupabase.from).not.toHaveBeenCalled();
   });
 
   it('updates is_sse when admin and body is valid', async () => {

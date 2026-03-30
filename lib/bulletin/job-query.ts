@@ -1,5 +1,6 @@
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import { toAnnual } from '@/lib/compensation/helpers';
+import { parseDateMs } from '@/lib/date-utils';
 
 export const POSTED_WITHIN_FILTER_OPTIONS = [
   '1-week',
@@ -46,9 +47,7 @@ const POSTED_WITHIN_DAYS: Record<Exclude<PostedWithinSelection, 'any'>, number> 
 };
 
 function normalizePostedTimestamp(raw: string): number {
-  const normalized =
-    !raw.endsWith('Z') && !raw.match(/[+-]\d{2}:\d{2}$/) ? `${raw}Z` : raw;
-  return new Date(normalized).getTime();
+  return parseDateMs(raw);
 }
 
 function getAnnualSortValue(job: JobPosting, missingValue: number): number {
@@ -152,9 +151,9 @@ export function sortJobs(
   return [...jobs].sort((a, b) => {
     switch (sortBy) {
       case 'date-desc':
-        return new Date(b.date_posted).getTime() - new Date(a.date_posted).getTime();
+        return parseDateMs(b.date_posted) - parseDateMs(a.date_posted);
       case 'date-asc':
-        return new Date(a.date_posted).getTime() - new Date(b.date_posted).getTime();
+        return parseDateMs(a.date_posted) - parseDateMs(b.date_posted);
       case 'match-desc':
         return (matchData.get(b.id)?.score ?? 0) - (matchData.get(a.id)?.score ?? 0);
       case 'value-match-desc':

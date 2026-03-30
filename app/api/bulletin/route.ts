@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 import normalizeJobsWithSource from '@/lib/normalize-job';
 import { resolveSkillLabels, attachSkillLabels, parseLocale } from '@/lib/resolve-skill-labels';
 
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const locale = parseLocale(searchParams.get('locale'));
 
-    const supabase = getSupabaseServer();
+    const supabase = supabaseServer;
     const { data: scrapeData, error: scrapeError } = await supabase
       .from('scrape_runs')
       .select('run_at')

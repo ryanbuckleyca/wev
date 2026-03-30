@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 
 /** Row shape for `esco_skills` columns selected below (localized ESCO fields). */
 type EscoSkillRow = {
@@ -25,9 +25,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const locale = searchParams.get('locale') || 'en';
 
-    const supabase = getSupabaseServer();
+    const supabase = supabaseServer;
 
-    let allData: EscoSkillRow[] = [];
+    const allData: EscoSkillRow[] = [];
     let from = 0;
     const pageSize = 1000;
 
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       if (error) throw error;
       if (!data || data.length === 0) break;
 
-      allData = [...allData, ...(data as EscoSkillRow[])];
+      allData.push(...(data as EscoSkillRow[]));
       if (data.length < pageSize) break;
       from += pageSize;
     }

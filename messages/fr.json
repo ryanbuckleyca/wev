@@ -398,7 +398,8 @@
   "common": {
     "loading": "Chargement...",
     "close": "Fermer",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "confirm": "Confirmer"
   },
   "passwordStrength": {
     "strength": "Force :",

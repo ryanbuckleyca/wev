@@ -1,5 +1,5 @@
 import 'server-only';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 import { parseRolesColumn } from './user-roles';
 
 /**
@@ -12,7 +12,7 @@ export async function fetchUserRolesFromService(userId: string): Promise<
   { ok: true; roles: string[] } | { ok: false; error: unknown }
 > {
   try {
-    const adminClient = getSupabaseServer();
+    const adminClient = supabaseServer;
     const { data, error } = await adminClient
       .from('user_roles')
       .select('roles')

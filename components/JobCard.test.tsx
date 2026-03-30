@@ -66,6 +66,7 @@ function renderJobCard(overrides: Partial<Parameters<typeof JobCard>[0]> = {}) {
   const props = {
     job: defaultJob,
     isAdmin: false,
+    profile: null,
     onSseToggle: () => {},
     updatingId: null,
     initialExpanded: true,

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ skills: [] });
     }
 
-    const supabase = getSupabaseServer();
+    const supabase = supabaseServer;
     const { data, error } = await supabase
       .from('esco_skills')
       .select(

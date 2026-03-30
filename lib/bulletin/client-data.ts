@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { parseDateString } from '@/lib/date-utils';
 
 export function formatLastScrapeTime(
   rawScrapeTime: string | number | Date | null | undefined,
@@ -8,10 +9,7 @@ export function formatLastScrapeTime(
 
   let date: Date;
   if (typeof rawScrapeTime === 'string') {
-    date =
-      !rawScrapeTime.endsWith('Z') && !rawScrapeTime.match(/[+-]\d{2}:\d{2}$/)
-        ? new Date(`${rawScrapeTime}Z`)
-        : new Date(rawScrapeTime);
+    date = parseDateString(rawScrapeTime);
   } else {
     date = new Date(rawScrapeTime);
   }

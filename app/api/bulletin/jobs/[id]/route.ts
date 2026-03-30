@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 import { requireAdminResponse } from '@/lib/auth/require-admin';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +20,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Body must include is_sse (boolean)' }, { status: 400 });
     }
 
-    const supabase = getSupabaseServer();
+    const supabase = supabaseServer;
     const { data, error } = await supabase
       .from('jobs')
       .update({ is_sse: isSse })
