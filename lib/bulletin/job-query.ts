@@ -1,4 +1,5 @@
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
+import { toAnnual } from '@/lib/compensation/helpers';
 
 export const POSTED_WITHIN_FILTER_OPTIONS = [
   '1-week',
@@ -50,10 +51,12 @@ function normalizePostedTimestamp(raw: string): number {
   return new Date(normalized).getTime();
 }
 
-function parseSalaryValue(wage: string | null | undefined, missingValue: number): number {
-  if (!wage) return missingValue;
-  const numericValue = parseFloat(wage.replace(/[^0-9.-]/g, ''));
-  return Number.isFinite(numericValue) ? numericValue : missingValue;
+function getAnnualSortValue(job: JobPosting, missingValue: number): number {
+  if (job.min_value != null && job.unit_text != null) {
+    const annual = toAnnual(BigInt(job.min_value), job.unit_text, job.hours_per_week)
+    return annual != null ? Number(annual) : missingValue
+  }
+  return missingValue
 }
 
 function matchesSearch(job: JobPosting, searchQuery: string): boolean {
@@ -101,7 +104,7 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
       return false;
     }
 
-    if (!filters.showJobsWithoutSalary && !job.wage?.trim()) {
+    if (!filters.showJobsWithoutSalary && !job.wage?.trim() && job.min_value == null) {
       return false;
     }
 
@@ -159,10 +162,10 @@ export function sortJobs(
       case 'skill-match-desc':
         return (matchData.get(b.id)?.skill_score ?? 0) - (matchData.get(a.id)?.skill_score ?? 0);
       case 'salary-desc':
-        return parseSalaryValue(b.wage, -1) - parseSalaryValue(a.wage, -1);
+        return getAnnualSortValue(b, -1) - getAnnualSortValue(a, -1);
       case 'salary-asc':
-        return parseSalaryValue(a.wage, Number.POSITIVE_INFINITY) -
-          parseSalaryValue(b.wage, Number.POSITIVE_INFINITY);
+        return getAnnualSortValue(a, Number.POSITIVE_INFINITY) -
+          getAnnualSortValue(b, Number.POSITIVE_INFINITY);
       case 'org-asc':
         return a.organization.localeCompare(b.organization);
       default:

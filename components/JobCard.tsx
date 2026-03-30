@@ -12,6 +12,7 @@ import {
   ChevronDownSolid,
 } from '@lineiconshq/free-icons';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCompensation } from '@/lib/compensation/helpers';
 import Collapsible from './Collapsible';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from '@/i18n/navigation';
@@ -308,8 +309,22 @@ export default function JobCard({
               <br />
             </div>
             <div className="job-detail-line">
-              <span className="job-label">{t('jobCard.howMuch')} </span>
-              <span className="job-value">{job.wage || t('jobCard.nA')}</span>
+              {(() => {
+                const compensationDisplay = formatCompensation(job, locale, {
+                  perYear: t('jobCard.perYear'),
+                  perHour: t('jobCard.perHour'),
+                  statedHoursPerWeek: (hours) => t('jobCard.statedHoursPerWeek', { hours }),
+                })
+                return (
+                  <>
+                    <span className="job-label">{t('jobCard.howMuch')} </span>
+                    <span className="job-value">{compensationDisplay.primary}</span>
+                    {compensationDisplay.secondary && (
+                      <span className="job-value text-muted-foreground text-sm"> ({compensationDisplay.secondary})</span>
+                    )}
+                  </>
+                )
+              })()}
             </div>
           </div>
         </div>
