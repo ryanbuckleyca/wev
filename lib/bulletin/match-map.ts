@@ -6,12 +6,14 @@ type JobMatchRow = {
   score: number;
   value_score?: number | null;
   skill_score?: number | null;
+  work_type_score?: number | null;
+  location_score?: number | null;
   shared_values: string[];
   shared_skills?: string[];
 };
 
 const MATCH_SELECT =
-  'job_id, score, value_score, skill_score, shared_values, shared_skills';
+  'job_id, score, value_score, skill_score, work_type_score, location_score, shared_values, shared_skills';
 
 export function buildMatchMap(matches: JobMatchRow[] | null | undefined): Map<string, JobMatchData> {
   const matchMap = new Map<string, JobMatchData>();
@@ -21,6 +23,8 @@ export function buildMatchMap(matches: JobMatchRow[] | null | undefined): Map<st
       score: match.score,
       value_score: match.value_score,
       skill_score: match.skill_score,
+      work_type_score: match.work_type_score,
+      location_score: match.location_score,
       shared_values: match.shared_values ?? [],
       shared_skills: match.shared_skills ?? [],
     });

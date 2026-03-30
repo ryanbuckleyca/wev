@@ -10,15 +10,15 @@ import WatercolorBackground from '@/components/WatercolorBackground';
 import ReScrapeButton from '@/components/ReScrapeButton';
 import CopyAllJobsButton from '@/components/CopyAllJobsButton';
 import Pagination from '@/components/Pagination';
+import { SITE_CONFIG } from '@/lib/site-config';
 import type { BulletinDataState } from '@/lib/hooks/useBulletinData';
 import type { BulletinFilterControls } from '@/lib/hooks/useBulletinFilters';
-
-const HOME_LOGOTYPE_URL =
-  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';
+import type { Profile } from '@/lib/supabase/profiles';
 
 interface BulletinPageViewProps {
   isAdmin: boolean;
   isLoggedIn: boolean;
+  profile: Profile | null;
   filters: BulletinFilterControls;
   data: BulletinDataState;
 }
@@ -26,6 +26,7 @@ interface BulletinPageViewProps {
 export default function BulletinPageView({
   isAdmin,
   isLoggedIn,
+  profile,
   filters,
   data,
 }: BulletinPageViewProps) {
@@ -42,7 +43,7 @@ export default function BulletinPageView({
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
         <header className="mb-8">
           <Image
-            src={HOME_LOGOTYPE_URL}
+            src={SITE_CONFIG.logotypeUrl}
             alt="wev"
             width={100}
             height={40}
@@ -124,6 +125,7 @@ export default function BulletinPageView({
           jobs={data.paginatedJobs}
           loading={data.loading}
           error={data.error}
+          profile={profile}
           allExpanded={filters.allJobsExpanded}
           matchData={data.matchData}
           bookmarkedJobIds={data.bookmarkedJobIds}
