@@ -149,6 +149,20 @@ export function calculateMatch(
 }
 
 // ---------------------------------------------------------------------------
+// Skill score (same overlap + bonus pattern as calculateMatch)
+// ---------------------------------------------------------------------------
+
+function calculateSkillScore(
+  userSkills: string[],
+  jobSkills: string[],
+): { score: number | null; shared: string[] } {
+  if (userSkills.length === 0 || jobSkills.length === 0) return { score: null, shared: [] };
+  const shared = userSkills.filter((s) => jobSkills.includes(s));
+  const score = Math.min(shared.length / userSkills.length + Math.min(shared.length * 0.1, 0.3), 1.0);
+  return { score, shared };
+}
+
+// ---------------------------------------------------------------------------
 // Per-profile score calculation (shared between user-batch and job-batch)
 // ---------------------------------------------------------------------------
 
@@ -187,18 +201,10 @@ function calculateProfileJobScores(
   );
 
   // Skill score
-  const userSkills: string[] = profile.skills ?? [];
-  const jobSkills: string[] = job.skills ?? [];
-  let skillScore: number | null = null;
-  let sharedSkills: string[] = [];
-  if (userSkills.length > 0 && jobSkills.length > 0) {
-    sharedSkills = userSkills.filter((s) => jobSkills.includes(s));
-    const sharedCount = sharedSkills.length;
-    skillScore = Math.min(
-      sharedCount / userSkills.length + Math.min(sharedCount * 0.1, 0.3),
-      1.0,
-    );
-  }
+  const { score: skillScore, shared: sharedSkills } = calculateSkillScore(
+    profile.skills ?? [],
+    job.skills ?? [],
+  );
 
   // Work type score: empty profile.work_types → treat as "all selected"
   const profileWorkTypes: string[] = profile.work_types ?? [];
@@ -236,11 +242,11 @@ function isMatchableProfile(p: ProfileLike): boolean {
 }
 
 /** A job row has matchable data if it has any values or skills. */
-function isMatchableJob(j: { values?: unknown[] | null; skills?: unknown[] | null }): boolean {
+function isMatchableJob(j: JobLike): boolean {
   return !!(j.values?.length || j.skills?.length);
 }
 
-type MatchContext = 'user batch' | 'job batch';
+type MatchContext = 'userBatch' | 'jobBatch';
 
 async function upsertMatches(supabase: SupabaseClient, matches: MatchResult[], context: MatchContext): Promise<void> {
   if (matches.length === 0) return;
@@ -283,7 +289,7 @@ export async function calculateUserMatches(userId: string): Promise<void> {
         ...calculateProfileJobScores(profile, job, buildJobText(job.location, job.summary, job.description)),
       }));
 
-    await upsertMatches(supabase, matches, 'user batch');
+    await upsertMatches(supabase, matches, 'userBatch');
   } catch (error) {
     logger.error({ err: error }, 'Error calculating user matches');
   }
@@ -324,7 +330,7 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
         ...calculateProfileJobScores(profile, job, jobText),
       }));
 
-    await upsertMatches(supabase, matches, 'job batch');
+    await upsertMatches(supabase, matches, 'jobBatch');
   } catch (error) {
     logger.error({ err: error }, 'Error calculating job matches');
   }
