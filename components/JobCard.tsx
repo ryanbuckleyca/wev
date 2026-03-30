@@ -14,7 +14,7 @@ import {
 import type { Profile } from '@/lib/supabase/profiles';
 import { formatCompensation } from '@/lib/compensation/helpers';
 import { parseDateString } from '@/lib/date-utils';
-import { buildJobLocationText, computeLocationTokens, profileHasLocationValue } from '@/lib/match-utils';
+import { buildJobText, computeLocationTokens, profileHasLocationValue } from '@/lib/match-utils';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from '@/i18n/navigation';
@@ -82,7 +82,7 @@ export default function JobCard({
   const profileIdeal = profile?.ideal_work_environment ?? null;
 
   const { matched: matchedLocationTokens, unmatched: unmatchedLocationTokens } = useMemo(() => {
-    const jobText = buildJobLocationText(job.location, job.summary);
+    const jobText = buildJobText(job.location, job.summary);
     return computeLocationTokens(profileIdeal, jobText);
   }, [job.location, job.summary, profileIdeal]);
 
@@ -216,6 +216,8 @@ export default function JobCard({
             ? t('jobCard.removeSseConfirm', { title: job.job_title, org: job.organization })
             : t('jobCard.markSseConfirm', { title: job.job_title, org: job.organization })
         }
+        confirmLabel={t('common.confirm')}
+        cancelLabel={t('common.cancel')}
         onConfirm={() => { setConfirmSse(false); onSseToggle(job); }}
         onCancel={() => setConfirmSse(false)}
       />

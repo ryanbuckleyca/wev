@@ -1,13 +1,13 @@
+import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseServer } from '@/lib/supabase-server';
 import { logger } from '@/lib/logger';
 import { RatedValue, JobRatedValue, getRankWeight } from './value-ratings';
 import {
-  buildJobLocationText,
+  buildJobText,
   combineFinalScore,
   computeLocationTokens,
   profileHasLocationValue,
   scoreLocationTokens,
-  tokeniseIdealEnv,
 } from './match-utils';
 
 interface MatchResult {
@@ -180,13 +180,11 @@ function calculateProfileJobScores(
     : (profile.values ?? []);
 
   // Value score
-  const vMatch = calculateMatch(
+  const { score: valueScore, shared_values: sharedValues } = calculateMatch(
     profileValues,
     job.values ?? [],
     job.values_rated as JobRatedValue[] | null,
   );
-  const valueScore: number | null = typeof vMatch.score === 'number' ? vMatch.score : null;
-  const sharedValues = vMatch.shared_values ?? [];
 
   // Skill score
   const userSkills: string[] = profile.skills ?? [];
@@ -204,36 +202,52 @@ function calculateProfileJobScores(
 
   // Work type score: empty profile.work_types → treat as "all selected"
   const profileWorkTypes: string[] = profile.work_types ?? [];
-  let workTypeScore: number | null = null;
-  if (profileWorkTypes.length === 0) {
-    workTypeScore = 1.0;
-  } else {
-    workTypeScore = job.work_type && profileWorkTypes.includes(job.work_type) ? 1.0 : 0.0;
-  }
+  const workTypeScore: number =
+    profileWorkTypes.length === 0 || (!!job.work_type && profileWorkTypes.includes(job.work_type))
+      ? 1.0
+      : 0.0;
 
-  // Location score
-  let locationScore: number | null = null;
+  // Location score: only when user has 'location' as a value and provided ideal_work_environment
   const idealEnv = profile.ideal_work_environment;
-  if (
-    profileHasLocationValue(profile.values, profile.values_rated) &&
-    idealEnv &&
-    idealEnv.trim().length > 0
-  ) {
-    const tokens = tokeniseIdealEnv(idealEnv);
-    if (tokens.length > 0) {
-      const { matched } = computeLocationTokens(idealEnv, jobText);
-      locationScore = scoreLocationTokens(matched, tokens.length);
-    }
+  let locationScore: number | null = null;
+  if (profileHasLocationValue(profile.values, profile.values_rated) && idealEnv?.trim()) {
+    locationScore = scoreLocationTokens(computeLocationTokens(idealEnv, jobText));
   }
 
   const score = combineFinalScore({ valueScore, skillScore, workTypeScore, locationScore });
 
-  return { score, value_score: valueScore, skill_score: skillScore, work_type_score: workTypeScore, location_score: locationScore, shared_values: sharedValues, shared_skills: sharedSkills };
+  return {
+    score,
+    value_score: valueScore,
+    skill_score: skillScore,
+    work_type_score: workTypeScore,
+    location_score: locationScore,
+    shared_values: sharedValues,
+    shared_skills: sharedSkills,
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Public batch-calculation functions
 // ---------------------------------------------------------------------------
+
+/** A profile row has matchable data if it has any values or skills. */
+function isMatchableProfile(p: { values?: unknown[] | null; values_rated?: unknown[] | null; skills?: unknown[] | null }): boolean {
+  return !!(p.values?.length || p.values_rated?.length || p.skills?.length);
+}
+
+/** A job row has matchable data if it has any values or skills. */
+function isMatchableJob(j: { values?: unknown[] | null; skills?: unknown[] | null }): boolean {
+  return !!(j.values?.length || j.skills?.length);
+}
+
+async function upsertMatches(supabase: SupabaseClient, matches: MatchResult[], context: string): Promise<void> {
+  if (matches.length === 0) return;
+  const { error } = await supabase
+    .from('job_matches')
+    .upsert(matches, { onConflict: 'user_id,job_id' });
+  if (error) logger.error({ err: error }, `Error upserting matches (${context})`);
+}
 
 /**
  * Calculate matches for a single user against all jobs.
@@ -241,7 +255,6 @@ function calculateProfileJobScores(
  */
 export async function calculateUserMatches(userId: string): Promise<void> {
   const supabase = getSupabaseServer();
-
   try {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -249,13 +262,7 @@ export async function calculateUserMatches(userId: string): Promise<void> {
       .eq('id', userId)
       .single();
 
-    if (profileError || !profile) return;
-
-    const userValues: string[] | RatedValue[] = profile.values_rated?.length
-      ? (profile.values_rated as RatedValue[])
-      : (profile.values ?? []);
-
-    if (!userValues.length) return;
+    if (profileError || !profile || !isMatchableProfile(profile)) return;
 
     const { data: jobs, error: jobsError } = await supabase
       .from('jobs')
@@ -268,21 +275,14 @@ export async function calculateUserMatches(userId: string): Promise<void> {
     }
 
     const matches: MatchResult[] = (jobs ?? [])
-      .filter((job) => job.values?.length || job.skills?.length)
-      .map((job) => {
-        const jobText = buildJobLocationText(job.location, job.summary, job.description);
-        const scores = calculateProfileJobScores(profile, job, jobText);
-        return { user_id: userId, job_id: job.id, ...scores };
-      });
+      .filter(isMatchableJob)
+      .map((job) => ({
+        user_id: userId,
+        job_id: job.id,
+        ...calculateProfileJobScores(profile, job, buildJobText(job.location, job.summary, job.description)),
+      }));
 
-    if (matches.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('job_matches')
-        .upsert(matches, { onConflict: 'user_id,job_id' });
-      if (upsertError) {
-        logger.error({ err: upsertError }, 'Error upserting matches (user batch)');
-      }
-    }
+    await upsertMatches(supabase, matches, 'user batch');
   } catch (error) {
     logger.error({ err: error }, 'Error calculating user matches');
   }
@@ -294,7 +294,6 @@ export async function calculateUserMatches(userId: string): Promise<void> {
  */
 export async function calculateJobMatches(jobId: string): Promise<void> {
   const supabase = getSupabaseServer();
-
   try {
     const { data: job, error: jobError } = await supabase
       .from('jobs')
@@ -302,9 +301,9 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
       .eq('id', jobId)
       .single();
 
-    if (jobError || !job?.values?.length) return;
+    if (jobError || !job || !isMatchableJob(job)) return;
 
-    const jobText = buildJobLocationText(job.location, job.summary, job.description);
+    const jobText = buildJobText(job.location, job.summary, job.description);
 
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
@@ -317,20 +316,14 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
     }
 
     const matches: MatchResult[] = (profiles ?? [])
-      .filter((p) => p.values?.length || p.values_rated?.length || p.skills?.length)
-      .map((profile) => {
-        const scores = calculateProfileJobScores(profile, job, jobText);
-        return { user_id: profile.id, job_id: jobId, ...scores };
-      });
+      .filter(isMatchableProfile)
+      .map((profile) => ({
+        user_id: profile.id,
+        job_id: jobId,
+        ...calculateProfileJobScores(profile, job, jobText),
+      }));
 
-    if (matches.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('job_matches')
-        .upsert(matches, { onConflict: 'user_id,job_id' });
-      if (upsertError) {
-        logger.error({ err: upsertError }, 'Error upserting matches (job batch)');
-      }
-    }
+    await upsertMatches(supabase, matches, 'job batch');
   } catch (error) {
     logger.error({ err: error }, 'Error calculating job matches');
   }
