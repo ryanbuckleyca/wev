@@ -6,7 +6,12 @@ interface MatchResult {
   user_id: string;
   job_id: string;
   score: number;
+  value_score: number | null;
+  skill_score: number | null;
+  work_type_score: number | null;
+  location_score: number | null;
   shared_values: string[];
+  shared_skills: string[];
 }
 
 /** Non-null object with string `value` (RatedValue-shaped; tolerates raw JSON). */
