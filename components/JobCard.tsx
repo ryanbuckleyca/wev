@@ -386,9 +386,6 @@ export default function JobCard({
             fadeBackground="var(--muted)"
             workType={job.work_type}
             selectedWorkTypes={selectedWorkTypes || []}
-            locationMatchPercentage={locationMatchPercentage}
-            matchedLocationTokens={matchedLocationTokens}
-            unmatchedLocationTokens={unmatchedLocationTokens}
           />
         </div>
       ) : null}
