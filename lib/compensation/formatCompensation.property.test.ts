@@ -15,8 +15,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { formatCompensation } from './helpers'
-import type { CompensationJobPosting } from './helpers'
-import type { CompensationUnit } from './constants'
+import type { JobPosting } from '@/lib/supabase'
 
 const LOCALE = 'en'
 
@@ -31,7 +30,7 @@ describe('Property 7: Display Fallback Invariant', () => {
    * { isStructured: false, primary: job.wage ?? 'N/A' }
    */
 
-  const fallbackCases: Array<{ label: string; job: CompensationJobPosting; expectedPrimary: string }> = [
+  const fallbackCases: Array<{ label: string; job: Partial<JobPosting>; expectedPrimary: string }> = [
     {
       label: 'min_value=null, unit_text=YEAR, wage set',
       job: { min_value: null, unit_text: 'YEAR', wage: '$60,000/year' },
@@ -60,7 +59,7 @@ describe('Property 7: Display Fallback Invariant', () => {
   ]
 
   it.each(fallbackCases)('$label → isStructured=false, primary=$expectedPrimary', ({ job, expectedPrimary }) => {
-    const result = formatCompensation(job, LOCALE)
+    const result = formatCompensation(job as JobPosting, LOCALE)
     expect(result.isStructured).toBe(false)
     expect(result.primary).toBe(expectedPrimary)
   })
@@ -76,7 +75,7 @@ describe('Property 8: Tilde Invariant', () => {
    * isInferred === true iff unit_text === 'HOUR' and hours_per_week == null
    */
 
-  const tildeCases: Array<{ label: string; job: CompensationJobPosting; expectedIsInferred: boolean }> = [
+  const tildeCases: Array<{ label: string; job: Partial<JobPosting>; expectedIsInferred: boolean }> = [
     {
       label: 'HOUR + null hours → isInferred=true',
       job: { min_value: 3000, unit_text: 'HOUR', hours_per_week: null },
@@ -105,7 +104,7 @@ describe('Property 8: Tilde Invariant', () => {
   ]
 
   it.each(tildeCases)('$label', ({ job, expectedIsInferred }) => {
-    const result = formatCompensation(job, LOCALE)
+    const result = formatCompensation(job as JobPosting, LOCALE)
     expect(result.isInferred).toBe(expectedIsInferred)
     if (expectedIsInferred) {
       expect(result.primary.startsWith('~')).toBe(true)
@@ -123,12 +122,12 @@ describe('Property 8: Tilde Invariant', () => {
 describe('Property 14: Secondary Display Condition', () => {
   /**
    * secondary is non-null iff unit_text === 'HOUR' and hours_per_week != null
-   * and hours_per_week !== 40
+   * and hours_per_week !== PLATFORM_DEFAULT_HOURS_PER_WEEK (40)
    */
 
   const secondaryCases: Array<{
     label: string
-    job: CompensationJobPosting
+    job: Partial<JobPosting>
     expectSecondary: boolean
   }> = [
     {
@@ -164,7 +163,7 @@ describe('Property 14: Secondary Display Condition', () => {
   ]
 
   it.each(secondaryCases)('$label', ({ job, expectSecondary }) => {
-    const result = formatCompensation(job, LOCALE)
+    const result = formatCompensation(job as JobPosting, LOCALE)
     if (expectSecondary) {
       expect(result.secondary).toBeDefined()
       expect(typeof result.secondary).toBe('string')

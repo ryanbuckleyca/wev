@@ -34,9 +34,12 @@ export interface JobPosting {
     { term: string; definition: string | null; scope_note: string | null }
   >;
   unit_text?: 'HOUR' | 'DAY' | 'WEEK' | 'MONTH' | 'YEAR' | null;
+  /** Stored as bigint cents in the DB. Supabase JS client returns this as number. */
   min_value?: number | null;
+  /** Stored as bigint cents in the DB. Supabase JS client returns this as number. */
   max_value?: number | null;
   hours_per_week?: number | null;
+  /** Metadata from the compensation extraction pipeline. Reserved for future use. */
   compensation_meta?: CompensationMeta | null;
 }
 

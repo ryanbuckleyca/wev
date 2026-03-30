@@ -51,12 +51,6 @@ function normalizePostedTimestamp(raw: string): number {
   return new Date(normalized).getTime();
 }
 
-function parseSalaryValue(wage: string | null | undefined, missingValue: number): number {
-  if (!wage) return missingValue;
-  const numericValue = parseFloat(wage.replace(/[^0-9.-]/g, ''));
-  return Number.isFinite(numericValue) ? numericValue : missingValue;
-}
-
 function getAnnualSortValue(job: JobPosting, missingValue: number): number {
   if (job.min_value != null && job.unit_text != null) {
     const annual = toAnnual(BigInt(job.min_value), job.unit_text, job.hours_per_week)
@@ -110,7 +104,7 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
       return false;
     }
 
-    if (!filters.showJobsWithoutSalary && !job.wage?.trim()) {
+    if (!filters.showJobsWithoutSalary && !job.wage?.trim() && job.min_value == null) {
       return false;
     }
 

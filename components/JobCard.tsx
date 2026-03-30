@@ -310,7 +310,11 @@ export default function JobCard({
             </div>
             <div className="job-detail-line">
               {(() => {
-                const compensationDisplay = formatCompensation(job, locale)
+                const compensationDisplay = formatCompensation(job, locale, {
+                  perYear: t('jobCard.perYear'),
+                  perHour: t('jobCard.perHour'),
+                  statedHoursPerWeek: (hours) => t('jobCard.statedHoursPerWeek', { hours }),
+                })
                 return (
                   <>
                     <span className="job-label">{t('jobCard.howMuch')} </span>

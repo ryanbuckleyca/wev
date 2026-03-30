@@ -22,16 +22,10 @@ export function toAnnual(
 // formatCompensation
 // ---------------------------------------------------------------------------
 
-/**
- * Minimal job shape needed by formatCompensation.
- * @deprecated Use JobPosting from @/lib/supabase instead.
- */
-export type CompensationJobPosting = JobPosting
-
 export type CompensationDisplay = {
   /** Main display string shown in JobCard */
   primary: string
-  /** Supplementary rate (shown when hours_per_week is stated and ≠ 40) */
+  /** Supplementary rate (shown when hours_per_week is stated and ≠ default) */
   secondary?: string
   /** true when hours_per_week was null and unit is HOUR */
   isInferred: boolean
@@ -39,22 +33,27 @@ export type CompensationDisplay = {
   isStructured: boolean
 }
 
-function formatCurrency(amountCents: number, locale: string): string {
+export type CompensationTranslations = {
+  perYear: string
+  perHour: string
+  statedHoursPerWeek: (hours: number) => string
+}
+
+function createCurrencyFormatter(locale: string): Intl.NumberFormat {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'CAD',
     currencyDisplay: 'narrowSymbol',
     maximumFractionDigits: 0,
-  }).format(amountCents / 100)
+  })
+}
+
+function formatCurrency(amountCents: bigint, locale: string): string {
+  return createCurrencyFormatter(locale).format(Number(amountCents) / 100)
 }
 
 function formatCurrencyRange(minCents: bigint, maxCents: bigint | null, locale: string): string {
-  const formatter = new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: 'CAD',
-    currencyDisplay: 'narrowSymbol',
-    maximumFractionDigits: 0,
-  })
+  const formatter = createCurrencyFormatter(locale)
   const minStr = formatter.format(Number(minCents) / 100)
   if (maxCents === null) return minStr
   const maxStr = formatter.format(Number(maxCents) / 100)
@@ -66,12 +65,6 @@ function formatCurrencyRange(minCents: bigint, maxCents: bigint | null, locale: 
  *
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6
  */
-export type CompensationTranslations = {
-  perYear: string
-  perHour: string
-  statedHoursPerWeek: (hours: number) => string
-}
-
 export function formatCompensation(
   job: JobPosting,
   locale: string,
@@ -80,6 +73,7 @@ export function formatCompensation(
   const perYear = t?.perYear ?? '/ year'
   const perHour = t?.perHour ?? '/ hour'
   const statedHours = (h: number) => t?.statedHoursPerWeek(h) ?? `(stated ${h}h/week)`
+
   // Fallback: unstructured data
   if (job.min_value == null || job.unit_text == null) {
     return {
@@ -97,25 +91,26 @@ export function formatCompensation(
       ? toAnnual(BigInt(job.max_value), job.unit_text, job.hours_per_week)
       : null
 
-  const prefix = isInferred ? '~' : ''
-
   // When hours are inferred (no unit keyword in original), show the hourly rate
   // directly rather than a computed annual — "~$21/hr" is more honest than "~$43,680 / year"
   let primary: string
   if (isInferred) {
-    const hourlyMin = formatCurrency(job.min_value, locale)
-    const hourlyMax = job.max_value != null ? formatCurrency(job.max_value, locale) : null
+    const hourlyMin = formatCurrency(BigInt(job.min_value), locale)
+    const hourlyMax = job.max_value != null ? formatCurrency(BigInt(job.max_value), locale) : null
     primary = hourlyMax
       ? `~${hourlyMin} – ${hourlyMax} ${perHour}`
       : `~${hourlyMin} ${perHour}`
   } else {
-    primary = `${prefix}${formatCurrencyRange(annualMin, annualMax, locale)} ${perYear}`
+    primary = `${formatCurrencyRange(annualMin, annualMax, locale)} ${perYear}`
   }
 
   let secondary: string | undefined
-  if (job.unit_text === 'HOUR' && job.hours_per_week != null && job.hours_per_week !== 40) {
-    const hourlyMin = formatCurrency(job.min_value, locale)
-    secondary = `${hourlyMin} ${perHour} ${statedHours(job.hours_per_week)}`
+  if (
+    job.unit_text === 'HOUR' &&
+    job.hours_per_week != null &&
+    job.hours_per_week !== PLATFORM_DEFAULT_HOURS_PER_WEEK
+  ) {
+    secondary = `${formatCurrency(BigInt(job.min_value), locale)} ${perHour} ${statedHours(job.hours_per_week)}`
   }
 
   return { primary, secondary, isInferred, isStructured: true }
