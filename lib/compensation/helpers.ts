@@ -43,6 +43,7 @@ function formatCurrency(amountCents: number, locale: string): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'CAD',
+    currencyDisplay: 'narrowSymbol',
     maximumFractionDigits: 0,
   }).format(amountCents / 100)
 }
@@ -51,12 +52,13 @@ function formatCurrencyRange(minCents: bigint, maxCents: bigint | null, locale: 
   const formatter = new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'CAD',
+    currencyDisplay: 'narrowSymbol',
     maximumFractionDigits: 0,
   })
   const minStr = formatter.format(Number(minCents) / 100)
   if (maxCents === null) return minStr
   const maxStr = formatter.format(Number(maxCents) / 100)
-  return `${minStr}–${maxStr}`
+  return `${minStr} – ${maxStr}`
 }
 
 /**
@@ -64,7 +66,20 @@ function formatCurrencyRange(minCents: bigint, maxCents: bigint | null, locale: 
  *
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6
  */
-export function formatCompensation(job: JobPosting, locale: string): CompensationDisplay {
+export type CompensationTranslations = {
+  perYear: string
+  perHour: string
+  statedHoursPerWeek: (hours: number) => string
+}
+
+export function formatCompensation(
+  job: JobPosting,
+  locale: string,
+  t?: CompensationTranslations
+): CompensationDisplay {
+  const perYear = t?.perYear ?? '/ year'
+  const perHour = t?.perHour ?? '/ hour'
+  const statedHours = (h: number) => t?.statedHoursPerWeek(h) ?? `(stated ${h}h/week)`
   // Fallback: unstructured data
   if (job.min_value == null || job.unit_text == null) {
     return {
@@ -83,12 +98,24 @@ export function formatCompensation(job: JobPosting, locale: string): Compensatio
       : null
 
   const prefix = isInferred ? '~' : ''
-  const primary = `${prefix}${formatCurrencyRange(annualMin, annualMax, locale)} / year`
+
+  // When hours are inferred (no unit keyword in original), show the hourly rate
+  // directly rather than a computed annual — "~$21/hr" is more honest than "~$43,680 / year"
+  let primary: string
+  if (isInferred) {
+    const hourlyMin = formatCurrency(job.min_value, locale)
+    const hourlyMax = job.max_value != null ? formatCurrency(job.max_value, locale) : null
+    primary = hourlyMax
+      ? `~${hourlyMin} – ${hourlyMax} ${perHour}`
+      : `~${hourlyMin} ${perHour}`
+  } else {
+    primary = `${prefix}${formatCurrencyRange(annualMin, annualMax, locale)} ${perYear}`
+  }
 
   let secondary: string | undefined
   if (job.unit_text === 'HOUR' && job.hours_per_week != null && job.hours_per_week !== 40) {
     const hourlyMin = formatCurrency(job.min_value, locale)
-    secondary = `${hourlyMin}/hr (stated ${job.hours_per_week}h/week)`
+    secondary = `${hourlyMin} ${perHour} ${statedHours(job.hours_per_week)}`
   }
 
   return { primary, secondary, isInferred, isStructured: true }
