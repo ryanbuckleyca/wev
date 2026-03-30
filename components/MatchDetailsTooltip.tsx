@@ -1,5 +1,12 @@
 import { Lineicons } from '@lineiconshq/react-lineicons';
-import { HeartSolid, Briefcase2Solid, CheckOutlined, XmarkOutlined } from '@lineiconshq/free-icons';
+import {
+  HeartSolid,
+  Briefcase2Solid,
+  LocationArrowRightSolid,
+  CheckOutlined,
+  XmarkOutlined,
+} from '@lineiconshq/free-icons';
+import type { IconDefinition } from '@lineiconshq/react-lineicons';
 import ProgressDonut from './ProgressDonut';
 
 type TranslateFn = (key: string, values?: Record<string, string | number>) => string;
@@ -24,6 +31,48 @@ interface MatchDetailsTooltipProps {
   unmatchedLocationTokens?: string[];
 }
 
+function MatchListItem({ label, id, matched }: { label: string; id: string; matched: boolean }) {
+  return (
+    <div
+      key={id}
+      className={`text-xs lowercase flex items-center gap-1 ${matched ? '' : 'text-gray-400'}`}
+    >
+      <Lineicons
+        icon={matched ? CheckOutlined : XmarkOutlined}
+        size={11}
+        className="flex-shrink-0"
+      />
+      {label}
+    </div>
+  );
+}
+
+function MatchSection({
+  icon,
+  iconClass,
+  label,
+  percentage,
+  children,
+}: {
+  icon: IconDefinition;
+  iconClass: string;
+  label: string;
+  percentage: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="font-medium lowercase flex items-center gap-1 text-foreground">
+        <Lineicons icon={icon} size={12} className={`flex-shrink-0 ${iconClass}`} />
+        <span>
+          {label}: {Math.round(percentage)}%
+        </span>
+      </div>
+      <div className="pl-1.5 space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
 export default function MatchDetailsTooltip({
   totalMatchPercentage,
   valueMatchPercentage,
@@ -43,8 +92,6 @@ export default function MatchDetailsTooltip({
   matchedLocationTokens,
   unmatchedLocationTokens,
 }: MatchDetailsTooltipProps) {
-  const textColor = 'rgb(var(--foreground))';
-
   const formatValueLabel = (value: string) =>
     value
       .replace(/_/g, ' ')
@@ -52,30 +99,27 @@ export default function MatchDetailsTooltip({
       .toLowerCase();
 
   const orderedValues = [
-    ...values.filter((value) => sharedValues.includes(value)),
-    ...values.filter((value) => !sharedValues.includes(value)),
+    ...values.filter((v) => sharedValues.includes(v)),
+    ...values.filter((v) => !sharedValues.includes(v)),
   ].slice(0, 5);
 
   const orderedSkills = [
-    ...skills.filter((skill) => sharedSkills.includes(skill)),
-    ...skills.filter((skill) => !sharedSkills.includes(skill)),
+    ...skills.filter((s) => sharedSkills.includes(s)),
+    ...skills.filter((s) => !sharedSkills.includes(s)),
   ]
-    .filter((skill) => skillTerms[skill]) // Only show skills with terms
+    .filter((s) => skillTerms[s])
     .slice(0, 5);
 
-  const renderListItem = (label: string, key: string, matched: boolean) => (
-    <div
-      key={key}
-      className={`text-xs lowercase flex items-center gap-1 ${matched ? '' : 'text-gray-400'}`}
-    >
-      {matched ? (
-        <Lineicons icon={CheckOutlined} size={11} className="flex-shrink-0" />
-      ) : (
-        <Lineicons icon={XmarkOutlined} size={11} className="flex-shrink-0" />
-      )}
-      {label}
-    </div>
-  );
+  const workTypeLabel =
+    jobWorkType === 'remote'
+      ? translate('filters.workType.remote')
+      : jobWorkType === 'hybrid'
+        ? translate('filters.workType.hybrid')
+        : translate('filters.workType.office');
+
+  const workTypeMatched =
+    !(profileWorkTypes && profileWorkTypes.length > 0) ||
+    (profileWorkTypes ?? []).includes(jobWorkType ?? '');
 
   return (
     <div className="space-y-3">
@@ -86,91 +130,90 @@ export default function MatchDetailsTooltip({
           text={`${totalMatchPercentage}%`}
         />
         <div className="text-xs opacity-75 lowercase">{translate('matchDetails.totalMatch')}</div>
-        <div className="text-xs opacity-75 lowercase mt-1">{translate('matchDetails.breakdown')}</div>
+        <div className="text-xs opacity-75 lowercase mt-1">
+          {translate('matchDetails.breakdown')}
+        </div>
         <div className="text-xs opacity-60 lowercase">{translate('matchDetails.weightsNote')}</div>
       </div>
 
       {orderedValues.length > 0 && (
-        <div className="space-y-1">
-          <div
-            className="font-medium lowercase flex items-center gap-1"
-            style={{ color: textColor }}
-          >
-            <Lineicons icon={HeartSolid} size={12} className="text-wev-brand-accent" />
-            <span>
-              {translate('matchDetails.values')}: {valueMatchPercentage}%
-            </span>
-          </div>
-          {orderedValues.map((value) => {
-            const isMatched = sharedValues.includes(value);
-            const valueName = formatValueLabel(value);
-            return renderListItem(valueName, `value-${value}`, isMatched);
-          })}
-        </div>
+        <MatchSection
+          icon={HeartSolid}
+          iconClass="text-wev-brand-accent"
+          label={translate('matchDetails.values')}
+          percentage={valueMatchPercentage}
+        >
+          {orderedValues.map((value) => (
+            <MatchListItem
+              key={`value-${value}`}
+              id={`value-${value}`}
+              label={formatValueLabel(value)}
+              matched={sharedValues.includes(value)}
+            />
+          ))}
+        </MatchSection>
       )}
 
       {orderedSkills.length > 0 && (
-        <div className="space-y-1">
-          <div
-            className="font-medium lowercase flex items-center gap-1"
-            style={{ color: textColor }}
-          >
-            <Lineicons icon={Briefcase2Solid} size={12} className="text-primary" />
-            <span>
-              {translate('matchDetails.skills')}: {skillMatchPercentage}%
-            </span>
-          </div>
-          {orderedSkills.map((skill) => {
-            const isMatched = sharedSkills.includes(skill);
-            const skillName = skillTerms[skill];
-            return renderListItem(skillName, `skill-${skill}`, isMatched);
-          })}
-        </div>
+        <MatchSection
+          icon={Briefcase2Solid}
+          iconClass="text-primary"
+          label={translate('matchDetails.skills')}
+          percentage={skillMatchPercentage}
+        >
+          {orderedSkills.map((skill) => (
+            <MatchListItem
+              key={`skill-${skill}`}
+              id={`skill-${skill}`}
+              label={skillTerms[skill]}
+              matched={sharedSkills.includes(skill)}
+            />
+          ))}
+        </MatchSection>
       )}
 
-      {typeof workTypeMatchPercentage === 'number' && (
-        <div className="space-y-1">
-          <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
-            <span>
-              {translate('matchDetails.workType')}: {Math.round(workTypeMatchPercentage)}%
-            </span>
-          </div>
-          {jobWorkType && (
-            <div className="pl-3">
-              {renderListItem(
-                jobWorkType === 'remote'
-                  ? translate('filters.workType.remote')
-                  : jobWorkType === 'hybrid'
-                  ? translate('filters.workType.hybrid')
-                  : translate('filters.workType.office'),
-                `worktype-${jobWorkType}`,
-                // matched when profileWorkTypes empty (treated as all selected) or contains jobWorkType
-                !(profileWorkTypes && profileWorkTypes.length > 0) || (profileWorkTypes || []).includes(jobWorkType),
-              )}
-            </div>
-          )}
-        </div>
+      {typeof workTypeMatchPercentage === 'number' && jobWorkType && (
+        <MatchSection
+          icon={LocationArrowRightSolid}
+          iconClass="text-primary"
+          label={translate('matchDetails.workType')}
+          percentage={workTypeMatchPercentage}
+        >
+          <MatchListItem
+            id={`worktype-${jobWorkType}`}
+            label={workTypeLabel}
+            matched={workTypeMatched}
+          />
+        </MatchSection>
       )}
 
       {typeof locationMatchPercentage === 'number' && (
-        <div className="space-y-1">
-          <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
-            <span>
-              {translate('matchDetails.location')}: {Math.round(locationMatchPercentage)}%
-            </span>
+        <MatchSection
+          icon={LocationArrowRightSolid}
+          iconClass="text-primary"
+          label={translate('matchDetails.location')}
+          percentage={locationMatchPercentage}
+        >
+          {matchedLocationTokens?.map((tok, i) => (
+            <MatchListItem key={`loc-match-${i}`} id={`loc-match-${i}`} label={tok} matched={true} />
+          ))}
+          {unmatchedLocationTokens?.map((tok, i) => (
+            <MatchListItem
+              key={`loc-unmatch-${i}`}
+              id={`loc-unmatch-${i}`}
+              label={tok}
+              matched={false}
+            />
+          ))}
+        </MatchSection>
+      )}
+
+      {profileHasLocationValue &&
+        (!profileIdealWorkEnvironment || profileIdealWorkEnvironment.trim().length === 0) && (
+          <div className="text-xs text-yellow-600 lowercase">
+            {translate('matchDetails.locationRequiresProfile')}
           </div>
-          {(matchedLocationTokens?.length || unmatchedLocationTokens?.length) && (
-            <div className="pl-3">
-              {matchedLocationTokens?.map((tok, i) => renderListItem(tok, `loc-match-${i}`, true))}
-              {unmatchedLocationTokens?.map((tok, i) => renderListItem(tok, `loc-unmatch-${i}`, false))}
-            </div>
-          )}
-        </div>
-      )}
-      {/* If user selected 'location' but didn't provide an ideal work environment, show a hint */}
-      {profileHasLocationValue && (!profileIdealWorkEnvironment || profileIdealWorkEnvironment.trim().length === 0) && (
-        <div className="text-xs text-yellow-600 lowercase">{translate('matchDetails.locationRequiresProfile')}</div>
-      )}
+        )}
     </div>
   );
 }
