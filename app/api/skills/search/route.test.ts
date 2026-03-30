@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const mockRpc = vi.fn();
+const { mockRpc } = vi.hoisted(() => ({ mockRpc: vi.fn() }));
 
 vi.mock('@/lib/supabase-server', () => ({
   supabaseServer: { rpc: mockRpc },

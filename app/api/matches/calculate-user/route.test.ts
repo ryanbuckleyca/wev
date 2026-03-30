@@ -8,16 +8,19 @@ vi.mock('@/lib/match-calculator', () => ({
   calculateUserMatches: vi.fn(),
 }));
 
-const mockSingle = vi.fn();
-const mockSupabase = {
-  from: vi.fn(() => ({
-    select: vi.fn(() => ({
-      eq: vi.fn(() => ({
-        single: mockSingle,
+const { mockSingle, mockSupabase } = vi.hoisted(() => {
+  const mockSingle = vi.fn();
+  const mockSupabase = {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: mockSingle,
+        })),
       })),
     })),
-  })),
-};
+  };
+  return { mockSingle, mockSupabase };
+});
 
 vi.mock('@/lib/supabase-server', () => ({
   supabaseServer: mockSupabase,

@@ -3,9 +3,11 @@ import { DELETE } from './route';
 import { NextRequest } from 'next/server';
 import { getRequestUser } from '@/lib/auth/request-user';
 
-const mockSignInWithPassword = vi.fn();
-const mockDeleteUser = vi.fn();
-const mockAdminSignOut = vi.fn();
+const { mockSignInWithPassword, mockDeleteUser, mockAdminSignOut } = vi.hoisted(() => ({
+  mockSignInWithPassword: vi.fn(),
+  mockDeleteUser: vi.fn(),
+  mockAdminSignOut: vi.fn(),
+}));
 
 vi.mock('@/lib/auth/request-user', () => ({
   getRequestUser: vi.fn(),

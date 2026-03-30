@@ -4,18 +4,21 @@ import { NextRequest } from 'next/server';
 import { PATCH } from './route';
 import { adminGateUnauthorized } from '@/test-utils/admin-route';
 
-const mockSingle = vi.fn();
-const mockSupabase = {
-  from: vi.fn(() => ({
-    update: vi.fn(() => ({
-      eq: vi.fn(() => ({
-        select: vi.fn(() => ({
-          single: mockSingle,
+const { mockSingle, mockSupabase } = vi.hoisted(() => {
+  const mockSingle = vi.fn();
+  const mockSupabase = {
+    from: vi.fn(() => ({
+      update: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          select: vi.fn(() => ({
+            single: mockSingle,
+          })),
         })),
       })),
     })),
-  })),
-};
+  };
+  return { mockSingle, mockSupabase };
+});
 
 vi.mock('@/lib/supabase-server', () => ({
   supabaseServer: mockSupabase,
