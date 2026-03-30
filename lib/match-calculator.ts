@@ -304,7 +304,8 @@ export async function calculateUserMatches(userId: string): Promise<void> {
 
     const { data: jobs, error: jobsError } = await supabase
       .from('jobs')
-      .select('id, values, values_rated, skills, work_type, location, summary, description');
+      .select('id, values, values_rated, skills, work_type, location, summary, description')
+      .not('values', 'is', null);
 
     if (jobsError) {
       logger.error({ err: jobsError }, 'Error fetching jobs for matching');
@@ -334,7 +335,8 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
 
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, values, values_rated, skills, work_types, ideal_work_environment');
+      .select('id, values, values_rated, skills, work_types, ideal_work_environment')
+      .not('values', 'is', null);
 
     if (profilesError) {
       logger.error({ err: profilesError }, 'Error fetching profiles for matching');

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
     const supabase = supabaseServer;
 
-    let allData: EscoSkillRow[] = [];
+    const allData: EscoSkillRow[] = [];
     let from = 0;
     const pageSize = 1000;
 
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       if (error) throw error;
       if (!data || data.length === 0) break;
 
-      allData = [...allData, ...(data as EscoSkillRow[])];
+      allData.push(...(data as EscoSkillRow[]));
       if (data.length < pageSize) break;
       from += pageSize;
     }

@@ -9,6 +9,9 @@ vi.mock('server-only', () => ({}));
 // Set up Supabase env vars for tests
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'test-key';
+// Required by supabase-server.ts (throws at module load if missing)
+process.env.SUPABASE_URL = 'https://test.supabase.co';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
 
 process.env.VITEST = 'true';
 process.env.LOG_LEVEL = 'silent';
