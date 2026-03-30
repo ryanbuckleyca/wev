@@ -6,7 +6,7 @@ import {
   CheckOutlined,
   XmarkOutlined,
 } from '@lineiconshq/free-icons';
-import type { IconDefinition } from '@lineiconshq/react-lineicons';
+import type { IconData } from '@lineiconshq/free-icons';
 import ProgressDonut from './ProgressDonut';
 
 type TranslateFn = (key: string, values?: Record<string, string | number>) => string;
@@ -54,7 +54,7 @@ function MatchSection({
   percentage,
   children,
 }: {
-  icon: IconDefinition;
+  icon: IconData;
   iconClass: string;
   label: string;
   percentage: number;
