@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState, useMemo } from 'react';
-import toast from 'react-hot-toast';
+import notify from '@/lib/toast';
 import { usePasswordStrength } from '@/hooks/usePasswordStrength';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
@@ -103,7 +103,7 @@ export default function AccountSettingsPage() {
     const hasPasswordChanges = passwordChanged;
 
     if (!hasEmailChanges && !hasPasswordChanges) {
-      toast.error(t('accountSettings.noChanges'));
+      notify.error(t('accountSettings.noChanges'));
       return;
     }
 
@@ -149,31 +149,31 @@ export default function AccountSettingsPage() {
 
         if (emailError) {
           if (passwordUpdated) {
-            toast.success(t('accountSettings.passwordUpdateSuccess'));
+            notify.success(t('accountSettings.passwordUpdateSuccess'));
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
             setPasswordErrors([]);
           }
-          toast.error(emailError.message || t('accountSettings.emailUpdateFailed'));
+          notify.error(emailError.message || t('accountSettings.emailUpdateFailed'));
           return;
         }
       }
 
       // Success messages
       if (hasEmailChanges) {
-        toast.success(t('accountSettings.emailUpdateSuccess'));
+        notify.success(t('accountSettings.emailUpdateSuccess'));
       }
 
       if (passwordUpdated) {
-        toast.success(t('accountSettings.passwordUpdateSuccess'));
+        notify.success(t('accountSettings.passwordUpdateSuccess'));
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
         setPasswordErrors([]);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('accountSettings.updateFailed'));
+      notify.error(err instanceof Error ? err.message : t('accountSettings.updateFailed'));
     } finally {
       setIsUpdating(false);
     }

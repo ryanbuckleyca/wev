@@ -9,7 +9,7 @@ import { type WorkValue, buildWorkValues, getValueDefinition } from '@/lib/value
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 import { adjustCutoffOnRemove, adjustCutoffOnReorder } from '@/lib/ranked-list';
-import toast from 'react-hot-toast';
+import notify from '@/lib/toast';
 
 export { adjustCutoffOnRemove, adjustCutoffOnReorder };
 
@@ -223,7 +223,7 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
       formData.ideal_work_environment.length,
     );
     if (validationError) {
-      toast.error(t(validationError.key, validationError.params ?? {}));
+      notify.error(t(validationError.key, validationError.params ?? {}));
       return;
     }
 
@@ -246,9 +246,9 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
         work_types: normalizeWorkTypes(formData.work_types),
         ideal_work_environment: formData.ideal_work_environment.trim() || null,
       });
-      toast.success(t('updateSuccess'));
+      notify.success(t('updateSuccess'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('updateFailed'));
+      notify.error(err instanceof Error ? err.message : t('updateFailed'));
     } finally {
       setIsSaving(false);
     }

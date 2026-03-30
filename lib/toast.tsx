@@ -5,90 +5,38 @@ interface ToastOptions {
   duration?: number;
 }
 
+const DEFAULT_DURATION = 5000;
+
+function makeToast(
+  type: 'success' | 'error' | 'warning' | 'info',
+  message: string,
+  options?: ToastOptions,
+) {
+  const duration = options?.duration ?? DEFAULT_DURATION;
+  const id = `${type}-${Date.now()}`;
+
+  toast.custom(
+    () => (
+      <BannerMessage
+        type={type}
+        message={message}
+        duration={duration}
+        onDismiss={() => toast.remove(id)}
+        onExpire={() => toast.remove(id)}
+      />
+    ),
+    // We own the timer — tell react-hot-toast to never auto-dismiss
+    { duration: Infinity, id },
+  );
+
+  return id;
+}
+
 const notify = {
-  success: (message: string, options?: ToastOptions) => {
-    return toast.custom(
-      (t) => (
-        <div
-          style={{
-            opacity: t.visible ? 1 : 0,
-            transform: `translateY(${t.visible ? 0 : -20}px)`,
-            transition: 'all 0.2s',
-            cursor: 'pointer',
-          }}
-          onClick={() => toast.dismiss(t.id)}
-        >
-          <BannerMessage type="success" message={message} />
-        </div>
-      ),
-      {
-        duration: options?.duration || 4000,
-      },
-    );
-  },
-
-  error: (message: string, options?: ToastOptions) => {
-    return toast.custom(
-      (t) => (
-        <div
-          style={{
-            opacity: t.visible ? 1 : 0,
-            transform: `translateY(${t.visible ? 0 : -20}px)`,
-            transition: 'all 0.2s',
-            cursor: 'pointer',
-          }}
-          onClick={() => toast.dismiss(t.id)}
-        >
-          <BannerMessage type="error" message={message} />
-        </div>
-      ),
-      {
-        duration: options?.duration || 4000,
-      },
-    );
-  },
-
-  warning: (message: string, options?: ToastOptions) => {
-    return toast.custom(
-      (t) => (
-        <div
-          style={{
-            opacity: t.visible ? 1 : 0,
-            transform: `translateY(${t.visible ? 0 : -20}px)`,
-            transition: 'all 0.2s',
-            cursor: 'pointer',
-          }}
-          onClick={() => toast.dismiss(t.id)}
-        >
-          <BannerMessage type="warning" message={message} />
-        </div>
-      ),
-      {
-        duration: options?.duration || 4000,
-      },
-    );
-  },
-
-  info: (message: string, options?: ToastOptions) => {
-    return toast.custom(
-      (t) => (
-        <div
-          style={{
-            opacity: t.visible ? 1 : 0,
-            transform: `translateY(${t.visible ? 0 : -20}px)`,
-            transition: 'all 0.2s',
-            cursor: 'pointer',
-          }}
-          onClick={() => toast.dismiss(t.id)}
-        >
-          <BannerMessage type="info" message={message} />
-        </div>
-      ),
-      {
-        duration: options?.duration || 4000,
-      },
-    );
-  },
+  success: (message: string, options?: ToastOptions) => makeToast('success', message, options),
+  error:   (message: string, options?: ToastOptions) => makeToast('error',   message, options),
+  warning: (message: string, options?: ToastOptions) => makeToast('warning', message, options),
+  info:    (message: string, options?: ToastOptions) => makeToast('info',    message, options),
 };
 
 export default notify;
