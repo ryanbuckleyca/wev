@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 import { logger } from '@/lib/logger';
 import { RatedValue, JobRatedValue, getRankWeight } from './value-ratings';
 import {
@@ -152,12 +152,17 @@ export function calculateMatch(
 // Skill score (same overlap + bonus pattern as calculateMatch)
 // ---------------------------------------------------------------------------
 
+/**
+ * Returns score: 0 (not null) when either array is empty — consistent with calculateMatch.
+ * Uses a Set for O(1) lookups, consistent with the value-match path.
+ */
 function calculateSkillScore(
   userSkills: string[],
   jobSkills: string[],
-): { score: number | null; shared: string[] } {
-  if (userSkills.length === 0 || jobSkills.length === 0) return { score: null, shared: [] };
-  const shared = userSkills.filter((s) => jobSkills.includes(s));
+): { score: number; shared: string[] } {
+  if (userSkills.length === 0 || jobSkills.length === 0) return { score: 0, shared: [] };
+  const jobSkillSet = new Set(jobSkills);
+  const shared = userSkills.filter((s) => jobSkillSet.has(s));
   const score = Math.min(shared.length / userSkills.length + Math.min(shared.length * 0.1, 0.3), 1.0);
   return { score, shared };
 }
@@ -241,14 +246,12 @@ function isMatchableProfile(p: ProfileLike): boolean {
   return !!(p.values?.length || p.values_rated?.length || p.skills?.length);
 }
 
-/** A job row has matchable data if it has any values or skills. */
+/** A job row has matchable data if it has any values, values_rated, or skills. */
 function isMatchableJob(j: JobLike): boolean {
-  return !!(j.values?.length || j.skills?.length);
+  return !!(j.values?.length || j.values_rated?.length || j.skills?.length);
 }
 
-type MatchContext = 'userBatch' | 'jobBatch';
-
-async function upsertMatches(supabase: SupabaseClient, matches: MatchResult[], context: MatchContext): Promise<void> {
+async function upsertMatches(supabase: SupabaseClient, matches: MatchResult[], context: string): Promise<void> {
   if (matches.length === 0) return;
   const { error } = await supabase
     .from('job_matches')
@@ -256,16 +259,44 @@ async function upsertMatches(supabase: SupabaseClient, matches: MatchResult[], c
   if (error) logger.error({ err: error }, `Error upserting matches (${context})`);
 }
 
+// ---------------------------------------------------------------------------
+// Shared batch runner — avoids duplicating fetch/filter/map/upsert logic
+// ---------------------------------------------------------------------------
+
+interface MatchBatchOptions {
+  supabase: SupabaseClient;
+  profiles: (ProfileLike & { id: string })[];
+  jobs: (JobLike & { id: string })[];
+  context: string;
+}
+
+async function runMatchBatch({ supabase, profiles, jobs, context }: MatchBatchOptions): Promise<void> {
+  const matches: MatchResult[] = [];
+
+  for (const job of jobs.filter(isMatchableJob)) {
+    const jobText = buildJobText(job.location, job.summary, job.description);
+    for (const profile of profiles.filter(isMatchableProfile)) {
+      matches.push({
+        user_id: profile.id,
+        job_id: job.id,
+        ...calculateProfileJobScores(profile, job, jobText),
+      });
+    }
+  }
+
+  await upsertMatches(supabase, matches, context);
+}
+
 /**
  * Calculate matches for a single user against all jobs.
  * Uses the service Supabase client so reads/writes bypass RLS.
  */
 export async function calculateUserMatches(userId: string): Promise<void> {
-  const supabase = getSupabaseServer();
+  const supabase = supabaseServer;
   try {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('values, values_rated, skills, work_types, ideal_work_environment')
+      .select('id, values, values_rated, skills, work_types, ideal_work_environment')
       .eq('id', userId)
       .single();
 
@@ -273,23 +304,14 @@ export async function calculateUserMatches(userId: string): Promise<void> {
 
     const { data: jobs, error: jobsError } = await supabase
       .from('jobs')
-      .select('id, values, values_rated, skills, work_type, location, summary, description')
-      .not('values', 'is', null);
+      .select('id, values, values_rated, skills, work_type, location, summary, description');
 
     if (jobsError) {
       logger.error({ err: jobsError }, 'Error fetching jobs for matching');
       return;
     }
 
-    const matches: MatchResult[] = (jobs ?? [])
-      .filter(isMatchableJob)
-      .map((job) => ({
-        user_id: userId,
-        job_id: job.id,
-        ...calculateProfileJobScores(profile, job, buildJobText(job.location, job.summary, job.description)),
-      }));
-
-    await upsertMatches(supabase, matches, 'userBatch');
+    await runMatchBatch({ supabase, profiles: [profile], jobs: jobs ?? [], context: 'userBatch' });
   } catch (error) {
     logger.error({ err: error }, 'Error calculating user matches');
   }
@@ -300,37 +322,26 @@ export async function calculateUserMatches(userId: string): Promise<void> {
  * Uses the service Supabase client so reads/writes bypass RLS.
  */
 export async function calculateJobMatches(jobId: string): Promise<void> {
-  const supabase = getSupabaseServer();
+  const supabase = supabaseServer;
   try {
     const { data: job, error: jobError } = await supabase
       .from('jobs')
-      .select('values, values_rated, skills, work_type, location, summary, description')
+      .select('id, values, values_rated, skills, work_type, location, summary, description')
       .eq('id', jobId)
       .single();
 
     if (jobError || !job || !isMatchableJob(job)) return;
 
-    const jobText = buildJobText(job.location, job.summary, job.description);
-
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, values, values_rated, skills, work_types, ideal_work_environment')
-      .not('values', 'is', null);
+      .select('id, values, values_rated, skills, work_types, ideal_work_environment');
 
     if (profilesError) {
       logger.error({ err: profilesError }, 'Error fetching profiles for matching');
       return;
     }
 
-    const matches: MatchResult[] = (profiles ?? [])
-      .filter(isMatchableProfile)
-      .map((profile) => ({
-        user_id: profile.id,
-        job_id: jobId,
-        ...calculateProfileJobScores(profile, job, jobText),
-      }));
-
-    await upsertMatches(supabase, matches, 'jobBatch');
+    await runMatchBatch({ supabase, profiles: profiles ?? [], jobs: [job], context: 'jobBatch' });
   } catch (error) {
     logger.error({ err: error }, 'Error calculating job matches');
   }

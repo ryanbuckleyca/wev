@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 
 /** Row shape for `esco_skills` columns selected below (localized ESCO fields). */
 type EscoSkillRow = {

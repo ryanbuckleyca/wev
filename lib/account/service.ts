@@ -2,7 +2,7 @@ import 'server-only';
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase/server';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 
 export class AccountServiceError extends Error {
   constructor(

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 import normalizeJobsWithSource from '@/lib/normalize-job';
 import { resolveSkillLabels, attachSkillLabels, parseLocale } from '@/lib/resolve-skill-labels';
 
