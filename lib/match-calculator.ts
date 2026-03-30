@@ -202,10 +202,9 @@ function calculateProfileJobScores(
 
   // Work type score: empty profile.work_types → treat as "all selected"
   const profileWorkTypes: string[] = profile.work_types ?? [];
-  const workTypeScore: number =
-    profileWorkTypes.length === 0 || (!!job.work_type && profileWorkTypes.includes(job.work_type))
-      ? 1.0
-      : 0.0;
+  const noWorkTypePreference = profileWorkTypes.length === 0;
+  const jobMatchesWorkType = !!job.work_type && profileWorkTypes.includes(job.work_type);
+  const workTypeScore: number = noWorkTypePreference || jobMatchesWorkType ? 1.0 : 0.0;
 
   // Location score: only when user has 'location' as a value and provided ideal_work_environment
   const idealEnv = profile.ideal_work_environment;
@@ -232,7 +231,7 @@ function calculateProfileJobScores(
 // ---------------------------------------------------------------------------
 
 /** A profile row has matchable data if it has any values or skills. */
-function isMatchableProfile(p: { values?: unknown[] | null; values_rated?: unknown[] | null; skills?: unknown[] | null }): boolean {
+function isMatchableProfile(p: ProfileLike): boolean {
   return !!(p.values?.length || p.values_rated?.length || p.skills?.length);
 }
 
@@ -241,7 +240,9 @@ function isMatchableJob(j: { values?: unknown[] | null; skills?: unknown[] | nul
   return !!(j.values?.length || j.skills?.length);
 }
 
-async function upsertMatches(supabase: SupabaseClient, matches: MatchResult[], context: string): Promise<void> {
+type MatchContext = 'user batch' | 'job batch';
+
+async function upsertMatches(supabase: SupabaseClient, matches: MatchResult[], context: MatchContext): Promise<void> {
   if (matches.length === 0) return;
   const { error } = await supabase
     .from('job_matches')
