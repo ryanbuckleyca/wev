@@ -110,7 +110,12 @@
   "matchDetails": {
     "totalMatch": "Correspondance totale",
     "values": "Valeurs",
-    "skills": "Compétences"
+    "skills": "Compétences",
+    "workType": "Type de travail",
+    "location": "Localisation",
+    "breakdown": "Répartition : Valeurs 55% • Compétences 35% • Type de travail 5% • Localisation 5%",
+    "weightsNote": "Les pondérations sont ajustées lorsque certaines signaux manquent."
+    ,"locationRequiresProfile": "Vous avez sélectionné « Localisation » dans votre profil — ajoutez une description de l'environnement de travail idéal pour activer la correspondance par localisation."
   },
   "expand": {
     "expandAll": "Tout développer",
@@ -151,6 +156,8 @@
     "howMuch": "Combien :",
     "perYear": "/ an",
     "perHour": "/ heure",
+    "volunteer": "Bénévole",
+    "internship": "Stage",
     "statedHoursPerWeek": "({hours}h/semaine)",
     "match": "% de correspondance :",
     "valuesMatch": "% de correspondance valeurs :",
@@ -451,203 +458,219 @@
   "values": {
     "Advancement": {
       "name": "Avancement",
-      "description": "Progresser vers des niveaux supérieurs de responsabilité, d'autorité ou de portée.",
-      "example": "Exemple : opportunités de passer de spécialiste à gestionnaire au fil du temps."
+      "description": "Pouvoir progresser rapidement, en obtenant des opportunités de croissance et d'ancienneté grâce à un travail bien fait."
+    },
+    "Adventure": {
+      "name": "Aventure",
+      "description": "Avoir des responsabilités professionnelles impliquant des prises de risques fréquentes."
     },
     "Aesthetic": {
       "name": "Esthétique",
-      "description": "Travailler dans des environnements où la beauté, le design et la forme comptent.",
-      "example": "Exemple : créer un travail visuel soigné et améliorer l'apparence et la sensation des choses."
+      "description": "Être impliqué dans l'étude ou l'appréciation de la beauté des choses ou des idées."
     },
     "Affiliation": {
-      "name": "Affiliation",
-      "description": "Se sentir accepté et connecté à un groupe de travail solidaire.",
-      "example": "Exemple : faire partie d'une culture d'équipe étroite et collaborative."
+      "name": "Appartenance",
+      "description": "Être reconnu comme membre d'une organisation particulière."
     },
     "Artistic Creativity": {
       "name": "Créativité artistique",
-      "description": "Produire un travail artistique original avec de la place pour l'imagination et le style.",
-      "example": "Exemple : créer des illustrations, écrits, musique ou travaux multimédias uniques."
+      "description": "S'engager dans un travail créatif dans l'un des nombreux arts."
     },
     "Challenge": {
-      "name": "Défi",
-      "description": "Relever des objectifs difficiles qui étirent les compétences et la capacité de résolution de problèmes.",
-      "example": "Exemple : résoudre des problèmes complexes sans chemin de solution évident."
+      "name": "Problèmes stimulants",
+      "description": "S'engager continuellement avec des questions complexes et des tâches exigeantes, le dépannage et la résolution de problèmes comme partie centrale de mon travail."
     },
     "Change and Variety": {
       "name": "Changement et variété",
-      "description": "Avoir différentes tâches, contextes ou priorités au lieu de répétition.",
-      "example": "Exemple : passer d'un projet à l'autre et apprendre souvent de nouveaux outils."
+      "description": "Avoir des responsabilités professionnelles fréquemment modifiées dans leur contenu ou leur cadre."
     },
     "Community": {
       "name": "Communauté",
-      "description": "Se sentir enraciné et connecté à une communauté locale ou professionnelle plus large.",
-      "example": "Exemple : travail qui renforce les quartiers ou les programmes communautaires."
+      "description": "Vivre dans une ville où je peux rencontrer mes voisins et m'impliquer dans la politique locale ou des projets de service."
     },
     "Competition": {
       "name": "Compétition",
-      "description": "Mesurer la performance par rapport aux pairs et viser à gagner ou à surpasser.",
-      "example": "Exemple : objectifs de vente, classements ou tableaux de bord de performance."
+      "description": "S'engager dans des activités qui mettent mes capacités en compétition avec celles des autres."
     },
     "Competence": {
-      "name": "Compétence",
-      "description": "Utiliser efficacement les compétences et être reconnu pour une exécution de haute qualité.",
-      "example": "Exemple : être connu comme fiable et techniquement solide dans les tâches principales."
+      "name": "Exercer sa compétence",
+      "description": "Démontrer un haut degré de maîtrise des compétences et des connaissances professionnelles; montrer une efficacité supérieure à la moyenne."
     },
     "Creative Expression": {
       "name": "Expression créative",
-      "description": "Exprimer des idées personnelles, une voix et une perspective à travers le travail.",
-      "example": "Exemple : façonner le contenu, les messages ou le design dans votre propre style."
+      "description": "Pouvoir exprimer par écrit et en personne mes idées concernant mon travail et comment je pourrais l'améliorer; avoir des opportunités d'expérimentation et d'innovation."
     },
     "Creativity": {
-      "name": "Créativité",
-      "description": "Générer des idées, méthodes ou solutions nouvelles et utiles.",
-      "example": "Exemple : inventer de nouvelles approches qui améliorent les résultats."
+      "name": "Créativité (générale)",
+      "description": "Créer de nouvelles idées, programmes, structures organisées ou tout autre chose ne suivant pas un format développé par d'autres."
     },
     "Decision Making": {
-      "name": "Prise de décision",
-      "description": "Avoir l'autorité de faire des choix significatifs qui affectent les résultats.",
-      "example": "Exemple : posséder la direction du projet, les priorités ou les compromis de ressources."
+      "name": "Prise de décisions",
+      "description": "Avoir le pouvoir de décider des orientations, des politiques, etc. — un travail de jugement."
+    },
+    "Diversity": {
+      "name": "Diversité",
+      "description": "Travailler dans un environnement qui inclut des individus de milieux religieux, raciaux ou sociaux divers."
+    },
+    "Environment": {
+      "name": "Environnement",
+      "description": "Travailler sur des tâches ayant un effet positif sur l'environnement naturel."
     },
     "Excitement": {
-      "name": "Excitation",
-      "description": "Vivre de l'énergie, de la stimulation et de la nouveauté dans le travail quotidien.",
-      "example": "Exemple : travail à fort engagement avec un élan et une action visibles."
+      "name": "Stimulation",
+      "description": "Vivre un haut degré de stimulation ou de fréquentes nouveautés et situations dramatiques au travail."
     },
-    "Experience": {
-      "name": "Expérience",
-      "description": "Construire une exposition large au monde réel aux rôles, systèmes et situations.",
-      "example": "Exemple : rotation entre les fonctions pour acquérir une perspective pratique."
+    "Family": {
+      "name": "Famille",
+      "description": "S'assurer que le type de travail que je fais et les heures que je travaille correspondent à mes responsabilités familiales."
     },
     "Fast Pace": {
       "name": "Rythme rapide",
-      "description": "Travailler rapidement avec des cycles courts, des délais serrés et des retours rapides.",
-      "example": "Exemple : gérer des livrables fréquents dans un environnement à haut tempo."
+      "description": "Travailler dans des circonstances où le rythme d'activité est élevé et le travail est effectué rapidement."
     },
     "Financial Gain": {
-      "name": "Gain financier",
-      "description": "Augmenter les revenus grâce à la performance, la croissance ou les avantages financiers.",
-      "example": "Exemple : structures de bonus, commissions, actions ou partage des profits."
+      "name": "Profit, gain",
+      "description": "Avoir une forte probabilité d'accumuler de grandes sommes d'argent ou d'autres gains matériels grâce à la propriété, au partage des bénéfices, aux commissions, aux augmentations au mérite, etc."
     },
     "Friendship": {
-      "name": "Amitié",
-      "description": "Former des relations chaleureuses et personnelles avec les collègues au travail.",
-      "example": "Exemple : profiter d'amitiés authentiques au quotidien dans l'équipe."
+      "name": "Amitiés",
+      "description": "Développer des relations personnelles étroites avec des personnes grâce à l'activité professionnelle."
+    },
+    "Fun and Humor": {
+      "name": "Plaisir et humour",
+      "description": "Travailler dans un environnement où il est possible (et approprié) de plaisanter et de s'amuser."
+    },
+    "Group & Team": {
+      "name": "Groupe et équipe",
+      "description": "Travailler avec un groupe pour obtenir des résultats d'équipe (plutôt qu'individuels)."
     },
     "Help Others": {
       "name": "Aider les autres",
-      "description": "Fournir un soutien direct qui améliore le bien-être ou le succès d'une autre personne.",
-      "example": "Exemple : coaching, mentorat, conseil ou résolution de problèmes clients."
+      "description": "Être impliqué dans l'aide directe aux personnes, individuellement ou en petits groupes."
     },
     "Help Society": {
       "name": "Aider la société",
-      "description": "Contribuer au bien social et à l'impact positif à un niveau plus large.",
-      "example": "Exemple : travail qui fait progresser la santé, l'équité, l'éducation ou la durabilité."
+      "description": "Faire quelque chose pour contribuer à l'amélioration du monde."
     },
     "High Earnings": {
-      "name": "Revenus élevés",
-      "description": "Prioriser un salaire de premier plan par rapport aux alternatives.",
-      "example": "Exemple : choisir des rôles connus pour leurs plafonds de rémunération élevés."
+      "name": "Revenus élevés anticipés",
+      "description": "Pouvoir acheter les produits essentiels et les luxes de la vie que je souhaite."
+    },
+    "Honesty and Integrity": {
+      "name": "Honnêteté et intégrité",
+      "description": "Travailler dans un environnement où l'honnêteté et l'intégrité sont des atouts."
+    },
+    "Independence": {
+      "name": "Indépendance",
+      "description": "Pouvoir déterminer la nature de mon travail sans direction significative des autres. Ne pas avoir à suivre des instructions ou à se conformer à des réglementations."
     },
     "Influence People": {
       "name": "Influencer les gens",
-      "description": "Persuader les autres et façonner les décisions, priorités ou comportements.",
-      "example": "Exemple : guider les parties prenantes pour s'aligner sur une direction proposée."
+      "description": "Être en position de changer les attitudes ou les opinions des autres."
     },
     "Intellectual Status": {
       "name": "Statut intellectuel",
-      "description": "Être respecté pour son expertise, son insight et sa contribution intellectuelle.",
-      "example": "Exemple : reconnaissance en tant que partenaire de réflexion dans des domaines complexes."
+      "description": "Être considéré comme très bien informé et théoricien solide, comme un expert reconnu dans un domaine donné."
     },
     "Job Tranquility": {
       "name": "Tranquillité au travail",
-      "description": "Maintenir un faible stress, un calme émotionnel et une pression de travail prévisible.",
-      "example": "Exemple : charges de travail stables avec une urgence et une réponse aux crises limitées."
+      "description": "Éviter la pression et la course effrénée dans mon rôle professionnel et mon environnement de travail."
     },
     "Knowledge": {
       "name": "Connaissance",
-      "description": "Apprendre continuellement, comprendre et maîtriser de nouvelles informations.",
-      "example": "Exemple : rôles qui récompensent l'étude, l'analyse et l'apprentissage approfondi du domaine."
+      "description": "M'engager dans la poursuite de la connaissance, de la vérité et de la compréhension."
     },
     "Location": {
-      "name": "Localisation",
-      "description": "Travailler dans un cadre géographique ou un environnement physique préféré.",
-      "example": "Exemple : rester dans une ville, région ou configuration à distance spécifique."
+      "name": "Lieu de vie",
+      "description": "Trouver un endroit où vivre (ville ou zone géographique) propice à mon style de vie, une base idéale pour mes loisirs, mon apprentissage et ma vie professionnelle."
     },
     "Moral Fulfillment": {
-      "name": "Épanouissement moral",
-      "description": "Faire un travail qui correspond à l'éthique personnelle et au sens de l'action juste.",
-      "example": "Exemple : choisir des projets qui correspondent à vos valeurs et normes d'intégrité."
+      "name": "Accomplissement moral",
+      "description": "Sentir que mon travail contribue à des idéaux que je considère très importants."
     },
-    "Organization": {
-      "name": "Organisation",
-      "description": "Travailler au sein de systèmes organisationnels et de hiérarchies structurés.",
-      "example": "Exemple : opérer au sein d'entreprises établies, d'institutions ou de départements formels."
+    "Personal Safety": {
+      "name": "Sécurité personnelle",
+      "description": "Avoir une forte probabilité d'être en sécurité et en bonne santé au travail."
     },
     "Physical Challenge": {
       "name": "Défi physique",
-      "description": "Engager le corps par la force, le mouvement, l'endurance ou la coordination.",
-      "example": "Exemple : travail actif avec des exigences physiques significatives."
+      "description": "Avoir un emploi qui requiert de la force corporelle, de la vitesse, de la dextérité ou de l'agilité."
+    },
+    "Power and Authority": {
+      "name": "Pouvoir et autorité",
+      "description": "Contrôler les activités professionnelles ou les destinées des autres."
+    },
+    "Practicality": {
+      "name": "Praticité",
+      "description": "Être impliqué dans un travail qui produit un résultat pratique ou utile."
     },
     "Precision Work": {
       "name": "Travail de précision",
-      "description": "Produire un résultat précis et orienté vers les détails avec des erreurs minimales.",
-      "example": "Exemple : tâches où la qualité dépend d'une exécution soigneuse et exacte."
+      "description": "Traiter des tâches ayant des spécifications exactes, qui nécessitent une attention soigneuse et précise aux détails."
     },
     "Public Contact": {
-      "name": "Contact public",
-      "description": "Interagir fréquemment avec les clients, les clients ou le grand public.",
-      "example": "Exemple : rôles orientés client avec communication externe régulière."
+      "name": "Contact avec le public",
+      "description": "Avoir beaucoup de contacts quotidiens avec des personnes."
     },
     "Recognition": {
       "name": "Reconnaissance",
-      "description": "Recevoir une appréciation, un crédit et une reconnaissance visibles pour le travail.",
-      "example": "Exemple : éloges publiques, prix ou attribution claire des contributions."
+      "description": "Obtenir des retours positifs et une reconnaissance publique pour un travail bien fait."
     },
     "Research and Development": {
-      "name": "Recherche et développement",
-      "description": "Enquêter sur des idées, tester des hypothèses et créer de nouvelles capacités.",
-      "example": "Exemple : expérimentation et prototypage pour développer des solutions futures."
+      "name": "Aux frontières du savoir",
+      "description": "Travailler en recherche et développement, générant des informations et de nouvelles idées dans les communautés académiques, scientifiques ou commerciales."
     },
     "Security": {
-      "name": "Sécurité",
-      "description": "Avoir confiance en l'emploi continu et un revenu fiable.",
-      "example": "Exemple : organisations stables avec un faible risque perçu de licenciement."
+      "name": "Sécurité d'emploi",
+      "description": "Avoir l'assurance de conserver mon emploi et une récompense financière raisonnable."
+    },
+    "Spirituality": {
+      "name": "Spiritualité",
+      "description": "Travailler dans un environnement qui soutient mes croyances spirituelles."
     },
     "Stability": {
       "name": "Stabilité",
-      "description": "Travailler dans des routines, structures et attentes cohérentes.",
-      "example": "Exemple : horaires prévisibles et processus clairement définis."
+      "description": "Avoir une routine de travail et des tâches professionnelles largement prévisibles et peu susceptibles de changer sur une longue période."
     },
     "Status": {
       "name": "Statut",
-      "description": "Occuper une position respectée avec un prestige ou un standing visible.",
-      "example": "Exemple : titre, visibilité du rôle et importance perçue dans une organisation."
+      "description": "Impressionner ou gagner le respect de mes amis, de ma famille et de ma communauté par la nature et/ou le niveau de responsabilité de mon travail."
+    },
+    "Steep Learning Curve": {
+      "name": "Courbe d'apprentissage rapide",
+      "description": "Être confronté à des tâches nouvelles, uniques ou difficiles à maîtriser rapidement."
+    },
+    "Structure and Predictability": {
+      "name": "Structure et prévisibilité",
+      "description": "Effectuer un travail avec un niveau élevé de structure et de prévisibilité."
     },
     "Supervision": {
       "name": "Supervision",
-      "description": "Diriger, orienter et développer le travail d'autres personnes.",
-      "example": "Exemple : gérer une équipe et être responsable des résultats de l'équipe."
+      "description": "Avoir un emploi dans lequel je suis directement responsable du travail effectué par d'autres."
     },
     "Time Freedom": {
-      "name": "Liberté temporelle",
-      "description": "Contrôler quand le travail est fait, y compris la flexibilité d'horaire.",
-      "example": "Exemple : fixer vos propres heures ou ajuster le travail selon les demandes de la vie."
+      "name": "Liberté de temps",
+      "description": "Avoir des responsabilités que je peux accomplir selon mon propre horaire; aucune heure de travail spécifique requise."
+    },
+    "Tradition": {
+      "name": "Tradition",
+      "description": "Être impliqué dans un travail conforme aux traditions sociales dans lesquelles j'ai grandi."
     },
     "Work Alone": {
       "name": "Travailler seul",
-      "description": "Avoir un travail concentré et indépendant avec des exigences de collaboration minimales.",
-      "example": "Exemple : longues périodes de travail autonome et propriété individuelle."
+      "description": "Réaliser des projets par moi-même, sans aucun contact ou contribution des autres."
     },
     "Work Under Pressure": {
       "name": "Travailler sous pression",
-      "description": "Performancer efficacement dans des situations urgentes, à enjeux élevés ou axées sur les délais.",
-      "example": "Exemple : rester efficace pendant la charge de pointe et les décisions critiques."
+      "description": "Travailler dans des circonstances soumises à des contraintes de temps, où il y a peu ou pas de marge d'erreur, ou avec des relations personnelles exigeantes."
     },
     "Work with Others": {
-      "name": "Travailler avec d'autres",
-      "description": "Collaborer étroitement et régulièrement avec des coéquipiers ou des partenaires.",
-      "example": "Exemple : planifier et exécuter le travail grâce à une responsabilité partagée."
+      "name": "Travailler avec les autres",
+      "description": "Avoir des relations de travail étroites avec un groupe et travailler en équipe vers des objectifs communs."
+    },
+    "Work-Life Balance": {
+      "name": "Équilibre travail-vie",
+      "description": "Un emploi qui me permet d'avoir suffisamment de temps pour ma famille, mes loisirs et mes activités sociales."
     },
     "default": {
       "description": "Un résultat ou une condition lié au travail qu'une personne peut prioriser dans un emploi.",

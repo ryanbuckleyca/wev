@@ -12,6 +12,7 @@ import {
   ChevronDownSolid,
 } from '@lineiconshq/free-icons';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/lib/hooks/useProfile';
 import { formatCompensation } from '@/lib/compensation/helpers';
 import Collapsible from './Collapsible';
 import { createClient } from '@/lib/supabase/client';
@@ -68,7 +69,19 @@ export default function JobCard({
   const t = useTranslations();
   const locale = useLocale();
   const { user } = useAuth();
+  const { profile } = useProfile(user?.id);
   const router = useRouter();
+
+  // Profile-derived preferences and computed tokens for location matching
+  const profileWorkTypes = (profile?.work_types as string[]) || [];
+  const profileIdeal = profile?.ideal_work_environment || null;
+  const jobText = ((job.location || '') + ' ' + (job.summary || '')).toLowerCase();
+  const idealTokens = (profileIdeal || '')
+    .toLowerCase()
+    .split(/[^\w]+/)
+    .filter((s) => s.length > 2);
+  const matchedLocationTokens = idealTokens.filter((t) => jobText.includes(t));
+  const unmatchedLocationTokens = idealTokens.filter((t) => !jobText.includes(t));
 
   // Use passed-in match data (batch-fetched by parent)
   const totalMatchPercentage = matchProp?.score != null ? Math.round(matchProp.score * 100) : 0;
@@ -76,14 +89,34 @@ export default function JobCard({
     matchProp?.value_score != null ? Math.round(matchProp.value_score * 100) : 0;
   const skillMatchPercentage =
     matchProp?.skill_score != null ? Math.round(matchProp.skill_score * 100) : 0;
+  const workTypeMatchPercentage =
+    matchProp?.work_type_score != null ? Math.round(matchProp.work_type_score * 100) : undefined;
+  const locationMatchPercentage =
+    matchProp?.location_score != null ? Math.round(matchProp.location_score * 100) : undefined;
+
+  const profileHasLocationValue = (() => {
+    const vals = (profile?.values as string[]) || [];
+    const rated = (profile?.values_rated as any[]) || [];
+    const hasFromVals = vals.some((v) => String(v).toLowerCase() === 'location');
+    const hasFromRated = rated.some((v) => (typeof v === 'string' ? v : v?.value)?.toLowerCase() === 'location');
+    return hasFromVals || hasFromRated;
+  })();
+
   const matchTooltipContent = useMemo<ReactNode | null>(() => {
     if (!matchProp) return null;
-
     return (
       <MatchDetailsTooltip
         totalMatchPercentage={totalMatchPercentage}
         valueMatchPercentage={valueMatchPercentage}
         skillMatchPercentage={skillMatchPercentage}
+        workTypeMatchPercentage={workTypeMatchPercentage}
+        locationMatchPercentage={locationMatchPercentage}
+        jobWorkType={job.work_type}
+        profileWorkTypes={profileWorkTypes}
+        profileIdealWorkEnvironment={profileIdeal}
+        profileHasLocationValue={profileHasLocationValue}
+        matchedLocationTokens={matchedLocationTokens}
+        unmatchedLocationTokens={unmatchedLocationTokens}
         values={job.values || []}
         skills={job.skills || []}
         sharedValues={matchProp.shared_values || []}
@@ -101,6 +134,12 @@ export default function JobCard({
     totalMatchPercentage,
     valueMatchPercentage,
     skillMatchPercentage,
+    workTypeMatchPercentage,
+    locationMatchPercentage,
+    profileWorkTypes,
+    profileIdeal,
+    matchedLocationTokens,
+    unmatchedLocationTokens,
   ]);
 
   // Sync internal state with prop changes
@@ -314,7 +353,9 @@ export default function JobCard({
                   perYear: t('jobCard.perYear'),
                   perHour: t('jobCard.perHour'),
                   statedHoursPerWeek: (hours) => t('jobCard.statedHoursPerWeek', { hours }),
-                })
+                  volunteer: t('jobCard.volunteer'),
+                  internship: t('jobCard.internship'),
+                });
                 return (
                   <>
                     <span className="job-label">{t('jobCard.howMuch')} </span>
@@ -323,7 +364,7 @@ export default function JobCard({
                       <span className="job-value text-muted-foreground text-sm"> ({compensationDisplay.secondary})</span>
                     )}
                   </>
-                )
+                );
               })()}
             </div>
           </div>
@@ -345,6 +386,9 @@ export default function JobCard({
             fadeBackground="var(--muted)"
             workType={job.work_type}
             selectedWorkTypes={selectedWorkTypes || []}
+            locationMatchPercentage={locationMatchPercentage}
+            matchedLocationTokens={matchedLocationTokens}
+            unmatchedLocationTokens={unmatchedLocationTokens}
           />
         </div>
       ) : null}

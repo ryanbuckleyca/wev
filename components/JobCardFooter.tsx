@@ -216,6 +216,7 @@ export default function JobCardFooter({
   const groups: ExpandablePillGroup[] = [
     { key: 'values', summary: valueSummaryPill, items: valueItems },
     { key: 'skills', summary: skillSummaryPill, items: skillItems },
+    // No separate location group in footer; location matching is shown in the tooltip only.
   ];
 
   return (

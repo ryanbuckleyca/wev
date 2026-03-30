@@ -155,7 +155,7 @@ export async function calculateUserMatches(userId: string): Promise<void> {
     // Get user profile values
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('values, values_rated')
+      .select('values, values_rated, skills, work_types, ideal_work_environment')
       .eq('id', userId)
       .single();
 
@@ -170,7 +170,7 @@ export async function calculateUserMatches(userId: string): Promise<void> {
     // Get all jobs with values
     const { data: jobs, error: jobsError } = await supabase
       .from('jobs')
-      .select('id, values, values_rated')
+      .select('id, values, values_rated, skills, work_type, location, summary, description')
       .not('values', 'is', null);
 
     if (jobsError) {
@@ -182,19 +182,88 @@ export async function calculateUserMatches(userId: string): Promise<void> {
     const matches: MatchResult[] = [];
 
     for (const job of jobs || []) {
-      if (!job.values?.length) continue;
+      if (!job.values?.length && !job.skills?.length) continue;
 
-      const match = calculateMatch(
+      // Value score (existing logic)
+      const vMatch = calculateMatch(
         userValues,
-        job.values,
+        job.values || [],
         job.values_rated as JobRatedValue[] | null,
       );
+      const valueScore = typeof vMatch.score === 'number' ? vMatch.score : null;
+      const sharedValues = vMatch.shared_values || [];
+
+      // Skill score (flat overlap + bonus)
+      const userSkills: string[] = (profile?.skills as string[]) || [];
+      const jobSkills: string[] = job.skills || [];
+      let skillScore: number | null = null;
+      let sharedSkills: string[] = [];
+      if (userSkills.length > 0 && jobSkills.length > 0) {
+        sharedSkills = userSkills.filter((s) => jobSkills.includes(s));
+        const sharedCount = sharedSkills.length;
+        skillScore = Math.min(sharedCount / userSkills.length + Math.min(sharedCount * 0.1, 0.3), 1.0);
+      }
+
+      // Work type score: treat empty/missing profile.work_types as "all selected"
+      // so users who haven't opted out still get the small work-type weight.
+      const profileWorkTypes: string[] = (profile?.work_types as string[]) ?? [];
+      let workTypeScore: number | null = null;
+      if (!Array.isArray(profileWorkTypes) || profileWorkTypes.length === 0) {
+        // Default: all work types are considered selected.
+        workTypeScore = 1.0;
+      } else {
+        workTypeScore = job.work_type && profileWorkTypes.includes(job.work_type) ? 1.0 : 0.0;
+      }
+
+      // Location score: only when user selected 'location' as a value and provided ideal_work_environment
+      let locationScore: number | null = null;
+      const idealEnv = (profile as any)?.ideal_work_environment;
+      const hasLocationValue = ((profile?.values as string[]) || []).some((v) => String(v).toLowerCase() === 'location') ||
+        ((profile?.values_rated as any[]) || []).some((v) => (typeof v === 'string' ? v : v?.value)?.toLowerCase() === 'location');
+      if (hasLocationValue && idealEnv && typeof idealEnv === 'string' && idealEnv.trim().length > 0) {
+        const idealTokens = idealEnv
+          .toLowerCase()
+          .split(/[^\w]+/)
+          .filter((s) => s.length > 2);
+        const jobText = ((job.location || '') + ' ' + (job.summary || '') + ' ' + (job.description || '')).toLowerCase();
+        if (idealTokens.length > 0) {
+          const matched = idealTokens.filter((t) => jobText.includes(t));
+          const overlap = matched.length / idealTokens.length;
+          locationScore = Math.min(overlap + Math.min(matched.length * 0.1, 0.3), 1.0);
+        }
+      }
+
+      // Combine into final score with fallbacks
+      const hasValue = valueScore != null;
+      const hasSkill = skillScore != null;
+      const hasWork = workTypeScore != null;
+      const hasLocation = locationScore != null;
+
+      let finalScore = 0;
+      if (hasValue && hasSkill && !hasWork && !hasLocation) {
+        // Preserve legacy behavior when only values+skills present
+        finalScore = Math.min(valueScore! * 0.6 + (skillScore ?? 0) * 0.4, 1.0);
+      } else {
+        // Base weights
+        const w = { value: 0.55, skill: 0.35, work: 0.05, location: 0.05 };
+        const numerator = (hasValue ? (valueScore ?? 0) * w.value : 0) +
+          (hasSkill ? (skillScore ?? 0) * w.skill : 0) +
+          (hasWork ? (workTypeScore ?? 0) * w.work : 0) +
+          (hasLocation ? (locationScore ?? 0) * w.location : 0);
+        const denom = (hasValue ? w.value : 0) + (hasSkill ? w.skill : 0) + (hasWork ? w.work : 0) + (hasLocation ? w.location : 0);
+        finalScore = denom > 0 ? Math.min(numerator / denom, 1.0) : 0;
+      }
 
       matches.push({
         user_id: userId,
         job_id: job.id,
-        score: match.score,
-        shared_values: match.shared_values,
+        score: finalScore,
+        value_score: valueScore,
+        skill_score: skillScore,
+        work_type_score: workTypeScore,
+        location_score: locationScore,
+        shared_values: sharedValues,
+        shared_skills: sharedSkills,
       });
     }
 
@@ -224,7 +293,7 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
     // Get job values
     const { data: job, error: jobError } = await supabase
       .from('jobs')
-      .select('values, values_rated')
+      .select('values, values_rated, skills, work_type, location, summary, description')
       .eq('id', jobId)
       .single();
 
@@ -237,7 +306,7 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
     // Get all users with profile values
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, values, values_rated')
+      .select('id, values, values_rated, skills, work_types, ideal_work_environment')
       .not('values', 'is', null);
 
     if (profilesError) {
@@ -248,20 +317,84 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
     // Calculate matches
     const matches: MatchResult[] = [];
 
+    const jobSkills: string[] = job?.skills || [];
+    const jobText = ((job?.location || '') + ' ' + (job?.summary || '') + ' ' + (job?.description || '')).toLowerCase();
+
     for (const profile of profiles || []) {
-      if (!profile.values?.length && !profile.values_rated?.length) continue;
+      if (!profile.values?.length && !profile.values_rated?.length && !profile.skills?.length) continue;
 
       const profileValues: string[] | RatedValue[] = profile.values_rated?.length
         ? (profile.values_rated as RatedValue[])
         : (profile.values ?? []);
 
-      const match = calculateMatch(profileValues, job.values, jobValuesRated);
+      const vMatch = calculateMatch(profileValues, job.values || [], jobValuesRated);
+      const valueScore = typeof vMatch.score === 'number' ? vMatch.score : null;
+      const sharedValues = vMatch.shared_values || [];
+
+      // Skill score
+      const userSkills: string[] = profile?.skills || [];
+      let skillScore: number | null = null;
+      let sharedSkills: string[] = [];
+      if (userSkills.length > 0 && jobSkills.length > 0) {
+        sharedSkills = userSkills.filter((s) => jobSkills.includes(s));
+        const sharedCount = sharedSkills.length;
+        skillScore = Math.min(sharedCount / userSkills.length + Math.min(sharedCount * 0.1, 0.3), 1.0);
+      }
+
+      // Work type score: treat empty/missing profile.work_types as "all selected"
+      const profileWorkTypes: string[] = (profile as any)?.work_types ?? [];
+      let workTypeScore: number | null = null;
+      if (!Array.isArray(profileWorkTypes) || profileWorkTypes.length === 0) {
+        workTypeScore = 1.0;
+      } else {
+        workTypeScore = job?.work_type && profileWorkTypes.includes(job.work_type) ? 1.0 : 0.0;
+      }
+
+      // Location score
+      let locationScore: number | null = null;
+      const idealEnv = (profile as any)?.ideal_work_environment;
+      const hasLocationValue = ((profile?.values as string[]) || []).some((v) => String(v).toLowerCase() === 'location') ||
+        ((profile?.values_rated as any[]) || []).some((v) => (typeof v === 'string' ? v : v?.value)?.toLowerCase() === 'location');
+      if (hasLocationValue && idealEnv && typeof idealEnv === 'string' && idealEnv.trim().length > 0) {
+        const idealTokens = idealEnv
+          .toLowerCase()
+          .split(/[^\w]+/)
+          .filter((s) => s.length > 2);
+        if (idealTokens.length > 0) {
+          const matched = idealTokens.filter((t) => jobText.includes(t));
+          const overlap = matched.length / idealTokens.length;
+          locationScore = Math.min(overlap + Math.min(matched.length * 0.1, 0.3), 1.0);
+        }
+      }
+
+      const hasValue = valueScore != null;
+      const hasSkill = skillScore != null;
+      const hasWork = workTypeScore != null;
+      const hasLocation = locationScore != null;
+
+      let finalScore = 0;
+      if (hasValue && hasSkill && !hasWork && !hasLocation) {
+        finalScore = Math.min(valueScore! * 0.6 + (skillScore ?? 0) * 0.4, 1.0);
+      } else {
+        const w = { value: 0.55, skill: 0.35, work: 0.05, location: 0.05 };
+        const numerator = (hasValue ? (valueScore ?? 0) * w.value : 0) +
+          (hasSkill ? (skillScore ?? 0) * w.skill : 0) +
+          (hasWork ? (workTypeScore ?? 0) * w.work : 0) +
+          (hasLocation ? (locationScore ?? 0) * w.location : 0);
+        const denom = (hasValue ? w.value : 0) + (hasSkill ? w.skill : 0) + (hasWork ? w.work : 0) + (hasLocation ? w.location : 0);
+        finalScore = denom > 0 ? Math.min(numerator / denom, 1.0) : 0;
+      }
 
       matches.push({
         user_id: profile.id,
         job_id: jobId,
-        score: match.score,
-        shared_values: match.shared_values,
+        score: finalScore,
+        value_score: valueScore,
+        skill_score: skillScore,
+        work_type_score: workTypeScore,
+        location_score: locationScore,
+        shared_values: sharedValues,
+        shared_skills: sharedSkills,
       });
     }
 

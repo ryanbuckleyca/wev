@@ -163,3 +163,33 @@ describe('ValuesSelector', () => {
     });
   });
 });
+
+// Feature: values-list-migration, Property 5: ValuesSelector silently omits unknown value IDs
+describe('ValuesSelector stale-ID handling (P5)', () => {
+  const mockTEn = (key: string, opts?: { defaultValue: string }) => opts?.defaultValue || key;
+  const mockTFr = (key: string, opts?: { defaultValue: string }) => opts?.defaultValue || key;
+  const mockValues = buildWorkValues(mockTEn, mockTFr);
+
+  const baseProps = {
+    values: mockValues,
+    valueCutoff: 5,
+    onReorder: () => {},
+    onRemove: () => {},
+    onToggle: () => {},
+    locale: 'en' as const,
+  };
+
+  it('renders without error when selectedValues contains stale IDs', () => {
+    // Validates: Requirements 2.4, 4.5
+    expect(() => {
+      render(<ValuesSelector {...baseProps} selectedValues={['Experience', 'Organization']} />);
+    }).not.toThrow();
+  });
+
+  it('does not render Experience or Organization as a selected pill', () => {
+    // Validates: Requirements 2.4, 4.5
+    render(<ValuesSelector {...baseProps} selectedValues={['Experience', 'Organization']} />);
+    expect(screen.queryByText('Experience')).not.toBeInTheDocument();
+    expect(screen.queryByText('Organization')).not.toBeInTheDocument();
+  });
+});
