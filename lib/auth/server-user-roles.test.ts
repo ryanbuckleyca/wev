@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchUserRolesFromService } from './server-user-roles';
-import { getSupabaseServer } from '@/lib/supabase-server';
 
 const mocks = vi.hoisted(() => {
   const mockMaybeSingle = vi.fn();
@@ -11,25 +10,17 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock('@/lib/supabase-server', () => ({
-  getSupabaseServer: vi.fn(() => ({
+  supabaseServer: {
     from: mocks.mockFrom,
-  })),
+  },
 }));
 
 describe('fetchUserRolesFromService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getSupabaseServer).mockImplementation(
-      () =>
-        ({
-          from: mocks.mockFrom,
-        }) as unknown as ReturnType<typeof getSupabaseServer>,
-    );
     mocks.mockEq.mockReturnValue({ maybeSingle: mocks.mockMaybeSingle });
     mocks.mockSelect.mockReturnValue({ eq: mocks.mockEq });
-    mocks.mockFrom.mockReturnValue({
-      select: mocks.mockSelect,
-    });
+    mocks.mockFrom.mockReturnValue({ select: mocks.mockSelect });
   });
 
   it('returns ok with parsed roles on success', async () => {
@@ -58,8 +49,8 @@ describe('fetchUserRolesFromService', () => {
     expect(result.error).toEqual({ message: 'relation does not exist' });
   });
 
-  it('returns not ok when getSupabaseServer throws', async () => {
-    vi.mocked(getSupabaseServer).mockImplementationOnce(() => {
+  it('returns not ok when the db call throws', async () => {
+    mocks.mockFrom.mockImplementationOnce(() => {
       throw new Error('config');
     });
 

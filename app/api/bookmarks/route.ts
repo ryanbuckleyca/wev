@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 import normalizeJobsWithSource from '@/lib/normalize-job';
 import { resolveSkillLabels, attachSkillLabels, parseLocale } from '@/lib/resolve-skill-labels';
 
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     }
 
     const { user } = auth;
-    const adminClient = getSupabaseServer();
+    const adminClient = supabaseServer;
     const { data, error } = await adminClient
       .from('jobs')
       .select(

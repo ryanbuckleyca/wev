@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 import { requireAdminResponse } from '@/lib/auth/require-admin';
 import { logger } from '@/lib/logger';
 import { calculateJobMatches } from '@/lib/match-calculator';
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     }
 
     // Verify the job exists (service role; consistent with match-calculator)
-    const supabase = getSupabaseServer();
+    const supabase = supabaseServer;
     const { data: job, error: jobError } = await supabase
       .from('jobs')
       .select('id')

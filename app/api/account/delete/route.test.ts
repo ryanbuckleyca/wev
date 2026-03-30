@@ -20,14 +20,14 @@ vi.mock('@supabase/supabase-js', () => ({
 }));
 
 vi.mock('@/lib/supabase-server', () => ({
-  getSupabaseServer: vi.fn(() => ({
+  supabaseServer: {
     auth: {
       admin: {
         signOut: mockAdminSignOut,
         deleteUser: mockDeleteUser,
       },
     },
-  })),
+  },
 }));
 
 const mockGetRequestUser = vi.mocked(getRequestUser);

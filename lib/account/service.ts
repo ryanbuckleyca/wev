@@ -72,7 +72,7 @@ async function assertPasswordVerified(
     throw new Error('Password verification did not return a session token.');
   }
 
-  const adminSupabase = getSupabaseServer();
+  const adminSupabase = supabaseServer;
   const { error: revokeError } = await adminSupabase.auth.admin.signOut(accessToken, 'local');
 
   if (revokeError) {
@@ -124,7 +124,7 @@ export async function deleteAccountForCurrentUser({
   const email = requirePasswordVerificationEmail(userEmail);
   await assertPasswordVerified(email, password, 'Invalid password');
 
-  const adminSupabase = getSupabaseServer();
+  const adminSupabase = supabaseServer;
   const { error } = await adminSupabase.auth.admin.deleteUser(userId);
 
   if (error) {

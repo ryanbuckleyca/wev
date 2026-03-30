@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Server-only Supabase client. Uses service role key.
@@ -18,11 +18,6 @@ if (!url || !key) {
   );
 }
 
-export const supabaseServer: SupabaseClient = createClient(url, key, {
+export const supabaseServer = createClient(url, key, {
   auth: { persistSession: false },
 });
-
-/** @deprecated Use `supabaseServer` directly. */
-export function getSupabaseServer(): SupabaseClient {
-  return supabaseServer;
-}

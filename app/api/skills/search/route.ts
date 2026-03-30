@@ -56,7 +56,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const supabase = getSupabaseServer();
+    const supabase = supabaseServer;
     const { data, error } = await supabase.rpc('search_esco_skills', {
       p_query: query,
       p_limit: limit,

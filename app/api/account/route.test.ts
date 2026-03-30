@@ -28,13 +28,13 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 
 vi.mock('@/lib/supabase-server', () => ({
-  getSupabaseServer: vi.fn(() => ({
+  supabaseServer: {
     auth: {
       admin: {
         signOut: mockAdminSignOut,
       },
     },
-  })),
+  },
 }));
 
 const mockGetRequestUser = vi.mocked(getRequestUser);

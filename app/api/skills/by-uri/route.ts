@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ skills: [] });
     }
 
-    const supabase = getSupabaseServer();
+    const supabase = supabaseServer;
     const { data, error } = await supabase
       .from('esco_skills')
       .select(

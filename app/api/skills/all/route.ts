@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const locale = searchParams.get('locale') || 'en';
 
-    const supabase = getSupabaseServer();
+    const supabase = supabaseServer;
 
     let allData: EscoSkillRow[] = [];
     let from = 0;

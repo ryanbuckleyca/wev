@@ -2,36 +2,39 @@ import { mockRequireAdminResponse } from '@/test-utils/require-admin-mock';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from './route';
 import { calculateJobMatches } from '@/lib/match-calculator';
-import { getSupabaseServer } from '@/lib/supabase-server';
 import { adminGateUnauthorized } from '@/test-utils/admin-route';
 
 vi.mock('@/lib/match-calculator', () => ({
   calculateJobMatches: vi.fn(),
 }));
 
+const mockSingle = vi.fn();
+const mockSupabase = {
+  from: vi.fn(() => ({
+    select: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        single: mockSingle,
+      })),
+    })),
+  })),
+};
+
 vi.mock('@/lib/supabase-server', () => ({
-  getSupabaseServer: vi.fn(),
+  supabaseServer: mockSupabase,
 }));
 
 const mockCalculateJobMatches = vi.mocked(calculateJobMatches);
-const mockGetSupabaseServer = vi.mocked(getSupabaseServer);
-
-const mockSingle = vi.fn();
 
 describe('POST /api/matches/calculate-job', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetSupabaseServer.mockReturnValue({
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            single: mockSingle,
-          })),
-        })),
-      })),
-    } as never);
     mockSingle.mockResolvedValue({ data: { id: 'job-1' }, error: null });
     mockCalculateJobMatches.mockResolvedValue(undefined);
+    mockSupabase.from.mockReturnValue({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({ single: mockSingle })),
+      })),
+    });
   });
 
   it('returns admin gate without calculating matches', async () => {
