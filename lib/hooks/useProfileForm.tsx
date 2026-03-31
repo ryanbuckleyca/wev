@@ -163,8 +163,8 @@ export function useProfileForm(locale: 'en' | 'fr') {
               lat: profile.lat,
               lng: profile.lng,
               display_name: profile.location_display_name,
-              name: '',
-              province: '',
+              name: profile.municipality ?? '',
+              province: profile.province ?? '',
             }
           : null,
     });
@@ -260,6 +260,8 @@ export function useProfileForm(locale: 'en' | 'fr') {
         work_types: normalizeWorkTypes(formData.work_types),
         lat: formData.location?.lat ?? null,
         lng: formData.location?.lng ?? null,
+        municipality: formData.location?.name ?? null,
+        province: formData.location?.province ?? null,
         location_display_name: formData.location?.display_name ?? null,
       });
       notify.success(t('updateSuccess'));

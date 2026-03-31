@@ -87,7 +87,6 @@ const profileWithWorkType = {
   values: [],
   skills: [],
   work_types: ['hybrid'],
-  ideal_work_environment: null,
   profile_photo_url: null,
   created_at: '2026-03-06T00:00:00.000Z',
   updated_at: '2026-03-06T00:00:00.000Z',

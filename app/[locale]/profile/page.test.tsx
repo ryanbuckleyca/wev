@@ -53,7 +53,6 @@ const baseProfile = {
   values: [],
   skills: ['uri-1'],
   work_types: ['remote'],
-  ideal_work_environment: 'Calm, collaborative, flexible hours.',
   created_at: '2026-03-06T00:00:00.000Z',
   updated_at: '2026-03-06T00:00:00.000Z',
 };

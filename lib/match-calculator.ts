@@ -97,6 +97,11 @@ interface JobRow {
 
 // computeLocationScore
 
+/** Lowercase and strip diacritics for accent-insensitive municipality comparison. */
+function normalize(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '');
+}
+
 /**
  * Pure function -- no Supabase dependency.
  * Evaluates conditions in Boolean-first order and returns a tiered location score.
@@ -132,11 +137,11 @@ export function computeLocationScore(params: LocationScoreParams): number | null
     return null;
   }
 
-  // 5. Exact municipality + province match (case-insensitive, all four non-null)
+  // 5. Exact municipality + province match (case and accent-insensitive, all four non-null)
   if (
     jobMunicipality != null && jobProvince != null &&
     userMunicipality != null && userProvince != null &&
-    jobMunicipality.toLowerCase() === userMunicipality.toLowerCase() &&
+    normalize(jobMunicipality) === normalize(userMunicipality) &&
     jobProvince.toLowerCase() === userProvince.toLowerCase()
   ) {
     return 1.0;

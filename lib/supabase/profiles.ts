@@ -12,6 +12,8 @@ export type Profile = {
   work_types: string[];
   lat: number | null;
   lng: number | null;
+  municipality: string | null;
+  province: string | null;
   location_display_name: string | null;
   profile_photo_url: string | null;
   created_at: string;
@@ -28,6 +30,8 @@ export type ProfileUpdateData = {
   work_types?: string[];
   lat?: number | null;
   lng?: number | null;
+  municipality?: string | null;
+  province?: string | null;
   location_display_name?: string | null;
   profile_photo_url?: string | null;
 };
