@@ -111,12 +111,14 @@
     "totalMatch": "Total Match",
     "values": "Values",
     "skills": "Skills",
-    "workType": "Work type",
     "location": "Location",
     "breakdown": "Breakdown: Values 55% • Skills 35% • Work type 5% • Location 5%",
-    "weightsNote": "Weights are adjusted when some signals are missing."
-    ,"locationRequiresProfile": "You selected 'Location' in your profile — add an Ideal Work Environment description to enable location matching."
-    ,"locationOutOfRange": "This job is outside your preferred commute range."
+    "weightsNote": "Weights are adjusted when some signals are missing.",
+    "locationRequiresProfile": "You selected 'Location' in your profile — add an Ideal Work Environment description to enable location matching.",
+    "locationOutOfRange": "Outside your commute range",
+    "locationNearby": "Within commute range",
+    "locationRegional": "Within regional range",
+    "locationPrioritized": "Location is prioritized in your values"
   },
   "expand": {
     "expandAll": "Expand all",

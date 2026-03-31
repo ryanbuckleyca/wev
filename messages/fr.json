@@ -111,12 +111,14 @@
     "totalMatch": "Correspondance totale",
     "values": "Valeurs",
     "skills": "Compétences",
-    "workType": "Type de travail",
     "location": "Localisation",
     "breakdown": "Répartition : Valeurs 55% • Compétences 35% • Type de travail 5% • Localisation 5%",
-    "weightsNote": "Les pondérations sont ajustées lorsque certaines signaux manquent."
-    ,"locationRequiresProfile": "Vous avez sélectionné « Localisation » dans votre profil — ajoutez une description de l'environnement de travail idéal pour activer la correspondance par localisation."
-    ,"locationOutOfRange": "Cet emploi est en dehors de votre zone de trajet préférée."
+    "weightsNote": "Les pondérations sont ajustées lorsque certaines signaux manquent.",
+    "locationRequiresProfile": "Vous avez sélectionné « Localisation » dans votre profil — ajoutez une description de l'environnement de travail idéal pour activer la correspondance par localisation.",
+    "locationOutOfRange": "En dehors de votre zone de trajet",
+    "locationNearby": "Dans votre zone de trajet",
+    "locationRegional": "Dans votre zone régionale",
+    "locationPrioritized": "Lieu est priorisé dans vos valeurs"
   },
   "expand": {
     "expandAll": "Tout développer",

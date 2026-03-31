@@ -1,5 +1,5 @@
 import { Lineicons } from '@lineiconshq/react-lineicons';
-import { HeartSolid, Briefcase2Solid, CheckOutlined, XmarkOutlined } from '@lineiconshq/free-icons';
+import { HeartSolid, Briefcase2Solid, LocationArrowRightSolid, CheckOutlined, XmarkOutlined } from '@lineiconshq/free-icons';
 import ProgressDonut from './ProgressDonut';
 
 type TranslateFn = (key: string, values?: Record<string, string | number>) => string;
@@ -54,7 +54,7 @@ export default function MatchDetailsTooltip({
     ...skills.filter((skill) => sharedSkills.includes(skill)),
     ...skills.filter((skill) => !sharedSkills.includes(skill)),
   ]
-    .filter((skill) => skillTerms[skill]) // Only show skills with terms
+    .filter((skill) => skillTerms[skill])
     .slice(0, 5);
 
   const renderListItem = (label: string, key: string, matched: boolean) => (
@@ -71,6 +71,26 @@ export default function MatchDetailsTooltip({
     </div>
   );
 
+  // Combined location section: show when either work type or location score is available
+  const hasLocationSection =
+    typeof workTypeMatchPercentage === 'number' || typeof locationMatchPercentage === 'number';
+
+  // Combined score: average of available sub-scores
+  const locationSectionPercentage = (() => {
+    const scores = [
+      typeof workTypeMatchPercentage === 'number' ? workTypeMatchPercentage : null,
+      typeof locationMatchPercentage === 'number' ? locationMatchPercentage : null,
+    ].filter((s): s is number => s !== null);
+    if (scores.length === 0) return null;
+    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  })();
+
+  const workTypeLabels: Record<string, string> = {
+    remote: translate('filters.workType.remote'),
+    hybrid: translate('filters.workType.hybrid'),
+    office: translate('filters.workType.office'),
+  };
+
   return (
     <div className="space-y-3">
       <div className="text-center">
@@ -86,75 +106,62 @@ export default function MatchDetailsTooltip({
 
       {orderedValues.length > 0 && (
         <div className="space-y-1">
-          <div
-            className="font-medium lowercase flex items-center gap-1"
-            style={{ color: textColor }}
-          >
+          <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
             <Lineicons icon={HeartSolid} size={12} className="text-wev-brand-accent" />
-            <span>
-              {translate('matchDetails.values')}: {valueMatchPercentage}%
-            </span>
+            <span>{translate('matchDetails.values')}: {valueMatchPercentage}%</span>
           </div>
-          {orderedValues.map((value) => {
-            const isMatched = sharedValues.includes(value);
-            const valueName = formatValueLabel(value);
-            return renderListItem(valueName, `value-${value}`, isMatched);
-          })}
+          {orderedValues.map((value) =>
+            renderListItem(formatValueLabel(value), `value-${value}`, sharedValues.includes(value))
+          )}
         </div>
       )}
 
       {orderedSkills.length > 0 && (
         <div className="space-y-1">
-          <div
-            className="font-medium lowercase flex items-center gap-1"
-            style={{ color: textColor }}
-          >
-            <Lineicons icon={Briefcase2Solid} size={12} className="text-primary" />
-            <span>
-              {translate('matchDetails.skills')}: {skillMatchPercentage}%
-            </span>
-          </div>
-          {orderedSkills.map((skill) => {
-            const isMatched = sharedSkills.includes(skill);
-            const skillName = skillTerms[skill];
-            return renderListItem(skillName, `skill-${skill}`, isMatched);
-          })}
-        </div>
-      )}
-
-      {typeof workTypeMatchPercentage === 'number' && (
-        <div className="space-y-1">
           <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
-            <span>
-              {translate('matchDetails.workType')}: {Math.round(workTypeMatchPercentage)}%
-            </span>
+            <Lineicons icon={Briefcase2Solid} size={12} className="text-primary" />
+            <span>{translate('matchDetails.skills')}: {skillMatchPercentage}%</span>
           </div>
-          {jobWorkType && (
-            <div className="pl-3">
-              {(() => {
-                const workTypeLabels: Record<string, string> = {
-                  remote: translate('filters.workType.remote'),
-                  hybrid: translate('filters.workType.hybrid'),
-                  office: translate('filters.workType.office'),
-                };
-                const label = workTypeLabels[jobWorkType] ?? jobWorkType;
-                const matched = !profileWorkTypes?.length || profileWorkTypes.includes(jobWorkType);
-                return renderListItem(label, `worktype-${jobWorkType}`, matched);
-              })()}
-            </div>
+          {orderedSkills.map((skill) =>
+            renderListItem(skillTerms[skill], `skill-${skill}`, sharedSkills.includes(skill))
           )}
         </div>
       )}
 
-      {typeof locationMatchPercentage === 'number' && (
+      {hasLocationSection && (
         <div className="space-y-1">
           <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
+            <Lineicons icon={LocationArrowRightSolid} size={12} className="text-wev-info" />
             <span>
-              {translate('matchDetails.location')}: {Math.round(locationMatchPercentage)}%
+              {translate('matchDetails.location')}
+              {locationSectionPercentage !== null ? `: ${locationSectionPercentage}%` : ''}
             </span>
           </div>
-          {locationMatchPercentage === 0 && profileHasLocationValue && (
-            <div className="text-xs text-yellow-600 lowercase">{translate('matchDetails.locationOutOfRange')}</div>
+
+          {/* Work type sub-detail */}
+          {typeof workTypeMatchPercentage === 'number' && jobWorkType &&
+            renderListItem(
+              workTypeLabels[jobWorkType] ?? jobWorkType,
+              `worktype-${jobWorkType}`,
+              !profileWorkTypes?.length || profileWorkTypes.includes(jobWorkType),
+            )
+          }
+
+          {/* Distance sub-detail */}
+          {typeof locationMatchPercentage === 'number' && (
+            locationMatchPercentage === 100
+              ? renderListItem(translate('matchDetails.locationNearby'), 'location-distance', true)
+              : locationMatchPercentage === 50
+              ? renderListItem(translate('matchDetails.locationRegional'), 'location-distance', true)
+              : locationMatchPercentage === 0
+              ? renderListItem(translate('matchDetails.locationOutOfRange'), 'location-distance', false)
+              : null
+          )}
+
+          {profileHasLocationValue && (
+            <div className="text-xs text-muted-foreground lowercase">
+              {translate('matchDetails.locationPrioritized')}
+            </div>
           )}
         </div>
       )}
