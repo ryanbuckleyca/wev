@@ -63,6 +63,9 @@ function createMockUpdateProfile() {
       work_types: data.work_types ?? [],
       ideal_work_environment: null,
       profile_photo_url: null,
+      lat: null,
+      lng: null,
+      location_display_name: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

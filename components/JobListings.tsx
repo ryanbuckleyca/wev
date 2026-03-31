@@ -95,7 +95,6 @@ export default function JobListings({
             key={job.id}
             job={job}
             isAdmin={isAdmin}
-            profile={profile}
             onSseToggle={handleSseToggle}
             onBookmarkToggle={onJobBookmarkChange}
             updatingId={updatingId}

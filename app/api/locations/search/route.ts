@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServer } from '@/lib/supabase-server';
-import { LOCATION_MIN_QUERY_LENGTH } from '@/lib/location-constants';
+import { supabaseServer } from '@/lib/supabase-server';
+import { LOCATION_MIN_QUERY_LENGTH } from '@/lib/location-config';
 
 const MAX_RESULTS = 10;
 
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       return NextResponse.json([], { status: 200 });
     }
 
-    const supabase = getSupabaseServer();
+    const supabase = supabaseServer;
 
     const { data, error } = await supabase
       .from('cities')

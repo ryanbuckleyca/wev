@@ -15,6 +15,7 @@ import LoadingState from '@/components/LoadingState';
 import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
 import FormLabel from '@/components/FormLabel';
+import FormTextarea from '@/components/FormTextarea';
 import ErrorBox from '@/components/ErrorBox';
 import PageLayout from '@/components/PageLayout';
 import CardLayout from '@/components/CardLayout';

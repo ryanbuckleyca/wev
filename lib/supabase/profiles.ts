@@ -11,6 +11,9 @@ export type Profile = {
   skills_rated: RatedSkill[] | null;
   work_types: string[];
   ideal_work_environment: string | null;
+  lat: number | null;
+  lng: number | null;
+  location_display_name: string | null;
   profile_photo_url: string | null;
   created_at: string;
   updated_at: string;
@@ -25,6 +28,9 @@ export type ProfileUpdateData = {
   skills_rated?: RatedSkill[] | null;
   work_types?: string[];
   ideal_work_environment?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  location_display_name?: string | null;
   profile_photo_url?: string | null;
 };
 

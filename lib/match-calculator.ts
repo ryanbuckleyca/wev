@@ -1,4 +1,4 @@
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/supabase-server';
 import { logger } from '@/lib/logger';
 import { RatedValue, JobRatedValue, getRankWeight } from './value-ratings';
 import { getDistance } from 'geolib';
@@ -430,7 +430,7 @@ function computeMatchForPair(
  * Uses the service Supabase client so reads/writes bypass RLS.
  */
 export async function calculateUserMatches(userId: string): Promise<void> {
-  const supabase = getSupabaseServer();
+  const supabase = supabaseServer;
 
   try {
     const { data: profile, error: profileError } = await supabase
@@ -479,7 +479,7 @@ export async function calculateUserMatches(userId: string): Promise<void> {
  * Uses the service Supabase client so reads/writes bypass RLS.
  */
 export async function calculateJobMatches(jobId: string): Promise<void> {
-  const supabase = getSupabaseServer();
+  const supabase = supabaseServer;
 
   try {
     const { data: job, error: jobError } = await supabase
