@@ -40,27 +40,15 @@ export type ProfileUpdateData = {
 export async function getProfile(userId: string): Promise<Profile | null> {
   const supabase = createClient();
 
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).limit(1);
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
 
   if (error) {
+    if (error.code === 'PGRST116') return null; // no rows found
     console.error('Error fetching profile:', error);
     return null;
   }
 
-  if (!data || data.length === 0) {
-    return null;
-  }
-
-  const profile = data[0] as Profile;
-  return {
-    ...profile,
-    values: profile.values ?? [],
-    values_rated: profile.values_rated ?? null,
-    skills: profile.skills ?? [],
-    skills_rated: profile.skills_rated ?? null,
-    work_types: profile.work_types ?? [],
-    ideal_work_environment: profile.ideal_work_environment ?? null,
-  };
+  return data as Profile;
 }
 
 /**

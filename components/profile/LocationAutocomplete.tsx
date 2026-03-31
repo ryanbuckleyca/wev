@@ -47,7 +47,7 @@ function useDebounce(fn: (q: string) => void, delay: number) {
   );
 
   // Clean up any pending timer on unmount.
-  useEffect(() => cancel, [cancel]);
+  useEffect(() => () => cancel(), [cancel]);
 
   return { debounced, cancel };
 }
@@ -55,11 +55,13 @@ function useDebounce(fn: (q: string) => void, delay: number) {
 export default function LocationAutocomplete({
   value,
   onChange,
-  placeholder = 'Search for a city…',
+  placeholder = '',
   hint,
   error: externalError,
 }: LocationAutocompleteProps) {
   const t = useTranslations('profile');
+  const tRef = useRef(t);
+  tRef.current = t;
   const listboxId = useId();
 
   const [query, setQuery] = useState(value?.display_name ?? '');
@@ -94,17 +96,17 @@ export default function LocationAutocomplete({
       setIsOpen(data.length > 0);
       setActiveIndex(0);
     } catch {
-      setApiError(t('locationSearchError'));
+      setApiError(tRef.current('locationSearchError'));
       setResults([]);
       setIsOpen(false);
     } finally {
       setIsSearching(false);
     }
-  }, [t]);
+  }, []);
 
   const { debounced: debouncedSearch, cancel: cancelDebounce } = useDebounce(search, DEBOUNCE_MS);
 
-  const handleQueryChange = (newQuery: string) => {
+  const handleQueryChange = useCallback((newQuery: string) => {
     setQuery(newQuery);
 
     if (hasSelection) {
@@ -121,7 +123,7 @@ export default function LocationAutocomplete({
     }
 
     debouncedSearch(newQuery);
-  };
+  }, [hasSelection, onChange, cancelDebounce, debouncedSearch]);
 
   const handleSelect = (result: LocationSelection) => {
     setQuery(result.display_name);
@@ -192,7 +194,7 @@ export default function LocationAutocomplete({
           >
             {results.map((result, i) => (
               <li
-                key={`${result.province}-${result.name}`}
+                key={`${result.lat}-${result.lng}`}
                 id={`${listboxId}-${i}`}
                 role="option"
                 aria-selected={i === activeIndex}

@@ -11,7 +11,7 @@ import {
   useQueryState,
 } from 'nuqs';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/lib/hooks/useProfile';
+import { useProfile } from '@/contexts/ProfileContext';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import {
   JOB_SORT_OPTIONS,
@@ -67,7 +67,7 @@ function hasSameSelections(left: string[], right: string[]) {
 
 export function useBulletinFilters(): BulletinFilterControls {
   const { user } = useAuth();
-  const { profile, loading: profileLoading } = useProfile(user?.id);
+  const { profile, loading: profileLoading } = useProfile();
   const searchParams = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useQueryState('q', parseAsString.withDefault(''));

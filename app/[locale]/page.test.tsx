@@ -7,7 +7,7 @@ vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock('@/lib/hooks/useProfile', () => ({
+vi.mock('@/contexts/ProfileContext', () => ({
   useProfile: vi.fn(),
 }));
 
@@ -71,7 +71,7 @@ vi.mock('nuqs', async () => {
 });
 
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/lib/hooks/useProfile';
+import { useProfile } from '@/contexts/ProfileContext';
 import { useSearchParams } from 'next/navigation';
 
 const mockUseAuth = vi.mocked(useAuth);

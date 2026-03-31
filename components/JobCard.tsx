@@ -12,7 +12,7 @@ import {
   ChevronDownSolid,
 } from '@lineiconshq/free-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/lib/hooks/useProfile';
+import type { Profile } from '@/lib/supabase/profiles';
 import { formatCompensation } from '@/lib/compensation/helpers';
 import Collapsible from './Collapsible';
 import { createClient } from '@/lib/supabase/client';
@@ -23,6 +23,7 @@ import JobCardFooter from './JobCardFooter';
 interface JobCardProps {
   job: JobPosting;
   isAdmin: boolean;
+  profile: Profile | null;
   onSseToggle: (job: JobPosting) => void;
   onBookmarkToggle?: (job: JobPosting, bookmarked: boolean) => void;
   updatingId: string | null;
@@ -35,6 +36,7 @@ interface JobCardProps {
 export default function JobCard({
   job,
   isAdmin,
+  profile,
   onSseToggle,
   onBookmarkToggle,
   updatingId,
@@ -69,7 +71,6 @@ export default function JobCard({
   const t = useTranslations();
   const locale = useLocale();
   const { user } = useAuth();
-  const { profile } = useProfile(user?.id);
   const router = useRouter();
 
   // Profile-derived preferences

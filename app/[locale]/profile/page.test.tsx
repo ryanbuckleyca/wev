@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { render, screen, waitFor } from '@/test-utils';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
-import { useProfile } from '@/lib/hooks/useProfile';
+import { useProfile } from '@/contexts/ProfileContext';
 import { MAX_PROFILE_SKILLS } from '@/lib/hooks/useProfileForm';
 import notify from '@/lib/toast';
 import ProfilePage from './page';
@@ -15,7 +15,7 @@ vi.mock('@/lib/hooks/useRequireAuth', () => ({
   useRequireAuth: vi.fn(),
 }));
 
-vi.mock('@/lib/hooks/useProfile', () => ({
+vi.mock('@/contexts/ProfileContext', () => ({
   useProfile: vi.fn(),
 }));
 

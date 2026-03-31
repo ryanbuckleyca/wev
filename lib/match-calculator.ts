@@ -328,7 +328,8 @@ function calcSkillScore(
   jobSkills: string[],
 ): { score: number | null; shared: string[] } {
   if (userSkills.length === 0 || jobSkills.length === 0) return { score: null, shared: [] };
-  const shared = userSkills.filter((s) => jobSkills.includes(s));
+  const jobSkillSet = new Set(jobSkills);
+  const shared = userSkills.filter((s) => jobSkillSet.has(s));
   const score = Math.min(shared.length / userSkills.length + Math.min(shared.length * 0.1, 0.3), 1.0);
   return { score, shared };
 }
@@ -430,10 +431,8 @@ function computeMatchForPair(
  * Uses the service Supabase client so reads/writes bypass RLS.
  */
 export async function calculateUserMatches(userId: string): Promise<void> {
-  const supabase = supabaseServer;
-
   try {
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseServer
       .from('profiles')
       .select('id, values, values_rated, skills, work_types, lat, lng, municipality, province')
       .eq('id', userId)
@@ -441,9 +440,12 @@ export async function calculateUserMatches(userId: string): Promise<void> {
 
     if (profileError || !profile) return;
 
-    if (!resolveUserValues(profile as ProfileRow).length) return;
+    if (!resolveUserValues(profile as ProfileRow).length) {
+      logger.debug({ userId }, 'Skipping match calculation: user has no values');
+      return;
+    }
 
-    const { data: jobs, error: jobsError } = await supabase
+    const { data: jobs, error: jobsError } = await supabaseServer
       .from('jobs')
       .select('id, values, values_rated, skills, work_type, lat, lng, geocode_accuracy_type, municipality, province')
       .not('values', 'is', null);
@@ -454,7 +456,7 @@ export async function calculateUserMatches(userId: string): Promise<void> {
     }
 
     const matches: MatchResult[] = (jobs ?? [])
-      .filter((job) => job.values?.length || job.skills?.length)
+      .filter((job) => job.values?.length || job.values_rated?.length || job.skills?.length)
       .map((job) => ({
         user_id: userId,
         job_id: job.id,
@@ -462,7 +464,7 @@ export async function calculateUserMatches(userId: string): Promise<void> {
       }));
 
     if (matches.length > 0) {
-      const { error: upsertError } = await supabase
+      const { error: upsertError } = await supabaseServer
         .from('job_matches')
         .upsert(matches, { onConflict: 'user_id,job_id' });
       if (upsertError) logger.error({ err: upsertError }, 'Error upserting matches (user batch)');
@@ -479,18 +481,17 @@ export async function calculateUserMatches(userId: string): Promise<void> {
  * Uses the service Supabase client so reads/writes bypass RLS.
  */
 export async function calculateJobMatches(jobId: string): Promise<void> {
-  const supabase = supabaseServer;
-
   try {
-    const { data: job, error: jobError } = await supabase
+    const { data: job, error: jobError } = await supabaseServer
       .from('jobs')
       .select('id, values, values_rated, skills, work_type, lat, lng, geocode_accuracy_type, municipality, province')
       .eq('id', jobId)
       .single();
 
-    if (jobError || !job?.values?.length) return;
+    if (jobError || !job) return;
+    if (!job.values?.length && !job.values_rated?.length && !job.skills?.length) return;
 
-    const { data: profiles, error: profilesError } = await supabase
+    const { data: profiles, error: profilesError } = await supabaseServer
       .from('profiles')
       .select('id, values, values_rated, skills, work_types, lat, lng, municipality, province')
       .not('values', 'is', null);
@@ -509,7 +510,7 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
       }));
 
     if (matches.length > 0) {
-      const { error: upsertError } = await supabase
+      const { error: upsertError } = await supabaseServer
         .from('job_matches')
         .upsert(matches, { onConflict: 'user_id,job_id' });
       if (upsertError) logger.error({ err: upsertError }, 'Error upserting matches (job batch)');

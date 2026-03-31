@@ -6,6 +6,7 @@ import { Lexend_Deca } from 'next/font/google';
 import Header from '@/components/Header';
 import Toaster from '@/components/Toaster';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ProfileProvider } from '@/contexts/ProfileContext';
 import { routing } from '@/i18n/routing';
 
 const lexend = Lexend_Deca({
@@ -50,9 +51,11 @@ export default async function LocaleLayout({
         <NuqsAdapter>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <AuthProvider>
-              <Header initialTheme={theme} />
-              {children}
-              <Toaster />
+              <ProfileProvider>
+                <Header initialTheme={theme} />
+                {children}
+                <Toaster />
+              </ProfileProvider>
             </AuthProvider>
           </NextIntlClientProvider>
         </NuqsAdapter>

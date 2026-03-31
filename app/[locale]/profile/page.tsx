@@ -16,6 +16,7 @@ import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
 import FormLabel from '@/components/FormLabel';
 import FormTextarea from '@/components/FormTextarea';
+import CountBadge from '@/components/CountBadge';
 import ErrorBox from '@/components/ErrorBox';
 import PageLayout from '@/components/PageLayout';
 import CardLayout from '@/components/CardLayout';
@@ -50,14 +51,15 @@ export default function ProfilePage() {
     handleValueRemove,
     isSaving,
     handleSaveProfile,
-  } = useProfileForm(user?.id, locale);
+    handleWorkTypeToggle,
+  } = useProfileForm(locale);
 
   const hasLocationValue = selectedValues.includes('Location');
 
-  const getWorkTypeLabel = (workType: WorkType) => {
-    if (workType === 'remote') return t('filters.workType.remote');
-    if (workType === 'hybrid') return t('filters.workType.hybrid');
-    return t('filters.workType.office');
+  const workTypeLabels: Record<WorkType, string> = {
+    remote: t('filters.workType.remote'),
+    hybrid: t('filters.workType.hybrid'),
+    office: t('filters.workType.office'),
   };
 
   if (loading || profileLoading) {
@@ -121,16 +123,7 @@ export default function ProfilePage() {
                 <h2 className="text-sm font-semibold leading-none text-foreground">
                   {t('profile.skills')}
                 </h2>
-                <span
-                  className={`text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors ${
-                    selectedSkills.length > MAX_PROFILE_SKILLS
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
-                      : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
-                  }`}
-                  aria-label={`${selectedSkills.length}/${MAX_PROFILE_SKILLS}`}
-                >
-                  {selectedSkills.length}/{MAX_PROFILE_SKILLS}
-                </span>
+                <CountBadge count={selectedSkills.length} max={MAX_PROFILE_SKILLS} />
               </div>
 
               {selectedSkills.length > MAX_PROFILE_SKILLS && (
@@ -157,16 +150,7 @@ export default function ProfilePage() {
                 <h2 className="text-sm font-semibold leading-none text-foreground">
                   {t('profile.workValues')}
                 </h2>
-                <span
-                  className={`text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors ${
-                    selectedValues.length > MAX_PROFILE_VALUES
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
-                      : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
-                  }`}
-                  aria-label={`${selectedValues.length}/${MAX_PROFILE_VALUES}`}
-                >
-                  {selectedValues.length}/{MAX_PROFILE_VALUES}
-                </span>
+                <CountBadge count={selectedValues.length} max={MAX_PROFILE_VALUES} />
               </div>
 
               {selectedValues.length > MAX_PROFILE_VALUES && (
@@ -203,26 +187,14 @@ export default function ProfilePage() {
                       <button
                         key={workType}
                         type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            setFormData({
-                              ...formData,
-                              work_types: formData.work_types.filter((wt) => wt !== workType),
-                            });
-                          } else {
-                            setFormData({
-                              ...formData,
-                              work_types: [...formData.work_types, workType],
-                            });
-                          }
-                        }}
+                        onClick={() => handleWorkTypeToggle(workType)}
                         className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
                           isSelected
                             ? 'bg-primary text-white shadow-sm'
                             : 'bg-gray-50 text-gray-700 border border-gray-100 hover:bg-gray-100'
                         }`}
                       >
-                        {getWorkTypeLabel(workType)}
+                        {workTypeLabels[workType]}
                       </button>
                     );
                   })}

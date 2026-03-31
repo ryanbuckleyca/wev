@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { useProfile } from '@/lib/hooks/useProfile';
+import { useProfile } from '@/contexts/ProfileContext';
 import { useRankedList } from '@/lib/hooks/useRankedList';
 import { type EscoSkill } from '@/lib/types/skills';
 import { type WorkValue, buildWorkValues, getValueDefinition } from '@/lib/values';
@@ -111,7 +111,7 @@ export function validateProfileLimits(
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') {
+export function useProfileForm(locale: 'en' | 'fr') {
   const t = useTranslations('profile');
   const tValues = useTranslations('values');
   const {
@@ -119,7 +119,7 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     loading: profileLoading,
     error: profileError,
     updateProfile,
-  } = useProfile(userId);
+  } = useProfile();
 
   const [isSaving, setIsSaving] = useState(false);
   const [allSkills, setAllSkills] = useState<EscoSkill[]>([]);
@@ -218,6 +218,17 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
       .finally(() => setIsLibraryLoading(false));
   }, [locale]);
 
+  // ─── Work type toggle ─────────────────────────────────────────────────
+
+  const handleWorkTypeToggle = (workType: WorkType) => {
+    setFormData((prev) => ({
+      ...prev,
+      work_types: prev.work_types.includes(workType)
+        ? prev.work_types.filter((wt) => wt !== workType)
+        : [...prev.work_types, workType],
+    }));
+  };
+
   // ─── Save ─────────────────────────────────────────────────────────────
 
   const handleSaveProfile = async () => {
@@ -280,5 +291,6 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     handleValueRemove: values.remove,
     isSaving,
     handleSaveProfile,
+    handleWorkTypeToggle,
   };
 }
