@@ -20,9 +20,7 @@ export async function GET(request: Request) {
       return NextResponse.json([], { status: 200 });
     }
 
-    const supabase = supabaseServer;
-
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServer
       .from('cities')
       .select('name, province, display_name, lat, lng')
       .ilike('display_name', `${query}%`)

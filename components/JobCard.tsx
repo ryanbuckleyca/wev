@@ -20,6 +20,13 @@ import { useRouter } from '@/i18n/navigation';
 import MatchDetailsTooltip from './MatchDetailsTooltip';
 import JobCardFooter from './JobCardFooter';
 
+function parseJobDate(dateString: string): Date {
+  if (!dateString.endsWith('Z') && !dateString.match(/[+-]\d{2}:\d{2}$/)) {
+    return new Date(dateString + 'Z');
+  }
+  return new Date(dateString);
+}
+
 interface JobCardProps {
   job: JobPosting;
   isAdmin: boolean;
@@ -74,7 +81,7 @@ export default function JobCard({
   const router = useRouter();
 
   // Profile-derived preferences
-  const profileWorkTypes = (profile?.work_types as string[]) || [];
+  const profileWorkTypes = profile?.work_types ?? [];
 
   // Use passed-in match data (batch-fetched by parent)
   const totalMatchPercentage = matchProp?.score != null ? Math.round(matchProp.score * 100) : 0;
@@ -87,13 +94,9 @@ export default function JobCard({
   const locationMatchPercentage =
     matchProp?.location_score != null ? Math.round(matchProp.location_score * 100) : undefined;
 
-  const profileHasLocationValue = (() => {
-    const vals = (profile?.values as string[]) || [];
-    const rated = (profile?.values_rated as any[]) || [];
-    const hasFromVals = vals.some((v) => String(v).toLowerCase() === 'location');
-    const hasFromRated = rated.some((v) => (typeof v === 'string' ? v : v?.value)?.toLowerCase() === 'location');
-    return hasFromVals || hasFromRated;
-  })();
+  const profileHasLocationValue =
+    (profile?.values ?? []).some((v) => v.toLowerCase() === 'location') ||
+    (profile?.values_rated ?? []).some((rv) => rv.value.toLowerCase() === 'location');
 
   const matchTooltipContent = useMemo<ReactNode | null>(() => {
     if (!matchProp) return null;
@@ -145,45 +148,20 @@ export default function JobCard({
     const title =
       job.job_title.length > 25 ? job.job_title.substring(0, 25) + '...' : job.job_title;
     const location = job.location || t('jobCard.remote');
-
-    // Simple date formatting for header
-    let date: Date;
-    if (
-      typeof job.date_posted === 'string' &&
-      !job.date_posted.endsWith('Z') &&
-      !job.date_posted.match(/[+-]\d{2}:\d{2}$/)
-    ) {
-      date = new Date(job.date_posted + 'Z');
-    } else {
-      date = new Date(job.date_posted);
-    }
-    const dateStr = date.toLocaleDateString(locale, {
+    const dateStr = parseJobDate(job.date_posted).toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric',
     });
-
     return `${job.organization} - ${title} • ${location} • ${dateStr}`;
   };
 
-  const formatDate = (dateString: string): string => {
-    // Parse date string - if it doesn't have timezone, treat as UTC
-    let date: Date;
-    if (
-      typeof dateString === 'string' &&
-      !dateString.endsWith('Z') &&
-      !dateString.match(/[+-]\d{2}:\d{2}$/)
-    ) {
-      date = new Date(dateString + 'Z');
-    } else {
-      date = new Date(dateString);
-    }
-    return date.toLocaleDateString(locale, {
+  const formatDate = (dateString: string): string =>
+    parseJobDate(dateString).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       timeZone: 'America/New_York',
     });
-  };
 
   const handleBookmarkToggle = () => {
     if (!user) {

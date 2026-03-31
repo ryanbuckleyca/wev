@@ -10,7 +10,6 @@ export type Profile = {
   skills: string[];
   skills_rated: RatedSkill[] | null;
   work_types: string[];
-  ideal_work_environment: string | null;
   lat: number | null;
   lng: number | null;
   location_display_name: string | null;
@@ -27,7 +26,6 @@ export type ProfileUpdateData = {
   skills?: string[];
   skills_rated?: RatedSkill[] | null;
   work_types?: string[];
-  ideal_work_environment?: string | null;
   lat?: number | null;
   lng?: number | null;
   location_display_name?: string | null;
@@ -58,8 +56,7 @@ export async function updateProfile(userId: string, updates: ProfileUpdateData):
   const supabase = createClient();
 
   // Match recalculation for user-driven profile edits is handled by the DB trigger on
-  // `profiles`, not by calling `/api/matches/calculate-user`. If matching expands to
-  // `work_types` or `ideal_work_environment`, update that trigger's watched columns too.
+  // `profiles`, not by calling `/api/matches/calculate-user`.
   const { data, error } = await supabase
     .from('profiles')
     .update({

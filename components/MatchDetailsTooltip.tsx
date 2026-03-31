@@ -131,16 +131,16 @@ export default function MatchDetailsTooltip({
           </div>
           {jobWorkType && (
             <div className="pl-3">
-              {renderListItem(
-                jobWorkType === 'remote'
-                  ? translate('filters.workType.remote')
-                  : jobWorkType === 'hybrid'
-                  ? translate('filters.workType.hybrid')
-                  : translate('filters.workType.office'),
-                `worktype-${jobWorkType}`,
-                // matched when profileWorkTypes empty (treated as all selected) or contains jobWorkType
-                !(profileWorkTypes && profileWorkTypes.length > 0) || (profileWorkTypes || []).includes(jobWorkType),
-              )}
+              {(() => {
+                const workTypeLabels: Record<string, string> = {
+                  remote: translate('filters.workType.remote'),
+                  hybrid: translate('filters.workType.hybrid'),
+                  office: translate('filters.workType.office'),
+                };
+                const label = workTypeLabels[jobWorkType] ?? jobWorkType;
+                const matched = !profileWorkTypes?.length || profileWorkTypes.includes(jobWorkType);
+                return renderListItem(label, `worktype-${jobWorkType}`, matched);
+              })()}
             </div>
           )}
         </div>

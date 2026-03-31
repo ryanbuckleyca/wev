@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import {
@@ -56,11 +57,14 @@ export default function ProfilePage() {
 
   const hasLocationValue = selectedValues.includes('Location');
 
-  const workTypeLabels: Record<WorkType, string> = {
-    remote: t('filters.workType.remote'),
-    hybrid: t('filters.workType.hybrid'),
-    office: t('filters.workType.office'),
-  };
+  const workTypeLabels = useMemo<Record<WorkType, string>>(
+    () => ({
+      remote: t('filters.workType.remote'),
+      hybrid: t('filters.workType.hybrid'),
+      office: t('filters.workType.office'),
+    }),
+    [t],
+  );
 
   if (loading || profileLoading) {
     return <LoadingState message={t('common.loading')} />;
