@@ -116,6 +116,7 @@
     "breakdown": "Breakdown: Values 55% • Skills 35% • Work type 5% • Location 5%",
     "weightsNote": "Weights are adjusted when some signals are missing."
     ,"locationRequiresProfile": "You selected 'Location' in your profile — add an Ideal Work Environment description to enable location matching."
+    ,"locationOutOfRange": "This job is outside your preferred commute range."
   },
   "expand": {
     "expandAll": "Expand all",
@@ -316,7 +317,11 @@
     "updateSuccess": "Profile updated successfully!",
     "updateFailed": "Failed to update profile",
     "photoUploadSuccess": "Photo uploaded successfully!",
-    "photoUploadFailed": "Failed to upload photo"
+    "photoUploadFailed": "Failed to upload photo",
+    "locationAndWorkSetting": "Location & Work Setting",
+    "location": "Current City / Region",
+    "locationHint": "Set your preferred location to activate distance-based matching. If you've ranked Location as a value, it carries more weight in your matches.",
+    "locationPriorityCallout": "You've prioritized Location — these preferences carry extra weight in your matches."
   },
   "accountSettings": {
     "title": "Account Settings",

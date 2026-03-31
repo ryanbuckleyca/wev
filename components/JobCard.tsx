@@ -11,23 +11,18 @@ import {
   Bookmark1Outlined,
   ChevronDownSolid,
 } from '@lineiconshq/free-icons';
-import type { Profile } from '@/lib/supabase/profiles';
-import { formatCompensation } from '@/lib/compensation/helpers';
-import { parseDateString } from '@/lib/date-utils';
-import { buildJobText, computeLocationTokens, profileHasLocationValue } from '@/lib/match-utils';
-import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from '@/i18n/navigation';
+import { useProfile } from '@/lib/hooks/useProfile';
+import { formatCompensation } from '@/lib/compensation/helpers';
 import Collapsible from './Collapsible';
-import ConfirmDialog from './ConfirmDialog';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from '@/i18n/navigation';
 import MatchDetailsTooltip from './MatchDetailsTooltip';
 import JobCardFooter from './JobCardFooter';
 
 interface JobCardProps {
   job: JobPosting;
   isAdmin: boolean;
-  /** Profile of the currently logged-in user, passed from the parent to avoid per-card fetches. */
-  profile: Profile | null;
   onSseToggle: (job: JobPosting) => void;
   onBookmarkToggle?: (job: JobPosting, bookmarked: boolean) => void;
   updatingId: string | null;
@@ -40,7 +35,6 @@ interface JobCardProps {
 export default function JobCard({
   job,
   isAdmin,
-  profile,
   onSseToggle,
   onBookmarkToggle,
   updatingId,
@@ -52,12 +46,6 @@ export default function JobCard({
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
-  const [confirmSse, setConfirmSse] = useState(false);
-
-  const t = useTranslations();
-  const locale = useLocale();
-  const { user } = useAuth();
-  const router = useRouter();
 
   // Derive skill display maps from pre-resolved labels embedded in the job
   const skillTerms: Record<string, string> = useMemo(() => {
@@ -69,7 +57,7 @@ export default function JobCard({
     const labels = job.skill_labels ?? {};
     const result: Record<string, string> = {};
     for (const [uri, l] of Object.entries(labels)) {
-      const parts: string[] = [];
+      const parts = [];
       if (l.definition) parts.push(l.definition);
       if (l.scope_note) parts.push(l.scope_note);
       if (parts.length > 0) result[uri] = parts.join('<br/><br/>');
@@ -77,21 +65,17 @@ export default function JobCard({
     return result;
   }, [job.skill_labels]);
 
-  // Profile-derived preferences and computed tokens for location matching
-  const profileWorkTypes = profile?.work_types ?? [];
-  const profileIdeal = profile?.ideal_work_environment ?? null;
+  // Get user state
+  const t = useTranslations();
+  const locale = useLocale();
+  const { user } = useAuth();
+  const { profile } = useProfile(user?.id);
+  const router = useRouter();
 
-  const { matched: matchedLocationTokens, unmatched: unmatchedLocationTokens } = useMemo(() => {
-    const jobText = buildJobText(job.location, job.summary);
-    return computeLocationTokens(profileIdeal, jobText);
-  }, [job.location, job.summary, profileIdeal]);
+  // Profile-derived preferences
+  const profileWorkTypes = (profile?.work_types as string[]) || [];
 
-  const hasLocationValue = useMemo(
-    () => profileHasLocationValue(profile?.values, profile?.values_rated),
-    [profile?.values, profile?.values_rated],
-  );
-
-  // Match percentages derived from batch-fetched match data
+  // Use passed-in match data (batch-fetched by parent)
   const totalMatchPercentage = matchProp?.score != null ? Math.round(matchProp.score * 100) : 0;
   const valueMatchPercentage =
     matchProp?.value_score != null ? Math.round(matchProp.value_score * 100) : 0;
@@ -101,6 +85,14 @@ export default function JobCard({
     matchProp?.work_type_score != null ? Math.round(matchProp.work_type_score * 100) : undefined;
   const locationMatchPercentage =
     matchProp?.location_score != null ? Math.round(matchProp.location_score * 100) : undefined;
+
+  const profileHasLocationValue = (() => {
+    const vals = (profile?.values as string[]) || [];
+    const rated = (profile?.values_rated as any[]) || [];
+    const hasFromVals = vals.some((v) => String(v).toLowerCase() === 'location');
+    const hasFromRated = rated.some((v) => (typeof v === 'string' ? v : v?.value)?.toLowerCase() === 'location');
+    return hasFromVals || hasFromRated;
+  })();
 
   const matchTooltipContent = useMemo<ReactNode | null>(() => {
     if (!matchProp) return null;
@@ -113,10 +105,7 @@ export default function JobCard({
         locationMatchPercentage={locationMatchPercentage}
         jobWorkType={job.work_type}
         profileWorkTypes={profileWorkTypes}
-        profileIdealWorkEnvironment={profileIdeal}
-        profileHasLocationValue={hasLocationValue}
-        matchedLocationTokens={matchedLocationTokens}
-        unmatchedLocationTokens={unmatchedLocationTokens}
+        profileHasLocationValue={profileHasLocationValue}
         values={job.values || []}
         skills={job.skills || []}
         sharedValues={matchProp.shared_values || []}
@@ -129,7 +118,6 @@ export default function JobCard({
     matchProp,
     job.values,
     job.skills,
-    job.work_type,
     skillTerms,
     t,
     totalMatchPercentage,
@@ -138,90 +126,107 @@ export default function JobCard({
     workTypeMatchPercentage,
     locationMatchPercentage,
     profileWorkTypes,
-    profileIdeal,
-    hasLocationValue,
-    matchedLocationTokens,
-    unmatchedLocationTokens,
+    profileHasLocationValue,
   ]);
 
   // Sync internal state with prop changes
-  useEffect(() => { setIsExpanded(initialExpanded); }, [initialExpanded]);
-  useEffect(() => { setBookmarked(initialBookmarked); }, [initialBookmarked]);
+  useEffect(() => {
+    setIsExpanded(initialExpanded);
+  }, [initialExpanded]);
+
+  useEffect(() => {
+    setBookmarked(initialBookmarked);
+  }, [initialBookmarked]);
 
   const sse = !!job.is_sse;
 
-  const formatDate = (dateString: string): string =>
-    parseDateString(dateString).toLocaleDateString(locale, {
+  const getCardSummary = (job: JobPosting) => {
+    const title =
+      job.job_title.length > 25 ? job.job_title.substring(0, 25) + '...' : job.job_title;
+    const location = job.location || t('jobCard.remote');
+
+    // Simple date formatting for header
+    let date: Date;
+    if (
+      typeof job.date_posted === 'string' &&
+      !job.date_posted.endsWith('Z') &&
+      !job.date_posted.match(/[+-]\d{2}:\d{2}$/)
+    ) {
+      date = new Date(job.date_posted + 'Z');
+    } else {
+      date = new Date(job.date_posted);
+    }
+    const dateStr = date.toLocaleDateString(locale, {
+      month: 'short',
+      day: 'numeric',
+    });
+
+    return `${job.organization} - ${title} • ${location} • ${dateStr}`;
+  };
+
+  const formatDate = (dateString: string): string => {
+    // Parse date string - if it doesn't have timezone, treat as UTC
+    let date: Date;
+    if (
+      typeof dateString === 'string' &&
+      !dateString.endsWith('Z') &&
+      !dateString.match(/[+-]\d{2}:\d{2}$/)
+    ) {
+      date = new Date(dateString + 'Z');
+    } else {
+      date = new Date(dateString);
+    }
+    return date.toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       timeZone: 'America/New_York',
     });
-
-  const getCardSummary = (): string => {
-    const date = parseDateString(job.date_posted);
-    const dateStr = date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
-    const location = job.location || t('jobCard.remote');
-    return `${job.organization} - ${job.job_title} • ${location} • ${dateStr}`;
   };
 
-  const handleBookmarkToggle = async () => {
+  const handleBookmarkToggle = () => {
     if (!user) {
       router.push('/login');
       return;
     }
 
     const newBookmarkState = !bookmarked;
-    // Optimistic update
+    // Optimistic UI
     setBookmarked(newBookmarkState);
     onBookmarkToggle?.(job, newBookmarkState);
-
-    setBookmarkLoading(true);
-    const supabase = createClient();
-    try {
-      if (newBookmarkState) {
-        const { error } = await supabase
-          .from('bookmarks')
-          .insert([{ user_id: user.id, job_id: job.id }]);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('bookmarks')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('job_id', job.id);
-        if (error) throw error;
+    (async () => {
+      setBookmarkLoading(true);
+      const supabase = createClient();
+      try {
+        if (newBookmarkState) {
+          const { error } = await supabase
+            .from('bookmarks')
+            .insert([{ user_id: user.id, job_id: job.id }]);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('bookmarks')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('job_id', job.id);
+          if (error) throw error;
+        }
+      } catch (err) {
+        console.error('Bookmark update failed:', err);
+        // rollback
+        setBookmarked(!newBookmarkState);
+        onBookmarkToggle?.(job, !newBookmarkState);
+      } finally {
+        setBookmarkLoading(false);
       }
-    } catch (err) {
-      console.error('Bookmark update failed:', err);
-      // Rollback optimistic update
-      setBookmarked(!newBookmarkState);
-      onBookmarkToggle?.(job, !newBookmarkState);
-    } finally {
-      setBookmarkLoading(false);
-    }
+    })();
   };
 
-  const hasFooter =
-    (job.values && job.values.length > 0) || (job.skills && job.skills.length > 0);
+  // Check if there will be a footer
+  const hasFooter = (job.values && job.values.length > 0) || (job.skills && job.skills.length > 0);
 
   return (
     <div className="relative rounded-wev-card transition-all duration-300 bg-card border border-border hover:border-primary overflow-hidden">
-      {/* SSE confirmation dialog */}
-      <ConfirmDialog
-        open={confirmSse}
-        title={sse ? t('jobCard.removeSse') : t('jobCard.markSse')}
-        description={
-          sse
-            ? t('jobCard.removeSseConfirm', { title: job.job_title, org: job.organization })
-            : t('jobCard.markSseConfirm', { title: job.job_title, org: job.organization })
-        }
-        confirmLabel={t('common.confirm')}
-        cancelLabel={t('common.cancel')}
-        onConfirm={() => { setConfirmSse(false); onSseToggle(job); }}
-        onCancel={() => setConfirmSse(false)}
-      />
-
       {/* Card Header */}
       <div
         className={`flex items-center justify-between px-3 py-2 rounded-t-wev-card transition-all duration-300 bg-card ${hasFooter ? 'border-b border-border' : ''}`}
@@ -230,7 +235,12 @@ export default function JobCard({
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {isAdmin ? (
             <button
-              onClick={() => setConfirmSse(true)}
+              onClick={() => {
+                const msg = sse
+                  ? t('jobCard.removeSseConfirm', { title: job.job_title, org: job.organization })
+                  : t('jobCard.markSseConfirm', { title: job.job_title, org: job.organization });
+                if (window.confirm(msg)) onSseToggle(job);
+              }}
               disabled={updatingId === job.id}
               className="wev-icon-btn disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               title={sse ? t('jobCard.removeSse') : t('jobCard.markSse')}
@@ -247,7 +257,7 @@ export default function JobCard({
               <Lineicons icon={Leaf1Solid} size={16} className="text-wev-success" />
             </span>
           ) : null}
-          <span className="text-sm text-muted-foreground truncate pr-2">{getCardSummary()}</span>
+          <span className="text-sm text-muted-foreground truncate pr-2">{getCardSummary(job)}</span>
         </div>
 
         {/* Right side: Bookmark + Collapse */}
@@ -338,9 +348,7 @@ export default function JobCard({
                     <span className="job-label">{t('jobCard.howMuch')} </span>
                     <span className="job-value">{compensationDisplay.primary}</span>
                     {compensationDisplay.secondary && (
-                      <span className="job-value text-muted-foreground text-sm">
-                        {' '}({compensationDisplay.secondary})
-                      </span>
+                      <span className="job-value text-muted-foreground text-sm"> ({compensationDisplay.secondary})</span>
                     )}
                   </>
                 );
@@ -350,7 +358,7 @@ export default function JobCard({
         </div>
       </Collapsible>
 
-      {hasFooter && (
+      {(job.values && job.values.length > 0) || (job.skills && job.skills.length > 0) ? (
         <div className={`px-4 py-3 bg-muted ${isExpanded ? 'border-t border-border' : ''}`}>
           <JobCardFooter
             values={job.values || []}
@@ -367,7 +375,7 @@ export default function JobCard({
             selectedWorkTypes={selectedWorkTypes || []}
           />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

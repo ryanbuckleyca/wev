@@ -1,552 +1,288 @@
 import { describe, it, expect } from 'vitest';
-import { calculateMatch } from './match-calculator';
-import type { RatedValue, JobRatedValue } from './value-ratings';
-import { getRankWeight } from './value-ratings';
+import { computeLocationScore, normalizeWeights } from './match-calculator';
+import type { DimensionWeights, DimensionScores } from './match-calculator';
 
-describe('calculateMatch', () => {
-  it('returns score 0 and empty shared_values when user has no values', () => {
-    const result = calculateMatch([], ['Community', 'Creativity']);
-    expect(result).toEqual({ score: 0, shared_values: [] });
+// ─── Task 10.1: computeLocationScore — all 7 Boolean-first branches ──────────
+
+describe('computeLocationScore', () => {
+  // Branch 1: Remote-on-remote → 1.0
+  it('returns 1.0 when user includes remote and job is remote', () => {
+    expect(
+      computeLocationScore(null, null, null, null, null, ['remote'], 'remote', null, null, null, null),
+    ).toBe(1.0);
   });
 
-  it('returns score 0 and empty shared_values when job has no values', () => {
-    const result = calculateMatch(['Community', 'Creativity'], []);
-    expect(result).toEqual({ score: 0, shared_values: [] });
+  // Branch 2: Remote job, non-remote user → null
+  it('returns null when job is remote but user does not include remote', () => {
+    expect(
+      computeLocationScore(null, null, null, null, null, ['office'], 'remote', null, null, null, null),
+    ).toBeNull();
   });
 
-  it('returns score 0 when both lists are empty', () => {
-    const result = calculateMatch([], []);
-    expect(result).toEqual({ score: 0, shared_values: [] });
+  // Branch 3: Physical job, remote-only user → null
+  it('returns null when job is onsite and user is remote-only', () => {
+    expect(
+      computeLocationScore(49.2827, -123.1207, 49.2827, -123.1207, 'rooftop', ['remote'], 'office', 'Vancouver', 'BC', 'Vancouver', 'BC'),
+    ).toBeNull();
   });
 
-  it('returns score 1 when values match perfectly', () => {
-    const values = ['Community', 'Creativity', 'Challenge'];
-    const result = calculateMatch(values, values);
-    expect(result.score).toBe(1);
-    expect(result.shared_values).toEqual(values);
+  // Branch 4: Exact municipality + province match → 1.0
+  it('returns 1.0 for exact municipality and province match (case-insensitive)', () => {
+    expect(
+      computeLocationScore(null, null, null, null, null, ['office'], 'office', 'Vancouver', 'BC', 'vancouver', 'bc'),
+    ).toBe(1.0);
   });
 
-  it('calculates partial overlap correctly', () => {
-    const userValues = ['Community', 'Creativity', 'Challenge', 'Knowledge'];
-    const jobValues = ['Community', 'Creativity', 'Security'];
-    const result = calculateMatch(userValues, jobValues);
-
-    // shared = 2, overlap = 2/4 = 0.5, bonus = min(2*0.1, 0.3) = 0.2, score = 0.7
-    expect(result.score).toBe(0.7);
-    expect(result.shared_values).toEqual(['Community', 'Creativity']);
+  // Branch 5: Imprecise geocode → null
+  it('returns null when accuracy type is "state"', () => {
+    expect(
+      computeLocationScore(49.0, -123.0, 49.0, -123.0, 'state', ['office'], 'office', null, null, null, null),
+    ).toBeNull();
   });
 
-  it('returns score 0 when no values overlap', () => {
-    const result = calculateMatch(['Community'], ['Security']);
-    expect(result.score).toBe(0);
-    expect(result.shared_values).toEqual([]);
+  it('returns null when accuracy type is "country"', () => {
+    expect(
+      computeLocationScore(49.0, -123.0, 49.0, -123.0, 'country', ['office'], 'office', null, null, null, null),
+    ).toBeNull();
   });
 
-  it('uses user values count as denominator', () => {
-    // user has 2, job has 5, shared = 2 → overlap = 2/2 = 1.0, bonus = 0.2, score capped at 1.0
-    const result = calculateMatch(
-      ['Community', 'Creativity'],
-      ['Community', 'Creativity', 'Security', 'Knowledge', 'Challenge'],
+  // Branch 6: Missing coordinates → null
+  it('returns null when job lat is null', () => {
+    expect(
+      computeLocationScore(null, -123.0, 49.0, -123.0, 'rooftop', ['office'], 'office', null, null, null, null),
+    ).toBeNull();
+  });
+
+  it('returns null when user lng is null', () => {
+    expect(
+      computeLocationScore(49.0, -123.0, 49.0, null, 'rooftop', ['office'], 'office', null, null, null, null),
+    ).toBeNull();
+  });
+
+  // Branch 7: Distance bands
+  it('returns 1.0 for distance ≤ 50km', () => {
+    // Vancouver downtown to North Vancouver — ~5km
+    const result = computeLocationScore(
+      49.2827, -123.1207,
+      49.3163, -123.0724,
+      'rooftop', ['office'], 'office', null, null, null, null,
     );
-    expect(result.score).toBe(1.0);
-    expect(result.shared_values).toEqual(['Community', 'Creativity']);
+    expect(result).toBe(1.0);
   });
 
-  it('handles single-value lists', () => {
-    const result = calculateMatch(['Community'], ['Community']);
-    expect(result.score).toBe(1);
-    expect(result.shared_values).toEqual(['Community']);
-  });
-
-  it('weighted path when a later entry has rank even if the first element is a string (raw JSON)', () => {
-    const jobValues = ['Community', 'Creativity'];
-    const mixed = ['Creativity', { value: 'Community', rank: 1 }] as (string | RatedValue)[];
-    const canonical: RatedValue[] = [{ value: 'Creativity' }, { value: 'Community', rank: 1 }];
-    expect(calculateMatch(mixed as string[] | RatedValue[], jobValues).score).toBeCloseTo(
-      calculateMatch(canonical, jobValues).score,
-      10,
+  it('returns 0.5 for distance > 50km and ≤ 150km', () => {
+    // Vancouver to Whistler — ~120km
+    const result = computeLocationScore(
+      49.2827, -123.1207,
+      50.1163, -122.9574,
+      'rooftop', ['office'], 'office', null, null, null, null,
     );
+    expect(result).toBe(0.5);
   });
 
-  it('flat path maps each element to a plain value regardless of first-element shape', () => {
-    const userValues = ['Creativity', { value: 'Community' }] as (string | RatedValue)[];
-    const plain = ['Creativity', 'Community'];
-    expect(calculateMatch(userValues as string[] | RatedValue[], ['Community']).score).toBe(
-      calculateMatch(plain, ['Community']).score,
+  it('returns 0.0 for distance > 150km', () => {
+    // Vancouver to Kelowna — ~300km
+    const result = computeLocationScore(
+      49.2827, -123.1207,
+      49.8880, -119.4960,
+      'rooftop', ['office'], 'office', null, null, null, null,
     );
+    expect(result).toBe(0.0);
   });
 });
 
-/**
- * Job confidence weighting tests
- *
- * Validates that jobValuesRated.confidence affects the match score.
- */
-describe('calculateMatch with jobValuesRated', () => {
-  it('returns same score when jobValuesRated is null (backward compat)', () => {
-    const userValues = ['Community', 'Creativity', 'Challenge', 'Knowledge'];
-    const jobValues = ['Community', 'Creativity', 'Security'];
+// ─── Task 10.2: Four required named test cases (Req 11.6) ────────────────────
 
-    const withNull = calculateMatch(userValues, jobValues, null);
-    const withUndefined = calculateMatch(userValues, jobValues, undefined);
-    const withoutArg = calculateMatch(userValues, jobValues);
-
-    expect(withNull.score).toBe(withoutArg.score);
-    expect(withUndefined.score).toBe(withoutArg.score);
+describe('computeLocationScore — required named cases (Req 11.6)', () => {
+  // Case 1: Same-city match
+  it('same-city match: Richmond BC vs Richmond BC → 1.0', () => {
+    expect(
+      computeLocationScore(
+        49.1666, -123.1336,
+        49.1666, -123.1336,
+        'rooftop',
+        ['office'],
+        'office',
+        'Richmond', 'BC',
+        'Richmond', 'BC',
+      ),
+    ).toBe(1.0);
   });
 
-  it('high-confidence shared value scores higher than low-confidence (flat path)', () => {
-    const userValues = ['Community', 'Creativity', 'Challenge'];
-    const jobValues = ['Community', 'Security', 'Balance'];
-
-    const highConf: JobRatedValue[] = [
-      { value: 'Community', confidence: 1 },
-      { value: 'Security', confidence: 2 },
-      { value: 'Balance', confidence: 3 },
-    ];
-    const lowConf: JobRatedValue[] = [
-      { value: 'Security', confidence: 1 },
-      { value: 'Balance', confidence: 2 },
-      { value: 'Community', confidence: 3 },
-    ];
-
-    const highResult = calculateMatch(userValues, jobValues, highConf);
-    const lowResult = calculateMatch(userValues, jobValues, lowConf);
-
-    expect(highResult.score).toBeGreaterThan(lowResult.score);
-    expect(highResult.shared_values).toEqual(lowResult.shared_values);
+  // Case 2: Same-name different-province → 0.0 (distance > 150km)
+  it('same-name different-province: Richmond BC vs Richmond QC → 0.0', () => {
+    expect(
+      computeLocationScore(
+        45.6667, -72.1500,  // Richmond QC (job)
+        49.1666, -123.1336, // Richmond BC (user)
+        'rooftop',
+        ['office'],
+        'office',
+        'Richmond', 'QC',
+        'Richmond', 'BC',
+      ),
+    ).toBe(0.0);
   });
 
-  it('high-confidence shared value scores higher than low-confidence (weighted path)', () => {
-    const userValues: RatedValue[] = [
-      { value: 'Community', rank: 1 },
-      { value: 'Creativity', rank: 2 },
-      { value: 'Challenge', rank: 3 },
-    ];
-    const jobValues = ['Community', 'Security', 'Balance'];
-
-    const highConf: JobRatedValue[] = [
-      { value: 'Community', confidence: 1 },
-      { value: 'Security', confidence: 2 },
-      { value: 'Balance', confidence: 3 },
-    ];
-    const lowConf: JobRatedValue[] = [
-      { value: 'Security', confidence: 1 },
-      { value: 'Balance', confidence: 2 },
-      { value: 'Community', confidence: 3 },
-    ];
-
-    const highResult = calculateMatch(userValues, jobValues, highConf);
-    const lowResult = calculateMatch(userValues, jobValues, lowConf);
-
-    expect(highResult.score).toBeGreaterThan(lowResult.score);
+  // Case 3: Remote override — both remote, coords null → 1.0
+  it('remote override: both remote with null coords → 1.0', () => {
+    expect(
+      computeLocationScore(
+        null, null,
+        null, null,
+        null,
+        ['remote'],
+        'remote',
+        null, null,
+        null, null,
+      ),
+    ).toBe(1.0);
   });
 
-  it('score stays in [0, 1] with job confidence', () => {
-    const userValues: RatedValue[] = [
-      { value: 'V0', rank: 1 },
-      { value: 'V1', rank: 2 },
-      { value: 'V2', rank: 3 },
-      { value: 'V3', rank: 4 },
-    ];
-    const jobValues = ['V0', 'V1', 'V2', 'V3'];
-    const jobRated: JobRatedValue[] = jobValues.map((v, i) => ({
-      value: v,
-      confidence: i + 1,
-    }));
-
-    const result = calculateMatch(userValues, jobValues, jobRated);
-    expect(result.score).toBeGreaterThanOrEqual(0);
-    expect(result.score).toBeLessThanOrEqual(1);
-  });
-
-  it('empty jobValuesRated array treated same as null', () => {
-    const userValues = ['Community', 'Creativity'];
-    const jobValues = ['Community', 'Security'];
-
-    const withEmpty = calculateMatch(userValues, jobValues, []);
-    const withNull = calculateMatch(userValues, jobValues, null);
-
-    expect(withEmpty.score).toBe(withNull.score);
-  });
-
-  it('job confidence does not change which values are shared', () => {
-    const userValues: RatedValue[] = [
-      { value: 'Community', rank: 1 },
-      { value: 'Creativity', rank: 2 },
-    ];
-    const jobValues = ['Community', 'Creativity', 'Security'];
-    const jobRated: JobRatedValue[] = [
-      { value: 'Community', confidence: 1 },
-      { value: 'Creativity', confidence: 2 },
-      { value: 'Security', confidence: 3 },
-    ];
-
-    const without = calculateMatch(userValues, jobValues);
-    const withConf = calculateMatch(userValues, jobValues, jobRated);
-
-    expect(withConf.shared_values.sort()).toEqual(without.shared_values.sort());
-  });
-
-  it('duplicate job value labels use MIN confidence weight (matches SQL job_value_weights)', () => {
-    const userValues = ['Community'];
-    const jobValues = ['Community'];
-    const dupRated: JobRatedValue[] = [
-      { value: 'Community', confidence: 1 },
-      { value: 'Community', confidence: 2 },
-    ];
-    const total = dupRated.length;
-    const wMin = Math.min(getRankWeight(1, total), getRankWeight(2, total));
-    const expectedScore = Math.min(wMin / userValues.length + 0.1, 1.0);
-    expect(calculateMatch(userValues, jobValues, dupRated).score).toBeCloseTo(expectedScore, 10);
-    const wMax = Math.max(getRankWeight(1, total), getRankWeight(2, total));
-    expect(wMin).toBeLessThan(wMax);
+  // Case 4: Sparse profile blocked — values: null, skills: null
+  // normalizeWeights with both core scores null → values+skills weights = 0 < MIN_CORE_WEIGHT (0.50)
+  it('sparse profile: null values and skills → normalizeWeights returns zero core weights', () => {
+    const weights: DimensionWeights = {
+      values: 0.55,
+      skills: 0.35,
+      work_type: 0.05,
+      location: 0.05,
+    };
+    const scores: DimensionScores = {
+      values: null,
+      skills: null,
+      work_type: 1.0,
+      location: 1.0,
+    };
+    const result = normalizeWeights(weights, scores);
+    expect(result.values).toBe(0);
+    expect(result.skills).toBe(0);
+    expect(result.values + result.skills).toBeLessThan(0.50);
   });
 });
 
-/**
- * Property test: all-unranked Weighted_Match equals Flat_Match
- *
- * Validates: Requirements 3.9
- *
- * For any profile where every value has no rank, the score from
- * calculateMatch(ratedValues, jobValues) MUST equal the score from
- * calculateMatch(plainValues, jobValues).
- */
-describe('Property: all-unranked RatedValue[] score equals plain string[] score', () => {
-  const cases: Array<{ label: string; userValues: string[]; jobValues: string[] }> = [
-    { label: 'both empty', userValues: [], jobValues: [] },
-    { label: 'empty user values', userValues: [], jobValues: ['Community', 'Creativity'] },
-    { label: 'empty job values', userValues: ['Community', 'Creativity'], jobValues: [] },
+// ─── Task 10.3: normalizeWeights unit tests ───────────────────────────────────
 
-    { label: 'no overlap (single)', userValues: ['Community'], jobValues: ['Security'] },
-    {
-      label: 'no overlap (multiple)',
-      userValues: ['Community', 'Creativity', 'Challenge'],
-      jobValues: ['Security', 'Knowledge', 'Stability'],
-    },
+describe('normalizeWeights', () => {
+  const BASE: DimensionWeights = { values: 0.55, skills: 0.35, work_type: 0.05, location: 0.05 };
 
-    {
-      label: 'partial overlap (2 of 4)',
-      userValues: ['Community', 'Creativity', 'Challenge', 'Knowledge'],
-      jobValues: ['Community', 'Creativity', 'Security'],
-    },
-    {
-      label: 'partial overlap (1 of 3)',
-      userValues: ['Community', 'Creativity', 'Challenge'],
-      jobValues: ['Challenge', 'Security', 'Stability'],
-    },
+  it('all non-null scores → weights sum to 1.0', () => {
+    const scores: DimensionScores = { values: 0.8, skills: 0.6, work_type: 1.0, location: 0.5 };
+    const result = normalizeWeights(BASE, scores);
+    const sum = result.values + result.skills + result.work_type + result.location;
+    expect(sum).toBeCloseTo(1.0, 10);
+  });
 
-    {
-      label: 'full overlap (exact match)',
-      userValues: ['Community', 'Creativity', 'Challenge'],
-      jobValues: ['Community', 'Creativity', 'Challenge'],
-    },
-    {
-      label: 'full overlap (job superset)',
-      userValues: ['Community', 'Creativity'],
-      jobValues: ['Community', 'Creativity', 'Security', 'Knowledge', 'Challenge'],
-    },
+  it('one null score → that weight is 0, remaining sum to 1.0', () => {
+    const scores: DimensionScores = { values: 0.8, skills: 0.6, work_type: null, location: 0.5 };
+    const result = normalizeWeights(BASE, scores);
+    expect(result.work_type).toBe(0);
+    const sum = result.values + result.skills + result.work_type + result.location;
+    expect(sum).toBeCloseTo(1.0, 10);
+  });
 
-    { label: 'single value match', userValues: ['Community'], jobValues: ['Community'] },
-    {
-      label: 'large user set, partial overlap',
-      userValues: [
-        'Community',
-        'Creativity',
-        'Challenge',
-        'Knowledge',
-        'Security',
-        'Stability',
-        'Growth',
-      ],
-      jobValues: ['Community', 'Knowledge', 'Growth'],
-    },
-    {
-      label: 'large user set, no overlap',
-      userValues: ['Community', 'Creativity', 'Challenge', 'Knowledge'],
-      jobValues: ['Security', 'Stability', 'Growth', 'Balance'],
-    },
-  ];
+  it('hard-zero score (0.0) → weight retained, sum still 1.0', () => {
+    const scores: DimensionScores = { values: 0.8, skills: 0.6, work_type: 1.0, location: 0.0 };
+    const result = normalizeWeights(BASE, scores);
+    expect(result.location).toBeGreaterThan(0);
+    const sum = result.values + result.skills + result.work_type + result.location;
+    expect(sum).toBeCloseTo(1.0, 10);
+  });
 
-  it.each(cases)('$label', ({ userValues, jobValues }) => {
-    const ratedValues: RatedValue[] = userValues.map((v) => ({ value: v }));
+  it('all-null scores → all weights zero, sum = 0', () => {
+    const scores: DimensionScores = { values: null, skills: null, work_type: null, location: null };
+    const result = normalizeWeights(BASE, scores);
+    expect(result.values).toBe(0);
+    expect(result.skills).toBe(0);
+    expect(result.work_type).toBe(0);
+    expect(result.location).toBe(0);
+    expect(result.values + result.skills + result.work_type + result.location).toBe(0);
+  });
 
-    const ratedResult = calculateMatch(ratedValues, jobValues);
-    const plainResult = calculateMatch(userValues, jobValues);
-
-    expect(ratedResult.score).toBe(plainResult.score);
+  it('null location, non-null others → location weight = 0, others sum to 1.0', () => {
+    const scores: DimensionScores = { values: 0.8, skills: 0.6, work_type: 1.0, location: null };
+    const result = normalizeWeights(BASE, scores);
+    expect(result.location).toBe(0);
+    const sum = result.values + result.skills + result.work_type + result.location;
+    expect(sum).toBeCloseTo(1.0, 10);
   });
 });
 
-/**
- * Property test: score always in [0.0, 1.0]
- *
- * Validates: Requirements 3.10
- *
- * For any combination of user values and job values, the score returned by
- * calculateMatch MUST satisfy 0 <= score <= 1.
- */
-describe('Property: score is always in [0.0, 1.0]', () => {
-  type Case = { label: string; userValues: string[] | RatedValue[]; jobValues: string[] };
+// ─── Task 10.4: Property-based tests (simple loop, 100 iterations) ────────────
+// Validates: Requirements 11.3 and 11.4
 
-  const cases: Case[] = [
-    // ── Edge cases ────────────────────────────────────────────────────────────
-    { label: 'both empty (plain)', userValues: [], jobValues: [] },
-    { label: 'both empty (rated)', userValues: [] as RatedValue[], jobValues: [] },
-    { label: 'empty user, non-empty job (plain)', userValues: [], jobValues: ['Community'] },
-    { label: 'empty job, non-empty user (plain)', userValues: ['Community'], jobValues: [] },
-    {
-      label: 'empty user, non-empty job (rated)',
-      userValues: [] as RatedValue[],
-      jobValues: ['Community'],
-    },
-    {
-      label: 'empty job, non-empty user (rated)',
-      userValues: [{ value: 'Community', rank: 1 }],
-      jobValues: [],
-    },
+describe('computeLocationScore — property: same coordinates always returns 1.0', () => {
+  /**
+   * Validates: Requirements 11.3
+   * For all valid coordinate pairs, calling computeLocationScore with the same
+   * coordinates in both positions and a non-imprecise accuracy type returns 1.0.
+   */
+  it('same-position call with non-imprecise accuracy always returns 1.0', () => {
+    const preciseTypes = ['rooftop', 'range_interpolated', 'geometric_center', 'approximate', 'place', 'zip', 'city'];
+    const workTypes = ['office', 'hybrid'];
 
-    // ── Plain string[] ────────────────────────────────────────────────────────
-    {
-      label: 'plain: single value, no overlap',
-      userValues: ['Community'],
-      jobValues: ['Security'],
-    },
-    {
-      label: 'plain: single value, full overlap',
-      userValues: ['Community'],
-      jobValues: ['Community'],
-    },
-    {
-      label: 'plain: no overlap',
-      userValues: ['Community', 'Creativity'],
-      jobValues: ['Security', 'Stability'],
-    },
-    {
-      label: 'plain: partial overlap',
-      userValues: ['Community', 'Creativity', 'Challenge', 'Knowledge'],
-      jobValues: ['Community', 'Creativity', 'Security'],
-    },
-    {
-      label: 'plain: full overlap (exact)',
-      userValues: ['Community', 'Creativity', 'Challenge'],
-      jobValues: ['Community', 'Creativity', 'Challenge'],
-    },
-    {
-      label: 'plain: full overlap (job superset)',
-      userValues: ['Community', 'Creativity'],
-      jobValues: ['Community', 'Creativity', 'Security', 'Knowledge', 'Challenge'],
-    },
-    {
-      label: 'plain: large user set, partial overlap',
-      userValues: [
-        'Community',
-        'Creativity',
-        'Challenge',
-        'Knowledge',
-        'Security',
-        'Stability',
-        'Growth',
-      ],
-      jobValues: ['Community', 'Knowledge', 'Growth'],
-    },
+    for (let i = 0; i < 100; i++) {
+      // Random lat in [-90, 90], lng in [-180, 180]
+      const lat = Math.random() * 180 - 90;
+      const lng = Math.random() * 360 - 180;
+      const accuracyType = preciseTypes[Math.floor(Math.random() * preciseTypes.length)];
+      const workType = workTypes[Math.floor(Math.random() * workTypes.length)];
 
-    // ── All-unranked RatedValue[] ─────────────────────────────────────────────
-    {
-      label: 'all-unranked: single, no overlap',
-      userValues: [{ value: 'Community' }],
-      jobValues: ['Security'],
-    },
-    {
-      label: 'all-unranked: single, full overlap',
-      userValues: [{ value: 'Community' }],
-      jobValues: ['Community'],
-    },
-    {
-      label: 'all-unranked: no overlap',
-      userValues: [{ value: 'Community' }, { value: 'Creativity' }],
-      jobValues: ['Security', 'Stability'],
-    },
-    {
-      label: 'all-unranked: partial overlap',
-      userValues: [{ value: 'Community' }, { value: 'Creativity' }, { value: 'Challenge' }],
-      jobValues: ['Community', 'Security'],
-    },
-    {
-      label: 'all-unranked: full overlap',
-      userValues: [{ value: 'Community' }, { value: 'Creativity' }],
-      jobValues: ['Community', 'Creativity'],
-    },
+      const result = computeLocationScore(
+        lat, lng,
+        lat, lng,
+        accuracyType,
+        [workType],
+        workType,
+        null, null,
+        null, null,
+      );
 
-    // ── All-ranked RatedValue[] ───────────────────────────────────────────────
-    {
-      label: 'all-ranked: 2 values, no overlap',
-      userValues: [
-        { value: 'Community', rank: 1 },
-        { value: 'Creativity', rank: 2 },
-      ],
-      jobValues: ['Security'],
-    },
-    {
-      label: 'all-ranked: 2 values, full overlap',
-      userValues: [
-        { value: 'Community', rank: 1 },
-        { value: 'Creativity', rank: 2 },
-      ],
-      jobValues: ['Community', 'Creativity'],
-    },
-    {
-      label: 'all-ranked: 3 values, partial overlap',
-      userValues: [
-        { value: 'Community', rank: 1 },
-        { value: 'Creativity', rank: 2 },
-        { value: 'Challenge', rank: 3 },
-      ],
-      jobValues: ['Community', 'Security'],
-    },
-    {
-      label: 'all-ranked: 4 values, full overlap',
-      userValues: [
-        { value: 'Community', rank: 1 },
-        { value: 'Creativity', rank: 2 },
-        { value: 'Challenge', rank: 3 },
-        { value: 'Knowledge', rank: 4 },
-      ],
-      jobValues: ['Community', 'Creativity', 'Challenge', 'Knowledge'],
-    },
-    {
-      label: 'all-ranked: 4 values, no overlap',
-      userValues: [
-        { value: 'V0', rank: 1 },
-        { value: 'V1', rank: 2 },
-        { value: 'V2', rank: 3 },
-        { value: 'V3', rank: 4 },
-      ],
-      jobValues: ['Security', 'Stability'],
-    },
-    {
-      label: 'all-ranked: 4 values, partial overlap',
-      userValues: [
-        { value: 'V0', rank: 1 },
-        { value: 'V1', rank: 2 },
-        { value: 'V2', rank: 3 },
-        { value: 'V3', rank: 4 },
-      ],
-      jobValues: ['V0', 'V1', 'Security'],
-    },
-
-    // ── Mixed ranked/unranked RatedValue[] ────────────────────────────────────
-    {
-      label: 'mixed: one ranked, one unranked, no overlap',
-      userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity' }],
-      jobValues: ['Security'],
-    },
-    {
-      label: 'mixed: one ranked, one unranked, full overlap',
-      userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity' }],
-      jobValues: ['Community', 'Creativity'],
-    },
-    {
-      label: 'mixed: one ranked, one unranked, partial overlap (ranked shared)',
-      userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity' }],
-      jobValues: ['Community', 'Security'],
-    },
-    {
-      label: 'mixed: one ranked, one unranked, partial overlap (unranked shared)',
-      userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity' }],
-      jobValues: ['Creativity', 'Security'],
-    },
-    {
-      label: 'mixed: multiple ranks and unranked, partial overlap',
-      userValues: [
-        { value: 'Community', rank: 1 },
-        { value: 'Creativity', rank: 2 },
-        { value: 'Challenge' },
-        { value: 'Knowledge', rank: 4 },
-        { value: 'Stability' },
-      ],
-      jobValues: ['Community', 'Challenge', 'Security'],
-    },
-    {
-      label: 'mixed: multiple ranks and unranked, full overlap',
-      userValues: [
-        { value: 'Community', rank: 1 },
-        { value: 'Creativity', rank: 2 },
-        { value: 'Challenge' },
-      ],
-      jobValues: ['Community', 'Creativity', 'Challenge', 'Security'],
-    },
-    {
-      label: 'mixed: large set, ranks + unranked, no overlap',
-      userValues: [
-        { value: 'Community', rank: 1 },
-        { value: 'Creativity', rank: 2 },
-        { value: 'Challenge', rank: 3 },
-        { value: 'Knowledge', rank: 4 },
-        { value: 'Stability' },
-        { value: 'Growth' },
-      ],
-      jobValues: ['Security', 'Balance', 'Integrity'],
-    },
-  ];
-
-  it.each(cases)('$label', ({ userValues, jobValues }) => {
-    const { score } = calculateMatch(userValues as string[] | RatedValue[], jobValues);
-    expect(score).toBeGreaterThanOrEqual(0.0);
-    expect(score).toBeLessThanOrEqual(1.0);
+      expect(result, `iteration ${i}: lat=${lat}, lng=${lng}, accuracy=${accuracyType}`).toBe(1.0);
+    }
   });
 });
 
-/**
- * Unit tests: fallback behaviour
- *
- * Validates: Requirements 5.1, 5.2, 5.3
- */
-describe('Fallback behaviour', () => {
-  it('uses plain values (string[]) when values_rated is null/undefined', () => {
-    const valuesRated = null;
-    const values = ['Community', 'Creativity', 'Challenge'];
-    const jobValues = ['Community', 'Creativity', 'Security'];
+describe('normalizeWeights — property: at least one non-null score → weights sum to 1.0', () => {
+  /**
+   * Validates: Requirements 11.4
+   * For all weight and score inputs where at least one score is non-null,
+   * normalizeWeights returns weights that sum to exactly 1.0.
+   */
+  it('random weights with at least one non-null score always sum to 1.0', () => {
+    const TOLERANCE = 1e-10;
 
-    const userValues: string[] = valuesRated ?? values;
+    for (let i = 0; i < 100; i++) {
+      // Random positive weights
+      const weights: DimensionWeights = {
+        values: Math.random() * 0.9 + 0.01,
+        skills: Math.random() * 0.9 + 0.01,
+        work_type: Math.random() * 0.9 + 0.01,
+        location: Math.random() * 0.9 + 0.01,
+      };
 
-    const result = calculateMatch(userValues, jobValues);
+      // Random scores: each dimension independently null or a value in [0, 1]
+      // Ensure at least one is non-null
+      const dims = ['values', 'skills', 'work_type', 'location'] as const;
+      const scores: DimensionScores = { values: null, skills: null, work_type: null, location: null };
 
-    expect(result.shared_values).toEqual(['Community', 'Creativity']);
-    expect(result.score).toBeGreaterThan(0);
-  });
+      // Force at least one non-null
+      const forcedDim = dims[Math.floor(Math.random() * dims.length)];
+      scores[forcedDim] = Math.random();
 
-  it('prefers values_rated (RatedValue[]) over plain values when values_rated is present', () => {
-    const valuesRated: RatedValue[] = [
-      { value: 'Community', rank: 1 },
-      { value: 'Creativity', rank: 2 },
-    ];
-    const values = ['Community', 'Creativity', 'OldValue'];
-    const jobValues = ['Community', 'Creativity', 'Security'];
+      // Randomly assign the rest
+      for (const dim of dims) {
+        if (dim === forcedDim) continue;
+        scores[dim] = Math.random() < 0.5 ? null : Math.random();
+      }
 
-    const userValues = valuesRated.length ? valuesRated : values;
+      const result = normalizeWeights(weights, scores);
+      const sum = result.values + result.skills + result.work_type + result.location;
 
-    const ratedResult = calculateMatch(userValues, jobValues);
-    const plainResult = calculateMatch(values, jobValues);
-
-    expect(ratedResult.shared_values).toEqual(['Community', 'Creativity']);
-    expect(ratedResult.score).toBeGreaterThan(0);
-
-    expect(ratedResult.score).not.toBe(plainResult.score);
-  });
-
-  it('returns score 0 and no error when both values_rated and values are absent/empty', () => {
-    const valuesRated: RatedValue[] | null = null;
-    const values: string[] = [];
-    const jobValues = ['Community', 'Creativity'];
-
-    const userValues: string[] = valuesRated ?? values;
-
-    expect(() => {
-      const result = calculateMatch(userValues, jobValues);
-      expect(result.score).toBe(0);
-      expect(result.shared_values).toEqual([]);
-    }).not.toThrow();
+      expect(
+        Math.abs(sum - 1.0),
+        `iteration ${i}: sum=${sum}, weights=${JSON.stringify(weights)}, scores=${JSON.stringify(scores)}`,
+      ).toBeLessThan(TOLERANCE);
+    }
   });
 });

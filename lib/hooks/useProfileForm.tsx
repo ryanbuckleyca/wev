@@ -17,7 +17,6 @@ export { adjustCutoffOnRemove, adjustCutoffOnReorder };
 export const MAX_PROFILE_SKILLS = 10;
 /** Must match DB `profiles_values_max_5_check` and `profiles_values_rated_max_5_check`. */
 export const MAX_PROFILE_VALUES = 5;
-export const MAX_PROFILE_WORK_ENV_CHARS = 1500;
 
 // ─── Skills API helpers ───────────────────────────────────────────────────────
 
@@ -94,7 +93,6 @@ type ValidationError = { key: string; params?: Record<string, string | number> }
 export function validateProfileLimits(
   selectedValues: string[],
   selectedSkills: EscoSkill[],
-  workEnvironmentLength: number,
 ): ValidationError | null {
   if (selectedValues.length > MAX_PROFILE_VALUES) {
     return {
@@ -107,9 +105,6 @@ export function validateProfileLimits(
       key: 'skillsMaxExceeded',
       params: { max: MAX_PROFILE_SKILLS, current: selectedSkills.length - MAX_PROFILE_SKILLS },
     };
-  }
-  if (workEnvironmentLength > MAX_PROFILE_WORK_ENV_CHARS) {
-    return { key: 'workEnvironmentMaxExceeded', params: { max: MAX_PROFILE_WORK_ENV_CHARS } };
   }
   return null;
 }
@@ -133,7 +128,7 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     full_name: '',
     bio: '',
     work_types: [] as WorkType[],
-    ideal_work_environment: '',
+    location: null as { lat: number; lng: number; display_name: string; name: string; province: string } | null,
   });
 
   const skills = useRankedList<EscoSkill>((s) => s.uri);
@@ -162,7 +157,16 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
       full_name: profile.full_name || '',
       bio: profile.bio || '',
       work_types: normalizeWorkTypes(profile.work_types),
-      ideal_work_environment: profile.ideal_work_environment || '',
+      location:
+        profile.lat != null && profile.lng != null && profile.location_display_name
+          ? {
+              lat: profile.lat,
+              lng: profile.lng,
+              display_name: profile.location_display_name,
+              name: '',
+              province: '',
+            }
+          : null,
     });
 
     const pvr = profile.values_rated;
@@ -220,7 +224,6 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
     const validationError = validateProfileLimits(
       values.items,
       skills.items,
-      formData.ideal_work_environment.length,
     );
     if (validationError) {
       notify.error(t(validationError.key, validationError.params ?? {}));
@@ -244,7 +247,9 @@ export function useProfileForm(userId: string | undefined, locale: 'en' | 'fr') 
         skills: skills.items.map((s) => s.uri).slice(0, MAX_PROFILE_SKILLS),
         skills_rated: skillsRated,
         work_types: normalizeWorkTypes(formData.work_types),
-        ideal_work_environment: formData.ideal_work_environment.trim() || null,
+        lat: formData.location?.lat ?? null,
+        lng: formData.location?.lng ?? null,
+        location_display_name: formData.location?.display_name ?? null,
       });
       notify.success(t('updateSuccess'));
     } catch (err) {
