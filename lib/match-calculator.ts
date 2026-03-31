@@ -3,7 +3,7 @@ import { logger } from '@/lib/logger';
 import { RatedValue, JobRatedValue, getRankWeight } from './value-ratings';
 import { getDistance } from 'geolib';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// Constants
 
 const DISTANCE_THRESHOLDS = {
   COMMUTE_KM: 50,
@@ -20,12 +20,14 @@ const BASE_WEIGHTS = {
 } as const;
 
 // When the user has ranked Location as a value, boost location + work_type weights.
+// These two must sum to less than 1.0; the remainder is split between values/skills
+// at the same ratio as BASE_WEIGHTS.
 const LOCATION_PRIORITY_WEIGHTS = {
   location: 0.20,
   work_type: 0.10,
 } as const;
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// Types
 
 export interface DimensionWeights {
   values: number;
@@ -67,10 +69,36 @@ interface MatchResult {
   shared_skills: string[];
 }
 
-// ─── computeLocationScore ─────────────────────────────────────────────────────
+// Typed shapes for Supabase query results -- avoids `as any` casts downstream.
+interface ProfileRow {
+  id: string;
+  values: string[] | null;
+  values_rated: unknown[] | null;
+  skills: string[] | null;
+  work_types: string[] | null;
+  lat: number | null;
+  lng: number | null;
+  municipality: string | null;
+  province: string | null;
+}
+
+interface JobRow {
+  id: string;
+  values: string[] | null;
+  values_rated: unknown[] | null;
+  skills: string[] | null;
+  work_type: string | null;
+  lat: number | null;
+  lng: number | null;
+  geocode_accuracy_type: string | null;
+  municipality: string | null;
+  province: string | null;
+}
+
+// computeLocationScore
 
 /**
- * Pure function — no Supabase dependency.
+ * Pure function -- no Supabase dependency.
  * Evaluates conditions in Boolean-first order and returns a tiered location score.
  *
  * Returns null when the score cannot be determined (missing data or incompatible work types).
@@ -114,7 +142,7 @@ export function computeLocationScore(params: LocationScoreParams): number | null
     return 1.0;
   }
 
-  // 6. Imprecise geocode — can't trust coordinates
+  // 6. Imprecise geocode -- can't trust coordinates
   if (jobAccuracyType != null && IMPRECISE_ACCURACY_TYPES.has(jobAccuracyType)) return null;
 
   // 7. Missing coordinates
@@ -131,10 +159,10 @@ export function computeLocationScore(params: LocationScoreParams): number | null
   return 0.0;
 }
 
-// ─── normalizeWeights ─────────────────────────────────────────────────────────
+// normalizeWeights
 
 /**
- * Pure function — no Supabase dependency.
+ * Pure function -- no Supabase dependency.
  * - null score  -> weight zeroed out (excluded, redistributed to remaining dimensions)
  * - 0.0 score   -> weight retained (hard zero, pulls final score down)
  * - Result weights sum to 1.0 across retained dimensions.
@@ -160,14 +188,15 @@ export function normalizeWeights(
   return adjusted;
 }
 
-// ─── buildDimensionWeights ────────────────────────────────────────────────────
+// buildDimensionWeights
 
 /**
  * Returns the base dimension weights, boosting location and work_type when the
- * user has ranked Location as a value.
+ * user has ranked Location as a value. The remaining weight is split between
+ * values and skills at the same ratio as BASE_WEIGHTS.
  */
-function buildDimensionWeights(hasLocationValue: boolean): DimensionWeights {
-  if (hasLocationValue) {
+function buildDimensionWeights(userHasLocationValue: boolean): DimensionWeights {
+  if (userHasLocationValue) {
     const remaining = 1 - LOCATION_PRIORITY_WEIGHTS.location - LOCATION_PRIORITY_WEIGHTS.work_type;
     const valueRatio = BASE_WEIGHTS.values / (BASE_WEIGHTS.values + BASE_WEIGHTS.skills);
     return {
@@ -180,7 +209,7 @@ function buildDimensionWeights(hasLocationValue: boolean): DimensionWeights {
   return { ...BASE_WEIGHTS };
 }
 
-// ─── calculateMatch ───────────────────────────────────────────────────────────
+// calculateMatch
 
 /** Non-null object with string value (RatedValue-shaped; tolerates raw JSON). */
 function isRatedValueShape(v: unknown): v is RatedValue {
@@ -292,7 +321,7 @@ export function calculateMatch(
   return { score, shared_values: sharedValues };
 }
 
-// ─── Shared score calculation helpers ────────────────────────────────────────
+// Score calculation helpers
 
 function calcSkillScore(
   userSkills: string[],
@@ -304,32 +333,97 @@ function calcSkillScore(
   return { score, shared };
 }
 
-function calcWorkTypeScore(profileWorkTypes: string[], jobWorkType: string | null): number {
-  // Empty profile work_types means "no preference" — treat as full match.
+/**
+ * Returns null (excluded from weighted average) when jobWorkType is null -- a job
+ * with no work type set should not penalise the match score.
+ * Returns 1.0 when the profile has no preference (empty work_types).
+ */
+function calcWorkTypeScore(profileWorkTypes: string[], jobWorkType: string | null): number | null {
+  if (jobWorkType == null) return null;
   if (profileWorkTypes.length === 0) return 1.0;
-  return jobWorkType && profileWorkTypes.includes(jobWorkType) ? 1.0 : 0.0;
+  return profileWorkTypes.includes(jobWorkType) ? 1.0 : 0.0;
 }
 
 function calcFinalScore(scores: DimensionScores, weights: DimensionWeights): number {
   const dims = ['values', 'skills', 'work_type', 'location'] as const;
   const normalized = normalizeWeights(weights, scores);
-  const numerator = dims.reduce((sum, dim) => {
-    const s = scores[dim];
-    return sum + (s != null ? s * normalized[dim] : 0);
-  }, 0);
-  return Math.min(numerator, 1.0);
-}
-
-function hasLocationValue(values: string[], valuesRated: unknown[]): boolean {
-  return (
-    values.some((v) => String(v).toLowerCase() === 'location') ||
-    valuesRated.some(
-      (v) => (typeof v === 'string' ? v : (v as RatedValue)?.value)?.toLowerCase() === 'location',
-    )
+  return Math.min(
+    dims.reduce((sum, dim) => {
+      const s = scores[dim];
+      return sum + (s != null ? s * normalized[dim] : 0);
+    }, 0),
+    1.0,
   );
 }
 
-// ─── calculateUserMatches ─────────────────────────────────────────────────────
+function resolveUserValues(profile: Pick<ProfileRow, 'values' | 'values_rated'>): string[] | RatedValue[] {
+  return profile.values_rated?.length
+    ? (profile.values_rated as RatedValue[])
+    : (profile.values ?? []);
+}
+
+function profileHasLocationValue(profile: Pick<ProfileRow, 'values' | 'values_rated'>): boolean {
+  const isLocation = (v: unknown) =>
+    (typeof v === 'string' ? v : (v as RatedValue)?.value)?.toLowerCase() === 'location';
+  return (
+    (profile.values ?? []).some(isLocation) ||
+    (profile.values_rated ?? []).some(isLocation)
+  );
+}
+
+// computeMatchForPair
+
+/**
+ * Computes all dimension scores and the final weighted score for a single
+ * profile-job pair. Extracted to eliminate duplication between calculateUserMatches
+ * and calculateJobMatches.
+ */
+function computeMatchForPair(
+  profile: ProfileRow,
+  job: JobRow,
+): Omit<MatchResult, 'user_id' | 'job_id'> {
+  const profileValues = resolveUserValues(profile);
+  const profileWorkTypes = profile.work_types ?? [];
+
+  const vMatch = calculateMatch(profileValues, job.values ?? [], job.values_rated as JobRatedValue[] | null);
+  const { score: skillScore, shared: sharedSkills } = calcSkillScore(
+    profile.skills ?? [],
+    job.skills ?? [],
+  );
+  const workTypeScore = calcWorkTypeScore(profileWorkTypes, job.work_type);
+  const locationScore = computeLocationScore({
+    jobLat: job.lat,
+    jobLng: job.lng,
+    userLat: profile.lat,
+    userLng: profile.lng,
+    jobAccuracyType: job.geocode_accuracy_type,
+    userWorkTypes: profileWorkTypes,
+    jobWorkType: job.work_type,
+    jobMunicipality: job.municipality,
+    jobProvince: job.province,
+    userMunicipality: profile.municipality,
+    userProvince: profile.province,
+  });
+
+  const scores: DimensionScores = {
+    values: vMatch.score,
+    skills: skillScore,
+    work_type: workTypeScore,
+    location: locationScore,
+  };
+
+  return {
+    score: calcFinalScore(scores, buildDimensionWeights(profileHasLocationValue(profile))),
+    value_score: scores.values,
+    skill_score: scores.skills,
+    work_type_score: scores.work_type,
+    location_score: scores.location,
+    shared_values: vMatch.shared_values,
+    shared_skills: sharedSkills,
+  };
+}
+
+// calculateUserMatches
 
 /**
  * Calculate matches for a single user against all jobs.
@@ -341,17 +435,13 @@ export async function calculateUserMatches(userId: string): Promise<void> {
   try {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('values, values_rated, skills, work_types, lat, lng, location_display_name')
+      .select('id, values, values_rated, skills, work_types, lat, lng, municipality, province')
       .eq('id', userId)
       .single();
 
-    if (profileError) return;
+    if (profileError || !profile) return;
 
-    const userValues: string[] | RatedValue[] = profile?.values_rated?.length
-      ? (profile.values_rated as RatedValue[])
-      : (profile?.values ?? []);
-
-    if (!userValues.length) return;
+    if (!resolveUserValues(profile as ProfileRow).length) return;
 
     const { data: jobs, error: jobsError } = await supabase
       .from('jobs')
@@ -363,59 +453,13 @@ export async function calculateUserMatches(userId: string): Promise<void> {
       return;
     }
 
-    const profileWorkTypes: string[] = (profile?.work_types as string[]) ?? [];
-    const userHasLocationValue = hasLocationValue(
-      (profile?.values as string[]) ?? [],
-      (profile?.values_rated as unknown[]) ?? [],
-    );
-    const weights = buildDimensionWeights(userHasLocationValue);
-
-    const matches: MatchResult[] = [];
-
-    for (const job of jobs ?? []) {
-      if (!job.values?.length && !job.skills?.length) continue;
-
-      const vMatch = calculateMatch(userValues, job.values ?? [], job.values_rated as JobRatedValue[] | null);
-      const { score: skillScore, shared: sharedSkills } = calcSkillScore(
-        (profile?.skills as string[]) ?? [],
-        job.skills ?? [],
-      );
-
-      const workTypeScore = calcWorkTypeScore(profileWorkTypes, job.work_type);
-
-      const locationScore = computeLocationScore({
-        jobLat: job.lat,
-        jobLng: job.lng,
-        userLat: profile?.lat ?? null,
-        userLng: profile?.lng ?? null,
-        jobAccuracyType: job.geocode_accuracy_type,
-        userWorkTypes: profileWorkTypes,
-        jobWorkType: job.work_type,
-        jobMunicipality: (job as any).municipality ?? null,
-        jobProvince: (job as any).province ?? null,
-        userMunicipality: null,
-        userProvince: null,
-      });
-
-      const scores: DimensionScores = {
-        values: typeof vMatch.score === 'number' ? vMatch.score : null,
-        skills: skillScore,
-        work_type: workTypeScore,
-        location: locationScore,
-      };
-
-      matches.push({
+    const matches: MatchResult[] = (jobs ?? [])
+      .filter((job) => job.values?.length || job.skills?.length)
+      .map((job) => ({
         user_id: userId,
         job_id: job.id,
-        score: calcFinalScore(scores, weights),
-        value_score: scores.values,
-        skill_score: scores.skills,
-        work_type_score: scores.work_type,
-        location_score: scores.location,
-        shared_values: vMatch.shared_values,
-        shared_skills: sharedSkills,
-      });
-    }
+        ...computeMatchForPair(profile as ProfileRow, job as JobRow),
+      }));
 
     if (matches.length > 0) {
       const { error: upsertError } = await supabase
@@ -428,7 +472,7 @@ export async function calculateUserMatches(userId: string): Promise<void> {
   }
 }
 
-// ─── calculateJobMatches ──────────────────────────────────────────────────────
+// calculateJobMatches
 
 /**
  * Calculate matches for a single job against all users.
@@ -440,18 +484,15 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
   try {
     const { data: job, error: jobError } = await supabase
       .from('jobs')
-      .select('values, values_rated, skills, work_type, lat, lng, geocode_accuracy_type, municipality, province')
+      .select('id, values, values_rated, skills, work_type, lat, lng, geocode_accuracy_type, municipality, province')
       .eq('id', jobId)
       .single();
 
     if (jobError || !job?.values?.length) return;
 
-    const jobValuesRated = job.values_rated as JobRatedValue[] | null;
-    const jobSkills: string[] = job.skills ?? [];
-
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, values, values_rated, skills, work_types, lat, lng')
+      .select('id, values, values_rated, skills, work_types, lat, lng, municipality, province')
       .not('values', 'is', null);
 
     if (profilesError) {
@@ -459,64 +500,13 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
       return;
     }
 
-    const matches: MatchResult[] = [];
-
-    for (const profile of profiles ?? []) {
-      if (!profile.values?.length && !profile.values_rated?.length && !profile.skills?.length) continue;
-
-      const profileValues: string[] | RatedValue[] = profile.values_rated?.length
-        ? (profile.values_rated as RatedValue[])
-        : (profile.values ?? []);
-
-      const vMatch = calculateMatch(profileValues, job.values ?? [], jobValuesRated);
-      const profileWorkTypes: string[] = (profile as any).work_types ?? [];
-
-      const { score: skillScore, shared: sharedSkills } = calcSkillScore(
-        (profile.skills as string[]) ?? [],
-        jobSkills,
-      );
-
-      const workTypeScore = calcWorkTypeScore(profileWorkTypes, job.work_type);
-
-      const locationScore = computeLocationScore({
-        jobLat: job.lat,
-        jobLng: job.lng,
-        userLat: (profile as any).lat ?? null,
-        userLng: (profile as any).lng ?? null,
-        jobAccuracyType: job.geocode_accuracy_type,
-        userWorkTypes: profileWorkTypes,
-        jobWorkType: job.work_type,
-        jobMunicipality: (job as any).municipality ?? null,
-        jobProvince: (job as any).province ?? null,
-        userMunicipality: null,
-        userProvince: null,
-      });
-
-      const userHasLocationValue = hasLocationValue(
-        (profile.values as string[]) ?? [],
-        (profile.values_rated as unknown[]) ?? [],
-      );
-      const weights = buildDimensionWeights(userHasLocationValue);
-
-      const scores: DimensionScores = {
-        values: typeof vMatch.score === 'number' ? vMatch.score : null,
-        skills: skillScore,
-        work_type: workTypeScore,
-        location: locationScore,
-      };
-
-      matches.push({
+    const matches: MatchResult[] = (profiles ?? [])
+      .filter((p) => p.values?.length || p.values_rated?.length || p.skills?.length)
+      .map((profile) => ({
         user_id: profile.id,
         job_id: jobId,
-        score: calcFinalScore(scores, weights),
-        value_score: scores.values,
-        skill_score: scores.skills,
-        work_type_score: scores.work_type,
-        location_score: scores.location,
-        shared_values: vMatch.shared_values,
-        shared_skills: sharedSkills,
-      });
-    }
+        ...computeMatchForPair(profile as ProfileRow, job as JobRow),
+      }));
 
     if (matches.length > 0) {
       const { error: upsertError } = await supabase

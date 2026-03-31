@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Popover, PopoverContent } from '@/components/ui/Popover';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import SearchInput from './SearchInput';
-import { LOCATION_MIN_QUERY_LENGTH } from '@/lib/location-constants';
+import { LOCATION_MIN_QUERY_LENGTH } from '@/lib/location-config';
 
 const DEBOUNCE_MS = 300;
 
@@ -30,16 +30,25 @@ interface LocationAutocompleteProps {
 
 function useDebounce(fn: (q: string) => void, delay: number) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancel = () => {
+  // Store fn in a ref so changing it never resets a pending timer.
+  const fnRef = useRef(fn);
+  fnRef.current = fn;
+
+  const cancel = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-  };
+  }, []);
+
   const debounced = useCallback(
     (q: string) => {
       cancel();
-      timerRef.current = setTimeout(() => fn(q), delay);
+      timerRef.current = setTimeout(() => fnRef.current(q), delay);
     },
-    [fn, delay],
+    [cancel, delay],
   );
+
+  // Clean up any pending timer on unmount.
+  useEffect(() => cancel, [cancel]);
+
   return { debounced, cancel };
 }
 
@@ -183,7 +192,7 @@ export default function LocationAutocomplete({
           >
             {results.map((result, i) => (
               <li
-                key={result.display_name}
+                key={`${result.province}-${result.name}`}
                 id={`${listboxId}-${i}`}
                 role="option"
                 aria-selected={i === activeIndex}
