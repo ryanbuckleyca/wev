@@ -5,28 +5,20 @@ import { useTranslations } from 'next-intl';
 import { Popover, PopoverContent } from '@/components/ui/Popover';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import SearchInput from './SearchInput';
+import { LOCATION_MIN_QUERY_LENGTH } from '@/lib/location-constants';
 
-type LocationResult = {
-  name: string;
-  province: string;
-  display_name: string;
-  lat: number;
-  lng: number;
-};
-
-export type LocationValue = {
-  lat: number;
-  lng: number;
-  display_name: string;
-};
+const DEBOUNCE_MS = 300;
 
 export type LocationSelection = {
-  lat: number;
-  lng: number;
-  display_name: string;
   name: string;
   province: string;
+  display_name: string;
+  lat: number;
+  lng: number;
 };
+
+/** Subset of LocationSelection stored on the profile (no name/province needed for display). */
+export type LocationValue = Pick<LocationSelection, 'lat' | 'lng' | 'display_name'>;
 
 interface LocationAutocompleteProps {
   value: LocationValue | null;
@@ -36,8 +28,20 @@ interface LocationAutocompleteProps {
   error?: string;
 }
 
-const DEBOUNCE_MS = 300;
-const MIN_QUERY_LENGTH = 2;
+function useDebounce(fn: (q: string) => void, delay: number) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancel = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  };
+  const debounced = useCallback(
+    (q: string) => {
+      cancel();
+      timerRef.current = setTimeout(() => fn(q), delay);
+    },
+    [fn, delay],
+  );
+  return { debounced, cancel };
+}
 
 export default function LocationAutocomplete({
   value,
@@ -46,32 +50,27 @@ export default function LocationAutocomplete({
   hint,
   error: externalError,
 }: LocationAutocompleteProps) {
-  const t = useTranslations();
+  const t = useTranslations('profile');
   const listboxId = useId();
 
-  // The text shown in the input
   const [query, setQuery] = useState(value?.display_name ?? '');
-  // Whether a selection has been made (guards stale coords)
   const [hasSelection, setHasSelection] = useState(value !== null);
-  // Dropdown results
-  const [results, setResults] = useState<LocationResult[]>([]);
+  const [results, setResults] = useState<LocationSelection[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const anchorRef = useRef<HTMLDivElement | null>(null);
 
-  // Sync display when value prop changes externally
   useEffect(() => {
     setQuery(value?.display_name ?? '');
     setHasSelection(value !== null);
   }, [value]);
 
   const search = useCallback(async (q: string) => {
-    if (q.length < MIN_QUERY_LENGTH) {
+    if (q.length < LOCATION_MIN_QUERY_LENGTH) {
       setResults([]);
       setIsOpen(false);
       return;
@@ -81,54 +80,47 @@ export default function LocationAutocomplete({
     try {
       const res = await fetch(`/api/locations/search?q=${encodeURIComponent(q)}`);
       if (!res.ok) throw new Error('Search failed');
-      const data: LocationResult[] = await res.json();
+      const data: LocationSelection[] = await res.json();
       setResults(data);
       setIsOpen(data.length > 0);
       setActiveIndex(0);
     } catch {
-      setApiError('Could not load location results. Please try again.');
+      setApiError(t('locationSearchError'));
       setResults([]);
       setIsOpen(false);
     } finally {
       setIsSearching(false);
     }
-  }, []);
+  }, [t]);
+
+  const { debounced: debouncedSearch, cancel: cancelDebounce } = useDebounce(search, DEBOUNCE_MS);
 
   const handleQueryChange = (newQuery: string) => {
     setQuery(newQuery);
 
-    // Stale-coord guard (Req 2.11): if user modifies text after a selection, clear coords
     if (hasSelection) {
       setHasSelection(false);
       onChange(null);
     }
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    cancelDebounce();
 
-    if (newQuery.length < MIN_QUERY_LENGTH) {
+    if (newQuery.length < LOCATION_MIN_QUERY_LENGTH) {
       setResults([]);
       setIsOpen(false);
       return;
     }
 
-    debounceRef.current = setTimeout(() => {
-      search(newQuery);
-    }, DEBOUNCE_MS);
+    debouncedSearch(newQuery);
   };
 
-  const handleSelect = (result: LocationResult) => {
+  const handleSelect = (result: LocationSelection) => {
     setQuery(result.display_name);
     setHasSelection(true);
     setIsOpen(false);
     setResults([]);
     setApiError(null);
-    onChange({
-      lat: result.lat,
-      lng: result.lng,
-      display_name: result.display_name,
-      name: result.name,
-      province: result.province,
-    });
+    onChange(result);
   };
 
   const handleClear = () => {
@@ -191,7 +183,7 @@ export default function LocationAutocomplete({
           >
             {results.map((result, i) => (
               <li
-                key={`${result.display_name}-${i}`}
+                key={result.display_name}
                 id={`${listboxId}-${i}`}
                 role="option"
                 aria-selected={i === activeIndex}

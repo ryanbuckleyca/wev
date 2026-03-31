@@ -321,7 +321,8 @@
     "locationAndWorkSetting": "Location & Work Setting",
     "location": "Current City / Region",
     "locationHint": "Set your preferred location to activate distance-based matching. If you've ranked Location as a value, it carries more weight in your matches.",
-    "locationPriorityCallout": "You've prioritized Location — these preferences carry extra weight in your matches."
+    "locationPriorityCallout": "You've prioritized Location — these preferences carry extra weight in your matches.",
+    "locationSearchError": "Could not load location results. Please try again."
   },
   "accountSettings": {
     "title": "Account Settings",

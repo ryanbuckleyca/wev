@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS public.cities (
   province text NOT NULL,
   display_name text NOT NULL,  -- e.g. "Montréal, QC"
   lat float8 NOT NULL,
-  lng float8 NOT NULL
+  lng float8 NOT NULL,
+  UNIQUE (name, province)
 );
 
 -- Index for fast prefix search
