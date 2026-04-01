@@ -25,6 +25,7 @@ const fetchAllBulletinData = unstable_cache(
         .select(
           'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, skills, unit_text, min_value, max_value, hours_per_week, compensation_meta',
         )
+        .gte('date_posted', new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString())
         .order('date_posted', { ascending: false }),
     ]);
 
