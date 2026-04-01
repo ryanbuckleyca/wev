@@ -35,13 +35,14 @@ const ProfileContext = createContext<ProfileContextValue>({
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setProfile(null);
       setLoading(false);
       return;
@@ -49,7 +50,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await getProfile(user.id);
+      const data = await getProfile(userId);
       setProfile(data);
       setError(null);
     } catch (err) {
@@ -57,7 +58,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   // Fetch when auth resolves or user changes.
   useEffect(() => {
@@ -67,17 +68,17 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const handleUpdateProfile = useCallback(
     async (data: ProfileUpdateData): Promise<Profile> => {
-      if (!user) throw new Error('Not authenticated');
+      if (!userId) throw new Error('Not authenticated');
       setIsUpdating(true);
       try {
-        const updated = await updateProfile(user.id, data);
+        const updated = await updateProfile(userId, data);
         setProfile(updated);
         return updated;
       } finally {
         setIsUpdating(false);
       }
     },
-    [user?.id], // eslint-disable-line react-hooks/exhaustive-deps
+    [userId],
   );
 
   const value = useMemo<ProfileContextValue>(

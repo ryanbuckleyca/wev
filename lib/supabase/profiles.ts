@@ -61,7 +61,13 @@ async function createProfile(userId: string): Promise<Profile> {
 export async function getProfile(userId: string): Promise<Profile> {
   const supabase = createClient();
 
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(
+      'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, created_at, updated_at',
+    )
+    .eq('id', userId)
+    .single();
 
   if (error) {
     if (error.code === 'PGRST116') return createProfile(userId);

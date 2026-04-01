@@ -13,8 +13,7 @@ export const dynamic = 'force-dynamic';
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
 
 /** Jobs older than this are never shown in the bulletin. Must be >= the max postedWithin filter option (1 month). */
-const JOBS_MAX_AGE_DAYS = 28;
-const JOBS_MAX_AGE_MS = JOBS_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+const JOBS_MAX_AGE_MS = 28 * 24 * 60 * 60 * 1000;
 
 // Full dataset — cached for 5 minutes, busted by /api/revalidate-jobs after a scrape.
 const fetchAllBulletinData = unstable_cache(

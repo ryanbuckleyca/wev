@@ -73,7 +73,6 @@ export default function LocationAutocomplete({
   const [activeIndex, setActiveIndex] = useState(0);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const anchorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setQuery(value?.display_name ?? '');
@@ -166,7 +165,7 @@ export default function LocationAutocomplete({
     <div className="flex flex-col gap-1">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverPrimitive.Anchor asChild>
-          <div ref={anchorRef} onKeyDown={handleKeyDown}>
+          <div onKeyDown={handleKeyDown}>
             <SearchInput
               query={query}
               onQueryChange={handleQueryChange}

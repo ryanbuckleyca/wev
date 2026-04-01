@@ -178,11 +178,13 @@ export function useBulletinData(
   }, [filterSnapshot, currentPage, setCurrentPage]);
 
   useEffect(() => {
-    if (!userId || allJobs.length === 0 || !fullDataLoaded) {
-      if (!userId || allJobs.length === 0) {
-        setMatchData(new Map());
-        setBookmarkedJobIds(new Set());
-      }
+    // Don't fetch until full data is loaded — avoids a wasted call on the partial first-page set.
+    if (!fullDataLoaded) return;
+
+    // Clear match/bookmark data when user logs out or jobs are gone.
+    if (!userId || allJobs.length === 0) {
+      setMatchData(new Map());
+      setBookmarkedJobIds(new Set());
       return;
     }
 

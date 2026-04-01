@@ -71,6 +71,7 @@ function hasSameSelections(left: string[], right: string[]) {
 
 export function useBulletinFilters(): BulletinFilterControls {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const { profile, loading: profileLoading } = useProfile();
   const searchParams = useSearchParams();
 
@@ -128,28 +129,28 @@ export function useBulletinFilters(): BulletinFilterControls {
   );
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!userId) {
       appliedProfileWorkTypesUserIdRef.current = null;
       return;
     }
-    if (appliedProfileWorkTypesUserIdRef.current === user.id) return;
+    if (appliedProfileWorkTypesUserIdRef.current === userId) return;
     if (profileLoading) return;
 
     if (profileWorkTypes.length === 0) {
-      appliedProfileWorkTypesUserIdRef.current = user.id;
+      appliedProfileWorkTypesUserIdRef.current = userId;
       return;
     }
 
     const hasWorkTypeParam = searchParams?.has('workType') ?? false;
     if (hasWorkTypeParam || selectedWorkTypes.length > 0) {
-      appliedProfileWorkTypesUserIdRef.current = user.id;
+      appliedProfileWorkTypesUserIdRef.current = userId;
       return;
     }
 
     void setSelectedWorkTypes(profileWorkTypes);
-    appliedProfileWorkTypesUserIdRef.current = user.id;
+    appliedProfileWorkTypesUserIdRef.current = userId;
   }, [
-    user?.id,
+    userId,
     profileLoading,
     profileWorkTypes,
     searchParams,
@@ -167,29 +168,29 @@ export function useBulletinFilters(): BulletinFilterControls {
   const profileProvince = profile?.province ?? null;
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!userId) {
       appliedProfileLocationUserIdRef.current = null;
       return;
     }
-    if (appliedProfileLocationUserIdRef.current === user.id) return;
+    if (appliedProfileLocationUserIdRef.current === userId) return;
     if (profileLoading) return;
     if (!profileMunicipality || !profileProvince) {
-      appliedProfileLocationUserIdRef.current = user.id;
+      appliedProfileLocationUserIdRef.current = userId;
       return;
     }
 
     const hasMunicipalityParam = searchParams?.has('municipality') ?? false;
     const hasProvinceParam = searchParams?.has('province') ?? false;
     if (hasMunicipalityParam || hasProvinceParam || selectedMunicipalities.length > 0 || selectedProvinces.length > 0) {
-      appliedProfileLocationUserIdRef.current = user.id;
+      appliedProfileLocationUserIdRef.current = userId;
       return;
     }
 
     void setSelectedProvinces([profileProvince]);
     void setSelectedMunicipalities([profileMunicipality]);
-    appliedProfileLocationUserIdRef.current = user.id;
+    appliedProfileLocationUserIdRef.current = userId;
   }, [
-    user?.id,
+    userId,
     profileLoading,
     profileMunicipality,
     profileProvince,
