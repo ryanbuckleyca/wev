@@ -178,7 +178,7 @@ export function useBulletinData(
   }, [filterSnapshot, currentPage, setCurrentPage]);
 
   useEffect(() => {
-    if (!userId || allJobs.length === 0 || !fullDataLoadedRef.current) {
+    if (!userId || allJobs.length === 0 || !fullDataLoaded) {
       if (!userId || allJobs.length === 0) {
         setMatchData(new Map());
         setBookmarkedJobIds(new Set());
@@ -201,7 +201,7 @@ export function useBulletinData(
     return () => {
       cancelled = true;
     };
-  }, [allJobs, userId]);
+  }, [allJobs, userId, fullDataLoaded]);
 
   const filteredJobs = useMemo(
     () => sortJobs(filterJobs(allJobs, filters), sortBy, matchData),
