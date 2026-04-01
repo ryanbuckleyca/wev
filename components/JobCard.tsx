@@ -147,7 +147,7 @@ export default function JobCard({
 
   const sse = !!job.is_sse;
 
-  const getCardSummary = (job: JobPosting) => {
+  const getCardSummary = () => {
     const title =
       job.job_title.length > 25 ? job.job_title.substring(0, 25) + '...' : job.job_title;
     const location = job.location || t('jobCard.remote');
@@ -239,7 +239,7 @@ export default function JobCard({
               <Lineicons icon={Leaf1Solid} size={16} className="text-wev-success" />
             </span>
           ) : null}
-          <span className="text-sm text-muted-foreground truncate pr-2">{getCardSummary(job)}</span>
+          <span className="text-sm text-muted-foreground truncate pr-2">{getCardSummary()}</span>
         </div>
 
         {/* Right side: Bookmark + Collapse */}

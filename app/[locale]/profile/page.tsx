@@ -72,12 +72,6 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  if (!profile) {
-    // Profile is auto-created by getProfile, so this should rarely be reached.
-    // Show loading state while creation completes.
-    return <LoadingState message={t('common.loading')} />;
-  }
-
   return (
     <PageLayout maxWidth="md">
       <CardLayout>

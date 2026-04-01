@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useRankedList } from '@/lib/hooks/useRankedList';
@@ -220,18 +220,18 @@ export function useProfileForm(locale: 'en' | 'fr') {
 
   // ─── Work type toggle ─────────────────────────────────────────────────
 
-  const handleWorkTypeToggle = (workType: WorkType) => {
+  const handleWorkTypeToggle = useCallback((workType: WorkType) => {
     setFormData((prev) => ({
       ...prev,
       work_types: prev.work_types.includes(workType)
         ? prev.work_types.filter((wt) => wt !== workType)
         : [...prev.work_types, workType],
     }));
-  };
+  }, []);
 
   // ─── Save ─────────────────────────────────────────────────────────────
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = useCallback(async () => {
     const validationError = validateProfileLimits(
       values.items,
       skills.items,
@@ -270,7 +270,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [formData, values, skills, updateProfile, t]);
 
   return {
     profile,

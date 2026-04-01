@@ -72,17 +72,17 @@ export default function MatchDetailsTooltip({
   const formatValueLabel = (value: string) =>
     value.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
 
-  const orderedValues = [
+  const orderedValues = useMemo(() => [
     ...values.filter((value) => sharedValues.includes(value)),
     ...values.filter((value) => !sharedValues.includes(value)),
-  ].slice(0, 5);
+  ].slice(0, 5), [values, sharedValues]);
 
-  const orderedSkills = [
+  const orderedSkills = useMemo(() => [
     ...skills.filter((skill) => sharedSkills.includes(skill)),
     ...skills.filter((skill) => !sharedSkills.includes(skill)),
   ]
     .filter((skill) => skillTerms[skill])
-    .slice(0, 5);
+    .slice(0, 5), [skills, sharedSkills, skillTerms]);
 
   const hasLocationSection =
     typeof workTypeMatchPercentage === 'number' || typeof locationMatchPercentage === 'number';

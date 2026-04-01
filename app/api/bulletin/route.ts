@@ -16,6 +16,8 @@ export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
 const JOBS_MAX_AGE_MS = 28 * 24 * 60 * 60 * 1000;
 
 // Full dataset — cached for 5 minutes, busted by /api/revalidate-jobs after a scrape.
+// The cache key array identifies this cache entry by name; locale is automatically
+// included by unstable_cache using the function arguments, so en/fr are cached separately.
 const fetchAllBulletinData = unstable_cache(
   async (locale: 'en' | 'fr') => {
     const supabase = supabaseServer;
