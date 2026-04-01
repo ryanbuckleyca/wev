@@ -32,7 +32,6 @@ export default function ProfilePage() {
   const { user, loading } = useRequireAuth();
 
   const {
-    profile,
     profileLoading,
     profileError,
     formData,

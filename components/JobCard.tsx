@@ -80,8 +80,8 @@ export default function JobCard({
   const { user } = useAuth();
   const router = useRouter();
 
-  // Profile-derived preferences
-  const profileWorkTypes = profile?.work_types ?? [];
+  // Profile-derived preferences — memoized to avoid invalidating matchTooltipContent on every render
+  const profileWorkTypes = useMemo(() => profile?.work_types ?? [], [profile?.work_types]);
 
   // Use passed-in match data (batch-fetched by parent)
   const totalMatchPercentage = matchProp?.score != null ? Math.round(matchProp.score * 100) : 0;

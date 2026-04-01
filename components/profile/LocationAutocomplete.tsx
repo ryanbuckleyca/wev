@@ -32,7 +32,10 @@ function useDebounce(fn: (q: string) => void, delay: number) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Store fn in a ref so changing it never resets a pending timer.
   const fnRef = useRef(fn);
-  fnRef.current = fn;
+
+  useEffect(() => {
+    fnRef.current = fn;
+  });
 
   const cancel = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
