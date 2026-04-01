@@ -189,7 +189,7 @@ export default function LocationAutocomplete({
           <ul
             id={listboxId}
             role="listbox"
-            aria-label="Location suggestions"
+            aria-label={tRef.current('locationSuggestionsLabel')}
             className="max-h-60 overflow-y-auto py-1"
           >
             {results.map((result, i) => (

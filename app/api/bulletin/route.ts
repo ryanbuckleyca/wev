@@ -5,8 +5,16 @@ import normalizeJobsWithSource from '@/lib/normalize-job';
 import { resolveSkillLabels, attachSkillLabels, parseLocale } from '@/lib/resolve-skill-labels';
 
 export const dynamic = 'force-dynamic';
+// force-dynamic prevents Next.js from statically rendering this route at build time.
+// unstable_cache provides server-side data caching within a running process — these are
+// complementary: force-dynamic = always run at request time, unstable_cache = cache the
+// DB result across requests within the same process for up to 5 minutes.
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
+
+/** Jobs older than this are never shown in the bulletin. Must be >= the max postedWithin filter option (1 month). */
+const JOBS_MAX_AGE_DAYS = 28;
+const JOBS_MAX_AGE_MS = JOBS_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 
 // Full dataset — cached for 5 minutes, busted by /api/revalidate-jobs after a scrape.
 const fetchAllBulletinData = unstable_cache(
@@ -25,7 +33,7 @@ const fetchAllBulletinData = unstable_cache(
         .select(
           'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, skills, unit_text, min_value, max_value, hours_per_week, compensation_meta',
         )
-        .gte('date_posted', new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString())
+        .gte('date_posted', new Date(Date.now() - JOBS_MAX_AGE_MS).toISOString())
         .order('date_posted', { ascending: false }),
     ]);
 

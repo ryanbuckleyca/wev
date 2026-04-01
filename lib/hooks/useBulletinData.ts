@@ -63,10 +63,10 @@ export function useBulletinData(
 ): BulletinDataState {
   const t = useTranslations('home.errors');
   const requestIdRef = useRef(0);
-  const fullDataLoadedRef = useRef(false);
   const [allJobs, setAllJobs] = useState<JobPosting[]>([]);
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fullDataLoaded, setFullDataLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(new Map());
   const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(new Set());
@@ -74,7 +74,7 @@ export function useBulletinData(
   const refresh = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
-    fullDataLoadedRef.current = false;
+    setFullDataLoaded(false);
     setLoading(true);
     setError(null);
 
@@ -114,12 +114,12 @@ export function useBulletinData(
           if (requestId !== requestIdRef.current) return;
           setAllJobs(fullData.jobs ?? []);
           setLastScrapeTime(formatLastScrapeTime(fullData.lastScrapeTime, locale));
-          fullDataLoadedRef.current = true;
+          setFullDataLoaded(true);
         } catch (bgError) {
           console.warn('[bulletin] Background full fetch error:', bgError);
         }
       } else {
-        fullDataLoadedRef.current = true;
+        setFullDataLoaded(true);
       }
     } catch (fetchError) {
       if (requestId !== requestIdRef.current) return;

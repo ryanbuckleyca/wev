@@ -56,7 +56,9 @@ async function restoreTable(table, schema = 'public') {
     console.log(`⚠️  Could not clear ${table}, attempting to insert anyway...`);
   }
 
-  // Strip columns that no longer exist in the schema
+  // Strip columns that no longer exist in the target schema.
+  // IMPORTANT: Update this list whenever a column is dropped from the schema.
+  // Columns dropped so far: ideal_work_environment (replaced by lat/lng/municipality/province)
   const droppedColumns = ['ideal_work_environment'];
   const sanitizedData = backupData.map((row) => {
     const clean = { ...row };
