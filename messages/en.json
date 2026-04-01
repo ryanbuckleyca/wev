@@ -64,7 +64,9 @@
       "noData": "No municipality data available. Run the scraper to populate location data.",
       "selectProvince": "Select a province to see municipalities",
       "profileDefault": "Using your profile location: {city}.",
-      "profileOverride": "Profile location: {city}. You can override this filter here."
+      "profileOverride": "Profile location: {city}. You can override this filter here.",
+      "profileLink": "Edit in profile",
+      "profileReset": "Reset to profile"
     },
     "employmentType": {
       "label": "Employment Type",

@@ -63,6 +63,7 @@ export function useBulletinData(
 ): BulletinDataState {
   const t = useTranslations('home.errors');
   const requestIdRef = useRef(0);
+  const fullDataLoadedRef = useRef(false);
   const [allJobs, setAllJobs] = useState<JobPosting[]>([]);
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,6 +74,7 @@ export function useBulletinData(
   const refresh = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
+    fullDataLoadedRef.current = false;
     setLoading(true);
     setError(null);
 
@@ -99,14 +101,25 @@ export function useBulletinData(
       setLoading(false);
       void setCurrentPage(1);
 
-      // If there are more jobs, fetch the full set in the background
+      // If there are more jobs, fetch the full set in the background.
+      // No abort controller here — we want this to complete even if slow.
       if (firstPageData.total > firstPageData.jobs.length) {
-        const fullResponse = await fetch(`/api/bulletin?locale=${locale}`);
-        if (!fullResponse.ok) return;
-        const fullData = await fullResponse.json();
-        if (requestId !== requestIdRef.current) return;
-        setAllJobs(fullData.jobs ?? []);
-        setLastScrapeTime(formatLastScrapeTime(fullData.lastScrapeTime, locale));
+        try {
+          const fullResponse = await fetch(`/api/bulletin?locale=${locale}`);
+          if (!fullResponse.ok) {
+            console.warn('[bulletin] Background full fetch failed:', fullResponse.status);
+            return;
+          }
+          const fullData = await fullResponse.json();
+          if (requestId !== requestIdRef.current) return;
+          setAllJobs(fullData.jobs ?? []);
+          setLastScrapeTime(formatLastScrapeTime(fullData.lastScrapeTime, locale));
+          fullDataLoadedRef.current = true;
+        } catch (bgError) {
+          console.warn('[bulletin] Background full fetch error:', bgError);
+        }
+      } else {
+        fullDataLoadedRef.current = true;
       }
     } catch (fetchError) {
       if (requestId !== requestIdRef.current) return;
@@ -165,9 +178,11 @@ export function useBulletinData(
   }, [filterSnapshot, currentPage, setCurrentPage]);
 
   useEffect(() => {
-    if (!userId || allJobs.length === 0) {
-      setMatchData(new Map());
-      setBookmarkedJobIds(new Set());
+    if (!userId || allJobs.length === 0 || !fullDataLoadedRef.current) {
+      if (!userId || allJobs.length === 0) {
+        setMatchData(new Map());
+        setBookmarkedJobIds(new Set());
+      }
       return;
     }
 
@@ -179,7 +194,6 @@ export function useBulletinData(
       fetchBookmarkedJobIds(userId, jobIds),
     ]).then(([matches, bookmarked]) => {
       if (cancelled) return;
-
       setMatchData(matches);
       setBookmarkedJobIds(bookmarked);
     });

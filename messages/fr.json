@@ -64,7 +64,9 @@
       "noData": "Aucune donnée de municipalité disponible. Exécutez le scraper pour remplir les données de localisation.",
       "selectProvince": "Sélectionnez une province pour voir les municipalités",
       "profileDefault": "Lieu du profil utilisé : {city}.",
-      "profileOverride": "Lieu du profil : {city}. Vous pouvez remplacer ce filtre ici."
+      "profileOverride": "Lieu du profil : {city}. Vous pouvez remplacer ce filtre ici.",
+      "profileLink": "Modifier le profil",
+      "profileReset": "Revenir au profil"
     },
     "employmentType": {
       "label": "Type d'emploi",

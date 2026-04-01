@@ -77,7 +77,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         setIsUpdating(false);
       }
     },
-    [user],
+    [user?.id], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const value = useMemo<ProfileContextValue>(

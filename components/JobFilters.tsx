@@ -179,7 +179,7 @@ export default function JobFilters(props: JobFiltersProps) {
                     : t('filters.municipality.profileOverride', { city: profileMunicipality })}
                 </span>
                 <StyledLink href="/profile" variant="text" size="sm" className="p-0">
-                  {t('filters.workType.profileLink')}
+                  {t('filters.municipality.profileLink')}
                 </StyledLink>
                 {!isUsingProfileLocation && onResetToProfileLocation && (
                   <button
@@ -187,7 +187,7 @@ export default function JobFilters(props: JobFiltersProps) {
                     onClick={onResetToProfileLocation}
                     className="text-[var(--primary)] hover:underline"
                   >
-                    {t('filters.workType.profileReset')}
+                    {t('filters.municipality.profileReset')}
                   </button>
                 )}
               </div>

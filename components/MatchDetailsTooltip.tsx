@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { HeartSolid, Briefcase2Solid, LocationArrowRightSolid, CheckOutlined, XmarkOutlined } from '@lineiconshq/free-icons';
 import ProgressDonut from './ProgressDonut';
@@ -22,6 +23,33 @@ interface MatchDetailsTooltipProps {
   profileHasLocationValue?: boolean;
 }
 
+function MatchListItem({ label, id, matched }: { label: string; id: string; matched: boolean }) {
+  return (
+    <div
+      key={id}
+      className={`text-xs lowercase flex items-center gap-1 ${matched ? '' : 'text-gray-400'}`}
+    >
+      <Lineicons
+        icon={matched ? CheckOutlined : XmarkOutlined}
+        size={11}
+        className="flex-shrink-0"
+      />
+      {label}
+    </div>
+  );
+}
+
+function calcLocationSectionPercentage(
+  workTypeMatchPercentage: number | undefined,
+  locationMatchPercentage: number | undefined,
+): number | null {
+  const scores = [workTypeMatchPercentage, locationMatchPercentage].filter(
+    (s): s is number => typeof s === 'number',
+  );
+  if (scores.length === 0) return null;
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+}
+
 export default function MatchDetailsTooltip({
   totalMatchPercentage,
   valueMatchPercentage,
@@ -42,10 +70,7 @@ export default function MatchDetailsTooltip({
   const textColor = 'rgb(var(--foreground))';
 
   const formatValueLabel = (value: string) =>
-    value
-      .replace(/_/g, ' ')
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .toLowerCase();
+    value.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
 
   const orderedValues = [
     ...values.filter((value) => sharedValues.includes(value)),
@@ -59,39 +84,22 @@ export default function MatchDetailsTooltip({
     .filter((skill) => skillTerms[skill])
     .slice(0, 5);
 
-  const renderListItem = (label: string, key: string, matched: boolean) => (
-    <div
-      key={key}
-      className={`text-xs lowercase flex items-center gap-1 ${matched ? '' : 'text-gray-400'}`}
-    >
-      {matched ? (
-        <Lineicons icon={CheckOutlined} size={11} className="flex-shrink-0" />
-      ) : (
-        <Lineicons icon={XmarkOutlined} size={11} className="flex-shrink-0" />
-      )}
-      {label}
-    </div>
-  );
-
-  // Combined location section: show when either work type or location score is available
   const hasLocationSection =
     typeof workTypeMatchPercentage === 'number' || typeof locationMatchPercentage === 'number';
 
-  // Combined score: average of available sub-scores
-  const locationSectionPercentage = (() => {
-    const scores = [
-      typeof workTypeMatchPercentage === 'number' ? workTypeMatchPercentage : null,
-      typeof locationMatchPercentage === 'number' ? locationMatchPercentage : null,
-    ].filter((s): s is number => s !== null);
-    if (scores.length === 0) return null;
-    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-  })();
+  const locationSectionPercentage = calcLocationSectionPercentage(
+    workTypeMatchPercentage,
+    locationMatchPercentage,
+  );
 
-  const workTypeLabels: Record<string, string> = {
-    remote: translate('filters.workType.remote'),
-    hybrid: translate('filters.workType.hybrid'),
-    office: translate('filters.workType.office'),
-  };
+  const workTypeLabels = useMemo<Record<string, string>>(
+    () => ({
+      remote: translate('filters.workType.remote'),
+      hybrid: translate('filters.workType.hybrid'),
+      office: translate('filters.workType.office'),
+    }),
+    [translate],
+  );
 
   return (
     <div className="space-y-3">
@@ -112,9 +120,14 @@ export default function MatchDetailsTooltip({
             <Lineicons icon={HeartSolid} size={12} className="text-wev-brand-accent" />
             <span>{translate('matchDetails.values')}: {valueMatchPercentage}%</span>
           </div>
-          {orderedValues.map((value) =>
-            renderListItem(formatValueLabel(value), `value-${value}`, sharedValues.includes(value))
-          )}
+          {orderedValues.map((value) => (
+            <MatchListItem
+              key={`value-${value}`}
+              id={`value-${value}`}
+              label={formatValueLabel(value)}
+              matched={sharedValues.includes(value)}
+            />
+          ))}
         </div>
       )}
 
@@ -124,9 +137,14 @@ export default function MatchDetailsTooltip({
             <Lineicons icon={Briefcase2Solid} size={12} className="text-primary" />
             <span>{translate('matchDetails.skills')}: {skillMatchPercentage}%</span>
           </div>
-          {orderedSkills.map((skill) =>
-            renderListItem(skillTerms[skill], `skill-${skill}`, sharedSkills.includes(skill))
-          )}
+          {orderedSkills.map((skill) => (
+            <MatchListItem
+              key={`skill-${skill}`}
+              id={`skill-${skill}`}
+              label={skillTerms[skill]}
+              matched={sharedSkills.includes(skill)}
+            />
+          ))}
         </div>
       )}
 
@@ -140,32 +158,29 @@ export default function MatchDetailsTooltip({
             </span>
           </div>
 
-          {/* Work type: show job's work type, check if it matches profile preference */}
-          {typeof workTypeMatchPercentage === 'number' && jobWorkType &&
-            renderListItem(
-              workTypeLabels[jobWorkType] ?? jobWorkType,
-              `worktype-${jobWorkType}`,
-              !profileWorkTypes?.length || profileWorkTypes.includes(jobWorkType),
-            )
-          }
+          {typeof workTypeMatchPercentage === 'number' && jobWorkType && (
+            <MatchListItem
+              id={`worktype-${jobWorkType}`}
+              label={workTypeLabels[jobWorkType] ?? jobWorkType}
+              matched={!profileWorkTypes?.length || profileWorkTypes.includes(jobWorkType)}
+            />
+          )}
 
-          {/* Distance: show job's city, check if it matches profile location */}
-          {typeof locationMatchPercentage === 'number' && jobMunicipality &&
-            renderListItem(
-              jobMunicipality,
-              'location-city',
-              locationMatchPercentage > 0,
-            )
-          }
+          {typeof locationMatchPercentage === 'number' && jobMunicipality && (
+            <MatchListItem
+              id="location-city"
+              label={jobMunicipality}
+              matched={locationMatchPercentage > 0}
+            />
+          )}
 
-          {/* No city on job but we have a distance score */}
           {typeof locationMatchPercentage === 'number' && !jobMunicipality && (
             locationMatchPercentage === 100
-              ? renderListItem(translate('matchDetails.locationNearby'), 'location-distance', true)
+              ? <MatchListItem id="location-distance" label={translate('matchDetails.locationNearby')} matched={true} />
               : locationMatchPercentage === 50
-              ? renderListItem(translate('matchDetails.locationRegional'), 'location-distance', true)
+              ? <MatchListItem id="location-distance" label={translate('matchDetails.locationRegional')} matched={true} />
               : locationMatchPercentage === 0
-              ? renderListItem(translate('matchDetails.locationOutOfRange'), 'location-distance', false)
+              ? <MatchListItem id="location-distance" label={translate('matchDetails.locationOutOfRange')} matched={false} />
               : null
           )}
 

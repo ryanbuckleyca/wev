@@ -13,11 +13,14 @@ const REVALIDATE_SECRET = process.env.REVALIDATE_SECRET;
  * Requires Authorization: Bearer <REVALIDATE_SECRET> header.
  */
 export async function POST(request: Request) {
-  if (REVALIDATE_SECRET) {
-    const auth = request.headers.get('authorization');
-    if (auth !== `Bearer ${REVALIDATE_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  if (!REVALIDATE_SECRET) {
+    console.warn('[revalidate-jobs] REVALIDATE_SECRET is not set — endpoint is disabled.');
+    return NextResponse.json({ error: 'Not configured' }, { status: 503 });
+  }
+
+  const auth = request.headers.get('authorization');
+  if (auth !== `Bearer ${REVALIDATE_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   revalidateTag(BULLETIN_CACHE_TAG);

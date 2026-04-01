@@ -37,9 +37,9 @@ export type ProfileUpdateData = {
 };
 
 /**
- * Create a blank profile for a user (used as fallback when profile is missing).
+ * Create a blank profile for a user. Internal — called by getProfile when no row exists.
  */
-export async function createProfile(userId: string): Promise<Profile> {
+async function createProfile(userId: string): Promise<Profile> {
   const supabase = createClient();
 
   const { data, error } = await supabase
