@@ -56,6 +56,10 @@ export interface BulletinFilterControls {
   profileWorkTypes: WorkType[];
   isUsingProfileWorkTypes: boolean;
   handleResetToProfileWorkTypes: () => void;
+  profileMunicipality: string | null;
+  profileProvince: string | null;
+  isUsingProfileLocation: boolean;
+  handleResetToProfileLocation: () => void;
 }
 
 function hasSameSelections(left: string[], right: string[]) {
@@ -112,6 +116,7 @@ export function useBulletinFilters(): BulletinFilterControls {
     parseAsStringLiteral(JOB_SORT_OPTIONS).withDefault('date-desc'),
   );
   const appliedProfileWorkTypesUserIdRef = useRef<string | null>(null);
+  const appliedProfileLocationUserIdRef = useRef<string | null>(null);
 
   const profileWorkTypes = useMemo(
     () => normalizeWorkTypes(profile?.work_types),
@@ -156,6 +161,60 @@ export function useBulletinFilters(): BulletinFilterControls {
     if (profileWorkTypes.length === 0) return;
     void setSelectedWorkTypes(profileWorkTypes);
   }, [profileWorkTypes, setSelectedWorkTypes]);
+
+  // Pre-fill municipality + province from profile on first load (same pattern as work type)
+  const profileMunicipality = profile?.municipality ?? null;
+  const profileProvince = profile?.province ?? null;
+
+  useEffect(() => {
+    if (!user?.id) {
+      appliedProfileLocationUserIdRef.current = null;
+      return;
+    }
+    if (appliedProfileLocationUserIdRef.current === user.id) return;
+    if (profileLoading) return;
+    if (!profileMunicipality || !profileProvince) {
+      appliedProfileLocationUserIdRef.current = user.id;
+      return;
+    }
+
+    const hasMunicipalityParam = searchParams?.has('municipality') ?? false;
+    const hasProvinceParam = searchParams?.has('province') ?? false;
+    if (hasMunicipalityParam || hasProvinceParam || selectedMunicipalities.length > 0 || selectedProvinces.length > 0) {
+      appliedProfileLocationUserIdRef.current = user.id;
+      return;
+    }
+
+    void setSelectedProvinces([profileProvince]);
+    void setSelectedMunicipalities([profileMunicipality]);
+    appliedProfileLocationUserIdRef.current = user.id;
+  }, [
+    user?.id,
+    profileLoading,
+    profileMunicipality,
+    profileProvince,
+    searchParams,
+    selectedMunicipalities.length,
+    selectedProvinces.length,
+    setSelectedMunicipalities,
+    setSelectedProvinces,
+  ]);
+
+  const handleResetToProfileLocation = useCallback(() => {
+    if (!profileMunicipality || !profileProvince) return;
+    void setSelectedProvinces([profileProvince]);
+    void setSelectedMunicipalities([profileMunicipality]);
+  }, [profileMunicipality, profileProvince, setSelectedProvinces, setSelectedMunicipalities]);
+
+  const isUsingProfileLocation = useMemo(() => {
+    if (!profileMunicipality || !profileProvince) return false;
+    return (
+      selectedMunicipalities.length === 1 &&
+      selectedMunicipalities[0] === profileMunicipality &&
+      selectedProvinces.length === 1 &&
+      selectedProvinces[0] === profileProvince
+    );
+  }, [profileMunicipality, profileProvince, selectedMunicipalities, selectedProvinces]);
 
   const filters = useMemo<BulletinFilters>(
     () => ({
@@ -232,5 +291,9 @@ export function useBulletinFilters(): BulletinFilterControls {
     profileWorkTypes,
     isUsingProfileWorkTypes,
     handleResetToProfileWorkTypes,
+    profileMunicipality,
+    profileProvince,
+    isUsingProfileLocation,
+    handleResetToProfileLocation,
   };
 }

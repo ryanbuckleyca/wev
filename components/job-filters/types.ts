@@ -31,4 +31,8 @@ export interface JobFiltersProps {
   profileWorkTypes?: WorkType[];
   isUsingProfileWorkTypes?: boolean;
   onResetToProfileWorkTypes?: () => void;
+  profileMunicipality?: string | null;
+  profileProvince?: string | null;
+  isUsingProfileLocation?: boolean;
+  onResetToProfileLocation?: () => void;
 }

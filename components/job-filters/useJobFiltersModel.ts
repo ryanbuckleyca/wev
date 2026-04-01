@@ -225,16 +225,14 @@ export function useJobFiltersModel({
     }
 
     if (selectedWorkTypes.length > 0) {
-      const workTypeLabel =
-        selectedWorkTypes.length <= 2
-          ? selectedWorkTypes.map((workType) => getWorkTypeLabel(workType)).join(', ')
-          : `${selectedWorkTypes.length} ${t('filters.chips.selected')}`;
-
-      chips.push({
-        id: 'work-types',
-        label: workTypeLabel,
-        onRemove: () => onWorkTypesChange([]),
-      });
+      chips.push(
+        ...buildSelectionChips(
+          'work-type',
+          selectedWorkTypes,
+          (workType) => getWorkTypeLabel(workType),
+          (workType) => onWorkTypesChange(selectedWorkTypes.filter((wt) => wt !== workType)),
+        ),
+      );
     }
 
     chips.push(

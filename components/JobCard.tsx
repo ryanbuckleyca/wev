@@ -108,6 +108,7 @@ export default function JobCard({
         workTypeMatchPercentage={workTypeMatchPercentage}
         locationMatchPercentage={locationMatchPercentage}
         jobWorkType={job.work_type}
+        jobMunicipality={job.municipality}
         profileWorkTypes={profileWorkTypes}
         profileHasLocationValue={profileHasLocationValue}
         values={job.values || []}
@@ -122,6 +123,8 @@ export default function JobCard({
     matchProp,
     job.values,
     job.skills,
+    job.work_type,
+    job.municipality,
     skillTerms,
     t,
     totalMatchPercentage,

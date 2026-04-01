@@ -37,17 +37,36 @@ export type ProfileUpdateData = {
 };
 
 /**
- * Fetch a user's profile
+ * Create a blank profile for a user (used as fallback when profile is missing).
  */
-export async function getProfile(userId: string): Promise<Profile | null> {
+export async function createProfile(userId: string): Promise<Profile> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .insert({ id: userId, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message || 'Failed to create profile');
+  }
+
+  return data as Profile;
+}
+
+/**
+ * Fetch a user's profile, creating a blank one if it doesn't exist.
+ */
+export async function getProfile(userId: string): Promise<Profile> {
   const supabase = createClient();
 
   const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
 
   if (error) {
-    if (error.code === 'PGRST116') return null; // no rows found
+    if (error.code === 'PGRST116') return createProfile(userId);
     console.error('Error fetching profile:', error);
-    return null;
+    throw new Error(error.message || 'Failed to fetch profile');
   }
 
   return data as Profile;

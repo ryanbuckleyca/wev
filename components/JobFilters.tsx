@@ -36,6 +36,9 @@ export default function JobFilters(props: JobFiltersProps) {
     onFiltersExpandedChange,
     isUsingProfileWorkTypes = false,
     onResetToProfileWorkTypes,
+    profileMunicipality,
+    isUsingProfileLocation = false,
+    onResetToProfileLocation,
   } = props;
   const t = useTranslations();
   const model = useJobFiltersModel(props);
@@ -156,19 +159,40 @@ export default function JobFilters(props: JobFiltersProps) {
             emptyMessage={t('filters.employmentType.noData')}
           />
 
-          <MunicipalityFilterSection
-            className="flex flex-col order-2 md:row-start-2 md:col-start-1"
-            label={t('filters.municipality.label')}
-            selectedMunicipalities={selectedMunicipalities}
-            totalMunicipalities={model.allMunicipalities.length}
-            selectedProvinces={selectedProvinces}
-            visibleMunicipalitiesByProvince={model.visibleMunicipalitiesByProvince}
-            onToggleMunicipality={model.handleMunicipalityToggle}
-            noDataMessage={t('filters.municipality.noData')}
-            selectProvinceMessage={t('filters.municipality.selectProvince')}
-            showingFromSelectedMessage={t('filters.municipality.showingFromSelected')}
-          />
-
+          <div className="flex flex-col order-2 md:row-start-2 md:col-start-1 gap-1">
+            <MunicipalityFilterSection
+              label={t('filters.municipality.label')}
+              selectedMunicipalities={selectedMunicipalities}
+              totalMunicipalities={model.allMunicipalities.length}
+              selectedProvinces={selectedProvinces}
+              visibleMunicipalitiesByProvince={model.visibleMunicipalitiesByProvince}
+              onToggleMunicipality={model.handleMunicipalityToggle}
+              noDataMessage={t('filters.municipality.noData')}
+              selectProvinceMessage={t('filters.municipality.selectProvince')}
+              showingFromSelectedMessage={t('filters.municipality.showingFromSelected')}
+            />
+            {profileMunicipality && (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>
+                  {isUsingProfileLocation
+                    ? t('filters.municipality.profileDefault', { city: profileMunicipality })
+                    : t('filters.municipality.profileOverride', { city: profileMunicipality })}
+                </span>
+                <StyledLink href="/profile" variant="text" size="sm" className="p-0">
+                  {t('filters.workType.profileLink')}
+                </StyledLink>
+                {!isUsingProfileLocation && onResetToProfileLocation && (
+                  <button
+                    type="button"
+                    onClick={onResetToProfileLocation}
+                    className="text-[var(--primary)] hover:underline"
+                  >
+                    {t('filters.workType.profileReset')}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           <CheckboxFilterSection
             className="flex flex-col order-4 md:row-start-2 md:col-start-2"
             label={t('filters.organization.label')}

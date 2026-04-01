@@ -17,6 +17,7 @@ interface MatchDetailsTooltipProps {
   skillTerms: Record<string, string>;
   translate: TranslateFn;
   jobWorkType?: string | null;
+  jobMunicipality?: string | null;
   profileWorkTypes?: string[];
   profileHasLocationValue?: boolean;
 }
@@ -34,6 +35,7 @@ export default function MatchDetailsTooltip({
   skillTerms,
   translate,
   jobWorkType,
+  jobMunicipality,
   profileWorkTypes,
   profileHasLocationValue,
 }: MatchDetailsTooltipProps) {
@@ -138,7 +140,7 @@ export default function MatchDetailsTooltip({
             </span>
           </div>
 
-          {/* Work type sub-detail */}
+          {/* Work type: show job's work type, check if it matches profile preference */}
           {typeof workTypeMatchPercentage === 'number' && jobWorkType &&
             renderListItem(
               workTypeLabels[jobWorkType] ?? jobWorkType,
@@ -147,8 +149,17 @@ export default function MatchDetailsTooltip({
             )
           }
 
-          {/* Distance sub-detail */}
-          {typeof locationMatchPercentage === 'number' && (
+          {/* Distance: show job's city, check if it matches profile location */}
+          {typeof locationMatchPercentage === 'number' && jobMunicipality &&
+            renderListItem(
+              jobMunicipality,
+              'location-city',
+              locationMatchPercentage > 0,
+            )
+          }
+
+          {/* No city on job but we have a distance score */}
+          {typeof locationMatchPercentage === 'number' && !jobMunicipality && (
             locationMatchPercentage === 100
               ? renderListItem(translate('matchDetails.locationNearby'), 'location-distance', true)
               : locationMatchPercentage === 50

@@ -62,7 +62,9 @@
       "label": "Municipalité",
       "showingFromSelected": "(affichage des municipalités des provinces sélectionnées)",
       "noData": "Aucune donnée de municipalité disponible. Exécutez le scraper pour remplir les données de localisation.",
-      "selectProvince": "Sélectionnez une province pour voir les municipalités"
+      "selectProvince": "Sélectionnez une province pour voir les municipalités",
+      "profileDefault": "Lieu du profil utilisé : {city}.",
+      "profileOverride": "Lieu du profil : {city}. Vous pouvez remplacer ce filtre ici."
     },
     "employmentType": {
       "label": "Type d'emploi",

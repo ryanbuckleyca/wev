@@ -73,17 +73,9 @@ export default function ProfilePage() {
   if (!user) return null;
 
   if (!profile) {
-    return (
-      <PageLayout maxWidth="md">
-        <CardLayout>
-          <Heading level={1} className="mb-4">
-            {t('profile.noProfileFound')}
-          </Heading>
-          <p className="text-[var(--muted-foreground)] mb-6">{t('profile.noProfileDescription')}</p>
-          <LinkButton href="/">{t('profile.backToJobs')}</LinkButton>
-        </CardLayout>
-      </PageLayout>
-    );
+    // Profile is auto-created by getProfile, so this should rarely be reached.
+    // Show loading state while creation completes.
+    return <LoadingState message={t('common.loading')} />;
   }
 
   return (

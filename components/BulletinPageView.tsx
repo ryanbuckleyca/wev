@@ -95,6 +95,10 @@ export default function BulletinPageView({
           profileWorkTypes={filters.profileWorkTypes}
           isUsingProfileWorkTypes={filters.isUsingProfileWorkTypes}
           onResetToProfileWorkTypes={filters.handleResetToProfileWorkTypes}
+          profileMunicipality={filters.profileMunicipality}
+          profileProvince={filters.profileProvince}
+          isUsingProfileLocation={filters.isUsingProfileLocation}
+          onResetToProfileLocation={filters.handleResetToProfileLocation}
         />
 
         {data.allJobs.length > 0 && (

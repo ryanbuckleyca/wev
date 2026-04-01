@@ -56,12 +56,20 @@ async function restoreTable(table, schema = 'public') {
     console.log(`⚠️  Could not clear ${table}, attempting to insert anyway...`);
   }
 
+  // Strip columns that no longer exist in the schema
+  const droppedColumns = ['ideal_work_environment'];
+  const sanitizedData = backupData.map((row) => {
+    const clean = { ...row };
+    for (const col of droppedColumns) delete clean[col];
+    return clean;
+  });
+
   // Insert backup data in smaller batches
   const batchSize = 10;
   let successCount = 0;
 
-  for (let i = 0; i < backupData.length; i += batchSize) {
-    const batch = backupData.slice(i, i + batchSize);
+  for (let i = 0; i < sanitizedData.length; i += batchSize) {
+    const batch = sanitizedData.slice(i, i + batchSize);
     const { error } = await supabase.from(table).insert(batch);
     if (error) {
       console.error(
@@ -80,12 +88,12 @@ async function restoreTable(table, schema = 'public') {
     } else {
       successCount += batch.length;
       console.log(
-        `Restored batch ${i / batchSize + 1}/${Math.ceil(backupData.length / batchSize)} for ${schema}.${table}`,
+        `Restored batch ${i / batchSize + 1}/${Math.ceil(sanitizedData.length / batchSize)} for ${schema}.${table}`,
       );
     }
   }
 
-  console.log(`✅ Restored ${successCount}/${backupData.length} rows for ${schema}.${table}`);
+  console.log(`✅ Restored ${successCount}/${sanitizedData.length} rows for ${schema}.${table}`);
 }
 
 (async () => {

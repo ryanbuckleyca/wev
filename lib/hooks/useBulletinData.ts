@@ -77,35 +77,44 @@ export function useBulletinData(
     setError(null);
 
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => {
-      controller.abort();
-    }, FETCH_TIMEOUT_MS);
+    const timeoutId = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
     try {
-      const response = await fetch(`/api/bulletin?locale=${locale}`, {
-        signal: controller.signal,
-      });
+      // Fetch first page immediately for fast initial paint
+      const firstPageResponse = await fetch(
+        `/api/bulletin?locale=${locale}&limit=20`,
+        { signal: controller.signal },
+      );
 
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
+      if (!firstPageResponse.ok) {
+        const body = await firstPageResponse.json().catch(() => ({}));
         throw new Error(body.error ?? t('loadFailed'));
       }
 
-      const { jobs: jobsData, lastScrapeTime: rawScrapeTime } = await response.json();
+      const firstPageData = await firstPageResponse.json();
       if (requestId !== requestIdRef.current) return;
 
-      setLastScrapeTime(formatLastScrapeTime(rawScrapeTime, locale));
-      setAllJobs(jobsData ?? []);
+      setLastScrapeTime(formatLastScrapeTime(firstPageData.lastScrapeTime, locale));
+      setAllJobs(firstPageData.jobs ?? []);
+      setLoading(false);
       void setCurrentPage(1);
+
+      // If there are more jobs, fetch the full set in the background
+      if (firstPageData.total > firstPageData.jobs.length) {
+        const fullResponse = await fetch(`/api/bulletin?locale=${locale}`);
+        if (!fullResponse.ok) return;
+        const fullData = await fullResponse.json();
+        if (requestId !== requestIdRef.current) return;
+        setAllJobs(fullData.jobs ?? []);
+        setLastScrapeTime(formatLastScrapeTime(fullData.lastScrapeTime, locale));
+      }
     } catch (fetchError) {
       if (requestId !== requestIdRef.current) return;
       console.error('Error fetching bulletin data:', fetchError);
       setError(getErrorMessage(fetchError, t('loadFailed'), t('timeout')));
+      setLoading(false);
     } finally {
       window.clearTimeout(timeoutId);
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
     }
   }, [locale, setCurrentPage, t]);
 
