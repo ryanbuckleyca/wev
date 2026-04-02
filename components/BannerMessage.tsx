@@ -42,6 +42,7 @@ export default function BannerMessage({
   onExpire,
 }: BannerMessageProps) {
   const [paused, setPaused] = useState(false);
+  const [remaining, setRemaining] = useState(duration ?? 0);
   const remainingRef = useRef(duration ?? 0);
   const segmentStartRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -49,15 +50,18 @@ export default function BannerMessage({
 
   useEffect(() => {
     if (!duration || !onExpire) return;
+    remainingRef.current = duration;
+    setRemaining(duration);
     segmentStartRef.current = Date.now();
     timerRef.current = setTimeout(onExpire, remainingRef.current);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [duration, onExpire]);
 
   const handleMouseEnter = () => {
     if (!duration) return;
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
     remainingRef.current = Math.max(remainingRef.current - (Date.now() - segmentStartRef.current), 0);
+    setRemaining(remainingRef.current);
     setPaused(true);
   };
 
@@ -103,7 +107,7 @@ export default function BannerMessage({
           key={barKey}
           className={`toast-progress-bar ${PROGRESS_COLORS[type]}`}
           style={{
-            animationDuration: `${remainingRef.current}ms`,
+            animationDuration: `${remaining}ms`,
             animationPlayState: paused ? 'paused' : 'running',
           }}
           aria-hidden="true"
