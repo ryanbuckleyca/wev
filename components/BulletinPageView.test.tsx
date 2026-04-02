@@ -167,6 +167,10 @@ function createFilters(): BulletinFilterControls {
     profileWorkTypes: ['remote'],
     isUsingProfileWorkTypes: true,
     handleResetToProfileWorkTypes: vi.fn(),
+    profileMunicipality: null,
+    profileProvince: null,
+    isUsingProfileLocation: false,
+    handleResetToProfileLocation: vi.fn(),
   };
 }
 
@@ -194,7 +198,7 @@ describe('BulletinPageView', () => {
     const filters = createFilters();
     const data = createData();
 
-    render(<BulletinPageView isAdmin isLoggedIn filters={filters} data={data} />);
+    render(<BulletinPageView isAdmin isLoggedIn profile={null} filters={filters} data={data} />);
 
     expect(screen.getByText('job-filters:3:2:3')).toBeVisible();
     expect(screen.getByText('job-listings:1')).toBeVisible();
@@ -220,7 +224,7 @@ describe('BulletinPageView', () => {
     const filters = createFilters();
     const data = createData();
 
-    render(<BulletinPageView isAdmin={false} isLoggedIn={false} filters={filters} data={data} />);
+    render(<BulletinPageView isAdmin={false} isLoggedIn={false} profile={null} filters={filters} data={data} />);
 
     expect(screen.queryByRole('button', { name: 're-scrape' })).not.toBeInTheDocument();
     expect(screen.queryByText(/copy-jobs:/)).not.toBeInTheDocument();

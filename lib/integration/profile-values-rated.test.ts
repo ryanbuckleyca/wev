@@ -64,6 +64,8 @@ function createMockUpdateProfile() {
       profile_photo_url: null,
       lat: null,
       lng: null,
+      municipality: null,
+      province: null,
       location_display_name: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
