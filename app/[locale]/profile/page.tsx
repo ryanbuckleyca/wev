@@ -196,6 +196,7 @@ export default function ProfilePage() {
                   {t('profile.location')}
                 </FormLabel>
                 <LocationAutocomplete
+                  inputId="location-autocomplete"
                   value={
                     formData.location
                       ? {

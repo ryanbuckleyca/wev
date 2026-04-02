@@ -9,6 +9,7 @@ interface SearchInputProps {
   isSearching?: boolean;
   listboxId?: string;
   ariaDescribedBy?: string;
+  id?: string;
 }
 
 export default function SearchInput({
@@ -20,12 +21,14 @@ export default function SearchInput({
   isSearching = false,
   listboxId,
   ariaDescribedBy,
+  id,
 }: SearchInputProps) {
   return (
     <div className="flex flex-1 items-center gap-2 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 transition-all focus-within:border-gray-200 focus-within:ring-2 focus-within:ring-gray-100/50 dark:bg-zinc-900/50 dark:border-zinc-800 dark:focus-within:border-zinc-700 dark:focus-within:ring-zinc-800/50">
       <Search className="h-4 w-4 shrink-0 text-gray-400" />
       <input
         ref={inputRef}
+        id={id}
         type="text"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}

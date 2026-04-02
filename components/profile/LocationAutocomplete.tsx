@@ -26,6 +26,7 @@ interface LocationAutocompleteProps {
   placeholder?: string;
   hint?: string;
   error?: string;
+  inputId?: string;
 }
 
 function useDebounce(fn: (q: string) => void, delay: number) {
@@ -61,6 +62,7 @@ export default function LocationAutocomplete({
   placeholder = '',
   hint,
   error: externalError,
+  inputId,
 }: LocationAutocompleteProps) {
   const t = useTranslations('profile');
   const tRef = useRef(t);
@@ -177,6 +179,7 @@ export default function LocationAutocomplete({
               isSearching={isSearching}
               inputRef={inputRef}
               listboxId={listboxId}
+              id={inputId}
             />
           </div>
         </PopoverPrimitive.Anchor>

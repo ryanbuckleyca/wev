@@ -14,18 +14,12 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import type { Profile } from '@/lib/supabase/profiles';
 import { formatCompensation } from '@/lib/compensation/helpers';
+import { parseDateString } from '@/lib/date-utils';
 import Collapsible from './Collapsible';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from '@/i18n/navigation';
 import MatchDetailsTooltip from './MatchDetailsTooltip';
 import JobCardFooter from './JobCardFooter';
-
-function parseJobDate(dateString: string): Date {
-  if (!dateString.endsWith('Z') && !dateString.match(/[+-]\d{2}:\d{2}$/)) {
-    return new Date(dateString + 'Z');
-  }
-  return new Date(dateString);
-}
 
 interface JobCardProps {
   job: JobPosting;
@@ -151,7 +145,7 @@ export default function JobCard({
     const title =
       job.job_title.length > 25 ? job.job_title.substring(0, 25) + '...' : job.job_title;
     const location = job.location || t('jobCard.remote');
-    const dateStr = parseJobDate(job.date_posted).toLocaleDateString(locale, {
+    const dateStr = parseDateString(job.date_posted).toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric',
     });
@@ -159,7 +153,7 @@ export default function JobCard({
   };
 
   const formatDate = (dateString: string): string =>
-    parseJobDate(dateString).toLocaleDateString(locale, {
+    parseDateString(dateString).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
