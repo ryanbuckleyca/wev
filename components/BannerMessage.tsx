@@ -43,7 +43,7 @@ export default function BannerMessage({
 }: BannerMessageProps) {
   const [paused, setPaused] = useState(false);
   const remainingRef = useRef(duration ?? 0);
-  const segmentStartRef = useRef(Date.now());
+  const segmentStartRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [barKey, setBarKey] = useState(0);
 
