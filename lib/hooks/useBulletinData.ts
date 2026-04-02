@@ -108,6 +108,7 @@ export function useBulletinData(
           const fullResponse = await fetch(`/api/bulletin?locale=${locale}`);
           if (!fullResponse.ok) {
             console.warn('[bulletin] Background full fetch failed:', fullResponse.status);
+            setFullDataLoaded(true);
             return;
           }
           const fullData = await fullResponse.json();
@@ -117,6 +118,7 @@ export function useBulletinData(
           setFullDataLoaded(true);
         } catch (bgError) {
           console.warn('[bulletin] Background full fetch error:', bgError);
+          setFullDataLoaded(true);
         }
       } else {
         setFullDataLoaded(true);
