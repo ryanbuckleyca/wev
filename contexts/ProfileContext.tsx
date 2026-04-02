@@ -50,6 +50,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+    console.debug('[ProfileContext] refresh called', { userId });
     setLoading(true);
     setError(null);
     try {

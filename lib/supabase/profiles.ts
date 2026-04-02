@@ -1,6 +1,9 @@
 import { createClient } from './client';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 
+const PROFILE_COLUMNS =
+  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, created_at, updated_at' as const;
+
 export type Profile = {
   id: string;
   full_name: string | null;
@@ -45,7 +48,7 @@ async function createProfile(userId: string): Promise<Profile> {
   const { data, error } = await supabase
     .from('profiles')
     .insert({ id: userId, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .select()
+    .select(PROFILE_COLUMNS)
     .single();
 
   if (error) {
@@ -63,9 +66,7 @@ export async function getProfile(userId: string): Promise<Profile> {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select(
-      'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, created_at, updated_at',
-    )
+    .select(PROFILE_COLUMNS)
     .eq('id', userId)
     .single();
 
@@ -93,7 +94,7 @@ export async function updateProfile(userId: string, updates: ProfileUpdateData):
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId)
-    .select()
+    .select(PROFILE_COLUMNS)
     .single();
 
   if (error) {

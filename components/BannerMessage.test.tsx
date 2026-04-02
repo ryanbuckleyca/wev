@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@/test-utils';
+import { render, screen, fireEvent } from '@/test-utils';
 import BannerMessage from './BannerMessage';
 
 beforeEach(() => { vi.useFakeTimers(); });
@@ -49,44 +49,6 @@ describe('BannerMessage', () => {
     });
   });
 
-  describe('auto-dismiss timer', () => {
-    it('calls onExpire after duration', () => {
-      const onExpire = vi.fn();
-      render(<BannerMessage type="info" message="Timed" duration={3000} onExpire={onExpire} />);
-      expect(onExpire).not.toHaveBeenCalled();
-      act(() => { vi.advanceTimersByTime(3000); });
-      expect(onExpire).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not call onExpire before duration', () => {
-      const onExpire = vi.fn();
-      render(<BannerMessage type="info" message="Timed" duration={3000} onExpire={onExpire} />);
-      act(() => { vi.advanceTimersByTime(2999); });
-      expect(onExpire).not.toHaveBeenCalled();
-    });
-
-    it('pauses the timer on hover and resumes with remaining time on mouse leave', () => {
-      const onExpire = vi.fn();
-      render(<BannerMessage type="warning" message="Hover" duration={3000} onExpire={onExpire} />);
-      const alert = screen.getByRole('alert');
-
-      // Advance 1s, then pause
-      act(() => { vi.advanceTimersByTime(1000); });
-      fireEvent.mouseEnter(alert);
-
-      // Advance 5s while paused — must NOT fire
-      act(() => { vi.advanceTimersByTime(5000); });
-      expect(onExpire).not.toHaveBeenCalled();
-
-      // Resume — 2s should remain
-      fireEvent.mouseLeave(alert);
-      act(() => { vi.advanceTimersByTime(1999); });
-      expect(onExpire).not.toHaveBeenCalled();
-      act(() => { vi.advanceTimersByTime(1); });
-      expect(onExpire).toHaveBeenCalledTimes(1);
-    });
-  });
-
   describe('progress bar', () => {
     it('is not rendered without duration', () => {
       const { container } = render(<BannerMessage type="success" message="No timer" />);
@@ -100,9 +62,17 @@ describe('BannerMessage', () => {
       expect(container.querySelector('.toast-progress-bar')).toBeInTheDocument();
     });
 
+    it('sets animationDuration from duration prop', () => {
+      const { container } = render(
+        <BannerMessage type="success" message="Timed" duration={3000} />,
+      );
+      const bar = container.querySelector('.toast-progress-bar') as HTMLElement;
+      expect(bar.style.animationDuration).toBe('3000ms');
+    });
+
     it('pauses animation on mouse enter', () => {
       const { container } = render(
-        <BannerMessage type="warning" message="Hover me" duration={5000} onExpire={vi.fn()} />,
+        <BannerMessage type="warning" message="Hover me" duration={5000} />,
       );
       fireEvent.mouseEnter(screen.getByRole('alert'));
       const bar = container.querySelector('.toast-progress-bar') as HTMLElement;
@@ -111,11 +81,10 @@ describe('BannerMessage', () => {
 
     it('resumes animation on mouse leave', () => {
       const { container } = render(
-        <BannerMessage type="warning" message="Hover me" duration={5000} onExpire={vi.fn()} />,
+        <BannerMessage type="warning" message="Hover me" duration={5000} />,
       );
       fireEvent.mouseEnter(screen.getByRole('alert'));
       fireEvent.mouseLeave(screen.getByRole('alert'));
-      // bar is re-mounted on resume — re-query it
       const bar = container.querySelector('.toast-progress-bar') as HTMLElement;
       expect(bar.style.animationPlayState).toBe('running');
     });

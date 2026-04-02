@@ -128,6 +128,9 @@ export function useBulletinFilters(): BulletinFilterControls {
     [selectedWorkTypes],
   );
 
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => { searchParamsRef.current = searchParams; });
+
   useEffect(() => {
     if (!userId) {
       appliedProfileWorkTypesUserIdRef.current = null;
@@ -141,19 +144,19 @@ export function useBulletinFilters(): BulletinFilterControls {
       return;
     }
 
-    const hasWorkTypeParam = searchParams?.has('workType') ?? false;
+    const hasWorkTypeParam = searchParamsRef.current?.has('workType') ?? false;
     if (hasWorkTypeParam || selectedWorkTypes.length > 0) {
       appliedProfileWorkTypesUserIdRef.current = userId;
       return;
     }
 
+    console.debug('[useBulletinFilters] applying profile work types', { profileWorkTypes });
     void setSelectedWorkTypes(profileWorkTypes);
     appliedProfileWorkTypesUserIdRef.current = userId;
   }, [
     userId,
     profileLoading,
     profileWorkTypes,
-    searchParams,
     selectedWorkTypes.length,
     setSelectedWorkTypes,
   ]);
@@ -179,13 +182,14 @@ export function useBulletinFilters(): BulletinFilterControls {
       return;
     }
 
-    const hasMunicipalityParam = searchParams?.has('municipality') ?? false;
-    const hasProvinceParam = searchParams?.has('province') ?? false;
+    const hasMunicipalityParam = searchParamsRef.current?.has('municipality') ?? false;
+    const hasProvinceParam = searchParamsRef.current?.has('province') ?? false;
     if (hasMunicipalityParam || hasProvinceParam || selectedMunicipalities.length > 0 || selectedProvinces.length > 0) {
       appliedProfileLocationUserIdRef.current = userId;
       return;
     }
 
+    console.debug('[useBulletinFilters] applying profile location', { profileMunicipality, profileProvince });
     void setSelectedProvinces([profileProvince]);
     void setSelectedMunicipalities([profileMunicipality]);
     appliedProfileLocationUserIdRef.current = userId;
@@ -194,7 +198,6 @@ export function useBulletinFilters(): BulletinFilterControls {
     profileLoading,
     profileMunicipality,
     profileProvince,
-    searchParams,
     selectedMunicipalities.length,
     selectedProvinces.length,
     setSelectedMunicipalities,

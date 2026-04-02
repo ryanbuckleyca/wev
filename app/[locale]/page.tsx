@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { useLocale } from 'next-intl';
 import BulletinPageView from '@/components/BulletinPageView';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +19,15 @@ export default function Home() {
     currentPage: filters.currentPage,
     setCurrentPage: filters.setCurrentPage,
   });
+
+  // DEBUG: count renders
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  if (renderCount.current > 20) {
+    console.error('[Home] excessive renders:', renderCount.current);
+  } else {
+    console.debug('[Home] render #', renderCount.current);
+  }
 
   return (
     <BulletinPageView

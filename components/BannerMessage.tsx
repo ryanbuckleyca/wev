@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import StatusIcon from './StatusIcon';
 
 interface BannerMessageProps {
@@ -9,7 +9,6 @@ interface BannerMessageProps {
   className?: string;
   duration?: number;
   onDismiss?: () => void;
-  onExpire?: () => void;
 }
 
 const TYPE_CLASSES: Record<BannerMessageProps['type'], string> = {
@@ -39,43 +38,20 @@ export default function BannerMessage({
   className = '',
   duration,
   onDismiss,
-  onExpire,
 }: BannerMessageProps) {
-  const [paused, setPaused] = useState(false);
-  const [remaining, setRemaining] = useState(duration ?? 0);
-  const remainingRef = useRef(duration ?? 0);
-  const segmentStartRef = useRef<number>(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [barKey, setBarKey] = useState(0);
-
-  useEffect(() => {
-    if (!duration || !onExpire) return;
-    segmentStartRef.current = Date.now();
-    timerRef.current = setTimeout(onExpire, remainingRef.current);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleMouseEnter = () => {
-    if (!duration) return;
-    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
-    remainingRef.current = Math.max(remainingRef.current - (Date.now() - segmentStartRef.current), 0);
-    setRemaining(remainingRef.current);
-    setPaused(true);
-  };
-
-  const handleMouseLeave = () => {
-    if (!duration || !onExpire) return;
-    segmentStartRef.current = Date.now();
-    timerRef.current = setTimeout(onExpire, remainingRef.current);
-    setBarKey((k) => k + 1);
-    setPaused(false);
-  };
+  const barRef = useRef<HTMLDivElement>(null);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
 
   return (
     <div
       className={`design-toast ${TYPE_CLASSES[type]} relative overflow-hidden ${className}`.trim()}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => {
+        if (barRef.current) barRef.current.style.animationPlayState = 'paused';
+      }}
+      onMouseLeave={() => {
+        if (barRef.current) barRef.current.style.animationPlayState = 'running';
+      }}
       role="alert"
       aria-live="assertive"
     >
@@ -89,8 +65,7 @@ export default function BannerMessage({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (timerRef.current) clearTimeout(timerRef.current);
-            onDismiss();
+            onDismissRef.current?.();
           }}
           aria-label="Dismiss notification"
           className={`shrink-0 ml-2 opacity-50 hover:opacity-100 transition-opacity ${TEXT_COLORS[type]}`}
@@ -102,12 +77,9 @@ export default function BannerMessage({
 
       {duration && (
         <div
-          key={barKey}
+          ref={barRef}
           className={`toast-progress-bar ${PROGRESS_COLORS[type]}`}
-          style={{
-            animationDuration: `${remaining}ms`,
-            animationPlayState: paused ? 'paused' : 'running',
-          }}
+          style={{ animationDuration: `${duration}ms` }}
           aria-hidden="true"
         />
       )}

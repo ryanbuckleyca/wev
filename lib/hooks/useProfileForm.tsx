@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useRankedList } from '@/lib/hooks/useRankedList';
@@ -134,6 +134,11 @@ export function useProfileForm(locale: 'en' | 'fr') {
   const skills = useRankedList<EscoSkill>((s) => s.uri);
   const values = useRankedList<string>((v) => v);
 
+  // Track the last profile snapshot we hydrated from so we don't re-run the
+  // hydration effect after every save (updateProfile sets a new profile object
+  // in context, which would otherwise trigger an infinite re-hydration loop).
+  const hydratedKeyRef = useRef<string | null>(null);
+
   const workValues: WorkValue[] = useMemo(() => {
     const tCurrent = (key: string, opts?: { defaultValue: string }) => tValues(key, opts ?? {});
     const tFallback = (key: string, opts?: { defaultValue: string }) => {
@@ -152,6 +157,13 @@ export function useProfileForm(locale: 'en' | 'fr') {
 
   useEffect(() => {
     if (!profile) return;
+
+    // Only re-hydrate when the profile actually changes (different user or
+    // server-side update). Skipping on same updated_at prevents the save →
+    // setProfile(updated) → re-hydrate loop that freezes navigation.
+    const hydrateKey = `${profile.id}:${profile.updated_at}:${locale}`;
+    if (hydratedKeyRef.current === hydrateKey) return;
+    hydratedKeyRef.current = hydrateKey;
 
     setFormData({
       full_name: profile.full_name || '',
@@ -203,19 +215,23 @@ export function useProfileForm(locale: 'en' | 'fr') {
         skills.setItems([]);
         skills.setCutoff(0);
       });
-  }, [profile, locale]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [profile, locale]);
   // ─── Skills library ───────────────────────────────────────────────────
 
   useEffect(() => {
+    const controller = new AbortController();
     setIsLibraryLoading(true);
-    fetch(`/api/skills/all?locale=${locale}&cb=${Date.now()}`)
+    fetch(`/api/skills/all?locale=${locale}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : { skills: [] }))
       .then((data: { skills?: RawSkillLibraryRow[] }) =>
         setAllSkills((data.skills || []).map(toEscoSkillFromLibrary)),
       )
-      .catch((err) => console.error('Failed to pre-fetch skills library:', err))
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        console.error('Failed to pre-fetch skills library:', err);
+      })
       .finally(() => setIsLibraryLoading(false));
+    return () => controller.abort();
   }, [locale]);
 
   // ─── Work type toggle ─────────────────────────────────────────────────
@@ -265,6 +281,9 @@ export function useProfileForm(locale: 'en' | 'fr') {
         location_display_name: formData.location?.display_name ?? null,
       });
       notify.success(t('updateSuccess'));
+      // Fire-and-forget match recalculation — does not block navigation.
+      // Uses after() server-side so the heavy query runs post-response.
+      void fetch('/api/matches/recalculate-mine', { method: 'POST' });
     } catch (err) {
       notify.error(err instanceof Error ? err.message : t('updateFailed'));
     } finally {

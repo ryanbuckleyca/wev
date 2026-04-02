@@ -82,7 +82,7 @@ export default function LocationAutocomplete({
   useEffect(() => {
     setQuery(value?.display_name ?? '');
     setHasSelection(value !== null);
-  }, [value]);
+  }, [value?.display_name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const search = useCallback(async (q: string) => {
     if (q.length < LOCATION_MIN_QUERY_LENGTH) {

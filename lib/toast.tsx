@@ -16,17 +16,15 @@ function makeToast(
   const id = `${type}-${Date.now()}`;
 
   toast.custom(
-    () => (
+    (t) => (
       <BannerMessage
         type={type}
         message={message}
         duration={duration}
         onDismiss={() => toast.remove(id)}
-        onExpire={() => toast.remove(id)}
       />
     ),
-    // We own the timer — tell react-hot-toast to never auto-dismiss
-    { duration: Infinity, id },
+    { duration, id },
   );
 
   return id;
