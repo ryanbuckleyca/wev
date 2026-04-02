@@ -44,6 +44,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     if (!userId) {
       setProfile(null);
+      setError(null);
+      setIsUpdating(false);
       setLoading(false);
       return;
     }

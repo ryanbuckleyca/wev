@@ -290,9 +290,9 @@ export function calculateMatch(
   userValues: string[] | RatedValue[],
   jobValues: string[],
   jobValuesRated?: JobRatedValue[] | null,
-): { score: number; shared_values: string[] } {
+): { score: number | null; shared_values: string[] } {
   if (!userValues.length || !jobValues.length) {
-    return { score: 0, shared_values: [] };
+    return { score: null, shared_values: [] };
   }
 
   const jobSet = new Set(jobValues);
