@@ -22,6 +22,7 @@
 # misc
 .DS_Store
 *.pem
+rclone-log.txt
 
 # debug
 npm-debug.log*
