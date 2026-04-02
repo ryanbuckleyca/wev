@@ -6,7 +6,6 @@ import {
   useProfileForm,
   MAX_PROFILE_SKILLS,
   MAX_PROFILE_VALUES,
-  MAX_PROFILE_WORK_ENV_CHARS,
 } from '@/lib/hooks/useProfileForm';
 import { WORK_TYPES, type WorkType } from '@/lib/work-types';
 import FormTextarea from '@/components/FormTextarea';
@@ -51,9 +50,6 @@ export default function ProfilePage() {
     isSaving,
     handleSaveProfile,
   } = useProfileForm(user?.id, locale);
-
-  const workEnvironmentCharCount = formData.ideal_work_environment.length;
-  const isWorkEnvironmentOverLimit = workEnvironmentCharCount > MAX_PROFILE_WORK_ENV_CHARS;
 
   const getWorkTypeLabel = (workType: WorkType) => {
     if (workType === 'remote') return t('filters.workType.remote');
@@ -151,28 +147,6 @@ export default function ProfilePage() {
                   );
                 })}
               </div>
-            </div>
-
-            {/* Ideal Work Environment */}
-            <div>
-              <FormLabel htmlFor="ideal-work-environment">{t('profile.workEnvironment')}</FormLabel>
-              <p className="text-xs text-muted-foreground mb-2">
-                {t('profile.workEnvironmentHint', { max: MAX_PROFILE_WORK_ENV_CHARS })}
-              </p>
-              <FormTextarea
-                htmlFor="ideal-work-environment"
-                value={formData.ideal_work_environment}
-                onChange={(value) => setFormData({ ...formData, ideal_work_environment: value })}
-                placeholder={t('profile.workEnvironmentPlaceholder')}
-                rows={6}
-                charLimit={MAX_PROFILE_WORK_ENV_CHARS}
-                countLabel={(current, max) => t('profile.workEnvironmentCount', { current, max })}
-                className={
-                  isWorkEnvironmentOverLimit
-                    ? 'border-destructive-foreground focus:border-destructive-foreground'
-                    : ''
-                }
-              />
             </div>
 
             {/* Skills */}
