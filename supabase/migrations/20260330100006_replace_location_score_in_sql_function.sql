@@ -14,7 +14,6 @@
 -- Falls back to lower() only if unaccent is unavailable.
 
 CREATE EXTENSION IF NOT EXISTS unaccent;
-
 CREATE OR REPLACE FUNCTION location_score_for_pair(
   p_user_municipality text,
   p_user_province     text,
@@ -82,7 +81,6 @@ BEGIN
   RETURN 0.0;
 END;
 $func$;
-
 -- ─── Replace recalculate_matches_for_user ────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION recalculate_matches_for_user(p_user_id UUID)

@@ -5,7 +5,6 @@
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS municipality text,
   ADD COLUMN IF NOT EXISTS province text;
-
 -- Recreate trigger to also watch municipality and province now that the columns exist.
 DROP TRIGGER IF EXISTS trg_profile_values_changed ON profiles;
 CREATE TRIGGER trg_profile_values_changed

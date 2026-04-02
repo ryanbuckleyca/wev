@@ -445,8 +445,10 @@ export async function calculateUserMatches(userId: string): Promise<void> {
 
     if (profileError || !profile) return;
 
-    if (!resolveUserValues(profile as ProfileRow).length) {
-      logger.debug({ userId }, 'Skipping match calculation: user has no values');
+    const hasValues = resolveUserValues(profile as ProfileRow).length > 0;
+    const hasSkills = (profile.skills?.length ?? 0) > 0;
+    if (!hasValues && !hasSkills) {
+      logger.debug({ userId }, 'Skipping match calculation: user has no values or skills');
       return;
     }
 

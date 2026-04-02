@@ -4,6 +4,5 @@
 
 -- Drop the old trigger first — it references ideal_work_environment and blocks the column drop.
 DROP TRIGGER IF EXISTS trg_profile_values_changed ON profiles;
-
 ALTER TABLE public.profiles
   DROP COLUMN IF EXISTS ideal_work_environment;
