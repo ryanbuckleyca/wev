@@ -51,7 +51,6 @@ export default function BannerMessage({
   useEffect(() => {
     if (!duration || !onExpire) return;
     remainingRef.current = duration;
-    setRemaining(duration);
     segmentStartRef.current = Date.now();
     timerRef.current = setTimeout(onExpire, remainingRef.current);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
