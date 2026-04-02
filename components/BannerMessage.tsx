@@ -42,8 +42,9 @@ export default function BannerMessage({
   onExpire,
 }: BannerMessageProps) {
   const [paused, setPaused] = useState(false);
+  const [remaining, setRemaining] = useState(duration ?? 0);
   const remainingRef = useRef(duration ?? 0);
-  const segmentStartRef = useRef(Date.now());
+  const segmentStartRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [barKey, setBarKey] = useState(0);
 
@@ -58,6 +59,7 @@ export default function BannerMessage({
     if (!duration) return;
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
     remainingRef.current = Math.max(remainingRef.current - (Date.now() - segmentStartRef.current), 0);
+    setRemaining(remainingRef.current);
     setPaused(true);
   };
 
@@ -103,7 +105,7 @@ export default function BannerMessage({
           key={barKey}
           className={`toast-progress-bar ${PROGRESS_COLORS[type]}`}
           style={{
-            animationDuration: `${remainingRef.current}ms`,
+            animationDuration: `${remaining}ms`,
             animationPlayState: paused ? 'paused' : 'running',
           }}
           aria-hidden="true"

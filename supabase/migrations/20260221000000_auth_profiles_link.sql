@@ -10,7 +10,6 @@ BEGIN
       FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
   END IF;
 END $$;
-
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -21,7 +20,6 @@ BEGIN
       FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
   END IF;
 END $$;
-
 -- Trigger: auto-create a profiles row and user_roles row when a new auth user signs up
 
 CREATE OR REPLACE FUNCTION public.handle_auth_user_created()
@@ -42,17 +40,13 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_auth_user_created();
-
 -- RLS policies for profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -63,7 +57,6 @@ BEGIN
       USING (auth.uid() = id);
   END IF;
 END $$;
-
 DO $$
 BEGIN
   IF NOT EXISTS (

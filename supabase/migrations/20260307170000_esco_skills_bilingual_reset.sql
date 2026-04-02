@@ -3,9 +3,7 @@
 
 DROP FUNCTION IF EXISTS public.search_esco_skills(text, integer);
 DROP FUNCTION IF EXISTS public.search_esco_skills(text, integer, text);
-
 DROP TABLE IF EXISTS public.esco_skills;
-
 CREATE TABLE public.esco_skills (
   concept_uri text PRIMARY KEY,
   skill_type text NOT NULL DEFAULT '',
@@ -20,7 +18,6 @@ CREATE TABLE public.esco_skills (
   scope_note_fr text NOT NULL DEFAULT '',
   updated_at timestamp with time zone NOT NULL DEFAULT now()
 );
-
 COMMENT ON TABLE public.esco_skills IS 'ESCO skill taxonomy sourced from ESCO API, localized EN/FR.';
 COMMENT ON COLUMN public.esco_skills.concept_uri IS 'Stable ESCO concept URI identifier.';
 COMMENT ON COLUMN public.esco_skills.skill_type IS 'ESCO skill type tail value (e.g. skill, knowledge).';
@@ -33,26 +30,16 @@ COMMENT ON COLUMN public.esco_skills.description_en IS 'Description in English.'
 COMMENT ON COLUMN public.esco_skills.description_fr IS 'Description in French.';
 COMMENT ON COLUMN public.esco_skills.scope_note_en IS 'Scope note in English.';
 COMMENT ON COLUMN public.esco_skills.scope_note_fr IS 'Scope note in French.';
-
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
 CREATE INDEX idx_esco_skills_pref_en_lower ON public.esco_skills ((lower(preferred_label_en)));
 CREATE INDEX idx_esco_skills_pref_fr_lower ON public.esco_skills ((lower(preferred_label_fr)));
 CREATE INDEX idx_esco_skills_alt_en_gin ON public.esco_skills USING gin (alternative_label_en);
 CREATE INDEX idx_esco_skills_alt_fr_gin ON public.esco_skills USING gin (alternative_label_fr);
-CREATE INDEX IF NOT EXISTS idx_esco_skills_pref_en_trgm
-  ON public.esco_skills USING gin (lower(preferred_label_en) gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS idx_esco_skills_pref_fr_trgm
-  ON public.esco_skills USING gin (lower(preferred_label_fr) gin_trgm_ops);
-
 ALTER TABLE public.esco_skills ENABLE ROW LEVEL SECURITY;
-
 DROP POLICY IF EXISTS "Public can read ESCO skills" ON public.esco_skills;
 CREATE POLICY "Public can read ESCO skills"
   ON public.esco_skills
   FOR SELECT
   USING (true);
-
 -- Locale-aware ESCO search helper.
 CREATE OR REPLACE FUNCTION public.search_esco_skills(
   p_query text,
@@ -116,35 +103,6 @@ AS $$
     FROM public.esco_skills AS e
     CROSS JOIN params AS p
     WHERE p.q IS NOT NULL
-      AND (
-        (p.loc = 'en' AND (
-          lower(e.preferred_label_en) LIKE '%' || p.q || '%'
-          OR EXISTS (
-            SELECT 1
-            FROM unnest(e.alternative_label_en) ext
-            WHERE lower(ext) LIKE '%' || p.q || '%'
-          )
-          OR EXISTS (
-            SELECT 1
-            FROM unnest(e.alternative_label_fr) ext
-            WHERE lower(ext) LIKE '%' || p.q || '%'
-          )
-        ))
-        OR
-        (p.loc = 'fr' AND (
-          lower(e.preferred_label_fr) LIKE '%' || p.q || '%'
-          OR EXISTS (
-            SELECT 1
-            FROM unnest(e.alternative_label_fr) ext
-            WHERE lower(ext) LIKE '%' || p.q || '%'
-          )
-          OR EXISTS (
-            SELECT 1
-            FROM unnest(e.alternative_label_en) ext
-            WHERE lower(ext) LIKE '%' || p.q || '%'
-          )
-        ))
-      )
   ),
   scored AS (
     SELECT
@@ -209,6 +167,5 @@ AS $$
   ORDER BY s.score DESC, s.term ASC
   LIMIT (SELECT lim FROM params);
 $$;
-
 GRANT EXECUTE ON FUNCTION public.search_esco_skills(text, integer, text)
 TO anon, authenticated, service_role;

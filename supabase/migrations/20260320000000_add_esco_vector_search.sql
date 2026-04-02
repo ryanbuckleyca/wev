@@ -5,11 +5,9 @@
 
 -- 1. Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
-
 -- 2. Add embedding column to esco_skills
 ALTER TABLE esco_skills
     ADD COLUMN IF NOT EXISTS embedding vector(1024);
-
 -- 3. Create job_skills junction table
 CREATE TABLE IF NOT EXISTS job_skills (
     job_id     uuid        NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
@@ -19,16 +17,15 @@ CREATE TABLE IF NOT EXISTS job_skills (
     created_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (job_id, skill_id)
 );
-
 -- 4. Enable RLS on job_skills
 ALTER TABLE job_skills ENABLE ROW LEVEL SECURITY;
-
 -- 5. RPC: match_skills_by_embedding
 --    Returns top match_count skills ordered by cosine similarity to query_embedding.
 --    Skips skills with NULL embeddings (not yet seeded).
 --
---    match_count defaults to 80 so we cast a wide enough net for the floor filter.
---    Returning only 20 risks missing real matches ranked 21st-50th.
+--    match_count defaults to 80 (not 20) so we cast a wide enough net before the
+--    score threshold filter (default 0.5, tunable via ESCO_SCORE_THRESHOLD env var)
+--    cuts it down. Returning only 20 risks missing real matches ranked 21st-50th.
 CREATE OR REPLACE FUNCTION match_skills_by_embedding(
     query_embedding vector(1024),
     match_count     int DEFAULT 80

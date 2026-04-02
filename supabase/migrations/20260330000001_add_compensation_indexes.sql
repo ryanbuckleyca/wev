@@ -17,7 +17,6 @@
 CREATE INDEX IF NOT EXISTS idx_jobs_annual_min
   ON public.jobs (annualize_v1(min_value, unit_text, hours_per_week))
   WHERE min_value IS NOT NULL;
-
 CREATE INDEX IF NOT EXISTS idx_jobs_annual_max
   ON public.jobs (annualize_v1(max_value, unit_text, hours_per_week))
   WHERE max_value IS NOT NULL;
