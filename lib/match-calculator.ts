@@ -273,6 +273,43 @@ function getJobWeight(confidenceMap: Map<string, number> | null, value: string):
   return confidenceMap?.get(value) ?? 1.0;
 }
 
+function calcWeightedMatch(
+  userValues: string[] | RatedValue[],
+  jobSet: Set<string>,
+  confidenceMap: Map<string, number> | null,
+): { score: number | null; shared_values: string[] } {
+  const rated = (userValues as unknown[]).map(userValueEntryToRated);
+  const sharedValues: string[] = [];
+  let numerator = 0;
+  let denominator = 0;
+
+  for (const rv of rated) {
+    const w = getRankWeight(rv.rank, rated.length);
+    denominator += w;
+    if (jobSet.has(rv.value)) {
+      sharedValues.push(rv.value);
+      numerator += w * getJobWeight(confidenceMap, rv.value);
+    }
+  }
+
+  if (denominator === 0) return { score: null, shared_values: [] };
+
+  const score = Math.min(numerator / denominator + Math.min(sharedValues.length * 0.1, 0.3), 1.0);
+  return { score, shared_values: sharedValues };
+}
+
+function calcFlatMatch(
+  userValues: string[] | RatedValue[],
+  jobSet: Set<string>,
+  confidenceMap: Map<string, number> | null,
+): { score: number | null; shared_values: string[] } {
+  const plainValues = (userValues as unknown[]).map(userValueEntryToPlain);
+  const sharedValues = plainValues.filter((v) => jobSet.has(v));
+  const overlap = sharedValues.reduce((sum, v) => sum + getJobWeight(confidenceMap, v), 0) / plainValues.length;
+  const score = Math.min(overlap + Math.min(sharedValues.length * 0.1, 0.3), 1.0);
+  return { score, shared_values: sharedValues };
+}
+
 /**
  * Calculate match score between user values and job values.
  *
@@ -298,32 +335,9 @@ export function calculateMatch(
   const jobSet = new Set(jobValues);
   const confidenceMap = buildJobConfidenceMap(jobValuesRated);
 
-  if (shouldUseWeightedUserMatch(userValues)) {
-    const rated = (userValues as unknown[]).map(userValueEntryToRated);
-    const sharedValues: string[] = [];
-    let numerator = 0;
-    let denominator = 0;
-
-    for (const rv of rated) {
-      const w = getRankWeight(rv.rank, rated.length);
-      denominator += w;
-      if (jobSet.has(rv.value)) {
-        sharedValues.push(rv.value);
-        numerator += w * getJobWeight(confidenceMap, rv.value);
-      }
-    }
-
-    if (denominator === 0) return { score: 0, shared_values: [] };
-
-    const score = Math.min(numerator / denominator + Math.min(sharedValues.length * 0.1, 0.3), 1.0);
-    return { score, shared_values: sharedValues };
-  }
-
-  const plainValues = (userValues as unknown[]).map(userValueEntryToPlain);
-  const sharedValues = plainValues.filter((v) => jobSet.has(v));
-  const overlap = sharedValues.reduce((sum, v) => sum + getJobWeight(confidenceMap, v), 0) / plainValues.length;
-  const score = Math.min(overlap + Math.min(sharedValues.length * 0.1, 0.3), 1.0);
-  return { score, shared_values: sharedValues };
+  return shouldUseWeightedUserMatch(userValues)
+    ? calcWeightedMatch(userValues, jobSet, confidenceMap)
+    : calcFlatMatch(userValues, jobSet, confidenceMap);
 }
 
 // Score calculation helpers
@@ -371,10 +385,7 @@ function resolveUserValues(profile: Pick<ProfileRow, 'values' | 'values_rated'>)
 function profileHasLocationValue(profile: Pick<ProfileRow, 'values' | 'values_rated'>): boolean {
   const isLocation = (v: unknown) =>
     (typeof v === 'string' ? v : (v as RatedValue)?.value)?.toLowerCase() === 'location';
-  return (
-    (profile.values ?? []).some(isLocation) ||
-    (profile.values_rated ?? []).some(isLocation)
-  );
+  return resolveUserValues(profile).some(isLocation);
 }
 
 // computeMatchForPair
@@ -429,6 +440,10 @@ function computeMatchForPair(
   };
 }
 
+// Select field lists — single source of truth for both query functions
+const PROFILE_SELECT = 'id, values, values_rated, skills, work_types, lat, lng, municipality, province' as const;
+const JOB_SELECT = 'id, values, values_rated, skills, work_type, lat, lng, geocode_accuracy_type, municipality, province' as const;
+
 // calculateUserMatches
 
 /**
@@ -439,7 +454,7 @@ export async function calculateUserMatches(userId: string): Promise<void> {
   try {
     const { data: profile, error: profileError } = await supabaseServer
       .from('profiles')
-      .select('id, values, values_rated, skills, work_types, lat, lng, municipality, province')
+      .select(PROFILE_SELECT)
       .eq('id', userId)
       .single();
 
@@ -454,17 +469,15 @@ export async function calculateUserMatches(userId: string): Promise<void> {
 
     const { data: jobs, error: jobsError } = await supabaseServer
       .from('jobs')
-      .select('id, values, values_rated, skills, work_type, lat, lng, geocode_accuracy_type, municipality, province')
-      .not('values', 'is', null);
+      .select(JOB_SELECT)
+      .or('values.not.is.null,values_rated.not.is.null,skills.not.is.null');
 
     if (jobsError) {
       logger.error({ err: jobsError }, 'Error fetching jobs for matching');
       return;
     }
 
-    const matches: MatchResult[] = (jobs ?? [])
-      .filter((job) => job.values?.length || job.values_rated?.length || job.skills?.length)
-      .map((job) => ({
+    const matches: MatchResult[] = (jobs ?? []).map((job) => ({
         user_id: userId,
         job_id: job.id,
         ...computeMatchForPair(profile as ProfileRow, job as JobRow),
@@ -491,7 +504,7 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
   try {
     const { data: job, error: jobError } = await supabaseServer
       .from('jobs')
-      .select('id, values, values_rated, skills, work_type, lat, lng, geocode_accuracy_type, municipality, province')
+      .select(JOB_SELECT)
       .eq('id', jobId)
       .single();
 
@@ -500,17 +513,15 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
 
     const { data: profiles, error: profilesError } = await supabaseServer
       .from('profiles')
-      .select('id, values, values_rated, skills, work_types, lat, lng, municipality, province')
-      .not('values', 'is', null);
+      .select(PROFILE_SELECT)
+      .or('values.not.is.null,values_rated.not.is.null,skills.not.is.null');
 
     if (profilesError) {
       logger.error({ err: profilesError }, 'Error fetching profiles for matching');
       return;
     }
 
-    const matches: MatchResult[] = (profiles ?? [])
-      .filter((p) => p.values?.length || p.values_rated?.length || p.skills?.length)
-      .map((profile) => ({
+    const matches: MatchResult[] = (profiles ?? []).map((profile) => ({
         user_id: profile.id,
         job_id: jobId,
         ...computeMatchForPair(profile as ProfileRow, job as JobRow),

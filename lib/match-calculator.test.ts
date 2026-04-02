@@ -4,6 +4,12 @@ import type { DimensionWeights, DimensionScores, LocationScoreParams } from './m
 import type { RatedValue, JobRatedValue } from './value-ratings';
 import { getRankWeight } from './value-ratings';
 
+/** Assert score is non-null and return it as a number for numeric matchers. */
+function assertScore(score: number | null): number {
+  expect(score).not.toBeNull();
+  return score as number;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Build a LocationScoreParams with sensible defaults — override only what you need. */
@@ -27,16 +33,16 @@ function locationParams(overrides: Partial<LocationScoreParams> = {}): LocationS
 // ─── calculateMatch ───────────────────────────────────────────────────────────
 
 describe('calculateMatch', () => {
-  it('returns score 0 and empty shared_values when user has no values', () => {
-    expect(calculateMatch([], ['Community', 'Creativity'])).toEqual({ score: 0, shared_values: [] });
+  it('returns null score and empty shared_values when user has no values', () => {
+    expect(calculateMatch([], ['Community', 'Creativity'])).toEqual({ score: null, shared_values: [] });
   });
 
-  it('returns score 0 and empty shared_values when job has no values', () => {
-    expect(calculateMatch(['Community', 'Creativity'], [])).toEqual({ score: 0, shared_values: [] });
+  it('returns null score and empty shared_values when job has no values', () => {
+    expect(calculateMatch(['Community', 'Creativity'], [])).toEqual({ score: null, shared_values: [] });
   });
 
-  it('returns score 0 when both lists are empty', () => {
-    expect(calculateMatch([], [])).toEqual({ score: 0, shared_values: [] });
+  it('returns null score when both lists are empty', () => {
+    expect(calculateMatch([], [])).toEqual({ score: null, shared_values: [] });
   });
 
   it('returns score 1 when values match perfectly', () => {
@@ -103,7 +109,7 @@ describe('calculateMatch with jobValuesRated', () => {
     ];
 
     expect(calculateMatch(userValues, jobValues, highConf).score).toBeGreaterThan(
-      calculateMatch(userValues, jobValues, lowConf).score,
+      assertScore(calculateMatch(userValues, jobValues, lowConf).score),
     );
   });
 
@@ -127,7 +133,7 @@ describe('calculateMatch with jobValuesRated', () => {
     ];
 
     expect(calculateMatch(userValues, jobValues, highConf).score).toBeGreaterThan(
-      calculateMatch(userValues, jobValues, lowConf).score,
+      assertScore(calculateMatch(userValues, jobValues, lowConf).score),
     );
   });
 
@@ -209,7 +215,7 @@ describe('Property: all-unranked RatedValue[] score equals plain string[] score'
   });
 });
 
-describe('Property: score is always in [0.0, 1.0]', () => {
+describe('Property: score is always in [0.0, 1.0] when non-null', () => {
   const cases: Array<{ label: string; userValues: string[] | RatedValue[]; jobValues: string[] }> = [
     { label: 'both empty', userValues: [], jobValues: [] },
     { label: 'no overlap', userValues: ['Community'], jobValues: ['Security'] },
@@ -233,8 +239,10 @@ describe('Property: score is always in [0.0, 1.0]', () => {
 
   it.each(cases)('$label', ({ userValues, jobValues }) => {
     const { score } = calculateMatch(userValues as string[] | RatedValue[], jobValues);
-    expect(score).toBeGreaterThanOrEqual(0.0);
-    expect(score).toBeLessThanOrEqual(1.0);
+    if (score !== null) {
+      expect(score).toBeGreaterThanOrEqual(0.0);
+      expect(score).toBeLessThanOrEqual(1.0);
+    }
   });
 });
 

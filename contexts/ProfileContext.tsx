@@ -45,6 +45,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (!userId) {
       setProfile(null);
       setError(null);
+      // Reset isUpdating in case a logout races with an in-flight update.
       setIsUpdating(false);
       setLoading(false);
       return;
