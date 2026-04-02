@@ -37,6 +37,7 @@ export default function ToasterProvider() {
           color: 'var(--foreground)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
+          overflow: 'hidden',
           boxShadow: '0 4px 12px rgb(0 0 0 / 0.1)',
           padding: 0,
           fontSize: '0.875rem',
@@ -74,7 +75,7 @@ export default function ToasterProvider() {
         <ToastBar toast={t}>
           {({ icon, message }) => (
             <div
-              className="relative w-full overflow-hidden rounded-[11px]"
+              className="relative w-full overflow-hidden rounded-[12px]"
               onMouseEnter={() => setHoveredToastId(t.id)}
               onMouseLeave={() =>
                 setHoveredToastId((current) => (current === t.id ? null : current))
