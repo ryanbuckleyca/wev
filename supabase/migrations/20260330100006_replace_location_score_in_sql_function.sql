@@ -95,13 +95,21 @@ DECLARE
   v_user_muni       text;
   v_user_province   text;
   v_use_weighted    boolean;
+
+  -- Algorithm weights (sum to 1.0)
+  v_w_val   float8 := 0.55; -- Work Values
+  v_w_skill float8 := 0.35; -- Skills
+  v_w_wt    float8 := 0.05; -- Work Type (Remote/Hybrid/Office)
+  v_w_loc   float8 := 0.05; -- Location (Distance/Municipality)
 BEGIN
+  -- 1. Fetch user profile data
   SELECT "values", values_rated, skills, work_types, lat, lng, municipality, province
   INTO v_user_values, v_values_rated, v_user_skills, v_user_work_types,
        v_user_lat, v_user_lng, v_user_muni, v_user_province
   FROM profiles
   WHERE id = p_user_id;
 
+  -- 2. Clear matches if profile is empty
   IF (
     (v_user_values IS NULL OR array_length(v_user_values, 1) IS NULL)
     AND (v_values_rated IS NULL OR jsonb_array_length(v_values_rated) = 0)
@@ -111,6 +119,7 @@ BEGIN
     RETURN;
   END IF;
 
+  -- 3. Determine if we use the weighted (ranked) value matcher
   v_use_weighted := (
     v_values_rated IS NOT NULL
     AND jsonb_array_length(v_values_rated) > 0
@@ -120,252 +129,135 @@ BEGIN
     )
   );
 
-  IF v_use_weighted THEN
-    INSERT INTO job_matches (
-      user_id, job_id, score, value_score, skill_score, work_type_score, location_score,
-      shared_values, shared_skills, updated_at
-    )
-    WITH valid_jobs AS (
-      SELECT id, "values" AS job_values, values_rated AS job_rated, skills AS job_skills,
-             work_type, lat AS job_lat, lng AS job_lng,
-             municipality AS job_muni, province AS job_province,
-             geocode_accuracy_type
-      FROM jobs
-      WHERE ("values" IS NOT NULL AND array_length("values", 1) IS NOT NULL)
-         OR (skills IS NOT NULL AND array_length(skills, 1) IS NOT NULL)
-    ),
-    user_items AS (
-      SELECT elem->>'value' AS val, (elem->>'rank')::int AS rnk
-      FROM jsonb_array_elements(v_values_rated) AS elem
-      WHERE (elem->>'value') IS NOT NULL
-    ),
-    total AS (SELECT count(*)::int AS n FROM user_items),
-    user_weights AS (
-      SELECT ui.val, rank_weight(ui.rnk, t.n) AS weight
-      FROM user_items ui CROSS JOIN total t
-    ),
-    total_weight AS (SELECT COALESCE(SUM(weight), 0) AS total_w FROM user_weights),
-    job_value_weights AS (
-      SELECT vj.id AS job_id, x.val, MIN(x.job_w) AS job_w
-      FROM valid_jobs vj
-      CROSS JOIN LATERAL (
-        SELECT elem->>'value' AS val,
-               rank_weight((elem->>'confidence')::int, jsonb_array_length(vj.job_rated)) AS job_w
-        FROM jsonb_array_elements(vj.job_rated) AS elem
-        WHERE (elem->>'value') IS NOT NULL
-      ) x
-      WHERE vj.job_rated IS NOT NULL AND jsonb_array_length(vj.job_rated) > 0
-      GROUP BY vj.id, x.val
-    ),
-    weighted_value_base AS (
-      SELECT vj.id AS job_id, vj.job_values,
-        COALESCE(SUM(uw.weight * COALESCE(jvw.job_w, 1.0)) FILTER (WHERE uw.val = ANY(vj.job_values)), 0) AS overlap_num,
-        COUNT(*) FILTER (WHERE uw.val = ANY(vj.job_values))::int AS shared_count,
-        ARRAY(SELECT uw2.val FROM user_weights uw2 WHERE uw2.val = ANY(vj.job_values)) AS shared_values
-      FROM valid_jobs vj
-      CROSS JOIN user_weights uw
-      LEFT JOIN job_value_weights jvw ON jvw.job_id = vj.id AND jvw.val = uw.val
-      GROUP BY vj.id, vj.job_values
-    ),
-    value_computed AS (
-      SELECT wb.job_id,
-        CASE
-          WHEN wb.job_values IS NULL OR array_length(wb.job_values, 1) IS NULL THEN NULL
-          WHEN tw.total_w = 0 THEN 0.0
-          ELSE LEAST((wb.overlap_num / tw.total_w) + LEAST(wb.shared_count * 0.1, 0.3), 1.0)
-        END AS value_score,
-        CASE
-          WHEN wb.job_values IS NULL OR array_length(wb.job_values, 1) IS NULL THEN '{}'::text[]
-          ELSE wb.shared_values
-        END AS shared_values
-      FROM weighted_value_base wb CROSS JOIN total_weight tw
-    ),
-    skill_computed AS (
-      SELECT vj.id AS job_id,
-        CASE
-          WHEN v_user_skills IS NULL OR array_length(v_user_skills, 1) IS NULL
-            OR vj.job_skills IS NULL OR array_length(vj.job_skills, 1) IS NULL THEN NULL
-          ELSE LEAST(
-            (COALESCE(array_length(shared_arr.v, 1), 0)::float / array_length(v_user_skills, 1)::float)
-            + LEAST(COALESCE(array_length(shared_arr.v, 1), 0) * 0.1, 0.3), 1.0)
-        END AS skill_score,
-        CASE
-          WHEN v_user_skills IS NULL OR array_length(v_user_skills, 1) IS NULL
-            OR vj.job_skills IS NULL OR array_length(vj.job_skills, 1) IS NULL THEN '{}'::text[]
-          ELSE shared_arr.v
-        END AS shared_skills
-      FROM valid_jobs vj
-      CROSS JOIN LATERAL (
-        SELECT ARRAY(
-          SELECT unnest(COALESCE(v_user_skills, '{}'::text[]))
-          INTERSECT SELECT unnest(COALESCE(vj.job_skills, '{}'::text[]))
-        ) AS v
-      ) shared_arr
-    ),
-    combined AS (
-      SELECT p_user_id AS user_id, vj.id AS job_id,
-        vc.value_score, sc.skill_score,
-        CASE
-          WHEN v_user_work_types IS NULL OR array_length(v_user_work_types, 1) IS NULL THEN 1.0
-          WHEN vj.work_type IS NULL THEN NULL
-          WHEN vj.work_type = ANY(v_user_work_types) THEN 1.0
-          ELSE 0.0
-        END AS work_type_score,
-        location_score_for_pair(
-          v_user_muni, v_user_province, v_user_lat, v_user_lng, v_user_work_types,
-          vj.job_muni, vj.job_province, vj.job_lat, vj.job_lng,
-          vj.geocode_accuracy_type, vj.work_type
-        ) AS location_score,
-        COALESCE(vc.shared_values, '{}'::text[]) AS shared_values,
-        COALESCE(sc.shared_skills, '{}'::text[]) AS shared_skills
-      FROM valid_jobs vj
-      LEFT JOIN value_computed vc ON vc.job_id = vj.id
-      LEFT JOIN skill_computed sc ON sc.job_id = vj.id
-    ),
-    scored AS (
-      SELECT user_id, job_id,
-        (
-          (CASE WHEN value_score IS NOT NULL THEN value_score * 0.55 ELSE 0 END
-           + CASE WHEN skill_score IS NOT NULL THEN skill_score * 0.35 ELSE 0 END
-           + CASE WHEN work_type_score IS NOT NULL THEN work_type_score * 0.05 ELSE 0 END
-           + CASE WHEN location_score IS NOT NULL THEN location_score * 0.05 ELSE 0 END)
-          / GREATEST(
-            (CASE WHEN value_score IS NOT NULL THEN 0.55 ELSE 0 END
-             + CASE WHEN skill_score IS NOT NULL THEN 0.35 ELSE 0 END
-             + CASE WHEN work_type_score IS NOT NULL THEN 0.05 ELSE 0 END
-             + CASE WHEN location_score IS NOT NULL THEN 0.05 ELSE 0 END), 0.000001)
-        ) AS score,
-        value_score, skill_score, work_type_score, location_score, shared_values, shared_skills
-      FROM combined
-    )
-    SELECT user_id, job_id, score, value_score, skill_score, work_type_score, location_score,
-           shared_values, shared_skills, now()
-    FROM scored WHERE score IS NOT NULL
-    ON CONFLICT (user_id, job_id) DO UPDATE SET
-      score = EXCLUDED.score, value_score = EXCLUDED.value_score,
-      skill_score = EXCLUDED.skill_score, work_type_score = EXCLUDED.work_type_score,
-      location_score = EXCLUDED.location_score, shared_values = EXCLUDED.shared_values,
-      shared_skills = EXCLUDED.shared_skills, updated_at = EXCLUDED.updated_at;
+  -- 4. Single Unified Match Calculation
+  INSERT INTO job_matches (
+    user_id, job_id, score, value_score, skill_score, work_type_score, location_score,
+    shared_values, shared_skills, updated_at
+  )
+  WITH
+  valid_jobs AS (
+    SELECT id, "values" AS job_values, values_rated AS job_rated, skills AS job_skills,
+           work_type, lat AS job_lat, lng AS job_lng,
+           municipality AS job_muni, province AS job_province,
+           geocode_accuracy_type
+    FROM jobs
+    WHERE ("values" IS NOT NULL AND array_length("values", 1) IS NOT NULL)
+       OR (skills IS NOT NULL AND array_length(skills, 1) IS NOT NULL)
+  ),
 
-  ELSE
-    -- Flat path (no ranked user values)
-    INSERT INTO job_matches (
-      user_id, job_id, score, value_score, skill_score, work_type_score, location_score,
-      shared_values, shared_skills, updated_at
-    )
-    WITH valid_jobs AS (
-      SELECT id, "values" AS job_values, values_rated AS job_rated, skills AS job_skills,
-             work_type, lat AS job_lat, lng AS job_lng,
-             municipality AS job_muni, province AS job_province,
-             geocode_accuracy_type
-      FROM jobs
-      WHERE ("values" IS NOT NULL AND array_length("values", 1) IS NOT NULL)
-         OR (skills IS NOT NULL AND array_length(skills, 1) IS NOT NULL)
-    ),
-    job_value_weights AS (
-      SELECT vj.id AS job_id, x.val, MIN(x.job_w) AS job_w
-      FROM valid_jobs vj
-      CROSS JOIN LATERAL (
-        SELECT elem->>'value' AS val,
-               rank_weight((elem->>'confidence')::int, jsonb_array_length(vj.job_rated)) AS job_w
-        FROM jsonb_array_elements(vj.job_rated) AS elem
-        WHERE (elem->>'value') IS NOT NULL
-      ) x
-      WHERE vj.job_rated IS NOT NULL AND jsonb_array_length(vj.job_rated) > 0
-      GROUP BY vj.id, x.val
-    ),
-    value_computed AS (
-      SELECT vj.id AS job_id,
-        CASE
-          WHEN v_user_values IS NULL OR array_length(v_user_values, 1) IS NULL
-            OR vj.job_values IS NULL OR array_length(vj.job_values, 1) IS NULL THEN NULL
-          ELSE LEAST(
-            (COALESCE((
-              SELECT SUM(COALESCE(jvw.job_w, 1.0))
-              FROM unnest(shared_arr.v) AS sv
-              LEFT JOIN job_value_weights jvw ON jvw.job_id = vj.id AND jvw.val = sv
-            ), 0) / array_length(v_user_values, 1)::float)
-            + LEAST(COALESCE(array_length(shared_arr.v, 1), 0) * 0.1, 0.3), 1.0)
-        END AS value_score,
-        CASE
-          WHEN v_user_values IS NULL OR array_length(v_user_values, 1) IS NULL
-            OR vj.job_values IS NULL OR array_length(vj.job_values, 1) IS NULL THEN '{}'::text[]
-          ELSE shared_arr.v
-        END AS shared_values
-      FROM valid_jobs vj
-      CROSS JOIN LATERAL (
-        SELECT ARRAY(
-          SELECT unnest(COALESCE(v_user_values, '{}'::text[]))
-          INTERSECT SELECT unnest(COALESCE(vj.job_values, '{}'::text[]))
-        ) AS v
-      ) shared_arr
-    ),
-    skill_computed AS (
-      SELECT vj.id AS job_id,
-        CASE
-          WHEN v_user_skills IS NULL OR array_length(v_user_skills, 1) IS NULL
-            OR vj.job_skills IS NULL OR array_length(vj.job_skills, 1) IS NULL THEN NULL
-          ELSE LEAST(
-            (COALESCE(array_length(shared_arr.v, 1), 0)::float / array_length(v_user_skills, 1)::float)
-            + LEAST(COALESCE(array_length(shared_arr.v, 1), 0) * 0.1, 0.3), 1.0)
-        END AS skill_score,
-        CASE
-          WHEN v_user_skills IS NULL OR array_length(v_user_skills, 1) IS NULL
-            OR vj.job_skills IS NULL OR array_length(vj.job_skills, 1) IS NULL THEN '{}'::text[]
-          ELSE shared_arr.v
-        END AS shared_skills
-      FROM valid_jobs vj
-      CROSS JOIN LATERAL (
-        SELECT ARRAY(
-          SELECT unnest(COALESCE(v_user_skills, '{}'::text[]))
-          INTERSECT SELECT unnest(COALESCE(vj.job_skills, '{}'::text[]))
-        ) AS v
-      ) shared_arr
-    ),
-    combined AS (
-      SELECT p_user_id AS user_id, vj.id AS job_id,
-        vc.value_score, sc.skill_score,
-        CASE
-          WHEN v_user_work_types IS NULL OR array_length(v_user_work_types, 1) IS NULL THEN 1.0
-          WHEN vj.work_type IS NULL THEN NULL
-          WHEN vj.work_type = ANY(v_user_work_types) THEN 1.0
-          ELSE 0.0
-        END AS work_type_score,
-        location_score_for_pair(
-          v_user_muni, v_user_province, v_user_lat, v_user_lng, v_user_work_types,
-          vj.job_muni, vj.job_province, vj.job_lat, vj.job_lng,
-          vj.geocode_accuracy_type, vj.work_type
-        ) AS location_score,
-        COALESCE(vc.shared_values, '{}'::text[]) AS shared_values,
-        COALESCE(sc.shared_skills, '{}'::text[]) AS shared_skills
-      FROM valid_jobs vj
-      LEFT JOIN value_computed vc ON vc.job_id = vj.id
-      LEFT JOIN skill_computed sc ON sc.job_id = vj.id
-    ),
-    scored AS (
-      SELECT user_id, job_id,
-        (
-          (CASE WHEN value_score IS NOT NULL THEN value_score * 0.55 ELSE 0 END
-           + CASE WHEN skill_score IS NOT NULL THEN skill_score * 0.35 ELSE 0 END
-           + CASE WHEN work_type_score IS NOT NULL THEN work_type_score * 0.05 ELSE 0 END
-           + CASE WHEN location_score IS NOT NULL THEN location_score * 0.05 ELSE 0 END)
-          / GREATEST(
-            (CASE WHEN value_score IS NOT NULL THEN 0.55 ELSE 0 END
-             + CASE WHEN skill_score IS NOT NULL THEN 0.35 ELSE 0 END
-             + CASE WHEN work_type_score IS NOT NULL THEN 0.05 ELSE 0 END
-             + CASE WHEN location_score IS NOT NULL THEN 0.05 ELSE 0 END), 0.000001)
-        ) AS score,
-        value_score, skill_score, work_type_score, location_score, shared_values, shared_skills
-      FROM combined
-    )
-    SELECT user_id, job_id, score, value_score, skill_score, work_type_score, location_score,
-           shared_values, shared_skills, now()
-    FROM scored WHERE score IS NOT NULL
-    ON CONFLICT (user_id, job_id) DO UPDATE SET
-      score = EXCLUDED.score, value_score = EXCLUDED.value_score,
-      skill_score = EXCLUDED.skill_score, work_type_score = EXCLUDED.work_type_score,
-      location_score = EXCLUDED.location_score, shared_values = EXCLUDED.shared_values,
-      shared_skills = EXCLUDED.shared_skills, updated_at = EXCLUDED.updated_at;
-  END IF;
+  -- Skill Matching (Common to both paths)
+  skill_computed AS (
+    SELECT vj.id AS job_id,
+      CASE
+        WHEN v_user_skills IS NULL OR array_length(v_user_skills, 1) IS NULL
+          OR vj.job_skills IS NULL OR array_length(vj.job_skills, 1) IS NULL THEN NULL
+        ELSE LEAST(
+          (COALESCE(array_length(shared_arr.v, 1), 0)::float / array_length(v_user_skills, 1)::float)
+          + LEAST(COALESCE(array_length(shared_arr.v, 1), 0) * 0.1, 0.3), 1.0)
+      END AS skill_score,
+      COALESCE(shared_arr.v, '{}'::text[]) AS shared_skills
+    FROM valid_jobs vj
+    CROSS JOIN LATERAL (
+      SELECT ARRAY(
+        SELECT unnest(COALESCE(v_user_skills, '{}'::text[]))
+        INTERSECT SELECT unnest(COALESCE(vj.job_skills, '{}'::text[]))
+      ) AS v
+    ) shared_arr
+  ),
+
+  -- Value Matching (Unifies Weighted vs Flat paths)
+  user_items AS (
+    SELECT elem->>'value' AS val, (elem->>'rank')::int AS rnk
+    FROM jsonb_array_elements(COALESCE(v_values_rated, '[]'::jsonb)) AS elem
+    WHERE (elem->>'value') IS NOT NULL
+  ),
+  total_user_items AS (SELECT count(*)::int AS n FROM user_items),
+  user_weights AS (
+    SELECT ui.val,
+           CASE WHEN v_use_weighted THEN rank_weight(ui.rnk, t.n) ELSE 1.0 END AS weight
+    FROM user_items ui CROSS JOIN total_user_items t
+  ),
+  total_user_weight AS (SELECT COALESCE(SUM(weight), 0) AS total_w FROM user_weights),
+  job_value_weights AS (
+    SELECT vj.id AS job_id, x.val, MIN(x.job_w) AS job_w
+    FROM valid_jobs vj
+    CROSS JOIN LATERAL (
+      SELECT elem->>'value' AS val,
+             rank_weight((elem->>'confidence')::int, jsonb_array_length(vj.job_rated)) AS job_w
+      FROM jsonb_array_elements(vj.job_rated) AS elem
+      WHERE (elem->>'value') IS NOT NULL
+    ) x
+    WHERE vj.job_rated IS NOT NULL AND jsonb_array_length(vj.job_rated) > 0
+    GROUP BY vj.id, x.val
+  ),
+  value_computed AS (
+    SELECT vj.id AS job_id,
+      CASE
+        WHEN (v_user_values IS NULL OR array_length(v_user_values, 1) IS NULL)
+             AND (v_values_rated IS NULL OR jsonb_array_length(v_values_rated) = 0)
+             THEN NULL
+        WHEN vj.job_values IS NULL OR array_length(vj.job_values, 1) IS NULL THEN NULL
+        WHEN tw.total_w = 0 THEN 0.0
+        ELSE LEAST(
+          (COALESCE(SUM(uw.weight * COALESCE(jvw.job_w, 1.0)) FILTER (WHERE uw.val = ANY(vj.job_values)), 0) / tw.total_w)
+          + LEAST(COUNT(*) FILTER (WHERE uw.val = ANY(vj.job_values)) * 0.1, 0.3), 1.0)
+      END AS value_score,
+      COALESCE(ARRAY(
+        SELECT uw2.val FROM user_weights uw2 WHERE uw2.val = ANY(vj.job_values)
+      ), '{}'::text[]) AS shared_values
+    FROM valid_jobs vj
+    CROSS JOIN user_weights uw
+    JOIN total_user_weight tw ON true
+    LEFT JOIN job_value_weights jvw ON jvw.job_id = vj.id AND jvw.val = uw.val
+    GROUP BY vj.id, vj.job_values, tw.total_w
+  ),
+
+  -- Final combination
+  combined AS (
+    SELECT p_user_id AS user_id, vj.id AS job_id,
+      vc.value_score, sc.skill_score,
+      CASE
+        WHEN v_user_work_types IS NULL OR array_length(v_user_work_types, 1) IS NULL THEN 1.0
+        WHEN vj.work_type IS NULL THEN NULL
+        WHEN vj.work_type = ANY(v_user_work_types) THEN 1.0
+        ELSE 0.0
+      END AS work_type_score,
+      location_score_for_pair(
+        v_user_muni, v_user_province, v_user_lat, v_user_lng, v_user_work_types,
+        vj.job_muni, vj.job_province, vj.job_lat, vj.job_lng,
+        vj.geocode_accuracy_type, vj.work_type
+      ) AS location_score,
+      vc.shared_values, sc.shared_skills
+    FROM valid_jobs vj
+    LEFT JOIN value_computed vc ON vc.job_id = vj.id
+    LEFT JOIN skill_computed sc ON sc.job_id = vj.id
+  ),
+  scored AS (
+    SELECT user_id, job_id,
+      (
+        (COALESCE(value_score, 0) * v_w_val
+         + COALESCE(skill_score, 0) * v_w_skill
+         + COALESCE(work_type_score, 0) * v_w_wt
+         + COALESCE(location_score, 0) * v_w_loc)
+        / GREATEST(
+          (CASE WHEN value_score IS NOT NULL THEN v_w_val ELSE 0 END
+           + CASE WHEN skill_score IS NOT NULL THEN v_w_skill ELSE 0 END
+           + CASE WHEN work_type_score IS NOT NULL THEN v_w_wt ELSE 0 END
+           + CASE WHEN location_score IS NOT NULL THEN v_w_loc ELSE 0 END), 0.000001)
+      ) AS score,
+      value_score, skill_score, work_type_score, location_score, shared_values, shared_skills
+    FROM combined
+    CROSS JOIN (SELECT v_w_val, v_w_skill, v_w_wt, v_w_loc) weights
+  )
+  SELECT user_id, job_id, score, value_score, skill_score, work_type_score, location_score,
+         shared_values, shared_skills, now()
+  FROM scored WHERE score IS NOT NULL
+  ON CONFLICT (user_id, job_id) DO UPDATE SET
+    score = EXCLUDED.score, value_score = EXCLUDED.value_score,
+    skill_score = EXCLUDED.skill_score, work_type_score = EXCLUDED.work_type_score,
+    location_score = EXCLUDED.location_score, shared_values = EXCLUDED.shared_values,
+    shared_skills = EXCLUDED.shared_skills, updated_at = EXCLUDED.updated_at;
+END;
+
 END;
 $func$;
