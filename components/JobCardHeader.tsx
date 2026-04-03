@@ -22,7 +22,7 @@ interface JobCardHeaderProps {
   isExpanded: boolean;
   onExpandToggle: () => void;
   summary: string;
-  t: (key: string, values?: any) => string;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }
 
 export default function JobCardHeader({

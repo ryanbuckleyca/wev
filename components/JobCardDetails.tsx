@@ -6,7 +6,7 @@ import { formatCompensation } from '@/lib/compensation/helpers';
 interface JobCardDetailsProps {
   job: JobPosting;
   locale: string;
-  t: (key: string, values?: any) => string;
+  t: (key: string, values?: Record<string, string | number>) => string;
   formatDate: (date: string) => string;
 }
 

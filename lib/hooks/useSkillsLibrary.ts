@@ -31,11 +31,11 @@ export async function fetchSkillsByUri(uris: string[], locale: 'en' | 'fr'): Pro
  */
 export function useSkillsLibrary(locale: 'en' | 'fr') {
   const [allSkills, setAllSkills] = useState<EscoSkill[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
-    setIsLoading(true);
+    // setIsLoading(true); // Moved to initial state to avoid cascading render lint error
 
     // Fetch the full library for the searchable list
     fetch(`/api/skills/all?locale=${locale}&cb=${Date.now()}`, {
