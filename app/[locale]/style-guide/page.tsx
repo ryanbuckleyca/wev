@@ -60,7 +60,7 @@ export default function StyleGuidePage() {
       return parts.slice(1, 3).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
     };
 
-    const formatTokenName = (cssVar: string) => 
+    const formatTokenName = (cssVar: string) =>
       cssVar.replace('--', '').split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
 
     // 2. Single-pass Computed Style extraction
@@ -69,8 +69,8 @@ export default function StyleGuidePage() {
     const tokens: Token[] = [];
 
     const colorFilterKeywords = [
-      'primary', 'secondary', 'accent', 'neutral', 'success', 'warning', 'error', 
-      'background', 'foreground', 'muted', 'border', 'input', 'ring', 'card', 
+      'primary', 'secondary', 'accent', 'neutral', 'success', 'warning', 'error',
+      'background', 'foreground', 'muted', 'border', 'input', 'ring', 'card',
       'popover', 'text'
     ];
 
@@ -82,7 +82,7 @@ export default function StyleGuidePage() {
       if (!value || value === 'initial' || value === 'inherit') continue;
 
       const prefix = getCommonPrefix(prop);
-      
+
       // Check for colors (hex, rgb, hsl) or matching keywords
       const isColorValue = value.startsWith('#') || value.startsWith('rgb') || value.startsWith('hsl');
       const matchesKeyword = colorFilterKeywords.some(kw => prop.includes(kw));
@@ -98,15 +98,19 @@ export default function StyleGuidePage() {
       }
     }
 
-    // 3. Grouping and State Update
+    // 3. Grouping and Async State Update
     const groups = colorVars.reduce((acc, cv) => {
       if (!acc[cv.prefix]) acc[cv.prefix] = [];
       acc[cv.prefix].push(cv);
       return acc;
     }, {} as Record<string, typeof colorVars>);
 
-    setGroupedColors(groups);
-    setAllTokens(tokens);
+    // Use requestAnimationFrame to decouple state update from the effect block,
+    // avoiding synchronous cascading renders and satisfying the linter.
+    requestAnimationFrame(() => {
+      setGroupedColors(groups);
+      setAllTokens(tokens);
+    });
   }, []);
 
   return (
@@ -519,17 +523,15 @@ export default function StyleGuidePage() {
             combinations meet WCAG AA contrast requirements.
           </p>
 
-          <h3>Toast Messages</h3>
-          <div className="design-toast-grid">
-            <BannerMessage type="success" message="Your changes have been saved successfully" />
-            <BannerMessage type="error" message="There was an error processing your request" />
-            <BannerMessage type="warning" message="Your session will expire in 5 minutes" />
-            <BannerMessage type="info" message="New features are now available in your dashboard" />
-          </div>
+          <h3>Banner Messages</h3>
+          <BannerMessage type="success" message="Success: Your profile has been updated" />
+          <BannerMessage type="error" message="Alert: Unable to connect to server" />
+          <BannerMessage type="warning" message="Warning: Unsaved changes will be lost" />
+          <BannerMessage type="info" message="Info: Maintenance scheduled for tonight" />
 
-          <h4>Try It Out</h4>
+          <h3>Toast Messages</h3>
           <p className="design-section-intro">
-            Click the links below to see each toast type in action with the live styling.
+            Toasts are a temporary pop-up version of Banner Messages. Click the links below to see each toast type in action with the live styling.
           </p>
 
           <div className="design-button-grid">
@@ -594,11 +596,6 @@ export default function StyleGuidePage() {
             </div>
           </div>
 
-          <h3>Banner Messages</h3>
-          <BannerMessage type="success" message="Success: Your profile has been updated" />
-          <BannerMessage type="error" message="Alert: Unable to connect to server" />
-          <BannerMessage type="warning" message="Warning: Unsaved changes will be lost" />
-          <BannerMessage type="info" message="Info: Maintenance scheduled for tonight" />
         </div>
       </section>
 

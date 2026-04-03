@@ -11,9 +11,9 @@ function ToastItem({ t: toastData }: { t: Toast }) {
   const idPrefix = toastData.id.split(':')[0] as ToastVariant;
   const libType = toastData.type as ToastVariant;
 
-  const theme = 
-    TOAST_THEMES[idPrefix] || 
-    ((libType as string) !== 'blank' && TOAST_THEMES[libType]) || 
+  const theme =
+    TOAST_THEMES[idPrefix] ||
+    ((libType as string) !== 'blank' && TOAST_THEMES[libType]) ||
     TOAST_THEMES.info;
 
   return (
