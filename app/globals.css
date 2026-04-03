@@ -265,7 +265,6 @@ html.theme-switching *::after {
   height: 3px;
   border-radius: 0 0 12px 12px;
   animation: toast-progress linear forwards;
-  opacity: 0.7;
 }
 
 /* ========== Style guide page (/style-guide) ========== */

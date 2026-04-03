@@ -1,37 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import StatusIcon from './StatusIcon';
+import { TOAST_THEMES, type ToastVariant } from '@/lib/toast-themes';
 
 interface BannerMessageProps {
-  type: 'success' | 'error' | 'warning' | 'info';
+  type: Exclude<ToastVariant, 'loading'>;
   message: string;
   className?: string;
   duration?: number;
   onDismiss?: () => void;
   onExpire?: () => void;
 }
-
-const TYPE_CLASSES: Record<BannerMessageProps['type'], string> = {
-  success: 'design-toast-success',
-  error: 'design-toast-alert',
-  warning: 'design-toast-warning',
-  info: 'design-toast-info',
-};
-
-const TEXT_COLORS: Record<BannerMessageProps['type'], string> = {
-  success: 'text-[var(--success-text)]',
-  error: 'text-[var(--destructive-foreground)]',
-  warning: 'text-[var(--warn-text)]',
-  info: 'text-[var(--info-text)]',
-};
-
-const PROGRESS_COLORS: Record<BannerMessageProps['type'], string> = {
-  success: 'bg-[var(--success-solid)]',
-  error: 'bg-[var(--destructive)]',
-  warning: 'bg-[var(--warn-solid)]',
-  info: 'bg-[var(--info-solid)]',
-};
 
 export default function BannerMessage({
   type,
@@ -41,14 +20,17 @@ export default function BannerMessage({
   onDismiss,
   onExpire,
 }: BannerMessageProps) {
+  const theme = TOAST_THEMES[type];
   const [paused, setPaused] = useState(false);
   const [remaining, setRemaining] = useState(duration ?? 0);
   const remainingRef = useRef(duration ?? 0);
   const segmentStartRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onExpireRef = useRef(onExpire);
-  useEffect(() => { onExpireRef.current = onExpire; }, [onExpire]);
-  const [barKey, setBarKey] = useState(0);
+  
+  useEffect(() => { 
+    onExpireRef.current = onExpire; 
+  }, [onExpire]);
 
   useEffect(() => {
     if (!duration || !onExpireRef.current) return;
@@ -60,7 +42,10 @@ export default function BannerMessage({
 
   const handleMouseEnter = () => {
     if (!duration) return;
-    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (timerRef.current) { 
+      clearTimeout(timerRef.current); 
+      timerRef.current = null; 
+    }
     remainingRef.current = Math.max(remainingRef.current - (Date.now() - segmentStartRef.current), 0);
     setRemaining(remainingRef.current);
     setPaused(true);
@@ -70,23 +55,23 @@ export default function BannerMessage({
     if (!duration || !onExpireRef.current) return;
     segmentStartRef.current = Date.now();
     timerRef.current = setTimeout(() => onExpireRef.current?.(), remainingRef.current);
-    setBarKey((k) => k + 1);
     setPaused(false);
   };
 
   return (
     <div
-      className={`design-toast ${TYPE_CLASSES[type]} relative overflow-hidden ${className}`.trim()}
+      className={`${theme.className} relative overflow-hidden ${className}`.trim()}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       role="alert"
       aria-live="assertive"
+      style={theme.style}
     >
-      <span className={`font-bold shrink-0 ${TEXT_COLORS[type]}`} aria-hidden="true">
-        <StatusIcon type={type} />
+      <span className="font-bold shrink-0" aria-hidden="true">
+        {theme.icon}
       </span>
 
-      <span className={`flex-1 ${TEXT_COLORS[type]}`}>{message}</span>
+      <span className="flex-1">{message}</span>
 
       {onDismiss && (
         <button
@@ -96,7 +81,7 @@ export default function BannerMessage({
             onDismiss();
           }}
           aria-label="Dismiss notification"
-          className={`shrink-0 ml-2 opacity-50 hover:opacity-100 transition-opacity ${TEXT_COLORS[type]}`}
+          className="shrink-0 ml-2 opacity-50 hover:opacity-100 transition-opacity"
           style={{ pointerEvents: 'auto' }}
         >
           ✕
@@ -105,9 +90,9 @@ export default function BannerMessage({
 
       {duration && (
         <div
-          key={barKey}
-          className={`toast-progress-bar ${PROGRESS_COLORS[type]}`}
+          className="toast-progress-bar"
           style={{
+            backgroundColor: theme.progressColor,
             animationDuration: `${remaining}ms`,
             animationPlayState: paused ? 'paused' : 'running',
           }}

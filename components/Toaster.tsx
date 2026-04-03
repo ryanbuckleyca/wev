@@ -2,29 +2,64 @@
 
 import { useState } from 'react';
 import toast, { ToastBar, Toaster, type Toast } from 'react-hot-toast';
+import { TOAST_THEMES, type ToastVariant } from '@/lib/toast-themes';
 
-function getToastProgressColor(toastItem: Toast): string {
-  const className = typeof toastItem.className === 'string' ? toastItem.className : '';
+function ToastItem({ t }: { t: Toast }) {
+  const [isHovered, setIsHovered] = useState(false);
 
-  if (toastItem.type === 'success' || className.includes('design-toast-success')) {
-    return 'var(--success-solid)';
-  }
-  if (toastItem.type === 'error' || className.includes('design-toast-alert')) {
-    return 'var(--destructive)';
-  }
-  if (className.includes('design-toast-warning')) {
-    return 'var(--warn-solid)';
-  }
-  if (className.includes('design-toast-info')) {
-    return 'var(--info-solid)';
-  }
+  // Determine variant from toast type or fallback to class-based lookup
+  // (Necessary because warning/info both use the 'blank' toast type)
+  const isBlank = (t.type as string) === 'blank';
+  const variant = (t.type === 'loading' ? 'loading' : t.type) as ToastVariant;
+  const theme = 
+    (!isBlank && TOAST_THEMES[variant]) || 
+    Object.values(TOAST_THEMES).find((v) => v.className === t.className) || 
+    TOAST_THEMES.info;
 
-  return 'var(--border)';
+  return (
+    <ToastBar toast={t}>
+      {({ icon, message }) => (
+        <div
+          className="relative w-full overflow-hidden rounded-[12px]"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          <div className="flex w-full items-center px-6 py-4">
+            {icon || theme.icon}
+            {message}
+            {t.type !== 'loading' && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toast.dismiss(t.id);
+                }}
+                className="ml-2 opacity-60 hover:opacity-100 transition-opacity"
+                aria-label="Dismiss notification"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          {typeof t.duration === 'number' && Number.isFinite(t.duration) && t.type !== 'loading' && (
+            <span
+              className="toast-progress-bar"
+              style={{
+                backgroundColor: theme.progressColor,
+                animationDuration: `${t.duration}ms`,
+                animationPlayState: isHovered ? 'paused' : 'running',
+              }}
+              aria-hidden="true"
+            />
+          )}
+        </div>
+      )}
+    </ToastBar>
+  );
 }
 
 export default function ToasterProvider() {
-  const [hoveredToastId, setHoveredToastId] = useState<string | null>(null);
-
   return (
     <Toaster
       position="top-center"
@@ -46,74 +81,14 @@ export default function ToasterProvider() {
           maxWidth: '480px',
         },
         success: {
-          className: 'design-toast design-toast-success',
-          style: {
-            background: 'var(--success-tint)',
-            border: '1px solid var(--success-solid)',
-            color: 'var(--foreground)',
-          },
-          iconTheme: {
-            primary: 'var(--success-text)',
-            secondary: 'var(--success-tint)',
-          },
+          style: TOAST_THEMES.success.style,
         },
         error: {
-          className: 'design-toast design-toast-alert',
-          style: {
-            background: 'var(--destructive-tint)',
-            border: '1px solid var(--destructive)',
-            color: 'var(--foreground)',
-          },
-          iconTheme: {
-            primary: 'var(--destructive-foreground)',
-            secondary: 'var(--destructive-tint)',
-          },
+          style: TOAST_THEMES.error.style,
         },
       }}
     >
-      {(t) => (
-        <ToastBar toast={t}>
-          {({ icon, message }) => (
-            <div
-              className="relative w-full overflow-hidden rounded-[12px]"
-              onMouseEnter={() => setHoveredToastId(t.id)}
-              onMouseLeave={() =>
-                setHoveredToastId((current) => (current === t.id ? null : current))
-              }
-            >
-              <div className="flex w-full items-center px-6 py-4">
-                {icon}
-                {message}
-                {t.type !== 'loading' && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toast.dismiss(t.id);
-                    }}
-                    className="ml-2 opacity-60 hover:opacity-100 transition-opacity"
-                    aria-label="Dismiss notification"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-
-              {typeof t.duration === 'number' && Number.isFinite(t.duration) && t.type !== 'loading' && (
-                <span
-                  className="toast-progress-bar"
-                  style={{
-                    backgroundColor: getToastProgressColor(t),
-                    animationDuration: `${t.duration}ms`,
-                    animationPlayState: hoveredToastId === t.id ? 'paused' : 'running',
-                  }}
-                  aria-hidden="true"
-                />
-              )}
-            </div>
-          )}
-        </ToastBar>
-      )}
+      {(t) => <ToastItem t={t} />}
     </Toaster>
   );
 }

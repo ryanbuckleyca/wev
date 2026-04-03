@@ -45,9 +45,12 @@ interface Token {
 }
 
 export default function StyleGuidePage() {
-  const [groupedColors] = useState<
+  const [groupedColors, setGroupedColors] = useState<
     Record<string, Array<{ name: string; value: string; prefix: string }>>
-  >(() => {
+  >({});
+  const [allTokens, setAllTokens] = useState<Token[]>([]);
+
+  useEffect(() => {
     // Helper function to get common prefix from variable name
     const getCommonPrefix = (varName: string) => {
       const parts = varName.split('-');
@@ -63,6 +66,7 @@ export default function StyleGuidePage() {
 
     // Helper function to get all CSS color variables automatically
     const getAllColorVariables = () => {
+      if (typeof window === 'undefined') return [];
       const style = getComputedStyle(document.documentElement);
       const colorVars: Array<{ name: string; value: string; prefix: string }> = [];
 
@@ -119,50 +123,6 @@ export default function StyleGuidePage() {
       );
     };
 
-    return getGroupedColors();
-  });
-  const [allTokens] = useState<Token[]>(() => {
-    // Helper function to get common prefix from variable name
-    const getCommonPrefix = (varName: string) => {
-      const parts = varName.split('-');
-      if (parts.length <= 2) return 'Other';
-
-      // Get first two parts as prefix and remove dashes, convert to TitleCase
-      const prefix = parts.slice(1, 3).join('-');
-      return prefix
-        .split('-')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join('');
-    };
-
-    // Helper function to get all CSS color variables automatically
-    const getAllColorVariables = () => {
-      const style = getComputedStyle(document.documentElement);
-      const colorVars: Array<{ name: string; value: string; prefix: string }> = [];
-
-      // Get all properties that look like color variables
-      for (let i = 0; i < style.length; i++) {
-        const prop = style[i];
-        if (prop.startsWith('--')) {
-          const value = style.getPropertyValue(prop).trim();
-
-          // Check if it's actually a color value (hex, rgb, rgba, hsl, etc.)
-          if (
-            value &&
-            (value.startsWith('#') || value.startsWith('rgb') || value.startsWith('hsl'))
-          ) {
-            colorVars.push({
-              name: prop,
-              value: value,
-              prefix: getCommonPrefix(prop),
-            });
-          }
-        }
-      }
-
-      return colorVars;
-    };
-
     // Helper function to format CSS variable name to readable name
     const formatTokenName = (cssVar: string) => {
       // Extract variable name (remove "--" and trim)
@@ -176,7 +136,7 @@ export default function StyleGuidePage() {
     };
 
     // Get all tokens for TokenRows
-    const getAllTokens = (): Token[] => {
+    const fetchAllTokens = (): Token[] => {
       const colorVars = getAllColorVariables();
       return colorVars.map((colorVar) => ({
         name: formatTokenName(colorVar.name),
@@ -186,8 +146,9 @@ export default function StyleGuidePage() {
       }));
     };
 
-    return getAllTokens();
-  });
+    setGroupedColors(getGroupedColors());
+    setAllTokens(fetchAllTokens());
+  }, []);
 
   return (
     <>
