@@ -1,6 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, configure } from '@testing-library/react';
-configure({ asyncUtilTimeout: 5000 });
+import { cleanup } from '@testing-library/react';
 import { act } from 'react';
 import { beforeAll, afterAll, afterEach, vi } from 'vitest';
 

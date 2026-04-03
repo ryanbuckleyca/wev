@@ -51,103 +51,62 @@ export default function StyleGuidePage() {
   const [allTokens, setAllTokens] = useState<Token[]>([]);
 
   useEffect(() => {
-    // Helper function to get common prefix from variable name
+    if (typeof window === 'undefined') return;
+
+    // 1. Unified Utility Functions
     const getCommonPrefix = (varName: string) => {
       const parts = varName.split('-');
       if (parts.length <= 2) return 'Other';
-
-      // Get first two parts as prefix and remove dashes, convert to TitleCase
-      const prefix = parts.slice(1, 3).join('-');
-      return prefix
-        .split('-')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join('');
+      return parts.slice(1, 3).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
     };
 
-    // Helper function to get all CSS color variables automatically
-    const getAllColorVariables = () => {
-      if (typeof window === 'undefined') return [];
-      const style = getComputedStyle(document.documentElement);
-      const colorVars: Array<{ name: string; value: string; prefix: string }> = [];
+    const formatTokenName = (cssVar: string) => 
+      cssVar.replace('--', '').split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
 
-      // Iterate through all CSS properties and filter color variables
-      for (let i = 0; i < style.length; i++) {
-        const prop = style[i];
-        if (
-          prop.startsWith('--') &&
-          (prop.includes('primary') ||
-            prop.includes('secondary') ||
-            prop.includes('accent') ||
-            prop.includes('neutral') ||
-            prop.includes('success') ||
-            prop.includes('warning') ||
-            prop.includes('error') ||
-            prop.includes('background') ||
-            prop.includes('foreground') ||
-            prop.includes('muted') ||
-            prop.includes('border') ||
-            prop.includes('input') ||
-            prop.includes('ring') ||
-            prop.includes('card') ||
-            prop.includes('popover') ||
-            prop.includes('text'))
-        ) {
-          const value = style.getPropertyValue(prop);
-          if (value && value !== 'initial' && value !== 'inherit') {
-            colorVars.push({
-              name: prop,
-              value: value.trim(),
-              prefix: getCommonPrefix(prop),
-            });
-          }
-        }
+    // 2. Single-pass Computed Style extraction
+    const style = getComputedStyle(document.documentElement);
+    const colorVars: Array<{ name: string; value: string; prefix: string }> = [];
+    const tokens: Token[] = [];
+
+    const colorFilterKeywords = [
+      'primary', 'secondary', 'accent', 'neutral', 'success', 'warning', 'error', 
+      'background', 'foreground', 'muted', 'border', 'input', 'ring', 'card', 
+      'popover', 'text'
+    ];
+
+    for (let i = 0; i < style.length; i++) {
+      const prop = style[i];
+      if (!prop.startsWith('--')) continue;
+
+      const value = style.getPropertyValue(prop).trim();
+      if (!value || value === 'initial' || value === 'inherit') continue;
+
+      const prefix = getCommonPrefix(prop);
+      
+      // Check for colors (hex, rgb, hsl) or matching keywords
+      const isColorValue = value.startsWith('#') || value.startsWith('rgb') || value.startsWith('hsl');
+      const matchesKeyword = colorFilterKeywords.some(kw => prop.includes(kw));
+
+      if (isColorValue || matchesKeyword) {
+        colorVars.push({ name: prop, value, prefix });
+        tokens.push({
+          name: formatTokenName(prop),
+          value: `var(${prop})`,
+          swatch: `var(${prop})`,
+          border: prop.includes('border'),
+        });
       }
+    }
 
-      return colorVars;
-    };
+    // 3. Grouping and State Update
+    const groups = colorVars.reduce((acc, cv) => {
+      if (!acc[cv.prefix]) acc[cv.prefix] = [];
+      acc[cv.prefix].push(cv);
+      return acc;
+    }, {} as Record<string, typeof colorVars>);
 
-    // Helper function to group colors by prefix
-    const getGroupedColors = () => {
-      const colorVars = getAllColorVariables();
-
-      return colorVars.reduce(
-        (groups, colorVar) => {
-          const prefix = colorVar.prefix;
-          if (!groups[prefix]) {
-            groups[prefix] = [];
-          }
-          groups[prefix].push(colorVar);
-          return groups;
-        },
-        {} as Record<string, typeof colorVars>,
-      );
-    };
-
-    // Helper function to format CSS variable name to readable name
-    const formatTokenName = (cssVar: string) => {
-      // Extract variable name (remove "--" and trim)
-      const varName = cssVar.replace('--', '').trim();
-
-      // Remove dashes and convert to TitleCase
-      return varName
-        .split('-')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join('');
-    };
-
-    // Get all tokens for TokenRows
-    const fetchAllTokens = (): Token[] => {
-      const colorVars = getAllColorVariables();
-      return colorVars.map((colorVar) => ({
-        name: formatTokenName(colorVar.name),
-        value: `var(${colorVar.name})`,
-        swatch: `var(${colorVar.name})`,
-        border: colorVar.name.includes('border'),
-      }));
-    };
-
-    setGroupedColors(getGroupedColors());
-    setAllTokens(fetchAllTokens());
+    setGroupedColors(groups);
+    setAllTokens(tokens);
   }, []);
 
   return (

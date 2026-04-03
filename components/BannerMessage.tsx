@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useAutoDismiss } from '@/lib/hooks/useAutoDismiss';
 import { TOAST_THEMES, type ToastVariant } from '@/lib/toast-themes';
 
 interface BannerMessageProps {
@@ -21,48 +21,16 @@ export default function BannerMessage({
   onExpire,
 }: BannerMessageProps) {
   const theme = TOAST_THEMES[type];
-  const [paused, setPaused] = useState(false);
-  const [remaining, setRemaining] = useState(duration ?? 0);
-  const remainingRef = useRef(duration ?? 0);
-  const segmentStartRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onExpireRef = useRef(onExpire);
-  
-  useEffect(() => { 
-    onExpireRef.current = onExpire; 
-  }, [onExpire]);
-
-  useEffect(() => {
-    if (!duration || !onExpireRef.current) return;
-    remainingRef.current = duration;
-    segmentStartRef.current = Date.now();
-    timerRef.current = setTimeout(() => onExpireRef.current?.(), remainingRef.current);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [duration]);
-
-  const handleMouseEnter = () => {
-    if (!duration) return;
-    if (timerRef.current) { 
-      clearTimeout(timerRef.current); 
-      timerRef.current = null; 
-    }
-    remainingRef.current = Math.max(remainingRef.current - (Date.now() - segmentStartRef.current), 0);
-    setRemaining(remainingRef.current);
-    setPaused(true);
-  };
-
-  const handleMouseLeave = () => {
-    if (!duration || !onExpireRef.current) return;
-    segmentStartRef.current = Date.now();
-    timerRef.current = setTimeout(() => onExpireRef.current?.(), remainingRef.current);
-    setPaused(false);
-  };
+  const { remaining, isPaused, pause, resume } = useAutoDismiss({
+    duration,
+    onExpire,
+  });
 
   return (
     <div
       className={`${theme.className} relative overflow-hidden ${className}`.trim()}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={pause}
+      onMouseLeave={resume}
       role="alert"
       aria-live="assertive"
       style={theme.style}
@@ -77,7 +45,6 @@ export default function BannerMessage({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (timerRef.current) clearTimeout(timerRef.current);
             onDismiss();
           }}
           aria-label="Dismiss notification"
@@ -94,7 +61,7 @@ export default function BannerMessage({
           style={{
             backgroundColor: theme.progressColor,
             animationDuration: `${remaining}ms`,
-            animationPlayState: paused ? 'paused' : 'running',
+            animationPlayState: isPaused ? 'paused' : 'running',
           }}
           aria-hidden="true"
         />

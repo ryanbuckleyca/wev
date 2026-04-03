@@ -4,50 +4,49 @@ import { useState } from 'react';
 import toast, { ToastBar, Toaster, type Toast } from 'react-hot-toast';
 import { TOAST_THEMES, type ToastVariant } from '@/lib/toast-themes';
 
-function ToastItem({ t }: { t: Toast }) {
+function ToastItem({ t: toastData }: { t: Toast }) {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Determine variant from toast type or fallback to class-based lookup
-  // (Necessary because warning/info both use the 'blank' toast type)
-  const isBlank = (t.type as string) === 'blank';
-  const variant = (t.type === 'loading' ? 'loading' : t.type) as ToastVariant;
+  // Extract variant from ID prefix or library type
+  const idPrefix = toastData.id.split(':')[0] as ToastVariant;
+  const libType = toastData.type as ToastVariant;
+
   const theme = 
-    (!isBlank && TOAST_THEMES[variant]) || 
-    Object.values(TOAST_THEMES).find((v) => v.className === t.className) || 
+    TOAST_THEMES[idPrefix] || 
+    ((libType as string) !== 'blank' && TOAST_THEMES[libType]) || 
     TOAST_THEMES.info;
 
   return (
-    <ToastBar toast={t}>
+    <ToastBar toast={toastData}>
       {({ icon, message }) => (
         <div
-          className="relative w-full overflow-hidden rounded-[12px]"
+          className={`${theme.className} relative w-full overflow-hidden !m-0 !p-0`}
+          style={theme.style}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
           <div className="flex w-full items-center px-6 py-4">
             {icon || theme.icon}
             {message}
-            {t.type !== 'loading' && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toast.dismiss(t.id);
-                }}
-                className="ml-2 opacity-60 hover:opacity-100 transition-opacity"
-                aria-label="Dismiss notification"
-              >
-                ×
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toast.dismiss(toastData.id);
+              }}
+              className="ml-2 opacity-60 hover:opacity-100 transition-opacity"
+              aria-label="Dismiss notification"
+            >
+              ×
+            </button>
           </div>
 
-          {typeof t.duration === 'number' && Number.isFinite(t.duration) && t.type !== 'loading' && (
+          {typeof toastData.duration === 'number' && Number.isFinite(toastData.duration) && (
             <span
               className="toast-progress-bar"
               style={{
                 backgroundColor: theme.progressColor,
-                animationDuration: `${t.duration}ms`,
+                animationDuration: `${toastData.duration}ms`,
                 animationPlayState: isHovered ? 'paused' : 'running',
               }}
               aria-hidden="true"
