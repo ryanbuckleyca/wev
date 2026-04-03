@@ -3,7 +3,7 @@
 import { TOAST_THEMES, type ToastVariant } from '@/lib/toast-themes';
 
 interface BannerMessageProps {
-  type: Exclude<ToastVariant, 'loading'>;
+  type: ToastVariant;
   message: string;
   className?: string;
 }
