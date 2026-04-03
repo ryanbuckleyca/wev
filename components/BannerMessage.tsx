@@ -46,15 +46,17 @@ export default function BannerMessage({
   const remainingRef = useRef(duration ?? 0);
   const segmentStartRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onExpireRef = useRef(onExpire);
+  useEffect(() => { onExpireRef.current = onExpire; }, [onExpire]);
   const [barKey, setBarKey] = useState(0);
 
   useEffect(() => {
-    if (!duration || !onExpire) return;
+    if (!duration || !onExpireRef.current) return;
     remainingRef.current = duration;
     segmentStartRef.current = Date.now();
-    timerRef.current = setTimeout(onExpire, remainingRef.current);
+    timerRef.current = setTimeout(() => onExpireRef.current?.(), remainingRef.current);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [duration, onExpire]);
+  }, [duration]);
 
   const handleMouseEnter = () => {
     if (!duration) return;
@@ -65,9 +67,9 @@ export default function BannerMessage({
   };
 
   const handleMouseLeave = () => {
-    if (!duration || !onExpire) return;
+    if (!duration || !onExpireRef.current) return;
     segmentStartRef.current = Date.now();
-    timerRef.current = setTimeout(onExpire, remainingRef.current);
+    timerRef.current = setTimeout(() => onExpireRef.current?.(), remainingRef.current);
     setBarKey((k) => k + 1);
     setPaused(false);
   };
