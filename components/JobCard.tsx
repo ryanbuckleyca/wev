@@ -78,7 +78,7 @@ export default function JobCard({
   }, [job.skill_labels]);
 
   // Profile-derived preferences and computed tokens for location matching
-  const profileWorkTypes = profile?.work_types ?? [];
+  const profileWorkTypes = useMemo(() => profile?.work_types ?? [], [profile?.work_types]);
   const profileIdeal = profile?.ideal_work_environment ?? null;
 
   const { matched: matchedLocationTokens, unmatched: unmatchedLocationTokens } = useMemo(() => {

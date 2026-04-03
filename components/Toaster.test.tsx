@@ -4,7 +4,11 @@ import ToasterProvider from './Toaster';
 import { Toaster as HotToaster } from 'react-hot-toast';
 
 vi.mock('react-hot-toast', () => ({
+  default: {
+    dismiss: vi.fn(),
+  },
   Toaster: vi.fn(() => null),
+  ToastBar: vi.fn(() => null),
 }));
 
 describe('ToasterProvider', () => {

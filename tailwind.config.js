@@ -37,7 +37,7 @@ module.exports = {
           foreground: 'var(--foreground)',
         },
         destructive: {
-          DEFAULT: 'var(--destructive)',
+          DEFAULT: 'var(--destructive-solid)',
           foreground: 'var(--destructive-foreground)',
         },
         border: 'var(--border)',
