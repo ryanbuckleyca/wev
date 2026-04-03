@@ -1,40 +1,38 @@
 import toast from 'react-hot-toast';
-import BannerMessage from '@/components/BannerMessage';
+import { TOAST_THEMES, type ToastVariant } from './toast-themes';
 
 interface ToastOptions {
+  id?: string;
   duration?: number;
 }
 
-const DEFAULT_DURATION = 5000;
+function makeToast(variant: ToastVariant, message: string, options?: ToastOptions) {
+  const theme = TOAST_THEMES[variant];
+  const toastId = options?.id || `${variant}:${Date.now()}`;
 
-function makeToast(
-  type: 'success' | 'error' | 'warning' | 'info',
-  message: string,
-  options?: ToastOptions,
-) {
-  const duration = options?.duration ?? DEFAULT_DURATION;
-  const id = `${type}-${Date.now()}`;
+  const toastOptions = {
+    ...options,
+    id: toastId,
+    icon: theme.icon,
+    className: theme.className,
+    style: theme.style,
+  };
 
-  toast.custom(
-    (t) => (
-      <BannerMessage
-        type={type}
-        message={message}
-        duration={duration}
-        onDismiss={() => toast.remove(id)}
-      />
-    ),
-    { duration, id },
-  );
-
-  return id;
+  switch (variant) {
+    case 'success':
+      return toast.success(message, toastOptions);
+    case 'error':
+      return toast.error(message, toastOptions);
+    default:
+      return toast(message, toastOptions);
+  }
 }
 
 const notify = {
   success: (message: string, options?: ToastOptions) => makeToast('success', message, options),
-  error:   (message: string, options?: ToastOptions) => makeToast('error',   message, options),
+  error: (message: string, options?: ToastOptions) => makeToast('error', message, options),
   warning: (message: string, options?: ToastOptions) => makeToast('warning', message, options),
-  info:    (message: string, options?: ToastOptions) => makeToast('info',    message, options),
+  info: (message: string, options?: ToastOptions) => makeToast('info', message, options),
 };
 
 export default notify;

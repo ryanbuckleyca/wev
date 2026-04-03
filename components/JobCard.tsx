@@ -74,6 +74,7 @@ export default function JobCard({
   const { user } = useAuth();
   const router = useRouter();
 
+
   // Profile-derived preferences — memoized to avoid invalidating matchTooltipContent on every render
   const profileWorkTypes = useMemo(() => profile?.work_types ?? [], [profile?.work_types]);
 

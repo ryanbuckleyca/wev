@@ -2,13 +2,12 @@ import { Lineicons } from '@lineiconshq/react-lineicons';
 import {
   CheckCircle1Solid,
   XmarkCircleSolid,
-  QuestionMarkCircleSolid,
   Bulb2Solid,
   Flag1Solid,
 } from '@lineiconshq/free-icons';
 
 interface StatusIconProps {
-  type: 'success' | 'error' | 'warning' | 'info' | 'loading';
+  type: 'success' | 'error' | 'warning' | 'info';
   className?: string;
 }
 
@@ -22,10 +21,8 @@ export default function StatusIcon({ type, className = '' }: StatusIconProps) {
       case 'warning':
         return <Lineicons icon={Flag1Solid} size={16} className={className} />;
       case 'info':
-        return <Lineicons icon={Bulb2Solid} size={16} className={className} />;
-      case 'loading':
       default:
-        return <Lineicons icon={QuestionMarkCircleSolid} size={16} className={className} />;
+        return <Lineicons icon={Bulb2Solid} size={16} className={className} />;
     }
   };
 

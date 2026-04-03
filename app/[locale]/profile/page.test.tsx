@@ -235,9 +235,10 @@ describe('ProfilePage skills integration', () => {
     render(<ProfilePage />);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringMatching(/^\/api\/skills\/all\?locale=en&cb=/),
+      const call = fetchMock.mock.calls.find((c) =>
+        String(c[0]).match(/^\/api\/skills\/all\?locale=en&cb=/),
       );
+      expect(call).toBeDefined();
     });
 
     await user.click(screen.getByRole('button', { name: /search and add skills/i }));

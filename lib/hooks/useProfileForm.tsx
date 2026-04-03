@@ -221,7 +221,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
   useEffect(() => {
     const controller = new AbortController();
     setIsLibraryLoading(true);
-    fetch(`/api/skills/all?locale=${locale}`, { signal: controller.signal })
+    fetch(`/api/skills/all?locale=${locale}&cb=${Date.now()}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : { skills: [] }))
       .then((data: { skills?: RawSkillLibraryRow[] }) =>
         setAllSkills((data.skills || []).map(toEscoSkillFromLibrary)),

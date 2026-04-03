@@ -65,6 +65,7 @@ export default function ProfilePage() {
     [t],
   );
 
+
   if (loading || profileLoading) {
     return <LoadingState message={t('common.loading')} />;
   }
@@ -105,6 +106,7 @@ export default function ProfilePage() {
                 showCount={false}
               />
             </div>
+
 
             {/* Skills */}
             <div>
