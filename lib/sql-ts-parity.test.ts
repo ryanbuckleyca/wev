@@ -35,6 +35,12 @@ import { calculateMatch } from './match-calculator';
 import type { RatedValue, JobRatedValue } from './value-ratings';
 import { getRankWeight } from './value-ratings';
 
+/** Assert score is non-null and return it as a number for numeric matchers. */
+function assertScore(score: number | null): number {
+  expect(score).not.toBeNull();
+  return score as number;
+}
+
 // ---------------------------------------------------------------------------
 // Reference implementation of the SQL formula in TypeScript
 // ---------------------------------------------------------------------------
@@ -80,7 +86,7 @@ function sqlFormula(
   plainValues: string[],
   jobValues: string[],
   jobValuesRated?: JobRatedValue[] | null,
-): { score: number; shared_values: string[] } {
+): { score: number | null; shared_values: string[] } {
   const jobSet = new Set(jobValues);
 
   if (sqlUsesWeighted(valuesRated)) {
@@ -100,7 +106,7 @@ function sqlFormula(
       }
     }
 
-    if (totalW === 0) return { score: 0, shared_values: [] };
+    if (totalW === 0) return { score: null, shared_values: [] };
 
     const sharedCount = sharedValues.length;
     const score = Math.min(overlapNum / totalW + Math.min(sharedCount * 0.1, 0.3), 1.0);
@@ -108,7 +114,7 @@ function sqlFormula(
   }
 
   // Flat_Match path
-  if (!plainValues.length) return { score: 0, shared_values: [] };
+  if (!plainValues.length) return { score: null, shared_values: [] };
 
   const sharedValues = plainValues.filter((v) => jobSet.has(v));
   const sharedCount = sharedValues.length;
@@ -160,7 +166,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
 
@@ -177,7 +183,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
 
@@ -194,7 +200,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values.sort()).toEqual(sql.shared_values.sort());
     });
 
@@ -211,7 +217,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
 
@@ -227,7 +233,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.score).toBe(1.0);
     });
   });
@@ -251,7 +257,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
 
@@ -263,7 +269,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
 
@@ -275,7 +281,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
 
@@ -288,8 +294,8 @@ describe('SQL / TypeScript parity', () => {
       const sqlPlain = sqlFormula(null, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(sqlRated.score).toBeCloseTo(sqlPlain.score, 10);
-      expect(ts.score).toBeCloseTo(sqlRated.score, 10);
+      expect(sqlRated.score).toBeCloseTo(assertScore(sqlPlain.score), 10);
+      expect(ts.score).toBeCloseTo(assertScore(sqlRated.score), 10);
     });
   });
 
@@ -307,7 +313,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
 
@@ -319,7 +325,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
 
@@ -337,7 +343,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values.sort()).toEqual(sql.shared_values.sort());
     });
 
@@ -353,7 +359,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
   });
@@ -372,7 +378,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
 
@@ -384,7 +390,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
 
@@ -396,11 +402,11 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values).toEqual(sql.shared_values);
     });
 
-    it('empty plain values → score 0', () => {
+    it('empty plain values → score null', () => {
       const valuesRated = null;
       const plain: string[] = [];
       const job = ['Community', 'Creativity'];
@@ -408,8 +414,8 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job);
       const ts = calculateMatch(tsUserValues(valuesRated, plain), job);
 
-      expect(ts.score).toBe(0);
-      expect(sql.score).toBe(0);
+      expect(ts.score).toBeNull();
+      expect(sql.score).toBeNull();
     });
 
     it('null values_rated score equals plain string[] score (equivalence)', () => {
@@ -419,7 +425,7 @@ describe('SQL / TypeScript parity', () => {
       const sqlNull = sqlFormula(null, plain, job);
       const ts = calculateMatch(plain, job);
 
-      expect(ts.score).toBeCloseTo(sqlNull.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sqlNull.score), 10);
       expect(ts.shared_values).toEqual(sqlNull.shared_values);
     });
   });
@@ -444,8 +450,8 @@ describe('SQL / TypeScript parity', () => {
       const sqlNoConf2 = sqlFormula(valuesRated, plain, job, undefined);
       const tsNoConf = tsMatch(valuesRated, plain, job, null);
 
-      expect(tsNoConf.score).toBeCloseTo(sqlNoConf.score, 10);
-      expect(sqlNoConf.score).toBeCloseTo(sqlNoConf2.score, 10);
+      expect(tsNoConf.score).toBeCloseTo(assertScore(sqlNoConf.score), 10);
+      expect(sqlNoConf.score).toBeCloseTo(assertScore(sqlNoConf2.score), 10);
     });
 
     it('weighted user + job confidence: high-confidence shared value scores higher', () => {
@@ -470,9 +476,9 @@ describe('SQL / TypeScript parity', () => {
       const sqlLow = sqlFormula(valuesRated, plain, job, jobRatedLowConf);
       const tsLow = tsMatch(valuesRated, plain, job, jobRatedLowConf);
 
-      expect(tsHigh.score).toBeCloseTo(sqlHigh.score, 10);
-      expect(tsLow.score).toBeCloseTo(sqlLow.score, 10);
-      expect(tsHigh.score).toBeGreaterThan(tsLow.score);
+      expect(tsHigh.score).toBeCloseTo(assertScore(sqlHigh.score), 10);
+      expect(tsLow.score).toBeCloseTo(assertScore(sqlLow.score), 10);
+      expect(tsHigh.score).toBeGreaterThan(assertScore(tsLow.score));
     });
 
     it('weighted user + job confidence: partial overlap with 4 job values', () => {
@@ -494,7 +500,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job, jobRated);
       const ts = tsMatch(valuesRated, plain, job, jobRated);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.shared_values.sort()).toEqual(sql.shared_values.sort());
     });
 
@@ -515,9 +521,9 @@ describe('SQL / TypeScript parity', () => {
       const sqlLow = sqlFormula(null, plain, job, jobRatedLowConf);
       const tsLow = tsMatch(null, plain, job, jobRatedLowConf);
 
-      expect(tsHigh.score).toBeCloseTo(sqlHigh.score, 10);
-      expect(tsLow.score).toBeCloseTo(sqlLow.score, 10);
-      expect(tsHigh.score).toBeGreaterThan(tsLow.score);
+      expect(tsHigh.score).toBeCloseTo(assertScore(sqlHigh.score), 10);
+      expect(tsLow.score).toBeCloseTo(assertScore(sqlLow.score), 10);
+      expect(tsHigh.score).toBeGreaterThan(assertScore(tsLow.score));
     });
 
     it('flat user + no job confidence → backward compatible with original flat formula', () => {
@@ -528,7 +534,7 @@ describe('SQL / TypeScript parity', () => {
       const tsOrig = calculateMatch(plain, job);
       const tsWithNull = calculateMatch(plain, job, null);
 
-      expect(tsOrig.score).toBeCloseTo(sqlOrig.score, 10);
+      expect(tsOrig.score).toBeCloseTo(assertScore(sqlOrig.score), 10);
       expect(tsWithNull.score).toBe(tsOrig.score);
     });
 
@@ -550,7 +556,7 @@ describe('SQL / TypeScript parity', () => {
       const sql = sqlFormula(valuesRated, plain, job, jobRated);
       const ts = tsMatch(valuesRated, plain, job, jobRated);
 
-      expect(ts.score).toBeCloseTo(sql.score, 10);
+      expect(ts.score).toBeCloseTo(assertScore(sql.score), 10);
       expect(ts.score).toBeGreaterThanOrEqual(0);
       expect(ts.score).toBeLessThanOrEqual(1);
     });
@@ -567,10 +573,10 @@ describe('SQL / TypeScript parity', () => {
       const sqlWithConf = sqlFormula(valuesRated, plain, job, jobRated);
       const tsWithConf = tsMatch(valuesRated, plain, job, jobRated);
 
-      expect(tsWithConf.score).toBeCloseTo(sqlWithConf.score, 10);
+      expect(tsWithConf.score).toBeCloseTo(assertScore(sqlWithConf.score), 10);
       // Single job value → getRankWeight(1, 1) = NEUTRAL_WEIGHT = 0.5,
       // so score WITH confidence is actually different from without (1.0)
-      expect(tsWithConf.score).toBeCloseTo(sqlWithConf.score, 10);
+      expect(tsWithConf.score).toBeCloseTo(assertScore(sqlWithConf.score), 10);
     });
   });
 });

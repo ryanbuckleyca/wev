@@ -10,10 +10,8 @@
 ALTER TABLE public.job_matches
   ADD COLUMN IF NOT EXISTS work_type_score float,
   ADD COLUMN IF NOT EXISTS location_score float;
-
 COMMENT ON COLUMN public.job_matches.work_type_score IS 'Match score based on work type preference (0-1). Defaults to 1.0 when the profile has no work_types set.';
 COMMENT ON COLUMN public.job_matches.location_score IS 'Match score based on ideal_work_environment overlap with job text (0-1). Null when profile did not opt into location or did not provide an ideal_work_environment.';
-
 --------------------------------------------------------------------------------
 -- 2. Replace recalculate_matches_for_user to include work_type_score and location_score
 --------------------------------------------------------------------------------
@@ -381,7 +379,6 @@ BEGIN
   END IF;
 END;
 $func$;
-
 --------------------------------------------------------------------------------
 -- 3. Replace recalculate_matches_for_job to include the same components
 --------------------------------------------------------------------------------
@@ -394,7 +391,6 @@ DROP TRIGGER IF EXISTS trg_job_values_changed ON jobs;
 CREATE TRIGGER trg_job_values_changed
   AFTER INSERT OR UPDATE OF "values", values_rated, skills, work_type, location, summary, description ON jobs
   FOR EACH ROW EXECUTE FUNCTION trigger_recalculate_job_matches();
-
 DROP TRIGGER IF EXISTS trg_profile_values_changed ON profiles;
 CREATE TRIGGER trg_profile_values_changed
   AFTER INSERT OR UPDATE OF "values", values_rated, skills, work_types, ideal_work_environment ON profiles

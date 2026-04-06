@@ -66,6 +66,7 @@ export function useBulletinData(
   const [allJobs, setAllJobs] = useState<JobPosting[]>([]);
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fullDataLoaded, setFullDataLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(new Map());
   const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(new Set());
@@ -73,39 +74,62 @@ export function useBulletinData(
   const refresh = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
+    setFullDataLoaded(false);
     setLoading(true);
     setError(null);
 
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => {
-      controller.abort();
-    }, FETCH_TIMEOUT_MS);
+    const timeoutId = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
     try {
-      const response = await fetch(`/api/bulletin?locale=${locale}`, {
-        signal: controller.signal,
-      });
+      // Fetch first page immediately for fast initial paint
+      const firstPageResponse = await fetch(
+        `/api/bulletin?locale=${locale}&limit=20`,
+        { signal: controller.signal },
+      );
 
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
+      if (!firstPageResponse.ok) {
+        const body = await firstPageResponse.json().catch(() => ({}));
         throw new Error(body.error ?? t('loadFailed'));
       }
 
-      const { jobs: jobsData, lastScrapeTime: rawScrapeTime } = await response.json();
+      const firstPageData = await firstPageResponse.json();
       if (requestId !== requestIdRef.current) return;
 
-      setLastScrapeTime(formatLastScrapeTime(rawScrapeTime, locale));
-      setAllJobs(jobsData ?? []);
+      setLastScrapeTime(formatLastScrapeTime(firstPageData.lastScrapeTime, locale));
+      setAllJobs(firstPageData.jobs ?? []);
+      setLoading(false);
       void setCurrentPage(1);
+
+      // If there are more jobs, fetch the full set in the background.
+      // No abort controller here — we want this to complete even if slow.
+      if (firstPageData.total > firstPageData.jobs.length) {
+        try {
+          const fullResponse = await fetch(`/api/bulletin?locale=${locale}`);
+          if (!fullResponse.ok) {
+            console.warn('[bulletin] Background full fetch failed:', fullResponse.status);
+            setFullDataLoaded(true);
+            return;
+          }
+          const fullData = await fullResponse.json();
+          if (requestId !== requestIdRef.current) return;
+          setAllJobs(fullData.jobs ?? []);
+          setLastScrapeTime(formatLastScrapeTime(fullData.lastScrapeTime, locale));
+          setFullDataLoaded(true);
+        } catch (bgError) {
+          console.warn('[bulletin] Background full fetch error:', bgError);
+          setFullDataLoaded(true);
+        }
+      } else {
+        setFullDataLoaded(true);
+      }
     } catch (fetchError) {
       if (requestId !== requestIdRef.current) return;
       console.error('Error fetching bulletin data:', fetchError);
       setError(getErrorMessage(fetchError, t('loadFailed'), t('timeout')));
+      setLoading(false);
     } finally {
       window.clearTimeout(timeoutId);
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
     }
   }, [locale, setCurrentPage, t]);
 
@@ -156,6 +180,10 @@ export function useBulletinData(
   }, [filterSnapshot, currentPage, setCurrentPage]);
 
   useEffect(() => {
+    // Don't fetch until full data is loaded — avoids a wasted call on the partial first-page set.
+    if (!fullDataLoaded) return;
+
+    // Clear match/bookmark data when user logs out or jobs are gone.
     if (!userId || allJobs.length === 0) {
       setMatchData(new Map());
       setBookmarkedJobIds(new Set());
@@ -170,7 +198,6 @@ export function useBulletinData(
       fetchBookmarkedJobIds(userId, jobIds),
     ]).then(([matches, bookmarked]) => {
       if (cancelled) return;
-
       setMatchData(matches);
       setBookmarkedJobIds(bookmarked);
     });
@@ -178,7 +205,7 @@ export function useBulletinData(
     return () => {
       cancelled = true;
     };
-  }, [allJobs, userId]);
+  }, [allJobs, userId, fullDataLoaded]);
 
   const filteredJobs = useMemo(
     () => sortJobs(filterJobs(allJobs, filters), sortBy, matchData),

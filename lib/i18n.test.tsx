@@ -4,6 +4,14 @@ import Pagination from '@/components/Pagination';
 import Pill from '@/components/Pill';
 import enMessages from '@/messages/en.json';
 import frMessages from '@/messages/fr.json';
+import { vi } from 'vitest';
+
+vi.mock('@/contexts/BulletinFilterContext', () => ({
+  useBulletinFilterContext: () => ({
+    currentPage: 1,
+    setCurrentPage: vi.fn(),
+  }),
+}));
 
 /**
  * Integration tests verifying that i18n is wired up correctly:
@@ -13,9 +21,7 @@ import frMessages from '@/messages/fr.json';
  */
 
 const paginationProps = {
-  currentPage: 1,
   totalPages: 5,
-  onPageChange: () => {},
   totalItems: 50,
   itemsPerPage: 10,
 } as const;
@@ -59,7 +65,7 @@ describe('i18n integration', () => {
     it('renders Pill with English remove label', () => {
       const removeLabel = enMessages.ariaLabels.pill.remove.replace('{label}', 'Tag');
       render(
-        <Pill removable onRemove={() => {}} removeAriaLabel={removeLabel}>
+        <Pill removable onRemove={() => { }} removeAriaLabel={removeLabel}>
           Tag
         </Pill>,
       );
@@ -79,7 +85,7 @@ describe('i18n integration', () => {
     it('renders Pill with French remove label', () => {
       const removeLabel = frMessages.ariaLabels.pill.remove.replace('{label}', 'Étiquette');
       renderWithLocale(
-        <Pill removable onRemove={() => {}} removeAriaLabel={removeLabel}>
+        <Pill removable onRemove={() => { }} removeAriaLabel={removeLabel}>
           Étiquette
         </Pill>,
         'fr',

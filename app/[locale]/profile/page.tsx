@@ -7,14 +7,14 @@ import {
   MAX_PROFILE_SKILLS,
   MAX_PROFILE_VALUES,
 } from '@/lib/hooks/useProfileForm';
-import { WORK_TYPES, type WorkType } from '@/lib/work-types';
-import FormTextarea from '@/components/FormTextarea';
 import SkillsSelector from '@/components/profile/skills/SkillsSelector';
 import ValuesSelector from '@/components/profile/values/ValuesSelector';
+import WorkSettingSection from '@/components/profile/WorkSettingSection';
 import LoadingState from '@/components/LoadingState';
 import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
-import FormLabel from '@/components/FormLabel';
+import FormTextarea from '@/components/FormTextarea';
+import CountBadge from '@/components/CountBadge';
 import ErrorBox from '@/components/ErrorBox';
 import PageLayout from '@/components/PageLayout';
 import CardLayout from '@/components/CardLayout';
@@ -29,7 +29,6 @@ export default function ProfilePage() {
   const { user, loading } = useRequireAuth();
 
   const {
-    profile,
     profileLoading,
     profileError,
     formData,
@@ -49,33 +48,16 @@ export default function ProfilePage() {
     handleValueRemove,
     isSaving,
     handleSaveProfile,
-  } = useProfileForm(user?.id, locale);
+    handleWorkTypeToggle,
+  } = useProfileForm(locale);
 
-  const getWorkTypeLabel = (workType: WorkType) => {
-    if (workType === 'remote') return t('filters.workType.remote');
-    if (workType === 'hybrid') return t('filters.workType.hybrid');
-    return t('filters.workType.office');
-  };
+  const hasLocationValue = selectedValues.includes('Location');
 
   if (loading || profileLoading) {
     return <LoadingState message={t('common.loading')} />;
   }
 
   if (!user) return null;
-
-  if (!profile) {
-    return (
-      <PageLayout maxWidth="md">
-        <CardLayout>
-          <Heading level={1} className="mb-4">
-            {t('profile.noProfileFound')}
-          </Heading>
-          <p className="text-[var(--muted-foreground)] mb-6">{t('profile.noProfileDescription')}</p>
-          <LinkButton href="/">{t('profile.backToJobs')}</LinkButton>
-        </CardLayout>
-      </PageLayout>
-    );
-  }
 
   return (
     <PageLayout maxWidth="md">
@@ -112,42 +94,6 @@ export default function ProfilePage() {
               />
             </div>
 
-            {/* Work Type Preference */}
-            <div>
-              <FormLabel>{t('profile.workType')}</FormLabel>
-              <p className="text-xs text-muted-foreground mb-2">{t('profile.workTypeHint')}</p>
-              <div className="flex gap-2 flex-wrap">
-                {WORK_TYPES.map((workType) => {
-                  const isSelected = formData.work_types.includes(workType);
-                  return (
-                    <button
-                      key={workType}
-                      type="button"
-                      onClick={() => {
-                        if (isSelected) {
-                          setFormData({
-                            ...formData,
-                            work_types: formData.work_types.filter((wt) => wt !== workType),
-                          });
-                        } else {
-                          setFormData({
-                            ...formData,
-                            work_types: [...formData.work_types, workType],
-                          });
-                        }
-                      }}
-                      className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
-                        isSelected
-                          ? 'bg-primary text-white shadow-sm'
-                          : 'bg-gray-50 text-gray-700 border border-gray-100 hover:bg-gray-100'
-                      }`}
-                    >
-                      {getWorkTypeLabel(workType)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Skills */}
             <div>
@@ -155,16 +101,7 @@ export default function ProfilePage() {
                 <h2 className="text-sm font-semibold leading-none text-foreground">
                   {t('profile.skills')}
                 </h2>
-                <span
-                  className={`text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors ${
-                    selectedSkills.length > MAX_PROFILE_SKILLS
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
-                      : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
-                  }`}
-                  aria-label={`${selectedSkills.length}/${MAX_PROFILE_SKILLS}`}
-                >
-                  {selectedSkills.length}/{MAX_PROFILE_SKILLS}
-                </span>
+                <CountBadge count={selectedSkills.length} max={MAX_PROFILE_SKILLS} />
               </div>
 
               {selectedSkills.length > MAX_PROFILE_SKILLS && (
@@ -191,16 +128,7 @@ export default function ProfilePage() {
                 <h2 className="text-sm font-semibold leading-none text-foreground">
                   {t('profile.workValues')}
                 </h2>
-                <span
-                  className={`text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors ${
-                    selectedValues.length > MAX_PROFILE_VALUES
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
-                      : 'bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400'
-                  }`}
-                  aria-label={`${selectedValues.length}/${MAX_PROFILE_VALUES}`}
-                >
-                  {selectedValues.length}/{MAX_PROFILE_VALUES}
-                </span>
+                <CountBadge count={selectedValues.length} max={MAX_PROFILE_VALUES} />
               </div>
 
               {selectedValues.length > MAX_PROFILE_VALUES && (
@@ -219,6 +147,14 @@ export default function ProfilePage() {
                 locale={locale}
               />
             </div>
+
+            <WorkSettingSection
+              workTypes={formData.work_types}
+              location={formData.location}
+              onWorkTypeToggle={handleWorkTypeToggle}
+              onLocationChange={(val) => setFormData({ ...formData, location: val })}
+              hasLocationValue={hasLocationValue}
+            />
           </div>
 
           {/* Actions */}

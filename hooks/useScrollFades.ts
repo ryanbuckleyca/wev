@@ -14,11 +14,18 @@ function computeFades(el: HTMLDivElement) {
 export function useScrollFades() {
   const ref = useRef<HTMLDivElement>(null);
   const [fades, setFades] = useState({ left: false, right: false });
+  const fadesRef = useRef(fades);
 
   const update = useCallback(() => {
     const el = ref.current;
     if (!el) return;
-    setFades(computeFades(el));
+    const next = computeFades(el);
+    // Only update state when the value actually changes — prevents MutationObserver
+    // from triggering a re-render that mutates the DOM that re-fires the observer.
+    if (next.left !== fadesRef.current.left || next.right !== fadesRef.current.right) {
+      fadesRef.current = next;
+      setFades(next);
+    }
   }, []);
 
   useLayoutEffect(() => {
@@ -39,9 +46,7 @@ export function useScrollFades() {
 
     /** scrollWidth can change when children mount without clientWidth changing — ResizeObserver misses that */
     const mo = new MutationObserver(() => {
-      /** Sync read catches layout immediately; rAF catches the next paint if the browser reflows late */
       update();
-      requestAnimationFrame(update);
     });
     mo.observe(el, { childList: true, subtree: true });
 

@@ -62,7 +62,11 @@
       "label": "Municipality",
       "showingFromSelected": "(showing municipalities from selected provinces)",
       "noData": "No municipality data available. Run the scraper to populate location data.",
-      "selectProvince": "Select a province to see municipalities"
+      "selectProvince": "Select a province to see municipalities",
+      "profileDefault": "Using your profile location: {city}.",
+      "profileOverride": "Profile location: {city}. You can override this filter here.",
+      "profileLink": "Edit in profile",
+      "profileReset": "Reset to profile"
     },
     "employmentType": {
       "label": "Employment Type",
@@ -111,11 +115,14 @@
     "totalMatch": "Total Match",
     "values": "Values",
     "skills": "Skills",
-    "workType": "Work type",
     "location": "Location",
     "breakdown": "Breakdown: Values 55% • Skills 35% • Work type 5% • Location 5%",
-    "weightsNote": "Weights are adjusted when some signals are missing."
-    ,"locationRequiresProfile": "You selected 'Location' in your profile — add an Ideal Work Environment description to enable location matching."
+    "weightsNote": "Weights are adjusted when some signals are missing.",
+    "locationRequiresProfile": "You selected 'Location' in your profile — add an Ideal Work Environment description to enable location matching.",
+    "locationOutOfRange": "Outside your commute range",
+    "locationNearby": "Within commute range",
+    "locationRegional": "Within regional range",
+    "locationPrioritized": "Location is prioritized in your values"
   },
   "expand": {
     "expandAll": "Expand all",
@@ -316,7 +323,13 @@
     "updateSuccess": "Profile updated successfully!",
     "updateFailed": "Failed to update profile",
     "photoUploadSuccess": "Photo uploaded successfully!",
-    "photoUploadFailed": "Failed to upload photo"
+    "photoUploadFailed": "Failed to upload photo",
+    "locationAndWorkSetting": "Location & Work Setting",
+    "location": "Current City / Region",
+    "locationHint": "Set your preferred location to activate distance-based matching. If you've ranked Location as a value, it carries more weight in your matches.",
+    "locationPriorityCallout": "You've prioritized Location — these preferences carry extra weight in your matches.",
+    "locationSearchError": "Could not load location results. Please try again.",
+    "locationSuggestionsLabel": "Location suggestions"
   },
   "accountSettings": {
     "title": "Account Settings",

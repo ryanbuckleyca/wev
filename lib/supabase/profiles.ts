@@ -1,6 +1,9 @@
 import { createClient } from './client';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 
+const PROFILE_COLUMNS =
+  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, created_at, updated_at' as const;
+
 export type Profile = {
   id: string;
   full_name: string | null;
@@ -10,7 +13,11 @@ export type Profile = {
   skills: string[];
   skills_rated: RatedSkill[] | null;
   work_types: string[];
-  ideal_work_environment: string | null;
+  lat: number | null;
+  lng: number | null;
+  municipality: string | null;
+  province: string | null;
+  location_display_name: string | null;
   profile_photo_url: string | null;
   created_at: string;
   updated_at: string;
@@ -24,37 +31,52 @@ export type ProfileUpdateData = {
   skills?: string[];
   skills_rated?: RatedSkill[] | null;
   work_types?: string[];
-  ideal_work_environment?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  municipality?: string | null;
+  province?: string | null;
+  location_display_name?: string | null;
   profile_photo_url?: string | null;
 };
 
 /**
- * Fetch a user's profile
+ * Create a blank profile for a user. Internal — called by getProfile when no row exists.
  */
-export async function getProfile(userId: string): Promise<Profile | null> {
+async function createProfile(userId: string): Promise<Profile> {
   const supabase = createClient();
 
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).limit(1);
+  const { data, error } = await supabase
+    .from('profiles')
+    .insert({ id: userId, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .select(PROFILE_COLUMNS)
+    .single();
 
   if (error) {
+    throw new Error(error.message || 'Failed to create profile');
+  }
+
+  return data as Profile;
+}
+
+/**
+ * Fetch a user's profile, creating a blank one if it doesn't exist.
+ */
+export async function getProfile(userId: string): Promise<Profile> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(PROFILE_COLUMNS)
+    .eq('id', userId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return createProfile(userId);
     console.error('Error fetching profile:', error);
-    return null;
+    throw new Error(error.message || 'Failed to fetch profile');
   }
 
-  if (!data || data.length === 0) {
-    return null;
-  }
-
-  const profile = data[0] as Profile;
-  return {
-    ...profile,
-    values: profile.values ?? [],
-    values_rated: profile.values_rated ?? null,
-    skills: profile.skills ?? [],
-    skills_rated: profile.skills_rated ?? null,
-    work_types: profile.work_types ?? [],
-    ideal_work_environment: profile.ideal_work_environment ?? null,
-  };
+  return data as Profile;
 }
 
 /**
@@ -64,8 +86,7 @@ export async function updateProfile(userId: string, updates: ProfileUpdateData):
   const supabase = createClient();
 
   // Match recalculation for user-driven profile edits is handled by the DB trigger on
-  // `profiles`, not by calling `/api/matches/calculate-user`. If matching expands to
-  // `work_types` or `ideal_work_environment`, update that trigger's watched columns too.
+  // `profiles`, not by calling `/api/matches/calculate-user`.
   const { data, error } = await supabase
     .from('profiles')
     .update({
@@ -73,7 +94,7 @@ export async function updateProfile(userId: string, updates: ProfileUpdateData):
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId)
-    .select()
+    .select(PROFILE_COLUMNS)
     .single();
 
   if (error) {

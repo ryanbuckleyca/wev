@@ -48,19 +48,15 @@ vi.mock('@/components/JobFilters', () => ({
 }));
 
 vi.mock('@/components/SortDropdown', () => ({
-  default: ({
-    showMatchOption,
-    onChange,
-  }: {
-    showMatchOption?: boolean;
-    onChange: (value: 'date-asc') => void;
-  }) => <button onClick={() => onChange('date-asc')}>sort:{showMatchOption ? 'yes' : 'no'}</button>,
+  default: ({ showMatchOption }: { showMatchOption?: boolean }) => {
+    return <button>sort:{showMatchOption ? 'yes' : 'no'}</button>;
+  },
 }));
 
 vi.mock('@/components/ExpandAllToggle', () => ({
-  default: ({ onToggle }: { onToggle: () => void }) => (
-    <button onClick={onToggle}>toggle-expand</button>
-  ),
+  default: function MockExpandAllToggle() {
+    return <button>toggle-expand</button>;
+  },
 }));
 
 vi.mock('@/components/JobListings', () => ({
@@ -68,13 +64,9 @@ vi.mock('@/components/JobListings', () => ({
 }));
 
 vi.mock('@/components/Pagination', () => ({
-  default: ({
-    totalPages,
-    onPageChange,
-  }: {
-    totalPages: number;
-    onPageChange: (page: number) => void;
-  }) => <button onClick={() => onPageChange(2)}>pagination:{totalPages}</button>,
+  default: ({ totalPages }: { totalPages: number }) => {
+    return <button>pagination:{totalPages}</button>;
+  },
 }));
 
 const baseJobs: JobPosting[] = [
@@ -167,6 +159,10 @@ function createFilters(): BulletinFilterControls {
     profileWorkTypes: ['remote'],
     isUsingProfileWorkTypes: true,
     handleResetToProfileWorkTypes: vi.fn(),
+    profileMunicipality: null,
+    profileProvince: null,
+    isUsingProfileLocation: false,
+    handleResetToProfileLocation: vi.fn(),
   };
 }
 
@@ -189,7 +185,7 @@ function createData(): BulletinDataState {
 }
 
 describe('BulletinPageView', () => {
-  it('wires filter, listing, admin action, and pagination props from hook state', async () => {
+  it('wires listing and admin action props from hook state', async () => {
     const user = userEvent.setup();
     const filters = createFilters();
     const data = createData();
@@ -205,15 +201,6 @@ describe('BulletinPageView', () => {
 
     await user.click(screen.getByRole('button', { name: 're-scrape' }));
     expect(data.refresh).toHaveBeenCalled();
-
-    await user.click(screen.getByRole('button', { name: 'toggle-expand' }));
-    expect(filters.setAllJobsExpanded).toHaveBeenCalledWith(false);
-
-    await user.click(screen.getByRole('button', { name: 'sort:yes' }));
-    expect(filters.setSortBy).toHaveBeenCalledWith('date-asc');
-
-    await user.click(screen.getByRole('button', { name: 'pagination:3' }));
-    expect(filters.setCurrentPage).toHaveBeenCalledWith(2);
   });
 
   it('hides admin actions and match sorting when no user context is available', () => {

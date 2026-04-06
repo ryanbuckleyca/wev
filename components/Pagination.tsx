@@ -5,21 +5,20 @@ import ResponsivePagination from 'react-responsive-pagination';
 import { twMerge } from 'tailwind-merge';
 import { dropEllipsis } from 'react-responsive-pagination/narrowBehaviour';
 
+import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
+
 interface PaginationProps {
-  currentPage: number;
   totalPages: number;
-  onPageChange: (page: number) => void;
   totalItems: number;
   itemsPerPage: number;
 }
 
 export default function Pagination({
-  currentPage,
   totalPages,
-  onPageChange,
   totalItems,
   itemsPerPage,
 }: PaginationProps) {
+  const { currentPage, setCurrentPage: onPageChange } = useBulletinFilterContext();
   const t = useTranslations();
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);

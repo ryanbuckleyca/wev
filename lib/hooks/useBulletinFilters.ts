@@ -11,7 +11,7 @@ import {
   useQueryState,
 } from 'nuqs';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/lib/hooks/useProfile';
+import { useProfile } from '@/contexts/ProfileContext';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import {
   JOB_SORT_OPTIONS,
@@ -56,6 +56,10 @@ export interface BulletinFilterControls {
   profileWorkTypes: WorkType[];
   isUsingProfileWorkTypes: boolean;
   handleResetToProfileWorkTypes: () => void;
+  profileMunicipality: string | null;
+  profileProvince: string | null;
+  isUsingProfileLocation: boolean;
+  handleResetToProfileLocation: () => void;
 }
 
 function hasSameSelections(left: string[], right: string[]) {
@@ -67,7 +71,8 @@ function hasSameSelections(left: string[], right: string[]) {
 
 export function useBulletinFilters(): BulletinFilterControls {
   const { user } = useAuth();
-  const { profile, loading: profileLoading } = useProfile(user?.id);
+  const userId = user?.id ?? null;
+  const { profile, loading: profileLoading } = useProfile();
   const searchParams = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useQueryState('q', parseAsString.withDefault(''));
@@ -112,6 +117,7 @@ export function useBulletinFilters(): BulletinFilterControls {
     parseAsStringLiteral(JOB_SORT_OPTIONS).withDefault('date-desc'),
   );
   const appliedProfileWorkTypesUserIdRef = useRef<string | null>(null);
+  const appliedProfileLocationUserIdRef = useRef<string | null>(null);
 
   const profileWorkTypes = useMemo(
     () => normalizeWorkTypes(profile?.work_types),
@@ -122,32 +128,35 @@ export function useBulletinFilters(): BulletinFilterControls {
     [selectedWorkTypes],
   );
 
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => { searchParamsRef.current = searchParams; });
+
   useEffect(() => {
-    if (!user?.id) {
+    if (!userId) {
       appliedProfileWorkTypesUserIdRef.current = null;
       return;
     }
-    if (appliedProfileWorkTypesUserIdRef.current === user.id) return;
+    if (appliedProfileWorkTypesUserIdRef.current === userId) return;
     if (profileLoading) return;
 
     if (profileWorkTypes.length === 0) {
-      appliedProfileWorkTypesUserIdRef.current = user.id;
+      appliedProfileWorkTypesUserIdRef.current = userId;
       return;
     }
 
-    const hasWorkTypeParam = searchParams?.has('workType') ?? false;
+    const hasWorkTypeParam = searchParamsRef.current?.has('workType') ?? false;
     if (hasWorkTypeParam || selectedWorkTypes.length > 0) {
-      appliedProfileWorkTypesUserIdRef.current = user.id;
+      appliedProfileWorkTypesUserIdRef.current = userId;
       return;
     }
 
+    console.debug('[useBulletinFilters] applying profile work types', { profileWorkTypes });
     void setSelectedWorkTypes(profileWorkTypes);
-    appliedProfileWorkTypesUserIdRef.current = user.id;
+    appliedProfileWorkTypesUserIdRef.current = userId;
   }, [
-    user?.id,
+    userId,
     profileLoading,
     profileWorkTypes,
-    searchParams,
     selectedWorkTypes.length,
     setSelectedWorkTypes,
   ]);
@@ -156,6 +165,60 @@ export function useBulletinFilters(): BulletinFilterControls {
     if (profileWorkTypes.length === 0) return;
     void setSelectedWorkTypes(profileWorkTypes);
   }, [profileWorkTypes, setSelectedWorkTypes]);
+
+  // Pre-fill municipality + province from profile on first load (same pattern as work type)
+  const profileMunicipality = profile?.municipality ?? null;
+  const profileProvince = profile?.province ?? null;
+
+  useEffect(() => {
+    if (!userId) {
+      appliedProfileLocationUserIdRef.current = null;
+      return;
+    }
+    if (appliedProfileLocationUserIdRef.current === userId) return;
+    if (profileLoading) return;
+    if (!profileMunicipality || !profileProvince) {
+      appliedProfileLocationUserIdRef.current = userId;
+      return;
+    }
+
+    const hasMunicipalityParam = searchParamsRef.current?.has('municipality') ?? false;
+    const hasProvinceParam = searchParamsRef.current?.has('province') ?? false;
+    if (hasMunicipalityParam || hasProvinceParam || selectedMunicipalities.length > 0 || selectedProvinces.length > 0) {
+      appliedProfileLocationUserIdRef.current = userId;
+      return;
+    }
+
+    console.debug('[useBulletinFilters] applying profile location', { profileMunicipality, profileProvince });
+    void setSelectedProvinces([profileProvince]);
+    void setSelectedMunicipalities([profileMunicipality]);
+    appliedProfileLocationUserIdRef.current = userId;
+  }, [
+    userId,
+    profileLoading,
+    profileMunicipality,
+    profileProvince,
+    selectedMunicipalities.length,
+    selectedProvinces.length,
+    setSelectedMunicipalities,
+    setSelectedProvinces,
+  ]);
+
+  const handleResetToProfileLocation = useCallback(() => {
+    if (!profileMunicipality || !profileProvince) return;
+    void setSelectedProvinces([profileProvince]);
+    void setSelectedMunicipalities([profileMunicipality]);
+  }, [profileMunicipality, profileProvince, setSelectedProvinces, setSelectedMunicipalities]);
+
+  const isUsingProfileLocation = useMemo(() => {
+    if (!profileMunicipality || !profileProvince) return false;
+    return (
+      selectedMunicipalities.length === 1 &&
+      selectedMunicipalities[0] === profileMunicipality &&
+      selectedProvinces.length === 1 &&
+      selectedProvinces[0] === profileProvince
+    );
+  }, [profileMunicipality, profileProvince, selectedMunicipalities, selectedProvinces]);
 
   const filters = useMemo<BulletinFilters>(
     () => ({
@@ -232,5 +295,9 @@ export function useBulletinFilters(): BulletinFilterControls {
     profileWorkTypes,
     isUsingProfileWorkTypes,
     handleResetToProfileWorkTypes,
+    profileMunicipality,
+    profileProvince,
+    isUsingProfileLocation,
+    handleResetToProfileLocation,
   };
 }

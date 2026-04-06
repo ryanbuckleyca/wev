@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { render, screen, waitFor } from '@/test-utils';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
-import { useProfile } from '@/lib/hooks/useProfile';
+import { useProfile } from '@/contexts/ProfileContext';
 import { MAX_PROFILE_SKILLS } from '@/lib/hooks/useProfileForm';
 import notify from '@/lib/toast';
 import ProfilePage from './page';
@@ -15,7 +15,7 @@ vi.mock('@/lib/hooks/useRequireAuth', () => ({
   useRequireAuth: vi.fn(),
 }));
 
-vi.mock('@/lib/hooks/useProfile', () => ({
+vi.mock('@/contexts/ProfileContext', () => ({
   useProfile: vi.fn(),
 }));
 
@@ -53,7 +53,6 @@ const baseProfile = {
   values: [],
   skills: ['uri-1'],
   work_types: ['remote'],
-  ideal_work_environment: 'Calm, collaborative, flexible hours.',
   created_at: '2026-03-06T00:00:00.000Z',
   updated_at: '2026-03-06T00:00:00.000Z',
 };
@@ -236,9 +235,10 @@ describe('ProfilePage skills integration', () => {
     render(<ProfilePage />);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringMatching(/^\/api\/skills\/all\?locale=en&cb=/),
+      const call = fetchMock.mock.calls.find((c) =>
+        String(c[0]).match(/^\/api\/skills\/all\?locale=en&cb=/),
       );
+      expect(call).toBeDefined();
     });
 
     await user.click(screen.getByRole('button', { name: /search and add skills/i }));

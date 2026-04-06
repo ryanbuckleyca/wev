@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import JobListings from '@/components/JobListings';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
+import { useProfile } from '@/contexts/ProfileContext';
 import LoadingState from '@/components/LoadingState';
 import PageLayout from '@/components/PageLayout';
 import type { JobPosting, JobMatchData } from '@/lib/supabase';
@@ -13,6 +14,7 @@ export default function BookmarksPage() {
   const t = useTranslations();
   const locale = useLocale();
   const { user, loading } = useRequireAuth();
+  const { profile } = useProfile();
   const [jobs, setJobs] = useState<JobPosting[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(new Map());
@@ -86,7 +88,7 @@ export default function BookmarksPage() {
             jobs={jobs}
             loading={false}
             error={null}
-            profile={null}
+            profile={profile}
             matchData={matchData}
             bookmarkedJobIds={new Set(jobs.map((j: { id: string }) => j.id))}
             onJobBookmarkChange={(job, bookmarked) => {

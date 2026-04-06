@@ -1,0 +1,91 @@
+import { type EscoSkill } from '@/lib/types/skills';
+import { type RatedSkill } from '@/lib/value-ratings';
+
+export const MAX_PROFILE_SKILLS = 10;
+export const MAX_PROFILE_VALUES = 5;
+
+export type RawSkillRow = {
+  concept_uri: string;
+  term: string;
+  definition: string | null;
+  skill_type: string | null;
+  reuse_level: string | null;
+};
+
+export type RawSkillLibraryRow = {
+  uri: string;
+  term: string;
+  definition: string | null;
+  type: string | null;
+  level: string | null;
+  aliases?: string[];
+};
+
+/**
+ * Maps a database skill row to our internal EscoSkill format.
+ */
+export function toEscoSkill(s: RawSkillRow): EscoSkill {
+  return {
+    uri: s.concept_uri,
+    preferredLabel: { en: s.term, fr: s.term },
+    description: { en: s.definition, fr: s.definition },
+    skillType: s.skill_type as EscoSkill['skillType'],
+    reuseLevel: s.reuse_level as EscoSkill['reuseLevel'],
+  };
+}
+
+/**
+ * Maps a library API skill row to our internal EscoSkill format.
+ */
+export function toEscoSkillFromLibrary(s: RawSkillLibraryRow): EscoSkill {
+  return {
+    uri: s.uri,
+    preferredLabel: { en: s.term, fr: s.term },
+    description: { en: s.definition, fr: s.definition },
+    skillType: s.type as EscoSkill['skillType'],
+    reuseLevel: s.level as EscoSkill['reuseLevel'],
+    aliases: s.aliases,
+  };
+}
+
+/**
+ * Partitions a list of skills into ranked and unranked based on profile data.
+ */
+export function partitionByRating(
+  skills: EscoSkill[],
+  skillsRated: RatedSkill[],
+): { sorted: EscoSkill[]; cutoff: number } {
+  const rankMap = new Map(skillsRated.map((sr) => [sr.skill, sr.rank]));
+  const ranked: EscoSkill[] = [];
+  const unranked: EscoSkill[] = [];
+  for (const s of skills) {
+    if (rankMap.get(s.uri) != null) ranked.push(s);
+    else unranked.push(s);
+  }
+  ranked.sort((a, b) => rankMap.get(a.uri)! - rankMap.get(b.uri)!);
+  return { sorted: [...ranked, ...unranked], cutoff: ranked.length };
+}
+
+export type ValidationError = { key: string; params?: Record<string, string | number> };
+
+/**
+ * Validates that the profile selections are within allowed limits.
+ */
+export function validateProfileLimits(
+  selectedValuesCount: number,
+  selectedSkillsCount: number,
+): ValidationError | null {
+  if (selectedValuesCount > MAX_PROFILE_VALUES) {
+    return {
+      key: 'valuesMaxExceeded',
+      params: { max: MAX_PROFILE_VALUES, current: selectedValuesCount - MAX_PROFILE_VALUES },
+    };
+  }
+  if (selectedSkillsCount > MAX_PROFILE_SKILLS) {
+    return {
+      key: 'skillsMaxExceeded',
+      params: { max: MAX_PROFILE_SKILLS, current: selectedSkillsCount - MAX_PROFILE_SKILLS },
+    };
+  }
+  return null;
+}

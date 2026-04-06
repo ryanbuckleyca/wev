@@ -3,14 +3,14 @@
 import { useLocale } from 'next-intl';
 import BulletinPageView from '@/components/BulletinPageView';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { useBulletinData } from '@/lib/hooks/useBulletinData';
 import { useBulletinFilters } from '@/lib/hooks/useBulletinFilters';
-import { useProfile } from '@/lib/hooks/useProfile';
 
 export default function Home() {
   const locale = useLocale();
   const { role, user } = useAuth();
-  const { profile } = useProfile(user?.id);
+  const { profile } = useProfile();
   const filters = useBulletinFilters();
   const data = useBulletinData(locale, user?.id ?? null, {
     filters: filters.filters,
@@ -18,6 +18,7 @@ export default function Home() {
     currentPage: filters.currentPage,
     setCurrentPage: filters.setCurrentPage,
   });
+
 
   return (
     <BulletinPageView

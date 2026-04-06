@@ -62,7 +62,11 @@
       "label": "Municipalité",
       "showingFromSelected": "(affichage des municipalités des provinces sélectionnées)",
       "noData": "Aucune donnée de municipalité disponible. Exécutez le scraper pour remplir les données de localisation.",
-      "selectProvince": "Sélectionnez une province pour voir les municipalités"
+      "selectProvince": "Sélectionnez une province pour voir les municipalités",
+      "profileDefault": "Lieu du profil utilisé : {city}.",
+      "profileOverride": "Lieu du profil : {city}. Vous pouvez remplacer ce filtre ici.",
+      "profileLink": "Modifier le profil",
+      "profileReset": "Revenir au profil"
     },
     "employmentType": {
       "label": "Type d'emploi",
@@ -111,11 +115,14 @@
     "totalMatch": "Correspondance totale",
     "values": "Valeurs",
     "skills": "Compétences",
-    "workType": "Type de travail",
     "location": "Localisation",
     "breakdown": "Répartition : Valeurs 55% • Compétences 35% • Type de travail 5% • Localisation 5%",
-    "weightsNote": "Les pondérations sont ajustées lorsque certaines signaux manquent."
-    ,"locationRequiresProfile": "Vous avez sélectionné « Localisation » dans votre profil — ajoutez une description de l'environnement de travail idéal pour activer la correspondance par localisation."
+    "weightsNote": "Les pondérations sont ajustées lorsque certaines signaux manquent.",
+    "locationRequiresProfile": "Vous avez sélectionné « Localisation » dans votre profil — ajoutez une description de l'environnement de travail idéal pour activer la correspondance par localisation.",
+    "locationOutOfRange": "En dehors de votre zone de trajet",
+    "locationNearby": "Dans votre zone de trajet",
+    "locationRegional": "Dans votre zone régionale",
+    "locationPrioritized": "Lieu est priorisé dans vos valeurs"
   },
   "expand": {
     "expandAll": "Tout développer",
@@ -316,7 +323,13 @@
     "updateSuccess": "Profil mis à jour avec succès !",
     "updateFailed": "Échec de la mise à jour du profil",
     "photoUploadSuccess": "Photo téléversée avec succès !",
-    "photoUploadFailed": "Échec du téléchargement de la photo"
+    "photoUploadFailed": "Échec du téléchargement de la photo",
+    "locationAndWorkSetting": "Lieu & Mode de travail",
+    "location": "Ville / Région actuelle",
+    "locationHint": "Indiquez votre lieu préféré pour activer la correspondance basée sur la distance. Si vous avez classé Lieu comme valeur, cela a plus de poids dans vos correspondances.",
+    "locationPriorityCallout": "Vous avez priorisé Lieu — ces préférences ont plus de poids dans vos correspondances.",
+    "locationSearchError": "Impossible de charger les résultats de localisation. Veuillez réessayer.",
+    "locationSuggestionsLabel": "Suggestions de localisation"
   },
   "accountSettings": {
     "title": "Paramètres du compte",
