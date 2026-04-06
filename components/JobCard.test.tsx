@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent, act } from '@/test-utils';
+import { render, screen, fireEvent, act } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import JobCard from './JobCard';
 import type { JobPosting } from '@/lib/supabase';
