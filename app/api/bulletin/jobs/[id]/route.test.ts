@@ -1,8 +1,12 @@
 import { mockRequireAdminResponse } from '@/test-utils/require-admin-mock';
 
-vi.mock('next/cache', () => ({
-  revalidateTag: vi.fn(),
-}));
+vi.mock('next/cache', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/cache')>();
+  return {
+    ...actual,
+    revalidateTag: vi.fn(),
+  };
+});
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { PATCH } from './route';
