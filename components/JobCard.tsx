@@ -12,6 +12,7 @@ import JobCardFooter from './JobCardFooter';
 import JobCardHeader from './JobCardHeader';
 import JobCardDetails from './JobCardDetails';
 import { useBookmarkAction } from '@/lib/hooks/useBookmarkAction';
+import type { SkillLabel } from '@/lib/bulletin/types';
 
 interface JobCardProps {
   job: JobPosting;
@@ -24,6 +25,7 @@ interface JobCardProps {
   match?: JobMatchData | null;
   initialBookmarked?: boolean;
   selectedWorkTypes?: string[];
+  skillLabels?: Record<string, SkillLabel>;
 }
 
 export default function JobCard({
@@ -37,6 +39,7 @@ export default function JobCard({
   match: matchProp,
   initialBookmarked = false,
   selectedWorkTypes,
+  skillLabels: skillLabelsProp,
 }: JobCardProps) {
   const t = useTranslations();
   const locale = useLocale();
@@ -44,18 +47,28 @@ export default function JobCard({
 
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
 
-  // Derive skill labels/definitions
+  // Derive skill labels/definitions from global map or fallback
   const skillLabels = useMemo(() => {
-    const labels = job.skill_labels ?? {};
+    const source = skillLabelsProp ?? job.skill_labels ?? {};
     const terms: Record<string, string> = {};
     const defs: Record<string, string> = {};
-    for (const [uri, l] of Object.entries(labels)) {
-      terms[uri] = l.term;
-      const parts = [l.definition, l.scope_note].filter(Boolean);
+    for (const uri of job.skills || []) {
+      const l = source[uri];
+      
+      // Fallback: Use the final portion of the URI path and format it (e.g. "teamwork" from ".../team-work").
+      // Only replace dashes if it looks like a URI slug (has slashes) to avoid mangling simple test strings.
+      const lastPart = uri.includes('/') ? uri.split('/').pop() : uri;
+      const fallbackTerm = (lastPart && uri.includes('/')) 
+        ? lastPart.replace(/-/g, ' ') 
+        : (lastPart ?? uri);
+
+      terms[uri] = l?.term ?? fallbackTerm;
+      
+      const parts = [l?.definition, l?.scope_note].filter(Boolean);
       if (parts.length > 0) defs[uri] = parts.join('<br/><br/>');
     }
     return { terms, defs };
-  }, [job.skill_labels]);
+  }, [job.skill_labels, job.skills, skillLabelsProp]);
 
   const { bookmarked, isLoading: bookmarkLoading, toggleBookmark } = useBookmarkAction(
     job,

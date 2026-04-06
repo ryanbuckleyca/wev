@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-type SkillLabel = { term: string; definition: string | null; scope_note: string | null };
+export type SkillLabel = { term: string; definition: string | null; scope_note: string | null };
 
 type SkillRow = {
   concept_uri: string;
@@ -28,22 +28,31 @@ export async function resolveSkillLabels(
 
   if (allUris.length === 0) return map;
 
+  const promises = [];
   // Batch into chunks to avoid PostgREST URL length limits
   for (let i = 0; i < allUris.length; i += BATCH_SIZE) {
     const batch = allUris.slice(i, i + BATCH_SIZE);
-    const { data: skillRows, error } = await supabase
-      .from('esco_skills')
-      .select(
-        'concept_uri, preferred_label_en, preferred_label_fr, description_en, description_fr, scope_note_en, scope_note_fr',
-      )
-      .in('concept_uri', batch);
+    promises.push(
+      supabase
+        .from('esco_skills')
+        .select(
+          'concept_uri, preferred_label_en, preferred_label_fr, description_en, description_fr, scope_note_en, scope_note_fr',
+        )
+        .in('concept_uri', batch)
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('[resolveSkillLabels] batch error:', error.message);
+            return [];
+          }
+          return (data ?? []) as SkillRow[];
+        })
+    );
+  }
 
-    if (error) {
-      console.error('[resolveSkillLabels] batch error:', error.message);
-      continue;
-    }
+  const results = await Promise.all(promises);
 
-    for (const row of (skillRows ?? []) as SkillRow[]) {
+  for (const skillRows of results) {
+    for (const row of skillRows) {
       const term =
         locale === 'fr'
           ? row.preferred_label_fr || row.preferred_label_en

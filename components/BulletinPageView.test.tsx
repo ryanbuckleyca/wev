@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { render, screen } from '@/test-utils';
 import BulletinPageView from './BulletinPageView';
-import type { BulletinDataState } from '@/lib/hooks/useBulletinData';
+import type { BulletinDataState } from '@/lib/bulletin/types';
 import type { BulletinFilterControls } from '@/lib/hooks/useBulletinFilters';
 import type { JobPosting } from '@/lib/supabase';
 
@@ -176,6 +176,7 @@ function createData(): BulletinDataState {
     error: null,
     matchData: new Map(),
     bookmarkedJobIds: new Set(['job-1']),
+    skillLabels: {},
     totalPages: 3,
     itemsPerPage: 20,
     refresh: vi.fn(async () => {}),

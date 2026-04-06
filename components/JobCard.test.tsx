@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@/test-utils';
+import { render, screen, fireEvent, act } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import JobCard from './JobCard';
 import type { JobPosting } from '@/lib/supabase';
@@ -232,18 +232,25 @@ describe('JobCard', () => {
 
     // Click the expand button (chevron) within the skills summary pill to expand individual skill pills
     const expandButton = screen.getByRole('button', { name: 'Expand' });
-    await userEvent.click(expandButton);
+    
+    // Use fake timers to advance the staggered expansion animation (88ms per pill)
+    vi.useFakeTimers();
+    fireEvent.click(expandButton);
+    
+    act(() => {
+      vi.advanceTimersByTime(1000); // Ensure all staggers complete
+    });
 
     // When expanded, all skills should be visible (no capping when expanded)
-    await waitFor(() => {
-      expect(screen.getByText('skill-one')).toBeVisible();
-      expect(screen.getByText('skill-two')).toBeVisible();
-      expect(screen.getByText('skill-three')).toBeVisible();
-      expect(screen.getByText('skill-four')).toBeVisible();
-      expect(screen.getByText('skill-five')).toBeVisible();
-      expect(screen.getByText('skill-six')).toBeVisible();
-      expect(screen.getByText('skill-seven')).toBeVisible();
-    });
+    expect(screen.getByText('skill-one')).toBeVisible();
+    expect(screen.getByText('skill-two')).toBeVisible();
+    expect(screen.getByText('skill-three')).toBeVisible();
+    expect(screen.getByText('skill-four')).toBeVisible();
+    expect(screen.getByText('skill-five')).toBeVisible();
+    expect(screen.getByText('skill-six')).toBeVisible();
+    expect(screen.getByText('skill-seven')).toBeVisible();
+
+    vi.useRealTimers();
 
     vi.unstubAllGlobals();
   });

@@ -1,32 +1,59 @@
-'use client';
+import { Suspense } from 'react';
+import { routing } from '@/i18n/routing';
+import { parseLocale } from '@/lib/resolve-skill-labels';
+import { getRequestUser } from '@/lib/auth/request-user';
+import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
+import { rolesIncludeAdmin } from '@/lib/auth';
+import { fetchBulletinJobs } from '@/lib/bulletin/server-data';
+import BulletinPageClient from '@/components/BulletinPageClient';
+import LoadingIndicator from '@/components/LoadingIndicator';
 
-import { useLocale } from 'next-intl';
-import BulletinPageView from '@/components/BulletinPageView';
-import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/contexts/ProfileContext';
-import { useBulletinData } from '@/lib/hooks/useBulletinData';
-import { useBulletinFilters } from '@/lib/hooks/useBulletinFilters';
+// Renders the data fetch independently inside a Suspense boundary
+async function BulletinDataContainer({
+  parsedLocale,
+}: {
+  parsedLocale: 'en' | 'fr';
+}) {
+  // Move all blocking queries inside the Suspense boundary so they don't delay the initial HTML stream
+  const authPromise = getRequestUser();
+  const jobsPromise = fetchBulletinJobs(parsedLocale);
 
-export default function Home() {
-  const locale = useLocale();
-  const { role, user } = useAuth();
-  const { profile } = useProfile();
-  const filters = useBulletinFilters();
-  const data = useBulletinData(locale, user?.id ?? null, {
-    filters: filters.filters,
-    sortBy: filters.sortBy,
-    currentPage: filters.currentPage,
-    setCurrentPage: filters.setCurrentPage,
-  });
+  const [auth, bulletinData] = await Promise.all([authPromise, jobsPromise]);
 
+  let isAdmin = false;
+  if (auth.ok) {
+    const rolesResult = await fetchUserRolesFromService(auth.user.id);
+    const resolvedRoles = rolesResult.ok ? rolesResult.roles : ['user'];
+    isAdmin = rolesIncludeAdmin(resolvedRoles);
+  }
 
   return (
-    <BulletinPageView
-      isAdmin={role === 'admin'}
-      isLoggedIn={!!user}
-      profile={profile}
-      filters={filters}
-      data={data}
+    <BulletinPageClient
+      initialJobs={bulletinData.jobs}
+      initialScrapeTime={bulletinData.lastScrapeTime}
+      initialSkillLabels={bulletinData.skillLabels}
+      isLoggedIn={auth.ok}
+      isAdmin={isAdmin}
     />
+  );
+}
+
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale: rawLocale } = await params;
+  const validLocales = routing.locales as readonly string[];
+  const locale = validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale;
+  const parsedLocale = parseLocale(locale);
+
+  // The outer page renders the instant HTML layout shell immediately.
+  // The BulletinDataContainer fetches the jobs JSON payload and auth sequentially
+  // inside the Suspense boundary, swapping the spinner once ready.
+  return (
+    <Suspense fallback={<LoadingIndicator />}>
+      <BulletinDataContainer parsedLocale={parsedLocale} />
+    </Suspense>
   );
 }

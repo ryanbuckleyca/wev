@@ -77,7 +77,6 @@ import { useSearchParams } from 'next/navigation';
 const mockUseAuth = vi.mocked(useAuth);
 const mockUseProfile = vi.mocked(useProfile);
 const mockUseSearchParams = vi.mocked(useSearchParams);
-const mockFetch = vi.fn();
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
 const profileWithWorkType = {
@@ -92,19 +91,9 @@ const profileWithWorkType = {
   updated_at: '2026-03-06T00:00:00.000Z',
 };
 
-function jsonResponse(body: unknown) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }),
-  );
-}
-
 describe('Home page work type defaults', () => {
   beforeAll(() => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.stubGlobal('fetch', mockFetch);
   });
 
   beforeEach(() => {
@@ -139,9 +128,6 @@ describe('Home page work type defaults', () => {
         updateProfile: () => Promise.resolve(null),
       } as never;
     });
-
-    mockFetch.mockReset();
-    mockFetch.mockImplementation(() => jsonResponse({ jobs: [], lastScrapeTime: null }));
   });
 
   afterEach(() => {
@@ -150,17 +136,24 @@ describe('Home page work type defaults', () => {
 
   afterAll(() => {
     consoleErrorSpy.mockRestore();
-    vi.unstubAllGlobals();
   });
 
   it('adds the profile work type to default filters after the profile loads', async () => {
-    const { default: Home } = await import('./page');
+    // page.tsx is now an async Server Component that can't be rendered in unit
+    // tests. We test BulletinPageClient directly with server-provided initial data.
+    const { default: BulletinPageClient } = await import(
+      '@/components/BulletinPageClient'
+    );
 
-    render(<Home />);
-
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalled();
-    });
+    render(
+      <BulletinPageClient
+        initialJobs={[]}
+        initialScrapeTime={null}
+        initialSkillLabels={{}}
+        isLoggedIn={true}
+        isAdmin={false}
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Remove Hybrid' })).toBeVisible();
