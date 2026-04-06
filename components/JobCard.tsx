@@ -52,12 +52,17 @@ export default function JobCard({
     const source = skillLabelsProp ?? job.skill_labels ?? {};
     const terms: Record<string, string> = {};
     const defs: Record<string, string> = {};
-    
     for (const uri of job.skills || []) {
       const l = source[uri];
-      // Fallback: If we match a skill but don't have the dictionary entry, 
-      // we still want to show the URI or a placeholder so the UI doesn't look empty.
-      terms[uri] = l?.term ?? uri.split('/').pop()?.replace(/-/g, ' ') ?? uri;
+      
+      // Fallback: Use the final portion of the URI path and format it (e.g. "teamwork" from ".../team-work").
+      // Only replace dashes if it looks like a URI slug (has slashes) to avoid mangling simple test strings.
+      const lastPart = uri.includes('/') ? uri.split('/').pop() : uri;
+      const fallbackTerm = (lastPart && uri.includes('/')) 
+        ? lastPart.replace(/-/g, ' ') 
+        : (lastPart ?? uri);
+
+      terms[uri] = l?.term ?? fallbackTerm;
       
       const parts = [l?.definition, l?.scope_note].filter(Boolean);
       if (parts.length > 0) defs[uri] = parts.join('<br/><br/>');
