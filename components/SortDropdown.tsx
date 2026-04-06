@@ -15,14 +15,15 @@ type SortOption =
   | 'salary-asc'
   | 'org-asc';
 
+import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
+
 interface SortDropdownProps {
-  sortBy: SortOption;
-  onChange: (s: SortOption) => void;
   /** When false, hide the 'Best match' option (requires being logged in) */
   showMatchOption?: boolean;
 }
 
-export default function SortDropdown({ sortBy, onChange, showMatchOption }: SortDropdownProps) {
+export default function SortDropdown({ showMatchOption }: SortDropdownProps) {
+  const { sortBy, setSortBy: onChange } = useBulletinFilterContext();
   const t = useTranslations();
 
   const OPTIONS: { value: SortOption; label: string; group?: string }[] = [

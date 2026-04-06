@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
 import { requireAdminResponse } from '@/lib/auth/require-admin';
+import { BULLETIN_CACHE_TAG } from '@/app/api/bulletin/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +33,8 @@ export async function PATCH(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    revalidateTag(BULLETIN_CACHE_TAG, 'default');
 
     return NextResponse.json(data);
   } catch (err) {

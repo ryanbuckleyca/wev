@@ -15,11 +15,13 @@ import FilterButtonGroup from './job-filters/FilterButtonGroup';
 import MunicipalityFilterSection from './job-filters/MunicipalityFilterSection';
 import type { JobFiltersProps } from './job-filters/types';
 import { useJobFiltersModel } from './job-filters/useJobFiltersModel';
+import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
 
 export default function JobFilters(props: JobFiltersProps) {
+  const controls = useBulletinFilterContext();
   const {
     searchQuery,
-    onSearchChange,
+    setSearchQuery: onSearchChange,
     selectedOrganizations,
     selectedProvinces,
     selectedMunicipalities,
@@ -27,19 +29,19 @@ export default function JobFilters(props: JobFiltersProps) {
     selectedSources,
     selectedWorkTypes,
     showOnlySse,
-    onShowOnlySseChange,
+    setShowOnlySse: onShowOnlySseChange,
     showJobsWithoutSalary,
-    onShowJobsWithoutSalaryChange,
+    setShowJobsWithoutSalary: onShowJobsWithoutSalaryChange,
     postedWithin,
-    onPostedWithinChange,
+    setPostedWithin: onPostedWithinChange,
     filtersExpanded,
-    onFiltersExpandedChange,
+    setFiltersExpanded: onFiltersExpandedChange,
     isUsingProfileWorkTypes = false,
-    onResetToProfileWorkTypes,
+    handleResetToProfileWorkTypes: onResetToProfileWorkTypes,
     profileMunicipality,
     isUsingProfileLocation = false,
-    onResetToProfileLocation,
-  } = props;
+    handleResetToProfileLocation: onResetToProfileLocation,
+  } = controls;
   const t = useTranslations();
   const model = useJobFiltersModel(props);
 
@@ -112,11 +114,11 @@ export default function JobFilters(props: JobFiltersProps) {
                 <span>
                   {isUsingProfileWorkTypes
                     ? t('filters.workType.profileDefault', {
-                        types: model.profileWorkTypeLabel,
-                      })
+                      types: model.profileWorkTypeLabel,
+                    })
                     : t('filters.workType.profileOverride', {
-                        types: model.profileWorkTypeLabel,
-                      })}
+                      types: model.profileWorkTypeLabel,
+                    })}
                 </span>
                 <StyledLink href="/profile" variant="text" size="sm" className="p-0">
                   {t('filters.workType.profileLink')}

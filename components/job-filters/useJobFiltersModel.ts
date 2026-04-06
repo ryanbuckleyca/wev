@@ -15,6 +15,7 @@ import {
 import { truncateMiddle } from '@/lib/string-utils';
 import { WORK_TYPES, normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import type { JobFiltersProps } from './types';
+import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
 
 type PostedWithinOption = '1-week' | '2-weeks' | '3-weeks' | '1-month';
 
@@ -100,28 +101,31 @@ export function useJobFiltersModel({
   jobs,
   filteredJobsCount,
   totalJobsCount,
-  searchQuery,
-  onSearchChange,
-  selectedOrganizations,
-  onOrganizationsChange,
-  selectedProvinces,
-  onProvincesChange,
-  selectedMunicipalities,
-  onMunicipalitiesChange,
-  selectedEmploymentTypes,
-  onEmploymentTypesChange,
-  selectedSources,
-  onSourcesChange,
-  selectedWorkTypes,
-  onWorkTypesChange,
-  showOnlySse,
-  onShowOnlySseChange,
-  showJobsWithoutSalary,
-  onShowJobsWithoutSalaryChange,
-  postedWithin,
-  onPostedWithinChange,
-  profileWorkTypes = [],
 }: JobFiltersProps): JobFiltersModel {
+  const controls = useBulletinFilterContext();
+  const {
+    searchQuery,
+    setSearchQuery: onSearchChange,
+    selectedOrganizations,
+    setSelectedOrganizations: onOrganizationsChange,
+    selectedProvinces,
+    setSelectedProvinces: onProvincesChange,
+    selectedMunicipalities,
+    setSelectedMunicipalities: onMunicipalitiesChange,
+    selectedEmploymentTypes,
+    setSelectedEmploymentTypes: onEmploymentTypesChange,
+    selectedSources,
+    setSelectedSources: onSourcesChange,
+    selectedWorkTypes,
+    setSelectedWorkTypes: onWorkTypesChange,
+    showOnlySse,
+    setShowOnlySse: onShowOnlySseChange,
+    showJobsWithoutSalary,
+    setShowJobsWithoutSalary: onShowJobsWithoutSalaryChange,
+    postedWithin,
+    setPostedWithin: onPostedWithinChange,
+    profileWorkTypes = [],
+  } = controls;
   const t = useTranslations();
   const hasProfileWorkTypes = profileWorkTypes.length > 0;
   const defaultWorkTypes = hasProfileWorkTypes ? profileWorkTypes : EMPTY_WORK_TYPES;

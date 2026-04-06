@@ -1,10 +1,48 @@
 import type { ReactNode } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type { JobPosting } from '@/lib/supabase';
+import type { WorkType } from '@/lib/work-types';
 import enMessages from '@/messages/en.json';
 import type { JobFiltersProps } from './types';
 import { useJobFiltersModel } from './useJobFiltersModel';
+
+const mockControls = {
+  searchQuery: 'climate policy',
+  setSearchQuery: vi.fn(),
+  selectedOrganizations: ['Org One'],
+  setSelectedOrganizations: vi.fn(),
+  selectedProvinces: ['Ontario'],
+  setSelectedProvinces: vi.fn(),
+  selectedMunicipalities: ['Toronto'],
+  setSelectedMunicipalities: vi.fn(),
+  selectedEmploymentTypes: ['Full-time'],
+  setSelectedEmploymentTypes: vi.fn(),
+  selectedSources: ['Source One'],
+  setSelectedSources: vi.fn(),
+  selectedWorkTypes: ['remote'],
+  setSelectedWorkTypes: vi.fn(),
+  showOnlySse: true,
+  setShowOnlySse: vi.fn(),
+  showJobsWithoutSalary: false,
+  setShowJobsWithoutSalary: vi.fn(),
+  postedWithin: '1-week',
+  setPostedWithin: vi.fn(),
+  filtersExpanded: false,
+  setFiltersExpanded: vi.fn(),
+  profileWorkTypes: ['remote', 'hybrid'] as WorkType[],
+  isUsingProfileWorkTypes: false,
+  handleResetToProfileWorkTypes: vi.fn(),
+  profileMunicipality: null as string | null,
+  profileProvince: null as string | null,
+  isUsingProfileLocation: false,
+  handleResetToProfileLocation: vi.fn(),
+};
+
+vi.mock('@/contexts/BulletinFilterContext', () => ({
+  useBulletinFilterContext: () => mockControls,
+}));
 
 function createProps(): JobFiltersProps {
   return {
@@ -24,6 +62,7 @@ function createProps(): JobFiltersProps {
         employment_type: 'Full-time',
         source: 'Source One',
         is_sse: true,
+        summary: '',
       },
       {
         id: 'job-2',
@@ -40,35 +79,11 @@ function createProps(): JobFiltersProps {
         employment_type: 'Contract',
         source: 'Source Two',
         is_sse: false,
+        summary: '',
       },
-    ],
+    ] as JobPosting[],
     filteredJobsCount: 1,
     totalJobsCount: 2,
-    searchQuery: 'climate policy',
-    onSearchChange: vi.fn(),
-    selectedOrganizations: ['Org One'],
-    onOrganizationsChange: vi.fn(),
-    selectedProvinces: ['Ontario'],
-    onProvincesChange: vi.fn(),
-    selectedMunicipalities: ['Toronto'],
-    onMunicipalitiesChange: vi.fn(),
-    selectedEmploymentTypes: ['Full-time'],
-    onEmploymentTypesChange: vi.fn(),
-    selectedSources: ['Source One'],
-    onSourcesChange: vi.fn(),
-    selectedWorkTypes: ['remote'],
-    onWorkTypesChange: vi.fn(),
-    showOnlySse: true,
-    onShowOnlySseChange: vi.fn(),
-    showJobsWithoutSalary: false,
-    onShowJobsWithoutSalaryChange: vi.fn(),
-    postedWithin: '1-week',
-    onPostedWithinChange: vi.fn(),
-    filtersExpanded: false,
-    onFiltersExpandedChange: vi.fn(),
-    profileWorkTypes: ['remote', 'hybrid'],
-    isUsingProfileWorkTypes: false,
-    onResetToProfileWorkTypes: vi.fn(),
   };
 }
 
@@ -81,6 +96,10 @@ function Wrapper({ children }: { children: ReactNode }) {
 }
 
 describe('useJobFiltersModel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('builds active filter chips with working remove handlers', () => {
     const props = createProps();
     const { result } = renderHook(() => useJobFiltersModel(props), {
@@ -109,9 +128,9 @@ describe('useJobFiltersModel', () => {
       result.current.activeFilterChips.find((chip) => chip.id === 'province-Ontario')?.onRemove?.();
     });
 
-    expect(props.onPostedWithinChange).toHaveBeenCalledWith('any');
-    expect(props.onSearchChange).toHaveBeenCalledWith('');
-    expect(props.onProvincesChange).toHaveBeenCalledWith([]);
+    expect(mockControls.setPostedWithin).toHaveBeenCalledWith('any');
+    expect(mockControls.setSearchQuery).toHaveBeenCalledWith('');
+    expect(mockControls.setSelectedProvinces).toHaveBeenCalledWith([]);
   });
 
   it('applies suggested defaults and clears back to the show-all state', () => {
@@ -124,23 +143,24 @@ describe('useJobFiltersModel', () => {
       result.current.applySuggestedDefaults();
     });
 
-    expect(props.onSearchChange).toHaveBeenCalledWith('');
-    expect(props.onOrganizationsChange).toHaveBeenCalledWith([]);
-    expect(props.onProvincesChange).toHaveBeenCalledWith([]);
-    expect(props.onMunicipalitiesChange).toHaveBeenCalledWith([]);
-    expect(props.onEmploymentTypesChange).toHaveBeenCalledWith([]);
-    expect(props.onSourcesChange).toHaveBeenCalledWith([]);
-    expect(props.onWorkTypesChange).toHaveBeenCalledWith(['remote', 'hybrid']);
-    expect(props.onShowOnlySseChange).toHaveBeenCalledWith(true);
-    expect(props.onShowJobsWithoutSalaryChange).toHaveBeenCalledWith(true);
-    expect(props.onPostedWithinChange).toHaveBeenCalledWith('2-weeks');
+    expect(mockControls.setSearchQuery).toHaveBeenCalledWith('');
+    expect(mockControls.setSelectedOrganizations).toHaveBeenCalledWith([]);
+    expect(mockControls.setSelectedProvinces).toHaveBeenCalledWith([]);
+    expect(mockControls.setSelectedMunicipalities).toHaveBeenCalledWith([]);
+    expect(mockControls.setSelectedEmploymentTypes).toHaveBeenCalledWith([]);
+    expect(mockControls.setSelectedSources).toHaveBeenCalledWith([]);
+    expect(mockControls.setSelectedWorkTypes).toHaveBeenCalledWith(['remote', 'hybrid']);
+    expect(mockControls.setShowOnlySse).toHaveBeenCalledWith(true);
+    expect(mockControls.setShowJobsWithoutSalary).toHaveBeenCalledWith(true);
+    expect(mockControls.setPostedWithin).toHaveBeenCalledWith('2-weeks');
 
     act(() => {
       result.current.clearAllFilters();
     });
 
-    expect(props.onShowOnlySseChange).toHaveBeenCalledWith(false);
-    expect(props.onWorkTypesChange).toHaveBeenCalledWith([]);
-    expect(props.onPostedWithinChange).toHaveBeenCalledWith('any');
+    expect(mockControls.setShowOnlySse).toHaveBeenCalledWith(false);
+    expect(mockControls.setSelectedWorkTypes).toHaveBeenCalledWith([]);
+    expect(mockControls.setPostedWithin).toHaveBeenCalledWith('any');
   });
 });
+

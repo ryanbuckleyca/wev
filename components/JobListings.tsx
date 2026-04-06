@@ -6,6 +6,8 @@ import { JobPosting, JobMatchData } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 import JobCard from './JobCard';
 import { useAuth } from '@/contexts/AuthContext';
+import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
+import { useContext } from 'react';
 import LoadingIndicator from './LoadingIndicator';
 
 interface JobListingsProps {
@@ -15,10 +17,8 @@ interface JobListingsProps {
   profile: Profile | null;
   onJobSseChange?: (jobId: string, isSse: boolean) => void;
   onJobBookmarkChange?: (job: JobPosting, bookmarked: boolean) => void;
-  allExpanded?: boolean;
   matchData?: Map<string, JobMatchData>;
   bookmarkedJobIds?: Set<string>;
-  selectedWorkTypes?: string[];
 }
 
 export default function JobListings({
@@ -28,14 +28,17 @@ export default function JobListings({
   profile,
   onJobSseChange,
   onJobBookmarkChange,
-  allExpanded = true,
   matchData,
   bookmarkedJobIds,
-  selectedWorkTypes,
 }: JobListingsProps) {
   const t = useTranslations();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const { role } = useAuth();
+  
+  // Conditionally consume context so we don't break the Bookmarks page which isn't wrapped in it.
+  const filterContext = useContext(BulletinFilterContext);
+  const allExpanded = filterContext?.allJobsExpanded ?? true;
+  const selectedWorkTypes = filterContext?.selectedWorkTypes;
 
   const handleSseToggle = async (job: JobPosting) => {
     const newValue = !job.is_sse;

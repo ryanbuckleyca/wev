@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import {
@@ -8,14 +7,12 @@ import {
   MAX_PROFILE_SKILLS,
   MAX_PROFILE_VALUES,
 } from '@/lib/hooks/useProfileForm';
-import { WORK_TYPES, type WorkType } from '@/lib/work-types';
 import SkillsSelector from '@/components/profile/skills/SkillsSelector';
 import ValuesSelector from '@/components/profile/values/ValuesSelector';
-import LocationAutocomplete from '@/components/profile/LocationAutocomplete';
+import WorkSettingSection from '@/components/profile/WorkSettingSection';
 import LoadingState from '@/components/LoadingState';
 import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
-import FormLabel from '@/components/FormLabel';
 import FormTextarea from '@/components/FormTextarea';
 import CountBadge from '@/components/CountBadge';
 import ErrorBox from '@/components/ErrorBox';
@@ -55,16 +52,6 @@ export default function ProfilePage() {
   } = useProfileForm(locale);
 
   const hasLocationValue = selectedValues.includes('Location');
-
-  const workTypeLabels = useMemo<Record<WorkType, string>>(
-    () => ({
-      remote: t('filters.workType.remote'),
-      hybrid: t('filters.workType.hybrid'),
-      office: t('filters.workType.office'),
-    }),
-    [t],
-  );
-
 
   if (loading || profileLoading) {
     return <LoadingState message={t('common.loading')} />;
@@ -161,65 +148,13 @@ export default function ProfilePage() {
               />
             </div>
 
-            {/* Location & Work Setting */}
-            <div>
-              <h2 className="text-sm font-semibold leading-none text-foreground mb-2">
-                {t('profile.locationAndWorkSetting')}
-              </h2>
-
-              {/* Work Type Preference */}
-              <div>
-                <FormLabel>{t('profile.workType')}</FormLabel>
-                <p className="text-xs text-muted-foreground mb-2">{t('profile.workTypeHint')}</p>
-                <div className="flex gap-2 flex-wrap">
-                  {WORK_TYPES.map((workType) => {
-                    const isSelected = formData.work_types.includes(workType);
-                    return (
-                      <button
-                        key={workType}
-                        type="button"
-                        onClick={() => handleWorkTypeToggle(workType)}
-                        className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
-                          isSelected
-                            ? 'bg-primary text-white shadow-sm'
-                            : 'bg-gray-50 text-gray-700 border border-gray-100 hover:bg-gray-100'
-                        }`}
-                      >
-                        {workTypeLabels[workType]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Location autocomplete */}
-              <div className="mt-4">
-                <FormLabel htmlFor="location-autocomplete">
-                  {t('profile.location')}
-                </FormLabel>
-                <LocationAutocomplete
-                  inputId="location-autocomplete"
-                  value={
-                    formData.location
-                      ? {
-                          lat: formData.location.lat,
-                          lng: formData.location.lng,
-                          display_name: formData.location.display_name,
-                        }
-                      : null
-                  }
-                  onChange={(val) => setFormData({ ...formData, location: val })}
-                  hint={t('profile.locationHint')}
-                />
-              </div>
-
-              {/* Contextual callout when Location is a ranked value */}
-              {hasLocationValue && (
-                <Alert variant="info" className="mt-3">
-                  {t('profile.locationPriorityCallout')}
-                </Alert>
-              )}
-            </div>
+            <WorkSettingSection
+              workTypes={formData.work_types}
+              location={formData.location}
+              onWorkTypeToggle={handleWorkTypeToggle}
+              onLocationChange={(val) => setFormData({ ...formData, location: val })}
+              hasLocationValue={hasLocationValue}
+            />
           </div>
 
           {/* Actions */}

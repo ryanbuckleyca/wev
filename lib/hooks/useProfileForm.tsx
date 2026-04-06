@@ -18,9 +18,15 @@ import {
 import { useSkillsLibrary, fetchSkillsByUri } from '@/lib/hooks/useSkillsLibrary';
 import notify from '@/lib/toast';
 
-export { adjustCutoffOnRemove, adjustCutoffOnReorder, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES };
+export type LocationState = {
+  lat: number;
+  lng: number;
+  display_name: string;
+  name: string;
+  province: string;
+};
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+export { adjustCutoffOnRemove, adjustCutoffOnReorder, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES };
 
 export function useProfileForm(locale: 'en' | 'fr') {
   const t = useTranslations('profile');
@@ -32,13 +38,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     full_name: '',
     bio: '',
     work_types: [] as WorkType[],
-    location: null as {
-      lat: number;
-      lng: number;
-      display_name: string;
-      name: string;
-      province: string;
-    } | null,
+    location: null as LocationState | null,
   });
 
   const { allSkills, isLoading: isLibraryLoading } = useSkillsLibrary(locale);
@@ -78,12 +78,12 @@ export function useProfileForm(locale: 'en' | 'fr') {
       location:
         profile.lat != null && profile.lng != null && profile.location_display_name
           ? {
-              lat: profile.lat,
-              lng: profile.lng,
-              display_name: profile.location_display_name,
-              name: profile.municipality ?? '',
-              province: profile.province ?? '',
-            }
+            lat: profile.lat,
+            lng: profile.lng,
+            display_name: profile.location_display_name,
+            name: profile.municipality ?? '',
+            province: profile.province ?? '',
+          }
           : null,
     });
 
