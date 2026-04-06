@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-type SkillLabel = { term: string; definition: string | null; scope_note: string | null };
+export type SkillLabel = { term: string; definition: string | null; scope_note: string | null };
 
 type SkillRow = {
   concept_uri: string;

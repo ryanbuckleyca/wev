@@ -24,6 +24,7 @@ interface JobCardProps {
   match?: JobMatchData | null;
   initialBookmarked?: boolean;
   selectedWorkTypes?: string[];
+  skillLabels?: Record<string, import('@/lib/resolve-skill-labels').SkillLabel>;
 }
 
 export default function JobCard({
@@ -37,6 +38,7 @@ export default function JobCard({
   match: matchProp,
   initialBookmarked = false,
   selectedWorkTypes,
+  skillLabels: skillLabelsProp,
 }: JobCardProps) {
   const t = useTranslations();
   const locale = useLocale();
@@ -44,18 +46,21 @@ export default function JobCard({
 
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
 
-  // Derive skill labels/definitions
+  // Derive skill labels/definitions from global map or fallback
   const skillLabels = useMemo(() => {
-    const labels = job.skill_labels ?? {};
+    const source = skillLabelsProp ?? job.skill_labels ?? {};
     const terms: Record<string, string> = {};
     const defs: Record<string, string> = {};
-    for (const [uri, l] of Object.entries(labels)) {
+    
+    for (const uri of job.skills || []) {
+      const l = source[uri];
+      if (!l) continue;
       terms[uri] = l.term;
       const parts = [l.definition, l.scope_note].filter(Boolean);
       if (parts.length > 0) defs[uri] = parts.join('<br/><br/>');
     }
     return { terms, defs };
-  }, [job.skill_labels]);
+  }, [job.skill_labels, job.skills, skillLabelsProp]);
 
   const { bookmarked, isLoading: bookmarkLoading, toggleBookmark } = useBookmarkAction(
     job,

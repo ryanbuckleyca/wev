@@ -9,10 +9,12 @@ import { useBulletinFilters } from '@/lib/hooks/useBulletinFilters';
 import type { SerializedMatchData } from '@/lib/bulletin/server-data';
 import type { JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
+import type { SkillLabel } from '@/lib/resolve-skill-labels';
 
 interface BulletinPageClientProps {
   initialJobs: JobPosting[];
   initialScrapeTime: string | null;
+  initialSkillLabels: Record<string, SkillLabel>;
   isLoggedIn: boolean;
   isAdmin: boolean;
   // Provided when the user was authenticated server-side:
@@ -31,6 +33,7 @@ interface BulletinPageClientProps {
 export default function BulletinPageClient({
   initialJobs,
   initialScrapeTime,
+  initialSkillLabels,
   isLoggedIn,
   isAdmin,
   initialMatchData,
@@ -77,6 +80,7 @@ export default function BulletinPageClient({
       profile={profile}
       filters={filters}
       data={data}
+      skillLabels={initialSkillLabels}
     />
   );
 }

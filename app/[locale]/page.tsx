@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { routing } from '@/i18n/routing';
 import { parseLocale } from '@/lib/resolve-skill-labels';
 import { getRequestUser } from '@/lib/auth/request-user';
@@ -5,6 +6,30 @@ import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
 import { rolesIncludeAdmin } from '@/lib/auth';
 import { fetchBulletinJobs } from '@/lib/bulletin/server-data';
 import BulletinPageClient from '@/components/BulletinPageClient';
+import LoadingIndicator from '@/components/LoadingIndicator';
+
+// Renders the data fetch independently inside a Suspense boundary
+async function BulletinDataContainer({
+  parsedLocale,
+  isLoggedIn,
+  isAdmin,
+}: {
+  parsedLocale: 'en' | 'fr';
+  isLoggedIn: boolean;
+  isAdmin: boolean;
+}) {
+  const bulletinData = await fetchBulletinJobs(parsedLocale);
+
+  return (
+    <BulletinPageClient
+      initialJobs={bulletinData.jobs}
+      initialScrapeTime={bulletinData.lastScrapeTime}
+      initialSkillLabels={bulletinData.skillLabels}
+      isLoggedIn={isLoggedIn}
+      isAdmin={isAdmin}
+    />
+  );
+}
 
 export default async function Home({
   params,
@@ -16,39 +41,28 @@ export default async function Home({
   const locale = validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale;
   const parsedLocale = parseLocale(locale);
 
-  // ─── Fast path: cached jobs + cookie auth run in parallel ─────────────
-  // Jobs are cached server-side for 5 min (unstable_cache) → ~1ms on warm hit.
-  // Auth reads the cookie → no external network call.
-  // User-specific data (matches, bookmarks, profile) loads client-side after
-  // hydration to avoid blocking the HTML response on Supabase round-trips.
-  const [bulletinData, auth] = await Promise.all([
-    fetchBulletinJobs(parsedLocale),
-    getRequestUser(),
-  ]);
+  // Auth reads the cookie (now via getSession) → zero network calls, so we
+  // await it BEFORE the Suspense boundary so the auth state passes synchronously.
+  const auth = await getRequestUser();
 
-  if (!auth.ok) {
-    return (
-      <BulletinPageClient
-        initialJobs={bulletinData.jobs}
-        initialScrapeTime={bulletinData.lastScrapeTime}
-        isLoggedIn={false}
-        isAdmin={false}
-      />
-    );
+  let isAdmin = false;
+  if (auth.ok) {
+    // Roles is a single tiny cached query — worth blocking on so the admin UI renders
+    // correctly on first paint (avoids a flash of the non-admin view).
+    const rolesResult = await fetchUserRolesFromService(auth.user.id);
+    const resolvedRoles = rolesResult.ok ? rolesResult.roles : ['user'];
+    isAdmin = rolesIncludeAdmin(resolvedRoles);
   }
 
-  // Roles is a single tiny query — worth blocking on so the admin UI renders
-  // correctly on first paint (avoids a flash of the non-admin view).
-  const rolesResult = await fetchUserRolesFromService(auth.user.id);
-  const resolvedRoles = rolesResult.ok ? rolesResult.roles : ['user'];
-  const isAdmin = rolesIncludeAdmin(resolvedRoles);
-
+  // The outer page renders the instant HTML layout shell immediately.
+  // The BulletinDataContainer fetches the jobs JSON payload and streams it.
   return (
-    <BulletinPageClient
-      initialJobs={bulletinData.jobs}
-      initialScrapeTime={bulletinData.lastScrapeTime}
-      isLoggedIn={true}
-      isAdmin={isAdmin}
-    />
+    <Suspense fallback={<LoadingIndicator />}>
+      <BulletinDataContainer
+        parsedLocale={parsedLocale}
+        isLoggedIn={auth.ok}
+        isAdmin={isAdmin}
+      />
+    </Suspense>
   );
 }

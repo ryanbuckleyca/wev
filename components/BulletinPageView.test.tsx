@@ -190,7 +190,7 @@ describe('BulletinPageView', () => {
     const filters = createFilters();
     const data = createData();
 
-    render(<BulletinPageView isAdmin isLoggedIn profile={null} filters={filters} data={data} />);
+    render(<BulletinPageView isAdmin isLoggedIn profile={null} filters={filters} data={data} skillLabels={{}} />);
 
     expect(screen.getByText('job-filters:3:2:3')).toBeVisible();
     expect(screen.getByText('job-listings:1')).toBeVisible();
@@ -207,7 +207,7 @@ describe('BulletinPageView', () => {
     const filters = createFilters();
     const data = createData();
 
-    render(<BulletinPageView isAdmin={false} isLoggedIn={false} profile={null} filters={filters} data={data} />);
+    render(<BulletinPageView isAdmin={false} isLoggedIn={false} profile={null} filters={filters} data={data} skillLabels={{}} />);
 
     expect(screen.queryByRole('button', { name: 're-scrape' })).not.toBeInTheDocument();
     expect(screen.queryByText(/copy-jobs:/)).not.toBeInTheDocument();

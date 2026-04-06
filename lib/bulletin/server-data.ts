@@ -39,9 +39,12 @@ export const fetchBulletinJobs = unstable_cache(
 
     const jobsWithSource = normalizeJobsWithSource(jobsResult.data);
     const labelMap = await resolveSkillLabels(supabaseServer, jobsWithSource, locale);
-    const jobs = attachSkillLabels(jobsWithSource, labelMap);
 
-    return { jobs: jobs as unknown as JobPosting[], lastScrapeTime: scrapeResult.data?.run_at ?? null };
+    return {
+      jobs: jobsWithSource as unknown as JobPosting[],
+      lastScrapeTime: scrapeResult.data?.run_at ?? null,
+      skillLabels: Object.fromEntries(labelMap),
+    };
   },
   [BULLETIN_CACHE_TAG],
   { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },

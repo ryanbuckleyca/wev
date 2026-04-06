@@ -149,6 +149,7 @@ describe('Home page work type defaults', () => {
       <BulletinPageClient
         initialJobs={[]}
         initialScrapeTime={null}
+        initialSkillLabels={{}}
         isLoggedIn={true}
         isAdmin={false}
       />,

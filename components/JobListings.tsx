@@ -19,6 +19,7 @@ interface JobListingsProps {
   onJobBookmarkChange?: (job: JobPosting, bookmarked: boolean) => void;
   matchData?: Map<string, JobMatchData>;
   bookmarkedJobIds?: Set<string>;
+  skillLabels?: Record<string, import('@/lib/resolve-skill-labels').SkillLabel>;
 }
 
 export default function JobListings({
@@ -30,6 +31,7 @@ export default function JobListings({
   onJobBookmarkChange,
   matchData,
   bookmarkedJobIds,
+  skillLabels,
 }: JobListingsProps) {
   const t = useTranslations();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -106,6 +108,7 @@ export default function JobListings({
             match={matchData?.get(job.id)}
             initialBookmarked={bookmarkedJobIds?.has(job.id) ?? false}
             selectedWorkTypes={selectedWorkTypes}
+            skillLabels={skillLabels}
           />
         ))}
       </div>
