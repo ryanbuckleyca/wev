@@ -20,10 +20,13 @@ export async function GET(request: Request) {
       return NextResponse.json([], { status: 200 });
     }
 
+    // Normalize query: lower case, decompose to NFD, and strip combining diacritical marks
+    const normalizedQuery = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
     const { data, error } = await supabaseServer
       .from('cities')
       .select('name, province, display_name, lat, lng')
-      .ilike('display_name', `${query}%`)
+      .like('search_name', `${normalizedQuery}%`)
       .limit(MAX_RESULTS);
 
     if (error) {

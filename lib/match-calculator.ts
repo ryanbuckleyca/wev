@@ -477,7 +477,13 @@ export async function calculateUserMatches(userId: string): Promise<void> {
       return;
     }
 
-    const matches: MatchResult[] = (jobs ?? []).map((job) => ({
+    const validJobs = (jobs ?? []).filter((job) =>
+      (job.values && job.values.length > 0) ||
+      (job.values_rated && (job.values_rated as unknown[]).length > 0) ||
+      (job.skills && job.skills.length > 0)
+    );
+
+    const matches: MatchResult[] = validJobs.map((job) => ({
         user_id: userId,
         job_id: job.id,
         ...computeMatchForPair(profile as ProfileRow, job as JobRow),
@@ -521,7 +527,13 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
       return;
     }
 
-    const matches: MatchResult[] = (profiles ?? []).map((profile) => ({
+    const validProfiles = (profiles ?? []).filter((profile) =>
+      (profile.values && profile.values.length > 0) ||
+      (profile.values_rated && (profile.values_rated as unknown[]).length > 0) ||
+      (profile.skills && profile.skills.length > 0)
+    );
+
+    const matches: MatchResult[] = validProfiles.map((profile) => ({
         user_id: profile.id,
         job_id: jobId,
         ...computeMatchForPair(profile as ProfileRow, job as JobRow),
