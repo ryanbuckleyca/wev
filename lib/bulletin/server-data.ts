@@ -4,7 +4,7 @@ import { unstable_cache } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
 import normalizeJobsWithSource from '@/lib/normalize-job';
 import { resolveSkillLabels, attachSkillLabels } from '@/lib/resolve-skill-labels';
-import type { JobMatchData } from '@/lib/supabase';
+import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
@@ -41,7 +41,7 @@ export const fetchBulletinJobs = unstable_cache(
     const labelMap = await resolveSkillLabels(supabaseServer, jobsWithSource, locale);
     const jobs = attachSkillLabels(jobsWithSource, labelMap);
 
-    return { jobs: jobs as JobPosting[], lastScrapeTime: scrapeResult.data?.run_at ?? null };
+    return { jobs: jobs as unknown as JobPosting[], lastScrapeTime: scrapeResult.data?.run_at ?? null };
   },
   [BULLETIN_CACHE_TAG],
   { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
