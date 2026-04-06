@@ -3,7 +3,7 @@ import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
 import normalizeJobsWithSource from '@/lib/normalize-job';
-import { resolveSkillLabels, attachSkillLabels } from '@/lib/resolve-skill-labels';
+import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 

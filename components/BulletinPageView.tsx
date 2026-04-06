@@ -22,7 +22,6 @@ interface BulletinPageViewProps {
   profile: Profile | null;
   filters: BulletinFilterControls;
   data: BulletinDataState;
-  skillLabels: Record<string, import('@/lib/resolve-skill-labels').SkillLabel>;
 }
 
 export default function BulletinPageView({
@@ -31,7 +30,6 @@ export default function BulletinPageView({
   profile,
   filters,
   data,
-  skillLabels,
 }: BulletinPageViewProps) {
   const t = useTranslations();
 
@@ -102,7 +100,7 @@ export default function BulletinPageView({
             bookmarkedJobIds={data.bookmarkedJobIds}
             onJobSseChange={data.handleJobSseChange}
             onJobBookmarkChange={data.handleJobBookmarkChange}
-            skillLabels={skillLabels}
+            skillLabels={data.skillLabels}
           />
 
           <Pagination

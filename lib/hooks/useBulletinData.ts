@@ -34,6 +34,7 @@ interface InitialData {
   scrapeTime: string | null;
   matchData?: SerializedMatchData;
   bookmarkedJobIds?: string[];
+  skillLabels?: Record<string, import('@/lib/resolve-skill-labels').SkillLabel>;
 }
 
 export interface BulletinDataState {
@@ -45,6 +46,7 @@ export interface BulletinDataState {
   error: string | null;
   matchData: Map<string, JobMatchData>;
   bookmarkedJobIds: Set<string>;
+  skillLabels: Record<string, import('@/lib/resolve-skill-labels').SkillLabel>;
   totalPages: number;
   itemsPerPage: number;
   refresh: () => Promise<void>;
@@ -88,7 +90,7 @@ export function useBulletinData(
 
   // If initialData is provided, the page was server-rendered with data —
   // skip the loading state entirely.
-  const hasInitialData = !!initialData?.jobs?.length;
+  const hasInitialData = !!initialData;
 
   const [allJobs, setAllJobs] = useState<JobPosting[]>(
     () => initialData?.jobs ?? [],
@@ -105,6 +107,9 @@ export function useBulletinData(
   );
   const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(
     () => new Set(initialData?.bookmarkedJobIds ?? []),
+  );
+  const [skillLabels, setSkillLabels] = useState<Record<string, import('@/lib/resolve-skill-labels').SkillLabel>>(
+    () => initialData?.skillLabels ?? {}
   );
 
   // ─── Refresh: single fetch from the API endpoint ────────────────────────
@@ -134,6 +139,9 @@ export function useBulletinData(
 
       setLastScrapeTime(formatLastScrapeTime(data.lastScrapeTime, locale));
       setAllJobs(data.jobs ?? []);
+      if (data.skillLabels) {
+        setSkillLabels(data.skillLabels);
+      }
       setLoading(false);
       void setCurrentPage(1);
     } catch (fetchError) {
@@ -286,6 +294,7 @@ export function useBulletinData(
     error,
     matchData,
     bookmarkedJobIds,
+    skillLabels,
     totalPages,
     itemsPerPage: ITEMS_PER_PAGE,
     refresh,

@@ -70,6 +70,7 @@ export default function BulletinPageClient({
       scrapeTime: initialScrapeTime,
       matchData: initialMatchData,
       bookmarkedJobIds: initialBookmarkedJobIds,
+      skillLabels: initialSkillLabels,
     },
   );
 
@@ -80,7 +81,6 @@ export default function BulletinPageClient({
       profile={profile}
       filters={filters}
       data={data}
-      skillLabels={initialSkillLabels}
     />
   );
 }

@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const data = await fetchBulletinJobs(locale);
 
     return NextResponse.json(
-      { jobs: data.jobs, lastScrapeTime: data.lastScrapeTime },
+      { jobs: data.jobs, lastScrapeTime: data.lastScrapeTime, skillLabels: data.skillLabels },
       {
         headers: {
           // Browsers/CDN: serve fresh for 5 min, then stale-while-revalidating.
