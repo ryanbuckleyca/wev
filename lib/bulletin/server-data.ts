@@ -28,7 +28,7 @@ export const fetchBulletinJobs = unstable_cache(
       supabaseServer
         .from('jobs')
         .select(
-          'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, skills, unit_text, min_value, max_value, hours_per_week, compensation_meta',
+          'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, skills, unit_text, min_value, max_value, hours_per_week',
         )
         .gte('date_posted', new Date(Date.now() - JOBS_MAX_AGE_MS).toISOString())
         .order('date_posted', { ascending: false }),
