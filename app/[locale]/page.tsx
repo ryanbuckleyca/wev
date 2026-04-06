@@ -16,19 +16,26 @@ export default async function Home({
 }: {
   params: Promise<{ locale: string }>;
 }) {
+  const t0 = performance.now();
+
   const { locale: rawLocale } = await params;
   const validLocales = routing.locales as readonly string[];
   const locale = validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale;
   const parsedLocale = parseLocale(locale);
 
-  // ─── Public jobs data (server-side cached, ~1ms on warm cache) ────────────
-  const bulletinData = await fetchBulletinJobs(parsedLocale);
+  // ─── Start jobs & auth simultaneously (no sequential waterfall) ───────
+  const jobsPromise = fetchBulletinJobs(parsedLocale);
+  const authPromise = getRequestUser();
 
-  // ─── User session (reads cookie — no network RTT) ─────────────────────────
-  const auth = await getRequestUser();
+  const auth = await authPromise;
+  const tAuth = performance.now();
 
   if (!auth.ok) {
-    // Anonymous visitor: ship the page with jobs only, no user data.
+    const bulletinData = await jobsPromise;
+    const tJobs = performance.now();
+    console.log(
+      `[page] anon render — auth: ${(tAuth - t0).toFixed(0)}ms, jobs: ${(tJobs - t0).toFixed(0)}ms, total: ${(tJobs - t0).toFixed(0)}ms`,
+    );
     return (
       <BulletinPageClient
         initialJobs={bulletinData.jobs}
@@ -41,15 +48,25 @@ export default async function Home({
 
   const { user } = auth;
 
-  // ─── All user data fetched in parallel ────────────────────────────────────
-  // matchData / bookmarks run without a jobId filter so they are fully parallel
-  // with no sequential dependency on each other.
-  const [matchData, bookmarkedJobIds, profile, rolesResult] = await Promise.all([
-    fetchServerMatchData(user.id),
-    fetchServerBookmarks(user.id),
-    fetchServerProfile(user.id),
-    fetchUserRolesFromService(user.id),
-  ]);
+  // ─── All remaining fetches run in parallel (including the already-started jobs) ─
+  const matchPromise = fetchServerMatchData(user.id);
+  const bookmarkPromise = fetchServerBookmarks(user.id);
+  const profilePromise = fetchServerProfile(user.id);
+  const rolesPromise = fetchUserRolesFromService(user.id);
+
+  const [bulletinData, matchData, bookmarkedJobIds, profile, rolesResult] =
+    await Promise.all([
+      jobsPromise,
+      matchPromise,
+      bookmarkPromise,
+      profilePromise,
+      rolesPromise,
+    ]);
+
+  const tAll = performance.now();
+  console.log(
+    `[page] authed render — auth: ${(tAuth - t0).toFixed(0)}ms, all-data: ${(tAll - t0).toFixed(0)}ms (jobs+match+bookmarks+profile+roles parallel)`,
+  );
 
   const resolvedRoles = rolesResult.ok ? rolesResult.roles : ['user'];
   const isAdmin = rolesIncludeAdmin(resolvedRoles);
