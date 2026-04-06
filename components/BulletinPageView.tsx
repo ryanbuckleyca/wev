@@ -11,7 +11,7 @@ import ReScrapeButton from '@/components/ReScrapeButton';
 import CopyAllJobsButton from '@/components/CopyAllJobsButton';
 import Pagination from '@/components/Pagination';
 import { SITE_CONFIG } from '@/lib/site-config';
-import type { BulletinDataState } from '@/lib/hooks/useBulletinData';
+import type { BulletinDataState } from '@/lib/bulletin/types';
 import type { BulletinFilterControls } from '@/lib/hooks/useBulletinFilters';
 import type { Profile } from '@/lib/supabase/profiles';
 import { BulletinFilterProvider } from '@/contexts/BulletinFilterContext';

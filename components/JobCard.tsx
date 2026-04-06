@@ -12,6 +12,7 @@ import JobCardFooter from './JobCardFooter';
 import JobCardHeader from './JobCardHeader';
 import JobCardDetails from './JobCardDetails';
 import { useBookmarkAction } from '@/lib/hooks/useBookmarkAction';
+import type { SkillLabel } from '@/lib/bulletin/types';
 
 interface JobCardProps {
   job: JobPosting;
@@ -24,7 +25,7 @@ interface JobCardProps {
   match?: JobMatchData | null;
   initialBookmarked?: boolean;
   selectedWorkTypes?: string[];
-  skillLabels?: Record<string, import('@/lib/resolve-skill-labels').SkillLabel>;
+  skillLabels?: Record<string, SkillLabel>;
 }
 
 export default function JobCard({
@@ -54,9 +55,11 @@ export default function JobCard({
     
     for (const uri of job.skills || []) {
       const l = source[uri];
-      if (!l) continue;
-      terms[uri] = l.term;
-      const parts = [l.definition, l.scope_note].filter(Boolean);
+      // Fallback: If we match a skill but don't have the dictionary entry, 
+      // we still want to show the URI or a placeholder so the UI doesn't look empty.
+      terms[uri] = l?.term ?? uri.split('/').pop()?.replace(/-/g, ' ') ?? uri;
+      
+      const parts = [l?.definition, l?.scope_note].filter(Boolean);
       if (parts.length > 0) defs[uri] = parts.join('<br/><br/>');
     }
     return { terms, defs };

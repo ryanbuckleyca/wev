@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { render, screen } from '@/test-utils';
 import BulletinPageView from './BulletinPageView';
-import type { BulletinDataState } from '@/lib/hooks/useBulletinData';
+import type { BulletinDataState } from '@/lib/bulletin/types';
 import type { BulletinFilterControls } from '@/lib/hooks/useBulletinFilters';
 import type { JobPosting } from '@/lib/supabase';
 
