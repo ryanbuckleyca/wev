@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getRequestUser } from './request-user';
 
-const mockGetUser = vi.fn();
+const mockGetSession = vi.fn();
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(() => ({
+  createClient: vi.fn(async () => ({
     auth: {
-      getUser: mockGetUser,
+      getSession: mockGetSession,
     },
   })),
 }));

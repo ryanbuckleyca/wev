@@ -9,7 +9,7 @@ import { useBulletinFilters } from '@/lib/hooks/useBulletinFilters';
 import type { SerializedMatchData } from '@/lib/bulletin/server-data';
 import type { JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
-import type { InitialBulletinData, SkillLabel } from '@/lib/bulletin/types';
+import type { SkillLabel } from '@/lib/bulletin/types';
 
 interface BulletinPageClientProps {
   initialJobs: JobPosting[];

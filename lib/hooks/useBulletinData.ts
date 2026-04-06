@@ -20,45 +20,59 @@ export function useBulletinData(
   const { setCurrentPage } = options;
 
   // 1. Data Fetching Layer
-  const fetch = useBulletinFetch(locale, initialData, () => {
-    void setCurrentPage(1);
-  });
+  const { allJobs, setAllJobs, lastScrapeTime, skillLabels, loading, error, refresh } = useBulletinFetch(
+    locale,
+    initialData,
+    () => {
+      void setCurrentPage(1);
+    },
+  );
 
   // 2. User Meta Layer (Matches & Bookmarks)
-  const meta = useUserJobMeta(userId, fetch.allJobs, initialData);
+  const { matchData, setBookmarkedJobIds, bookmarkedJobIds } = useUserJobMeta(
+    userId,
+    allJobs,
+    initialData,
+  );
 
   // 3. Transformation Layer (Filter, Sort, Paginate)
-  const filters = useJobFilters(fetch.allJobs, meta.matchData, options);
+  const filters = useJobFilters(allJobs, matchData, options);
 
   // 4. Optimistic Action Handlers
-  const handleJobSseChange = useCallback((jobId: string, isSse: boolean) => {
-    fetch.setAllJobs((prev) =>
-      prev.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job))
-    );
-  }, [fetch.setAllJobs]);
+  const handleJobSseChange = useCallback(
+    (jobId: string, isSse: boolean) => {
+      setAllJobs((prev) =>
+        prev.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job)),
+      );
+    },
+    [setAllJobs],
+  );
 
-  const handleJobBookmarkChange = useCallback((job: JobPosting, bookmarked: boolean) => {
-    meta.setBookmarkedJobIds((prev) => {
-      const next = new Set(prev);
-      if (bookmarked) next.add(job.id);
-      else next.delete(job.id);
-      return next;
-    });
-  }, [meta.setBookmarkedJobIds]);
+  const handleJobBookmarkChange = useCallback(
+    (job: JobPosting, bookmarked: boolean) => {
+      setBookmarkedJobIds((prev) => {
+        const next = new Set(prev);
+        if (bookmarked) next.add(job.id);
+        else next.delete(job.id);
+        return next;
+      });
+    },
+    [setBookmarkedJobIds],
+  );
 
   return {
-    allJobs: fetch.allJobs,
+    allJobs,
     filteredJobs: filters.filteredJobs,
     paginatedJobs: filters.paginatedJobs,
-    lastScrapeTime: fetch.lastScrapeTime,
-    loading: fetch.loading,
-    error: fetch.error,
-    matchData: meta.matchData,
-    bookmarkedJobIds: meta.bookmarkedJobIds,
-    skillLabels: fetch.skillLabels,
+    lastScrapeTime,
+    loading,
+    error,
+    matchData,
+    bookmarkedJobIds,
+    skillLabels,
     totalPages: filters.totalPages,
     itemsPerPage: filters.itemsPerPage,
-    refresh: fetch.refresh,
+    refresh,
     handleJobSseChange,
     handleJobBookmarkChange,
   };
