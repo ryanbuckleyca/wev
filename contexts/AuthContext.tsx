@@ -46,11 +46,35 @@ function deriveRole(roles: string[]): UserRole {
   return 'user';
 }
 
+// ─── In-flight deduplication + 5-minute memory cache ──────────────────────
+const ROLES_CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface RolesCacheEntry {
+  roles: string[];
+  fetchedAt: number;
+}
+
+/** Module-level cache: survives re-renders but not full page reloads. */
+const rolesCache = new Map<string, RolesCacheEntry>();
+/** In-flight promises keyed by userId — prevents duplicate concurrent fetches. */
+const inflight = new Map<string, Promise<string[]>>();
+
 async function fetchRolesForUser(
   supabase: ReturnType<typeof createClient>,
   userId: string,
 ): Promise<string[]> {
-  const rolesPromise = async () => {
+  // 1. Return cached value if still fresh.
+  const cached = rolesCache.get(userId);
+  if (cached && Date.now() - cached.fetchedAt < ROLES_CACHE_TTL_MS) {
+    return cached.roles;
+  }
+
+  // 2. Deduplicate: if there's already an in-flight request for this user, wait for it.
+  const existing = inflight.get(userId);
+  if (existing) return existing;
+
+  // 3. Perform the actual fetch.
+  const promise = (async () => {
     try {
       const response = await fetch('/api/auth/roles', {
         method: 'GET',
@@ -64,11 +88,13 @@ async function fetchRolesForUser(
       if (response.ok) {
         const payload = await response.json();
         if (payload && Array.isArray(payload.roles)) {
-          return normalizeRoles(
+          const roles = normalizeRoles(
             payload.roles.filter(
               (role: unknown): role is string => typeof role === 'string' && role.length > 0,
             ),
           );
+          rolesCache.set(userId, { roles, fetchedAt: Date.now() });
+          return roles;
         }
       }
     } catch {
@@ -83,17 +109,23 @@ async function fetchRolesForUser(
         .maybeSingle();
 
       if (!error) {
-        return parseRolesColumn((data as { roles?: unknown } | null)?.roles);
+        const roles = parseRolesColumn((data as { roles?: unknown } | null)?.roles);
+        rolesCache.set(userId, { roles, fetchedAt: Date.now() });
+        return roles;
       }
     } catch {
       // Keep default role when direct query fails.
     }
 
     return ['user'];
-  };
+  })();
 
-  // Perform the role fetch; callers will set a fast default and update when this resolves.
-  return rolesPromise();
+  inflight.set(userId, promise);
+  try {
+    return await promise;
+  } finally {
+    inflight.delete(userId);
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

@@ -1,32 +1,75 @@
-'use client';
+import { routing } from '@/i18n/routing';
+import { parseLocale } from '@/lib/resolve-skill-labels';
+import { getRequestUser } from '@/lib/auth/request-user';
+import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
+import { rolesIncludeAdmin } from '@/lib/auth';
+import {
+  fetchBulletinJobs,
+  fetchServerMatchData,
+  fetchServerBookmarks,
+  fetchServerProfile,
+} from '@/lib/bulletin/server-data';
+import BulletinPageClient from '@/components/BulletinPageClient';
 
-import { useLocale } from 'next-intl';
-import BulletinPageView from '@/components/BulletinPageView';
-import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/contexts/ProfileContext';
-import { useBulletinData } from '@/lib/hooks/useBulletinData';
-import { useBulletinFilters } from '@/lib/hooks/useBulletinFilters';
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale: rawLocale } = await params;
+  const validLocales = routing.locales as readonly string[];
+  const locale = validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale;
+  const parsedLocale = parseLocale(locale);
 
-export default function Home() {
-  const locale = useLocale();
-  const { role, user } = useAuth();
-  const { profile } = useProfile();
-  const filters = useBulletinFilters();
-  const data = useBulletinData(locale, user?.id ?? null, {
-    filters: filters.filters,
-    sortBy: filters.sortBy,
-    currentPage: filters.currentPage,
-    setCurrentPage: filters.setCurrentPage,
-  });
+  // ─── Public jobs data (server-side cached, ~1ms on warm cache) ────────────
+  const bulletinData = await fetchBulletinJobs(parsedLocale);
 
+  // ─── User session (reads cookie — no network RTT) ─────────────────────────
+  const auth = await getRequestUser();
+
+  if (!auth.ok) {
+    // Anonymous visitor: ship the page with jobs only, no user data.
+    return (
+      <BulletinPageClient
+        initialJobs={bulletinData.jobs}
+        initialScrapeTime={bulletinData.lastScrapeTime}
+        isLoggedIn={false}
+        isAdmin={false}
+      />
+    );
+  }
+
+  const { user } = auth;
+
+  // ─── All user data fetched in parallel ────────────────────────────────────
+  // matchData / bookmarks run without a jobId filter so they are fully parallel
+  // with no sequential dependency on each other.
+  const [matchData, bookmarkedJobIds, profile, rolesResult] = await Promise.all([
+    fetchServerMatchData(user.id),
+    fetchServerBookmarks(user.id),
+    fetchServerProfile(user.id),
+    fetchUserRolesFromService(user.id),
+  ]);
+
+  const resolvedRoles = rolesResult.ok ? rolesResult.roles : ['user'];
+  const isAdmin = rolesIncludeAdmin(resolvedRoles);
+
+  // Filter match + bookmark data to only jobs that exist in the current dataset.
+  const jobIdSet = new Set(bulletinData.jobs.map((j) => j.id));
+  const filteredMatchData = Object.fromEntries(
+    Object.entries(matchData).filter(([id]) => jobIdSet.has(id)),
+  );
+  const filteredBookmarks = bookmarkedJobIds.filter((id) => jobIdSet.has(id));
 
   return (
-    <BulletinPageView
-      isAdmin={role === 'admin'}
-      isLoggedIn={!!user}
-      profile={profile}
-      filters={filters}
-      data={data}
+    <BulletinPageClient
+      initialJobs={bulletinData.jobs}
+      initialScrapeTime={bulletinData.lastScrapeTime}
+      initialMatchData={filteredMatchData}
+      initialBookmarkedJobIds={filteredBookmarks}
+      initialProfile={profile}
+      isLoggedIn={true}
+      isAdmin={isAdmin}
     />
   );
 }

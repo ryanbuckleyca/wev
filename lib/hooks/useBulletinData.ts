@@ -11,6 +11,7 @@ import {
 import { fetchMatchMapForJobs } from '@/lib/bulletin/match-map';
 import { fetchBookmarkedJobIds, formatLastScrapeTime } from '@/lib/bulletin/client-data';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
+import type { SerializedMatchData } from '@/lib/bulletin/server-data';
 
 const ITEMS_PER_PAGE = 20;
 const FETCH_TIMEOUT_MS = 10_000;
@@ -22,6 +23,17 @@ interface UseBulletinDataOptions {
   sortBy: JobSortOption;
   currentPage: number;
   setCurrentPage: PageSetter;
+}
+
+/**
+ * Server-side data passed from the Server Component via BulletinPageClient.
+ * When provided, the hook initializes with this data and skips the first fetch.
+ */
+interface InitialData {
+  jobs: JobPosting[];
+  scrapeTime: string | null;
+  matchData?: SerializedMatchData;
+  bookmarkedJobIds?: string[];
 }
 
 export interface BulletinDataState {
@@ -56,25 +68,50 @@ function getErrorMessage(error: unknown, loadFailedMessage: string, timeoutMessa
   return loadFailedMessage;
 }
 
+/**
+ * Converts the serialized match data (Record from server) into a Map for
+ * client-side usage. Returns an empty Map when no data is provided.
+ */
+function hydrateMatchData(serialized?: SerializedMatchData): Map<string, JobMatchData> {
+  if (!serialized) return new Map();
+  return new Map(Object.entries(serialized));
+}
+
 export function useBulletinData(
   locale: string,
   userId: string | null,
   { filters, sortBy, currentPage, setCurrentPage }: UseBulletinDataOptions,
+  initialData?: InitialData,
 ): BulletinDataState {
   const t = useTranslations('home.errors');
   const requestIdRef = useRef(0);
-  const [allJobs, setAllJobs] = useState<JobPosting[]>([]);
-  const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [fullDataLoaded, setFullDataLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(new Map());
-  const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(new Set());
 
+  // If initialData is provided, the page was server-rendered with data —
+  // skip the loading state entirely.
+  const hasInitialData = !!initialData?.jobs?.length;
+
+  const [allJobs, setAllJobs] = useState<JobPosting[]>(
+    () => initialData?.jobs ?? [],
+  );
+  const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(
+    () => (initialData?.scrapeTime
+      ? formatLastScrapeTime(initialData.scrapeTime, locale)
+      : null),
+  );
+  const [loading, setLoading] = useState(!hasInitialData);
+  const [error, setError] = useState<string | null>(null);
+  const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(
+    () => hydrateMatchData(initialData?.matchData),
+  );
+  const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(
+    () => new Set(initialData?.bookmarkedJobIds ?? []),
+  );
+
+  // ─── Refresh: single fetch from the API endpoint ────────────────────────
+  // Used for manual re-scrape (admin) and for re-hydrating after login/logout.
   const refresh = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
-    setFullDataLoaded(false);
     setLoading(true);
     setError(null);
 
@@ -82,47 +119,23 @@ export function useBulletinData(
     const timeoutId = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
     try {
-      // Fetch first page immediately for fast initial paint
-      const firstPageResponse = await fetch(
-        `/api/bulletin?locale=${locale}&limit=20`,
-        { signal: controller.signal },
+      const response = await fetch(
+        `/api/bulletin?locale=${locale}`,
+        { signal: controller.signal, cache: 'no-cache' },
       );
 
-      if (!firstPageResponse.ok) {
-        const body = await firstPageResponse.json().catch(() => ({}));
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
         throw new Error(body.error ?? t('loadFailed'));
       }
 
-      const firstPageData = await firstPageResponse.json();
+      const data = await response.json();
       if (requestId !== requestIdRef.current) return;
 
-      setLastScrapeTime(formatLastScrapeTime(firstPageData.lastScrapeTime, locale));
-      setAllJobs(firstPageData.jobs ?? []);
+      setLastScrapeTime(formatLastScrapeTime(data.lastScrapeTime, locale));
+      setAllJobs(data.jobs ?? []);
       setLoading(false);
       void setCurrentPage(1);
-
-      // If there are more jobs, fetch the full set in the background.
-      // No abort controller here — we want this to complete even if slow.
-      if (firstPageData.total > firstPageData.jobs.length) {
-        try {
-          const fullResponse = await fetch(`/api/bulletin?locale=${locale}`);
-          if (!fullResponse.ok) {
-            console.warn('[bulletin] Background full fetch failed:', fullResponse.status);
-            setFullDataLoaded(true);
-            return;
-          }
-          const fullData = await fullResponse.json();
-          if (requestId !== requestIdRef.current) return;
-          setAllJobs(fullData.jobs ?? []);
-          setLastScrapeTime(formatLastScrapeTime(fullData.lastScrapeTime, locale));
-          setFullDataLoaded(true);
-        } catch (bgError) {
-          console.warn('[bulletin] Background full fetch error:', bgError);
-          setFullDataLoaded(true);
-        }
-      } else {
-        setFullDataLoaded(true);
-      }
     } catch (fetchError) {
       if (requestId !== requestIdRef.current) return;
       console.error('Error fetching bulletin data:', fetchError);
@@ -133,10 +146,15 @@ export function useBulletinData(
     }
   }, [locale, setCurrentPage, t]);
 
+  // ─── Initial fetch (only when no SSR data) ──────────────────────────────
+  const initialFetchDone = useRef(hasInitialData);
   useEffect(() => {
+    if (initialFetchDone.current) return;
+    initialFetchDone.current = true;
     void refresh();
   }, [refresh]);
 
+  // ─── Reset page to 1 when filters change ────────────────────────────────
   const filterSnapshot = useMemo(
     () =>
       JSON.stringify({
@@ -179,16 +197,23 @@ export function useBulletinData(
     }
   }, [filterSnapshot, currentPage, setCurrentPage]);
 
+  // ─── User data (matches + bookmarks) ────────────────────────────────────
+  // Re-fetches only when the userId changes (login/logout). When the page is
+  // server-rendered with match data, the initial state already holds it so
+  // no client-side fetch is needed until the user changes.
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    // Don't fetch until full data is loaded — avoids a wasted call on the partial first-page set.
-    if (!fullDataLoaded) return;
-
-    // Clear match/bookmark data when user logs out or jobs are gone.
+    // Clear data when logged out or no jobs.
     if (!userId || allJobs.length === 0) {
       setMatchData(new Map());
       setBookmarkedJobIds(new Set());
+      prevUserIdRef.current = userId;
       return;
     }
+
+    // Skip if we already have data for this user (from SSR or a previous fetch).
+    if (prevUserIdRef.current === userId) return;
+    prevUserIdRef.current = userId;
 
     let cancelled = false;
     const jobIds = allJobs.map((job) => job.id);
@@ -205,8 +230,9 @@ export function useBulletinData(
     return () => {
       cancelled = true;
     };
-  }, [allJobs, userId, fullDataLoaded]);
+  }, [allJobs, userId]);
 
+  // ─── Filtering, sorting, pagination ─────────────────────────────────────
   const filteredJobs = useMemo(
     () => sortJobs(filterJobs(allJobs, filters), sortBy, matchData),
     [allJobs, filters, sortBy, matchData],
@@ -232,6 +258,7 @@ export function useBulletinData(
     return filteredJobs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [currentPage, filteredJobs]);
 
+  // ─── Optimistic updates ─────────────────────────────────────────────────
   const handleJobSseChange = useCallback((jobId: string, isSse: boolean) => {
     setAllJobs((previousJobs) =>
       previousJobs.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job)),
