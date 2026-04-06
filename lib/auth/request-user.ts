@@ -13,9 +13,11 @@ export type RequestUserResult =
 export async function getRequestUser(): Promise<RequestUserResult> {
   const supabase = await createClient();
   const {
-    data: { user },
+    data: { session },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getSession();
+
+  const user = session?.user;
 
   if (authError || !user) {
     return { ok: false, authError };
