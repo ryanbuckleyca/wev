@@ -69,7 +69,8 @@ If you need to refresh the app's database types without running a migration, use
 npm run types:supabase
 ```
 
-This command reads `SUPABASE_PROJECT_REF` from your environment and regenerates
+This command reads `SUPABASE_PROJECT_REF` from your environment and, if that is not
+set, derives it from `SUPABASE_URL`. It then regenerates
 `lib/supabase/database.types.ts`.
 
 ---

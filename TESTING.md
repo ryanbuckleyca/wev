@@ -36,7 +36,8 @@ _Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.c
 - Add `data-testid` only when a role/label-based locator would be brittle across locales or layout refactors. Stable test IDs should be treated as part of the app's testing API.
 - Keep performance checks in a separate `@perf` lane. They should run against the production build, disable heavy artifacts like trace/video, and assert a user-meaningful readiness milestone rather than a brittle raw `load` event.
 - Run the main correctness suite with `npm run test:e2e` and the perf lane with `npm run test:e2e:perf`.
-- CI runs the perf lane when the dedicated `wev-test` secrets are configured: `SUPABASE_TEST_PROJECT_REF`, `SUPABASE_TEST_URL`, `SUPABASE_TEST_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_TEST_URL`, and `NEXT_PUBLIC_SUPABASE_TEST_PUBLISHABLE_KEY`.
+- Playwright derives `SUPABASE_PROJECT_REF` from `SUPABASE_URL` when needed, so you do not need to maintain a separate project-ref secret for e2e.
+- CI runs the perf lane when the normal Supabase secrets are configured: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_KEY`.
 
 ## Guiding Principles
 

@@ -9,8 +9,12 @@ fi
 
 PROJECT_REF="${SUPABASE_PROJECT_REF:-}"
 
+if [[ -z "${PROJECT_REF}" && -n "${SUPABASE_URL:-}" ]]; then
+  PROJECT_REF="$(printf '%s' "${SUPABASE_URL}" | sed -E 's#^[a-zA-Z]+://##' | cut -d'.' -f1)"
+fi
+
 if [[ -z "${PROJECT_REF}" ]]; then
-  echo "✗ SUPABASE_PROJECT_REF must be set to generate database types."
+  echo "✗ SUPABASE_PROJECT_REF must be set, or SUPABASE_URL must be present so it can be derived."
   exit 1
 fi
 

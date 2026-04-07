@@ -33,10 +33,10 @@ jobs:
         env:
           # Server-only; not exposed to client. Use placeholders if missing so CI build succeeds.
           SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY || 'placeholder-service-role-key' }}
           # Client-side variables needed for middleware and build
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'placeholder-publishable-key' }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_KEY || 'placeholder-publishable-key' }}
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://bulletin.wevchange.org' }}
         run: npm run build
 
@@ -76,14 +76,13 @@ jobs:
       - name: Prepare Playwright perf environment
         id: perf_env
         env:
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_TEST_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_TEST_PUBLISHABLE_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_KEY }}
         run: |
           missing=0
-          for name in SUPABASE_PROJECT_REF SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; do
+          for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; do
             if [ -z "${!name}" ]; then
               echo "Missing required perf secret: ${name}"
               missing=1
@@ -95,6 +94,9 @@ jobs:
             echo "Skipping Playwright perf checks because the wev-test secrets are not configured."
             exit 0
           fi
+
+          SUPABASE_PROJECT_REF="${SUPABASE_URL#*://}"
+          SUPABASE_PROJECT_REF="${SUPABASE_PROJECT_REF%%.*}"
 
           cat > .env <<EOF
           SUPABASE_PROJECT_REF=${SUPABASE_PROJECT_REF}

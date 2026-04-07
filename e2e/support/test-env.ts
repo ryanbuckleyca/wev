@@ -13,6 +13,23 @@ export interface E2ETestDatabaseConfig {
   supabaseUrl: string;
 }
 
+function extractProjectRefFromUrl(supabaseUrl: string): string {
+  try {
+    const hostname = new URL(supabaseUrl).hostname;
+    const projectRef = hostname.split('.')[0]?.trim();
+
+    if (!projectRef) {
+      throw new Error('Missing hostname');
+    }
+
+    return projectRef;
+  } catch {
+    throw new Error(
+      `Unable to derive SUPABASE_PROJECT_REF from SUPABASE_URL: ${supabaseUrl}`,
+    );
+  }
+}
+
 function getOptionalEnv(...names: string[]): string | null {
   for (const name of names) {
     const value = process.env[name]?.trim();
@@ -51,9 +68,17 @@ export function getWebServerEnv(): Record<string, string> {
 }
 
 export function getE2ETestDatabaseConfig(): E2ETestDatabaseConfig {
+  const supabaseUrl = getRequiredEnv('SUPABASE_URL', 'E2E_SUPABASE_URL');
+
   return {
-    projectRef: getRequiredEnv('SUPABASE_PROJECT_REF', 'E2E_SUPABASE_PROJECT_REF'),
-    serviceRoleKey: getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY', 'E2E_SUPABASE_SERVICE_ROLE_KEY'),
-    supabaseUrl: getRequiredEnv('SUPABASE_URL', 'E2E_SUPABASE_URL'),
+    projectRef:
+      getOptionalEnv('SUPABASE_PROJECT_REF', 'E2E_SUPABASE_PROJECT_REF') ??
+      extractProjectRefFromUrl(supabaseUrl),
+    serviceRoleKey: getRequiredEnv(
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'SUPABASE_SECRET_KEY',
+      'E2E_SUPABASE_SERVICE_ROLE_KEY',
+    ),
+    supabaseUrl,
   };
 }
