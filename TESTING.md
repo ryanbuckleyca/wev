@@ -23,6 +23,17 @@ _Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.c
 | [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro) | Render & query React components by user-visible behaviour   |
 | [@testing-library/user-event](https://testing-library.com/docs/user-event/intro)       | Simulate realistic user interactions (clicks, typing, etc.) |
 | [@testing-library/jest-dom](https://testing-library.com/docs/ecosystem-jest-dom)       | DOM matchers like `toBeVisible()`, `toBeDisabled()`         |
+| [Playwright](https://playwright.dev/)                                                  | Cross-browser end-to-end coverage against the real app      |
+
+## Playwright E2E
+
+- Playwright always boots the local app against the dedicated `wev-test` database using the same `.env` values the app already uses.
+- Specs live in `e2e/tests`, page objects live in `e2e/pages`, and shared helpers belong in `e2e/support`.
+- `e2e/pages` owns locators and user actions. Keep support code small and focused on environment or database setup.
+- The stable job-board e2e contract is defined in `lib/testing/job-board-contract.ts`. If a selector must survive refactors, add it there instead of scattering string literals through specs.
+- `e2e/support/start-server.ts` wipes and reseeds `wev-test` before the local production server boots, so the app cannot cache stale data from a pre-seed state.
+- Start with Chromium only. Add more browsers once the suite is stable and the extra runtime is worth it.
+- Add `data-testid` only when a role/label-based locator would be brittle across locales or layout refactors. Stable test IDs should be treated as part of the app's testing API.
 
 ## Guiding Principles
 

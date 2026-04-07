@@ -6,9 +6,9 @@ type E2EFixtures = {
 };
 
 export const test = base.extend<E2EFixtures>({
-  // Keep shared page objects in fixtures so specs stay focused on behavior.
-  jobBoardPage: async ({ page }, use) => {
-    await use(new JobBoardPage(page));
+  // Keep page objects in fixtures so specs stay focused on user behavior.
+  jobBoardPage: async ({ page }, runFixture) => {
+    await runFixture(new JobBoardPage(page));
   },
 });
 

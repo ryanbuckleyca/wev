@@ -9,6 +9,7 @@ export type { SkillLabel };
  * Server-side data passed from the Server Component via BulletinPageClient.
  */
 export interface InitialBulletinData {
+  error?: string | null;
   jobs: JobPosting[];
   scrapeTime: string | null;
   matchData?: SerializedMatchData;

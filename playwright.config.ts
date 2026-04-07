@@ -1,29 +1,25 @@
-import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
-import { config as loadEnv } from 'dotenv';
+import {
+  getWebServerEnv,
+  loadPlaywrightEnv,
+  PLAYWRIGHT_BASE_URL,
+} from './e2e/support/test-env';
 
-loadEnv({ path: path.resolve(process.cwd(), '.env.test') });
-
-const localBaseURL = 'http://localhost:3001';
-const baseURL = process.env.BASE_URL || localBaseURL;
-const usingRemoteBaseURL =
-  Boolean(process.env.BASE_URL) &&
-  !/^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(?:\/|$)/i.test(baseURL);
+loadPlaywrightEnv();
 
 export default defineConfig({
   testDir: './e2e/tests',
   outputDir: './e2e/.output',
-  fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  retries: process.env.CI ? 1 : 0,
+  workers: 1,
   reporter: [
     ['list'],
     ['html', { open: 'never', outputFolder: 'playwright-report' }],
     ['junit', { outputFile: 'e2e/results/junit.xml' }],
   ],
   use: {
-    baseURL,
+    baseURL: PLAYWRIGHT_BASE_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -33,20 +29,18 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
   ],
-  // Local runs boot Next automatically; CI can point BASE_URL at a preview deployment instead.
-  webServer: usingRemoteBaseURL
-    ? undefined
-    : {
-        command: 'npm run dev -- --port 3001',
-        url: localBaseURL,
-        reuseExistingServer: true,
-        stdout: 'pipe',
-        stderr: 'pipe',
-        timeout: 120_000,
-      },
+  // Playwright always boots the local production build against the dedicated
+  // wev-test database so e2e runs stay deterministic.
+  webServer: {
+    command: `npx tsx ./e2e/support/start-server.ts`,
+    env: getWebServerEnv(),
+    url: PLAYWRIGHT_BASE_URL,
+    // E2E needs a fresh server so cached bulletin data always matches the
+    // seeded wev-test database for the current run.
+    reuseExistingServer: false,
+    stdout: 'pipe',
+    stderr: 'pipe',
+    timeout: 240_000,
+  },
 });

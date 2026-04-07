@@ -12,6 +12,7 @@ import type { Profile } from '@/lib/supabase/profiles';
 import type { SkillLabel } from '@/lib/bulletin/types';
 
 interface BulletinPageClientProps {
+  initialError?: string | null;
   initialJobs: JobPosting[];
   initialScrapeTime: string | null;
   initialSkillLabels: Record<string, SkillLabel>;
@@ -31,6 +32,7 @@ interface BulletinPageClientProps {
  * URL-synced filters, pagination, and reactive auth (login/logout after mount).
  */
 export default function BulletinPageClient({
+  initialError,
   initialJobs,
   initialScrapeTime,
   initialSkillLabels,
@@ -66,6 +68,7 @@ export default function BulletinPageClient({
       setCurrentPage: filters.setCurrentPage,
     },
     {
+      error: initialError,
       jobs: initialJobs,
       scrapeTime: initialScrapeTime,
       matchData: initialMatchData,

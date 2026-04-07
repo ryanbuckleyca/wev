@@ -57,11 +57,18 @@ export default function StyleGuidePage() {
     const getCommonPrefix = (varName: string) => {
       const parts = varName.split('-');
       if (parts.length <= 2) return 'Other';
-      return parts.slice(1, 3).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+      return parts
+        .slice(1, 3)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('');
     };
 
     const formatTokenName = (cssVar: string) =>
-      cssVar.replace('--', '').split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+      cssVar
+        .replace('--', '')
+        .split('-')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('');
 
     // 2. Single-pass Computed Style extraction
     const style = getComputedStyle(document.documentElement);
@@ -69,9 +76,22 @@ export default function StyleGuidePage() {
     const tokens: Token[] = [];
 
     const colorFilterKeywords = [
-      'primary', 'secondary', 'accent', 'neutral', 'success', 'warning', 'error',
-      'background', 'foreground', 'muted', 'border', 'input', 'ring', 'card',
-      'popover', 'text'
+      'primary',
+      'secondary',
+      'accent',
+      'neutral',
+      'success',
+      'warning',
+      'error',
+      'background',
+      'foreground',
+      'muted',
+      'border',
+      'input',
+      'ring',
+      'card',
+      'popover',
+      'text',
     ];
 
     for (let i = 0; i < style.length; i++) {
@@ -84,8 +104,9 @@ export default function StyleGuidePage() {
       const prefix = getCommonPrefix(prop);
 
       // Check for colors (hex, rgb, hsl) or matching keywords
-      const isColorValue = value.startsWith('#') || value.startsWith('rgb') || value.startsWith('hsl');
-      const matchesKeyword = colorFilterKeywords.some(kw => prop.includes(kw));
+      const isColorValue =
+        value.startsWith('#') || value.startsWith('rgb') || value.startsWith('hsl');
+      const matchesKeyword = colorFilterKeywords.some((kw) => prop.includes(kw));
 
       if (isColorValue || matchesKeyword) {
         colorVars.push({ name: prop, value, prefix });
@@ -99,11 +120,14 @@ export default function StyleGuidePage() {
     }
 
     // 3. Grouping and Async State Update
-    const groups = colorVars.reduce((acc, cv) => {
-      if (!acc[cv.prefix]) acc[cv.prefix] = [];
-      acc[cv.prefix].push(cv);
-      return acc;
-    }, {} as Record<string, typeof colorVars>);
+    const groups = colorVars.reduce(
+      (acc, cv) => {
+        if (!acc[cv.prefix]) acc[cv.prefix] = [];
+        acc[cv.prefix].push(cv);
+        return acc;
+      },
+      {} as Record<string, typeof colorVars>,
+    );
 
     // Use requestAnimationFrame to decouple state update from the effect block,
     // avoiding synchronous cascading renders and satisfying the linter.
@@ -248,7 +272,7 @@ export default function StyleGuidePage() {
                 <LinkButton href="/" variant="secondary">
                   Back to Jobs
                 </LinkButton>
-                <LinkButton href="/help" variant="outline">
+                <LinkButton href="/style-guide" variant="outline">
                   Learn More
                 </LinkButton>
               </div>
@@ -271,10 +295,10 @@ export default function StyleGuidePage() {
                 <StyledLink href="/" variant="secondary">
                   Back to Jobs
                 </StyledLink>
-                <StyledLink href="/help" variant="outline">
+                <StyledLink href="/style-guide" variant="outline">
                   Learn More
                 </StyledLink>
-                <StyledLink href="/docs" variant="text">
+                <StyledLink href="/style-guide" variant="text">
                   Documentation
                 </StyledLink>
               </div>
@@ -459,10 +483,10 @@ export default function StyleGuidePage() {
               <div className="design-button-label">LinkButton (Outline)</div>
               <p className="design-button-description">Navigation with outline styling.</p>
               <div className="space-y-2">
-                <LinkButton href="/help" variant="outline">
+                <LinkButton href="/style-guide" variant="outline">
                   Learn More
                 </LinkButton>
-                <LinkButton href="/help" variant="outline" className="opacity-50">
+                <LinkButton href="/style-guide" variant="outline" className="opacity-50">
                   Disabled State
                 </LinkButton>
               </div>
@@ -479,11 +503,11 @@ export default function StyleGuidePage() {
               <div className="design-button-label">StyledLink (Text)</div>
               <p className="design-button-description">Text-style navigation with theme colors.</p>
               <div className="space-y-2">
-                <StyledLink href="/docs" variant="text">
+                <StyledLink href="/style-guide" variant="text">
                   Documentation
                 </StyledLink>
                 <br />
-                <StyledLink href="/help" variant="text">
+                <StyledLink href="/style-guide" variant="text">
                   Help Center
                 </StyledLink>
               </div>
@@ -502,7 +526,7 @@ export default function StyleGuidePage() {
                 </Link>
                 <br />
                 <Link
-                  href="/help"
+                  href="/style-guide"
                   className="text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]"
                   prefetch={true}
                 >
@@ -531,7 +555,8 @@ export default function StyleGuidePage() {
 
           <h3>Toast Messages</h3>
           <p className="design-section-intro">
-            Toasts are a temporary pop-up version of Banner Messages. Click the links below to see each toast type in action with the live styling.
+            Toasts are a temporary pop-up version of Banner Messages. Click the links below to see
+            each toast type in action with the live styling.
           </p>
 
           <div className="design-button-grid">
@@ -595,7 +620,6 @@ export default function StyleGuidePage() {
               </button>
             </div>
           </div>
-
         </div>
       </section>
 

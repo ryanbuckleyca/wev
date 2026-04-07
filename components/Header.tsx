@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useLocale } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
 import UserProfile from './UserProfile';
 import ThemeToggle from './ThemeToggle';
@@ -18,14 +17,7 @@ export default function Header({
 }: { hasBanner?: boolean; initialTheme?: 'light' | 'dark' } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false);
   const pathname = usePathname();
-  const locale = useLocale();
-  // Treat the explicit jobs aliases as home-equivalent routes because they render the same page.
-  const isHomePage =
-    pathname === '/' ||
-    pathname === '/jobs' ||
-    pathname === '/emplois' ||
-    pathname === `/${locale}` ||
-    pathname.match(/^\/[a-z]{2}$/);
+  const isHomePage = pathname === '/' || pathname === '/jobs';
 
   useEffect(() => {
     const handleScroll = () => {

@@ -11,19 +11,21 @@ const FETCH_TIMEOUT_MS = 10_000;
 export function useBulletinFetch(
   locale: string,
   initialData?: InitialBulletinData,
-  onDataLoaded?: (jobs: JobPosting[]) => void
+  onDataLoaded?: (jobs: JobPosting[]) => void,
 ) {
   const t = useTranslations('home.errors');
   const requestIdRef = useRef(0);
-  const hasInitialData = !!initialData;
+  const hasInitialData = initialData !== undefined;
 
   const [allJobs, setAllJobs] = useState<JobPosting[]>(() => initialData?.jobs ?? []);
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(() =>
-    initialData?.scrapeTime ? formatLastScrapeTime(initialData.scrapeTime, locale) : null
+    initialData?.scrapeTime ? formatLastScrapeTime(initialData.scrapeTime, locale) : null,
   );
-  const [skillLabels, setSkillLabels] = useState<Record<string, SkillLabel>>(() => initialData?.skillLabels ?? {});
+  const [skillLabels, setSkillLabels] = useState<Record<string, SkillLabel>>(
+    () => initialData?.skillLabels ?? {},
+  );
   const [loading, setLoading] = useState(!hasInitialData);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => initialData?.error ?? null);
 
   const refresh = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
@@ -59,14 +61,14 @@ export function useBulletinFetch(
     } catch (fetchError) {
       if (requestId !== requestIdRef.current) return;
       console.error('Error fetching bulletin data:', fetchError);
-      
+
       let message = t('loadFailed');
       if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
         message = t('timeout');
       } else if (fetchError instanceof Error) {
         message = fetchError.message;
       }
-      
+
       setError(message);
       setLoading(false);
     } finally {

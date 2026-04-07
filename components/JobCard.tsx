@@ -13,6 +13,7 @@ import JobCardHeader from './JobCardHeader';
 import JobCardDetails from './JobCardDetails';
 import { useBookmarkAction } from '@/lib/hooks/useBookmarkAction';
 import type { SkillLabel } from '@/lib/bulletin/types';
+import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 interface JobCardProps {
   job: JobPosting;
@@ -150,7 +151,7 @@ export default function JobCard({
 
   return (
     <article
-      data-testid="job-card"
+      data-testid={JOB_BOARD_TEST_IDS.jobCard}
       aria-label={`${job.job_title} at ${job.organization}`}
       className="relative rounded-wev-card transition-all duration-300 bg-card border border-border hover:border-primary overflow-hidden"
     >

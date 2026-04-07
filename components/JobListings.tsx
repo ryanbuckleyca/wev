@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
 import { useContext } from 'react';
 import LoadingIndicator from './LoadingIndicator';
+import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 interface JobListingsProps {
   jobs: JobPosting[];
@@ -78,7 +79,10 @@ export default function JobListings({
 
   if (!loading && jobs.length === 0) {
     return (
-      <div className="bg-card border border-border rounded-wev-card p-8 text-center">
+      <div
+        className="bg-card border border-border rounded-wev-card p-8 text-center"
+        data-testid={JOB_BOARD_TEST_IDS.emptyState}
+      >
         <p className="text-foreground">{t('jobListings.noJobs')}</p>
       </div>
     );
@@ -94,7 +98,7 @@ export default function JobListings({
         </div>
       )}
 
-      <div className="space-y-6" data-testid="job-card-list">
+      <div className="space-y-6">
         {jobs.map((job) => (
           <JobCard
             key={job.id}
