@@ -10,6 +10,7 @@ interface BooleanFilterRowProps {
   description?: ReactNode;
   icon?: ReactNode;
   className?: string;
+  testId?: string;
 }
 
 export default function BooleanFilterRow({
@@ -19,9 +20,10 @@ export default function BooleanFilterRow({
   description,
   icon,
   className = 'mb-4',
+  testId,
 }: BooleanFilterRowProps) {
   return (
-    <div className={className}>
+    <div className={className} data-testid={testId}>
       <label className="flex items-center gap-2 cursor-pointer">
         <Checkbox checked={checked} onChange={(event) => onCheckedChange(event.target.checked)} />
         {icon}

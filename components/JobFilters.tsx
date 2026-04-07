@@ -16,6 +16,7 @@ import MunicipalityFilterSection from './job-filters/MunicipalityFilterSection';
 import type { JobFiltersProps } from './job-filters/types';
 import { useJobFiltersModel } from './job-filters/useJobFiltersModel';
 import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
+import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 export default function JobFilters(props: JobFiltersProps) {
   const controls = useBulletinFilterContext();
@@ -65,6 +66,7 @@ export default function JobFilters(props: JobFiltersProps) {
         <BooleanFilterRow
           checked={showOnlySse}
           onCheckedChange={onShowOnlySseChange}
+          testId={JOB_BOARD_TEST_IDS.sseToggle}
           label={t('filters.sse.label')}
           icon={
             <Lineicons
@@ -92,11 +94,13 @@ export default function JobFilters(props: JobFiltersProps) {
         <BooleanFilterRow
           checked={showJobsWithoutSalary}
           onCheckedChange={onShowJobsWithoutSalaryChange}
+          testId={JOB_BOARD_TEST_IDS.salaryToggle}
           label={t('filters.salary.label')}
           description={t('filters.salary.description')}
         />
 
         <FilterButtonGroup
+          testId={JOB_BOARD_TEST_IDS.postedWithinGroup}
           label={t('filters.postedWithin.label')}
           options={model.postedWithinOptions}
           isSelected={(value) => postedWithin === value}
@@ -104,6 +108,7 @@ export default function JobFilters(props: JobFiltersProps) {
         />
 
         <FilterButtonGroup
+          testId={JOB_BOARD_TEST_IDS.workTypeGroup}
           label={t('filters.workType.label')}
           options={model.workTypeOptions}
           isSelected={(value) => selectedWorkTypes.includes(value)}
@@ -139,6 +144,7 @@ export default function JobFilters(props: JobFiltersProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
           <CheckboxFilterSection
+            testId={JOB_BOARD_TEST_IDS.provinceSection}
             className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0"
             label={t('filters.province.label')}
             selectedCount={selectedProvinces.length}
@@ -151,6 +157,7 @@ export default function JobFilters(props: JobFiltersProps) {
           />
 
           <CheckboxFilterSection
+            testId={JOB_BOARD_TEST_IDS.employmentTypeSection}
             className="flex flex-col order-3 md:row-start-1 md:col-start-2 min-h-0"
             label={t('filters.employmentType.label')}
             selectedCount={selectedEmploymentTypes.length}
@@ -163,6 +170,7 @@ export default function JobFilters(props: JobFiltersProps) {
 
           <div className="flex flex-col order-2 md:row-start-2 md:col-start-1 gap-1">
             <MunicipalityFilterSection
+              testId={JOB_BOARD_TEST_IDS.municipalitySection}
               label={t('filters.municipality.label')}
               selectedMunicipalities={selectedMunicipalities}
               totalMunicipalities={model.allMunicipalities.length}
@@ -196,6 +204,7 @@ export default function JobFilters(props: JobFiltersProps) {
             )}
           </div>
           <CheckboxFilterSection
+            testId={JOB_BOARD_TEST_IDS.organizationSection}
             className="flex flex-col order-4 md:row-start-2 md:col-start-2"
             label={t('filters.organization.label')}
             selectedCount={selectedOrganizations.length}
@@ -208,6 +217,7 @@ export default function JobFilters(props: JobFiltersProps) {
           />
 
           <CheckboxFilterSection
+            testId={JOB_BOARD_TEST_IDS.sourceSection}
             className="flex flex-col order-5 md:row-start-3 md:col-start-1"
             label={t('filters.source.label')}
             selectedCount={selectedSources.length}

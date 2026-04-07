@@ -3,6 +3,14 @@ import { getLocalizedPathname, type AppLocale } from '../../i18n/routing';
 import { JOB_BOARD_TEST_IDS } from '../../lib/testing/job-board-contract';
 
 export type JobBoardLocale = AppLocale;
+type BooleanFilterName = 'salary' | 'sse';
+type ButtonFilterName = 'postedWithin' | 'workType';
+type CheckboxFilterName =
+  | 'employmentType'
+  | 'municipality'
+  | 'organization'
+  | 'province'
+  | 'source';
 type QueryParamPrimitive = boolean | number | string;
 type QueryParamValue =
   | QueryParamPrimitive
@@ -10,6 +18,17 @@ type QueryParamValue =
   | null
   | undefined;
 type QueryParamsInput = Record<string, QueryParamValue> | URLSearchParams | undefined;
+type FilterLocators = {
+  employmentType: Locator;
+  municipality: Locator;
+  organization: Locator;
+  postedWithin: Locator;
+  province: Locator;
+  salary: Locator;
+  source: Locator;
+  sse: Locator;
+  workType: Locator;
+};
 
 function buildSearchParams(query?: QueryParamsInput): URLSearchParams {
   if (!query) {
@@ -50,10 +69,12 @@ export class JobBoardPage {
   readonly page: Page;
   readonly heading: Locator;
   readonly searchInput: Locator;
+  readonly filtersToggle: Locator;
   readonly localeSwitcher: Locator;
   readonly jobCards: Locator;
   readonly paginationSummary: Locator;
   readonly emptyState: Locator;
+  readonly filters: FilterLocators;
 
   constructor(page: Page) {
     this.page = page;
@@ -61,10 +82,22 @@ export class JobBoardPage {
     this.searchInput = page.getByRole('textbox', {
       name: /search jobs|rechercher des emplois/i,
     });
+    this.filtersToggle = page.getByTestId(JOB_BOARD_TEST_IDS.filtersToggle);
     this.localeSwitcher = page.getByTestId(JOB_BOARD_TEST_IDS.localeSwitcher);
     this.jobCards = page.getByTestId(JOB_BOARD_TEST_IDS.jobCard);
     this.paginationSummary = page.getByTestId(JOB_BOARD_TEST_IDS.paginationSummary);
     this.emptyState = page.getByTestId(JOB_BOARD_TEST_IDS.emptyState);
+    this.filters = {
+      employmentType: page.getByTestId(JOB_BOARD_TEST_IDS.employmentTypeSection),
+      municipality: page.getByTestId(JOB_BOARD_TEST_IDS.municipalitySection),
+      organization: page.getByTestId(JOB_BOARD_TEST_IDS.organizationSection),
+      postedWithin: page.getByTestId(JOB_BOARD_TEST_IDS.postedWithinGroup),
+      province: page.getByTestId(JOB_BOARD_TEST_IDS.provinceSection),
+      salary: page.getByTestId(JOB_BOARD_TEST_IDS.salaryToggle),
+      source: page.getByTestId(JOB_BOARD_TEST_IDS.sourceSection),
+      sse: page.getByTestId(JOB_BOARD_TEST_IDS.sseToggle),
+      workType: page.getByTestId(JOB_BOARD_TEST_IDS.workTypeGroup),
+    };
   }
 
   async goto(locale: JobBoardLocale, query?: QueryParamsInput): Promise<void> {
@@ -83,6 +116,34 @@ export class JobBoardPage {
 
   async searchFor(query: string): Promise<void> {
     await this.searchInput.fill(query);
+  }
+
+  async openFilters(): Promise<void> {
+    if ((await this.filtersToggle.getAttribute('aria-expanded')) !== 'true') {
+      await this.filtersToggle.click();
+    }
+  }
+
+  async selectFilterButton(filter: ButtonFilterName, optionLabel: string): Promise<void> {
+    await this.openFilters();
+    await this.filters[filter].getByRole('button', { name: optionLabel, exact: true }).click();
+  }
+
+  async toggleFilterCheckbox(filter: CheckboxFilterName, optionLabel: string): Promise<void> {
+    await this.openFilters();
+    await this.filters[filter].getByLabel(optionLabel, { exact: true }).click();
+  }
+
+  async setBooleanFilter(filter: BooleanFilterName, checked: boolean): Promise<void> {
+    await this.openFilters();
+
+    const checkbox = this.filters[filter].getByRole('checkbox');
+    if (checked) {
+      await checkbox.check();
+      return;
+    }
+
+    await checkbox.uncheck();
   }
 
   currentLocale(): JobBoardLocale {

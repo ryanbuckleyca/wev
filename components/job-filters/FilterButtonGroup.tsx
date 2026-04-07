@@ -14,6 +14,7 @@ interface FilterButtonGroupProps {
   onSelect: (value: string) => void;
   helper?: ReactNode;
   className?: string;
+  testId?: string;
 }
 
 export default function FilterButtonGroup({
@@ -23,9 +24,10 @@ export default function FilterButtonGroup({
   onSelect,
   helper,
   className = 'mb-4',
+  testId,
 }: FilterButtonGroupProps) {
   return (
-    <div className={className}>
+    <div className={className} data-testid={testId}>
       <label className="block text-sm font-semibold text-foreground mb-2">{label}</label>
       {helper ? <div className="mb-2">{helper}</div> : null}
       <div className="flex flex-wrap gap-2">

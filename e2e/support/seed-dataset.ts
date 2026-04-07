@@ -1,9 +1,44 @@
 import type { Json, TableInsert } from '../../lib/supabase/database.types';
 
 export const SEEDED_JOB_BOARD_EXPECTATIONS = {
+  employmentTypeCounts: {
+    contract: 12,
+    fullTime: 13,
+  },
   firstPageCount: 20,
   jobCount: 25,
+  municipalityCounts: {
+    montreal: 4,
+    ottawa: 4,
+    quebecCity: 4,
+    toronto: 4,
+  },
+  oneWeekCount: 15,
+  organizationCounts: {
+    partner1: 7,
+  },
+  provinceCounts: {
+    on: 8,
+    qc: 8,
+  },
+  salaryListedCount: 22,
+  sampleJobs: {
+    nonSseOnly: 'Community Builder 26',
+    searchMatch: 'Community Builder 25',
+    salarylessVisible: 'Community Builder 4',
+  },
   secondPageCount: 5,
+  sourceCounts: {
+    communityImpactJobs: 8,
+    solidarityCareers: 8,
+    wevOpportunities: 9,
+  },
+  sseOffCount: 27,
+  workTypeCounts: {
+    hybrid: 8,
+    office: 8,
+    remote: 9,
+  },
 } as const;
 
 type BookmarkInsert = TableInsert<'bookmarks'>;
@@ -32,6 +67,8 @@ const PRIMARY_SOURCE_ID = buildUuid(1);
 const SECONDARY_SOURCE_ID = buildUuid(2);
 const COMMUNITY_SOURCE_ID = buildUuid(3);
 const SCRAPE_RUN_ID = buildUuid(9_000);
+const TOTAL_SEEDED_JOB_COUNT = 27;
+const SALARYLESS_JOB_INDEXES = new Set([3, 11, 19]);
 
 function buildUuid(index: number): string {
   return `00000000-0000-4000-8000-${index.toString().padStart(12, '0')}`;
@@ -103,60 +140,129 @@ function createSkillUris(index: number): string[] {
   ];
 }
 
+type JobLocation = Pick<
+  JobInsert,
+  | 'geocode_accuracy_type'
+  | 'is_remote'
+  | 'lat'
+  | 'lng'
+  | 'location'
+  | 'municipality'
+  | 'province'
+>;
+
+type JobSalary = Pick<JobInsert, 'compensation_meta' | 'max_value' | 'min_value' | 'unit_text' | 'wage'>;
+
+function createJobLocation(index: number, workType: JobInsert['work_type']): JobLocation {
+  if (workType === 'remote') {
+    return {
+      geocode_accuracy_type: null,
+      is_remote: true,
+      lat: null,
+      lng: null,
+      location: 'Remote, Canada',
+      municipality: null,
+      province: null,
+    };
+  }
+
+  const isOntario = index % 2 === 0;
+  if (isOntario) {
+    const isToronto = index % 4 === 0;
+    return {
+      geocode_accuracy_type: 'city',
+      is_remote: false,
+      lat: isToronto ? 43.6532 : 45.4215,
+      lng: isToronto ? -79.3832 : -75.6972,
+      location: isToronto ? 'Toronto, ON' : 'Ottawa, ON',
+      municipality: isToronto ? 'Toronto' : 'Ottawa',
+      province: 'ON',
+    };
+  }
+
+  const isMontreal = index % 4 === 1;
+  return {
+    geocode_accuracy_type: 'city',
+    is_remote: false,
+    lat: isMontreal ? 45.5017 : 46.8139,
+    lng: isMontreal ? -73.5673 : -71.208,
+    location: isMontreal ? 'Montreal, QC' : 'Quebec City, QC',
+    municipality: isMontreal ? 'Montreal' : 'Quebec City',
+    province: 'QC',
+  };
+}
+
+function createJobSalary(index: number): JobSalary {
+  const hasSalary = !SALARYLESS_JOB_INDEXES.has(index);
+  const salaryFloor = 55_000 + index * 1_000;
+
+  if (!hasSalary) {
+    return {
+      compensation_meta: null,
+      max_value: null,
+      min_value: null,
+      unit_text: null,
+      wage: null,
+    };
+  }
+
+  return {
+    compensation_meta: {
+      confidence: 0.8,
+      currency: 'CAD',
+      raw: `$${salaryFloor.toLocaleString()}`,
+    },
+    max_value: salaryFloor + 8_000,
+    min_value: salaryFloor,
+    unit_text: 'YEAR',
+    wage: `$${salaryFloor.toLocaleString()} CAD`,
+  };
+}
+
 function createJobFixture(index: number, now: Date): JobInsert {
   const workType = (['remote', 'hybrid', 'office'] as const)[index % 3];
   const sourceId = [PRIMARY_SOURCE_ID, SECONDARY_SOURCE_ID, COMMUNITY_SOURCE_ID][index % 3];
   const values = createJobValues(index);
   const datePosted = daysAgo(now, index % 12);
   const scrapedAt = hoursAgo(now, index);
-  const salaryFloor = 55_000 + index * 1_000;
-  const municipality = workType === 'remote' ? null : index % 2 === 0 ? 'Toronto' : 'Montreal';
-  const province = municipality === 'Toronto' ? 'ON' : municipality === 'Montreal' ? 'QC' : null;
+  const location = createJobLocation(index, workType);
+  const salary = createJobSalary(index);
 
   return {
     close_date: null,
-    compensation_meta: {
-      confidence: 0.8,
-      currency: 'CAD',
-      raw: `$${salaryFloor.toLocaleString()}`,
-    },
+    compensation_meta: salary.compensation_meta,
     date_posted: toIsoDate(datePosted),
     description: `Owned e2e fixture for role ${index + 1}.`,
     employment_type: index % 2 === 0 ? 'full-time' : 'contract',
     extra: {},
-    geocode_accuracy_type: municipality ? 'city' : null,
+    geocode_accuracy_type: location.geocode_accuracy_type,
     hours_per_week: 35,
     id: buildUuid(1_000 + index),
-    is_remote: workType === 'remote',
-    // The bulletin defaults to the SSE-only filter, so every seeded row should
-    // match the default landing state unless a test changes filters explicitly.
-    is_sse: true,
+    is_remote: location.is_remote,
+    // The bulletin defaults to the SSE-only filter, so the first 25 rows shape
+    // the default landing state and the final 2 rows exercise that toggle.
+    is_sse: index < SEEDED_JOB_BOARD_EXPECTATIONS.jobCount,
     job_title: `Community Builder ${index + 1}`,
     language: index % 5 === 0 ? 'fr' : 'en',
-    lat: municipality === 'Toronto' ? 43.6532 : municipality === 'Montreal' ? 45.5017 : null,
+    lat: location.lat,
     listing_url: `https://wev.example/jobs/${index + 1}`,
-    lng: municipality === 'Toronto' ? -79.3832 : municipality === 'Montreal' ? -73.5673 : null,
-    location:
-      workType === 'remote'
-        ? 'Remote, Canada'
-        : municipality === 'Toronto'
-          ? 'Toronto, ON'
-          : 'Montreal, QC',
-    max_value: salaryFloor + 8_000,
-    min_value: salaryFloor,
-    municipality,
+    lng: location.lng,
+    location: location.location,
+    max_value: salary.max_value,
+    min_value: salary.min_value,
+    municipality: location.municipality,
     organization: `WEV Partner ${((index % 4) + 1).toString()}`,
-    province,
+    province: location.province,
     scraped_at: toIsoTimestamp(scrapedAt),
     source_id: sourceId,
     sse_details: null,
     sse_rating: null,
     skills: createSkillUris(index),
     summary: `Deterministic bulletin seed item ${index + 1}.`,
-    unit_text: 'YEAR',
+    unit_text: salary.unit_text,
     values,
     values_rated: createRatedValues(values),
-    wage: `$${salaryFloor.toLocaleString()} CAD`,
+    wage: salary.wage,
     work_type: workType,
   };
 }
@@ -199,7 +305,7 @@ function emptySeedTables(): SeedTables {
 
 export function createSeedDataset(now: Date = new Date()): SeedDataset {
   const sources = createSourceFixtures(now);
-  const jobs = createJobFixtures(SEEDED_JOB_BOARD_EXPECTATIONS.jobCount, now);
+  const jobs = createJobFixtures(TOTAL_SEEDED_JOB_COUNT, now);
 
   return {
     tables: {
