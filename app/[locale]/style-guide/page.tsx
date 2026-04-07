@@ -1,5 +1,6 @@
 'use client';
 
+import type { MouseEvent } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Button from '@/components/Button';
@@ -8,6 +9,8 @@ import StyledLink from '@/components/StyledLink';
 import ButtonLink from '@/components/ButtonLink';
 import BannerMessage from '@/components/BannerMessage';
 import notify from '@/lib/toast';
+import { buttonVariants } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +45,60 @@ interface Token {
   value: string;
   swatch: string;
   border: boolean;
+}
+
+type DemoStyledLinkVariant = 'outline' | 'text';
+
+function preventDemoNavigation(event: MouseEvent<HTMLAnchorElement>) {
+  event.preventDefault();
+}
+
+function DemoLinkButton({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <a
+      href="#"
+      onClick={preventDemoNavigation}
+      className={cn(buttonVariants({ variant: 'outline' }), className)}
+    >
+      {children}
+    </a>
+  );
+}
+
+function DemoStyledLink({
+  children,
+  variant,
+  className,
+}: {
+  children: React.ReactNode;
+  variant: DemoStyledLinkVariant;
+  className?: string;
+}) {
+  const variantClasses = {
+    outline:
+      'border border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--background)]',
+    text: 'text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]',
+  } as const;
+
+  return (
+    <a
+      href="#"
+      onClick={preventDemoNavigation}
+      className={cn(
+        'font-medium rounded transition-colors px-4 py-2 text-sm',
+        variantClasses[variant],
+        className,
+      )}
+    >
+      {children}
+    </a>
+  );
 }
 
 export default function StyleGuidePage() {
@@ -272,9 +329,7 @@ export default function StyleGuidePage() {
                 <LinkButton href="/" variant="secondary">
                   Back to Jobs
                 </LinkButton>
-                <LinkButton href="#" variant="outline">
-                  Learn More
-                </LinkButton>
+                <DemoLinkButton>Learn More</DemoLinkButton>
               </div>
               <div className="design-usage-examples">
                 <p className="text-sm text-muted-foreground mt-4">
@@ -295,12 +350,8 @@ export default function StyleGuidePage() {
                 <StyledLink href="/" variant="secondary">
                   Back to Jobs
                 </StyledLink>
-                <StyledLink href="#" variant="outline">
-                  Learn More
-                </StyledLink>
-                <StyledLink href="#" variant="text">
-                  Documentation
-                </StyledLink>
+                <DemoStyledLink variant="outline">Learn More</DemoStyledLink>
+                <DemoStyledLink variant="text">Documentation</DemoStyledLink>
               </div>
               <div className="design-usage-examples">
                 <p className="text-sm text-muted-foreground mt-4">
@@ -483,12 +534,8 @@ export default function StyleGuidePage() {
               <div className="design-button-label">LinkButton (Outline)</div>
               <p className="design-button-description">Navigation with outline styling.</p>
               <div className="space-y-2">
-                <LinkButton href="#" variant="outline">
-                  Learn More
-                </LinkButton>
-                <LinkButton href="#" variant="outline" className="opacity-50">
-                  Disabled State
-                </LinkButton>
+                <DemoLinkButton>Learn More</DemoLinkButton>
+                <DemoLinkButton className="opacity-50">Disabled State</DemoLinkButton>
               </div>
             </div>
           </div>
@@ -503,13 +550,9 @@ export default function StyleGuidePage() {
               <div className="design-button-label">StyledLink (Text)</div>
               <p className="design-button-description">Text-style navigation with theme colors.</p>
               <div className="space-y-2">
-                <StyledLink href="#" variant="text">
-                  Documentation
-                </StyledLink>
+                <DemoStyledLink variant="text">Documentation</DemoStyledLink>
                 <br />
-                <StyledLink href="#" variant="text">
-                  Help Center
-                </StyledLink>
+                <DemoStyledLink variant="text">Help Center</DemoStyledLink>
               </div>
             </div>
 
@@ -525,13 +568,13 @@ export default function StyleGuidePage() {
                   View Profile
                 </Link>
                 <br />
-                <Link
+                <a
                   href="#"
+                  onClick={preventDemoNavigation}
                   className="text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]"
-                  prefetch={true}
                 >
                   Help Documentation
-                </Link>
+                </a>
               </div>
             </div>
           </div>

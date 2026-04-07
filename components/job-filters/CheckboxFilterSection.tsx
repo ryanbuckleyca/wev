@@ -15,7 +15,6 @@ interface CheckboxFilterSectionProps {
   listClassName?: string;
   renderLabel?: (value: string) => ReactNode;
   isIndeterminate?: (value: string) => boolean;
-  testId?: string;
 }
 
 export default function CheckboxFilterSection({
@@ -30,10 +29,9 @@ export default function CheckboxFilterSection({
   listClassName = 'max-h-32 overflow-y-auto border border-border rounded-wev-btn p-2 bg-background',
   renderLabel,
   isIndeterminate,
-  testId,
 }: CheckboxFilterSectionProps) {
   return (
-    <div className={className} data-testid={testId}>
+    <div className={className}>
       <label className="block text-sm font-semibold text-foreground mb-2">
         {label} ({selectedCount}/{totalCount})
       </label>

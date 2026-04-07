@@ -16,7 +16,6 @@ interface MunicipalityFilterSectionProps {
   noDataMessage: string;
   selectProvinceMessage: string;
   showingFromSelectedMessage: string;
-  testId?: string;
 }
 
 export default function MunicipalityFilterSection({
@@ -30,10 +29,9 @@ export default function MunicipalityFilterSection({
   noDataMessage,
   selectProvinceMessage,
   showingFromSelectedMessage,
-  testId,
 }: MunicipalityFilterSectionProps) {
   return (
-    <div className={className} data-testid={testId}>
+    <div className={className}>
       <label className="block text-sm font-semibold text-foreground mb-2">
         {label} ({selectedMunicipalities.length}/{totalMunicipalities})
         {selectedProvinces.length > 0 && totalMunicipalities > 0 ? (
