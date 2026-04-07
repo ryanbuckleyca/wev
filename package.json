@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "skills:index": "python3 scripts/build_esco_skills_index.py",
+    "types:supabase": "bash ./scripts/generate_supabase_types.sh",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

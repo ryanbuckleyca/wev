@@ -15,7 +15,7 @@ export function useBulletinFetch(
 ) {
   const t = useTranslations('home.errors');
   const requestIdRef = useRef(0);
-  const hasInitialData = initialData !== undefined;
+  const hasInitialData = !!initialData;
 
   const [allJobs, setAllJobs] = useState<JobPosting[]>(() => initialData?.jobs ?? []);
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(() =>
@@ -25,7 +25,7 @@ export function useBulletinFetch(
     () => initialData?.skillLabels ?? {},
   );
   const [loading, setLoading] = useState(!hasInitialData);
-  const [error, setError] = useState<string | null>(() => initialData?.error ?? null);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const requestId = requestIdRef.current + 1;

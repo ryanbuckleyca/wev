@@ -76,6 +76,11 @@ run_migration() {
     echo "❌ Push failed. If you see hash mismatches, you may need to 'git pull' first."
     exit 1
   fi
+
+  if [[ "${DRY_RUN}" != "1" ]]; then
+    echo "▶ Regenerating Supabase TypeScript types..."
+    bash ./scripts/generate_supabase_types.sh
+  fi
 }
 
 case "${TARGET}" in

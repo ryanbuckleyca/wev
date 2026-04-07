@@ -272,7 +272,7 @@ export default function StyleGuidePage() {
                 <LinkButton href="/" variant="secondary">
                   Back to Jobs
                 </LinkButton>
-                <LinkButton href="/style-guide" variant="outline">
+                <LinkButton href="#" variant="outline">
                   Learn More
                 </LinkButton>
               </div>
@@ -295,10 +295,10 @@ export default function StyleGuidePage() {
                 <StyledLink href="/" variant="secondary">
                   Back to Jobs
                 </StyledLink>
-                <StyledLink href="/style-guide" variant="outline">
+                <StyledLink href="#" variant="outline">
                   Learn More
                 </StyledLink>
-                <StyledLink href="/style-guide" variant="text">
+                <StyledLink href="#" variant="text">
                   Documentation
                 </StyledLink>
               </div>
@@ -483,10 +483,10 @@ export default function StyleGuidePage() {
               <div className="design-button-label">LinkButton (Outline)</div>
               <p className="design-button-description">Navigation with outline styling.</p>
               <div className="space-y-2">
-                <LinkButton href="/style-guide" variant="outline">
+                <LinkButton href="#" variant="outline">
                   Learn More
                 </LinkButton>
-                <LinkButton href="/style-guide" variant="outline" className="opacity-50">
+                <LinkButton href="#" variant="outline" className="opacity-50">
                   Disabled State
                 </LinkButton>
               </div>
@@ -503,11 +503,11 @@ export default function StyleGuidePage() {
               <div className="design-button-label">StyledLink (Text)</div>
               <p className="design-button-description">Text-style navigation with theme colors.</p>
               <div className="space-y-2">
-                <StyledLink href="/style-guide" variant="text">
+                <StyledLink href="#" variant="text">
                   Documentation
                 </StyledLink>
                 <br />
-                <StyledLink href="/style-guide" variant="text">
+                <StyledLink href="#" variant="text">
                   Help Center
                 </StyledLink>
               </div>
@@ -526,7 +526,7 @@ export default function StyleGuidePage() {
                 </Link>
                 <br />
                 <Link
-                  href="/style-guide"
+                  href="#"
                   className="text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]"
                   prefetch={true}
                 >

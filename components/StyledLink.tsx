@@ -1,8 +1,9 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { Link } from '@/i18n/navigation';
+import { isFragmentHref, type FragmentHref } from '@/lib/fragment-href';
 
 interface StyledLinkProps {
-  href: ComponentProps<typeof Link>['href'];
+  href: ComponentProps<typeof Link>['href'] | FragmentHref;
   children: ReactNode;
   variant?: 'primary' | 'secondary' | 'outline' | 'text';
   size?: 'sm' | 'md' | 'lg';
@@ -43,6 +44,14 @@ export default function StyledLink({
 
   const combinedClasses =
     `${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${widthClass} ${className}`.trim();
+
+  if (isFragmentHref(href)) {
+    return (
+      <a href={href} className={combinedClasses} onClick={onClick}>
+        {children}
+      </a>
+    );
+  }
 
   return (
     <Link href={href} className={combinedClasses} prefetch={prefetch} onClick={onClick}>
