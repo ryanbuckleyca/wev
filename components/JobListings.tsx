@@ -36,7 +36,7 @@ export default function JobListings({
   const t = useTranslations();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const { role } = useAuth();
-  
+
   // Conditionally consume context so we don't break the Bookmarks page which isn't wrapped in it.
   const filterContext = useContext(BulletinFilterContext);
   const allExpanded = filterContext?.allJobsExpanded ?? true;
@@ -94,7 +94,7 @@ export default function JobListings({
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="space-y-6" data-testid="job-card-list">
         {jobs.map((job) => (
           <JobCard
             key={job.id}

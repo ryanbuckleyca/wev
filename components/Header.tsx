@@ -19,9 +19,13 @@ export default function Header({
   const [shouldShowHeader, setShouldShowHeader] = useState(false);
   const pathname = usePathname();
   const locale = useLocale();
-  // Check if we're on the home page (with or without locale prefix)
+  // Treat the explicit jobs aliases as home-equivalent routes because they render the same page.
   const isHomePage =
-    pathname === '/' || pathname === `/${locale}` || pathname.match(/^\/[a-z]{2}$/);
+    pathname === '/' ||
+    pathname === '/jobs' ||
+    pathname === '/emplois' ||
+    pathname === `/${locale}` ||
+    pathname.match(/^\/[a-z]{2}$/);
 
   useEffect(() => {
     const handleScroll = () => {

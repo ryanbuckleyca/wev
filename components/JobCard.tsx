@@ -54,28 +54,26 @@ export default function JobCard({
     const defs: Record<string, string> = {};
     for (const uri of job.skills || []) {
       const l = source[uri];
-      
+
       // Fallback: Use the final portion of the URI path and format it (e.g. "teamwork" from ".../team-work").
       // Only replace dashes if it looks like a URI slug (has slashes) to avoid mangling simple test strings.
       const lastPart = uri.includes('/') ? uri.split('/').pop() : uri;
-      const fallbackTerm = (lastPart && uri.includes('/')) 
-        ? lastPart.replace(/-/g, ' ') 
-        : (lastPart ?? uri);
+      const fallbackTerm =
+        lastPart && uri.includes('/') ? lastPart.replace(/-/g, ' ') : (lastPart ?? uri);
 
       terms[uri] = l?.term ?? fallbackTerm;
-      
+
       const parts = [l?.definition, l?.scope_note].filter(Boolean);
       if (parts.length > 0) defs[uri] = parts.join('<br/><br/>');
     }
     return { terms, defs };
   }, [job.skill_labels, job.skills, skillLabelsProp]);
 
-  const { bookmarked, isLoading: bookmarkLoading, toggleBookmark } = useBookmarkAction(
-    job,
-    user,
-    initialBookmarked,
-    onBookmarkToggle,
-  );
+  const {
+    bookmarked,
+    isLoading: bookmarkLoading,
+    toggleBookmark,
+  } = useBookmarkAction(job, user, initialBookmarked, onBookmarkToggle);
 
   // Sync internal expansion state with prop changes
   useEffect(() => {
@@ -127,23 +125,35 @@ export default function JobCard({
   }, [matchProp, scoreData, job, profilePreferences, skillLabels.terms, t]);
 
   const getCardSummary = useCallback(() => {
-    const title = job.job_title.length > 25 ? job.job_title.substring(0, 25) + '...' : job.job_title;
+    const title =
+      job.job_title.length > 25 ? job.job_title.substring(0, 25) + '...' : job.job_title;
     const location = job.location || t('jobCard.remote');
     const dateStr = parseDateString(job.date_posted).toLocaleDateString(locale, {
-      month: 'short', day: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
     return `${job.organization} - ${title} • ${location} • ${dateStr}`;
   }, [job, t, locale]);
 
-  const formatDate = useCallback((dateString: string): string =>
-    parseDateString(dateString).toLocaleDateString(locale, {
-      year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York',
-    }), [locale]);
+  const formatDate = useCallback(
+    (dateString: string): string =>
+      parseDateString(dateString).toLocaleDateString(locale, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'America/New_York',
+      }),
+    [locale],
+  );
 
   const hasFooter = (job.values && job.values.length > 0) || (job.skills && job.skills.length > 0);
 
   return (
-    <div className="relative rounded-wev-card transition-all duration-300 bg-card border border-border hover:border-primary overflow-hidden">
+    <article
+      data-testid="job-card"
+      aria-label={`${job.job_title} at ${job.organization}`}
+      className="relative rounded-wev-card transition-all duration-300 bg-card border border-border hover:border-primary overflow-hidden"
+    >
       <JobCardHeader
         job={job}
         isAdmin={isAdmin}
@@ -181,6 +191,6 @@ export default function JobCard({
           />
         </div>
       )}
-    </div>
+    </article>
   );
 }

@@ -52,7 +52,7 @@ export default function BulletinPageView({
               className="main-logo wev-logotype w-[100px] h-auto mb-2"
               priority
             />
-            <p className="text-xl font-medium text-primary">{t('home.heading')}</p>
+            <h1 className="text-xl font-medium text-primary">{t('home.heading')}</h1>
           </header>
 
           {isAdmin && (
@@ -77,7 +77,9 @@ export default function BulletinPageView({
           {data.allJobs.length > 0 && (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
               <div className="text-sm text-center sm:text-left text-xs text-muted-foreground">
-                <span className="font-semibold text-wev-brand-accent">{t('home.lastUpdated')} </span>
+                <span className="font-semibold text-wev-brand-accent">
+                  {t('home.lastUpdated')}{' '}
+                </span>
                 <span>{data.lastScrapeTime || t('home.unknown')}</span>
               </div>
 

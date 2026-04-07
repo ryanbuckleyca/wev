@@ -7,6 +7,9 @@
 
 # testing
 /coverage
+/e2e/.output/
+/e2e/results/
+/playwright-report/
 
 # next.js
 /.next/

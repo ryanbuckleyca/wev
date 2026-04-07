@@ -4,6 +4,11 @@ import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useRouter } from '@/i18n/navigation';
 import { useSearchParams } from 'next/navigation';
 
+const localizedJobBoardPathnames = {
+  '/jobs': { en: '/jobs', fr: '/emplois' },
+  '/emplois': { en: '/jobs', fr: '/emplois' },
+} as const;
+
 export default function LocaleSwitcher() {
   const locale = useLocale();
   const pathname = usePathname();
@@ -13,6 +18,10 @@ export default function LocaleSwitcher() {
 
   const toggleLocale = () => {
     const newLocale = locale === 'en' ? 'fr' : 'en';
+    const localizedPathname =
+      localizedJobBoardPathnames[pathname as keyof typeof localizedJobBoardPathnames]?.[
+        newLocale
+      ] ?? pathname;
 
     // Preserve query parameters when switching locales
     const queryString = searchParams.toString();
@@ -20,15 +29,17 @@ export default function LocaleSwitcher() {
     // usePathname() returns pathname without locale prefix (e.g., "/" or "/profile")
     // router.replace with { locale } option will add the locale prefix automatically
     if (queryString) {
-      router.replace(`${pathname}?${queryString}`, { locale: newLocale });
+      router.replace(`${localizedPathname}?${queryString}`, { locale: newLocale });
     } else {
-      router.replace(pathname, { locale: newLocale });
+      router.replace(localizedPathname, { locale: newLocale });
     }
   };
 
   return (
     <button
+      type="button"
       onClick={toggleLocale}
+      data-testid="locale-switcher"
       className="flex items-center justify-center border border-border rounded-full overflow-hidden self-stretch min-h-[28px] h-[32px] transition-all duration-500 ease-in-out hover:opacity-80 cursor-pointer"
       aria-label={t('ariaLabels.localeSwitcher.toggleLocale')}
     >
