@@ -34,6 +34,7 @@ _Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.c
 - `e2e/support/start-server.ts` wipes and reseeds `wev-test` before the local production server boots, so the app cannot cache stale data from a pre-seed state.
 - Start with Chromium only. Add more browsers once the suite is stable and the extra runtime is worth it.
 - Add `data-testid` only when a role/label-based locator would be brittle across locales or layout refactors. Stable test IDs should be treated as part of the app's testing API.
+- Keep performance checks in a separate `@perf` lane. They should run against the production build, disable heavy artifacts like trace/video, and assert a user-meaningful readiness milestone rather than a brittle raw `load` event.
 
 ## Guiding Principles
 

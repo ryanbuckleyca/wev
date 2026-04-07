@@ -1,7 +1,7 @@
-import { getLocalizedPathname, type AppLocale } from '../../i18n/routing';
 import { test, expect } from '../fixtures';
-import { SEEDED_JOB_BOARD_EXPECTATIONS } from '../support/seed-dataset';
 import type { JobBoardPage } from '../pages/job-board.page';
+import { SEEDED_JOB_BOARD_EXPECTATIONS } from '../support/seed-dataset';
+import { expectJobBoardReady, loadEnglishJobBoard } from '../support/job-board';
 
 const FILTER_LABELS = {
   employmentType: {
@@ -32,25 +32,6 @@ const FILTER_LABELS = {
     remote: 'Remote',
   },
 } as const;
-
-function getJobBoardPath(locale: AppLocale): string {
-  return `/${locale}${getLocalizedPathname('/jobs', locale)}`;
-}
-
-async function expectJobBoardReady(jobBoardPage: JobBoardPage, locale: AppLocale): Promise<void> {
-  await expect
-    .poll(() => new URL(jobBoardPage.page.url()).pathname)
-    .toBe(getJobBoardPath(locale));
-  await expect(jobBoardPage.page.locator('html')).toHaveAttribute('lang', locale);
-  await expect(jobBoardPage.heading).toBeVisible();
-  await expect(jobBoardPage.searchInput).toBeVisible();
-  await expect(jobBoardPage.localeSwitcher).toBeVisible();
-}
-
-async function loadEnglishJobBoard(jobBoardPage: JobBoardPage): Promise<void> {
-  await jobBoardPage.goto('en');
-  await expectJobBoardReady(jobBoardPage, 'en');
-}
 
 async function expectVisibleResults(jobBoardPage: JobBoardPage, totalJobs: number): Promise<void> {
   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));

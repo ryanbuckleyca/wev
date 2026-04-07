@@ -100,8 +100,12 @@ export class JobBoardPage {
     };
   }
 
-  async goto(locale: JobBoardLocale, query?: QueryParamsInput): Promise<void> {
-    await this.page.goto(buildJobBoardUrl(locale, query));
+  async goto(
+    locale: JobBoardLocale,
+    query?: QueryParamsInput,
+    options?: Parameters<Page['goto']>[1],
+  ): Promise<void> {
+    await this.page.goto(buildJobBoardUrl(locale, query), options);
   }
 
   async goToPage(pageNumber: number): Promise<void> {
