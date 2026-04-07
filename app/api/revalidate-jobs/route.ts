@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { BULLETIN_CACHE_TAG } from '@/app/api/bulletin/route';
 
-const REVALIDATE_SECRET = process.env.REVALIDATE_SECRET;
+const REVALIDATE_SECRET = process.env.REVALIDATE_SECRET ?? process.env.REVALIDATION_SECRET;
 
 /**
  * POST /api/revalidate-jobs
@@ -14,7 +14,9 @@ const REVALIDATE_SECRET = process.env.REVALIDATE_SECRET;
  */
 export async function POST(request: Request) {
   if (!REVALIDATE_SECRET) {
-    console.warn('[revalidate-jobs] REVALIDATE_SECRET is not set — endpoint is disabled.');
+    console.warn(
+      '[revalidate-jobs] REVALIDATE_SECRET (or REVALIDATION_SECRET) is not set — endpoint is disabled.',
+    );
     return NextResponse.json({ error: 'Not configured' }, { status: 503 });
   }
 
