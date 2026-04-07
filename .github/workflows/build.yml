@@ -118,8 +118,16 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
         run: |
           set -euo pipefail
+
+          supabase_ref="${SUPABASE_URL#*://}"
+          supabase_ref="${supabase_ref%%.*}"
+          public_ref="${NEXT_PUBLIC_SUPABASE_URL#*://}"
+          public_ref="${public_ref%%.*}"
+          key_len="${#SUPABASE_SERVICE_ROLE_KEY}"
+          key_fingerprint="$(printf '%s' "${SUPABASE_SERVICE_ROLE_KEY}" | shasum -a 256 | cut -c1-12)"
 
           status="$(curl -s -o /tmp/supabase_preflight_response.txt -w '%{http_code}' \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
@@ -129,6 +137,10 @@ jobs:
           if [ "${status}" -ge 400 ]; then
             echo "Supabase auth preflight failed (HTTP ${status})."
             echo "Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in GitHub Secrets."
+            echo "Derived SUPABASE_URL ref: ${supabase_ref}"
+            echo "Derived NEXT_PUBLIC_SUPABASE_URL ref: ${public_ref}"
+            echo "SUPABASE_SERVICE_ROLE_KEY length: ${key_len}"
+            echo "SUPABASE_SERVICE_ROLE_KEY fingerprint: ${key_fingerprint}"
             exit 1
           fi
 
