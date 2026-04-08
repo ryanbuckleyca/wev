@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { render, screen, waitFor } from '@/test-utils';
 import SignupPage from './page';
 import { createClient } from '@/lib/supabase/client';
@@ -9,25 +8,7 @@ vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
 }));
 
-vi.mock('@/i18n/navigation', () => ({
-  Link: ({
-    href,
-    children,
-    prefetch,
-    ...props
-  }: {
-    href: string;
-    children: ReactNode;
-    prefetch?: boolean;
-  }) => {
-    void prefetch;
-    return (
-      <a href={href} {...props}>
-        {children}
-      </a>
-    );
-  },
-}));
+vi.mock('@/i18n/navigation', () => import('@/test-utils/i18n-navigation-mock'));
 
 vi.mock('@/components/TurnstileWidget', () => ({
   default: ({ onSuccess }: { onSuccess: (token: string) => void }) => (

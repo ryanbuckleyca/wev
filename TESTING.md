@@ -125,7 +125,7 @@ await user.click(button);
 
 Always call `userEvent.setup()` at the top of each test that uses it.
 
-**Exception — disabled submit buttons:** When the UI intentionally disables the submit control (e.g. missing CAPTCHA, password strength not met), the browser often will not run the form’s `onSubmit` from Enter, and jsdom matches that. To still test the handler’s validation branch, dispatch `fireEvent.submit` on the `<form>` element and add a short comment explaining why `userEvent` cannot reach that path.
+**Exception — disabled submit buttons:** When the UI intentionally disables the submit control (e.g. missing CAPTCHA, password strength not met), the browser often will not run the form’s `onSubmit` from Enter, and jsdom matches that. To still test the handler’s validation branch, dispatch `fireEvent.submit` on the `<form>` element and add a short comment explaining why `userEvent` cannot reach that path. (This subsection is the canonical reference for that exception; avoid hard-coding section numbers in test comments.)
 
 ### 6. Favour Integration Over Isolation
 
@@ -288,6 +288,8 @@ lib/
   match-calculator.test.ts
   values.ts
   values.test.ts
+test-utils/
+  i18n-navigation-mock.tsx   # shared `@/i18n/navigation` Link + `useRouter` stub (`mockRouterReplace` / `mockRouterPush`)
 ```
 
 ## Running Tests

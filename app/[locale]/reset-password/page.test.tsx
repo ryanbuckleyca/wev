@@ -1,14 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@/test-utils';
 import ResetPasswordPage from './page';
 import { createClient } from '@/lib/supabase/client';
 import { usePasswordStrength } from '@/hooks/usePasswordStrength';
-
-const { mockPush } = vi.hoisted(() => ({
-  mockPush: vi.fn(),
-}));
+import { RESET_PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth/auth-form-placeholders';
+import { mockRouterPush } from '@/test-utils/i18n-navigation-mock';
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
@@ -18,28 +15,7 @@ vi.mock('@/hooks/usePasswordStrength', () => ({
   usePasswordStrength: vi.fn(),
 }));
 
-vi.mock('@/i18n/navigation', () => ({
-  Link: ({
-    href,
-    children,
-    prefetch,
-    ...props
-  }: {
-    href: string;
-    children: ReactNode;
-    prefetch?: boolean;
-  }) => {
-    void prefetch;
-    return (
-      <a href={href} {...props}>
-        {children}
-      </a>
-    );
-  },
-  useRouter: vi.fn(() => ({
-    push: mockPush,
-  })),
-}));
+vi.mock('@/i18n/navigation', () => import('@/test-utils/i18n-navigation-mock'));
 
 vi.mock('@/components/PasswordStrengthIndicator', () => ({
   default: () => null,
@@ -78,6 +54,7 @@ describe('ResetPasswordPage', () => {
     });
     const requestLink = screen.getByRole('link', { name: /request a new reset link/i });
     expect(requestLink).toBeVisible();
+    // Unit test uses a plain `<a>` mock for `next-intl` Link; the real app may prefix locale.
     expect(requestLink).toHaveAttribute('href', '/forgot-password');
   });
 
@@ -86,19 +63,17 @@ describe('ResetPasswordPage', () => {
     render(<ResetPasswordPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByPlaceholderText('••••••••••')).toHaveLength(2);
+      expect(screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER)).toHaveLength(2);
     });
 
-    const fields = screen.getAllByPlaceholderText('••••••••••');
+    const fields = screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER);
     await user.type(fields[0], 'StrongPass123!');
     await user.type(fields[1], 'StrongPass123!');
     await user.click(screen.getByRole('button', { name: /^update password$/i }));
 
     await waitFor(() => {
       expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'StrongPass123!' });
-    });
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/');
+      expect(mockRouterPush).toHaveBeenCalledWith('/');
     });
   });
 
@@ -112,17 +87,17 @@ describe('ResetPasswordPage', () => {
       feedback: 'too short',
     });
 
-    render(<ResetPasswordPage />);
+    const { container } = render(<ResetPasswordPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByPlaceholderText('••••••••••')).toHaveLength(2);
+      expect(screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER)).toHaveLength(2);
     });
 
-    const fields = screen.getAllByPlaceholderText('••••••••••');
+    const fields = screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER);
     await user.type(fields[0], 'weak');
     await user.type(fields[1], 'weak');
     // Submit is disabled when strength is unacceptable, so Enter does not fire `onSubmit` in jsdom.
-    const form = document.querySelector('form');
+    const form = container.querySelector('form');
     expect(form).toBeTruthy();
     fireEvent.submit(form!);
 
@@ -137,10 +112,10 @@ describe('ResetPasswordPage', () => {
     render(<ResetPasswordPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByPlaceholderText('••••••••••')).toHaveLength(2);
+      expect(screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER)).toHaveLength(2);
     });
 
-    const fields = screen.getAllByPlaceholderText('••••••••••');
+    const fields = screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER);
     await user.type(fields[0], 'StrongPass123!');
     await user.type(fields[1], 'StrongPass124!');
     await user.click(screen.getByRole('button', { name: /^update password$/i }));
@@ -158,10 +133,10 @@ describe('ResetPasswordPage', () => {
     render(<ResetPasswordPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByPlaceholderText('••••••••••')).toHaveLength(2);
+      expect(screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER)).toHaveLength(2);
     });
 
-    const fields = screen.getAllByPlaceholderText('••••••••••');
+    const fields = screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER);
     await user.type(fields[0], 'StrongPass123!');
     await user.type(fields[1], 'StrongPass123!');
     await user.click(screen.getByRole('button', { name: /^update password$/i }));
@@ -169,6 +144,6 @@ describe('ResetPasswordPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Could not update user')).toBeVisible();
     });
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockRouterPush).not.toHaveBeenCalled();
   });
 });

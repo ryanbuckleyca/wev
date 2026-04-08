@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createClient } from '@/lib/supabase/server';
 import { GET } from './route';
 
 const mockExchangeCodeForSession = vi.fn();
@@ -15,6 +16,8 @@ vi.mock('@/lib/site-url', () => ({
   getSiteBaseUrlFromRequest: vi.fn(() => 'https://example.com'),
 }));
 
+const mockCreateClient = vi.mocked(createClient);
+
 describe('GET /auth/callback', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,6 +31,16 @@ describe('GET /auth/callback', () => {
     expect(response.status).toBe(307);
     expect(response.headers.get('Location')).toBe('https://example.com/auth/auth-code-error');
     expect(mockExchangeCodeForSession).not.toHaveBeenCalled();
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it('redirects to auth-code-error when code is empty', async () => {
+    const request = new Request('https://example.com/auth/callback?code=');
+    const response = await GET(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('Location')).toBe('https://example.com/auth/auth-code-error');
+    expect(mockExchangeCodeForSession).not.toHaveBeenCalled();
   });
 
   it('exchanges the code and redirects to the site base plus next', async () => {
@@ -36,6 +49,7 @@ describe('GET /auth/callback', () => {
     );
     const response = await GET(request);
 
+    expect(mockCreateClient).toHaveBeenCalled();
     expect(mockExchangeCodeForSession).toHaveBeenCalledWith('abc');
     expect(response.status).toBe(307);
     expect(response.headers.get('Location')).toBe('https://example.com/fr/profile');
@@ -43,6 +57,25 @@ describe('GET /auth/callback', () => {
 
   it('defaults next to / when omitted', async () => {
     const request = new Request('https://example.com/auth/callback?code=xyz');
+    const response = await GET(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('Location')).toBe('https://example.com/');
+  });
+
+  it('redirects to home when next is an absolute URL (open-redirect guard)', async () => {
+    const request = new Request(
+      'https://example.com/auth/callback?code=abc&next=https%3A%2F%2Fevil.example%2Fphish',
+    );
+    const response = await GET(request);
+
+    expect(mockExchangeCodeForSession).toHaveBeenCalledWith('abc');
+    expect(response.status).toBe(307);
+    expect(response.headers.get('Location')).toBe('https://example.com/');
+  });
+
+  it('redirects to home when next is protocol-relative', async () => {
+    const request = new Request('https://example.com/auth/callback?code=abc&next=%2F%2Fevil.example%2F');
     const response = await GET(request);
 
     expect(response.status).toBe(307);

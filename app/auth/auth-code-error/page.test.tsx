@@ -18,6 +18,11 @@ vi.mock('next/headers', () => ({
   })),
 }));
 
+async function renderAuthCodeErrorPage() {
+  const ui = await AuthCodeErrorPage();
+  render(ui);
+}
+
 describe('AuthCodeErrorPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,8 +33,7 @@ describe('AuthCodeErrorPage', () => {
       name === 'accept-language' ? 'en-US,en;q=0.9' : null,
     );
 
-    const ui = await AuthCodeErrorPage();
-    render(ui);
+    await renderAuthCodeErrorPage();
 
     expect(screen.getByRole('heading', { name: /authentication error/i })).toBeVisible();
     const loginLink = screen.getByRole('link', { name: /back to login/i });
@@ -42,8 +46,7 @@ describe('AuthCodeErrorPage', () => {
       name === 'accept-language' ? 'fr-FR,fr;q=0.9,en;q=0.5' : null,
     );
 
-    const ui = await AuthCodeErrorPage();
-    render(ui);
+    await renderAuthCodeErrorPage();
 
     expect(screen.getByRole('heading', { name: /authentication error/i })).toBeVisible();
     const loginLink = screen.getByRole('link', { name: /back to login/i });
