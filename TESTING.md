@@ -292,6 +292,8 @@ test-utils/
   i18n-navigation-mock.tsx   # shared `@/i18n/navigation` Link + `useRouter` stub (`mockRouterReplace` / `mockRouterPush`)
 ```
 
+**Mocking `@/i18n/navigation`:** Prefer `vi.mock('@/i18n/navigation', () => import('@/test-utils/i18n-navigation-mock'))` for page tests that only need a simple `Link` and trackable `replace` / `push`. If a test must assert on a **custom** `useRouter` (e.g. per-test `mockReturnValue`, or different behavior than the shared spies), keep a **local** `vi.mock('@/i18n/navigation', () => ({ ... }))` in that file instead.
+
 ## Running Tests
 
 ```bash

@@ -21,6 +21,7 @@ vi.mock('@/components/TurnstileWidget', () => ({
   default: ({
     onSuccess,
     onError,
+    onExpire,
   }: {
     onSuccess: (token: string) => void;
     onError: () => void;
@@ -32,6 +33,9 @@ vi.mock('@/components/TurnstileWidget', () => ({
       </button>
       <button type="button" onClick={() => onError()}>
         Simulate CAPTCHA error
+      </button>
+      <button type="button" onClick={() => onExpire()}>
+        Simulate CAPTCHA expire
       </button>
     </div>
   ),
@@ -80,6 +84,24 @@ describe('LoginPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/captcha verification failed/i)).toBeVisible();
+    });
+  });
+
+  it('clears captcha and requires verification again after Turnstile expires', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<LoginPage />);
+
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'a@b.com');
+    await user.type(screen.getByPlaceholderText(LOGIN_PAGE_PASSWORD_PLACEHOLDER), 'secret123');
+    await user.click(screen.getByRole('button', { name: /complete captcha/i }));
+    await user.click(screen.getByRole('button', { name: /simulate captcha expire/i }));
+
+    const form = container.querySelector('form');
+    expect(form).toBeTruthy();
+    fireEvent.submit(form!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/please complete the captcha verification/i)).toBeVisible();
     });
   });
 

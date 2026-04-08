@@ -24,4 +24,14 @@ describe('sanitizeNextPath', () => {
     expect(sanitizeNextPath('//evil.example/phish')).toBe('/');
     expect(sanitizeNextPath('https://evil.example')).toBe('/');
   });
+
+  it('rejects dangerous schemes', () => {
+    expect(sanitizeNextPath('javascript:alert(1)')).toBe('/');
+    expect(sanitizeNextPath('data:text/html,<script>')).toBe('/');
+    expect(sanitizeNextPath('blob:https://x')).toBe('/');
+  });
+
+  it('allows paths whose query contains a substring like ://', () => {
+    expect(sanitizeNextPath('/search?q=a%3A%2F%2Fb')).toBe('/search?q=a%3A%2F%2Fb');
+  });
 });

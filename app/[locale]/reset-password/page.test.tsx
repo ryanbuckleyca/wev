@@ -24,6 +24,13 @@ vi.mock('@/components/PasswordStrengthIndicator', () => ({
 const mockGetSession = vi.fn();
 const mockUpdateUser = vi.fn();
 
+async function waitForResetPasswordFields(): Promise<HTMLElement[]> {
+  await waitFor(() => {
+    expect(screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER)).toHaveLength(2);
+  });
+  return screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER);
+}
+
 describe('ResetPasswordPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,11 +69,7 @@ describe('ResetPasswordPage', () => {
     const user = userEvent.setup();
     render(<ResetPasswordPage />);
 
-    await waitFor(() => {
-      expect(screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER)).toHaveLength(2);
-    });
-
-    const fields = screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER);
+    const fields = await waitForResetPasswordFields();
     await user.type(fields[0], 'StrongPass123!');
     await user.type(fields[1], 'StrongPass123!');
     await user.click(screen.getByRole('button', { name: /^update password$/i }));
@@ -89,11 +92,7 @@ describe('ResetPasswordPage', () => {
 
     const { container } = render(<ResetPasswordPage />);
 
-    await waitFor(() => {
-      expect(screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER)).toHaveLength(2);
-    });
-
-    const fields = screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER);
+    const fields = await waitForResetPasswordFields();
     await user.type(fields[0], 'weak');
     await user.type(fields[1], 'weak');
     // Submit is disabled when strength is unacceptable, so Enter does not fire `onSubmit` in jsdom.
@@ -111,11 +110,7 @@ describe('ResetPasswordPage', () => {
     const user = userEvent.setup();
     render(<ResetPasswordPage />);
 
-    await waitFor(() => {
-      expect(screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER)).toHaveLength(2);
-    });
-
-    const fields = screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER);
+    const fields = await waitForResetPasswordFields();
     await user.type(fields[0], 'StrongPass123!');
     await user.type(fields[1], 'StrongPass124!');
     await user.click(screen.getByRole('button', { name: /^update password$/i }));
@@ -132,11 +127,7 @@ describe('ResetPasswordPage', () => {
 
     render(<ResetPasswordPage />);
 
-    await waitFor(() => {
-      expect(screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER)).toHaveLength(2);
-    });
-
-    const fields = screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER);
+    const fields = await waitForResetPasswordFields();
     await user.type(fields[0], 'StrongPass123!');
     await user.type(fields[1], 'StrongPass123!');
     await user.click(screen.getByRole('button', { name: /^update password$/i }));

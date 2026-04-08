@@ -1,5 +1,5 @@
-/** Must stay in sync with `app/[locale]/login/page.tsx` password field. */
+/** Single source of truth for login password field placeholder (used by page + tests). */
 export const LOGIN_PAGE_PASSWORD_PLACEHOLDER = '•••••••••';
 
-/** Must stay in sync with `app/[locale]/reset-password/page.tsx` password fields. */
+/** Single source of truth for reset-password field placeholders (used by page + tests). */
 export const RESET_PASSWORD_FIELD_PLACEHOLDER = '••••••••••';
