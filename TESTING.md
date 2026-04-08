@@ -125,6 +125,8 @@ await user.click(button);
 
 Always call `userEvent.setup()` at the top of each test that uses it.
 
+**Exception — disabled submit buttons:** When the UI intentionally disables the submit control (e.g. missing CAPTCHA, password strength not met), the browser often will not run the form’s `onSubmit` from Enter, and jsdom matches that. To still test the handler’s validation branch, dispatch `fireEvent.submit` on the `<form>` element and add a short comment explaining why `userEvent` cannot reach that path. (This subsection is the canonical reference for that exception; avoid hard-coding section numbers in test comments.)
+
 ### 6. Favour Integration Over Isolation
 
 Prefer tests that assess how components work together over isolated unit tests. This provides a more accurate representation of real-world usage. Only mock what you **must** (network requests, environment-specific APIs).
@@ -286,7 +288,11 @@ lib/
   match-calculator.test.ts
   values.ts
   values.test.ts
+test-utils/
+  i18n-navigation-mock.tsx   # shared `@/i18n/navigation` Link + `useRouter` stub (`mockRouterReplace` / `mockRouterPush`)
 ```
+
+**Mocking `@/i18n/navigation`:** Prefer `vi.mock('@/i18n/navigation', () => import('@/test-utils/i18n-navigation-mock'))` for page tests that only need a simple `Link` and trackable `replace` / `push`. If a test must assert on a **custom** `useRouter` (e.g. per-test `mockReturnValue`, or different behavior than the shared spies), keep a **local** `vi.mock('@/i18n/navigation', () => ({ ... }))` in that file instead.
 
 ## Running Tests
 

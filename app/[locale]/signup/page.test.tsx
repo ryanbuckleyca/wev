@@ -1,41 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { render, screen, waitFor } from '@/test-utils';
 import SignupPage from './page';
 import { createClient } from '@/lib/supabase/client';
+import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
 }));
 
-vi.mock('@/i18n/navigation', () => ({
-  Link: ({
-    href,
-    children,
-    prefetch,
-    ...props
-  }: {
-    href: string;
-    children: ReactNode;
-    prefetch?: boolean;
-  }) => {
-    void prefetch;
-    return (
-      <a href={href} {...props}>
-        {children}
-      </a>
-    );
-  },
-}));
+vi.mock('@/i18n/navigation', () => import('@/test-utils/i18n-navigation-mock'));
 
-vi.mock('@/components/TurnstileWidget', () => ({
-  default: ({ onSuccess }: { onSuccess: (token: string) => void }) => (
-    <button type="button" onClick={() => onSuccess('turnstile-token')}>
-      Complete CAPTCHA
-    </button>
-  ),
-}));
+vi.mock('@/components/TurnstileWidget', () => import('@/test-utils/turnstile-widget-mock'));
 
 vi.mock('@/hooks/usePasswordStrength', () => ({
   usePasswordStrength: () => ({
@@ -66,7 +42,7 @@ describe('SignupPage', () => {
     render(<SignupPage />);
 
     await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com');
-    await user.type(screen.getByPlaceholderText('•••••••••••'), 'StrongPass123!');
+    await user.type(screen.getByPlaceholderText(PASSWORD_FIELD_PLACEHOLDER), 'StrongPass123!');
     await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.click(screen.getByRole('button', { name: /create account/i }));
 

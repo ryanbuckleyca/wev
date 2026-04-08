@@ -13,6 +13,7 @@ import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
 import Button from '@/components/Button';
 import ErrorBox from '@/components/ErrorBox';
+import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
 
 export default function LoginPage() {
   const t = useTranslations();
@@ -82,7 +83,7 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={setPassword}
-            placeholder="•••••••••"
+            placeholder={PASSWORD_FIELD_PLACEHOLDER}
             required
             fullWidth
           />
