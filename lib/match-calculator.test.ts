@@ -34,11 +34,17 @@ function locationParams(overrides: Partial<LocationScoreParams> = {}): LocationS
 
 describe('calculateMatch', () => {
   it('returns null score and empty shared_values when user has no values', () => {
-    expect(calculateMatch([], ['Community', 'Creativity'])).toEqual({ score: null, shared_values: [] });
+    expect(calculateMatch([], ['Community', 'Creativity'])).toEqual({
+      score: null,
+      shared_values: [],
+    });
   });
 
   it('returns null score and empty shared_values when job has no values', () => {
-    expect(calculateMatch(['Community', 'Creativity'], [])).toEqual({ score: null, shared_values: [] });
+    expect(calculateMatch(['Community', 'Creativity'], [])).toEqual({
+      score: null,
+      shared_values: [],
+    });
   });
 
   it('returns null score when both lists are empty', () => {
@@ -216,26 +222,33 @@ describe('Property: all-unranked RatedValue[] score equals plain string[] score'
 });
 
 describe('Property: score is always in [0.0, 1.0] when non-null', () => {
-  const cases: Array<{ label: string; userValues: string[] | RatedValue[]; jobValues: string[] }> = [
-    { label: 'both empty', userValues: [], jobValues: [] },
-    { label: 'no overlap', userValues: ['Community'], jobValues: ['Security'] },
-    { label: 'full overlap', userValues: ['Community'], jobValues: ['Community'] },
-    {
-      label: 'partial overlap',
-      userValues: ['Community', 'Creativity', 'Challenge', 'Knowledge'],
-      jobValues: ['Community', 'Creativity', 'Security'],
-    },
-    {
-      label: 'ranked: partial overlap',
-      userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity', rank: 2 }],
-      jobValues: ['Community', 'Security'],
-    },
-    {
-      label: 'ranked: full overlap',
-      userValues: [{ value: 'Community', rank: 1 }, { value: 'Creativity', rank: 2 }],
-      jobValues: ['Community', 'Creativity'],
-    },
-  ];
+  const cases: Array<{ label: string; userValues: string[] | RatedValue[]; jobValues: string[] }> =
+    [
+      { label: 'both empty', userValues: [], jobValues: [] },
+      { label: 'no overlap', userValues: ['Community'], jobValues: ['Security'] },
+      { label: 'full overlap', userValues: ['Community'], jobValues: ['Community'] },
+      {
+        label: 'partial overlap',
+        userValues: ['Community', 'Creativity', 'Challenge', 'Knowledge'],
+        jobValues: ['Community', 'Creativity', 'Security'],
+      },
+      {
+        label: 'ranked: partial overlap',
+        userValues: [
+          { value: 'Community', rank: 1 },
+          { value: 'Creativity', rank: 2 },
+        ],
+        jobValues: ['Community', 'Security'],
+      },
+      {
+        label: 'ranked: full overlap',
+        userValues: [
+          { value: 'Community', rank: 1 },
+          { value: 'Creativity', rank: 2 },
+        ],
+        jobValues: ['Community', 'Creativity'],
+      },
+    ];
 
   it.each(cases)('$label', ({ userValues, jobValues }) => {
     const { score } = calculateMatch(userValues as string[] | RatedValue[], jobValues);
@@ -250,24 +263,34 @@ describe('Property: score is always in [0.0, 1.0] when non-null', () => {
 
 describe('computeLocationScore', () => {
   it('returns 1.0 when user includes remote and job is remote', () => {
-    expect(computeLocationScore(locationParams({ userWorkTypes: ['remote'], jobWorkType: 'remote' }))).toBe(1.0);
+    expect(
+      computeLocationScore(locationParams({ userWorkTypes: ['remote'], jobWorkType: 'remote' })),
+    ).toBe(1.0);
   });
 
   it('returns null when job is remote but user does not include remote', () => {
-    expect(computeLocationScore(locationParams({ userWorkTypes: ['office'], jobWorkType: 'remote' }))).toBeNull();
+    expect(
+      computeLocationScore(locationParams({ userWorkTypes: ['office'], jobWorkType: 'remote' })),
+    ).toBeNull();
   });
 
   it('returns null when job is onsite and user is remote-only', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobLat: 49.2827, jobLng: -123.1207,
-        userLat: 49.2827, userLng: -123.1207,
-        jobAccuracyType: 'rooftop',
-        userWorkTypes: ['remote'],
-        jobWorkType: 'office',
-        jobMunicipality: 'Vancouver', jobProvince: 'BC',
-        userMunicipality: 'Vancouver', userProvince: 'BC',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobLat: 49.2827,
+          jobLng: -123.1207,
+          userLat: 49.2827,
+          userLng: -123.1207,
+          jobAccuracyType: 'rooftop',
+          userWorkTypes: ['remote'],
+          jobWorkType: 'office',
+          jobMunicipality: 'Vancouver',
+          jobProvince: 'BC',
+          userMunicipality: 'Vancouver',
+          userProvince: 'BC',
+        }),
+      ),
     ).toBeNull();
   });
 
@@ -279,92 +302,128 @@ describe('computeLocationScore', () => {
 
   it('returns 1.0 when job is hybrid and user includes hybrid', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobLat: 49.2827, jobLng: -123.1207,
-        userLat: 49.2827, userLng: -123.1207,
-        jobAccuracyType: 'rooftop',
-        userWorkTypes: ['hybrid'],
-        jobWorkType: 'hybrid',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobLat: 49.2827,
+          jobLng: -123.1207,
+          userLat: 49.2827,
+          userLng: -123.1207,
+          jobAccuracyType: 'rooftop',
+          userWorkTypes: ['hybrid'],
+          jobWorkType: 'hybrid',
+        }),
+      ),
     ).toBe(1.0);
   });
 
   it('returns 1.0 for exact municipality and province match (case-insensitive)', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobMunicipality: 'Vancouver', jobProvince: 'BC',
-        userMunicipality: 'vancouver', userProvince: 'bc',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobMunicipality: 'Vancouver',
+          jobProvince: 'BC',
+          userMunicipality: 'vancouver',
+          userProvince: 'bc',
+        }),
+      ),
     ).toBe(1.0);
   });
 
   it('returns null when accuracy type is "state"', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobLat: 49.0, jobLng: -123.0,
-        userLat: 49.0, userLng: -123.0,
-        jobAccuracyType: 'state',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobLat: 49.0,
+          jobLng: -123.0,
+          userLat: 49.0,
+          userLng: -123.0,
+          jobAccuracyType: 'state',
+        }),
+      ),
     ).toBeNull();
   });
 
   it('returns null when accuracy type is "country"', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobLat: 49.0, jobLng: -123.0,
-        userLat: 49.0, userLng: -123.0,
-        jobAccuracyType: 'country',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobLat: 49.0,
+          jobLng: -123.0,
+          userLat: 49.0,
+          userLng: -123.0,
+          jobAccuracyType: 'country',
+        }),
+      ),
     ).toBeNull();
   });
 
   it('returns null when job lat is null', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobLat: null, jobLng: -123.0,
-        userLat: 49.0, userLng: -123.0,
-        jobAccuracyType: 'rooftop',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobLat: null,
+          jobLng: -123.0,
+          userLat: 49.0,
+          userLng: -123.0,
+          jobAccuracyType: 'rooftop',
+        }),
+      ),
     ).toBeNull();
   });
 
   it('returns null when user lng is null', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobLat: 49.0, jobLng: -123.0,
-        userLat: 49.0, userLng: null,
-        jobAccuracyType: 'rooftop',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobLat: 49.0,
+          jobLng: -123.0,
+          userLat: 49.0,
+          userLng: null,
+          jobAccuracyType: 'rooftop',
+        }),
+      ),
     ).toBeNull();
   });
 
   it('returns 1.0 for distance ≤ 50km (Vancouver to North Vancouver ~5km)', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobLat: 49.2827, jobLng: -123.1207,
-        userLat: 49.3163, userLng: -123.0724,
-        jobAccuracyType: 'rooftop',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobLat: 49.2827,
+          jobLng: -123.1207,
+          userLat: 49.3163,
+          userLng: -123.0724,
+          jobAccuracyType: 'rooftop',
+        }),
+      ),
     ).toBe(1.0);
   });
 
   it('returns 0.5 for distance > 50km and ≤ 150km (Vancouver to Whistler ~120km)', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobLat: 49.2827, jobLng: -123.1207,
-        userLat: 50.1163, userLng: -122.9574,
-        jobAccuracyType: 'rooftop',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobLat: 49.2827,
+          jobLng: -123.1207,
+          userLat: 50.1163,
+          userLng: -122.9574,
+          jobAccuracyType: 'rooftop',
+        }),
+      ),
     ).toBe(0.5);
   });
 
   it('returns 0.0 for distance > 150km (Vancouver to Kelowna ~300km)', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobLat: 49.2827, jobLng: -123.1207,
-        userLat: 49.8880, userLng: -119.4960,
-        jobAccuracyType: 'rooftop',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobLat: 49.2827,
+          jobLng: -123.1207,
+          userLat: 49.888,
+          userLng: -119.496,
+          jobAccuracyType: 'rooftop',
+        }),
+      ),
     ).toBe(0.0);
   });
 });
@@ -372,25 +431,37 @@ describe('computeLocationScore', () => {
 describe('computeLocationScore — named cases', () => {
   it('same-city match: Richmond BC vs Richmond BC → 1.0', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobLat: 49.1666, jobLng: -123.1336,
-        userLat: 49.1666, userLng: -123.1336,
-        jobAccuracyType: 'rooftop',
-        jobMunicipality: 'Richmond', jobProvince: 'BC',
-        userMunicipality: 'Richmond', userProvince: 'BC',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobLat: 49.1666,
+          jobLng: -123.1336,
+          userLat: 49.1666,
+          userLng: -123.1336,
+          jobAccuracyType: 'rooftop',
+          jobMunicipality: 'Richmond',
+          jobProvince: 'BC',
+          userMunicipality: 'Richmond',
+          userProvince: 'BC',
+        }),
+      ),
     ).toBe(1.0);
   });
 
   it('same-name different-province: Richmond BC vs Richmond QC → 0.0', () => {
     expect(
-      computeLocationScore(locationParams({
-        jobLat: 45.6667, jobLng: -72.1500,
-        userLat: 49.1666, userLng: -123.1336,
-        jobAccuracyType: 'rooftop',
-        jobMunicipality: 'Richmond', jobProvince: 'QC',
-        userMunicipality: 'Richmond', userProvince: 'BC',
-      })),
+      computeLocationScore(
+        locationParams({
+          jobLat: 45.6667,
+          jobLng: -72.15,
+          userLat: 49.1666,
+          userLng: -123.1336,
+          jobAccuracyType: 'rooftop',
+          jobMunicipality: 'Richmond',
+          jobProvince: 'QC',
+          userMunicipality: 'Richmond',
+          userProvince: 'BC',
+        }),
+      ),
     ).toBe(0.0);
   });
 
@@ -401,12 +472,17 @@ describe('computeLocationScore — named cases', () => {
   });
 
   it('sparse profile: null values and skills → normalizeWeights returns zero core weights', () => {
-    const weights: DimensionWeights = { values: 0.55, skills: 0.35, work_type: 0.05, location: 0.05 };
+    const weights: DimensionWeights = {
+      values: 0.55,
+      skills: 0.35,
+      work_type: 0.05,
+      location: 0.05,
+    };
     const scores: DimensionScores = { values: null, skills: null, work_type: 1.0, location: 1.0 };
     const result = normalizeWeights(weights, scores);
     expect(result.values).toBe(0);
     expect(result.skills).toBe(0);
-    expect(result.values + result.skills).toBeLessThan(0.50);
+    expect(result.values + result.skills).toBeLessThan(0.5);
   });
 });
 
@@ -463,13 +539,17 @@ describe('computeLocationScore — property: same coordinates always returns 1.0
       const accuracyType = preciseTypes[Math.floor(Math.random() * preciseTypes.length)];
       const workType = workTypes[Math.floor(Math.random() * workTypes.length)];
 
-      const result = computeLocationScore(locationParams({
-        jobLat: lat, jobLng: lng,
-        userLat: lat, userLng: lng,
-        jobAccuracyType: accuracyType,
-        userWorkTypes: [workType],
-        jobWorkType: workType,
-      }));
+      const result = computeLocationScore(
+        locationParams({
+          jobLat: lat,
+          jobLng: lng,
+          userLat: lat,
+          userLng: lng,
+          jobAccuracyType: accuracyType,
+          userWorkTypes: [workType],
+          jobWorkType: workType,
+        }),
+      );
 
       expect(result, `iteration ${i}: lat=${lat}, lng=${lng}, accuracy=${accuracyType}`).toBe(1.0);
     }
@@ -489,7 +569,12 @@ describe('normalizeWeights — property: at least one non-null score → weights
         location: Math.random() * 0.9 + 0.01,
       };
 
-      const scores: DimensionScores = { values: null, skills: null, work_type: null, location: null };
+      const scores: DimensionScores = {
+        values: null,
+        skills: null,
+        work_type: null,
+        location: null,
+      };
       const forcedDim = dims[Math.floor(Math.random() * dims.length)];
       scores[forcedDim] = Math.random();
       for (const dim of dims) {
@@ -499,10 +584,7 @@ describe('normalizeWeights — property: at least one non-null score → weights
       const result = normalizeWeights(weights, scores);
       const sum = result.values + result.skills + result.work_type + result.location;
 
-      expect(
-        Math.abs(sum - 1.0),
-        `iteration ${i}: sum=${sum}`,
-      ).toBeLessThan(TOLERANCE);
+      expect(Math.abs(sum - 1.0), `iteration ${i}: sum=${sum}`).toBeLessThan(TOLERANCE);
     }
   });
 });

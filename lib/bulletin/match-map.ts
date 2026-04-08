@@ -15,7 +15,9 @@ type JobMatchRow = {
 const MATCH_SELECT =
   'job_id, score, value_score, skill_score, work_type_score, location_score, shared_values, shared_skills';
 
-export function buildMatchMap(matches: JobMatchRow[] | null | undefined): Map<string, JobMatchData> {
+export function buildMatchMap(
+  matches: JobMatchRow[] | null | undefined,
+): Map<string, JobMatchData> {
   const matchMap = new Map<string, JobMatchData>();
 
   matches?.forEach((match) => {

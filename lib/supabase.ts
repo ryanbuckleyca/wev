@@ -4,10 +4,10 @@
  */
 
 export interface CompensationMeta {
-  confidence: number
-  raw: string
-  currency: string | null
-  notes?: string
+  confidence: number;
+  raw: string;
+  currency: string | null;
+  notes?: string;
 }
 
 export interface JobPosting {

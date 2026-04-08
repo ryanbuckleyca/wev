@@ -8,11 +8,7 @@ interface BannerMessageProps {
   className?: string;
 }
 
-export default function BannerMessage({
-  type,
-  message,
-  className = '',
-}: BannerMessageProps) {
+export default function BannerMessage({ type, message, className = '' }: BannerMessageProps) {
   const theme = TOAST_THEMES[type];
 
   return (

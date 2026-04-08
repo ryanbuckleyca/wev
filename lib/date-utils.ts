@@ -15,10 +15,7 @@
  *   - Bare datetime (no timezone):   "2026-03-20T00:00:00" → treated as UTC
  */
 export function parseDateString(raw: string): Date {
-  const hasTimezone =
-    raw.endsWith('Z') ||
-    /[+-]\d{2}:\d{2}$/.test(raw) ||
-    /[+-]\d{4}$/.test(raw);
+  const hasTimezone = raw.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(raw) || /[+-]\d{4}$/.test(raw);
   return new Date(hasTimezone ? raw : `${raw}Z`);
 }
 

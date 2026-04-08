@@ -42,7 +42,9 @@ export function buildFilterOptions(jobs: JobPosting[]): BulletinFilterOptions {
   Object.keys(municipalitiesByProvince)
     .sort()
     .forEach((province) => {
-      sortedMunicipalitiesByProvince[province] = Array.from(municipalitiesByProvince[province]).sort();
+      sortedMunicipalitiesByProvince[province] = Array.from(
+        municipalitiesByProvince[province],
+      ).sort();
     });
 
   return {
@@ -117,9 +119,7 @@ export function getVisibleMunicipalitiesByProvince({
   return visible;
 }
 
-export function getAllMunicipalities(
-  municipalitiesByProvince: MunicipalitiesByProvince,
-): string[] {
+export function getAllMunicipalities(municipalitiesByProvince: MunicipalitiesByProvince): string[] {
   return Object.values(municipalitiesByProvince).flat().sort();
 }
 

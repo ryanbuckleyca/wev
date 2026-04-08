@@ -5,10 +5,10 @@ import type { JobPosting } from '@/lib/supabase';
 import { useBulletinFetch } from './useBulletinFetch';
 import { useUserJobMeta } from './useUserJobMeta';
 import { useJobFilters } from './useJobFilters';
-import type { 
-  InitialBulletinData, 
-  BulletinDataState, 
-  UseBulletinDataOptions 
+import type {
+  InitialBulletinData,
+  BulletinDataState,
+  UseBulletinDataOptions,
 } from '@/lib/bulletin/types';
 
 export function useBulletinData(
@@ -20,13 +20,10 @@ export function useBulletinData(
   const { setCurrentPage } = options;
 
   // 1. Data Fetching Layer
-  const { allJobs, setAllJobs, lastScrapeTime, skillLabels, loading, error, refresh } = useBulletinFetch(
-    locale,
-    initialData,
-    () => {
+  const { allJobs, setAllJobs, lastScrapeTime, skillLabels, loading, error, refresh } =
+    useBulletinFetch(locale, initialData, () => {
       void setCurrentPage(1);
-    },
-  );
+    });
 
   // 2. User Meta Layer (Matches & Bookmarks)
   const { matchData, setBookmarkedJobIds, bookmarkedJobIds } = useUserJobMeta(
@@ -41,9 +38,7 @@ export function useBulletinData(
   // 4. Optimistic Action Handlers
   const handleJobSseChange = useCallback(
     (jobId: string, isSse: boolean) => {
-      setAllJobs((prev) =>
-        prev.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job)),
-      );
+      setAllJobs((prev) => prev.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job)));
     },
     [setAllJobs],
   );

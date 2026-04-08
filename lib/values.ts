@@ -158,7 +158,8 @@ export const VALUES_DICTIONARY = {
     example: 'Example: projects focused on sustainability or reducing environmental impact.',
   },
   Excitement: {
-    description: 'Experience a high degree of stimulation or frequent novelty and drama on the job.',
+    description:
+      'Experience a high degree of stimulation or frequent novelty and drama on the job.',
     example: 'Example: high-engagement work with visible momentum and action.',
   },
   Family: {

@@ -23,8 +23,8 @@ const BASE_WEIGHTS = {
 // These two must sum to less than 1.0; the remainder is split between values/skills
 // at the same ratio as BASE_WEIGHTS.
 const LOCATION_PRIORITY_WEIGHTS = {
-  location: 0.20,
-  work_type: 0.10,
+  location: 0.2,
+  work_type: 0.1,
 } as const;
 
 // Types
@@ -99,7 +99,10 @@ interface JobRow {
 
 /** Lowercase and strip diacritics for accent-insensitive municipality comparison. */
 function normalize(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '');
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Mn}/gu, '');
 }
 
 /**
@@ -111,11 +114,17 @@ function normalize(s: string): string {
  */
 export function computeLocationScore(params: LocationScoreParams): number | null {
   const {
-    jobLat, jobLng, userLat, userLng,
+    jobLat,
+    jobLng,
+    userLat,
+    userLng,
     jobAccuracyType,
-    userWorkTypes, jobWorkType,
-    jobMunicipality, jobProvince,
-    userMunicipality, userProvince,
+    userWorkTypes,
+    jobWorkType,
+    jobMunicipality,
+    jobProvince,
+    userMunicipality,
+    userProvince,
   } = params;
 
   const userIncludesRemote = userWorkTypes.includes('remote');
@@ -139,8 +148,10 @@ export function computeLocationScore(params: LocationScoreParams): number | null
 
   // 5. Exact municipality + province match (case and accent-insensitive, all four non-null)
   if (
-    jobMunicipality != null && jobProvince != null &&
-    userMunicipality != null && userProvince != null &&
+    jobMunicipality != null &&
+    jobProvince != null &&
+    userMunicipality != null &&
+    userProvince != null &&
     normalize(jobMunicipality) === normalize(userMunicipality) &&
     jobProvince.toLowerCase() === userProvince.toLowerCase()
   ) {
@@ -154,10 +165,11 @@ export function computeLocationScore(params: LocationScoreParams): number | null
   if (jobLat == null || jobLng == null || userLat == null || userLng == null) return null;
 
   // 8. Distance bands
-  const distanceKm = getDistance(
-    { latitude: jobLat, longitude: jobLng },
-    { latitude: userLat, longitude: userLng },
-  ) / 1000;
+  const distanceKm =
+    getDistance(
+      { latitude: jobLat, longitude: jobLng },
+      { latitude: userLat, longitude: userLng },
+    ) / 1000;
 
   if (distanceKm <= DISTANCE_THRESHOLDS.COMMUTE_KM) return 1.0;
   if (distanceKm <= DISTANCE_THRESHOLDS.REGIONAL_KM) return 0.5;
@@ -305,7 +317,8 @@ function calcFlatMatch(
 ): { score: number | null; shared_values: string[] } {
   const plainValues = (userValues as unknown[]).map(userValueEntryToPlain);
   const sharedValues = plainValues.filter((v) => jobSet.has(v));
-  const overlap = sharedValues.reduce((sum, v) => sum + getJobWeight(confidenceMap, v), 0) / plainValues.length;
+  const overlap =
+    sharedValues.reduce((sum, v) => sum + getJobWeight(confidenceMap, v), 0) / plainValues.length;
   const score = Math.min(overlap + Math.min(sharedValues.length * 0.1, 0.3), 1.0);
   return { score, shared_values: sharedValues };
 }
@@ -349,7 +362,10 @@ function calcSkillScore(
   if (userSkills.length === 0 || jobSkills.length === 0) return { score: null, shared: [] };
   const jobSkillSet = new Set(jobSkills);
   const shared = userSkills.filter((s) => jobSkillSet.has(s));
-  const score = Math.min(shared.length / userSkills.length + Math.min(shared.length * 0.1, 0.3), 1.0);
+  const score = Math.min(
+    shared.length / userSkills.length + Math.min(shared.length * 0.1, 0.3),
+    1.0,
+  );
   return { score, shared };
 }
 
@@ -376,7 +392,9 @@ function calcFinalScore(scores: DimensionScores, weights: DimensionWeights): num
   );
 }
 
-function resolveUserValues(profile: Pick<ProfileRow, 'values' | 'values_rated'>): string[] | RatedValue[] {
+function resolveUserValues(
+  profile: Pick<ProfileRow, 'values' | 'values_rated'>,
+): string[] | RatedValue[] {
   return profile.values_rated?.length
     ? (profile.values_rated as RatedValue[])
     : (profile.values ?? []);
@@ -402,7 +420,11 @@ function computeMatchForPair(
   const profileValues = resolveUserValues(profile);
   const profileWorkTypes = profile.work_types ?? [];
 
-  const vMatch = calculateMatch(profileValues, job.values ?? [], job.values_rated as JobRatedValue[] | null);
+  const vMatch = calculateMatch(
+    profileValues,
+    job.values ?? [],
+    job.values_rated as JobRatedValue[] | null,
+  );
   const { score: skillScore, shared: sharedSkills } = calcSkillScore(
     profile.skills ?? [],
     job.skills ?? [],
@@ -441,8 +463,10 @@ function computeMatchForPair(
 }
 
 // Select field lists — single source of truth for both query functions
-const PROFILE_SELECT = 'id, values, values_rated, skills, work_types, lat, lng, municipality, province' as const;
-const JOB_SELECT = 'id, values, values_rated, skills, work_type, lat, lng, geocode_accuracy_type, municipality, province' as const;
+const PROFILE_SELECT =
+  'id, values, values_rated, skills, work_types, lat, lng, municipality, province' as const;
+const JOB_SELECT =
+  'id, values, values_rated, skills, work_type, lat, lng, geocode_accuracy_type, municipality, province' as const;
 
 // calculateUserMatches
 
@@ -477,17 +501,18 @@ export async function calculateUserMatches(userId: string): Promise<void> {
       return;
     }
 
-    const validJobs = (jobs ?? []).filter((job) =>
-      (job.values && job.values.length > 0) ||
-      (job.values_rated && (job.values_rated as unknown[]).length > 0) ||
-      (job.skills && job.skills.length > 0)
+    const validJobs = (jobs ?? []).filter(
+      (job) =>
+        (job.values && job.values.length > 0) ||
+        (job.values_rated && (job.values_rated as unknown[]).length > 0) ||
+        (job.skills && job.skills.length > 0),
     );
 
     const matches: MatchResult[] = validJobs.map((job) => ({
-        user_id: userId,
-        job_id: job.id,
-        ...computeMatchForPair(profile as ProfileRow, job as JobRow),
-      }));
+      user_id: userId,
+      job_id: job.id,
+      ...computeMatchForPair(profile as ProfileRow, job as JobRow),
+    }));
 
     if (matches.length > 0) {
       const { error: upsertError } = await supabaseServer
@@ -527,17 +552,18 @@ export async function calculateJobMatches(jobId: string): Promise<void> {
       return;
     }
 
-    const validProfiles = (profiles ?? []).filter((profile) =>
-      (profile.values && profile.values.length > 0) ||
-      (profile.values_rated && (profile.values_rated as unknown[]).length > 0) ||
-      (profile.skills && profile.skills.length > 0)
+    const validProfiles = (profiles ?? []).filter(
+      (profile) =>
+        (profile.values && profile.values.length > 0) ||
+        (profile.values_rated && (profile.values_rated as unknown[]).length > 0) ||
+        (profile.skills && profile.skills.length > 0),
     );
 
     const matches: MatchResult[] = validProfiles.map((profile) => ({
-        user_id: profile.id,
-        job_id: jobId,
-        ...computeMatchForPair(profile as ProfileRow, job as JobRow),
-      }));
+      user_id: profile.id,
+      job_id: jobId,
+      ...computeMatchForPair(profile as ProfileRow, job as JobRow),
+    }));
 
     if (matches.length > 0) {
       const { error: upsertError } = await supabaseServer

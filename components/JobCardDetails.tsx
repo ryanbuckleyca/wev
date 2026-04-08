@@ -21,12 +21,7 @@ export default function JobCardDetails({ job, locale, t, formatDate }: JobCardDe
       <div className="job-detail-line">
         <span className="job-label">{t('jobCard.what')} </span>
         {job.listing_url ? (
-          <a
-            href={job.listing_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="job-link"
-          >
+          <a href={job.listing_url} target="_blank" rel="noopener noreferrer" className="job-link">
             {job.job_title}
           </a>
         ) : (

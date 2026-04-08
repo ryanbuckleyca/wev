@@ -13,9 +13,7 @@ export function BulletinFilterProvider({
   children: ReactNode;
 }) {
   return (
-    <BulletinFilterContext.Provider value={filters}>
-      {children}
-    </BulletinFilterContext.Provider>
+    <BulletinFilterContext.Provider value={filters}>{children}</BulletinFilterContext.Provider>
   );
 }
 

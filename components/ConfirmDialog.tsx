@@ -32,7 +32,12 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     // Pressing Escape or clicking the overlay fires onOpenChange(false) → onCancel
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onCancel(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onCancel();
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

@@ -21,7 +21,10 @@ export async function GET(request: Request) {
     }
 
     // Normalize query: lower case, decompose to NFD, and strip combining diacritical marks
-    const normalizedQuery = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const normalizedQuery = query
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
 
     const { data, error } = await supabaseServer
       .from('cities')

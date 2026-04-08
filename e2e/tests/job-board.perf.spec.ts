@@ -48,8 +48,6 @@ test.describe('Job board performance @perf', () => {
     expect(snapshot.interactiveReadyMs).toBeLessThanOrEqual(
       JOB_BOARD_PERFORMANCE_BUDGET_MS.interactiveReadyMs,
     );
-    expect(snapshot.loadEventMs).toBeLessThanOrEqual(
-      JOB_BOARD_PERFORMANCE_BUDGET_MS.loadEventMs,
-    );
+    expect(snapshot.loadEventMs).toBeLessThanOrEqual(JOB_BOARD_PERFORMANCE_BUDGET_MS.loadEventMs);
   });
 });

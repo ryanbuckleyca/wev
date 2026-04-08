@@ -208,7 +208,15 @@ describe('BulletinPageView', () => {
     const filters = createFilters();
     const data = createData();
 
-    render(<BulletinPageView isAdmin={false} isLoggedIn={false} profile={null} filters={filters} data={data} />);
+    render(
+      <BulletinPageView
+        isAdmin={false}
+        isLoggedIn={false}
+        profile={null}
+        filters={filters}
+        data={data}
+      />,
+    );
 
     expect(screen.queryByRole('button', { name: 're-scrape' })).not.toBeInTheDocument();
     expect(screen.queryByText(/copy-jobs:/)).not.toBeInTheDocument();

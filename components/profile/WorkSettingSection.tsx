@@ -67,9 +67,7 @@ export default function WorkSettingSection({
 
       {/* Location autocomplete */}
       <div className="mt-4">
-        <FormLabel htmlFor="location-autocomplete">
-          {t('profile.location')}
-        </FormLabel>
+        <FormLabel htmlFor="location-autocomplete">{t('profile.location')}</FormLabel>
         <LocationAutocomplete
           inputId="location-autocomplete"
           value={

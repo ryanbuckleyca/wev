@@ -8,9 +8,9 @@ import { parseRolesColumn } from './user-roles';
  * - `GET /api/auth/roles`: fail-open → default `['user']`
  * - `requireAdminSession`: fail-closed → 403
  */
-export async function fetchUserRolesFromService(userId: string): Promise<
-  { ok: true; roles: string[] } | { ok: false; error: unknown }
-> {
+export async function fetchUserRolesFromService(
+  userId: string,
+): Promise<{ ok: true; roles: string[] } | { ok: false; error: unknown }> {
   try {
     const adminClient = supabaseServer;
     const { data, error } = await adminClient

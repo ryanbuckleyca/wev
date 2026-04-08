@@ -122,11 +122,11 @@ export default function JobFilters(props: JobFiltersProps) {
                   <span>
                     {isUsingProfileWorkTypes
                       ? t('filters.workType.profileDefault', {
-                        types: model.profileWorkTypeLabel,
-                      })
+                          types: model.profileWorkTypeLabel,
+                        })
                       : t('filters.workType.profileOverride', {
-                        types: model.profileWorkTypeLabel,
-                      })}
+                          types: model.profileWorkTypeLabel,
+                        })}
                   </span>
                   <StyledLink href="/profile" variant="text" size="sm" className="p-0">
                     {t('filters.workType.profileLink')}

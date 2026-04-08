@@ -124,9 +124,18 @@ test.describe('Job board', () => {
   });
 
   for (const workTypeCase of [
-    { label: FILTER_LABELS.workType.remote, total: SEEDED_JOB_BOARD_EXPECTATIONS.workTypeCounts.remote },
-    { label: FILTER_LABELS.workType.hybrid, total: SEEDED_JOB_BOARD_EXPECTATIONS.workTypeCounts.hybrid },
-    { label: FILTER_LABELS.workType.office, total: SEEDED_JOB_BOARD_EXPECTATIONS.workTypeCounts.office },
+    {
+      label: FILTER_LABELS.workType.remote,
+      total: SEEDED_JOB_BOARD_EXPECTATIONS.workTypeCounts.remote,
+    },
+    {
+      label: FILTER_LABELS.workType.hybrid,
+      total: SEEDED_JOB_BOARD_EXPECTATIONS.workTypeCounts.hybrid,
+    },
+    {
+      label: FILTER_LABELS.workType.office,
+      total: SEEDED_JOB_BOARD_EXPECTATIONS.workTypeCounts.office,
+    },
   ]) {
     test(`filters by work type: ${workTypeCase.label}`, async ({ jobBoardPage }) => {
       await loadEnglishJobBoard(jobBoardPage);

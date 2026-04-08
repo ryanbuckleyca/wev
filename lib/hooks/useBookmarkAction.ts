@@ -26,14 +26,14 @@ export function useBookmarkAction(
     }
 
     const newState = !bookmarked;
-    
+
     // Optimistic UI update
     setBookmarked(newState);
     onToggle?.(job, newState);
 
     setIsLoading(true);
     const supabase = createClient();
-    
+
     try {
       if (newState) {
         const { error } = await supabase

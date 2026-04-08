@@ -129,7 +129,9 @@ export function useBulletinFilters(): BulletinFilterControls {
   );
 
   const searchParamsRef = useRef(searchParams);
-  useEffect(() => { searchParamsRef.current = searchParams; });
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  });
 
   useEffect(() => {
     if (!userId) {
@@ -153,13 +155,7 @@ export function useBulletinFilters(): BulletinFilterControls {
     console.debug('[useBulletinFilters] applying profile work types', { profileWorkTypes });
     void setSelectedWorkTypes(profileWorkTypes);
     appliedProfileWorkTypesUserIdRef.current = userId;
-  }, [
-    userId,
-    profileLoading,
-    profileWorkTypes,
-    selectedWorkTypes.length,
-    setSelectedWorkTypes,
-  ]);
+  }, [userId, profileLoading, profileWorkTypes, selectedWorkTypes.length, setSelectedWorkTypes]);
 
   const handleResetToProfileWorkTypes = useCallback(() => {
     if (profileWorkTypes.length === 0) return;
@@ -184,12 +180,20 @@ export function useBulletinFilters(): BulletinFilterControls {
 
     const hasMunicipalityParam = searchParamsRef.current?.has('municipality') ?? false;
     const hasProvinceParam = searchParamsRef.current?.has('province') ?? false;
-    if (hasMunicipalityParam || hasProvinceParam || selectedMunicipalities.length > 0 || selectedProvinces.length > 0) {
+    if (
+      hasMunicipalityParam ||
+      hasProvinceParam ||
+      selectedMunicipalities.length > 0 ||
+      selectedProvinces.length > 0
+    ) {
       appliedProfileLocationUserIdRef.current = userId;
       return;
     }
 
-    console.debug('[useBulletinFilters] applying profile location', { profileMunicipality, profileProvince });
+    console.debug('[useBulletinFilters] applying profile location', {
+      profileMunicipality,
+      profileProvince,
+    });
     void setSelectedProvinces([profileProvince]);
     void setSelectedMunicipalities([profileMunicipality]);
     appliedProfileLocationUserIdRef.current = userId;

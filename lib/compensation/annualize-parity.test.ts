@@ -18,8 +18,8 @@
  *   else  → NULL
  */
 
-import { describe, it, expect } from 'vitest'
-import { toAnnual } from './helpers'
+import { describe, it, expect } from 'vitest';
+import { toAnnual } from './helpers';
 
 // ---------------------------------------------------------------------------
 // Reference implementation of SQL annualize_v1
@@ -36,17 +36,17 @@ function annualize_v1_ref(
 ): bigint | null {
   switch (unit) {
     case 'HOUR':
-      return amount * BigInt(actual_hours_per_week != null ? actual_hours_per_week * 52 : 2080)
+      return amount * BigInt(actual_hours_per_week != null ? actual_hours_per_week * 52 : 2080);
     case 'DAY':
-      return amount * 260n
+      return amount * 260n;
     case 'WEEK':
-      return amount * 52n
+      return amount * 52n;
     case 'MONTH':
-      return amount * 12n
+      return amount * 12n;
     case 'YEAR':
-      return amount
+      return amount;
     default:
-      return null
+      return null;
   }
 }
 
@@ -54,9 +54,9 @@ function annualize_v1_ref(
 // Test data
 // ---------------------------------------------------------------------------
 
-const AMOUNTS = [100n, 5000n, 1_000_000n]
-const HOURS_PER_WEEK_VALUES = [null, 1, 20, 40, 80]
-const ALL_UNITS = ['HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'] as const
+const AMOUNTS = [100n, 5000n, 1_000_000n];
+const HOURS_PER_WEEK_VALUES = [null, 1, 20, 40, 80];
+const ALL_UNITS = ['HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'] as const;
 
 // ---------------------------------------------------------------------------
 // Per-unit parity tests
@@ -67,53 +67,53 @@ describe('SQL / TypeScript parity — annualize_v1 vs toAnnual', () => {
     for (const amount of AMOUNTS) {
       for (const hours of HOURS_PER_WEEK_VALUES) {
         it(`amount=${amount}, hoursPerWeek=${hours}`, () => {
-          const ref = annualize_v1_ref(amount, 'HOUR', hours)
-          const ts = toAnnual(amount, 'HOUR', hours)
-          expect(ts).toBe(ref)
-        })
+          const ref = annualize_v1_ref(amount, 'HOUR', hours);
+          const ts = toAnnual(amount, 'HOUR', hours);
+          expect(ts).toBe(ref);
+        });
       }
     }
-  })
+  });
 
   describe('DAY unit', () => {
     for (const amount of AMOUNTS) {
       it(`amount=${amount}`, () => {
-        const ref = annualize_v1_ref(amount, 'DAY', null)
-        const ts = toAnnual(amount, 'DAY', null)
-        expect(ts).toBe(ref)
-      })
+        const ref = annualize_v1_ref(amount, 'DAY', null);
+        const ts = toAnnual(amount, 'DAY', null);
+        expect(ts).toBe(ref);
+      });
     }
-  })
+  });
 
   describe('WEEK unit', () => {
     for (const amount of AMOUNTS) {
       it(`amount=${amount}`, () => {
-        const ref = annualize_v1_ref(amount, 'WEEK', null)
-        const ts = toAnnual(amount, 'WEEK', null)
-        expect(ts).toBe(ref)
-      })
+        const ref = annualize_v1_ref(amount, 'WEEK', null);
+        const ts = toAnnual(amount, 'WEEK', null);
+        expect(ts).toBe(ref);
+      });
     }
-  })
+  });
 
   describe('MONTH unit', () => {
     for (const amount of AMOUNTS) {
       it(`amount=${amount}`, () => {
-        const ref = annualize_v1_ref(amount, 'MONTH', null)
-        const ts = toAnnual(amount, 'MONTH', null)
-        expect(ts).toBe(ref)
-      })
+        const ref = annualize_v1_ref(amount, 'MONTH', null);
+        const ts = toAnnual(amount, 'MONTH', null);
+        expect(ts).toBe(ref);
+      });
     }
-  })
+  });
 
   describe('YEAR unit', () => {
     for (const amount of AMOUNTS) {
       it(`amount=${amount}`, () => {
-        const ref = annualize_v1_ref(amount, 'YEAR', null)
-        const ts = toAnnual(amount, 'YEAR', null)
-        expect(ts).toBe(ref)
-      })
+        const ref = annualize_v1_ref(amount, 'YEAR', null);
+        const ts = toAnnual(amount, 'YEAR', null);
+        expect(ts).toBe(ref);
+      });
     }
-  })
+  });
 
   // ---------------------------------------------------------------------------
   // Edge cases for null inputs
@@ -121,21 +121,21 @@ describe('SQL / TypeScript parity — annualize_v1 vs toAnnual', () => {
 
   describe('null input edge cases', () => {
     it('toAnnual(null, "YEAR", null) === null', () => {
-      expect(toAnnual(null, 'YEAR', null)).toBeNull()
-    })
+      expect(toAnnual(null, 'YEAR', null)).toBeNull();
+    });
 
     it('toAnnual(100n, null, null) === null', () => {
-      expect(toAnnual(100n, null, null)).toBeNull()
-    })
+      expect(toAnnual(100n, null, null)).toBeNull();
+    });
 
     it('annualize_v1_ref(100n, null) === null', () => {
-      expect(annualize_v1_ref(100n, null)).toBeNull()
-    })
+      expect(annualize_v1_ref(100n, null)).toBeNull();
+    });
 
     it('annualize_v1_ref(100n, "INVALID") === null', () => {
-      expect(annualize_v1_ref(100n, 'INVALID')).toBeNull()
-    })
-  })
+      expect(annualize_v1_ref(100n, 'INVALID')).toBeNull();
+    });
+  });
 
   // ---------------------------------------------------------------------------
   // Property 1: SQL/TS Parity
@@ -159,22 +159,22 @@ describe('SQL / TypeScript parity — annualize_v1 vs toAnnual', () => {
         if (unit === 'HOUR') {
           for (const hours of HOURS_PER_WEEK_VALUES) {
             it(`unit=${unit}, amount=${amount}, hoursPerWeek=${hours} — parity holds`, () => {
-              const ref = annualize_v1_ref(amount, unit, hours)
-              const ts = toAnnual(amount, unit, hours)
-              expect(ts).toBe(ref)
+              const ref = annualize_v1_ref(amount, unit, hours);
+              const ts = toAnnual(amount, unit, hours);
+              expect(ts).toBe(ref);
               // Both must be non-null for valid inputs
-              expect(ts).not.toBeNull()
-            })
+              expect(ts).not.toBeNull();
+            });
           }
         } else {
           it(`unit=${unit}, amount=${amount}, hoursPerWeek=null — parity holds`, () => {
-            const ref = annualize_v1_ref(amount, unit, null)
-            const ts = toAnnual(amount, unit, null)
-            expect(ts).toBe(ref)
-            expect(ts).not.toBeNull()
-          })
+            const ref = annualize_v1_ref(amount, unit, null);
+            const ts = toAnnual(amount, unit, null);
+            expect(ts).toBe(ref);
+            expect(ts).not.toBeNull();
+          });
         }
       }
     }
-  })
-})
+  });
+});

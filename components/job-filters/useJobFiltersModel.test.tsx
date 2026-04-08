@@ -163,4 +163,3 @@ describe('useJobFiltersModel', () => {
     expect(mockControls.setPostedWithin).toHaveBeenCalledWith('any');
   });
 });
-

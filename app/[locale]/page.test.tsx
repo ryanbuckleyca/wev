@@ -141,9 +141,7 @@ describe('Home page work type defaults', () => {
   it('adds the profile work type to default filters after the profile loads', async () => {
     // page.tsx is now an async Server Component that can't be rendered in unit
     // tests. We test BulletinPageClient directly with server-provided initial data.
-    const { default: BulletinPageClient } = await import(
-      '@/components/BulletinPageClient'
-    );
+    const { default: BulletinPageClient } = await import('@/components/BulletinPageClient');
 
     render(
       <BulletinPageClient

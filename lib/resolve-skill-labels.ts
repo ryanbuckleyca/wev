@@ -45,7 +45,7 @@ export async function resolveSkillLabels(
             return [];
           }
           return (data ?? []) as SkillRow[];
-        })
+        }),
     );
   }
 

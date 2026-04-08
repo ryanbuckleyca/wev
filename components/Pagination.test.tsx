@@ -22,7 +22,11 @@ vi.mock('react-responsive-pagination', () => ({
     ariaNextLabel?: string;
   }) => (
     <nav aria-label="Pagination">
-      <button aria-label={ariaPreviousLabel} disabled={current === 1} onClick={() => onPageChange(current - 1)}>
+      <button
+        aria-label={ariaPreviousLabel}
+        disabled={current === 1}
+        onClick={() => onPageChange(current - 1)}
+      >
         {previousLabel}
       </button>
       {Array.from({ length: total }, (_, i) => i + 1).map((page) => (
@@ -35,7 +39,11 @@ vi.mock('react-responsive-pagination', () => ({
           {page}
         </button>
       ))}
-      <button aria-label={ariaNextLabel} disabled={current === total} onClick={() => onPageChange(current + 1)}>
+      <button
+        aria-label={ariaNextLabel}
+        disabled={current === total}
+        onClick={() => onPageChange(current + 1)}
+      >
         {nextLabel}
       </button>
     </nav>
@@ -119,7 +127,9 @@ describe('Pagination', () => {
 
   it('renders page number buttons', () => {
     render(<Pagination {...defaultProps} />);
-    [1, 2, 3, 4, 5].forEach((n) => expect(screen.getByRole('button', { name: String(n) })).toBeVisible());
+    [1, 2, 3, 4, 5].forEach((n) =>
+      expect(screen.getByRole('button', { name: String(n) })).toBeVisible(),
+    );
   });
 
   it('marks the current page with aria-current', () => {
