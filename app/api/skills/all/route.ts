@@ -72,12 +72,15 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ skills }, {
-      headers: {
-        // Browser caches for 1 hour, CDN/server for 24 hours
-        'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
+    return NextResponse.json(
+      { skills },
+      {
+        headers: {
+          // Browser caches for 1 hour, CDN/server for 24 hours
+          'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
+        },
       },
-    });
+    );
   } catch (err) {
     logger.error({ err }, 'Fetch all skills error');
     return NextResponse.json({ error: 'Failed to fetch skills' }, { status: 500 });

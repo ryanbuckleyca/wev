@@ -52,10 +52,10 @@ function normalizePostedTimestamp(raw: string): number {
 
 function getAnnualSortValue(job: JobPosting, missingValue: number): number {
   if (job.min_value != null && job.unit_text != null) {
-    const annual = toAnnual(BigInt(job.min_value), job.unit_text, job.hours_per_week)
-    return annual != null ? Number(annual) : missingValue
+    const annual = toAnnual(BigInt(job.min_value), job.unit_text, job.hours_per_week);
+    return annual != null ? Number(annual) : missingValue;
   }
-  return missingValue
+  return missingValue;
 }
 
 function matchesSearch(job: JobPosting, searchQuery: string): boolean {
@@ -64,11 +64,11 @@ function matchesSearch(job: JobPosting, searchQuery: string): boolean {
   const query = searchQuery.toLowerCase();
   return Boolean(
     job.job_title.toLowerCase().includes(query) ||
-      (job.summary && job.summary.toLowerCase().includes(query)) ||
+    (job.summary && job.summary.toLowerCase().includes(query)) ||
     job.organization.toLowerCase().includes(query) ||
-      (job.location && job.location.toLowerCase().includes(query)) ||
-      (job.municipality && job.municipality.toLowerCase().includes(query)) ||
-      (job.province && job.province.toLowerCase().includes(query)),
+    (job.location && job.location.toLowerCase().includes(query)) ||
+    (job.municipality && job.municipality.toLowerCase().includes(query)) ||
+    (job.province && job.province.toLowerCase().includes(query)),
   );
 }
 
@@ -109,7 +109,8 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
 
     if (filters.postedWithin !== 'any') {
       const cutoffMs =
-        (filters.now ?? Date.now()) - POSTED_WITHIN_DAYS[filters.postedWithin] * 24 * 60 * 60 * 1000;
+        (filters.now ?? Date.now()) -
+        POSTED_WITHIN_DAYS[filters.postedWithin] * 24 * 60 * 60 * 1000;
       const postedMs = normalizePostedTimestamp(job.date_posted);
       if (Number.isNaN(postedMs) || postedMs < cutoffMs) {
         return false;
@@ -125,10 +126,7 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
     }
 
     if (filters.selectedEmploymentTypes.length > 0) {
-      if (
-        !job.employment_type ||
-        !filters.selectedEmploymentTypes.includes(job.employment_type)
-      ) {
+      if (!job.employment_type || !filters.selectedEmploymentTypes.includes(job.employment_type)) {
         return false;
       }
     }
@@ -163,8 +161,10 @@ export function sortJobs(
       case 'salary-desc':
         return getAnnualSortValue(b, -1) - getAnnualSortValue(a, -1);
       case 'salary-asc':
-        return getAnnualSortValue(a, Number.POSITIVE_INFINITY) -
-          getAnnualSortValue(b, Number.POSITIVE_INFINITY);
+        return (
+          getAnnualSortValue(a, Number.POSITIVE_INFINITY) -
+          getAnnualSortValue(b, Number.POSITIVE_INFINITY)
+        );
       case 'org-asc':
         return a.organization.localeCompare(b.organization);
       default:

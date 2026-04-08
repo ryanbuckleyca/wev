@@ -24,9 +24,7 @@ function extractProjectRefFromUrl(supabaseUrl: string): string {
 
     return projectRef;
   } catch {
-    throw new Error(
-      `Unable to derive SUPABASE_PROJECT_REF from SUPABASE_URL: ${supabaseUrl}`,
-    );
+    throw new Error(`Unable to derive SUPABASE_PROJECT_REF from SUPABASE_URL: ${supabaseUrl}`);
   }
 }
 

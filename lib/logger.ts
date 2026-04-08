@@ -8,9 +8,7 @@ import pino from 'pino';
  * - Development: optional `pino-pretty` when `LOG_PRETTY` is not `0`
  * - Tests: `vitest.setup.ts` sets `LOG_LEVEL=silent`
  */
-const level =
-  process.env.LOG_LEVEL ??
-  (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
+const level = process.env.LOG_LEVEL ?? (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
 
 const usePrettyTransport =
   process.env.NODE_ENV === 'development' &&

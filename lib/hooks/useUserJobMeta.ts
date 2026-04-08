@@ -9,19 +9,19 @@ import type { InitialBulletinData } from '@/lib/bulletin/types';
 export function useUserJobMeta(
   userId: string | null,
   allJobs: JobPosting[],
-  initialData?: InitialBulletinData
+  initialData?: InitialBulletinData,
 ) {
-  const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(() => 
-    new Map(Object.entries(initialData?.matchData ?? {}))
+  const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(
+    () => new Map(Object.entries(initialData?.matchData ?? {})),
   );
-  const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(() => 
-    new Set(initialData?.bookmarkedJobIds ?? [])
+  const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(
+    () => new Set(initialData?.bookmarkedJobIds ?? []),
   );
 
   const [currentUserId, setCurrentUserId] = useState(userId);
 
   // Reset state synchronously during render if the user identity changes.
-  // This follows React's "Resetting state on prop change" pattern and 
+  // This follows React's "Resetting state on prop change" pattern and
   // avoids the 'setState in useEffect' cascading render warning.
   if (userId !== currentUserId) {
     setCurrentUserId(userId);

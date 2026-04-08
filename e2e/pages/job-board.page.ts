@@ -12,11 +12,7 @@ type CheckboxFilterName =
   | 'province'
   | 'source';
 type QueryParamPrimitive = boolean | number | string;
-type QueryParamValue =
-  | QueryParamPrimitive
-  | readonly QueryParamPrimitive[]
-  | null
-  | undefined;
+type QueryParamValue = QueryParamPrimitive | readonly QueryParamPrimitive[] | null | undefined;
 type QueryParamsInput = Record<string, QueryParamValue> | URLSearchParams | undefined;
 type FilterLocators = {
   employmentType: Locator;

@@ -5,21 +5,27 @@ import LocationAutocomplete from './LocationAutocomplete';
 
 const mockResults = [
   { name: 'Montreal', province: 'QC', display_name: 'Montreal, QC', lat: 45.5017, lng: -73.5673 },
-  { name: 'Montmagny', province: 'QC', display_name: 'Montmagny, QC', lat: 46.9833, lng: -70.5500 },
+  { name: 'Montmagny', province: 'QC', display_name: 'Montmagny, QC', lat: 46.9833, lng: -70.55 },
 ];
 
 function mockFetchSuccess(results = mockResults) {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => results,
-  }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => results,
+    }),
+  );
 }
 
 function mockFetchError() {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-    ok: false,
-    json: async () => ({ error: 'Internal server error' }),
-  }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Internal server error' }),
+    }),
+  );
 }
 
 afterEach(() => {

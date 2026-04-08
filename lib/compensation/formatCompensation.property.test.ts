@@ -13,11 +13,11 @@
  *   Validates: Requirement 7.4
  */
 
-import { describe, it, expect } from 'vitest'
-import { formatCompensation } from './helpers'
-import type { JobPosting } from '@/lib/supabase'
+import { describe, it, expect } from 'vitest';
+import { formatCompensation } from './helpers';
+import type { JobPosting } from '@/lib/supabase';
 
-const LOCALE = 'en'
+const LOCALE = 'en';
 
 // ---------------------------------------------------------------------------
 // Property 7: Display Fallback Invariant
@@ -30,40 +30,44 @@ describe('Property 7: Display Fallback Invariant', () => {
    * { isStructured: false, primary: job.wage ?? 'N/A' }
    */
 
-  const fallbackCases: Array<{ label: string; job: Partial<JobPosting>; expectedPrimary: string }> = [
-    {
-      label: 'min_value=null, unit_text=YEAR, wage set',
-      job: { min_value: null, unit_text: 'YEAR', wage: '$60,000/year' },
-      expectedPrimary: '$60,000/year',
-    },
-    {
-      label: 'min_value=100, unit_text=null, wage set',
-      job: { min_value: 100, unit_text: null, wage: '$60,000/year' },
-      expectedPrimary: '$60,000/year',
-    },
-    {
-      label: 'both null, wage set',
-      job: { min_value: null, unit_text: null, wage: 'Competitive' },
-      expectedPrimary: 'Competitive',
-    },
-    {
-      label: 'min_value=null, unit_text=null, no wage',
-      job: { min_value: null, unit_text: null, wage: null },
-      expectedPrimary: 'N/A',
-    },
-    {
-      label: 'min_value=null, unit_text=null, wage undefined',
-      job: { min_value: null, unit_text: null },
-      expectedPrimary: 'N/A',
-    },
-  ]
+  const fallbackCases: Array<{ label: string; job: Partial<JobPosting>; expectedPrimary: string }> =
+    [
+      {
+        label: 'min_value=null, unit_text=YEAR, wage set',
+        job: { min_value: null, unit_text: 'YEAR', wage: '$60,000/year' },
+        expectedPrimary: '$60,000/year',
+      },
+      {
+        label: 'min_value=100, unit_text=null, wage set',
+        job: { min_value: 100, unit_text: null, wage: '$60,000/year' },
+        expectedPrimary: '$60,000/year',
+      },
+      {
+        label: 'both null, wage set',
+        job: { min_value: null, unit_text: null, wage: 'Competitive' },
+        expectedPrimary: 'Competitive',
+      },
+      {
+        label: 'min_value=null, unit_text=null, no wage',
+        job: { min_value: null, unit_text: null, wage: null },
+        expectedPrimary: 'N/A',
+      },
+      {
+        label: 'min_value=null, unit_text=null, wage undefined',
+        job: { min_value: null, unit_text: null },
+        expectedPrimary: 'N/A',
+      },
+    ];
 
-  it.each(fallbackCases)('$label → isStructured=false, primary=$expectedPrimary', ({ job, expectedPrimary }) => {
-    const result = formatCompensation(job as JobPosting, LOCALE)
-    expect(result.isStructured).toBe(false)
-    expect(result.primary).toBe(expectedPrimary)
-  })
-})
+  it.each(fallbackCases)(
+    '$label → isStructured=false, primary=$expectedPrimary',
+    ({ job, expectedPrimary }) => {
+      const result = formatCompensation(job as JobPosting, LOCALE);
+      expect(result.isStructured).toBe(false);
+      expect(result.primary).toBe(expectedPrimary);
+    },
+  );
+});
 
 // ---------------------------------------------------------------------------
 // Property 8: Tilde Invariant
@@ -75,7 +79,11 @@ describe('Property 8: Tilde Invariant', () => {
    * isInferred === true iff unit_text === 'HOUR' and hours_per_week == null
    */
 
-  const tildeCases: Array<{ label: string; job: Partial<JobPosting>; expectedIsInferred: boolean }> = [
+  const tildeCases: Array<{
+    label: string;
+    job: Partial<JobPosting>;
+    expectedIsInferred: boolean;
+  }> = [
     {
       label: 'HOUR + null hours → isInferred=true',
       job: { min_value: 3000, unit_text: 'HOUR', hours_per_week: null },
@@ -101,18 +109,18 @@ describe('Property 8: Tilde Invariant', () => {
       job: { min_value: 500000, unit_text: 'MONTH', hours_per_week: null },
       expectedIsInferred: false,
     },
-  ]
+  ];
 
   it.each(tildeCases)('$label', ({ job, expectedIsInferred }) => {
-    const result = formatCompensation(job as JobPosting, LOCALE)
-    expect(result.isInferred).toBe(expectedIsInferred)
+    const result = formatCompensation(job as JobPosting, LOCALE);
+    expect(result.isInferred).toBe(expectedIsInferred);
     if (expectedIsInferred) {
-      expect(result.primary.startsWith('~')).toBe(true)
+      expect(result.primary.startsWith('~')).toBe(true);
     } else if (result.isStructured) {
-      expect(result.primary.startsWith('~')).toBe(false)
+      expect(result.primary.startsWith('~')).toBe(false);
     }
-  })
-})
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Property 14: Secondary Display Condition
@@ -126,9 +134,9 @@ describe('Property 14: Secondary Display Condition', () => {
    */
 
   const secondaryCases: Array<{
-    label: string
-    job: Partial<JobPosting>
-    expectSecondary: boolean
+    label: string;
+    job: Partial<JobPosting>;
+    expectSecondary: boolean;
   }> = [
     {
       label: 'HOUR + 35h → secondary non-null',
@@ -160,16 +168,16 @@ describe('Property 14: Secondary Display Condition', () => {
       job: { min_value: 500000, unit_text: 'MONTH', hours_per_week: null },
       expectSecondary: false,
     },
-  ]
+  ];
 
   it.each(secondaryCases)('$label', ({ job, expectSecondary }) => {
-    const result = formatCompensation(job as JobPosting, LOCALE)
+    const result = formatCompensation(job as JobPosting, LOCALE);
     if (expectSecondary) {
-      expect(result.secondary).toBeDefined()
-      expect(typeof result.secondary).toBe('string')
-      expect(result.secondary!.length).toBeGreaterThan(0)
+      expect(result.secondary).toBeDefined();
+      expect(typeof result.secondary).toBe('string');
+      expect(result.secondary!.length).toBeGreaterThan(0);
     } else {
-      expect(result.secondary).toBeUndefined()
+      expect(result.secondary).toBeUndefined();
     }
-  })
-})
+  });
+});

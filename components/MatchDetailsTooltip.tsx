@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import { Lineicons } from '@lineiconshq/react-lineicons';
-import { HeartSolid, Briefcase2Solid, LocationArrowRightSolid, CheckOutlined, XmarkOutlined } from '@lineiconshq/free-icons';
+import {
+  HeartSolid,
+  Briefcase2Solid,
+  LocationArrowRightSolid,
+  CheckOutlined,
+  XmarkOutlined,
+} from '@lineiconshq/free-icons';
 import ProgressDonut from './ProgressDonut';
 
 type TranslateFn = (key: string, values?: Record<string, string | number>) => string;
@@ -70,19 +76,30 @@ export default function MatchDetailsTooltip({
   const textColor = 'rgb(var(--foreground))';
 
   const formatValueLabel = (value: string) =>
-    value.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+    value
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .toLowerCase();
 
-  const orderedValues = useMemo(() => [
-    ...values.filter((value) => sharedValues.includes(value)),
-    ...values.filter((value) => !sharedValues.includes(value)),
-  ].slice(0, 5), [values, sharedValues]);
+  const orderedValues = useMemo(
+    () =>
+      [
+        ...values.filter((value) => sharedValues.includes(value)),
+        ...values.filter((value) => !sharedValues.includes(value)),
+      ].slice(0, 5),
+    [values, sharedValues],
+  );
 
-  const orderedSkills = useMemo(() => [
-    ...skills.filter((skill) => sharedSkills.includes(skill)),
-    ...skills.filter((skill) => !sharedSkills.includes(skill)),
-  ]
-    .filter((skill) => skillTerms[skill])
-    .slice(0, 5), [skills, sharedSkills, skillTerms]);
+  const orderedSkills = useMemo(
+    () =>
+      [
+        ...skills.filter((skill) => sharedSkills.includes(skill)),
+        ...skills.filter((skill) => !sharedSkills.includes(skill)),
+      ]
+        .filter((skill) => skillTerms[skill])
+        .slice(0, 5),
+    [skills, sharedSkills, skillTerms],
+  );
 
   const hasLocationSection =
     typeof workTypeMatchPercentage === 'number' || typeof locationMatchPercentage === 'number';
@@ -110,15 +127,22 @@ export default function MatchDetailsTooltip({
           text={`${totalMatchPercentage}%`}
         />
         <div className="text-xs opacity-75 lowercase">{translate('matchDetails.totalMatch')}</div>
-        <div className="text-xs opacity-75 lowercase mt-1">{translate('matchDetails.breakdown')}</div>
+        <div className="text-xs opacity-75 lowercase mt-1">
+          {translate('matchDetails.breakdown')}
+        </div>
         <div className="text-xs opacity-60 lowercase">{translate('matchDetails.weightsNote')}</div>
       </div>
 
       {orderedValues.length > 0 && (
         <div className="space-y-1">
-          <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
+          <div
+            className="font-medium lowercase flex items-center gap-1"
+            style={{ color: textColor }}
+          >
             <Lineicons icon={HeartSolid} size={12} className="text-wev-brand-accent" />
-            <span>{translate('matchDetails.values')}: {valueMatchPercentage}%</span>
+            <span>
+              {translate('matchDetails.values')}: {valueMatchPercentage}%
+            </span>
           </div>
           {orderedValues.map((value) => (
             <MatchListItem
@@ -133,9 +157,14 @@ export default function MatchDetailsTooltip({
 
       {orderedSkills.length > 0 && (
         <div className="space-y-1">
-          <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
+          <div
+            className="font-medium lowercase flex items-center gap-1"
+            style={{ color: textColor }}
+          >
             <Lineicons icon={Briefcase2Solid} size={12} className="text-primary" />
-            <span>{translate('matchDetails.skills')}: {skillMatchPercentage}%</span>
+            <span>
+              {translate('matchDetails.skills')}: {skillMatchPercentage}%
+            </span>
           </div>
           {orderedSkills.map((skill) => (
             <MatchListItem
@@ -150,7 +179,10 @@ export default function MatchDetailsTooltip({
 
       {hasLocationSection && (
         <div className="space-y-1">
-          <div className="font-medium lowercase flex items-center gap-1" style={{ color: textColor }}>
+          <div
+            className="font-medium lowercase flex items-center gap-1"
+            style={{ color: textColor }}
+          >
             <Lineicons icon={LocationArrowRightSolid} size={12} className="text-wev-info" />
             <span>
               {translate('matchDetails.location')}
@@ -174,15 +206,27 @@ export default function MatchDetailsTooltip({
             />
           )}
 
-          {typeof locationMatchPercentage === 'number' && !jobMunicipality && (
-            locationMatchPercentage === 100
-              ? <MatchListItem id="location-distance" label={translate('matchDetails.locationNearby')} matched={true} />
-              : locationMatchPercentage === 50
-              ? <MatchListItem id="location-distance" label={translate('matchDetails.locationRegional')} matched={true} />
-              : locationMatchPercentage === 0
-              ? <MatchListItem id="location-distance" label={translate('matchDetails.locationOutOfRange')} matched={false} />
-              : null
-          )}
+          {typeof locationMatchPercentage === 'number' &&
+            !jobMunicipality &&
+            (locationMatchPercentage === 100 ? (
+              <MatchListItem
+                id="location-distance"
+                label={translate('matchDetails.locationNearby')}
+                matched={true}
+              />
+            ) : locationMatchPercentage === 50 ? (
+              <MatchListItem
+                id="location-distance"
+                label={translate('matchDetails.locationRegional')}
+                matched={true}
+              />
+            ) : locationMatchPercentage === 0 ? (
+              <MatchListItem
+                id="location-distance"
+                label={translate('matchDetails.locationOutOfRange')}
+                matched={false}
+              />
+            ) : null)}
 
           {profileHasLocationValue && (
             <div className="text-xs text-muted-foreground lowercase">

@@ -7,9 +7,7 @@ import { getRequestUser } from './request-user';
 import { fetchUserRolesFromService } from './server-user-roles';
 import { rolesIncludeAdmin } from './user-roles';
 
-export type AdminSessionResult =
-  | { ok: true; user: User }
-  | { ok: false; response: NextResponse };
+export type AdminSessionResult = { ok: true; user: User } | { ok: false; response: NextResponse };
 
 /**
  * Ensures the request has a logged-in Supabase session whose user has the `admin` role

@@ -1,9 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import {
-  getWebServerEnv,
-  loadPlaywrightEnv,
-  PLAYWRIGHT_BASE_URL,
-} from './e2e/support/test-env';
+import { getWebServerEnv, loadPlaywrightEnv, PLAYWRIGHT_BASE_URL } from './e2e/support/test-env';
 
 loadPlaywrightEnv();
 

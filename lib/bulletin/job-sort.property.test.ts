@@ -10,24 +10,24 @@
  *   Validates: Requirements 12.4, 12.5
  */
 
-import { describe, it, expect } from 'vitest'
-import type { JobPosting } from '@/lib/supabase'
-import { sortJobs } from './job-query'
-import { toAnnual } from '@/lib/compensation/helpers'
-import type { CompensationUnit } from '@/lib/compensation/constants'
+import { describe, it, expect } from 'vitest';
+import type { JobPosting } from '@/lib/supabase';
+import { sortJobs } from './job-query';
+import { toAnnual } from '@/lib/compensation/helpers';
+import type { CompensationUnit } from '@/lib/compensation/constants';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-let idCounter = 0
+let idCounter = 0;
 
 function makeStructuredJob(
   min_value: number,
   unit_text: CompensationUnit,
   hours_per_week?: number | null,
 ): JobPosting {
-  idCounter++
+  idCounter++;
   return {
     id: `structured-${idCounter}`,
     job_title: 'Job',
@@ -47,11 +47,11 @@ function makeStructuredJob(
     min_value,
     unit_text,
     hours_per_week: hours_per_week ?? null,
-  }
+  };
 }
 
 function makeUnstructuredJob(): JobPosting {
-  idCounter++
+  idCounter++;
   return {
     id: `unstructured-${idCounter}`,
     job_title: 'Job',
@@ -71,15 +71,15 @@ function makeUnstructuredJob(): JobPosting {
     min_value: null,
     unit_text: null,
     hours_per_week: null,
-  }
+  };
 }
 
-const noMatchData = new Map()
+const noMatchData = new Map();
 
 function annualValue(job: JobPosting): number | null {
-  if (job.min_value == null || job.unit_text == null) return null
-  const annual = toAnnual(BigInt(job.min_value), job.unit_text, job.hours_per_week)
-  return annual != null ? Number(annual) : null
+  if (job.min_value == null || job.unit_text == null) return null;
+  const annual = toAnnual(BigInt(job.min_value), job.unit_text, job.hours_per_week);
+  return annual != null ? Number(annual) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,27 +139,29 @@ describe('Property 9: Sort Stability for Unstructured Jobs', () => {
         makeStructuredJob(3_000_000, 'YEAR'),
       ],
     },
-  ]
+  ];
 
-  it.each(mixedCases.flatMap(({ label, jobs }) =>
-    (['salary-desc', 'salary-asc'] as const).map((dir) => ({ label, jobs, dir }))
-  ))('$dir: unstructured jobs appear after structured — $label', ({ jobs, dir }) => {
-    const input = jobs()
-    const sorted = sortJobs(input, dir, noMatchData)
+  it.each(
+    mixedCases.flatMap(({ label, jobs }) =>
+      (['salary-desc', 'salary-asc'] as const).map((dir) => ({ label, jobs, dir })),
+    ),
+  )('$dir: unstructured jobs appear after structured — $label', ({ jobs, dir }) => {
+    const input = jobs();
+    const sorted = sortJobs(input, dir, noMatchData);
 
     // Find the index of the last structured job and the first unstructured job
     const lastStructuredIdx = sorted.reduce(
       (last, job, i) => (job.min_value != null ? i : last),
       -1,
-    )
-    const firstUnstructuredIdx = sorted.findIndex((job) => job.min_value == null)
+    );
+    const firstUnstructuredIdx = sorted.findIndex((job) => job.min_value == null);
 
     // If there are both structured and unstructured jobs, all unstructured must come after all structured
     if (lastStructuredIdx !== -1 && firstUnstructuredIdx !== -1) {
-      expect(firstUnstructuredIdx).toBeGreaterThan(lastStructuredIdx)
+      expect(firstUnstructuredIdx).toBeGreaterThan(lastStructuredIdx);
     }
-  })
-})
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Property 10: Sort Ordering Correctness
@@ -192,15 +194,15 @@ describe('Property 10: Sort Ordering Correctness', () => {
     {
       label: 'mixed units — hourly, monthly, annual',
       jobs: () => [
-        makeStructuredJob(2500, 'HOUR', 40),   // ~$5,200,000/yr
-        makeStructuredJob(400_000, 'MONTH'),    // $4,800,000/yr
-        makeStructuredJob(6_000_000, 'YEAR'),   // $6,000,000/yr
+        makeStructuredJob(2500, 'HOUR', 40), // ~$5,200,000/yr
+        makeStructuredJob(400_000, 'MONTH'), // $4,800,000/yr
+        makeStructuredJob(6_000_000, 'YEAR'), // $6,000,000/yr
       ],
     },
     {
       label: 'jobs with inferred hours (null hours_per_week)',
       jobs: () => [
-        makeStructuredJob(3000, 'HOUR', null),  // uses 40h default
+        makeStructuredJob(3000, 'HOUR', null), // uses 40h default
         makeStructuredJob(2000, 'HOUR', null),
         makeStructuredJob(4000, 'HOUR', null),
       ],
@@ -219,38 +221,35 @@ describe('Property 10: Sort Ordering Correctness', () => {
     },
     {
       label: 'two structured jobs with equal annual values',
-      jobs: () => [
-        makeStructuredJob(5_000_000, 'YEAR'),
-        makeStructuredJob(5_000_000, 'YEAR'),
-      ],
+      jobs: () => [makeStructuredJob(5_000_000, 'YEAR'), makeStructuredJob(5_000_000, 'YEAR')],
     },
-  ]
+  ];
 
   describe('salary-desc: structured jobs have non-increasing annual values', () => {
     it.each(structuredCases)('$label', ({ jobs }) => {
-      const input = jobs()
-      const sorted = sortJobs(input, 'salary-desc', noMatchData)
-      const structuredSorted = sorted.filter((j) => j.min_value != null)
+      const input = jobs();
+      const sorted = sortJobs(input, 'salary-desc', noMatchData);
+      const structuredSorted = sorted.filter((j) => j.min_value != null);
 
       for (let i = 0; i < structuredSorted.length - 1; i++) {
-        const curr = annualValue(structuredSorted[i])!
-        const next = annualValue(structuredSorted[i + 1])!
-        expect(curr).toBeGreaterThanOrEqual(next)
+        const curr = annualValue(structuredSorted[i])!;
+        const next = annualValue(structuredSorted[i + 1])!;
+        expect(curr).toBeGreaterThanOrEqual(next);
       }
-    })
-  })
+    });
+  });
 
   describe('salary-asc: structured jobs have non-decreasing annual values', () => {
     it.each(structuredCases)('$label', ({ jobs }) => {
-      const input = jobs()
-      const sorted = sortJobs(input, 'salary-asc', noMatchData)
-      const structuredSorted = sorted.filter((j) => j.min_value != null)
+      const input = jobs();
+      const sorted = sortJobs(input, 'salary-asc', noMatchData);
+      const structuredSorted = sorted.filter((j) => j.min_value != null);
 
       for (let i = 0; i < structuredSorted.length - 1; i++) {
-        const curr = annualValue(structuredSorted[i])!
-        const next = annualValue(structuredSorted[i + 1])!
-        expect(curr).toBeLessThanOrEqual(next)
+        const curr = annualValue(structuredSorted[i])!;
+        const next = annualValue(structuredSorted[i + 1])!;
+        expect(curr).toBeLessThanOrEqual(next);
       }
-    })
-  })
-})
+    });
+  });
+});

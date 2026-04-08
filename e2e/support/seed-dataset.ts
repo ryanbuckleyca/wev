@@ -142,16 +142,13 @@ function createSkillUris(index: number): string[] {
 
 type JobLocation = Pick<
   JobInsert,
-  | 'geocode_accuracy_type'
-  | 'is_remote'
-  | 'lat'
-  | 'lng'
-  | 'location'
-  | 'municipality'
-  | 'province'
+  'geocode_accuracy_type' | 'is_remote' | 'lat' | 'lng' | 'location' | 'municipality' | 'province'
 >;
 
-type JobSalary = Pick<JobInsert, 'compensation_meta' | 'max_value' | 'min_value' | 'unit_text' | 'wage'>;
+type JobSalary = Pick<
+  JobInsert,
+  'compensation_meta' | 'max_value' | 'min_value' | 'unit_text' | 'wage'
+>;
 
 function createJobLocation(index: number, workType: JobInsert['work_type']): JobLocation {
   if (workType === 'remote') {

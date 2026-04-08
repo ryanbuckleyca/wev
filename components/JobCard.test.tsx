@@ -232,11 +232,11 @@ describe('JobCard', () => {
 
     // Click the expand button (chevron) within the skills summary pill to expand individual skill pills
     const expandButton = screen.getByRole('button', { name: 'Expand' });
-    
+
     // Use fake timers to advance the staggered expansion animation (88ms per pill)
     vi.useFakeTimers();
     fireEvent.click(expandButton);
-    
+
     act(() => {
       vi.advanceTimersByTime(1000); // Ensure all staggers complete
     });

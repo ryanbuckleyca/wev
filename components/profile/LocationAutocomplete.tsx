@@ -110,24 +110,27 @@ export default function LocationAutocomplete({
 
   const { debounced: debouncedSearch, cancel: cancelDebounce } = useDebounce(search, DEBOUNCE_MS);
 
-  const handleQueryChange = useCallback((newQuery: string) => {
-    setQuery(newQuery);
+  const handleQueryChange = useCallback(
+    (newQuery: string) => {
+      setQuery(newQuery);
 
-    if (hasSelection) {
-      setHasSelection(false);
-      onChange(null);
-    }
+      if (hasSelection) {
+        setHasSelection(false);
+        onChange(null);
+      }
 
-    cancelDebounce();
+      cancelDebounce();
 
-    if (newQuery.length < LOCATION_MIN_QUERY_LENGTH) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
+      if (newQuery.length < LOCATION_MIN_QUERY_LENGTH) {
+        setResults([]);
+        setIsOpen(false);
+        return;
+      }
 
-    debouncedSearch(newQuery);
-  }, [hasSelection, onChange, cancelDebounce, debouncedSearch]);
+      debouncedSearch(newQuery);
+    },
+    [hasSelection, onChange, cancelDebounce, debouncedSearch],
+  );
 
   const handleSelect = (result: LocationSelection) => {
     setQuery(result.display_name);
@@ -221,9 +224,7 @@ export default function LocationAutocomplete({
         </PopoverContent>
       </Popover>
 
-      {hint && !displayError && (
-        <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p>
-      )}
+      {hint && !displayError && <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
       {displayError && (
         <p role="alert" className="text-xs text-red-600 dark:text-red-400">
           {displayError}

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { VALUES_DICTIONARY, VALUES_LIST, VALUE_CATEGORIES, VALUE_TO_CATEGORY, buildWorkValues, getValueDefinition } from './values';
+import {
+  VALUES_DICTIONARY,
+  VALUES_LIST,
+  VALUE_CATEGORIES,
+  VALUE_TO_CATEGORY,
+  buildWorkValues,
+  getValueDefinition,
+} from './values';
 
 describe('VALUES_DICTIONARY', () => {
   it('contains a non-empty set of values', () => {

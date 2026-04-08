@@ -30,10 +30,7 @@ export function buildJobText(
   summary: string | null | undefined,
   description?: string | null | undefined,
 ): string {
-  return [location, summary, description]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
+  return [location, summary, description].filter(Boolean).join(' ').toLowerCase();
 }
 
 export interface LocationTokens {

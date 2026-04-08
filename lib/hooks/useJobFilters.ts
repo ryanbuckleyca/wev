@@ -10,7 +10,7 @@ const ITEMS_PER_PAGE = 20;
 export function useJobFilters(
   allJobs: JobPosting[],
   matchData: Map<string, JobMatchData>,
-  { filters, sortBy, currentPage, setCurrentPage }: UseBulletinDataOptions
+  { filters, sortBy, currentPage, setCurrentPage }: UseBulletinDataOptions,
 ) {
   // Reset page to 1 when filters change
   const filterSnapshot = useMemo(() => JSON.stringify({ filters, sortBy }), [filters, sortBy]);
@@ -27,7 +27,7 @@ export function useJobFilters(
   // Derived filtered results
   const filteredJobs = useMemo(
     () => sortJobs(filterJobs(allJobs, filters), sortBy, matchData),
-    [allJobs, filters, sortBy, matchData]
+    [allJobs, filters, sortBy, matchData],
   );
 
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE);

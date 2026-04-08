@@ -78,12 +78,12 @@ export function useProfileForm(locale: 'en' | 'fr') {
       location:
         profile.lat != null && profile.lng != null && profile.location_display_name
           ? {
-            lat: profile.lat,
-            lng: profile.lng,
-            display_name: profile.location_display_name,
-            name: profile.municipality ?? '',
-            province: profile.province ?? '',
-          }
+              lat: profile.lat,
+              lng: profile.lng,
+              display_name: profile.location_display_name,
+              name: profile.municipality ?? '',
+              province: profile.province ?? '',
+            }
           : null,
     });
 

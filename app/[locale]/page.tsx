@@ -9,11 +9,7 @@ import BulletinPageClient from '@/components/BulletinPageClient';
 import LoadingIndicator from '@/components/LoadingIndicator';
 
 // Renders the data fetch independently inside a Suspense boundary
-async function BulletinDataContainer({
-  parsedLocale,
-}: {
-  parsedLocale: 'en' | 'fr';
-}) {
+async function BulletinDataContainer({ parsedLocale }: { parsedLocale: 'en' | 'fr' }) {
   // Move all blocking queries inside the Suspense boundary so they don't delay the initial HTML stream.
   // Resolve auth first so the request is fully dynamic before we fetch the cached bulletin payload.
   const auth = await getRequestUser();
@@ -38,11 +34,7 @@ async function BulletinDataContainer({
   );
 }
 
-export default async function Home({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
   const validLocales = routing.locales as readonly string[];
   const locale = validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale;

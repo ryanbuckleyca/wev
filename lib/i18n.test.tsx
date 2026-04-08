@@ -65,7 +65,7 @@ describe('i18n integration', () => {
     it('renders Pill with English remove label', () => {
       const removeLabel = enMessages.ariaLabels.pill.remove.replace('{label}', 'Tag');
       render(
-        <Pill removable onRemove={() => { }} removeAriaLabel={removeLabel}>
+        <Pill removable onRemove={() => {}} removeAriaLabel={removeLabel}>
           Tag
         </Pill>,
       );
@@ -85,7 +85,7 @@ describe('i18n integration', () => {
     it('renders Pill with French remove label', () => {
       const removeLabel = frMessages.ariaLabels.pill.remove.replace('{label}', 'Étiquette');
       renderWithLocale(
-        <Pill removable onRemove={() => { }} removeAriaLabel={removeLabel}>
+        <Pill removable onRemove={() => {}} removeAriaLabel={removeLabel}>
           Étiquette
         </Pill>,
         'fr',
