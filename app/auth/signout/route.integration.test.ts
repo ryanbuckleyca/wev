@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from '@/lib/supabase/server';
+import { resetNextPublicSiteUrlBetweenTests } from '@/test-utils/site-url-env';
 import { POST } from './route';
 
 /**
- * Integration: mocks only `createClient`. Real `getSiteBaseUrlFromRequest` + env behavior.
+ * Handler contract: mocks only `createClient`. Real `getSiteBaseUrlFromRequest` + env behavior.
  */
 const mockSignOut = vi.fn();
 
@@ -16,26 +17,16 @@ const mockCreateClient = vi.mocked(createClient);
 const REQUEST_ORIGIN = 'https://example.com';
 
 describe('POST /auth/signout (integration)', () => {
-  let previousSiteUrl: string | undefined;
+  resetNextPublicSiteUrlBetweenTests();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    previousSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-    delete process.env.NEXT_PUBLIC_SITE_URL;
     mockSignOut.mockResolvedValue({ error: null });
     mockCreateClient.mockResolvedValue({
       auth: {
         signOut: mockSignOut,
       },
     } as never);
-  });
-
-  afterEach(() => {
-    if (previousSiteUrl === undefined) {
-      delete process.env.NEXT_PUBLIC_SITE_URL;
-    } else {
-      process.env.NEXT_PUBLIC_SITE_URL = previousSiteUrl;
-    }
   });
 
   it('signs out and redirects to /login using the request origin', async () => {

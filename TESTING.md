@@ -290,7 +290,9 @@ lib/
 
 ## Integration tests (Vitest)
 
-Use the `*.integration.test.ts` suffix for route handlers that exercise **several real pieces together** (e.g. redirect URL building with real `getSiteBaseUrlFromRequest`, locale parsing, response headers) while **mocking only boundaries** you would mock in production tests: Supabase clients, or `fetchBulletinJobs` when the goal is the HTTP contract without a live database. They still run under `npm test` with the rest of the suite.
+Use the `*.integration.test.ts` suffix for **route handler contract** tests: several real pieces together (e.g. redirect URL building with real `getSiteBaseUrlFromRequest`, locale parsing, response headers) while **mocking only boundaries** (Supabase clients, or `fetchBulletinJobs` when the goal is the HTTP layer without a live database). They still run under `npm test` with the rest of the suite.
+
+They are **not** a substitute for Playwright E2E or for database-backed tests: mocks mean you are not validating RLS, real `unstable_cache` behavior, or production Supabase responses.
 
 Real-database or service-role tests against `wev-test` are optional and heavier—add them only with a clear env gate or a dedicated script so CI stays deterministic.
 

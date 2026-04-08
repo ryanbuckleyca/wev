@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from '@/lib/supabase/server';
+import { resetNextPublicSiteUrlBetweenTests } from '@/test-utils/site-url-env';
 import { GET } from './route';
 
 /**
- * Integration: mocks only the Supabase server client (network boundary).
+ * Handler contract: mocks only the Supabase server client (network boundary).
  * Exercises real `getSiteBaseUrlFromRequest` from `@/lib/site-url` with real env toggling.
  */
 const mockExchangeCodeForSession = vi.fn();
@@ -17,26 +18,16 @@ const mockCreateClient = vi.mocked(createClient);
 const REQUEST_ORIGIN = 'https://example.com';
 
 describe('GET /auth/callback (integration)', () => {
-  let previousSiteUrl: string | undefined;
+  resetNextPublicSiteUrlBetweenTests();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    previousSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-    delete process.env.NEXT_PUBLIC_SITE_URL;
     mockExchangeCodeForSession.mockResolvedValue({ error: null });
     mockCreateClient.mockResolvedValue({
       auth: {
         exchangeCodeForSession: mockExchangeCodeForSession,
       },
     } as never);
-  });
-
-  afterEach(() => {
-    if (previousSiteUrl === undefined) {
-      delete process.env.NEXT_PUBLIC_SITE_URL;
-    } else {
-      process.env.NEXT_PUBLIC_SITE_URL = previousSiteUrl;
-    }
   });
 
   it('redirects using the request origin when NEXT_PUBLIC_SITE_URL is unset', async () => {

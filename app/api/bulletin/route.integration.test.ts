@@ -3,7 +3,7 @@ import { GET } from './route';
 import { fetchBulletinJobs } from '@/lib/bulletin/server-data';
 
 /**
- * Integration: route handler + locale parsing + cache policy + server-data contract.
+ * Handler contract: route + locale parsing + cache policy + server-data shape.
  * `fetchBulletinJobs` is mocked so the suite does not require a live DB (CI-safe).
  */
 vi.mock('@/lib/bulletin/server-data', () => ({
@@ -36,12 +36,14 @@ describe('GET /api/bulletin (integration)', () => {
     expect(body.skillLabels).toEqual({});
   });
 
-  it('defaults locale to English when query is missing or invalid', async () => {
+  it('defaults locale to English when the locale query is missing', async () => {
     await GET(new Request('http://localhost/api/bulletin'));
     expect(mockFetchBulletinJobs).toHaveBeenCalledWith('en');
+  });
 
+  it('defaults locale to English when the locale query is not fr', async () => {
     await GET(new Request('http://localhost/api/bulletin?locale=de'));
-    expect(mockFetchBulletinJobs).toHaveBeenLastCalledWith('en');
+    expect(mockFetchBulletinJobs).toHaveBeenCalledWith('en');
   });
 
   it('returns 500 when fetchBulletinJobs throws', async () => {

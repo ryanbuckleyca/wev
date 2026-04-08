@@ -3,11 +3,12 @@ import { GET } from './route';
 import { getRequestUser } from '@/lib/auth/request-user';
 
 /**
- * Integration: auth gate + real normalize/label pipeline with an empty DB result (no ESCO round-trip).
- * Supabase query chain is mocked at the client boundary.
+ * Handler contract: auth gate + real normalize/label pipeline with an empty DB result (no ESCO round-trip).
+ * Supabase query chain is mocked at the client boundary — keep aligned with `route.ts` (from → select → eq → order).
  */
-const { mockFrom } = vi.hoisted(() => ({
+const { mockFrom, mockEq } = vi.hoisted(() => ({
   mockFrom: vi.fn(),
+  mockEq: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/request-user', () => ({
@@ -31,11 +32,12 @@ describe('GET /api/bookmarks (integration)', () => {
     });
 
     const emptyJobsResponse = Promise.resolve({ data: [], error: null });
+    mockEq.mockReturnValue({
+      order: vi.fn(() => emptyJobsResponse),
+    });
     mockFrom.mockReturnValue({
       select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          order: vi.fn(() => emptyJobsResponse),
-        })),
+        eq: mockEq,
       })),
     });
   });
@@ -60,14 +62,16 @@ describe('GET /api/bookmarks (integration)', () => {
     expect(body.jobs).toHaveLength(0);
 
     expect(mockFrom).toHaveBeenCalledWith('jobs');
+    expect(mockEq).toHaveBeenCalledWith('bookmarks.user_id', 'bookmark-user-1');
   });
 
   it('returns 500 when Supabase returns an error', async () => {
+    mockEq.mockReturnValue({
+      order: vi.fn(() => Promise.resolve({ data: null, error: { message: 'query failed' } })),
+    });
     mockFrom.mockReturnValue({
       select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          order: vi.fn(() => Promise.resolve({ data: null, error: { message: 'query failed' } })),
-        })),
+        eq: mockEq,
       })),
     });
 
