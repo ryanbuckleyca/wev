@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@/test-utils';
 import ResetPasswordPage from './page';
 import { createClient } from '@/lib/supabase/client';
 import { usePasswordStrength } from '@/hooks/usePasswordStrength';
-import { RESET_PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth/auth-form-placeholders';
+import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
 import { mockRouterPush } from '@/test-utils/i18n-navigation-mock';
 
 vi.mock('@/lib/supabase/client', () => ({
@@ -26,9 +26,9 @@ const mockUpdateUser = vi.fn();
 
 async function waitForResetPasswordFields(): Promise<HTMLElement[]> {
   await waitFor(() => {
-    expect(screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER)).toHaveLength(2);
+    expect(screen.getAllByPlaceholderText(PASSWORD_FIELD_PLACEHOLDER)).toHaveLength(2);
   });
-  return screen.getAllByPlaceholderText(RESET_PASSWORD_FIELD_PLACEHOLDER);
+  return screen.getAllByPlaceholderText(PASSWORD_FIELD_PLACEHOLDER);
 }
 
 describe('ResetPasswordPage', () => {

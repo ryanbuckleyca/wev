@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor } from '@/test-utils';
 import SignupPage from './page';
 import { createClient } from '@/lib/supabase/client';
-import { SIGNUP_PAGE_PASSWORD_PLACEHOLDER } from '@/lib/auth/auth-form-placeholders';
+import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
@@ -42,7 +42,7 @@ describe('SignupPage', () => {
     render(<SignupPage />);
 
     await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com');
-    await user.type(screen.getByPlaceholderText(SIGNUP_PAGE_PASSWORD_PLACEHOLDER), 'StrongPass123!');
+    await user.type(screen.getByPlaceholderText(PASSWORD_FIELD_PLACEHOLDER), 'StrongPass123!');
     await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.click(screen.getByRole('button', { name: /create account/i }));
 

@@ -5,7 +5,7 @@ import LoginPage from './page';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
-import { LOGIN_PAGE_PASSWORD_PLACEHOLDER } from '@/lib/auth/auth-form-placeholders';
+import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
 import { createMockAuthContext } from '@/test-utils/auth-context-mock';
 import { mockRouterReplace } from '@/test-utils/i18n-navigation-mock';
 
@@ -40,7 +40,7 @@ describe('LoginPage', () => {
     const { container } = render(<LoginPage />);
 
     await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com');
-    await user.type(screen.getByPlaceholderText(LOGIN_PAGE_PASSWORD_PLACEHOLDER), 'secret123');
+    await user.type(screen.getByPlaceholderText(PASSWORD_FIELD_PLACEHOLDER), 'secret123');
     // Submit is disabled without a captcha token, so Enter does not run `onSubmit` in jsdom.
     // Dispatching `submit` on the `<form>` exercises the handler (see TESTING.md — disabled submit exception).
     const form = container.querySelector('form');
@@ -69,7 +69,7 @@ describe('LoginPage', () => {
     const { container } = render(<LoginPage />);
 
     await user.type(screen.getByPlaceholderText('you@example.com'), 'a@b.com');
-    await user.type(screen.getByPlaceholderText(LOGIN_PAGE_PASSWORD_PLACEHOLDER), 'secret123');
+    await user.type(screen.getByPlaceholderText(PASSWORD_FIELD_PLACEHOLDER), 'secret123');
     await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.click(screen.getByRole('button', { name: /simulate captcha expire/i }));
 
@@ -87,7 +87,7 @@ describe('LoginPage', () => {
     render(<LoginPage />);
 
     await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com');
-    await user.type(screen.getByPlaceholderText(LOGIN_PAGE_PASSWORD_PLACEHOLDER), 'StrongPass123!');
+    await user.type(screen.getByPlaceholderText(PASSWORD_FIELD_PLACEHOLDER), 'StrongPass123!');
     await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.click(screen.getByRole('button', { name: /^log in$/i }));
 
@@ -110,7 +110,7 @@ describe('LoginPage', () => {
     render(<LoginPage />);
 
     await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com');
-    await user.type(screen.getByPlaceholderText(LOGIN_PAGE_PASSWORD_PLACEHOLDER), 'wrong');
+    await user.type(screen.getByPlaceholderText(PASSWORD_FIELD_PLACEHOLDER), 'wrong');
     await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.click(screen.getByRole('button', { name: /^log in$/i }));
 

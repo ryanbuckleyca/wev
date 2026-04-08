@@ -15,7 +15,7 @@ import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
 import ErrorBox from '@/components/ErrorBox';
 import LoadingState from '@/components/LoadingState';
-import { RESET_PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth/auth-form-placeholders';
+import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
 
 export default function ResetPasswordPage() {
   const t = useTranslations();
@@ -93,7 +93,7 @@ export default function ResetPasswordPage() {
               type="password"
               value={password}
               onChange={setPassword}
-              placeholder={RESET_PASSWORD_FIELD_PLACEHOLDER}
+              placeholder={PASSWORD_FIELD_PLACEHOLDER}
               required
               fullWidth
             />
@@ -104,7 +104,7 @@ export default function ResetPasswordPage() {
               type="password"
               value={confirmPassword}
               onChange={setConfirmPassword}
-              placeholder={RESET_PASSWORD_FIELD_PLACEHOLDER}
+              placeholder={PASSWORD_FIELD_PLACEHOLDER}
               required
               fullWidth
             />
