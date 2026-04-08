@@ -31,26 +31,25 @@ export class AuthPage {
   }
 
   async signup(email: string, password: string): Promise<void> {
-    await this.page.getByPlaceholder('you@example.com').fill(email);
-    await this.page.locator('input[type="password"]').first().fill(password);
+    await this.page.getByLabel(/email|courriel/i).fill(email);
+    await this.page.getByLabel(/password|mot de passe/i).first().fill(password);
     await this.submitWhenCaptchaReady(/^create account$/i);
   }
 
   async login(email: string, password: string): Promise<void> {
-    await this.page.getByPlaceholder('you@example.com').fill(email);
-    await this.page.locator('input[type="password"]').first().fill(password);
+    await this.page.getByLabel(/email|courriel/i).fill(email);
+    await this.page.getByLabel(/^password$|^mot de passe$/i).fill(password);
     await this.submitWhenCaptchaReady(/^log in$/i);
   }
 
   async requestPasswordReset(email: string): Promise<void> {
-    await this.page.getByPlaceholder('you@example.com').fill(email);
+    await this.page.getByLabel(/email|courriel/i).fill(email);
     await this.submitWhenCaptchaReady(/send reset link/i);
   }
 
   async resetPassword(newPassword: string): Promise<void> {
-    const passwordFields = this.page.locator('input[type="password"]');
-    await passwordFields.first().fill(newPassword);
-    await passwordFields.nth(1).fill(newPassword);
+    await this.page.getByLabel(/new password/i).fill(newPassword);
+    await this.page.getByLabel(/confirm password/i).fill(newPassword);
     await this.page.getByRole('button', { name: /update password/i }).click();
   }
 

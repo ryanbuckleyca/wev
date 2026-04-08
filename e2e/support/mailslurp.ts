@@ -1,6 +1,6 @@
 import { MailSlurp } from 'mailslurp-client';
 
-type InboxRef = {
+export type InboxRef = {
   id: string;
   emailAddress: string;
 };
