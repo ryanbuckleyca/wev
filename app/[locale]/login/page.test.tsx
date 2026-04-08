@@ -14,6 +14,10 @@ vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
 }));
 
+const { mockReplace } = vi.hoisted(() => ({
+  mockReplace: vi.fn(),
+}));
+
 vi.mock('@/i18n/navigation', () => ({
   Link: ({
     href,
@@ -32,10 +36,10 @@ vi.mock('@/i18n/navigation', () => ({
       </a>
     );
   },
-  useRouter: vi.fn(),
+  useRouter: vi.fn(() => ({
+    replace: mockReplace,
+  })),
 }));
-
-import { useRouter } from '@/i18n/navigation';
 
 vi.mock('@/components/TurnstileWidget', () => ({
   default: ({ onSuccess }: { onSuccess: (token: string) => void }) => (
@@ -46,7 +50,6 @@ vi.mock('@/components/TurnstileWidget', () => ({
 }));
 
 const mockSignInWithPassword = vi.fn();
-const mockReplace = vi.fn();
 
 describe('LoginPage', () => {
   beforeEach(() => {
@@ -61,9 +64,6 @@ describe('LoginPage', () => {
       user: null,
       loading: false,
     } as never);
-    vi.mocked(useRouter).mockReturnValue({
-      replace: mockReplace,
-    } as never);
   });
 
   it('shows captcha required when the form is submitted without a completed captcha', async () => {
@@ -72,6 +72,8 @@ describe('LoginPage', () => {
 
     await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com');
     await user.type(screen.getByPlaceholderText('•••••••••'), 'secret123');
+    // Submit is disabled without a captcha token, so Enter does not run `onSubmit` in jsdom.
+    // Dispatching `submit` on the `<form>` exercises the handler (see TESTING.md §5 — prefer userEvent for real interactions).
     const form = container.querySelector('form');
     expect(form).toBeTruthy();
     fireEvent.submit(form!);

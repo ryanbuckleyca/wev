@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from './route';
 
 const mockExchangeCodeForSession = vi.fn();
@@ -15,7 +15,7 @@ vi.mock('@/lib/site-url', () => ({
   getSiteBaseUrlFromRequest: vi.fn(() => 'https://example.com'),
 }));
 
-describe('/auth/callback GET', () => {
+describe('GET /auth/callback', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockExchangeCodeForSession.mockResolvedValue({ error: null });

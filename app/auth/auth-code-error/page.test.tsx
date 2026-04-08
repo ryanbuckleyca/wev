@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@/test-utils';
 import AuthCodeErrorPage from './page';
 
 const { mockHeadersGet } = vi.hoisted(() => ({
@@ -32,7 +32,9 @@ describe('AuthCodeErrorPage', () => {
     render(ui);
 
     expect(screen.getByRole('heading', { name: /authentication error/i })).toBeVisible();
-    expect(screen.getByRole('link', { name: /back to login/i })).toHaveAttribute('href', '/en/login');
+    const loginLink = screen.getByRole('link', { name: /back to login/i });
+    expect(loginLink).toBeVisible();
+    expect(loginLink).toHaveAttribute('href', '/en/login');
   });
 
   it('links to French login when Accept-Language prefers French', async () => {
@@ -43,6 +45,9 @@ describe('AuthCodeErrorPage', () => {
     const ui = await AuthCodeErrorPage();
     render(ui);
 
-    expect(screen.getByRole('link', { name: /back to login/i })).toHaveAttribute('href', '/fr/login');
+    expect(screen.getByRole('heading', { name: /authentication error/i })).toBeVisible();
+    const loginLink = screen.getByRole('link', { name: /back to login/i });
+    expect(loginLink).toBeVisible();
+    expect(loginLink).toHaveAttribute('href', '/fr/login');
   });
 });

@@ -48,8 +48,6 @@ vi.mock('@/components/PasswordStrengthIndicator', () => ({
 const mockGetSession = vi.fn();
 const mockUpdateUser = vi.fn();
 
-import { useRouter } from '@/i18n/navigation';
-
 describe('ResetPasswordPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -68,9 +66,6 @@ describe('ResetPasswordPage', () => {
       isAcceptable: true,
       feedback: '',
     });
-    vi.mocked(useRouter).mockReturnValue({
-      push: mockPush,
-    } as never);
   });
 
   it('shows invalid link state when there is no session', async () => {
@@ -81,10 +76,9 @@ describe('ResetPasswordPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/invalid or expired reset link/i)).toBeVisible();
     });
-    expect(screen.getByRole('link', { name: /request a new reset link/i })).toHaveAttribute(
-      'href',
-      '/forgot-password',
-    );
+    const requestLink = screen.getByRole('link', { name: /request a new reset link/i });
+    expect(requestLink).toBeVisible();
+    expect(requestLink).toHaveAttribute('href', '/forgot-password');
   });
 
   it('updates password and redirects on success', async () => {
@@ -127,6 +121,7 @@ describe('ResetPasswordPage', () => {
     const fields = screen.getAllByPlaceholderText('••••••••••');
     await user.type(fields[0], 'weak');
     await user.type(fields[1], 'weak');
+    // Submit is disabled when strength is unacceptable, so Enter does not fire `onSubmit` in jsdom.
     const form = document.querySelector('form');
     expect(form).toBeTruthy();
     fireEvent.submit(form!);

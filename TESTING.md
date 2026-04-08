@@ -125,6 +125,8 @@ await user.click(button);
 
 Always call `userEvent.setup()` at the top of each test that uses it.
 
+**Exception — disabled submit buttons:** When the UI intentionally disables the submit control (e.g. missing CAPTCHA, password strength not met), the browser often will not run the form’s `onSubmit` from Enter, and jsdom matches that. To still test the handler’s validation branch, dispatch `fireEvent.submit` on the `<form>` element and add a short comment explaining why `userEvent` cannot reach that path.
+
 ### 6. Favour Integration Over Isolation
 
 Prefer tests that assess how components work together over isolated unit tests. This provides a more accurate representation of real-world usage. Only mock what you **must** (network requests, environment-specific APIs).
