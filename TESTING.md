@@ -288,6 +288,12 @@ lib/
   values.test.ts
 ```
 
+## Integration tests (Vitest)
+
+Use the `*.integration.test.ts` suffix for route handlers that exercise **several real pieces together** (e.g. redirect URL building with real `getSiteBaseUrlFromRequest`, locale parsing, response headers) while **mocking only boundaries** you would mock in production tests: Supabase clients, or `fetchBulletinJobs` when the goal is the HTTP contract without a live database. They still run under `npm test` with the rest of the suite.
+
+Real-database or service-role tests against `wev-test` are optional and heavier—add them only with a clear env gate or a dedicated script so CI stays deterministic.
+
 ## Running Tests
 
 ```bash
