@@ -1,15 +1,16 @@
+import type { ComponentProps, ReactNode } from 'react';
 import { Link } from '@/i18n/navigation';
 import { buttonVariants } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
 interface LinkButtonProps {
-  href: string;
-  children: React.ReactNode;
+  href: ComponentProps<typeof Link>['href'];
+  children: ReactNode;
   variant?: 'primary' | 'secondary' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
   className?: string;
-  prefetch?: boolean;
+  prefetch?: ComponentProps<typeof Link>['prefetch'];
   onClick?: () => void;
 }
 
@@ -35,17 +36,14 @@ export default function LinkButton({
   prefetch = true,
   onClick,
 }: LinkButtonProps) {
+  const classes = cn(
+    buttonVariants({ variant: variantMap[variant], size: sizeMap[size] }),
+    fullWidth && 'w-full',
+    className,
+  );
+
   return (
-    <Link
-      href={href}
-      className={cn(
-        buttonVariants({ variant: variantMap[variant], size: sizeMap[size] }),
-        fullWidth && 'w-full',
-        className,
-      )}
-      prefetch={prefetch}
-      onClick={onClick}
-    >
+    <Link href={href} className={classes} prefetch={prefetch} onClick={onClick}>
       {children}
     </Link>
   );

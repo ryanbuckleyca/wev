@@ -36,9 +36,13 @@ load_project_ref() {
   fi
   
   PROJECT_REF="${SUPABASE_PROJECT_REF:-}"
+
+  if [[ -z "${PROJECT_REF}" && -n "${SUPABASE_URL:-}" ]]; then
+    PROJECT_REF="$(printf '%s' "${SUPABASE_URL}" | sed -E 's#^[a-zA-Z]+://##' | cut -d'.' -f1)"
+  fi
   
   if [[ -z "${PROJECT_REF}" ]]; then
-    echo "✗ SUPABASE_PROJECT_REF not set for ${TARGET}"
+    echo "✗ SUPABASE_PROJECT_REF not set for ${TARGET}, and it could not be derived from SUPABASE_URL"
     exit 1
   fi
   
@@ -75,6 +79,11 @@ run_migration() {
   else
     echo "❌ Push failed. If you see hash mismatches, you may need to 'git pull' first."
     exit 1
+  fi
+
+  if [[ "${DRY_RUN}" != "1" ]]; then
+    echo "▶ Regenerating Supabase TypeScript types..."
+    bash ./scripts/generate_supabase_types.sh
   fi
 }
 

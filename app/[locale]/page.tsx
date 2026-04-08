@@ -14,11 +14,9 @@ async function BulletinDataContainer({
 }: {
   parsedLocale: 'en' | 'fr';
 }) {
-  // Move all blocking queries inside the Suspense boundary so they don't delay the initial HTML stream
-  const authPromise = getRequestUser();
-  const jobsPromise = fetchBulletinJobs(parsedLocale);
-
-  const [auth, bulletinData] = await Promise.all([authPromise, jobsPromise]);
+  // Move all blocking queries inside the Suspense boundary so they don't delay the initial HTML stream.
+  // Resolve auth first so the request is fully dynamic before we fetch the cached bulletin payload.
+  const auth = await getRequestUser();
 
   let isAdmin = false;
   if (auth.ok) {
@@ -26,6 +24,8 @@ async function BulletinDataContainer({
     const resolvedRoles = rolesResult.ok ? rolesResult.roles : ['user'];
     isAdmin = rolesIncludeAdmin(resolvedRoles);
   }
+
+  const bulletinData = await fetchBulletinJobs(parsedLocale);
 
   return (
     <BulletinPageClient

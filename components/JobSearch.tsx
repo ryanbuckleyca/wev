@@ -6,6 +6,7 @@ import ButtonLink from './ButtonLink';
 import FilterIcon from './FilterIcon';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { Search1Outlined } from '@lineiconshq/free-icons';
+import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 export interface ActiveFilterChip {
   id: string;
@@ -70,6 +71,7 @@ export default function JobSearch({
           <button
             type="button"
             onClick={() => onFiltersExpandedChange(!filtersExpanded)}
+            data-testid={JOB_BOARD_TEST_IDS.filtersToggle}
             className="h-10 px-3 border border-border rounded-wev-btn bg-card text-sm text-muted-foreground hover:border-primary transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
             aria-expanded={filtersExpanded}
             aria-controls="job-filters-content"

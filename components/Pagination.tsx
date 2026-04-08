@@ -6,6 +6,7 @@ import { twMerge } from 'tailwind-merge';
 import { dropEllipsis } from 'react-responsive-pagination/narrowBehaviour';
 
 import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
+import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 interface PaginationProps {
   totalPages: number;
@@ -13,11 +14,7 @@ interface PaginationProps {
   itemsPerPage: number;
 }
 
-export default function Pagination({
-  totalPages,
-  totalItems,
-  itemsPerPage,
-}: PaginationProps) {
+export default function Pagination({ totalPages, totalItems, itemsPerPage }: PaginationProps) {
   const { currentPage, setCurrentPage: onPageChange } = useBulletinFilterContext();
   const t = useTranslations();
   const startItem = (currentPage - 1) * itemsPerPage + 1;
@@ -26,15 +23,20 @@ export default function Pagination({
   if (totalPages <= 1) {
     return (
       <div className="text-sm text-foreground text-center py-4">
-        {t('pagination.showing')} {totalItems}{' '}
-        {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
+        <span data-testid={JOB_BOARD_TEST_IDS.paginationSummary}>
+          {t('pagination.showing')} {totalItems}{' '}
+          {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
+        </span>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col items-center gap-3 py-4 w-full">
-      <div className="text-sm text-foreground text-center">
+      <div
+        className="text-sm text-foreground text-center"
+        data-testid={JOB_BOARD_TEST_IDS.paginationSummary}
+      >
         {t('pagination.showing')} {startItem}-{endItem} {t('pagination.of')} {totalItems}{' '}
         {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
       </div>

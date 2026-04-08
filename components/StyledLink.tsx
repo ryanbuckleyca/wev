@@ -1,13 +1,14 @@
+import type { ComponentProps, ReactNode } from 'react';
 import { Link } from '@/i18n/navigation';
 
 interface StyledLinkProps {
-  href: string;
-  children: React.ReactNode;
+  href: ComponentProps<typeof Link>['href'];
+  children: ReactNode;
   variant?: 'primary' | 'secondary' | 'outline' | 'text';
   size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
   className?: string;
-  prefetch?: boolean;
+  prefetch?: ComponentProps<typeof Link>['prefetch'];
   onClick?: () => void;
 }
 

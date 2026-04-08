@@ -22,6 +22,7 @@ The script automatically:
 1. **Links** to the correct project ref (test or prod).
 2. **Auto-Syncs History**: Before pushing, it runs `supabase migration fetch` to download any missing remote migration files. This prevents the "Remote migration versions not found" error.
 3. **Pushes**: Applies your new local changes to the cloud safely.
+4. **Regenerates App Types**: After a successful push, it refreshes `lib/supabase/database.types.ts` so the app and e2e seeds stay aligned with the live schema.
 
 ---
 
@@ -59,6 +60,18 @@ ALTER TABLE my_table ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own data" ON my_table
   FOR SELECT USING (auth.uid() = user_id);
 ```
+
+### 5. Keep Generated Types Fresh
+
+If you need to refresh the app's database types without running a migration, use:
+
+```bash
+npm run types:supabase
+```
+
+This command reads `SUPABASE_PROJECT_REF` from your environment and, if that is not
+set, derives it from `SUPABASE_URL`. It then regenerates
+`lib/supabase/database.types.ts`.
 
 ---
 

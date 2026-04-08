@@ -77,7 +77,7 @@ function matchesNullableSelection(
   selectedValues: string[],
 ): boolean {
   if (selectedValues.length === 0) return true;
-  if (!value) return true;
+  if (!value) return false;
   return selectedValues.includes(value);
 }
 

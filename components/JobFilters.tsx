@@ -16,6 +16,7 @@ import MunicipalityFilterSection from './job-filters/MunicipalityFilterSection';
 import type { JobFiltersProps } from './job-filters/types';
 import { useJobFiltersModel } from './job-filters/useJobFiltersModel';
 import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
+import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 export default function JobFilters(props: JobFiltersProps) {
   const controls = useBulletinFilterContext();
@@ -62,106 +63,125 @@ export default function JobFilters(props: JobFiltersProps) {
       />
 
       <Collapsible isOpen={filtersExpanded} className="p-6">
-        <BooleanFilterRow
-          checked={showOnlySse}
-          onCheckedChange={onShowOnlySseChange}
-          label={t('filters.sse.label')}
-          icon={
-            <Lineicons
-              icon={showOnlySse ? Leaf1Solid : Leaf1Outlined}
-              size={16}
-              className="shrink-0 text-primary"
-              aria-hidden
-            />
-          }
-          description={
-            <>
-              {t('filters.sse.description')}
-              <a
-                href="https://solidarityeconomyprinciples.org/wp-content/uploads/2023/02/SE-Principles-2-pager-handout.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-1 text-wev-brand-accent hover:text-wev-primary-text hover:underline"
-              >
-                {t('filters.sse.learnMore')}
-              </a>
-            </>
-          }
-        />
+        <div data-testid={JOB_BOARD_TEST_IDS.sseToggle}>
+          <BooleanFilterRow
+            checked={showOnlySse}
+            onCheckedChange={onShowOnlySseChange}
+            label={t('filters.sse.label')}
+            icon={
+              <Lineicons
+                icon={showOnlySse ? Leaf1Solid : Leaf1Outlined}
+                size={16}
+                className="shrink-0 text-primary"
+                aria-hidden
+              />
+            }
+            description={
+              <>
+                {t('filters.sse.description')}
+                <a
+                  href="https://solidarityeconomyprinciples.org/wp-content/uploads/2023/02/SE-Principles-2-pager-handout.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-1 text-wev-brand-accent hover:text-wev-primary-text hover:underline"
+                >
+                  {t('filters.sse.learnMore')}
+                </a>
+              </>
+            }
+          />
+        </div>
 
-        <BooleanFilterRow
-          checked={showJobsWithoutSalary}
-          onCheckedChange={onShowJobsWithoutSalaryChange}
-          label={t('filters.salary.label')}
-          description={t('filters.salary.description')}
-        />
+        <div data-testid={JOB_BOARD_TEST_IDS.salaryToggle}>
+          <BooleanFilterRow
+            checked={showJobsWithoutSalary}
+            onCheckedChange={onShowJobsWithoutSalaryChange}
+            label={t('filters.salary.label')}
+            description={t('filters.salary.description')}
+          />
+        </div>
 
-        <FilterButtonGroup
-          label={t('filters.postedWithin.label')}
-          options={model.postedWithinOptions}
-          isSelected={(value) => postedWithin === value}
-          onSelect={(value) => onPostedWithinChange(value as PostedWithinSelection)}
-        />
+        <div data-testid={JOB_BOARD_TEST_IDS.postedWithinGroup}>
+          <FilterButtonGroup
+            label={t('filters.postedWithin.label')}
+            options={model.postedWithinOptions}
+            isSelected={(value) => postedWithin === value}
+            onSelect={(value) => onPostedWithinChange(value as PostedWithinSelection)}
+          />
+        </div>
 
-        <FilterButtonGroup
-          label={t('filters.workType.label')}
-          options={model.workTypeOptions}
-          isSelected={(value) => selectedWorkTypes.includes(value)}
-          onSelect={(value) => model.handleWorkTypeToggle(value as WorkType)}
-          helper={
-            model.hasProfileWorkTypes ? (
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span>
-                  {isUsingProfileWorkTypes
-                    ? t('filters.workType.profileDefault', {
-                      types: model.profileWorkTypeLabel,
-                    })
-                    : t('filters.workType.profileOverride', {
-                      types: model.profileWorkTypeLabel,
-                    })}
-                </span>
-                <StyledLink href="/profile" variant="text" size="sm" className="p-0">
-                  {t('filters.workType.profileLink')}
-                </StyledLink>
-                {!isUsingProfileWorkTypes && onResetToProfileWorkTypes ? (
-                  <button
-                    type="button"
-                    onClick={onResetToProfileWorkTypes}
-                    className="text-[var(--primary)] hover:underline"
-                  >
-                    {t('filters.workType.profileReset')}
-                  </button>
-                ) : null}
-              </div>
-            ) : null
-          }
-        />
+        <div data-testid={JOB_BOARD_TEST_IDS.workTypeGroup}>
+          <FilterButtonGroup
+            label={t('filters.workType.label')}
+            options={model.workTypeOptions}
+            isSelected={(value) => selectedWorkTypes.includes(value)}
+            onSelect={(value) => model.handleWorkTypeToggle(value as WorkType)}
+            helper={
+              model.hasProfileWorkTypes ? (
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {isUsingProfileWorkTypes
+                      ? t('filters.workType.profileDefault', {
+                        types: model.profileWorkTypeLabel,
+                      })
+                      : t('filters.workType.profileOverride', {
+                        types: model.profileWorkTypeLabel,
+                      })}
+                  </span>
+                  <StyledLink href="/profile" variant="text" size="sm" className="p-0">
+                    {t('filters.workType.profileLink')}
+                  </StyledLink>
+                  {!isUsingProfileWorkTypes && onResetToProfileWorkTypes ? (
+                    <button
+                      type="button"
+                      onClick={onResetToProfileWorkTypes}
+                      className="text-[var(--primary)] hover:underline"
+                    >
+                      {t('filters.workType.profileReset')}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null
+            }
+          />
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
-          <CheckboxFilterSection
+          <div
             className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0"
-            label={t('filters.province.label')}
-            selectedCount={selectedProvinces.length}
-            totalCount={model.provinces.length}
-            options={model.provinces}
-            selectedValues={selectedProvinces}
-            onToggle={model.handleProvinceToggle}
-            emptyMessage={t('filters.province.noData')}
-            isIndeterminate={(province) => model.indeterminateProvinces.has(province)}
-          />
+            data-testid={JOB_BOARD_TEST_IDS.provinceSection}
+          >
+            <CheckboxFilterSection
+              label={t('filters.province.label')}
+              selectedCount={selectedProvinces.length}
+              totalCount={model.provinces.length}
+              options={model.provinces}
+              selectedValues={selectedProvinces}
+              onToggle={model.handleProvinceToggle}
+              emptyMessage={t('filters.province.noData')}
+              isIndeterminate={(province) => model.indeterminateProvinces.has(province)}
+            />
+          </div>
 
-          <CheckboxFilterSection
+          <div
             className="flex flex-col order-3 md:row-start-1 md:col-start-2 min-h-0"
-            label={t('filters.employmentType.label')}
-            selectedCount={selectedEmploymentTypes.length}
-            totalCount={model.employmentTypes.length}
-            options={model.employmentTypes}
-            selectedValues={selectedEmploymentTypes}
-            onToggle={model.handleEmploymentTypeToggle}
-            emptyMessage={t('filters.employmentType.noData')}
-          />
+            data-testid={JOB_BOARD_TEST_IDS.employmentTypeSection}
+          >
+            <CheckboxFilterSection
+              label={t('filters.employmentType.label')}
+              selectedCount={selectedEmploymentTypes.length}
+              totalCount={model.employmentTypes.length}
+              options={model.employmentTypes}
+              selectedValues={selectedEmploymentTypes}
+              onToggle={model.handleEmploymentTypeToggle}
+              emptyMessage={t('filters.employmentType.noData')}
+            />
+          </div>
 
-          <div className="flex flex-col order-2 md:row-start-2 md:col-start-1 gap-1">
+          <div
+            className="flex flex-col order-2 md:row-start-2 md:col-start-1 gap-1"
+            data-testid={JOB_BOARD_TEST_IDS.municipalitySection}
+          >
             <MunicipalityFilterSection
               label={t('filters.municipality.label')}
               selectedMunicipalities={selectedMunicipalities}
@@ -195,28 +215,36 @@ export default function JobFilters(props: JobFiltersProps) {
               </div>
             )}
           </div>
-          <CheckboxFilterSection
+          <div
             className="flex flex-col order-4 md:row-start-2 md:col-start-2"
-            label={t('filters.organization.label')}
-            selectedCount={selectedOrganizations.length}
-            totalCount={model.organizations.length}
-            options={model.organizations}
-            selectedValues={selectedOrganizations}
-            onToggle={model.handleOrganizationToggle}
-            emptyMessage={t('filters.organization.noData')}
-            listClassName="h-48 overflow-y-auto border border-border rounded-wev-btn p-2 bg-background"
-          />
+            data-testid={JOB_BOARD_TEST_IDS.organizationSection}
+          >
+            <CheckboxFilterSection
+              label={t('filters.organization.label')}
+              selectedCount={selectedOrganizations.length}
+              totalCount={model.organizations.length}
+              options={model.organizations}
+              selectedValues={selectedOrganizations}
+              onToggle={model.handleOrganizationToggle}
+              emptyMessage={t('filters.organization.noData')}
+              listClassName="h-48 overflow-y-auto border border-border rounded-wev-btn p-2 bg-background"
+            />
+          </div>
 
-          <CheckboxFilterSection
+          <div
             className="flex flex-col order-5 md:row-start-3 md:col-start-1"
-            label={t('filters.source.label')}
-            selectedCount={selectedSources.length}
-            totalCount={model.sources.length}
-            options={model.sources}
-            selectedValues={selectedSources}
-            onToggle={model.handleSourceToggle}
-            emptyMessage={t('filters.source.noData')}
-          />
+            data-testid={JOB_BOARD_TEST_IDS.sourceSection}
+          >
+            <CheckboxFilterSection
+              label={t('filters.source.label')}
+              selectedCount={selectedSources.length}
+              totalCount={model.sources.length}
+              options={model.sources}
+              selectedValues={selectedSources}
+              onToggle={model.handleSourceToggle}
+              emptyMessage={t('filters.source.noData')}
+            />
+          </div>
         </div>
 
         <div className="mt-6 relative h-2 shadow-top flex items-center justify-center border-t border-border">

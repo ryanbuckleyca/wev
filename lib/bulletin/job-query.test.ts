@@ -71,7 +71,7 @@ describe('job query helpers', () => {
     expect(filtered.map((job) => job.id)).toEqual(['recent-match']);
   });
 
-  it('keeps jobs with null province and municipality when location filters are applied', () => {
+  it('excludes jobs with null province and municipality when location filters are applied', () => {
     const jobs = [
       makeJob({ id: 'with-location' }),
       makeJob({
@@ -89,7 +89,7 @@ describe('job query helpers', () => {
       }),
     );
 
-    expect(filtered.map((job) => job.id)).toEqual(['with-location', 'missing-location']);
+    expect(filtered.map((job) => job.id)).toEqual(['with-location']);
   });
 
   it('sorts jobs by match score and salary', () => {
