@@ -15,7 +15,7 @@ import { parseRolesColumn } from '@/lib/auth';
 
 export type UserRole = 'admin' | 'moderator' | 'user';
 
-interface AuthContextValue {
+export interface AuthContextValue {
   user: User | null;
   role: UserRole;
   roles: string[];

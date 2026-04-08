@@ -10,7 +10,9 @@ export const mockRouterPush = vi.fn();
  *
  * `vi.mock('@/i18n/navigation', () => import('@/test-utils/i18n-navigation-mock'));`
  *
- * Assert navigation with `mockRouterReplace` / `mockRouterPush`.
+ * `useRouter` is `vi.fn()` returning `{ replace: mockRouterReplace, push: mockRouterPush }`.
+ * Each `useRouter()` call is a new invocation of that mock — do not assert call counts on
+ * `useRouter` itself for navigation; assert `mockRouterReplace` / `mockRouterPush` instead.
  */
 export function Link({
   href,

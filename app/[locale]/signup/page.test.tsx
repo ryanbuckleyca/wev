@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor } from '@/test-utils';
 import SignupPage from './page';
 import { createClient } from '@/lib/supabase/client';
+import { SIGNUP_PAGE_PASSWORD_PLACEHOLDER } from '@/lib/auth/auth-form-placeholders';
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
@@ -10,13 +11,7 @@ vi.mock('@/lib/supabase/client', () => ({
 
 vi.mock('@/i18n/navigation', () => import('@/test-utils/i18n-navigation-mock'));
 
-vi.mock('@/components/TurnstileWidget', () => ({
-  default: ({ onSuccess }: { onSuccess: (token: string) => void }) => (
-    <button type="button" onClick={() => onSuccess('turnstile-token')}>
-      Complete CAPTCHA
-    </button>
-  ),
-}));
+vi.mock('@/components/TurnstileWidget', () => import('@/test-utils/turnstile-widget-mock'));
 
 vi.mock('@/hooks/usePasswordStrength', () => ({
   usePasswordStrength: () => ({
@@ -47,7 +42,7 @@ describe('SignupPage', () => {
     render(<SignupPage />);
 
     await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com');
-    await user.type(screen.getByPlaceholderText('•••••••••••'), 'StrongPass123!');
+    await user.type(screen.getByPlaceholderText(SIGNUP_PAGE_PASSWORD_PLACEHOLDER), 'StrongPass123!');
     await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.click(screen.getByRole('button', { name: /create account/i }));
 

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRequireAuth } from './useRequireAuth';
+import { createMockAuthContext } from '@/test-utils/auth-context-mock';
 import { mockRouterReplace } from '@/test-utils/i18n-navigation-mock';
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -16,10 +18,7 @@ describe('useRequireAuth', () => {
   });
 
   it('does not redirect while auth is loading', () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: null,
-      loading: true,
-    } as never);
+    vi.mocked(useAuth).mockReturnValue(createMockAuthContext({ user: null, loading: true }));
 
     renderHook(() => useRequireAuth());
 
@@ -27,10 +26,7 @@ describe('useRequireAuth', () => {
   });
 
   it('redirects to /login once when there is no user after loading finishes', async () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: null,
-      loading: false,
-    } as never);
+    vi.mocked(useAuth).mockReturnValue(createMockAuthContext({ user: null, loading: false }));
 
     renderHook(() => useRequireAuth());
 
@@ -41,10 +37,12 @@ describe('useRequireAuth', () => {
   });
 
   it('does not redirect when a user is present', () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'u1', email: 'a@b.com' } as never,
-      loading: false,
-    } as never);
+    vi.mocked(useAuth).mockReturnValue(
+      createMockAuthContext({
+        user: { id: 'u1', email: 'a@b.com' } as User,
+        loading: false,
+      }),
+    );
 
     renderHook(() => useRequireAuth());
 
@@ -52,27 +50,20 @@ describe('useRequireAuth', () => {
   });
 
   it('does not redirect when loading transitions to authenticated user', async () => {
-    const authState = {
-      user: null as { id: string; email: string } | null,
-      loading: true,
-    };
-    vi.mocked(useAuth).mockImplementation(
-      () =>
-        ({
-          user: authState.user,
-          loading: authState.loading,
-        }) as never,
+    const authState = { user: null as User | null, loading: true };
+    vi.mocked(useAuth).mockImplementation(() =>
+      createMockAuthContext({ user: authState.user, loading: authState.loading }),
     );
 
     const { rerender } = renderHook(() => useRequireAuth());
     expect(mockRouterReplace).not.toHaveBeenCalled();
 
-    authState.loading = false;
-    authState.user = { id: 'u1', email: 'a@b.com' };
-    rerender();
-
-    await waitFor(() => {
-      expect(mockRouterReplace).not.toHaveBeenCalled();
+    await act(async () => {
+      authState.loading = false;
+      authState.user = { id: 'u1', email: 'a@b.com' } as User;
+      rerender();
     });
+
+    expect(mockRouterReplace).not.toHaveBeenCalled();
   });
 });

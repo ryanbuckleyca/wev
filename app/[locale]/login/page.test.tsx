@@ -3,8 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, render, screen, waitFor } from '@/test-utils';
 import LoginPage from './page';
 import { createClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
 import { LOGIN_PAGE_PASSWORD_PLACEHOLDER } from '@/lib/auth/auth-form-placeholders';
+import { createMockAuthContext } from '@/test-utils/auth-context-mock';
 import { mockRouterReplace } from '@/test-utils/i18n-navigation-mock';
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -17,29 +19,7 @@ vi.mock('@/lib/supabase/client', () => ({
 
 vi.mock('@/i18n/navigation', () => import('@/test-utils/i18n-navigation-mock'));
 
-vi.mock('@/components/TurnstileWidget', () => ({
-  default: ({
-    onSuccess,
-    onError,
-    onExpire,
-  }: {
-    onSuccess: (token: string) => void;
-    onError: () => void;
-    onExpire: () => void;
-  }) => (
-    <div>
-      <button type="button" onClick={() => onSuccess('turnstile-token')}>
-        Complete CAPTCHA
-      </button>
-      <button type="button" onClick={() => onError()}>
-        Simulate CAPTCHA error
-      </button>
-      <button type="button" onClick={() => onExpire()}>
-        Simulate CAPTCHA expire
-      </button>
-    </div>
-  ),
-}));
+vi.mock('@/components/TurnstileWidget', () => import('@/test-utils/turnstile-widget-mock'));
 
 const mockSignInWithPassword = vi.fn();
 
@@ -52,10 +32,7 @@ describe('LoginPage', () => {
         signInWithPassword: mockSignInWithPassword,
       },
     } as never);
-    vi.mocked(useAuth).mockReturnValue({
-      user: null,
-      loading: false,
-    } as never);
+    vi.mocked(useAuth).mockReturnValue(createMockAuthContext({ user: null, loading: false }));
   });
 
   it('shows captcha required when the form is submitted without a completed captcha', async () => {
@@ -144,10 +121,12 @@ describe('LoginPage', () => {
   });
 
   it('redirects away when the user is already authenticated', async () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'user-1', email: 'existing@example.com' } as never,
-      loading: false,
-    } as never);
+    vi.mocked(useAuth).mockReturnValue(
+      createMockAuthContext({
+        user: { id: 'user-1', email: 'existing@example.com' } as User,
+        loading: false,
+      }),
+    );
 
     render(<LoginPage />);
 

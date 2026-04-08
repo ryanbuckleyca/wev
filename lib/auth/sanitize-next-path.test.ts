@@ -8,14 +8,21 @@ describe('sanitizeNextPath', () => {
     expect(sanitizeNextPath('   ')).toBe('/');
   });
 
-  it('preserves safe relative paths', () => {
+  it('preserves locale-prefixed paths', () => {
     expect(sanitizeNextPath('/')).toBe('/');
     expect(sanitizeNextPath('/en/profile')).toBe('/en/profile');
-    expect(sanitizeNextPath('/fr/jobs')).toBe('/fr/jobs');
+    expect(sanitizeNextPath('/fr/emplois')).toBe('/fr/emplois');
   });
 
-  it('adds a leading slash when missing', () => {
-    expect(sanitizeNextPath('profile')).toBe('/profile');
+  it('normalizes missing leading slash when path is locale-prefixed', () => {
+    expect(sanitizeNextPath('en/profile')).toBe('/en/profile');
+    expect(sanitizeNextPath('fr/jobs')).toBe('/fr/jobs');
+  });
+
+  it('rejects paths without a locale prefix (same-origin path escape)', () => {
+    expect(sanitizeNextPath('/profile')).toBe('/');
+    expect(sanitizeNextPath('profile')).toBe('/');
+    expect(sanitizeNextPath('/search')).toBe('/');
   });
 
   it('rejects absolute and protocol-relative URLs', () => {
@@ -31,7 +38,7 @@ describe('sanitizeNextPath', () => {
     expect(sanitizeNextPath('blob:https://x')).toBe('/');
   });
 
-  it('allows paths whose query contains a substring like ://', () => {
-    expect(sanitizeNextPath('/search?q=a%3A%2F%2Fb')).toBe('/search?q=a%3A%2F%2Fb');
+  it('allows query strings on locale paths (e.g. odd encoded substrings)', () => {
+    expect(sanitizeNextPath('/en/search?q=a%3A%2F%2Fb')).toBe('/en/search?q=a%3A%2F%2Fb');
   });
 });

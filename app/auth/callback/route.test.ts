@@ -48,6 +48,15 @@ describe('GET /auth/callback', () => {
     expect(mockExchangeCodeForSession).not.toHaveBeenCalled();
   });
 
+  it('redirects to auth-code-error when code is only whitespace', async () => {
+    const request = new Request(`${BASE}/auth/callback?code=%20%20`);
+    const response = await GET(request);
+
+    expectRedirect(response, `${BASE}/auth/auth-code-error`);
+    expect(mockExchangeCodeForSession).not.toHaveBeenCalled();
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
   it('exchanges the code and redirects to the site base plus next', async () => {
     const request = new Request(`${BASE}/auth/callback?code=abc&next=%2Ffr%2Fprofile`);
     const response = await GET(request);
@@ -80,6 +89,14 @@ describe('GET /auth/callback', () => {
     );
     const response = await GET(request);
 
+    expectRedirect(response, `${BASE}/`);
+  });
+
+  it('redirects to home when next is not locale-prefixed', async () => {
+    const request = new Request(`${BASE}/auth/callback?code=abc&next=%2Fprofile`);
+    const response = await GET(request);
+
+    expect(mockExchangeCodeForSession).toHaveBeenCalledWith('abc');
     expectRedirect(response, `${BASE}/`);
   });
 

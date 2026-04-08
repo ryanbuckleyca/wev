@@ -5,7 +5,8 @@ import { getSiteBaseUrlFromRequest } from '@/lib/site-url';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const code = searchParams.get('code');
+  const rawCode = searchParams.get('code');
+  const code = rawCode?.trim() ?? '';
   // "next" param allows redirecting to a specific page after login
   const next = sanitizeNextPath(searchParams.get('next'));
   const base = getSiteBaseUrlFromRequest(request);

@@ -16,6 +16,7 @@ import FormField from '@/components/FormField';
 import Button from '@/components/Button';
 import CheckEmailCard from '@/components/CheckEmailCard';
 import ErrorBox from '@/components/ErrorBox';
+import { SIGNUP_PAGE_PASSWORD_PLACEHOLDER } from '@/lib/auth/auth-form-placeholders';
 
 export default function SignupPage() {
   const t = useTranslations();
@@ -104,7 +105,7 @@ export default function SignupPage() {
             type="password"
             value={password}
             onChange={setPassword}
-            placeholder="•••••••••••"
+            placeholder={SIGNUP_PAGE_PASSWORD_PLACEHOLDER}
             required
             fullWidth
           />
