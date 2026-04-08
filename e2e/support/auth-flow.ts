@@ -7,12 +7,15 @@ export async function expectLoginFailsInFreshContext(
   password: string,
 ): Promise<void> {
   const context = await browser.newContext();
-  const page = await context.newPage();
-  const authPage = new AuthPage(page);
-  await authPage.gotoLogin('en');
-  await authPage.login(email, password);
-  await expect(page.getByText(/invalid login credentials/i)).toBeVisible();
-  await context.close();
+  try {
+    const page = await context.newPage();
+    const authPage = new AuthPage(page);
+    await authPage.gotoLogin('en');
+    await authPage.login(email, password);
+    await expect(page.getByText(/invalid login credentials/i)).toBeVisible();
+  } finally {
+    await context.close();
+  }
 }
 
 export async function expectLoginSucceedsInFreshContext(
@@ -21,10 +24,13 @@ export async function expectLoginSucceedsInFreshContext(
   password: string,
 ): Promise<void> {
   const context = await browser.newContext();
-  const page = await context.newPage();
-  const authPage = new AuthPage(page);
-  await authPage.gotoLogin('en');
-  await authPage.login(email, password);
-  await expect(page).toHaveURL(/\/en(\/)?$/);
-  await context.close();
+  try {
+    const page = await context.newPage();
+    const authPage = new AuthPage(page);
+    await authPage.gotoLogin('en');
+    await authPage.login(email, password);
+    await expect(page).toHaveURL(/\/en(\/)?$/);
+  } finally {
+    await context.close();
+  }
 }

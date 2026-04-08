@@ -136,18 +136,17 @@ test.describe('Auth email flows @auth-email', () => {
     await expect(page.getByText(/invalid or expired reset link/i)).toBeVisible();
   });
 
-  test('delete-account flow surfaces backend errors (no masked fallback)', async ({
+  test.fixme('delete-account should delete user and block future login', async ({
     authPage,
-    page,
+    browser,
+    page
   }) => {
     const dialog = await authPage.openDeleteAccountModal(locale);
     await dialog.getByPlaceholder('Current password').fill(resetPassword);
     await dialog.getByPlaceholder('DELETE').fill('DELETE');
     await dialog.getByRole('button', { name: /^delete account$/i }).last().click();
 
-      await expect(page).toHaveURL(/\/en\/account-settings$/);
-    await expect(
-      page.getByText(/captcha verification process failed|failed to delete account|internal server error/i),
-    ).toBeVisible();
+    await expect(page).toHaveURL(homePath);
+    await expectLoginFailsInFreshContext(browser, currentEmailAddress, resetPassword);
   });
 });

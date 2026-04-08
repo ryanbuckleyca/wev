@@ -4,6 +4,17 @@
  * where request.url may have the wrong host (e.g. localhost).
  */
 
+let hasWarnedInvalidConfiguredSiteUrl = false;
+
+function warnInvalidConfiguredSiteUrl(configured: string): void {
+  if (hasWarnedInvalidConfiguredSiteUrl) return;
+  hasWarnedInvalidConfiguredSiteUrl = true;
+  // Keep this as a plain warning so misconfiguration is visible in all runtimes.
+  console.warn(
+    `Invalid NEXT_PUBLIC_SITE_URL "${configured}". Falling back to request/window origin.`,
+  );
+}
+
 function normalizeConfiguredSiteUrl(configured: string | undefined): string | null {
   const trimmed = configured?.trim();
   if (!trimmed) return null;
@@ -13,6 +24,7 @@ function normalizeConfiguredSiteUrl(configured: string | undefined): string | nu
   try {
     return new URL(withScheme).origin;
   } catch {
+    warnInvalidConfiguredSiteUrl(trimmed);
     return null;
   }
 }

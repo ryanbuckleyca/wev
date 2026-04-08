@@ -27,6 +27,10 @@ export class AuthPage {
     await this.page.goto(localizedPath(locale, '/forgot-password'));
   }
 
+  async gotoAccountSettings(locale: AppLocale = 'en'): Promise<void> {
+    await this.page.goto(localizedPath(locale, '/account-settings'));
+  }
+
   async submitWhenCaptchaReady(buttonName: RegExp, timeoutMs = 90_000): Promise<void> {
     const submitButton = this.page.getByRole('button', { name: buttonName });
     await expect(submitButton).toBeEnabled({ timeout: timeoutMs });
@@ -57,7 +61,7 @@ export class AuthPage {
   }
 
   async openDeleteAccountModal(locale: AppLocale = 'en'): Promise<Locator> {
-    await this.page.goto(localizedPath(locale, '/account-settings'));
+    await this.gotoAccountSettings(locale);
     await this.page.getByRole('button', { name: /^delete account$/i }).first().click();
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -65,7 +69,7 @@ export class AuthPage {
   }
 
   async requestEmailChange(locale: AppLocale, newEmail: string): Promise<void> {
-    await this.page.goto(localizedPath(locale, '/account-settings'));
+    await this.gotoAccountSettings(locale);
     await this.page.getByLabel(/new email/i).fill(newEmail);
     await this.page.getByRole('button', { name: /save changes/i }).click();
   }
