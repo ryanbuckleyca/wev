@@ -89,6 +89,27 @@ describe('/api/account/delete', () => {
     expect(data.error).toBe('Password required for account deletion');
   });
 
+  it('should require captcha token', async () => {
+    mockGetRequestUser.mockResolvedValue({
+      ok: true,
+      user: {
+        id: 'user-123',
+        email: 'test@example.com',
+      } as never,
+    });
+
+    const request = new NextRequest('http://localhost:3000/api/account/delete', {
+      method: 'DELETE',
+      body: JSON.stringify({ password: 'test123' }),
+    });
+
+    const response = await DELETE(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe('Please complete the CAPTCHA verification.');
+  });
+
   it('should reject an invalid password', async () => {
     mockGetRequestUser.mockResolvedValue({
       ok: true,
@@ -107,7 +128,7 @@ describe('/api/account/delete', () => {
 
     const request = new NextRequest('http://localhost:3000/api/account/delete', {
       method: 'DELETE',
-      body: JSON.stringify({ password: 'wrong-password' }),
+      body: JSON.stringify({ password: 'wrong-password', captchaToken: 'token-123' }),
     });
 
     const response = await DELETE(request);
@@ -137,7 +158,7 @@ describe('/api/account/delete', () => {
 
     const request = new NextRequest('http://localhost:3000/api/account/delete', {
       method: 'DELETE',
-      body: JSON.stringify({ password: 'wrong-password' }),
+      body: JSON.stringify({ password: 'wrong-password', captchaToken: 'token-123' }),
     });
 
     const response = await DELETE(request);
@@ -166,7 +187,7 @@ describe('/api/account/delete', () => {
 
     const request = new NextRequest('http://localhost:3000/api/account/delete', {
       method: 'DELETE',
-      body: JSON.stringify({ password: 'anypassword' }),
+      body: JSON.stringify({ password: 'anypassword', captchaToken: 'token-123' }),
     });
 
     const response = await DELETE(request);
@@ -174,6 +195,11 @@ describe('/api/account/delete', () => {
 
     expect(response.status).toBe(200);
     expect(data.message).toBe('Account successfully deleted');
+    expect(mockSignInWithPassword).toHaveBeenCalledWith({
+      email: 'test@example.com',
+      password: 'anypassword',
+      options: { captchaToken: 'token-123' },
+    });
     expect(mockAdminSignOut).toHaveBeenCalledWith('verification-token', 'local');
     expect(mockDeleteUser).toHaveBeenCalledWith('user-123');
   });

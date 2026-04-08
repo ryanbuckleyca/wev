@@ -37,15 +37,29 @@ export class AuthPage {
     await submitButton.click();
   }
 
+  private emailInput() {
+    return this.page
+      .getByLabel(/email|courriel/i)
+      .or(this.page.getByPlaceholder(/you@example\.com/i))
+      .first();
+  }
+
+  private passwordInput() {
+    return this.page
+      .getByLabel(/^password$|^mot de passe$/i)
+      .or(this.page.getByPlaceholder(/^[-•*]{6,}$/i))
+      .first();
+  }
+
   async signup(email: string, password: string): Promise<void> {
-    await this.page.getByLabel(/email|courriel/i).fill(email);
-    await this.page.getByLabel(/password|mot de passe/i).first().fill(password);
+    await this.emailInput().fill(email);
+    await this.passwordInput().fill(password);
     await this.submitWhenCaptchaReady(/^create account$/i);
   }
 
   async login(email: string, password: string): Promise<void> {
-    await this.page.getByLabel(/email|courriel/i).fill(email);
-    await this.page.getByLabel(/^password$|^mot de passe$/i).fill(password);
+    await this.emailInput().fill(email);
+    await this.passwordInput().fill(password);
     await this.submitWhenCaptchaReady(/^log in$/i);
   }
 
@@ -72,5 +86,16 @@ export class AuthPage {
     await this.gotoAccountSettings(locale);
     await this.page.getByLabel(/new email/i).fill(newEmail);
     await this.page.getByRole('button', { name: /save changes/i }).click();
+  }
+
+  async submitDeleteAccount(
+    locale: AppLocale,
+    currentPassword: string,
+    confirmationText: 'DELETE' | 'SUPPRIMER' = 'DELETE',
+  ): Promise<void> {
+    const dialog = await this.openDeleteAccountModal(locale);
+    await dialog.getByPlaceholder('Current password').fill(currentPassword);
+    await dialog.getByPlaceholder(confirmationText).fill(confirmationText);
+    await this.submitWhenCaptchaReady(/^delete account$/i);
   }
 }

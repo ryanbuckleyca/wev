@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import DeleteAccountModal from './DeleteAccountModal';
 
+vi.mock('@/components/TurnstileWidget', () => import('@/test-utils/turnstile-widget-mock'));
+
 // Mock the router
 vi.mock('@/i18n/navigation', () => ({
   useRouter: vi.fn(() => ({
@@ -81,28 +83,35 @@ describe('DeleteAccountModal', () => {
     expect(mockOnClose).toHaveBeenCalledOnce();
   });
 
-  it('has delete button enabled initially', () => {
+  it('has delete button disabled until captcha is completed', async () => {
     render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />);
 
+    const user = userEvent.setup();
     const deleteButton = screen.getByRole('button', { name: /delete account/i });
+    expect(deleteButton).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     expect(deleteButton).not.toBeDisabled();
   });
 
-  it('keeps delete button enabled when fields are filled', async () => {
+  it('keeps delete button disabled when fields are filled but captcha is missing', async () => {
     render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />);
 
     const deleteButton = screen.getByRole('button', { name: /delete account/i });
     const passwordInput = screen.getByPlaceholderText(/current password/i);
     const confirmInput = screen.getByPlaceholderText(/delete/i);
 
-    expect(deleteButton).not.toBeDisabled();
+    expect(deleteButton).toBeDisabled();
 
     // Fill password
     await user.type(passwordInput, 'mypassword123');
-    expect(deleteButton).not.toBeDisabled();
+    expect(deleteButton).toBeDisabled();
 
     // Fill confirmation
     await user.type(confirmInput, 'DELETE');
+    expect(deleteButton).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     expect(deleteButton).not.toBeDisabled();
   });
 
@@ -113,6 +122,7 @@ describe('DeleteAccountModal', () => {
     const deleteButton = screen.getByRole('button', { name: /delete account/i });
 
     // Fill only confirmation
+    await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.type(confirmInput, 'DELETE');
     await user.click(deleteButton);
 
@@ -128,6 +138,7 @@ describe('DeleteAccountModal', () => {
     const confirmInput = screen.getByPlaceholderText(/delete/i);
     const deleteButton = screen.getByRole('button', { name: /delete account/i });
 
+    await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.type(passwordInput, 'mypassword123');
     await user.type(confirmInput, 'WRONG');
     await user.click(deleteButton);
@@ -149,6 +160,7 @@ describe('DeleteAccountModal', () => {
     const confirmInput = screen.getByPlaceholderText(/delete/i);
     const deleteButton = screen.getByRole('button', { name: /delete account/i });
 
+    await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.type(passwordInput, 'mypassword123');
     await user.type(confirmInput, 'DELETE');
     await user.click(deleteButton);
@@ -159,7 +171,7 @@ describe('DeleteAccountModal', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password: 'mypassword123' }),
+        body: JSON.stringify({ password: 'mypassword123', captchaToken: 'turnstile-token' }),
       });
     });
 
@@ -182,6 +194,7 @@ describe('DeleteAccountModal', () => {
     const confirmInput = screen.getByPlaceholderText(/delete/i);
     const deleteButton = screen.getByRole('button', { name: /delete account/i });
 
+    await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.type(passwordInput, 'wrongpassword');
     await user.type(confirmInput, 'DELETE');
     await user.click(deleteButton);
@@ -215,6 +228,7 @@ describe('DeleteAccountModal', () => {
     const confirmInput = screen.getByPlaceholderText(/delete/i);
     const deleteButton = screen.getByRole('button', { name: /delete account/i });
 
+    await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.type(passwordInput, 'mypassword123');
     await user.type(confirmInput, 'DELETE');
     await user.click(deleteButton);
@@ -244,6 +258,7 @@ describe('DeleteAccountModal', () => {
     const confirmInput = screen.getByPlaceholderText(/delete/i);
     const deleteButton = screen.getByRole('button', { name: /delete account/i });
 
+    await user.click(screen.getByRole('button', { name: /complete captcha/i }));
     await user.type(passwordInput, 'mypassword123');
     await user.type(confirmInput, 'SUPPRIMER');
     await user.click(deleteButton);

@@ -7,6 +7,7 @@ import Button from './Button';
 import FormField from './FormField';
 import ErrorMessage from './ErrorMessage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/Dialog';
+import TurnstileWidget from './TurnstileWidget';
 
 interface DeleteAccountModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
   const t = useTranslations();
   const [password, setPassword] = useState('');
   const [confirmText, setConfirmText] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,6 +32,10 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
       setError(t('deleteAccount.confirmationRequired'));
       return;
     }
+    if (!captchaToken) {
+      setError(t('deleteAccount.captchaRequired'));
+      return;
+    }
 
     setIsDeleting(true);
     setError('');
@@ -40,7 +46,7 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, captchaToken }),
       });
 
       const data = await response.json();
@@ -67,6 +73,7 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
     if (!open && !isDeleting) {
       setPassword('');
       setConfirmText('');
+      setCaptchaToken(null);
       setError('');
       onClose();
     }
@@ -115,6 +122,20 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
             <p className="text-sm text-gray-600">{t('deleteAccount.confirmHelp')}</p>
           </div>
 
+          <TurnstileWidget
+            onSuccess={(token) => {
+              setCaptchaToken(token);
+              setError('');
+            }}
+            onError={() => {
+              setCaptchaToken(null);
+              setError(t('deleteAccount.captchaError'));
+            }}
+            onExpire={() => {
+              setCaptchaToken(null);
+            }}
+          />
+
           {error && <ErrorMessage>{error}</ErrorMessage>}
         </div>
 
@@ -129,7 +150,7 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
           </Button>
           <Button
             onClick={handleDelete}
-            disabled={isDeleting}
+            disabled={isDeleting || !captchaToken}
             className="flex-1 sm:flex-none bg-wev-destructive-tint text-destructive-foreground border-none"
           >
             {isDeleting ? t('deleteAccount.deleting') : t('deleteAccount.confirm')}

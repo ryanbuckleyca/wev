@@ -51,13 +51,23 @@ function getAuthErrorCode(error: unknown): string | undefined {
 async function assertPasswordVerified(
   userEmail: string,
   password: string,
+  captchaToken: string | null,
   invalidPasswordMessage: string,
 ) {
   const verifier = getPasswordVerificationClient();
-  const { data, error } = await verifier.auth.signInWithPassword({
+  const signInPayload: {
+    email: string;
+    password: string;
+    options?: { captchaToken: string };
+  } = {
     email: userEmail,
     password,
-  });
+  };
+  if (captchaToken?.trim()) {
+    signInPayload.options = { captchaToken: captchaToken.trim() };
+  }
+
+  const { data, error } = await verifier.auth.signInWithPassword(signInPayload);
 
   if (error) {
     if (getAuthErrorCode(error) === 'invalid_credentials') {
@@ -98,7 +108,7 @@ export async function updatePasswordForCurrentUser({
   }
 
   const email = requirePasswordVerificationEmail(userEmail);
-  await assertPasswordVerified(email, currentPassword, 'Current password is incorrect.');
+  await assertPasswordVerified(email, currentPassword, null, 'Current password is incorrect.');
 
   const supabase = await createServerClient();
   const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -110,19 +120,24 @@ export async function updatePasswordForCurrentUser({
 
 export async function deleteAccountForCurrentUser({
   password,
+  captchaToken,
   userEmail,
   userId,
 }: {
   password: string;
+  captchaToken: string;
   userEmail?: string | null;
   userId: string;
 }) {
   if (!password.trim()) {
     throw new AccountServiceError('Password required for account deletion');
   }
+  if (!captchaToken.trim()) {
+    throw new AccountServiceError('Please complete the CAPTCHA verification.');
+  }
 
   const email = requirePasswordVerificationEmail(userEmail);
-  await assertPasswordVerified(email, password, 'Invalid password');
+  await assertPasswordVerified(email, password, captchaToken, 'Invalid password');
 
   const adminSupabase = supabaseServer;
   const { error } = await adminSupabase.auth.admin.deleteUser(userId);

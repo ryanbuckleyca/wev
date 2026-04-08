@@ -24,6 +24,50 @@ async function waitForLinkWithResendFallback(
   }
 }
 
+async function confirmEmailWithRetry(
+  page: import('@playwright/test').Page,
+  inboxId: string,
+  initialLink: string,
+): Promise<string> {
+  let link = initialLink;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await page.goto(link);
+    const pathname = new URL(page.url()).pathname;
+    if (/^\/en\/?$/.test(pathname)) {
+      return link;
+    }
+
+    if (pathname === '/auth/auth-code-error' && attempt === 0) {
+      const backToLogin = page.getByRole('link', { name: /back to login/i });
+      if (await backToLogin.isVisible().catch(() => false)) {
+        await backToLogin.click();
+      }
+      link = await waitForInboxLink(inboxId, '/auth/callback', 90_000);
+      continue;
+    }
+
+    throw new Error(`Email confirmation failed at path: ${pathname}`);
+  }
+
+  throw new Error('Email confirmation failed after retrying with a fresh link.');
+}
+
+async function cleanupAuthUsers(emails: string[]): Promise<void> {
+  const unique = [...new Set(emails.map((email) => email.trim().toLowerCase()).filter(Boolean))];
+  const results = await Promise.allSettled(unique.map((email) => deleteAuthUserByEmail(email)));
+  const failures = results
+    .map((result, index) => ({ email: unique[index], result }))
+    .filter((entry): entry is { email: string; result: PromiseRejectedResult } => {
+      return entry.result.status === 'rejected';
+    });
+
+  if (failures.length > 0) {
+    const failedEmails = failures.map((entry) => entry.email).join(', ');
+    console.warn(`Auth e2e cleanup skipped for: ${failedEmails}`);
+  }
+}
+
 test.describe('Auth email flows @auth-email', () => {
   test.describe.configure({ mode: 'serial' });
   test.setTimeout(180_000);
@@ -44,16 +88,25 @@ test.describe('Auth email flows @auth-email', () => {
     primaryInbox = await createEphemeralInbox();
     secondaryInbox = await createEphemeralInbox();
     emailChangeInbox = await createEphemeralInbox();
+    await cleanupAuthUsers([
+      primaryInbox.emailAddress,
+      secondaryInbox.emailAddress,
+      emailChangeInbox.emailAddress,
+    ]);
     initialPassword = buildStrongPassword('WevInitial!');
     resetPassword = buildStrongPassword('WevReset!');
     currentEmailAddress = primaryInbox.emailAddress;
   });
 
   test.afterAll(async () => {
-    await deleteAuthUserByEmail(primaryInbox.emailAddress);
-    await deleteAuthUserByEmail(secondaryInbox.emailAddress);
-    await deleteAuthUserByEmail(emailChangeInbox.emailAddress);
-    await deleteAuthUserByEmail(currentEmailAddress);
+    await cleanupAuthUsers(
+      [
+        primaryInbox?.emailAddress,
+        secondaryInbox?.emailAddress,
+        emailChangeInbox?.emailAddress,
+        currentEmailAddress,
+      ].filter((value): value is string => Boolean(value)),
+    );
   });
 
   test('signup sends confirmation email', async ({ authPage, page }) => {
@@ -65,7 +118,7 @@ test.describe('Auth email flows @auth-email', () => {
   });
 
   test('confirmation link logs the user in', async ({ page }) => {
-    await page.goto(confirmationLink);
+    confirmationLink = await confirmEmailWithRetry(page, primaryInbox.id, confirmationLink);
     await expect(page).toHaveURL(homePath);
   });
 
@@ -136,15 +189,12 @@ test.describe('Auth email flows @auth-email', () => {
     await expect(page.getByText(/invalid or expired reset link/i)).toBeVisible();
   });
 
-  test.fixme('delete-account should delete user and block future login', async ({
+  test('delete-account should delete user and block future login', async ({
     authPage,
     browser,
-    page
+    page,
   }) => {
-    const dialog = await authPage.openDeleteAccountModal(locale);
-    await dialog.getByPlaceholder('Current password').fill(resetPassword);
-    await dialog.getByPlaceholder('DELETE').fill('DELETE');
-    await dialog.getByRole('button', { name: /^delete account$/i }).last().click();
+    await authPage.submitDeleteAccount(locale, resetPassword, 'DELETE');
 
     await expect(page).toHaveURL(homePath);
     await expectLoginFailsInFreshContext(browser, currentEmailAddress, resetPassword);

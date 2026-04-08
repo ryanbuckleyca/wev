@@ -7,13 +7,24 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const rawCode = searchParams.get('code');
   const code = rawCode?.trim() ?? '';
+  const rawTokenHash = searchParams.get('token_hash') ?? searchParams.get('token');
+  const tokenHash = rawTokenHash?.trim() ?? '';
+  const rawType = searchParams.get('type');
+  const type = rawType?.trim() ?? '';
   // "next" param allows redirecting to a specific page after login
   const next = sanitizeNextPath(searchParams.get('next'));
   const base = getSiteBaseUrlFromRequest(request);
 
-  if (code) {
+  if (code || (tokenHash && type)) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const result = code
+      ? await supabase.auth.exchangeCodeForSession(code)
+      : await supabase.auth.verifyOtp({
+          type: type as never,
+          token_hash: tokenHash,
+        });
+
+    const { error } = result;
     if (!error) {
       return NextResponse.redirect(`${base}${next}`);
     }
