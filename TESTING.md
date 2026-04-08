@@ -37,7 +37,7 @@ _Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.c
 - Keep performance checks in a separate `@perf` lane. They should run against the production build, disable heavy artifacts like trace/video, and assert a user-meaningful readiness milestone rather than a brittle raw `load` event.
 - Run the main correctness suite with `npm run test:e2e` and the perf lane with `npm run test:e2e:perf`.
 - Auth email E2E (`e2e/tests/auth-email.spec.ts`) is part of the main `npm run test:e2e` suite and can also be run alone with `npm run test:e2e:auth-email`.
-- Auth email E2E uses MailSlurp inboxes (`MAILSLURP_API_KEY` required). By default it creates ephemeral inboxes; if your account hits create limits, set `MAILSLURP_INBOX_IDS` (comma-separated existing inbox IDs) to reuse a fixed pool.
+- Auth email E2E uses MailSlurp inboxes (`MAILSLURP_API_KEY` required). It now auto-reuses inboxes tagged `wev-e2e-auth` when available, creates tagged inboxes when possible, and can still use explicit `MAILSLURP_INBOX_IDS` (comma-separated) as an override.
 - Playwright derives `SUPABASE_PROJECT_REF` from `SUPABASE_URL` when needed, so you do not need to maintain a separate project-ref secret for e2e.
 - Playwright is **local-only** for now (`npm run test:e2e`); GitHub Actions does not run the e2e suite.
 

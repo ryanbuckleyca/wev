@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
+import { getSiteBaseUrl } from '@/lib/site-url';
 import { useEffect, useState, useMemo } from 'react';
 import notify from '@/lib/toast';
 import { usePasswordStrength } from '@/hooks/usePasswordStrength';
@@ -141,11 +142,12 @@ export default function AccountSettingsPage() {
         passwordUpdated = true;
       }
 
-      // Update email if changed
+      // Update email if changed - use client-side to preserve PKCE flow
       if (hasEmailChanges) {
-        const { error: emailError } = await supabase.auth.updateUser({
-          email: newEmail,
-        });
+        const { error: emailError } = await supabase.auth.updateUser(
+          { email: newEmail },
+          { emailRedirectTo: `${getSiteBaseUrl()}/auth/callback` },
+        );
 
         if (emailError) {
           if (passwordUpdated) {

@@ -84,7 +84,7 @@ export class AuthPage {
 
   async requestEmailChange(locale: AppLocale, newEmail: string): Promise<void> {
     await this.gotoAccountSettings(locale);
-    await this.page.getByLabel(/new email/i).fill(newEmail);
+    await this.page.getByPlaceholder(/enter new email/i).fill(newEmail);
     await this.page.getByRole('button', { name: /save changes/i }).click();
   }
 

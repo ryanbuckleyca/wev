@@ -141,20 +141,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = supabaseRef.current;
     const loadAuthState = async () => {
       try {
-        let resolvedUser: User | null = null;
-
+        // getSession() reads from local storage without a network round-trip.
+        // We accept the trade-off: the session may be stale if the user was
+        // banned/revoked, but this is acceptable for initial page load.
         const {
           data: { session },
         } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          resolvedUser = session.user;
-        } else {
-          const {
-            data: { user: currentUser },
-          } = await supabase.auth.getUser();
-          resolvedUser = currentUser ?? null;
-        }
+        const resolvedUser = session?.user ?? null;
 
         if (!mounted) return;
 
@@ -216,8 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setRoles(['user']);
           });
       } else if (event === 'TOKEN_REFRESHED' && rolesResolvedForRef.current === nextUser.id) {
-        // Same user, token just refreshed (e.g. tab switch) — roles haven't changed,
-        // skip refetch to avoid a transient downgrade if the API races the refresh.
+        // Same user, token just refreshed — roles haven't changed.
       } else if (rolesResolvedForRef.current !== nextUser.id) {
         fetchRolesForUser(supabaseRef.current, nextUser.id)
           .then((resolvedRoles) => {

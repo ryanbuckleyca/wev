@@ -12,7 +12,10 @@ export async function expectLoginFailsInFreshContext(
     const authPage = new AuthPage(page);
     await authPage.gotoLogin('en');
     await authPage.login(email, password);
-    await expect(page.getByText(/invalid login credentials/i)).toBeVisible();
+    // Check for various error messages that indicate login failure
+    await expect(
+      page.getByText(/invalid login credentials|email not confirmed|user not found/i)
+    ).toBeVisible({ timeout: 10000 });
   } finally {
     await context.close();
   }

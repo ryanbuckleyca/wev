@@ -5,11 +5,9 @@ export type InboxRef = {
   emailAddress: string;
 };
 
-const pooledInboxIds = (process.env.MAILSLURP_INBOX_IDS ?? '')
-  .split(',')
-  .map((value) => value.trim())
-  .filter(Boolean);
+const E2E_INBOX_TAG = 'wev-e2e-auth';
 let pooledInboxIndex = 0;
+let discoveredInboxIds: string[] | null = null;
 
 function getMailSlurpApiKey(): string {
   const key = process.env.MAILSLURP_API_KEY?.trim();
@@ -65,6 +63,69 @@ function buildMailSlurpClient(): MailSlurp {
   return new MailSlurp({ apiKey: getMailSlurpApiKey() });
 }
 
+async function loadDiscoveredInboxIds(mailslurp: MailSlurp): Promise<string[]> {
+  if (discoveredInboxIds) return discoveredInboxIds;
+
+  const now = Date.now();
+  const inboxes = await mailslurp.getInboxes();
+  const tagged = inboxes
+    .filter((inbox) => {
+      const expiresAtMs = inbox.expiresAt ? new Date(inbox.expiresAt).getTime() : Number.POSITIVE_INFINITY;
+      return expiresAtMs > now && (inbox.tags ?? []).includes(E2E_INBOX_TAG);
+    })
+    .map((inbox) => inbox.id);
+
+  discoveredInboxIds = tagged;
+  return discoveredInboxIds;
+}
+
+async function getInboxRefById(mailslurp: MailSlurp, inboxId: string): Promise<InboxRef> {
+  await mailslurp.emptyInbox(inboxId);
+  const inbox = await mailslurp.getInbox(inboxId);
+
+  if (!inbox.id || !inbox.emailAddress) {
+    throw new Error(`MailSlurp inbox "${inboxId}" is missing id or emailAddress`);
+  }
+  return { id: inbox.id, emailAddress: inbox.emailAddress };
+}
+
+async function buildTimeoutError(inboxId: string): Promise<Error> {
+  // Check for missed emails — MailSlurp creates these when the account has
+  // exceeded its daily receive quota and cannot persist incoming emails.
+  try {
+    const apiKey = getMailSlurpApiKey();
+    // Use a 24h window for the quota check — missed emails from earlier in the
+    // same test session are still relevant even if they're older than `since`.
+    const quotaSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const res = await fetch(
+      `https://javascript.api.mailslurp.com/missed-emails?inboxId=${inboxId}&page=0&size=5`,
+      { headers: { 'x-api-key': apiKey } },
+    );
+    if (res.ok) {
+      const data = await res.json() as { content?: { subject?: string; createdAt?: string }[]; numberOfElements?: number };
+      const missed = (data.content ?? []).filter((m) => {
+        if (!m.createdAt) return true;
+        return new Date(m.createdAt) >= quotaSince;
+      });
+      if (missed.length > 0) {
+        const subjects = missed.map((m) => `"${m.subject ?? '(no subject)'}" at ${m.createdAt}`).join(', ');
+        return new Error(
+          `MailSlurp daily receive quota exceeded — emails arrived but were not stored.\n` +
+          `Missed emails: ${subjects}\n` +
+          `Fix: renew your daily receive credits at app.mailslurp.com or switch to a different MAILSLURP_API_KEY.`,
+        );
+      }
+    }
+  } catch {
+    // ignore probe failures, fall through to generic error
+  }
+
+  return new Error(
+    `MailSlurp waitForLatestEmail timed out — no email arrived in the inbox.\n` +
+    `Check: (1) your app actually sent the email, (2) your MailSlurp daily receive limit (app.mailslurp.com/usage), (3) the inbox ID is correct.`,
+  );
+}
+
 function isMailWaitTimeout(error: unknown): boolean {
   if (error instanceof Response) return error.status === 408;
   if (typeof error !== 'object' || error === null) return false;
@@ -104,22 +165,19 @@ function delay(ms: number): Promise<void> {
 export async function createEphemeralInbox(): Promise<InboxRef> {
   const mailslurp = buildMailSlurpClient();
 
-  if (pooledInboxIds.length > 0) {
-    const inboxId = pooledInboxIds[pooledInboxIndex % pooledInboxIds.length];
+  const discoveredIds = await loadDiscoveredInboxIds(mailslurp);
+  if (discoveredIds.length > 0) {
+    const inboxId = discoveredIds[pooledInboxIndex % discoveredIds.length];
     pooledInboxIndex += 1;
-    await mailslurp.emptyInbox(inboxId);
-    const inbox = await mailslurp.getInbox(inboxId);
-
-    if (!inbox.id || !inbox.emailAddress) {
-      throw new Error(`MailSlurp inbox "${inboxId}" is missing id or emailAddress`);
-    }
-
-    return { id: inbox.id, emailAddress: inbox.emailAddress };
+    return getInboxRefById(mailslurp, inboxId);
   }
 
   let inbox;
   try {
-    inbox = await mailslurp.createInbox();
+    inbox = await mailslurp.createInboxWithOptions({
+      name: E2E_INBOX_TAG,
+      tags: [E2E_INBOX_TAG],
+    });
   } catch (error) {
     if (
       error &&
@@ -127,8 +185,16 @@ export async function createEphemeralInbox(): Promise<InboxRef> {
       'errorCode' in error &&
       (error as { errorCode?: string }).errorCode === 'W_429_SUBSCRIPTION_FREE_LIMIT'
     ) {
+      const fallbackIds = (await mailslurp.getInboxes())
+        .filter((candidate) => !!candidate.id)
+        .map((candidate) => candidate.id);
+      if (fallbackIds.length > 0) {
+        const inboxId = fallbackIds[pooledInboxIndex % fallbackIds.length];
+        pooledInboxIndex += 1;
+        return getInboxRefById(mailslurp, inboxId);
+      }
       throw new Error(
-        'MailSlurp create inbox quota exceeded. Set MAILSLURP_INBOX_IDS to comma-separated reusable inbox IDs.',
+        'MailSlurp create inbox quota exceeded and no existing inboxes were found. Create at least one inbox tagged "wev-e2e-auth" in app.mailslurp.com.',
       );
     }
     throw error;
@@ -145,9 +211,10 @@ export async function waitForInboxLink(
   inboxId: string,
   linkHint: string,
   timeoutMs = 120_000,
+  sinceOverride?: Date,
 ): Promise<string> {
   const mailslurp = buildMailSlurpClient();
-  const since = new Date(Date.now() - 60_000);
+  const since = sinceOverride ?? new Date(Date.now() - 120_000);
   const deadline = Date.now() + timeoutMs;
   let lastTimeoutError: unknown = null;
 
@@ -185,6 +252,8 @@ export async function waitForInboxLink(
 
   const recovered = await extractLinkFromRecentEmails(mailslurp, inboxId, linkHint, since);
   if (recovered) return recovered;
-  if (lastTimeoutError) throw lastTimeoutError;
+  if (lastTimeoutError) {
+    throw await buildTimeoutError(inboxId);
+  }
   throw new Error(`No link containing "${linkHint}" found in MailSlurp messages`);
 }

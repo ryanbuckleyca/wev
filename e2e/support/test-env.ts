@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config as loadEnv } from 'dotenv';
 
-export const PLAYWRIGHT_PORT = 3001;
-export const PLAYWRIGHT_BASE_URL = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
+export const PLAYWRIGHT_PORT = 3000;
+export const PLAYWRIGHT_BASE_URL = `http://localhost:${PLAYWRIGHT_PORT}`;
 
 const LOCAL_ENV_PATH = path.resolve(process.cwd(), '.env');
 

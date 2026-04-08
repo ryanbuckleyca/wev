@@ -2,6 +2,7 @@ import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 
 interface FormInputProps {
+  id?: string;
   type: 'text' | 'email' | 'password';
   value: string;
   onChange: (value: string) => void;
@@ -12,6 +13,7 @@ interface FormInputProps {
 }
 
 export default function FormInput({
+  id,
   type,
   value,
   onChange,
@@ -22,6 +24,7 @@ export default function FormInput({
 }: FormInputProps) {
   return (
     <Input
+      id={id}
       type={type}
       required={required}
       disabled={disabled}

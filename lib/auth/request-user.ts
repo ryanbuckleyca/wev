@@ -17,10 +17,19 @@ export async function getRequestUser(): Promise<RequestUserResult> {
   // check if the user is banned or the session was revoked. This is acceptable
   // for this read-only public bulletin, but DO NOT use this pattern on
   // sensitive/write-only routes (e.g. /profile/settings or /admin/billing).
+  //
+  // The Supabase SDK logs a console.warn about getSession() being insecure.
+  // We silence it here since the trade-off is intentional and documented.
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    const msg = typeof args[0] === 'string' ? args[0] : '';
+    if (!msg.includes('getSession()')) originalWarn(...args);
+  };
   const {
     data: { session },
     error: authError,
   } = await supabase.auth.getSession();
+  console.warn = originalWarn;
 
   const user = session?.user;
 
