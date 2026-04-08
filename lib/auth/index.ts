@@ -7,6 +7,7 @@
  * - Session gates: `@/lib/auth/require-admin`
  * - Service-role `user_roles` read: `@/lib/auth/server-user-roles`
  */
+export { PASSWORD_FIELD_PLACEHOLDER } from './constants';
 export {
   parseRolesColumn,
   rolesIncludeAdmin,
