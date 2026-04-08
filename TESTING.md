@@ -294,6 +294,8 @@ Use the `*.integration.test.ts` suffix for **route handler contract** tests: sev
 
 They are **not** a substitute for Playwright E2E or for database-backed tests: mocks mean you are not validating RLS, real `unstable_cache` behavior, or production Supabase responses.
 
+Handler tests that assert redirect `Location` headers (e.g. `/auth/callback?next=…`) document **current** URL building only—they do **not** prove open-redirect safety unless the production route validates `next`.
+
 Real-database or service-role tests against `wev-test` are optional and heavier—add them only with a clear env gate or a dedicated script so CI stays deterministic.
 
 ## Running Tests

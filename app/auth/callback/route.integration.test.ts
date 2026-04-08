@@ -1,23 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createClient } from '@/lib/supabase/server';
+import { mockCreateClient } from '@/test-utils/supabase-server-mock';
 import { resetNextPublicSiteUrlBetweenTests } from '@/test-utils/site-url-env';
 import { GET } from './route';
 
 /**
  * Handler contract: mocks only the Supabase server client (network boundary).
  * Exercises real `getSiteBaseUrlFromRequest` from `@/lib/site-url` with real env toggling.
+ *
+ * Redirect expectations assert **current** concatenation of `base` + `next` from production.
+ * They do **not** prove `next` is safe from open redirects — that belongs to product logic or dedicated security tests.
  */
 const mockExchangeCodeForSession = vi.fn();
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
-}));
-
-const mockCreateClient = vi.mocked(createClient);
-
 const REQUEST_ORIGIN = 'https://example.com';
 
-describe('GET /auth/callback (integration)', () => {
+describe('GET /auth/callback (handler contract)', () => {
   resetNextPublicSiteUrlBetweenTests();
 
   beforeEach(() => {

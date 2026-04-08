@@ -3,7 +3,7 @@ import { GET } from './route';
 import { fetchBulletinJobs } from '@/lib/bulletin/server-data';
 
 /**
- * Handler contract: route + locale parsing + cache policy + server-data shape.
+ * Route handler contract: locale parsing + cache policy + server-data shape.
  * `fetchBulletinJobs` is mocked so the suite does not require a live DB (CI-safe).
  */
 vi.mock('@/lib/bulletin/server-data', () => ({
@@ -12,7 +12,7 @@ vi.mock('@/lib/bulletin/server-data', () => ({
 
 const mockFetchBulletinJobs = vi.mocked(fetchBulletinJobs);
 
-describe('GET /api/bulletin (integration)', () => {
+describe('GET /api/bulletin (handler contract)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetchBulletinJobs.mockResolvedValue({

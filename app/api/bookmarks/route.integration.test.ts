@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from './route';
 import { getRequestUser } from '@/lib/auth/request-user';
+import { wireBookmarksRouteQueryMock } from '@/test-utils/bookmarks-route-mock';
 
 /**
  * Handler contract: auth gate + real normalize/label pipeline with an empty DB result (no ESCO round-trip).
@@ -23,7 +24,7 @@ vi.mock('@/lib/supabase-server', () => ({
 
 const mockGetRequestUser = vi.mocked(getRequestUser);
 
-describe('GET /api/bookmarks (integration)', () => {
+describe('GET /api/bookmarks (handler contract)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetRequestUser.mockResolvedValue({
@@ -31,15 +32,11 @@ describe('GET /api/bookmarks (integration)', () => {
       user: { id: 'bookmark-user-1', email: 'b@example.com' } as never,
     });
 
-    const emptyJobsResponse = Promise.resolve({ data: [], error: null });
-    mockEq.mockReturnValue({
-      order: vi.fn(() => emptyJobsResponse),
-    });
-    mockFrom.mockReturnValue({
-      select: vi.fn(() => ({
-        eq: mockEq,
-      })),
-    });
+    wireBookmarksRouteQueryMock(
+      mockFrom,
+      mockEq,
+      Promise.resolve({ data: [], error: null }),
+    );
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -66,14 +63,11 @@ describe('GET /api/bookmarks (integration)', () => {
   });
 
   it('returns 500 when Supabase returns an error', async () => {
-    mockEq.mockReturnValue({
-      order: vi.fn(() => Promise.resolve({ data: null, error: { message: 'query failed' } })),
-    });
-    mockFrom.mockReturnValue({
-      select: vi.fn(() => ({
-        eq: mockEq,
-      })),
-    });
+    wireBookmarksRouteQueryMock(
+      mockFrom,
+      mockEq,
+      Promise.resolve({ data: null, error: { message: 'query failed' } }),
+    );
 
     const response = await GET(new Request('http://localhost/api/bookmarks'));
     expect(response.status).toBe(500);

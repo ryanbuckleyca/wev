@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createClient } from '@/lib/supabase/server';
+import { mockCreateClient } from '@/test-utils/supabase-server-mock';
 import { resetNextPublicSiteUrlBetweenTests } from '@/test-utils/site-url-env';
 import { POST } from './route';
 
@@ -8,15 +8,9 @@ import { POST } from './route';
  */
 const mockSignOut = vi.fn();
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
-}));
-
-const mockCreateClient = vi.mocked(createClient);
-
 const REQUEST_ORIGIN = 'https://example.com';
 
-describe('POST /auth/signout (integration)', () => {
+describe('POST /auth/signout (handler contract)', () => {
   resetNextPublicSiteUrlBetweenTests();
 
   beforeEach(() => {
