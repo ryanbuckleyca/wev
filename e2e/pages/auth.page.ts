@@ -1,7 +1,10 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { getLocalizedPathname, type AppLocale } from '../../i18n/routing';
 
-function localizedPath(locale: AppLocale, pathname: '/signup' | '/login' | '/forgot-password') {
+function localizedPath(
+  locale: AppLocale,
+  pathname: '/signup' | '/login' | '/forgot-password' | '/account-settings',
+) {
   return `/${locale}${getLocalizedPathname(pathname, locale)}`;
 }
 
@@ -54,10 +57,16 @@ export class AuthPage {
   }
 
   async openDeleteAccountModal(locale: AppLocale = 'en'): Promise<Locator> {
-    await this.page.goto(`/${locale}${getLocalizedPathname('/account-settings', locale)}`);
+    await this.page.goto(localizedPath(locale, '/account-settings'));
     await this.page.getByRole('button', { name: /^delete account$/i }).first().click();
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     return dialog;
+  }
+
+  async requestEmailChange(locale: AppLocale, newEmail: string): Promise<void> {
+    await this.page.goto(localizedPath(locale, '/account-settings'));
+    await this.page.getByLabel(/new email/i).fill(newEmail);
+    await this.page.getByRole('button', { name: /save changes/i }).click();
   }
 }

@@ -32,21 +32,28 @@ test.describe('Auth email flows @auth-email', () => {
   const homePath = /^\/en\/?$/;
   let primaryInbox: InboxRef;
   let secondaryInbox: InboxRef;
+  let emailChangeInbox: InboxRef;
   let initialPassword = '';
   let resetPassword = '';
+  let currentEmailAddress = '';
   let confirmationLink = '';
+  let emailChangeLink = '';
   let resetLink = '';
 
   test.beforeAll(async () => {
     primaryInbox = await createEphemeralInbox();
     secondaryInbox = await createEphemeralInbox();
+    emailChangeInbox = await createEphemeralInbox();
     initialPassword = buildStrongPassword('WevInitial!');
     resetPassword = buildStrongPassword('WevReset!');
+    currentEmailAddress = primaryInbox.emailAddress;
   });
 
   test.afterAll(async () => {
     await deleteAuthUserByEmail(primaryInbox.emailAddress);
     await deleteAuthUserByEmail(secondaryInbox.emailAddress);
+    await deleteAuthUserByEmail(emailChangeInbox.emailAddress);
+    await deleteAuthUserByEmail(currentEmailAddress);
   });
 
   test('signup sends confirmation email', async ({ authPage, page }) => {
@@ -70,7 +77,27 @@ test.describe('Auth email flows @auth-email', () => {
   });
 
   test('confirmed user can log in', async ({ browser }) => {
-    await expectLoginSucceedsInFreshContext(browser, primaryInbox.emailAddress, initialPassword);
+    await expectLoginSucceedsInFreshContext(browser, currentEmailAddress, initialPassword);
+  });
+
+  test('account settings email change sends confirmation email', async ({
+    authPage,
+    browser,
+    page,
+  }) => {
+    const previousEmail = currentEmailAddress;
+    await authPage.requestEmailChange(locale, emailChangeInbox.emailAddress);
+    await expect(page.getByText(/confirmation email sent to your new address/i)).toBeVisible();
+    emailChangeLink = await waitForLinkWithResendFallback(page, emailChangeInbox.id, '/auth/callback');
+    currentEmailAddress = emailChangeInbox.emailAddress;
+
+    await expectLoginFailsInFreshContext(browser, previousEmail, initialPassword);
+  });
+
+  test('email-change confirmation applies the new login email', async ({ browser, page }) => {
+    await page.goto(emailChangeLink);
+    await expect(page).toHaveURL(homePath);
+    await expectLoginSucceedsInFreshContext(browser, currentEmailAddress, initialPassword);
   });
 
   test('unconfirmed user cannot log in', async ({ authPage, browser, page }) => {
@@ -83,10 +110,10 @@ test.describe('Auth email flows @auth-email', () => {
 
   test('forgot-password sends reset email and link works once', async ({ authPage, page }) => {
     await authPage.gotoForgotPassword(locale);
-    await authPage.requestPasswordReset(primaryInbox.emailAddress);
+    await authPage.requestPasswordReset(currentEmailAddress);
     await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
 
-    resetLink = await waitForLinkWithResendFallback(page, primaryInbox.id, 'reset-password');
+    resetLink = await waitForLinkWithResendFallback(page, emailChangeInbox.id, 'reset-password');
     await page.goto(resetLink);
     await expect(page.getByRole('heading', { name: /reset password/i })).toBeVisible();
     await authPage.resetPassword(resetPassword);
@@ -94,8 +121,8 @@ test.describe('Auth email flows @auth-email', () => {
   });
 
   test('old password fails and new password succeeds after reset', async ({ browser }) => {
-    await expectLoginFailsInFreshContext(browser, primaryInbox.emailAddress, initialPassword);
-    await expectLoginSucceedsInFreshContext(browser, primaryInbox.emailAddress, resetPassword);
+    await expectLoginFailsInFreshContext(browser, currentEmailAddress, initialPassword);
+    await expectLoginSucceedsInFreshContext(browser, currentEmailAddress, resetPassword);
   });
 
   test('reusing reset link shows invalid-link UX', async ({ page }) => {
@@ -118,7 +145,7 @@ test.describe('Auth email flows @auth-email', () => {
     await dialog.getByPlaceholder('DELETE').fill('DELETE');
     await dialog.getByRole('button', { name: /^delete account$/i }).last().click();
 
-    await expect(page).toHaveURL(/\/en\/account-settings$/);
+      await expect(page).toHaveURL(/\/en\/account-settings$/);
     await expect(
       page.getByText(/captcha verification process failed|failed to delete account|internal server error/i),
     ).toBeVisible();
