@@ -37,7 +37,7 @@ _Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.c
 - Keep performance checks in a separate `@perf` lane. They should run against the production build, disable heavy artifacts like trace/video, and assert a user-meaningful readiness milestone rather than a brittle raw `load` event.
 - Run the main correctness suite with `npm run test:e2e` and the perf lane with `npm run test:e2e:perf`.
 - Playwright derives `SUPABASE_PROJECT_REF` from `SUPABASE_URL` when needed, so you do not need to maintain a separate project-ref secret for e2e.
-- CI runs the perf lane when the normal Supabase secrets are configured: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_KEY`.
+- CI runs the full Playwright suite (`npm run test:e2e`, Chromium) in the `e2e` workflow job when those Supabase secrets are set: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_KEY`. Use the wev-test project for those values; the suite resets and reseeds that database. Fork PRs skip this job when secrets are unavailable.
 
 ## Guiding Principles
 
