@@ -37,7 +37,7 @@ _Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.c
 - Keep performance checks in a separate `@perf` lane. They should run against the production build, disable heavy artifacts like trace/video, and assert a user-meaningful readiness milestone rather than a brittle raw `load` event.
 - Run the main correctness suite with `npm run test:e2e` and the perf lane with `npm run test:e2e:perf`.
 - Auth email E2E (`e2e/tests/auth-email.spec.ts`) is part of the main `npm run test:e2e` suite and can also be run alone with `npm run test:e2e:auth-email`.
-- Public Mailinator inboxes are not private: never use real user data or long-lived credentials in those tests.
+- Auth email E2E uses MailSlurp ephemeral inboxes (`MAILSLURP_API_KEY` required). Inboxes/messages are left intact by default for debugging.
 - Playwright derives `SUPABASE_PROJECT_REF` from `SUPABASE_URL` when needed, so you do not need to maintain a separate project-ref secret for e2e.
 - Playwright is **local-only** for now (`npm run test:e2e`); GitHub Actions does not run the e2e suite.
 
@@ -318,7 +318,7 @@ npm run test:watch
 # With coverage report
 npm run test:coverage
 
-# Auth-email E2E using free/public Mailinator inboxes
+# Auth-email E2E using MailSlurp ephemeral inboxes
 npm run test:e2e:auth-email
 ```
 

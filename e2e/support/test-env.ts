@@ -58,11 +58,14 @@ export function loadPlaywrightEnv(): void {
 }
 
 export function getWebServerEnv(): Record<string, string> {
-  return Object.fromEntries(
+  const env = Object.fromEntries(
     Object.entries(process.env).filter(
       (entry): entry is [string, string] => entry[1] !== undefined,
     ),
   );
+  // Ensure auth emails generated during Playwright runs point back to the e2e app port.
+  env.NEXT_PUBLIC_SITE_URL = PLAYWRIGHT_BASE_URL;
+  return env;
 }
 
 export function getE2ETestDatabaseConfig(): E2ETestDatabaseConfig {
