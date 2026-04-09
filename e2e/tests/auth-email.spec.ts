@@ -23,7 +23,7 @@ import {
   expectLoginFailsInFreshContext,
   expectLoginSucceedsInFreshContext,
 } from '../support/auth-flow';
-import { createEphemeralInbox, waitForInboxLink, type InboxRef } from '../support/mailslurp';
+import { getEmailProvider, type InboxRef } from '../support/email-provider';
 import { getLocalizedPathname } from '../../i18n/routing';
 import path from 'node:path';
 import os from 'node:os';
@@ -32,19 +32,21 @@ import type { Page } from '@playwright/test';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
+const emailProvider = getEmailProvider();
+
 async function waitForLinkWithResendFallback(
   page: Page,
   inboxId: string,
   linkHint: string,
 ): Promise<string> {
   try {
-    return await waitForInboxLink(inboxId, linkHint, 60_000);
+    return await emailProvider.waitForEmail(inboxId, linkHint, 30_000); // 30 seconds
   } catch {
     const resendButton = page.getByRole('button', { name: /send another link/i });
     if (await resendButton.isVisible().catch(() => false)) {
       await resendButton.click();
     }
-    return waitForInboxLink(inboxId, linkHint, 90_000);
+    return emailProvider.waitForEmail(inboxId, linkHint, 30_000); // 30 seconds retry
   }
 }
 
@@ -63,7 +65,7 @@ async function cleanupAuthUsers(emails: string[]): Promise<void> {
 
 test.describe('Auth email flows @auth-email', () => {
   test.describe.configure({ mode: 'serial' });
-  test.setTimeout(180_000);
+  test.setTimeout(90_000); // 90 seconds max
 
   const locale = 'en';
   const homePath = /\/en\/?$/;
@@ -87,9 +89,9 @@ test.describe('Auth email flows @auth-email', () => {
     fs.rmSync(sessionFile, { force: true });
 
     // Sequential to avoid race on pooledInboxIndex
-    primaryInbox = await createEphemeralInbox();
-    secondaryInbox = await createEphemeralInbox();
-    emailChangeInbox = await createEphemeralInbox();
+    primaryInbox = await emailProvider.createInbox();
+    secondaryInbox = await emailProvider.createInbox();
+    emailChangeInbox = await emailProvider.createInbox();
     await cleanupAuthUsers([
       primaryInbox.emailAddress,
       secondaryInbox.emailAddress,
@@ -187,7 +189,7 @@ test.describe('Auth email flows @auth-email', () => {
       const currentUrl = page.url();
       if (currentUrl.includes('auth-code-error') || currentUrl.includes('Confirmation+link+accepted')) {
         // Use emailChangedAt as since to avoid picking up the old signup link
-        const oldEmailLink = await waitForInboxLink(primaryInbox.id, '/auth/callback', 60_000, emailChangedAt);
+        const oldEmailLink = await emailProvider.waitForEmail(primaryInbox.id, '/auth/callback', 60_000, emailChangedAt);
         await page.goto(oldEmailLink);
       }
 
@@ -222,14 +224,26 @@ test.describe('Auth email flows @auth-email', () => {
       const { AuthPage } = await import('../pages/auth.page');
       const ap = new AuthPage(page);
 
+      // Verify what email Supabase thinks the user has
+      const userCheckScript = await page.evaluate(async () => {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        return user?.email;
+      });
+      console.log('Supabase user email:', userCheckScript);
+      console.log('Expected email (currentEmailAddress):', currentEmailAddress);
+      console.log('Inbox we are checking:', emailChangeInbox.emailAddress);
+
       await ap.gotoForgotPassword(locale);
       await ap.requestPasswordReset(currentEmailAddress);
       await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
 
-      resetLink = await waitForLinkWithResendFallback(
-        page,
+      // Wait for password reset email
+      resetLink = await emailProvider.waitForEmail(
         emailChangeInbox.id,
         'reset-password',
+        30_000, // 30 seconds
       );
       await page.goto(resetLink);
       await expect(page.getByRole('heading', { name: /reset password/i })).toBeVisible();

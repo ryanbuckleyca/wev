@@ -147,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const {
           data: { session },
         } = await supabase.auth.getSession();
+        
         const resolvedUser = session?.user ?? null;
 
         if (!mounted) return;
@@ -182,10 +183,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
+    } = supabaseRef.current.auth.onAuthStateChange(async (event, _session) => {
       if (!mounted) return;
 
-      const nextUser = session?.user ?? null;
+      // Don't use the session parameter to avoid Supabase warnings
+      // Instead, fetch the user directly which validates against the server
+      const { data: { user: nextUser } } = await supabaseRef.current.auth.getUser();
+      
       const userChanged = nextUser?.id !== userIdRef.current;
 
       userIdRef.current = nextUser?.id ?? null;

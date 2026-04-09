@@ -32,18 +32,21 @@ export async function GET(request: Request) {
     // but the user should already have a valid session
     if (error?.code === 'pkce_code_verifier_not_found' && code) {
       // Check if user already has a valid session (indicates email change, not signup)
-      const { data: { session } } = await supabase.auth.getSession();
+      // Use getUser() instead of getSession() to avoid security warnings
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (session) {
+      if (user) {
         logger.info(
           {
             code: error.code,
-            hasSession: true,
+            hasUser: true,
           },
-          'PKCE code verifier not found but user has valid session - allowing email change to proceed',
+          'PKCE code verifier not found but user is authenticated - email change may have been applied by Supabase',
         );
         
-        // User is already authenticated, redirect to home
+        // User is already authenticated
+        // The email change should have been applied by Supabase when they clicked the link
+        // Redirect to home
         return NextResponse.redirect(`${base}${next}`);
       }
     }

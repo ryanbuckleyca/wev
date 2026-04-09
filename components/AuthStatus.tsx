@@ -25,8 +25,11 @@ export default function AuthStatus() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    } = supabase.auth.onAuthStateChange(async (_event, _session) => {
+      // Don't use the session parameter to avoid Supabase warnings
+      // Fetch user directly to validate against the server
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
     });
 
     return () => subscription.unsubscribe();

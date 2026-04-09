@@ -89,16 +89,15 @@ async function getInboxRefById(mailslurp: MailSlurp, inboxId: string): Promise<I
   return { id: inbox.id, emailAddress: inbox.emailAddress };
 }
 
-async function buildTimeoutError(inboxId: string): Promise<Error> {
+async function buildTimeoutError(inboxId: string, since?: Date): Promise<Error> {
   // Check for missed emails — MailSlurp creates these when the account has
   // exceeded its daily receive quota and cannot persist incoming emails.
   try {
     const apiKey = getMailSlurpApiKey();
-    // Use a 24h window for the quota check — missed emails from earlier in the
-    // same test session are still relevant even if they're older than `since`.
-    const quotaSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Only check for missed emails since the test started, not the full 24h window
+    const quotaSince = since ?? new Date(Date.now() - 60 * 60 * 1000); // Default to 1 hour
     const res = await fetch(
-      `https://javascript.api.mailslurp.com/missed-emails?inboxId=${inboxId}&page=0&size=5`,
+      `https://javascript.api.mailslurp.com/missed-emails?inboxId=${inboxId}&page=0&size=10`,
       { headers: { 'x-api-key': apiKey } },
     );
     if (res.ok) {
@@ -111,7 +110,7 @@ async function buildTimeoutError(inboxId: string): Promise<Error> {
         const subjects = missed.map((m) => `"${m.subject ?? '(no subject)'}" at ${m.createdAt}`).join(', ');
         return new Error(
           `MailSlurp daily receive quota exceeded — emails arrived but were not stored.\n` +
-          `Missed emails: ${subjects}\n` +
+          `Missed emails since test started: ${subjects}\n` +
           `Fix: renew your daily receive credits at app.mailslurp.com or switch to a different MAILSLURP_API_KEY.`,
         );
       }
@@ -253,7 +252,7 @@ export async function waitForInboxLink(
   const recovered = await extractLinkFromRecentEmails(mailslurp, inboxId, linkHint, since);
   if (recovered) return recovered;
   if (lastTimeoutError) {
-    throw await buildTimeoutError(inboxId);
+    throw await buildTimeoutError(inboxId, since);
   }
   throw new Error(`No link containing "${linkHint}" found in MailSlurp messages`);
 }
