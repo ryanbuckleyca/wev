@@ -217,6 +217,9 @@ export async function waitForInboxLink(
   const deadline = Date.now() + timeoutMs;
   let lastTimeoutError: unknown = null;
 
+  console.log(`[MailSlurp] Waiting for email to inbox ${inboxId} with link hint "${linkHint}"`);
+  console.log(`[MailSlurp] Since: ${since.toISOString()}, timeout: ${timeoutMs}ms`);
+
   while (Date.now() < deadline) {
     const remaining = deadline - Date.now();
     const waitWindowMs = Math.min(remaining, 45_000);
@@ -231,6 +234,18 @@ export async function waitForInboxLink(
     } catch (error) {
       if (!isMailWaitTimeout(error)) throw error;
       lastTimeoutError = error;
+      
+      // Log what emails we DO have
+      const previews = await mailslurp.getEmails(inboxId, {
+        limit: 10,
+        since,
+        sort: 'DESC',
+      });
+      console.log(`[MailSlurp] Timeout waiting for email. Found ${previews.length} emails since ${since.toISOString()}`);
+      previews.forEach((p, i) => {
+        console.log(`  ${i + 1}. Subject: "${p.subject}", To: ${p.to?.join(', ')}, At: ${p.createdAt}`);
+      });
+      
       const recovered = await extractLinkFromRecentEmails(mailslurp, inboxId, linkHint, since);
       if (recovered) return recovered;
       if (deadline - Date.now() > 0) {
@@ -242,7 +257,10 @@ export async function waitForInboxLink(
     const candidates = [email.body ?? '', email.bodyExcerpt ?? '', email.subject ?? ''];
     for (const candidate of candidates) {
       const hit = extractMatchingUrl(candidate, linkHint);
-      if (hit) return hit;
+      if (hit) {
+        console.log(`[MailSlurp] Found matching link in email`);
+        return hit;
+      }
     }
 
     const recovered = await extractLinkFromRecentEmails(mailslurp, inboxId, linkHint, since);

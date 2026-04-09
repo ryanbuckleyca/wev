@@ -39,8 +39,19 @@ function runCommand(command: string, args: string[], env: NodeJS.ProcessEnv): Pr
 function startCommand(command: string, args: string[], env: NodeJS.ProcessEnv): void {
   const child = spawn(command, args, {
     env,
-    stdio: 'inherit',
+    stdio: ['inherit', 'pipe', 'pipe'],
   });
+
+  // Filter out Supabase getSession warnings
+  const filterSupabaseWarnings = (data: Buffer) => {
+    const text = data.toString();
+    if (!text.includes('Using the user object as returned from supabase.auth.getSession()')) {
+      process.stdout.write(data);
+    }
+  };
+
+  child.stdout?.on('data', filterSupabaseWarnings);
+  child.stderr?.on('data', filterSupabaseWarnings);
 
   const forwardSignal = (signal: NodeJS.Signals) => {
     child.kill(signal);

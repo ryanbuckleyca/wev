@@ -30,23 +30,36 @@ import os from 'node:os';
 import fs from 'node:fs';
 import type { Page } from '@playwright/test';
 
+// ─── Constants ────────────────────────────────────────────────────────────
+
+const EMAIL_WAIT_TIMEOUT = 30_000; // 30 seconds
+const EMAIL_CHANGE_DUAL_CONFIRM_TIMEOUT = 60_000; // 60 seconds
+const DEBUG = process.env.E2E_DEBUG === 'true';
+
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
 const emailProvider = getEmailProvider();
+
+function debugLog(...args: any[]): void {
+  if (DEBUG) {
+    console.log('[E2E DEBUG]', ...args);
+  }
+}
 
 async function waitForLinkWithResendFallback(
   page: Page,
   inboxId: string,
   linkHint: string,
+  since?: Date,
 ): Promise<string> {
   try {
-    return await emailProvider.waitForEmail(inboxId, linkHint, 30_000); // 30 seconds
+    return await emailProvider.waitForEmail(inboxId, linkHint, EMAIL_WAIT_TIMEOUT, since);
   } catch {
     const resendButton = page.getByRole('button', { name: /send another link/i });
     if (await resendButton.isVisible().catch(() => false)) {
       await resendButton.click();
     }
-    return emailProvider.waitForEmail(inboxId, linkHint, 30_000); // 30 seconds retry
+    return emailProvider.waitForEmail(inboxId, linkHint, EMAIL_WAIT_TIMEOUT, since);
   }
 }
 
@@ -80,11 +93,14 @@ test.describe('Auth email flows @auth-email', () => {
   let emailChangeLink = '';
   let emailChangedAt: Date | undefined;
   let resetLink = '';
+  let testStartTime: Date;
 
   // Persisted session written by test 1, read by tests 2+
   const sessionFile = path.join(os.tmpdir(), 'wev-e2e-auth-session.json');
 
   test.beforeAll(async () => {
+    testStartTime = new Date();
+    
     // Remove any stale session file from a previous run
     fs.rmSync(sessionFile, { force: true });
 
@@ -92,6 +108,13 @@ test.describe('Auth email flows @auth-email', () => {
     primaryInbox = await emailProvider.createInbox();
     secondaryInbox = await emailProvider.createInbox();
     emailChangeInbox = await emailProvider.createInbox();
+    
+    debugLog('Created inboxes:', {
+      primary: primaryInbox.emailAddress,
+      secondary: secondaryInbox.emailAddress,
+      emailChange: emailChangeInbox.emailAddress,
+    });
+    
     await cleanupAuthUsers([
       primaryInbox.emailAddress,
       secondaryInbox.emailAddress,
@@ -129,8 +152,10 @@ test.describe('Auth email flows @auth-email', () => {
       page,
       primaryInbox.id,
       '/auth/callback',
+      testStartTime,
     );
     expect(confirmationLink).toContain('/auth/v1/verify');
+    debugLog('Got signup confirmation link:', confirmationLink);
 
     // Visit the link — PKCE verifier is still in this page's session
     await page.goto(confirmationLink);
@@ -170,16 +195,22 @@ test.describe('Auth email flows @auth-email', () => {
       const { AuthPage } = await import('../pages/auth.page');
       const ap = new AuthPage(page);
 
+      console.log('Email change test - currentEmailAddress before change:', currentEmailAddress);
+      console.log('Email change test - emailChangeInbox.emailAddress:', emailChangeInbox.emailAddress);
+      console.log('Email change test - emailChangeInbox.id:', emailChangeInbox.id);
+
       // Request email change
       await ap.requestEmailChange(locale, emailChangeInbox.emailAddress);
       await expect(page.getByText(/confirmation email sent to your new address/i)).toBeVisible();
       emailChangedAt = new Date();
 
+      console.log('Email change test - waiting for email to:', emailChangeInbox.id);
       emailChangeLink = await waitForLinkWithResendFallback(
         page,
         emailChangeInbox.id,
         '/auth/callback',
       );
+      console.log('Email change test - got link:', emailChangeLink);
       currentEmailAddress = emailChangeInbox.emailAddress;
 
       // Confirm from the new email address in the same context
