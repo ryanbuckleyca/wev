@@ -50,20 +50,34 @@ function extractMatchingUrl(text: string, linkHint: string): string | null {
 
 async function fetchMailpitMessages(toEmail: string, since?: Date): Promise<any[]> {
   const sinceParam = since ? `&since=${since.toISOString()}` : '';
-  const response = await fetch(`${MAILPIT_API_URL}/api/v1/messages?limit=50${sinceParam}`);
   
-  if (!response.ok) {
-    throw new Error(`Mailpit API error: ${response.status} ${response.statusText}`);
-  }
+  try {
+    const response = await fetch(`${MAILPIT_API_URL}/api/v1/messages?limit=50${sinceParam}`);
+    
+    if (!response.ok) {
+      throw new Error(`Mailpit API error: ${response.status} ${response.statusText}`);
+    }
 
-  const data = await response.json();
-  const messages = data.messages || [];
-  
-  // Filter by recipient
-  return messages.filter((msg: any) => {
-    const to = msg.To || [];
-    return to.some((recipient: any) => recipient.Address === toEmail);
-  });
+    const data = await response.json();
+    const messages = data.messages || [];
+    
+    // Filter by recipient
+    return messages.filter((msg: any) => {
+      const to = msg.To || [];
+      return to.some((recipient: any) => recipient.Address === toEmail);
+    });
+  } catch (error: any) {
+    if (error.cause?.code === 'ECONNREFUSED') {
+      throw new Error(
+        `Cannot connect to Mailpit at ${MAILPIT_API_URL}.\n` +
+        `Make sure Mailpit is running:\n` +
+        `  1. Install: brew install mailpit\n` +
+        `  2. Start: mailpit\n` +
+        `  3. Or switch to MailSlurp: E2E_EMAIL_PROVIDER=mailslurp in .env`
+      );
+    }
+    throw error;
+  }
 }
 
 async function getMessageContent(messageId: string): Promise<string> {
@@ -102,6 +116,7 @@ class MailpitProvider implements EmailProvider {
     const emailAddress = inboxId; // In Mailpit, ID is the email address
     const deadline = Date.now() + timeoutMs;
     const startTime = since || new Date(Date.now() - 60_000);
+    let lastError: Error | null = null;
 
     while (Date.now() < deadline) {
       try {
@@ -115,6 +130,11 @@ class MailpitProvider implements EmailProvider {
           }
         }
       } catch (error) {
+        lastError = error as Error;
+        // If it's a connection error, fail fast instead of retrying
+        if (error instanceof Error && error.message.includes('Cannot connect to Mailpit')) {
+          throw error;
+        }
         console.warn('Mailpit fetch error:', error);
       }
 
@@ -122,9 +142,14 @@ class MailpitProvider implements EmailProvider {
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
+    if (lastError && lastError.message.includes('Cannot connect to Mailpit')) {
+      throw lastError;
+    }
+
     throw new Error(
       `Mailpit: No email with link containing "${linkHint}" found for ${emailAddress} within ${timeoutMs}ms.\n` +
-      `Check: (1) your app sent the email, (2) Mailpit is running at ${MAILPIT_API_URL}, (3) the email address is correct.`,
+      `Check: (1) your app sent the email, (2) Mailpit is running at ${MAILPIT_API_URL}, (3) the email address is correct.\n` +
+      `View emails at: ${MAILPIT_API_URL}`,
     );
   }
 }
