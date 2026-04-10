@@ -85,29 +85,54 @@ async function main(): Promise<void> {
     console.log('Cleared .next cache');
   }
   
-  // Create a temporary .env.test file that Next.js will load instead of .env.production
-  // Next.js loads env files in this order: .env.$(NODE_ENV).local, .env.local, .env.$(NODE_ENV), .env
-  // Since we set NODE_ENV=test, it will load .env.test AFTER .env, giving us the override we need
-  const testEnvPath = path.resolve(process.cwd(), '.env.test');
-  const testConfig = getE2ETestDatabaseConfig();
-  const testEnvContent = `# Auto-generated for e2e tests - DO NOT COMMIT
+  // Temporarily rename .env.production to prevent it from being loaded
+  // This is necessary because Next.js loads .env.production during build
+  // even when NODE_ENV=test
+  const envProductionPath = path.resolve(process.cwd(), '.env.production');
+  const envProductionBackupPath = path.resolve(process.cwd(), '.env.production.backup');
+  let productionEnvRenamed = false;
+  
+  if (fs.existsSync(envProductionPath)) {
+    fs.renameSync(envProductionPath, envProductionBackupPath);
+    productionEnvRenamed = true;
+    console.log('Temporarily renamed .env.production to .env.production.backup');
+  }
+  
+  try {
+    // Create .env.test.local which has highest priority in Next.js env loading
+    // Next.js loads env files in this order (highest to lowest priority):
+    // 1. .env.$(NODE_ENV).local  <-- We use this
+    // 2. .env.local (not loaded when NODE_ENV is test)
+    // 3. .env.$(NODE_ENV)
+    // 4. .env
+    const testEnvPath = path.resolve(process.cwd(), '.env.test.local');
+    const testConfig = getE2ETestDatabaseConfig();
+    const testEnvContent = `# Auto-generated for e2e tests - DO NOT COMMIT
 NEXT_PUBLIC_SUPABASE_URL=${testConfig.supabaseUrl}
 NEXT_PUBLIC_SITE_URL=${PLAYWRIGHT_BASE_URL}
 `;
-  
-  fs.writeFileSync(testEnvPath, testEnvContent);
-  console.log('Created .env.test with test database configuration');
+    
+    fs.writeFileSync(testEnvPath, testEnvContent);
+    console.log('Created .env.test.local with test database configuration');
 
-  await resetAndSeedTestDatabase(testConfig);
-  await runCommand(npmCommand, ['run', 'build'], env);
-  
-  // Clean up .env.test after build
-  if (fs.existsSync(testEnvPath)) {
-    fs.unlinkSync(testEnvPath);
-    console.log('Removed temporary .env.test');
+    await resetAndSeedTestDatabase(testConfig);
+    await runCommand(npmCommand, ['run', 'build'], env);
+    
+    // DON'T restore .env.production yet - keep it renamed so the server uses .env.test.local
+    // The server will load .env.test.local because it has higher priority than .env
+  } catch (error) {
+    // Restore .env.production on error
+    if (productionEnvRenamed && fs.existsSync(envProductionBackupPath)) {
+      fs.renameSync(envProductionBackupPath, envProductionPath);
+    }
+    throw error;
   }
   
+  // Start the server - it will use .env.test.local since .env.production is still renamed
   startCommand(npmCommand, ['run', 'start', '--', '--port', String(PLAYWRIGHT_PORT)], env);
+  
+  // Note: .env.production stays renamed during test execution
+  // It will be restored when the process exits or you can manually restore it
 }
 
 void main().catch((error) => {

@@ -40,7 +40,7 @@ const DEBUG = process.env.E2E_DEBUG === 'true';
 
 const emailProvider = getEmailProvider();
 
-function debugLog(...args: any[]): void {
+function debugLog(...args: unknown[]): void {
   if (DEBUG) {
     console.log('[E2E DEBUG]', ...args);
   }
@@ -90,7 +90,6 @@ test.describe('Auth email flows @auth-email', () => {
   let resetPassword = '';
   let currentEmailAddress = '';
   let usedConfirmationLink = '';
-  let emailChangeLink = '';
   let emailChangedAt: Date | undefined;
   let resetLink = '';
   let testStartTime: Date;
@@ -126,8 +125,9 @@ test.describe('Auth email flows @auth-email', () => {
   });
 
   test.afterAll(async () => {
+    const inboxes = [primaryInbox, secondaryInbox, emailChangeInbox];
     await cleanupAuthUsers(
-      [primaryInbox, secondaryInbox, emailChangeInbox]
+      inboxes
         .map((i) => i?.emailAddress)
         .concat(currentEmailAddress)
         .filter((e): e is string => Boolean(e)),
@@ -206,6 +206,44 @@ test.describe('Auth email flows @auth-email', () => {
   test('account settings email change and confirmation', async ({ browser }) => {
     // Use the saved session from test 3
     const ctx = await browser.newContext({ storageState: sessionFile });
+    
+    // CRITICAL: Supabase SSR stores session in localStorage, but Playwright's storageState
+    // only restores cookies. We need to manually inject localStorage from the cookies.
+    // The session is stored in chunked cookies with base64 encoding
+    await ctx.addInitScript(() => {
+      const cookies = document.cookie.split(';').map(c => c.trim());
+      const authCookies = cookies
+        .filter(c => c.startsWith('sb-') && c.includes('-auth-token'))
+        .sort(); // Ensure correct order (.0, .1, .2, etc)
+      
+      if (authCookies.length > 0) {
+        // Reconstruct the full session from chunked cookies
+        const fullValue = authCookies
+          .map(c => {
+            const [, value] = c.split('=');
+            // Remove 'base64-' prefix if present
+            return value.startsWith('base64-') ? value.substring(7) : value;
+          })
+          .join('');
+        
+        // Extract project ref from first cookie name
+        const firstCookie = authCookies[0];
+        const match = firstCookie.match(/sb-([^-]+)-auth-token/);
+        if (match) {
+          const projectRef = match[1];
+          const key = `sb-${projectRef}-auth-token`;
+          // Decode from base64 and store in localStorage
+          try {
+            const decoded = atob(fullValue);
+            localStorage.setItem(key, decoded);
+          } catch {
+            // If decode fails, store as-is
+            localStorage.setItem(key, fullValue);
+          }
+        }
+      }
+    });
+    
     const page = await ctx.newPage();
     
     try {
@@ -224,15 +262,13 @@ test.describe('Auth email flows @auth-email', () => {
       debugLog('Navigating to account settings with saved session...');
       await ap.gotoAccountSettings(locale);
       
-      // Debug: capture what's actually on the page
-      const pageContent = await page.content();
-      debugLog('Page HTML length:', pageContent.length);
-      debugLog('Page title:', await page.title());
-      debugLog('Page URL:', page.url());
+      // Debug: Check what cookies and localStorage are present
+      const cookies = await page.context().cookies();
+      const authCookies = cookies.filter(c => c.name.includes('auth-token'));
+      debugLog('Auth cookies present:', authCookies.length);
       
-      // Check if there's a "Loading..." text
-      const loadingText = await page.getByText(/loading/i).count();
-      debugLog('Loading text count:', loadingText);
+      const localStorageKeys = await page.evaluate(() => Object.keys(localStorage));
+      debugLog('LocalStorage keys:', localStorageKeys);
       
       await expect(page.getByRole('heading', { name: /account settings/i })).toBeVisible({ timeout: 10000 });
       debugLog('Account settings page loaded');
@@ -258,16 +294,16 @@ test.describe('Auth email flows @auth-email', () => {
 
       // Fetch confirmation link for NEW email
       debugLog('Waiting for new email confirmation in inbox:', emailChangeInbox.id);
-      const newEmailLink = await waitForLinkWithResendFallback(
+      const emailChangeLink = await waitForLinkWithResendFallback(
         page,
         emailChangeInbox.id,
         '/auth/callback',
         emailChangedAt,
       );
-      debugLog('Got new email confirmation link:', newEmailLink);
+      debugLog('Got new email confirmation link:', emailChangeLink);
 
       // Visit new email confirmation link
-      await page.goto(newEmailLink);
+      await page.goto(emailChangeLink);
 
       // Check if we need to also confirm from old email
       // Supabase may require dual confirmation for security

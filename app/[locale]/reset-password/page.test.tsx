@@ -22,6 +22,7 @@ vi.mock('@/components/PasswordStrengthIndicator', () => ({
 }));
 
 const mockGetSession = vi.fn();
+const mockGetUser = vi.fn();
 const mockUpdateUser = vi.fn();
 
 async function waitForResetPasswordFields(): Promise<HTMLElement[]> {
@@ -35,10 +36,12 @@ describe('ResetPasswordPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetSession.mockResolvedValue({ data: { session: { access_token: 't' } } });
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'test-user' } } });
     mockUpdateUser.mockResolvedValue({ error: null });
     vi.mocked(createClient).mockReturnValue({
       auth: {
         getSession: mockGetSession,
+        getUser: mockGetUser,
         updateUser: mockUpdateUser,
       },
     } as never);
@@ -53,6 +56,7 @@ describe('ResetPasswordPage', () => {
 
   it('shows invalid link state when there is no session', async () => {
     mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockGetUser.mockResolvedValue({ data: { user: null } });
 
     render(<ResetPasswordPage />);
 

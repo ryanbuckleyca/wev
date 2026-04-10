@@ -183,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabaseRef.current.auth.onAuthStateChange(async (event, _session) => {
+    } = supabaseRef.current.auth.onAuthStateChange(async (event) => {
       if (!mounted) return;
 
       // Don't use the session parameter to avoid Supabase warnings

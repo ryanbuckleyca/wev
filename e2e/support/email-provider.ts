@@ -11,9 +11,9 @@ export type InboxRef = {
 export interface EmailProvider {
   createInbox(): Promise<InboxRef>;
   waitForEmail(inboxId: string, linkHint: string, timeoutMs: number, since?: Date): Promise<string>;
-  cleanup?(emails: string[]): Promise<void>;
 }
 
 export function getEmailProvider(): EmailProvider {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   return require('./mailslurp-provider').mailslurpProvider;
 }

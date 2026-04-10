@@ -5,7 +5,7 @@ import { getSiteBaseUrlFromRequest } from '@/lib/site-url';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: Request) {
-  const { searchParams, href } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const rawCode = searchParams.get('code');
   const code = rawCode?.trim() ?? '';
   const rawTokenHash = searchParams.get('token_hash') ?? searchParams.get('token');
