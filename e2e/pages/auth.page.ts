@@ -64,7 +64,7 @@ export class AuthPage {
   }
 
   async requestPasswordReset(email: string): Promise<void> {
-    await this.page.getByLabel(/email|courriel/i).fill(email);
+    await this.emailInput().fill(email);
     await this.submitWhenCaptchaReady(/send reset link/i);
   }
 

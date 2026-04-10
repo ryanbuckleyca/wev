@@ -86,8 +86,8 @@ test.describe('Account deletion flow @auth-email', () => {
       // Don't fill confirmation text
       await dialog.getByRole('button', { name: /^delete account$/i }).last().click();
 
-      // Should show validation error
-      await expect(dialog.getByText(/type delete|confirmation/i)).toBeVisible({ timeout: 5_000 });
+      // Should show validation error - use first() to avoid strict mode violation
+      await expect(dialog.getByText(/type delete|confirmation/i).first()).toBeVisible({ timeout: 5_000 });
     });
 
     // Cleanup
