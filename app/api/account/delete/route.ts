@@ -15,13 +15,11 @@ export async function DELETE(request: NextRequest) {
     const { user } = auth;
     const body = await request.json().catch(() => ({}));
     const password = typeof body.password === 'string' ? body.password : '';
-    const captchaToken = typeof body.captchaToken === 'string' ? body.captchaToken : '';
 
     // Profiles, roles, bookmarks, and matches already cascade from auth.users,
     // so a verified auth delete keeps the flow both simpler and safer.
     await deleteAccountForCurrentUser({
       password,
-      captchaToken,
       userEmail: user.email,
       userId: user.id,
     });

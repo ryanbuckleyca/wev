@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/client';
 
 interface DeleteAccountOptions {
   password: string;
-  captchaToken: string;
 }
 
 interface UseDeleteAccountReturn {
@@ -25,7 +24,7 @@ export function useDeleteAccount(): UseDeleteAccountReturn {
     setError(null);
   }, []);
 
-  const deleteAccount = useCallback(async ({ password, captchaToken }: DeleteAccountOptions) => {
+  const deleteAccount = useCallback(async ({ password }: DeleteAccountOptions) => {
     setIsDeleting(true);
     setError(null);
 
@@ -35,7 +34,7 @@ export function useDeleteAccount(): UseDeleteAccountReturn {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password, captchaToken }),
+        body: JSON.stringify({ password }),
       });
 
       const data = await response.json();
