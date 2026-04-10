@@ -80,7 +80,11 @@ export async function updatePasswordForCurrentUser({
   }
 
   const email = requirePasswordVerificationEmail(userEmail);
-  await verifyPassword(email, currentPassword, null, 'Current password is incorrect.');
+  // Password change: use test captcha token if in test mode, otherwise null
+  const captchaToken = process.env.NEXT_PUBLIC_ENV_MODE === 'test' 
+    ? 'XXXX.DUMMY.TOKEN.XXXX' 
+    : null;
+  await verifyPassword(email, currentPassword, captchaToken, 'Current password is incorrect.');
 
   const supabase = await createServerClient();
   const { error } = await supabase.auth.updateUser({ password: newPassword });

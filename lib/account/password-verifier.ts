@@ -121,13 +121,14 @@ export class PasswordVerifier {
     const signInPayload: {
       email: string;
       password: string;
-      options?: { captchaToken: string };
+      options?: { captchaToken?: string };
     } = {
       email: email.trim(),
       password,
     };
 
-    if (captchaToken?.trim()) {
+    // Only include captcha if provided and non-empty
+    if (captchaToken && captchaToken.trim()) {
       signInPayload.options = { captchaToken: captchaToken.trim() };
     }
 

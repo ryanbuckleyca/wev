@@ -68,12 +68,12 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle className="text-red-600">{t('deleteAccount.title')}</DialogTitle>
+          <DialogTitle className="text-destructive">{t('deleteAccount.title')}</DialogTitle>
         </DialogHeader>
 
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-800 mb-2">{t('deleteAccount.warning')}</p>
-          <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <p className="text-sm text-destructive mb-2">{t('deleteAccount.warning')}</p>
+          <ul className="text-sm text-destructive/90 list-disc list-inside space-y-1">
             <li>{t('deleteAccount.warningProfile')}</li>
             <li>{t('deleteAccount.warningBookmarks')}</li>
             <li>{t('deleteAccount.warningMatches')}</li>
@@ -104,7 +104,7 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
               disabled={isDeleting}
               htmlFor="delete-confirm"
             />
-            <p className="text-sm text-gray-600">{t('deleteAccount.confirmHelp')}</p>
+            <p className="text-sm text-muted-foreground">{t('deleteAccount.confirmHelp')}</p>
           </div>
 
           <TurnstileWidget

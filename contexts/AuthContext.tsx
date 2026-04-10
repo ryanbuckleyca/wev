@@ -183,13 +183,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabaseRef.current.auth.onAuthStateChange(async (event) => {
+    } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      // Don't use the session parameter to avoid Supabase warnings
-      // Instead, fetch the user directly which validates against the server
-      const { data: { user: nextUser } } = await supabaseRef.current.auth.getUser();
-      
+      // Use session.user directly - it's validated by Supabase
+      const nextUser = session?.user ?? null;
       const userChanged = nextUser?.id !== userIdRef.current;
 
       userIdRef.current = nextUser?.id ?? null;
