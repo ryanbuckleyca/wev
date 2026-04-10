@@ -1,92 +1,56 @@
 import 'server-only';
 
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { supabaseServer } from '@/lib/supabase-server';
+import { PasswordVerifier, ValidationError, AuthenticationError } from './password-verifier';
 
 export class AccountServiceError extends Error {
   constructor(
     message: string,
     readonly status: number = 400,
+    readonly code?: string,
   ) {
     super(message);
     this.name = 'AccountServiceError';
   }
 }
 
-function getPasswordVerificationClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!url || !publishableKey) {
-    throw new Error('Missing Supabase public env for password verification');
-  }
-
-  return createSupabaseClient(url, publishableKey, {
-    auth: {
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-      persistSession: false,
-    },
-  });
-}
-
 function requirePasswordVerificationEmail(userEmail?: string | null): string {
   if (!userEmail) {
-    throw new AccountServiceError('Password verification is not available for this account.');
+    throw new AccountServiceError(
+      'Password verification is not available for this account.',
+      400,
+      'EMAIL_REQUIRED'
+    );
   }
 
   return userEmail;
 }
 
-function getAuthErrorCode(error: unknown): string | undefined {
-  if (typeof error !== 'object' || error === null || !('code' in error)) {
-    return undefined;
-  }
-
-  const code = (error as { code?: unknown }).code;
-  return typeof code === 'string' ? code : undefined;
-}
-
-async function assertPasswordVerified(
+async function verifyPassword(
   userEmail: string,
   password: string,
   captchaToken: string | null,
-  invalidPasswordMessage: string,
-) {
-  const verifier = getPasswordVerificationClient();
-  const signInPayload: {
-    email: string;
-    password: string;
-    options?: { captchaToken: string };
-  } = {
-    email: userEmail,
-    password,
-  };
-  if (captchaToken?.trim()) {
-    signInPayload.options = { captchaToken: captchaToken.trim() };
-  }
+  errorMessage: string,
+): Promise<void> {
+  const verifier = new PasswordVerifier();
 
-  const { data, error } = await verifier.auth.signInWithPassword(signInPayload);
+  try {
+    await verifier.verify(userEmail, password, captchaToken);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      throw new AccountServiceError(error.message, 400, error.code);
+    }
 
-  if (error) {
-    if (getAuthErrorCode(error) === 'invalid_credentials') {
-      throw new AccountServiceError(invalidPasswordMessage);
+    if (error instanceof AuthenticationError) {
+      // Use custom error message for invalid credentials
+      if (error.code === 'INVALID_CREDENTIALS') {
+        throw new AccountServiceError(errorMessage, 401, error.code);
+      }
+      throw new AccountServiceError(error.message, 401, error.code);
     }
 
     throw error;
-  }
-
-  const accessToken = data.session?.access_token;
-  if (!accessToken) {
-    throw new Error('Password verification did not return a session token.');
-  }
-
-  const adminSupabase = supabaseServer;
-  const { error: revokeError } = await adminSupabase.auth.admin.signOut(accessToken, 'local');
-
-  if (revokeError) {
-    throw revokeError;
   }
 }
 
@@ -99,16 +63,24 @@ export async function updatePasswordForCurrentUser({
   newPassword: string;
   userEmail?: string | null;
 }) {
-  if (!currentPassword.trim()) {
-    throw new AccountServiceError('Current password is required.');
+  if (!currentPassword?.trim()) {
+    throw new AccountServiceError('Current password is required.', 400, 'PASSWORD_REQUIRED');
   }
 
-  if (!newPassword) {
-    throw new AccountServiceError('New password is required.');
+  if (!newPassword?.trim()) {
+    throw new AccountServiceError('New password is required.', 400, 'NEW_PASSWORD_REQUIRED');
+  }
+
+  if (newPassword.length < 8) {
+    throw new AccountServiceError(
+      'New password must be at least 8 characters.',
+      400,
+      'PASSWORD_TOO_SHORT'
+    );
   }
 
   const email = requirePasswordVerificationEmail(userEmail);
-  await assertPasswordVerified(email, currentPassword, null, 'Current password is incorrect.');
+  await verifyPassword(email, currentPassword, null, 'Current password is incorrect.');
 
   const supabase = await createServerClient();
   const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -129,15 +101,24 @@ export async function deleteAccountForCurrentUser({
   userEmail?: string | null;
   userId: string;
 }) {
-  if (!password.trim()) {
-    throw new AccountServiceError('Password required for account deletion');
+  if (!password?.trim()) {
+    throw new AccountServiceError(
+      'Password required for account deletion',
+      400,
+      'PASSWORD_REQUIRED'
+    );
   }
-  if (!captchaToken.trim()) {
-    throw new AccountServiceError('Please complete the CAPTCHA verification.');
+
+  if (!captchaToken?.trim()) {
+    throw new AccountServiceError(
+      'Please complete the CAPTCHA verification.',
+      400,
+      'CAPTCHA_REQUIRED'
+    );
   }
 
   const email = requirePasswordVerificationEmail(userEmail);
-  await assertPasswordVerified(email, password, captchaToken, 'Invalid password');
+  await verifyPassword(email, password, captchaToken, 'Invalid password');
 
   const adminSupabase = supabaseServer;
   const { error } = await adminSupabase.auth.admin.deleteUser(userId);

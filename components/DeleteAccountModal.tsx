@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { createClient } from '@/lib/supabase/client';
+import { useDeleteAccount } from '@/lib/hooks/useDeleteAccount';
 import Button from './Button';
 import FormField from './FormField';
 import ErrorMessage from './ErrorMessage';
@@ -16,56 +16,39 @@ interface DeleteAccountModalProps {
 
 export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps) {
   const t = useTranslations();
+  const { deleteAccount, isDeleting, error: deleteError } = useDeleteAccount();
+  
   const [password, setPassword] = useState('');
   const [confirmText, setConfirmText] = useState('');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState('');
+  const [validationError, setValidationError] = useState('');
 
   const handleDelete = async () => {
+    // Clear previous validation errors
+    setValidationError('');
+
+    // Validate inputs
     if (!password.trim()) {
-      setError(t('deleteAccount.passwordRequired'));
+      setValidationError(t('deleteAccount.passwordRequired'));
       return;
     }
 
     if (confirmText !== 'DELETE' && confirmText !== 'SUPPRIMER') {
-      setError(t('deleteAccount.confirmationRequired'));
-      return;
-    }
-    if (!captchaToken) {
-      setError(t('deleteAccount.captchaRequired'));
+      setValidationError(t('deleteAccount.confirmationRequired'));
       return;
     }
 
-    setIsDeleting(true);
-    setError('');
+    if (!captchaToken) {
+      setValidationError(t('deleteAccount.captchaRequired'));
+      return;
+    }
 
     try {
-      const response = await fetch('/api/account/delete', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password, captchaToken }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete account');
-      }
-
-      // Sign out to clear the session
-      const supabase = createClient();
-      await supabase.auth.signOut();
-
-      // Hard redirect to clear any cached data
-      window.location.href = '/';
+      await deleteAccount({ password, captchaToken });
+      // Success - user will be redirected
     } catch (err) {
+      // Error is already set by the hook
       console.error('Delete account error:', err);
-      setError(err instanceof Error ? err.message : t('deleteAccount.error'));
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -74,10 +57,12 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
       setPassword('');
       setConfirmText('');
       setCaptchaToken(null);
-      setError('');
+      setValidationError('');
       onClose();
     }
   };
+
+  const displayError = validationError || deleteError;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -125,18 +110,18 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
           <TurnstileWidget
             onSuccess={(token) => {
               setCaptchaToken(token);
-              setError('');
+              setValidationError('');
             }}
             onError={() => {
               setCaptchaToken(null);
-              setError(t('deleteAccount.captchaError'));
+              setValidationError(t('deleteAccount.captchaError'));
             }}
             onExpire={() => {
               setCaptchaToken(null);
             }}
           />
 
-          {error && <ErrorMessage>{error}</ErrorMessage>}
+          {displayError && <ErrorMessage>{displayError}</ErrorMessage>}
         </div>
 
         <DialogFooter className="gap-3 sm:gap-2">
