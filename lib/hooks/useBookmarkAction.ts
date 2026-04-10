@@ -4,14 +4,13 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from '@/i18n/navigation';
 import { type JobPosting } from '@/lib/supabase';
-import { type User } from '@supabase/supabase-js';
 
 /**
  * Hook to manage the optimistic bookmarking logic and Supabase persistence.
  */
 export function useBookmarkAction(
   job: JobPosting,
-  user: User | null,
+  userId: string | null,
   initialBookmarked: boolean,
   onToggle?: (job: JobPosting, bookmarked: boolean) => void,
 ) {
@@ -20,7 +19,7 @@ export function useBookmarkAction(
   const router = useRouter();
 
   const toggleBookmark = async () => {
-    if (!user) {
+    if (!userId) {
       router.push('/login');
       return;
     }
@@ -38,13 +37,13 @@ export function useBookmarkAction(
       if (newState) {
         const { error } = await supabase
           .from('bookmarks')
-          .insert([{ user_id: user.id, job_id: job.id }]);
+          .insert([{ user_id: userId, job_id: job.id }]);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('bookmarks')
           .delete()
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .eq('job_id', job.id);
         if (error) throw error;
       }

@@ -33,6 +33,7 @@ export default function FormField({
         {label}
       </FormLabel>
       <FormInput
+        id={htmlFor}
         type={type}
         value={value}
         onChange={onChange}

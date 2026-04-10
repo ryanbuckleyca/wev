@@ -3,11 +3,7 @@ import { render, screen, fireEvent, act } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import JobCard from './JobCard';
 import type { JobPosting } from '@/lib/supabase';
-import { MOCK_AUTH_ANON, MOCK_AUTH_USER, mockRouter } from '@/test-stubs/constants';
-
-vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: vi.fn(),
-}));
+import { mockRouter } from '@/test-stubs/constants';
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
@@ -19,11 +15,9 @@ vi.mock('@/i18n/navigation', () => ({
 
 vi.mock('@lineiconshq/react-lineicons', () => vi.importActual('./test-utils/lineicons-mock.ts'));
 
-import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from '@/i18n/navigation';
 
-const mockUseAuth = vi.mocked(useAuth);
 const mockCreateClient = vi.mocked(createClient);
 const mockUseRouter = vi.mocked(useRouter);
 
@@ -66,6 +60,7 @@ function renderJobCard(overrides: Partial<Parameters<typeof JobCard>[0]> = {}) {
   const props = {
     job: defaultJob,
     isAdmin: false,
+    userId: null,
     profile: null,
     onSseToggle: () => {},
     updatingId: null,
@@ -77,7 +72,6 @@ function renderJobCard(overrides: Partial<Parameters<typeof JobCard>[0]> = {}) {
 
 describe('JobCard', () => {
   it('renders job details when the card is expanded', () => {
-    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never);
     mockUseRouter.mockReturnValue(mockRouter() as never);
 
     renderJobCard();
@@ -90,7 +84,6 @@ describe('JobCard', () => {
   });
 
   it('shows a bookmark button and a collapse button', () => {
-    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never);
     mockUseRouter.mockReturnValue(mockRouter() as never);
 
     renderJobCard();
@@ -101,7 +94,6 @@ describe('JobCard', () => {
 
   it('collapses and expands the card body when the toggle button is clicked', async () => {
     const user = userEvent.setup();
-    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never);
     mockUseRouter.mockReturnValue(mockRouter() as never);
 
     renderJobCard();
@@ -115,7 +107,6 @@ describe('JobCard', () => {
   it('redirects an unauthenticated user to /login when clicking bookmark', async () => {
     const user = userEvent.setup();
     const mockPush = vi.fn();
-    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never);
     mockUseRouter.mockReturnValue({ push: mockPush, replace: vi.fn() } as never);
 
     renderJobCard();
@@ -127,11 +118,10 @@ describe('JobCard', () => {
 
   it('toggles the bookmark state for an authenticated user', async () => {
     const user = userEvent.setup();
-    mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never);
     mockUseRouter.mockReturnValue(mockRouter() as never);
     mockCreateClient.mockReturnValue(makeSupabaseClient() as never);
 
-    renderJobCard({ initialBookmarked: false });
+    renderJobCard({ initialBookmarked: false, userId: 'user-1' });
 
     await user.click(screen.getByRole('button', { name: BOOKMARK_LABEL }));
 
@@ -139,7 +129,6 @@ describe('JobCard', () => {
   });
 
   it('shows the SSE toggle button for admin users', () => {
-    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never);
     mockUseRouter.mockReturnValue(mockRouter() as never);
 
     renderJobCard({ isAdmin: true });
@@ -148,7 +137,6 @@ describe('JobCard', () => {
   });
 
   it('does not show the SSE toggle button for non-admin users', () => {
-    mockUseAuth.mockReturnValue(MOCK_AUTH_ANON as never);
     mockUseRouter.mockReturnValue(mockRouter() as never);
 
     renderJobCard();
@@ -166,10 +154,10 @@ describe('JobCard', () => {
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
-    mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never);
     mockUseRouter.mockReturnValue(mockRouter() as never);
 
     renderJobCard({
+      userId: 'user-1',
       job: {
         ...defaultJob,
         values: ['Advancement'],
@@ -212,10 +200,10 @@ describe('JobCard', () => {
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
-    mockUseAuth.mockReturnValue(MOCK_AUTH_USER as never);
     mockUseRouter.mockReturnValue(mockRouter() as never);
 
     renderJobCard({
+      userId: 'user-1',
       job: {
         ...defaultJob,
         values: [],

@@ -124,7 +124,7 @@ describe('/api/account PATCH', () => {
     const response = await PATCH(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(401);
     expect(data.error).toBe('Current password is incorrect.');
     expect(mockUpdateUser).not.toHaveBeenCalled();
     expect(mockAdminSignOut).not.toHaveBeenCalled();
@@ -154,8 +154,8 @@ describe('/api/account PATCH', () => {
     const response = await PATCH(request);
     const data = await response.json();
 
-    expect(response.status).toBe(500);
-    expect(data.error).toBe('Failed to update account');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Authentication failed');
     expect(mockUpdateUser).not.toHaveBeenCalled();
     expect(mockAdminSignOut).not.toHaveBeenCalled();
   });

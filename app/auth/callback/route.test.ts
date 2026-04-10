@@ -3,11 +3,13 @@ import { createClient } from '@/lib/supabase/server';
 import { GET } from './route';
 
 const mockExchangeCodeForSession = vi.fn();
+const mockVerifyOtp = vi.fn();
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
     auth: {
       exchangeCodeForSession: mockExchangeCodeForSession,
+      verifyOtp: mockVerifyOtp,
     },
   })),
 }));
@@ -29,6 +31,7 @@ describe('GET /auth/callback', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockExchangeCodeForSession.mockResolvedValue({ error: null });
+    mockVerifyOtp.mockResolvedValue({ error: null });
   });
 
   it('redirects to auth-code-error when there is no code', async () => {
@@ -117,5 +120,19 @@ describe('GET /auth/callback', () => {
     const response = await GET(request);
 
     expectRedirect(response, `${BASE}/auth/auth-code-error`);
+  });
+
+  it('verifies token_hash links and redirects to next', async () => {
+    const request = new Request(
+      `${BASE}/auth/callback?token_hash=hash123&type=signup&next=%2Fen%2Fprofile`,
+    );
+    const response = await GET(request);
+
+    expect(mockExchangeCodeForSession).not.toHaveBeenCalled();
+    expect(mockVerifyOtp).toHaveBeenCalledWith({
+      type: 'signup',
+      token_hash: 'hash123',
+    });
+    expectRedirect(response, `${BASE}/en/profile`);
   });
 });

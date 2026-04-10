@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   parseAsArrayOf,
@@ -13,6 +13,8 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
+import type { Profile } from '@/lib/supabase/profiles';
+import { useProfileSync } from './useProfileSync';
 import {
   JOB_SORT_OPTIONS,
   POSTED_WITHIN_FILTER_OPTIONS,
@@ -69,11 +71,27 @@ function hasSameSelections(left: string[], right: string[]) {
   return left.every((value) => rightSet.has(value));
 }
 
-export function useBulletinFilters(): BulletinFilterControls {
-  const { user } = useAuth();
-  const userId = user?.id ?? null;
+interface UseBulletinFiltersOptions {
+  initialProfile?: Profile | null;
+  initialUserId?: string | null;
+}
+
+export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): BulletinFilterControls {
+  const { initialProfile = null, initialUserId = null } = options;
+  const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
+  const userId = authLoading ? initialUserId : (user?.id ?? null);
+  const effectiveProfile = userId ? (profile ?? initialProfile ?? null) : null;
+  const effectiveProfileLoading = userId ? profileLoading && !initialProfile : false;
   const searchParams = useSearchParams();
+
+  const initialProfileWorkTypes = useMemo(
+    () => (initialUserId ? normalizeWorkTypes(initialProfile?.work_types) : []),
+    [initialProfile?.work_types, initialUserId],
+  );
+  const initialProfileProvince = initialUserId && initialProfile?.province ? [initialProfile.province] : [];
+  const initialProfileMunicipality =
+    initialUserId && initialProfile?.municipality ? [initialProfile.municipality] : [];
 
   const [searchQuery, setSearchQuery] = useQueryState('q', parseAsString.withDefault(''));
   const [selectedOrganizations, setSelectedOrganizations] = useQueryState(
@@ -82,11 +100,11 @@ export function useBulletinFilters(): BulletinFilterControls {
   );
   const [selectedProvinces, setSelectedProvinces] = useQueryState(
     'province',
-    parseAsArrayOf(parseAsString).withDefault([]),
+    parseAsArrayOf(parseAsString).withDefault(initialProfileProvince),
   );
   const [selectedMunicipalities, setSelectedMunicipalities] = useQueryState(
     'municipality',
-    parseAsArrayOf(parseAsString).withDefault([]),
+    parseAsArrayOf(parseAsString).withDefault(initialProfileMunicipality),
   );
   const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useQueryState(
     'employment',
@@ -98,7 +116,7 @@ export function useBulletinFilters(): BulletinFilterControls {
   );
   const [selectedWorkTypes, setSelectedWorkTypes] = useQueryState(
     'workType',
-    parseAsArrayOf(parseAsString).withDefault([]),
+    parseAsArrayOf(parseAsString).withDefault(initialProfileWorkTypes),
   );
   const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true));
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState(
@@ -116,97 +134,51 @@ export function useBulletinFilters(): BulletinFilterControls {
     'sort',
     parseAsStringLiteral(JOB_SORT_OPTIONS).withDefault('date-desc'),
   );
-  const appliedProfileWorkTypesUserIdRef = useRef<string | null>(null);
-  const appliedProfileLocationUserIdRef = useRef<string | null>(null);
 
   const profileWorkTypes = useMemo(
-    () => normalizeWorkTypes(profile?.work_types),
-    [profile?.work_types],
+    () => normalizeWorkTypes(effectiveProfile?.work_types),
+    [effectiveProfile?.work_types],
   );
   const normalizedSelectedWorkTypes = useMemo(
     () => normalizeWorkTypes(selectedWorkTypes),
     [selectedWorkTypes],
   );
 
-  const searchParamsRef = useRef(searchParams);
-  useEffect(() => {
-    searchParamsRef.current = searchParams;
+  const profileMunicipality = effectiveProfile?.municipality ?? null;
+  const profileProvince = effectiveProfile?.province ?? null;
+
+  // Sync work types from profile on first load
+  useProfileSync(userId, effectiveProfileLoading, 'workType', {
+    profileValue: profileWorkTypes,
+    selectedValue: normalizedSelectedWorkTypes,
+    setter: setSelectedWorkTypes,
+    shouldSync: (profileValue, selectedValue, hasQueryParam) => {
+      if (!profileValue || profileValue.length === 0) return false;
+      if (hasQueryParam || selectedValue.length > 0) return false;
+      return true;
+    },
   });
 
-  useEffect(() => {
-    if (!userId) {
-      appliedProfileWorkTypesUserIdRef.current = null;
-      return;
-    }
-    if (appliedProfileWorkTypesUserIdRef.current === userId) return;
-    if (profileLoading) return;
-
-    if (profileWorkTypes.length === 0) {
-      appliedProfileWorkTypesUserIdRef.current = userId;
-      return;
-    }
-
-    const hasWorkTypeParam = searchParamsRef.current?.has('workType') ?? false;
-    if (hasWorkTypeParam || selectedWorkTypes.length > 0) {
-      appliedProfileWorkTypesUserIdRef.current = userId;
-      return;
-    }
-
-    console.debug('[useBulletinFilters] applying profile work types', { profileWorkTypes });
-    void setSelectedWorkTypes(profileWorkTypes);
-    appliedProfileWorkTypesUserIdRef.current = userId;
-  }, [userId, profileLoading, profileWorkTypes, selectedWorkTypes.length, setSelectedWorkTypes]);
+  // Sync location from profile on first load
+  useProfileSync(userId, effectiveProfileLoading, 'municipality', {
+    profileValue: profileMunicipality && profileProvince ? [profileProvince, profileMunicipality] : null,
+    selectedValue: [...selectedProvinces, ...selectedMunicipalities],
+    setter: ([province, municipality]) => {
+      void setSelectedProvinces([province]);
+      void setSelectedMunicipalities([municipality]);
+    },
+    shouldSync: (profileValue, selectedValue, hasQueryParam) => {
+      if (!profileValue) return false;
+      const hasProvinceParam = searchParams?.has('province') ?? false;
+      if (hasQueryParam || hasProvinceParam || selectedValue.length > 0) return false;
+      return true;
+    },
+  });
 
   const handleResetToProfileWorkTypes = useCallback(() => {
     if (profileWorkTypes.length === 0) return;
     void setSelectedWorkTypes(profileWorkTypes);
   }, [profileWorkTypes, setSelectedWorkTypes]);
-
-  // Pre-fill municipality + province from profile on first load (same pattern as work type)
-  const profileMunicipality = profile?.municipality ?? null;
-  const profileProvince = profile?.province ?? null;
-
-  useEffect(() => {
-    if (!userId) {
-      appliedProfileLocationUserIdRef.current = null;
-      return;
-    }
-    if (appliedProfileLocationUserIdRef.current === userId) return;
-    if (profileLoading) return;
-    if (!profileMunicipality || !profileProvince) {
-      appliedProfileLocationUserIdRef.current = userId;
-      return;
-    }
-
-    const hasMunicipalityParam = searchParamsRef.current?.has('municipality') ?? false;
-    const hasProvinceParam = searchParamsRef.current?.has('province') ?? false;
-    if (
-      hasMunicipalityParam ||
-      hasProvinceParam ||
-      selectedMunicipalities.length > 0 ||
-      selectedProvinces.length > 0
-    ) {
-      appliedProfileLocationUserIdRef.current = userId;
-      return;
-    }
-
-    console.debug('[useBulletinFilters] applying profile location', {
-      profileMunicipality,
-      profileProvince,
-    });
-    void setSelectedProvinces([profileProvince]);
-    void setSelectedMunicipalities([profileMunicipality]);
-    appliedProfileLocationUserIdRef.current = userId;
-  }, [
-    userId,
-    profileLoading,
-    profileMunicipality,
-    profileProvince,
-    selectedMunicipalities.length,
-    selectedProvinces.length,
-    setSelectedMunicipalities,
-    setSelectedProvinces,
-  ]);
 
   const handleResetToProfileLocation = useCallback(() => {
     if (!profileMunicipality || !profileProvince) return;

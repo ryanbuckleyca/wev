@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, ReactNode, useCallback } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { JobPosting, JobMatchData } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 import type { Profile } from '@/lib/supabase/profiles';
 import { parseDateString } from '@/lib/date-utils';
 import Collapsible from './Collapsible';
@@ -18,6 +17,7 @@ import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 interface JobCardProps {
   job: JobPosting;
   isAdmin: boolean;
+  userId: string | null;
   profile: Profile | null;
   onSseToggle: (job: JobPosting) => void;
   onBookmarkToggle?: (job: JobPosting, bookmarked: boolean) => void;
@@ -32,6 +32,7 @@ interface JobCardProps {
 export default function JobCard({
   job,
   isAdmin,
+  userId,
   profile,
   onSseToggle,
   onBookmarkToggle,
@@ -44,7 +45,7 @@ export default function JobCard({
 }: JobCardProps) {
   const t = useTranslations();
   const locale = useLocale();
-  const { user } = useAuth();
+  const dateLocale = locale === 'fr' ? 'fr-CA' : 'en-CA';
 
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
 
@@ -74,7 +75,7 @@ export default function JobCard({
     bookmarked,
     isLoading: bookmarkLoading,
     toggleBookmark,
-  } = useBookmarkAction(job, user, initialBookmarked, onBookmarkToggle);
+  } = useBookmarkAction(job, userId, initialBookmarked, onBookmarkToggle);
 
   // Sync internal expansion state with prop changes
   useEffect(() => {
@@ -129,22 +130,23 @@ export default function JobCard({
     const title =
       job.job_title.length > 25 ? job.job_title.substring(0, 25) + '...' : job.job_title;
     const location = job.location || t('jobCard.remote');
-    const dateStr = parseDateString(job.date_posted).toLocaleDateString(locale, {
+    const dateStr = parseDateString(job.date_posted).toLocaleDateString(dateLocale, {
       month: 'short',
       day: 'numeric',
+      timeZone: 'America/New_York',
     });
     return `${job.organization} - ${title} • ${location} • ${dateStr}`;
-  }, [job, t, locale]);
+  }, [dateLocale, job, t]);
 
   const formatDate = useCallback(
     (dateString: string): string =>
-      parseDateString(dateString).toLocaleDateString(locale, {
+      parseDateString(dateString).toLocaleDateString(dateLocale, {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         timeZone: 'America/New_York',
       }),
-    [locale],
+    [dateLocale],
   );
 
   const hasFooter = (job.values && job.values.length > 0) || (job.skills && job.skills.length > 0);
@@ -185,7 +187,7 @@ export default function JobCard({
             skillDefinitions={skillLabels.defs}
             totalMatchPercentage={scoreData?.total ?? 0}
             matchTooltipContent={matchTooltipContent}
-            showTooltip={Boolean(user && matchProp && matchTooltipContent)}
+            showTooltip={Boolean(userId && matchProp && matchTooltipContent)}
             fadeBackground="var(--muted)"
             workType={job.work_type}
             selectedWorkTypes={selectedWorkTypes || []}

@@ -35,7 +35,7 @@ export default function ResetPasswordPage() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (session) {
+      if (session?.user) {
         setIsValidSession(true);
       } else {
         setError(t('auth.resetPassword.invalidLink'));

@@ -368,6 +368,8 @@
     "button": "Delete Account",
     "passwordRequired": "Password is required to delete your account",
     "confirmationRequired": "Please type DELETE to confirm",
+    "captchaRequired": "Please complete the CAPTCHA verification.",
+    "captchaError": "CAPTCHA verification failed. Please try again.",
     "passwordLabel": "Enter your password",
     "passwordPlaceholder": "Current password",
     "confirmLabel": "Type DELETE to confirm",

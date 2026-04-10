@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { fetchMatchMapForJobs } from '@/lib/bulletin/match-map';
 import { fetchBookmarkedJobIds } from '@/lib/bulletin/client-data';
 import type { JobPosting, JobMatchData } from '@/lib/supabase';
@@ -19,6 +19,10 @@ export function useUserJobMeta(
   );
 
   const [currentUserId, setCurrentUserId] = useState(userId);
+  const hydratedServerUserMetaRef = useRef(
+    initialData?.userId === userId &&
+      (initialData?.matchData !== undefined || initialData?.bookmarkedJobIds !== undefined),
+  );
 
   // Reset state synchronously during render if the user identity changes.
   // This follows React's "Resetting state on prop change" pattern and
@@ -33,6 +37,10 @@ export function useUserJobMeta(
     // If no user or no jobs, there is nothing to fetch.
     // The state is already reset by the render-time sync above.
     if (!userId || allJobs.length === 0) return;
+    if (hydratedServerUserMetaRef.current) {
+      hydratedServerUserMetaRef.current = false;
+      return;
+    }
 
     let cancelled = false;
     const jobIds = allJobs.map((job) => job.id);

@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
+import { getSiteBaseUrl } from '@/lib/site-url';
 import { useEffect, useState, useMemo } from 'react';
 import notify from '@/lib/toast';
 import { usePasswordStrength } from '@/hooks/usePasswordStrength';
@@ -141,11 +142,12 @@ export default function AccountSettingsPage() {
         passwordUpdated = true;
       }
 
-      // Update email if changed
+      // Update email if changed - use client-side to preserve PKCE flow
       if (hasEmailChanges) {
-        const { error: emailError } = await supabase.auth.updateUser({
-          email: newEmail,
-        });
+        const { error: emailError } = await supabase.auth.updateUser(
+          { email: newEmail },
+          { emailRedirectTo: `${getSiteBaseUrl()}/auth/callback` },
+        );
 
         if (emailError) {
           if (passwordUpdated) {
@@ -284,11 +286,11 @@ export default function AccountSettingsPage() {
         </FormContainer>
 
         {/* Delete Account Section */}
-        <div className="mt-8 p-6 border border-red-200 rounded-lg bg-red-50">
-          <Heading level={2} className="mb-4 text-red-800">
+        <div className="mt-8 p-6 border border-red-200 dark:border-red-500/40 rounded-lg bg-red-50 dark:bg-red-950/20">
+          <Heading level={2} className="mb-4 text-red-600 dark:text-red-400">
             {t('deleteAccount.title')}
           </Heading>
-          <p className="text-sm text-red-700 mb-4">{t('deleteAccount.description')}</p>
+          <p className="text-sm text-red-600/90 dark:text-red-400/90 mb-4">{t('deleteAccount.description')}</p>
           <Button
             onClick={() => setShowDeleteModal(true)}
             disabled={isUpdating}

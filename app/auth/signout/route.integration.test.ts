@@ -41,4 +41,14 @@ describe('POST /auth/signout (handler contract)', () => {
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('https://configured.example/login');
   });
+
+  it('normalizes NEXT_PUBLIC_SITE_URL before redirecting', async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = '  https://configured.example/en  ';
+
+    const request = new Request('http://localhost:3000/auth/signout', { method: 'POST' });
+    const response = await POST(request);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('https://configured.example/login');
+  });
 });

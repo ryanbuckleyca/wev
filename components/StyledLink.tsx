@@ -19,7 +19,7 @@ export default function StyledLink({
   size = 'md',
   fullWidth = false,
   className = '',
-  prefetch = true,
+  prefetch = false,
   onClick,
 }: StyledLinkProps) {
   const baseClasses = 'font-medium rounded transition-colors';

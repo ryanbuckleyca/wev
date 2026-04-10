@@ -4,32 +4,55 @@ import { parseLocale } from '@/lib/resolve-skill-labels';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
 import { rolesIncludeAdmin } from '@/lib/auth';
-import { fetchBulletinJobs } from '@/lib/bulletin/server-data';
+import {
+  fetchBulletinJobs,
+  fetchServerBookmarks,
+  fetchServerMatchData,
+  fetchServerProfile,
+} from '@/lib/bulletin/server-data';
 import BulletinPageClient from '@/components/BulletinPageClient';
-import LoadingIndicator from '@/components/LoadingIndicator';
+import BulletinPageSkeleton from '@/components/BulletinPageSkeleton';
 
 // Renders the data fetch independently inside a Suspense boundary
 async function BulletinDataContainer({ parsedLocale }: { parsedLocale: 'en' | 'fr' }) {
-  // Move all blocking queries inside the Suspense boundary so they don't delay the initial HTML stream.
-  // Resolve auth first so the request is fully dynamic before we fetch the cached bulletin payload.
-  const auth = await getRequestUser();
+  const authPromise = getRequestUser();
+  const bulletinDataPromise = fetchBulletinJobs(parsedLocale);
+  const auth = await authPromise;
 
   let isAdmin = false;
+  let initialUserId: string | null = null;
+  let initialMatchData = undefined;
+  let initialBookmarkedJobIds = undefined;
+  let initialProfile = null;
+
   if (auth.ok) {
-    const rolesResult = await fetchUserRolesFromService(auth.user.id);
+    initialUserId = auth.user.id;
+    const [rolesResult, matchData, bookmarkedJobIds, profile] = await Promise.all([
+      fetchUserRolesFromService(auth.user.id),
+      fetchServerMatchData(auth.user.id),
+      fetchServerBookmarks(auth.user.id),
+      fetchServerProfile(auth.user.id),
+    ]);
     const resolvedRoles = rolesResult.ok ? rolesResult.roles : ['user'];
     isAdmin = rolesIncludeAdmin(resolvedRoles);
+    initialMatchData = matchData;
+    initialBookmarkedJobIds = bookmarkedJobIds;
+    initialProfile = profile;
   }
 
-  const bulletinData = await fetchBulletinJobs(parsedLocale);
+  const bulletinData = await bulletinDataPromise;
 
   return (
     <BulletinPageClient
       initialJobs={bulletinData.jobs}
       initialScrapeTime={bulletinData.lastScrapeTime}
       initialSkillLabels={bulletinData.skillLabels}
+      initialUserId={initialUserId}
       isLoggedIn={auth.ok}
       isAdmin={isAdmin}
+      initialMatchData={initialMatchData}
+      initialBookmarkedJobIds={initialBookmarkedJobIds}
+      initialProfile={initialProfile}
     />
   );
 }
@@ -41,10 +64,10 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   const parsedLocale = parseLocale(locale);
 
   // The outer page renders the instant HTML layout shell immediately.
-  // The BulletinDataContainer fetches the jobs JSON payload and auth sequentially
-  // inside the Suspense boundary, swapping the spinner once ready.
+  // The BulletinDataContainer loads the cached jobs payload and any authenticated
+  // user metadata in parallel inside the Suspense boundary.
   return (
-    <Suspense fallback={<LoadingIndicator />}>
+    <Suspense fallback={<BulletinPageSkeleton />}>
       <BulletinDataContainer parsedLocale={parsedLocale} />
     </Suspense>
   );

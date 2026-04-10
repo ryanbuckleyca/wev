@@ -15,6 +15,7 @@ interface BulletinPageClientProps {
   initialJobs: JobPosting[];
   initialScrapeTime: string | null;
   initialSkillLabels: Record<string, SkillLabel>;
+  initialUserId?: string | null;
   isLoggedIn: boolean;
   isAdmin: boolean;
   // Provided when the user was authenticated server-side:
@@ -34,6 +35,7 @@ export default function BulletinPageClient({
   initialJobs,
   initialScrapeTime,
   initialSkillLabels,
+  initialUserId,
   isLoggedIn,
   isAdmin,
   initialMatchData,
@@ -48,17 +50,21 @@ export default function BulletinPageClient({
   const { user, role, loading: authLoading } = useAuth();
   const { profile: clientProfile } = useProfile();
 
+  const effectiveUserId = authLoading ? (initialUserId ?? null) : (user?.id ?? null);
   const effectiveIsLoggedIn = authLoading ? isLoggedIn : !!user;
   const effectiveIsAdmin = authLoading ? isAdmin : role === 'admin';
 
   // Live profile from ProfileContext once loaded, falling back to SSR snapshot.
-  const profile = clientProfile ?? initialProfile ?? null;
+  const profile = effectiveUserId ? (clientProfile ?? initialProfile ?? null) : null;
 
-  const filters = useBulletinFilters();
+  const filters = useBulletinFilters({
+    initialProfile,
+    initialUserId,
+  });
 
   const data = useBulletinData(
     locale,
-    user?.id ?? null,
+    effectiveUserId,
     {
       filters: filters.filters,
       sortBy: filters.sortBy,
@@ -68,6 +74,7 @@ export default function BulletinPageClient({
     {
       jobs: initialJobs,
       scrapeTime: initialScrapeTime,
+      userId: initialUserId ?? null,
       matchData: initialMatchData,
       bookmarkedJobIds: initialBookmarkedJobIds,
       skillLabels: initialSkillLabels,
@@ -78,6 +85,7 @@ export default function BulletinPageClient({
     <BulletinPageView
       isAdmin={effectiveIsAdmin}
       isLoggedIn={effectiveIsLoggedIn}
+      userId={effectiveUserId}
       profile={profile}
       filters={filters}
       data={data}

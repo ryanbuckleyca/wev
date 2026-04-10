@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
 import UserProfile from './UserProfile';
 import ThemeToggle from './ThemeToggle';
@@ -17,30 +18,47 @@ export default function Header({
 }: { hasBanner?: boolean; initialTheme?: 'light' | 'dark' } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false);
   const pathname = usePathname();
+  const t = useTranslations('home');
   const isHomePage = pathname === '/' || pathname === '/jobs';
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (isHomePage) {
-        // On home page, show header when main logo scrolls out of view
-        const mainLogo = document.querySelector('.main-logo');
-        if (mainLogo) {
-          const rect = mainLogo.getBoundingClientRect();
-          const logoOutOfView = rect.bottom < 0;
-          setShouldShowHeader(logoOutOfView);
-        }
-      }
-      // On other pages, header is always shown by default - no scroll logic needed
+    if (!isHomePage) {
+      return;
+    }
+
+    let cancelled = false;
+    let waitRaf = 0;
+
+    const update = () => {
+      if (cancelled) return;
+      const mainLogo = document.querySelector('.main-logo');
+      if (!(mainLogo instanceof HTMLElement)) return;
+      const { bottom } = mainLogo.getBoundingClientRect();
+      setShouldShowHeader(bottom < 0);
     };
 
-    if (isHomePage) {
-      window.addEventListener('scroll', handleScroll);
-      // Initial check for home page
-      handleScroll();
+    const onScrollOrResize = () => update();
 
-      return () => window.removeEventListener('scroll', handleScroll);
-    }
-    // For non-home pages, no scroll listener needed
+    const waitForLogoThenListen = () => {
+      if (cancelled) return;
+      const mainLogo = document.querySelector('.main-logo');
+      if (!mainLogo) {
+        waitRaf = window.requestAnimationFrame(waitForLogoThenListen);
+        return;
+      }
+      update();
+      window.addEventListener('scroll', onScrollOrResize, { passive: true });
+      window.addEventListener('resize', onScrollOrResize, { passive: true });
+    };
+
+    waitForLogoThenListen();
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(waitRaf);
+      window.removeEventListener('scroll', onScrollOrResize);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
   }, [isHomePage]);
 
   // On non-home pages, show header by default
@@ -61,10 +79,10 @@ export default function Header({
         <div
           className={`transition-opacity duration-200 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
-          <Link href="/">
+          <Link href="/" prefetch={false} aria-label={t('heading')} title={t('heading')}>
             <Image
               src={HEADER_LOGOTYPE_URL}
-              alt="wev"
+              alt=""
               width={60}
               height={24}
               className="wev-logotype w-[60px] h-auto cursor-pointer"

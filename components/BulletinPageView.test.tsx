@@ -191,7 +191,16 @@ describe('BulletinPageView', () => {
     const filters = createFilters();
     const data = createData();
 
-    render(<BulletinPageView isAdmin isLoggedIn profile={null} filters={filters} data={data} />);
+    render(
+      <BulletinPageView
+        isAdmin
+        isLoggedIn
+        userId="user-1"
+        profile={null}
+        filters={filters}
+        data={data}
+      />,
+    );
 
     expect(screen.getByText('job-filters:3:2:3')).toBeVisible();
     expect(screen.getByText('job-listings:1')).toBeVisible();
@@ -212,6 +221,7 @@ describe('BulletinPageView', () => {
       <BulletinPageView
         isAdmin={false}
         isLoggedIn={false}
+        userId={null}
         profile={null}
         filters={filters}
         data={data}

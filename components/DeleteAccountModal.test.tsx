@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import DeleteAccountModal from './DeleteAccountModal';
 
+vi.mock('@/components/TurnstileWidget', () => import('@/test-utils/turnstile-widget-mock'));
+
 // Mock the router
 vi.mock('@/i18n/navigation', () => ({
   useRouter: vi.fn(() => ({
@@ -79,31 +81,6 @@ describe('DeleteAccountModal', () => {
     await user.click(screen.getByRole('button', { name: /cancel/i }));
 
     expect(mockOnClose).toHaveBeenCalledOnce();
-  });
-
-  it('has delete button enabled initially', () => {
-    render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />);
-
-    const deleteButton = screen.getByRole('button', { name: /delete account/i });
-    expect(deleteButton).not.toBeDisabled();
-  });
-
-  it('keeps delete button enabled when fields are filled', async () => {
-    render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />);
-
-    const deleteButton = screen.getByRole('button', { name: /delete account/i });
-    const passwordInput = screen.getByPlaceholderText(/current password/i);
-    const confirmInput = screen.getByPlaceholderText(/delete/i);
-
-    expect(deleteButton).not.toBeDisabled();
-
-    // Fill password
-    await user.type(passwordInput, 'mypassword123');
-    expect(deleteButton).not.toBeDisabled();
-
-    // Fill confirmation
-    await user.type(confirmInput, 'DELETE');
-    expect(deleteButton).not.toBeDisabled();
   });
 
   it('shows error when password is missing', async () => {

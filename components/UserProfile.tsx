@@ -76,6 +76,8 @@ export default function UserProfile({
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="sm:hidden p-2 rounded-lg transition-colors relative z-50"
           aria-label={t('userProfile.openMenu')}
+          aria-expanded={isMobileMenuOpen}
+          aria-haspopup="menu"
         >
           <Lineicons
             icon={isMobileMenuOpen ? XmarkOutlined : MenuHamburger1Outlined}
@@ -88,12 +90,14 @@ export default function UserProfile({
         <div className="hidden sm:flex sm:flex-row sm:gap-2">
           <Link
             href="/login"
+            prefetch={false}
             className="w-full sm:w-auto px-4 py-2 h-10 flex items-center justify-center text-sm font-semibold text-primary border border-primary rounded-wev-btn hover:bg-primary-tint transition-colors"
           >
             {t('userProfile.logIn')}
           </Link>
           <Link
             href="/signup"
+            prefetch={false}
             className="w-full sm:w-auto px-4 py-2 h-10 flex items-center justify-center text-sm font-semibold text-white bg-primary rounded-wev-btn hover:bg-opacity-90 transition-all"
           >
             {t('userProfile.signUp')}
@@ -113,6 +117,7 @@ export default function UserProfile({
                   <Link
                     href="/login"
                     onClick={() => setIsMobileMenuOpen(false)}
+                    prefetch={false}
                     className="block w-full px-4 py-2 text-center text-sm font-semibold text-primary border border-primary rounded-wev-btn hover:bg-primary-tint transition-all duration-700 ease-in-out"
                   >
                     {t('userProfile.logIn')}
@@ -120,6 +125,7 @@ export default function UserProfile({
                   <Link
                     href="/signup"
                     onClick={() => setIsMobileMenuOpen(false)}
+                    prefetch={false}
                     className="block w-full px-4 py-2 text-center text-sm font-semibold text-white bg-primary rounded-wev-btn hover:bg-opacity-90 transition-all duration-700 ease-in-out"
                   >
                     {t('userProfile.signUp')}
@@ -161,6 +167,9 @@ export default function UserProfile({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm flex-shrink-0 border border-border relative z-50"
+        aria-label={t('userProfile.openMenu')}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
       >
         {user.email ? user.email[0].toUpperCase() : '?'}
       </button>
@@ -186,7 +195,7 @@ export default function UserProfile({
                 href="/profile"
                 onClick={() => setIsOpen(false)}
                 className="block px-4 py-2 text-sm text-foreground hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
-                prefetch={true}
+                prefetch={false}
               >
                 {t('userProfile.myProfile')}
               </Link>
@@ -194,7 +203,7 @@ export default function UserProfile({
                 href="/bookmarks"
                 onClick={() => setIsOpen(false)}
                 className="block px-4 py-2 text-sm text-foreground hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
-                prefetch={true}
+                prefetch={false}
               >
                 {t('userProfile.myBookmarks')}
               </Link>
@@ -202,7 +211,7 @@ export default function UserProfile({
                 href="/account-settings"
                 onClick={() => setIsOpen(false)}
                 className="block px-4 py-2 text-sm text-foreground hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
-                prefetch={true}
+                prefetch={false}
               >
                 {t('userProfile.accountSettings')}
               </Link>

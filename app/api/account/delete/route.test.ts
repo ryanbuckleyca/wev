@@ -113,7 +113,7 @@ describe('/api/account/delete', () => {
     const response = await DELETE(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(401);
     expect(data.error).toBe('Invalid password');
     expect(mockDeleteUser).not.toHaveBeenCalled();
     expect(mockAdminSignOut).not.toHaveBeenCalled();
@@ -143,8 +143,8 @@ describe('/api/account/delete', () => {
     const response = await DELETE(request);
     const data = await response.json();
 
-    expect(response.status).toBe(500);
-    expect(data.error).toBe('Internal server error');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Authentication failed');
     expect(mockDeleteUser).not.toHaveBeenCalled();
     expect(mockAdminSignOut).not.toHaveBeenCalled();
   });
@@ -166,7 +166,7 @@ describe('/api/account/delete', () => {
 
     const request = new NextRequest('http://localhost:3000/api/account/delete', {
       method: 'DELETE',
-      body: JSON.stringify({ password: 'anypassword' }),
+      body: JSON.stringify({ password: 'validpassword123' }),
     });
 
     const response = await DELETE(request);
@@ -174,6 +174,10 @@ describe('/api/account/delete', () => {
 
     expect(response.status).toBe(200);
     expect(data.message).toBe('Account successfully deleted');
+    expect(mockSignInWithPassword).toHaveBeenCalledWith({
+      email: 'test@example.com',
+      password: 'validpassword123',
+    });
     expect(mockAdminSignOut).toHaveBeenCalledWith('verification-token', 'local');
     expect(mockDeleteUser).toHaveBeenCalledWith('user-123');
   });

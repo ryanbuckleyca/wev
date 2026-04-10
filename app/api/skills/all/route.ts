@@ -19,6 +19,7 @@ type EscoSkillRow = {
 
 // Cache indefinitely - only revalidate on-demand when ESCO skills are updated
 export const revalidate = 86400; // 24 hours server-side cache
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {

@@ -368,6 +368,8 @@
     "button": "Supprimer le compte",
     "passwordRequired": "Le mot de passe est requis pour supprimer votre compte",
     "confirmationRequired": "Veuillez taper SUPPRIMER pour confirmer",
+    "captchaRequired": "Veuillez compléter la vérification CAPTCHA.",
+    "captchaError": "La vérification CAPTCHA a échoué. Veuillez réessayer.",
     "passwordLabel": "Entrez votre mot de passe",
     "passwordPlaceholder": "Mot de passe actuel",
     "confirmLabel": "Tapez SUPPRIMER pour confirmer",

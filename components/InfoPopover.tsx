@@ -47,7 +47,8 @@ export default function InfoPopover({
           ref={triggerRef}
           className={`inline-flex cursor-help ${className}`}
           style={{ touchAction: 'manipulation' }}
-          tabIndex={triggerTabIndex}
+          role="button"
+          tabIndex={triggerTabIndex ?? 0}
         >
           {children}
         </div>

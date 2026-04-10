@@ -446,8 +446,10 @@ export default function StyleGuidePage() {
 
           <h3>Navigation Components</h3>
           <p className="design-section-intro">
-            Navigation components use the same visual styles as buttons but include prefetch for
-            performance.
+            Navigation components use the same visual styles as buttons. LinkButton and StyledLink
+            default to <code className="text-sm">prefetch=&#123;false&#125;</code>; pass{' '}
+            <code className="text-sm">prefetch=&#123;true&#125;</code> when you want Next.js to prefetch
+            that route.
           </p>
 
           <div className="design-button-grid">
@@ -515,12 +517,13 @@ export default function StyleGuidePage() {
 
             <div className="design-button-example">
               <div className="design-button-label">Standard Link</div>
-              <p className="design-button-description">Basic text links with theme colors.</p>
+              <p className="design-button-description">
+                Raw i18n Link with theme colors; uses Next.js prefetch defaults unless overridden.
+              </p>
               <div className="space-y-2">
                 <Link
                   href="/profile"
                   className="text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]"
-                  prefetch={true}
                 >
                   View Profile
                 </Link>
@@ -528,9 +531,9 @@ export default function StyleGuidePage() {
                 <Link
                   href="/style-guide"
                   className="text-[var(--primary)] hover:underline visited:text-[var(--brand-accent)]"
-                  prefetch={true}
+                  prefetch={false}
                 >
-                  Help Documentation
+                  Help Documentation (prefetch off)
                 </Link>
               </div>
             </div>
