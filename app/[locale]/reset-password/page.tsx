@@ -33,9 +33,9 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const checkSession = async () => {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user) {
         setIsValidSession(true);
       } else {
         setError(t('auth.resetPassword.invalidLink'));

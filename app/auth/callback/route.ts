@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     // but the user should already have a valid session
     if (error?.code === 'pkce_code_verifier_not_found' && code) {
       // Check if user already has a valid session (indicates email change, not signup)
-      // Use getUser() instead of getSession() to avoid security warnings
+      // Use getUser() to validate against server, not just local storage
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
