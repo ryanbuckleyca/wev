@@ -128,13 +128,13 @@ describe('/api/account/delete', () => {
 
     const request = new NextRequest('http://localhost:3000/api/account/delete', {
       method: 'DELETE',
-      body: JSON.stringify({ password: 'wrong-password', captchaToken: 'token-123' }),
+      body: JSON.stringify({ password: 'wrong-password', captchaToken: 'valid-captcha-token-123' }),
     });
 
     const response = await DELETE(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(401);
     expect(data.error).toBe('Invalid password');
     expect(mockDeleteUser).not.toHaveBeenCalled();
     expect(mockAdminSignOut).not.toHaveBeenCalled();
@@ -158,14 +158,14 @@ describe('/api/account/delete', () => {
 
     const request = new NextRequest('http://localhost:3000/api/account/delete', {
       method: 'DELETE',
-      body: JSON.stringify({ password: 'wrong-password', captchaToken: 'token-123' }),
+      body: JSON.stringify({ password: 'wrong-password', captchaToken: 'valid-captcha-token-123' }),
     });
 
     const response = await DELETE(request);
     const data = await response.json();
 
-    expect(response.status).toBe(500);
-    expect(data.error).toBe('Internal server error');
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Authentication failed');
     expect(mockDeleteUser).not.toHaveBeenCalled();
     expect(mockAdminSignOut).not.toHaveBeenCalled();
   });
@@ -187,7 +187,7 @@ describe('/api/account/delete', () => {
 
     const request = new NextRequest('http://localhost:3000/api/account/delete', {
       method: 'DELETE',
-      body: JSON.stringify({ password: 'anypassword', captchaToken: 'token-123' }),
+      body: JSON.stringify({ password: 'validpassword123', captchaToken: 'valid-captcha-token-123' }),
     });
 
     const response = await DELETE(request);
@@ -197,8 +197,8 @@ describe('/api/account/delete', () => {
     expect(data.message).toBe('Account successfully deleted');
     expect(mockSignInWithPassword).toHaveBeenCalledWith({
       email: 'test@example.com',
-      password: 'anypassword',
-      options: { captchaToken: 'token-123' },
+      password: 'validpassword123',
+      options: { captchaToken: 'valid-captcha-token-123' },
     });
     expect(mockAdminSignOut).toHaveBeenCalledWith('verification-token', 'local');
     expect(mockDeleteUser).toHaveBeenCalledWith('user-123');

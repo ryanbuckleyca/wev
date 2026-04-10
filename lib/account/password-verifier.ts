@@ -58,10 +58,11 @@ export class PasswordVerifier {
       await this.revokeSession(session.accessToken);
     } catch (error) {
       // Log but don't throw - verification succeeded, cleanup failed
-      logger.error('Failed to revoke verification session', { 
+      logger.error({
+        msg: 'Failed to revoke verification session',
         error,
         email,
-        hasToken: !!session.accessToken 
+        hasToken: !!session.accessToken,
       });
     }
   }
@@ -141,7 +142,8 @@ export class PasswordVerifier {
         throw new AuthenticationError('Email not confirmed', 'EMAIL_NOT_CONFIRMED');
       }
 
-      logger.warn('Password verification failed', {
+      logger.warn({
+        msg: 'Password verification failed',
         code: error.code,
         status: error.status,
         message: error.message,

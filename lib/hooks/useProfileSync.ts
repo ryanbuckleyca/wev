@@ -5,7 +5,7 @@ interface ProfileSyncOptions<T> {
   profileValue: T | null;
   selectedValue: T;
   setter: (value: T) => void;
-  shouldSync: (profileValue: T, selectedValue: T, hasQueryParam: boolean) => boolean;
+  shouldSync: (profileValue: T | null, selectedValue: T, hasQueryParam: boolean) => boolean;
 }
 
 /**
@@ -57,6 +57,7 @@ export function useProfileSync<T>(
     }
 
     appliedUserIdRef.current = userId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     userId,
     profileLoading,
@@ -64,7 +65,6 @@ export function useProfileSync<T>(
     searchParams,
     options.profileValue,
     options.selectedValue,
-    options.shouldSync,
-    options.setter,
+    // options.shouldSync and options.setter are stable callbacks
   ]);
 }

@@ -153,7 +153,7 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     selectedValue: normalizedSelectedWorkTypes,
     setter: setSelectedWorkTypes,
     shouldSync: (profileValue, selectedValue, hasQueryParam) => {
-      if (profileValue.length === 0) return false;
+      if (!profileValue || profileValue.length === 0) return false;
       if (hasQueryParam || selectedValue.length > 0) return false;
       return true;
     },

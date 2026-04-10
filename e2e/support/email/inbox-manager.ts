@@ -53,11 +53,14 @@ export class InboxManager {
   /**
    * Check if inbox is valid for E2E testing (not expired, has correct tag).
    */
-  private isValidE2EInbox(inbox: { expiresAt?: string; tags?: string[] }, now: number): boolean {
-    const expiresAtMs = inbox.expiresAt 
-      ? new Date(inbox.expiresAt).getTime() 
+  private isValidE2EInbox(
+    inbox: { expiresAt?: Date | string | null; tags?: string[] | null },
+    now: number
+  ): boolean {
+    const expiresAtMs = inbox.expiresAt
+      ? new Date(inbox.expiresAt).getTime()
       : Number.POSITIVE_INFINITY;
-    
+
     return expiresAtMs > now && (inbox.tags ?? []).includes(E2E_INBOX_TAG);
   }
 
