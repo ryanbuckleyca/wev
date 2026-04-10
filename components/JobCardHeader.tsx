@@ -69,7 +69,7 @@ export default function JobCardHeader({
             )}
           </button>
         ) : sse ? (
-          <span className="flex-shrink-0" aria-label={t('jobCard.sseJobLabel')}>
+          <span className="flex-shrink-0" role="img" aria-label={t('jobCard.sseJobLabel')}>
             <Lineicons icon={Leaf1Solid} size={16} className="text-wev-success" />
           </span>
         ) : null}

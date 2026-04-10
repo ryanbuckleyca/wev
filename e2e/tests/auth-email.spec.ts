@@ -182,53 +182,125 @@ test.describe('Auth email flows @auth-email', () => {
 
   // ── 3. Confirmed user can log in ──────────────────────────────────────────
   test('confirmed user can log in', async ({ browser }) => {
-    await expectLoginSucceedsInFreshContext(browser, currentEmailAddress, initialPassword);
+    const ctx = await browser.newContext();
+    try {
+      const page = await ctx.newPage();
+      const { AuthPage } = await import('../pages/auth.page');
+      const authPage = new AuthPage(page);
+      
+      await authPage.gotoLogin('en');
+      await authPage.login(currentEmailAddress, initialPassword);
+      await expect(page).toHaveURL(/\/en(\/)?$/);
+      
+      // Update session file with fresh login
+      await ctx.storageState({ path: sessionFile });
+      debugLog('Updated session file after successful login');
+    } finally {
+      await ctx.close();
+    }
   });
 
   // ── 4. Email change ───────────────────────────────────────────────────────
   // Combined test: request email change and confirm it in the same context
   // to preserve PKCE code verifier
   test('account settings email change and confirmation', async ({ browser }) => {
+    // Use the saved session from test 3
     const ctx = await browser.newContext({ storageState: sessionFile });
     const page = await ctx.newPage();
+    
     try {
       const { AuthPage } = await import('../pages/auth.page');
       const ap = new AuthPage(page);
 
-      console.log('Email change test - currentEmailAddress before change:', currentEmailAddress);
-      console.log('Email change test - emailChangeInbox.emailAddress:', emailChangeInbox.emailAddress);
-      console.log('Email change test - emailChangeInbox.id:', emailChangeInbox.id);
+      debugLog('Email change - from:', currentEmailAddress, 'to:', emailChangeInbox.emailAddress);
 
-      // Request email change
-      await ap.requestEmailChange(locale, emailChangeInbox.emailAddress);
+      // Go directly to home page first to verify session works
+      debugLog('Testing saved session by navigating to home...');
+      await page.goto(`http://localhost:3000/en`);
+      await expect(page).toHaveURL(homePath);
+      debugLog('Home page loaded with saved session');
+      
+      // Now try account settings
+      debugLog('Navigating to account settings with saved session...');
+      await ap.gotoAccountSettings(locale);
+      
+      // Debug: capture what's actually on the page
+      const pageContent = await page.content();
+      debugLog('Page HTML length:', pageContent.length);
+      debugLog('Page title:', await page.title());
+      debugLog('Page URL:', page.url());
+      
+      // Check if there's a "Loading..." text
+      const loadingText = await page.getByText(/loading/i).count();
+      debugLog('Loading text count:', loadingText);
+      
+      await expect(page.getByRole('heading', { name: /account settings/i })).toBeVisible({ timeout: 10000 });
+      debugLog('Account settings page loaded');
+      
+      // Fill new email
+      debugLog('Filling new email...');
+      const emailInput = page.getByPlaceholder(/enter new email/i);
+      await emailInput.clear();
+      await emailInput.fill(emailChangeInbox.emailAddress);
+      
+      // Wait for button to be enabled (form state should update)
+      debugLog('Waiting for save button to be enabled...');
+      const saveButton = page.getByRole('button', { name: /save changes/i });
+      await expect(saveButton).toBeEnabled({ timeout: 5000 });
+      
+      debugLog('Clicking save changes...');
+      await saveButton.click();
+      
+      debugLog('Waiting for confirmation message...');
       await expect(page.getByText(/confirmation email sent to your new address/i)).toBeVisible();
       emailChangedAt = new Date();
+      debugLog('Confirmation message visible');
 
-      console.log('Email change test - waiting for email to:', emailChangeInbox.id);
-      emailChangeLink = await waitForLinkWithResendFallback(
+      // Fetch confirmation link for NEW email
+      debugLog('Waiting for new email confirmation in inbox:', emailChangeInbox.id);
+      const newEmailLink = await waitForLinkWithResendFallback(
         page,
         emailChangeInbox.id,
         '/auth/callback',
+        emailChangedAt,
       );
-      console.log('Email change test - got link:', emailChangeLink);
-      currentEmailAddress = emailChangeInbox.emailAddress;
+      debugLog('Got new email confirmation link:', newEmailLink);
 
-      // Confirm from the new email address in the same context
-      await page.goto(emailChangeLink);
+      // Visit new email confirmation link
+      await page.goto(newEmailLink);
 
-      // If Supabase requires old-email confirmation too, fetch and visit it
+      // Check if we need to also confirm from old email
+      // Supabase may require dual confirmation for security
       const currentUrl = page.url();
-      if (currentUrl.includes('auth-code-error') || currentUrl.includes('Confirmation+link+accepted')) {
-        // Use emailChangedAt as since to avoid picking up the old signup link
-        const oldEmailLink = await emailProvider.waitForEmail(primaryInbox.id, '/auth/callback', 60_000, emailChangedAt);
+      debugLog('After new email confirmation, URL:', currentUrl);
+      
+      if (currentUrl.includes('auth-code-error')) {
+        debugLog('Need dual confirmation - fetching old email link');
+        // Fetch and confirm from old email too
+        const oldEmailLink = await emailProvider.waitForEmail(
+          primaryInbox.id,
+          '/auth/callback',
+          EMAIL_CHANGE_DUAL_CONFIRM_TIMEOUT,
+          emailChangedAt,
+        );
+        debugLog('Got old email confirmation link:', oldEmailLink);
         await page.goto(oldEmailLink);
       }
 
-      await expect(page).toHaveURL(homePath);
-      
+      // Should now be redirected to home
+      await expect(page).toHaveURL(homePath, { timeout: 10000 });
+
+      // Update current email AFTER successful confirmation
+      currentEmailAddress = emailChangeInbox.emailAddress;
+      debugLog('Email change complete - new email:', currentEmailAddress);
+
       // Update the session file with the new authenticated state
       await page.context().storageState({ path: sessionFile });
-      
+
+      // Verify old email no longer works
+      await expectLoginFailsInFreshContext(browser, primaryInbox.emailAddress, initialPassword);
+
+      // Verify new email works
       await expectLoginSucceedsInFreshContext(browser, currentEmailAddress, initialPassword);
     } finally {
       await ctx.close();
@@ -255,27 +327,24 @@ test.describe('Auth email flows @auth-email', () => {
       const { AuthPage } = await import('../pages/auth.page');
       const ap = new AuthPage(page);
 
-      // Verify what email Supabase thinks the user has
-      const userCheckScript = await page.evaluate(async () => {
-        const { createClient } = await import('@/lib/supabase/client');
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        return user?.email;
-      });
-      console.log('Supabase user email:', userCheckScript);
-      console.log('Expected email (currentEmailAddress):', currentEmailAddress);
-      console.log('Inbox we are checking:', emailChangeInbox.emailAddress);
+      // After email change, currentEmailAddress === emailChangeInbox.emailAddress
+      expect(currentEmailAddress).toBe(emailChangeInbox.emailAddress);
+      debugLog('Requesting password reset for:', currentEmailAddress);
 
       await ap.gotoForgotPassword(locale);
       await ap.requestPasswordReset(currentEmailAddress);
       await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
 
-      // Wait for password reset email
+      // Wait for password reset email in the current inbox
+      const resetEmailSentAt = new Date();
       resetLink = await emailProvider.waitForEmail(
         emailChangeInbox.id,
         'reset-password',
-        30_000, // 30 seconds
+        EMAIL_WAIT_TIMEOUT,
+        resetEmailSentAt,
       );
+      debugLog('Got password reset link:', resetLink);
+      
       await page.goto(resetLink);
       await expect(page.getByRole('heading', { name: /reset password/i })).toBeVisible();
       await ap.resetPassword(resetPassword);

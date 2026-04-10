@@ -1,13 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { useTranslations } from 'next-intl';
 import { JobPosting, JobMatchData } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 import JobCard from './JobCard';
-import { useAuth } from '@/contexts/AuthContext';
 import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
-import { useContext } from 'react';
 import LoadingIndicator from './LoadingIndicator';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
@@ -15,6 +13,8 @@ interface JobListingsProps {
   jobs: JobPosting[];
   loading: boolean;
   error: string | null;
+  isAdmin: boolean;
+  userId: string | null;
   profile: Profile | null;
   onJobSseChange?: (jobId: string, isSse: boolean) => void;
   onJobBookmarkChange?: (job: JobPosting, bookmarked: boolean) => void;
@@ -27,6 +27,8 @@ export default function JobListings({
   jobs,
   loading,
   error,
+  isAdmin,
+  userId,
   profile,
   onJobSseChange,
   onJobBookmarkChange,
@@ -36,7 +38,6 @@ export default function JobListings({
 }: JobListingsProps) {
   const t = useTranslations();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const { role } = useAuth();
 
   // Conditionally consume context so we don't break the Bookmarks page which isn't wrapped in it.
   const filterContext = useContext(BulletinFilterContext);
@@ -88,8 +89,6 @@ export default function JobListings({
     );
   }
 
-  const isAdmin = role === 'admin';
-
   return (
     <div className="space-y-4">
       {loading && jobs.length > 0 && (
@@ -104,6 +103,7 @@ export default function JobListings({
             key={job.id}
             job={job}
             isAdmin={isAdmin}
+            userId={userId}
             profile={profile}
             onSseToggle={handleSseToggle}
             onBookmarkToggle={onJobBookmarkChange}

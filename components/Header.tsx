@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
 import UserProfile from './UserProfile';
 import ThemeToggle from './ThemeToggle';
@@ -17,30 +18,41 @@ export default function Header({
 }: { hasBanner?: boolean; initialTheme?: 'light' | 'dark' } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false);
   const pathname = usePathname();
+  const t = useTranslations('home');
   const isHomePage = pathname === '/' || pathname === '/jobs';
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (isHomePage) {
-        // On home page, show header when main logo scrolls out of view
-        const mainLogo = document.querySelector('.main-logo');
-        if (mainLogo) {
-          const rect = mainLogo.getBoundingClientRect();
-          const logoOutOfView = rect.bottom < 0;
-          setShouldShowHeader(logoOutOfView);
-        }
+    if (!isHomePage) {
+      return;
+    }
+
+    let cancelled = false;
+    let animationFrameId = 0;
+    let observer: IntersectionObserver | null = null;
+
+    const attachObserver = () => {
+      if (cancelled) return;
+
+      const mainLogo = document.querySelector('.main-logo');
+      if (!(mainLogo instanceof HTMLElement)) {
+        animationFrameId = window.requestAnimationFrame(attachObserver);
+        return;
       }
-      // On other pages, header is always shown by default - no scroll logic needed
+
+      observer = new IntersectionObserver(([entry]) => {
+        setShouldShowHeader(!entry.isIntersecting && entry.boundingClientRect.bottom < 0);
+      });
+
+      observer.observe(mainLogo);
     };
 
-    if (isHomePage) {
-      window.addEventListener('scroll', handleScroll);
-      // Initial check for home page
-      handleScroll();
+    attachObserver();
 
-      return () => window.removeEventListener('scroll', handleScroll);
-    }
-    // For non-home pages, no scroll listener needed
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(animationFrameId);
+      observer?.disconnect();
+    };
   }, [isHomePage]);
 
   // On non-home pages, show header by default
@@ -61,10 +73,10 @@ export default function Header({
         <div
           className={`transition-opacity duration-200 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
-          <Link href="/">
+          <Link href="/" prefetch={false} aria-label={t('heading')} title={t('heading')}>
             <Image
               src={HEADER_LOGOTYPE_URL}
-              alt="wev"
+              alt=""
               width={60}
               height={24}
               className="wev-logotype w-[60px] h-auto cursor-pointer"

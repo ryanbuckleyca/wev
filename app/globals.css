@@ -24,6 +24,7 @@
   --primary-foreground: #ffffff;
 
   --brand-accent: #875c74;
+  --brand-accent-strong: #74495f;
   --brand-accent-tint: #f0e4ec;
 
   --success-solid: #3e8c4f;
@@ -83,6 +84,7 @@
   --primary-text: #7ec5b3;
 
   --brand-accent: #c08da0;
+  --brand-accent-strong: #d8a9bb;
   --brand-accent-tint: #413540;
 
   --success-solid: #3e8c4f;

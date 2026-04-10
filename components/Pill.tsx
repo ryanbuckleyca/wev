@@ -43,7 +43,8 @@ export default function Pill({
     disabled: 'bg-card text-wev-text-tertiary border border-border opacity-60',
   };
 
-  const removableClasses = 'border border-border bg-wev-brand-accent-tint text-wev-brand-accent';
+  const removableClasses =
+    'border border-border bg-wev-brand-accent-tint text-[var(--brand-accent-strong)]';
 
   return (
     <span

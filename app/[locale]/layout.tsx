@@ -11,7 +11,7 @@ import { routing } from '@/i18n/routing';
 
 const lexend = Lexend_Deca({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-lexend',
 });
 
@@ -38,7 +38,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} data-theme={theme} className={lexend.variable} suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         {/* Blocking script to apply persisted theme before first paint on
             hard navigations (cookie may not be set on very first visit). */}
         <script

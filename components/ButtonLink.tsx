@@ -22,7 +22,7 @@ export default function ButtonLink({
 
   const toneClasses: Record<ButtonLinkTone, string> = {
     accent: 'text-wev-brand-accent hover:text-wev-primary-text hover:underline',
-    muted: 'text-wev-text-tertiary hover:text-wev-brand-accent hover:underline',
+    muted: 'text-muted-foreground hover:text-wev-brand-accent hover:underline',
     primary: 'text-[var(--primary)] hover:underline',
   };
 

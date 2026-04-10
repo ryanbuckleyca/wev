@@ -11,6 +11,7 @@ export type { SkillLabel };
 export interface InitialBulletinData {
   jobs: JobPosting[];
   scrapeTime: string | null;
+  userId?: string | null;
   matchData?: SerializedMatchData;
   bookmarkedJobIds?: string[];
   skillLabels?: Record<string, SkillLabel>;

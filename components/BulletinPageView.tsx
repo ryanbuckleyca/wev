@@ -19,6 +19,7 @@ import { BulletinFilterProvider } from '@/contexts/BulletinFilterContext';
 interface BulletinPageViewProps {
   isAdmin: boolean;
   isLoggedIn: boolean;
+  userId: string | null;
   profile: Profile | null;
   filters: BulletinFilterControls;
   data: BulletinDataState;
@@ -27,6 +28,7 @@ interface BulletinPageViewProps {
 export default function BulletinPageView({
   isAdmin,
   isLoggedIn,
+  userId,
   profile,
   filters,
   data,
@@ -46,7 +48,7 @@ export default function BulletinPageView({
           <header className="mb-8">
             <Image
               src={SITE_CONFIG.logotypeUrl}
-              alt="wev"
+              alt={t('home.heading')}
               width={100}
               height={40}
               className="main-logo wev-logotype w-[100px] h-auto mb-2"
@@ -97,6 +99,8 @@ export default function BulletinPageView({
             jobs={data.paginatedJobs}
             loading={data.loading}
             error={data.error}
+            isAdmin={isAdmin}
+            userId={userId}
             profile={profile}
             matchData={data.matchData}
             bookmarkedJobIds={data.bookmarkedJobIds}
