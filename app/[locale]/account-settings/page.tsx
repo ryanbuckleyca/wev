@@ -286,7 +286,7 @@ export default function AccountSettingsPage() {
         </FormContainer>
 
         {/* Delete Account Section */}
-        <div className="mt-8 p-6 border-2 border-red-500/40 rounded-lg bg-red-50 dark:bg-red-950/20">
+        <div className="mt-8 p-6 border border-red-200 dark:border-red-500/40 rounded-lg bg-red-50 dark:bg-red-950/20">
           <Heading level={2} className="mb-4 text-red-600 dark:text-red-400">
             {t('deleteAccount.title')}
           </Heading>
@@ -294,7 +294,7 @@ export default function AccountSettingsPage() {
           <Button
             onClick={() => setShowDeleteModal(true)}
             disabled={isUpdating}
-            className="bg-red-600 hover:bg-red-700 text-white border-none"
+            className="bg-wev-destructive-tint text-destructive-foreground border-none"
           >
             {t('deleteAccount.button')}
           </Button>

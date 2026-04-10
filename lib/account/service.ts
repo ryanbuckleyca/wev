@@ -96,12 +96,10 @@ export async function updatePasswordForCurrentUser({
 
 export async function deleteAccountForCurrentUser({
   password,
-  captchaToken,
   userEmail,
   userId,
 }: {
   password: string;
-  captchaToken: string;
   userEmail?: string | null;
   userId: string;
 }) {
@@ -113,15 +111,11 @@ export async function deleteAccountForCurrentUser({
     );
   }
 
-  if (!captchaToken?.trim()) {
-    throw new AccountServiceError(
-      'Please complete the CAPTCHA verification.',
-      400,
-      'CAPTCHA_REQUIRED'
-    );
-  }
-
   const email = requirePasswordVerificationEmail(userEmail);
+  // Account deletion doesn't require captcha - user is already authenticated
+  const captchaToken = process.env.NEXT_PUBLIC_ENV_MODE === 'test' 
+    ? 'XXXX.DUMMY.TOKEN.XXXX' 
+    : null;
   await verifyPassword(email, password, captchaToken, 'Invalid password');
 
   const adminSupabase = supabaseServer;
