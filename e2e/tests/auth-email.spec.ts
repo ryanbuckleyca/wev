@@ -5,7 +5,7 @@ import {
   expectLoginFailsInFreshContext,
   expectLoginSucceedsInFreshContext,
 } from '../support/auth-flow';
-import { createEphemeralInbox, waitForInboxLink } from '../support/mailslurp';
+import { createEphemeralInbox, waitForInboxLink } from '../support/email';
 
 test.describe('Auth email flows @auth-email', () => {
   test.describe.configure({ mode: 'serial' });
