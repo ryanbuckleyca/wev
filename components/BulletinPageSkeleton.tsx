@@ -36,7 +36,7 @@ export default function BulletinPageSkeleton() {
             alt=""
             width={100}
             height={40}
-            className="wev-logotype w-[100px] h-auto mb-2"
+            className="main-logo wev-logotype w-[100px] h-auto mb-2"
             priority
           />
           <SkeletonBlock className="h-7 w-56 max-w-full" />

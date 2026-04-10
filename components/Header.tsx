@@ -27,31 +27,37 @@ export default function Header({
     }
 
     let cancelled = false;
-    let animationFrameId = 0;
-    let observer: IntersectionObserver | null = null;
+    let waitRaf = 0;
 
-    const attachObserver = () => {
+    const update = () => {
       if (cancelled) return;
-
       const mainLogo = document.querySelector('.main-logo');
-      if (!(mainLogo instanceof HTMLElement)) {
-        animationFrameId = window.requestAnimationFrame(attachObserver);
-        return;
-      }
-
-      observer = new IntersectionObserver(([entry]) => {
-        setShouldShowHeader(!entry.isIntersecting && entry.boundingClientRect.bottom < 0);
-      });
-
-      observer.observe(mainLogo);
+      if (!(mainLogo instanceof HTMLElement)) return;
+      const { bottom } = mainLogo.getBoundingClientRect();
+      setShouldShowHeader(bottom < 0);
     };
 
-    attachObserver();
+    const onScrollOrResize = () => update();
+
+    const waitForLogoThenListen = () => {
+      if (cancelled) return;
+      const mainLogo = document.querySelector('.main-logo');
+      if (!mainLogo) {
+        waitRaf = window.requestAnimationFrame(waitForLogoThenListen);
+        return;
+      }
+      update();
+      window.addEventListener('scroll', onScrollOrResize, { passive: true });
+      window.addEventListener('resize', onScrollOrResize, { passive: true });
+    };
+
+    waitForLogoThenListen();
 
     return () => {
       cancelled = true;
-      window.cancelAnimationFrame(animationFrameId);
-      observer?.disconnect();
+      window.cancelAnimationFrame(waitRaf);
+      window.removeEventListener('scroll', onScrollOrResize);
+      window.removeEventListener('resize', onScrollOrResize);
     };
   }, [isHomePage]);
 
