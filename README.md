@@ -25,9 +25,9 @@ Installed components are added to `components/ui/` and can be customized as need
 
 ### Component Guidelines
 
-#### Three Different Components
+#### Core navigation building blocks
 
-This application uses three distinct components for different purposes:
+This application uses four related components for actions and navigation:
 
 **Button Component**
 
@@ -40,14 +40,20 @@ This application uses three distinct components for different purposes:
 
 - **Purpose:** Navigation that looks like a button
 - **Use for:** Page navigation where button appearance is desired
-- **Behavior:** Navigates to new page, includes prefetch on hover
+- **Behavior:** Navigates to a new page. **`prefetch` defaults to `false`** to avoid prefetching every visible target; pass **`prefetch={true}`** on routes where snappier navigation matters
 - **Appearance:** Identical to Button component styling
+
+**StyledLink Component** (`components/StyledLink.tsx`)
+
+- **Purpose:** Navigation with shared link styling (primary, secondary, outline, text)
+- **Use for:** Inline or compact nav (e.g. “Edit profile” in filters)
+- **Behavior:** Same **`prefetch` default as `LinkButton`** (`false`, opt in with `prefetch={true}`)
 
 **Link Component**
 
-- **Purpose:** Navigation that looks like text
+- **Purpose:** Navigation that looks like text (use `next/link` or, in this app, `Link` from `@/i18n/navigation` for locale-aware URLs)
 - **Use for:** Text links within content, secondary navigation
-- **Behavior:** Navigates to new page, includes prefetch on hover
+- **Behavior:** Navigates to a new page. **`prefetch` follows Next.js defaults** unless you set `prefetch` explicitly (many auth screens omit it and get the framework default)
 - **Appearance:** Text styling with underline on hover
 
 #### Button Component
@@ -80,41 +86,50 @@ Use `<LinkButton>` for navigation between pages when button appearance is desire
 - Page navigation (Profile, Settings, Login)
 - Primary navigation actions
 - Any navigation that needs button styling
-- Includes automatic prefetch on hover for performance
+- **Prefetch:** defaults to **`false`**. Pass **`prefetch={true}`** when you want Next.js to prefetch that route (e.g. a primary destination users often open next)
 
 ```tsx
 import LinkButton from '@/components/LinkButton'
 
-// ✅ Correct: Page navigation with button appearance
+// ✅ Correct: Page navigation with button appearance (no automatic prefetch)
 <LinkButton href="/profile">View Profile</LinkButton>
 
-// ✅ Correct: Navigation with prefetch
-<LinkButton href="/account-settings">Account Settings</LinkButton>
-
-// ✅ Correct: Disable prefetch if needed
-<LinkButton href="/external" prefetch={false}>External Site</LinkButton>
+// ✅ Correct: Opt in to prefetch for a hot path
+<LinkButton href="/account-settings" prefetch={true}>
+  Account Settings
+</LinkButton>
 ```
+
+#### StyledLink Component
+
+`StyledLink` wraps the same i18n `Link` with shared styles; **`prefetch` defaults to `false`** for the same reasons as `LinkButton`. Use **`prefetch={true}`** when you explicitly want prefetching.
 
 #### Link Component
 
-Use `<Link>` for text-style navigation:
+Use `<Link>` (from `next/link`, or **`@/i18n/navigation`** in this app) for text-style navigation:
 
 - Links within content paragraphs
 - Secondary navigation
 - Cross-references in help text
-- Includes prefetch on hover for performance
+- **Prefetch:** Next.js default unless you pass `prefetch={false}` (some shell UI sets `prefetch={false}` to avoid redundant work)
 - **Colors**: Muted Teal (unvisited) → Dusty Lavender (visited)
 
 ```tsx
-import Link from 'next/link'
+import { Link } from '@/i18n/navigation'
 
-// ✅ Correct: Text link in content
-<Link href="/account-settings" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>
+// ✅ Correct: Text link (uses Next.js prefetch defaults for eligible routes)
+<Link href="/account-settings" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]">
   Go to Account Settings
 </Link>
 
-// ✅ Correct: Inline text link
-<p>Visit our <Link href="/help" className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]" prefetch={true}>help page</Link> for more info.</p>
+// ✅ Correct: Explicit prefetch control
+<p>
+  Visit our{' '}
+  <Link href="/help" prefetch={false} className="text-[var(--primary)] hover:underline visited:text-[var(--accent)]">
+    help page
+  </Link>{' '}
+  for more info.
+</p>
 ```
 
 ### Button Layout Best Practices
@@ -152,7 +167,7 @@ Follow our **left-secondary, right-primary** pattern for consistent UX:
 
 ### Performance Features
 
-- **Prefetch on Hover**: All LinkButton components prefetch pages on hover for instant navigation
+- **Link prefetching:** `LinkButton` and `StyledLink` default to **`prefetch={false}`** so lists and menus do not trigger broad route prefetching. Opt in per link with **`prefetch={true}`** where it helps. Plain **`Link`** components use **Next.js defaults** unless `prefetch` is set (see [Next.js `Link` prefetching](https://nextjs.org/docs/app/api-reference/components/link#prefetch)).
 - **Client-side Routing**: Uses Next.js router for SPA-like navigation
 - **Semantic HTML**: Proper button/link elements for accessibility
 

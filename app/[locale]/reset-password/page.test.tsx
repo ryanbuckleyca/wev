@@ -33,9 +33,15 @@ async function waitForResetPasswordFields(): Promise<HTMLElement[]> {
 }
 
 describe('ResetPasswordPage', () => {
+  /** Matches Supabase session shape: page uses `session?.user` to allow the form (see page.tsx). */
+  const validRecoverySession = {
+    access_token: 't',
+    user: { id: 'test-user' },
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetSession.mockResolvedValue({ data: { session: { access_token: 't' } } });
+    mockGetSession.mockResolvedValue({ data: { session: validRecoverySession } });
     mockGetUser.mockResolvedValue({ data: { user: { id: 'test-user' } } });
     mockUpdateUser.mockResolvedValue({ error: null });
     vi.mocked(createClient).mockReturnValue({
