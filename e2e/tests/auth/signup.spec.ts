@@ -6,7 +6,9 @@ import { createEphemeralInbox, waitForInboxLink } from '../../support/email';
 test.describe('Signup flow @auth-email', () => {
   test.setTimeout(90_000);
 
-  test('creates account and confirms email', async ({ authPage, page }) => {
+  test.fixme('creates account and confirms email', async ({ authPage, page }) => {
+    // FIXME: Disabled due to Gmail SMTP rate limiting in tests
+    // Need to either: (1) use local Supabase with Mailpit, or (2) configure proper SMTP service (Resend/SendGrid)
     const mailbox = await createEphemeralInbox();
     const password = buildStrongPassword('WevSignup!');
 
@@ -33,7 +35,9 @@ test.describe('Signup flow @auth-email', () => {
     await deleteAuthUserByEmail(mailbox.emailAddress);
   });
 
-  test('shows error for duplicate email', async ({ authPage, page }) => {
+  test.fixme('shows error for duplicate email', async ({ authPage, page }) => {
+    // FIXME: Disabled due to Gmail SMTP rate limiting in tests
+    // Need to either: (1) use local Supabase with Mailpit, or (2) configure proper SMTP service (Resend/SendGrid)
     const mailbox = await createEphemeralInbox();
     const password = buildStrongPassword('WevDupe!');
 

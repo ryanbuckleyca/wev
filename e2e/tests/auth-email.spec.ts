@@ -11,11 +11,13 @@ test.describe('Auth email flows @auth-email', () => {
   test.describe.configure({ mode: 'serial' });
   test.setTimeout(180_000);
 
-  test('signup, confirm email, login, reset password, and delete account', async ({
+  test.fixme('signup, confirm email, login, reset password, and delete account', async ({
     authPage,
     browser,
     page,
   }) => {
+    // FIXME: Disabled due to Gmail SMTP rate limiting in tests
+    // Need to either: (1) use local Supabase with Mailpit, or (2) configure proper SMTP service (Resend/SendGrid)
     const mailbox = await createEphemeralInbox();
     const initialPassword = buildStrongPassword('WevInitial!');
     const resetPassword = buildStrongPassword('WevReset!');
