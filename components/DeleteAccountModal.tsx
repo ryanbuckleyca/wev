@@ -68,12 +68,12 @@ export default function DeleteAccountModal({ isOpen, onClose }: DeleteAccountMod
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle className="text-destructive">{t('deleteAccount.title')}</DialogTitle>
+          <DialogTitle className="text-red-600 dark:text-red-400">{t('deleteAccount.title')}</DialogTitle>
         </DialogHeader>
 
-        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
-          <p className="text-sm text-destructive mb-2">{t('deleteAccount.warning')}</p>
-          <ul className="text-sm text-destructive/90 list-disc list-inside space-y-1">
+        <div className="p-4 bg-red-50 dark:bg-red-950/30 border-2 border-red-500/40 rounded-lg">
+          <p className="text-sm text-red-700 dark:text-red-400 mb-2 font-semibold">{t('deleteAccount.warning')}</p>
+          <ul className="text-sm text-red-600 dark:text-red-400/90 list-disc list-inside space-y-1">
             <li>{t('deleteAccount.warningProfile')}</li>
             <li>{t('deleteAccount.warningBookmarks')}</li>
             <li>{t('deleteAccount.warningMatches')}</li>
