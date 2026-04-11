@@ -7,11 +7,13 @@
     "skipLibCheck": true,
     "strict": true,
     "baseUrl": ".",
-    "paths": {
-      "@bulletin/*": ["wev-bulletin/*"],
-      "@supabase/*": ["supabase/src/*"]
-    }
   },
-  "include": ["supabase/src/**/*.ts", "wev-bulletin/**/*.ts", "wev-bulletin/**/*.tsx"],
-  "exclude": ["node_modules"]
+  "include": [
+    "supabase/src/**/*.ts",
+    "wev-bulletin/**/*.ts",
+    "wev-bulletin/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
