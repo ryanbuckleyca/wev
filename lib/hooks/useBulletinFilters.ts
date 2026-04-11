@@ -64,6 +64,7 @@ export interface BulletinFilterControls {
   handleResetToProfileLocation: () => void;
   hasAnyFilters: boolean;
   clearAllFilters: () => void;
+  applySuggestedDefaults: () => void;
 }
 
 function hasSameSelections(left: string[], right: string[]) {
@@ -276,7 +277,34 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     setPostedWithin,
   ]);
 
-  return {
+  const defaultWorkTypes = profileWorkTypes.length > 0 ? profileWorkTypes : [];
+
+  const applySuggestedDefaults = useCallback(() => {
+    void setSearchQuery('');
+    void setSelectedOrganizations([]);
+    void setSelectedProvinces([]);
+    void setSelectedMunicipalities([]);
+    void setSelectedEmploymentTypes([]);
+    void setSelectedSources([]);
+    void setSelectedWorkTypes(defaultWorkTypes);
+    void setShowOnlySse(true);
+    void setShowJobsWithoutSalary(true);
+    void setPostedWithin('2-weeks');
+  }, [
+    defaultWorkTypes,
+    setSearchQuery,
+    setSelectedOrganizations,
+    setSelectedProvinces,
+    setSelectedMunicipalities,
+    setSelectedEmploymentTypes,
+    setSelectedSources,
+    setSelectedWorkTypes,
+    setShowOnlySse,
+    setShowJobsWithoutSalary,
+    setPostedWithin,
+  ]);
+
+  return useMemo(() => ({
     filters,
     searchQuery,
     setSearchQuery,
@@ -315,5 +343,46 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     handleResetToProfileLocation,
     hasAnyFilters,
     clearAllFilters,
-  };
+    applySuggestedDefaults,
+  }), [
+    filters,
+    searchQuery,
+    setSearchQuery,
+    selectedOrganizations,
+    setSelectedOrganizations,
+    selectedProvinces,
+    setSelectedProvinces,
+    selectedMunicipalities,
+    setSelectedMunicipalities,
+    selectedEmploymentTypes,
+    setSelectedEmploymentTypes,
+    selectedSources,
+    setSelectedSources,
+    selectedWorkTypes,
+    setSelectedWorkTypes,
+    showOnlySse,
+    setShowOnlySse,
+    showJobsWithoutSalary,
+    setShowJobsWithoutSalary,
+    postedWithin,
+    setPostedWithin,
+    filtersExpanded,
+    setFiltersExpanded,
+    currentPage,
+    setCurrentPage,
+    allJobsExpanded,
+    setAllJobsExpanded,
+    sortBy,
+    setSortBy,
+    profileWorkTypes,
+    isUsingProfileWorkTypes,
+    handleResetToProfileWorkTypes,
+    profileMunicipality,
+    profileProvince,
+    isUsingProfileLocation,
+    handleResetToProfileLocation,
+    hasAnyFilters,
+    clearAllFilters,
+    applySuggestedDefaults,
+  ]);
 }

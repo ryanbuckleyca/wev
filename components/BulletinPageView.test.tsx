@@ -165,6 +165,7 @@ function createFilters(): BulletinFilterControls {
     handleResetToProfileLocation: vi.fn(),
     hasAnyFilters: false,
     clearAllFilters: vi.fn(),
+    applySuggestedDefaults: vi.fn(),
   };
 }
 

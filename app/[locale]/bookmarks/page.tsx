@@ -88,6 +88,7 @@ export default function BookmarksPage() {
         ) : (
           <JobListings
             jobs={jobs}
+            totalJobsCount={jobs.length}
             loading={false}
             error={null}
             isAdmin={role === 'admin'}

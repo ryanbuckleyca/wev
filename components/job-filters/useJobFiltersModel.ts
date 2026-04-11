@@ -127,6 +127,7 @@ export function useJobFiltersModel({
     profileWorkTypes = [],
     hasAnyFilters,
     clearAllFilters,
+    applySuggestedDefaults,
   } = controls;
   const t = useTranslations();
   const hasProfileWorkTypes = profileWorkTypes.length > 0;
@@ -361,31 +362,6 @@ export function useJobFiltersModel({
     },
     [onWorkTypesChange, selectedWorkTypes],
   );
-
-  const applySuggestedDefaults = useCallback(() => {
-    onSearchChange('');
-    onOrganizationsChange([]);
-    onProvincesChange([]);
-    onMunicipalitiesChange([]);
-    onEmploymentTypesChange([]);
-    onSourcesChange([]);
-    onWorkTypesChange(defaultWorkTypes);
-    onShowOnlySseChange(true);
-    onShowJobsWithoutSalaryChange(true);
-    onPostedWithinChange('2-weeks');
-  }, [
-    defaultWorkTypes,
-    onEmploymentTypesChange,
-    onMunicipalitiesChange,
-    onOrganizationsChange,
-    onPostedWithinChange,
-    onProvincesChange,
-    onSearchChange,
-    onShowJobsWithoutSalaryChange,
-    onShowOnlySseChange,
-    onSourcesChange,
-    onWorkTypesChange,
-  ]);
 
   const visibleMunicipalitiesByProvince = useMemo(
     () =>

@@ -22,7 +22,7 @@ interface JobListingsProps {
   matchData?: Map<string, JobMatchData>;
   bookmarkedJobIds?: Set<string>;
   skillLabels?: Record<string, import('@/lib/resolve-skill-labels').SkillLabel>;
-  totalJobsCount?: number;
+  totalJobsCount: number;
 }
 
 export default function JobListings({
@@ -83,7 +83,7 @@ export default function JobListings({
 
   if (!loading && jobs.length === 0) {
     const hasFilters = filterContext?.hasAnyFilters;
-    const hasHiddenJobs = (totalJobsCount ?? 0) > 0;
+    const hasHiddenJobs = totalJobsCount > 0;
     const showFilterClear = hasFilters && hasHiddenJobs;
 
     return (
@@ -96,7 +96,7 @@ export default function JobListings({
         {showFilterClear && (
           <div className="flex flex-col items-center gap-6 mt-2 max-w-md w-full">
             <p className="text-muted-foreground">
-              {t('jobListings.showingFiltered', { showing: 0, total: totalJobsCount ?? 0 })}
+              {t('jobListings.showingFiltered', { showing: jobs.length, total: totalJobsCount })}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
               <button
