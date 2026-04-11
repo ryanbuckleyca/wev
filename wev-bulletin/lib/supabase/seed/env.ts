@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config as loadEnv } from 'dotenv';
 
-const LOCAL_ENV_PATH = path.resolve(process.cwd(), '.env');
+const findEnvPath = () => {
+  const cwd = process.cwd();
+  const local = path.resolve(cwd, '.env');
+  if (fs.existsSync(local)) return local;
+  return path.resolve(cwd, '..', '.env');
+};
+
+const LOCAL_ENV_PATH = findEnvPath();
 
 export interface SupabaseDatabaseConfig {
   projectRef: string;

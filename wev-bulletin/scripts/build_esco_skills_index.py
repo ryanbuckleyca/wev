@@ -30,7 +30,7 @@ from urllib.request import Request, urlopen
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
-DEFAULT_JSON_OUT = REPO_ROOT / "supabase" / "seed" / "esco_skills_index.json"
+DEFAULT_JSON_OUT = REPO_ROOT.parent / "supabase" / "seed" / "esco_skills_index.json"
 ESCO_SEARCH_URL = "https://ec.europa.eu/esco/api/search"
 SUPPORTED_LANGUAGES = ("en", "fr")
 RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
@@ -633,8 +633,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--supabase-key",
-        default=(os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SECRET_KEY") or ""),
-        help="Supabase service role key (default from env SUPABASE_SERVICE_ROLE_KEY / SUPABASE_SECRET_KEY).",
+        default=os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "",
+        help="Supabase service role key (default from env SUPABASE_SERVICE_ROLE_KEY).",
     )
     parser.add_argument(
         "--batch-size",

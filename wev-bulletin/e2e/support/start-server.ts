@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import process from 'node:process';
-import { resetAndSeedDatabase } from '../../lib/supabase/seed/seeder';
+import { resetAndSeedDatabase } from '@/lib/supabase/seed/seeder';
 import {
   getSupabaseDatabaseConfig,
   getWebServerEnv,
