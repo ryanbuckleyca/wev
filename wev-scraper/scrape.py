@@ -89,14 +89,8 @@ def _confirm_prod_run():
         sys.exit(1)
 
 
-# Parse args and apply env side effects before any downstream imports
-_args = parse_args()
-
-if _args.use_prod:
-    _confirm_prod_run()
-    os.environ["USE_PROD_DB"] = "1"
-
-print("scrape.py: loading...", flush=True)
+# Note: Argument parsing and production confirmation are handled in main() 
+# to ensure side-effects don't happen when importing this module in tests.
 
 # Import DB client after we've had a chance to set USE_PROD_DB from CLI
 from utils.db import save_job, log_scrape_run, supabase, get_supabase_url, fetch_all_rows
@@ -565,6 +559,14 @@ def _handle_source_error(e: Exception, scraper, source_name: str | None, summary
 
 
 def main():
+    _args = parse_args()
+
+    if _args.use_prod:
+        _confirm_prod_run()
+        os.environ["USE_PROD_DB"] = "1"
+
+    print("scrape.py: loading...", flush=True)
+
     current_scraper = None
     current_source_name = None
     summary = []
