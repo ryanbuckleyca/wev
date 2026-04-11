@@ -17,16 +17,16 @@ load_dotenv()
 
 # Use production credentials
 SUPABASE_URL = os.environ.get("SUPABASE_PROD_URL")
-SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_PROD_SECRET_KEY")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_PROD_SERVICE_ROLE_KEY")
 
-if not SUPABASE_URL or not SUPABASE_SECRET_KEY:
+if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
     print("❌ Production Supabase credentials not found")
     exit(1)
 
 print(f"🔗 Connecting to: {SUPABASE_URL}")
 
 # Create client
-supabase = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 try:
     # Check if column exists

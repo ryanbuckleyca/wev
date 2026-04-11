@@ -1,0 +1,51 @@
+[
+  {
+    "id": "a7154a94-7c95-442f-811a-12f9a62e5332",
+    "name": "Centre for Social Innovation",
+    "url": "https://socialinnovation.org/where-change-happens/jobs/",
+    "active": true,
+    "created_at": "2026-02-09T02:00:27.594967+00:00"
+  },
+  {
+    "id": "394fd635-bf74-463a-9e74-b17405a8b688",
+    "name": "Ma Communauté (emplois)",
+    "url": "https://macommunaute.ca/emplois/",
+    "active": true,
+    "created_at": "2026-03-15T18:38:31.566962+00:00"
+  },
+  {
+    "id": "01a58f5e-f47c-4310-a2d1-6627a57e2071",
+    "name": "Ma Communauté (bénévolat)",
+    "url": "https://macommunaute.ca/benevolat/",
+    "active": true,
+    "created_at": "2026-03-15T18:38:31.566962+00:00"
+  },
+  {
+    "id": "d644049f-7186-4b7e-8860-adf69a4bd927",
+    "name": "GoodWork ",
+    "url": "https://www.goodwork.ca/search",
+    "active": true,
+    "created_at": "2026-01-17T16:17:17.775845+00:00"
+  },
+  {
+    "id": "eb5a9e52-b626-4539-8539-981240f2dbee",
+    "name": "Eco Canada",
+    "url": "https://eco.ca/new-practitioners/employment-support/job-board/",
+    "active": true,
+    "created_at": "2026-01-17T16:17:17.775845+00:00"
+  },
+  {
+    "id": "c068cbc6-90a5-45cb-95a1-a7281dd76198",
+    "name": "Centraide",
+    "url": "https://www.centraide-mtl.org/carrieres/",
+    "active": true,
+    "created_at": "2026-02-28T23:41:01.203354+00:00"
+  },
+  {
+    "id": "4bbc9bac-76ae-4b2e-bd4e-ac67f739ac2a",
+    "name": "COCo",
+    "url": "https://coco-net.org/job-postings/",
+    "active": true,
+    "created_at": "2026-01-23T17:13:57.505431+00:00"
+  }
+]

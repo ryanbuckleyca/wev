@@ -7,7 +7,7 @@ const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } = getSupa
   'restore.js',
   {
     urlEnv: 'SUPABASE_URL',
-    keyEnvNames: ['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY'],
+    keyEnvNames: ['SUPABASE_SERVICE_ROLE_KEY'],
     keyDescription: 'local service role key',
   },
 );

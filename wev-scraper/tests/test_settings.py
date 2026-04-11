@@ -38,9 +38,9 @@ def test_get_supabase_settings_uses_prod_credentials_when_enabled():
         {
             "USE_PROD_DB": "1",
             "SUPABASE_URL": "http://localhost:54321",
-            "SUPABASE_SECRET_KEY": "local-key",
+            "SUPABASE_SERVICE_ROLE_KEY": "local-key",
             "SUPABASE_PROD_URL": "https://prod.example.supabase.co",
-            "SUPABASE_PROD_SECRET_KEY": "prod-key",
+            "SUPABASE_PROD_SERVICE_ROLE_KEY": "prod-key",
         },
         clear=False,
     ):
@@ -77,7 +77,7 @@ def test_utils_db_import_does_not_create_supabase_client(monkeypatch):
     monkeypatch.setattr(supabase_lib, "create_client", fake_create_client)
     monkeypatch.setattr(settings, "_ENV_LOADED", False)
     monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-    monkeypatch.setenv("SUPABASE_SECRET_KEY", "test-secret-key")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test-secret-key")
 
     db = importlib.reload(db)
 

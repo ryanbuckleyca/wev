@@ -51,12 +51,12 @@ function createSupabaseClient({ prod }) {
     prod
       ? {
           urlEnv: 'SUPABASE_PROD_URL',
-          keyEnvNames: ['SUPABASE_PROD_SECRET_KEY'],
+          keyEnvNames: ['SUPABASE_PROD_SERVICE_ROLE_KEY'],
           keyDescription: 'production service role key',
         }
       : {
           urlEnv: 'SUPABASE_URL',
-          keyEnvNames: ['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY'],
+          keyEnvNames: ['SUPABASE_SERVICE_ROLE_KEY'],
           keyDescription: 'local service role key',
         },
   );

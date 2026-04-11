@@ -3,13 +3,14 @@ import {
   getSupabaseDatabaseConfig, 
   loadSupabaseEnv,
   type SupabaseDatabaseConfig 
-} from '../../lib/supabase/seed/env';
+} from '@/lib/supabase/seed/env';
 
 export const PLAYWRIGHT_PORT = 3000;
 export const PLAYWRIGHT_BASE_URL = `http://localhost:${PLAYWRIGHT_PORT}`;
 
 // Maintain compatibility for existing E2E code
 export type E2ETestDatabaseConfig = SupabaseDatabaseConfig;
+export { loadSupabaseEnv, getSupabaseDatabaseConfig };
 export const loadPlaywrightEnv = loadSupabaseEnv;
 export const getE2ETestDatabaseConfig = getSupabaseDatabaseConfig;
 
