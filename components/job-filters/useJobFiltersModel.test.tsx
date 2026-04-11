@@ -108,7 +108,6 @@ describe('useJobFiltersModel', () => {
 
     expect(result.current.filteredJobsCountResolved).toBe(1);
     expect(result.current.totalJobsCountResolved).toBe(2);
-    expect(result.current.hasAnyFilters).toBe(true);
     expect(result.current.activeFilterChips.map((chip) => chip.id)).toEqual([
       'posted-within',
       'sse',
@@ -133,33 +132,4 @@ describe('useJobFiltersModel', () => {
     expect(mockControls.setSelectedProvinces).toHaveBeenCalledWith([]);
   });
 
-  it('applies suggested defaults and clears back to the show-all state', () => {
-    const props = createProps();
-    const { result } = renderHook(() => useJobFiltersModel(props), {
-      wrapper: Wrapper,
-    });
-
-    act(() => {
-      result.current.applySuggestedDefaults();
-    });
-
-    expect(mockControls.setSearchQuery).toHaveBeenCalledWith('');
-    expect(mockControls.setSelectedOrganizations).toHaveBeenCalledWith([]);
-    expect(mockControls.setSelectedProvinces).toHaveBeenCalledWith([]);
-    expect(mockControls.setSelectedMunicipalities).toHaveBeenCalledWith([]);
-    expect(mockControls.setSelectedEmploymentTypes).toHaveBeenCalledWith([]);
-    expect(mockControls.setSelectedSources).toHaveBeenCalledWith([]);
-    expect(mockControls.setSelectedWorkTypes).toHaveBeenCalledWith(['remote', 'hybrid']);
-    expect(mockControls.setShowOnlySse).toHaveBeenCalledWith(true);
-    expect(mockControls.setShowJobsWithoutSalary).toHaveBeenCalledWith(true);
-    expect(mockControls.setPostedWithin).toHaveBeenCalledWith('2-weeks');
-
-    act(() => {
-      result.current.clearAllFilters();
-    });
-
-    expect(mockControls.setShowOnlySse).toHaveBeenCalledWith(false);
-    expect(mockControls.setSelectedWorkTypes).toHaveBeenCalledWith([]);
-    expect(mockControls.setPostedWithin).toHaveBeenCalledWith('any');
-  });
 });

@@ -398,15 +398,9 @@ export function useJobFiltersModel({
       postedWithinButtonValues.map((value) => ({
         value,
         label:
-          value === '1-week'
-            ? t('filters.postedWithin.options.1Week')
-            : value === '2-weeks'
-              ? t('filters.postedWithin.options.2Weeks')
-              : value === '3-weeks'
-                ? t('filters.postedWithin.options.3Weeks')
-                : value === '1-month'
-                  ? t('filters.postedWithin.options.1Month')
-                  : t('filters.postedWithin.options.any'),
+          value === 'any'
+            ? t('filters.postedWithin.options.any')
+            : t(postedWithinChipOptions[value as PostedWithinOption].fullKey),
       })),
     [t],
   );
