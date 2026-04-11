@@ -5,6 +5,21 @@
 .env.dev
 .env.test
 
+# Dependencies
+node_modules/
+
+# Build artifacts
+.next/
+build/
+dist/
+out/
+*.tsbuildinfo
+
+# Testing
+coverage/
+.output/
+results/
+
 # Editor / AI tools
 .ai/
 .antigravity/
