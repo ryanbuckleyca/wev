@@ -95,7 +95,7 @@ export default function BookmarksPage() {
             userId={user.id}
             profile={profile}
             matchData={matchData}
-            bookmarkedJobIds={new Set(jobs.map((j: { id: string }) => j.id))}
+            bookmarkedJobIds={new Set(jobs.map((j) => j.id))}
             onJobBookmarkChange={(job, bookmarked) => {
               if (!bookmarked) setJobs((prev) => (prev ?? []).filter((j) => j.id !== job.id));
             }}

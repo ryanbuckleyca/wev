@@ -82,9 +82,7 @@ export default function JobListings({
   }
 
   if (!loading && jobs.length === 0) {
-    const hasFilters = filterContext?.hasAnyFilters;
-    const hasHiddenJobs = totalJobsCount > 0;
-    const showFilterClear = hasFilters && hasHiddenJobs;
+    const shouldShowFilterClearPrompt = !!filterContext?.hasAnyFilters && totalJobsCount > 0;
 
     return (
       <div
@@ -92,8 +90,8 @@ export default function JobListings({
         data-testid={JOB_BOARD_TEST_IDS.emptyState}
       >
         <p className="text-foreground text-lg">{t('jobListings.noJobs')}</p>
-        
-        {showFilterClear && (
+
+        {shouldShowFilterClearPrompt && (
           <div className="flex flex-col items-center gap-6 mt-2 max-w-md w-full">
             <p className="text-muted-foreground">
               {t('jobListings.showingFiltered', { total: totalJobsCount })}
