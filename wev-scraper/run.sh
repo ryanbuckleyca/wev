@@ -36,6 +36,9 @@ else
     pip install --quiet -r requirements.txt
 fi
 
+# Ensure local package is installed in editable mode for root-relative imports
+pip install --quiet -e .
+
 # Match prod: ensure Chromium is installed (same as Dockerfile)
 playwright install --with-deps chromium
 

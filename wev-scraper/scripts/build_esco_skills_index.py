@@ -28,9 +28,13 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 
+from dotenv import load_dotenv, find_dotenv
+
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent
-DEFAULT_JSON_OUT = REPO_ROOT.parent / "supabase" / "seed" / "esco_skills_index.json"
+PROJECT_ROOT = SCRIPT_DIR.parent.parent
+load_dotenv(find_dotenv())
+
+DEFAULT_JSON_OUT = PROJECT_ROOT / "supabase" / "seed" / "esco_skills_index.json"
 ESCO_SEARCH_URL = "https://ec.europa.eu/esco/api/search"
 SUPPORTED_LANGUAGES = ("en", "fr")
 RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}

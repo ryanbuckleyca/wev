@@ -2,18 +2,12 @@
 """Simple script to add values column to production database."""
 
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from supabase import create_client
-
-# Ensure project root is on sys.path so environment loading and utils work when running directly
 import sys
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
 
 # Load environment
-load_dotenv()
+load_dotenv(find_dotenv())
 
 # Use production credentials
 SUPABASE_URL = os.environ.get("SUPABASE_PROD_URL")

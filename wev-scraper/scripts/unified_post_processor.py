@@ -13,11 +13,6 @@ import os
 import sys
 from typing import Dict, Any, List
 
-# Ensure project root is on sys.path
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
 
 # Set production flag BEFORE importing db module
 if "--prod" in sys.argv:

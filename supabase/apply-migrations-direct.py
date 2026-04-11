@@ -9,8 +9,8 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 # Load environment
-from dotenv import load_dotenv
-load_dotenv()
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
 
 SUPABASE_URL = os.getenv('SUPABASE_URL') or os.getenv('NEXT_PUBLIC_SUPABASE_URL')
 SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
@@ -19,7 +19,7 @@ if not SUPABASE_URL or not SERVICE_KEY:
     print("Error: Missing SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
     sys.exit(1)
 
-MIGRATIONS_DIR = Path(__file__).parent.parent.parent / 'supabase' / 'migrations'
+MIGRATIONS_DIR = Path(__file__).parent / 'migrations'
 
 MIGRATIONS = [
     '20260307170000_esco_skills_bilingual_reset.sql',
