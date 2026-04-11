@@ -163,6 +163,8 @@ function createFilters(): BulletinFilterControls {
     profileProvince: null,
     isUsingProfileLocation: false,
     handleResetToProfileLocation: vi.fn(),
+    hasAnyFilters: false,
+    clearAllFilters: vi.fn(),
   };
 }
 

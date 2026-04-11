@@ -97,6 +97,7 @@ export default function BulletinPageView({
 
           <JobListings
             jobs={data.paginatedJobs}
+            totalJobsCount={data.allJobs.length}
             loading={data.loading}
             error={data.error}
             isAdmin={isAdmin}

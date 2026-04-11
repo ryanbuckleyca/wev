@@ -140,6 +140,8 @@
     "loading": "Loading jobs...",
     "error": "Error loading job postings",
     "noJobs": "No job postings found.",
+    "showingFiltered": "{showing} jobs visible due to your current filters ({total} total available)",
+    "clearFilters": "Clear all filters",
     "sliderHint": "Scroll horizontally to browse jobs.",
     "stackedHint": "Showing all jobs in a vertical list.",
     "showAll": "Show all",

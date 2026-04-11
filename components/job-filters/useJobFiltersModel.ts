@@ -125,6 +125,8 @@ export function useJobFiltersModel({
     postedWithin,
     setPostedWithin: onPostedWithinChange,
     profileWorkTypes = [],
+    hasAnyFilters,
+    clearAllFilters,
   } = controls;
   const t = useTranslations();
   const hasProfileWorkTypes = profileWorkTypes.length > 0;
@@ -157,18 +159,6 @@ export function useJobFiltersModel({
     () => profileWorkTypes.map((workType) => getWorkTypeLabel(workType)).join(', '),
     [getWorkTypeLabel, profileWorkTypes],
   );
-
-  const hasAnyFilters =
-    !!searchQuery ||
-    selectedOrganizations.length > 0 ||
-    selectedProvinces.length > 0 ||
-    selectedMunicipalities.length > 0 ||
-    selectedEmploymentTypes.length > 0 ||
-    selectedSources.length > 0 ||
-    selectedWorkTypes.length > 0 ||
-    showOnlySse ||
-    !showJobsWithoutSalary ||
-    postedWithin !== 'any';
 
   const isSuggestedDefaults =
     !searchQuery &&
@@ -371,30 +361,6 @@ export function useJobFiltersModel({
     },
     [onWorkTypesChange, selectedWorkTypes],
   );
-
-  const clearAllFilters = useCallback(() => {
-    onSearchChange('');
-    onOrganizationsChange([]);
-    onProvincesChange([]);
-    onMunicipalitiesChange([]);
-    onEmploymentTypesChange([]);
-    onSourcesChange([]);
-    onWorkTypesChange([]);
-    onShowOnlySseChange(false);
-    onShowJobsWithoutSalaryChange(true);
-    onPostedWithinChange('any');
-  }, [
-    onEmploymentTypesChange,
-    onMunicipalitiesChange,
-    onOrganizationsChange,
-    onPostedWithinChange,
-    onProvincesChange,
-    onSearchChange,
-    onShowJobsWithoutSalaryChange,
-    onShowOnlySseChange,
-    onSourcesChange,
-    onWorkTypesChange,
-  ]);
 
   const applySuggestedDefaults = useCallback(() => {
     onSearchChange('');

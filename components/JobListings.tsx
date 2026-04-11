@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { JobPosting, JobMatchData } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 import JobCard from './JobCard';
+import StyledLink from './StyledLink';
 import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
 import LoadingIndicator from './LoadingIndicator';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
@@ -21,6 +22,7 @@ interface JobListingsProps {
   matchData?: Map<string, JobMatchData>;
   bookmarkedJobIds?: Set<string>;
   skillLabels?: Record<string, import('@/lib/resolve-skill-labels').SkillLabel>;
+  totalJobsCount?: number;
 }
 
 export default function JobListings({
@@ -35,6 +37,7 @@ export default function JobListings({
   matchData,
   bookmarkedJobIds,
   skillLabels,
+  totalJobsCount,
 }: JobListingsProps) {
   const t = useTranslations();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -79,12 +82,38 @@ export default function JobListings({
   }
 
   if (!loading && jobs.length === 0) {
+    const hasFilters = filterContext?.hasAnyFilters;
+    const hasHiddenJobs = (totalJobsCount ?? 0) > 0;
+    const showFilterClear = hasFilters && hasHiddenJobs;
+
     return (
       <div
-        className="bg-card border border-border rounded-wev-card p-8 text-center"
+        className="bg-card border border-border rounded-wev-card p-12 text-center flex flex-col items-center justify-center gap-4"
         data-testid={JOB_BOARD_TEST_IDS.emptyState}
       >
-        <p className="text-foreground">{t('jobListings.noJobs')}</p>
+        <p className="text-foreground text-lg">{t('jobListings.noJobs')}</p>
+        
+        {showFilterClear && (
+          <div className="flex flex-col items-center gap-6 mt-2 max-w-md w-full">
+            <p className="text-muted-foreground">
+              {t('jobListings.showingFiltered', { showing: 0, total: totalJobsCount ?? 0 })}
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+              <button
+                type="button"
+                onClick={filterContext?.clearAllFilters}
+                className="wev-btn wev-btn-secondary w-full sm:w-auto"
+              >
+                {t('jobListings.clearFilters')}
+              </button>
+              {userId && (
+                <StyledLink href="/profile" className="wev-btn wev-btn-primary w-full sm:w-auto">
+                  {t('filters.workType.profileLink')}
+                </StyledLink>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -62,6 +62,8 @@ export interface BulletinFilterControls {
   profileProvince: string | null;
   isUsingProfileLocation: boolean;
   handleResetToProfileLocation: () => void;
+  hasAnyFilters: boolean;
+  clearAllFilters: () => void;
 }
 
 function hasSameSelections(left: string[], right: string[]) {
@@ -238,6 +240,42 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     setAllJobsExpandedState(expanded);
   }, []);
 
+  const hasAnyFilters =
+    !!searchQuery ||
+    selectedOrganizations.length > 0 ||
+    selectedProvinces.length > 0 ||
+    selectedMunicipalities.length > 0 ||
+    selectedEmploymentTypes.length > 0 ||
+    selectedSources.length > 0 ||
+    selectedWorkTypes.length > 0 ||
+    showOnlySse ||
+    !showJobsWithoutSalary ||
+    postedWithin !== 'any';
+
+  const clearAllFilters = useCallback(() => {
+    void setSearchQuery('');
+    void setSelectedOrganizations([]);
+    void setSelectedProvinces([]);
+    void setSelectedMunicipalities([]);
+    void setSelectedEmploymentTypes([]);
+    void setSelectedSources([]);
+    void setSelectedWorkTypes([]);
+    void setShowOnlySse(false);
+    void setShowJobsWithoutSalary(true);
+    void setPostedWithin('any');
+  }, [
+    setSearchQuery,
+    setSelectedOrganizations,
+    setSelectedProvinces,
+    setSelectedMunicipalities,
+    setSelectedEmploymentTypes,
+    setSelectedSources,
+    setSelectedWorkTypes,
+    setShowOnlySse,
+    setShowJobsWithoutSalary,
+    setPostedWithin,
+  ]);
+
   return {
     filters,
     searchQuery,
@@ -275,5 +313,7 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     profileProvince,
     isUsingProfileLocation,
     handleResetToProfileLocation,
+    hasAnyFilters,
+    clearAllFilters,
   };
 }
