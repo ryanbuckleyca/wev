@@ -2,6 +2,19 @@
   "name": "wev",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "wev-bulletin",
+    "supabase"
+  ],
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  },
   "scripts": {
     "dev": "npm run dev --prefix wev-bulletin",
     "build": "npm run build --prefix wev-bulletin",
