@@ -18,18 +18,22 @@ def reset_settings_state(monkeypatch):
 
 
 def test_ensure_env_loaded_only_loads_dotenv_once(monkeypatch):
-    calls: list[object | None] = []
+    calls: list[str | None] = []
 
-    def fake_load_dotenv(path: Path | None = None):
+    def fake_load_dotenv(path: str | None = None):
         calls.append(path)
         return True
 
+    def fake_find_dotenv():
+        return str(settings.SCRAPER_ROOT / ".env")
+
     monkeypatch.setattr(settings, "load_dotenv", fake_load_dotenv)
+    monkeypatch.setattr(settings, "find_dotenv", fake_find_dotenv)
 
     settings.ensure_env_loaded()
     settings.ensure_env_loaded()
 
-    assert calls == [settings.SCRAPER_ROOT / ".env", None]
+    assert calls == [str(settings.SCRAPER_ROOT / ".env")]
 
 
 def test_get_supabase_settings_uses_prod_credentials_when_enabled():
