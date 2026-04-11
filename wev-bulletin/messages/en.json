@@ -1,0 +1,719 @@
+{
+  "home": {
+    "heading": "Bulletin – Job Postings",
+    "lastUpdated": "Last updated:",
+    "unknown": "Unknown",
+    "errors": {
+      "timeout": "Request timed out. Please refresh the page.",
+      "loadFailed": "Failed to load data"
+    }
+  },
+  "search": {
+    "placeholder": "Search by job title, organization, location...",
+    "label": "Search jobs",
+    "button": "Search Jobs"
+  },
+  "filters": {
+    "label": "Filters",
+    "hideFilters": "Hide filters",
+    "showFilters": "Filters",
+    "showAllJobs": "Show all jobs",
+    "useSuggestedFilters": "Use suggested filters",
+    "sse": {
+      "label": "Show only SSE jobs",
+      "description": "SSE = Solidarity Economy. We tag SSE jobs based on published principles.",
+      "learnMore": "Learn more"
+    },
+    "salary": {
+      "label": "Show jobs without salary",
+      "description": "Uncheck to hide jobs that don't list pay"
+    },
+    "postedWithin": {
+      "label": "Posted within",
+      "options": {
+        "1Week": "1 week",
+        "2Weeks": "2 weeks",
+        "3Weeks": "3 weeks",
+        "1Month": "1 month",
+        "any": "Any"
+      },
+      "short": {
+        "1Week": "1 wk",
+        "2Weeks": "2 wks",
+        "3Weeks": "3 wks",
+        "1Month": "1 mo"
+      }
+    },
+    "workType": {
+      "label": "Work Type",
+      "remote": "Remote",
+      "hybrid": "Hybrid",
+      "office": "Office",
+      "profileDefault": "Using your profile preference: {types}.",
+      "profileOverride": "Profile preference: {types}. You can override this filter here.",
+      "profileLink": "Edit in profile",
+      "profileReset": "Reset to profile"
+    },
+    "province": {
+      "label": "Province",
+      "noData": "No province data available. Run the scraper to populate location data."
+    },
+    "municipality": {
+      "label": "Municipality",
+      "showingFromSelected": "(showing municipalities from selected provinces)",
+      "noData": "No municipality data available. Run the scraper to populate location data.",
+      "selectProvince": "Select a province to see municipalities",
+      "profileDefault": "Using your profile location: {city}.",
+      "profileOverride": "Profile location: {city}. You can override this filter here.",
+      "profileLink": "Edit in profile",
+      "profileReset": "Reset to profile"
+    },
+    "employmentType": {
+      "label": "Employment Type",
+      "noData": "No employment type data available"
+    },
+    "organization": {
+      "label": "Organization",
+      "noData": "No organization data available"
+    },
+    "source": {
+      "label": "Source",
+      "noData": "No source data available"
+    },
+    "chips": {
+      "posted": "Posted:",
+      "sseShort": "SSE",
+      "sseOnly": "SSE: only",
+      "salaryListedOnly": "Salary: listed only",
+      "search": "Search:",
+      "work": "Work:",
+      "selected": "selected",
+      "province": "province",
+      "provinces": "provinces",
+      "municipality": "municipality",
+      "municipalities": "municipalities",
+      "organization": "organization",
+      "organizations": "organizations",
+      "employmentType": "employment type",
+      "employmentTypes": "employment types",
+      "source": "source",
+      "sources": "sources"
+    }
+  },
+  "sort": {
+    "label": "Sort:",
+    "newestFirst": "Date desc",
+    "oldestFirst": "Date asc",
+    "bestMatch": "Match",
+    "valueMatch": "Values",
+    "skillMatch": "Skills",
+    "salaryHighToLow": "Salary desc",
+    "salaryLowToHigh": "Salary asc",
+    "orgAZ": "Org A ↔ Z"
+  },
+  "matchDetails": {
+    "totalMatch": "Total Match",
+    "values": "Values",
+    "skills": "Skills",
+    "location": "Location",
+    "breakdown": "Breakdown: Values 55% • Skills 35% • Work type 5% • Location 5%",
+    "weightsNote": "Weights are adjusted when some signals are missing.",
+    "locationRequiresProfile": "You selected 'Location' in your profile — add an Ideal Work Environment description to enable location matching.",
+    "locationOutOfRange": "Outside your commute range",
+    "locationNearby": "Within commute range",
+    "locationRegional": "Within regional range",
+    "locationPrioritized": "Location is prioritized in your values"
+  },
+  "expand": {
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all"
+  },
+  "pagination": {
+    "showing": "Showing",
+    "of": "of",
+    "job": "job",
+    "jobs": "jobs",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "jobListings": {
+    "loading": "Loading jobs...",
+    "error": "Error loading job postings",
+    "noJobs": "No job postings found.",
+    "showingFiltered": "Your filters are hiding all {total} available jobs.",
+    "clearFilters": "Clear all filters",
+    "sliderHint": "Scroll horizontally to browse jobs.",
+    "stackedHint": "Showing all jobs in a vertical list.",
+    "showAll": "Show all",
+    "useSlider": "Use slider"
+  },
+  "bookmarks": {
+    "title": "My Bookmarks",
+    "error": "Error",
+    "noBookmarks": "No bookmarked jobs yet.",
+    "loadFailed": "Failed to fetch bookmarked jobs"
+  },
+  "jobCard": {
+    "remote": "Remote",
+    "nA": "N/A",
+    "posted": "Posted",
+    "who": "Who:",
+    "what": "What:",
+    "where": "Where:",
+    "why": "Why:",
+    "when": "When:",
+    "howMuch": "How much:",
+    "perYear": "/ year",
+    "perHour": "/ hour",
+    "volunteer": "Volunteer",
+    "internship": "Internship",
+    "statedHoursPerWeek": "(stated {hours}h/week)",
+    "match": "% match:",
+    "valuesMatch": "% values match:",
+    "skillsMatch": "% skills match:",
+    "removeSse": "Remove SSE Status",
+    "markSse": "Mark as SSE",
+    "sseJob": "SSE job (click to unmark)",
+    "sseJobLabel": "SSE job",
+    "markSseJob": "Mark as SSE job",
+    "removeBookmark": "Remove bookmark",
+    "bookmarkJob": "Bookmark job",
+    "bookmarked": "Bookmarked (click to remove)",
+    "bookmarkJobLabel": "Bookmark job",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "collapseDetails": "Collapse job details",
+    "expandDetails": "Expand job details",
+    "viewMatchDetails": "View match details",
+    "removeSseConfirm": "Remove the SSE tag from \"{title}\" at {org}?",
+    "markSseConfirm": "Mark \"{title}\" at {org} as a Solidarity Economy job?"
+  },
+  "buttons": {
+    "reScrape": "Re-scrape Data",
+    "reScrapeStarting": "Starting...",
+    "reScrapeQueued": "Queued...",
+    "reScrapeRunning": "Running...",
+    "copyAllJobs": "Copy All Jobs",
+    "copyJobsTitle": "Copy {count, plural, one {# job} other {# jobs}} to clipboard",
+    "copied": "Copied!"
+  },
+  "auth": {
+    "login": {
+      "title": "Log in",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Log in",
+      "submitting": "Logging in...",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "captchaError": "CAPTCHA verification failed. Please try again.",
+      "captchaRequired": "Please complete the CAPTCHA verification."
+    },
+    "signup": {
+      "title": "Sign up",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Create account",
+      "submitting": "Creating account...",
+      "hasAccount": "Already have an account?",
+      "logIn": "Log in",
+      "passwordWeak": "Password is too weak. Please choose a stronger password.",
+      "captchaError": "CAPTCHA verification failed. Please try again.",
+      "captchaRequired": "Please complete the CAPTCHA verification."
+    },
+    "checkEmail": {
+      "title": "Check your email",
+      "message": "We sent you an email with a link. Open it to continue.",
+      "primary": "Send another link",
+      "cooldown": "Try again in {seconds}s",
+      "error": "We couldn't send another link. Please try again.",
+      "logIn": "Log in"
+    },
+    "forgotPassword": {
+      "title": "Forgot password?",
+      "description": "Enter your email, we'll send you a reset link.",
+      "email": "Email",
+      "submit": "Send reset link",
+      "submitting": "Sending...",
+      "rememberPassword": "Remember your password?",
+      "logIn": "Log in",
+      "captchaError": "CAPTCHA verification failed. Please try again.",
+      "captchaRequired": "Please complete the CAPTCHA verification."
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "description": "Enter your new password below.",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Update password",
+      "submitting": "Updating...",
+      "verifying": "Verifying session...",
+      "invalidLink": "Invalid or expired reset link. Please request a new one.",
+      "requestNewLink": "Request a new reset link",
+      "passwordWeak": "Password is too weak. Please choose a stronger password.",
+      "passwordsDontMatch": "Passwords do not match.",
+      "success": "Password updated successfully. Redirecting to login..."
+    },
+    "error": {
+      "title": "Authentication error",
+      "message": "Something went wrong during sign-in. Please try again.",
+      "backToLogin": "Back to login"
+    }
+  },
+  "profile": {
+    "title": "My Profile",
+    "noProfileFound": "No Profile Found",
+    "noProfileDescription": "Your profile wasn't created. This may happen if you signed up before the profile system was set up.",
+    "backToJobs": "Back to Jobs",
+    "fullName": "Full Name",
+    "fullNamePlaceholder": "Enter your full name",
+    "bio": "Bio",
+    "bioPlaceholder": "Tell us about yourself...",
+    "workValues": "Work Values",
+    "workType": "Work Type Preference",
+    "workTypeHint": "Used to pre-fill your job search filters. You can still override this on the jobs page.",
+    "workEnvironment": "Ideal Work Environment",
+    "workEnvironmentPlaceholder": "Describe the environment you thrive in...",
+    "workEnvironmentHint": "Up to {max} characters (about 250 words). This is private and only used to personalize your search.",
+    "workEnvironmentCount": "{current}/{max} characters",
+    "workEnvironmentMaxExceeded": "Please keep your work environment description under {max} characters.",
+    "skills": "Skills",
+    "skillsPlaceholder": "Search to add skills…",
+    "skillsPlaceholderShort": "Search to add skills…",
+    "skillsEmptyState": "Type to search 13,485 ESCO skills",
+    "skillsMinChars": "Type at least 2 characters to search.",
+    "skillsNoResults": "No skills found.",
+    "skillsListboxLabel": "Skill search results",
+    "skillsListboxKbdHint": "Use Arrow keys to move through results, Space or Enter to toggle selection.",
+    "skillsSelectedRegionLabel": "Selected skills, {count, number} {count, plural, one {item} other {items}}",
+    "skillsSelectedRegionHint": "Press Enter to move among selected skills and remove them. Press Tab to skip to search results. Arrow Down also moves focus to search results.",
+
+    "skillsSearching": "Searching skills...",
+    "skillsMaxReached": "Maximum {max} skills selected. Remove one to add another.",
+    "skillsHardMaxReached": "Maximum {max} skills reached. Remove one to add another.",
+    "skillsSoftLimitWarning": "You've selected more than {max} skills. We recommend limiting to 15 for better matching results.",
+    "skillsMaxExceeded": "Please remove {current, number} {current, plural, one {skill} other {skills}} to meet the maximum of {max}.",
+    "skillsMatchedAlias": "Matches:",
+    "skillsDone": "Done",
+    "skillsBack": "Back",
+    "skillsModalTriggerLabel": "Search and add skills, opens dialog",
+    "skillsBrowseDialogLabel": "Search and select skills",
+    "valuesPlaceholder": "Search to add values…",
+    "valuesPlaceholderShort": "Search to add values…",
+    "valuesEmptyState": "Type to search work values",
+    "valuesNoResults": "No values match.",
+    "valuesListboxKbdHint": "Use Arrow keys to move through results, Space or Enter to toggle selection.",
+    "valuesDone": "Done",
+    "valuesBack": "Back",
+    "valuesModalTriggerLabel": "Search and add work values, opens dialog",
+    "valuesBrowseDialogLabel": "Search and select work values",
+    "valuesListboxLabel": "Work values",
+    "valuesSelectedRegionLabel": "Selected values, {count, number} {count, plural, one {item} other {items}}",
+    "valuesSelectedRegionHint": "Press Enter to move among selected values and remove them. Press Tab to skip to browse results. Arrow Down also moves focus to browse results.",
+    "sortableDragSkillsHere": "Drag skills here to prioritise",
+    "sortableDragValuesHere": "Drag values here to prioritise",
+    "sortableDragDownUnprioritise": "Drag down here to unprioritise",
+    "sortablePrioritised": "{count, number} prioritised",
+    "sortableDragAbove": "drag above to prioritise",
+    "sortableUnordered": "{count, number} unordered",
+    "valuesHardMaxReached": "Maximum {max} values reached. Remove one to add another.",
+    "valuesSoftLimitWarning": "You've selected more than {max} values. You'll need to remove some before saving.",
+    "valuesMaxExceeded": "Please remove {current, number} {current, plural, one {value} other {values}} to meet the maximum of {max}.",
+    "saveProfile": "Save Profile",
+    "saving": "Saving...",
+    "updateSuccess": "Profile updated successfully!",
+    "updateFailed": "Failed to update profile",
+    "photoUploadSuccess": "Photo uploaded successfully!",
+    "photoUploadFailed": "Failed to upload photo",
+    "locationAndWorkSetting": "Location & Work Setting",
+    "location": "Current City / Region",
+    "locationHint": "Set your preferred location to activate distance-based matching. If you've ranked Location as a value, it carries more weight in your matches.",
+    "locationPriorityCallout": "You've prioritized Location — these preferences carry extra weight in your matches.",
+    "locationSearchError": "Could not load location results. Please try again.",
+    "locationSuggestionsLabel": "Location suggestions"
+  },
+  "accountSettings": {
+    "title": "Account Settings",
+    "emailAddress": "Email Address",
+    "newEmail": "New Email",
+    "newEmailPlaceholder": "Enter new email",
+    "currentEmail": "Current email:",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "currentPasswordPlaceholder": "Enter current password",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "Enter new password",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm new password",
+    "saveChanges": "Save Changes",
+    "saving": "Saving...",
+    "noChanges": "No changes to save",
+    "currentPasswordRequired": "Current password is required",
+    "newPasswordRequired": "New password is required",
+    "confirmPasswordRequired": "Password confirmation is required",
+    "passwordsDontMatch": "Passwords do not match",
+    "passwordWeak": "New password is too weak. Please choose a stronger password.",
+    "passwordSameAsOld": "New password must be different from your current password",
+    "emailRequired": "Email is required",
+    "invalidEmailFormat": "Invalid email format",
+    "emailMustBeDifferent": "New email must be different from current email",
+    "emailUpdateSuccess": "Confirmation email sent to your new address. Please verify it to complete the change.",
+    "passwordUpdateSuccess": "Password updated successfully!",
+    "emailUpdateFailed": "Failed to update email",
+    "passwordUpdateFailed": "Failed to update password",
+    "updateFailed": "Failed to update account"
+  },
+  "deleteAccount": {
+    "title": "Delete Account",
+    "description": "Permanently delete your account and all associated data. This action cannot be undone.",
+    "button": "Delete Account",
+    "passwordRequired": "Password is required to delete your account",
+    "confirmationRequired": "Please type DELETE to confirm",
+    "captchaRequired": "Please complete the CAPTCHA verification.",
+    "captchaError": "CAPTCHA verification failed. Please try again.",
+    "passwordLabel": "Enter your password",
+    "passwordPlaceholder": "Current password",
+    "confirmLabel": "Type DELETE to confirm",
+    "confirmHelp": "Type the word DELETE in capital letters to confirm deletion",
+    "confirm": "Delete Account",
+    "deleting": "Deleting...",
+    "warning": "This action will permanently delete:",
+    "warningProfile": "Your profile and personal information",
+    "warningBookmarks": "All your bookmarked jobs",
+    "warningMatches": "Your job match history",
+    "warningIrreversible": "This action cannot be undone",
+    "success": "Account deleted successfully",
+    "error": "Failed to delete account. Please try again."
+  },
+  "userProfile": {
+    "logIn": "Log In",
+    "signUp": "Sign Up",
+    "myProfile": "My Profile",
+    "myBookmarks": "My Bookmarks",
+    "accountSettings": "Account Settings",
+    "logOut": "Log Out",
+    "loggingOut": "Logging out...",
+    "logoutFailed": "Logout failed",
+    "openMenu": "Open menu",
+    "role": "Role:",
+    "theme": "Site Theme",
+    "language": "Language"
+  },
+  "navigation": {
+    "home": "Home",
+    "jobs": "Jobs",
+    "companies": "Companies",
+    "about": "About",
+    "contact": "Contact"
+  },
+  "footer": {
+    "copyright": "© 2026 Job Board. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  },
+  "common": {
+    "loading": "Loading...",
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "ariaLabels": {
+    "themeToggle": {
+      "switchToLight": "Switch to light mode",
+      "switchToDark": "Switch to dark mode"
+    },
+    "localeSwitcher": {
+      "switchToEnglish": "Switch to English",
+      "switchToFrench": "Switch to French",
+      "toggleLocale": "Toggle language"
+    },
+    "pill": {
+      "remove": "Remove {label}"
+    }
+  },
+  "passwordStrength": {
+    "strength": "Strength:",
+    "veryWeak": "Very Weak",
+    "weak": "Weak",
+    "fair": "Fair",
+    "good": "Good",
+    "strong": "Strong",
+    "acceptable": "✓ Acceptable",
+    "feedback": {
+      "suggestions": {
+        "l33t": "Avoid predictable letter substitutions like '@' for 'a'.",
+        "reverseWords": "Avoid reversed spellings of common words.",
+        "allUppercase": "Capitalize some, but not all letters.",
+        "capitalization": "Capitalize, but not just the first letter.",
+        "dates": "Avoid dates and years associated with you.",
+        "recentYears": "Avoid recent years.",
+        "associatedYears": "Avoid years associated with you.",
+        "sequences": "Avoid common character sequences.",
+        "repeated": "Avoid repeated words and characters.",
+        "longerKeyboardPattern": "Use a longer keyboard pattern with more turns.",
+        "anotherWord": "Add another word or two. Uncommon words are better.",
+        "useWords": "Use a few words, but avoid common phrases.",
+        "noNeed": "You can create strong passwords without symbols, numbers, or uppercase letters.",
+        "pwned": "If you use this password elsewhere, you should change it."
+      },
+      "warnings": {
+        "straightRow": "Straight rows of keys are easy to guess.",
+        "keyPattern": "Short keyboard patterns are easy to guess.",
+        "simpleRepeat": "Repeated characters like 'aaa' are easy to guess.",
+        "extendedRepeat": "Repeated character patterns like 'abcabcabc' are easy to guess.",
+        "sequences": "Common character sequences like 'abc' are easy to guess.",
+        "recentYears": "Recent years are easy to guess.",
+        "dates": "Dates are often easy to guess.",
+        "topTen": "This is a heavily used password.",
+        "topHundred": "This is a frequently used password.",
+        "common": "This is a commonly used password.",
+        "similarToCommon": "This is similar to a commonly used password.",
+        "wordByItself": "Single words are easy to guess.",
+        "namesByThemselves": "Single names or surnames are easy to guess.",
+        "commonNames": "Common names and surnames are easy to guess.",
+        "userInputs": "There should be no personal or page-related data.",
+        "pwned": "This password was exposed by a data breach on the Internet."
+      }
+    }
+  },
+  "reScrape": {
+    "timeout": "Timed out waiting for workflow. Check GitHub Actions.",
+    "checkFailed": "Failed to check workflow status: {error}",
+    "complete": "Re-scrape complete. Refreshing data...",
+    "workflowFailed": "Workflow finished with status: {status}",
+    "triggered": "Workflow triggered. Waiting for it to complete...",
+    "queued": "Queued...",
+    "failedToTrigger": "Failed to trigger workflow",
+    "error": "An error occurred"
+  },
+  "values": {
+    "Advancement": {
+      "name": "Advancement",
+      "description": "Be able to get ahead rapidly, gaining opportunities for growth and seniority from work well-done."
+    },
+    "Adventure": {
+      "name": "Adventure",
+      "description": "Have job duties which involve frequent risk-taking."
+    },
+    "Aesthetic": {
+      "name": "Aesthetics",
+      "description": "Be involved in studying or appreciating the beauty of things or ideas."
+    },
+    "Affiliation": {
+      "name": "Affiliation",
+      "description": "Be recognized as a member of a particular organization."
+    },
+    "Artistic Creativity": {
+      "name": "Artistic creativity",
+      "description": "Engage in creative work in any of several art forms."
+    },
+    "Challenge": {
+      "name": "Challenging problems",
+      "description": "Engage continually with complex questions and demanding tasks, trouble-shooting and problem-solving as a core part of my job."
+    },
+    "Change and Variety": {
+      "name": "Change and variety",
+      "description": "Have work responsibilities frequently changed in content or setting."
+    },
+    "Community": {
+      "name": "Community",
+      "description": "Live in a town or city where I can meet my neighbors and become active in local politics or service projects."
+    },
+    "Competition": {
+      "name": "Competition",
+      "description": "Engage in activities which pit my abilities against others."
+    },
+    "Competence": {
+      "name": "Exercise competence",
+      "description": "Demonstrate a high degree of proficiency in job skills and knowledge; show above average effectiveness."
+    },
+    "Creative Expression": {
+      "name": "Creative expression",
+      "description": "Be able to express in writing and in person my ideas concerning my job and how I might improve it; have opportunities for experimentation and innovation."
+    },
+    "Creativity": {
+      "name": "Creativity (general)",
+      "description": "Create new ideas, programs, organized structures or anything else not following a format developed by others."
+    },
+    "Decision Making": {
+      "name": "Make decisions",
+      "description": "Have the power to decide courses of action, policies, etc — a judgement job."
+    },
+    "Diversity": {
+      "name": "Diversity",
+      "description": "Work in a setting that includes individuals of diverse religious, racial or social backgrounds."
+    },
+    "Environment": {
+      "name": "Environment",
+      "description": "Work on tasks that have a positive effect on the natural environment."
+    },
+    "Excitement": {
+      "name": "Excitement",
+      "description": "Experience a high degree of stimulation or frequent novelty and drama on the job."
+    },
+    "Family": {
+      "name": "Family",
+      "description": "Insure that the type of work I do and the hours I work fit with my family responsibilities."
+    },
+    "Fast Pace": {
+      "name": "Fast pace",
+      "description": "Work in circumstances where there is a high pace of activity and work is done rapidly."
+    },
+    "Financial Gain": {
+      "name": "Profit, gain",
+      "description": "Have a strong likelihood of accumulating large amounts of money or other material gain through ownership, profit-sharing, commissions, merit increases, etc."
+    },
+    "Friendship": {
+      "name": "Friendships",
+      "description": "Develop close personal relationships with people as a result of work activity."
+    },
+    "Fun and Humor": {
+      "name": "Fun and Humor",
+      "description": "Work in a setting where it is possible (and appropriate) to joke and have fun."
+    },
+    "Group & Team": {
+      "name": "Group & Team",
+      "description": "Work with a group to obtain team (rather than individual) results."
+    },
+    "Help Others": {
+      "name": "Help others",
+      "description": "Be involved in helping people directly, either individually or in small groups."
+    },
+    "Help Society": {
+      "name": "Help society",
+      "description": "Do something to contribute to the betterment of the world."
+    },
+    "High Earnings": {
+      "name": "High earnings anticipated",
+      "description": "Be able to purchase essentials and the luxuries of life that I wish."
+    },
+    "Honesty and Integrity": {
+      "name": "Honesty and Integrity",
+      "description": "Work in a setting where honesty and integrity are assets."
+    },
+    "Independence": {
+      "name": "Independence",
+      "description": "Be able to determine the nature of my work without significant direction of others. Not have to follow instructions or to conform to regulations."
+    },
+    "Influence People": {
+      "name": "Influence people",
+      "description": "Be in a position to change attitudes or opinions of others."
+    },
+    "Intellectual Status": {
+      "name": "Intellectual status",
+      "description": "Be regarded as very well-informed and strong theorist, as one acknowledged expert in a given field."
+    },
+    "Job Tranquility": {
+      "name": "Job tranquility",
+      "description": "Avoid pressure and the rat race in my job role and work setting."
+    },
+    "Knowledge": {
+      "name": "Knowledge",
+      "description": "Engage myself in pursuit of knowledge, truth and understanding."
+    },
+    "Location": {
+      "name": "Location",
+      "description": "Find a place to live (town or geographic area) conducive to my lifestyle, a desirable home base for my leisure, learning and work life."
+    },
+    "Moral Fulfillment": {
+      "name": "Moral fulfillment",
+      "description": "Feel that my work is contributing to ideals I feel are very important."
+    },
+    "Personal Safety": {
+      "name": "Personal safety",
+      "description": "Have a high probability of being safe and healthy at work."
+    },
+    "Physical Challenge": {
+      "name": "Physical challenge",
+      "description": "Have a job that requires bodily strength, speed, dexterity or agility."
+    },
+    "Power and Authority": {
+      "name": "Power and authority",
+      "description": "Control the work activities or destinies of others."
+    },
+    "Practicality": {
+      "name": "Practicality",
+      "description": "Be involved in work that yields a practical or useful result."
+    },
+    "Precision Work": {
+      "name": "Precision work",
+      "description": "Deal with tasks that have exact specifications, that require careful, accurate attention to detail."
+    },
+    "Public Contact": {
+      "name": "Public contact",
+      "description": "Have a lot of day-to-day contact with people."
+    },
+    "Recognition": {
+      "name": "Recognition",
+      "description": "Get positive feedback and public credit for work well done."
+    },
+    "Research and Development": {
+      "name": "Work on the frontiers of knowledge",
+      "description": "Work in research and development, generating information and new ideas in the academic, scientific, or business communities."
+    },
+    "Security": {
+      "name": "Security",
+      "description": "Be assured of keeping my job and a reasonable financial reward."
+    },
+    "Spirituality": {
+      "name": "Spirituality",
+      "description": "Work in a setting that is supportive of my spiritual beliefs."
+    },
+    "Stability": {
+      "name": "Stability",
+      "description": "Have a work routine and job duties that are largely predictable and not likely to change over a long period of time."
+    },
+    "Status": {
+      "name": "Status",
+      "description": "Impress or gain the respect of friends, family and community by the nature and/or level of responsibility of my work."
+    },
+    "Steep Learning Curve": {
+      "name": "Steep learning curve",
+      "description": "Be presented with new, unique or difficult tasks to be quickly mastered."
+    },
+    "Structure and Predictability": {
+      "name": "Structure and Predictability",
+      "description": "Do work with a high level of structure and predictability."
+    },
+    "Supervision": {
+      "name": "Supervision",
+      "description": "Have a job in which I am directly responsible for work done by others."
+    },
+    "Time Freedom": {
+      "name": "Time freedom",
+      "description": "Have responsibilities at which I can work according to my time schedule; no specific working hours required."
+    },
+    "Tradition": {
+      "name": "Tradition",
+      "description": "Be involved in work that is consistent with the social traditions in which I was brought up with."
+    },
+    "Work Alone": {
+      "name": "Work alone",
+      "description": "Do projects by myself, without any amount of contact or input from others."
+    },
+    "Work Under Pressure": {
+      "name": "Work under pressure",
+      "description": "Work in time-pressured circumstances, where there is little or no margin for error, or with demanding personal relationships."
+    },
+    "Work with Others": {
+      "name": "Work with others",
+      "description": "Have close working relations with a group and work as a team to common goals."
+    },
+    "Work-Life Balance": {
+      "name": "Work-life balance",
+      "description": "A job that allows me adequate time for my family, hobbies and social activities."
+    },
+    "default": {
+      "description": "A work-related outcome or condition someone may prioritize in a job.",
+      "example": "Example: choosing roles that better match personal motivation and needs."
+    },
+    "selector": {
+      "instruction": "Select the values that matter most to you.",
+      "selected": "selected",
+      "selectedLabel": "Selected",
+      "placeholder": "Search for values...",
+      "noResults": "No values found"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+python-dotenv
+supabase
+requests
+playwright
+playwright-stealth
+python-dateutil
+geocodio-library-python
+google-genai
