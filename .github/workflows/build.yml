@@ -25,6 +25,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Debug working directory
+        run: |
+          pwd
+          ls -la
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
