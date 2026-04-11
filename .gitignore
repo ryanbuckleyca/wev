@@ -1,3 +1,6 @@
+.env
+.env.**
+
 # Editor / AI tools
 .ai/
 .antigravity/
