@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
 import { createMockAuthContext } from '@/test-utils/auth-context-mock';
 import { mockRouterReplace } from '@/test-utils/i18n-navigation-mock';
+import { mockTurnstileReset } from '@/test-utils/turnstile-widget-mock';
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(),
@@ -26,6 +27,7 @@ const mockSignInWithPassword = vi.fn();
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTurnstileReset.mockClear();
     mockSignInWithPassword.mockResolvedValue({ error: null });
     vi.mocked(createClient).mockReturnValue({
       auth: {
@@ -99,6 +101,7 @@ describe('LoginPage', () => {
       });
       expect(mockRouterReplace).toHaveBeenCalledWith('/');
     });
+    expect(mockTurnstileReset).not.toHaveBeenCalled();
   });
 
   it('shows an error when signInWithPassword returns an error', async () => {
@@ -118,6 +121,9 @@ describe('LoginPage', () => {
       expect(screen.getByText('Invalid login credentials')).toBeVisible();
     });
     expect(mockRouterReplace).not.toHaveBeenCalled();
+    // Turnstile tokens are single-use after Supabase validates them; must reset the widget
+    // or the next attempt reuses the token and Cloudflare returns timeout-or-duplicate.
+    expect(mockTurnstileReset).toHaveBeenCalledTimes(1);
   });
 
   it('redirects away when the user is already authenticated', async () => {

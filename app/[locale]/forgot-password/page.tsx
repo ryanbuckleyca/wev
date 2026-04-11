@@ -14,6 +14,7 @@ import FormField from '@/components/FormField';
 import Button from '@/components/Button';
 import CheckEmailCard from '@/components/CheckEmailCard';
 import Message from '@/components/Message';
+import { useAuthTurnstile } from '@/hooks/useAuthTurnstile';
 
 export default function ForgotPasswordPage() {
   const t = useTranslations();
@@ -22,7 +23,8 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [sentEmail, setSentEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const { captchaToken, turnstileProps, recycleTurnstileAfterAuthError, clearCaptchaToken } =
+    useAuthTurnstile(t('auth.forgotPassword.captchaError'), setError);
 
   const supabase = createClient();
 
@@ -45,9 +47,10 @@ export default function ForgotPasswordPage() {
 
     if (error) {
       setError(error.message);
+      recycleTurnstileAfterAuthError();
     } else {
       setSentEmail(email);
-      setCaptchaToken(null);
+      clearCaptchaToken();
     }
 
     setLoading(false);
@@ -89,14 +92,7 @@ export default function ForgotPasswordPage() {
             fullWidth
           />
 
-          <TurnstileWidget
-            onSuccess={(token) => setCaptchaToken(token)}
-            onError={() => {
-              setCaptchaToken(null);
-              setError(t('auth.forgotPassword.captchaError'));
-            }}
-            onExpire={() => setCaptchaToken(null)}
-          />
+          <TurnstileWidget {...turnstileProps} />
 
           <Button type="submit" disabled={loading || !captchaToken} loading={loading} fullWidth>
             {loading ? t('auth.forgotPassword.submitting') : t('auth.forgotPassword.submit')}
