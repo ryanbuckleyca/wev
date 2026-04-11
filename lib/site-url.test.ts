@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getSiteBaseUrl, getSiteBaseUrlFromRequest } from '@/lib/site-url';
 
 const ORIGINAL_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
@@ -30,6 +30,8 @@ describe('getSiteBaseUrlFromRequest', () => {
     process.env.NEXT_PUBLIC_SITE_URL = ':// definitely-not-a-url';
     const request = new Request('http://localhost:3000/auth/signout', { method: 'POST' });
 
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(getSiteBaseUrlFromRequest(request)).toBe('http://localhost:3000');
+    consoleSpy.mockRestore();
   });
 });

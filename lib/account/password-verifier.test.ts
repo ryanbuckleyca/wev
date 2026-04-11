@@ -1,5 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { PasswordVerifier, ValidationError } from './password-verifier';
+
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn().mockReturnValue({
+    auth: {
+      signInWithPassword: vi.fn().mockResolvedValue({ 
+        data: { session: null }, 
+        error: { code: 'AUTH_FAILED', message: 'Mocked failure' } 
+      })
+    }
+  })
+}));
 
 describe('PasswordVerifier', () => {
   describe('input validation', () => {

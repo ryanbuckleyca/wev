@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import { JobPosting, JobMatchData } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 import JobCard from './JobCard';
-import StyledLink from './StyledLink';
 import Button from './Button';
 import LinkButton from './LinkButton';
 import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
