@@ -10,13 +10,7 @@ vi.mock('@/lib/supabase/client', () => ({
 
 vi.mock('@/i18n/navigation', () => import('@/test-utils/i18n-navigation-mock'));
 
-vi.mock('@/components/TurnstileWidget', () => ({
-  default: ({ onSuccess }: { onSuccess: (token: string) => void }) => (
-    <button type="button" onClick={() => onSuccess('turnstile-token')}>
-      Complete CAPTCHA
-    </button>
-  ),
-}));
+vi.mock('@/components/TurnstileWidget', () => import('@/test-utils/turnstile-widget-mock'));
 
 const mockResetPasswordForEmail = vi.fn();
 

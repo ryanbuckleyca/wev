@@ -14,6 +14,7 @@ import FormField from '@/components/FormField';
 import Button from '@/components/Button';
 import ErrorBox from '@/components/ErrorBox';
 import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
+import { useAuthTurnstile } from '@/hooks/useAuthTurnstile';
 
 export default function LoginPage() {
   const t = useTranslations();
@@ -23,7 +24,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const { captchaToken, turnstileProps, recycleTurnstileAfterAuthError } = useAuthTurnstile(
+    t('auth.login.captchaError'),
+    setError,
+  );
 
   const supabase = createClient();
 
@@ -53,6 +57,7 @@ export default function LoginPage() {
     });
     if (error) {
       setError(error.message);
+      recycleTurnstileAfterAuthError();
     } else {
       router.replace('/');
     }
@@ -97,14 +102,7 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <TurnstileWidget
-            onSuccess={(token) => setCaptchaToken(token)}
-            onError={() => {
-              setCaptchaToken(null);
-              setError(t('auth.login.captchaError'));
-            }}
-            onExpire={() => setCaptchaToken(null)}
-          />
+          <TurnstileWidget {...turnstileProps} />
 
           <Button type="submit" disabled={loading || !captchaToken} loading={loading} fullWidth>
             {loading ? t('auth.login.submitting') : t('auth.login.submit')}

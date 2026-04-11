@@ -17,6 +17,7 @@ import Button from '@/components/Button';
 import CheckEmailCard from '@/components/CheckEmailCard';
 import ErrorBox from '@/components/ErrorBox';
 import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
+import { useAuthTurnstile } from '@/hooks/useAuthTurnstile';
 
 export default function SignupPage() {
   const t = useTranslations();
@@ -25,7 +26,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [sentEmail, setSentEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const { captchaToken, turnstileProps, recycleTurnstileAfterAuthError, clearCaptchaToken } =
+    useAuthTurnstile(t('auth.signup.captchaError'), setError);
 
   const passwordStrength = usePasswordStrength(password);
   const supabase = createClient();
@@ -59,9 +61,10 @@ export default function SignupPage() {
 
     if (error) {
       setError(error.message);
+      recycleTurnstileAfterAuthError();
     } else {
       setSentEmail(email);
-      setCaptchaToken(null);
+      clearCaptchaToken();
     }
 
     setLoading(false);
@@ -111,14 +114,7 @@ export default function SignupPage() {
           />
           <PasswordStrengthIndicator passwordStrength={passwordStrength} />
 
-          <TurnstileWidget
-            onSuccess={(token) => setCaptchaToken(token)}
-            onError={() => {
-              setCaptchaToken(null);
-              setError(t('auth.signup.captchaError'));
-            }}
-            onExpire={() => setCaptchaToken(null)}
-          />
+          <TurnstileWidget {...turnstileProps} />
 
           <Button
             type="submit"
