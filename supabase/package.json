@@ -1,5 +1,5 @@
 {
-  "name": "@supabase",
+  "name": "supabase",
   "version": "1.0.0",
   "private": true,
   "description": "Shared Supabase infrastructure, seeding logic, and schema types.",
