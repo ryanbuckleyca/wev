@@ -1,0 +1,45 @@
+import { resetAndSeedDatabase } from '@supabase/seeder';
+import { config as loadEnv } from 'dotenv';
+import fs from 'node:fs';
+
+/**
+ * Playwright Global Setup
+ * Runs once before all tests to prepare the environment and seed the database.
+ */
+async function globalSetup() {
+  console.log('▶ E2E Global Setup: Initializing test environment...');
+
+  try {
+    // Prioritize .env.test if it exists
+    const envPath = fs.existsSync('.env.test') ? '.env.test' : '.env';
+    loadEnv({ path: envPath });
+
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const projectRef = process.env.SUPABASE_PROJECT_REF || 'localhost';
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('❌ ERROR: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing during E2E setup.');
+      process.exit(1);
+    }
+
+    // Safety check: Never seed production
+    if (projectRef !== 'localhost' && projectRef !== '127' && projectRef !== 'supabase') {
+      console.error(`❌ ERROR: Refusing to seed a non-local database (${projectRef}) during E2E setup.`);
+      process.exit(1);
+    }
+
+    console.log(`▶ Seeding test database: ${supabaseUrl}`);
+    await resetAndSeedDatabase({
+      supabaseUrl,
+      serviceRoleKey,
+      projectRef,
+    });
+    console.log('✅ E2E Global Setup: Database seeded successfully.');
+  } catch (error) {
+    console.error('❌ E2E Global Setup: Failed to prepare environment:', error);
+    process.exit(1);
+  }
+}
+
+export default globalSetup;

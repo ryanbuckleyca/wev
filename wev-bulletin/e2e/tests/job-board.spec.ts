@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures';
 import type { JobBoardPage } from '../pages/job-board.page';
-import { SEEDED_JOB_BOARD_EXPECTATIONS } from '@/lib/supabase/seed/dataset';
 import { expectJobBoardReady, loadEnglishJobBoard } from '../support/job-board';
+import { SEEDED_JOB_BOARD_EXPECTATIONS } from '@supabase/dataset';
 
 const FILTER_LABELS = {
   employmentType: {
@@ -33,7 +33,11 @@ const FILTER_LABELS = {
   },
 } as const;
 
-async function expectVisibleResults(jobBoardPage: JobBoardPage, totalJobs: number): Promise<void> {
+async function expectVisibleResults(
+  jobBoardPage: JobBoardPage,
+  totalJobs: number,
+  expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+): Promise<void> {
   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
 
   if (totalJobs === 0) {
@@ -43,18 +47,18 @@ async function expectVisibleResults(jobBoardPage: JobBoardPage, totalJobs: numbe
   }
 
   await expect(jobBoardPage.jobCards).toHaveCount(
-    Math.min(totalJobs, SEEDED_JOB_BOARD_EXPECTATIONS.firstPageCount),
+    Math.min(totalJobs, expectations.firstPageCount),
   );
 }
 
 test.describe('Job board', () => {
-  test('loads the English job board with seeded jobs', async ({ jobBoardPage }) => {
+  test('loads the English job board with seeded jobs', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);
-    await expect(jobBoardPage.jobCards).toHaveCount(SEEDED_JOB_BOARD_EXPECTATIONS.firstPageCount);
+    await expect(jobBoardPage.jobCards).toHaveCount(expectations.firstPageCount);
     await expect(jobBoardPage.jobCards.first()).toBeVisible();
     await expect(jobBoardPage.paginationSummary).toContainText('1-20');
     await expect(jobBoardPage.paginationSummary).toContainText(
-      String(SEEDED_JOB_BOARD_EXPECTATIONS.jobCount),
+      String(expectations.jobCount),
     );
   });
 
@@ -78,18 +82,18 @@ test.describe('Job board', () => {
       .toEqual(['new-user', 'saved-jobs']);
   });
 
-  test('search narrows the list to a matching seeded job', async ({ jobBoardPage }) => {
+  test('search narrows the list to a matching seeded job', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
-    await jobBoardPage.searchFor(SEEDED_JOB_BOARD_EXPECTATIONS.sampleJobs.searchMatch);
+    await jobBoardPage.searchFor(expectations.sampleJobs.searchMatch);
 
     await expect
       .poll(() => new URL(jobBoardPage.page.url()).searchParams.get('q'))
-      .toBe(SEEDED_JOB_BOARD_EXPECTATIONS.sampleJobs.searchMatch);
-    await expectVisibleResults(jobBoardPage, 1);
+      .toBe(expectations.sampleJobs.searchMatch);
+    await expectVisibleResults(jobBoardPage, 1, expectations);
   });
 
-  test('shows the empty state when search removes every job', async ({ jobBoardPage }) => {
+  test('shows the empty state when search removes every job', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);
     await expect(jobBoardPage.jobCards.first()).toBeVisible();
 
@@ -98,148 +102,150 @@ test.describe('Job board', () => {
     await expect
       .poll(() => new URL(jobBoardPage.page.url()).searchParams.get('q'))
       .toBe('no-such-role-for-playwright');
-    await expectVisibleResults(jobBoardPage, 0);
+    await expectVisibleResults(jobBoardPage, 0, expectations);
   });
 
-  test('paginates through the seeded dataset', async ({ jobBoardPage }) => {
+  test('paginates through the seeded dataset', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);
     await expect(jobBoardPage.paginationSummary).toContainText('1-20');
 
     await jobBoardPage.goToPage(2);
 
     await expect.poll(() => new URL(jobBoardPage.page.url()).searchParams.get('page')).toBe('2');
-    await expect(jobBoardPage.jobCards).toHaveCount(SEEDED_JOB_BOARD_EXPECTATIONS.secondPageCount);
+    await expect(jobBoardPage.jobCards).toHaveCount(expectations.secondPageCount);
     await expect(jobBoardPage.paginationSummary).toContainText('21-25');
     await expect(jobBoardPage.paginationSummary).toContainText(
-      String(SEEDED_JOB_BOARD_EXPECTATIONS.jobCount),
+      String(expectations.jobCount),
     );
   });
 
-  test('filters to jobs posted within one week', async ({ jobBoardPage }) => {
+  test('filters to jobs posted within one week', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
     await jobBoardPage.selectFilterButton('postedWithin', FILTER_LABELS.postedWithin.oneWeek);
 
-    await expectVisibleResults(jobBoardPage, SEEDED_JOB_BOARD_EXPECTATIONS.oneWeekCount);
+    await expectVisibleResults(jobBoardPage, expectations.oneWeekCount, expectations);
   });
 
-  for (const workTypeCase of [
+  const WORK_TYPE_CASES = (expectations: any) => [
     {
       label: FILTER_LABELS.workType.remote,
-      total: SEEDED_JOB_BOARD_EXPECTATIONS.workTypeCounts.remote,
+      total: expectations.workTypeCounts.remote,
     },
     {
       label: FILTER_LABELS.workType.hybrid,
-      total: SEEDED_JOB_BOARD_EXPECTATIONS.workTypeCounts.hybrid,
+      total: expectations.workTypeCounts.hybrid,
     },
     {
       label: FILTER_LABELS.workType.office,
-      total: SEEDED_JOB_BOARD_EXPECTATIONS.workTypeCounts.office,
+      total: expectations.workTypeCounts.office,
     },
-  ]) {
-    test(`filters by work type: ${workTypeCase.label}`, async ({ jobBoardPage }) => {
+  ];
+
+  test('filters by work types', async ({ jobBoardPage, expectations }) => {
+    for (const workTypeCase of WORK_TYPE_CASES(expectations)) {
       await loadEnglishJobBoard(jobBoardPage);
-
       await jobBoardPage.selectFilterButton('workType', workTypeCase.label);
+      await expectVisibleResults(jobBoardPage, workTypeCase.total, expectations);
+    }
+  });
 
-      await expectVisibleResults(jobBoardPage, workTypeCase.total);
-    });
-  }
-
-  for (const sourceCase of [
+  const SOURCE_CASES = (expectations: any) => [
     {
       label: FILTER_LABELS.source.wevOpportunities,
-      total: SEEDED_JOB_BOARD_EXPECTATIONS.sourceCounts.wevOpportunities,
+      total: expectations.sourceCounts.wevOpportunities,
     },
     {
       label: FILTER_LABELS.source.communityImpactJobs,
-      total: SEEDED_JOB_BOARD_EXPECTATIONS.sourceCounts.communityImpactJobs,
+      total: expectations.sourceCounts.communityImpactJobs,
     },
     {
       label: FILTER_LABELS.source.solidarityCareers,
-      total: SEEDED_JOB_BOARD_EXPECTATIONS.sourceCounts.solidarityCareers,
+      total: expectations.sourceCounts.solidarityCareers,
     },
-  ]) {
-    test(`filters by source: ${sourceCase.label}`, async ({ jobBoardPage }) => {
+  ];
+
+  test('filters by sources', async ({ jobBoardPage, expectations }) => {
+    for (const sourceCase of SOURCE_CASES(expectations)) {
       await loadEnglishJobBoard(jobBoardPage);
-
       await jobBoardPage.toggleFilterCheckbox('source', sourceCase.label);
+      await expectVisibleResults(jobBoardPage, sourceCase.total, expectations);
+    }
+  });
 
-      await expectVisibleResults(jobBoardPage, sourceCase.total);
-    });
-  }
-
-  test('filters by organization', async ({ jobBoardPage }) => {
+  test('filters by organization', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
     await jobBoardPage.toggleFilterCheckbox('organization', FILTER_LABELS.organization.partner1);
 
     await expectVisibleResults(
       jobBoardPage,
-      SEEDED_JOB_BOARD_EXPECTATIONS.organizationCounts.partner1,
+      expectations.organizationCounts.partner1,
+      expectations,
     );
   });
 
-  for (const employmentTypeCase of [
+  const EMPLOYMENT_TYPE_CASES = (expectations: any) => [
     {
       label: FILTER_LABELS.employmentType.fullTime,
-      total: SEEDED_JOB_BOARD_EXPECTATIONS.employmentTypeCounts.fullTime,
+      total: expectations.employmentTypeCounts.fullTime,
     },
     {
       label: FILTER_LABELS.employmentType.contract,
-      total: SEEDED_JOB_BOARD_EXPECTATIONS.employmentTypeCounts.contract,
+      total: expectations.employmentTypeCounts.contract,
     },
-  ]) {
-    test(`filters by employment type: ${employmentTypeCase.label}`, async ({ jobBoardPage }) => {
-      await loadEnglishJobBoard(jobBoardPage);
+  ];
 
+  test('filters by employment types', async ({ jobBoardPage, expectations }) => {
+    for (const employmentTypeCase of EMPLOYMENT_TYPE_CASES(expectations)) {
+      await loadEnglishJobBoard(jobBoardPage);
       await jobBoardPage.toggleFilterCheckbox('employmentType', employmentTypeCase.label);
+      await expectVisibleResults(jobBoardPage, employmentTypeCase.total, expectations);
+    }
+  });
 
-      await expectVisibleResults(jobBoardPage, employmentTypeCase.total);
-    });
-  }
+  const PROVINCE_CASES = (expectations: any) => [
+    { label: FILTER_LABELS.province.on, total: expectations.provinceCounts.on },
+    { label: FILTER_LABELS.province.qc, total: expectations.provinceCounts.qc },
+  ];
 
-  for (const provinceCase of [
-    { label: FILTER_LABELS.province.on, total: SEEDED_JOB_BOARD_EXPECTATIONS.provinceCounts.on },
-    { label: FILTER_LABELS.province.qc, total: SEEDED_JOB_BOARD_EXPECTATIONS.provinceCounts.qc },
-  ]) {
-    test(`filters by province: ${provinceCase.label}`, async ({ jobBoardPage }) => {
+  test('filters by provinces', async ({ jobBoardPage, expectations }) => {
+    for (const provinceCase of PROVINCE_CASES(expectations)) {
       await loadEnglishJobBoard(jobBoardPage);
-
       await jobBoardPage.toggleFilterCheckbox('province', provinceCase.label);
+      await expectVisibleResults(jobBoardPage, provinceCase.total, expectations);
+    }
+  });
 
-      await expectVisibleResults(jobBoardPage, provinceCase.total);
-    });
-  }
-
-  test('filters by municipality', async ({ jobBoardPage }) => {
+  test('filters by municipality', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
     await jobBoardPage.toggleFilterCheckbox('municipality', FILTER_LABELS.municipality.toronto);
 
     await expectVisibleResults(
       jobBoardPage,
-      SEEDED_JOB_BOARD_EXPECTATIONS.municipalityCounts.toronto,
+      expectations.municipalityCounts.toronto,
+      expectations,
     );
   });
 
-  test('hides salaryless jobs when salary filtering is disabled', async ({ jobBoardPage }) => {
+  test('hides salaryless jobs when salary filtering is disabled', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
     await jobBoardPage.setBooleanFilter('salary', false);
-    await expectVisibleResults(jobBoardPage, SEEDED_JOB_BOARD_EXPECTATIONS.salaryListedCount);
+    await expectVisibleResults(jobBoardPage, expectations.salaryListedCount, expectations);
 
-    await jobBoardPage.searchFor(SEEDED_JOB_BOARD_EXPECTATIONS.sampleJobs.salarylessVisible);
-    await expectVisibleResults(jobBoardPage, 0);
+    await jobBoardPage.searchFor(expectations.sampleJobs.salarylessVisible);
+    await expectVisibleResults(jobBoardPage, 0, expectations);
   });
 
-  test('reveals non-SSE jobs when the SSE-only filter is disabled', async ({ jobBoardPage }) => {
+  test('reveals non-SSE jobs when the SSE-only filter is disabled', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
     await jobBoardPage.setBooleanFilter('sse', false);
-    await expectVisibleResults(jobBoardPage, SEEDED_JOB_BOARD_EXPECTATIONS.sseOffCount);
+    await expectVisibleResults(jobBoardPage, expectations.sseOffCount, expectations);
 
-    await jobBoardPage.searchFor(SEEDED_JOB_BOARD_EXPECTATIONS.sampleJobs.nonSseOnly);
-    await expectVisibleResults(jobBoardPage, 1);
+    await jobBoardPage.searchFor(expectations.sampleJobs.nonSseOnly);
+    await expectVisibleResults(jobBoardPage, 1, expectations);
   });
 });
