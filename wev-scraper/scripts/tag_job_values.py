@@ -8,11 +8,6 @@ import os
 import sys
 import time
 
-# Ensure project root is on sys.path so `utils` is importable when running scripts directly
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
 
 # --prod must be checked before utils.db is imported so USE_PROD_DB is set
 # before the Supabase client is created at module load time.

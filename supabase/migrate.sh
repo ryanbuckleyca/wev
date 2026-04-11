@@ -91,7 +91,7 @@ run_migration() {
 
   if [[ "${DRY_RUN}" != "1" ]]; then
     echo "▶ Regenerating Supabase TypeScript types..."
-    bash ./scripts/generate_supabase_types.sh
+    bash ./generate-types.sh
   fi
 }
 
@@ -100,9 +100,9 @@ case "${TARGET}" in
     echo "▶ Resetting local database..."
     supabase db reset
     echo "▶ Seeding database with E2E dataset..."
-    npx tsx scripts/seed-local.ts
+    npx tsx ./seed-local.ts
     echo "▶ Regenerating TypeScript types..."
-    bash ./scripts/generate_supabase_types.sh local
+    bash ./generate-types.sh local
     echo "✨ Done."
     ;;
   staging|prod)

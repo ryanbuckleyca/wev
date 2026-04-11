@@ -1,11 +1,11 @@
-import { resetAndSeedDatabase } from '@/lib/supabase/seed/seeder';
-import { getSupabaseDatabaseConfig, loadSupabaseEnv } from '@/lib/supabase/seed/env';
+import { resetAndSeedDatabase } from '../wev-bulletin/lib/supabase/seed/seeder';
+import { getSupabaseDatabaseConfig, loadSupabaseEnv } from '../wev-bulletin/lib/supabase/seed/env';
 
 /**
  * Standalone script to seed the local database with the shared E2E dataset.
  * 
- * Usage from wev-bulletin directory:
- * npx tsx scripts/seed-local.ts
+ * Usage from repo root:
+ * npx tsx supabase/seed-local.ts
  */
 async function main() {
   console.log('▶ Loading environment variables...');

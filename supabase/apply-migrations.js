@@ -20,7 +20,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const MIGRATIONS_DIR = path.join(__dirname, '../../supabase/migrations');
+const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 
 // Migrations to apply in order
 const MIGRATIONS = [

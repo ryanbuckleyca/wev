@@ -3,9 +3,9 @@
 set -euo pipefail
 
 # Load environment variables from repo root
-if [ -f "$(dirname "$0")/../../.env" ]; then
+if [ -f "$(dirname "$0")/../.env" ]; then
   set -a
-  source "$(dirname "$0")/../../.env"
+  source "$(dirname "$0")/../.env"
   set +a
 fi
 
@@ -30,7 +30,7 @@ if [[ "${TARGET}" != "local" ]]; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUTPUT_PATH="${REPO_ROOT}/lib/supabase/database.types.ts"
+OUTPUT_PATH="${REPO_ROOT}/wev-bulletin/lib/supabase/database.types.ts"
 TMP_FILE="$(mktemp)"
 
 cat <<'EOF' > "${TMP_FILE}"
