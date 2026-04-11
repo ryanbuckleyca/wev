@@ -1,0 +1,11 @@
+# requirements-dev.txt
+-r requirements.txt
+tavily-python
+ollama
+
+# Local Jina v3 embedding model (ENV_MODE=test) + property-based testing
+# These are NOT needed in production — Jina REST API is used there instead.
+transformers>=4.40.0
+torch>=2.2.0
+einops>=0.7.0
+hypothesis>=6.100.0
