@@ -13,6 +13,7 @@
 .kiro/
 .windsurf/
 .vscode/
+.cursorrules
 
 # Python
 .venv/

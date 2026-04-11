@@ -1,4 +1,4 @@
-import type { Json, TableInsert } from '../../lib/supabase/database.types';
+import type { Json, TableInsert } from '../database.types';
 
 export const SEEDED_JOB_BOARD_EXPECTATIONS = {
   employmentTypeCounts: {
@@ -59,7 +59,7 @@ export type SeedTables = {
   userRoles: UserRoleInsert[];
 };
 
-type SeedDataset = {
+export type SeedDataset = {
   tables: SeedTables;
 };
 

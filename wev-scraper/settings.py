@@ -65,18 +65,18 @@ def get_supabase_settings() -> SupabaseSettings:
     """Return the active Supabase credentials for the current runtime mode."""
     raw_url = get_env("SUPABASE_URL")
     prod_url = get_env("SUPABASE_PROD_URL")
-    raw_secret_key = get_env("SUPABASE_SECRET_KEY")
-    prod_secret_key = get_env("SUPABASE_PROD_SECRET_KEY")
+    raw_key = get_env("SUPABASE_SERVICE_ROLE_KEY")
+    prod_key = get_env("SUPABASE_PROD_SERVICE_ROLE_KEY")
 
     if is_truthy_env("USE_PROD_DB"):
         url = _strip_trailing_slash(prod_url)
-        secret_key = prod_secret_key or ""
+        secret_key = prod_key or ""
     else:
         url = _strip_trailing_slash(raw_url)
-        secret_key = raw_secret_key or ""
+        secret_key = raw_key or ""
 
     if not url or not secret_key:
-        raise ValueError("SUPABASE_URL or SUPABASE_SECRET_KEY not set")
+        raise ValueError("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set")
 
     return SupabaseSettings(url=url, secret_key=secret_key)
 
