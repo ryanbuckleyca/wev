@@ -127,7 +127,7 @@ test.describe('Job board', () => {
     await expectVisibleResults(jobBoardPage, expectations.oneWeekCount, expectations);
   });
 
-  const WORK_TYPE_CASES = (expectations: any) => [
+  const WORK_TYPE_CASES = (expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS) => [
     {
       label: FILTER_LABELS.workType.remote,
       total: expectations.workTypeCounts.remote,
@@ -150,7 +150,7 @@ test.describe('Job board', () => {
     }
   });
 
-  const SOURCE_CASES = (expectations: any) => [
+  const SOURCE_CASES = (expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS) => [
     {
       label: FILTER_LABELS.source.wevOpportunities,
       total: expectations.sourceCounts.wevOpportunities,
@@ -185,7 +185,7 @@ test.describe('Job board', () => {
     );
   });
 
-  const EMPLOYMENT_TYPE_CASES = (expectations: any) => [
+  const EMPLOYMENT_TYPE_CASES = (expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS) => [
     {
       label: FILTER_LABELS.employmentType.fullTime,
       total: expectations.employmentTypeCounts.fullTime,
@@ -204,7 +204,7 @@ test.describe('Job board', () => {
     }
   });
 
-  const PROVINCE_CASES = (expectations: any) => [
+  const PROVINCE_CASES = (expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS) => [
     { label: FILTER_LABELS.province.on, total: expectations.provinceCounts.on },
     { label: FILTER_LABELS.province.qc, total: expectations.provinceCounts.qc },
   ];
