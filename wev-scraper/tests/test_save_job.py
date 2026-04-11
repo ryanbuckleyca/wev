@@ -97,14 +97,11 @@ def test_job_ids_collected_from_save_job(mock_save, mock_log, mock_dedup):
     source = {"id": "src-1", "name": "Test Source"}
     existing_urls = set()
 
-    import scrape
-    # Temporarily disable DRY_RUN for this test
-    original = scrape.DRY_RUN
-    scrape.DRY_RUN = False
-    try:
-        result = scrape._process_jobs_for_source(jobs, source, existing_urls)
-    finally:
-        scrape.DRY_RUN = original
+    from scrape import ScraperOrchestrator
+    orchestrator = ScraperOrchestrator(dry_run=False)
+    orchestrator.existing_urls = existing_urls
+    
+    result = orchestrator._save_or_compare_jobs(jobs, source)
 
     assert result["job_ids"] == ["id-001", "id-002"]
     assert result["jobs_added"] == 2
@@ -120,13 +117,9 @@ def test_job_ids_empty_when_all_skipped(mock_save, mock_log, mock_dedup):
     jobs = [{"job_title": "Job", "listing_url": "https://example.com/1"}]
     source = {"id": "src-1", "name": "Test Source"}
 
-    import scrape
-    original = scrape.DRY_RUN
-    scrape.DRY_RUN = False
-    try:
-        result = scrape._process_jobs_for_source(jobs, source, set())
-    finally:
-        scrape.DRY_RUN = original
+    from scrape import ScraperOrchestrator
+    orchestrator = ScraperOrchestrator(dry_run=False)
+    result = orchestrator._save_or_compare_jobs(jobs, source)
 
     assert result["job_ids"] == []
 
