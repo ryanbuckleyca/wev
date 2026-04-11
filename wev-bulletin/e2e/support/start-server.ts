@@ -1,10 +1,10 @@
 import { spawn } from 'node:child_process';
 import process from 'node:process';
-import { resetAndSeedTestDatabase } from './test-database';
+import { resetAndSeedDatabase } from '../../lib/supabase/seed/seeder';
 import {
-  getE2ETestDatabaseConfig,
+  getSupabaseDatabaseConfig,
   getWebServerEnv,
-  loadPlaywrightEnv,
+  loadSupabaseEnv,
   PLAYWRIGHT_PORT,
 } from './test-env';
 
@@ -60,11 +60,11 @@ function startCommand(command: string, args: string[], env: NodeJS.ProcessEnv): 
 }
 
 async function main(): Promise<void> {
-  loadPlaywrightEnv();
+  loadSupabaseEnv();
 
   const env = createCommandEnv();
 
-  await resetAndSeedTestDatabase(getE2ETestDatabaseConfig());
+  await resetAndSeedDatabase(getSupabaseDatabaseConfig());
   await runCommand(npmCommand, ['run', 'build'], env);
   startCommand(npmCommand, ['run', 'start', '--', '--port', String(PLAYWRIGHT_PORT)], env);
 }

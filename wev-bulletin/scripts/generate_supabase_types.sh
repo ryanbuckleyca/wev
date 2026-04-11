@@ -7,15 +7,19 @@ if ! command -v supabase >/dev/null 2>&1; then
   exit 1
 fi
 
-PROJECT_REF="${SUPABASE_PROJECT_REF:-}"
+TARGET="${1:-remote}"
 
-if [[ -z "${PROJECT_REF}" && -n "${SUPABASE_URL:-}" ]]; then
-  PROJECT_REF="$(printf '%s' "${SUPABASE_URL}" | sed -E 's#^[a-zA-Z]+://##' | cut -d'.' -f1)"
-fi
+if [[ "${TARGET}" != "local" ]]; then
+  PROJECT_REF="${SUPABASE_PROJECT_REF:-}"
 
-if [[ -z "${PROJECT_REF}" ]]; then
-  echo "✗ SUPABASE_PROJECT_REF must be set, or SUPABASE_URL must be present so it can be derived."
-  exit 1
+  if [[ -z "${PROJECT_REF}" && -n "${SUPABASE_URL:-}" ]]; then
+    PROJECT_REF="$(printf '%s' "${SUPABASE_URL}" | sed -E 's#^[a-zA-Z]+://##' | cut -d'.' -f1)"
+  fi
+
+  if [[ -z "${PROJECT_REF}" ]]; then
+    echo "✗ SUPABASE_PROJECT_REF must be set, or SUPABASE_URL must be present so it can be derived."
+    exit 1
+  fi
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -29,7 +33,11 @@ cat <<'EOF' > "${TMP_FILE}"
 
 EOF
 
-supabase gen types typescript --project-id "${PROJECT_REF}" --schema public >> "${TMP_FILE}"
+if [[ "${TARGET}" == "local" ]]; then
+  supabase gen types typescript --local --schema public >> "${TMP_FILE}"
+else
+  supabase gen types typescript --project-id "${PROJECT_REF}" --schema public >> "${TMP_FILE}"
+fi
 
 mv "${TMP_FILE}" "${OUTPUT_PATH}"
 

@@ -10,12 +10,10 @@ import { createClient } from '@supabase/supabase-js';
  * For user-scoped clients (RLS via JWT): create per-request with the user's token instead.
  */
 const url = process.env.SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!url || !key) {
-  throw new Error(
-    'Missing Supabase server env. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY in .env for local dev).',
-  );
+  throw new Error('Missing Supabase server env. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
 }
 
 export const supabaseServer = createClient(url, key, {

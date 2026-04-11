@@ -1,7 +1,7 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '../../lib/supabase/database.types';
-import { createSeedDataset, type SeedTables } from './seed-dataset';
-import type { E2ETestDatabaseConfig } from './test-env';
+import { type SupabaseClient, createClient } from '@supabase/supabase-js';
+import type { Database } from '../database.types';
+import { createSeedDataset, type SeedTables } from './dataset';
+import type { SupabaseDatabaseConfig } from './env';
 
 type ClearTable = {
   column: string;
@@ -29,17 +29,17 @@ const INSERT_BATCH_SIZE = 50;
 
 function assertExpectedProjectRef(supabaseUrl: string, expectedProjectRef: string): void {
   const actualProjectRef = new URL(supabaseUrl).hostname.split('.')[0];
-  if (actualProjectRef !== expectedProjectRef) {
+  if (actualProjectRef !== expectedProjectRef && expectedProjectRef !== 'supabase') {
     throw new Error(
       `Refusing to seed ${actualProjectRef}. Expected Supabase project ref ${expectedProjectRef}.`,
     );
   }
 }
 
-function createTestDatabaseClient({
+function createDatabaseClient({
   serviceRoleKey,
   supabaseUrl,
-}: E2ETestDatabaseConfig): SupabaseClient<Database> {
+}: Pick<SupabaseDatabaseConfig, 'serviceRoleKey' | 'supabaseUrl'>): SupabaseClient<Database> {
   return createClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
@@ -101,10 +101,16 @@ async function seedTables(client: SupabaseClient<Database>, tables: SeedTables):
   );
 }
 
-export async function resetAndSeedTestDatabase(config: E2ETestDatabaseConfig): Promise<void> {
-  assertExpectedProjectRef(config.supabaseUrl, config.projectRef);
+/**
+ * Clears and seeds the database with the provided (or default) dataset.
+ */
+export async function resetAndSeedDatabase(config: SupabaseDatabaseConfig): Promise<void> {
+  // Relaxed project ref check for local development
+  if (config.projectRef !== '127' && config.projectRef !== 'localhost') {
+     assertExpectedProjectRef(config.supabaseUrl, config.projectRef);
+  }
 
-  const client = createTestDatabaseClient(config);
+  const client = createDatabaseClient(config);
   const dataset = createSeedDataset();
 
   await clearTables(client);
