@@ -13,6 +13,10 @@ on:
       - 'wev-bulletin/**'
   workflow_dispatch:
 
+defaults:
+  run:
+    working-directory: wev-bulletin
+
 jobs:
   build:
     runs-on: ubuntu-latest
