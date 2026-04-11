@@ -130,9 +130,9 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     'posted',
     parseAsStringLiteral(POSTED_WITHIN_FILTER_OPTIONS).withDefault('2-weeks'),
   );
-  const [filtersExpanded, setFiltersExpandedState] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
-  const [allJobsExpanded, setAllJobsExpandedState] = useState(true);
+  const [allJobsExpanded, setAllJobsExpanded] = useState(true);
   const [sortBy, setSortBy] = useQueryState(
     'sort',
     parseAsStringLiteral(JOB_SORT_OPTIONS).withDefault('date-desc'),
@@ -233,14 +233,6 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     return hasSameSelections(profileWorkTypes, normalizedSelectedWorkTypes);
   }, [normalizedSelectedWorkTypes, profileWorkTypes]);
 
-  const setFiltersExpanded = useCallback((expanded: boolean) => {
-    setFiltersExpandedState(expanded);
-  }, []);
-
-  const setAllJobsExpanded = useCallback((expanded: boolean) => {
-    setAllJobsExpandedState(expanded);
-  }, []);
-
   const hasAnyFilters =
     !!searchQuery ||
     selectedOrganizations.length > 0 ||
@@ -253,56 +245,42 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     !showJobsWithoutSalary ||
     postedWithin !== 'any';
 
-  const clearAllFilters = useCallback(() => {
+  // Shared reset: clears every filter field back to its blank/empty value.
+  // clearAllFilters and applySuggestedDefaults both call this, then override
+  // the fields that differ between the two operations.
+  const resetCommonFilters = useCallback(() => {
     void setSearchQuery('');
     void setSelectedOrganizations([]);
     void setSelectedProvinces([]);
     void setSelectedMunicipalities([]);
     void setSelectedEmploymentTypes([]);
     void setSelectedSources([]);
+  }, [
+    setSearchQuery,
+    setSelectedOrganizations,
+    setSelectedProvinces,
+    setSelectedMunicipalities,
+    setSelectedEmploymentTypes,
+    setSelectedSources,
+  ]);
+
+  const clearAllFilters = useCallback(() => {
+    resetCommonFilters();
     void setSelectedWorkTypes([]);
     void setShowOnlySse(false);
     void setShowJobsWithoutSalary(true);
     void setPostedWithin('any');
-  }, [
-    setSearchQuery,
-    setSelectedOrganizations,
-    setSelectedProvinces,
-    setSelectedMunicipalities,
-    setSelectedEmploymentTypes,
-    setSelectedSources,
-    setSelectedWorkTypes,
-    setShowOnlySse,
-    setShowJobsWithoutSalary,
-    setPostedWithin,
-  ]);
+  }, [resetCommonFilters, setSelectedWorkTypes, setShowOnlySse, setShowJobsWithoutSalary, setPostedWithin]);
 
   const applySuggestedDefaults = useCallback(() => {
-    void setSearchQuery('');
-    void setSelectedOrganizations([]);
-    void setSelectedProvinces([]);
-    void setSelectedMunicipalities([]);
-    void setSelectedEmploymentTypes([]);
-    void setSelectedSources([]);
+    resetCommonFilters();
     void setSelectedWorkTypes(profileWorkTypes);
     void setShowOnlySse(true);
     void setShowJobsWithoutSalary(true);
     void setPostedWithin('2-weeks');
-  }, [
-    profileWorkTypes,
-    setSearchQuery,
-    setSelectedOrganizations,
-    setSelectedProvinces,
-    setSelectedMunicipalities,
-    setSelectedEmploymentTypes,
-    setSelectedSources,
-    setSelectedWorkTypes,
-    setShowOnlySse,
-    setShowJobsWithoutSalary,
-    setPostedWithin,
-  ]);
+  }, [resetCommonFilters, profileWorkTypes, setSelectedWorkTypes, setShowOnlySse, setShowJobsWithoutSalary, setPostedWithin]);
 
-  return useMemo(() => ({
+  return {
     filters,
     searchQuery,
     setSearchQuery,
@@ -342,45 +320,5 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     hasAnyFilters,
     clearAllFilters,
     applySuggestedDefaults,
-  }), [
-    filters,
-    searchQuery,
-    setSearchQuery,
-    selectedOrganizations,
-    setSelectedOrganizations,
-    selectedProvinces,
-    setSelectedProvinces,
-    selectedMunicipalities,
-    setSelectedMunicipalities,
-    selectedEmploymentTypes,
-    setSelectedEmploymentTypes,
-    selectedSources,
-    setSelectedSources,
-    selectedWorkTypes,
-    setSelectedWorkTypes,
-    showOnlySse,
-    setShowOnlySse,
-    showJobsWithoutSalary,
-    setShowJobsWithoutSalary,
-    postedWithin,
-    setPostedWithin,
-    filtersExpanded,
-    setFiltersExpanded,
-    currentPage,
-    setCurrentPage,
-    allJobsExpanded,
-    setAllJobsExpanded,
-    sortBy,
-    setSortBy,
-    profileWorkTypes,
-    isUsingProfileWorkTypes,
-    handleResetToProfileWorkTypes,
-    profileMunicipality,
-    profileProvince,
-    isUsingProfileLocation,
-    handleResetToProfileLocation,
-    hasAnyFilters,
-    clearAllFilters,
-    applySuggestedDefaults,
-  ]);
+  };
 }
