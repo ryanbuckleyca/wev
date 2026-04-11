@@ -38,4 +38,6 @@ __pycache__/
 # Misc
 nohup.out
 .DS_Store
-supabase/backups/
+.branches/
+.temp/
+backups/
