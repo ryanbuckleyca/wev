@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["*"],
+      "@bulletin/*": ["wev-bulletin/*"],
+      "@supabase/*": ["supabase/src/*"]
+    }
+  },
+  "include": ["supabase/src/**/*.ts", "wev-bulletin/**/*.ts", "wev-bulletin/**/*.tsx"],
+  "exclude": ["node_modules"]
+}

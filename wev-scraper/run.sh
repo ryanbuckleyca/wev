@@ -49,5 +49,5 @@ elif [ "$1" == "municipality-backfill" ]; then
     shift
     python3 -m utils.backfill_municipality_canonical "$@"
 else
-    python3 scrape.py
+    python3 scrape.py "$@"
 fi

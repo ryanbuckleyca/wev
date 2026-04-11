@@ -1,5 +1,7 @@
-import { resetAndSeedDatabase } from '../wev-bulletin/lib/supabase/seed/seeder';
-import { getSupabaseDatabaseConfig, loadSupabaseEnv } from '../wev-bulletin/lib/supabase/seed/env';
+import { resetAndSeedDatabase } from './src/seeder';
+import path from 'node:path';
+import fs from 'node:fs';
+import { config as loadEnv } from 'dotenv';
 
 /**
  * Standalone script to seed the local database with the shared E2E dataset.
@@ -10,18 +12,27 @@ import { getSupabaseDatabaseConfig, loadSupabaseEnv } from '../wev-bulletin/lib/
 async function main() {
   console.log('▶ Loading environment variables...');
   
-  try {
-    // This loads .env from the current working directory
-    loadSupabaseEnv();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn(`⚠ Warning while loading env: ${message}`);
-    console.log('  (Proceeding with existing process.env variables)');
+  // Standard dotenv loading, prioritizing local .env and fallback to parent
+  const envPath = fs.existsSync('.env') ? '.env' : path.join('..', '.env');
+  loadEnv({ path: envPath });
+
+  const supabaseUrl = process.env.SUPABASE_URL || 'http://localhost:54321';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const projectRef = process.env.SUPABASE_PROJECT_REF || 'localhost';
+
+  if (!serviceRoleKey) {
+    console.error('❌ Error: SUPABASE_SERVICE_ROLE_KEY is not set in environment.');
+    process.exit(1);
   }
 
   try {
-    const config = getSupabaseDatabaseConfig();
-    console.log(`▶ Seeding project: ${config.projectRef} (${config.supabaseUrl})`);
+    console.log(`▶ Seeding project: ${projectRef} (${supabaseUrl})`);
+
+    const config = {
+      projectRef,
+      serviceRoleKey,
+      supabaseUrl,
+    };
 
     // The resetAndSeedDatabase helper clears the tables before inserting
     await resetAndSeedDatabase(config);
