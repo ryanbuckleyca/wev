@@ -3,6 +3,9 @@
 
 set -e
 
+# Support running from root by changing to script's directory
+cd "$(dirname "$0")"
+
 # Use .python-version if you use pyenv so local matches prod (3.12)
 if [ ! -d "venv" ]; then
     python3 -m venv venv
