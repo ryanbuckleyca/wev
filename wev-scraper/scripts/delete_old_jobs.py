@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 
 # Load environment variables from repo root
 from dotenv import load_dotenv, find_dotenv
-load_dotenv(find_dotenv()), '..', '..', '.env'))
+load_dotenv(find_dotenv())
 
 
 def query_old_jobs(supabase_url: str, service_role_key: str, days_old: int) -> list[dict]:

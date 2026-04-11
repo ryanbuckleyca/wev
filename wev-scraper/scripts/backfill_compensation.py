@@ -20,7 +20,7 @@ from pathlib import Path
 
 
 from dotenv import load_dotenv, find_dotenv
-load_dotenv(find_dotenv()).resolve().parent.parent / ".env")
+load_dotenv(find_dotenv())
 
 from utils.db import supabase
 from lib.compensation import extract_and_guard

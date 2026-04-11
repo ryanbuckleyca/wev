@@ -26,7 +26,7 @@ def main():
 
     # --- Public client test (simulate browser anon client without session) ---
     try:
-        load_dotenv(find_dotenv()))
+        load_dotenv(find_dotenv())
         pub_url = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
         pub_key = os.environ.get('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
         if pub_url and pub_key:

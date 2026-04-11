@@ -13,8 +13,7 @@ from dotenv import load_dotenv, find_dotenv
 
 
 # Load .env from the project root (wev-scraper/), not the scripts/ directory.
-load_dotenv(find_dotenv()) / '.env')
-load_dotenv(find_dotenv())  # fallback from CWD
+load_dotenv(find_dotenv())
 
 # --prod must be checked before utils.db is imported so USE_PROD_DB is set
 # before the Supabase client is created at module load time.
