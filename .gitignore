@@ -1,0 +1,17 @@
+# Editor / AI tools
+.ai/
+.antigravity/
+.cursor/
+.idea/
+.kiro/
+.windsurf/
+.vscode/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Misc
+nohup.out
+.DS_Store

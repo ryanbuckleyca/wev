@@ -1,0 +1,119 @@
+name: Run Scraper
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 9 * * *
+
+permissions:
+  contents: read
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve scraper directory
+        id: dir
+        run: |
+          if [ -f requirements.txt ]; then
+            echo "dir=." >> $GITHUB_OUTPUT
+          elif [ -f wev-scraper/requirements.txt ]; then
+            echo "dir=wev-scraper" >> $GITHUB_OUTPUT
+          else
+            echo "Could not find requirements.txt" && exit 1
+          fi
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install chrome
+          playwright install chromium
+          playwright install-deps
+        working-directory: ${{ steps.dir.outputs.dir }}
+
+      - name: Run scraper
+        env:
+          PYTHONUNBUFFERED: "1"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEOCODIO_API_KEY: ${{ secrets.GEOCODIO_API_KEY }}
+          SHOULD_CLASSIFY: ${{ vars.SHOULD_CLASSIFY }}
+          SHOULD_SUMMARIZE: ${{ vars.SHOULD_SUMMARIZE }}
+          SHOULD_TAG_VALUES: ${{ vars.SHOULD_TAG_VALUES }}
+          SHOULD_TAG_SKILLS: ${{ vars.SHOULD_TAG_SKILLS }}
+          SHOULD_GEOCODE: ${{ vars.SHOULD_GEOCODE }}
+          SHOULD_OVERRIDE_EXISTING: ${{ vars.SHOULD_OVERRIDE_EXISTING }}
+          SHOULD_RE_SUMMARIZE: ${{ vars.SHOULD_RE_SUMMARIZE }}
+          SHOULD_RE_CLASSIFY: ${{ vars.SHOULD_RE_CLASSIFY }}
+          SHOULD_RE_GEOCODE: ${{ vars.SHOULD_RE_GEOCODE }}
+          SHOULD_RE_TAG_VALUES: ${{ vars.SHOULD_RE_TAG_VALUES }}
+          SHOULD_RE_TAG_SKILLS: ${{ vars.SHOULD_RE_TAG_SKILLS }}
+          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          PROXY_SERVER: ${{ secrets.PROXY_SERVER }}
+          PROXY_USERNAME: ${{ secrets.PROXY_USERNAME }}
+          PROXY_PASSWORD: ${{ secrets.PROXY_PASSWORD }}
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 scrape.py 2>&1 | tee /tmp/scrape_output.txt
+        working-directory: ${{ steps.dir.outputs.dir }}
+
+      - name: Build email body
+        if: always()
+        run: |
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          summary=$(awk '/^Scrape Summary:/,0' /tmp/scrape_output.txt 2>/dev/null || true)
+          delim="EMAIL_DELIM_${{ github.run_id }}"
+          {
+            echo "EMAIL_BODY<<${delim}"
+            if [ "${{ job.status }}" = "success" ]; then
+              echo "The scraper finished successfully."
+            else
+              echo "The scraper finished with status: ${{ job.status }}"
+            fi
+            echo ""
+            if [ -n "$summary" ]; then
+              echo "$summary"
+            else
+              echo "(No summary section found in scraper output)"
+            fi
+            echo ""
+            echo "Run details: $run_url"
+            echo "${delim}"
+          } >> "$GITHUB_ENV"
+
+      - name: Send success notification
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ryanbuckley@gmail.com
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ Scraper completed successfully"
+          body: ${{ env.EMAIL_BODY }}
+          to: ryanbuckley@gmail.com
+          from: ${{ secrets.EMAIL_USERNAME }}
+
+      - name: Send failure notification
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ryanbuckley@gmail.com
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "🚨 Scraper failed"
+          body: ${{ env.EMAIL_BODY }}
+          to: ryanbuckley@gmail.com
+          from: ${{ secrets.EMAIL_USERNAME }}

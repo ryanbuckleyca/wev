@@ -1,0 +1,61 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'wev-bulletin/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'wev-bulletin/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: wev-bulletin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build Next.js app
+        env:
+          # Server-only; not exposed to client. Use placeholders if missing so CI build succeeds.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY || 'placeholder-service-role-key' }}
+          # Client-side variables needed for middleware and build
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_KEY || 'placeholder-publishable-key' }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://bulletin.wevchange.org' }}
+        run: npm run build
+
+      - name: Run linting
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build summary
+        run: |
+          echo "✓ Build completed successfully"
+          echo "Ready for deployment to Northflank"
+          echo ""
+          echo "Remember to set these environment variables in Northflank:"
+          echo "  - SUPABASE_URL (server-only)"
+          echo "  - SUPABASE_SERVICE_ROLE_KEY (server-only, never expose)"
+          echo "  - NEXT_PUBLIC_SITE_URL (for auth redirects, e.g. https://bulletin.wevchange.org)"
+          echo "  - WEV_GITHUB_TOKEN (for API routes)"
