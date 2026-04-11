@@ -7,7 +7,7 @@ const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } = getSupa
   'backup.js',
   {
     urlEnv: 'SUPABASE_PROD_URL',
-    keyEnvNames: ['SUPABASE_PROD_SECRET_KEY'],
+    keyEnvNames: ['SUPABASE_PROD_SERVICE_ROLE_KEY'],
     keyDescription: 'production service role key',
   },
 );

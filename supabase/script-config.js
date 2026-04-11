@@ -2,7 +2,6 @@ const path = require('path');
 const dotenv = require('dotenv');
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../wev-scraper/.env') });
 
 function failConfig(scriptName, message) {
   console.error(`[${scriptName}] Configuration error: ${message}`);
@@ -35,9 +34,14 @@ function getRequiredAnyEnv(scriptName, envNames, description) {
 }
 
 function getSupabaseScriptConfig(scriptName, { urlEnv, keyEnvNames, keyDescription }) {
+  // Update keyEnvNames to only include modern keys if requested, 
+  // but for backward compatibility in the helper itself, we can just let it filter.
+  // Actually, let's just make it clean.
+  const standardizedKeys = keyEnvNames.map(k => k.replace('SECRET_KEY', 'SERVICE_ROLE_KEY'));
+  
   return {
     url: getRequiredEnv(scriptName, urlEnv),
-    serviceRoleKey: getRequiredAnyEnv(scriptName, keyEnvNames, keyDescription),
+    serviceRoleKey: getRequiredAnyEnv(scriptName, standardizedKeys, keyDescription),
   };
 }
 

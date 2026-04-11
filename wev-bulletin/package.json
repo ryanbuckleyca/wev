@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "backup": "node supabase/backup.js",
+    "backup": "npm run backup --prefix ..",
     "dev": "next dev",
     "dev:webpack": "next dev --webpack",
     "build": "next build",

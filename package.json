@@ -1,0 +1,13 @@
+{
+  "name": "wev-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "backup": "node supabase/backup.js",
+    "restore": "node supabase/restore.js",
+    "cleanup:duplicates": "node supabase/cleanup-duplicates.js",
+    "migrate:local": "npm run migrate:local --prefix wev-bulletin",
+    "migrate:staging": "npm run migrate:staging --prefix wev-bulletin",
+    "migrate:prod": "npm run migrate:prod --prefix wev-bulletin"
+  }
+}

@@ -25,7 +25,7 @@ def ensure_env_loaded() -> None:
     if _ENV_LOADED:
         return
 
-    load_dotenv(SCRAPER_ROOT / ".env")
+    load_dotenv(SCRAPER_ROOT.parent / ".env")
     load_dotenv()
     _ENV_LOADED = True
 

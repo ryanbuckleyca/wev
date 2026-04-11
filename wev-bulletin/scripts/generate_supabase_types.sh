@@ -2,6 +2,13 @@
 
 set -euo pipefail
 
+# Load environment variables from repo root
+if [ -f "$(dirname "$0")/../../.env" ]; then
+  set -a
+  source "$(dirname "$0")/../../.env"
+  set +a
+fi
+
 if ! command -v supabase >/dev/null 2>&1; then
   echo "✗ Supabase CLI is not installed or not on PATH."
   exit 1

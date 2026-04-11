@@ -1,5 +1,5 @@
-import { resetAndSeedDatabase } from '../lib/supabase/seed/seeder';
-import { getSupabaseDatabaseConfig, loadSupabaseEnv } from '../lib/supabase/seed/env';
+import { resetAndSeedDatabase } from '@/lib/supabase/seed/seeder';
+import { getSupabaseDatabaseConfig, loadSupabaseEnv } from '@/lib/supabase/seed/env';
 
 /**
  * Standalone script to seed the local database with the shared E2E dataset.

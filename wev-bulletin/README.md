@@ -188,10 +188,10 @@ cp .env.example .env
 
 3. Fill in your environment variables in the root `.env` file:
 
-- **wev-bulletin (Next.js)** — server-only (do not use `` for the key):
+- **wev-bulletin (Next.js)** — server-only (do not use NEXT_PUBLIC for the key):
   - `SUPABASE_URL`: Your Supabase project URL
   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (used only in API routes; never exposed to the browser)
-- **wev-scraper** (if using the same env): `SUPABASE_URL` / `SUPABASE_SECRET_KEY` (or scraper-specific env)
+- **wev-scraper** (if using the same env): `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` (or scraper-specific env)
 - `WEV_GITHUB_TOKEN`: A GitHub personal access token with `actions:write` permission
 
 **Note:** The Supabase service role key must never be prefixed with ``— it is only used server-side in wev-bulletin (e.g.`/api/bulletin`). The `.env` file can live in the project root so both apps can access it; Next.js can load from the parent directory.
@@ -265,7 +265,7 @@ Optional DB upsert:
 python3 scripts/build_esco_skills_index.py --upsert-db
 ```
 
-Requires `SUPABASE_URL` and a service-role key (`SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY`).
+Requires `SUPABASE_URL` and a service-role key (`SUPABASE_SERVICE_ROLE_KEY`).
 
 ### ESCO Skills Cache Management
 
