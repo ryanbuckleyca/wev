@@ -6,6 +6,8 @@ import { JobPosting, JobMatchData } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 import JobCard from './JobCard';
 import StyledLink from './StyledLink';
+import Button from './Button';
+import LinkButton from './LinkButton';
 import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
 import LoadingIndicator from './LoadingIndicator';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
@@ -97,17 +99,17 @@ export default function JobListings({
               {t('jobListings.showingFiltered', { total: totalJobsCount })}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
                 onClick={filterContext?.clearAllFilters}
-                className="wev-btn wev-btn-secondary w-full sm:w-auto"
+                className="w-full sm:w-auto"
               >
                 {t('jobListings.clearFilters')}
-              </button>
+              </Button>
               {userId && (
-                <StyledLink href="/profile" className="wev-btn wev-btn-primary w-full sm:w-auto">
+                <LinkButton href="/profile" variant="primary" className="w-full sm:w-auto">
                   {t('filters.workType.profileLink')}
-                </StyledLink>
+                </LinkButton>
               )}
             </div>
           </div>
