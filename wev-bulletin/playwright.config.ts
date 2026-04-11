@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
-import { getWebServerEnv, loadPlaywrightEnv, PLAYWRIGHT_BASE_URL } from './e2e/support/test-env';
+import { getWebServerEnv, loadSupabaseEnv, PLAYWRIGHT_BASE_URL } from './e2e/support/test-env';
 
-loadPlaywrightEnv();
+loadSupabaseEnv();
 
 export default defineConfig({
   testDir: './e2e/tests',

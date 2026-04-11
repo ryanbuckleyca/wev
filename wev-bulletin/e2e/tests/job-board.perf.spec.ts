@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures';
-import { SEEDED_JOB_BOARD_EXPECTATIONS } from '../support/seed-dataset';
+import { SEEDED_JOB_BOARD_EXPECTATIONS } from '@/lib/supabase/seed/dataset';
 import { expectJobBoardReady } from '../support/job-board';
 import {
   attachPerformanceSnapshot,
