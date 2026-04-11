@@ -249,7 +249,7 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     selectedEmploymentTypes.length > 0 ||
     selectedSources.length > 0 ||
     selectedWorkTypes.length > 0 ||
-    showOnlySse ||
+    !showOnlySse ||
     !showJobsWithoutSalary ||
     postedWithin !== 'any';
 
@@ -277,8 +277,6 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     setPostedWithin,
   ]);
 
-  const defaultWorkTypes = profileWorkTypes.length > 0 ? profileWorkTypes : [];
-
   const applySuggestedDefaults = useCallback(() => {
     void setSearchQuery('');
     void setSelectedOrganizations([]);
@@ -286,12 +284,12 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     void setSelectedMunicipalities([]);
     void setSelectedEmploymentTypes([]);
     void setSelectedSources([]);
-    void setSelectedWorkTypes(defaultWorkTypes);
+    void setSelectedWorkTypes(profileWorkTypes);
     void setShowOnlySse(true);
     void setShowJobsWithoutSalary(true);
     void setPostedWithin('2-weeks');
   }, [
-    defaultWorkTypes,
+    profileWorkTypes,
     setSearchQuery,
     setSelectedOrganizations,
     setSelectedProvinces,
