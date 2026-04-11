@@ -10,7 +10,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 from utils.env import is_truthy_env
 
@@ -25,8 +25,7 @@ def ensure_env_loaded() -> None:
     if _ENV_LOADED:
         return
 
-    load_dotenv(SCRAPER_ROOT.parent / ".env")
-    load_dotenv()
+    load_dotenv(find_dotenv())
     _ENV_LOADED = True
 
 def get_env(name: str, default: str | None = None) -> str | None:

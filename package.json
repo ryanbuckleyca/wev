@@ -1,13 +1,25 @@
 {
-  "name": "wev-monorepo",
+  "name": "wev",
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "npm run dev --prefix wev-bulletin",
+    "build": "npm run build --prefix wev-bulletin",
+    "test": "npm run test:bulletin && npm run test:scraper",
+    "test:bulletin": "npm run test --prefix wev-bulletin",
+    "test:scraper": "cd wev-scraper && . venv/bin/activate && pytest tests",
+    "scrape": "bash wev-scraper/run.sh",
+    "lint": "npm run lint --prefix wev-bulletin",
+    "seed:local": "npx tsx supabase/seed-local.ts",
+    "skills:index": "python3 wev-scraper/scripts/build_esco_skills_index.py",
+    "apply-migrations": "node supabase/apply-migrations.js",
+    "apply-migrations:direct": "python3 supabase/apply-migrations-direct.py",
+    "migrate:local": "bash supabase/migrate.sh local",
+    "migrate:staging": "bash supabase/migrate.sh staging",
+    "migrate:prod": "bash supabase/migrate.sh prod",
+    "types:supabase": "bash supabase/generate-types.sh",
     "backup": "node supabase/backup.js",
     "restore": "node supabase/restore.js",
-    "cleanup:duplicates": "node supabase/cleanup-duplicates.js",
-    "migrate:local": "npm run migrate:local --prefix wev-bulletin",
-    "migrate:staging": "npm run migrate:staging --prefix wev-bulletin",
-    "migrate:prod": "npm run migrate:prod --prefix wev-bulletin"
+    "cleanup:duplicates": "node supabase/cleanup-duplicates.js"
   }
 }

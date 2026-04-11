@@ -10,8 +10,8 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 # Load environment variables from repo root
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv()), '..', '..', '.env'))
 
 
 def query_old_jobs(supabase_url: str, service_role_key: str, days_old: int) -> list[dict]:

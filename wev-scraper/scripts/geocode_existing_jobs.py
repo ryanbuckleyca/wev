@@ -9,17 +9,12 @@ import os
 import sys
 import time
 from pathlib import Path
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-# Ensure project root is on sys.path so `utils` is importable when running scripts directly
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
 
 # Load .env from the project root (wev-scraper/), not the scripts/ directory.
-load_dotenv(Path(PROJECT_ROOT) / '.env')
-load_dotenv()  # fallback from CWD
+load_dotenv(find_dotenv()) / '.env')
+load_dotenv(find_dotenv())  # fallback from CWD
 
 # --prod must be checked before utils.db is imported so USE_PROD_DB is set
 # before the Supabase client is created at module load time.

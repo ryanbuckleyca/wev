@@ -2,14 +2,9 @@
 import os
 import sys
 
-# Ensure project root is on sys.path so `utils` is importable when running scripts directly
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
 
 from utils.db import supabase
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from supabase import create_client as create_supabase_client
 
 
@@ -42,7 +37,7 @@ def main():
     # --- Public client test (simulate browser anon client without session) ---
     try:
         # load frontend env (wev-bulletin) to get PUBLIC URL + key
-        load_dotenv(os.path.join(PROJECT_ROOT, '..', 'wev-bulletin', '.env'))
+        load_dotenv(find_dotenv()))
         pub_url = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
         pub_key = os.environ.get('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
         if pub_url and pub_key:
