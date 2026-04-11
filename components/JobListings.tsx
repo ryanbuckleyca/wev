@@ -96,7 +96,7 @@ export default function JobListings({
         {showFilterClear && (
           <div className="flex flex-col items-center gap-6 mt-2 max-w-md w-full">
             <p className="text-muted-foreground">
-              {t('jobListings.showingFiltered', { showing: jobs.length, total: totalJobsCount })}
+              {t('jobListings.showingFiltered', { total: totalJobsCount })}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
               <button

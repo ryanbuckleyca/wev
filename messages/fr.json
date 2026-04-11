@@ -140,7 +140,7 @@
     "loading": "Chargement des emplois...",
     "error": "Erreur lors du chargement des offres d'emploi",
     "noJobs": "Aucune offre d'emploi trouvée.",
-    "showingFiltered": "{showing} offres d'emploi visibles avec vos filtres actuels ({total} au total disponibles)",
+    "showingFiltered": "Vos filtres masquent les {total} offres d'emploi disponibles.",
     "clearFilters": "Effacer tous les filtres",
     "sliderHint": "Faites défiler horizontalement pour parcourir les emplois.",
     "stackedHint": "Affichage de tous les emplois dans une liste verticale.",
