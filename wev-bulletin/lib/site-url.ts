@@ -33,7 +33,15 @@ function normalizeConfiguredSiteUrl(configured: string | undefined): string | nu
 export function getSiteBaseUrl(): string {
   const configured = normalizeConfiguredSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
   if (configured) return configured;
-  if (typeof window !== 'undefined') return window.location.origin;
+
+  if (typeof window !== 'undefined') {
+    const { origin } = window.location;
+    // Hardening: Resolve both localhost and 127.0.0.1 to localhost for session consistency.
+    if (origin.includes(':3000')) {
+      return 'http://localhost:3000';
+    }
+    return origin;
+  }
   return '';
 }
 
@@ -41,6 +49,11 @@ export function getSiteBaseUrl(): string {
 export function getSiteBaseUrlFromRequest(request: Request): string {
   const configured = normalizeConfiguredSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
   if (configured) return configured;
+
   const { origin } = new URL(request.url);
+  // Hardening: Resolve both localhost and 127.0.0.1 to localhost for session consistency.
+  if (origin.includes(':3000')) {
+    return 'http://localhost:3000';
+  }
   return origin;
 }
