@@ -472,106 +472,36 @@ const JOB_SELECT =
 
 /**
  * Calculate matches for a single user against all jobs.
- * Uses the service Supabase client so reads/writes bypass RLS.
+ * This function now delegates to the database RPC for consistency and performance.
  */
 export async function calculateUserMatches(userId: string): Promise<void> {
   try {
-    const { data: profile, error: profileError } = await supabaseServer
-      .from('profiles')
-      .select(PROFILE_SELECT)
-      .eq('id', userId)
-      .single();
+    const { error } = await supabaseServer.rpc('recalculate_matches_for_user', {
+      p_user_id: userId,
+    });
 
-    if (profileError || !profile) return;
-
-    const hasValues = resolveUserValues(profile as ProfileRow).length > 0;
-    const hasSkills = (profile.skills?.length ?? 0) > 0;
-    if (!hasValues && !hasSkills) {
-      logger.debug({ userId }, 'Skipping match calculation: user has no values or skills');
-      return;
-    }
-
-    const { data: jobs, error: jobsError } = await supabaseServer
-      .from('jobs')
-      .select(JOB_SELECT)
-      .or('values.not.is.null,values_rated.not.is.null,skills.not.is.null');
-
-    if (jobsError) {
-      logger.error({ err: jobsError }, 'Error fetching jobs for matching');
-      return;
-    }
-
-    const validJobs = (jobs ?? []).filter(
-      (job) =>
-        (job.values && job.values.length > 0) ||
-        (job.values_rated && (job.values_rated as unknown[]).length > 0) ||
-        (job.skills && job.skills.length > 0),
-    );
-
-    const matches: MatchResult[] = validJobs.map((job) => ({
-      user_id: userId,
-      job_id: job.id,
-      ...computeMatchForPair(profile as ProfileRow, job as JobRow),
-    }));
-
-    if (matches.length > 0) {
-      const { error: upsertError } = await supabaseServer
-        .from('job_matches')
-        .upsert(matches, { onConflict: 'user_id,job_id' });
-      if (upsertError) logger.error({ err: upsertError }, 'Error upserting matches (user batch)');
+    if (error) {
+      logger.error({ err: error, userId }, 'Error calling recalculate_matches_for_user RPC');
     }
   } catch (error) {
-    logger.error({ err: error }, 'Error calculating user matches');
+    logger.error({ err: error, userId }, 'Exception in calculateUserMatches');
   }
 }
 
-// calculateJobMatches
-
 /**
  * Calculate matches for a single job against all users.
- * Uses the service Supabase client so reads/writes bypass RLS.
+ * This function now delegates to the database RPC for consistency and performance.
  */
 export async function calculateJobMatches(jobId: string): Promise<void> {
   try {
-    const { data: job, error: jobError } = await supabaseServer
-      .from('jobs')
-      .select(JOB_SELECT)
-      .eq('id', jobId)
-      .single();
+    const { error } = await supabaseServer.rpc('recalculate_matches_for_job', {
+      p_job_id: jobId,
+    });
 
-    if (jobError || !job) return;
-    if (!job.values?.length && !job.values_rated?.length && !job.skills?.length) return;
-
-    const { data: profiles, error: profilesError } = await supabaseServer
-      .from('profiles')
-      .select(PROFILE_SELECT)
-      .or('values.not.is.null,values_rated.not.is.null,skills.not.is.null');
-
-    if (profilesError) {
-      logger.error({ err: profilesError }, 'Error fetching profiles for matching');
-      return;
-    }
-
-    const validProfiles = (profiles ?? []).filter(
-      (profile) =>
-        (profile.values && profile.values.length > 0) ||
-        (profile.values_rated && (profile.values_rated as unknown[]).length > 0) ||
-        (profile.skills && profile.skills.length > 0),
-    );
-
-    const matches: MatchResult[] = validProfiles.map((profile) => ({
-      user_id: profile.id,
-      job_id: jobId,
-      ...computeMatchForPair(profile as ProfileRow, job as JobRow),
-    }));
-
-    if (matches.length > 0) {
-      const { error: upsertError } = await supabaseServer
-        .from('job_matches')
-        .upsert(matches, { onConflict: 'user_id,job_id' });
-      if (upsertError) logger.error({ err: upsertError }, 'Error upserting matches (job batch)');
+    if (error) {
+      logger.error({ err: error, jobId }, 'Error calling recalculate_matches_for_job RPC');
     }
   } catch (error) {
-    logger.error({ err: error }, 'Error calculating job matches');
+    logger.error({ err: error, jobId }, 'Exception in calculateJobMatches');
   }
 }

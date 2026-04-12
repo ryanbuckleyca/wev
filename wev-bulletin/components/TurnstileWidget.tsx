@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useState } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { useTheme } from '@/lib/hooks/useTheme';
 
@@ -15,7 +15,11 @@ interface TurnstileWidgetProps {
 const TurnstileWidget = forwardRef<TurnstileInstance | null, TurnstileWidgetProps>(
   function TurnstileWidget({ onSuccess, onError, onExpire }, ref) {
     const { theme } = useTheme();
-    const [mounted] = useState(() => typeof window !== 'undefined');
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+      setMounted(true);
+    }, []);
 
     if (!mounted) {
       return (
