@@ -16,16 +16,21 @@ async function globalSetup() {
 
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const projectRef = process.env.SUPABASE_PROJECT_REF || 'localhost';
 
     if (!supabaseUrl || !serviceRoleKey) {
       console.error('❌ ERROR: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing during E2E setup.');
       process.exit(1);
     }
 
-    // Safety check: Never seed production
-    if (projectRef !== 'localhost' && projectRef !== '127' && projectRef !== 'supabase') {
-      console.error(`❌ ERROR: Refusing to seed a non-local database (${projectRef}) during E2E setup.`);
+    // Safety check: Never seed production.
+    // Validate against the actual URL hostname so a misconfigured SUPABASE_PROJECT_REF
+    // cannot accidentally allow seeding a remote database.
+    const { hostname } = new URL(supabaseUrl);
+    const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+    if (!isLocalHost) {
+      console.error(
+        `❌ ERROR: Refusing to seed a non-local database. SUPABASE_URL hostname is '${hostname}'.`,
+      );
       process.exit(1);
     }
 
@@ -33,7 +38,7 @@ async function globalSetup() {
     await resetAndSeedDatabase({
       supabaseUrl,
       serviceRoleKey,
-      projectRef,
+      projectRef: 'localhost',
     });
     console.log('✅ E2E Global Setup: Database seeded successfully.');
   } catch (error) {

@@ -4,7 +4,7 @@ import traceback
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List, Dict, Set, Any, Optional
-from settings import ensure_env_loaded
+from settings import ensure_env_loaded, load_env_file
 
 # Ensure CI sees output immediately
 if hasattr(sys.stdout, "reconfigure"):
@@ -251,8 +251,8 @@ class ScraperOrchestrator:
             source = s["source"]
             if "error" in s:
                 _log(f"- {source}: ❌ FAILED ({s['error']})")
-            elif self.dry_run:
-                _log(f"- {source}: Found {s['jobs_found']} jobs (Dry Run)")
+            elif self.dry_run or "jobs_added" not in s:
+                _log(f"- {source}: Found {s.get('jobs_found', '?')} jobs (Dry Run)")
             else:
                 _log(f"- {source}: Added {s['jobs_added']}, Updated {s['jobs_updated']}")
 
@@ -306,14 +306,14 @@ def initialize_runtime_env(args):
     # This provides shared keys (Gemini, Geocodio, etc.)
     base_env = root_dir / ".env" if (root_dir / ".env").exists() else script_dir / ".env"
     if base_env.exists():
-        ensure_env_loaded(base_env)
+        ensure_env_loaded()
 
     # 2. Apply Staging Overrides if requested
     if args.staging:
         staging_env = root_dir / ".env.staging" if (root_dir / ".env.staging").exists() else script_dir / ".env.staging"
         if staging_env.exists():
             _log(f"▶ Loading Staging Overrides from {staging_env.name}")
-            ensure_env_loaded(staging_env)
+            load_env_file(staging_env)
         else:
             _log(f"⚠️ Warning: --staging flag used but {staging_env} not found.")
 
@@ -322,7 +322,7 @@ def initialize_runtime_env(args):
         prod_env = root_dir / ".env.production" if (root_dir / ".env.production").exists() else script_dir / ".env.production"
         if prod_env.exists():
             _log(f"▶ Loading Production Overrides from {prod_env.name}")
-            ensure_env_loaded(prod_env)
+            load_env_file(prod_env)
 
 
 def main():
