@@ -1,10 +1,12 @@
 'use client';
 
-import { forwardRef, useEffect, useState } from 'react';
+import { forwardRef, useSyncExternalStore } from 'react';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { useTheme } from '@/lib/hooks/useTheme';
 
 export type { TurnstileInstance };
+
+const emptySubscribe = () => () => {};
 
 interface TurnstileWidgetProps {
   onSuccess: (token: string) => void;
@@ -15,11 +17,14 @@ interface TurnstileWidgetProps {
 const TurnstileWidget = forwardRef<TurnstileInstance | null, TurnstileWidgetProps>(
   function TurnstileWidget({ onSuccess, onError, onExpire }, ref) {
     const { theme } = useTheme();
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-      setMounted(true);
-    }, []);
+    
+    // Hydration check: useSyncExternalStore ensures we don't trigger cascading renders
+    // while providing a stable 'true' on client and 'false' on server.
+    const mounted = useSyncExternalStore(
+      emptySubscribe,
+      () => true,
+      () => false
+    );
 
     if (!mounted) {
       return (

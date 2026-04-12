@@ -406,67 +406,7 @@ function profileHasLocationValue(profile: Pick<ProfileRow, 'values' | 'values_ra
   return resolveUserValues(profile).some(isLocation);
 }
 
-// computeMatchForPair
 
-/**
- * Computes all dimension scores and the final weighted score for a single
- * profile-job pair. Extracted to eliminate duplication between calculateUserMatches
- * and calculateJobMatches.
- */
-function computeMatchForPair(
-  profile: ProfileRow,
-  job: JobRow,
-): Omit<MatchResult, 'user_id' | 'job_id'> {
-  const profileValues = resolveUserValues(profile);
-  const profileWorkTypes = profile.work_types ?? [];
-
-  const vMatch = calculateMatch(
-    profileValues,
-    job.values ?? [],
-    job.values_rated as JobRatedValue[] | null,
-  );
-  const { score: skillScore, shared: sharedSkills } = calcSkillScore(
-    profile.skills ?? [],
-    job.skills ?? [],
-  );
-  const workTypeScore = calcWorkTypeScore(profileWorkTypes, job.work_type);
-  const locationScore = computeLocationScore({
-    jobLat: job.lat,
-    jobLng: job.lng,
-    userLat: profile.lat,
-    userLng: profile.lng,
-    jobAccuracyType: job.geocode_accuracy_type,
-    userWorkTypes: profileWorkTypes,
-    jobWorkType: job.work_type,
-    jobMunicipality: job.municipality,
-    jobProvince: job.province,
-    userMunicipality: profile.municipality,
-    userProvince: profile.province,
-  });
-
-  const scores: DimensionScores = {
-    values: vMatch.score,
-    skills: skillScore,
-    work_type: workTypeScore,
-    location: locationScore,
-  };
-
-  return {
-    score: calcFinalScore(scores, buildDimensionWeights(profileHasLocationValue(profile))),
-    value_score: scores.values,
-    skill_score: scores.skills,
-    work_type_score: scores.work_type,
-    location_score: scores.location,
-    shared_values: vMatch.shared_values,
-    shared_skills: sharedSkills,
-  };
-}
-
-// Select field lists — single source of truth for both query functions
-const PROFILE_SELECT =
-  'id, values, values_rated, skills, work_types, lat, lng, municipality, province' as const;
-const JOB_SELECT =
-  'id, values, values_rated, skills, work_type, lat, lng, geocode_accuracy_type, municipality, province' as const;
 
 // calculateUserMatches
 
