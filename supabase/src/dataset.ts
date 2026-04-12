@@ -1,52 +1,6 @@
 import type { Json, TableInsert } from './database.types';
 
-// Note: These expectations are tightly coupled to TOTAL_SEEDED_JOB_COUNT (27)
-// and the modulus-based logic in createJobFixture. If TOTAL_SEEDED_JOB_COUNT
-// changes, these counts will drift and tests will fail. 
-export const SEEDED_JOB_BOARD_EXPECTATIONS = {
-  employmentTypeCounts: {
-    contract: 12, // 25 jobs / 2 = 12 contract
-    fullTime: 13, // 25 jobs / 2 = 13 full-time
-  },
-  firstPageCount: 20, // jobs per page limit
-  jobCount: 25, // First 25 are SSE (see is_sse in createJobFixture)
-  municipalityCounts: {
-    montreal: 4, // 25 jobs -> 12 in QC -> 4 Montreal
-    ottawa: 4,   // 25 jobs -> 13 in ON -> 4 Ottawa
-    quebecCity: 4, // 25 jobs -> 12 in QC -> 4 Quebec City
-    toronto: 4,    // 25 jobs -> 13 in ON -> 4 Toronto (actually 4)
-  },
-  oneWeekCount: 15, // dates spread across 12 days
-  organizationCounts: {
-    partner1: 7, // 25 jobs / 4 partners
-  },
-  provinceCounts: {
-    on: 8, // Non-remote Ontario jobs
-    qc: 8, // Non-remote Quebec jobs
-  },
-  salaryListedCount: 22, // 25 jobs - 3 salaryless (from SALARYLESS_JOB_INDEXES)
-  sampleJobs: {
-    nonSseOnly: 'Community Builder 26',
-    searchMatch: 'Community Builder 25',
-    salarylessVisible: 'Community Builder 4',
-  },
-  secondPageCount: 5, // 25 - 20
-  sourceCounts: {
-    csi: 4,     // distributed across 7 sources
-    goodwork: 4,
-    ecocanada: 4,
-    centraide: 4,
-    coco: 4,
-    ma_communaute_emplois: 4,
-    ma_communaute_bene: 3,
-  },
-  sseOffCount: 27, // = TOTAL_SEEDED_JOB_COUNT
-  workTypeCounts: {
-    hybrid: 8, // 25 jobs / 3 work types
-    office: 8,
-    remote: 9,
-  },
-} as const;
+// E2E dynamic test constraints resolved below.
 
 type BookmarkInsert = TableInsert<'bookmarks'>;
 type JobInsert = TableInsert<'jobs'>;
@@ -72,6 +26,7 @@ export type SeedDataset = {
 
 const SCRAPE_RUN_ID = buildUuid(9_000);
 const TOTAL_SEEDED_JOB_COUNT = 27;
+const TOTAL_SSE_JOB_COUNT = 25;
 const SALARYLESS_JOB_INDEXES = new Set([3, 11, 19]);
 
 function buildUuid(index: number): string {
@@ -279,7 +234,7 @@ function createJobFixture(index: number, now: Date, sourceIds: string[]): JobIns
     is_remote: location.is_remote,
     // The bulletin defaults to the SSE-only filter, so the first 25 rows shape
     // the default landing state and the final 2 rows exercise that toggle.
-    is_sse: index < SEEDED_JOB_BOARD_EXPECTATIONS.jobCount,
+    is_sse: index < TOTAL_SSE_JOB_COUNT,
     job_title: `Community Builder ${index + 1}`,
     language: index % 5 === 0 ? 'fr' : 'en',
     lat: location.lat,
@@ -358,3 +313,78 @@ export function createSeedDataset(
     },
   };
 }
+
+// Compute deterministic test expectations directly across generated values rather than hardcoding.
+export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
+  const mockNow = new Date(0);
+  const sources = createSourceFixtures(mockNow);
+  const sourceIds = sources.map((s) => s.id);
+  const jobs = createJobFixtures(TOTAL_SEEDED_JOB_COUNT, mockNow, sourceIds);
+  const sseJobs = jobs.filter((j) => j.is_sse);
+
+  const employmentTypeCounts = { contract: 0, fullTime: 0 };
+  const municipalityCounts = { montreal: 0, ottawa: 0, quebecCity: 0, toronto: 0 };
+  const organizationCounts = { partner1: 0 };
+  const provinceCounts = { on: 0, qc: 0 };
+  const sourceCounts = {
+    csi: 0, goodwork: 0, ecocanada: 0, centraide: 0, coco: 0,
+    ma_communaute_emplois: 0, ma_communaute_bene: 0,
+  };
+  const workTypeCounts = { hybrid: 0, office: 0, remote: 0 };
+  let salaryListedCount = 0;
+  let oneWeekCount = 0;
+
+  const sourceKeyMap = ['csi', 'goodwork', 'ecocanada', 'centraide', 'coco', 'ma_communaute_emplois', 'ma_communaute_bene'] as const;
+
+  for (let index = 0; index < sseJobs.length; index++) {
+    const job = sseJobs[index];
+    if (job.employment_type === 'contract') employmentTypeCounts.contract++;
+    if (job.employment_type === 'full-time') employmentTypeCounts.fullTime++;
+
+    if (job.municipality === 'Montreal') municipalityCounts.montreal++;
+    if (job.municipality === 'Ottawa') municipalityCounts.ottawa++;
+    if (job.municipality === 'Quebec City') municipalityCounts.quebecCity++;
+    if (job.municipality === 'Toronto') municipalityCounts.toronto++;
+
+    if (job.organization === 'WEV Partner 1') organizationCounts.partner1++;
+
+    if (!job.is_remote && job.province === 'ON') provinceCounts.on++;
+    if (!job.is_remote && job.province === 'QC') provinceCounts.qc++;
+
+    if (job.compensation_meta !== null) salaryListedCount++;
+
+    const sourceIndex = sourceIds.indexOf(job.source_id);
+    if (sourceIndex >= 0 && sourceIndex < 7) {
+      sourceCounts[sourceKeyMap[sourceIndex]]++;
+    }
+
+    if (job.work_type === 'hybrid') workTypeCounts.hybrid++;
+    if (job.work_type === 'office') workTypeCounts.office++;
+    if (job.work_type === 'remote') workTypeCounts.remote++;
+
+    // Calculate dates within a week (exactly matches the database `daysAgo` generator parameter logic)
+    if (index % 12 < 7) {
+      oneWeekCount++;
+    }
+  }
+
+  return {
+    employmentTypeCounts,
+    firstPageCount: Math.min(20, sseJobs.length),
+    jobCount: sseJobs.length,
+    municipalityCounts,
+    oneWeekCount,
+    organizationCounts,
+    provinceCounts,
+    salaryListedCount,
+    sampleJobs: {
+      nonSseOnly: `Community Builder 26`, // Hardcoded testing anchor boundary
+      searchMatch: `Community Builder 25`,
+      salarylessVisible: 'Community Builder 4',
+    },
+    secondPageCount: Math.max(0, sseJobs.length - 20),
+    sourceCounts,
+    sseOffCount: jobs.length,
+    workTypeCounts,
+  };
+})();

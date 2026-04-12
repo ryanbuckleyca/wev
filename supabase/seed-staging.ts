@@ -53,13 +53,24 @@ async function main() {
   console.log(`SOURCE: PRODUCTION (${prodUrl})`);
   console.log('!'.repeat(40) + '\n');
 
-  // Confirm before any async work; rl is created and closed inside prompt()
-  const answer = await prompt(
-    'This will delete all existing data in STAGING and replace it with a production-mirror.\nType "YES" to confirm: ',
-  );
-  if (answer !== 'YES') {
-    console.log('Aborting.');
-    process.exit(0);
+  const isForce = process.argv.includes('--force');
+
+  if (!isForce) {
+    if (!process.stdout.isTTY) {
+      console.error(
+        '❌ Error: Staging seed requires an interactive terminal. Use --force flag to bypass in CI.',
+      );
+      process.exit(1);
+    }
+    
+    // Confirm before any async work; rl is created and closed inside prompt()
+    const answer = await prompt(
+      'This will delete all existing data in STAGING and replace it with a production-mirror.\nType "YES" to confirm: ',
+    );
+    if (answer !== 'YES') {
+      console.log('Aborting.');
+      process.exit(0);
+    }
   }
 
   try {
