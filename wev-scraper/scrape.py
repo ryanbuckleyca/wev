@@ -276,8 +276,8 @@ class ScraperOrchestrator:
         if scraper:
             try:
                 scraper.close_browser()
-            except:
-                pass
+            except Exception as e:
+                _log(f"⚠️ Warning: Failed to close browser cleanly: {e}")
 
     def _handle_fatal_error(self, e: Exception):
         _log(f"❌ FATAL ERROR: {e}")
