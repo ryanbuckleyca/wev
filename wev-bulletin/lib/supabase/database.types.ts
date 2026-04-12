@@ -538,6 +538,10 @@ export type Database = {
         }[]
       }
       rank_weight: { Args: { rank: number; total: number }; Returns: number }
+      recalculate_matches_for_job: {
+        Args: { p_job_id: string }
+        Returns: undefined
+      }
       recalculate_matches_for_user: {
         Args: { p_user_id: string }
         Returns: undefined

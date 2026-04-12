@@ -113,8 +113,9 @@ function createSourceFixtures(now: Date): SourceInsert[] {
 function createJobValues(index: number): string[] {
   const valueSets = [
     ['Help Society', 'Moral Fulfillment'],
-    ['Work Life Balance', 'Creativity'],
-    ['Autonomy', 'Learning'],
+    ['Work-Life Balance', 'Creativity'],
+    ['Independence', 'Challenge'],
+    ['Financial Gain', 'Decision Making'],
   ] as const;
 
   return [...valueSets[index % valueSets.length]];
@@ -128,9 +129,17 @@ function createRatedValues(values: string[]): Json {
 }
 
 function createSkillUris(index: number): string[] {
+  // Use real ESCO URIs corresponding to common skills in the seeded index
+  const realSkills = [
+    'http://data.europa.eu/esco/skill/97965983-0da4-4902-9daf-d5cd2693ef73', // 3D modelling
+    'http://data.europa.eu/esco/skill/6bc02a4a-66af-4b49-9bd3-d07695d52b42', // abide by business ethical code of conducts
+    'http://data.europa.eu/esco/skill/eb0e5615-1575-4a86-a1a2-7d39595033c5', // ABAP
+    'http://data.europa.eu/esco/skill/27247d7e-d327-4ba2-87fe-215143be6453', // abrasive blasting processes
+  ];
+
   return [
-    `http://data.europa.eu/esco/skill/wev-skill-${index + 1}`,
-    `http://data.europa.eu/esco/skill/wev-skill-shared-${(index % 3) + 1}`,
+    realSkills[index % realSkills.length],
+    realSkills[(index + 1) % realSkills.length],
   ];
 }
 

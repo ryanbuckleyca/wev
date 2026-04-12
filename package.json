@@ -28,6 +28,7 @@
     "seed:local": "npx tsx supabase/seed-local.ts",
     "seed:staging": "tsx supabase/seed-staging.ts",
     "skills:index": "python3 wev-scraper/scripts/build_esco_skills_index.py",
+    "skills:embeddings": "wev-scraper/venv/bin/python3 wev-scraper/scripts/seed_esco_embeddings.py",
     "apply-migrations": "node supabase/apply-migrations.js",
     "apply-migrations:direct": "python3 supabase/apply-migrations-direct.py",
     "migrate:local": "bash supabase/migrate.sh local",
