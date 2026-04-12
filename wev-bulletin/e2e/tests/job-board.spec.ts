@@ -22,9 +22,13 @@ const FILTER_LABELS = {
     qc: 'QC',
   },
   source: {
-    communityImpactJobs: 'Community Impact Jobs',
-    solidarityCareers: 'Solidarity Careers',
-    wevOpportunities: 'WEV Opportunities',
+    csi: 'Centre for Social Innovation',
+    goodwork: 'GoodWork',
+    ecocanada: 'Eco Canada',
+    centraide: 'Centraide',
+    coco: 'COCo',
+    ma_communaute_emplois: 'Ma Communauté (emplois)',
+    ma_communaute_bene: 'Ma Communauté (bénévolat)',
   },
   workType: {
     hybrid: 'Hybrid',
@@ -152,16 +156,16 @@ test.describe('Job board', () => {
 
   const SOURCE_CASES = (expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS) => [
     {
-      label: FILTER_LABELS.source.wevOpportunities,
-      total: expectations.sourceCounts.wevOpportunities,
+      label: FILTER_LABELS.source.csi,
+      total: expectations.sourceCounts.csi,
     },
     {
-      label: FILTER_LABELS.source.communityImpactJobs,
-      total: expectations.sourceCounts.communityImpactJobs,
+      label: FILTER_LABELS.source.goodwork,
+      total: expectations.sourceCounts.goodwork,
     },
     {
-      label: FILTER_LABELS.source.solidarityCareers,
-      total: expectations.sourceCounts.solidarityCareers,
+      label: FILTER_LABELS.source.centraide,
+      total: expectations.sourceCounts.centraide,
     },
   ];
 

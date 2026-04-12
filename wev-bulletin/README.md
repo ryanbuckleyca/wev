@@ -226,7 +226,7 @@ The application expects two tables in Supabase:
 
 ### `job_matches`
 
-Stores user↔job **work-values** match scores (`user_id`, `job_id`, `score`, `shared_values`). Implementation and tests live in this repo: **`lib/match-calculator.ts`**, **`lib/value-ratings.ts`**, **`lib/match-calculator.test.ts`**, **`lib/sql-ts-parity.test.ts`**. Database triggers and functions are defined in **`supabase/migrations/`** (same DB as this app; apply via **`supabase/migrations/README.md`**).
+Stores user↔job **work-values** match scores (`user_id`, `job_id`, `score`, `shared_values`). Implementation and tests live in this repo: **`lib/match-calculator.ts`**, **`lib/value-ratings.ts`**, **`lib/match-calculator.test.ts`**, **`lib/sql-ts-parity.test.ts`**. Database triggers and functions are defined in **`supabase/migrations/`** at the repository root.
 
 For **scraper scripts** that touch matching or bulk recompute, see **`wev-scraper/scripts/README.md`** (not duplicated here).
 
@@ -281,7 +281,7 @@ curl -X POST "https://your-domain.com/api/skills/revalidate?secret=YOUR_REVALIDA
 
 The `REVALIDATION_SECRET` must be set in your environment variables (`.env`, `.env.production`).
 
-**Future Enhancement:** Database webhooks can be configured to automatically trigger cache invalidation when the `esco_skills` table is modified. See `wev-bulletin/supabase/migrations/revalidate_skills_cache.sql` for implementation details.
+**Future Enhancement:** Database webhooks can be configured to automatically trigger cache invalidation when the `esco_skills` table is modified. See `supabase/migrations/` for related SQL logic.
 
 ## Features
 

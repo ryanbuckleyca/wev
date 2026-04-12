@@ -26,6 +26,7 @@
     "tsc": "npm run tsc --prefix wev-bulletin",
     "verify": "npm run lint && npm run tsc && npm run test",
     "seed:local": "npx tsx supabase/seed-local.ts",
+    "seed:staging": "tsx supabase/seed-staging.ts",
     "skills:index": "python3 wev-scraper/scripts/build_esco_skills_index.py",
     "apply-migrations": "node supabase/apply-migrations.js",
     "apply-migrations:direct": "python3 supabase/apply-migrations-direct.py",

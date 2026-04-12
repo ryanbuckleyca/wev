@@ -29,9 +29,13 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = {
   },
   secondPageCount: 5,
   sourceCounts: {
-    communityImpactJobs: 8,
-    solidarityCareers: 8,
-    wevOpportunities: 9,
+    csi: 4,
+    goodwork: 4,
+    ecocanada: 4,
+    centraide: 4,
+    coco: 4,
+    ma_communaute_emplois: 4,
+    ma_communaute_bene: 3,
   },
   sseOffCount: 27,
   workTypeCounts: {
@@ -46,7 +50,7 @@ type JobInsert = TableInsert<'jobs'>;
 type JobMatchInsert = TableInsert<'job_matches'>;
 type ProfileInsert = TableInsert<'profiles'>;
 type ScrapeRunInsert = TableInsert<'scrape_runs'>;
-type SourceInsert = TableInsert<'sources'>;
+export type SourceInsert = TableInsert<'sources'>;
 type UserRoleInsert = TableInsert<'user_roles'>;
 
 export type SeedTables = {
@@ -63,9 +67,6 @@ export type SeedDataset = {
   tables: SeedTables;
 };
 
-const PRIMARY_SOURCE_ID = buildUuid(1);
-const SECONDARY_SOURCE_ID = buildUuid(2);
-const COMMUNITY_SOURCE_ID = buildUuid(3);
 const SCRAPE_RUN_ID = buildUuid(9_000);
 const TOTAL_SEEDED_JOB_COUNT = 27;
 const SALARYLESS_JOB_INDEXES = new Set([3, 11, 19]);
@@ -95,23 +96,16 @@ function createSourceFixtures(now: Date): SourceInsert[] {
     {
       active: true,
       created_at: toIsoTimestamp(daysAgo(now, 30)),
-      id: PRIMARY_SOURCE_ID,
-      name: 'WEV Opportunities',
-      url: 'https://wev.example/sources/opportunities',
+      id: buildUuid(1),
+      name: 'Local Source A',
+      url: 'https://example.com/source-a',
     },
     {
       active: true,
       created_at: toIsoTimestamp(daysAgo(now, 29)),
-      id: SECONDARY_SOURCE_ID,
-      name: 'Community Impact Jobs',
-      url: 'https://wev.example/sources/community-impact',
-    },
-    {
-      active: true,
-      created_at: toIsoTimestamp(daysAgo(now, 28)),
-      id: COMMUNITY_SOURCE_ID,
-      name: 'Solidarity Careers',
-      url: 'https://wev.example/sources/solidarity-careers',
+      id: buildUuid(2),
+      name: 'Local Source B',
+      url: 'https://example.com/source-b',
     },
   ];
 }
@@ -216,9 +210,9 @@ function createJobSalary(index: number): JobSalary {
   };
 }
 
-function createJobFixture(index: number, now: Date): JobInsert {
+function createJobFixture(index: number, now: Date, sourceIds: string[]): JobInsert {
   const workType = (['remote', 'hybrid', 'office'] as const)[index % 3];
-  const sourceId = [PRIMARY_SOURCE_ID, SECONDARY_SOURCE_ID, COMMUNITY_SOURCE_ID][index % 3];
+  const sourceId = sourceIds[index % sourceIds.length];
   const values = createJobValues(index);
   const datePosted = daysAgo(now, index % 12);
   const scrapedAt = hoursAgo(now, index);
@@ -264,8 +258,8 @@ function createJobFixture(index: number, now: Date): JobInsert {
   };
 }
 
-function createJobFixtures(jobCount: number, now: Date): JobInsert[] {
-  return Array.from({ length: jobCount }, (_, index) => createJobFixture(index, now));
+function createJobFixtures(jobCount: number, now: Date, sourceIds: string[]): JobInsert[] {
+  return Array.from({ length: jobCount }, (_, index) => createJobFixture(index, now, sourceIds));
 }
 
 function createScrapeRunFixture(now: Date, sourceId: string, jobCount: number): ScrapeRunInsert[] {
@@ -300,15 +294,19 @@ function emptySeedTables(): SeedTables {
   };
 }
 
-export function createSeedDataset(now: Date = new Date()): SeedDataset {
-  const sources = createSourceFixtures(now);
-  const jobs = createJobFixtures(TOTAL_SEEDED_JOB_COUNT, now);
+export function createSeedDataset(
+  now: Date = new Date(),
+  sourceOverrides?: SourceInsert[],
+): SeedDataset {
+  const sources = sourceOverrides || createSourceFixtures(now);
+  const sourceIds = sources.map((s) => s.id);
+  const jobs = createJobFixtures(TOTAL_SEEDED_JOB_COUNT, now, sourceIds);
 
   return {
     tables: {
       ...emptySeedTables(),
       jobs,
-      scrapeRuns: createScrapeRunFixture(now, sources[0].id, jobs.length),
+      scrapeRuns: createScrapeRunFixture(now, sourceIds[0], jobs.length),
       sources,
     },
   };

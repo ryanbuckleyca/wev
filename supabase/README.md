@@ -8,6 +8,21 @@ This folder contains scripts and migrations for managing your Supabase database 
 - **backups/**: All backup .json files are saved here by the backup script.
 - **backup.js**: Script to back up all public tables (and attempts auth tables) to JSON files in backups/.
 
+## Local Development (Full Setup)
+
+The repository root contains a centralized Supabase configuration. To initialize, migate, and seed your local environment, run:
+
+```bash
+# From the repository root
+npm run migrate:local
+```
+
+This command automatically:
+1. Resets the local database (`supabase db reset`)
+2. Applies all migrations in `supabase/migrations/`
+3. Seeds the data using `supabase/seed-local.ts`
+4. Regenerates TypeScript types into `wev-bulletin/lib/supabase/database.types.ts`
+
 ## How the Backup Script Works
 
 - Parses all migration .sql files to discover current tables (including dropped tables).
