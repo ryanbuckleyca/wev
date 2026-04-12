@@ -1,15 +1,15 @@
-const fs = require('fs');
-const path = require('path');
-const { createClient } = require('@supabase/supabase-js');
-const { getSupabaseScriptConfig } = require('./script-config');
+import fs from 'node:fs';
+import path from 'node:path';
+import { createClient } from '@supabase/supabase-js';
+import { getSupabaseScriptConfig } from './src/script-config';
 
 const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } = getSupabaseScriptConfig(
-  'backup.js',
+  'backup.ts',
   {
     urlEnv: 'SUPABASE_PROD_URL',
     keyEnvNames: ['SUPABASE_PROD_SERVICE_ROLE_KEY'],
     keyDescription: 'production service role key',
-  },
+  }
 );
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -17,17 +17,17 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 // Dynamically extract table names from all migration .sql files
-function getAllMigrationFiles(migrationsDir) {
+function getAllMigrationFiles(migrationsDir: string) {
   return fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql'))
     .map((f) => path.join(migrationsDir, f));
 }
 
-function extractTablesFromSql(sql) {
+function extractTablesFromSql(sql: string) {
   const createRegex = /CREATE TABLE IF NOT EXISTS\s+"([^"]+)"\."([^"]+)"/g;
   const dropRegex = /DROP TABLE IF EXISTS\s+"([^"]+)"\."([^"]+)"/g;
-  const events = [];
+  const events: Array<{ type: 'create' | 'drop'; schema: string; table: string }> = [];
   let match;
   while ((match = createRegex.exec(sql)) !== null) {
     events.push({ type: 'create', schema: match[1], table: match[2] });
@@ -38,9 +38,9 @@ function extractTablesFromSql(sql) {
   return events;
 }
 
-function getAllTablesFromMigrations(migrationsDir) {
+function getAllTablesFromMigrations(migrationsDir: string) {
   const files = getAllMigrationFiles(migrationsDir);
-  const tableMap = new Map();
+  const tableMap = new Map<string, { schema: string; table: string }>();
   for (const file of files) {
     const sql = fs.readFileSync(file, 'utf8');
     for (const event of extractTablesFromSql(sql)) {
@@ -64,10 +64,9 @@ function getAllTablesFromMigrations(migrationsDir) {
 
 const PAGE = 1000;
 
-async function backupTable(table, schema = 'public') {
-  // Use only schema.table for Supabase REST API
+async function backupTable(table: string, schema: string = 'public') {
   const tableRef = `${schema === 'public' ? table : schema + '.' + table}`;
-  const data = [];
+  const data: any[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data: chunk, error } = await supabase
       .from(tableRef)
@@ -88,17 +87,14 @@ async function backupTable(table, schema = 'public') {
   }
   fs.writeFileSync(
     path.join(backupDir, `backup_${schema}_${table}.json`),
-    JSON.stringify(data, null, 2),
+    JSON.stringify(data, null, 2)
   );
   console.log(`Backed up ${tableRef} (${data.length} rows)`);
 }
 
-// Adjust path: migrations are at ./migrations
 (async () => {
   const migrationsDir = path.resolve(__dirname, 'migrations');
   let allTables = getAllTablesFromMigrations(migrationsDir);
-  // Always include auth.users and auth.identities
-  // auth.* is not exposed to PostgREST; .from('auth.users') fails — export users from the dashboard if needed (see backup.md).
   for (const { schema, table } of allTables) {
     await backupTable(table, schema);
   }

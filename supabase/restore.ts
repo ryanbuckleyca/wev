@@ -1,22 +1,22 @@
-const fs = require('fs');
-const path = require('path');
-const { createClient } = require('@supabase/supabase-js');
-const { getSupabaseScriptConfig } = require('./script-config');
+import fs from 'node:fs';
+import path from 'node:path';
+import { createClient } from '@supabase/supabase-js';
+import { getSupabaseScriptConfig } from './src/script-config';
 
 const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } = getSupabaseScriptConfig(
-  'restore.js',
+  'restore.ts',
   {
     urlEnv: 'SUPABASE_URL',
     keyEnvNames: ['SUPABASE_SERVICE_ROLE_KEY'],
     keyDescription: 'local service role key',
-  },
+  }
 );
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-async function clearTable(table) {
+async function clearTable(table: string) {
   try {
     // Use TRUNCATE-like behavior by deleting all rows
     const { error } = await supabase
@@ -29,13 +29,13 @@ async function clearTable(table) {
     }
     console.log(`✅ Cleared ${table}`);
     return true;
-  } catch (e) {
+  } catch (e: any) {
     console.log(`Warning: Could not clear ${table}: ${e.message}`);
     return false;
   }
 }
 
-async function restoreTable(table, schema = 'public') {
+async function restoreTable(table: string, schema: string = 'public') {
   const backupFile = path.resolve(__dirname, 'backups', `backup_${schema}_${table}.json`);
 
   if (!fs.existsSync(backupFile)) {
@@ -56,11 +56,8 @@ async function restoreTable(table, schema = 'public') {
     console.log(`⚠️  Could not clear ${table}, attempting to insert anyway...`);
   }
 
-  // Strip columns that no longer exist in the target schema.
-  // IMPORTANT: Update this list whenever a column is dropped from the schema.
-  // Columns dropped so far: ideal_work_environment (replaced by lat/lng/municipality/province)
   const droppedColumns = ['ideal_work_environment'];
-  const sanitizedData = backupData.map((row) => {
+  const sanitizedData = backupData.map((row: any) => {
     const clean = { ...row };
     for (const col of droppedColumns) delete clean[col];
     return clean;
@@ -76,7 +73,7 @@ async function restoreTable(table, schema = 'public') {
     if (error) {
       console.error(
         `Error restoring batch ${i / batchSize + 1} for ${schema}.${table}:`,
-        error.message,
+        error.message
       );
       // Try individual inserts for problematic data
       for (const row of batch) {
@@ -90,7 +87,9 @@ async function restoreTable(table, schema = 'public') {
     } else {
       successCount += batch.length;
       console.log(
-        `Restored batch ${i / batchSize + 1}/${Math.ceil(sanitizedData.length / batchSize)} for ${schema}.${table}`,
+        `Restored batch ${i / batchSize + 1}/${Math.ceil(
+          sanitizedData.length / batchSize
+        )} for ${schema}.${table}`
       );
     }
   }
@@ -100,13 +99,17 @@ async function restoreTable(table, schema = 'public') {
 
 (async () => {
   const backupDir = path.resolve(__dirname, 'backups');
+  if (!fs.existsSync(backupDir)) {
+    console.error('Backups directory not found.');
+    process.exit(1);
+  }
+
   const backupFiles = fs
     .readdirSync(backupDir)
     .filter((f) => f.startsWith('backup_') && f.endsWith('.json'));
 
   console.log(`Found ${backupFiles.length} backup files to restore...`);
 
-  // Define restore order to handle foreign key constraints
   const restoreOrder = [
     'organizations',
     'sources',
