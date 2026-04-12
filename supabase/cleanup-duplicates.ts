@@ -1,8 +1,8 @@
-const readline = require('readline');
-const { createClient } = require('@supabase/supabase-js');
-const { getSupabaseScriptConfig } = require('./script-config');
+import readline from 'node:readline';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseScriptConfig } from './src/script-config';
 
-function parseArgs(argv) {
+function parseArgs(argv: string[]) {
   return {
     prod: argv.includes('--prod'),
   };
@@ -16,7 +16,7 @@ async function confirmProductionRun() {
 
   if (!process.stdin.isTTY) {
     console.error(
-      'Refusing to run against production in non-interactive mode. Set CONFIRM_PROD_RUN=YES to override.',
+      'Refusing to run against production in non-interactive mode. Set CONFIRM_PROD_RUN=YES to override.'
     );
     process.exit(1);
   }
@@ -30,7 +30,7 @@ async function confirmProductionRun() {
   });
 
   try {
-    const response = await new Promise((resolve) => {
+    const response = await new Promise<string>((resolve) => {
       rl.question('Type YES to continue, anything else to abort: ', resolve);
     });
 
@@ -45,9 +45,9 @@ async function confirmProductionRun() {
   console.log('🔥 Using PRODUCTION database');
 }
 
-function createSupabaseClient({ prod }) {
+function createSupabaseClient({ prod }: { prod: boolean }) {
   const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } = getSupabaseScriptConfig(
-    'cleanup-duplicates.js',
+    'cleanup-duplicates.ts',
     prod
       ? {
           urlEnv: 'SUPABASE_PROD_URL',
@@ -58,7 +58,7 @@ function createSupabaseClient({ prod }) {
           urlEnv: 'SUPABASE_URL',
           keyEnvNames: ['SUPABASE_SERVICE_ROLE_KEY'],
           keyDescription: 'local service role key',
-        },
+        }
   );
 
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -66,14 +66,16 @@ function createSupabaseClient({ prod }) {
   });
 }
 
-async function cleanupDuplicates(supabase, tableName, uniqueField) {
+async function cleanupDuplicates(supabase: SupabaseClient<any>, tableName: string, uniqueField: string) {
   console.log(`🧹 Cleaning duplicates in ${tableName}...`);
 
-  // Get all records
+  // Get all records, ordering by a timestamp if possible
+  const orderBy = tableName === 'jobs' ? 'scraped_at' : 'created_at';
+  
   const { data: allRecords, error } = await supabase
     .from(tableName)
     .select('*')
-    .order('created_at', { ascending: true });
+    .order(orderBy, { ascending: true });
 
   if (error) {
     console.error(`Error fetching ${tableName}:`, error.message);
@@ -85,9 +87,8 @@ async function cleanupDuplicates(supabase, tableName, uniqueField) {
     return;
   }
 
-  // Find duplicates based on unique field
   const seen = new Set();
-  const duplicates = [];
+  const duplicates: string[] = [];
 
   for (const record of allRecords) {
     const key = record[uniqueField];
@@ -105,7 +106,6 @@ async function cleanupDuplicates(supabase, tableName, uniqueField) {
 
   console.log(`Found ${duplicates.length} duplicates in ${tableName}, removing...`);
 
-  // Delete duplicates in batches
   const batchSize = 10;
   for (let i = 0; i < duplicates.length; i += batchSize) {
     const batch = duplicates.slice(i, i + batchSize);
@@ -121,13 +121,12 @@ async function cleanupDuplicates(supabase, tableName, uniqueField) {
   console.log(`✅ Removed ${duplicates.length} duplicates from ${tableName}`);
 }
 
-async function cleanupAll(supabase, { prod }) {
+async function cleanupAll(supabase: SupabaseClient<any>, { prod }: { prod: boolean }) {
   console.log('🚀 Starting duplicate cleanup...\n');
   console.log(prod ? '🔥 Target: production database\n' : '🧪 Target: local database\n');
 
   // Clean up tables that might have duplicates
-  await cleanupDuplicates(supabase, 'jobs', 'job_title'); // Assuming job_title should be unique per scrape
-  await cleanupDuplicates(supabase, 'organizations', 'name');
+  await cleanupDuplicates(supabase, 'jobs', 'listing_url'); // listing_url is the unique constraint in logic
   await cleanupDuplicates(supabase, 'sources', 'url');
 
   console.log('\n✨ Cleanup complete!');
