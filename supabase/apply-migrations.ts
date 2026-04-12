@@ -1,14 +1,9 @@
-#!/usr/bin/env node
-/**
- * Apply pending migrations to Supabase database.
- * Uses service role key to execute SQL directly.
- */
+import { createClient } from '@supabase/supabase-js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { config as loadEnv } from 'dotenv';
 
-require('dotenv').config();
-
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
-const path = require('path');
+loadEnv();
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -32,7 +27,7 @@ const MIGRATIONS = [
   '20260328120000_grant_recalculate_match_rpcs.sql',
 ];
 
-async function applyMigration(filename) {
+async function applyMigration(filename: string) {
   const filepath = path.join(MIGRATIONS_DIR, filename);
 
   if (!fs.existsSync(filepath)) {
@@ -50,11 +45,9 @@ async function applyMigration(filename) {
     const { error } = await supabase.rpc('exec_sql', { sql_string: sql });
 
     if (error) {
-      // If exec_sql function doesn't exist, try alternative approach
       if (error.message.includes('exec_sql')) {
         console.log('   ⚠️  exec_sql function not available, trying alternative method...');
 
-        // Split SQL into statements and execute one by one
         const statements = sql
           .split(';')
           .map((s) => s.trim())
@@ -66,7 +59,7 @@ async function applyMigration(filename) {
           const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/exec`, {
             method: 'POST',
             headers: {
-              apikey: SUPABASE_KEY,
+              apikey: SUPABASE_KEY!,
               Authorization: `Bearer ${SUPABASE_KEY}`,
               'Content-Type': 'application/json',
             },
@@ -88,7 +81,7 @@ async function applyMigration(filename) {
 
     console.log(`   ✅ Applied successfully`);
     return true;
-  } catch (err) {
+  } catch (err: any) {
     console.error(`   ❌ Error applying migration:`);
     console.error(`      ${err.message}`);
     return false;
@@ -119,10 +112,10 @@ async function main() {
 
   if (failCount > 0) {
     console.log(
-      '\n⚠️  Some migrations failed. You may need to apply them manually via Supabase Dashboard.',
+      '\n⚠️  Some migrations failed. You may need to apply them manually via Supabase Dashboard.'
     );
     console.log(
-      '   Dashboard SQL Editor: https://supabase.com/dashboard/project/monvruedailbkcekicbl/sql',
+      '   Dashboard SQL Editor: https://supabase.com/dashboard/project/monvruedailbkcekicbl/sql'
     );
     process.exit(1);
   }
