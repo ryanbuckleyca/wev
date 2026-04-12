@@ -31,8 +31,14 @@
       "@/*": [
         "./*"
       ],
-      "@supabase/*": [
-        "../supabase/src/*"
+      "@supabase/dataset": [
+        "../supabase/src/dataset"
+      ],
+      "@supabase/seeder": [
+        "../supabase/src/seeder"
+      ],
+      "@supabase/database.types": [
+        "../supabase/src/database.types"
       ]
     }
   },

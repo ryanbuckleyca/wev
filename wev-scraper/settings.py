@@ -19,9 +19,19 @@ SCRAPER_ROOT = Path(__file__).resolve().parent
 _ENV_LOADED = False
 
 
-def ensure_env_loaded() -> None:
-    """Load scraper environment variables exactly once per process."""
+def ensure_env_loaded(env_file: str | Path | None = None) -> None:
+    """Load scraper environment variables exactly once per process.
+    
+    If env_file is provided, it is loaded with override=True.
+    Otherwise, it defaults to the standard .env discovery.
+    """
     global _ENV_LOADED
+    
+    if env_file:
+        load_dotenv(env_file, override=True)
+        _ENV_LOADED = True
+        return
+
     if _ENV_LOADED:
         return
 

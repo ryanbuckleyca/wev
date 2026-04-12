@@ -1,17 +1,10 @@
-# Load environment variables FIRST - before any other imports that might need them
 import sys
 import os
 import traceback
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List, Dict, Set, Any, Optional
-
-try:
-    from dotenv import load_dotenv
-    load_dotenv(Path(__file__).resolve().parent / ".env")
-    load_dotenv()  # fallback: current directory
-except ImportError:
-    pass
+from settings import ensure_env_loaded
 
 # Ensure CI sees output immediately
 if hasattr(sys.stdout, "reconfigure"):
@@ -296,6 +289,7 @@ def parse_args():
     import argparse
     parser = argparse.ArgumentParser(description="WEV Scraper Orchestrator")
     parser.add_argument("--prod", action="store_true", help="Use production database")
+    parser.add_argument("--staging", action="store_true", help="Use staging (.env.staging) environment")
     parser.add_argument("--dry-run", "--dry", action="store_true", help="Skip database writes")
     parser.add_argument("--compare", action="store_true", help="Dry run + compare with DB")
     parser.add_argument("--provider", help="Force specific LLM provider")
@@ -303,10 +297,42 @@ def parse_args():
     return parser.parse_args()
 
 
+def initialize_runtime_env(args):
+    """Predictable environment initialization based on CLI flags."""
+    script_dir = Path(__file__).resolve().parent
+    root_dir = script_dir.parent
+    
+    # 1. Load Baseline (.env) from root or local
+    # This provides shared keys (Gemini, Geocodio, etc.)
+    base_env = root_dir / ".env" if (root_dir / ".env").exists() else script_dir / ".env"
+    if base_env.exists():
+        ensure_env_loaded(base_env)
+
+    # 2. Apply Staging Overrides if requested
+    if args.staging:
+        staging_env = root_dir / ".env.staging" if (root_dir / ".env.staging").exists() else script_dir / ".env.staging"
+        if staging_env.exists():
+            _log(f"▶ Loading Staging Overrides from {staging_env.name}")
+            ensure_env_loaded(staging_env)
+        else:
+            _log(f"⚠️ Warning: --staging flag used but {staging_env} not found.")
+
+    # 3. Apply Production Overrides if requested
+    if args.prod:
+        prod_env = root_dir / ".env.production" if (root_dir / ".env.production").exists() else script_dir / ".env.production"
+        if prod_env.exists():
+            _log(f"▶ Loading Production Overrides from {prod_env.name}")
+            ensure_env_loaded(prod_env)
+
+
 def main():
+    import os
     args = parse_args()
     
-    # 1. Environment Overrides
+    # 1. Initialize Environment
+    initialize_runtime_env(args)
+    
+    # 2. Environment Overrides from CLI
     if args.provider: os.environ["LLM_PROVIDER"] = args.provider
     if args.max_jobs: os.environ["MAX_JOBS_PER_SOURCE"] = str(args.max_jobs)
     if args.dry_run or args.compare:

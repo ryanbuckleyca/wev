@@ -1,6 +1,6 @@
 import { type SupabaseClient, createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
-import { createSeedDataset, type SeedTables } from './dataset';
+import { createSeedDataset, type SeedTables, type SourceInsert } from './dataset';
 
 export interface SupabaseDatabaseConfig {
   projectRef: string;
@@ -56,6 +56,11 @@ async function clearTable(
 ): Promise<void> {
   const { error } = await client.from(name).delete().not(column, 'is', null);
   if (error) {
+    // If the table doesn't exist yet, we don't need to clear it.
+    if (error.message.includes('Could not find the table') || error.message.includes('does not exist')) {
+      console.log(`▶ Skipping clear for ${name} (table not found)`);
+      return;
+    }
     throw new Error(`Failed clearing ${name}: ${error.message}`);
   }
 }
@@ -84,10 +89,15 @@ async function clearTables(client: SupabaseClient<Database>): Promise<void> {
   }
 }
 
-async function seedTables(client: SupabaseClient<Database>, tables: SeedTables): Promise<void> {
-  await insertRows('sources', tables.sources, async (batch) =>
-    client.from('sources').insert(batch),
-  );
+async function seedTables(
+  client: SupabaseClient<Database>,
+  tables: SeedTables,
+  sourceOverrides?: SourceInsert[],
+): Promise<void> {
+  // Use production overrides if provided, otherwise use dataset sources
+  const sources = sourceOverrides || tables.sources;
+
+  await insertRows('sources', sources, async (batch) => client.from('sources').insert(batch));
   await insertRows('jobs', tables.jobs, async (batch) => client.from('jobs').insert(batch));
   await insertRows('profiles', tables.profiles, async (batch) =>
     client.from('profiles').insert(batch),
@@ -108,16 +118,24 @@ async function seedTables(client: SupabaseClient<Database>, tables: SeedTables):
 
 /**
  * Clears and seeds the database with the provided (or default) dataset.
+ * Supports injecting live production sources into the staging environment.
  */
-export async function resetAndSeedDatabase(config: SupabaseDatabaseConfig): Promise<void> {
+export async function resetAndSeedDatabase(
+  config: SupabaseDatabaseConfig,
+  sourceOverrides?: SourceInsert[],
+): Promise<void> {
   // Relaxed project ref check for local development
-  if (config.projectRef !== '127' && config.projectRef !== 'localhost' && config.projectRef !== 'supabase') {
-     assertExpectedProjectRef(config.supabaseUrl, config.projectRef);
+  if (
+    config.projectRef !== '127' &&
+    config.projectRef !== 'localhost' &&
+    config.projectRef !== 'supabase'
+  ) {
+    assertExpectedProjectRef(config.supabaseUrl, config.projectRef);
   }
 
   const client = createDatabaseClient(config);
-  const dataset = createSeedDataset();
+  const dataset = createSeedDataset(new Date(), sourceOverrides);
 
   await clearTables(client);
-  await seedTables(client, dataset.tables);
+  await seedTables(client, dataset.tables, sourceOverrides);
 }

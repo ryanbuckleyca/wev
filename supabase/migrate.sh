@@ -100,9 +100,9 @@ case "${TARGET}" in
     echo "▶ Resetting local database..."
     supabase db reset
     echo "▶ Seeding database with E2E dataset..."
-    npx tsx ./seed-local.ts
+    npx tsx supabase/seed-local.ts
     echo "▶ Regenerating TypeScript types..."
-    bash ./generate-types.sh local
+    bash supabase/generate-types.sh local
     echo "✨ Done."
     ;;
   staging|prod)
