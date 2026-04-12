@@ -21,7 +21,10 @@ const nextConfig = {
   // Removed 'output: export' to enable SSR/hybrid mode
   // This allows API routes and server-side rendering
   turbopack: {
-    root: process.cwd(),
+    root: path.join(process.cwd(), '..'),
+  },
+  experimental: {
+    externalDir: true,
   },
 };
 

@@ -12,32 +12,9 @@ if [ ! -d "venv" ]; then
 fi
 source venv/bin/activate
 
-# Read ENV_MODE from .env using Python so quoted values and inline comments are handled correctly
-if [ -f ".env" ]; then
-    ENV_MODE=$(python3 -c "
-import re
-with open('.env') as f:
-    for line in f:
-        line = line.strip()
-        if line.startswith('#') or '=' not in line:
-            continue
-        key, _, val = line.partition('=')
-        if key.strip() == 'ENV_MODE':
-            val = val.split('#')[0].strip().strip('\"').strip(\"'\")
-            print(val)
-            break
-" 2>/dev/null)
-fi
-
-pip install --quiet --upgrade pip
-
-if [ "$ENV_MODE" = "test" ]; then
-    echo "Running in test mode. Installing dev dependencies..."
-    pip install --quiet -r requirements-dev.txt
-else
-    echo "Running in production mode. Installing standard dependencies..."
-    pip install --quiet -r requirements.txt
-fi
+# Standard dependencies
+echo "Installing/Updating dependencies..."
+pip install --quiet -r requirements.txt
 
 # Ensure local package is installed in editable mode for root-relative imports
 pip install --quiet -e .
