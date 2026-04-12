@@ -177,6 +177,9 @@ describe('/api/account/delete', () => {
     expect(mockSignInWithPassword).toHaveBeenCalledWith({
       email: 'test@example.com',
       password: 'validpassword123',
+      options: {
+        captchaToken: 'XXXX.DUMMY.TOKEN.XXXX',
+      },
     });
     expect(mockAdminSignOut).toHaveBeenCalledWith('verification-token', 'local');
     expect(mockDeleteUser).toHaveBeenCalledWith('user-123');
