@@ -92,12 +92,8 @@ async function clearTables(client: SupabaseClient<Database>): Promise<void> {
 async function seedTables(
   client: SupabaseClient<Database>,
   tables: SeedTables,
-  sourceOverrides?: SourceInsert[],
 ): Promise<void> {
-  // Use production overrides if provided, otherwise use dataset sources
-  const sources = sourceOverrides || tables.sources;
-
-  await insertRows('sources', sources, async (batch) => client.from('sources').insert(batch));
+  await insertRows('sources', tables.sources, async (batch) => client.from('sources').insert(batch));
   await insertRows('jobs', tables.jobs, async (batch) => client.from('jobs').insert(batch));
   await insertRows('profiles', tables.profiles, async (batch) =>
     client.from('profiles').insert(batch),
@@ -137,5 +133,5 @@ export async function resetAndSeedDatabase(
   const dataset = createSeedDataset(new Date(), sourceOverrides);
 
   await clearTables(client);
-  await seedTables(client, dataset.tables, sourceOverrides);
+  await seedTables(client, dataset.tables);
 }

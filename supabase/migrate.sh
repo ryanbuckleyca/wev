@@ -24,22 +24,22 @@ cd "${REPO_ROOT}"
 
 # Load environment variables from repo root
 set -a
-if [ -f ../.env ]; then source ../.env; fi
+if [ -f .env ]; then source .env; fi
 set +a
 
 # Load environment-specific project reference
 load_project_ref() {
   # For production, load production overrides
-  if [[ "${TARGET}" == "prod" && -f "../.env.production" ]]; then
+  if [[ "${TARGET}" == "prod" && -f ".env.production" ]]; then
     set -a
-    source "../.env.production"
+    source ".env.production"
     set +a
   fi
 
   # For staging, load staging overrides
-  if [[ "${TARGET}" == "staging" && -f "../.env.staging" ]]; then
+  if [[ "${TARGET}" == "staging" && -f ".env.staging" ]]; then
     set -a
-    source "../.env.staging"
+    source ".env.staging"
     set +a
   fi
   

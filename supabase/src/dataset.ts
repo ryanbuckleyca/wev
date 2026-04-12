@@ -1,35 +1,38 @@
 import type { Json, TableInsert } from './database.types';
 
+// Note: These expectations are tightly coupled to TOTAL_SEEDED_JOB_COUNT (27)
+// and the modulus-based logic in createJobFixture. If TOTAL_SEEDED_JOB_COUNT
+// changes, these counts will drift and tests will fail. 
 export const SEEDED_JOB_BOARD_EXPECTATIONS = {
   employmentTypeCounts: {
-    contract: 12,
-    fullTime: 13,
+    contract: 12, // 25 jobs / 2 = 12 contract
+    fullTime: 13, // 25 jobs / 2 = 13 full-time
   },
-  firstPageCount: 20,
-  jobCount: 25,
+  firstPageCount: 20, // jobs per page limit
+  jobCount: 25, // First 25 are SSE (see is_sse in createJobFixture)
   municipalityCounts: {
-    montreal: 4,
-    ottawa: 4,
-    quebecCity: 4,
-    toronto: 4,
+    montreal: 4, // 25 jobs -> 12 in QC -> 4 Montreal
+    ottawa: 4,   // 25 jobs -> 13 in ON -> 4 Ottawa
+    quebecCity: 4, // 25 jobs -> 12 in QC -> 4 Quebec City
+    toronto: 4,    // 25 jobs -> 13 in ON -> 4 Toronto (actually 4)
   },
-  oneWeekCount: 15,
+  oneWeekCount: 15, // dates spread across 12 days
   organizationCounts: {
-    partner1: 7,
+    partner1: 7, // 25 jobs / 4 partners
   },
   provinceCounts: {
-    on: 8,
-    qc: 8,
+    on: 8, // Non-remote Ontario jobs
+    qc: 8, // Non-remote Quebec jobs
   },
-  salaryListedCount: 22,
+  salaryListedCount: 22, // 25 jobs - 3 salaryless (from SALARYLESS_JOB_INDEXES)
   sampleJobs: {
     nonSseOnly: 'Community Builder 26',
     searchMatch: 'Community Builder 25',
     salarylessVisible: 'Community Builder 4',
   },
-  secondPageCount: 5,
+  secondPageCount: 5, // 25 - 20
   sourceCounts: {
-    csi: 4,
+    csi: 4,     // distributed across 7 sources
     goodwork: 4,
     ecocanada: 4,
     centraide: 4,
@@ -37,9 +40,9 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = {
     ma_communaute_emplois: 4,
     ma_communaute_bene: 3,
   },
-  sseOffCount: 27,
+  sseOffCount: 27, // = TOTAL_SEEDED_JOB_COUNT
   workTypeCounts: {
-    hybrid: 8,
+    hybrid: 8, // 25 jobs / 3 work types
     office: 8,
     remote: 9,
   },

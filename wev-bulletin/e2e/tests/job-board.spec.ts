@@ -24,11 +24,7 @@ const FILTER_LABELS = {
   source: {
     csi: 'Centre for Social Innovation',
     goodwork: 'GoodWork',
-    ecocanada: 'Eco Canada',
     centraide: 'Centraide',
-    coco: 'COCo',
-    ma_communaute_emplois: 'Ma Communauté (emplois)',
-    ma_communaute_bene: 'Ma Communauté (bénévolat)',
   },
   workType: {
     hybrid: 'Hybrid',
@@ -131,51 +127,21 @@ test.describe('Job board', () => {
     await expectVisibleResults(jobBoardPage, expectations.oneWeekCount, expectations);
   });
 
-  const WORK_TYPE_CASES = (expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS) => [
-    {
-      label: FILTER_LABELS.workType.remote,
-      total: expectations.workTypeCounts.remote,
-    },
-    {
-      label: FILTER_LABELS.workType.hybrid,
-      total: expectations.workTypeCounts.hybrid,
-    },
-    {
-      label: FILTER_LABELS.workType.office,
-      total: expectations.workTypeCounts.office,
-    },
-  ];
-
-  test('filters by work types', async ({ jobBoardPage, expectations }) => {
-    for (const workTypeCase of WORK_TYPE_CASES(expectations)) {
+  for (const key of ['remote', 'hybrid', 'office'] as const) {
+    test(`filters by work type: ${FILTER_LABELS.workType[key]}`, async ({ jobBoardPage, expectations }) => {
       await loadEnglishJobBoard(jobBoardPage);
-      await jobBoardPage.selectFilterButton('workType', workTypeCase.label);
-      await expectVisibleResults(jobBoardPage, workTypeCase.total, expectations);
-    }
-  });
+      await jobBoardPage.selectFilterButton('workType', FILTER_LABELS.workType[key]);
+      await expectVisibleResults(jobBoardPage, expectations.workTypeCounts[key], expectations);
+    });
+  }
 
-  const SOURCE_CASES = (expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS) => [
-    {
-      label: FILTER_LABELS.source.csi,
-      total: expectations.sourceCounts.csi,
-    },
-    {
-      label: FILTER_LABELS.source.goodwork,
-      total: expectations.sourceCounts.goodwork,
-    },
-    {
-      label: FILTER_LABELS.source.centraide,
-      total: expectations.sourceCounts.centraide,
-    },
-  ];
-
-  test('filters by sources', async ({ jobBoardPage, expectations }) => {
-    for (const sourceCase of SOURCE_CASES(expectations)) {
+  for (const key of ['csi', 'goodwork', 'centraide'] as const) {
+    test(`filters by source: ${FILTER_LABELS.source[key]}`, async ({ jobBoardPage, expectations }) => {
       await loadEnglishJobBoard(jobBoardPage);
-      await jobBoardPage.toggleFilterCheckbox('source', sourceCase.label);
-      await expectVisibleResults(jobBoardPage, sourceCase.total, expectations);
-    }
-  });
+      await jobBoardPage.toggleFilterCheckbox('source', FILTER_LABELS.source[key]);
+      await expectVisibleResults(jobBoardPage, expectations.sourceCounts[key], expectations);
+    });
+  }
 
   test('filters by organization', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);
@@ -189,37 +155,21 @@ test.describe('Job board', () => {
     );
   });
 
-  const EMPLOYMENT_TYPE_CASES = (expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS) => [
-    {
-      label: FILTER_LABELS.employmentType.fullTime,
-      total: expectations.employmentTypeCounts.fullTime,
-    },
-    {
-      label: FILTER_LABELS.employmentType.contract,
-      total: expectations.employmentTypeCounts.contract,
-    },
-  ];
-
-  test('filters by employment types', async ({ jobBoardPage, expectations }) => {
-    for (const employmentTypeCase of EMPLOYMENT_TYPE_CASES(expectations)) {
+  for (const key of ['fullTime', 'contract'] as const) {
+    test(`filters by employment type: ${FILTER_LABELS.employmentType[key]}`, async ({ jobBoardPage, expectations }) => {
       await loadEnglishJobBoard(jobBoardPage);
-      await jobBoardPage.toggleFilterCheckbox('employmentType', employmentTypeCase.label);
-      await expectVisibleResults(jobBoardPage, employmentTypeCase.total, expectations);
-    }
-  });
+      await jobBoardPage.toggleFilterCheckbox('employmentType', FILTER_LABELS.employmentType[key]);
+      await expectVisibleResults(jobBoardPage, expectations.employmentTypeCounts[key], expectations);
+    });
+  }
 
-  const PROVINCE_CASES = (expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS) => [
-    { label: FILTER_LABELS.province.on, total: expectations.provinceCounts.on },
-    { label: FILTER_LABELS.province.qc, total: expectations.provinceCounts.qc },
-  ];
-
-  test('filters by provinces', async ({ jobBoardPage, expectations }) => {
-    for (const provinceCase of PROVINCE_CASES(expectations)) {
+  for (const key of ['on', 'qc'] as const) {
+    test(`filters by province: ${FILTER_LABELS.province[key]}`, async ({ jobBoardPage, expectations }) => {
       await loadEnglishJobBoard(jobBoardPage);
-      await jobBoardPage.toggleFilterCheckbox('province', provinceCase.label);
-      await expectVisibleResults(jobBoardPage, provinceCase.total, expectations);
-    }
-  });
+      await jobBoardPage.toggleFilterCheckbox('province', FILTER_LABELS.province[key]);
+      await expectVisibleResults(jobBoardPage, expectations.provinceCounts[key], expectations);
+    });
+  }
 
   test('filters by municipality', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);

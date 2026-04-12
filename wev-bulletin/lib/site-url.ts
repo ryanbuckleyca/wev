@@ -37,8 +37,9 @@ export function getSiteBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const { origin } = window.location;
     // Hardening: Resolve both localhost and 127.0.0.1 to localhost for session consistency.
-    if (origin.includes(':3000')) {
-      return 'http://localhost:3000';
+    const { hostname, port } = new URL(origin);
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return `http://localhost:${port || '3000'}`;
     }
     return origin;
   }
@@ -52,8 +53,9 @@ export function getSiteBaseUrlFromRequest(request: Request): string {
 
   const { origin } = new URL(request.url);
   // Hardening: Resolve both localhost and 127.0.0.1 to localhost for session consistency.
-  if (origin.includes(':3000')) {
-    return 'http://localhost:3000';
+  const { hostname, port } = new URL(origin);
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `http://localhost:${port || '3000'}`;
   }
   return origin;
 }
