@@ -1,6 +1,7 @@
 import { resetAndSeedDatabase } from '@supabase/seeder';
 import { config as loadEnv } from 'dotenv';
 import fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * Playwright Global Setup
@@ -11,7 +12,8 @@ async function globalSetup() {
 
   try {
     // Prioritize .env.test if it exists
-    const envPath = fs.existsSync('.env.test') ? '.env.test' : '.env';
+    const envTestPath = path.resolve(__dirname, '../../.env.test');
+    const envPath = fs.existsSync(envTestPath) ? envTestPath : path.resolve(__dirname, '../../.env');
     loadEnv({ path: envPath });
 
     const supabaseUrl = process.env.SUPABASE_URL;

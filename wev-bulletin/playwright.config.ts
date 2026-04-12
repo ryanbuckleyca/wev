@@ -1,4 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as fs from 'fs';
+
+const envTestPath = path.resolve(__dirname, '../.env.test');
+dotenv.config({ path: fs.existsSync(envTestPath) ? envTestPath : path.resolve(__dirname, '../.env') });
+
 const PLAYWRIGHT_PORT = 3000;
 const PLAYWRIGHT_BASE_URL = `http://localhost:${PLAYWRIGHT_PORT}`;
 
@@ -33,6 +40,9 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
+
+  /* Skip @auth-email tests if MAILSLURP_API_KEY is missing */
+  grepInvert: process.env.MAILSLURP_API_KEY ? undefined : /@auth-email/,
 
   /* Configure projects for major browsers */
   projects: [
