@@ -227,3 +227,94 @@ def test_process_listing_items_passes_unique_url_to_extract(mock_recent, page):
     assert scraper.jobs[0]["listing_url"] == "https://board.example.com/jobs?id=42"
     # Crucially, NOT the generic board URL
     assert scraper.jobs[0]["listing_url"] != "https://board.example.com/jobs"
+
+
+# --- _parse_int_env ---
+
+
+def test_parse_int_env_valid(monkeypatch):
+    monkeypatch.setenv("MAX_JOBS_PER_SOURCE", "10")
+    scraper = StubScraper(make_source())
+    assert scraper._max_jobs == 10
+
+
+def test_parse_int_env_empty(monkeypatch):
+    monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
+    scraper = StubScraper(make_source())
+    assert scraper._max_jobs is None
+
+
+def test_parse_int_env_invalid(monkeypatch):
+    monkeypatch.setenv("MAX_JOBS_PER_SOURCE", "not-a-number")
+    scraper = StubScraper(make_source())
+    assert scraper._max_jobs is None
+
+
+def test_parse_int_env_whitespace(monkeypatch):
+    monkeypatch.setenv("MAX_JOBS_PER_SOURCE", "  ")
+    scraper = StubScraper(make_source())
+    assert scraper._max_jobs is None
+
+
+def test_parse_int_env_zero(monkeypatch):
+    monkeypatch.setenv("MAX_JOBS_PER_SOURCE", "0")
+    scraper = StubScraper(make_source())
+    assert scraper._max_jobs == 0
+
+
+def test_max_jobs_per_page_resolved_at_init(monkeypatch):
+    monkeypatch.setenv("MAX_JOBS_PER_PAGE", "5")
+    scraper = StubScraper(make_source())
+    assert scraper._max_jobs_per_page == 5
+
+
+# --- _resolve_headless ---
+
+
+def test_resolve_headless_default_passes_through(monkeypatch):
+    monkeypatch.delenv("SCRAPER_HEADED", raising=False)
+    scraper = StubScraper(make_source())
+    assert scraper._resolve_headless(True) is True
+    assert scraper._resolve_headless(False) is False
+
+
+def test_resolve_headless_env_forces_headed(monkeypatch):
+    monkeypatch.setenv("SCRAPER_HEADED", "1")
+    scraper = StubScraper(make_source())
+    assert scraper._resolve_headless(True) is False
+
+
+def test_resolve_headless_env_other_value_does_not_force(monkeypatch):
+    monkeypatch.setenv("SCRAPER_HEADED", "0")
+    scraper = StubScraper(make_source())
+    assert scraper._resolve_headless(True) is True
+
+
+# --- get_job_url board-URL guard ---
+
+
+def test_get_job_url_rejects_board_url(page):
+    """A card that links back to the source board URL should return None."""
+    source_url = "https://example.com/jobs"
+    page.set_content(f'<div class="item"><a href="{source_url}">Board</a></div>')
+    scraper = StubScraper(make_source(url=source_url))
+    item = page.locator(".item").first
+    assert scraper.get_job_url(item) is None
+
+
+def test_get_job_url_rejects_board_url_with_trailing_slash(page):
+    """Trailing slash variants of the board URL should also be rejected."""
+    source_url = "https://example.com/jobs"
+    page.set_content('<div class="item"><a href="https://example.com/jobs/">Board</a></div>')
+    scraper = StubScraper(make_source(url=source_url))
+    item = page.locator(".item").first
+    assert scraper.get_job_url(item) is None
+
+
+def test_get_job_url_allows_job_subpath(page):
+    """A URL that starts with the board URL but has a subpath is a valid job URL."""
+    source_url = "https://example.com/jobs"
+    page.set_content('<div class="item"><a href="https://example.com/jobs/123">Job</a></div>')
+    scraper = StubScraper(make_source(url=source_url))
+    item = page.locator(".item").first
+    assert scraper.get_job_url(item) == "https://example.com/jobs/123"

@@ -219,13 +219,12 @@ class BaseScraper:
     def _is_error_page(self, page):
         """Check if the page is an error page (404, 403, Cloudflare challenge, etc.).
         Raises an exception with a descriptive message if an error page is detected.
-        Returns silently if the page content cannot be read."""
+        Re-raises if the page content cannot be read (closed/crashed page = retryable failure)."""
         try:
             page_content = page.content()
             page_title = page.title().lower()
-        except Exception:
-            # Can't read the page — not our problem to classify
-            return
+        except Exception as e:
+            raise Exception(f"Could not read page content (page may be closed or crashed): {e}")
 
         content_lower = page_content.lower()
 

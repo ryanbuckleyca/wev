@@ -1,5 +1,4 @@
 from scrapers.base import BaseScraper
-from utils.normalize import normalize_job_data
 from utils.extractors import extract_salary_from_text
 import re
 
@@ -44,15 +43,6 @@ class CentraideScraper(BaseScraper):
         except Exception:
             pass
         return data
-
-    def get_job_url(self, item):
-        try:
-            href = item.get_attribute("href", timeout=1000)
-        except Exception:
-            return None
-        if not href:
-            return None
-        return href if href.startswith("http") else self.build_full_url(href)
 
     # ---- Field extraction ----
 
