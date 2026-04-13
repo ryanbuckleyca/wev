@@ -34,11 +34,7 @@ class GoodWorkScraper(BaseScraper):
     # Pagination is driven entirely by has_next_page / go_next_page.
 
     def open_listings_page(self, page, filter_value=None):
-        page.goto(self.get_listings_url(filter_value), wait_until="domcontentloaded")
-        try:
-            page.wait_for_load_state("networkidle", timeout=15000)
-        except Exception:
-            pass
+        self._goto_with_networkidle(page, self.get_listings_url(filter_value))
         if filter_value:
             self._filter_jobs(page, filter_value)
         # Store the post-filter URL so go_next_page can paginate from the right base

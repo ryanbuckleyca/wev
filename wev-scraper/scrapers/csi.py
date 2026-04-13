@@ -1,6 +1,5 @@
 from scrapers.base import BaseScraper
 from utils.log import scraper_log
-from utils.normalize import normalize_job_data
 from utils.extractors import extract_salary_from_text
 
 
@@ -15,14 +14,13 @@ class CSIScraper(BaseScraper):
 
     def __init__(self, source):
         super().__init__(source)
-        self.load_more_available = True
         self.processed_urls = set()
 
     def start_browser(self, headless=True, viewport=None):
         return super().start_browser(headless=headless, viewport={"width": 1280, "height": 1400})
 
     def setup_pagination(self, page):
-        self.load_more_available = True
+        pass  # CSI uses "Load More" button; no page count needed
 
     def get_job_url(self, item):
         try:
@@ -62,47 +60,28 @@ class CSIScraper(BaseScraper):
         return data
 
     def open_listings_page(self, page, filter_value=None):
-        self.load_more_available = True
         self.processed_urls = set()
         page.goto(self.source["url"])
 
     def has_next_page(self, page):
-        return self.load_more_available
+        try:
+            btn = page.locator("button:has-text('Load More')")
+            return btn.count() > 0 and btn.first.is_enabled(timeout=2000)
+        except Exception:
+            return False
 
     def go_next_page(self, page):
-        try:
-            load_more_locator = page.locator("button:has-text('Load More')")
-            if load_more_locator.count() == 0:
-                self.load_more_available = False
-                self.should_quit_list = True
-                return
-            load_more_button = load_more_locator.first
-            if load_more_button.is_enabled(timeout=3000):
-                load_more_button.scroll_into_view_if_needed()
-                load_more_button.click(timeout=5000)
-                page.wait_for_timeout(2000)
-                self.load_more_available = True
-            else:
-                self.load_more_available = False
-                self.should_quit_list = True
-        except Exception as e:
-            scraper_log(f"No more jobs to load: {e}")
-            self.load_more_available = False
-            self.should_quit_list = True
+        btn = page.locator("button:has-text('Load More')").first
+        btn.scroll_into_view_if_needed()
+        btn.click(timeout=5000)
+        page.wait_for_timeout(2000)
 
     # ---- Field extraction ----
 
     def extract_date_posted(self, page, listing_data):
-        try:
-            meta = page.locator(
-                'meta[property="article:published_time"], '
-                'meta[property="article:modified_time"]'
-            ).first
-            content = meta.get_attribute("content")
-            if content:
-                return content
-        except Exception:
-            pass
+        date = self.extract_meta_date(page)
+        if date:
+            return date
         try:
             return page.locator(".post-date, .date-posted").inner_text(timeout=3000).strip()
         except Exception:
