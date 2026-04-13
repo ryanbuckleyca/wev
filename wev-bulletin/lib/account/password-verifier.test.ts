@@ -1,91 +1,112 @@
-import { describe, it, expect, vi } from 'vitest';
-import { PasswordVerifier, ValidationError } from './password-verifier';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { PasswordVerifier, ValidationError, AuthenticationError } from './password-verifier';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn().mockReturnValue({
-    auth: {
-      signInWithPassword: vi.fn().mockResolvedValue({ 
-        data: { session: null }, 
-        error: { code: 'AUTH_FAILED', message: 'Mocked failure' } 
-      })
-    }
-  })
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(),
 }));
 
 describe('PasswordVerifier', () => {
+  const mockRpc = vi.fn();
+  const mockSupabase = {
+    rpc: mockRpc,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as unknown as Awaited<ReturnType<typeof createServerClient>>);
+    
+    // Default mock behavior
+    mockRpc.mockResolvedValue({ 
+      data: 'match', 
+      error: null 
+    });
+  });
+
+  describe('verify', () => {
+    it('returns successfully for valid credentials', async () => {
+      const verifier = new PasswordVerifier();
+      await expect(verifier.verify('password123')).resolves.not.toThrow();
+      
+      expect(mockRpc).toHaveBeenCalledWith('verify_user_password', {
+        password: 'password123'
+      });
+    });
+
+    it('throws AuthenticationError for invalid credentials', async () => {
+      mockRpc.mockResolvedValue({
+        data: 'mismatch',
+        error: null
+      });
+
+      const verifier = new PasswordVerifier();
+      await expect(verifier.verify('wrong-password')).rejects.toThrow(AuthenticationError);
+    });
+
+    it('throws AuthenticationError with NO_PASSWORD_SET code for users without passwords', async () => {
+      mockRpc.mockResolvedValue({
+        data: 'no_password',
+        error: null
+      });
+
+      const verifier = new PasswordVerifier();
+      try {
+        await verifier.verify('some-password');
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthenticationError);
+        expect((error as AuthenticationError).code).toBe('NO_PASSWORD_SET');
+      }
+    });
+
+    it('throws AuthenticationError for RPC error', async () => {
+      mockRpc.mockResolvedValue({
+        data: null,
+        error: { message: 'Database error' }
+      });
+
+      const verifier = new PasswordVerifier();
+      await expect(verifier.verify('password123')).rejects.toThrow(AuthenticationError);
+    });
+  });
+
   describe('input validation', () => {
-    it('rejects empty email', async () => {
+    it('detects no_password even for empty password', async () => {
+      mockRpc.mockResolvedValue({
+        data: 'no_password',
+        error: null
+      });
+
       const verifier = new PasswordVerifier();
-      
-      await expect(
-        verifier.verify('', 'password123', null)
-      ).rejects.toThrow(ValidationError);
+      try {
+        await verifier.verify('');
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthenticationError);
+        expect((error as AuthenticationError).code).toBe('NO_PASSWORD_SET');
+      }
     });
 
-    it('rejects invalid email format', async () => {
+    it('rejects empty password if account has a password', async () => {
+      mockRpc.mockResolvedValue({
+        data: 'mismatch',
+        error: null
+      });
+
       const verifier = new PasswordVerifier();
-      
-      await expect(
-        verifier.verify('not-an-email', 'password123', null)
-      ).rejects.toThrow(ValidationError);
+      await expect(verifier.verify('')).rejects.toThrow(ValidationError);
     });
 
-    it('rejects email without domain', async () => {
-      const verifier = new PasswordVerifier();
-      
-      await expect(
-        verifier.verify('user@', 'password123', null)
-      ).rejects.toThrow(ValidationError);
-    });
+    it('rejects password shorter than 8 characters if account has a password', async () => {
+      mockRpc.mockResolvedValue({
+        data: 'mismatch',
+        error: null
+      });
 
-    it('rejects empty password', async () => {
       const verifier = new PasswordVerifier();
-      
-      await expect(
-        verifier.verify('user@example.com', '', null)
-      ).rejects.toThrow(ValidationError);
-    });
-
-    it('rejects password shorter than 8 characters', async () => {
-      const verifier = new PasswordVerifier();
-      
-      await expect(
-        verifier.verify('user@example.com', 'short', null)
-      ).rejects.toThrow(ValidationError);
-    });
-
-    it('rejects empty captcha token when provided', async () => {
-      const verifier = new PasswordVerifier();
-      
-      await expect(
-        verifier.verify('user@example.com', 'password123', '   ')
-      ).rejects.toThrow(ValidationError);
-    });
-
-    it('rejects captcha token that is too short', async () => {
-      const verifier = new PasswordVerifier();
-      
-      await expect(
-        verifier.verify('user@example.com', 'password123', 'short')
-      ).rejects.toThrow(ValidationError);
-    });
-
-    it('accepts valid inputs with null captcha', async () => {
-      const verifier = new PasswordVerifier();
-      
-      // This will fail at auth stage (not validation) since we don't have real credentials
-      await expect(
-        verifier.verify('user@example.com', 'password123', null)
-      ).rejects.not.toThrow(ValidationError);
-    });
-
-    it('trims whitespace from email', async () => {
-      const verifier = new PasswordVerifier();
-      
-      // Should not throw validation error for whitespace
-      await expect(
-        verifier.verify('  user@example.com  ', 'password123', null)
-      ).rejects.not.toThrow(ValidationError);
+      await expect(verifier.verify('short')).rejects.toThrow(ValidationError);
     });
   });
 });
+
+

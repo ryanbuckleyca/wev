@@ -3,40 +3,22 @@ import { NextRequest } from 'next/server';
 import { PATCH } from './route';
 import { getRequestUser } from '@/lib/auth/request-user';
 
-const { mockSignInWithPassword, mockUpdateUser, mockAdminSignOut } = vi.hoisted(() => ({
-  mockSignInWithPassword: vi.fn(),
+const { mockRpc, mockUpdateUser } = vi.hoisted(() => ({
+  mockRpc: vi.fn(),
   mockUpdateUser: vi.fn(),
-  mockAdminSignOut: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/request-user', () => ({
   getRequestUser: vi.fn(),
 }));
 
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(() => ({
-    auth: {
-      signInWithPassword: mockSignInWithPassword,
-    },
-  })),
-}));
-
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => ({
+    rpc: mockRpc,
     auth: {
       updateUser: mockUpdateUser,
     },
   })),
-}));
-
-vi.mock('@/lib/supabase-server', () => ({
-  supabaseServer: {
-    auth: {
-      admin: {
-        signOut: mockAdminSignOut,
-      },
-    },
-  },
 }));
 
 const mockGetRequestUser = vi.mocked(getRequestUser);
@@ -44,19 +26,12 @@ const mockGetRequestUser = vi.mocked(getRequestUser);
 describe('/api/account PATCH', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSignInWithPassword.mockResolvedValue({
-      data: {
-        user: { id: 'user-123' },
-        session: { access_token: 'verification-token' },
-      },
+    mockRpc.mockResolvedValue({
+      data: 'match',
       error: null,
     });
     mockUpdateUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
-      error: null,
-    });
-    mockAdminSignOut.mockResolvedValue({
-      data: null,
       error: null,
     });
   });
@@ -108,12 +83,9 @@ describe('/api/account PATCH', () => {
         email: 'test@example.com',
       } as never,
     });
-    mockSignInWithPassword.mockResolvedValue({
-      data: { user: null },
-      error: {
-        code: 'invalid_credentials',
-        message: 'Invalid login credentials',
-      },
+    mockRpc.mockResolvedValue({
+      data: 'mismatch',
+      error: null,
     });
 
     const request = new NextRequest('http://localhost:3000/api/account', {
@@ -127,7 +99,6 @@ describe('/api/account PATCH', () => {
     expect(response.status).toBe(401);
     expect(data.error).toBe('Current password is incorrect.');
     expect(mockUpdateUser).not.toHaveBeenCalled();
-    expect(mockAdminSignOut).not.toHaveBeenCalled();
   });
 
   it('returns a server error when password verification fails for other reasons', async () => {
@@ -138,11 +109,10 @@ describe('/api/account PATCH', () => {
         email: 'test@example.com',
       } as never,
     });
-    mockSignInWithPassword.mockResolvedValue({
-      data: { user: null, session: null },
+    mockRpc.mockResolvedValue({
+      data: null,
       error: {
-        code: 'over_request_rate_limit',
-        message: 'Rate limit exceeded',
+        message: 'Database error',
       },
     });
 
@@ -155,9 +125,8 @@ describe('/api/account PATCH', () => {
     const data = await response.json();
 
     expect(response.status).toBe(401);
-    expect(data.error).toBe('Authentication failed');
+    expect(data.error).toBe('Verification system error');
     expect(mockUpdateUser).not.toHaveBeenCalled();
-    expect(mockAdminSignOut).not.toHaveBeenCalled();
   });
 
   it('updates the password when the current password is valid', async () => {
@@ -179,7 +148,9 @@ describe('/api/account PATCH', () => {
 
     expect(response.status).toBe(200);
     expect(data.message).toBe('Password updated successfully');
-    expect(mockAdminSignOut).toHaveBeenCalledWith('verification-token', 'local');
+    expect(mockRpc).toHaveBeenCalledWith('verify_user_password', {
+      password: 'old-pass',
+    });
     expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'new-pass' });
   });
 });
