@@ -50,7 +50,7 @@ class ScraperOrchestrator:
         """Execute the full scraping lifecycle."""
         try:
             self._log_environment_status()
-            
+
             # 1. Setup
             sources = self._fetch_sources()
             self.existing_urls = self._fetch_existing_job_urls()
@@ -112,24 +112,24 @@ class ScraperOrchestrator:
     def _process_single_source(self, source: Dict[str, Any]):
         source_name = source.get("name", "Unknown Source")
         scraper_class = get_scraper_class(source["id"])
-        
+
         if not scraper_class:
             _log(f"Skipping {source_name}: No scraper implementation registered.")
             return
 
         _log(f"\n{'#' * 30}\n# {source_name}\n{'#' * 30}")
-        
+
         scraper = None
         try:
             scraper = scraper_class(source)
             scraper.existing_urls = self.existing_urls
-            
+
             jobs = scraper.fetch_jobs()
             _log(f"Found {len(jobs)} jobs.")
 
             source_summary = self._save_or_compare_jobs(jobs, source)
             self.results.summary.append(source_summary)
-            
+
             if "job_ids" in source_summary:
                 self.results.all_job_ids.extend(source_summary["job_ids"])
 
@@ -179,7 +179,7 @@ class ScraperOrchestrator:
         # Logic for comparing against DB
         _log("Comparing scraped data with database...")
         db_jobs = self._fetch_db_jobs_for_source(source["id"])
-        
+
         new_count = 0
         job_diffs = []
         for i, job in enumerate(jobs):
@@ -187,7 +187,7 @@ class ScraperOrchestrator:
             is_new = norm_url not in db_jobs
             new_count += is_new
             self._log_job_minimal(i, job, "NEW" if is_new else "EXISTING")
-            
+
             if not is_new:
                 diffs = self._compare_fields(job, db_jobs[norm_url])
                 if diffs:
@@ -226,7 +226,7 @@ class ScraperOrchestrator:
 
     def _run_post_scrape_tasks(self):
         _log(f"\nRunning post-scrape tasks for {len(self.results.all_job_ids)} jobs...")
-        
+
         # Unified Post-Processor (Classifier, Values, Summary)
         if any(is_truthy_env(f) for f in ["SHOULD_CLASSIFY", "SHOULD_TAG_VALUES", "SHOULD_SUMMARIZE"]):
             try:
@@ -294,6 +294,7 @@ def parse_args():
     parser.add_argument("--compare", action="store_true", help="Dry run + compare with DB")
     parser.add_argument("--provider", help="Force specific LLM provider")
     parser.add_argument("--max-jobs", type=int, help="Limit jobs per source")
+    parser.add_argument("--headed", action="store_true", help="Show browser window (for debugging)")
     return parser.parse_args()
 
 
@@ -301,7 +302,7 @@ def initialize_runtime_env(args):
     """Predictable environment initialization based on CLI flags."""
     script_dir = Path(__file__).resolve().parent
     root_dir = script_dir.parent
-    
+
     # 1. Load Baseline (.env) from root or local
     # This provides shared keys (Gemini, Geocodio, etc.)
     base_env = root_dir / ".env" if (root_dir / ".env").exists() else script_dir / ".env"
@@ -326,29 +327,35 @@ def initialize_runtime_env(args):
 
 
 def main():
-    import os
     args = parse_args()
-    
+
     # 1. Initialize Environment
     initialize_runtime_env(args)
-    
+
     # 2. Environment Overrides from CLI
-    if args.provider: os.environ["LLM_PROVIDER"] = args.provider
-    if args.max_jobs: os.environ["MAX_JOBS_PER_SOURCE"] = str(args.max_jobs)
+    if args.provider:
+        os.environ["LLM_PROVIDER"] = args.provider
+    if args.max_jobs:
+        os.environ["MAX_JOBS_PER_SOURCE"] = str(args.max_jobs)
+    if args.headed:
+        os.environ["SCRAPER_HEADED"] = "1"
     if args.dry_run or args.compare:
         os.environ["DRY_RUN"] = "1"
         # Disable LLM expensive steps in dry run by default
         for flag in ["SHOULD_SUMMARIZE", "SHOULD_CLASSIFY", "SHOULD_TAG_VALUES", "SHOULD_TAG_SKILLS"]:
-            if os.environ.get(flag) is None: os.environ[flag] = "0"
-            
+            if os.environ.get(flag) is None:
+                os.environ[flag] = "0"
+
     if args.prod:
-        # Simple interactive check if TTY
+        os.environ["USE_PROD_DB"] = "1"
+        # Guard against accidental prod runs when invoked directly (bypassing run.ts).
+        # run.ts handles the prompt when stdin is a TTY; this catches direct Python invocations.
         if sys.stdin.isatty():
             confirm = input("⚠️  RUNNING AGAINST PRODUCTION. Type 'YES' to continue: ")
-            if confirm != "YES": sys.exit(0)
-        os.environ["USE_PROD_DB"] = "1"
+            if confirm != "YES":
+                sys.exit(0)
 
-    # 2. Orchestrate
+    # 3. Orchestrate
     orchestrator = ScraperOrchestrator(
         use_prod=args.prod,
         dry_run=args.dry_run or args.compare,
