@@ -1,24 +1,27 @@
-import os
 import re
 from datetime import datetime
 from scrapers.base import BaseScraper
 from utils.log import scraper_log
 from utils.extractors import detect_employment_type_from_texts
+from utils.date_utils import is_recent_job, get_within_weeks
 
 DETAIL_SELECTORS = {
     "organization": ".job-company",
     "wage": ".wage_tag",
 }
 
+# Provinces to filter by. Passed one at a time to the Acuspire search widget.
+FILTER_PROVINCES = ["Ontario", "Quebec"]
+
+
 class EcoCanadaScraper(BaseScraper):
     is_chronological = True
-    # filter_values = [] means no province filtering — scrapes all of Canada
-    filter_values = []
+    filter_values = FILTER_PROVINCES
     listing_selector = ".acuspire-job-container"
     job_wait_selector = ".job-description-wrapper"
 
     def start_browser(self, headless=True, viewport=None, **kwargs):
-        """Use plain Chromium (no stealth, no real Chrome) — the Acuspire widget renders fine with it."""
+        """Plain Chromium — no stealth, no real Chrome. The Acuspire widget renders fine with it."""
         from playwright.sync_api import sync_playwright
 
         self.playwright = sync_playwright().start()
@@ -30,16 +33,32 @@ class EcoCanadaScraper(BaseScraper):
             viewport=viewport or {"width": 1280, "height": 1400},
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         )
-        self.context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
+        self.context.add_init_script(
+            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
+        )
         self.page = self.context.new_page()
         return self.page
 
     def open_listings_page(self, page, filter_value=None):
-        page.goto(self.source["url"], wait_until="networkidle")
+        page.goto(self.source["url"], wait_until="domcontentloaded")
+        try:
+            page.wait_for_load_state("networkidle", timeout=15000)
+        except Exception:
+            pass
         self._accept_consent_popup(page)
         self._dismiss_overlay(page)
-        page.wait_for_selector(".acuspire-job-container", state="attached", timeout=15000)
+        if filter_value:
+            self._apply_province_filter(page, filter_value)
+        page.wait_for_selector(self.listing_selector, state="attached", timeout=15000)
         scraper_log("\t✓ Job listings loaded")
+
+    def _apply_province_filter(self, page, province: str):
+        scraper_log(f"\tFiltering by province: {province}")
+        loc = page.get_by_placeholder("City or Province or Remote")
+        loc.wait_for(state="attached", timeout=30000)
+        loc.fill(province)
+        page.get_by_role("button", name="Search Jobs").click()
+        page.wait_for_selector(self.listing_selector, state="attached", timeout=15000)
 
     def get_listing_items(self, page):
         items = page.locator(self.listing_selector)
@@ -65,100 +84,113 @@ class EcoCanadaScraper(BaseScraper):
             return None
         return full_url
 
+    def has_next_page(self, page):
+        return self.page_count > 1 and self.current_page_number < self.page_count
+
+    def go_next_page(self, page):
+        old_text = page.locator(self.listing_selector).first.inner_text()
+        self.next_button.click()
+        page.wait_for_function(
+            """(old_text) => {
+                const el = document.querySelector('.acuspire-job-container');
+                return el && el.innerText !== old_text;
+            }""",
+            arg=old_text,
+        )
+        self.setup_pagination(page)
+        self.current_page_number += 1
+
+    # ---- Field extraction (uses base class SELECTORS contract) ----
+
+    SELECTORS = {
+        "organization": ".job-company",
+        "wage": ".wage_tag",
+        "description": (".job-description-wrapper", "html"),
+    }
+
+    def extract_date_posted(self, page, listing_data):
+        raw = page.locator("span.posted-job-time").inner_text().replace("Posted", "").strip()
+        return raw or None
+
+    def extract_job_title(self, page, listing_data):
+        return page.locator("span.job-title").inner_text().strip()
+
+    def extract_location(self, page, listing_data):
+        els = page.locator(".job-card-summary-section .svg-and-text")
+        parts = []
+        for i in range(min(els.count(), 2)):
+            txt = els.nth(i).locator("span").inner_text().strip()
+            if txt:
+                parts.append(txt)
+        return ", ".join(parts) or None
+
+    def extract_wage(self, page, listing_data):
+        selector_data = self.extract_with_selectors(page, {"wage": DETAIL_SELECTORS["wage"]})
+        return selector_data.get("wage") or self._extract_wage_fallback(page)
+
+    def extract_description(self, page, listing_data):
+        return page.eval_on_selector(
+            ".job-description-wrapper",
+            """(el) => {
+                el.querySelectorAll("table").forEach(t => t.remove());
+                return el.innerHTML;
+            }""",
+        )
+
     def _extract_wage_fallback(self, job_page) -> str | None:
         """Try common class-name patterns to find a wage/salary element."""
         for sel in ['[class*="wage"]', '[class*="salary"]', '[class*="compensation"]', '[class*="pay"]']:
             try:
-                if job_page.locator(sel).count() >= 1:
-                    txt = job_page.locator(sel).first.inner_text(timeout=1000).strip()
+                loc = job_page.locator(sel)
+                if loc.count() >= 1:
+                    txt = loc.first.inner_text(timeout=1000).strip()
                     if txt and ("$" in txt or "salary" in txt.lower() or "wage" in txt.lower()):
                         return txt
             except Exception:
                 continue
         return None
 
-    def extract_job_fields(self, job_page, listing_data=None, index=0):
-        listing_data = listing_data or {}
+    def get_listing_data(self, item):
+        """Capture the listing URL from the card before opening the job page."""
+        try:
+            href = item.locator("h3.job-title-container a").first.get_attribute("href", timeout=1000)
+        except Exception:
+            return {}
+        if not href:
+            return {}
+        full_url = href if href.startswith("http") else self.build_full_url(href)
+        # Prefer canonical URL over board root
+        if full_url.rstrip("/") == self.source["url"].rstrip("/"):
+            return {}
+        return {"listing_url": full_url}
 
-        date_str = job_page.locator("span.posted-job-time").inner_text().replace("Posted", "").strip()
-        title = job_page.locator("span.job-title").inner_text().strip()
-
-        scraper_log(f"\t\tProcessing job {index + 1}: '{title}' posted {date_str}...")
-
-        if date_str:
-            from utils.date_utils import is_recent_job, get_within_weeks
-            if not is_recent_job(date_str, weeks=get_within_weeks(), lang="en"):
-                scraper_log(f"\t\tSkipping out-dated job {index + 1}: '{title}'")
-                if self.is_chronological:
-                    self.should_quit_list = True
-                return
-
-        address_elements = job_page.locator(".job-card-summary-section .svg-and-text")
-        address1 = address_elements.nth(0).locator("span").inner_text().strip() if address_elements.count() >= 1 else None
-        address2 = address_elements.nth(1).locator("span").inner_text().strip() if address_elements.count() >= 2 else None
-        location = ", ".join(filter(None, [address1, address2]))
-
-        selector_data = self.extract_with_selectors(job_page, DETAIL_SELECTORS)
-        wage = selector_data.get("wage") or self._extract_wage_fallback(job_page)
-
-        description = job_page.eval_on_selector(
-            ".job-description-wrapper",
-            """(el) => {
-                el.querySelectorAll("table").forEach(t => t.remove());
-                return el.innerHTML;
-            }"""
-        )
-        organization = selector_data.get("organization") or job_page.locator(".job-company").inner_text().strip()
-
-        listing_url = listing_data.get("listing_url") or job_page.url
-        if listing_url and listing_url.rstrip("/") == self.source.get("url", "").rstrip("/"):
-            try:
-                canonical = job_page.locator("link[rel='canonical']").get_attribute("href")
-                if canonical:
-                    listing_url = canonical
-            except Exception:
-                pass
-
-        self.jobs.append(self.create_job_dict(
-            language=getattr(self, "language", "en"),
-            job_title=title,
-            date_posted=datetime.fromisoformat(date_str).isoformat() if date_str else None,
-            close_date=None,
-            description=description,
-            organization=organization,
-            location=location,
-            listing_url=listing_url or job_page.url,
-            employment_type=detect_employment_type_from_texts([title, description, wage]),
-            wage=wage,
-        ))
-
-    def go_next_page(self, page):
-        old_text = self.listings_page.locator(self.listing_selector).first.inner_text()
-        self.next_button.click()
-        self.listings_page.wait_for_function(
-            """(old_text) => {
-                const el = document.querySelector('.acuspire-job-container');
-                return el && el.innerText !== old_text;
-            }""",
-            arg=old_text
-        )
-        self.setup_pagination(self.listings_page)
-        self.current_page_number += 1
+    # ---- Popup / overlay helpers ----
 
     def _accept_consent_popup(self, page):
+        """Click the first consent button that responds, then wait for it to disappear."""
+        consent_selector = (
+            '[class*="consent"], [class*="cookie"], [id*="consent"], '
+            '#accept-all, #acceptAll, .accept-all, [data-cky-tag="accept-button"]'
+        )
         for try_click in [
             lambda: page.get_by_role("button", name=re.compile(r"accept all|accept", re.I)).first.click(timeout=3000),
             lambda: page.get_by_role("button", name=re.compile(r"allow", re.I)).first.click(timeout=3000),
-            lambda: page.locator('[class*="consent"] button, [class*="cookie"] button, [id*="consent"] button').first.click(timeout=3000),
-            lambda: page.locator('#accept-all, #acceptAll, .accept-all, [data-cky-tag="accept-button"]').first.click(timeout=3000),
+            lambda: page.locator(f'{consent_selector} button, {consent_selector}').first.click(timeout=3000),
         ]:
             try:
                 try_click()
+                # Wait for the consent container to leave the DOM rather than sleeping
+                try:
+                    page.wait_for_selector(consent_selector, state="hidden", timeout=3000)
+                except Exception:
+                    pass
                 return
             except Exception:
                 continue
 
     def _dismiss_overlay(self, page):
+        """Dismiss any overlay/modal (e.g. ECO IMPACT ad). No-op if nothing is found."""
+        overlay_selector = '[class*="overlay"], [class*="modal"]'
         for try_click in [
             lambda: page.locator('[aria-label="Close"]').first.click(timeout=2000),
             lambda: page.locator('[aria-label="close"]').first.click(timeout=2000),
@@ -172,6 +204,11 @@ class EcoCanadaScraper(BaseScraper):
         ]:
             try:
                 try_click()
+                # Wait for the overlay/modal to leave the DOM
+                try:
+                    page.wait_for_selector(overlay_selector, state="hidden", timeout=2000)
+                except Exception:
+                    pass
                 return
             except Exception:
                 continue
