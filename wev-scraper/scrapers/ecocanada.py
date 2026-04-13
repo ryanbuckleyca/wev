@@ -12,6 +12,7 @@ DETAIL_SELECTORS = {
 
 class EcoCanadaScraper(BaseScraper):
     is_chronological = True
+    # filter_values = [] means no province filtering — scrapes all of Canada
     filter_values = []
     listing_selector = ".acuspire-job-container"
     job_wait_selector = ".job-description-wrapper"
@@ -20,12 +21,9 @@ class EcoCanadaScraper(BaseScraper):
         """Use plain Chromium (no stealth, no real Chrome) — the Acuspire widget renders fine with it."""
         from playwright.sync_api import sync_playwright
 
-        if os.environ.get("SCRAPER_HEADED") == "1":
-            headless = False
-
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(
-            headless=headless,
+            headless=self._resolve_headless(headless),
             args=["--disable-blink-features=AutomationControlled"],
         )
         self.context = self.browser.new_context(
@@ -44,7 +42,7 @@ class EcoCanadaScraper(BaseScraper):
         scraper_log("\t✓ Job listings loaded")
 
     def get_listing_items(self, page):
-        items = page.locator(".acuspire-job-container")
+        items = page.locator(self.listing_selector)
         count = items.count()
         if count == 0:
             try:
@@ -66,6 +64,18 @@ class EcoCanadaScraper(BaseScraper):
         if full_url.rstrip("/") == self.source["url"].rstrip("/"):
             return None
         return full_url
+
+    def _extract_wage_fallback(self, job_page) -> str | None:
+        """Try common class-name patterns to find a wage/salary element."""
+        for sel in ['[class*="wage"]', '[class*="salary"]', '[class*="compensation"]', '[class*="pay"]']:
+            try:
+                if job_page.locator(sel).count() >= 1:
+                    txt = job_page.locator(sel).first.inner_text(timeout=1000).strip()
+                    if txt and ("$" in txt or "salary" in txt.lower() or "wage" in txt.lower()):
+                        return txt
+            except Exception:
+                continue
+        return None
 
     def extract_job_fields(self, job_page, listing_data=None, index=0):
         listing_data = listing_data or {}
@@ -89,17 +99,7 @@ class EcoCanadaScraper(BaseScraper):
         location = ", ".join(filter(None, [address1, address2]))
 
         selector_data = self.extract_with_selectors(job_page, DETAIL_SELECTORS)
-        wage = selector_data.get("wage")
-        if not wage:
-            for sel in ['[class*="wage"]', '[class*="salary"]', '[class*="compensation"]', '[class*="pay"]']:
-                try:
-                    if job_page.locator(sel).count() >= 1:
-                        txt = job_page.locator(sel).first.inner_text(timeout=1000).strip()
-                        if txt and ("$" in txt or "salary" in txt.lower() or "wage" in txt.lower()):
-                            wage = txt
-                            break
-                except Exception:
-                    continue
+        wage = selector_data.get("wage") or self._extract_wage_fallback(job_page)
 
         description = job_page.eval_on_selector(
             ".job-description-wrapper",
@@ -122,7 +122,7 @@ class EcoCanadaScraper(BaseScraper):
         self.jobs.append(self.create_job_dict(
             language=getattr(self, "language", "en"),
             job_title=title,
-            date_posted=datetime.fromisoformat(date_str).isoformat(),
+            date_posted=datetime.fromisoformat(date_str).isoformat() if date_str else None,
             close_date=None,
             description=description,
             organization=organization,
@@ -132,8 +132,8 @@ class EcoCanadaScraper(BaseScraper):
             wage=wage,
         ))
 
-    def try_next_page(self):
-        old_text = self.listings_page.locator(".acuspire-job-container").first.inner_text()
+    def go_next_page(self, page):
+        old_text = self.listings_page.locator(self.listing_selector).first.inner_text()
         self.next_button.click()
         self.listings_page.wait_for_function(
             """(old_text) => {
@@ -144,12 +144,6 @@ class EcoCanadaScraper(BaseScraper):
         )
         self.setup_pagination(self.listings_page)
         self.current_page_number += 1
-
-    def has_next_page(self, page):
-        return self.page_count > 1 and self.current_page_number < self.page_count
-
-    def go_next_page(self, page):
-        self.try_next_page()
 
     def _accept_consent_popup(self, page):
         for try_click in [

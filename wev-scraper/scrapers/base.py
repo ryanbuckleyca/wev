@@ -553,6 +553,10 @@ class BaseScraper:
         source_name = context_name or (self.source.get("name") if self.source else None) or "scraper"
         capture_and_upload_error_screenshot(page, supabase, get_supabase_url(), source_name)
 
+    def _resolve_headless(self, headless: bool) -> bool:
+        """Return False if the --headed flag was set via SCRAPER_HEADED env var."""
+        return False if os.environ.get("SCRAPER_HEADED") == "1" else headless
+
     def start_browser(self, headless=True, viewport=None, use_proxy=False, use_real_chrome=True):
         """Launch browser and return the main page.
 
@@ -564,10 +568,7 @@ class BaseScraper:
         """
         from playwright.sync_api import sync_playwright
 
-        # --headed flag sets SCRAPER_HEADED=1 in scrape.py
-        if os.environ.get("SCRAPER_HEADED") == "1":
-            headless = False
-
+        headless = self._resolve_headless(headless)
         v = viewport or {"width": 1280, "height": 720}
         self.playwright = sync_playwright().start()
         self.browser = self._launch_browser(headless, v, use_real_chrome)
