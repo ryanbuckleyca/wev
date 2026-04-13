@@ -164,5 +164,3 @@ describe('/api/account/delete', () => {
   });
 });
 
-});
-
