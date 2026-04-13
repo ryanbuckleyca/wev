@@ -55,7 +55,7 @@ function main() {
       }
     }
 
-    process.stdout.write(`▶ Executing ${scriptPath}...\n`);
+    console.log(`▶ Executing ${scriptPath}...`);
     execVerbose(venvPythonCmd, [scriptPath, ...scriptArgs]);
   } else {
     // If no direct task match, default to scrape.py but pass all args
