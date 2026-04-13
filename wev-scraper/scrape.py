@@ -133,10 +133,8 @@ class ScraperOrchestrator:
             if "job_ids" in source_summary:
                 self.results.all_job_ids.extend(source_summary["job_ids"])
 
-        except BaseException as e:
+        except Exception as e:
             self._handle_source_error(e, scraper, source_name)
-            if isinstance(e, (SystemExit, KeyboardInterrupt)):
-                raise
         finally:
             self._cleanup_scraper(scraper)
 

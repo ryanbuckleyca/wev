@@ -397,11 +397,6 @@ class BaseScraper:
                         except Exception:
                             pass
                         break
-        except Exception as e:
-            scraper_log(f"\t❌ Scraper crashed during fetch: {e}")
-            import traceback
-            traceback.print_exc()
-            raise
         finally:
             self.close_browser()
         return self.jobs
