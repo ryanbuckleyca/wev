@@ -52,25 +52,14 @@ class CentraideScraper(BaseScraper):
             return None
         if not href:
             return None
-        full_url = href if href.startswith("http") else self.build_full_url(href)
-        if full_url.rstrip("/") == self.source["url"].rstrip("/"):
-            return None
-        return full_url
+        return href if href.startswith("http") else self.build_full_url(href)
 
     # ---- Field extraction ----
 
     def extract_date_posted(self, page, listing_data):
-        try:
-            meta = page.locator(
-                'meta[property="article:published_time"], '
-                'meta[name="pubdate"], '
-                'meta[name="article:published_time"]'
-            ).first
-            content = meta.get_attribute("content")
-            if content:
-                return content
-        except Exception:
-            pass
+        date = self.extract_meta_date(page)
+        if date:
+            return date
         try:
             text = page.inner_text()
             m = re.search(r"Publié le\s*(\d{1,2}\s+[A-Za-zéûàèÎû\-]+\s+\d{4})", text, re.I)

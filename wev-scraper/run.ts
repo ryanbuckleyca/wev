@@ -77,8 +77,8 @@ async function main() {
     console.log(`▶ Executing ${scriptPath}...`);
     execVerbose(venvPythonCmd, [scriptPath, ...scriptArgs]);
   } else {
-    // If no direct task match, default to scrape.py but pass all args
-    execVerbose(venvPythonCmd, ['scrape.py', ...args]);
+    console.error(`Unknown task: "${task}". Valid tasks: ${Object.keys(taskMap).join(', ')}`);
+    process.exit(1);
   }
 }
 

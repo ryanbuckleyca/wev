@@ -5,38 +5,37 @@ from utils.log import scraper_log
 # Provinces to filter by. Passed one at a time to the Acuspire search widget.
 FILTER_PROVINCES = ["Ontario", "Quebec"]
 
+# CSS selector patterns tried in order when the primary wage selector finds nothing.
+WAGE_FALLBACK_SELECTORS = [
+    '[class*="wage"]',
+    '[class*="salary"]',
+    '[class*="compensation"]',
+    '[class*="pay"]',
+]
+
 
 class EcoCanadaScraper(BaseScraper):
     is_chronological = True
     filter_values = FILTER_PROVINCES
     listing_selector = ".acuspire-job-container"
     job_wait_selector = ".job-description-wrapper"
+    SELECTORS = {
+        "organization": ".job-company",
+        "wage": ".wage_tag",
+    }
 
     def start_browser(self, headless=True, viewport=None, **kwargs):
-        """Plain Chromium — no stealth, no real Chrome. The Acuspire widget renders fine with it."""
-        from playwright.sync_api import sync_playwright
-
-        self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(
-            headless=self._resolve_headless(headless),
-            args=["--disable-blink-features=AutomationControlled"],
-        )
-        self.context = self.browser.new_context(
+        """Plain Chromium, no stealth, no real Chrome — the Acuspire widget renders fine with it."""
+        return super().start_browser(
+            headless=headless,
             viewport=viewport or {"width": 1280, "height": 1400},
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            use_real_chrome=False,
+            use_stealth=False,
+            **kwargs,
         )
-        self.context.add_init_script(
-            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
-        )
-        self.page = self.context.new_page()
-        return self.page
 
     def open_listings_page(self, page, filter_value=None):
-        page.goto(self.source["url"], wait_until="domcontentloaded")
-        try:
-            page.wait_for_load_state("networkidle", timeout=15000)
-        except Exception:
-            pass
+        self._goto_with_networkidle(page, self.source["url"])
         self._accept_consent_popup(page)
         self._dismiss_overlay(page)
         if filter_value:
@@ -65,15 +64,14 @@ class EcoCanadaScraper(BaseScraper):
         return items
 
     def _get_card_href(self, item) -> str | None:
-        """Extract and validate the job URL from a listing card."""
+        """Extract the job URL from a listing card."""
         try:
             href = item.locator("h3.job-title-container a").first.get_attribute("href", timeout=1000)
         except Exception:
             return None
         if not href:
             return None
-        full_url = href if href.startswith("http") else self.build_full_url(href)
-        return None if full_url.rstrip("/") == self.source["url"].rstrip("/") else full_url
+        return href if href.startswith("http") else self.build_full_url(href)
 
     def get_job_url(self, item):
         return self._get_card_href(item)
@@ -88,7 +86,9 @@ class EcoCanadaScraper(BaseScraper):
 
     def go_next_page(self, page):
         old_text = page.locator(self.listing_selector).first.inner_text()
-        self.next_button.click()
+        # Find and click the active "next page" button in the Acuspire pagination widget
+        next_btn = page.locator(".acuspire-pagination button[aria-label='Next page'], .acuspire-pagination [class*='next']").first
+        next_btn.click()
         page.wait_for_function(
             """(old_text) => {
                 const el = document.querySelector('.acuspire-job-container');
@@ -99,12 +99,7 @@ class EcoCanadaScraper(BaseScraper):
         self.setup_pagination(page)
         self.current_page_number += 1
 
-    # ---- Field extraction (uses base class SELECTORS contract) ----
-
-    SELECTORS = {
-        "organization": ".job-company",
-        "wage": ".wage_tag",
-    }
+    # ---- Field extraction ----
 
     def extract_date_posted(self, page, listing_data):
         raw = page.locator("span.posted-job-time").inner_text().replace("Posted", "").strip()
@@ -136,8 +131,8 @@ class EcoCanadaScraper(BaseScraper):
         )
 
     def _extract_wage_fallback(self, job_page) -> str | None:
-        """Try common class-name patterns to find a wage/salary element."""
-        for sel in ['[class*="wage"]', '[class*="salary"]', '[class*="compensation"]', '[class*="pay"]']:
+        """Try WAGE_FALLBACK_SELECTORS in order to find a wage/salary element."""
+        for sel in WAGE_FALLBACK_SELECTORS:
             try:
                 loc = job_page.locator(sel)
                 if loc.count() >= 1:

@@ -150,6 +150,19 @@ class BaseScraper:
         self.should_quit_list = False
         # Standardized job page wait/timeout configuration
         self.job_page_timeout_ms = 10_000
+        # Resolve job limits once at construction time so they're stable across pages
+        self._max_jobs = self._parse_int_env("MAX_JOBS_PER_SOURCE")
+        self._max_jobs_per_page = self._parse_int_env("MAX_JOBS_PER_PAGE")
+
+    @staticmethod
+    def _parse_int_env(name: str) -> int | None:
+        val = os.environ.get(name)
+        if not val:
+            return None
+        try:
+            return int(val)
+        except ValueError:
+            return None
 
     # ---- Subclass hooks ----
     def get_listings_url(self, filter_value=None):
@@ -189,52 +202,56 @@ class BaseScraper:
     def open_listings_page(self, page, filter_value=None):
         """Navigate to the listings page. Waits for networkidle, checks for error pages (403/404/Cloudflare), retries up to 3 times on failure."""
         def _load_page():
-            page.goto(self.get_listings_url(filter_value), wait_until="domcontentloaded", timeout=30000)
-
-            try:
-                page.wait_for_load_state("networkidle", timeout=15000)
-            except Exception:
-                pass
-
+            self._goto_with_networkidle(page, self.get_listings_url(filter_value))
             # Check if page loaded successfully (not a 404 or error page)
             self._is_error_page(page)
 
         self._retry(_load_page)
 
+    def _goto_with_networkidle(self, page, url: str, timeout: int = 30000, networkidle_timeout: int = 15000):
+        """Navigate to url, then wait for networkidle (best-effort — timeout is non-fatal)."""
+        page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+        try:
+            page.wait_for_load_state("networkidle", timeout=networkidle_timeout)
+        except Exception:
+            pass
+
     def _is_error_page(self, page):
         """Check if the page is an error page (404, 403, Cloudflare challenge, etc.).
-        Raises an exception with a descriptive message if an error page is detected."""
+        Raises an exception with a descriptive message if an error page is detected.
+        Returns silently if the page content cannot be read."""
         try:
             page_content = page.content()
             page_title = page.title().lower()
-            content_lower = page_content.lower()
-
-            # Check for 403 forbidden
-            if "403" in page_title or "forbidden" in page_title or "access denied" in page_title:
-                raise Exception("403 Forbidden - IP blocked by site")
-            if "403 forbidden" in content_lower or "<title>403</title>" in content_lower:
-                raise Exception("403 Forbidden - IP blocked by site")
-
-            # Check for 404 errors
-            if "404" in page_title or "not found" in page_title or "introuvable" in page_title:
-                raise Exception(f"404 Not Found - {page.title()}")
-
-            # Check for Cloudflare challenge
-            if "challenge-platform" in content_lower or "cf-challenge" in content_lower:
-                raise Exception("Cloudflare challenge page detected")
-
-            challenge_indicators = [
-                "checking your browser",
-                "please wait while we check",
-                "verify you are human",
-                "just a moment"
-            ]
-            for indicator in challenge_indicators:
-                if indicator in content_lower:
-                    raise Exception(f"Bot challenge detected: '{indicator}'")
-
         except Exception:
-            raise
+            # Can't read the page — not our problem to classify
+            return
+
+        content_lower = page_content.lower()
+
+        # Check for 403 forbidden
+        if "403" in page_title or "forbidden" in page_title or "access denied" in page_title:
+            raise Exception("403 Forbidden - IP blocked by site")
+        if "403 forbidden" in content_lower or "<title>403</title>" in content_lower:
+            raise Exception("403 Forbidden - IP blocked by site")
+
+        # Check for 404 errors
+        if "404" in page_title or "not found" in page_title or "introuvable" in page_title:
+            raise Exception(f"404 Not Found - {page.title()}")
+
+        # Check for Cloudflare challenge
+        if "challenge-platform" in content_lower or "cf-challenge" in content_lower:
+            raise Exception("Cloudflare challenge page detected")
+
+        challenge_indicators = [
+            "checking your browser",
+            "please wait while we check",
+            "verify you are human",
+            "just a moment",
+        ]
+        for indicator in challenge_indicators:
+            if indicator in content_lower:
+                raise Exception(f"Bot challenge detected: '{indicator}'")
 
     def get_listing_items(self, page):
         """Get listing items with automatic retry logic for proxy rotation."""
@@ -266,7 +283,12 @@ class BaseScraper:
             return None
         if not href:
             return None
-        return href if href.startswith("http") else self.build_full_url(href)
+        full_url = href if href.startswith("http") else self.build_full_url(href)
+        # Reject URLs that point back to the listing board itself
+        source_url = (self.source or {}).get("url", "")
+        if source_url and full_url.rstrip("/") == source_url.rstrip("/"):
+            return None
+        return full_url
 
     def get_listing_data(self, item):
         return {}
@@ -367,6 +389,18 @@ class BaseScraper:
             return self.extract_with_selectors(page, {name: self.SELECTORS[name]}).get(name)
         return None
 
+    @staticmethod
+    def extract_meta_date(page) -> str | None:
+        """Read article:published_time (or pubdate) from a <meta> tag.
+        Returns the content string, or None if not present."""
+        try:
+            meta = page.locator(
+                'meta[property="article:published_time"], meta[name="pubdate"]'
+            ).first
+            return meta.get_attribute("content") or None
+        except Exception:
+            return None
+
     # ---- Template-method flow ----
     def fetch_jobs(self, headless=True):
         self.listings_page = self.start_browser(headless=headless)
@@ -402,21 +436,8 @@ class BaseScraper:
         return self.jobs
 
     def _process_listing_items(self, items):
-        max_jobs = None
-        max_jobs_per_page = None
-        # Prefer explicit env var (set by scrape.py when flag provided)
-        max_jobs_env = os.environ.get("MAX_JOBS_PER_SOURCE")
-        if max_jobs_env:
-            try:
-                max_jobs = int(max_jobs_env)
-            except ValueError:
-                max_jobs = None
-        max_per_page_env = os.environ.get("MAX_JOBS_PER_PAGE")
-        if max_per_page_env:
-            try:
-                max_jobs_per_page = int(max_per_page_env)
-            except ValueError:
-                max_jobs_per_page = None
+        max_jobs = self._max_jobs
+        max_jobs_per_page = self._max_jobs_per_page
 
         jobs_this_page = 0
         for i, item in self._iter_items(items):
@@ -566,7 +587,7 @@ class BaseScraper:
         """Return False if the --headed flag was set via SCRAPER_HEADED env var."""
         return False if os.environ.get("SCRAPER_HEADED") == "1" else headless
 
-    def start_browser(self, headless=True, viewport=None, use_proxy=False, use_real_chrome=True):
+    def start_browser(self, headless=True, viewport=None, use_proxy=False, use_real_chrome=True, use_stealth=True):
         """Launch browser and return the main page.
 
         use_real_chrome: use installed Chrome instead of bundled Chromium (default: True).
@@ -574,6 +595,8 @@ class BaseScraper:
             Falls back to Chromium if Chrome isn't installed.
         use_proxy: route traffic through PROXY_SERVER when explicitly enabled
             with ``use_proxy=True``; it is not automatically enabled in CI.
+        use_stealth: apply playwright-stealth to the browser context (default: True).
+            Disable for sites where stealth causes rendering issues (e.g. Acuspire widgets).
         """
         from playwright.sync_api import sync_playwright
 
@@ -586,7 +609,8 @@ class BaseScraper:
         if proxy:
             context_kwargs["proxy"] = proxy
         self.context = self.browser.new_context(**context_kwargs)
-        _get_stealth().apply_stealth_sync(self.context)
+        if use_stealth:
+            _get_stealth().apply_stealth_sync(self.context)
         if proxy:
             _block_heavy_resources(self.context)
         self.page = self.context.new_page()
@@ -723,13 +747,18 @@ class BaseScraper:
                 job_page.goto(full_url, wait_until="domcontentloaded")
 
                 if wait_selector and not self.safe_wait_for_selector(job_page, wait_selector, timeout):
-                    scraper_log(f"\tPage missing '{wait_selector}' for {full_url}")
-                    self.upload_error_screenshot_from_page(job_page)
                     raise Exception(f"Selector '{wait_selector}' not found")
 
                 return (job_page, True)
             except Exception as e:
                 scraper_log(f"\tError opening job page ({attempt}/{max_retries}): {e} — {full_url}")
+                if attempt == max_retries:
+                    # Only upload a screenshot after all retries are exhausted
+                    try:
+                        if job_page:
+                            self.upload_error_screenshot_from_page(job_page)
+                    except Exception:
+                        pass
                 self._close_page_safely(job_page)
                 if attempt < max_retries:
                     time.sleep(attempt)
