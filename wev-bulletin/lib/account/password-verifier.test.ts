@@ -14,7 +14,7 @@ describe('PasswordVerifier', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (createServerClient as any).mockResolvedValue(mockSupabase);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
     
     // Default mock behavior
     mockRpc.mockResolvedValue({ 
@@ -53,9 +53,9 @@ describe('PasswordVerifier', () => {
       try {
         await verifier.verify('some-password');
         expect.fail('Should have thrown');
-      } catch (error: any) {
+      } catch (error) {
         expect(error).toBeInstanceOf(AuthenticationError);
-        expect(error.code).toBe('NO_PASSWORD_SET');
+        expect((error as AuthenticationError).code).toBe('NO_PASSWORD_SET');
       }
     });
 
