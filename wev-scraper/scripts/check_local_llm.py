@@ -7,7 +7,6 @@ from pathlib import Path
 
 # Add wev-scraper to path
 scraper_root = Path(__file__).resolve().parent
-sys.path.insert(0, str(scraper_root))
 
 from llm.factory import get_provider, get_job_summary_provider, get_sse_provider, _is_test_mode
 

@@ -47,11 +47,16 @@ async function createProfile(userId: string): Promise<Profile> {
 
   const { data, error } = await supabase
     .from('profiles')
-    .insert({
-      id: userId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
+    .upsert(
+      {
+        id: userId,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: 'id',
+        ignoreDuplicates: false,
+      },
+    )
     .select(PROFILE_COLUMNS)
     .single();
 

@@ -1,0 +1,43 @@
+{
+  "name": "wev",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "wev-bulletin",
+    "supabase"
+  ],
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "dotenv-cli": "^11.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  },
+  "scripts": {
+    "dev": "dotenv -e .env -- npm run dev --prefix wev-bulletin",
+    "build": "dotenv -e .env -- npm run build --prefix wev-bulletin",
+    "test": "npm run test:bulletin && npm run test:scraper",
+    "test:bulletin": "dotenv -e .env.test -- npm run test --prefix wev-bulletin",
+    "test:scraper": "cd wev-scraper && . venv/bin/activate && pytest tests",
+    "scrape": "npx tsx wev-scraper/run.ts scrape",
+    "lint": "dotenv -e .env.test -- npm run lint --prefix wev-bulletin",
+    "tsc": "npm run tsc --prefix wev-bulletin",
+    "verify": "npm run lint && npm run tsc && npm run test",
+    "seed:local": "npx tsx supabase/seed-local.ts",
+    "seed:staging": "npx tsx supabase/seed-staging.ts",
+    "skills:index": "npx tsx wev-scraper/run.ts skills:index",
+    "skills:embeddings": "npx tsx wev-scraper/run.ts skills:embeddings",
+    "apply-migrations": "npx tsx supabase/apply-migrations.ts",
+    "apply-migrations:direct": "wev-scraper/venv/bin/python3 supabase/apply-migrations-direct.py",
+    "migrate:local": "npx tsx supabase/migrate.ts local",
+    "migrate:staging": "npx tsx supabase/migrate.ts staging",
+    "migrate:prod": "npx tsx supabase/migrate.ts prod",
+    "types:supabase": "npx tsx supabase/generate-types.ts",
+    "backup": "npx tsx supabase/backup.ts",
+    "restore": "npx tsx supabase/restore.ts",
+    "cleanup:duplicates": "npx tsx supabase/cleanup-duplicates.ts"
+  }
+}

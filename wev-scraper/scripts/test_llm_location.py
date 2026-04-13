@@ -3,11 +3,6 @@
 
 import os
 import sys
-# Ensure project root is on sys.path so `utils` is importable when running scripts directly
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
 
 from utils.llm_location_extractor import extract_locations_for_jobs
 

@@ -51,13 +51,10 @@ async function findUserIdByEmail(
 
 export async function deleteAuthUserByEmail(email: string): Promise<void> {
   const supabaseUrl = getRequiredEnv('SUPABASE_URL');
-  const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? process.env.SUPABASE_SECRET_KEY?.trim();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!serviceRoleKey) {
-    throw new Error(
-      'Missing required e2e environment variable: SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY',
-    );
+    throw new Error('Missing required e2e environment variable: SUPABASE_SERVICE_ROLE_KEY');
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
