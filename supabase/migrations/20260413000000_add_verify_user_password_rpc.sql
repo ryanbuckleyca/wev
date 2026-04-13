@@ -7,23 +7,28 @@
 create extension if not exists pgcrypto with schema extensions;
 
 create or replace function public.verify_user_password(password text)
-returns boolean
+returns text
 language plpgsql
 security definer -- required to access auth.users
 set search_path = public, auth, extensions
 as $$
 declare
-  is_valid boolean;
+  stored_password text;
 begin
-  -- Check if the provided password matches the one in auth.users for the current user
-  -- We use explicit casts to text to ensure the crypt function signature matches
-  select 
-    (u.encrypted_password = crypt(password::text, u.encrypted_password::text))
-  into is_valid
+  -- Get the encrypted password for the current user
+  select u.encrypted_password into stored_password
   from auth.users u
   where u.id = auth.uid();
 
-  return coalesce(is_valid, false);
+  if stored_password is null then
+    return 'no_password';
+  end if;
+
+  if stored_password = crypt(password::text, stored_password) then
+    return 'match';
+  else
+    return 'mismatch';
+  end if;
 end;
 $$;
 
