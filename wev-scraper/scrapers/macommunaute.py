@@ -33,17 +33,15 @@ class MaCommunauteScraper(BaseScraper):
             self.page_count = 1
 
     def has_next_page(self, page):
-        return self.page_count > 1 and self.current_page_number < self.page_count
+        # DOM "next" link is the single source of truth — more reliable than a
+        # pre-computed page_count which can be stale or miscounted on the last page.
+        return page.locator("a.next.page-numbers, .page-numbers a[rel='next']").count() > 0
 
     def go_next_page(self, page):
         next_num = self.current_page_number + 1
         base = self.source["url"].rstrip("/")
         next_url = f"{base}/page/{next_num}/"
-        page.goto(next_url, wait_until="domcontentloaded")
-        try:
-            page.wait_for_load_state("networkidle", timeout=15000)
-        except Exception:
-            pass
+        self._goto_with_networkidle(page, next_url)
         self.current_page_number += 1
         self.setup_pagination(page)
 
@@ -88,18 +86,8 @@ class MaCommunauteScraper(BaseScraper):
     # ---- Detail page field extraction ----
 
     def extract_date_posted(self, page, listing_data):
-        # Try meta tag first (most reliable)
-        try:
-            meta = page.locator(
-                'meta[property="article:published_time"], meta[name="pubdate"]'
-            ).first
-            content = meta.get_attribute("content")
-            if content:
-                return content
-        except Exception:
-            pass
-        # Fall back to listing data
-        return listing_data.get("date_posted")
+        # Meta tag is most reliable; fall back to the date captured from the listing card
+        return self.extract_meta_date(page) or listing_data.get("date_posted")
 
     def extract_job_title(self, page, listing_data):
         for sel in ["h1.entry-title", "h1", "h2"]:
