@@ -71,12 +71,38 @@ describe('PasswordVerifier', () => {
   });
 
   describe('input validation', () => {
-    it('rejects empty password', async () => {
+    it('detects no_password even for empty password', async () => {
+      mockRpc.mockResolvedValue({
+        data: 'no_password',
+        error: null
+      });
+
+      const verifier = new PasswordVerifier();
+      try {
+        await verifier.verify('');
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthenticationError);
+        expect((error as AuthenticationError).code).toBe('NO_PASSWORD_SET');
+      }
+    });
+
+    it('rejects empty password if account has a password', async () => {
+      mockRpc.mockResolvedValue({
+        data: 'mismatch',
+        error: null
+      });
+
       const verifier = new PasswordVerifier();
       await expect(verifier.verify('')).rejects.toThrow(ValidationError);
     });
 
-    it('rejects password shorter than 8 characters', async () => {
+    it('rejects password shorter than 8 characters if account has a password', async () => {
+      mockRpc.mockResolvedValue({
+        data: 'mismatch',
+        error: null
+      });
+
       const verifier = new PasswordVerifier();
       await expect(verifier.verify('short')).rejects.toThrow(ValidationError);
     });

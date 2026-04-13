@@ -31,8 +31,6 @@ export class PasswordVerifier {
    * @throws {AuthenticationError} If verification fails
    */
   async verify(password: string): Promise<void> {
-    this.validateInputs(password);
-
     const supabase = await createServerClient();
     
     const { data: status, error } = await supabase.rpc('verify_user_password', { 
@@ -52,15 +50,19 @@ export class PasswordVerifier {
       );
     }
 
-    if (status === 'mismatch') {
-      throw new AuthenticationError('Invalid credentials', 'INVALID_CREDENTIALS');
-    }
-
     if (status === 'no_password') {
       throw new AuthenticationError(
         'This account uses a social login and does not have a password.',
         'NO_PASSWORD_SET'
       );
+    }
+
+    // Now that we know the account has a password, we validate the input format.
+    // This allows differentiate between "you need a password" and "your password is too short".
+    this.validateInputs(password);
+
+    if (status === 'mismatch') {
+      throw new AuthenticationError('Invalid credentials', 'INVALID_CREDENTIALS');
     }
   }
 
