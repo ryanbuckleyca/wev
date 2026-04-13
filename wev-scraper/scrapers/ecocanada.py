@@ -1,14 +1,6 @@
 import re
-from datetime import datetime
 from scrapers.base import BaseScraper
 from utils.log import scraper_log
-from utils.extractors import detect_employment_type_from_texts
-from utils.date_utils import is_recent_job, get_within_weeks
-
-DETAIL_SELECTORS = {
-    "organization": ".job-company",
-    "wage": ".wage_tag",
-}
 
 # Provinces to filter by. Passed one at a time to the Acuspire search widget.
 FILTER_PROVINCES = ["Ontario", "Quebec"]
@@ -72,7 +64,8 @@ class EcoCanadaScraper(BaseScraper):
         scraper_log(f"\t✓ Found {count} job items")
         return items
 
-    def get_job_url(self, item):
+    def _get_card_href(self, item) -> str | None:
+        """Extract and validate the job URL from a listing card."""
         try:
             href = item.locator("h3.job-title-container a").first.get_attribute("href", timeout=1000)
         except Exception:
@@ -80,9 +73,15 @@ class EcoCanadaScraper(BaseScraper):
         if not href:
             return None
         full_url = href if href.startswith("http") else self.build_full_url(href)
-        if full_url.rstrip("/") == self.source["url"].rstrip("/"):
-            return None
-        return full_url
+        return None if full_url.rstrip("/") == self.source["url"].rstrip("/") else full_url
+
+    def get_job_url(self, item):
+        return self._get_card_href(item)
+
+    def get_listing_data(self, item):
+        """Capture the listing URL from the card before opening the job page."""
+        url = self._get_card_href(item)
+        return {"listing_url": url} if url else {}
 
     def has_next_page(self, page):
         return self.page_count > 1 and self.current_page_number < self.page_count
@@ -105,7 +104,6 @@ class EcoCanadaScraper(BaseScraper):
     SELECTORS = {
         "organization": ".job-company",
         "wage": ".wage_tag",
-        "description": (".job-description-wrapper", "html"),
     }
 
     def extract_date_posted(self, page, listing_data):
@@ -125,8 +123,8 @@ class EcoCanadaScraper(BaseScraper):
         return ", ".join(parts) or None
 
     def extract_wage(self, page, listing_data):
-        selector_data = self.extract_with_selectors(page, {"wage": DETAIL_SELECTORS["wage"]})
-        return selector_data.get("wage") or self._extract_wage_fallback(page)
+        wage = self.extract_with_selectors(page, {"wage": ".wage_tag"}).get("wage")
+        return wage or self._extract_wage_fallback(page)
 
     def extract_description(self, page, listing_data):
         return page.eval_on_selector(
@@ -150,38 +148,25 @@ class EcoCanadaScraper(BaseScraper):
                 continue
         return None
 
-    def get_listing_data(self, item):
-        """Capture the listing URL from the card before opening the job page."""
-        try:
-            href = item.locator("h3.job-title-container a").first.get_attribute("href", timeout=1000)
-        except Exception:
-            return {}
-        if not href:
-            return {}
-        full_url = href if href.startswith("http") else self.build_full_url(href)
-        # Prefer canonical URL over board root
-        if full_url.rstrip("/") == self.source["url"].rstrip("/"):
-            return {}
-        return {"listing_url": full_url}
-
     # ---- Popup / overlay helpers ----
 
     def _accept_consent_popup(self, page):
         """Click the first consent button that responds, then wait for it to disappear."""
-        consent_selector = (
+        consent_container_selector = (
             '[class*="consent"], [class*="cookie"], [id*="consent"], '
             '#accept-all, #acceptAll, .accept-all, [data-cky-tag="accept-button"]'
         )
         for try_click in [
             lambda: page.get_by_role("button", name=re.compile(r"accept all|accept", re.I)).first.click(timeout=3000),
             lambda: page.get_by_role("button", name=re.compile(r"allow", re.I)).first.click(timeout=3000),
-            lambda: page.locator(f'{consent_selector} button, {consent_selector}').first.click(timeout=3000),
+            lambda: page.locator('[class*="consent"] button, [class*="cookie"] button, [id*="consent"] button').first.click(timeout=3000),
+            lambda: page.locator('#accept-all, #acceptAll, .accept-all, [data-cky-tag="accept-button"]').first.click(timeout=3000),
         ]:
             try:
                 try_click()
                 # Wait for the consent container to leave the DOM rather than sleeping
                 try:
-                    page.wait_for_selector(consent_selector, state="hidden", timeout=3000)
+                    page.wait_for_selector(consent_container_selector, state="hidden", timeout=3000)
                 except Exception:
                     pass
                 return
@@ -190,7 +175,8 @@ class EcoCanadaScraper(BaseScraper):
 
     def _dismiss_overlay(self, page):
         """Dismiss any overlay/modal (e.g. ECO IMPACT ad). No-op if nothing is found."""
-        overlay_selector = '[class*="overlay"], [class*="modal"]'
+        # Scope the post-click wait to ECO IMPACT specifically to avoid matching job detail modals
+        eco_impact_selector = '[class*="overlay"]:has-text("ECO IMPACT"), [class*="modal"]:has-text("ECO IMPACT")'
         for try_click in [
             lambda: page.locator('[aria-label="Close"]').first.click(timeout=2000),
             lambda: page.locator('[aria-label="close"]').first.click(timeout=2000),
@@ -204,9 +190,9 @@ class EcoCanadaScraper(BaseScraper):
         ]:
             try:
                 try_click()
-                # Wait for the overlay/modal to leave the DOM
+                # Wait for the ECO IMPACT overlay specifically to leave the DOM
                 try:
-                    page.wait_for_selector(overlay_selector, state="hidden", timeout=2000)
+                    page.wait_for_selector(eco_impact_selector, state="hidden", timeout=2000)
                 except Exception:
                     pass
                 return
