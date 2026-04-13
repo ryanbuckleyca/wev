@@ -80,11 +80,7 @@ export async function updatePasswordForCurrentUser({
   }
 
   const email = requirePasswordVerificationEmail(userEmail);
-  // Password change: use test captcha token if in test mode, otherwise null
-  const captchaToken = process.env.NEXT_PUBLIC_ENV_MODE === 'test' 
-    ? 'XXXX.DUMMY.TOKEN.XXXX' 
-    : null;
-  await verifyPassword(email, currentPassword, captchaToken, 'Current password is incorrect.');
+  await verifyPassword(email, currentPassword, null, 'Current password is incorrect.');
 
   const supabase = await createServerClient();
   const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -112,11 +108,7 @@ export async function deleteAccountForCurrentUser({
   }
 
   const email = requirePasswordVerificationEmail(userEmail);
-  // Account deletion doesn't require captcha - user is already authenticated
-  const captchaToken = process.env.NEXT_PUBLIC_ENV_MODE === 'test' 
-    ? 'XXXX.DUMMY.TOKEN.XXXX' 
-    : null;
-  await verifyPassword(email, password, captchaToken, 'Invalid password');
+  await verifyPassword(email, password, null, 'Invalid password');
 
   const adminSupabase = supabaseServer;
   const { error } = await adminSupabase.auth.admin.deleteUser(userId);
