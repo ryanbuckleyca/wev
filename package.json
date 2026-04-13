@@ -18,7 +18,8 @@
   },
   "scripts": {
     "dev": "dotenv -e .env -- npm run dev --prefix wev-bulletin",
-    "build": "dotenv -e .env -- npm run build --prefix wev-bulletin",
+    "build": "npm run build --prefix wev-bulletin",
+    "start": "npm start --prefix wev-bulletin",
     "test": "npm run test:bulletin && npm run test:scraper",
     "test:bulletin": "dotenv -e .env.test -- npm run test --prefix wev-bulletin",
     "test:scraper": "cd wev-scraper && . venv/bin/activate && pytest tests",
