@@ -18,7 +18,8 @@ export class AccountServiceError extends Error {
 
 async function verifyPassword(
   password: string,
-  errorMessage: string,
+  invalidCredentialsMessage: string,
+  requiredMessage?: string,
 ): Promise<void> {
   const verifier = new PasswordVerifier();
 
@@ -26,7 +27,10 @@ async function verifyPassword(
     await verifier.verify(password);
   } catch (error) {
     if (error instanceof ValidationError) {
-      throw new AccountServiceError(error.message, 400, error.code);
+      const message = error.code === 'PASSWORD_REQUIRED' && requiredMessage 
+        ? requiredMessage 
+        : error.message;
+      throw new AccountServiceError(message, 400, error.code);
     }
 
     if (error instanceof AuthenticationError) {
@@ -36,7 +40,7 @@ async function verifyPassword(
         throw error;
       }
 
-      const message = error.code === 'INVALID_CREDENTIALS' ? errorMessage : error.message;
+      const message = error.code === 'INVALID_CREDENTIALS' ? invalidCredentialsMessage : error.message;
       throw new AccountServiceError(message, 401, error.code);
     }
 
@@ -51,10 +55,6 @@ export async function updatePasswordForCurrentUser({
   currentPassword: string;
   newPassword: string;
 }) {
-  if (!currentPassword?.trim()) {
-    throw new AccountServiceError('Current password is required.', 400, 'PASSWORD_REQUIRED');
-  }
-
   if (!newPassword?.trim()) {
     throw new AccountServiceError('New password is required.', 400, 'NEW_PASSWORD_REQUIRED');
   }
@@ -68,7 +68,7 @@ export async function updatePasswordForCurrentUser({
   }
 
   try {
-    await verifyPassword(currentPassword, 'Current password is incorrect.');
+    await verifyPassword(currentPassword, 'Current password is incorrect.', 'Current password is required.');
   } catch (error) {
     // If user has no password, they can set one for the first time without currentPassword
     if (error instanceof AuthenticationError && error.code === 'NO_PASSWORD_SET') {
@@ -93,16 +93,8 @@ export async function deleteAccountForCurrentUser({
   password: string;
   userId: string;
 }) {
-  if (!password?.trim()) {
-    throw new AccountServiceError(
-      'Password required for account deletion',
-      400,
-      'PASSWORD_REQUIRED'
-    );
-  }
-
   try {
-    await verifyPassword(password, 'Invalid password');
+    await verifyPassword(password, 'Invalid password', 'Password required for account deletion');
   } catch (error) {
     // For OAuth users who don't have a password, we allow deletion as long as they are authenticated.
     // This matches the approved plan to handle social login users.
