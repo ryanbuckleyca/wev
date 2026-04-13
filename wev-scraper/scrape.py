@@ -327,12 +327,10 @@ def initialize_runtime_env(args):
 
 
 def main():
-    import os
     args = parse_args()
 
     # 1. Confirm before doing anything else
     if args.prod and sys.stdin.isatty():
-        sys.stdout.flush()
         confirm = input("⚠️  RUNNING AGAINST PRODUCTION. Type 'YES' to continue: ")
         if confirm != "YES":
             sys.exit(0)
