@@ -3,21 +3,18 @@ import { DELETE } from './route';
 import { NextRequest } from 'next/server';
 import { getRequestUser } from '@/lib/auth/request-user';
 
-const { mockSignInWithPassword, mockDeleteUser, mockAdminSignOut } = vi.hoisted(() => ({
-  mockSignInWithPassword: vi.fn(),
+const { mockRpc, mockDeleteUser } = vi.hoisted(() => ({
+  mockRpc: vi.fn(),
   mockDeleteUser: vi.fn(),
-  mockAdminSignOut: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/request-user', () => ({
   getRequestUser: vi.fn(),
 }));
 
-vi.mock('@supabase/supabase-js', () => ({
+vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => ({
-    auth: {
-      signInWithPassword: mockSignInWithPassword,
-    },
+    rpc: mockRpc,
   })),
 }));
 
@@ -25,7 +22,6 @@ vi.mock('@/lib/supabase-server', () => ({
   supabaseServer: {
     auth: {
       admin: {
-        signOut: mockAdminSignOut,
         deleteUser: mockDeleteUser,
       },
     },
@@ -37,16 +33,8 @@ const mockGetRequestUser = vi.mocked(getRequestUser);
 describe('/api/account/delete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NEXT_PUBLIC_ENV_MODE = 'test'; // Enforce test mode for captcha generation
-    mockSignInWithPassword.mockResolvedValue({
-      data: {
-        user: { id: 'user-123' },
-        session: { access_token: 'verification-token' },
-      },
-      error: null,
-    });
-    mockAdminSignOut.mockResolvedValue({
-      data: null,
+    mockRpc.mockResolvedValue({
+      data: 'match',
       error: null,
     });
   });
@@ -98,12 +86,9 @@ describe('/api/account/delete', () => {
         email: 'test@example.com',
       } as never,
     });
-    mockSignInWithPassword.mockResolvedValue({
-      data: { user: null },
-      error: {
-        code: 'invalid_credentials',
-        message: 'Invalid login credentials',
-      },
+    mockRpc.mockResolvedValue({
+      data: 'mismatch',
+      error: null,
     });
 
     const request = new NextRequest('http://localhost:3000/api/account/delete', {
@@ -117,7 +102,6 @@ describe('/api/account/delete', () => {
     expect(response.status).toBe(401);
     expect(data.error).toBe('Invalid password');
     expect(mockDeleteUser).not.toHaveBeenCalled();
-    expect(mockAdminSignOut).not.toHaveBeenCalled();
   });
 
   it('should return a server error when password verification fails for other reasons', async () => {
@@ -128,11 +112,10 @@ describe('/api/account/delete', () => {
         email: 'test@example.com',
       } as never,
     });
-    mockSignInWithPassword.mockResolvedValue({
-      data: { user: null, session: null },
+    mockRpc.mockResolvedValue({
+      data: null,
       error: {
-        code: 'over_request_rate_limit',
-        message: 'Rate limit exceeded',
+        message: 'Database error',
       },
     });
 
@@ -145,9 +128,8 @@ describe('/api/account/delete', () => {
     const data = await response.json();
 
     expect(response.status).toBe(401);
-    expect(data.error).toBe('Authentication failed');
+    expect(data.error).toBe('Verification system error');
     expect(mockDeleteUser).not.toHaveBeenCalled();
-    expect(mockAdminSignOut).not.toHaveBeenCalled();
   });
 
   it('should successfully delete account with a valid password', async () => {
@@ -175,14 +157,10 @@ describe('/api/account/delete', () => {
 
     expect(response.status).toBe(200);
     expect(data.message).toBe('Account successfully deleted');
-    expect(mockSignInWithPassword).toHaveBeenCalledWith({
-      email: 'test@example.com',
+    expect(mockRpc).toHaveBeenCalledWith('verify_user_password', {
       password: 'validpassword123',
-      options: {
-        captchaToken: 'XXXX.DUMMY.TOKEN.XXXX',
-      },
     });
-    expect(mockAdminSignOut).toHaveBeenCalledWith('verification-token', 'local');
     expect(mockDeleteUser).toHaveBeenCalledWith('user-123');
   });
 });
+

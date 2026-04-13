@@ -20,7 +20,6 @@ export async function DELETE(request: NextRequest) {
     // so a verified auth delete keeps the flow both simpler and safer.
     await deleteAccountForCurrentUser({
       password,
-      userEmail: user.email,
       userId: user.id,
     });
 

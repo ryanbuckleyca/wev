@@ -19,7 +19,6 @@ export async function PATCH(request: NextRequest) {
     await updatePasswordForCurrentUser({
       currentPassword,
       newPassword,
-      userEmail: auth.user.email,
     });
 
     return NextResponse.json({ message: 'Password updated successfully' }, { status: 200 });
