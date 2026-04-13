@@ -1,9 +1,10 @@
-import sys
 import os
+import sys
 import traceback
-from pathlib import Path
 from dataclasses import dataclass, field
-from typing import List, Dict, Set, Any, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Set
+
 from settings import ensure_env_loaded, load_env_file
 
 # Ensure CI sees output immediately
@@ -11,11 +12,11 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(line_buffering=True)
 
 # Note: Import database and scraper classes AFTER environment might have been modified by CLI args
-from utils.db import save_job, log_scrape_run, supabase, get_supabase_url, fetch_all_rows
+from scrapers.registry import get_scraper_class
+from utils.db import fetch_all_rows, get_supabase_url, log_scrape_run, save_job, supabase
 from utils.env import is_truthy_env
 from utils.log import scraper_log as _log
 from utils.url import add_url_dedup_variants, normalize_listing_url
-from scrapers.registry import get_scraper_class
 
 os.environ['PLAYWRIGHT_SYNC_MODE'] = '1'
 
@@ -263,7 +264,8 @@ class ScraperOrchestrator:
         self._capture_error_screenshot(scraper, source_name)
 
     def _capture_error_screenshot(self, scraper, source_name: str):
-        if not scraper: return
+        if not scraper:
+            return
         page = getattr(scraper, "page", None) or getattr(scraper, "listings_page", None)
         if page:
             try:

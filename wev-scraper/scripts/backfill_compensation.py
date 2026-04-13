@@ -16,14 +16,13 @@ import json
 import logging
 import sys
 import time
-from pathlib import Path
 
+from dotenv import find_dotenv, load_dotenv
 
-from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
-from utils.db import supabase
-from lib.compensation import extract_and_guard
+from lib.compensation import extract_and_guard  # noqa: E402
+from utils.db import supabase  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -64,13 +63,13 @@ def _would_violate_constraints(extraction) -> str | None:
 
     # compensation_integrity_check
     if (unit is None) != (min_v is None):
-        return f"compensation_integrity_check: unit_text and min_value must both be null or both non-null"
+        return "compensation_integrity_check: unit_text and min_value must both be null or both non-null"
     if min_v is not None and min_v < 0:
         return f"compensation_integrity_check: min_value={min_v} < 0"
 
     # compensation_zero_salary_check
     if min_v is not None and min_v == 0:
-        return f"compensation_zero_salary_check: min_value=0"
+        return "compensation_zero_salary_check: min_value=0"
 
     # compensation_range_check
     if min_v is not None and max_v is not None and max_v < min_v:

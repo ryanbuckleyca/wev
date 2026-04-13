@@ -11,11 +11,9 @@ from __future__ import annotations
 
 import math
 import os
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers

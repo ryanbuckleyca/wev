@@ -1,7 +1,5 @@
 """Tests that save_job returns (status, id) and that job_ids flow into post-processing."""
-import pytest
 from unittest.mock import MagicMock, patch
-
 
 # ── save_job return value contract ────────────────────────────────────────────
 

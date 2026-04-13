@@ -22,7 +22,6 @@ import os
 import sys
 import time
 
-
 # --prod confirmation before utils.db import
 if "--prod" in sys.argv[1:] and os.environ.get("CONFIRM_PROD_RUN") == "YES":
     os.environ["USE_PROD_DB"] = "1"
@@ -45,8 +44,8 @@ elif os.environ.get("USE_PROD_DB") == "1":
 else:
     print("🧪 Using TEST database")
 
-from utils.db import supabase, fetch_all_rows
-from llm.jina_embedding import JinaEmbeddingService, ConfigurationError
+from llm.jina_embedding import ConfigurationError, JinaEmbeddingService
+from utils.db import fetch_all_rows, supabase
 
 logger = logging.getLogger(__name__)
 

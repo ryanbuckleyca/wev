@@ -12,13 +12,10 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from scripts.tag_esco_skills_vector import (
     build_job_embedding_text,
     select_skills,
 )
-
 
 # ---------------------------------------------------------------------------
 # build_job_embedding_text
