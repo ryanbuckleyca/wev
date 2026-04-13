@@ -180,7 +180,6 @@ class BaseLLMProvider(ABC):
                     f"splitting {len(batch)} items...",
                     flush=True,
                 )
-                mid = len(batch) // 2  # noqa: F841
                 sub_results = self.complete_batch(
                     items=batch,
                     build_prompt=build_prompt,
