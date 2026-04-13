@@ -52,43 +52,59 @@ class EcoCanadaScraper(BaseScraper):
         page.wait_for_selector(self.listing_selector, state="attached", timeout=15000)
 
     def get_listing_items(self, page):
-        items = page.locator(self.listing_selector)
-        count = items.count()
-        if count == 0:
+        try:
+            return super().get_listing_items(page)
+        except Exception:
             try:
                 self.upload_error_screenshot_from_page(page, "ecocanada-no-listings")
             except Exception:
                 pass
-            raise Exception("No job listings found on page")
-        scraper_log(f"\t✓ Found {count} job items")
-        return items
+            raise
 
     def _get_card_href(self, item) -> str | None:
-        """Extract the job URL from a listing card."""
+        """Extract the raw href from a listing card (used by get_listing_data)."""
         try:
-            href = item.locator("h3.job-title-container a").first.get_attribute("href", timeout=1000)
+            return item.locator("h3.job-title-container a").first.get_attribute("href", timeout=1000)
         except Exception:
             return None
-        if not href:
-            return None
-        return href if href.startswith("http") else self.build_full_url(href)
 
     def get_job_url(self, item):
-        return self._get_card_href(item)
+        """Delegate to BaseScraper after extracting the href via the Acuspire-specific locator."""
+        href = self._get_card_href(item)
+        if not href:
+            return None
+        # Resolve to a full URL, then apply the base board-URL guard
+        full_url = href if href.startswith("http") else self.build_full_url(href)
+        source_url = (self.source or {}).get("url", "")
+        if source_url and full_url.rstrip("/") == source_url.rstrip("/"):
+            return None
+        return full_url
 
     def get_listing_data(self, item):
         """Capture the listing URL from the card before opening the job page."""
-        url = self._get_card_href(item)
-        return {"listing_url": url} if url else {}
+        href = self._get_card_href(item)
+        if not href:
+            return {}
+        full_url = href if href.startswith("http") else self.build_full_url(href)
+        return {"listing_url": full_url}
+
+    # Selector for the Acuspire pagination "next page" control.
+    _NEXT_PAGE_SELECTOR = (
+        ".acuspire-pagination button[aria-label='Next page'], "
+        ".acuspire-pagination [class*='next']"
+    )
 
     def has_next_page(self, page):
-        return self.page_count > 1 and self.current_page_number < self.page_count
+        """Return True if the Acuspire widget has an enabled next-page button."""
+        try:
+            btn = page.locator(self._NEXT_PAGE_SELECTOR).first
+            return btn.count() > 0 and btn.is_enabled(timeout=2000)
+        except Exception:
+            return False
 
     def go_next_page(self, page):
         old_text = page.locator(self.listing_selector).first.inner_text()
-        # Find and click the active "next page" button in the Acuspire pagination widget
-        next_btn = page.locator(".acuspire-pagination button[aria-label='Next page'], .acuspire-pagination [class*='next']").first
-        next_btn.click()
+        page.locator(self._NEXT_PAGE_SELECTOR).first.click()
         page.wait_for_function(
             """(old_text) => {
                 const el = document.querySelector('.acuspire-job-container');
@@ -96,7 +112,6 @@ class EcoCanadaScraper(BaseScraper):
             }""",
             arg=old_text,
         )
-        self.setup_pagination(page)
         self.current_page_number += 1
 
     # ---- Field extraction ----
