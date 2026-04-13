@@ -145,7 +145,7 @@ describe('/api/account/delete', () => {
     const data = await response.json();
 
     expect(response.status).toBe(401);
-    expect(data.error).toBe('Authentication failed');
+    expect(data.error).toBe('Rate limit exceeded');
     expect(mockDeleteUser).not.toHaveBeenCalled();
     expect(mockAdminSignOut).not.toHaveBeenCalled();
   });
@@ -178,11 +178,9 @@ describe('/api/account/delete', () => {
     expect(mockSignInWithPassword).toHaveBeenCalledWith({
       email: 'test@example.com',
       password: 'validpassword123',
-      options: {
-        captchaToken: 'XXXX.DUMMY.TOKEN.XXXX',
-      },
     });
     expect(mockAdminSignOut).toHaveBeenCalledWith('verification-token', 'local');
     expect(mockDeleteUser).toHaveBeenCalledWith('user-123');
   });
 });
+

@@ -31,11 +31,11 @@ export class PasswordVerifier {
   private readonly publishableKey: string;
 
   constructor() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!url || !key) {
-      throw new Error('Missing Supabase public env for password verification');
+      throw new Error('Missing Supabase server env for password verification');
     }
 
     this.supabaseUrl = url;
@@ -151,11 +151,12 @@ export class PasswordVerifier {
       });
 
       throw new AuthenticationError(
-        'Authentication failed',
+        error.message || 'Authentication failed',
         error.code ?? 'AUTH_FAILED',
         error
       );
     }
+
 
     if (!data.session?.access_token) {
       throw new AuthenticationError(
