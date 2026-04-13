@@ -15,14 +15,13 @@ class CSIScraper(BaseScraper):
 
     def __init__(self, source):
         super().__init__(source)
-        self.load_more_available = True
         self.processed_urls = set()
 
     def start_browser(self, headless=True, viewport=None):
         return super().start_browser(headless=headless, viewport={"width": 1280, "height": 1400})
 
     def setup_pagination(self, page):
-        self.load_more_available = True
+        pass  # CSI uses "Load More" button; no page count needed
 
     def get_job_url(self, item):
         try:
@@ -62,7 +61,6 @@ class CSIScraper(BaseScraper):
         return data
 
     def open_listings_page(self, page, filter_value=None):
-        self.load_more_available = True
         self.processed_urls = set()
         page.goto(self.source["url"])
 
@@ -81,21 +79,13 @@ class CSIScraper(BaseScraper):
             page.wait_for_timeout(2000)
         except Exception as e:
             scraper_log(f"\tLoad More click failed: {e}")
-            self.load_more_available = False
 
     # ---- Field extraction ----
 
     def extract_date_posted(self, page, listing_data):
-        try:
-            meta = page.locator(
-                'meta[property="article:published_time"], '
-                'meta[property="article:modified_time"]'
-            ).first
-            content = meta.get_attribute("content")
-            if content:
-                return content
-        except Exception:
-            pass
+        date = self.extract_meta_date(page)
+        if date:
+            return date
         try:
             return page.locator(".post-date, .date-posted").inner_text(timeout=3000).strip()
         except Exception:

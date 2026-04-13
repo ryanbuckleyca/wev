@@ -348,6 +348,12 @@ def main():
 
     if args.prod:
         os.environ["USE_PROD_DB"] = "1"
+        # Guard against accidental prod runs when invoked directly (bypassing run.ts).
+        # run.ts handles the prompt when stdin is a TTY; this catches direct Python invocations.
+        if sys.stdin.isatty():
+            confirm = input("⚠️  RUNNING AGAINST PRODUCTION. Type 'YES' to continue: ")
+            if confirm != "YES":
+                sys.exit(0)
 
     # 3. Orchestrate
     orchestrator = ScraperOrchestrator(
