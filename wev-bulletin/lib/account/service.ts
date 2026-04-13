@@ -15,17 +15,6 @@ export class AccountServiceError extends Error {
   }
 }
 
-function requirePasswordVerificationEmail(userEmail?: string | null): string {
-  if (!userEmail) {
-    throw new AccountServiceError(
-      'Password verification is not available for this account.',
-      400,
-      'EMAIL_REQUIRED'
-    );
-  }
-
-  return userEmail;
-}
 
 async function verifyPassword(
   password: string,
@@ -41,6 +30,12 @@ async function verifyPassword(
     }
 
     if (error instanceof AuthenticationError) {
+      // If user has no password (OAuth), we allow them to proceed for certain actions
+      // in the caller, but here we just pass the error up if it's a mismatch.
+      if (error.code === 'NO_PASSWORD_SET') {
+        throw error;
+      }
+
       const message = error.code === 'INVALID_CREDENTIALS' ? errorMessage : error.message;
       throw new AccountServiceError(message, 401, error.code);
     }
@@ -55,12 +50,7 @@ export async function updatePasswordForCurrentUser({
 }: {
   currentPassword: string;
   newPassword: string;
-  userEmail?: string | null;
 }) {
-  if (!currentPassword?.trim()) {
-    throw new AccountServiceError('Current password is required.', 400, 'PASSWORD_REQUIRED');
-  }
-
   if (!newPassword?.trim()) {
     throw new AccountServiceError('New password is required.', 400, 'NEW_PASSWORD_REQUIRED');
   }
@@ -73,7 +63,16 @@ export async function updatePasswordForCurrentUser({
     );
   }
 
-  await verifyPassword(currentPassword, 'Current password is incorrect.');
+  try {
+    await verifyPassword(currentPassword, 'Current password is incorrect.');
+  } catch (error) {
+    // If user has no password, they can set one for the first time without currentPassword
+    if (error instanceof AuthenticationError && error.code === 'NO_PASSWORD_SET') {
+      // Proceed (setting initial password)
+    } else {
+      throw error;
+    }
+  }
 
   const supabase = await createServerClient();
   const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -88,18 +87,19 @@ export async function deleteAccountForCurrentUser({
   userId,
 }: {
   password: string;
-  userEmail?: string | null;
   userId: string;
 }) {
-  if (!password?.trim()) {
-    throw new AccountServiceError(
-      'Password required for account deletion',
-      400,
-      'PASSWORD_REQUIRED'
-    );
+  try {
+    await verifyPassword(password, 'Invalid password');
+  } catch (error) {
+    // For OAuth users who don't have a password, we allow deletion as long as they are authenticated.
+    // This matches the approved plan to handle social login users.
+    if (error instanceof AuthenticationError && error.code === 'NO_PASSWORD_SET') {
+      // Proceed with deletion
+    } else {
+      throw error;
+    }
   }
-
-  await verifyPassword(password, 'Invalid password');
 
   const adminSupabase = supabaseServer;
   const { error } = await adminSupabase.auth.admin.deleteUser(userId);

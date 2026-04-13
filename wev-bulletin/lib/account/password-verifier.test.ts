@@ -18,7 +18,7 @@ describe('PasswordVerifier', () => {
     
     // Default mock behavior
     mockRpc.mockResolvedValue({ 
-      data: true, 
+      data: 'match', 
       error: null 
     });
   });
@@ -35,12 +35,28 @@ describe('PasswordVerifier', () => {
 
     it('throws AuthenticationError for invalid credentials', async () => {
       mockRpc.mockResolvedValue({
-        data: false,
+        data: 'mismatch',
         error: null
       });
 
       const verifier = new PasswordVerifier();
       await expect(verifier.verify('wrong-password')).rejects.toThrow(AuthenticationError);
+    });
+
+    it('throws AuthenticationError with NO_PASSWORD_SET code for users without passwords', async () => {
+      mockRpc.mockResolvedValue({
+        data: 'no_password',
+        error: null
+      });
+
+      const verifier = new PasswordVerifier();
+      try {
+        await verifier.verify('some-password');
+        expect.fail('Should have thrown');
+      } catch (error: any) {
+        expect(error).toBeInstanceOf(AuthenticationError);
+        expect(error.code).toBe('NO_PASSWORD_SET');
+      }
     });
 
     it('throws AuthenticationError for RPC error', async () => {
