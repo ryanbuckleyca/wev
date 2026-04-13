@@ -10,7 +10,9 @@ import logging
 import re
 import time
 from typing import Optional
+
 from geocodio import Geocodio
+
 from settings import get_geocodio_api_key
 
 logger = logging.getLogger(__name__)

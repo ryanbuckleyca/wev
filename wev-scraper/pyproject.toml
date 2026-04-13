@@ -22,3 +22,10 @@ dependencies = [
 [tool.setuptools]
 packages = ["lib", "utils", "scrapers", "llm"]
 package-dir = {"" = "."}
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["B", "D3", "E", "F", "I"]
+ignore = ["E501"]

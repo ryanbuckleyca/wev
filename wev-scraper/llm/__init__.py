@@ -9,9 +9,9 @@ Usage:
 
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.factory import (
-    get_provider,
-    get_job_summary_provider,
     PROVIDERS,
+    get_job_summary_provider,
+    get_provider,
 )
 
 __all__ = [

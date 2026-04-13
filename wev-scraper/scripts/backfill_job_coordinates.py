@@ -13,14 +13,13 @@ import argparse
 import logging
 import sys
 import time
-from pathlib import Path
 
+from dotenv import find_dotenv, load_dotenv
 
-from dotenv import load_dotenv, find_dotenv
-load_dotenv(find_dotenv()).resolve().parent.parent / ".env")
+load_dotenv(find_dotenv())
 
-from utils.db import supabase
-from utils.location_parser import parse_address_with_geocodio
+from utils.db import supabase  # noqa: E402
+from utils.location_parser import parse_address_with_geocodio  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(

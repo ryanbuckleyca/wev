@@ -7,10 +7,9 @@ Property 6: Backfill Idempotency
 Validates: Requirements 14.1, 14.4
 """
 
-import pytest
-from unittest.mock import MagicMock, patch, call
-from lib.compensation import CompensationExtraction
+from unittest.mock import MagicMock, patch
 
+from lib.compensation import CompensationExtraction
 
 # ---------------------------------------------------------------------------
 # Helpers

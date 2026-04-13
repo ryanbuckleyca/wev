@@ -1,9 +1,9 @@
 """Tests for URL normalization and deduplication utilities."""
 
 from utils.url import (
-    normalize_listing_url,
     add_url_dedup_variants,
     get_listing_url_variant,
+    normalize_listing_url,
 )
 
 

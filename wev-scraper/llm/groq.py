@@ -24,32 +24,32 @@ Strategy for large runs:
   - At 6s/call, 100-job scrape = ~10 min wall time for summaries — acceptable.
   - Hourly cap (1,000 req) only becomes an issue above ~900 jobs in a single hour;
     well outside realistic single-run sizes.
-  
+
 Grounding/search is not supported; SSE classification must use Gemini (Google Search grounding required).
 """
 
 from __future__ import annotations
 
-import logging
-import os
 # Import json at the top of the file
 import json
+import logging
+import os
 import re
 import time
-import requests
 from typing import Optional
+
+import requests
 
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.prompts import (
+    build_batch_summary_prompt,
     build_summary_prompt,
     build_summary_system_prompt,
-    build_batch_summary_prompt,
-    get_json_system_prompt,
-    get_skills_and_values_extraction_rules,
     get_batch_processing_rules,
     get_json_output_rules,
+    get_json_system_prompt,
+    get_skills_and_values_extraction_rules,
 )
-
 
 GROQ_BASE_URL = "https://api.groq.com/openai"
 DEFAULT_MODEL = "llama-3.3-70b-versatile"
@@ -109,7 +109,7 @@ def _strip_org_name(text: str, org_name: str) -> str:
 
 class GroqProvider(BaseLLMProvider):
     """Provider using the Groq REST API (OpenAI-compatible chat completions).
-    
+
     Supports automatic model fallback when rate limits are hit.
     Models are tried in order of quality, falling back to lesser models
     when the preferred model runs out of quota.
@@ -126,7 +126,7 @@ class GroqProvider(BaseLLMProvider):
         self._last_request_time: float = 0.0
         self._current_model_index = 0
         self._exhausted_models: set[str] = set()
-        
+
         # If a specific model is requested, find its index in the hierarchy
         if self._model != DEFAULT_MODEL and self._model in GROQ_MODELS:
             self._current_model_index = GROQ_MODELS.index(self._model)
@@ -136,7 +136,7 @@ class GroqProvider(BaseLLMProvider):
 
     def _get_next_model(self) -> str | None:
         """Get the next available model in the fallback hierarchy.
-        
+
         Returns:
             Next model name, or None if all models are exhausted.
         """
@@ -145,15 +145,15 @@ class GroqProvider(BaseLLMProvider):
             model = GROQ_MODELS[i]
             if model not in self._exhausted_models:
                 return model
-        
+
         # If we've exhausted all from current position, try earlier ones
         for i in range(0, self._current_model_index):
             model = GROQ_MODELS[i]
             if model not in self._exhausted_models:
                 return model
-                
+
         return None
-    
+
     def _mark_model_exhausted(self, model: str):
         """Mark a model as exhausted and move to the next one."""
         self._exhausted_models.add(model)
@@ -174,11 +174,11 @@ class GroqProvider(BaseLLMProvider):
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
-        
+
         # Use the provided model or current model
         current_model = model_override or self._model
         payload["model"] = current_model
-        
+
         last_err: Exception | None = None
         for attempt in range(_MAX_RETRIES + 1):
             try:
@@ -187,7 +187,7 @@ class GroqProvider(BaseLLMProvider):
                 self._last_request_time = time.monotonic()
                 raise LLMProviderError(f"Groq request failed: {e}") from e
             self._last_request_time = time.monotonic()
-            
+
             if resp.status_code == 429:
                 resp_text = resp.text[:500].lower()
                 # Daily quota exhausted — no point waiting, fall back to next model.
@@ -257,20 +257,19 @@ class GroqProvider(BaseLLMProvider):
             payload["max_tokens"] = max_tokens
         if stop:
             payload["stop"] = stop
-        
+
         # Force JSON mode if requested (default for skills extraction)
         if kwargs.get("json_mode", True):
             payload["response_format"] = {"type": "json_object"}
-            
+
         # Use the specified model or current model with fallback
-        target_model = model or self._model
         if model and model != self._model:
             # Temporarily use the specified model
             data = self._request("/v1/chat/completions", payload, model_override=model)
         else:
             # Use current model (which may have fallback logic)
             data = self._request("/v1/chat/completions", payload)
-            
+
         choices = data.get("choices") or []
         if not choices:
             return ""
@@ -356,12 +355,12 @@ class GroqProvider(BaseLLMProvider):
 
     def summarize_and_tag_values_batch(self, jobs: list[dict], max_chars: int = 300, max_values: int = 5) -> list[dict]:
         """Extract summary, skills, and values for multiple jobs in a single LLM call.
-        
+
         Args:
             jobs: List of job dictionaries with job details.
             max_chars: Maximum characters in each summary (default 300).
             max_values: Maximum number of values per job (default 5).
-            
+
         Returns:
             List of dicts with 'summary', 'skills', and 'values' keys for each job.
         """
@@ -370,7 +369,7 @@ class GroqProvider(BaseLLMProvider):
 
         # Import the values taxonomy
         from utils.job_values_prompts import WORK_VALUES_TAXONOMY, _format_taxonomy
-        
+
         # Express length as words — models handle word counts far better than char counts.
         max_words = max(10, max_chars // 6)
 
@@ -423,32 +422,32 @@ class GroqProvider(BaseLLMProvider):
             json_match = re.search(r'\[\s*\{[\s\S]*\}\s*\]', result.strip())
             if not json_match:
                 return [{"summary": "", "skills": [], "values": []} for _ in jobs]
-            
+
             json_str = json_match.group(0)
             parsed = json.loads(json_str)
-            
+
             if not isinstance(parsed, list):
                 return [{"summary": "", "skills": [], "values": []} for _ in jobs]
-            
+
             # Normalize results to match job count
             WORK_VALUES_SET = {label for label, _ in WORK_VALUES_TAXONOMY}
             results = []
-            
-            for i, job in enumerate(jobs):
+
+            for i, _job in enumerate(jobs):
                 # Find result by index
                 job_result = None
                 for item in parsed:
                     if isinstance(item, dict) and item.get("index") == i + 1:
                         job_result = item
                         break
-                
+
                 if not job_result:
                     # Try to use positional fallback
                     if i < len(parsed) and isinstance(parsed[i], dict):
                         job_result = parsed[i]
                     else:
                         job_result = {}
-                
+
                 # Extract and clean data
                 summary = str(job_result.get("summary", "")).strip()
                 skills = job_result.get("skills", [])
@@ -456,39 +455,39 @@ class GroqProvider(BaseLLMProvider):
                     skills = [str(skill).strip() for skill in skills if str(skill).strip()]
                 else:
                     skills = []
-                
+
                 raw_values = job_result.get("values", [])
                 if isinstance(raw_values, list):
                     # Filter values to only include allowed ones
                     values = [str(value).strip() for value in raw_values if str(value).strip() and str(value).strip() in WORK_VALUES_SET]
                 else:
                     values = []
-                
+
                 results.append({
                     "summary": summary,
                     "skills": skills,
                     "values": values
                 })
-            
+
             # Ensure we have results for all jobs
             while len(results) < len(jobs):
                 results.append({"summary": "", "skills": [], "values": []})
-            
+
             return results[:len(jobs)]
-            
+
         except Exception as e:
             logger.error(f"Error parsing batch response: {e}")
             return [{"summary": "", "skills": [], "values": []} for _ in jobs]
 
     def summarize_and_tag_values(self, text: str, max_chars: int = 300, org_name: str | None = None, job_title: str | None = None) -> dict:
         """Extract summary, skills, and values from job text in a single LLM call.
-        
+
         Args:
             text: Raw job description text.
             max_chars: Maximum characters in the summary (default 300).
             org_name: Organization name for summary cleaning.
             job_title: Job title for context.
-            
+
         Returns:
             Dict with 'summary', 'skills', and 'values' keys.
         """
@@ -497,7 +496,7 @@ class GroqProvider(BaseLLMProvider):
 
         # Import the values taxonomy
         from utils.job_values_prompts import WORK_VALUES_TAXONOMY, _format_taxonomy
-        
+
         # Express length as words — models handle word counts far better than char counts.
         max_words = max(10, max_chars // 6)
 
@@ -537,26 +536,26 @@ class GroqProvider(BaseLLMProvider):
 
         # Try to extract JSON from the response
         import re
-        
+
         # Look for a simpler pattern - extract each field separately
         summary_match = re.search(r'summary:\s*([^\n\}]+)', result.strip(), re.IGNORECASE)
         skills_match = re.search(r'skills:\s*\[([^\]]+)\]', result.strip(), re.IGNORECASE | re.DOTALL)
         values_match = re.search(r'values:\s*\[([^\]]+)\]', result.strip(), re.IGNORECASE | re.DOTALL)
-        
+
         summary = ""
         skills = []
         values = []
-        
+
         if summary_match:
             summary = summary_match.group(1).strip().rstrip(',').strip()
-        
+
         if skills_match:
             skills_text = skills_match.group(1).strip()
             # Split by comma and clean up
             skills = [skill.strip().strip('"').strip("'") for skill in skills_text.split(',') if skill.strip()]
             # Remove empty strings and common artifacts
             skills = [skill for skill in skills if skill and skill not in ['[', ']']]
-        
+
         if values_match:
             values_text = values_match.group(1).strip()
             # Split by comma and clean up
@@ -564,7 +563,7 @@ class GroqProvider(BaseLLMProvider):
             # Filter values to only include allowed ones
             WORK_VALUES_SET = {label for label, _ in WORK_VALUES_TAXONOMY}
             values = [value for value in raw_values if value in WORK_VALUES_SET]
-        
+
         print(f"[DEBUG] Extracted summary: {repr(summary)}")
         print(f"[DEBUG] Extracted skills: {skills}")
         print(f"[DEBUG] Extracted values: {values}")
@@ -585,7 +584,7 @@ class GroqProvider(BaseLLMProvider):
 
     def summarize_text(self, text: str, max_chars: int = 300, org_name: str | None = None, job_title: str | None = None) -> str:
         """Summarize a job description in one sentence, up to max_chars.
-        
+
         Returns just the summary string, consistent with base class contract.
         """
         if not text or not text.strip():
@@ -604,28 +603,28 @@ class GroqProvider(BaseLLMProvider):
 
         # Clean up the result and return as string
         summary = result.strip()
-        
+
         # Remove common artifacts
         summary = summary.replace("**", "")
         summary = summary.replace("*", "")
-        
+
         # Remove leading prefixes like "Summary: " if present
         if summary.startswith("Summary:"):
             summary = summary[8:].strip()
         elif summary.startswith("summary:"):
             summary = summary[8:].strip()
-            
+
         # Handle colon prefixes
         colon_prefix = re.match(r'^[^.]{1,60}: ', summary)
         if colon_prefix:
             summary = summary[colon_prefix.end():].lstrip()
             if summary:
                 summary = summary[0].upper() + summary[1:]
-        
+
         # Remove org name if provided
         if org_name:
             summary = _strip_org_name(summary, org_name)
-            
+
         # Respect max_chars by chopping if necessary
         if len(summary) > max_chars:
             summary = summary[:max_chars].rsplit(None, 1)[0]

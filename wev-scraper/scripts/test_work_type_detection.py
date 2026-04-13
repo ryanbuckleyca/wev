@@ -3,8 +3,6 @@
 Test script for work_type detection in location_parser.py
 """
 
-import os
-import sys
 
 from utils.location_parser import determine_work_type, is_hybrid_location, is_remote_location
 

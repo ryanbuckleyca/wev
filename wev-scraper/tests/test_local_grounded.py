@@ -1,6 +1,7 @@
 import sys
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 # Create persistent mocks for optional dependencies
 mock_ollama = MagicMock()
@@ -17,8 +18,8 @@ def teardown_module(module):
     if "tavily" in sys.modules and sys.modules["tavily"] is mock_tavily:
         del sys.modules["tavily"]
 
-from llm.local_grounded import LocalGroundedProvider
-from llm.base import LLMProviderError
+from llm.local_grounded import LocalGroundedProvider  # noqa: E402
+
 
 @pytest.fixture
 def provider():
@@ -37,7 +38,7 @@ def test_local_grounded_is_not_available_missing_model(provider):
     """Should return False if model is missing."""
     with patch("llm.local_grounded.os.getenv", return_value="key"), \
          patch("ollama.list") as mock_list:
-        
+
         mock_list.return_value = MagicMock(models=[MagicMock(model="llama2")])
         assert provider.is_available() is False
 
@@ -45,9 +46,9 @@ def test_local_grounded_complete_no_grounding(provider):
     """Standard completion without grounding."""
     with patch.object(provider, "_check_ollama", return_value=True), \
          patch("ollama.generate") as mock_gen:
-        
+
         mock_gen.return_value = {"response": "2+2=4"}
-        
+
         response = provider.complete("What is 2+2?", task="summarization")
         assert response == "2+2=4"
         mock_gen.assert_called_once()
@@ -60,12 +61,12 @@ def test_local_grounded_complete_with_grounding(provider):
          patch.object(provider, "_check_tavily", return_value=True), \
          patch.object(provider, "_search_context", return_value="Some context"), \
          patch("ollama.generate") as mock_gen:
-        
+
         mock_gen.return_value = {"response": "SSE confirmed"}
-        
+
         response = provider.complete("Is it SSE?", task="sse")
         assert response == "SSE confirmed"
-        
+
         # Verify grounding was used
         prompt = mock_gen.call_args[1]["prompt"]
         assert "Using these search results as context" in prompt
@@ -78,7 +79,7 @@ def test_local_grounded_search_query_param(provider):
          patch.object(provider, "_check_tavily", return_value=True), \
          patch.object(provider, "_search_context") as mock_search, \
          patch("ollama.generate"):
-        
+
         provider.complete("Long prompt...", task="sse", search_query="Target Org")
         mock_search.assert_called_once_with("Target Org")
 

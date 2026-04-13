@@ -1,4 +1,5 @@
 import re
+
 from scrapers.base import BaseScraper
 from utils.log import scraper_log
 
