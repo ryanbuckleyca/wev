@@ -190,17 +190,17 @@ class BaseScraper:
         """Navigate to the listings page. Waits for networkidle, checks for error pages (403/404/Cloudflare), retries up to 3 times on failure."""
         def _load_page():
             page.goto(self.get_listings_url(filter_value), wait_until="domcontentloaded", timeout=30000)
-            
+
             try:
                 page.wait_for_load_state("networkidle", timeout=15000)
             except Exception:
                 pass
-            
+
             # Check if page loaded successfully (not a 404 or error page)
             self._is_error_page(page)
-        
+
         self._retry(_load_page)
-    
+
     def _is_error_page(self, page):
         """Check if the page is an error page (404, 403, Cloudflare challenge, etc.).
         Raises an exception with a descriptive message if an error page is detected."""
@@ -240,21 +240,21 @@ class BaseScraper:
         """Get listing items with automatic retry logic for proxy rotation."""
         if not self.listing_selector:
             raise NotImplementedError("Set listing_selector or override get_listing_items()")
-        
+
         def _get_items():
             # Check if we're on an error page before trying to find items
             self._is_error_page(page)
-            
+
             # Try to find the listing items
             page.wait_for_selector(self.listing_selector, state="attached", timeout=10_000)
             items = page.locator(self.listing_selector)
-            
+
             if items.count() == 0:
                 raise Exception(f"Found 0 items with selector: {self.listing_selector}")
-            
+
             scraper_log(f"\tFound {items.count()} listing items")
             return items
-        
+
         return self._retry(_get_items)
 
     def get_job_url(self, item):
@@ -313,7 +313,7 @@ class BaseScraper:
         if date_str:
             from utils.date_utils import get_within_weeks
             weeks = get_within_weeks()
-            
+
             if not is_recent_job(date_str, weeks=weeks, lang=lang):
                 url = listing_data.get("listing_url", "")
                 url_display = f" ({url})" if url else ""
@@ -427,7 +427,7 @@ class BaseScraper:
             if max_jobs_per_page is not None and jobs_this_page >= max_jobs_per_page:
                 scraper_log(f"🛑 Reached per-page limit ({max_jobs_per_page}). Moving to next page.")
                 break
-                
+
             job_page = None
             try:
                 job_url = self.get_job_url(item)
@@ -437,7 +437,7 @@ class BaseScraper:
 
                 # Count total listings found
                 self.total_listings_found += 1
-                
+
                 # Check for duplicate URL before opening job page. If the
                 # environment requests overriding existing entries, do NOT
                 # skip here so the scraper will open the job page and allow
@@ -478,7 +478,7 @@ class BaseScraper:
                 if not success:
                     scraper_log(f"\t\tSkipping job {i + 1} ({job_url}), failed to open job page")
                     continue
-                    
+
                 self.extract_job_fields(job_page, listing_data, i)
                 jobs_this_page += 1
             except Exception as e:
@@ -564,6 +564,10 @@ class BaseScraper:
         """
         from playwright.sync_api import sync_playwright
 
+        # --headed flag sets SCRAPER_HEADED=1 in scrape.py
+        if os.environ.get("SCRAPER_HEADED") == "1":
+            headless = False
+
         v = viewport or {"width": 1280, "height": 720}
         self.playwright = sync_playwright().start()
         self.browser = self._launch_browser(headless, v, use_real_chrome)
@@ -644,15 +648,15 @@ class BaseScraper:
             self.browser.close()
         if self.playwright:
             self.playwright.stop()
-    
+
     def build_full_url(self, relative_url, base_url=None):
         """
         Build full URL from relative path.
-        
+
         Args:
             relative_url: Relative URL path (e.g., "/jobs/123")
             base_url: Base URL to use. If None, uses listings_page.url or source["url"]
-        
+
         Returns:
             Full URL string
         """
@@ -661,24 +665,24 @@ class BaseScraper:
                 base_url = self.listings_page.url
             else:
                 base_url = self.source["url"]
-        
+
         parsed = urlparse(base_url)
         # Handle relative URLs that might already start with /
         if relative_url.startswith("/"):
             return f"{parsed.scheme}://{parsed.netloc}{relative_url}"
         else:
             return f"{parsed.scheme}://{parsed.netloc}/{relative_url}"
-    
+
     def safe_wait_for_selector(self, page, selector, timeout=10000, required=False):
         """
         Wait for selector with error handling.
-        
+
         Args:
             page: Playwright page object
             selector: CSS selector to wait for
             timeout: Timeout in milliseconds
             required: If True, raises exception on timeout. If False, returns False.
-        
+
         Returns:
             True if selector found, False if timeout and required=False
         """
@@ -689,7 +693,7 @@ class BaseScraper:
             if required:
                 raise e
             return False
-    
+
     def _close_page_safely(self, page):
         try:
             page.close()
@@ -723,16 +727,16 @@ class BaseScraper:
                     return (None, False)
 
         return (None, False)
-    
+
     def create_job_dict(self, **kwargs):
         """
         Create standardized job dict with all expected fields.
         All data is normalized before being returned.
         Location parsing happens during normalization (with Geocodio rate limiting).
-        
+
         Args:
             **kwargs: Job data fields (job_title, date_posted, description, etc.)
-        
+
         Returns:
             Dictionary with standardized and normalized job structure
         """
@@ -750,6 +754,6 @@ class BaseScraper:
             "wage": kwargs.get("wage"),
             "language": kwargs.get("language", "en"),
         }
-        
+
         # Normalize all fields
         return normalize_job_data(raw_job)

@@ -16,7 +16,7 @@ function main() {
   const isWindows = process.platform === 'win32';
   const pythonCmdName = isWindows ? 'python' : 'python3';
   const venvBinDir = isWindows ? path.join('venv', 'Scripts') : path.join('venv', 'bin');
-  
+
   const venvPythonCmd = path.join(venvBinDir, pythonCmdName);
   const venvPipCmd = path.join(venvBinDir, 'pip');
   const venvPlaywrightCmd = path.join(venvBinDir, 'playwright');
@@ -43,19 +43,19 @@ function main() {
 
   if (scriptPath) {
     const scriptArgs = args.slice(1);
-    
+
     // Ensure dependencies are synced if we're running a main task
     if (['scrape', 'skills:index', 'skills:embeddings'].includes(task)) {
       console.log('▶ Syncing Python Dependencies...');
       execVerbose(venvPipCmd, ['install', '--quiet', '-r', 'requirements.txt']);
       execVerbose(venvPipCmd, ['install', '--quiet', '-e', '.']);
-      
+
       if (task === 'scrape') {
         execVerbose(venvPlaywrightCmd, ['install', '--with-deps', 'chromium']);
       }
     }
 
-    console.log(`▶ Executing ${scriptPath}...`);
+    process.stdout.write(`▶ Executing ${scriptPath}...\n`);
     execVerbose(venvPythonCmd, [scriptPath, ...scriptArgs]);
   } else {
     // If no direct task match, default to scrape.py but pass all args
