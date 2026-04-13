@@ -35,7 +35,7 @@ export class PasswordVerifier {
 
     const supabase = await createServerClient();
     
-    const { data: isValid, error } = await supabase.rpc('verify_user_password', { 
+    const { data: status, error } = await supabase.rpc('verify_user_password', { 
       password 
     });
 
@@ -52,8 +52,15 @@ export class PasswordVerifier {
       );
     }
 
-    if (!isValid) {
+    if (status === 'mismatch') {
       throw new AuthenticationError('Invalid credentials', 'INVALID_CREDENTIALS');
+    }
+
+    if (status === 'no_password') {
+      throw new AuthenticationError(
+        'This account uses a social login and does not have a password.',
+        'NO_PASSWORD_SET'
+      );
     }
   }
 

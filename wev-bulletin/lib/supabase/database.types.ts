@@ -547,7 +547,7 @@ export type Database = {
         Returns: undefined
       }
       unaccent: { Args: { "": string }; Returns: string }
-      verify_user_password: { Args: { password: string }; Returns: boolean }
+      verify_user_password: { Args: { password: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
