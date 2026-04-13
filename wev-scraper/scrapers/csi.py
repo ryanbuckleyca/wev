@@ -67,28 +67,21 @@ class CSIScraper(BaseScraper):
         page.goto(self.source["url"])
 
     def has_next_page(self, page):
-        return self.load_more_available
+        try:
+            btn = page.locator("button:has-text('Load More')")
+            return btn.count() > 0 and btn.first.is_enabled(timeout=2000)
+        except Exception:
+            return False
 
     def go_next_page(self, page):
         try:
-            load_more_locator = page.locator("button:has-text('Load More')")
-            if load_more_locator.count() == 0:
-                self.load_more_available = False
-                self.should_quit_list = True
-                return
-            load_more_button = load_more_locator.first
-            if load_more_button.is_enabled(timeout=3000):
-                load_more_button.scroll_into_view_if_needed()
-                load_more_button.click(timeout=5000)
-                page.wait_for_timeout(2000)
-                self.load_more_available = True
-            else:
-                self.load_more_available = False
-                self.should_quit_list = True
+            btn = page.locator("button:has-text('Load More')").first
+            btn.scroll_into_view_if_needed()
+            btn.click(timeout=5000)
+            page.wait_for_timeout(2000)
         except Exception as e:
-            scraper_log(f"No more jobs to load: {e}")
+            scraper_log(f"\tLoad More click failed: {e}")
             self.load_more_available = False
-            self.should_quit_list = True
 
     # ---- Field extraction ----
 
