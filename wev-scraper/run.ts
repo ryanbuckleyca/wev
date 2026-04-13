@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
+import * as readline from 'node:readline';
 
 function execVerbose(cmd: string, args: string[] = []) {
   const result = spawnSync(cmd, args, { stdio: 'inherit' });
@@ -9,7 +10,17 @@ function execVerbose(cmd: string, args: string[] = []) {
   }
 }
 
-function main() {
+async function confirmProd(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
+    rl.question("⚠️  RUNNING AGAINST PRODUCTION. Type 'YES' to continue: ", (answer) => {
+      rl.close();
+      resolve(answer === 'YES');
+    });
+  });
+}
+
+async function main() {
   const scraperRootDir = path.resolve(__dirname);
   process.chdir(scraperRootDir);
 
@@ -29,6 +40,14 @@ function main() {
   // Pass-through arguments
   const args = process.argv.slice(2);
   const task = args[0];
+  const isProd = args.includes('--prod');
+
+  // Prompt before any output is piped — readline uses stderr so it's visible
+  // even when stdout is piped (e.g. `npm run scrape -- --prod 2>&1 | head`).
+  if (isProd && process.stdin.isTTY) {
+    const confirmed = await confirmProd();
+    if (!confirmed) process.exit(0);
+  }
 
   // Map task names to script paths
   const taskMap: Record<string, string> = {

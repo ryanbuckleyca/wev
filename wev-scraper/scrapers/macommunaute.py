@@ -33,6 +33,15 @@ class MaCommunauteScraper(BaseScraper):
             self.page_count = 1
 
     def has_next_page(self, page):
+        # Primary: check for a visible "next" link in the DOM — more reliable than
+        # page_count alone, which can be stale or miscounted on the last page.
+        try:
+            next_link = page.locator("a.next.page-numbers, .page-numbers a[rel='next']")
+            if next_link.count() > 0:
+                return True
+        except Exception:
+            pass
+        # Fallback: numeric page count (set by setup_pagination)
         return self.page_count > 1 and self.current_page_number < self.page_count
 
     def go_next_page(self, page):

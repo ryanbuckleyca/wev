@@ -133,8 +133,10 @@ class ScraperOrchestrator:
             if "job_ids" in source_summary:
                 self.results.all_job_ids.extend(source_summary["job_ids"])
 
-        except Exception as e:
+        except BaseException as e:
             self._handle_source_error(e, scraper, source_name)
+            if isinstance(e, (SystemExit, KeyboardInterrupt)):
+                raise
         finally:
             self._cleanup_scraper(scraper)
 
@@ -329,16 +331,10 @@ def initialize_runtime_env(args):
 def main():
     args = parse_args()
 
-    # 1. Confirm before doing anything else
-    if args.prod and sys.stdin.isatty():
-        confirm = input("⚠️  RUNNING AGAINST PRODUCTION. Type 'YES' to continue: ")
-        if confirm != "YES":
-            sys.exit(0)
-
-    # 2. Initialize Environment
+    # 1. Initialize Environment
     initialize_runtime_env(args)
 
-    # 3. Environment Overrides from CLI
+    # 2. Environment Overrides from CLI
     if args.provider:
         os.environ["LLM_PROVIDER"] = args.provider
     if args.max_jobs:
@@ -355,7 +351,7 @@ def main():
     if args.prod:
         os.environ["USE_PROD_DB"] = "1"
 
-    # 4. Orchestrate
+    # 3. Orchestrate
     orchestrator = ScraperOrchestrator(
         use_prod=args.prod,
         dry_run=args.dry_run or args.compare,
