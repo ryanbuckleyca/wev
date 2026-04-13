@@ -40,9 +40,8 @@ elif os.environ.get("USE_PROD_DB") == "1":
 else:
     print("🧪 Using TEST database")
 
-from utils.db import supabase, fetch_all_rows
-from llm.jina_embedding import JinaEmbeddingService, ConfigurationError
-
+from llm.jina_embedding import ConfigurationError, JinaEmbeddingService  # noqa: E402
+from utils.db import fetch_all_rows, supabase  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Text builder
@@ -182,7 +181,7 @@ def seed_esco_embeddings(
         # (128 rows × 1024 floats is too slow in one shot; 20 rows ~1.5s is safe)
         _DB_CHUNK = 10
         _MAX_RETRIES = 3
-        pairs = list(zip(batch, embeddings))
+        pairs = list(zip(batch, embeddings, strict=True))
         batch_errors = 0
         for i in range(0, len(pairs), _DB_CHUNK):
             chunk = pairs[i : i + _DB_CHUNK]
@@ -191,7 +190,7 @@ def seed_esco_embeddings(
                 try:
                     supabase.rpc("bulk_update_skill_embeddings", {"updates": updates}).execute()
                     break
-                except Exception as e:
+                except Exception:
                     if attempt < _MAX_RETRIES - 1:
                         time.sleep(2 ** attempt)
                     else:

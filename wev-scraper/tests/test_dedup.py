@@ -4,7 +4,8 @@ All Supabase calls are mocked — no real DB is touched.
 """
 
 from unittest.mock import MagicMock, patch
-from utils.db import save_job, _find_existing_job, _extract_response_data
+
+from utils.db import _extract_response_data, _find_existing_job, save_job
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -6,37 +6,38 @@ and regional descriptors that traditional regex patterns struggle with.
 
 Usage:
     from utils.llm_location_extractor import extract_locations_for_jobs
-    
+
     jobs = [
         {"location": "Remote in Ontario"},
         {"location": "Bureau situé à Lévis, Quebec"},
         {"location": "Port Rowan, ON (Norfolk County)"},
     ]
-    
+
     extract_locations_for_jobs(jobs)  # Modifies jobs in-place
-    
+
     # jobs now have municipality, province, work_type fields populated
 """
 
 import json
 import time
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List
+
 from llm.factory import DEFAULT_MODEL, get_provider
 
 
 def extract_locations_for_jobs(
-    jobs: List[Dict[str, Any]], 
+    jobs: List[Dict[str, Any]],
     batch_size: int = 15,
     rate_limit_seconds: float = 7.0
 ) -> None:
     """Extract structured location data for a list of jobs using LLM.
-    
+
     Modifies jobs in-place, adding/updating:
     - municipality: str | None
-    - province: str | None  
+    - province: str | None
     - work_type: str ("remote" | "hybrid" | "office")
     - is_remote: bool (deprecated, for backward compatibility)
-    
+
     Args:
         jobs: List of job dicts, each with a 'location' field
         batch_size: Number of locations to process in a single LLM call
@@ -44,26 +45,26 @@ def extract_locations_for_jobs(
     """
     if not jobs:
         return
-    
+
     # Process in batches
     for i in range(0, len(jobs), batch_size):
         batch = jobs[i:i + batch_size]
-        
+
         # Extract locations
         location_strings = [job.get("location", "") for job in batch]
-        
+
         # Get structured data from LLM
         results = _extract_batch(location_strings)
-        
+
         # Update jobs with results
-        for job, result in zip(batch, results):
+        for job, result in zip(batch, results, strict=False):
             job["municipality"] = result.get("municipality")
             job["province"] = result.get("province")
             work_type = result.get("work_type", "office")
             job["work_type"] = work_type
             # Keep is_remote for backward compatibility
             job["is_remote"] = (work_type == "remote")
-        
+
         # Rate limiting between batches
         if i + batch_size < len(jobs):
             time.sleep(rate_limit_seconds)
@@ -71,10 +72,10 @@ def extract_locations_for_jobs(
 
 def _extract_batch(locations: List[str]) -> List[Dict[str, Any]]:
     """Extract structured location data for a batch of location strings.
-    
+
     Args:
         locations: List of raw location strings
-        
+
     Returns:
         List of dicts with keys: municipality, province, work_type
     """
@@ -130,10 +131,10 @@ Input location strings (as JSON array):
 Return ONLY a valid JSON array with one object per input location, in the same order. No markdown, no explanation.
 Format: [{{"municipality": "...", "province": "...", "work_type": "remote|hybrid|office"}}, ...]
 """
-    
+
     locations_json = json.dumps(locations, ensure_ascii=False)
     full_prompt = prompt.format(locations_json=locations_json)
-    
+
     try:
         # Call LLM using factory pattern
         # json_mode=False because we need a top-level JSON array, not an object.
@@ -141,18 +142,18 @@ Format: [{{"municipality": "...", "province": "...", "work_type": "remote|hybrid
         # the model to collapse all results into one entry.
         provider = get_provider(name=DEFAULT_MODEL)
         response = provider.complete(full_prompt, json_mode=False)
-        
+
         if not response:
             raise Exception(f"{DEFAULT_MODEL} returned empty response")
-        
+
         text = response.strip()
         if text.startswith("```"):
             # Remove ```json and ``` markers
             lines = text.split("\n")
             text = "\n".join(lines[1:-1]) if len(lines) > 2 else text
-        
+
         results = json.loads(text)
-        
+
         # Normalise: LLM sometimes returns a single object instead of a 1-element array
         if isinstance(results, dict):
             results = [results]
@@ -171,9 +172,9 @@ Format: [{{"municipality": "...", "province": "...", "work_type": "remote|hybrid
                     "province": None,
                     "work_type": "office"
                 })
-        
+
         return results
-    
+
     except Exception as e:
         print(f"Error extracting locations with LLM: {e}")
         # Return default values on error
@@ -189,12 +190,12 @@ Format: [{{"municipality": "...", "province": "...", "work_type": "remote|hybrid
 
 def extract_location_single(location: str) -> Dict[str, Any]:
     """Extract structured location data for a single location string.
-    
+
     Convenience wrapper for single location extraction.
-    
+
     Args:
         location: Raw location string
-        
+
     Returns:
         Dict with keys: municipality, province, work_type
     """

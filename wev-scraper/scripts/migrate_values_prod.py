@@ -2,9 +2,9 @@
 """Simple script to add values column to production database."""
 
 import os
-from dotenv import load_dotenv, find_dotenv
+
+from dotenv import find_dotenv, load_dotenv
 from supabase import create_client
-import sys
 
 # Load environment
 load_dotenv(find_dotenv())

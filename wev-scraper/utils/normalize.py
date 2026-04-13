@@ -3,12 +3,14 @@ Data normalization utilities for standardizing scraped job data.
 """
 
 import re
-from dateutil import parser
 from typing import Optional
-from utils.location_parser import parse_address_with_geocodio, determine_work_type
-from utils.municipality_canonical import canonicalize_municipality
+
+from dateutil import parser
+
 from utils.env import is_truthy_env
+from utils.location_parser import determine_work_type, parse_address_with_geocodio
 from utils.log import scraper_log
+from utils.municipality_canonical import canonicalize_municipality
 
 
 def normalize_text(text: Optional[str]) -> Optional[str]:

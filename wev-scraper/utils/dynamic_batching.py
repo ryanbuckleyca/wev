@@ -1,6 +1,7 @@
 """Dynamic batching utilities for LLM providers."""
 
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from llm.base import BaseLLMProvider
 
 

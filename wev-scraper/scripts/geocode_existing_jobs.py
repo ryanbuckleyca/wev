@@ -7,10 +7,8 @@ Re-parses location strings for jobs already in the database using LLM-based loca
 import argparse
 import os
 import sys
-import time
-from pathlib import Path
-from dotenv import load_dotenv, find_dotenv
 
+from dotenv import find_dotenv, load_dotenv
 
 # Load .env from the project root (wev-scraper/), not the scripts/ directory.
 load_dotenv(find_dotenv())
@@ -34,9 +32,9 @@ if '--prod' in sys.argv[1:]:
 else:
     print("🧪 Using TEST database")
 
-from utils.db import supabase, fetch_all_rows
-from utils.llm_location_extractor import extract_locations_for_jobs
-from utils.env import is_truthy_env
+from utils.db import fetch_all_rows, supabase  # noqa: E402
+from utils.env import is_truthy_env  # noqa: E402
+from utils.llm_location_extractor import extract_locations_for_jobs  # noqa: E402
 
 
 def geocode_existing_jobs(limit: int = 100, verbose: bool = True) -> dict:
@@ -45,11 +43,11 @@ def geocode_existing_jobs(limit: int = 100, verbose: bool = True) -> dict:
         "skipped": 0,
         "errors": 0,
     }
-    
+
     try:
         if verbose:
             print("Fetching jobs from Supabase...")
-        
+
         # Fetch jobs with location info
         columns = "id, location, municipality, province, is_remote, work_type, listing_url"
         if limit and limit > 0:
@@ -63,16 +61,16 @@ def geocode_existing_jobs(limit: int = 100, verbose: bool = True) -> dict:
             jobs = resp.data or []
         else:
             jobs = fetch_all_rows("jobs", columns)
-        
+
         if not jobs:
             if verbose:
                 print("No jobs found in database.")
             return counts
-        
+
         if verbose:
             print(f"Found {len(jobs)} jobs to process.")
-            print(f"Extracting locations using LLM (batch processing)...\n")
-        
+            print("Extracting locations using LLM (batch processing)...\n")
+
         # Filter out jobs with no location
         jobs_to_process = []
         for job in jobs:
@@ -84,16 +82,16 @@ def geocode_existing_jobs(limit: int = 100, verbose: bool = True) -> dict:
                 counts["skipped"] += 1
             else:
                 jobs_to_process.append(job)
-        
+
         if not jobs_to_process:
             if verbose:
                 print("\nNo jobs to process.")
             return counts
-        
+
         # Extract locations using LLM in batches
         if verbose:
             print(f"Processing {len(jobs_to_process)} jobs with LLM...")
-        
+
         try:
             extract_locations_for_jobs(jobs_to_process)
         except Exception as e:
@@ -101,14 +99,14 @@ def geocode_existing_jobs(limit: int = 100, verbose: bool = True) -> dict:
                 print(f"Error during LLM extraction: {e}")
             counts["errors"] = len(jobs_to_process)
             return counts
-        
+
         # Update database for each job
         if verbose:
             print("\nUpdating database...")
-        
+
         for i, job in enumerate(jobs_to_process, 1):
             job_id = job.get("id")
-            
+
             try:
                 # Update database
                 update_data = {
@@ -117,9 +115,9 @@ def geocode_existing_jobs(limit: int = 100, verbose: bool = True) -> dict:
                     "province": job.get("province"),
                     "is_remote": job.get("is_remote", False),
                 }
-                
+
                 supabase.table("jobs").update(update_data).eq("id", job_id).execute()
-                
+
                 if verbose:
                     muni = job.get('municipality') or 'None'
                     prov = job.get('province') or 'None'
@@ -127,22 +125,22 @@ def geocode_existing_jobs(limit: int = 100, verbose: bool = True) -> dict:
                     work_tag = f" [{work_type.upper()}]" if work_type != 'office' else ""
                     location_display = f"{muni}, {prov}{work_tag}"
                     print(f"{i}/{len(jobs_to_process)}: {job.get('location', '')} → {location_display}")
-                
+
                 counts["geocoded"] += 1
-                
+
             except Exception as e:
                 if verbose:
                     print(f"{i}/{len(jobs_to_process)}: Error updating - {e}")
                 counts["errors"] += 1
-        
+
         if verbose:
-            print(f"\nGeocoding complete:")
+            print("\nGeocoding complete:")
             print(f"  Geocoded: {counts['geocoded']}")
             print(f"  Skipped: {counts['skipped']}")
             print(f"  Errors: {counts['errors']}")
-        
+
         return counts
-    
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
@@ -161,12 +159,12 @@ def main():
     parser.add_argument("--prod", action="store_true", help="Use production database (confirmed at startup).")
 
     args = parser.parse_args()
-    
+
     if not is_truthy_env("SHOULD_GEOCODE"):
         print("⚠️  SHOULD_GEOCODE is not set.")
         print("Run with: SHOULD_GEOCODE=1 python geocode_existing_jobs.py")
         sys.exit(1)
-    
+
     print("Starting geocoding of existing jobs...\n")
     geocode_existing_jobs(limit=args.limit, verbose=True)
 

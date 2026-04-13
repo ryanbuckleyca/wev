@@ -1,5 +1,4 @@
 import os
-import sys
 
 # Ensure Supabase env vars exist before any module tries to create the client
 # at import time. Real credentials come from .env; these are fallbacks for

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 import os
-import sys
 
+from dotenv import find_dotenv, load_dotenv
+from supabase import create_client as create_supabase_client
 
 from utils.db import supabase
-from dotenv import load_dotenv, find_dotenv
-from supabase import create_client as create_supabase_client
 
 
 def main():
