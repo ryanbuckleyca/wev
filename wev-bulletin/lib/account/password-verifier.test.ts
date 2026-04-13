@@ -14,7 +14,7 @@ describe('PasswordVerifier', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any);
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as unknown as Awaited<ReturnType<typeof createServerClient>>);
     
     // Default mock behavior
     mockRpc.mockResolvedValue({ 

@@ -34,7 +34,7 @@ describe('/api/account/delete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRpc.mockResolvedValue({
-      data: true,
+      data: 'match',
       error: null,
     });
   });
@@ -87,7 +87,7 @@ describe('/api/account/delete', () => {
       } as never,
     });
     mockRpc.mockResolvedValue({
-      data: false,
+      data: 'mismatch',
       error: null,
     });
 
