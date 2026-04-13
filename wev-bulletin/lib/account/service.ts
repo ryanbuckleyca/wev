@@ -28,24 +28,21 @@ function requirePasswordVerificationEmail(userEmail?: string | null): string {
 }
 
 async function verifyPassword(
-  userEmail: string,
   password: string,
-  captchaToken: string | null,
   errorMessage: string,
 ): Promise<void> {
   const verifier = new PasswordVerifier();
 
   try {
-    await verifier.verify(userEmail, password, captchaToken);
+    await verifier.verify(password);
   } catch (error) {
     if (error instanceof ValidationError) {
       throw new AccountServiceError(error.message, 400, error.code);
     }
 
     if (error instanceof AuthenticationError) {
-      const code = error.code === 'INVALID_CREDENTIALS' ? 401 : 401; // Keep 401 for auth errors
       const message = error.code === 'INVALID_CREDENTIALS' ? errorMessage : error.message;
-      throw new AccountServiceError(message, code, error.code);
+      throw new AccountServiceError(message, 401, error.code);
     }
 
     throw error;
@@ -55,7 +52,6 @@ async function verifyPassword(
 export async function updatePasswordForCurrentUser({
   currentPassword,
   newPassword,
-  userEmail,
 }: {
   currentPassword: string;
   newPassword: string;
@@ -77,8 +73,7 @@ export async function updatePasswordForCurrentUser({
     );
   }
 
-  const email = requirePasswordVerificationEmail(userEmail);
-  await verifyPassword(email, currentPassword, null, 'Current password is incorrect.');
+  await verifyPassword(currentPassword, 'Current password is incorrect.');
 
   const supabase = await createServerClient();
   const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -90,7 +85,6 @@ export async function updatePasswordForCurrentUser({
 
 export async function deleteAccountForCurrentUser({
   password,
-  userEmail,
   userId,
 }: {
   password: string;
@@ -105,8 +99,7 @@ export async function deleteAccountForCurrentUser({
     );
   }
 
-  const email = requirePasswordVerificationEmail(userEmail);
-  await verifyPassword(email, password, null, 'Invalid password');
+  await verifyPassword(password, 'Invalid password');
 
   const adminSupabase = supabaseServer;
   const { error } = await adminSupabase.auth.admin.deleteUser(userId);
@@ -115,3 +108,4 @@ export async function deleteAccountForCurrentUser({
     throw error;
   }
 }
+
