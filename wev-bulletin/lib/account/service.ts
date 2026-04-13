@@ -43,11 +43,9 @@ async function verifyPassword(
     }
 
     if (error instanceof AuthenticationError) {
-      // Use custom error message for invalid credentials
-      if (error.code === 'INVALID_CREDENTIALS') {
-        throw new AccountServiceError(errorMessage, 401, error.code);
-      }
-      throw new AccountServiceError(error.message, 401, error.code);
+      const code = error.code === 'INVALID_CREDENTIALS' ? 401 : 401; // Keep 401 for auth errors
+      const message = error.code === 'INVALID_CREDENTIALS' ? errorMessage : error.message;
+      throw new AccountServiceError(message, code, error.code);
     }
 
     throw error;
@@ -71,9 +69,9 @@ export async function updatePasswordForCurrentUser({
     throw new AccountServiceError('New password is required.', 400, 'NEW_PASSWORD_REQUIRED');
   }
 
-  if (newPassword.length < 8) {
+  if (newPassword.length < PasswordVerifier.MIN_PASSWORD_LENGTH) {
     throw new AccountServiceError(
-      'New password must be at least 8 characters.',
+      `New password must be at least ${PasswordVerifier.MIN_PASSWORD_LENGTH} characters.`,
       400,
       'PASSWORD_TOO_SHORT'
     );
