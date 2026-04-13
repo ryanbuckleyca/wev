@@ -370,30 +370,40 @@ class BaseScraper:
     # ---- Template-method flow ----
     def fetch_jobs(self, headless=True):
         self.listings_page = self.start_browser(headless=headless)
-        for filter_value in self.get_filter_values() or [None]:
-            self.current_page_number = 1
-            self.page_count = 1
-            self.should_quit_list = False
-            self.open_listings_page(self.listings_page, filter_value)
-            self.setup_pagination(self.listings_page)
-            while True:
-                if self.should_quit_list:
-                    break
-                items = self.get_listing_items(self.listings_page)
-                self._process_listing_items(items)
-                if self.should_quit_list or not self.has_next_page(self.listings_page):
-                    break
-                try:
-                    self.go_next_page(self.listings_page)
-                except Exception as e:
-                    scraper_log(f"\tNotice: Pagination failed on page {self.current_page_number}: {e}")
+        try:
+            for filter_value in self.get_filter_values() or [None]:
+                self.current_page_number = 1
+                self.page_count = 1
+                self.should_quit_list = False
+                self.open_listings_page(self.listings_page, filter_value)
+                self.setup_pagination(self.listings_page)
+                while True:
+                    if self.should_quit_list:
+                        break
+                    items = self.get_listing_items(self.listings_page)
+                    self._process_listing_items(items)
+                    if self.should_quit_list:
+                        scraper_log(f"\tStopped after page {self.current_page_number} (chronological early exit).")
+                        break
+                    if not self.has_next_page(self.listings_page):
+                        scraper_log(f"\tNo more pages after page {self.current_page_number}.")
+                        break
                     try:
-                        self.upload_error_screenshot_from_page(self.listings_page)
-                    except Exception:
-                        pass
-                    self.should_quit_list = True
-                    break
-        self.close_browser()
+                        self.go_next_page(self.listings_page)
+                    except Exception as e:
+                        scraper_log(f"\tNotice: Pagination failed on page {self.current_page_number}: {e}")
+                        try:
+                            self.upload_error_screenshot_from_page(self.listings_page)
+                        except Exception:
+                            pass
+                        break
+        except Exception as e:
+            scraper_log(f"\t❌ Scraper crashed during fetch: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
+        finally:
+            self.close_browser()
         return self.jobs
 
     def _process_listing_items(self, items):
@@ -496,7 +506,11 @@ class BaseScraper:
             count = items.count()
             scraper_log(f"\tProcessing {count} jobs on page {self.current_page_number}...")
             for i in range(count):
-                yield i, items.nth(i)
+                try:
+                    yield i, items.nth(i)
+                except Exception as e:
+                    scraper_log(f"\tNotice: Could not access item {i + 1} (stale locator?): {e}")
+                    return
         else:
             items_list = list(items) if items else []
             scraper_log(f"\tProcessing {len(items_list)} jobs on page {self.current_page_number}...")
