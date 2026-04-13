@@ -51,6 +51,10 @@ export async function updatePasswordForCurrentUser({
   currentPassword: string;
   newPassword: string;
 }) {
+  if (!currentPassword?.trim()) {
+    throw new AccountServiceError('Current password is required.', 400, 'PASSWORD_REQUIRED');
+  }
+
   if (!newPassword?.trim()) {
     throw new AccountServiceError('New password is required.', 400, 'NEW_PASSWORD_REQUIRED');
   }
@@ -89,6 +93,14 @@ export async function deleteAccountForCurrentUser({
   password: string;
   userId: string;
 }) {
+  if (!password?.trim()) {
+    throw new AccountServiceError(
+      'Password required for account deletion',
+      400,
+      'PASSWORD_REQUIRED'
+    );
+  }
+
   try {
     await verifyPassword(password, 'Invalid password');
   } catch (error) {

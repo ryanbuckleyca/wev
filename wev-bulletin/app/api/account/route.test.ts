@@ -27,7 +27,7 @@ describe('/api/account PATCH', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRpc.mockResolvedValue({
-      data: true,
+      data: 'match',
       error: null,
     });
     mockUpdateUser.mockResolvedValue({
@@ -84,7 +84,7 @@ describe('/api/account PATCH', () => {
       } as never,
     });
     mockRpc.mockResolvedValue({
-      data: false,
+      data: 'mismatch',
       error: null,
     });
 
