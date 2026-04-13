@@ -334,25 +334,30 @@ def main():
     if args.prod and sys.stdin.isatty():
         sys.stdout.flush()
         confirm = input("⚠️  RUNNING AGAINST PRODUCTION. Type 'YES' to continue: ")
-        if confirm != "YES": sys.exit(0)
+        if confirm != "YES":
+            sys.exit(0)
 
     # 2. Initialize Environment
     initialize_runtime_env(args)
 
     # 3. Environment Overrides from CLI
-    if args.provider: os.environ["LLM_PROVIDER"] = args.provider
-    if args.max_jobs: os.environ["MAX_JOBS_PER_SOURCE"] = str(args.max_jobs)
-    if args.headed: os.environ["SCRAPER_HEADED"] = "1"
+    if args.provider:
+        os.environ["LLM_PROVIDER"] = args.provider
+    if args.max_jobs:
+        os.environ["MAX_JOBS_PER_SOURCE"] = str(args.max_jobs)
+    if args.headed:
+        os.environ["SCRAPER_HEADED"] = "1"
     if args.dry_run or args.compare:
         os.environ["DRY_RUN"] = "1"
         # Disable LLM expensive steps in dry run by default
         for flag in ["SHOULD_SUMMARIZE", "SHOULD_CLASSIFY", "SHOULD_TAG_VALUES", "SHOULD_TAG_SKILLS"]:
-            if os.environ.get(flag) is None: os.environ[flag] = "0"
+            if os.environ.get(flag) is None:
+                os.environ[flag] = "0"
 
     if args.prod:
         os.environ["USE_PROD_DB"] = "1"
 
-    # 2. Orchestrate
+    # 4. Orchestrate
     orchestrator = ScraperOrchestrator(
         use_prod=args.prod,
         dry_run=args.dry_run or args.compare,
