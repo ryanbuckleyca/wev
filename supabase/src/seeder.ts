@@ -1,6 +1,8 @@
 import { type SupabaseClient, createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 import { createSeedDataset, type SeedTables, type SourceInsert } from './dataset';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export interface SupabaseDatabaseConfig {
   projectRef: string;
@@ -31,6 +33,33 @@ const CLEAR_TABLES: ClearTable[] = [
 ];
 
 const INSERT_BATCH_SIZE = 50;
+const ESCO_UPSERT_BATCH_SIZE = 500;
+
+type EscoIndexSkillRecord = {
+  concept_uri: string;
+  skill_type?: string;
+  reuse_level?: string;
+  preferred_label?: {
+    en?: string;
+    fr?: string;
+  };
+  alternative_label?: {
+    en?: string[];
+    fr?: string[];
+  };
+  description?: {
+    en?: string;
+    fr?: string;
+  };
+  scope_note?: {
+    en?: string;
+    fr?: string;
+  };
+};
+
+type EscoSkillsPayload = {
+  skills: EscoIndexSkillRecord[];
+};
 
 function assertExpectedProjectRef(supabaseUrl: string, expectedProjectRef: string): void {
   const actualProjectRef = new URL(supabaseUrl).hostname.split('.')[0];
@@ -112,6 +141,72 @@ async function seedTables(
   );
 }
 
+function findEscoSkillsIndexPath(): string {
+  const candidates = [
+    path.resolve(process.cwd(), 'supabase/seed/esco_skills_index.json'),
+    path.resolve(process.cwd(), 'seed/esco_skills_index.json'),
+  ];
+
+  const match = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!match) {
+    throw new Error(
+      'Missing ESCO skills seed file. Expected supabase/seed/esco_skills_index.json from repo root.',
+    );
+  }
+  return match;
+}
+
+function parseEscoSkillsPayload(filePath: string): EscoIndexSkillRecord[] {
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  const payload = JSON.parse(raw) as EscoSkillsPayload;
+  if (!payload || !Array.isArray(payload.skills)) {
+    throw new Error(`Invalid ESCO skills payload at ${filePath}`);
+  }
+  return payload.skills.filter((skill) => !!skill?.concept_uri);
+}
+
+function toEscoDbRow(skill: EscoIndexSkillRecord, timestamp: string) {
+  return {
+    concept_uri: skill.concept_uri,
+    skill_type: skill.skill_type ?? null,
+    reuse_level: skill.reuse_level ?? null,
+    preferred_label_en: skill.preferred_label?.en ?? skill.preferred_label?.fr ?? null,
+    preferred_label_fr: skill.preferred_label?.fr ?? skill.preferred_label?.en ?? null,
+    alternative_label_en: skill.alternative_label?.en ?? [],
+    alternative_label_fr: skill.alternative_label?.fr ?? [],
+    description_en: skill.description?.en ?? null,
+    description_fr: skill.description?.fr ?? null,
+    scope_note_en: skill.scope_note?.en ?? null,
+    scope_note_fr: skill.scope_note?.fr ?? null,
+    updated_at: timestamp,
+  };
+}
+
+async function seedEscoSkills(client: SupabaseClient<Database>): Promise<void> {
+  const filePath = findEscoSkillsIndexPath();
+  const records = parseEscoSkillsPayload(filePath);
+  const timestamp = new Date().toISOString();
+
+  if (records.length === 0) {
+    throw new Error(`ESCO skills payload is empty at ${filePath}`);
+  }
+
+  console.log(`▶ Seeding esco_skills from ${filePath} (${records.length} skills)`);
+
+  for (let i = 0; i < records.length; i += ESCO_UPSERT_BATCH_SIZE) {
+    const chunk = records.slice(i, i + ESCO_UPSERT_BATCH_SIZE).map((skill) => toEscoDbRow(skill, timestamp));
+    const { error } = await (client as any)
+      .from('esco_skills')
+      .upsert(chunk, { onConflict: 'concept_uri' });
+
+    if (error) {
+      throw new Error(`Failed seeding esco_skills: ${error.message}`);
+    }
+  }
+
+  console.log('✅ Seeded esco_skills.');
+}
+
 /**
  * Clears and seeds the database with the provided (or default) dataset.
  * Supports injecting live production sources into the staging environment.
@@ -134,4 +229,5 @@ export async function resetAndSeedDatabase(
 
   await clearTables(client);
   await seedTables(client, dataset.tables);
+  await seedEscoSkills(client);
 }
