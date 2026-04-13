@@ -9,6 +9,7 @@ export function setupTestEnv() {
   // Always resolve relative to this file's location inside the monorepo
   const rootEnvPath = path.resolve(__dirname, '../../.env.test');
   
+  // Attempt to load .env.test if it exists
   config({ 
     path: rootEnvPath,
     override: true 
