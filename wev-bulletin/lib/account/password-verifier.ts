@@ -18,17 +18,13 @@ export class AuthenticationError extends Error {
   }
 }
 
-const MIN_PASSWORD_LENGTH = 8;
-const MIN_CAPTCHA_TOKEN_LENGTH = 10;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/**
- * Verifies user passwords by creating a temporary session and immediately revoking it.
- * Used for sensitive operations like account deletion and password changes.
- */
 export class PasswordVerifier {
+  public static readonly MIN_PASSWORD_LENGTH = 8;
+  public static readonly MIN_CAPTCHA_TOKEN_LENGTH = 10;
+  public static readonly EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   private readonly supabaseUrl: string;
-  private readonly publishableKey: string;
+  private readonly serviceRoleKey: string;
 
   constructor() {
     const url = process.env.SUPABASE_URL;
@@ -39,7 +35,7 @@ export class PasswordVerifier {
     }
 
     this.supabaseUrl = url;
-    this.publishableKey = key;
+    this.serviceRoleKey = key;
   }
 
   /**
@@ -50,9 +46,12 @@ export class PasswordVerifier {
    * @throws {AuthenticationError} If authentication fails
    */
   async verify(email: string, password: string, captchaToken: string | null): Promise<void> {
-    this.validateInputs(email, password, captchaToken);
+    const trimmedEmail = (email || '').trim();
+    const trimmedCaptcha = captchaToken?.trim() || null;
 
-    const session = await this.createVerificationSession(email, password, captchaToken);
+    this.validateInputs(trimmedEmail, password, trimmedCaptcha);
+
+    const session = await this.createVerificationSession(trimmedEmail, password, trimmedCaptcha);
 
     try {
       await this.revokeSession(session.accessToken);
@@ -61,7 +60,7 @@ export class PasswordVerifier {
       logger.error({
         msg: 'Failed to revoke verification session',
         error,
-        email,
+        email: trimmedEmail,
         hasToken: !!session.accessToken,
       });
     }
@@ -71,11 +70,11 @@ export class PasswordVerifier {
    * Validate all inputs before attempting authentication.
    */
   private validateInputs(email: string, password: string, captchaToken: string | null): void {
-    if (!email?.trim()) {
+    if (!email) {
       throw new ValidationError('Email is required', 'EMAIL_REQUIRED');
     }
 
-    if (!this.isValidEmail(email)) {
+    if (!PasswordVerifier.EMAIL_PATTERN.test(email)) {
       throw new ValidationError('Invalid email format', 'EMAIL_INVALID');
     }
 
@@ -83,29 +82,21 @@ export class PasswordVerifier {
       throw new ValidationError('Password is required', 'PASSWORD_REQUIRED');
     }
 
-    if (password.length < MIN_PASSWORD_LENGTH) {
+    if (password.length < PasswordVerifier.MIN_PASSWORD_LENGTH) {
       throw new ValidationError(
-        `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+        `Password must be at least ${PasswordVerifier.MIN_PASSWORD_LENGTH} characters`,
         'PASSWORD_TOO_SHORT'
       );
     }
 
     if (captchaToken !== null) {
-      const trimmed = captchaToken.trim();
-      if (trimmed.length === 0) {
+      if (captchaToken.length === 0) {
         throw new ValidationError('Captcha token cannot be empty', 'CAPTCHA_EMPTY');
       }
-      if (trimmed.length < MIN_CAPTCHA_TOKEN_LENGTH) {
+      if (captchaToken.length < PasswordVerifier.MIN_CAPTCHA_TOKEN_LENGTH) {
         throw new ValidationError('Invalid captcha token', 'CAPTCHA_INVALID');
       }
     }
-  }
-
-  /**
-   * Check if email format is valid.
-   */
-  private isValidEmail(email: string): boolean {
-    return EMAIL_PATTERN.test(email.trim());
   }
 
   /**
@@ -123,13 +114,12 @@ export class PasswordVerifier {
       password: string;
       options?: { captchaToken?: string };
     } = {
-      email: email.trim(),
+      email,
       password,
     };
 
-    // Only include captcha if provided and non-empty
-    if (captchaToken && captchaToken.trim()) {
-      signInPayload.options = { captchaToken: captchaToken.trim() };
+    if (captchaToken) {
+      signInPayload.options = { captchaToken };
     }
 
     const { data, error } = await client.auth.signInWithPassword(signInPayload);
@@ -157,7 +147,6 @@ export class PasswordVerifier {
       );
     }
 
-
     if (!data.session?.access_token) {
       throw new AuthenticationError(
         'No session returned from authentication',
@@ -184,7 +173,7 @@ export class PasswordVerifier {
    * Create a Supabase client for password verification.
    */
   private createClient() {
-    return createSupabaseClient(this.supabaseUrl, this.publishableKey, {
+    return createSupabaseClient(this.supabaseUrl, this.serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
         detectSessionInUrl: false,
@@ -193,3 +182,4 @@ export class PasswordVerifier {
     });
   }
 }
+
