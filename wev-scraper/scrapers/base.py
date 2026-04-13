@@ -390,11 +390,22 @@ class BaseScraper:
 
     @staticmethod
     def extract_meta_date(page) -> str | None:
-        """Read article:published_time (or pubdate) from a <meta> tag.
-        Returns the content string, or None if not present."""
+        """Read a publication date from common <meta> tag variants.
+
+        Checks in priority order:
+          1. article:published_time  (Open Graph — most reliable)
+          2. pubdate                 (legacy HTML5 meta)
+          3. article:modified_time   (Open Graph fallback — used by some WP themes)
+          4. article:published_time as name= (non-standard but seen in the wild)
+
+        Returns the content string, or None if none are present.
+        """
         try:
             meta = page.locator(
-                'meta[property="article:published_time"], meta[name="pubdate"]'
+                'meta[property="article:published_time"], '
+                'meta[name="pubdate"], '
+                'meta[property="article:modified_time"], '
+                'meta[name="article:published_time"]'
             ).first
             return meta.get_attribute("content") or None
         except Exception:
