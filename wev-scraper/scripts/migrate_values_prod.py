@@ -2,31 +2,25 @@
 """Simple script to add values column to production database."""
 
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from supabase import create_client
-
-# Ensure project root is on sys.path so environment loading and utils work when running directly
 import sys
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
 
 # Load environment
-load_dotenv()
+load_dotenv(find_dotenv())
 
 # Use production credentials
 SUPABASE_URL = os.environ.get("SUPABASE_PROD_URL")
-SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_PROD_SECRET_KEY")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_PROD_SERVICE_ROLE_KEY")
 
-if not SUPABASE_URL or not SUPABASE_SECRET_KEY:
+if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
     print("❌ Production Supabase credentials not found")
     exit(1)
 
 print(f"🔗 Connecting to: {SUPABASE_URL}")
 
 # Create client
-supabase = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 try:
     # Check if column exists

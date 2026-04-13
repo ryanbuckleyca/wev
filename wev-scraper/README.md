@@ -37,9 +37,9 @@ Proxies are automatically disabled when running locally (not in GitHub Actions) 
 
 ## Database migrations
 
-> **All migrations live in `wev-bulletin/supabase/migrations/`.** Do not create migration files here.
+> **All migrations live in `supabase/migrations/` at the repository root.**
 
-To create a new migration, add a `.sql` file to `wev-bulletin/supabase/migrations/` and apply it using the workflow documented there (`wev-bulletin/supabase/migrations/README.md`).
+To create a new migration, add a `.sql` file to `supabase/migrations/` and apply it to the local environment with `npm run migrate:local` (run from the repository root).
 
 Batch maintenance scripts (values tagging, geocoding, legacy match helpers, env flags) are listed in **`scripts/README.md`**.
 

@@ -9,6 +9,10 @@ from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+# Load environment variables from repo root
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
+
 
 def query_old_jobs(supabase_url: str, service_role_key: str, days_old: int) -> list[dict]:
     """Query jobs older than the specified number of days."""
@@ -75,7 +79,7 @@ def main():
     )
     parser.add_argument(
         "--supabase-key",
-        default=os.getenv("SUPABASE_PROD_SECRET_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
+        default=os.getenv("SUPABASE_PROD_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
         help="Supabase service role key",
     )
     parser.add_argument(

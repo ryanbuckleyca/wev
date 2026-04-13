@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { getLocalizedPathname, type AppLocale } from '../../i18n/routing';
+import { getLocalizedPathname, type AppLocale } from '@/i18n/routing';
 
 function localizedPath(
   locale: AppLocale,

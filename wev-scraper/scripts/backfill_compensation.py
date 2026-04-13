@@ -18,11 +18,9 @@ import sys
 import time
 from pathlib import Path
 
-# Ensure the scraper root is on sys.path when run directly
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from dotenv import load_dotenv
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
 
 from utils.db import supabase
 from lib.compensation import extract_and_guard
