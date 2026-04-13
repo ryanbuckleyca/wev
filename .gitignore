@@ -1,3 +1,25 @@
+.env
+.env.production
+.env.staging
+.env.local
+.env.dev
+.env.test
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+.next/
+build/
+dist/
+out/
+*.tsbuildinfo
+
+# Testing
+coverage/
+.output/
+results/
+
 # Editor / AI tools
 .ai/
 .antigravity/
@@ -6,6 +28,7 @@
 .kiro/
 .windsurf/
 .vscode/
+.cursorrules
 
 # Python
 .venv/
@@ -15,3 +38,6 @@ __pycache__/
 # Misc
 nohup.out
 .DS_Store
+.branches/
+.temp/
+backups/

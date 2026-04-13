@@ -1,7 +1,7 @@
 """Centralized runtime settings for wev-scraper.
 
-Loads .env at most once per process, then exposes helpers for env-backed
-configuration used across the scraper.
+Loads .env at most once per process via ensure_env_loaded().
+Use load_env_file(path) to explicitly load an override file (e.g. .env.staging).
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 from utils.env import is_truthy_env
 
@@ -20,14 +20,26 @@ _ENV_LOADED = False
 
 
 def ensure_env_loaded() -> None:
-    """Load scraper environment variables exactly once per process."""
+    """Load the base .env exactly once per process via dotenv discovery.
+
+    Subsequent calls are no-ops. Use load_env_file() to explicitly load
+    an override file (e.g. .env.staging) on top of the base env.
+    """
     global _ENV_LOADED
     if _ENV_LOADED:
         return
-
-    load_dotenv(SCRAPER_ROOT / ".env")
-    load_dotenv()
+    load_dotenv(find_dotenv())
     _ENV_LOADED = True
+
+
+def load_env_file(env_file: str | Path) -> None:
+    """Load a specific env file with override=True.
+
+    Unlike ensure_env_loaded(), this always runs and is intended for
+    layering environment-specific overrides (staging, prod) on top of
+    the base env. May be called multiple times with different files.
+    """
+    load_dotenv(env_file, override=True)
 
 def get_env(name: str, default: str | None = None) -> str | None:
     """Read a raw environment variable after ensuring env is loaded."""
@@ -65,18 +77,18 @@ def get_supabase_settings() -> SupabaseSettings:
     """Return the active Supabase credentials for the current runtime mode."""
     raw_url = get_env("SUPABASE_URL")
     prod_url = get_env("SUPABASE_PROD_URL")
-    raw_secret_key = get_env("SUPABASE_SECRET_KEY")
-    prod_secret_key = get_env("SUPABASE_PROD_SECRET_KEY")
+    raw_key = get_env("SUPABASE_SERVICE_ROLE_KEY")
+    prod_key = get_env("SUPABASE_PROD_SERVICE_ROLE_KEY")
 
     if is_truthy_env("USE_PROD_DB"):
         url = _strip_trailing_slash(prod_url)
-        secret_key = prod_secret_key or ""
+        secret_key = prod_key or ""
     else:
         url = _strip_trailing_slash(raw_url)
-        secret_key = raw_secret_key or ""
+        secret_key = raw_key or ""
 
     if not url or not secret_key:
-        raise ValueError("SUPABASE_URL or SUPABASE_SECRET_KEY not set")
+        raise ValueError("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set")
 
     return SupabaseSettings(url=url, secret_key=secret_key)
 

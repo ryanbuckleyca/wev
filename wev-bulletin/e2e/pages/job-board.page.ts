@@ -1,6 +1,6 @@
 import { type Locator, type Page } from '@playwright/test';
-import { getLocalizedPathname, type AppLocale } from '../../i18n/routing';
-import { JOB_BOARD_TEST_IDS } from '../../lib/testing/job-board-contract';
+import { getLocalizedPathname, type AppLocale } from '@/i18n/routing';
+import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 export type JobBoardLocale = AppLocale;
 type BooleanFilterName = 'salary' | 'sse';

@@ -1,15 +1,11 @@
 import os
 import sys
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
-
 # Ensure Supabase env vars exist before any module tries to create the client
 # at import time. Real credentials come from .env; these are fallbacks for
 # clean CI environments where .env doesn't exist.
 os.environ.setdefault("SUPABASE_URL", "http://localhost:54321")
-os.environ.setdefault("SUPABASE_SECRET_KEY", "test-secret-key")
+os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test-secret-key")
 
 import pytest
 from playwright.sync_api import sync_playwright

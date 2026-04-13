@@ -1,5 +1,4 @@
 import { test, expect } from '../fixtures';
-import { SEEDED_JOB_BOARD_EXPECTATIONS } from '../support/seed-dataset';
 import { expectJobBoardReady } from '../support/job-board';
 import {
   attachPerformanceSnapshot,
@@ -23,13 +22,14 @@ test.use({
 test.describe('Job board performance @perf', () => {
   test('renders the seeded English bulletin within the baseline budget @perf', async ({
     jobBoardPage,
+    expectations,
   }, testInfo) => {
     await jobBoardPage.goto('en', undefined, { waitUntil: 'commit' });
 
     await expectJobBoardReady(jobBoardPage, 'en');
-    await expect(jobBoardPage.jobCards).toHaveCount(SEEDED_JOB_BOARD_EXPECTATIONS.firstPageCount);
+    await expect(jobBoardPage.jobCards).toHaveCount(expectations.firstPageCount);
     await expect(jobBoardPage.paginationSummary).toContainText(
-      String(SEEDED_JOB_BOARD_EXPECTATIONS.jobCount),
+      String(expectations.jobCount),
     );
 
     const interactiveReadyMs = await readElapsedNavigationTime(jobBoardPage.page);

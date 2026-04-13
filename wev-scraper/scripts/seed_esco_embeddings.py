@@ -17,10 +17,6 @@ import sys
 import time
 
 # Ensure wev-scraper root is on sys.path when run directly
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
 
 # --prod confirmation — must happen before utils.db is imported (which reads USE_PROD_DB)
 if "--prod" in sys.argv[1:] and os.environ.get("CONFIRM_PROD_RUN") == "YES":

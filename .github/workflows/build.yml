@@ -14,36 +14,27 @@ on:
     paths:
       - 'wev-bulletin/**'
   workflow_dispatch:
-
-defaults:
-  run:
-    working-directory: wev-bulletin
-
+ 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+ 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Debug working directory
-        run: |
-          pwd
-          ls -la
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: wev-bulletin/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run tests
-        run: npm test
+        run: npm run test --prefix wev-bulletin
 
       - name: Build Next.js app
         env:
@@ -54,10 +45,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_KEY || 'placeholder-publishable-key' }}
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://bulletin.wevchange.org' }}
-        run: npm run build
+        run: npm run build --prefix wev-bulletin
 
       - name: Run linting
-        run: npm run lint
+        run: npm run lint --prefix wev-bulletin
         continue-on-error: true
 
       - name: Build summary
