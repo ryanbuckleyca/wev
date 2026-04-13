@@ -37,6 +37,7 @@ const mockGetRequestUser = vi.mocked(getRequestUser);
 describe('/api/account/delete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_ENV_MODE = 'test'; // Enforce test mode for captcha generation
     mockSignInWithPassword.mockResolvedValue({
       data: {
         user: { id: 'user-123' },
