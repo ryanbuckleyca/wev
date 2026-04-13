@@ -1,6 +1,5 @@
 from scrapers.base import BaseScraper
 from utils.log import scraper_log
-from utils.normalize import normalize_job_data
 from utils.extractors import extract_salary_from_text
 
 
@@ -72,13 +71,10 @@ class CSIScraper(BaseScraper):
             return False
 
     def go_next_page(self, page):
-        try:
-            btn = page.locator("button:has-text('Load More')").first
-            btn.scroll_into_view_if_needed()
-            btn.click(timeout=5000)
-            page.wait_for_timeout(2000)
-        except Exception as e:
-            scraper_log(f"\tLoad More click failed: {e}")
+        btn = page.locator("button:has-text('Load More')").first
+        btn.scroll_into_view_if_needed()
+        btn.click(timeout=5000)
+        page.wait_for_timeout(2000)
 
     # ---- Field extraction ----
 
