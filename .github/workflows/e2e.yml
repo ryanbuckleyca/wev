@@ -1,0 +1,92 @@
+name: E2E Tests
+
+on:
+  push:
+    branches:
+      - main
+      - production
+    paths:
+      - 'e2e/**'
+      - 'wev-bulletin/**'
+      - 'supabase/**'
+  pull_request:
+    branches:
+      - main
+      - production
+    paths:
+      - 'e2e/**'
+      - 'wev-bulletin/**'
+      - 'supabase/**'
+  workflow_dispatch:
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start local Supabase and export env vars
+        # Output the env format directly to a file, source it natively in bash
+        # so there's no brittle grep/awk parsing, and then map the generic CLI
+        # variables to our Next.js-specific names in $GITHUB_ENV.
+        run: |
+          npx -y supabase start
+          npx -y supabase status -o env > supabase.env
+          
+          # Native bash parsing of the key-value pairs
+          source supabase.env
+
+          # Enforce fallbacks in case something goes wildly wrong
+          API_URL="${API_URL:-http://127.0.0.1:54321}"
+          
+          echo "SUPABASE_URL=$API_URL" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> $GITHUB_ENV
+
+      - name: Create .env placeholder for dotenv-cli
+        # dotenv -e .env (used in `npm run build`) requires the file to exist.
+        # Values are already in the environment — dotenv-cli won't override them.
+        run: touch .env
+
+      - name: Build Next.js app
+        env:
+          # Hard fallbacks ensure vars are never empty even if awk parsing fails.
+          # SUPABASE_URL and NEXT_PUBLIC_SUPABASE_URL are always 127.0.0.1:54321.
+          SUPABASE_URL: ${{ env.SUPABASE_URL || 'http://127.0.0.1:54321' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321' }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          REVALIDATE_SECRET: dummy-e2e-cache-secret
+        run: npm run build
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: e2e
+
+      - name: Run E2E tests
+        env:
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          REVALIDATE_SECRET: dummy-e2e-cache-secret
+          CI: true
+        run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 14

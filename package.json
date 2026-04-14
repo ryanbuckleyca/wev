@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
+    "e2e",
     "wev-bulletin",
     "supabase"
   ],
@@ -20,11 +21,14 @@
   "scripts": {
     "dev": "dotenv -e .env -- npm run dev --prefix wev-bulletin",
     "prepare": "git config core.hooksPath .githooks",
-    "build": "npm run build --prefix wev-bulletin",
+    "build": "dotenv -e .env -- npm run build --prefix wev-bulletin",
     "start": "npm start --prefix wev-bulletin",
     "test": "npm run test:bulletin && npm run test:scraper",
     "push:skip": "git push --no-verify",
     "test:bulletin": "dotenv -e .env.test -- npm run test --prefix wev-bulletin",
+    "test:e2e": "npm run test:e2e --prefix e2e",
+    "test:e2e:ui": "npm run test:e2e:ui --prefix e2e",
+    "test:e2e:debug": "npm run test:e2e:debug --prefix e2e",
     "test:db": "supabase test db",
     "test:scraper": "cd wev-scraper && . venv/bin/activate && pytest tests",
     "lint": "npm run lint:bulletin && npm run lint:scraper",
