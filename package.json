@@ -23,6 +23,7 @@
     "build": "npm run build --prefix wev-bulletin",
     "start": "npm start --prefix wev-bulletin",
     "test": "npm run test:bulletin && npm run test:scraper",
+    "push:skip": "git push --no-verify",
     "test:bulletin": "dotenv -e .env.test -- npm run test --prefix wev-bulletin",
     "test:db": "supabase test db",
     "test:scraper": "cd wev-scraper && . venv/bin/activate && pytest tests",
