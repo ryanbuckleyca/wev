@@ -3,20 +3,24 @@ import { config } from 'dotenv';
 
 /**
  * Loads the test environment from the monorepo root.
- * This abstracts away the verbose path.resolve boilerplate.
+ * Respects whatever env is already loaded (local or staging), then overlays
+ * .env.test on top for test-specific overrides (NODE_ENV, etc.).
+ * Throws if SUPABASE_URL points to production — tests must never run against prod.
  */
 export function setupTestEnv() {
-  // Always resolve relative to this file's location inside the monorepo
-  const rootEnvPath = path.resolve(__dirname, '../../.env.test');
-  
-  // Attempt to load .env.test if it exists
-  config({ 
-    path: rootEnvPath,
-    override: true 
-  });
+  const root = path.resolve(__dirname, '../..');
 
-  return {
-    url: process.env.SUPABASE_URL,
-    key: process.env.SUPABASE_SERVICE_ROLE_KEY
-  };
+  // Load base env without overriding vars already set in the process
+  config({ path: path.join(root, '.env') });
+  // Overlay test-specific overrides (NODE_ENV=test, NEXT_PUBLIC_ENV_MODE=test)
+  config({ path: path.join(root, '.env.test'), override: true });
+
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (process.env.USE_PROD_DB === '1' || (url && url === process.env.SUPABASE_PROD_URL)) {
+    throw new Error('Tests cannot run against the production database.');
+  }
+
+  return { url, key };
 }

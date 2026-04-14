@@ -2,19 +2,17 @@ import { createClient } from '@supabase/supabase-js';
 import { setupTestEnv } from './env-setup';
 
 /**
- * Creates a real Supabase client for integration tests.
- * This should ONLY be used in tests that have access to the local Supabase environment.
+ * Creates a real Supabase client pointed at the local Supabase instance.
+ * Used by *.db.test.ts files — requires supabase start to be running.
  */
 export function getRealDatabaseClient() {
   const { url, key } = setupTestEnv();
 
-  if (!url || !key || url.includes('test.supabase.co')) {
-    throw new Error('Integration tests require a real database. Ensure .env.test is configured and reachable.');
+  if (!url || !key) {
+    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set. Is supabase running?');
   }
 
   return createClient(url, key, {
-    auth: {
-      persistSession: false,
-    },
+    auth: { persistSession: false },
   });
 }

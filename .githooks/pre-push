@@ -1,0 +1,9 @@
+#!/bin/sh
+
+if [ "$SKIP_VERIFY" = "1" ]; then
+  echo "⏭ Skipping verify check..."
+  exit 0
+fi
+
+echo "▶ Running verify before push..."
+npm run verify:fix
