@@ -618,12 +618,12 @@ class BaseScraper:
         proxy = self._build_proxy_config(use_proxy)
         if proxy:
             context_kwargs["proxy"] = proxy
-        self.context = self.browser.new_context(**context_kwargs)  # type: ignore[arg-type]
+        self.context = self.browser.new_context(**context_kwargs)  # type: ignore[arg-type]  # _build_context_kwargs returns an untyped dict; fix by annotating its return type in the strict PR
         if use_stealth:
             _get_stealth().apply_stealth_sync(self.context)
         if proxy:
             _block_heavy_resources(self.context)
-        self.page = self.context.new_page()  # type: ignore[union-attr]
+        self.page = self.context.new_page()  # type: ignore[union-attr]  # context is guaranteed non-None here; pyright can't narrow across the assignment above
         self.page.set_default_navigation_timeout(60_000)
         return self.page
 
@@ -755,7 +755,7 @@ class BaseScraper:
         for attempt in range(1, max_retries + 1):
             job_page = None
             try:
-                job_page = self.context.new_page()  # type: ignore[union-attr]
+                job_page = self.context.new_page()  # type: ignore[union-attr]  # context is non-None during an active scrape session
                 job_page.goto(full_url, wait_until="domcontentloaded")
 
                 if wait_selector and not self.safe_wait_for_selector(job_page, wait_selector, timeout):
