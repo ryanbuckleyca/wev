@@ -37,10 +37,12 @@ def query_old_jobs(supabase_url: str, service_role_key: str, days_old: int) -> l
             body = resp.read()
             jobs = json.loads(body.decode("utf-8"))
             return jobs if isinstance(jobs, list) else []
-    except (HTTPError, URLError) as e:
+    except HTTPError as e:
         print(f"Error querying jobs: {e}")
-        if hasattr(e, 'read'):
-            print(f"Response: {e.read().decode('utf-8', errors='replace')[:500]}")  # type: ignore[union-attr]  # HTTPError has .read(); URLError does not, guarded by hasattr above
+        print(f"Response: {e.read().decode('utf-8', errors='replace')[:500]}")
+        return []
+    except URLError as e:
+        print(f"Error querying jobs: {e}")
         return []
 
 
@@ -64,10 +66,12 @@ def delete_jobs(supabase_url: str, service_role_key: str, job_ids: list[str]) ->
             if 200 <= resp.status < 300:
                 return len(job_ids)
             return 0
-    except (HTTPError, URLError) as e:
+    except HTTPError as e:
         print(f"Error deleting jobs: {e}")
-        if hasattr(e, 'read'):
-            print(f"Response: {e.read().decode('utf-8', errors='replace')[:500]}")  # type: ignore[union-attr]  # HTTPError has .read(); URLError does not, guarded by hasattr above
+        print(f"Response: {e.read().decode('utf-8', errors='replace')[:500]}")
+        return 0
+    except URLError as e:
+        print(f"Error deleting jobs: {e}")
         return 0
 
 
