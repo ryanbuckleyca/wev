@@ -2,11 +2,18 @@ name: ESLint
 
 on:
   push:
+    branches:
+      - main
+      - production
     paths:
       - 'wev-bulletin/**'
+      - 'wev-scraper/**'
+      - 'supabase/**'
   pull_request:
     paths:
       - 'wev-bulletin/**'
+      - 'wev-scraper/**'
+      - 'supabase/**'
 
 jobs:
   lint:
@@ -19,4 +26,5 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npm run lint --prefix wev-bulletin
+      - name: Run monorepo linting
+        run: npm run lint
