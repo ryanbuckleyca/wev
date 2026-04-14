@@ -194,11 +194,15 @@ describe('DeleteAccountModal', () => {
 
     await user.type(passwordInput, 'mypassword123');
     await user.type(confirmInput, 'DELETE');
-    await user.click(deleteButton);
-
+    // Trigger click but don't await yet so we can catch the loading state
+    const clickPromise = user.click(deleteButton);
+    
     // Should show loading state
-    expect(screen.getByRole('button', { name: /deleting/i })).toBeVisible();
-    expect(screen.getByRole('button', { name: /deleting/i })).toBeDisabled();
+    const loadingButton = await screen.findByRole('button', { name: /deleting/i });
+    expect(loadingButton).toBeVisible();
+    expect(loadingButton).toBeDisabled();
+
+    await clickPromise;
 
     // Wait for completion
     await waitFor(
