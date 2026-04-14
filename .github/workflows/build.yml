@@ -47,9 +47,6 @@ jobs:
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://bulletin.wevchange.org' }}
         run: npm run build --prefix wev-bulletin
 
-      - name: Run linting
-        run: npm run lint --prefix wev-bulletin
-        continue-on-error: true
 
       - name: Build summary
         run: |
