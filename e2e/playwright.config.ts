@@ -3,8 +3,16 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
 
-const envTestPath = path.resolve(__dirname, '../.env.test');
-dotenv.config({ path: fs.existsSync(envTestPath) ? envTestPath : path.resolve(__dirname, '../.env') });
+const rootDir = path.resolve(__dirname, '..');
+const envPath = path.join(rootDir, '.env');
+const envTestPath = path.join(rootDir, '.env.test');
+
+// Load base env without overriding vars already set in the process
+dotenv.config({ path: envPath });
+// Overlay test-specific overrides
+if (fs.existsSync(envTestPath)) {
+  dotenv.config({ path: envTestPath, override: true });
+}
 
 const PLAYWRIGHT_PORT = 3000;
 const PLAYWRIGHT_BASE_URL = `http://localhost:${PLAYWRIGHT_PORT}`;
@@ -12,8 +20,12 @@ const PLAYWRIGHT_BASE_URL = `http://localhost:${PLAYWRIGHT_PORT}`;
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
+console.log('▶ Playwright Config: Loading...');
+const testDir = path.resolve(__dirname, 'tests');
+console.log('▶ Playwright Config: testDir =', testDir);
+
 export default defineConfig({
-  testDir: './e2e/tests',
+  testDir,
   outputDir: './e2e/.output',
   /* Run tests in files in parallel */
   fullyParallel: false,
@@ -31,7 +43,7 @@ export default defineConfig({
   ],
   
   /* Seed the database once before all tests */
-  globalSetup: require.resolve('./e2e/global-setup.ts'),
+  globalSetup: require.resolve('./global-setup.ts'),
 
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -56,6 +68,7 @@ export default defineConfig({
   webServer: {
     // Run the production build for realistic and faster E2E tests
     command: 'npm run start',
+    cwd: path.resolve(__dirname, '../wev-bulletin'),
     url: PLAYWRIGHT_BASE_URL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
