@@ -57,9 +57,9 @@ def get_env_mode() -> str:
     return get_stripped_env("ENV_MODE").lower()
 
 
-def is_test_env() -> bool:
-    """Return True when running in ENV_MODE=test."""
-    return get_env_mode() == "test"
+def is_local_env() -> bool:
+    """Return True when running in ENV_MODE=local."""
+    return get_env_mode() == "local"
 
 
 @dataclass(frozen=True)

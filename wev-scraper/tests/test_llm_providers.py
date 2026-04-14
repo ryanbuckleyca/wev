@@ -3,12 +3,12 @@ from unittest.mock import MagicMock, patch
 from llm.factory import get_provider
 
 
-def test_get_provider_test_mode():
-    """get_provider should return LocalGroundedProvider when in test mode."""
+def test_get_provider_local_mode():
+    """get_provider should return LocalGroundedProvider when in local mode."""
     mock_ollama = MagicMock()
     mock_ollama.list.return_value = MagicMock(models=[MagicMock(model="mistral")])
 
-    with patch("llm.factory._is_test_mode", return_value=True), \
+    with patch("llm.factory._is_local_mode", return_value=True), \
          patch.dict("sys.modules", {"ollama": mock_ollama, "tavily": MagicMock()}), \
          patch("llm.local_grounded.LocalGroundedProvider._check_tavily", return_value=True), \
          patch("llm.local_grounded.LocalGroundedProvider._check_ollama", return_value=True):
