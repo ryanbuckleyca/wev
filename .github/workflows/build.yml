@@ -6,12 +6,18 @@ on:
       - '**'
     paths:
       - 'wev-bulletin/**'
+      - '.github/workflows/**'
+      - 'package.json'
+      - 'package-lock.json'
   pull_request:
     branches:
       - main
       - production
     paths:
       - 'wev-bulletin/**'
+      - '.github/workflows/**'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
 
 concurrency:

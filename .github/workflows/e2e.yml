@@ -8,6 +8,9 @@ on:
       - 'e2e/**'
       - 'wev-bulletin/**'
       - 'supabase/**'
+      - '.github/workflows/**'
+      - 'package.json'
+      - 'package-lock.json'
   pull_request:
     branches:
       - main
@@ -16,6 +19,9 @@ on:
       - 'e2e/**'
       - 'wev-bulletin/**'
       - 'supabase/**'
+      - '.github/workflows/**'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
 
 concurrency:
