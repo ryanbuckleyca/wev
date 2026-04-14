@@ -34,7 +34,7 @@ def query_all_jobs(supabase_url: str, service_role_key: str) -> list[dict]:
     except (HTTPError, URLError) as e:
         print(f"Error querying jobs: {e}")
         if hasattr(e, 'read'):
-            print(f"Response: {e.read().decode('utf-8', errors='replace')[:500]}")
+            print(f"Response: {e.read().decode('utf-8', errors='replace')[:500]}")  # type: ignore[union-attr]
         return []
 
 

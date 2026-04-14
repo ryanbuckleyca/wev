@@ -169,12 +169,6 @@ def _request_json(url: str, retries: int = 1) -> dict:
                 time.sleep(0.75 * attempt)
                 continue
             raise EscoRequestError(code=None, url=url, detail=str(e)) from e
-        except socket.timeout as e:
-            if attempt < retries:
-                attempt += 1
-                time.sleep(0.75 * attempt)
-                continue
-            raise EscoRequestError(code=None, url=url, detail=str(e)) from e
 
     try:
         payload = json.loads(body.decode("utf-8"))

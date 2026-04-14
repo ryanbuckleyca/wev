@@ -169,7 +169,7 @@ class BaseScraper:
         return self.source["url"]
 
     def get_filter_values(self):
-        return self.filter_values if hasattr(self, "filter_values") else [None]
+        return getattr(self, "filter_values", [None])
 
     def _retry(self, func, *args, max_retries=3, **kwargs):
         """Retry func up to max_retries times. Bails immediately on 403s when no proxy is available."""
@@ -618,16 +618,17 @@ class BaseScraper:
         proxy = self._build_proxy_config(use_proxy)
         if proxy:
             context_kwargs["proxy"] = proxy
-        self.context = self.browser.new_context(**context_kwargs)
+        self.context = self.browser.new_context(**context_kwargs)  # type: ignore[arg-type]
         if use_stealth:
             _get_stealth().apply_stealth_sync(self.context)
         if proxy:
             _block_heavy_resources(self.context)
-        self.page = self.context.new_page()
+        self.page = self.context.new_page()  # type: ignore[union-attr]
         self.page.set_default_navigation_timeout(60_000)
         return self.page
 
     def _launch_browser(self, headless, viewport, use_real_chrome):
+        assert self.playwright is not None
         args = [
             "--disable-blink-features=AutomationControlled",
             "--disable-dev-shm-usage",
@@ -645,27 +646,28 @@ class BaseScraper:
 
     def _build_context_kwargs(self, viewport, use_real_chrome):
         """Build browser context kwargs. Real Chrome provides its own UA/hints — don't override them."""
+        base_headers: dict[str, str] = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-CA,en-US;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+        }
         kwargs = dict(
             viewport=viewport,
             locale="en-CA",
             timezone_id="America/Toronto",
             permissions=["geolocation"],
             ignore_https_errors=False,
-            extra_http_headers={
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                "Accept-Language": "en-CA,en-US;q=0.9,en;q=0.8",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Upgrade-Insecure-Requests": "1",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
-            },
+            extra_http_headers=base_headers,
         )
         if not use_real_chrome:
             platform = '"Linux"' if _is_ci() else '"macOS"'
             kwargs["user_agent"] = BROWSER_USER_AGENT
-            kwargs["extra_http_headers"].update({
+            base_headers.update({
                 "Sec-CH-UA": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
                 "Sec-CH-UA-Mobile": "?0",
                 "Sec-CH-UA-Platform": platform,
@@ -753,7 +755,7 @@ class BaseScraper:
         for attempt in range(1, max_retries + 1):
             job_page = None
             try:
-                job_page = self.context.new_page()
+                job_page = self.context.new_page()  # type: ignore[union-attr]
                 job_page.goto(full_url, wait_until="domcontentloaded")
 
                 if wait_selector and not self.safe_wait_for_selector(job_page, wait_selector, timeout):
