@@ -16,7 +16,6 @@ import argparse
 import json
 import math
 import os
-import socket
 import sys
 import time
 from dataclasses import dataclass, field
