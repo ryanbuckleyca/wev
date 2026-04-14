@@ -80,15 +80,15 @@ def is_hybrid_location(location: Optional[str]) -> bool:
 def determine_work_type(location: Optional[str], municipality: Optional[str] = None, province: Optional[str] = None) -> str:
     """
     Determine work type from location string and extracted location data.
-    
+
     Args:
         location: Raw location string from job posting
         municipality: Extracted city/town (if any)
         province: Extracted province (if any)
-    
+
     Returns:
         "remote", "hybrid", or "office"
-    
+
     Logic:
         1. Explicit "hybrid" keywords → hybrid
         2. Remote keywords + specific location mentioned → hybrid (why mention location if fully remote?)
@@ -97,15 +97,15 @@ def determine_work_type(location: Optional[str], municipality: Optional[str] = N
     """
     if not location:
         return "office"
-    
+
     # Check for explicit hybrid indicators
     if is_hybrid_location(location):
         return "hybrid"
-    
+
     # Check for remote indicators
     has_remote_keywords = is_remote_location(location)
     has_specific_location = bool(municipality or province)
-    
+
     if has_remote_keywords:
         # If remote keywords but also mentions a specific city/town, likely hybrid
         if has_specific_location and municipality:
@@ -115,7 +115,7 @@ def determine_work_type(location: Optional[str], municipality: Optional[str] = N
         else:
             # "Remote, anywhere in Canada" → remote
             return "remote"
-    
+
     # No remote indicators → office-based
     return "office"
 
@@ -160,7 +160,7 @@ def _extract_explicit_location(location: str) -> Optional[str]:
     Extract explicit city/province mentions from location text.
     Looks for patterns like "City, Province" or "City, ON" or "based in City".
     Returns the first match, or None if no explicit location found.
-    
+
     Examples:
     - "Hybrid – based in Halifax, Nova Scotia" → "Halifax, Nova Scotia"
     - "office in Toronto, ON" → "Toronto, ON"
@@ -170,7 +170,7 @@ def _extract_explicit_location(location: str) -> Optional[str]:
     """
     if not location:
         return None
-    
+
     # Canadian provinces (full and abbreviated) - define early for all patterns
     provinces = [
         "Ontario", "ON",
@@ -187,10 +187,10 @@ def _extract_explicit_location(location: str) -> Optional[str]:
         "Yukon", "YT",
         "Nunavut", "NU",
     ]
-    
+
     def is_valid_city_name(text: str) -> bool:
         """Check if text looks like a real city name (not a street address or geographic descriptor).
-        
+
         This filters out:
         - Generic geographic descriptors (region, area, county, etc.)
         - Regional abbreviations (GTA, Greater Toronto, etc.)
@@ -199,12 +199,12 @@ def _extract_explicit_location(location: str) -> Optional[str]:
         - Words that don't start with capital letter (catches IGNORECASE false matches)
         """
         text_lower = text.lower()
-        
+
         # CRITICAL: Ensure the name actually starts with uppercase letter, not matched by IGNORECASE
         # This prevents "remote" or "anywhere" from matching [A-Z] when using re.IGNORECASE
         if not text or not text[0].isupper():
             return False
-        
+
         # Filter out geographic descriptors and non-city terms
         # These commonly appear in job postings but aren't actual municipality names
         non_city_terms = [
@@ -217,19 +217,19 @@ def _extract_explicit_location(location: str) -> Optional[str]:
         ]
         if text_lower in non_city_terms:
             return False
-        
+
         # Filter out street addresses (purely numeric or starting with numbers)
         if text.isdigit():  # Pure numbers like "1766"
             return False
         if re.match(r'^\d+\s', text):  # Starts with number like "1766 QC 148"
             return False
-        
+
         # Filter out postal codes (like "J0X2G0")
         if re.match(r'^[A-Z]\d[A-Z]\d[A-Z]\d$', text):
             return False
-        
+
         return True
-    
+
     # === LOCATION EXTRACTION STRATEGY ===
     # We use a multi-pattern hierarchy to extract city/province from job description location strings.
     # This handles edge cases while avoiding false positives.
@@ -259,9 +259,9 @@ def _extract_explicit_location(location: str) -> Optional[str]:
     # - Generic descriptors: "Peel Region" → "Region" filtered by non_city_terms
     # - Word boundaries: "application ON" → \bON\b prevents mid-word matches
     # - Sentence fragments: "Please note your location" → all words in non_city_terms list
-    
+
     # Pattern 0 FIRST: Extract city/province from parentheses (street addresses often in parens)
-    # E.g., "(Port Rowan, ON or elsewhere)" or "(5151 de l'Assomption Boulevard)" 
+    # E.g., "(Port Rowan, ON or elsewhere)" or "(5151 de l'Assomption Boulevard)"
     # Look for "City, Province" inside parentheses
     paren_match = re.search(r'\(([^)]+)\)', location)
     if paren_match:
@@ -275,7 +275,7 @@ def _extract_explicit_location(location: str) -> Optional[str]:
                 city = match.group(1).strip()
                 if is_valid_city_name(city):
                     return f"{city}, {province}"
-    
+
     # Pattern 0b: Extract city before parentheses if it's part of "in City (street address)"
     # E.g., "Montreal (5151 de l'Assomption Boulevard)" → "Montreal"
     # Only extract if there's a province mentioned somewhere in the location
@@ -291,7 +291,7 @@ def _extract_explicit_location(location: str) -> Optional[str]:
                 city = match.group(1).strip()
                 if is_valid_city_name(city):
                     return f"{city}, {province}"
-        
+
         # If no province before parens, look for just city name + province elsewhere in string
         # Apply stricter rules: must look like real city name (1-2 capitalized words, no "office", "option", etc)
         first_part = text_before_paren.split(',')[0].strip()
@@ -305,7 +305,7 @@ def _extract_explicit_location(location: str) -> Optional[str]:
                     if not any(indicator in text_before_paren.lower() for indicator in ['office', 'option', 'must', 'great', 'within']):
                         return f"{first_part}, {province}"
 
-    
+
     # Pattern 2 FIRST: "based in City, Province" or "located in City, Province" (most specific)
     # Includes English and French prepositions
     # NOTE: We deliberately exclude 'in ' and 'at ' prepositions as they cause too many false positives
@@ -320,7 +320,7 @@ def _extract_explicit_location(location: str) -> Optional[str]:
         'bureau à', 'bureaux à',
     ]
     # Pattern for city names: Capital letter + letters/accents/hyphens, can be multiple words
-    
+
     for prep in prepositions:
         for province in provinces:
             # More specific: require comma or space before province, and limit to 1-2 word cities
@@ -333,7 +333,7 @@ def _extract_explicit_location(location: str) -> Optional[str]:
                 city = match.group(1).strip()
                 if is_valid_city_name(city):
                     return f"{city}, {province}"
-    
+
     # Pattern 2b: "in/at/headquarter_in City" followed by non-province words, but province exists explicitly
     # E.g., "office in Ottawa if desired" - only return if a province is also mentioned
     # This avoids false positives where we extract a city but no province is stated
@@ -353,7 +353,7 @@ def _extract_explicit_location(location: str) -> Optional[str]:
                         return f"{city}, {province}"
                 # If no province found in location string, don't guess - skip this extraction
 
-    
+
     # Pattern 1: "City, Province" or "City, ON" (less specific, but limited to 1-2 words)
     for province in provinces:
         # Use non-greedy match limited to 1-2 words to avoid capturing too much
@@ -367,7 +367,7 @@ def _extract_explicit_location(location: str) -> Optional[str]:
             city = match.group(1).strip()
             if is_valid_city_name(city):
                 return f"{city}, {province}"
-    
+
     # Pattern 3: More liberal search (fallback) - but still require capitalized city name
     # to avoid matching random words. Handles accents and hyphens.
     for province in provinces:
@@ -380,7 +380,7 @@ def _extract_explicit_location(location: str) -> Optional[str]:
             if not any(x in city.lower() for x in ['region', 'area', 'watershed', 'zone', 'office', 'space', 'gta', 'greater', 'lakes']):
                 if is_valid_city_name(city):
                     return f"{city}, {province}"
-    
+
     return None
 
 
@@ -393,14 +393,14 @@ def _clean_location_for_geocoding(location: str) -> str:
     - Generic modifiers: "and/or", "in person", "throughout", "anywhere", "various", etc.
     """
     cleaned = location
-    
+
     # Remove "Canada" (case insensitive, whole word)
     cleaned = re.sub(r'\bcanada\b', '', cleaned, flags=re.IGNORECASE)
-    
+
     # Remove remote indicator words using existing REMOTE_INDICATORS patterns
     for pattern in REMOTE_INDICATORS:
         cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
-    
+
     # Remove generic modifiers that don't represent actual locations
     generic_words = [
         r'\band/or\b', r'\bor\b',              # Separators
@@ -412,13 +412,13 @@ def _clean_location_for_geocoding(location: str) -> str:
     ]
     for word in generic_words:
         cleaned = re.sub(word, '', cleaned, flags=re.IGNORECASE)
-    
+
     # Clean up extra whitespace and punctuation
     cleaned = re.sub(r'\s+', ' ', cleaned)  # Multiple spaces to single space
     cleaned = re.sub(r'[,\s–\-]+$', '', cleaned)  # Remove trailing commas/spaces/dashes
     cleaned = re.sub(r'^[,\s–\-]+', '', cleaned)  # Remove leading commas/spaces/dashes
     cleaned = cleaned.strip()
-    
+
     return cleaned
 
 
@@ -460,10 +460,10 @@ def _geocode_with_geocodio_uncached(location: str) -> Optional[dict]:
         client = _get_geocodio_client()
         if not client:
             return None
-        
+
         # Strategy 1: Try to extract explicit "City, Province" from the messy location string
         explicit_location = _extract_explicit_location(location)
-        
+
         if explicit_location:
             # Use the explicit extraction - much more likely to be accurate
             print(f"\tGeocoding '{location}' (extracted: '{explicit_location}')...", end=" ", flush=True)
@@ -471,27 +471,27 @@ def _geocode_with_geocodio_uncached(location: str) -> Optional[dict]:
         else:
             # Strategy 2: Fall back to cleaning the full location string
             cleaned_location = _clean_location_for_geocoding(location)
-            
+
             # Skip geocoding if cleaned location is empty or too short
             if not cleaned_location or len(cleaned_location.strip()) < 3:
                 print("Skipped (location too generic after cleaning)")
                 _last_request_time = time.time()
                 return None
-            
+
             if cleaned_location != location:
                 print(f"\tGeocoding '{location}' (cleaned: '{cleaned_location}')...", end=" ", flush=True)
             else:
                 print(f"\tGeocoding '{location}'...", end=" ", flush=True)
             location_to_geocode = cleaned_location
-        
+
         # Record start time for this request (for rate limiting)
         request_start = time.time()
-        
+
         # Use the location (either explicit or cleaned) for geocoding
         # Add ", Canada" back to help with country detection and avoid US matches
         query = location_to_geocode if ", Canada" in location_to_geocode else f"{location_to_geocode}, Canada"
         response = client.geocode(query)
-        
+
         # Handle different response structures
         if hasattr(response, "results"):
             results = response.results
@@ -503,7 +503,7 @@ def _geocode_with_geocodio_uncached(location: str) -> Optional[dict]:
             print("No results (unexpected response structure)")
             _last_request_time = time.time()
             return None
-        
+
         if not results:
             print("No results")
             _last_request_time = time.time()
@@ -511,10 +511,10 @@ def _geocode_with_geocodio_uncached(location: str) -> Optional[dict]:
 
         # Get the first (most accurate) result
         result = results[0]
-        
+
         # Access address_components using safe getter
-        address_components = _safe_get(result, "address_components", {})
-        
+        address_components: dict = _safe_get(result, "address_components", {})
+
         # Validate that this is a Canadian address (reject US addresses)
         country = _safe_get(address_components, "country")
         country_code = _safe_get(address_components, "country_code")
@@ -545,7 +545,7 @@ def _geocode_with_geocodio_uncached(location: str) -> Optional[dict]:
         request_duration = time.time() - request_start
         if request_duration < 1.0:
             time.sleep(1.0 - request_duration)
-        
+
         _last_request_time = time.time()
 
         # Extract lat/lng from location field

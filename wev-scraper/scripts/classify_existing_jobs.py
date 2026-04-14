@@ -199,7 +199,7 @@ def classify_existing_jobs(
                     "reviewed": result.get("reviewed", False),
                 }
 
-                update_data = {
+                update_data: dict[str, object] = {
                     "sse_rating": result["rating"],
                     "sse_details": json.dumps(sse_details) if isinstance(sse_details, dict) else sse_details,
                 }

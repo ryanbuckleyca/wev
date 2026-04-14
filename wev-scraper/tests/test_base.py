@@ -109,7 +109,7 @@ def test_get_listing_items(page):
     """)
     scraper = StubScraper(make_source())
     items = scraper.get_listing_items(page)
-    assert items.count() == 2
+    assert items.count() == 2  # type: ignore[union-attr]
 
 
 # --- get_job_url ---
@@ -208,7 +208,7 @@ def test_process_listing_items_passes_unique_url_to_extract(mock_recent, page):
 
         def safe_open_job_page(self, job_url, wait_selector=None, timeout=10000):
             # Simulate: the page loads but its URL is the generic board URL
-            self.page.set_content(JOB_PAGE_HTML)
+            self.page.set_content(JOB_PAGE_HTML)  # type: ignore[union-attr]
             return (self.page, True)
 
     page.set_content("""

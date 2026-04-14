@@ -31,7 +31,7 @@ def _make_extraction(**overrides):
         confidence=0.95,
     )
     defaults.update(overrides)
-    return CompensationExtraction(**defaults)
+    return CompensationExtraction(**defaults)  # type: ignore[arg-type]
 
 
 # ── wage present: structured fields populated ─────────────────────────────────
