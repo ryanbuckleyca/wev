@@ -296,30 +296,36 @@ test-utils/
 
 ## Integration tests (Vitest)
 
-Use the `*.integration.test.ts` suffix for **route handler contract** tests: several real pieces together (e.g. redirect URL building with real `getSiteBaseUrlFromRequest`, locale parsing, response headers) while **mocking only boundaries** (Supabase clients, or `fetchBulletinJobs` when the goal is the HTTP layer without a live database). They still run under `npm test` with the rest of the suite.
+Use the `*.integration.test.ts` suffix for tests that exercise multiple real pieces together while mocking only external boundaries (network, DB). These run as part of the normal test suite on every push.
 
-They are **not** a substitute for Playwright E2E or for database-backed tests: mocks mean you are not validating RLS, real `unstable_cache` behavior, or production Supabase responses.
+## Database tests (pgTAP)
 
-Handler tests that assert redirect `Location` headers (e.g. `/auth/callback?next=…`) document **current** URL building only—they do **not** prove open-redirect safety unless the production route validates `next`.
+SQL functions, RPCs, and RLS policies are tested directly in Postgres using [pgTAP](https://pgtap.org/). Tests live in `supabase/tests/` and run via:
 
-Real-database or service-role tests against `wev-test` are optional and heavier—add them only with a clear env gate or a dedicated script so CI stays deterministic.
+```bash
+supabase test db
+# or from the monorepo root:
+npm run test:db
+```
 
-**Mocking `@/i18n/navigation`:** Prefer `vi.mock('@/i18n/navigation', () => import('@/test-utils/i18n-navigation-mock'))` for page tests that only need a simple `Link` and trackable `replace` / `push`. If a test must assert on a **custom** `useRouter` (e.g. per-test `mockReturnValue`, or different behavior than the shared spies), keep a **local** `vi.mock('@/i18n/navigation', () => ({ ... }))` in that file instead.
+**When they run in CI:** Only when `supabase/migrations/**` or `supabase/tests/**` changes.
+
+**Why pgTAP instead of Vitest:** The matching algorithm, RLS policies, and other DB functions are pure SQL. Testing them through a Node client adds unnecessary indirection. pgTAP runs the tests inside Postgres itself — faster, more precise, no Node boilerplate.
 
 ## Running Tests
 
 ```bash
-# Run all tests once
+# Run all unit + integration tests
 npm test
 
-# Watch mode (re-runs on file changes)
-npm run test:watch
+# Run DB tests (requires supabase start)
+npm run test:db
+
+# Watch mode
+npm run test:watch --prefix wev-bulletin
 
 # With coverage report
-npm run test:coverage
-
-# Auth-email E2E using MailSlurp ephemeral inboxes
-npm run test:e2e:auth-email
+npm run test:coverage --prefix wev-bulletin
 ```
 
 ## Writing a Test — Template
