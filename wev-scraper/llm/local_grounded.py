@@ -1,6 +1,6 @@
 """Local LLM provider using Tavily search + Ollama for grounded responses.
 
-Used when ENV_MODE=test to avoid hitting Gemini/Groq APIs during local development.
+Used when ENV_MODE=local to avoid hitting Gemini/Groq APIs during local development.
 """
 
 import logging
