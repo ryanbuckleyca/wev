@@ -1,7 +1,7 @@
-"""Grounded LLM using Tavily search + Ollama for local testing.
+"""Grounded LLM using Tavily search + Ollama for local development.
 
 This module provides a simple abstraction similar to your example.
-When ENV_MODE=test, this will be used instead of Gemini/Groq APIs.
+When ENV_MODE=local, this will be used instead of Gemini/Groq APIs.
 """
 
 import os

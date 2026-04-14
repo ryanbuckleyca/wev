@@ -11,7 +11,7 @@ from llm.base import BaseLLMProvider
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
 from llm.local_grounded import LocalGroundedProvider
-from settings import get_stripped_env, is_test_env
+from settings import get_stripped_env, is_local_env
 
 if TYPE_CHECKING:
     from llm.unified_provider import UnifiedJobProcessor
@@ -34,20 +34,20 @@ PROVIDERS: dict[str, type[BaseLLMProvider]] = {
     # "anthropic": AnthropicProvider,
 }
 
-def _is_test_mode() -> bool:
-    """Return True if running in test mode (ENV_MODE=test)."""
-    return is_test_env()
+def _is_local_mode() -> bool:
+    """Return True if running locally (ENV_MODE=local)."""
+    return is_local_env()
 
 
 def get_job_summary_provider() -> BaseLLMProvider | None:
     """Return the LLM provider for job summarization, or None if not configured.
 
     Priority order:
-    1. If ENV_MODE=test: local_grounded (Tavily + Ollama)
+    1. If ENV_MODE=local: local_grounded (Tavily + Ollama)
     2. Otherwise: LLM_PROVIDER env var or default "groq"
     """
-    # Use local grounded provider in test mode
-    if _is_test_mode():
+    # Use local grounded provider in local mode
+    if _is_local_mode():
         try:
             provider = get_provider(name="local_grounded")
             if provider.is_available():
@@ -86,10 +86,10 @@ def get_provider(
         # Check for explicit provider choice first
         name = get_stripped_env("LLM_PROVIDER") or None
 
-        # If in test mode and no explicit provider, use local grounded
-        if name is None and _is_test_mode():
+        # If in local mode and no explicit provider, use local grounded
+        if name is None and _is_local_mode():
             name = "local_grounded"
-            logger.info("Test mode: using local_grounded provider")
+            logger.info("Local mode: using local_grounded provider")
 
         # Default fallback
         if name is None:
@@ -111,15 +111,15 @@ def get_sse_provider() -> BaseLLMProvider | None:
     """Return provider for SSE classification with fallback.
 
     Priority order:
-    1. If ENV_MODE=test: local_grounded (Tavily + Ollama)
+    1. If ENV_MODE=local: local_grounded (Tavily + Ollama)
     2. Otherwise: gemini-2.5-flash (10 RPM, grounding)
     3. Fallback: groq (~10 RPM, no grounding)
 
     Returns:
         Provider instance or None if no provider available.
     """
-    # Use local grounded provider in test mode
-    if _is_test_mode():
+    # Use local grounded provider in local mode
+    if _is_local_mode():
         try:
             provider = get_provider(name="local_grounded")
             if provider.is_available():
