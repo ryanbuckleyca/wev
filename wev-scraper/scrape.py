@@ -9,7 +9,9 @@ from settings import ensure_env_loaded, load_env_file
 
 # Ensure CI sees output immediately
 if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(line_buffering=True)
+    import io
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(line_buffering=True)
 
 # Note: Import database and scraper classes AFTER environment might have been modified by CLI args
 from scrapers.registry import get_scraper_class
@@ -351,8 +353,8 @@ def main():
     if args.prod:
         os.environ["USE_PROD_DB"] = "1"
         # Guard against accidental prod runs when invoked directly (bypassing run.ts).
-        # run.ts handles the prompt when stdin is a TTY; this catches direct Python invocations.
-        if sys.stdin.isatty():
+        # run.ts handles the prompt and sets PROD_CONFIRMED=1 before spawning this script.
+        if sys.stdin.isatty() and os.environ.get("PROD_CONFIRMED") != "1":
             confirm = input("⚠️  RUNNING AGAINST PRODUCTION. Type 'YES' to continue: ")
             if confirm != "YES":
                 sys.exit(0)

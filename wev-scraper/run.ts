@@ -47,6 +47,8 @@ async function main() {
   if (isProd && process.stdin.isTTY) {
     const confirmed = await confirmProd();
     if (!confirmed) process.exit(0);
+    // Signal to scrape.py that the prod confirmation has already been handled
+    process.env.PROD_CONFIRMED = '1';
   }
 
   // Map task names to script paths
