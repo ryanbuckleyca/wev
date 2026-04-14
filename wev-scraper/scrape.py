@@ -9,7 +9,9 @@ from settings import ensure_env_loaded, load_env_file
 
 # Ensure CI sees output immediately
 if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]  # reconfigure exists on TextIOWrapper but not the TextIO protocol; safe at runtime
+    import io
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(line_buffering=True)
 
 # Note: Import database and scraper classes AFTER environment might have been modified by CLI args
 from scrapers.registry import get_scraper_class
