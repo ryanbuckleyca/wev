@@ -16,6 +16,7 @@ if (fs.existsSync(envTestPath)) {
 
 const PLAYWRIGHT_PORT = 3000;
 const PLAYWRIGHT_BASE_URL = `http://localhost:${PLAYWRIGHT_PORT}`;
+process.env.PLAYWRIGHT_BASE_URL = PLAYWRIGHT_BASE_URL;
 
 /**
  * See https://playwright.dev/docs/test-configuration.
