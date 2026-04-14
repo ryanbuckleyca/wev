@@ -5,7 +5,7 @@ ollama
 ruff
 pyright
 
-# Local Jina v3 embedding model (ENV_MODE=test) + property-based testing
+# Local Jina v3 embedding model (ENV_MODE=local) + property-based testing
 # These are NOT needed in production — Jina REST API is used there instead.
 transformers>=4.40.0
 torch>=2.2.0

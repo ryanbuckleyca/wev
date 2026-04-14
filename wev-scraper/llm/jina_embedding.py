@@ -1,10 +1,10 @@
 """Jina v3 embedding service.
 
-API mode (default / ENV_MODE != test):
+API mode (default / ENV_MODE != local):
     POST to https://api.jina.ai/v1/embeddings with JINA_API_KEY.
     Retries on 429 (Retry-After header) and 5xx (exponential backoff).
 
-Local mode (ENV_MODE=test):
+Local mode (ENV_MODE=local):
     Loads jinaai/jina-embeddings-v3 via HuggingFace transformers with MPS
     acceleration on Apple Silicon. ~570 MB one-time download.
 """
@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import time
 
-from settings import get_jina_api_key, is_test_env
+from settings import get_jina_api_key, is_local_env
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +42,8 @@ class JinaEmbeddingService:
 
     @property
     def is_local(self) -> bool:
-        """True when ENV_MODE=test — uses local HuggingFace model instead of REST API."""
-        return is_test_env()
+        """True when ENV_MODE=local — uses local HuggingFace model instead of REST API."""
+        return is_local_env()
 
     # ------------------------------------------------------------------
     # Public interface
@@ -151,7 +151,7 @@ class JinaEmbeddingService:
         raise RuntimeError("[jina] exhausted retries without a successful response")
 
     # ------------------------------------------------------------------
-    # Local mode (ENV_MODE=test)
+    # Local mode (ENV_MODE=local)
     # ------------------------------------------------------------------
 
     def _load_local_model(self):
