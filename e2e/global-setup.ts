@@ -40,7 +40,7 @@ function validateDatabaseUrl(supabaseUrl: string, serviceRoleKey: string) {
  * rather than the stale state cached when `next build` previously ran.
  */
 async function bustNextCache() {
-  const revalidateSecret = process.env.REVALIDATION_SECRET || process.env.REVALIDATE_SECRET;
+  const revalidateSecret = process.env.REVALIDATE_SECRET || process.env.REVALIDATION_SECRET;
   const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
   
   if (!revalidateSecret) {
