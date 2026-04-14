@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import re
+from datetime import datetime, timedelta, timezone
+
 from dateutil import parser
+
 try:
     import dateparser as _dateparser  # optional, handles localized dates
 except Exception:
@@ -89,7 +91,7 @@ def _parse_localized_date(s: str, lang: str = "en"):
         if lang and lang != "en" and _dateparser is None:
             raise ValueError(
                 f"Could not parse localized date '{s}'. Install 'dateparser' for robust localized parsing (pip install dateparser). Original error: {e}"
-            )
+            ) from e
         raise
 
 

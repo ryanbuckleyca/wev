@@ -1,6 +1,6 @@
 from scrapers.base import BaseScraper
-from utils.log import scraper_log
 from utils.extractors import extract_salary_from_text
+from utils.log import scraper_log
 
 
 class CSIScraper(BaseScraper):

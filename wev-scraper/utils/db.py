@@ -1,11 +1,14 @@
-from functools import lru_cache
-from supabase import create_client, Client
 from datetime import datetime, timezone
+from functools import lru_cache
+
+from supabase import Client, create_client
+
+from lib.compensation import extract_and_guard
 from settings import get_supabase_settings
 from utils.env import is_truthy_env
 from utils.log import scraper_log
 from utils.url import get_listing_url_variant
-from lib.compensation import extract_and_guard
+
 
 @lru_cache(maxsize=1)
 def get_supabase_client() -> Client:
@@ -146,7 +149,7 @@ def _extract_response_data(response):
     elif isinstance(response, dict):
         data = response.get('data')
     elif hasattr(response, 'data'):
-        data = getattr(response, 'data')
+        data = response.data
     if isinstance(data, list) and len(data) > 0:
         data = data[0]
     return data if isinstance(data, dict) else None

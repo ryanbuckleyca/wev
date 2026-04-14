@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 """Test LLM location extraction with sample jobs."""
 
-import os
-import sys
 
 from utils.llm_location_extractor import extract_locations_for_jobs
 

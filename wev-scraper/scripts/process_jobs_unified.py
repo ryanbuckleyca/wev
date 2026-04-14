@@ -10,13 +10,13 @@ Processes jobs with a single LLM call to extract:
 Fallback chain: gemini-flash → gemini-flash-lite → groq
 """
 
-import os
 import sys
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
+from llm.unified_provider import UnifiedJobProcessor
 from utils.db import supabase
 from utils.dynamic_batching import create_provider_aware_batches
 from utils.log import scraper_log
-from llm.unified_provider import UnifiedJobProcessor
 
 
 def process_jobs_unified(
@@ -63,7 +63,7 @@ def process_jobs_unified(
     try:
         processor = UnifiedJobProcessor()
         token_limits = processor.get_token_limits()
-        print(f"✓ Unified processor initialized")
+        print("✓ Unified processor initialized")
         print(f"  Token limits: {token_limits['recommended_batch_size']} batch size")
     except Exception as e:
         scraper_log(f"✗ Failed to initialize unified processor: {e}")
@@ -154,9 +154,9 @@ def process_jobs_unified(
             
             print(f"  ✓ Batch {batch_num} complete using {result.get('provider')}")
             if result.get("has_grounding"):
-                print(f"  ✓ Web grounding used for SSE classification")
+                print("  ✓ Web grounding used for SSE classification")
             else:
-                print(f"  ⚠ SSE classification without grounding")
+                print("  ⚠ SSE classification without grounding")
                 
         except Exception as e:
             scraper_log(f"✗ Batch {batch_num} failed: {e}")

@@ -1,5 +1,6 @@
 """Tests for extract_salary_from_text — covers FR and EN formats."""
 import pytest
+
 from utils.extractors import extract_salary_from_text
 
 

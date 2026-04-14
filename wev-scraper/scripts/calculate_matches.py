@@ -13,7 +13,6 @@ import argparse
 import os
 import sys
 
-
 # When run as __main__, handle --prod before importing utils.db.
 if __name__ == "__main__":
     if "--prod" in sys.argv[1:]:
@@ -36,7 +35,7 @@ if __name__ == "__main__":
     else:
         print("🧪 Using TEST database")
 
-from utils.db import supabase, fetch_all_rows
+from utils.db import fetch_all_rows, supabase
 
 
 def _rpc_recalculate_matches_for_user(user_id: str) -> None:

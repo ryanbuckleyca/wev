@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import os
-import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -66,9 +64,11 @@ def test_get_stripped_env_reads_from_shared_settings():
 
 def test_utils_db_import_does_not_create_supabase_client(monkeypatch):
     import importlib
-    import supabase as supabase_lib
-    import utils.db as db
     from unittest.mock import MagicMock
+
+    import supabase as supabase_lib
+
+    import utils.db as db
 
     calls: list[tuple[str, str]] = []
 

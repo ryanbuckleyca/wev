@@ -2,7 +2,9 @@
 
 import os
 from unittest.mock import patch
+
 from llm.config import should_use_grounding
+
 
 def test_should_use_grounding_default():
     """Default should only be True for SSE."""

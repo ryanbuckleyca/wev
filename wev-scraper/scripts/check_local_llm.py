@@ -2,13 +2,18 @@
 """Test script to verify local grounded LLM provider works."""
 
 import os
-import sys
 from pathlib import Path
 
 # Add wev-scraper to path
 scraper_root = Path(__file__).resolve().parent
 
-from llm.factory import get_provider, get_job_summary_provider, get_sse_provider, _is_test_mode
+# scraper_root is resolved first so sys.path is correct before importing local modules.
+from llm.factory import (  # noqa: E402
+    _is_test_mode,
+    get_job_summary_provider,
+    get_provider,
+    get_sse_provider,
+)
 
 
 def test_env_detection():
@@ -21,18 +26,18 @@ def test_env_detection():
 def test_local_provider():
     """Test local grounded provider availability and functionality."""
     print("\n=== Testing Local Grounded Provider ===")
-    
+
     try:
         provider = get_provider(name="local_grounded")
         print(f"✓ Provider created: {type(provider).__name__}")
-        
+
         available = provider.is_available()
         print(f"✓ Available: {available}")
-        
+
         if available:
             limits = provider.get_token_limits()
             print(f"✓ Token limits: {limits}")
-            
+
             # Test a simple completion
             try:
                 response = provider.complete("What is 2+2?")
@@ -44,7 +49,7 @@ def test_local_provider():
         else:
             print("✗ Provider not available - check Tavily API key and Ollama")
             return False
-            
+
     except Exception as e:
         print(f"✗ Failed to create provider: {e}")
         return False
@@ -53,21 +58,21 @@ def test_local_provider():
 def test_factory_functions():
     """Test factory functions with test mode detection."""
     print("\n=== Testing Factory Functions ===")
-    
+
     # Test job summary provider
     provider = get_job_summary_provider()
     if provider:
         print(f"✓ Job summary provider: {type(provider).__name__}")
     else:
         print("✗ No job summary provider available")
-    
+
     # Test SSE provider
     provider = get_sse_provider()
     if provider:
         print(f"✓ SSE provider: {type(provider).__name__}")
     else:
         print("✗ No SSE provider available")
-    
+
     # Test default provider
     provider = get_provider()
     if provider:
@@ -80,20 +85,20 @@ def main():
     """Run all tests."""
     print("Local Grounded LLM Provider Test")
     print("=" * 40)
-    
+
     # Check environment
     is_test = test_env_detection()
-    
+
     if not is_test:
         print("\n⚠️  Not in test mode (ENV_MODE=test)")
         print("Set ENV_MODE=test to use local grounded provider automatically")
-    
+
     # Test the provider
     local_works = test_local_provider()
-    
+
     # Test factory functions
     test_factory_functions()
-    
+
     print("\n" + "=" * 40)
     if local_works:
         print("✅ Local grounded provider is working!")

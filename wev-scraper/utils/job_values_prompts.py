@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Final
 
-
 WORK_VALUES_TAXONOMY: Final[list[tuple[str, str]]] = [
     ("Advancement", "Growth into higher responsibility/authority."),
     ("Adventure", "Frequent risk-taking and bold decisions."),
