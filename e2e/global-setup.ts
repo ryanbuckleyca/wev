@@ -41,16 +41,17 @@ function validateDatabaseUrl(supabaseUrl: string, serviceRoleKey: string) {
  */
 async function bustNextCache() {
   const revalidateSecret = process.env.REVALIDATION_SECRET || process.env.REVALIDATE_SECRET;
+  const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
   
   if (!revalidateSecret) {
     console.warn('⚠️ REVALIDATION_SECRET missing in E2E setup, Next.js cache might be stale.');
     return;
   }
 
-  console.log('▶ Revalidating Next.js job cache...');
+  console.log(`▶ Revalidating Next.js job cache at ${baseUrl}...`);
   
   try {
-    const res = await fetch(`http://localhost:3000/api/revalidate-jobs`, {
+    const res = await fetch(`${baseUrl}/api/revalidate-jobs`, {
       method: 'POST',
       headers: {
         authorization: `Bearer ${revalidateSecret}`,
@@ -58,12 +59,13 @@ async function bustNextCache() {
     });
     
     if (!res.ok) {
-      console.warn('⚠️ Cache revalidation returned non-OK status:', await res.text());
-    } else {
-      console.log('✅ E2E Global Setup: Next.js cache revalidated.');
+      const errorText = await res.text();
+      throw new Error(`Cache revalidation failed with status ${res.status}: ${errorText}`);
     }
+    
+    console.log('✅ E2E Global Setup: Next.js cache revalidated.');
   } catch (err) {
-    console.warn('⚠️ Could not reach Next.js cache endpoint (is webServer alive?):', err);
+    throw new Error(`Failed to reach Next.js cache endpoint at ${baseUrl}: ${err instanceof Error ? err.message : err}`);
   }
 }
 
