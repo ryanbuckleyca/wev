@@ -40,6 +40,7 @@ elif os.environ.get("USE_PROD_DB") == "1":
 else:
     print("🧪 Using TEST database")
 
+# USE_PROD_DB must be set before importing utils.db, which creates the Supabase client at module load time.
 from llm.jina_embedding import ConfigurationError, JinaEmbeddingService  # noqa: E402
 from utils.db import fetch_all_rows, supabase  # noqa: E402
 

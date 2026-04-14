@@ -31,6 +31,7 @@ if '--prod' in sys.argv[1:]:
 else:
     print("🧪 Using TEST database")
 
+# USE_PROD_DB must be set before importing utils.db, which creates the Supabase client at module load time.
 from utils.db import fetch_all_rows, supabase  # noqa: E402
 from utils.sse_classifier import SSEClassificationError, SSEClassifier  # noqa: E402
 

@@ -21,6 +21,7 @@ from dotenv import find_dotenv, load_dotenv
 
 load_dotenv(find_dotenv())
 
+# load_dotenv() must run before importing utils.db, which reads env vars at module load time.
 from lib.compensation import extract_and_guard  # noqa: E402
 from utils.db import supabase  # noqa: E402
 
