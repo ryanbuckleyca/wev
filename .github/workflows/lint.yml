@@ -3,7 +3,8 @@ name: ESLint
 on:
   push:
     branches:
-      - '**'
+      - main
+      - production
     paths:
       - 'wev-bulletin/**'
       - 'wev-scraper/**'
@@ -19,6 +20,7 @@ on:
       - '.github/workflows/**'
       - 'package.json'
       - 'package-lock.json'
+  workflow_dispatch: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
