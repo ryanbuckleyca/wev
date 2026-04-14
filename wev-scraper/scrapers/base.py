@@ -3,11 +3,11 @@ import time
 from urllib.parse import urlparse
 
 from utils.constants import BROWSER_USER_AGENT
-from utils.date_utils import is_recent_job, _parse_localized_date
-from utils.log import scraper_log
-from utils.url import normalize_listing_url
+from utils.date_utils import _parse_localized_date, is_recent_job
 from utils.env import is_truthy_env
+from utils.log import scraper_log
 from utils.normalize import normalize_job_data
+from utils.url import normalize_listing_url
 
 
 def _is_ci() -> bool:
@@ -177,7 +177,7 @@ class BaseScraper:
             try:
                 scraper_log(f"\tAttempt {attempt}/{max_retries}...")
                 result = func(*args, **kwargs)
-                scraper_log(f"\t✅ Success")
+                scraper_log("\t✅ Success")
                 return result
             except Exception as e:
                 error_msg = str(e)
@@ -189,11 +189,11 @@ class BaseScraper:
                     scraper_log(f"\t⚠️  Error (attempt {attempt}/{max_retries}): {error_msg[:100]}")
 
                 if is_403 and not _is_ci():
-                    scraper_log(f"\t❌ 403 with no proxy — skipping retries")
+                    scraper_log("\t❌ 403 with no proxy — skipping retries")
                     raise
 
                 if attempt < max_retries:
-                    scraper_log(f"\t🔄 Retrying...")
+                    scraper_log("\t🔄 Retrying...")
                     time.sleep(2)
                 else:
                     scraper_log(f"\t❌ Failed after {max_retries} attempts")
@@ -224,7 +224,7 @@ class BaseScraper:
             page_content = page.content()
             page_title = page.title().lower()
         except Exception as e:
-            raise Exception(f"Could not read page content (page may be closed or crashed): {e}")
+            raise Exception(f"Could not read page content (page may be closed or crashed): {e}") from e
 
         content_lower = page_content.lower()
 
@@ -588,7 +588,7 @@ class BaseScraper:
 
     def upload_error_screenshot_from_page(self, page, context_name: str | None = None):
         """Capture screenshot from page, upload to Supabase, and print the URL. Call when an error occurs (e.g. pagination timeout)."""
-        from utils.db import supabase, get_supabase_url
+        from utils.db import get_supabase_url, supabase
         from utils.storage import capture_and_upload_error_screenshot
         source_name = context_name or (self.source.get("name") if self.source else None) or "scraper"
         capture_and_upload_error_screenshot(page, supabase, get_supabase_url(), source_name)

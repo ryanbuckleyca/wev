@@ -12,7 +12,6 @@ import sys
 import time
 from datetime import datetime, timezone
 
-
 # --prod must be checked before utils.db is imported so USE_PROD_DB is set
 # before the Supabase client is created at module load time.
 if '--prod' in sys.argv[1:]:
@@ -32,8 +31,9 @@ if '--prod' in sys.argv[1:]:
 else:
     print("🧪 Using TEST database")
 
-from utils.sse_classifier import SSEClassifier, SSEClassificationError
-from utils.db import supabase, fetch_all_rows
+# USE_PROD_DB must be set before importing utils.db, which creates the Supabase client at module load time.
+from utils.db import fetch_all_rows, supabase  # noqa: E402
+from utils.sse_classifier import SSEClassificationError, SSEClassifier  # noqa: E402
 
 
 def classify_existing_jobs(
@@ -43,14 +43,14 @@ def classify_existing_jobs(
     reclassify: bool = False,
 ) -> dict:
     """Classify existing jobs in Supabase using individual calls for proper grounding.
-    
+
     Each job gets its own API call with Google Search grounding to ensure
     accurate organization research for SSE classification.
-    
+
     Returns:
         Dict with counts: {classified, skipped, errors}
     """
-    
+
     if verbose:
         print("=" * 70)
         print("SSE JOB CLASSIFICATION - INDIVIDUAL PROCESSOR")
@@ -115,7 +115,7 @@ def classify_existing_jobs(
         return {"classified": 0, "skipped": 0, "errors": 0}
 
     if not jobs:
-        print(f"No jobs found to classify.")
+        print("No jobs found to classify.")
         return {"classified": 0, "skipped": 0, "errors": 0}
 
     if verbose:
@@ -126,7 +126,7 @@ def classify_existing_jobs(
     # Process jobs individually for proper grounding per organization
     for i, job in enumerate(jobs, start=1):
         job_num = i
-        
+
         if verbose:
             print(f"[{job_num}/{len(jobs)}] Processing job...")
 
@@ -149,11 +149,11 @@ def classify_existing_jobs(
             job_title = job.get("job_title", "Unknown")
             org_name = job.get("organization", "Unknown")
             listing_url = job.get("listing_url", "No URL")
-            
+
             if verbose:
                 print(f"  {org_name} - {job_title}")
                 print(f"  URL: {listing_url}")
-                
+
                 # Format rating as "Is SSE"
                 rating_map = {
                     "strong_yes": "✓ Yes",
@@ -163,19 +163,19 @@ def classify_existing_jobs(
                 sse_status = rating_map.get(result['rating'], result['rating'])
                 print(f"  Is SSE: {sse_status} ({result['confidence']:.2f})")
                 print(f"  Reasoning: {result['reasoning']}")
-                
+
                 if result.get('must_haves_met'):
-                    print(f"  Must-haves met:")
+                    print("  Must-haves met:")
                     for item in result['must_haves_met']:
                         print(f"    ✓ {item}")
-                
+
                 if result.get('nice_to_haves_met'):
-                    print(f"  Nice-to-haves met:")
+                    print("  Nice-to-haves met:")
                     for item in result['nice_to_haves_met']:
                         print(f"    ✓ {item}")
-                
+
                 if result.get('flags'):
-                    print(f"  Flags:")
+                    print("  Flags:")
                     for flag in result['flags']:
                         print(f"    ⚠ {flag}")
 
@@ -198,45 +198,45 @@ def classify_existing_jobs(
                     "classified_at": result.get("classified_at"),
                     "reviewed": result.get("reviewed", False),
                 }
-                
+
                 update_data = {
                     "sse_rating": result["rating"],
                     "sse_details": json.dumps(sse_details) if isinstance(sse_details, dict) else sse_details,
                 }
                 if is_sse is not None:
                     update_data["is_sse"] = is_sse
-                
+
                 supabase.table("jobs").update(update_data).eq("id", job_id).execute()
                 if verbose:
-                    print(f"  ✅ Updated in database")
-                
+                    print("  ✅ Updated in database")
+
                 counts["classified"] += 1
-                
+
             except Exception as e:
                 print(f"  ❌ Database update failed: {e}")
                 counts["errors"] += 1
-            
+
         except Exception as e:
             print(f"  ❌ Classification failed: {e}")
             counts["errors"] += 1
-        
+
         # Rate limiting between individual jobs
         if delay_seconds > 0 and i < len(jobs):
             time.sleep(delay_seconds)
 
     # Summary
     if verbose:
-        print(f"\n✅ Processing complete!")
+        print("\n✅ Processing complete!")
         print(f"Classified: {counts['classified']}")
         print(f"Skipped: {counts['skipped']}")
         print(f"Errors: {counts['errors']}")
-    
+
     return counts
 
 
 def classify_single_job(job_id: str, verbose: bool = True) -> bool:
     """Classify a single job by ID."""
-    
+
     if verbose:
         print("=" * 70)
         print("SSE JOB CLASSIFICATION - SINGLE JOB")
@@ -286,7 +286,7 @@ def classify_single_job(job_id: str, verbose: bool = True) -> bool:
         if verbose:
             print("CLASSIFICATION RESULT")
             print("-" * 70)
-            
+
             # Format rating as "Is SSE"
             rating_map = {
                 "strong_yes": "✓ Yes",
@@ -296,14 +296,14 @@ def classify_single_job(job_id: str, verbose: bool = True) -> bool:
             sse_status = rating_map.get(result['rating'], result['rating'])
             print(f"Is SSE: {sse_status} ({result['confidence']:.2f})")
             print(f"Reasoning: {result['reasoning']}")
-            print(f"\nMust-haves met:")
+            print("\nMust-haves met:")
             for item in result.get("must_haves_met", []):
                 print(f"  ✓ {item}")
-            print(f"\nNice-to-haves met:")
+            print("\nNice-to-haves met:")
             for item in result.get("nice_to_haves_met", []):
                 print(f"  ✓ {item}")
             if result.get("flags"):
-                print(f"\nFlags:")
+                print("\nFlags:")
                 for flag in result["flags"]:
                     print(f"  ⚠ {flag}")
             print()
@@ -336,22 +336,22 @@ def classify_single_job(job_id: str, verbose: bool = True) -> bool:
             supabase.table("jobs").update(update_data).eq("id", job_id).execute()
         except Exception as db_error:
             print(f"\n✗ Database update failed: {db_error}")
-            print(f"   Trying with just is_sse update...")
+            print("   Trying with just is_sse update...")
             try:
                 # Try updating just is_sse if rating update fails
                 if is_sse is not None:
                     supabase.table("jobs").update({"is_sse": is_sse}).eq("id", job_id).execute()
                     print(f"   ✓ Updated is_sse to {is_sse}")
-            except:
+            except Exception:
                 pass
             return False
-        
+
         if verbose:
             print("✓ Database updated")
             print(f"  sse_rating: {result['rating']}")
             print(f"  is_sse: {is_sse}")
             print()
-        
+
         return True
 
     except SSEClassificationError as e:
@@ -400,7 +400,6 @@ def main():
         success = classify_single_job(args.job_id, verbose=not args.quiet)
         return 0 if success else 1
 
-    import os
     from utils.env import is_truthy_env
     should_reclassify = is_truthy_env("SHOULD_RE_CLASSIFY")
     if should_reclassify:

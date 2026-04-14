@@ -12,8 +12,8 @@ Local mode (ENV_MODE=test):
 from __future__ import annotations
 
 import logging
-import math
 import time
+
 from settings import get_jina_api_key, is_test_env
 
 logger = logging.getLogger(__name__)

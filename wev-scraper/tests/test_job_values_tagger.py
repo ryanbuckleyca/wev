@@ -6,12 +6,12 @@ Property: Serializing then deserializing `values_rated` produces an equivalent a
 """
 
 import json
-import pytest
 from unittest.mock import MagicMock, patch
 
-from utils.job_values_tagger import JobRatedValue, JobValuesTagger
-from utils.job_values_prompts import WORK_VALUES_SET
+import pytest
 
+from utils.job_values_prompts import WORK_VALUES_SET
+from utils.job_values_tagger import JobRatedValue, JobValuesTagger
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -55,7 +55,7 @@ def test_values_rated_round_trip(value_names: list[str]):
     # Same length — no padding or truncation
     assert len(restored) == len(original)
 
-    for orig, rest in zip(original, restored):
+    for orig, rest in zip(original, restored, strict=True):
         # Same value string
         assert rest["value"] == orig["value"]
         # Same confidence score

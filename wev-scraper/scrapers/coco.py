@@ -1,5 +1,4 @@
 from scrapers.base import BaseScraper, _is_ci
-from utils.normalize import normalize_job_data
 
 
 class CocoScraper(BaseScraper):

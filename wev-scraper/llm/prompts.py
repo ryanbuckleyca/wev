@@ -5,7 +5,6 @@ different LLM provider implementations while allowing provider-specific
 customization when needed.
 """
 
-from typing import Literal
 
 
 def get_summary_prompt_base(max_words: int) -> str:

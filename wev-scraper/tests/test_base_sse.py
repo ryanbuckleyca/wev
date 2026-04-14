@@ -1,7 +1,9 @@
 """Tests for BaseScraper SSE-related behavior."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from scrapers.base import BaseScraper
 from tests.conftest import make_source
 

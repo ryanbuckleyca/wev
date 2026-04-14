@@ -2,16 +2,15 @@
 
 import json
 import logging
-import os
 import re
 from datetime import datetime, timezone
-from typing import TypedDict, Optional
+from typing import TypedDict
 
 from llm.base import LLMProviderError
 from llm.factory import get_sse_provider
 from utils.sse_prompts import (
-    get_sse_classification_prompt,
     get_sse_batch_classification_prompt,
+    get_sse_classification_prompt,
 )
 
 logger = logging.getLogger(__name__)

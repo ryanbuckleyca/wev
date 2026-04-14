@@ -1,6 +1,7 @@
+import re
+
 from scrapers.base import BaseScraper
 from utils.extractors import extract_salary_from_text
-import re
 
 
 class CentraideScraper(BaseScraper):

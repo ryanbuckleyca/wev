@@ -8,7 +8,6 @@ import os
 import sys
 import time
 
-
 # --prod must be checked before utils.db is imported so USE_PROD_DB is set
 # before the Supabase client is created at module load time.
 if '--prod' in sys.argv[1:]:
@@ -28,9 +27,10 @@ if '--prod' in sys.argv[1:]:
 else:
     print("🧪 Using TEST database")
 
-from utils.db import supabase, fetch_all_rows
-from utils.env import is_truthy_env
-from utils.job_values_tagger import JobValuesTagger, JobValuesTaggerError
+# USE_PROD_DB must be set before importing utils.db, which creates the Supabase client at module load time.
+from utils.db import fetch_all_rows, supabase  # noqa: E402
+from utils.env import is_truthy_env  # noqa: E402
+from utils.job_values_tagger import JobValuesTagger, JobValuesTaggerError  # noqa: E402
 
 
 def _should_skip_existing(job: dict, retag: bool) -> bool:
@@ -90,7 +90,7 @@ def tag_job_values(
             # Determine which provider is actually being used
             provider_name = type(tagger.provider).__name__.replace('Provider', '').lower()
             provider_model = getattr(tagger.provider, '_model', 'default')
-            
+
             if provider_name == 'groq':
                 print(f"✓ {provider_name.title()} values tagger initialized ({provider_model})")
                 key = os.environ.get("GROQ_API_KEY") or ""
@@ -179,7 +179,7 @@ def tag_job_values(
             counts["errors"] += len(batch_jobs)
             continue
 
-        for job, result in zip(batch_jobs, results):
+        for job, result in zip(batch_jobs, results, strict=False):
             job_id_value = job.get("id")
             title = job.get("job_title", "Unknown")
             org = job.get("organization", "Unknown")

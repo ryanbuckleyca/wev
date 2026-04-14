@@ -6,12 +6,10 @@ import pytest
 
 from lib.compensation import (
     CompensationExtraction,
-    extract_compensation,
     currency_guard,
-    normalize_biweekly,
     extract_and_guard,
+    extract_compensation,
 )
-
 
 # ---------------------------------------------------------------------------
 # extract_compensation tests
@@ -257,7 +255,7 @@ class TestMinMaxSwap:
     def test_inverted_range_is_swapped(self):
         """If the regex picks up values in wrong order, extract_and_guard corrects them."""
         # Construct an extraction with inverted range directly
-        from lib.compensation import CompensationExtraction, extract_and_guard
+        from lib.compensation import extract_and_guard
         # Use a wage string that would produce a valid range — verify swap via raw_note
         # We test the guard indirectly: a string where regex finds two values
         result = extract_and_guard("75 000$ a 60 000$ par annee")
@@ -269,6 +267,7 @@ class TestMinMaxSwap:
         """Swapped min/max is flagged in raw_note with '[min_max_swapped]'."""
         # Force an inverted extraction by patching extract_compensation
         from unittest.mock import patch
+
         from lib.compensation import CompensationExtraction
 
         inverted = CompensationExtraction(

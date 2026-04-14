@@ -1,7 +1,7 @@
-from scrapers.base import BaseScraper
-from utils.log import scraper_log
 import os
 import re
+
+from scrapers.base import BaseScraper
 from utils.extractors import (
     extract_labeled_value,
     extract_labeled_value_from_text,
@@ -9,6 +9,7 @@ from utils.extractors import (
     extract_title_from_blocks,
 )
 from utils.llm_location_extractor import extract_locations_for_jobs
+from utils.log import scraper_log
 
 MAX_PAGES = 50  # guard against infinite pagination loops
 DATE_POSTED_PATTERN = re.compile(
@@ -182,7 +183,7 @@ class GoodWorkScraper(BaseScraper):
         text = self._get_first_div_text(page)
         if not text:
             return None
-        label_pattern = "|".join(re.escape(l.rstrip(":")) for l in labels)
+        label_pattern = "|".join(re.escape(lbl.rstrip(":")) for lbl in labels)
         match = re.search(rf"(?:{label_pattern}):\s*(.+?)(?:\n|$)", text)
         return match.group(1).strip() if match else None
 

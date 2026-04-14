@@ -1,6 +1,6 @@
 """Tests for compensation field wiring in _job_row (task 5.3)."""
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 from lib.compensation import CompensationExtraction
 
 

@@ -13,7 +13,6 @@ import os
 import sys
 from collections import defaultdict
 
-
 # --prod must be checked before utils.db is imported so USE_PROD_DB is set
 # before the Supabase client is created at module load time.
 if "--prod" in sys.argv[1:]:
@@ -33,7 +32,7 @@ if "--prod" in sys.argv[1:]:
 else:
     print("Using TEST database")
 
-from utils.db import supabase, fetch_all_rows
+from utils.db import fetch_all_rows, supabase
 
 
 def _row_quality_score(job: dict) -> tuple:
