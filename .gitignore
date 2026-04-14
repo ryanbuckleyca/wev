@@ -4,9 +4,13 @@
 .env.local
 .env.dev
 .env.test
+.env.*.local
+.env.keys
 
 # Dependencies
 node_modules/
+/.pnp
+.pnp.js
 
 # Build artifacts
 .next/
@@ -14,11 +18,17 @@ build/
 dist/
 out/
 *.tsbuildinfo
+next-env.d.ts
 
 # Testing
 coverage/
 .output/
 results/
+playwright-report/
+test-results/
+.coverage
+htmlcov/
+.pytest_cache/
 
 # Editor / AI tools
 .ai/
@@ -36,9 +46,17 @@ venv/
 __pycache__/
 *.pyc
 
+# Linting cache
+.ruff_cache/
+
 # Misc
 nohup.out
 .DS_Store
 .branches/
 .temp/
 backups/
+*.pem
+*.log
+*.tmp
+*.temp
+rclone-log.txt

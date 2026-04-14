@@ -194,15 +194,13 @@ describe('DeleteAccountModal', () => {
 
     await user.type(passwordInput, 'mypassword123');
     await user.type(confirmInput, 'DELETE');
-    // Trigger click but don't await yet so we can catch the loading state
-    const clickPromise = user.click(deleteButton);
+    // The fake API takes 100ms, so awaiting user.click won't wait for the deletion to complete (fetch is still pending).
+    await user.click(deleteButton);
     
-    // Should show loading state
+    // Should show loading state immediately
     const loadingButton = await screen.findByRole('button', { name: /deleting/i });
     expect(loadingButton).toBeVisible();
     expect(loadingButton).toBeDisabled();
-
-    await clickPromise;
 
     // Wait for completion
     await waitFor(
