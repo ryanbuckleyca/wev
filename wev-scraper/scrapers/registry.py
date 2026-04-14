@@ -1,9 +1,10 @@
-from typing import Type, Dict
-from scrapers.ecocanada import EcoCanadaScraper
-from scrapers.goodwork import GoodWorkScraper
+from typing import Dict, Type
+
+from scrapers.centraide import CentraideScraper
 from scrapers.coco import CocoScraper
 from scrapers.csi import CSIScraper
-from scrapers.centraide import CentraideScraper
+from scrapers.ecocanada import EcoCanadaScraper
+from scrapers.goodwork import GoodWorkScraper
 from scrapers.macommunaute import MaCommunauteScraper
 
 # Mapping of Supabase Source IDs to Scraper Classes

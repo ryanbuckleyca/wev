@@ -41,7 +41,7 @@ class BaseLLMProvider(ABC):
     @abstractmethod
     def get_token_limits(self) -> dict:
         """Return token limits for this provider.
-        
+
         Returns:
             Dict with keys:
             - 'context_window': Maximum tokens the model can process in total
@@ -180,7 +180,6 @@ class BaseLLMProvider(ABC):
                     f"splitting {len(batch)} items...",
                     flush=True,
                 )
-                mid = len(batch) // 2
                 sub_results = self.complete_batch(
                     items=batch,
                     build_prompt=build_prompt,

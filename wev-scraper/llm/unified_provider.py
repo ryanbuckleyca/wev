@@ -8,7 +8,8 @@ Extracts: summary, values, is_sse in one call.
 """
 
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List
+
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class UnifiedJobProcessor:
     """Unified job processor with intelligent fallback chain."""
-    
+
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key
 
@@ -46,7 +47,7 @@ class UnifiedJobProcessor:
                 logger.debug(f"Skipping provider {name} (not configured): {e}")
 
         self.last_successful_provider = None
-    
+
     def _try_provider(self, provider_info: dict, jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Try a specific provider for job processing."""
         provider = provider_info["provider"]
@@ -60,7 +61,6 @@ class UnifiedJobProcessor:
 
     def _process_with_provider(self, jobs: List[Dict], provider: BaseLLMProvider, include_sse: bool) -> Dict[str, Any]:
         """Build prompt, call provider, and parse response."""
-        from utils.job_values_prompts import _format_taxonomy
         prompt = self._build_unified_prompt(jobs, include_sse=include_sse)
         result = provider.complete(
             prompt,
@@ -68,7 +68,7 @@ class UnifiedJobProcessor:
             task="unified",
         )
         return self._parse_unified_response(result, len(jobs))
-    
+
     def _build_unified_prompt(self, jobs: List[Dict], include_sse: bool = False) -> str:
         """Build comprehensive prompt for unified processing."""
         from utils.job_values_prompts import _format_taxonomy
@@ -96,7 +96,7 @@ class UnifiedJobProcessor:
         prompt_parts.append(f"\n\nOutput JSON array with objects containing: {fields}")
 
         return "".join(prompt_parts)
-    
+
     def _parse_unified_response(self, response: str, expected_jobs: int, max_values: int = 5) -> Dict[str, Any]:
         """Parse the unified response into structured results.
 
@@ -107,6 +107,7 @@ class UnifiedJobProcessor:
         """
         import json
         import re
+
         from utils.job_values_prompts import WORK_VALUES_SET
 
         def try_parse(text: str):
@@ -161,7 +162,7 @@ class UnifiedJobProcessor:
 
         logger.error(f"Failed to parse unified response: {response[:200]}...")
         return {"results": [], "count": 0, "error": "Failed to parse response"}
-    
+
     def process_jobs(self, jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Process jobs with intelligent fallback chain, using token-aware batching."""
         if not jobs:
@@ -185,8 +186,8 @@ class UnifiedJobProcessor:
                 include_sse = provider_info["has_grounding"]
                 system = get_unified_system_prompt(include_sse=include_sse)
 
-                def build_prompt(batch: List[Dict]) -> str:
-                    return self._build_unified_prompt(batch, include_sse=include_sse)
+                def build_prompt(batch: List[Dict], _sse: bool = include_sse) -> str:
+                    return self._build_unified_prompt(batch, include_sse=_sse)
 
                 def parse_response(raw: str, batch: List[Dict]) -> List[Any]:
                     parsed = self._parse_unified_response(raw, len(batch))
@@ -240,16 +241,16 @@ class UnifiedJobProcessor:
             "attempted_providers": attempted_providers,
             "error": error_msg
         }
-    
+
     def get_token_limits(self) -> dict:
         """Return token limits for the best available provider."""
         for provider_info in self.providers:
             try:
                 if provider_info["provider"].is_available():
                     return provider_info["provider"].get_token_limits()
-            except:
+            except Exception:
                 continue
-        
+
         # Fallback defaults
         return {
             "max_tokens_per_request": 8000,

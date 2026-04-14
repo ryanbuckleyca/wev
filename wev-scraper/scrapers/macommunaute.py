@@ -1,7 +1,8 @@
 import re
+
 from scrapers.base import BaseScraper, _is_ci
-from utils.log import scraper_log
 from utils.extractors import extract_salary_from_text
+from utils.log import scraper_log
 
 
 class MaCommunauteScraper(BaseScraper):

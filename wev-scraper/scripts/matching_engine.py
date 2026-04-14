@@ -8,7 +8,6 @@ manual or webhook-style invocations using the service role.
 import os
 import sys
 
-
 # --prod must be checked before utils.db is imported so USE_PROD_DB is set
 if "--prod" in sys.argv[1:]:
     _confirm = os.environ.get("CONFIRM_PROD_RUN")

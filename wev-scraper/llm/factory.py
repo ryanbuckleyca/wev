@@ -5,16 +5,18 @@ SSE classification: Gemini Flash → Flash-Lite fallback for grounding.
 """
 
 import logging
-import os
-from typing import Literal
-
-logger = logging.getLogger(__name__)
+from typing import TYPE_CHECKING, Literal
 
 from llm.base import BaseLLMProvider
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
 from llm.local_grounded import LocalGroundedProvider
 from settings import get_stripped_env, is_test_env
+
+if TYPE_CHECKING:
+    from llm.unified_provider import UnifiedJobProcessor
+
+logger = logging.getLogger(__name__)
 
 ProviderName = Literal["gemini", "groq"]
 
@@ -41,7 +43,7 @@ def get_job_summary_provider() -> BaseLLMProvider | None:
     """Return the LLM provider for job summarization, or None if not configured.
 
     Priority order:
-    1. If ENV_MODE=test: local_grounded (Tavily + Ollama)  
+    1. If ENV_MODE=test: local_grounded (Tavily + Ollama)
     2. Otherwise: LLM_PROVIDER env var or default "groq"
     """
     # Use local grounded provider in test mode
@@ -52,7 +54,7 @@ def get_job_summary_provider() -> BaseLLMProvider | None:
                 return provider
         except Exception:
             pass
-    
+
     # Fall back to regular provider selection
     try:
         provider = get_provider()
@@ -83,16 +85,16 @@ def get_provider(
     if name is None:
         # Check for explicit provider choice first
         name = get_stripped_env("LLM_PROVIDER") or None
-        
+
         # If in test mode and no explicit provider, use local grounded
         if name is None and _is_test_mode():
             name = "local_grounded"
             logger.info("Test mode: using local_grounded provider")
-        
+
         # Default fallback
         if name is None:
             name = DEFAULT_MODEL
-    
+
     if name not in PROVIDERS:
         raise ValueError(f"Unknown provider: {name}")
     provider_class = PROVIDERS[name]
@@ -107,12 +109,12 @@ def get_provider(
 
 def get_sse_provider() -> BaseLLMProvider | None:
     """Return provider for SSE classification with fallback.
-    
+
     Priority order:
     1. If ENV_MODE=test: local_grounded (Tavily + Ollama)
     2. Otherwise: gemini-2.5-flash (10 RPM, grounding)
     3. Fallback: groq (~10 RPM, no grounding)
-    
+
     Returns:
         Provider instance or None if no provider available.
     """
@@ -124,7 +126,7 @@ def get_sse_provider() -> BaseLLMProvider | None:
                 return provider
         except Exception:
             pass
-    
+
     # Try Gemini first for grounding support
     try:
         provider = get_provider(name="gemini")  # Uses gemini-2.5-flash
@@ -132,7 +134,7 @@ def get_sse_provider() -> BaseLLMProvider | None:
             return provider
     except Exception:
         pass
-    
+
     # Fallback to Groq (no grounding, but better than nothing)
     try:
         provider = get_provider(name="groq")
@@ -140,22 +142,22 @@ def get_sse_provider() -> BaseLLMProvider | None:
             return provider
     except Exception:
         pass
-    
+
     return None
 
 
 def get_unified_processor(**kwargs) -> "UnifiedJobProcessor":
     """Return the unified job processor with intelligent fallback.
-    
+
     The unified processor handles: summary + raw_skills + values + SSE classification
     in a single LLM call with automatic fallback:
     1. gemini-2.5-flash (10 RPM, grounding)
-    2. gemini-2.5-flash-lite (5 RPM, grounding) 
+    2. gemini-2.5-flash-lite (5 RPM, grounding)
     3. groq (~10 RPM, no grounding)
-    
+
     Args:
         **kwargs: Passed to UnifiedJobProcessor constructor (e.g. api_key).
-        
+
     Returns:
         UnifiedJobProcessor instance.
     """
