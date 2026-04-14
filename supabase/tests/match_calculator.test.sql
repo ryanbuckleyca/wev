@@ -3,7 +3,7 @@
 
 begin;
 
-select plan(6);
+select plan(9);
 
 -- ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -100,6 +100,57 @@ select ok(
   (select location_score is null from public.job_matches
    where user_id = :test_user_id and job_id = :test_job_id),
   'remote job + onsite user: location_score is NULL'
+);
+
+-- ─── Test 4: semantic similarity produces a score ──────────────────────────────
+-- User has Management, Job has Leadership. They share 1.0 similarity in fixtures.
+
+update public.profiles
+set skills = array['pgtap-skill-semantic-1']
+where id = :test_user_id;
+
+select recalculate_matches_for_user(:test_user_id);
+
+select ok(
+  (select skill_score > 0.5 from public.job_matches
+   where user_id = :test_user_id and job_id = :test_job_id),
+  'semantic match: skill_score > 0.5 (Management vs Leadership)'
+);
+
+-- ─── Test 5: trigger automatically recalculates matches ──────────────────────
+-- We update the profile and check matches WITHOUT calling the RPC manually.
+
+update public.profiles
+set skills = array['pgtap-skill-exact']
+where id = :test_user_id;
+
+select ok(
+  (select skill_score = 1.0 from public.job_matches
+   where user_id = :test_user_id and job_id = :test_job_id),
+  'trigger: profile update automatically updates job_matches skill_score'
+);
+
+-- ─── Test 6: job-initiated matching ──────────────────────────────────────────
+-- When a new job is added or updated, recalculate_matches_for_job should work.
+
+\set test_job_id_2 '''00000000-0000-0000-0000-000000000004'''
+
+insert into public.jobs (
+  id, source_id, job_title, organization, listing_url,
+  skills, values, work_type, lat, lng, municipality, province
+) values (
+  :test_job_id_2, :test_source_id, 'pgTAP Test Job 2', 'Test Org',
+  'https://example.com/pgtap-job-2',
+  array['pgtap-skill-exact'],
+  array['community'],
+  'remote', 45.4215, -75.6972, 'Ottawa', 'ON'
+) on conflict (id) do nothing;
+
+select recalculate_matches_for_job(:test_job_id_2);
+
+select ok(
+  exists(select 1 from public.job_matches where user_id = :test_user_id and job_id = :test_job_id_2),
+  'job-initiated: recalculate_matches_for_job creates match for existing user'
 );
 
 -- ─── Cleanup ─────────────────────────────────────────────────────────────────
