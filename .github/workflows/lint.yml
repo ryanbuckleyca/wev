@@ -2,11 +2,18 @@ name: ESLint
 
 on:
   push:
+    branches:
+      - main
+      - production
     paths:
       - 'wev-bulletin/**'
+      - 'wev-scraper/**'
+      - 'supabase/**'
   pull_request:
     paths:
       - 'wev-bulletin/**'
+      - 'wev-scraper/**'
+      - 'supabase/**'
 
 jobs:
   lint:
@@ -19,4 +26,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npm run lint --prefix wev-bulletin
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python linting tools
+        run: pip install ruff pyright
+      - name: Run monorepo linting
+        run: npm run lint
