@@ -2,6 +2,24 @@
 
 run with `./run.sh`
 
+## Setup
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements-dev.txt
+playwright install chromium
+```
+
+Copy `.env.example` to `.env` and fill in the required keys.
+
+**For local development (`ENV_MODE=local`)**, two additional tools are needed:
+
+- **Ollama** — runs LLMs locally instead of hitting Gemini/Groq. Install from [ollama.ai](https://ollama.ai), then `ollama pull mistral`.
+- **Jina embeddings** — runs skill embeddings locally instead of the Jina REST API. Requires `torch` + `transformers` (included in `requirements-dev.txt`). ~570MB one-time model download on first use.
+
+Set `TAVILY_API_KEY` in `.env` for grounded SSE classification locally.
+
 ## Proxy Configuration
 
 The scraper uses [Webshare](https://www.webshare.io/) proxies to bypass Cloudflare protection on certain sites (e.g., Ma Communauté).
@@ -51,7 +69,7 @@ The scraper uses different LLM providers depending on the task and environment:
 - **Job summaries & values**: Groq (llama-3.3-70b) - no grounding required
 - **SSE classification**: Gemini 2.5 Flash with Google Search grounding to verify organization type and governance
 
-### Local development (`ENV_MODE=test`)
+### Local development (`ENV_MODE=local`)
 - **All tasks**: LocalGroundedProvider using Tavily search + Ollama (mistral model)
 - Avoids hitting external APIs during development
 
@@ -86,7 +104,7 @@ FORCE_GROUNDING=0
    - Run `ollama pull mistral`
    - Get Tavily API key: https://tavily.com
    - Set `TAVILY_API_KEY` in `.env`
-   - Set `ENV_MODE=test` in `.env`
+   - Set `ENV_MODE=local` in `.env`
 
 ### Rate limits (Gemini free tier)
 - Gemini 2.5 Flash: 4 RPM / 24 RPD

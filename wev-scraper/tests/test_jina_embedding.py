@@ -64,7 +64,7 @@ def test_configuration_error_when_no_api_key(monkeypatch):
 def test_no_error_in_local_mode_without_api_key(monkeypatch):
     """No ConfigurationError in local mode even without JINA_API_KEY."""
     monkeypatch.delenv("JINA_API_KEY", raising=False)
-    monkeypatch.setenv("ENV_MODE", "test")
+    monkeypatch.setenv("ENV_MODE", "local")
 
     from llm.jina_embedding import JinaEmbeddingService
 
