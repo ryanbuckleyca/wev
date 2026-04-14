@@ -8,19 +8,14 @@ from pathlib import Path
 scraper_root = Path(__file__).resolve().parent
 
 # scraper_root is resolved first so sys.path is correct before importing local modules.
-from llm.factory import (  # noqa: E402
-    _is_test_mode,
-    get_job_summary_provider,
-    get_provider,
-    get_sse_provider,
-)
+from llm.factory import _is_local_mode, get_job_summary_provider, get_provider, get_sse_provider  # noqa: E402
 
 
 def test_env_detection():
-    """Test that ENV_MODE=test is detected correctly."""
+    """Test that ENV_MODE=local is detected correctly."""
     print(f"ENV_MODE={os.environ.get('ENV_MODE', 'not set')}")
-    print(f"Is test mode: {_is_test_mode()}")
-    return _is_test_mode()
+    print(f"Is local mode: {_is_local_mode()}")
+    return _is_local_mode()
 
 
 def test_local_provider():
@@ -56,7 +51,7 @@ def test_local_provider():
 
 
 def test_factory_functions():
-    """Test factory functions with test mode detection."""
+    """Test factory functions with local mode detection."""
     print("\n=== Testing Factory Functions ===")
 
     # Test job summary provider
@@ -87,11 +82,11 @@ def main():
     print("=" * 40)
 
     # Check environment
-    is_test = test_env_detection()
+    is_local = test_env_detection()
 
-    if not is_test:
-        print("\n⚠️  Not in test mode (ENV_MODE=test)")
-        print("Set ENV_MODE=test to use local grounded provider automatically")
+    if not is_local:
+        print("\n⚠️  Not in local mode (ENV_MODE=local)")
+        print("Set ENV_MODE=local to use local grounded provider automatically")
 
     # Test the provider
     local_works = test_local_provider()
@@ -105,7 +100,7 @@ def main():
         print("\nTo use:")
         print("1. Make sure Ollama is running: ollama serve")
         print("2. Ensure TAVILY_API_KEY is set in .env")
-        print("3. Set ENV_MODE=test in .env")
+        print("3. Set ENV_MODE=local in .env")
     else:
         print("❌ Local grounded provider not available")
         print("\nTroubleshooting:")
