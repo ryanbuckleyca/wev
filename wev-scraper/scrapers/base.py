@@ -1,5 +1,6 @@
 import os
 import time
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from utils.constants import BROWSER_USER_AGENT
@@ -8,6 +9,9 @@ from utils.env import is_truthy_env
 from utils.log import scraper_log
 from utils.normalize import normalize_job_data
 from utils.url import normalize_listing_url
+
+if TYPE_CHECKING:
+    from playwright.sync_api import ProxySettings
 
 
 def _is_ci() -> bool:
@@ -608,7 +612,7 @@ class BaseScraper:
         use_stealth: apply playwright-stealth to the browser context (default: True).
             Disable for sites where stealth causes rendering issues (e.g. Acuspire widgets).
         """
-        from playwright.sync_api import ProxySettings, ViewportSize, sync_playwright
+        from playwright.sync_api import ViewportSize, sync_playwright
 
         headless = self._resolve_headless(headless)
         v: ViewportSize = viewport or {"width": 1280, "height": 720}
@@ -616,8 +620,11 @@ class BaseScraper:
         self.browser = self._launch_browser(headless, v, use_real_chrome)
         base_headers, user_agent = self._build_context_headers(use_real_chrome)
         raw_proxy = self._build_proxy_config(use_proxy)
-        # _build_proxy_config returns a dict with the same keys as ProxySettings
-        typed_proxy: ProxySettings | None = raw_proxy  # type: ignore[assignment]
+        optional_kwargs = {}
+        if user_agent is not None:
+            optional_kwargs["user_agent"] = user_agent
+        if raw_proxy is not None:
+            optional_kwargs["proxy"] = raw_proxy
         self.context = self.browser.new_context(
             viewport=v,
             locale="en-CA",
@@ -625,8 +632,7 @@ class BaseScraper:
             permissions=["geolocation"],
             ignore_https_errors=False,
             extra_http_headers=base_headers,
-            user_agent=user_agent,
-            proxy=typed_proxy,
+            **optional_kwargs,
         )
         if use_stealth:
             _get_stealth().apply_stealth_sync(self.context)
@@ -681,12 +687,13 @@ class BaseScraper:
             })
         return base_headers, user_agent
 
-    def _build_proxy_config(self, use_proxy):
-        """Return proxy config dict if PROXY_SERVER is set and use_proxy=True, else None."""
+    def _build_proxy_config(self, use_proxy: bool) -> "ProxySettings | None":
+        """Return proxy config if PROXY_SERVER is set and use_proxy=True, else None."""
+        from playwright.sync_api import ProxySettings
         proxy_server = os.environ.get("PROXY_SERVER")
         if not proxy_server or not use_proxy:
             return None
-        config = {"server": proxy_server}
+        config: ProxySettings = {"server": proxy_server}
         if user := os.environ.get("PROXY_USERNAME"):
             config["username"] = user
         if pwd := os.environ.get("PROXY_PASSWORD"):

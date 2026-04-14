@@ -132,7 +132,7 @@ class LocalGroundedProvider(BaseLLMProvider):
                 'num_predict': 2000,
                 'temperature': 0.1,
             }
-            fmt = 'json' if json_mode else ''
+            fmt = 'json' if json_mode else None
             response = ollama.generate(model=self.model, prompt=prompt, options=options, format=fmt)
             return response.get("response", "")
 
