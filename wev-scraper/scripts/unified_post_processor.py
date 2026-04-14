@@ -149,6 +149,7 @@ def process_jobs_unified(
     try:
         # Process filtered jobs in smaller batches
         processed_count = 0
+        result: dict = {}
         for i in range(0, len(filtered_jobs), batch_size):
             batch = filtered_jobs[i:i + batch_size]
             print(f"  Processing batch {i//batch_size + 1}/{(len(filtered_jobs) + batch_size - 1)//batch_size} ({len(batch)} jobs)")

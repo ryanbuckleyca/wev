@@ -261,6 +261,7 @@ class TestMinMaxSwap:
         result = extract_and_guard("75 000$ a 60 000$ par annee")
 
         # After swap: min should be the smaller value
+        assert result.min_value is not None and result.max_value is not None
         assert result.min_value <= result.max_value
 
     def test_inverted_range_sets_raw_note(self):

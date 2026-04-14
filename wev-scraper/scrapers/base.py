@@ -1,5 +1,6 @@
 import os
 import time
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from utils.constants import BROWSER_USER_AGENT
@@ -8,6 +9,9 @@ from utils.env import is_truthy_env
 from utils.log import scraper_log
 from utils.normalize import normalize_job_data
 from utils.url import normalize_listing_url
+
+if TYPE_CHECKING:
+    from playwright.sync_api import ProxySettings
 
 
 def _is_ci() -> bool:
@@ -169,7 +173,7 @@ class BaseScraper:
         return self.source["url"]
 
     def get_filter_values(self):
-        return self.filter_values if hasattr(self, "filter_values") else [None]
+        return getattr(self, "filter_values", [None])
 
     def _retry(self, func, *args, max_retries=3, **kwargs):
         """Retry func up to max_retries times. Bails immediately on 403s when no proxy is available."""
@@ -608,26 +612,39 @@ class BaseScraper:
         use_stealth: apply playwright-stealth to the browser context (default: True).
             Disable for sites where stealth causes rendering issues (e.g. Acuspire widgets).
         """
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import ViewportSize, sync_playwright
 
         headless = self._resolve_headless(headless)
-        v = viewport or {"width": 1280, "height": 720}
+        v: ViewportSize = viewport or {"width": 1280, "height": 720}
         self.playwright = sync_playwright().start()
         self.browser = self._launch_browser(headless, v, use_real_chrome)
-        context_kwargs = self._build_context_kwargs(v, use_real_chrome)
-        proxy = self._build_proxy_config(use_proxy)
-        if proxy:
-            context_kwargs["proxy"] = proxy
-        self.context = self.browser.new_context(**context_kwargs)
+        base_headers, user_agent = self._build_context_headers(use_real_chrome)
+        raw_proxy = self._build_proxy_config(use_proxy)
+        optional_kwargs = {}
+        if user_agent is not None:
+            optional_kwargs["user_agent"] = user_agent
+        if raw_proxy is not None:
+            optional_kwargs["proxy"] = raw_proxy
+        self.context = self.browser.new_context(
+            viewport=v,
+            locale="en-CA",
+            timezone_id="America/Toronto",
+            permissions=["geolocation"],
+            ignore_https_errors=False,
+            extra_http_headers=base_headers,
+            **optional_kwargs,
+        )
         if use_stealth:
             _get_stealth().apply_stealth_sync(self.context)
-        if proxy:
+        if raw_proxy:
             _block_heavy_resources(self.context)
+        assert self.context is not None
         self.page = self.context.new_page()
         self.page.set_default_navigation_timeout(60_000)
         return self.page
 
     def _launch_browser(self, headless, viewport, use_real_chrome):
+        assert self.playwright is not None
         args = [
             "--disable-blink-features=AutomationControlled",
             "--disable-dev-shm-usage",
@@ -643,41 +660,40 @@ class BaseScraper:
                 scraper_log(f"\tChrome launch failed ({e}), falling back to Chromium")
         return self.playwright.chromium.launch(headless=headless, args=args)
 
-    def _build_context_kwargs(self, viewport, use_real_chrome):
-        """Build browser context kwargs. Real Chrome provides its own UA/hints — don't override them."""
-        kwargs = dict(
-            viewport=viewport,
-            locale="en-CA",
-            timezone_id="America/Toronto",
-            permissions=["geolocation"],
-            ignore_https_errors=False,
-            extra_http_headers={
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                "Accept-Language": "en-CA,en-US;q=0.9,en;q=0.8",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Upgrade-Insecure-Requests": "1",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
-            },
-        )
+    def _build_context_headers(self, use_real_chrome: bool) -> tuple[dict[str, str], str | None]:
+        """Build extra HTTP headers and optional user-agent for the browser context.
+
+        Real Chrome provides its own UA/hints — don't override them.
+        Returns (headers, user_agent) where user_agent is None for real Chrome.
+        """
+        base_headers: dict[str, str] = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-CA,en-US;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+        }
+        user_agent: str | None = None
         if not use_real_chrome:
             platform = '"Linux"' if _is_ci() else '"macOS"'
-            kwargs["user_agent"] = BROWSER_USER_AGENT
-            kwargs["extra_http_headers"].update({
+            user_agent = BROWSER_USER_AGENT
+            base_headers.update({
                 "Sec-CH-UA": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
                 "Sec-CH-UA-Mobile": "?0",
                 "Sec-CH-UA-Platform": platform,
             })
-        return kwargs
+        return base_headers, user_agent
 
-    def _build_proxy_config(self, use_proxy):
-        """Return proxy config dict if PROXY_SERVER is set and use_proxy=True, else None."""
+    def _build_proxy_config(self, use_proxy: bool) -> "ProxySettings | None":
+        """Return proxy config if PROXY_SERVER is set and use_proxy=True, else None."""
+        from playwright.sync_api import ProxySettings
         proxy_server = os.environ.get("PROXY_SERVER")
         if not proxy_server or not use_proxy:
             return None
-        config = {"server": proxy_server}
+        config: ProxySettings = {"server": proxy_server}
         if user := os.environ.get("PROXY_USERNAME"):
             config["username"] = user
         if pwd := os.environ.get("PROXY_PASSWORD"):
@@ -753,6 +769,7 @@ class BaseScraper:
         for attempt in range(1, max_retries + 1):
             job_page = None
             try:
+                assert self.context is not None
                 job_page = self.context.new_page()
                 job_page.goto(full_url, wait_until="domcontentloaded")
 

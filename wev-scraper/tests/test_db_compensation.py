@@ -1,7 +1,18 @@
 """Tests for compensation field wiring in _job_row (task 5.3)."""
+from typing import TypedDict
 from unittest.mock import patch
 
 from lib.compensation import CompensationExtraction
+
+
+class _ExtractionDefaults(TypedDict, total=False):
+    unit_text: str | None
+    min_value: int | None
+    max_value: int | None
+    hours_per_week: int | None
+    currency: str | None
+    raw_note: str | None
+    confidence: float
 
 
 def _base_job(**overrides):
@@ -20,17 +31,20 @@ def _base_job(**overrides):
     return job
 
 
-def _make_extraction(**overrides):
-    defaults = dict(
-        unit_text="YEAR",
-        min_value=6000000,
-        max_value=7500000,
-        hours_per_week=None,
-        currency="CAD",
-        raw_note=None,
-        confidence=0.95,
-    )
-    defaults.update(overrides)
+def _make_extraction(**overrides: object) -> CompensationExtraction:
+    defaults: _ExtractionDefaults = {
+        "unit_text": "YEAR",
+        "min_value": 6000000,
+        "max_value": 7500000,
+        "hours_per_week": None,
+        "currency": "CAD",
+        "raw_note": None,
+        "confidence": 0.95,
+    }
+    for key in overrides:
+        if key not in defaults:
+            raise TypeError(f"_make_extraction() got unexpected keyword argument '{key}'")
+    defaults.update(overrides)  # type: ignore[typeddict-item]  # overrides validated above
     return CompensationExtraction(**defaults)
 
 
