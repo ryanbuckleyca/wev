@@ -1,0 +1,19 @@
+{
+  "name": "e2e",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:auth-email": "playwright test tests/auth-email.spec.ts",
+    "test:e2e:perf": "playwright test --grep @perf",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^20",
+    "dotenv": "^16.3.1",
+    "mailslurp-client": "^17.2.0",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../wev-bulletin/*"],
+      "@supabase/dataset": ["../supabase/src/dataset"],
+      "@supabase/seeder": ["../supabase/src/seeder"],
+      "@supabase/database.types": ["../supabase/src/database.types"]
+    }
+  },
+  "include": [
+    "**/*.ts"
+  ]
+}

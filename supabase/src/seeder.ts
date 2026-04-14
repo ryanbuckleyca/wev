@@ -143,6 +143,7 @@ async function seedTables(
 
 function findEscoSkillsIndexPath(): string {
   const candidates = [
+    path.resolve(__dirname, '../seed/esco_skills_index.json'),
     path.resolve(process.cwd(), 'supabase/seed/esco_skills_index.json'),
     path.resolve(process.cwd(), 'seed/esco_skills_index.json'),
   ];
