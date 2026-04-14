@@ -18,6 +18,7 @@
   },
   "scripts": {
     "dev": "dotenv -e .env -- npm run dev --prefix wev-bulletin",
+    "prepare": "git config core.hooksPath .githooks",
     "build": "npm run build --prefix wev-bulletin",
     "start": "npm start --prefix wev-bulletin",
     "test": "npm run test:bulletin && npm run test:scraper",
