@@ -6,6 +6,7 @@
 # Default to test database
 print("🧪 Using TEST database")
 
+# USE_PROD_DB must be set before importing utils.db, which creates the Supabase client at module load time.
 from scripts.calculate_matches import calculate_matches_for_job  # noqa: E402
 from utils.db import supabase  # noqa: E402
 

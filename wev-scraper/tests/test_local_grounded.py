@@ -18,6 +18,7 @@ def teardown_module(module):
     if "tavily" in sys.modules and sys.modules["tavily"] is mock_tavily:
         del sys.modules["tavily"]
 
+# Optional deps are mocked in sys.modules before importing the module under test.
 from llm.local_grounded import LocalGroundedProvider  # noqa: E402
 
 

@@ -7,6 +7,7 @@ from pathlib import Path
 # Add wev-scraper to path
 scraper_root = Path(__file__).resolve().parent
 
+# scraper_root is resolved first so sys.path is correct before importing local modules.
 from llm.factory import (  # noqa: E402
     _is_test_mode,
     get_job_summary_provider,
