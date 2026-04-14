@@ -3,8 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - main
-      - production
+      - '**'
     paths:
       - 'e2e/**'
       - 'wev-bulletin/**'
@@ -18,6 +17,10 @@ on:
       - 'wev-bulletin/**'
       - 'supabase/**'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   e2e-tests:
