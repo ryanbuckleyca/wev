@@ -14,11 +14,11 @@ on:
     paths:
       - 'wev-bulletin/**'
   workflow_dispatch:
- 
+
 jobs:
   build:
     runs-on: ubuntu-latest
- 
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,7 +33,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Start local Supabase
+        run: npx supabase start
+
       - name: Run tests
+        env:
+          SUPABASE_URL: http://localhost:54321
+          # Fixed well-known service role key used by Supabase CLI for all local instances
+          SUPABASE_SERVICE_ROLE_KEY: ***REMOVED_SUPABASE_DEMO_SERVICE_ROLE_KEY***
         run: npm run test --prefix wev-bulletin
 
       - name: Build Next.js app
