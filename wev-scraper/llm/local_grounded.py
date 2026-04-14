@@ -28,7 +28,7 @@ class LocalGroundedProvider(BaseLLMProvider):
         """
         self._tavily_client = None
         self._tavily_api_key = os.getenv("TAVILY_API_KEY")
-        self.model = os.getenv("LOCAL_LLM_MODEL", "mistral")
+        self.model: str = os.getenv("LOCAL_LLM_MODEL", "mistral")
         self._ollama_available = None
         self._tavily_available = None
 
@@ -54,8 +54,8 @@ class LocalGroundedProvider(BaseLLMProvider):
                 model_names = [model.model for model in models.models]
 
                 # Look for the configured model
-                target_model = self.model.split(':')[0].lower() # handle version tags
-                matching_models = [name for name in model_names if target_model in name.lower()]
+                target_model = self.model.split(':')[0].lower()  # handle version tags
+                matching_models = [name for name in model_names if name and target_model in name.lower()]
                 if not matching_models:
                     # Model not found, instruct user instead of pulling implicitly
                     logger.warning(f"Required local model '{self.model}' not found. Run: ollama pull {self.model}")
@@ -106,6 +106,7 @@ class LocalGroundedProvider(BaseLLMProvider):
     def _search_context(self, query: str) -> str:
         """Search for relevant context using Tavily."""
         self._init_tavily()
+        assert self._tavily_client is not None
 
         try:
             results = self._tavily_client.search(
@@ -131,10 +132,8 @@ class LocalGroundedProvider(BaseLLMProvider):
                 'num_predict': 2000,
                 'temperature': 0.1,
             }
-            kwargs = dict(model=self.model, prompt=prompt, options=options)
-            if json_mode:
-                kwargs['format'] = 'json'
-            response = ollama.generate(**kwargs)
+            fmt = 'json' if json_mode else None
+            response = ollama.generate(model=self.model, prompt=prompt, options=options, format=fmt)
             return response.get("response", "")
 
         except Exception as e:

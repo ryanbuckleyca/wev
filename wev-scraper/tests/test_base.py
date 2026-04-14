@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+from playwright.sync_api import Locator
+
 from scrapers.base import BaseScraper
 from tests.conftest import make_source
 
@@ -109,6 +111,7 @@ def test_get_listing_items(page):
     """)
     scraper = StubScraper(make_source())
     items = scraper.get_listing_items(page)
+    assert isinstance(items, Locator)
     assert items.count() == 2
 
 
@@ -208,6 +211,7 @@ def test_process_listing_items_passes_unique_url_to_extract(mock_recent, page):
 
         def safe_open_job_page(self, job_url, wait_selector=None, timeout=10000):
             # Simulate: the page loads but its URL is the generic board URL
+            assert self.page is not None
             self.page.set_content(JOB_PAGE_HTML)
             return (self.page, True)
 

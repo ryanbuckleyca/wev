@@ -16,7 +16,6 @@ import argparse
 import json
 import math
 import os
-import socket
 import sys
 import time
 from dataclasses import dataclass, field
@@ -164,12 +163,6 @@ def _request_json(url: str, retries: int = 1) -> dict:
                 continue
             raise EscoRequestError(code=None, url=url, detail=str(e)) from e
         except TimeoutError as e:
-            if attempt < retries:
-                attempt += 1
-                time.sleep(0.75 * attempt)
-                continue
-            raise EscoRequestError(code=None, url=url, detail=str(e)) from e
-        except socket.timeout as e:
             if attempt < retries:
                 attempt += 1
                 time.sleep(0.75 * attempt)
