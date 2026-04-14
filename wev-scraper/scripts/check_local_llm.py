@@ -8,7 +8,12 @@ from pathlib import Path
 scraper_root = Path(__file__).resolve().parent
 
 # scraper_root is resolved first so sys.path is correct before importing local modules.
-from llm.factory import _is_local_mode, get_job_summary_provider, get_provider, get_sse_provider  # noqa: E402
+from llm.factory import (  # noqa: E402
+    _is_local_mode,
+    get_job_summary_provider,
+    get_provider,
+    get_sse_provider,
+)
 
 
 def test_env_detection():
