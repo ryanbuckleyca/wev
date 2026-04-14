@@ -1,16 +1,20 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-// Skip integration tests in CI by default to avoid missing database errors
-// Use vi.hoisted so this can be used inside vi.mock calls (which are hoisted)
-const { isCI } = vi.hoisted(() => ({
-  isCI: process.env.CI && !process.env.FORCE_INTEGRATION_TESTS
+// Integration tests run locally and in CI — both use a local Supabase instance.
+// Use vi.hoisted so this flag is available inside vi.mock (which is hoisted to top of file).
+const { shouldRun } = vi.hoisted(() => ({
+  shouldRun: !process.env.SKIP_INTEGRATION_TESTS,
 }));
+
+if (!shouldRun) {
+  console.log('⚠️  Integration tests skipped (SKIP_INTEGRATION_TESTS=1).');
+}
 
 // Mock the supabaseServer singleton used by match-calculator.ts
 vi.mock('@/lib/supabase-server', async () => {
-  if (isCI) {
-    return { supabaseServer: {} as SupabaseClient }; // Dummy for CI
+  if (!shouldRun) {
+    return { supabaseServer: {} as SupabaseClient }; // Dummy when skipping
   }
   const { getRealDatabaseClient } = await import('../test-utils/real-db');
   return {
@@ -20,7 +24,7 @@ vi.mock('@/lib/supabase-server', async () => {
 
 // Setup a local pointer to the real client for test setup/cleanup
 let supabase: SupabaseClient;
-if (!isCI) {
+if (shouldRun) {
   const { getRealDatabaseClient: getClient } = await import('../test-utils/real-db');
   supabase = getClient();
 }
@@ -30,15 +34,21 @@ import { calculateUserMatches } from './match-calculator';
 
 /**
  * INTEGRATION TEST: Verifies the Postgres-based matching algorithm.
- * Requires a running local Supabase instance.
+ * Requires a running local Supabase instance (supabase start).
+ * Runs locally and in CI. Set SKIP_INTEGRATION_TESTS=1 to skip.
  */
-describe.skipIf(isCI)('match calculator (integration)', () => {
+describe.skipIf(!shouldRun)('match calculator (integration)', () => {
   const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
   const TEST_JOB_ID = '00000000-0000-0000-0000-000000000002';
 
   const TEST_SOURCE_ID = '00000000-0000-0000-0000-000000000003';
 
   beforeAll(async () => {
+    const { isLocalDatabaseAvailable } = await import('../test-utils/real-db');
+    if (!await isLocalDatabaseAvailable()) {
+      console.log('⚠️  Skipping integration tests — local Supabase is not running. Run: supabase start');
+      return;
+    }
     console.log('--- TEST SETUP START ---');
     // 1. Cleanup existing test data
     await supabase.from('job_matches').delete().eq('user_id', TEST_USER_ID);
@@ -61,13 +71,13 @@ describe.skipIf(isCI)('match calculator (integration)', () => {
 
     const { error: skillErr } = await supabase.from('esco_skills').insert([
       { concept_uri: 'test-skill-exact', preferred_label_en: 'Exact Skill' },
-      { 
-        concept_uri: 'test-skill-semantic-1', 
+      {
+        concept_uri: 'test-skill-semantic-1',
         preferred_label_en: 'Management',
         embedding: vector1
       },
-      { 
-        concept_uri: 'test-skill-semantic-2', 
+      {
+        concept_uri: 'test-skill-semantic-2',
         preferred_label_en: 'Leadership',
         embedding: vector2
       }
@@ -139,7 +149,7 @@ describe.skipIf(isCI)('match calculator (integration)', () => {
 
     if (error) console.error('Match Fetch Error:', error);
     expect(match).toBeDefined();
-    
+
     // With 100% value overlap (55%) and 1/2 skill overlap (35%), score should be high
     expect(match.score).toBeGreaterThan(0.7);
     expect(match.shared_values).toContain('community');
