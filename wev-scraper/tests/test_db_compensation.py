@@ -21,17 +21,22 @@ def _base_job(**overrides):
 
 
 def _make_extraction(**overrides):
-    defaults = dict(
-        unit_text="YEAR",
-        min_value=6000000,
-        max_value=7500000,
-        hours_per_week=None,
-        currency="CAD",
-        raw_note=None,
-        confidence=0.95,
+    unit_text = overrides.get("unit_text", "YEAR")
+    min_value = overrides.get("min_value", 6000000)
+    max_value = overrides.get("max_value", 7500000)
+    hours_per_week = overrides.get("hours_per_week", None)
+    currency = overrides.get("currency", "CAD")
+    raw_note = overrides.get("raw_note", None)
+    confidence = overrides.get("confidence", 0.95)
+    return CompensationExtraction(
+        unit_text=unit_text,
+        min_value=min_value,
+        max_value=max_value,
+        hours_per_week=hours_per_week,
+        currency=currency,
+        raw_note=raw_note,
+        confidence=confidence,
     )
-    defaults.update(overrides)
-    return CompensationExtraction(**defaults)  # type: ignore[arg-type]
 
 
 # ── wage present: structured fields populated ─────────────────────────────────
