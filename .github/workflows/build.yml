@@ -7,13 +7,23 @@ on:
       - production
     paths:
       - 'wev-bulletin/**'
+      - '.github/workflows/build.yml'
+      - 'package.json'
+      - 'package-lock.json'
   pull_request:
     branches:
       - main
       - production
     paths:
       - 'wev-bulletin/**'
+      - '.github/workflows/build.yml'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:

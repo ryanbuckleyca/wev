@@ -28,14 +28,14 @@ console.log('▶ Playwright Config: testDir =', testDir);
 export default defineConfig({
   testDir,
   outputDir: './e2e/.output',
-  /* Run tests in files in parallel */
+  /* Allow selected suites to opt into parallel execution. */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: Boolean(process.env.CI),
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: 1,
+  /* Two workers is a good fit for the hosted runner without overloading Next.js or Supabase. */
+  workers: process.env.CI ? 2 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['list'],

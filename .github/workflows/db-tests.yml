@@ -6,6 +6,10 @@ on:
       - main
       - production
     paths:
+      - '.github/workflows/db-tests.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'supabase/config.toml'
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
   pull_request:
@@ -13,9 +17,17 @@ on:
       - main
       - production
     paths:
+      - '.github/workflows/db-tests.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'supabase/config.toml'
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   db-tests:
@@ -36,7 +48,7 @@ jobs:
         run: npm ci
 
       - name: Start local Supabase
-        run: npx -y supabase start
+        run: ./node_modules/.bin/supabase start --yes --exclude gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
 
       - name: Run DB tests
         run: npm run test:db

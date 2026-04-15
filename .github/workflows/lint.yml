@@ -1,36 +1,90 @@
 name: ESLint
 
+permissions:
+  contents: read
+  pull-requests: read
+
 on:
   push:
     branches:
       - main
       - production
     paths:
-      - 'wev-bulletin/**'
-      - 'wev-scraper/**'
-      - 'supabase/**'
+      - "wev-bulletin/**"
+      - "wev-scraper/**"
+      - ".github/workflows/lint.yml"
+      - "package.json"
+      - "package-lock.json"
   pull_request:
+    branches:
+      - main
+      - production
     paths:
-      - 'wev-bulletin/**'
-      - 'wev-scraper/**'
-      - 'supabase/**'
+      - "wev-bulletin/**"
+      - "wev-scraper/**"
+      - ".github/workflows/lint.yml"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  lint:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      bulletin: ${{ steps.filter.outputs.bulletin }}
+      scraper: ${{ steps.filter.outputs.scraper }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            bulletin:
+              - 'wev-bulletin/**'
+              - '.github/workflows/lint.yml'
+              - 'package.json'
+              - 'package-lock.json'
+            scraper:
+              - 'wev-scraper/**'
+              - '.github/workflows/lint.yml'
+              - 'package.json'
+              - 'package-lock.json'
+
+  lint-bulletin:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.bulletin == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Run bulletin lint
+        run: npm run lint:bulletin
+
+  lint-scraper:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.scraper == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - name: Install Python linting tools
         run: pip install ruff pyright
-      - name: Run monorepo linting
-        run: npm run lint
+      - name: Run scraper lint
+        run: npm run lint:scraper
