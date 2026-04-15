@@ -25,6 +25,10 @@ on:
       - 'supabase/tests/**'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   db-tests:
     runs-on: ubuntu-latest
@@ -44,7 +48,7 @@ jobs:
         run: npm ci
 
       - name: Start local Supabase
-        run: ./node_modules/.bin/supabase start --yes
+        run: ./node_modules/.bin/supabase start --yes --exclude gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
 
       - name: Run DB tests
         run: npm run test:db
