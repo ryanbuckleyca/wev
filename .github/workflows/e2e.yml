@@ -6,23 +6,23 @@ on:
       - main
       - production
     paths:
-      - 'e2e/**'
-      - 'wev-bulletin/**'
-      - 'supabase/**'
-      - '.github/workflows/e2e.yml'
-      - 'package.json'
-      - 'package-lock.json'
+      - "e2e/**"
+      - "wev-bulletin/**"
+      - "supabase/**"
+      - ".github/workflows/e2e.yml"
+      - "package.json"
+      - "package-lock.json"
   pull_request:
     branches:
       - main
       - production
     paths:
-      - 'e2e/**'
-      - 'wev-bulletin/**'
-      - 'supabase/**'
-      - '.github/workflows/e2e.yml'
-      - 'package.json'
-      - 'package-lock.json'
+      - "e2e/**"
+      - "wev-bulletin/**"
+      - "supabase/**"
+      - ".github/workflows/e2e.yml"
+      - "package.json"
+      - "package-lock.json"
   workflow_dispatch:
 
 concurrency:
@@ -40,8 +40,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
           cache-dependency-path: package-lock.json
 
       - name: Cache Playwright binaries
@@ -58,8 +58,27 @@ jobs:
         id: nextjs-cache
         with:
           path: wev-bulletin/.next/cache
-          # Key includes package-lock for deps and a wildcards for source files to invalidate correctly
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('wev-bulletin/app/**', 'wev-bulletin/components/**', 'wev-bulletin/lib/**') }}
+          # Hash all build-time inputs for wev-bulletin, plus shared Supabase modules
+          # pulled in through the bulletin tsconfig path aliases.
+          key: >-
+            ${{ runner.os }}-nextjs-${{ hashFiles(
+              'package-lock.json',
+              'package.json',
+              'wev-bulletin/package.json',
+              'wev-bulletin/next.config.mjs',
+              'wev-bulletin/tsconfig.json',
+              'wev-bulletin/postcss.config.js',
+              'wev-bulletin/tailwind.config.js',
+              'wev-bulletin/middleware.ts',
+              'wev-bulletin/app/**',
+              'wev-bulletin/components/**',
+              'wev-bulletin/contexts/**',
+              'wev-bulletin/hooks/**',
+              'wev-bulletin/i18n/**',
+              'wev-bulletin/lib/**',
+              'wev-bulletin/messages/**',
+              'supabase/src/**'
+            ) }}
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
 
@@ -80,13 +99,13 @@ jobs:
         run: |
           ./node_modules/.bin/supabase start --yes --exclude studio,edge-runtime,logflare,vector
           ./node_modules/.bin/supabase status -o env > supabase.env
-          
+
           # Native bash parsing of the key-value pairs
           source supabase.env
 
           # Enforce fallbacks in case something goes wildly wrong
           API_URL="${API_URL}"
-          
+
           echo "SUPABASE_URL=$API_URL" >> $GITHUB_ENV
           echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
           echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
