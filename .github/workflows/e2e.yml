@@ -8,7 +8,10 @@ on:
     paths:
       - "e2e/**"
       - "wev-bulletin/**"
-      - "supabase/**"
+      - "supabase/config.toml"
+      - "supabase/migrations/**"
+      - "supabase/seed/**"
+      - "supabase/src/**"
       - ".github/workflows/e2e.yml"
       - "package.json"
       - "package-lock.json"
@@ -19,7 +22,10 @@ on:
     paths:
       - "e2e/**"
       - "wev-bulletin/**"
-      - "supabase/**"
+      - "supabase/config.toml"
+      - "supabase/migrations/**"
+      - "supabase/seed/**"
+      - "supabase/src/**"
       - ".github/workflows/e2e.yml"
       - "package.json"
       - "package-lock.json"
