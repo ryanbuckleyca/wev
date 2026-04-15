@@ -6,6 +6,10 @@ on:
       - main
       - production
     paths:
+      - '.github/workflows/db-tests.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'supabase/config.toml'
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
   pull_request:
@@ -13,6 +17,10 @@ on:
       - main
       - production
     paths:
+      - '.github/workflows/db-tests.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'supabase/config.toml'
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
   workflow_dispatch:
