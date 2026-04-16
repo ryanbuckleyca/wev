@@ -156,6 +156,8 @@ export default function AccountSettingsPage() {
             setNewPassword('');
             setConfirmPassword('');
             setPasswordErrors([]);
+            await supabase.auth.signOut().catch(() => undefined);
+            window.location.assign('/');
           }
           notify.error(emailError.message || t('accountSettings.emailUpdateFailed'));
           return;
@@ -173,6 +175,8 @@ export default function AccountSettingsPage() {
         setNewPassword('');
         setConfirmPassword('');
         setPasswordErrors([]);
+        await supabase.auth.signOut().catch(() => undefined);
+        window.location.assign('/');
       }
     } catch (err) {
       notify.error(err instanceof Error ? err.message : t('accountSettings.updateFailed'));

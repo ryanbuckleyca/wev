@@ -14,7 +14,9 @@ export async function expectJobBoardReady(
   await expect(jobBoardPage.page.locator('html')).toHaveAttribute('lang', locale);
   await expect(jobBoardPage.heading).toBeVisible();
   await expect(jobBoardPage.searchInput).toBeVisible();
-  await expect(jobBoardPage.localeSwitcher).toBeVisible();
+
+  // Locale switcher is present but may be visually hidden on narrow viewports.
+  await expect(jobBoardPage.localeSwitcher).toBeAttached();
 }
 
 export async function loadEnglishJobBoard(jobBoardPage: JobBoardPage): Promise<void> {

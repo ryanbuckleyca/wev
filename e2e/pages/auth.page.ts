@@ -31,9 +31,33 @@ export class AuthPage {
     await this.page.goto(localizedPath(locale, '/account-settings'));
   }
 
+  private async tryCompleteCaptcha(): Promise<void> {
+    const iframe = this.page.locator('iframe[src*="turnstile"]').first();
+    if (!(await iframe.isVisible().catch(() => false))) return;
+
+    const box = await iframe.boundingBox();
+    if (!box) return;
+
+    // Click near the left side of the widget where the checkbox typically appears.
+    const clickX = box.x + Math.min(40, box.width / 2);
+    const clickY = box.y + box.height / 2;
+    await this.page.mouse.click(clickX, clickY);
+  }
+
   async submitWhenCaptchaReady(buttonName: RegExp, timeoutMs = 90_000): Promise<void> {
     const submitButton = this.page.getByRole('button', { name: buttonName });
-    await expect(submitButton).toBeEnabled({ timeout: timeoutMs });
+
+    await expect
+      .poll(
+        async () => {
+          if (await submitButton.isEnabled().catch(() => false)) return true;
+          await this.tryCompleteCaptcha();
+          return submitButton.isEnabled().catch(() => false);
+        },
+        { timeout: timeoutMs },
+      )
+      .toBe(true);
+
     await submitButton.click();
   }
 
@@ -69,8 +93,12 @@ export class AuthPage {
   }
 
   async resetPassword(newPassword: string): Promise<void> {
-    await this.page.getByLabel(/new password/i).fill(newPassword);
-    await this.page.getByLabel(/confirm password/i).fill(newPassword);
+    const fields = this.page.getByPlaceholder(/^[-•*]{6,}$/i);
+    await expect(fields).toHaveCount(2, { timeout: 10_000 });
+
+    await fields.nth(0).fill(newPassword);
+    await fields.nth(1).fill(newPassword);
+
     await this.page.getByRole('button', { name: /update password/i }).click();
   }
 
