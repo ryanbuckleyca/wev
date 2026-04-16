@@ -18,6 +18,9 @@ const PLAYWRIGHT_PORT = 3000;
 const PLAYWRIGHT_BASE_URL = `http://localhost:${PLAYWRIGHT_PORT}`;
 process.env.PLAYWRIGHT_BASE_URL = PLAYWRIGHT_BASE_URL;
 
+const emailProvider = process.env.E2E_EMAIL_PROVIDER?.trim().toLowerCase();
+const shouldSkipAuthEmail = emailProvider === 'mailslurp' && !process.env.MAILSLURP_API_KEY?.trim();
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -42,7 +45,7 @@ export default defineConfig({
     ['html', { open: 'never', outputFolder: 'playwright-report' }],
     ['junit', { outputFile: 'e2e/results/junit.xml' }],
   ],
-  
+
   /* Seed the database once before all tests */
   globalSetup: require.resolve('./global-setup.ts'),
 
@@ -54,8 +57,8 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
 
-  /* Skip @auth-email tests if MAILSLURP_API_KEY is missing */
-  grepInvert: process.env.MAILSLURP_API_KEY ? undefined : /@auth-email/,
+  /* Skip @auth-email tests only when explicitly using MailSlurp without an API key */
+  grepInvert: shouldSkipAuthEmail ? /@auth-email/ : undefined,
 
   /* Configure projects for major browsers */
   projects: [

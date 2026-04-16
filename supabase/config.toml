@@ -197,7 +197,8 @@ web3 = 30
 [auth.captcha]
 enabled = true
 provider = "turnstile"
-secret = "env(TURNSTILE_SECRET_KEY)"
+# Cloudflare Turnstile test secret key (works with site key 1x00000000000000000000AA)
+secret = "1x0000000000000000000000000000000AA"
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.

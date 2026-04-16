@@ -224,7 +224,7 @@
     },
     "checkEmail": {
       "title": "Check your email",
-      "message": "We sent you an email with a link. Open it to continue.",
+      "message": "If an account exists for this email, we'll send you a link. Open it to continue.",
       "primary": "Send another link",
       "cooldown": "Try again in {seconds}s",
       "error": "We couldn't send another link. Please try again.",
