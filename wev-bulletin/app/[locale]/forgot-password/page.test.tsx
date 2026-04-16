@@ -44,7 +44,9 @@ describe('ForgotPasswordPage', () => {
     });
 
     expect(screen.getByRole('heading', { name: /check your email/i })).toBeVisible();
-    expect(screen.getByText(/we sent you an email with a link/i)).toBeVisible();
+    expect(
+      screen.getByText(/if an account exists for this email, we['’]ll send you a link/i),
+    ).toBeVisible();
     expect(screen.getByRole('button', { name: /try again in 30s/i })).toBeDisabled();
     expect(screen.getByRole('link', { name: /log in/i })).toBeVisible();
   });
