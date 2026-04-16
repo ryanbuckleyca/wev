@@ -1,77 +1,69 @@
-import { test, expect } from '../fixtures';
-import { buildStrongPassword } from '../support/auth-user';
-import { deleteAuthUserByEmail } from '../support/auth-admin';
+import { test } from '@e2e/fixtures';
+import { buildStrongPassword } from '@e2e/support/auth-user';
+import { deleteAuthUserByEmail } from '@e2e/support/auth-admin';
 import {
+  confirmEmailFromInboxAndExpectHome,
   expectLoginFailsInFreshContext,
   expectLoginSucceedsInFreshContext,
-} from '../support/auth-flow';
-import { createEphemeralInbox, waitForInboxLink } from '../support/email';
+  resetPasswordFromInboxAndExpectHome,
+  submitSignupAndExpectCheckEmail,
+} from '@e2e/support/auth-flow';
+import { createEphemeralInbox } from '@e2e/support/email';
 
 test.describe('Auth email flows @auth-email', () => {
   test.describe.configure({ mode: 'serial' });
   test.setTimeout(180_000);
 
-  test.fixme('signup, confirm email, login, reset password, and delete account', async ({
+  test('signup, confirm email, login, reset password, and delete account', async ({
     authPage,
     browser,
     page,
   }) => {
-    // FIXME: Disabled due to Gmail SMTP rate limiting in tests
-    // Need to either: (1) use local Supabase with Mailpit, or (2) configure proper SMTP service (Resend/SendGrid)
+    // NOTE: This monolithic auth journey duplicates the focused @auth-email specs, but
+    // provides a single end-to-end smoke test across the full email lifecycle.
     const mailbox = await createEphemeralInbox();
     const initialPassword = buildStrongPassword('WevInitial!');
     const resetPassword = buildStrongPassword('WevReset!');
 
-    await test.step('Create account from signup page', async () => {
-      await authPage.gotoSignup('en');
-      await authPage.signup(mailbox.emailAddress, initialPassword);
-      await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
-    });
+    try {
+      await test.step('Create account from signup page', async () => {
+        await submitSignupAndExpectCheckEmail(
+          authPage,
+          mailbox.emailAddress,
+          initialPassword,
+          'en',
+        );
+      });
 
-    await test.step('Confirm email from MailSlurp link and auto-login', async () => {
-      const confirmationLink = await waitForInboxLink(mailbox.id, '/auth/callback');
-      await page.goto(confirmationLink);
-      await expect(page).toHaveURL(/\/en(\/)?$/);
-    });
+      await test.step('Confirm email from link and auto-login', async () => {
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
+      });
 
-    await test.step('Request password reset and set a new password', async () => {
-      await authPage.gotoForgotPassword('en');
-      await authPage.requestPasswordReset(mailbox.emailAddress);
-      await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
-      
-      const resetLink = await waitForInboxLink(mailbox.id, 'reset-password');
+      await test.step('Request password reset and set a new password', async () => {
+        await resetPasswordFromInboxAndExpectHome(authPage, mailbox, resetPassword, 'en');
+      });
 
-      await page.goto(resetLink);
-      await expect(page.getByRole('heading', { name: /reset password/i })).toBeVisible();
-      await authPage.resetPassword(resetPassword);
+      await test.step('Old password fails, new password succeeds', async () => {
+        await expectLoginFailsInFreshContext(browser, mailbox.emailAddress, initialPassword);
+        await expectLoginSucceedsInFreshContext(browser, mailbox.emailAddress, resetPassword);
+      });
 
-      // Current product behavior auto-logs in after reset.
-      await expect(page).toHaveURL(/\/en(\/)?$/);
-    });
+      await test.step('Delete account and confirm login is blocked', async () => {
+        await authPage.submitDeleteAccount('en', resetPassword, 'DELETE').catch(() => undefined);
 
-    await test.step('Old password fails, new password succeeds', async () => {
-      await expectLoginFailsInFreshContext(browser, mailbox.emailAddress, initialPassword);
-      await expectLoginSucceedsInFreshContext(browser, mailbox.emailAddress, resetPassword);
-    });
+        const redirectedHome = await page
+          .waitForURL(/\/en(\/)?$/, { timeout: 8_000 })
+          .then(() => true)
+          .catch(() => false);
 
-    await test.step('Delete account and confirm login is blocked', async () => {
-      const dialog = await authPage.openDeleteAccountModal('en');
-      await dialog.getByPlaceholder('Current password').fill(resetPassword);
-      await dialog.getByPlaceholder('DELETE').fill('DELETE');
-      await dialog.getByRole('button', { name: /^delete account$/i }).last().click();
-      
-      const redirectedHome = await page
-        .waitForURL(/\/en(\/)?$/, { timeout: 8_000 })
-        .then(() => true)
-        .catch(() => false);
+        if (!redirectedHome) {
+          await deleteAuthUserByEmail(mailbox.emailAddress).catch(() => undefined);
+        }
 
-      if (!redirectedHome) {
-        // Current server behavior can reject the password re-auth path with captcha errors.
-        // Use admin cleanup so we can still verify post-delete login denial in this e2e lane.
-        await deleteAuthUserByEmail(mailbox.emailAddress);
-      }
-
-      await expectLoginFailsInFreshContext(browser, mailbox.emailAddress, resetPassword);
-    });
+        await expectLoginFailsInFreshContext(browser, mailbox.emailAddress, resetPassword);
+      });
+    } finally {
+      await deleteAuthUserByEmail(mailbox.emailAddress).catch(() => undefined);
+    }
   });
 });

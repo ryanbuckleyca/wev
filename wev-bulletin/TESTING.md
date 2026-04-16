@@ -31,15 +31,15 @@ _Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.c
 - Specs live in `e2e/tests`, page objects live in `e2e/pages`, and shared helpers belong in `e2e/support`.
 - `e2e/pages` owns locators and user actions. Keep support code small and focused on environment or database setup.
 - The stable job-board e2e contract is defined in `lib/testing/job-board-contract.ts`. If a selector must survive refactors, add it there instead of scattering string literals through specs.
-- `e2e/support/start-server.ts` wipes and reseeds `wev-test` before the local production server boots, so the app cannot cache stale data from a pre-seed state.
+- `e2e/global-setup.ts` wipes and reseeds the local Supabase database before the suite runs, then calls `/api/revalidate-jobs` so Next.js does not serve stale cached job data.
 - Start with Chromium only. Add more browsers once the suite is stable and the extra runtime is worth it.
 - Add `data-testid` only when a role/label-based locator would be brittle across locales or layout refactors. Stable test IDs should be treated as part of the app's testing API.
 - Keep performance checks in a separate `@perf` lane. They should run against the production build, disable heavy artifacts like trace/video, and assert a user-meaningful readiness milestone rather than a brittle raw `load` event.
 - Run the main correctness suite with `npm run test:e2e` and the perf lane with `npm run test:e2e:perf`.
 - Auth email E2E (`e2e/tests/auth-email.spec.ts`) is part of the main `npm run test:e2e` suite and can also be run alone with `npm run test:e2e:auth-email`.
-- Auth email E2E uses MailSlurp inboxes (`MAILSLURP_API_KEY` required). It now auto-reuses inboxes tagged `wev-e2e-auth` when available, creates tagged inboxes when possible, and can still use explicit `MAILSLURP_INBOX_IDS` (comma-separated) as an override.
+- Auth email E2E uses Mailpit by default (local Supabase SMTP → Mailpit). Set `E2E_EMAIL_PROVIDER=mailslurp` plus `MAILSLURP_API_KEY` to use MailSlurp (auto-reuses inboxes tagged `wev-e2e-auth` when available; supports `MAILSLURP_INBOX_IDS` override). Without a MailSlurp key, the email helpers fall back to Mailpit.
 - Playwright derives `SUPABASE_PROJECT_REF` from `SUPABASE_URL` when needed, so you do not need to maintain a separate project-ref secret for e2e.
-- Playwright is **local-only** for now (`npm run test:e2e`); GitHub Actions does not run the e2e suite.
+- Playwright runs locally and in GitHub Actions (workflow starts local Supabase, builds the production Next.js app, then runs `npm run test:e2e`).
 
 ## Guiding Principles
 
