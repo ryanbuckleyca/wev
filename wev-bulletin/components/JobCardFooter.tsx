@@ -223,7 +223,7 @@ export default function JobCardFooter({
     <div className="flex gap-4">
       {showTooltip && matchTooltipContent && (
         <div className="flex items-center justify-center pr-4 border-r border-border">
-          <InfoPopover content={matchTooltipContent}>
+          <InfoPopover ariaLabel={t('jobCard.viewMatchDetails')} content={matchTooltipContent}>
             <div className="flex items-center gap-2">
               <ProgressDonut percentage={totalMatchPercentage} size="sm" text="" />
               <span className="text-sm font-medium text-foreground">{totalMatchPercentage}%</span>

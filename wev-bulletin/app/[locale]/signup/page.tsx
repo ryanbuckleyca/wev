@@ -60,8 +60,14 @@ export default function SignupPage() {
     });
 
     if (error) {
-      setError(error.message);
-      recycleTurnstileAfterAuthError();
+      const looksLikeExistingAccount = /already registered/i.test(error.message);
+      if (looksLikeExistingAccount) {
+        setSentEmail(email);
+        clearCaptchaToken();
+      } else {
+        setError(error.message);
+        recycleTurnstileAfterAuthError();
+      }
     } else {
       setSentEmail(email);
       clearCaptchaToken();
