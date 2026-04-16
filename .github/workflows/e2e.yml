@@ -117,14 +117,9 @@ jobs:
           echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
           echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> $GITHUB_ENV
 
-      - name: Create .env placeholder for dotenv-cli
-        # dotenv -e .env (used in `npm run build`) requires the file to exist.
-        # Values are already in the environment — dotenv-cli won't override them.
-        run: touch .env
-
       - name: Build Next.js app
         env:
-          # Hard fallbacks ensure vars are never empty even if awk parsing fails.
+          # Hard fallbacks ensure vars are never empty even if parsing fails.
           # SUPABASE_URL and NEXT_PUBLIC_SUPABASE_URL are always 127.0.0.1:54321.
           SUPABASE_URL: ${{ env.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
@@ -132,7 +127,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_SITE_URL: http://localhost:3000
           REVALIDATE_SECRET: dummy-e2e-cache-secret
-        run: npm run build
+        run: npm run build --prefix wev-bulletin
 
       - name: Install Playwright system dependencies
         run: npx playwright install-deps chromium
