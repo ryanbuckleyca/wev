@@ -20,7 +20,7 @@
   },
   "scripts": {
     "dev": "dotenv -e .env -- npm run dev --prefix wev-bulletin",
-    "prepare": "git config core.hooksPath .githooks",
+    "prepare": "node -e \"const fs=require('fs');const cp=require('child_process');if(!fs.existsSync('.git'))process.exit(0);try{cp.execSync('git config core.hooksPath .githooks',{stdio:'inherit'});}catch(_){process.exit(0);}\"",
     "build": "dotenv -e .env -- npm run build --prefix wev-bulletin",
     "start": "npm start --prefix wev-bulletin",
     "test": "npm run test:bulletin && npm run test:scraper",
