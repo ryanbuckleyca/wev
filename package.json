@@ -20,7 +20,7 @@
   },
   "scripts": {
     "dev": "dotenv -e .env -- npm run dev --prefix wev-bulletin",
-    "prepare": "git config core.hooksPath .githooks",
+    "prepare": "node scripts/prepare-git-hooks.cjs",
     "build": "dotenv -e .env -- npm run build --prefix wev-bulletin",
     "start": "npm start --prefix wev-bulletin",
     "test": "npm run test:bulletin && npm run test:scraper",
