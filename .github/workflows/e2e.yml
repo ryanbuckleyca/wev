@@ -126,6 +126,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          # Turnstile test site key so auth forms can render captcha reliably in CI builds.
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
           REVALIDATE_SECRET: dummy-e2e-cache-secret
         run: npm run build --prefix wev-bulletin
 
