@@ -3,7 +3,8 @@
  * Provides inbox management and email link extraction.
  */
 
-export { createEphemeralInbox, waitForInboxLink } from './client';
+export { createEphemeralInbox, getEmailProvider, waitForInboxLink } from './client';
+export type { EmailProvider } from './client';
 export type { InboxRef } from './inbox-manager';
 export { EmailUrlExtractor } from './url-extractor';
 export { EmailWaiter } from './email-waiter';
