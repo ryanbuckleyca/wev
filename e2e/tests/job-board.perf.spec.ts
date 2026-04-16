@@ -1,10 +1,10 @@
-import { test, expect } from '../fixtures';
-import { expectJobBoardReady } from '../support/job-board';
+import { test, expect } from '@e2e/fixtures';
+import { expectJobBoardReady } from '@e2e/support/job-board';
 import {
   attachPerformanceSnapshot,
   readElapsedNavigationTime,
   readPagePerformanceSnapshot,
-} from '../support/performance';
+} from '@e2e/support/performance';
 
 const JOB_BOARD_PERFORMANCE_BUDGET_MS = {
   domContentLoadedMs: 2_500,

@@ -1,13 +1,14 @@
-import { test, expect } from '../fixtures';
-import { buildStrongPassword } from '../support/auth-user';
-import { deleteAuthUserByEmail } from '../support/auth-admin';
+import { test } from '@e2e/fixtures';
+import { buildStrongPassword } from '@e2e/support/auth-user';
+import { deleteAuthUserByEmail } from '@e2e/support/auth-admin';
 import {
   confirmEmailFromInboxAndExpectHome,
   expectLoginFailsInFreshContext,
   expectLoginSucceedsInFreshContext,
+  resetPasswordFromInboxAndExpectHome,
   submitSignupAndExpectCheckEmail,
-} from '../support/auth-flow';
-import { createEphemeralInbox, waitForInboxLink } from '../support/email';
+} from '@e2e/support/auth-flow';
+import { createEphemeralInbox } from '@e2e/support/email';
 
 test.describe('Auth email flows @auth-email', () => {
   test.describe.configure({ mode: 'serial' });
@@ -35,22 +36,11 @@ test.describe('Auth email flows @auth-email', () => {
       });
 
       await test.step('Confirm email from link and auto-login', async () => {
-        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en', 90_000);
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
       });
 
       await test.step('Request password reset and set a new password', async () => {
-        await authPage.gotoForgotPassword('en');
-        await authPage.requestPasswordReset(mailbox.emailAddress);
-        await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
-
-        const resetLink = await waitForInboxLink(mailbox.id, 'reset-password', 90_000);
-
-        await page.goto(resetLink);
-        await expect(page.getByRole('heading', { name: /reset password/i })).toBeVisible();
-        await authPage.resetPassword(resetPassword);
-
-        // Current product behavior auto-logs in after reset.
-        await expect(page).toHaveURL(/\/en(\/)?$/);
+        await resetPasswordFromInboxAndExpectHome(authPage, mailbox, resetPassword, 'en');
       });
 
       await test.step('Old password fails, new password succeeds', async () => {

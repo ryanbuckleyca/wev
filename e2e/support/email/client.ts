@@ -8,7 +8,7 @@ import {
   waitForInboxLink as waitForMailpitLink,
 } from './mailpit-client';
 
-type EmailProvider = 'mailpit' | 'mailslurp';
+export type EmailProvider = 'mailpit' | 'mailslurp';
 
 function resolveEmailProvider(): EmailProvider {
   const explicit = process.env.E2E_EMAIL_PROVIDER?.trim().toLowerCase();
@@ -17,6 +17,10 @@ function resolveEmailProvider(): EmailProvider {
   if (explicit === 'mailpit') return 'mailpit';
 
   return process.env.MAILSLURP_API_KEY?.trim() ? 'mailslurp' : 'mailpit';
+}
+
+export function getEmailProvider(): EmailProvider {
+  return resolveEmailProvider();
 }
 
 export async function createEphemeralInbox(): Promise<InboxRef> {

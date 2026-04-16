@@ -1,7 +1,7 @@
 import { expect, type Browser } from '@playwright/test';
 import type { AppLocale } from '@/i18n/routing';
 import { AuthPage } from '@e2e/pages/auth.page';
-import { waitForInboxLink, type InboxRef } from './email';
+import { getEmailProvider, waitForInboxLink, type InboxRef } from './email';
 
 export async function submitSignupAndExpectCheckEmail(
   authPage: AuthPage,
@@ -21,11 +21,45 @@ export async function confirmEmailFromInboxAndExpectHome(
   authPage: AuthPage,
   inbox: InboxRef,
   locale: AppLocale = 'en',
-  timeoutMs = 90_000,
+  timeoutMs?: number,
 ): Promise<void> {
   const page = authPage.page;
-  const confirmationLink = await waitForInboxLink(inbox.id, '/auth/callback', timeoutMs);
+  const effectiveTimeoutMs =
+    timeoutMs ?? (getEmailProvider() === 'mailpit' ? 30_000 : 90_000);
+
+  const confirmationLink = await waitForInboxLink(
+    inbox.id,
+    '/auth/callback',
+    effectiveTimeoutMs,
+  );
   await page.goto(confirmationLink);
+  await expect(page).toHaveURL(new RegExp(`/${locale}(\\/)?$`), { timeout: 10_000 });
+}
+
+export async function resetPasswordFromInboxAndExpectHome(
+  authPage: AuthPage,
+  inbox: InboxRef,
+  newPassword: string,
+  locale: AppLocale = 'en',
+  timeoutMs?: number,
+): Promise<void> {
+  const page = authPage.page;
+  const effectiveTimeoutMs =
+    timeoutMs ?? (getEmailProvider() === 'mailpit' ? 30_000 : 90_000);
+
+  await authPage.gotoForgotPassword(locale);
+  await authPage.requestPasswordReset(inbox.emailAddress);
+  await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible({
+    timeout: 10_000,
+  });
+
+  const resetLink = await waitForInboxLink(inbox.id, 'reset-password', effectiveTimeoutMs);
+  await page.goto(resetLink);
+  await expect(page.getByRole('heading', { name: /reset password/i })).toBeVisible({
+    timeout: 10_000,
+  });
+
+  await authPage.resetPassword(newPassword);
   await expect(page).toHaveURL(new RegExp(`/${locale}(\\/)?$`), { timeout: 10_000 });
 }
 

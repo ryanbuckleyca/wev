@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 import { getLocalizedPathname, type AppLocale } from '@/i18n/routing';
-import type { JobBoardPage } from '../pages/job-board.page';
+import type { JobBoardPage } from '@e2e/pages/job-board.page';
 
 export function getJobBoardPath(locale: AppLocale): string {
   return `/${locale}${getLocalizedPathname('/jobs', locale)}`;
