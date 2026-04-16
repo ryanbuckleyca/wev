@@ -1,6 +1,6 @@
-import { test, expect } from '../fixtures';
-import type { JobBoardPage } from '../pages/job-board.page';
-import { expectJobBoardReady, loadEnglishJobBoard } from '../support/job-board';
+import { test, expect } from '@e2e/fixtures';
+import type { JobBoardPage } from '@e2e/pages/job-board.page';
+import { expectJobBoardReady, loadEnglishJobBoard } from '@e2e/support/job-board';
 import { SEEDED_JOB_BOARD_EXPECTATIONS } from '@supabase/dataset';
 
 const FILTER_LABELS = {

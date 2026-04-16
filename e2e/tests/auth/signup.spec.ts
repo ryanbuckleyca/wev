@@ -1,11 +1,11 @@
-import { test, expect } from '../../fixtures';
+import { test, expect } from '@e2e/fixtures';
 import { buildStrongPassword } from '@e2e/support/auth-user';
 import { deleteAuthUserByEmail } from '@e2e/support/auth-admin';
 import {
   confirmEmailFromInboxAndExpectHome,
   submitSignupAndExpectCheckEmail,
-} from '../../support/auth-flow';
-import { createEphemeralInbox } from '../../support/email';
+} from '@e2e/support/auth-flow';
+import { createEphemeralInbox } from '@e2e/support/email';
 
 test.describe('Signup flow @auth-email', () => {
   test.setTimeout(90_000);
@@ -20,7 +20,7 @@ test.describe('Signup flow @auth-email', () => {
       });
 
       await test.step('Confirm email and auto-login', async () => {
-        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en', 90_000);
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
       });
 
       await test.step('Verify user is logged in', async () => {
@@ -41,7 +41,7 @@ test.describe('Signup flow @auth-email', () => {
     try {
       // Create first account
       await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
-      await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en', 90_000);
+      await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
 
       // Sign out
       await page.goto('/auth/signout', { waitUntil: 'networkidle' });

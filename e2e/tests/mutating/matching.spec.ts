@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures';
+import { test, expect } from '@e2e/fixtures';
 import { buildStrongPassword } from '@e2e/support/auth-user';
 import {
   countJobMatchesForUserId,
@@ -9,9 +9,9 @@ import {
 import {
   confirmEmailFromInboxAndExpectHome,
   submitSignupAndExpectCheckEmail,
-} from '../../support/auth-flow';
-import { createEphemeralInbox } from '../../support/email';
-import { loadEnglishJobBoard } from '../../support/job-board';
+} from '@e2e/support/auth-flow';
+import { createEphemeralInbox } from '@e2e/support/email';
+import { loadEnglishJobBoard } from '@e2e/support/job-board';
 
 test.describe('Matching + job card interactions @auth-email', () => {
   test.setTimeout(180_000);
@@ -28,7 +28,7 @@ test.describe('Matching + job card interactions @auth-email', () => {
     try {
       await test.step('Sign up and confirm email', async () => {
         await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
-        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en', 90_000);
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
       });
 
       await test.step('Save a minimal profile to trigger match recalculation', async () => {

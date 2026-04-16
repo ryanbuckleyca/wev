@@ -1,12 +1,12 @@
-import { test, expect } from '../../fixtures';
+import { test, expect } from '@e2e/fixtures';
 import { buildStrongPassword } from '@e2e/support/auth-user';
 import { deleteAuthUserByEmail } from '@e2e/support/auth-admin';
 import {
   confirmEmailFromInboxAndExpectHome,
   expectLoginFailsInFreshContext,
   submitSignupAndExpectCheckEmail,
-} from '../../support/auth-flow';
-import { createEphemeralInbox } from '../../support/email';
+} from '@e2e/support/auth-flow';
+import { createEphemeralInbox } from '@e2e/support/email';
 
 test.describe('Account deletion flow @auth-email', () => {
   test.setTimeout(120_000);
@@ -18,7 +18,7 @@ test.describe('Account deletion flow @auth-email', () => {
     try {
       await test.step('Create and confirm account', async () => {
         await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
-        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en', 90_000);
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
       });
 
       await test.step('Delete account', async () => {
@@ -49,7 +49,7 @@ test.describe('Account deletion flow @auth-email', () => {
     try {
       await test.step('Create and confirm account', async () => {
         await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
-        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en', 90_000);
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
       });
 
       await test.step('Try to delete with wrong password', async () => {
