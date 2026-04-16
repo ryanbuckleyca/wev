@@ -1,6 +1,11 @@
 import { test, expect } from '../../fixtures';
 import { buildStrongPassword } from '../../support/auth-user';
-import { deleteAuthUserByEmail } from '../../support/auth-admin';
+import {
+  countJobMatchesForUserId,
+  deleteAuthUserByEmail,
+  getAuthUserIdByEmail,
+  recalculateMatchesForUserId,
+} from '../../support/auth-admin';
 import { createEphemeralInbox, waitForInboxLink } from '../../support/email';
 import { loadEnglishJobBoard } from '../../support/job-board';
 
@@ -66,9 +71,19 @@ test.describe('Matching + job card interactions @auth-email', () => {
         await expect(valuesDialog).toBeHidden();
 
         await page.getByRole('button', { name: /^save profile$/i }).click();
-        await expect(page.getByText(/profile updated successfully/i)).toBeVisible({
+        await expect(page.getByText(/profile updated successfully/i).first()).toBeVisible({
           timeout: 10_000,
         });
+
+        const userId = await getAuthUserIdByEmail(mailbox.emailAddress);
+        if (!userId) {
+          throw new Error(`Could not resolve auth user id for ${mailbox.emailAddress}`);
+        }
+
+        await recalculateMatchesForUserId(userId);
+        await expect
+          .poll(() => countJobMatchesForUserId(userId), { timeout: 90_000 })
+          .toBeGreaterThan(0);
       });
 
       await test.step('Wait for match UI to appear on the job board', async () => {
