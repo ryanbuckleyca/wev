@@ -1,6 +1,6 @@
 import { expect, type Browser } from '@playwright/test';
 import type { AppLocale } from '@/i18n/routing';
-import { AuthPage } from '../pages/auth.page';
+import { AuthPage } from '@e2e/pages/auth.page';
 import { waitForInboxLink, type InboxRef } from './email';
 
 export async function submitSignupAndExpectCheckEmail(

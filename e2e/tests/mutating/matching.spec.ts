@@ -1,11 +1,11 @@
 import { test, expect } from '../../fixtures';
-import { buildStrongPassword } from '../../support/auth-user';
+import { buildStrongPassword } from '@e2e/support/auth-user';
 import {
   countJobMatchesForUserId,
   deleteAuthUserByEmail,
   getAuthUserIdByEmail,
   recalculateMatchesForUserId,
-} from '../../support/auth-admin';
+} from '@e2e/support/auth-admin';
 import {
   confirmEmailFromInboxAndExpectHome,
   submitSignupAndExpectCheckEmail,

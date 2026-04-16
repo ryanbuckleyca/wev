@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures';
-import { buildStrongPassword } from '../../support/auth-user';
-import { deleteAuthUserByEmail } from '../../support/auth-admin';
+import { buildStrongPassword } from '@e2e/support/auth-user';
+import { deleteAuthUserByEmail } from '@e2e/support/auth-admin';
 import {
   confirmEmailFromInboxAndExpectHome,
   submitSignupAndExpectCheckEmail,
