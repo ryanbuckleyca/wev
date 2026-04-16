@@ -45,7 +45,7 @@ export default defineConfig({
     ['html', { open: 'never', outputFolder: 'playwright-report' }],
     ['junit', { outputFile: 'e2e/results/junit.xml' }],
   ],
-  
+
   /* Seed the database once before all tests */
   globalSetup: require.resolve('./global-setup.ts'),
 
