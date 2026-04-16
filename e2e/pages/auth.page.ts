@@ -44,9 +44,10 @@ export class AuthPage {
     await this.page.mouse.click(clickX, clickY);
   }
 
-  async submitWhenCaptchaReady(buttonName: RegExp, timeoutMs = 90_000): Promise<void> {
-    const submitButton = this.page.getByRole('button', { name: buttonName });
-
+  private async submitWhenCaptchaReadyLocator(
+    submitButton: Locator,
+    timeoutMs = 90_000,
+  ): Promise<void> {
     await expect
       .poll(
         async () => {
@@ -59,6 +60,13 @@ export class AuthPage {
       .toBe(true);
 
     await submitButton.click();
+  }
+
+  async submitWhenCaptchaReady(buttonName: RegExp, timeoutMs = 90_000): Promise<void> {
+    await this.submitWhenCaptchaReadyLocator(
+      this.page.getByRole('button', { name: buttonName }),
+      timeoutMs,
+    );
   }
 
   private emailInput() {
@@ -122,8 +130,11 @@ export class AuthPage {
     confirmationText: 'DELETE' | 'SUPPRIMER' = 'DELETE',
   ): Promise<void> {
     const dialog = await this.openDeleteAccountModal(locale);
-    await dialog.getByPlaceholder('Current password').fill(currentPassword);
+    await dialog.getByPlaceholder(/current password/i).fill(currentPassword);
     await dialog.getByPlaceholder(confirmationText).fill(confirmationText);
-    await this.submitWhenCaptchaReady(/^delete account$/i);
+
+    await this.submitWhenCaptchaReadyLocator(
+      dialog.getByRole('button', { name: /^delete account$/i }).first(),
+    );
   }
 }

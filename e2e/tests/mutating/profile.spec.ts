@@ -1,7 +1,11 @@
-import { test, expect } from '../../fixtures';
-import { buildStrongPassword } from '../../support/auth-user';
-import { deleteAuthUserByEmail } from '../../support/auth-admin';
-import { createEphemeralInbox, waitForInboxLink } from '../../support/email';
+import { test, expect } from '@e2e/fixtures';
+import { buildStrongPassword } from '@e2e/support/auth-user';
+import { deleteAuthUserByEmail } from '@e2e/support/auth-admin';
+import {
+  confirmEmailFromInboxAndExpectHome,
+  submitSignupAndExpectCheckEmail,
+} from '@e2e/support/auth-flow';
+import { createEphemeralInbox } from '@e2e/support/email';
 
 test.describe('Profile editing flow @auth-email', () => {
   test.setTimeout(180_000);
@@ -12,13 +16,8 @@ test.describe('Profile editing flow @auth-email', () => {
 
     try {
       await test.step('Sign up and confirm email', async () => {
-        await authPage.gotoSignup('en');
-        await authPage.signup(mailbox.emailAddress, password);
-        await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
-
-        const confirmationLink = await waitForInboxLink(mailbox.id, '/auth/callback', 90_000);
-        await page.goto(confirmationLink);
-        await expect(page).toHaveURL(/\/en(\/)?$/, { timeout: 10_000 });
+        await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
       });
 
       await test.step('Open profile and fill basic fields', async () => {

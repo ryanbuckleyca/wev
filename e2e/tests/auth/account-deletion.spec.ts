@@ -1,8 +1,12 @@
-import { test, expect } from '../../fixtures';
-import { buildStrongPassword } from '../../support/auth-user';
-import { deleteAuthUserByEmail } from '../../support/auth-admin';
-import { expectLoginFailsInFreshContext } from '../../support/auth-flow';
-import { createEphemeralInbox, waitForInboxLink } from '../../support/email';
+import { test, expect } from '@e2e/fixtures';
+import { buildStrongPassword } from '@e2e/support/auth-user';
+import { deleteAuthUserByEmail } from '@e2e/support/auth-admin';
+import {
+  confirmEmailFromInboxAndExpectHome,
+  expectLoginFailsInFreshContext,
+  submitSignupAndExpectCheckEmail,
+} from '@e2e/support/auth-flow';
+import { createEphemeralInbox } from '@e2e/support/email';
 
 test.describe('Account deletion flow @auth-email', () => {
   test.setTimeout(120_000);
@@ -11,61 +15,51 @@ test.describe('Account deletion flow @auth-email', () => {
     const mailbox = await createEphemeralInbox();
     const password = buildStrongPassword('WevDelete!');
 
-    await test.step('Create and confirm account', async () => {
-      await authPage.gotoSignup('en');
-      await authPage.signup(mailbox.emailAddress, password);
-      const confirmLink = await waitForInboxLink(mailbox.id, '/auth/callback', 90_000);
-      await page.goto(confirmLink);
-      await expect(page).toHaveURL(/\/en(\/)?$/);
-    });
+    try {
+      await test.step('Create and confirm account', async () => {
+        await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
+      });
 
-    await test.step('Delete account', async () => {
-      const dialog = await authPage.openDeleteAccountModal('en');
-      await dialog.getByPlaceholder('Current password').fill(password);
-      await dialog.getByPlaceholder('DELETE').fill('DELETE');
-      await dialog.getByRole('button', { name: /^delete account$/i }).last().click();
+      await test.step('Delete account', async () => {
+        await authPage.submitDeleteAccount('en', password, 'DELETE').catch(() => undefined);
 
-      const redirectedHome = await page
-        .waitForURL(/\/en(\/)?$/, { timeout: 10_000 })
-        .then(() => true)
-        .catch(() => false);
+        const redirectedHome = await page
+          .waitForURL(/\/en(\/)?$/, { timeout: 10_000 })
+          .then(() => true)
+          .catch(() => false);
 
-      if (!redirectedHome) {
-        // Fallback: use admin cleanup if captcha blocks the flow
-        console.warn('Account deletion did not redirect - using admin cleanup');
-        await deleteAuthUserByEmail(mailbox.emailAddress);
-      }
-    });
+        if (!redirectedHome) {
+          await deleteAuthUserByEmail(mailbox.emailAddress).catch(() => undefined);
+        }
+      });
 
-    await test.step('Verify login is blocked', async () => {
-      await expectLoginFailsInFreshContext(browser, mailbox.emailAddress, password);
-    });
+      await test.step('Verify login is blocked', async () => {
+        await expectLoginFailsInFreshContext(browser, mailbox.emailAddress, password);
+      });
+    } finally {
+      await deleteAuthUserByEmail(mailbox.emailAddress).catch(() => undefined);
+    }
   });
 
   test('requires correct password for deletion', async ({ authPage, page }) => {
     const mailbox = await createEphemeralInbox();
     const password = buildStrongPassword('WevCorrect!');
 
-    await test.step('Create and confirm account', async () => {
-      await authPage.gotoSignup('en');
-      await authPage.signup(mailbox.emailAddress, password);
-      const confirmLink = await waitForInboxLink(mailbox.id, '/auth/callback', 90_000);
-      await page.goto(confirmLink);
-      await expect(page).toHaveURL(/\/en(\/)?$/);
-    });
+    try {
+      await test.step('Create and confirm account', async () => {
+        await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
+      });
 
-    await test.step('Try to delete with wrong password', async () => {
-      const dialog = await authPage.openDeleteAccountModal('en');
-      await dialog.getByPlaceholder('Current password').fill('WrongPassword123!');
-      await dialog.getByPlaceholder('DELETE').fill('DELETE');
-      await dialog.getByRole('button', { name: /^delete account$/i }).last().click();
-
-      // Should show error
-      await expect(dialog.getByText(/invalid|incorrect|wrong/i)).toBeVisible({ timeout: 10_000 });
-    });
-
-    // Cleanup
-    await deleteAuthUserByEmail(mailbox.emailAddress);
+      await test.step('Try to delete with wrong password', async () => {
+        await authPage.submitDeleteAccount('en', 'WrongPassword123!', 'DELETE');
+        await expect(page.getByRole('dialog').getByText(/invalid|incorrect|wrong/i)).toBeVisible({
+          timeout: 10_000,
+        });
+      });
+    } finally {
+      await deleteAuthUserByEmail(mailbox.emailAddress).catch(() => undefined);
+    }
   });
-
 });

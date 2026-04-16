@@ -8,6 +8,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@e2e/*": ["./*"],
       "@/*": ["../wev-bulletin/*"],
       "@supabase/dataset": ["../supabase/src/dataset"],
       "@supabase/seeder": ["../supabase/src/seeder"],

@@ -1,7 +1,11 @@
-import { test, expect } from '../../fixtures';
-import { buildStrongPassword } from '../../support/auth-user';
-import { deleteAuthUserByEmail } from '../../support/auth-admin';
-import { createEphemeralInbox, waitForInboxLink } from '../../support/email';
+import { test, expect } from '@e2e/fixtures';
+import { buildStrongPassword } from '@e2e/support/auth-user';
+import { deleteAuthUserByEmail } from '@e2e/support/auth-admin';
+import {
+  confirmEmailFromInboxAndExpectHome,
+  submitSignupAndExpectCheckEmail,
+} from '@e2e/support/auth-flow';
+import { createEphemeralInbox } from '@e2e/support/email';
 
 test.describe('Signup flow @auth-email', () => {
   test.setTimeout(90_000);
@@ -12,15 +16,11 @@ test.describe('Signup flow @auth-email', () => {
 
     try {
       await test.step('Submit signup form', async () => {
-        await authPage.gotoSignup('en');
-        await authPage.signup(mailbox.emailAddress, password);
-        await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
+        await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
       });
 
       await test.step('Confirm email and auto-login', async () => {
-        const confirmationLink = await waitForInboxLink(mailbox.id, '/auth/callback', 90_000);
-        await page.goto(confirmationLink);
-        await expect(page).toHaveURL(/\/en(\/)?$/, { timeout: 10_000 });
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
       });
 
       await test.step('Verify user is logged in', async () => {
@@ -40,20 +40,14 @@ test.describe('Signup flow @auth-email', () => {
 
     try {
       // Create first account
-      await authPage.gotoSignup('en');
-      await authPage.signup(mailbox.emailAddress, password);
-      await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
-
-      const confirmationLink = await waitForInboxLink(mailbox.id, '/auth/callback', 90_000);
-      await page.goto(confirmationLink);
-      await expect(page).toHaveURL(/\/en(\/)?$/);
+      await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
+      await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
 
       // Sign out
       await page.goto('/auth/signout', { waitUntil: 'networkidle' });
 
       // Try to sign up again with same email
-      await authPage.gotoSignup('en');
-      await authPage.signup(mailbox.emailAddress, password);
+      await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
 
       // Industry standard: show the same generic "check your email" UX.
       await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();

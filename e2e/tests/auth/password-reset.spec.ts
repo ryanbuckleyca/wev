@@ -1,38 +1,31 @@
-import { test, expect } from '../../fixtures';
-import { buildStrongPassword } from '../../support/auth-user';
-import { deleteAuthUserByEmail } from '../../support/auth-admin';
-import { expectLoginFailsInFreshContext, expectLoginSucceedsInFreshContext } from '../../support/auth-flow';
-import { createEphemeralInbox, waitForInboxLink } from '../../support/email';
+import { test, expect } from '@e2e/fixtures';
+import { buildStrongPassword } from '@e2e/support/auth-user';
+import { deleteAuthUserByEmail } from '@e2e/support/auth-admin';
+import {
+  confirmEmailFromInboxAndExpectHome,
+  expectLoginFailsInFreshContext,
+  expectLoginSucceedsInFreshContext,
+  resetPasswordFromInboxAndExpectHome,
+  submitSignupAndExpectCheckEmail,
+} from '@e2e/support/auth-flow';
+import { createEphemeralInbox } from '@e2e/support/email';
 
 test.describe('Password reset flow @auth-email', () => {
   test.setTimeout(120_000);
 
-  test('resets password successfully', async ({ authPage, browser, page }) => {
+  test('resets password successfully', async ({ authPage, browser }) => {
     const mailbox = await createEphemeralInbox();
     const initialPassword = buildStrongPassword('WevInitial!');
     const newPassword = buildStrongPassword('WevReset!');
 
     try {
       await test.step('Create and confirm account', async () => {
-        await authPage.gotoSignup('en');
-        await authPage.signup(mailbox.emailAddress, initialPassword);
-        const confirmLink = await waitForInboxLink(mailbox.id, '/auth/callback', 90_000);
-        await page.goto(confirmLink);
-        await expect(page).toHaveURL(/\/en(\/)?$/);
+        await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, initialPassword, 'en');
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en');
       });
 
-      await test.step('Request password reset', async () => {
-        await authPage.gotoForgotPassword('en');
-        await authPage.requestPasswordReset(mailbox.emailAddress);
-        await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
-      });
-
-      await test.step('Set new password', async () => {
-        const resetLink = await waitForInboxLink(mailbox.id, 'reset-password', 90_000);
-        await page.goto(resetLink);
-        await expect(page.getByRole('heading', { name: /reset password/i })).toBeVisible();
-        await authPage.resetPassword(newPassword);
-        await expect(page).toHaveURL(/\/en(\/)?$/, { timeout: 10_000 });
+      await test.step('Request password reset and set new password', async () => {
+        await resetPasswordFromInboxAndExpectHome(authPage, mailbox, newPassword, 'en');
       });
 
       await test.step('Verify old password fails', async () => {
