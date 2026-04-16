@@ -6,9 +6,7 @@ import { createEphemeralInbox, waitForInboxLink } from '../../support/email';
 test.describe('Signup flow @auth-email', () => {
   test.setTimeout(90_000);
 
-  test.fixme('creates account and confirms email', async ({ authPage, page }) => {
-    // FIXME: Disabled due to Gmail SMTP rate limiting in tests
-    // Need to either: (1) use local Supabase with Mailpit, or (2) configure proper SMTP service (Resend/SendGrid)
+  test('creates account and confirms email', async ({ authPage, page }) => {
     const mailbox = await createEphemeralInbox();
     const password = buildStrongPassword('WevSignup!');
 
@@ -25,9 +23,9 @@ test.describe('Signup flow @auth-email', () => {
     });
 
     await test.step('Verify user is logged in', async () => {
-      // Check for user menu or profile indicator
-      await expect(page.getByRole('button', { name: /account|profile/i })).toBeVisible({
-        timeout: 5_000,
+      await authPage.gotoAccountSettings('en');
+      await expect(page.getByRole('heading', { name: /account settings/i })).toBeVisible({
+        timeout: 10_000,
       });
     });
 
@@ -35,9 +33,7 @@ test.describe('Signup flow @auth-email', () => {
     await deleteAuthUserByEmail(mailbox.emailAddress);
   });
 
-  test.fixme('shows error for duplicate email', async ({ authPage, page }) => {
-    // FIXME: Disabled due to Gmail SMTP rate limiting in tests
-    // Need to either: (1) use local Supabase with Mailpit, or (2) configure proper SMTP service (Resend/SendGrid)
+  test('does not reveal account existence for duplicate email', async ({ authPage, page }) => {
     const mailbox = await createEphemeralInbox();
     const password = buildStrongPassword('WevDupe!');
 
@@ -57,9 +53,9 @@ test.describe('Signup flow @auth-email', () => {
     await authPage.gotoSignup('en');
     await authPage.signup(mailbox.emailAddress, password);
 
-    // Should show error or redirect to check email
-    // (Supabase behavior: sends another confirmation email)
+    // Industry standard: show the same generic "check your email" UX.
     await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
+    await expect(page.getByText(/if an account exists/i)).toBeVisible();
 
     // Cleanup
     await deleteAuthUserByEmail(mailbox.emailAddress);

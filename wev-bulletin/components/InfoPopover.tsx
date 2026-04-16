@@ -7,6 +7,8 @@ interface InfoPopoverProps {
   children: React.ReactNode;
   content: React.ReactNode;
   className?: string;
+  /** Accessible name for the trigger wrapper. */
+  ariaLabel?: string;
   /** Applied to the trigger wrapper (e.g. -1 to skip in tab order). */
   triggerTabIndex?: number;
 }
@@ -21,6 +23,7 @@ export default function InfoPopover({
   children,
   content,
   className = '',
+  ariaLabel,
   triggerTabIndex,
 }: InfoPopoverProps) {
   const [open, setOpen] = React.useState(false);
@@ -48,6 +51,7 @@ export default function InfoPopover({
           className={`inline-flex cursor-help ${className}`}
           style={{ touchAction: 'manipulation' }}
           role="button"
+          aria-label={ariaLabel}
           tabIndex={triggerTabIndex ?? 0}
         >
           {children}

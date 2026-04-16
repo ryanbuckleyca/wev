@@ -3,7 +3,7 @@
  * Provides inbox management and email link extraction.
  */
 
-export { createEphemeralInbox, waitForInboxLink } from './mailslurp-client';
+export { createEphemeralInbox, waitForInboxLink } from './client';
 export type { InboxRef } from './inbox-manager';
 export { EmailUrlExtractor } from './url-extractor';
 export { EmailWaiter } from './email-waiter';

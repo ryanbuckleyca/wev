@@ -224,7 +224,7 @@
     },
     "checkEmail": {
       "title": "Vérifiez votre courriel",
-      "message": "Nous vous avons envoyé un courriel avec un lien. Ouvrez-le pour continuer.",
+      "message": "Si un compte existe pour ce courriel, nous vous enverrons un lien. Ouvrez-le pour continuer.",
       "primary": "Envoyer un autre lien",
       "cooldown": "Réessayez dans {seconds}s",
       "error": "Impossible d'envoyer un autre lien. Veuillez réessayer.",
