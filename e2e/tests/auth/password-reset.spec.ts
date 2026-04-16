@@ -1,7 +1,12 @@
 import { test, expect } from '../../fixtures';
 import { buildStrongPassword } from '../../support/auth-user';
 import { deleteAuthUserByEmail } from '../../support/auth-admin';
-import { expectLoginFailsInFreshContext, expectLoginSucceedsInFreshContext } from '../../support/auth-flow';
+import {
+  confirmEmailFromInboxAndExpectHome,
+  expectLoginFailsInFreshContext,
+  expectLoginSucceedsInFreshContext,
+  submitSignupAndExpectCheckEmail,
+} from '../../support/auth-flow';
 import { createEphemeralInbox, waitForInboxLink } from '../../support/email';
 
 test.describe('Password reset flow @auth-email', () => {
@@ -14,11 +19,8 @@ test.describe('Password reset flow @auth-email', () => {
 
     try {
       await test.step('Create and confirm account', async () => {
-        await authPage.gotoSignup('en');
-        await authPage.signup(mailbox.emailAddress, initialPassword);
-        const confirmLink = await waitForInboxLink(mailbox.id, '/auth/callback', 90_000);
-        await page.goto(confirmLink);
-        await expect(page).toHaveURL(/\/en(\/)?$/);
+        await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, initialPassword, 'en');
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en', 90_000);
       });
 
       await test.step('Request password reset', async () => {

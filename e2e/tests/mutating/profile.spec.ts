@@ -1,7 +1,11 @@
 import { test, expect } from '../../fixtures';
 import { buildStrongPassword } from '../../support/auth-user';
 import { deleteAuthUserByEmail } from '../../support/auth-admin';
-import { createEphemeralInbox, waitForInboxLink } from '../../support/email';
+import {
+  confirmEmailFromInboxAndExpectHome,
+  submitSignupAndExpectCheckEmail,
+} from '../../support/auth-flow';
+import { createEphemeralInbox } from '../../support/email';
 
 test.describe('Profile editing flow @auth-email', () => {
   test.setTimeout(180_000);
@@ -12,13 +16,8 @@ test.describe('Profile editing flow @auth-email', () => {
 
     try {
       await test.step('Sign up and confirm email', async () => {
-        await authPage.gotoSignup('en');
-        await authPage.signup(mailbox.emailAddress, password);
-        await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
-
-        const confirmationLink = await waitForInboxLink(mailbox.id, '/auth/callback', 90_000);
-        await page.goto(confirmationLink);
-        await expect(page).toHaveURL(/\/en(\/)?$/, { timeout: 10_000 });
+        await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en', 90_000);
       });
 
       await test.step('Open profile and fill basic fields', async () => {
