@@ -99,7 +99,7 @@ test.describe('Profile editing flow @auth-email', () => {
         expect(afterOrder[0]).not.toBe(beforeOrder[0]);
 
         await page.getByRole('button', { name: /^save profile$/i }).click();
-        await expect(page.getByText(/profile updated successfully/i)).toBeVisible({
+        await expect(page.getByText(/profile updated successfully/i).first()).toBeVisible({
           timeout: 10_000,
         });
       });
@@ -173,7 +173,7 @@ test.describe('Profile editing flow @auth-email', () => {
         expect(after[0]).not.toBe(before[0]);
 
         await page.getByRole('button', { name: /^save profile$/i }).click();
-        await expect(page.getByText(/profile updated successfully/i)).toBeVisible({
+        await expect(page.getByText(/profile updated successfully/i).first()).toBeVisible({
           timeout: 10_000,
         });
 
@@ -187,16 +187,22 @@ test.describe('Profile editing flow @auth-email', () => {
           'This is an automated profile used for E2E tests.',
         );
 
-        const skillsOrderAfterReload = await skillsContainer
-          .getByRole('button', { name: /^remove /i })
-          .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
+        const skillRemoveButtons = skillsContainer.getByRole('button', { name: /^remove /i });
+        await expect(skillRemoveButtons.first()).toBeVisible({ timeout: 10_000 });
+
+        const skillsOrderAfterReload = await skillRemoveButtons.evaluateAll((els) =>
+          els.map((el) => el.getAttribute('aria-label')),
+        );
 
         if (!skillsOrderAfterReorder) throw new Error('Expected skills to be reordered');
         expect(skillsOrderAfterReload).toEqual(skillsOrderAfterReorder);
 
-        const valuesOrderAfterReload = await valuesContainer
-          .getByRole('button', { name: /^remove /i })
-          .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
+        const valueRemoveButtons = valuesContainer.getByRole('button', { name: /^remove /i });
+        await expect(valueRemoveButtons.first()).toBeVisible({ timeout: 10_000 });
+
+        const valuesOrderAfterReload = await valueRemoveButtons.evaluateAll((els) =>
+          els.map((el) => el.getAttribute('aria-label')),
+        );
 
         if (!valuesOrderAfterReorder) throw new Error('Expected values to be reordered');
         expect(valuesOrderAfterReload).toEqual(valuesOrderAfterReorder);
