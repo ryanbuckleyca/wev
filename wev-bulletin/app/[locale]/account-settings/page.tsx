@@ -1,7 +1,6 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useRouter } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getSiteBaseUrl } from '@/lib/site-url';
 import { useEffect, useState, useMemo } from 'react';
@@ -21,7 +20,6 @@ import DeleteAccountModal from '@/components/DeleteAccountModal';
 
 export default function AccountSettingsPage() {
   const t = useTranslations();
-  const router = useRouter();
   const { user, loading } = useRequireAuth();
   const supabase = useMemo(() => createClient(), []);
 

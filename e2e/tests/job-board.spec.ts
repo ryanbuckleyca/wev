@@ -52,8 +52,6 @@ async function expectVisibleResults(
 }
 
 test.describe('Job board', () => {
-  test.describe.configure({ mode: 'parallel' });
-
   test('loads the English job board with seeded jobs', async ({ jobBoardPage, expectations }) => {
     await loadEnglishJobBoard(jobBoardPage);
     await expect(jobBoardPage.jobCards).toHaveCount(expectations.firstPageCount);
