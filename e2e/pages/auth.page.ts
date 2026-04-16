@@ -93,8 +93,12 @@ export class AuthPage {
   }
 
   async resetPassword(newPassword: string): Promise<void> {
-    await this.page.getByLabel(/new password/i).fill(newPassword);
-    await this.page.getByLabel(/confirm password/i).fill(newPassword);
+    const fields = this.page.getByPlaceholder(/^[-•*]{6,}$/i);
+    await expect(fields).toHaveCount(2, { timeout: 10_000 });
+
+    await fields.nth(0).fill(newPassword);
+    await fields.nth(1).fill(newPassword);
+
     await this.page.getByRole('button', { name: /update password/i }).click();
   }
 
