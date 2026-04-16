@@ -3,6 +3,8 @@ import { buildStrongPassword } from '@e2e/support/auth-user';
 import { deleteAuthUserByEmail } from '@e2e/support/auth-admin';
 import {
   confirmEmailFromInboxAndExpectHome,
+  expectLoginFailsInFreshContext,
+  expectLoginSucceedsInFreshContext,
   submitSignupAndExpectCheckEmail,
 } from '@e2e/support/auth-flow';
 import { createEphemeralInbox } from '@e2e/support/email';
@@ -10,7 +12,11 @@ import { createEphemeralInbox } from '@e2e/support/email';
 test.describe('Change password flow @auth-email', () => {
   test.setTimeout(90_000);
 
-  test('logs out after password change and requires new password', async ({ authPage, page }) => {
+  test('keeps session after password change and requires new password', async ({
+    authPage,
+    browser,
+    page,
+  }) => {
     const mailbox = await createEphemeralInbox();
 
     const oldPassword = buildStrongPassword('WevOldPass!');
@@ -34,30 +40,20 @@ test.describe('Change password flow @auth-email', () => {
 
         await page.getByRole('button', { name: /^save changes$/i }).click();
 
-        // Successful password updates force a sign-out and redirect home.
-        await expect(page).toHaveURL(/\/en(\/)?$/, { timeout: 10_000 });
+        await expect(page).toHaveURL(/\/en\/account-settings(\/)?$/, { timeout: 10_000 });
       });
 
-      await test.step('Confirm user is logged out', async () => {
+      await test.step('Confirm user stays authenticated', async () => {
         await authPage.gotoAccountSettings('en');
-        await expect(page).toHaveURL(/\/en\/login(\/)?$/, { timeout: 10_000 });
-        await expect(page.getByRole('heading', { name: /^log in$/i })).toBeVisible();
-      });
-
-      await test.step('Old password fails; new password succeeds on second attempt', async () => {
-        await authPage.gotoLogin('en');
-        await authPage.login(mailbox.emailAddress, oldPassword);
-
-        await expect(page.getByText(/invalid login credentials/i)).toBeVisible({ timeout: 10_000 });
-        await expect(page).toHaveURL(/\/en\/login(\/)?$/);
-
-        await authPage.login(mailbox.emailAddress, newPassword);
-        await expect(page).toHaveURL(/\/en(\/)?$/, { timeout: 10_000 });
-
-        await authPage.gotoAccountSettings('en');
+        await expect(page).toHaveURL(/\/en\/account-settings(\/)?$/, { timeout: 10_000 });
         await expect(page.getByRole('heading', { name: /account settings/i })).toBeVisible({
           timeout: 10_000,
         });
+      });
+
+      await test.step('Old password fails; new password succeeds in fresh sessions', async () => {
+        await expectLoginFailsInFreshContext(browser, mailbox.emailAddress, oldPassword);
+        await expectLoginSucceedsInFreshContext(browser, mailbox.emailAddress, newPassword);
       });
     } finally {
       await deleteAuthUserByEmail(mailbox.emailAddress).catch(() => undefined);
