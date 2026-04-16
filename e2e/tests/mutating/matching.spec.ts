@@ -6,14 +6,18 @@ import {
   getAuthUserIdByEmail,
   recalculateMatchesForUserId,
 } from '../../support/auth-admin';
-import { createEphemeralInbox, waitForInboxLink } from '../../support/email';
+import {
+  confirmEmailFromInboxAndExpectHome,
+  submitSignupAndExpectCheckEmail,
+} from '../../support/auth-flow';
+import { createEphemeralInbox } from '../../support/email';
 import { loadEnglishJobBoard } from '../../support/job-board';
 
 test.describe('Matching + job card interactions @auth-email', () => {
   test.setTimeout(180_000);
   test.use({ viewport: { width: 420, height: 900 } });
 
-  test('shows match UI and allows expanding/scolling job-card pills', async ({
+  test('shows match UI and allows expanding/scrolling job-card pills', async ({
     authPage,
     jobBoardPage,
     page,
@@ -23,13 +27,8 @@ test.describe('Matching + job card interactions @auth-email', () => {
 
     try {
       await test.step('Sign up and confirm email', async () => {
-        await authPage.gotoSignup('en');
-        await authPage.signup(mailbox.emailAddress, password);
-        await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible();
-
-        const confirmationLink = await waitForInboxLink(mailbox.id, '/auth/callback', 90_000);
-        await page.goto(confirmationLink);
-        await expect(page).toHaveURL(/\/en(\/)?$/, { timeout: 10_000 });
+        await submitSignupAndExpectCheckEmail(authPage, mailbox.emailAddress, password, 'en');
+        await confirmEmailFromInboxAndExpectHome(authPage, mailbox, 'en', 90_000);
       });
 
       await test.step('Save a minimal profile to trigger match recalculation', async () => {
@@ -97,8 +96,7 @@ test.describe('Matching + job card interactions @auth-email', () => {
       });
 
       await test.step('Open match details popover', async () => {
-        const jobCard = page
-          .getByTestId('job-card')
+        const jobCard = jobBoardPage.jobCards
           .filter({ has: page.getByRole('button', { name: /view match details/i }) })
           .first();
 
@@ -107,8 +105,7 @@ test.describe('Matching + job card interactions @auth-email', () => {
       });
 
       await test.step('Expand pill groups and scroll', async () => {
-        const jobCard = page
-          .getByTestId('job-card')
+        const jobCard = jobBoardPage.jobCards
           .filter({ has: page.getByRole('button', { name: /view match details/i }) })
           .filter({ has: page.getByRole('button', { name: /^scroll right$/i }) })
           .first();
