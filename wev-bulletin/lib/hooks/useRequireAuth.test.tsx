@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
+import type { AuthUser } from '@/contexts/AuthContext';
 import { useRequireAuth } from './useRequireAuth';
 import { createMockAuthContext } from '@/test-utils/auth-context-mock';
 import { mockRouterReplace } from '@/test-utils/i18n-navigation-mock';
@@ -39,7 +39,7 @@ describe('useRequireAuth', () => {
   it('does not redirect when a user is present', () => {
     vi.mocked(useAuth).mockReturnValue(
       createMockAuthContext({
-        user: { id: 'u1', email: 'a@b.com' } as User,
+        user: { id: 'u1', email: 'a@b.com' },
         loading: false,
       }),
     );
@@ -50,7 +50,7 @@ describe('useRequireAuth', () => {
   });
 
   it('does not redirect when loading transitions to authenticated user', async () => {
-    const authState = { user: null as User | null, loading: true };
+    const authState = { user: null as AuthUser | null, loading: true };
     vi.mocked(useAuth).mockImplementation(() =>
       createMockAuthContext({ user: authState.user, loading: authState.loading }),
     );
@@ -60,7 +60,7 @@ describe('useRequireAuth', () => {
 
     await act(async () => {
       authState.loading = false;
-      authState.user = { id: 'u1', email: 'a@b.com' } as User;
+      authState.user = { id: 'u1', email: 'a@b.com' };
       rerender();
     });
 

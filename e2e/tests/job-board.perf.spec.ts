@@ -7,11 +7,13 @@ import {
 } from '@e2e/support/performance';
 
 const JOB_BOARD_PERFORMANCE_BUDGET_MS = {
-  domContentLoadedMs: 2_500,
-  interactiveReadyMs: 2_500,
-  loadEventMs: 3_500,
-  responseStartMs: 1_500,
+  domContentLoadedMs: 1_800,
+  interactiveReadyMs: 1_800,
+  loadEventMs: 2_800,
+  responseStartMs: 1_000,
 } as const;
+
+const POST_READY_SKELETON_WATCH_MS = 10_000;
 
 test.use({
   screenshot: 'off',
@@ -20,6 +22,8 @@ test.use({
 });
 
 test.describe('Job board performance @perf', () => {
+  test.describe.configure({ retries: 0 });
+
   test('renders the seeded English bulletin within the baseline budget @perf', async ({
     jobBoardPage,
     expectations,
@@ -31,6 +35,33 @@ test.describe('Job board performance @perf', () => {
     await expect(jobBoardPage.paginationSummary).toContainText(
       String(expectations.jobCount),
     );
+
+    const skeletonReappearedAfterReady = await jobBoardPage.page.evaluate(async (watchMs) => {
+      const selector = '#search-loading';
+
+      const hasSkeleton = () => Boolean(document.querySelector(selector));
+      if (hasSkeleton()) {
+        return true;
+      }
+
+      return await new Promise<boolean>((resolve) => {
+        const observer = new MutationObserver(() => {
+          if (hasSkeleton()) {
+            observer.disconnect();
+            resolve(true);
+          }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        setTimeout(() => {
+          observer.disconnect();
+          resolve(false);
+        }, watchMs);
+      });
+    }, POST_READY_SKELETON_WATCH_MS);
+
+    expect(skeletonReappearedAfterReady).toBe(false);
 
     const interactiveReadyMs = await readElapsedNavigationTime(jobBoardPage.page);
 
