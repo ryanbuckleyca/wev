@@ -7,7 +7,7 @@ interface LoadingStateProps {
 
 export default function LoadingState({
   message = 'Loading...',
-  fullScreen = true,
+  fullScreen = false,
 }: LoadingStateProps) {
   return <LoadingIndicator message={message} fullScreen={fullScreen} />;
 }

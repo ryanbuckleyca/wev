@@ -182,9 +182,20 @@ function createData(): BulletinDataState {
     matchData: new Map(),
     bookmarkedJobIds: new Set(['job-1']),
     skillLabels: {},
+    filterOptions: {
+      organizations: ['Org One', 'Org Two'],
+      provinces: ['Ontario', 'Nova Scotia'],
+      municipalitiesByProvince: {
+        Ontario: ['Toronto'],
+        'Nova Scotia': ['Halifax'],
+      },
+      employmentTypes: [],
+      sources: [],
+    },
     totalPages: 3,
     itemsPerPage: 20,
     refresh: vi.fn(async () => {}),
+    fetchAllFilteredJobs: vi.fn(async () => baseJobs.slice(0, 2)),
     handleJobSseChange: vi.fn(),
     handleJobBookmarkChange: vi.fn(),
   };

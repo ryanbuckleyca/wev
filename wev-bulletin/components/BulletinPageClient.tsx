@@ -11,6 +11,7 @@ import type { SerializedMatchData } from '@/lib/bulletin/server-data';
 import type { JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 import type { SkillLabel } from '@/lib/bulletin/types';
+import type { BulletinFilterOptions } from '@/lib/bulletin/filter-options';
 
 interface BulletinPageClientProps {
   initialJobs?: JobPosting[];
@@ -20,6 +21,7 @@ interface BulletinPageClientProps {
   initialTotalJobsCount?: number;
   initialTotalPages?: number;
   initialIsPartialHydration?: boolean;
+  initialFilterOptions?: BulletinFilterOptions;
   initialUserId?: string | null;
   isLoggedIn: boolean;
   isAdmin: boolean;
@@ -44,6 +46,7 @@ export default function BulletinPageClient({
   initialTotalJobsCount,
   initialTotalPages,
   initialIsPartialHydration,
+  initialFilterOptions,
   initialUserId,
   isLoggedIn,
   isAdmin,
@@ -87,6 +90,7 @@ export default function BulletinPageClient({
       totalJobsCount: initialTotalJobsCount,
       totalPages: initialTotalPages,
       isPartialHydration: initialIsPartialHydration,
+      filterOptions: initialFilterOptions,
       userId: initialUserId ?? null,
       matchData: initialMatchData,
       bookmarkedJobIds: initialBookmarkedJobIds,

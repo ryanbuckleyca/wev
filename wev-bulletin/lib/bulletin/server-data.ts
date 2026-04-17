@@ -10,6 +10,7 @@ import {
   type BulletinFilters,
   type JobSortOption,
 } from '@/lib/bulletin/job-query';
+import { buildFilterOptions, type BulletinFilterOptions } from '@/lib/bulletin/filter-options';
 import { supabaseServer } from '@/lib/supabase-server';
 import normalizeJobsWithSource from '@/lib/normalize-job';
 import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
@@ -30,10 +31,35 @@ interface BulletinJobRowsResult {
   lastScrapeTime: string | null;
 }
 
-interface ParsedBulletinRequest {
+export interface ParsedBulletinRequest {
   currentPage: number;
   filters: BulletinFilters;
   sortBy: JobSortOption;
+}
+
+const MATCH_SORT_OPTIONS = new Set<JobSortOption>([
+  'match-desc',
+  'value-match-desc',
+  'skill-match-desc',
+]);
+
+export interface BulletinQueryResult {
+  jobs: JobPosting[];
+  lastScrapeTime: string | null;
+  skillLabels: Record<string, import('@/lib/resolve-skill-labels').SkillLabel>;
+  filteredJobsCount: number;
+  totalJobsCount: number;
+  totalPages: number;
+  currentPage: number;
+  filterOptions?: BulletinFilterOptions;
+}
+
+interface QueryBulletinJobsOptions {
+  locale: 'en' | 'fr';
+  request: ParsedBulletinRequest;
+  userId?: string | null;
+  includeFilterOptions?: boolean;
+  includeAllFilteredJobs?: boolean;
 }
 
 interface BuildInitialBulletinDataOptions {
@@ -118,6 +144,85 @@ function parseBulletinRequest(
   };
 }
 
+function toSearchParamValueArray(values: string[]): SearchParamValue {
+  if (values.length === 0) return undefined;
+  if (values.length === 1) return values[0];
+  return values;
+}
+
+export function toBulletinSearchParams(searchParams: URLSearchParams): BulletinSearchParams {
+  return {
+    q: toSearchParamValueArray(searchParams.getAll('q')),
+    org: toSearchParamValueArray(searchParams.getAll('org')),
+    province: toSearchParamValueArray(searchParams.getAll('province')),
+    municipality: toSearchParamValueArray(searchParams.getAll('municipality')),
+    employment: toSearchParamValueArray(searchParams.getAll('employment')),
+    source: toSearchParamValueArray(searchParams.getAll('source')),
+    workType: toSearchParamValueArray(searchParams.getAll('workType')),
+    sse: toSearchParamValueArray(searchParams.getAll('sse')),
+    salary: toSearchParamValueArray(searchParams.getAll('salary')),
+    posted: toSearchParamValueArray(searchParams.getAll('posted')),
+    sort: toSearchParamValueArray(searchParams.getAll('sort')),
+    page: toSearchParamValueArray(searchParams.getAll('page')),
+  };
+}
+
+export function parseBulletinRequestFromUrlSearchParams(
+  searchParams: URLSearchParams,
+): ParsedBulletinRequest {
+  return parseBulletinRequest(toBulletinSearchParams(searchParams), null, null);
+}
+
+function shouldUseMatchSort(sortBy: JobSortOption) {
+  return MATCH_SORT_OPTIONS.has(sortBy);
+}
+
+export async function queryBulletinJobs({
+  locale,
+  request,
+  userId = null,
+  includeFilterOptions = false,
+  includeAllFilteredJobs = false,
+}: QueryBulletinJobsOptions): Promise<BulletinQueryResult> {
+  const bulletinRows = await fetchBulletinJobRows();
+
+  let matchMap = new Map<string, JobMatchData>();
+  if (userId && shouldUseMatchSort(request.sortBy)) {
+    const serializedMatchData = await fetchServerMatchData(userId);
+    matchMap = new Map(Object.entries(serializedMatchData));
+  }
+
+  const filteredJobs = sortJobs(
+    filterJobs(bulletinRows.jobs, request.filters),
+    request.sortBy,
+    matchMap,
+  );
+
+  const totalPages = Math.ceil(filteredJobs.length / BULLETIN_ITEMS_PER_PAGE);
+  const resolvedPage =
+    totalPages === 0 ? 1 : Math.min(Math.max(request.currentPage, 1), totalPages);
+
+  const pageJobs = includeAllFilteredJobs
+    ? filteredJobs
+    : filteredJobs.slice(
+        (resolvedPage - 1) * BULLETIN_ITEMS_PER_PAGE,
+        resolvedPage * BULLETIN_ITEMS_PER_PAGE,
+      );
+
+  const labelMap = await resolveSkillLabels(supabaseServer, pageJobs, locale);
+
+  return {
+    jobs: pageJobs,
+    lastScrapeTime: bulletinRows.lastScrapeTime,
+    skillLabels: Object.fromEntries(labelMap),
+    filteredJobsCount: filteredJobs.length,
+    totalJobsCount: bulletinRows.jobs.length,
+    totalPages,
+    currentPage: resolvedPage,
+    filterOptions: includeFilterOptions ? buildFilterOptions(bulletinRows.jobs) : undefined,
+  };
+}
+
 const fetchBulletinJobRows = unstable_cache(
   async (): Promise<BulletinJobRowsResult> => {
     const [scrapeResult, jobsResult] = await Promise.all([
@@ -181,28 +286,28 @@ export async function buildInitialBulletinData({
   matchData,
   bookmarkedJobIds,
 }: BuildInitialBulletinDataOptions) {
-  const bulletinRows = await fetchBulletinJobRows();
-  const { filters, sortBy, currentPage } = parseBulletinRequest(searchParams, profile, userId);
-  const matchMap = new Map(Object.entries(matchData ?? {}));
-  const filteredJobs = sortJobs(filterJobs(bulletinRows.jobs, filters), sortBy, matchMap);
-  const totalPages = Math.ceil(filteredJobs.length / BULLETIN_ITEMS_PER_PAGE);
-  const resolvedPage =
-    totalPages === 0 ? 1 : Math.min(Math.max(currentPage, 1), totalPages);
-  const startIndex = (resolvedPage - 1) * BULLETIN_ITEMS_PER_PAGE;
-  const paginatedJobs = filteredJobs.slice(startIndex, startIndex + BULLETIN_ITEMS_PER_PAGE);
-  const visibleJobIds = new Set(paginatedJobs.map((job) => job.id));
-  const labelMap = await resolveSkillLabels(supabaseServer, paginatedJobs, locale);
+  const serverRequest = parseBulletinRequest(searchParams, profile, userId);
+
+  const queryResult = await queryBulletinJobs({
+    locale,
+    request: serverRequest,
+    userId: userId ?? null,
+    includeFilterOptions: true,
+  });
+
+  const visibleJobIds = new Set(queryResult.jobs.map((job) => job.id));
 
   return {
-    jobs: paginatedJobs,
-    scrapeTime: bulletinRows.lastScrapeTime,
-    skillLabels: Object.fromEntries(labelMap),
+    jobs: queryResult.jobs,
+    scrapeTime: queryResult.lastScrapeTime,
+    skillLabels: queryResult.skillLabels,
     matchData: matchData ? pickRecordKeys(matchData, visibleJobIds) : undefined,
     bookmarkedJobIds: bookmarkedJobIds?.filter((jobId) => visibleJobIds.has(jobId)),
     isPartialHydration: true,
-    filteredJobsCount: filteredJobs.length,
-    totalJobsCount: bulletinRows.jobs.length,
-    totalPages,
+    filteredJobsCount: queryResult.filteredJobsCount,
+    totalJobsCount: queryResult.totalJobsCount,
+    totalPages: queryResult.totalPages,
+    filterOptions: queryResult.filterOptions,
   };
 }
 

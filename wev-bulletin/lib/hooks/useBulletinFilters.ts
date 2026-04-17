@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   parseAsArrayOf,
@@ -137,6 +137,47 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     'sort',
     parseAsStringLiteral(JOB_SORT_OPTIONS).withDefault('date-desc'),
   );
+
+  const filterSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        searchQuery,
+        selectedOrganizations,
+        selectedProvinces,
+        selectedMunicipalities,
+        selectedEmploymentTypes,
+        selectedSources,
+        selectedWorkTypes,
+        showOnlySse,
+        showJobsWithoutSalary,
+        postedWithin,
+        sortBy,
+      }),
+    [
+      searchQuery,
+      selectedOrganizations,
+      selectedProvinces,
+      selectedMunicipalities,
+      selectedEmploymentTypes,
+      selectedSources,
+      selectedWorkTypes,
+      showOnlySse,
+      showJobsWithoutSalary,
+      postedWithin,
+      sortBy,
+    ],
+  );
+  const previousFilterSnapshotRef = useRef(filterSnapshot);
+
+  // Server-driven pagination should reset to page 1 whenever filter/sort inputs change.
+  useEffect(() => {
+    if (previousFilterSnapshotRef.current === filterSnapshot) return;
+    previousFilterSnapshotRef.current = filterSnapshot;
+
+    if (currentPage !== 1) {
+      void setCurrentPage(1);
+    }
+  }, [filterSnapshot, currentPage, setCurrentPage]);
 
   const profileWorkTypes = useMemo(
     () => normalizeWorkTypes(effectiveProfile?.work_types),
