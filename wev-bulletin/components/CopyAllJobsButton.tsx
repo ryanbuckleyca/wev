@@ -7,6 +7,7 @@ import Button from './Button';
 
 interface CopyAllJobsButtonProps {
   jobs: JobPosting[];
+  fetchJobs?: () => Promise<JobPosting[]>;
   buttonClassName?: string;
 }
 
@@ -81,7 +82,11 @@ function formatJobsAsHTML(
     .join('<br><br>');
 }
 
-export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobsButtonProps) {
+export default function CopyAllJobsButton({
+  jobs,
+  fetchJobs,
+  buttonClassName,
+}: CopyAllJobsButtonProps) {
   const t = useTranslations();
   const locale = useLocale();
   const [copied, setCopied] = useState(false);
@@ -105,8 +110,9 @@ export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobs
     }
 
     try {
-      const text = formatJobsAsText(jobs, t, locale);
-      const html = formatJobsAsHTML(jobs, t, locale);
+      const jobsToCopy = fetchJobs ? await fetchJobs() : jobs;
+      const text = formatJobsAsText(jobsToCopy, t, locale);
+      const html = formatJobsAsHTML(jobsToCopy, t, locale);
 
       // Use Clipboard API with both HTML and plain text formats
       // This matches what the browser copies when you manually select and copy
@@ -127,7 +133,8 @@ export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobs
       console.error('Failed to copy with ClipboardItem, trying plain text:', err);
       // Fallback to plain text if ClipboardItem fails
       try {
-        const text = formatJobsAsText(jobs, t);
+        const jobsToCopy = fetchJobs ? await fetchJobs() : jobs;
+        const text = formatJobsAsText(jobsToCopy, t);
         await navigator.clipboard.writeText(text);
         setCopied(true);
 
@@ -139,7 +146,8 @@ export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobs
         console.error('Failed to copy:', textErr);
         // Final fallback for older browsers
         const textArea = document.createElement('textarea');
-        textArea.value = formatJobsAsText(jobs, t);
+        const jobsToCopy = fetchJobs ? await fetchJobs() : jobs;
+        textArea.value = formatJobsAsText(jobsToCopy, t);
         document.body.appendChild(textArea);
         textArea.select();
         try {

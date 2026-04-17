@@ -4,7 +4,6 @@ import { useCallback } from 'react';
 import type { JobPosting } from '@/lib/supabase';
 import { useBulletinFetch } from './useBulletinFetch';
 import { useUserJobMeta } from './useUserJobMeta';
-import { useJobFilters } from './useJobFilters';
 import type {
   InitialBulletinData,
   BulletinDataState,
@@ -17,21 +16,33 @@ export function useBulletinData(
   options: UseBulletinDataOptions,
   initialData?: InitialBulletinData,
 ): BulletinDataState {
-  const { setCurrentPage } = options;
+  const { filters, sortBy, currentPage, setCurrentPage } = options;
 
-  // 1. Data Fetching Layer
+  // 1. Data Fetching Layer (server-driven pagination/filter/search)
   const {
     allJobs,
     setAllJobs,
     lastScrapeTime,
     skillLabels,
+    filteredJobsCount,
+    totalJobsCount,
+    totalPages,
+    itemsPerPage,
+    filterOptions,
     loading,
     error,
-    hasHydratedFullDataset,
     refresh,
-  } = useBulletinFetch(locale, initialData, () => {
-    void setCurrentPage(1);
-  });
+    fetchAllFilteredJobs,
+  } = useBulletinFetch(
+    locale,
+    {
+      filters,
+      sortBy,
+      currentPage,
+    },
+    initialData,
+    setCurrentPage,
+  );
 
   // 2. User Meta Layer (Matches & Bookmarks)
   const { matchData, setBookmarkedJobIds, bookmarkedJobIds } = useUserJobMeta(
@@ -40,26 +51,7 @@ export function useBulletinData(
     initialData,
   );
 
-  const usingPartialInitialData =
-    initialData?.isPartialHydration === true && !hasHydratedFullDataset;
-
-  // 3. Transformation Layer (Filter, Sort, Paginate)
-  const filters = useJobFilters(allJobs, matchData, options, {
-    partialData: usingPartialInitialData,
-    initialTotalPages: initialData?.totalPages,
-  });
-
-  const filteredJobsCount = usingPartialInitialData
-    ? initialData?.filteredJobsCount ?? filters.filteredJobs.length
-    : filters.filteredJobs.length;
-  const totalJobsCount = usingPartialInitialData
-    ? initialData?.totalJobsCount ?? allJobs.length
-    : allJobs.length;
-  const totalPages = usingPartialInitialData
-    ? initialData?.totalPages ?? filters.totalPages
-    : filters.totalPages;
-
-  // 4. Optimistic Action Handlers
+  // 3. Optimistic Action Handlers
   const handleJobSseChange = useCallback(
     (jobId: string, isSse: boolean) => {
       setAllJobs((prev) => prev.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job)));
@@ -81,8 +73,8 @@ export function useBulletinData(
 
   return {
     allJobs,
-    filteredJobs: filters.filteredJobs,
-    paginatedJobs: filters.paginatedJobs,
+    filteredJobs: allJobs,
+    paginatedJobs: allJobs,
     filteredJobsCount,
     totalJobsCount,
     lastScrapeTime,
@@ -91,9 +83,11 @@ export function useBulletinData(
     matchData,
     bookmarkedJobIds,
     skillLabels,
+    filterOptions,
     totalPages,
-    itemsPerPage: filters.itemsPerPage,
+    itemsPerPage,
     refresh,
+    fetchAllFilteredJobs,
     handleJobSseChange,
     handleJobBookmarkChange,
   };
