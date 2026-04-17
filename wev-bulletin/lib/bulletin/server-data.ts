@@ -10,7 +10,7 @@ import {
   type BulletinFilters,
   type JobSortOption,
 } from '@/lib/bulletin/job-query';
-import { buildFilterOptions, type BulletinFilterOptions } from '@/lib/bulletin/filter-options';
+import { type BulletinFilterOptions } from '@/lib/bulletin/filter-options';
 import { supabaseServer } from '@/lib/supabase-server';
 import normalizeJobsWithSource from '@/lib/normalize-job';
 import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
@@ -23,6 +23,24 @@ export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
 /** Jobs older than this are never shown in the bulletin. */
 const JOBS_MAX_AGE_MS = 28 * 24 * 60 * 60 * 1000;
 
+const JOBS_SELECT_COLUMNS =
+  'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, skills, unit_text, min_value, max_value, hours_per_week' as const;
+
+const MATCH_SORT_OPTIONS = new Set<JobSortOption>([
+  'match-desc',
+  'value-match-desc',
+  'skill-match-desc',
+]);
+
+const DATABASE_SORT_OPTIONS = new Set<JobSortOption>(['date-desc', 'date-asc', 'org-asc']);
+
+const POSTED_WITHIN_DAYS: Record<Exclude<(typeof POSTED_WITHIN_FILTER_OPTIONS)[number], 'any'>, number> = {
+  '1-week': 7,
+  '2-weeks': 14,
+  '3-weeks': 21,
+  '1-month': 30,
+};
+
 type SearchParamValue = string | string[] | undefined;
 export type BulletinSearchParams = Record<string, SearchParamValue>;
 
@@ -31,17 +49,16 @@ interface BulletinJobRowsResult {
   lastScrapeTime: string | null;
 }
 
+interface BulletinMetaResult {
+  lastScrapeTime: string | null;
+  totalJobsCount: number;
+}
+
 export interface ParsedBulletinRequest {
   currentPage: number;
   filters: BulletinFilters;
   sortBy: JobSortOption;
 }
-
-const MATCH_SORT_OPTIONS = new Set<JobSortOption>([
-  'match-desc',
-  'value-match-desc',
-  'skill-match-desc',
-]);
 
 export interface BulletinQueryResult {
   jobs: JobPosting[];
@@ -69,6 +86,267 @@ interface BuildInitialBulletinDataOptions {
   profile?: Profile | null;
   matchData?: SerializedMatchData;
   bookmarkedJobIds?: string[];
+}
+
+type FilterOptionRow = {
+  organization: string | null;
+  province: string | null;
+  municipality: string | null;
+  employment_type: string | null;
+  sources?: { name?: string | null } | Array<{ name?: string | null }> | null;
+};
+
+function getRecentJobsCutoffIso(now = Date.now()): string {
+  return new Date(now - JOBS_MAX_AGE_MS).toISOString();
+}
+
+function sanitizeSearchTerm(raw: string): string {
+  return raw
+    .trim()
+    .replace(/[(),]/g, ' ')
+    .replace(/[%_]/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+function getPostedWithinCutoffIso(
+  postedWithin: (typeof POSTED_WITHIN_FILTER_OPTIONS)[number],
+  now = Date.now(),
+): string | null {
+  if (postedWithin === 'any') {
+    return null;
+  }
+
+  return new Date(now - POSTED_WITHIN_DAYS[postedWithin] * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function applyFiltersToJobsQuery(query: any, filters: BulletinFilters): any {
+  const now = filters.now ?? Date.now();
+
+  let next = query.gte('date_posted', getRecentJobsCutoffIso(now));
+
+  const searchTerm = sanitizeSearchTerm(filters.searchQuery);
+  if (searchTerm.length > 0) {
+    next = next.or(
+      [
+        `job_title.ilike.%${searchTerm}%`,
+        `summary.ilike.%${searchTerm}%`,
+        `organization.ilike.%${searchTerm}%`,
+        `location.ilike.%${searchTerm}%`,
+        `municipality.ilike.%${searchTerm}%`,
+        `province.ilike.%${searchTerm}%`,
+      ].join(','),
+    );
+  }
+
+  if (filters.selectedOrganizations.length > 0) {
+    next = next.in('organization', filters.selectedOrganizations);
+  }
+
+  if (filters.selectedProvinces.length > 0) {
+    next = next.in('province', filters.selectedProvinces);
+  }
+
+  if (filters.selectedMunicipalities.length > 0) {
+    next = next.in('municipality', filters.selectedMunicipalities);
+  }
+
+  if (filters.selectedEmploymentTypes.length > 0) {
+    next = next.in('employment_type', filters.selectedEmploymentTypes);
+  }
+
+  if (filters.selectedWorkTypes.length > 0) {
+    next = next.in('work_type', filters.selectedWorkTypes);
+  }
+
+  if (filters.showOnlySse) {
+    next = next.eq('is_sse', true);
+  }
+
+  const postedWithinCutoffIso = getPostedWithinCutoffIso(filters.postedWithin, now);
+  if (postedWithinCutoffIso) {
+    next = next.gte('date_posted', postedWithinCutoffIso);
+  }
+
+  return next;
+}
+
+function applyDatabaseSort(query: any, sortBy: JobSortOption): any {
+  switch (sortBy) {
+    case 'date-asc':
+      return query.order('date_posted', { ascending: true, nullsFirst: false });
+    case 'org-asc':
+      return query
+        .order('organization', { ascending: true, nullsFirst: false })
+        .order('date_posted', { ascending: false, nullsFirst: false });
+    case 'date-desc':
+    default:
+      return query.order('date_posted', { ascending: false, nullsFirst: false });
+  }
+}
+
+function getSourceName(
+  source: { name?: string | null } | Array<{ name?: string | null }> | null | undefined,
+): string | null {
+  if (Array.isArray(source)) {
+    return source[0]?.name ?? null;
+  }
+
+  return source?.name ?? null;
+}
+
+function buildFilterOptionsFromRows(rows: FilterOptionRow[]): BulletinFilterOptions {
+  const organizations = new Set<string>();
+  const provinces = new Set<string>();
+  const municipalitiesByProvince: Record<string, Set<string>> = {};
+  const employmentTypes = new Set<string>();
+  const sources = new Set<string>();
+
+  for (const row of rows) {
+    if (row.organization) organizations.add(row.organization);
+    if (row.employment_type) employmentTypes.add(row.employment_type);
+
+    const sourceName = getSourceName(row.sources ?? null);
+    if (sourceName) sources.add(sourceName);
+
+    if (!row.province) continue;
+
+    provinces.add(row.province);
+    if (!municipalitiesByProvince[row.province]) {
+      municipalitiesByProvince[row.province] = new Set<string>();
+    }
+
+    if (row.municipality) {
+      municipalitiesByProvince[row.province].add(row.municipality);
+    }
+  }
+
+  const sortedMunicipalitiesByProvince: Record<string, string[]> = {};
+  for (const province of Object.keys(municipalitiesByProvince).sort()) {
+    sortedMunicipalitiesByProvince[province] = Array.from(municipalitiesByProvince[province]).sort();
+  }
+
+  return {
+    organizations: Array.from(organizations).sort(),
+    provinces: Array.from(provinces).sort(),
+    municipalitiesByProvince: sortedMunicipalitiesByProvince,
+    employmentTypes: Array.from(employmentTypes).sort(),
+    sources: Array.from(sources).sort(),
+  };
+}
+
+function shouldUseDatabasePagination(
+  sortBy: JobSortOption,
+  filters: BulletinFilters,
+): boolean {
+  return (
+    DATABASE_SORT_OPTIONS.has(sortBy) &&
+    filters.showJobsWithoutSalary &&
+    filters.selectedSources.length === 0
+  );
+}
+
+async function queryJobsWithDatabasePagination({
+  request,
+  includeAllFilteredJobs,
+}: {
+  request: ParsedBulletinRequest;
+  includeAllFilteredJobs: boolean;
+}): Promise<{
+  jobs: JobPosting[];
+  filteredJobsCount: number;
+  totalPages: number;
+  currentPage: number;
+}> {
+  const runQuery = async (page: number) => {
+    let query = supabaseServer.from('jobs').select(JOBS_SELECT_COLUMNS, { count: 'exact' });
+    query = applyFiltersToJobsQuery(query, request.filters);
+    query = applyDatabaseSort(query, request.sortBy);
+
+    if (!includeAllFilteredJobs) {
+      const start = (page - 1) * BULLETIN_ITEMS_PER_PAGE;
+      const end = start + BULLETIN_ITEMS_PER_PAGE - 1;
+      query = query.range(start, end);
+    }
+
+    return await query;
+  };
+
+  let resolvedPage = Math.max(1, request.currentPage);
+  let { data, error, count } = await runQuery(resolvedPage);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const filteredJobsCount = count ?? 0;
+  const totalPages = Math.ceil(filteredJobsCount / BULLETIN_ITEMS_PER_PAGE);
+
+  if (!includeAllFilteredJobs && totalPages > 0 && resolvedPage > totalPages) {
+    resolvedPage = totalPages;
+    const rerun = await runQuery(resolvedPage);
+    if (rerun.error) {
+      throw new Error(rerun.error.message);
+    }
+
+    data = rerun.data;
+  }
+
+  return {
+    jobs: normalizeJobsWithSource(data) as unknown as JobPosting[],
+    filteredJobsCount,
+    totalPages,
+    currentPage: totalPages === 0 ? 1 : resolvedPage,
+  };
+}
+
+async function queryJobsWithInMemorySort({
+  request,
+  userId,
+  includeAllFilteredJobs,
+}: {
+  request: ParsedBulletinRequest;
+  userId: string | null;
+  includeAllFilteredJobs: boolean;
+}): Promise<{
+  jobs: JobPosting[];
+  filteredJobsCount: number;
+  totalPages: number;
+  currentPage: number;
+}> {
+  let query = supabaseServer.from('jobs').select(JOBS_SELECT_COLUMNS);
+  query = applyFiltersToJobsQuery(query, request.filters);
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const jobs = normalizeJobsWithSource(data) as unknown as JobPosting[];
+  const filteredJobs = filterJobs(jobs, request.filters);
+
+  let matchMap = new Map<string, JobMatchData>();
+  if (userId && shouldUseMatchSort(request.sortBy)) {
+    const serializedMatchData = await fetchServerMatchData(userId);
+    matchMap = new Map(Object.entries(serializedMatchData));
+  }
+
+  const sortedJobs = sortJobs(filteredJobs, request.sortBy, matchMap);
+  const totalPages = Math.ceil(sortedJobs.length / BULLETIN_ITEMS_PER_PAGE);
+  const resolvedPage = totalPages === 0 ? 1 : Math.min(Math.max(request.currentPage, 1), totalPages);
+
+  const pageJobs = includeAllFilteredJobs
+    ? sortedJobs
+    : sortedJobs.slice(
+        (resolvedPage - 1) * BULLETIN_ITEMS_PER_PAGE,
+        resolvedPage * BULLETIN_ITEMS_PER_PAGE,
+      );
+
+  return {
+    jobs: pageJobs,
+    filteredJobsCount: sortedJobs.length,
+    totalPages,
+    currentPage: resolvedPage,
+  };
 }
 
 function getFirstValue(value: SearchParamValue): string | null {
@@ -184,44 +462,69 @@ export async function queryBulletinJobs({
   includeFilterOptions = false,
   includeAllFilteredJobs = false,
 }: QueryBulletinJobsOptions): Promise<BulletinQueryResult> {
-  const bulletinRows = await fetchBulletinJobRows();
+  const [bulletinMeta, jobsResult, filterOptions] = await Promise.all([
+    fetchBulletinMeta(),
+    shouldUseDatabasePagination(request.sortBy, request.filters)
+      ? queryJobsWithDatabasePagination({ request, includeAllFilteredJobs })
+      : queryJobsWithInMemorySort({ request, userId, includeAllFilteredJobs }),
+    includeFilterOptions ? fetchCachedFilterOptions() : Promise.resolve(undefined),
+  ]);
 
-  let matchMap = new Map<string, JobMatchData>();
-  if (userId && shouldUseMatchSort(request.sortBy)) {
-    const serializedMatchData = await fetchServerMatchData(userId);
-    matchMap = new Map(Object.entries(serializedMatchData));
-  }
-
-  const filteredJobs = sortJobs(
-    filterJobs(bulletinRows.jobs, request.filters),
-    request.sortBy,
-    matchMap,
-  );
-
-  const totalPages = Math.ceil(filteredJobs.length / BULLETIN_ITEMS_PER_PAGE);
-  const resolvedPage =
-    totalPages === 0 ? 1 : Math.min(Math.max(request.currentPage, 1), totalPages);
-
-  const pageJobs = includeAllFilteredJobs
-    ? filteredJobs
-    : filteredJobs.slice(
-        (resolvedPage - 1) * BULLETIN_ITEMS_PER_PAGE,
-        resolvedPage * BULLETIN_ITEMS_PER_PAGE,
-      );
-
-  const labelMap = await resolveSkillLabels(supabaseServer, pageJobs, locale);
+  const labelMap = await resolveSkillLabels(supabaseServer, jobsResult.jobs, locale);
 
   return {
-    jobs: pageJobs,
-    lastScrapeTime: bulletinRows.lastScrapeTime,
+    jobs: jobsResult.jobs,
+    lastScrapeTime: bulletinMeta.lastScrapeTime,
     skillLabels: Object.fromEntries(labelMap),
-    filteredJobsCount: filteredJobs.length,
-    totalJobsCount: bulletinRows.jobs.length,
-    totalPages,
-    currentPage: resolvedPage,
-    filterOptions: includeFilterOptions ? buildFilterOptions(bulletinRows.jobs) : undefined,
+    filteredJobsCount: jobsResult.filteredJobsCount,
+    totalJobsCount: bulletinMeta.totalJobsCount,
+    totalPages: jobsResult.totalPages,
+    currentPage: jobsResult.currentPage,
+    filterOptions,
   };
 }
+
+const fetchBulletinMeta = unstable_cache(
+  async (): Promise<BulletinMetaResult> => {
+    const [scrapeResult, countResult] = await Promise.all([
+      supabaseServer
+        .from('scrape_runs')
+        .select('run_at')
+        .order('run_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseServer
+        .from('jobs')
+        .select('id', { count: 'exact', head: true })
+        .gte('date_posted', getRecentJobsCutoffIso()),
+    ]);
+
+    if (scrapeResult.error) throw new Error(scrapeResult.error.message);
+    if (countResult.error) throw new Error(countResult.error.message);
+
+    return {
+      lastScrapeTime: scrapeResult.data?.run_at ?? null,
+      totalJobsCount: countResult.count ?? 0,
+    };
+  },
+  [BULLETIN_CACHE_TAG, 'meta'],
+  { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
+);
+
+const fetchCachedFilterOptions = unstable_cache(
+  async (): Promise<BulletinFilterOptions> => {
+    const { data, error } = await supabaseServer
+      .from('jobs')
+      .select('organization, province, municipality, employment_type, sources(name), date_posted')
+      .gte('date_posted', getRecentJobsCutoffIso());
+
+    if (error) throw new Error(error.message);
+
+    return buildFilterOptionsFromRows((data ?? []) as unknown as FilterOptionRow[]);
+  },
+  [BULLETIN_CACHE_TAG, 'filter-options'],
+  { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
+);
 
 const fetchBulletinJobRows = unstable_cache(
   async (): Promise<BulletinJobRowsResult> => {
