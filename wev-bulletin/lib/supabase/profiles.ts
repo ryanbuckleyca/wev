@@ -1,8 +1,4 @@
-import { createClient } from './client';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
-
-const PROFILE_COLUMNS =
-  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, created_at, updated_at' as const;
 
 export type Profile = {
   id: string;
@@ -39,80 +35,61 @@ export type ProfileUpdateData = {
   profile_photo_url?: string | null;
 };
 
-/**
- * Create a blank profile for a user. Internal — called by getProfile when no row exists.
- */
-async function createProfile(userId: string): Promise<Profile> {
-  const supabase = createClient();
+type ProfileApiResponse = {
+  profile?: Profile;
+  error?: string;
+};
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .upsert(
-      {
-        id: userId,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: 'id',
-        ignoreDuplicates: false,
-      },
-    )
-    .select(PROFILE_COLUMNS)
-    .single();
+async function parseProfileResponse(response: Response): Promise<Profile> {
+  const payload = (await response.json().catch(() => ({}))) as ProfileApiResponse;
 
-  if (error) {
-    throw new Error(error.message || 'Failed to create profile');
+  if (!response.ok || !payload.profile) {
+    throw new Error(payload.error || 'Profile request failed');
   }
 
-  return data as Profile;
+  return payload.profile;
 }
 
 /**
  * Fetch a user's profile, creating a blank one if it doesn't exist.
  */
 export async function getProfile(userId: string): Promise<Profile> {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(PROFILE_COLUMNS)
-    .eq('id', userId)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return createProfile(userId);
-    console.error('Error fetching profile:', error);
-    throw new Error(error.message || 'Failed to fetch profile');
+  // API resolves profile identity from the authenticated request.
+  // userId is retained for call-site compatibility and as a guard.
+  if (!userId) {
+    throw new Error('Not authenticated');
   }
 
-  return data as Profile;
+  const response = await fetch('/api/profile', {
+    method: 'GET',
+    credentials: 'include',
+    cache: 'no-store',
+    headers: {
+      'cache-control': 'no-store',
+    },
+  });
+
+  return parseProfileResponse(response);
 }
 
 /**
  * Update a user's profile
  */
 export async function updateProfile(userId: string, updates: ProfileUpdateData): Promise<Profile> {
-  const supabase = createClient();
-
-  // Match recalculation for user-driven profile edits is handled by the DB trigger on
-  // `profiles`, not by calling `/api/matches/calculate-user`.
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId)
-    .select(PROFILE_COLUMNS)
-    .single();
-
-  if (error) {
-    console.error('Error updating profile:', error);
-    const msg = [error.message, (error as { details?: string }).details]
-      .filter(Boolean)
-      .join(' — ');
-    throw new Error(msg || 'Failed to update profile');
+  if (!userId) {
+    throw new Error('Not authenticated');
   }
 
-  return data as Profile;
+  const response = await fetch('/api/profile', {
+    method: 'PATCH',
+    credentials: 'include',
+    cache: 'no-store',
+    headers: {
+      'content-type': 'application/json',
+      'cache-control': 'no-store',
+    },
+    body: JSON.stringify(updates),
+  });
+
+  return parseProfileResponse(response);
 }

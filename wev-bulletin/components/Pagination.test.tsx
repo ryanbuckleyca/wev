@@ -3,53 +3,6 @@ import { render, screen } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import Pagination from './Pagination';
 
-vi.mock('react-responsive-pagination', () => ({
-  default: ({
-    current,
-    total,
-    onPageChange,
-    previousLabel,
-    nextLabel,
-    ariaPreviousLabel,
-    ariaNextLabel,
-  }: {
-    current: number;
-    total: number;
-    onPageChange: (page: number) => void;
-    previousLabel?: string;
-    nextLabel?: string;
-    ariaPreviousLabel?: string;
-    ariaNextLabel?: string;
-  }) => (
-    <nav aria-label="Pagination">
-      <button
-        aria-label={ariaPreviousLabel}
-        disabled={current === 1}
-        onClick={() => onPageChange(current - 1)}
-      >
-        {previousLabel}
-      </button>
-      {Array.from({ length: total }, (_, i) => i + 1).map((page) => (
-        <button
-          key={page}
-          onClick={() => onPageChange(page)}
-          aria-current={page === current ? 'page' : undefined}
-          className={page === current ? 'bg-primary' : ''}
-        >
-          {page}
-        </button>
-      ))}
-      <button
-        aria-label={ariaNextLabel}
-        disabled={current === total}
-        onClick={() => onPageChange(current + 1)}
-      >
-        {nextLabel}
-      </button>
-    </nav>
-  ),
-}));
-
 let mockCurrentPage = 1;
 let mockSetCurrentPage = vi.fn();
 

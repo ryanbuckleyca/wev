@@ -4,7 +4,7 @@ import { getMessages } from 'next-intl/server';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Lexend_Deca } from 'next/font/google';
 import Header from '@/components/Header';
-import Toaster from '@/components/Toaster';
+import DeferredToaster from '@/components/DeferredToaster';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { routing } from '@/i18n/routing';
@@ -25,13 +25,7 @@ export default async function LocaleLayout({
   const { locale: rawLocale } = await params;
   const validLocales = routing.locales as readonly string[];
   const locale = validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale;
-  const defaultMessages = await getMessages({ locale: routing.defaultLocale });
-  const localeMessages =
-    locale === routing.defaultLocale ? defaultMessages : await getMessages({ locale });
-  const messages = {
-    ...defaultMessages,
-    ...localeMessages,
-  };
+  const messages = await getMessages({ locale });
   const cookieStore = await cookies();
   const theme = cookieStore.get('theme')?.value === 'dark' ? 'dark' : 'light';
 
@@ -54,7 +48,7 @@ export default async function LocaleLayout({
               <ProfileProvider>
                 <Header initialTheme={theme} />
                 {children}
-                <Toaster />
+                <DeferredToaster />
               </ProfileProvider>
             </AuthProvider>
           </NextIntlClientProvider>

@@ -1,13 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
-import UserProfile from './UserProfile';
-import ThemeToggle from './ThemeToggle';
-import LocaleSwitcher from './LocaleSwitcher';
 import { zIndex } from '@/lib/design-tokens';
+
+const UserProfile = dynamic(() => import('./UserProfile'), {
+  loading: () => <div className="h-10 w-10 rounded-full bg-border animate-pulse" />,
+});
+
+const ThemeToggle = dynamic(() => import('./ThemeToggle'), {
+  loading: () => <div className="h-8 w-14 rounded-full bg-border animate-pulse" />,
+});
+
+const LocaleSwitcher = dynamic(() => import('./LocaleSwitcher'), {
+  loading: () => <div className="h-8 w-[76px] rounded-full bg-border animate-pulse" />,
+});
 
 const HEADER_LOGOTYPE_URL =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';

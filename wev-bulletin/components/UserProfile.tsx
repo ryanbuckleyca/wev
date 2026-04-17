@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import notify from '@/lib/toast';
 import { getSiteBaseUrl } from '@/lib/site-url';
 import Button from '@/components/Button';
-import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { MenuHamburger1Outlined, XmarkOutlined } from '@lineiconshq/free-icons';
@@ -31,7 +30,6 @@ export default function UserProfile({
   const [isOpen, setIsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const supabase = useMemo(() => createClient(), []);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -54,6 +52,8 @@ export default function UserProfile({
     setIsLoggingOut(true);
     setIsOpen(false);
     try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
       await supabase.auth.signOut();
       // Hard redirect to avoid client-side navigation getting stuck (e.g. with useRequireAuth)
       const base = getSiteBaseUrl() || window.location.origin;
