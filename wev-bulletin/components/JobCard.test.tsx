@@ -119,13 +119,20 @@ describe('JobCard', () => {
   it('toggles the bookmark state for an authenticated user', async () => {
     const user = userEvent.setup();
     mockUseRouter.mockReturnValue(mockRouter() as never);
-    mockCreateClient.mockReturnValue(makeSupabaseClient() as never);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
     renderJobCard({ initialBookmarked: false, userId: 'user-1' });
 
     await user.click(screen.getByRole('button', { name: BOOKMARK_LABEL }));
 
     expect(screen.getByRole('button', { name: 'Bookmarked (click to remove)' })).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith('/api/bookmarks/item', expect.any(Object));
+
+    vi.unstubAllGlobals();
   });
 
   it('shows the SSE toggle button for admin users', () => {
