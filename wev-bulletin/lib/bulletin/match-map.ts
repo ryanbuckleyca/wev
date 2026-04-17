@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/client';
 import type { JobMatchData } from '@/lib/supabase';
 
 type JobMatchRow = {
@@ -42,6 +41,7 @@ export async function fetchMatchMapForJobs(
   if (jobIds.length === 0) return new Map();
 
   try {
+    const { createClient } = await import('@/lib/supabase/client');
     const supabase = createClient();
     const { data, error } = await supabase
       .from('job_matches')

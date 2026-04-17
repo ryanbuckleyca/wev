@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useRouter } from '@/i18n/navigation';
 import { type JobPosting } from '@/lib/supabase';
 
@@ -31,21 +30,21 @@ export function useBookmarkAction(
     onToggle?.(job, newState);
 
     setIsLoading(true);
-    const supabase = createClient();
 
     try {
-      if (newState) {
-        const { error } = await supabase
-          .from('bookmarks')
-          .insert([{ user_id: userId, job_id: job.id }]);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('bookmarks')
-          .delete()
-          .eq('user_id', userId)
-          .eq('job_id', job.id);
-        if (error) throw error;
+      const response = await fetch('/api/bookmarks/item', {
+        method: newState ? 'POST' : 'DELETE',
+        credentials: 'include',
+        headers: {
+          'content-type': 'application/json',
+          'cache-control': 'no-store',
+        },
+        body: JSON.stringify({ jobId: job.id }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error || 'Failed to update bookmark');
       }
     } catch (err) {
       console.error('Bookmark update failed:', err);

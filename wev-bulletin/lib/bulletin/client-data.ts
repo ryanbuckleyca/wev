@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/client';
 import { parseDateString } from '@/lib/date-utils';
 
 export function formatLastScrapeTime(
@@ -33,6 +32,7 @@ export async function fetchBookmarkedJobIds(
   if (jobIds.length === 0) return new Set<string>();
 
   try {
+    const { createClient } = await import('@/lib/supabase/client');
     const supabase = createClient();
     const { data, error } = await supabase
       .from('bookmarks')
