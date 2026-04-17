@@ -107,10 +107,19 @@ export function useBulletinFetch(
 
   const effectiveRequest = useMemo<BulletinRequestState>(
     () => ({
-      ...request,
+      currentPage: request.currentPage,
+      sortBy: request.sortBy,
       filters: {
-        ...request.filters,
+        postedWithin: request.filters.postedWithin,
         searchQuery: debouncedSearchQuery,
+        selectedEmploymentTypes: request.filters.selectedEmploymentTypes,
+        selectedMunicipalities: request.filters.selectedMunicipalities,
+        selectedOrganizations: request.filters.selectedOrganizations,
+        selectedProvinces: request.filters.selectedProvinces,
+        selectedSources: request.filters.selectedSources,
+        selectedWorkTypes: request.filters.selectedWorkTypes,
+        showJobsWithoutSalary: request.filters.showJobsWithoutSalary,
+        showOnlySse: request.filters.showOnlySse,
       },
     }),
     [
