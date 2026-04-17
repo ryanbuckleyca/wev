@@ -1,6 +1,7 @@
 'use client';
 
 import { useLocale } from 'next-intl';
+import BulletinPageContentSkeleton from '@/components/BulletinPageContentSkeleton';
 import BulletinPageView from '@/components/BulletinPageView';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
@@ -12,9 +13,13 @@ import type { Profile } from '@/lib/supabase/profiles';
 import type { SkillLabel } from '@/lib/bulletin/types';
 
 interface BulletinPageClientProps {
-  initialJobs: JobPosting[];
-  initialScrapeTime: string | null;
-  initialSkillLabels: Record<string, SkillLabel>;
+  initialJobs?: JobPosting[];
+  initialScrapeTime?: string | null;
+  initialSkillLabels?: Record<string, SkillLabel>;
+  initialFilteredJobsCount?: number;
+  initialTotalJobsCount?: number;
+  initialTotalPages?: number;
+  initialIsPartialHydration?: boolean;
   initialUserId?: string | null;
   isLoggedIn: boolean;
   isAdmin: boolean;
@@ -27,14 +32,18 @@ interface BulletinPageClientProps {
 /**
  * Client entry point for the bulletin page.
  *
- * Receives all initial data from the Server Component parent so the page
- * renders immediately with no loading states. Handles client-side interactivity:
- * URL-synced filters, pagination, and reactive auth (login/logout after mount).
+ * Receives lightweight auth/profile state from the Server Component parent.
+ * The full bulletin payload can be omitted to keep the initial HTML lean, in
+ * which case the client hydrates from /api/bulletin after mount.
  */
 export default function BulletinPageClient({
   initialJobs,
   initialScrapeTime,
   initialSkillLabels,
+  initialFilteredJobsCount,
+  initialTotalJobsCount,
+  initialTotalPages,
+  initialIsPartialHydration,
   initialUserId,
   isLoggedIn,
   isAdmin,
@@ -74,12 +83,20 @@ export default function BulletinPageClient({
     {
       jobs: initialJobs,
       scrapeTime: initialScrapeTime,
+      filteredJobsCount: initialFilteredJobsCount,
+      totalJobsCount: initialTotalJobsCount,
+      totalPages: initialTotalPages,
+      isPartialHydration: initialIsPartialHydration,
       userId: initialUserId ?? null,
       matchData: initialMatchData,
       bookmarkedJobIds: initialBookmarkedJobIds,
       skillLabels: initialSkillLabels,
     },
   );
+
+  if (data.loading && data.allJobs.length === 0 && !data.error) {
+    return <BulletinPageContentSkeleton />;
+  }
 
   return (
     <BulletinPageView

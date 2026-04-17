@@ -2,6 +2,8 @@ import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import { toAnnual } from '@/lib/compensation/helpers';
 import { parseDateMs } from '@/lib/date-utils';
 
+export const BULLETIN_ITEMS_PER_PAGE = 20;
+
 export const POSTED_WITHIN_FILTER_OPTIONS = [
   '1-week',
   '2-weeks',

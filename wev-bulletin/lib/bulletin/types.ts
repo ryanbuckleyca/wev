@@ -7,20 +7,29 @@ export type { SkillLabel };
 
 /**
  * Server-side data passed from the Server Component via BulletinPageClient.
+ *
+ * The jobs payload is optional so the page can avoid embedding the entire
+ * bulletin dataset in the initial RSC/HTML response.
  */
 export interface InitialBulletinData {
-  jobs: JobPosting[];
-  scrapeTime: string | null;
+  jobs?: JobPosting[];
+  scrapeTime?: string | null;
   userId?: string | null;
   matchData?: SerializedMatchData;
   bookmarkedJobIds?: string[];
   skillLabels?: Record<string, SkillLabel>;
+  isPartialHydration?: boolean;
+  filteredJobsCount?: number;
+  totalJobsCount?: number;
+  totalPages?: number;
 }
 
 export interface BulletinDataState {
   allJobs: JobPosting[];
   filteredJobs: JobPosting[];
   paginatedJobs: JobPosting[];
+  filteredJobsCount: number;
+  totalJobsCount: number;
   lastScrapeTime: string | null;
   loading: boolean;
   error: string | null;

@@ -20,10 +20,18 @@ export function useBulletinData(
   const { setCurrentPage } = options;
 
   // 1. Data Fetching Layer
-  const { allJobs, setAllJobs, lastScrapeTime, skillLabels, loading, error, refresh } =
-    useBulletinFetch(locale, initialData, () => {
-      void setCurrentPage(1);
-    });
+  const {
+    allJobs,
+    setAllJobs,
+    lastScrapeTime,
+    skillLabels,
+    loading,
+    error,
+    hasHydratedFullDataset,
+    refresh,
+  } = useBulletinFetch(locale, initialData, () => {
+    void setCurrentPage(1);
+  });
 
   // 2. User Meta Layer (Matches & Bookmarks)
   const { matchData, setBookmarkedJobIds, bookmarkedJobIds } = useUserJobMeta(
@@ -32,8 +40,24 @@ export function useBulletinData(
     initialData,
   );
 
+  const usingPartialInitialData =
+    initialData?.isPartialHydration === true && !hasHydratedFullDataset;
+
   // 3. Transformation Layer (Filter, Sort, Paginate)
-  const filters = useJobFilters(allJobs, matchData, options);
+  const filters = useJobFilters(allJobs, matchData, options, {
+    partialData: usingPartialInitialData,
+    initialTotalPages: initialData?.totalPages,
+  });
+
+  const filteredJobsCount = usingPartialInitialData
+    ? initialData?.filteredJobsCount ?? filters.filteredJobs.length
+    : filters.filteredJobs.length;
+  const totalJobsCount = usingPartialInitialData
+    ? initialData?.totalJobsCount ?? allJobs.length
+    : allJobs.length;
+  const totalPages = usingPartialInitialData
+    ? initialData?.totalPages ?? filters.totalPages
+    : filters.totalPages;
 
   // 4. Optimistic Action Handlers
   const handleJobSseChange = useCallback(
@@ -59,13 +83,15 @@ export function useBulletinData(
     allJobs,
     filteredJobs: filters.filteredJobs,
     paginatedJobs: filters.paginatedJobs,
+    filteredJobsCount,
+    totalJobsCount,
     lastScrapeTime,
     loading,
     error,
     matchData,
     bookmarkedJobIds,
     skillLabels,
-    totalPages: filters.totalPages,
+    totalPages,
     itemsPerPage: filters.itemsPerPage,
     refresh,
     handleJobSseChange,
