@@ -5,20 +5,14 @@ import JobCard from './JobCard';
 import type { JobPosting } from '@/lib/supabase';
 import { mockRouter } from '@/test-stubs/constants';
 
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: vi.fn(),
-}));
-
 vi.mock('@/i18n/navigation', () => ({
   useRouter: vi.fn(),
 }));
 
 vi.mock('@lineiconshq/react-lineicons', () => vi.importActual('./test-utils/lineicons-mock.ts'));
 
-import { createClient } from '@/lib/supabase/client';
 import { useRouter } from '@/i18n/navigation';
 
-const mockCreateClient = vi.mocked(createClient);
 const mockUseRouter = vi.mocked(useRouter);
 
 const defaultJob: JobPosting = {
@@ -37,19 +31,6 @@ const defaultJob: JobPosting = {
   is_sse: false,
   values: [],
 };
-
-function makeSupabaseClient() {
-  return {
-    from: vi.fn().mockReturnValue({
-      insert: vi.fn().mockResolvedValue({ error: null }),
-      delete: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        }),
-      }),
-    }),
-  };
-}
 
 const BOOKMARK_LABEL = 'Bookmark job';
 const COLLAPSE_LABEL = 'Collapse job details';
