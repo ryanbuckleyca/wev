@@ -15,7 +15,9 @@ export function useBulletinFetch(
 ) {
   const t = useTranslations('home.errors');
   const requestIdRef = useRef(0);
-  const hasInitialData = !!initialData;
+  const hasInitialBulletinPayload = Array.isArray(initialData?.jobs);
+  const shouldHydrateFullDataset = initialData?.isPartialHydration === true;
+  const hasInitialRenderData = hasInitialBulletinPayload || shouldHydrateFullDataset;
 
   const [allJobs, setAllJobs] = useState<JobPosting[]>(() => initialData?.jobs ?? []);
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(() =>
@@ -24,13 +26,21 @@ export function useBulletinFetch(
   const [skillLabels, setSkillLabels] = useState<Record<string, SkillLabel>>(
     () => initialData?.skillLabels ?? {},
   );
-  const [loading, setLoading] = useState(!hasInitialData);
+  const [loading, setLoading] = useState(!hasInitialRenderData);
   const [error, setError] = useState<string | null>(null);
+  const [hasHydratedFullDataset, setHasHydratedFullDataset] = useState(
+    () => hasInitialBulletinPayload && !shouldHydrateFullDataset,
+  );
 
-  const refresh = useCallback(async () => {
+  const loadJobs = useCallback(async ({ resetPage, showLoading }: {
+    resetPage: boolean;
+    showLoading: boolean;
+  }) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
-    setLoading(true);
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
 
     const controller = new AbortController();
@@ -57,7 +67,10 @@ export function useBulletinFetch(
         setSkillLabels(data.skillLabels);
       }
       setLoading(false);
-      onDataLoaded?.(data.jobs ?? []);
+      setHasHydratedFullDataset(true);
+      if (resetPage) {
+        onDataLoaded?.(data.jobs ?? []);
+      }
     } catch (fetchError) {
       if (requestId !== requestIdRef.current) return;
       console.error('Error fetching bulletin data:', fetchError);
@@ -76,12 +89,24 @@ export function useBulletinFetch(
     }
   }, [locale, t, onDataLoaded]);
 
-  const initialFetchDone = useRef(hasInitialData);
+  const refresh = useCallback(
+    async () =>
+      loadJobs({
+        resetPage: true,
+        showLoading: true,
+      }),
+    [loadJobs],
+  );
+
+  const initialFetchDone = useRef(hasInitialRenderData && !shouldHydrateFullDataset);
   useEffect(() => {
     if (initialFetchDone.current) return;
     initialFetchDone.current = true;
-    void refresh();
-  }, [refresh]);
+    void loadJobs({
+      resetPage: false,
+      showLoading: !hasInitialRenderData,
+    });
+  }, [loadJobs, hasInitialRenderData]);
 
   return {
     allJobs,
@@ -91,6 +116,7 @@ export function useBulletinFetch(
     setSkillLabels,
     loading,
     error,
+    hasHydratedFullDataset,
     refresh,
   };
 }

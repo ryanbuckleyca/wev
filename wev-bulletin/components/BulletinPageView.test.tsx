@@ -174,6 +174,8 @@ function createData(): BulletinDataState {
     allJobs: baseJobs,
     filteredJobs: baseJobs.slice(0, 2),
     paginatedJobs: baseJobs.slice(0, 1),
+    filteredJobsCount: 2,
+    totalJobsCount: 3,
     lastScrapeTime: 'March 28, 2026, 9:00 AM EDT',
     loading: false,
     error: null,

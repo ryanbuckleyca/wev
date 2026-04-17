@@ -1,23 +1,125 @@
 import 'server-only';
 
 import { unstable_cache } from 'next/cache';
+import {
+  BULLETIN_ITEMS_PER_PAGE,
+  JOB_SORT_OPTIONS,
+  POSTED_WITHIN_FILTER_OPTIONS,
+  filterJobs,
+  sortJobs,
+  type BulletinFilters,
+  type JobSortOption,
+} from '@/lib/bulletin/job-query';
 import { supabaseServer } from '@/lib/supabase-server';
 import normalizeJobsWithSource from '@/lib/normalize-job';
 import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
+import { normalizeWorkTypes } from '@/lib/work-types';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
 
 /** Jobs older than this are never shown in the bulletin. */
 const JOBS_MAX_AGE_MS = 28 * 24 * 60 * 60 * 1000;
 
-/**
- * Fetches and normalizes all bulletin jobs. Cached server-side for 5 minutes,
- * busted by /api/revalidate-jobs after a scrape. En/fr cached separately via args.
- */
-export const fetchBulletinJobs = unstable_cache(
-  async (locale: 'en' | 'fr') => {
+type SearchParamValue = string | string[] | undefined;
+export type BulletinSearchParams = Record<string, SearchParamValue>;
+
+interface BulletinJobRowsResult {
+  jobs: JobPosting[];
+  lastScrapeTime: string | null;
+}
+
+interface ParsedBulletinRequest {
+  currentPage: number;
+  filters: BulletinFilters;
+  sortBy: JobSortOption;
+}
+
+interface BuildInitialBulletinDataOptions {
+  locale: 'en' | 'fr';
+  searchParams: BulletinSearchParams;
+  userId?: string | null;
+  profile?: Profile | null;
+  matchData?: SerializedMatchData;
+  bookmarkedJobIds?: string[];
+}
+
+function getFirstValue(value: SearchParamValue): string | null {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+  return value ?? null;
+}
+
+function getStringArray(value: SearchParamValue, defaultValue: string[]): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => Boolean(item));
+  }
+  if (typeof value === 'string' && value.length > 0) {
+    return [value];
+  }
+  return defaultValue;
+}
+
+function getBooleanValue(value: SearchParamValue, defaultValue: boolean): boolean {
+  const raw = getFirstValue(value);
+  if (!raw) return defaultValue;
+  if (raw === 'true') return true;
+  if (raw === 'false') return false;
+  return defaultValue;
+}
+
+function getPositiveIntValue(value: SearchParamValue, defaultValue: number): number {
+  const raw = getFirstValue(value);
+  const parsed = Number.parseInt(raw ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+}
+
+function getLiteralValue<T extends readonly string[]>(
+  value: SearchParamValue,
+  validValues: T,
+  defaultValue: T[number],
+): T[number] {
+  const raw = getFirstValue(value);
+  return raw && validValues.includes(raw as T[number]) ? (raw as T[number]) : defaultValue;
+}
+
+function pickRecordKeys<T>(record: Record<string, T>, keys: Set<string>): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(record).filter(([key]) => keys.has(key)),
+  );
+}
+
+function parseBulletinRequest(
+  searchParams: BulletinSearchParams,
+  profile: Profile | null,
+  userId: string | null,
+): ParsedBulletinRequest {
+  const defaultWorkTypes = userId ? normalizeWorkTypes(profile?.work_types) : [];
+  const defaultProvinces = userId && profile?.province ? [profile.province] : [];
+  const defaultMunicipalities = userId && profile?.municipality ? [profile.municipality] : [];
+
+  return {
+    currentPage: getPositiveIntValue(searchParams.page, 1),
+    sortBy: getLiteralValue(searchParams.sort, JOB_SORT_OPTIONS, 'date-desc'),
+    filters: {
+      searchQuery: getFirstValue(searchParams.q) ?? '',
+      selectedOrganizations: getStringArray(searchParams.org, []),
+      selectedProvinces: getStringArray(searchParams.province, defaultProvinces),
+      selectedMunicipalities: getStringArray(searchParams.municipality, defaultMunicipalities),
+      selectedEmploymentTypes: getStringArray(searchParams.employment, []),
+      selectedSources: getStringArray(searchParams.source, []),
+      selectedWorkTypes: getStringArray(searchParams.workType, defaultWorkTypes),
+      showOnlySse: getBooleanValue(searchParams.sse, true),
+      showJobsWithoutSalary: getBooleanValue(searchParams.salary, true),
+      postedWithin: getLiteralValue(searchParams.posted, POSTED_WITHIN_FILTER_OPTIONS, '2-weeks'),
+    },
+  };
+}
+
+const fetchBulletinJobRows = unstable_cache(
+  async (): Promise<BulletinJobRowsResult> => {
     const [scrapeResult, jobsResult] = await Promise.all([
       supabaseServer
         .from('scrape_runs')
@@ -37,16 +139,31 @@ export const fetchBulletinJobs = unstable_cache(
     if (scrapeResult.error) throw new Error(scrapeResult.error.message);
     if (jobsResult.error) throw new Error(jobsResult.error.message);
 
-    const jobsWithSource = normalizeJobsWithSource(jobsResult.data);
-    const labelMap = await resolveSkillLabels(supabaseServer, jobsWithSource, locale);
+    return {
+      jobs: normalizeJobsWithSource(jobsResult.data) as unknown as JobPosting[],
+      lastScrapeTime: scrapeResult.data?.run_at ?? null,
+    };
+  },
+  [BULLETIN_CACHE_TAG, 'rows'],
+  { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
+);
+
+/**
+ * Fetches and normalizes all bulletin jobs. Cached server-side for 5 minutes,
+ * busted by /api/revalidate-jobs after a scrape. En/fr cached separately via args.
+ */
+export const fetchBulletinJobs = unstable_cache(
+  async (locale: 'en' | 'fr') => {
+    const bulletinRows = await fetchBulletinJobRows();
+    const labelMap = await resolveSkillLabels(supabaseServer, bulletinRows.jobs, locale);
 
     return {
-      jobs: jobsWithSource as unknown as JobPosting[],
-      lastScrapeTime: scrapeResult.data?.run_at ?? null,
+      jobs: bulletinRows.jobs,
+      lastScrapeTime: bulletinRows.lastScrapeTime,
       skillLabels: Object.fromEntries(labelMap),
     };
   },
-  [BULLETIN_CACHE_TAG],
+  [BULLETIN_CACHE_TAG, 'full'],
   { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
 );
 
@@ -55,6 +172,39 @@ export const fetchBulletinJobs = unstable_cache(
  * Maps are not JSON-serializable; we use Record instead.
  */
 export type SerializedMatchData = Record<string, JobMatchData>;
+
+export async function buildInitialBulletinData({
+  locale,
+  searchParams,
+  userId = null,
+  profile = null,
+  matchData,
+  bookmarkedJobIds,
+}: BuildInitialBulletinDataOptions) {
+  const bulletinRows = await fetchBulletinJobRows();
+  const { filters, sortBy, currentPage } = parseBulletinRequest(searchParams, profile, userId);
+  const matchMap = new Map(Object.entries(matchData ?? {}));
+  const filteredJobs = sortJobs(filterJobs(bulletinRows.jobs, filters), sortBy, matchMap);
+  const totalPages = Math.ceil(filteredJobs.length / BULLETIN_ITEMS_PER_PAGE);
+  const resolvedPage =
+    totalPages === 0 ? 1 : Math.min(Math.max(currentPage, 1), totalPages);
+  const startIndex = (resolvedPage - 1) * BULLETIN_ITEMS_PER_PAGE;
+  const paginatedJobs = filteredJobs.slice(startIndex, startIndex + BULLETIN_ITEMS_PER_PAGE);
+  const visibleJobIds = new Set(paginatedJobs.map((job) => job.id));
+  const labelMap = await resolveSkillLabels(supabaseServer, paginatedJobs, locale);
+
+  return {
+    jobs: paginatedJobs,
+    scrapeTime: bulletinRows.lastScrapeTime,
+    skillLabels: Object.fromEntries(labelMap),
+    matchData: matchData ? pickRecordKeys(matchData, visibleJobIds) : undefined,
+    bookmarkedJobIds: bookmarkedJobIds?.filter((jobId) => visibleJobIds.has(jobId)),
+    isPartialHydration: true,
+    filteredJobsCount: filteredJobs.length,
+    totalJobsCount: bulletinRows.jobs.length,
+    totalPages,
+  };
+}
 
 /**
  * Fetches ALL job_match rows for a user (no job_id filter) so this can run
