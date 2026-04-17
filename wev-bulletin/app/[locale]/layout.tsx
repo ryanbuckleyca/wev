@@ -4,7 +4,7 @@ import { getMessages } from 'next-intl/server';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Lexend_Deca } from 'next/font/google';
 import Header from '@/components/Header';
-import DeferredToaster from '@/components/DeferredToaster';
+import Toaster from '@/components/Toaster';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { routing } from '@/i18n/routing';
@@ -48,7 +48,7 @@ export default async function LocaleLayout({
               <ProfileProvider>
                 <Header initialTheme={theme} />
                 {children}
-                <DeferredToaster />
+                <Toaster />
               </ProfileProvider>
             </AuthProvider>
           </NextIntlClientProvider>
