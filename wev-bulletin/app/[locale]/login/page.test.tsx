@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, render, screen, waitFor } from '@/test-utils';
 import LoginPage from './page';
 import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
 import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
 import { createMockAuthContext } from '@/test-utils/auth-context-mock';
@@ -129,7 +128,7 @@ describe('LoginPage', () => {
   it('redirects away when the user is already authenticated', async () => {
     vi.mocked(useAuth).mockReturnValue(
       createMockAuthContext({
-        user: { id: 'user-1', email: 'existing@example.com' } as User,
+        user: { id: 'user-1', email: 'existing@example.com' },
         loading: false,
       }),
     );
