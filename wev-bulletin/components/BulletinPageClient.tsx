@@ -20,7 +20,6 @@ interface BulletinPageClientProps {
   initialFilteredJobsCount?: number;
   initialTotalJobsCount?: number;
   initialTotalPages?: number;
-  initialIsPartialHydration?: boolean;
   initialFilterOptions?: BulletinFilterOptions;
   initialUserId?: string | null;
   isLoggedIn: boolean;
@@ -45,7 +44,6 @@ export default function BulletinPageClient({
   initialFilteredJobsCount,
   initialTotalJobsCount,
   initialTotalPages,
-  initialIsPartialHydration,
   initialFilterOptions,
   initialUserId,
   isLoggedIn,
@@ -89,7 +87,6 @@ export default function BulletinPageClient({
       filteredJobsCount: initialFilteredJobsCount,
       totalJobsCount: initialTotalJobsCount,
       totalPages: initialTotalPages,
-      isPartialHydration: initialIsPartialHydration,
       filterOptions: initialFilterOptions,
       userId: initialUserId ?? null,
       matchData: initialMatchData,

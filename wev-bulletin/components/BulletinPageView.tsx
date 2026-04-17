@@ -42,7 +42,7 @@ export default function BulletinPageView({
                 <ReScrapeButton onComplete={data.refresh} />
               </div>
               <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
-                <CopyAllJobsButton jobs={data.filteredJobs} />
+                <CopyAllJobsButton jobs={data.allJobs} />
               </div>
             </div>
           </div>
@@ -72,7 +72,7 @@ export default function BulletinPageView({
         )}
 
         <JobListings
-          jobs={data.paginatedJobs}
+          jobs={data.allJobs}
           totalJobsCount={data.totalJobsCount}
           loading={data.loading}
           error={data.error}

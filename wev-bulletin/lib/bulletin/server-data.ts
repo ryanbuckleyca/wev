@@ -606,7 +606,6 @@ export async function buildInitialBulletinData({
     skillLabels: queryResult.skillLabels,
     matchData: matchData ? pickRecordKeys(matchData, visibleJobIds) : undefined,
     bookmarkedJobIds: bookmarkedJobIds?.filter((jobId) => visibleJobIds.has(jobId)),
-    isPartialHydration: true,
     filteredJobsCount: queryResult.filteredJobsCount,
     totalJobsCount: queryResult.totalJobsCount,
     totalPages: queryResult.totalPages,

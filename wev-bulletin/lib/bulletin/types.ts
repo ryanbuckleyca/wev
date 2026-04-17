@@ -19,7 +19,6 @@ export interface InitialBulletinData {
   matchData?: SerializedMatchData;
   bookmarkedJobIds?: string[];
   skillLabels?: Record<string, SkillLabel>;
-  isPartialHydration?: boolean;
   filteredJobsCount?: number;
   totalJobsCount?: number;
   totalPages?: number;

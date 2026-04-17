@@ -79,7 +79,6 @@ async function BulletinDataContainer({
       initialFilteredJobsCount={initialBulletinData.filteredJobsCount}
       initialTotalJobsCount={initialBulletinData.totalJobsCount}
       initialTotalPages={initialBulletinData.totalPages}
-      initialIsPartialHydration={initialBulletinData.isPartialHydration}
     />
   );
 }

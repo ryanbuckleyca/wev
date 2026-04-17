@@ -1,27 +1,16 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import {
-  parseAsArrayOf,
-  parseAsBoolean,
-  parseAsInteger,
-  parseAsString,
-  parseAsStringLiteral,
-  useQueryState,
-} from 'nuqs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import type { Profile } from '@/lib/supabase/profiles';
 import { useProfileSync } from './useProfileSync';
-import {
-  JOB_SORT_OPTIONS,
-  POSTED_WITHIN_FILTER_OPTIONS,
-  type BulletinFilters,
-  type JobSortOption,
-  type PostedWithinSelection,
-} from '@/lib/bulletin/job-query';
+import type { BulletinFilters, JobSortOption, PostedWithinSelection } from '@/lib/bulletin/job-query';
+import { useBulletinQueryState } from './useBulletinQueryState';
+import { useBulletinFilterActions } from './useBulletinFilterActions';
+import { useBulletinPaginationReset } from './useBulletinPaginationReset';
 
 type QueryStateSetter<T> = (value: T) => Promise<unknown> | void;
 
@@ -96,106 +85,33 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
   const initialProfileMunicipality =
     initialUserId && initialProfile?.municipality ? [initialProfile.municipality] : [];
 
-  const [searchQuery, setSearchQuery] = useQueryState('q', parseAsString.withDefault(''));
-  const [selectedOrganizations, setSelectedOrganizations] = useQueryState(
-    'org',
-    parseAsArrayOf(parseAsString).withDefault([]),
+  const { filters, state, setters } = useBulletinQueryState(
+    initialProfileProvince,
+    initialProfileMunicipality,
+    initialProfileWorkTypes
   );
-  const [selectedProvinces, setSelectedProvinces] = useQueryState(
-    'province',
-    parseAsArrayOf(parseAsString).withDefault(initialProfileProvince),
-  );
-  const [selectedMunicipalities, setSelectedMunicipalities] = useQueryState(
-    'municipality',
-    parseAsArrayOf(parseAsString).withDefault(initialProfileMunicipality),
-  );
-  const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useQueryState(
-    'employment',
-    parseAsArrayOf(parseAsString).withDefault([]),
-  );
-  const [selectedSources, setSelectedSources] = useQueryState(
-    'source',
-    parseAsArrayOf(parseAsString).withDefault([]),
-  );
-  const [selectedWorkTypes, setSelectedWorkTypes] = useQueryState(
-    'workType',
-    parseAsArrayOf(parseAsString).withDefault(initialProfileWorkTypes),
-  );
-  const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true));
-  const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState(
-    'salary',
-    parseAsBoolean.withDefault(true),
-  );
-  const [postedWithin, setPostedWithin] = useQueryState(
-    'posted',
-    parseAsStringLiteral(POSTED_WITHIN_FILTER_OPTIONS).withDefault('2-weeks'),
-  );
+
   const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
   const [allJobsExpanded, setAllJobsExpanded] = useState(true);
-  const [sortBy, setSortBy] = useQueryState(
-    'sort',
-    parseAsStringLiteral(JOB_SORT_OPTIONS).withDefault('date-desc'),
-  );
 
-  const filterSnapshot = useMemo(
-    () =>
-      JSON.stringify({
-        searchQuery,
-        selectedOrganizations,
-        selectedProvinces,
-        selectedMunicipalities,
-        selectedEmploymentTypes,
-        selectedSources,
-        selectedWorkTypes,
-        showOnlySse,
-        showJobsWithoutSalary,
-        postedWithin,
-        sortBy,
-      }),
-    [
-      searchQuery,
-      selectedOrganizations,
-      selectedProvinces,
-      selectedMunicipalities,
-      selectedEmploymentTypes,
-      selectedSources,
-      selectedWorkTypes,
-      showOnlySse,
-      showJobsWithoutSalary,
-      postedWithin,
-      sortBy,
-    ],
-  );
-  const previousFilterSnapshotRef = useRef(filterSnapshot);
-
-  // Server-driven pagination should reset to page 1 whenever filter/sort inputs change.
-  useEffect(() => {
-    if (previousFilterSnapshotRef.current === filterSnapshot) return;
-    previousFilterSnapshotRef.current = filterSnapshot;
-
-    if (currentPage !== 1) {
-      void setCurrentPage(1);
-    }
-  }, [filterSnapshot, currentPage, setCurrentPage]);
+  useBulletinPaginationReset(filters, state.sortBy, state.currentPage, setters.setCurrentPage);
 
   const profileWorkTypes = useMemo(
     () => normalizeWorkTypes(effectiveProfile?.work_types),
     [effectiveProfile?.work_types],
   );
   const normalizedSelectedWorkTypes = useMemo(
-    () => normalizeWorkTypes(selectedWorkTypes),
-    [selectedWorkTypes],
+    () => normalizeWorkTypes(state.selectedWorkTypes),
+    [state.selectedWorkTypes],
   );
 
   const profileMunicipality = effectiveProfile?.municipality ?? null;
   const profileProvince = effectiveProfile?.province ?? null;
 
-  // Sync work types from profile on first load
   useProfileSync(userId, effectiveProfileLoading, 'workType', {
     profileValue: profileWorkTypes,
     selectedValue: normalizedSelectedWorkTypes,
-    setter: setSelectedWorkTypes,
+    setter: setters.setSelectedWorkTypes,
     shouldSync: (profileValue, selectedValue, hasQueryParam) => {
       if (!profileValue || profileValue.length === 0) return false;
       if (hasQueryParam || selectedValue.length > 0) return false;
@@ -203,13 +119,12 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     },
   });
 
-  // Sync location from profile on first load
   useProfileSync(userId, effectiveProfileLoading, 'municipality', {
     profileValue: profileMunicipality && profileProvince ? [profileProvince, profileMunicipality] : null,
-    selectedValue: [...selectedProvinces, ...selectedMunicipalities],
+    selectedValue: [...state.selectedProvinces, ...state.selectedMunicipalities],
     setter: ([province, municipality]) => {
-      void setSelectedProvinces([province]);
-      void setSelectedMunicipalities([municipality]);
+      void setters.setSelectedProvinces([province]);
+      void setters.setSelectedMunicipalities([municipality]);
     },
     shouldSync: (profileValue, selectedValue, hasQueryParam) => {
       if (!profileValue) return false;
@@ -219,53 +134,26 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     },
   });
 
-  const handleResetToProfileWorkTypes = useCallback(() => {
-    if (profileWorkTypes.length === 0) return;
-    void setSelectedWorkTypes(profileWorkTypes);
-  }, [profileWorkTypes, setSelectedWorkTypes]);
-
-  const handleResetToProfileLocation = useCallback(() => {
-    if (!profileMunicipality || !profileProvince) return;
-    void setSelectedProvinces([profileProvince]);
-    void setSelectedMunicipalities([profileMunicipality]);
-  }, [profileMunicipality, profileProvince, setSelectedProvinces, setSelectedMunicipalities]);
+  const {
+    clearAllFilters,
+    applySuggestedDefaults,
+    handleResetToProfileWorkTypes,
+    handleResetToProfileLocation,
+  } = useBulletinFilterActions(setters, {
+    profileWorkTypes,
+    profileMunicipality,
+    profileProvince,
+  });
 
   const isUsingProfileLocation = useMemo(() => {
     if (!profileMunicipality || !profileProvince) return false;
     return (
-      selectedMunicipalities.length === 1 &&
-      selectedMunicipalities[0] === profileMunicipality &&
-      selectedProvinces.length === 1 &&
-      selectedProvinces[0] === profileProvince
+      state.selectedMunicipalities.length === 1 &&
+      state.selectedMunicipalities[0] === profileMunicipality &&
+      state.selectedProvinces.length === 1 &&
+      state.selectedProvinces[0] === profileProvince
     );
-  }, [profileMunicipality, profileProvince, selectedMunicipalities, selectedProvinces]);
-
-  const filters = useMemo<BulletinFilters>(
-    () => ({
-      searchQuery,
-      selectedOrganizations,
-      selectedProvinces,
-      selectedMunicipalities,
-      selectedEmploymentTypes,
-      selectedSources,
-      selectedWorkTypes,
-      showOnlySse,
-      showJobsWithoutSalary,
-      postedWithin,
-    }),
-    [
-      searchQuery,
-      selectedOrganizations,
-      selectedProvinces,
-      selectedMunicipalities,
-      selectedEmploymentTypes,
-      selectedSources,
-      selectedWorkTypes,
-      showOnlySse,
-      showJobsWithoutSalary,
-      postedWithin,
-    ],
-  );
+  }, [profileMunicipality, profileProvince, state.selectedMunicipalities, state.selectedProvinces]);
 
   const isUsingProfileWorkTypes = useMemo(() => {
     if (profileWorkTypes.length === 0) return false;
@@ -275,82 +163,47 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
   }, [normalizedSelectedWorkTypes, profileWorkTypes]);
 
   const hasAnyFilters =
-    !!searchQuery ||
-    selectedOrganizations.length > 0 ||
-    selectedProvinces.length > 0 ||
-    selectedMunicipalities.length > 0 ||
-    selectedEmploymentTypes.length > 0 ||
-    selectedSources.length > 0 ||
-    selectedWorkTypes.length > 0 ||
-    !showOnlySse ||
-    !showJobsWithoutSalary ||
-    postedWithin !== 'any';
-
-  // Shared reset: clears every filter field back to its blank/empty value.
-  // clearAllFilters and applySuggestedDefaults both call this, then override
-  // the fields that differ between the two operations.
-  const resetCommonFilters = useCallback(() => {
-    void setSearchQuery('');
-    void setSelectedOrganizations([]);
-    void setSelectedProvinces([]);
-    void setSelectedMunicipalities([]);
-    void setSelectedEmploymentTypes([]);
-    void setSelectedSources([]);
-  }, [
-    setSearchQuery,
-    setSelectedOrganizations,
-    setSelectedProvinces,
-    setSelectedMunicipalities,
-    setSelectedEmploymentTypes,
-    setSelectedSources,
-  ]);
-
-  const clearAllFilters = useCallback(() => {
-    resetCommonFilters();
-    void setSelectedWorkTypes([]);
-    void setShowOnlySse(false);
-    void setShowJobsWithoutSalary(true);
-    void setPostedWithin('any');
-  }, [resetCommonFilters, setSelectedWorkTypes, setShowOnlySse, setShowJobsWithoutSalary, setPostedWithin]);
-
-  const applySuggestedDefaults = useCallback(() => {
-    resetCommonFilters();
-    void setSelectedWorkTypes(profileWorkTypes);
-    void setShowOnlySse(true);
-    void setShowJobsWithoutSalary(true);
-    void setPostedWithin('2-weeks');
-  }, [resetCommonFilters, profileWorkTypes, setSelectedWorkTypes, setShowOnlySse, setShowJobsWithoutSalary, setPostedWithin]);
+    !!state.searchQuery ||
+    state.selectedOrganizations.length > 0 ||
+    state.selectedProvinces.length > 0 ||
+    state.selectedMunicipalities.length > 0 ||
+    state.selectedEmploymentTypes.length > 0 ||
+    state.selectedSources.length > 0 ||
+    state.selectedWorkTypes.length > 0 ||
+    !state.showOnlySse ||
+    !state.showJobsWithoutSalary ||
+    state.postedWithin !== 'any';
 
   return {
     filters,
-    searchQuery,
-    setSearchQuery,
-    selectedOrganizations,
-    setSelectedOrganizations,
-    selectedProvinces,
-    setSelectedProvinces,
-    selectedMunicipalities,
-    setSelectedMunicipalities,
-    selectedEmploymentTypes,
-    setSelectedEmploymentTypes,
-    selectedSources,
-    setSelectedSources,
-    selectedWorkTypes,
-    setSelectedWorkTypes,
-    showOnlySse,
-    setShowOnlySse,
-    showJobsWithoutSalary,
-    setShowJobsWithoutSalary,
-    postedWithin,
-    setPostedWithin,
+    searchQuery: state.searchQuery,
+    setSearchQuery: setters.setSearchQuery,
+    selectedOrganizations: state.selectedOrganizations,
+    setSelectedOrganizations: setters.setSelectedOrganizations,
+    selectedProvinces: state.selectedProvinces,
+    setSelectedProvinces: setters.setSelectedProvinces,
+    selectedMunicipalities: state.selectedMunicipalities,
+    setSelectedMunicipalities: setters.setSelectedMunicipalities,
+    selectedEmploymentTypes: state.selectedEmploymentTypes,
+    setSelectedEmploymentTypes: setters.setSelectedEmploymentTypes,
+    selectedSources: state.selectedSources,
+    setSelectedSources: setters.setSelectedSources,
+    selectedWorkTypes: state.selectedWorkTypes,
+    setSelectedWorkTypes: setters.setSelectedWorkTypes,
+    showOnlySse: state.showOnlySse,
+    setShowOnlySse: setters.setShowOnlySse,
+    showJobsWithoutSalary: state.showJobsWithoutSalary,
+    setShowJobsWithoutSalary: setters.setShowJobsWithoutSalary,
+    postedWithin: state.postedWithin,
+    setPostedWithin: setters.setPostedWithin,
     filtersExpanded,
     setFiltersExpanded,
-    currentPage,
-    setCurrentPage,
+    currentPage: state.currentPage,
+    setCurrentPage: setters.setCurrentPage,
     allJobsExpanded,
     setAllJobsExpanded,
-    sortBy,
-    setSortBy,
+    sortBy: state.sortBy,
+    setSortBy: setters.setSortBy,
     profileWorkTypes,
     isUsingProfileWorkTypes,
     handleResetToProfileWorkTypes,
