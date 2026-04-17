@@ -28,8 +28,6 @@ export interface InitialBulletinData {
 
 export interface BulletinDataState {
   allJobs: JobPosting[];
-  filteredJobs: JobPosting[];
-  paginatedJobs: JobPosting[];
   filteredJobsCount: number;
   totalJobsCount: number;
   lastScrapeTime: string | null;

@@ -73,8 +73,6 @@ export function useBulletinData(
 
   return {
     allJobs,
-    filteredJobs: allJobs,
-    paginatedJobs: allJobs,
     filteredJobsCount,
     totalJobsCount,
     lastScrapeTime,

@@ -1,4 +1,5 @@
 export const JOB_BOARD_TEST_IDS = {
+  pageLoadingState: 'job-board-page-loading-state',
   filtersToggle: 'job-board-filters-toggle',
   postedWithinGroup: 'job-board-posted-within-group',
   workTypeGroup: 'job-board-work-type-group',

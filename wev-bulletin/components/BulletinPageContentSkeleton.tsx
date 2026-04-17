@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Search1Outlined } from '@lineiconshq/free-icons';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import FilterIcon from '@/components/FilterIcon';
+import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 function SkeletonBlock({ className }: { className: string }) {
   return <div aria-hidden className={`animate-pulse rounded-wev-btn bg-muted/70 ${className}`} />;
@@ -15,7 +16,7 @@ export default function BulletinPageContentSkeleton() {
   const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   return (
-    <>
+    <div data-testid={JOB_BOARD_TEST_IDS.pageLoadingState}>
       <div className="bg-card border border-border rounded-wev-card mb-4 overflow-hidden">
         <div className="p-3 sm:p-4">
           <div className="flex items-center gap-2.5">
@@ -94,6 +95,6 @@ export default function BulletinPageContentSkeleton() {
           </div>
         ))}
       </div>
-    </>
+    </div>
   );
 }

@@ -171,9 +171,7 @@ function createFilters(): BulletinFilterControls {
 
 function createData(): BulletinDataState {
   return {
-    allJobs: baseJobs,
-    filteredJobs: baseJobs.slice(0, 2),
-    paginatedJobs: baseJobs.slice(0, 1),
+    allJobs: baseJobs.slice(0, 1),
     filteredJobsCount: 2,
     totalJobsCount: 3,
     lastScrapeTime: 'March 28, 2026, 9:00 AM EDT',
@@ -218,9 +216,9 @@ describe('BulletinPageView', () => {
       />,
     );
 
-    expect(screen.getByText('job-filters:3:2:3')).toBeVisible();
+    expect(screen.getByText('job-filters:1:2:3')).toBeVisible();
     expect(screen.getByText('job-listings:1')).toBeVisible();
-    expect(screen.getByText('copy-jobs:2')).toBeVisible();
+    expect(screen.getByText('copy-jobs:1')).toBeVisible();
     expect(screen.getByText(/Last updated/i)).toBeVisible();
     expect(screen.getByText('sort:yes')).toBeVisible();
     expect(screen.getByText('pagination:3')).toBeVisible();

@@ -1,5 +1,6 @@
 import { test, expect } from '@e2e/fixtures';
 import { expectJobBoardReady } from '@e2e/support/job-board';
+import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 import {
   attachPerformanceSnapshot,
   readElapsedNavigationTime,
@@ -13,7 +14,7 @@ const JOB_BOARD_PERFORMANCE_BUDGET_MS = {
   responseStartMs: 1_000,
 } as const;
 
-const POST_READY_SKELETON_WATCH_MS = 10_000;
+const POST_READY_LOADING_GUARD_MS = 2_500;
 
 test.use({
   screenshot: 'off',
@@ -36,32 +37,18 @@ test.describe('Job board performance @perf', () => {
       String(expectations.jobCount),
     );
 
-    const skeletonReappearedAfterReady = await jobBoardPage.page.evaluate(async (watchMs) => {
-      const selector = '#search-loading';
+    const loadingStateLocator = jobBoardPage.page.getByTestId(JOB_BOARD_TEST_IDS.pageLoadingState);
+    await expect(loadingStateLocator).toHaveCount(0);
 
-      const hasSkeleton = () => Boolean(document.querySelector(selector));
-      if (hasSkeleton()) {
-        return true;
-      }
+    const loadingStateReappeared = await jobBoardPage.page
+      .waitForSelector(`[data-testid="${JOB_BOARD_TEST_IDS.pageLoadingState}"]`, {
+        state: 'attached',
+        timeout: POST_READY_LOADING_GUARD_MS,
+      })
+      .then(() => true)
+      .catch(() => false);
 
-      return await new Promise<boolean>((resolve) => {
-        const observer = new MutationObserver(() => {
-          if (hasSkeleton()) {
-            observer.disconnect();
-            resolve(true);
-          }
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
-
-        setTimeout(() => {
-          observer.disconnect();
-          resolve(false);
-        }, watchMs);
-      });
-    }, POST_READY_SKELETON_WATCH_MS);
-
-    expect(skeletonReappearedAfterReady).toBe(false);
+    expect(loadingStateReappeared).toBe(false);
 
     const interactiveReadyMs = await readElapsedNavigationTime(jobBoardPage.page);
 

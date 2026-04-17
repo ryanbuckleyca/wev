@@ -62,7 +62,10 @@ export default function ToasterProvider() {
   return (
     <Toaster
       position="top-center"
-      containerStyle={{ top: 'max(8px, env(safe-area-inset-top))' }}
+      containerStyle={{
+        top: 'max(8px, env(safe-area-inset-top))',
+        pointerEvents: 'none',
+      }}
       toastOptions={{
         duration: 4000,
         className: 'design-toast',
@@ -78,12 +81,19 @@ export default function ToasterProvider() {
           fontWeight: 500,
           minWidth: '280px',
           maxWidth: '480px',
+          pointerEvents: 'auto',
         },
         success: {
-          style: TOAST_THEMES.success.style,
+          style: {
+            ...TOAST_THEMES.success.style,
+            pointerEvents: 'auto',
+          },
         },
         error: {
-          style: TOAST_THEMES.error.style,
+          style: {
+            ...TOAST_THEMES.error.style,
+            pointerEvents: 'auto',
+          },
         },
       }}
     >

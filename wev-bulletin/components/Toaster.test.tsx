@@ -18,8 +18,14 @@ describe('ToasterProvider', () => {
     expect(HotToaster).toHaveBeenCalledWith(
       expect.objectContaining({
         position: 'top-center',
+        containerStyle: expect.objectContaining({
+          pointerEvents: 'none',
+        }),
         toastOptions: expect.objectContaining({
           duration: 4000,
+          style: expect.objectContaining({
+            pointerEvents: 'auto',
+          }),
         }),
       }),
       undefined,
