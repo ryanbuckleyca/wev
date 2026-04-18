@@ -9,12 +9,42 @@ import {
   fetchServerMatchData,
   fetchServerProfile,
   type BulletinSearchParams,
-  type SerializedMatchData,
 } from '@/lib/bulletin/server-data';
 import BulletinPageContentSkeleton from '@/components/BulletinPageContentSkeleton';
 import BulletinPageClient from '@/components/BulletinPageClient';
 import BulletinPageScaffold from '@/components/BulletinPageScaffold';
 import { parseLocale } from '@/lib/resolve-skill-labels';
+
+/**
+ * Resolves locale from the route params promise.
+ * Extracted so auth and locale resolution can run in parallel.
+ */
+async function resolveLocale(params: Promise<{ locale: string }>): Promise<'en' | 'fr'> {
+  const { locale: rawLocale } = await params;
+  const validLocales = routing.locales as readonly string[];
+  const locale = validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale;
+  return parseLocale(locale);
+}
+
+/**
+ * Fetches all authenticated user metadata in a single parallel batch.
+ * Returns null for unauthenticated users immediately — no wasted DB calls.
+ */
+async function fetchAuthenticatedUserData(userId: string) {
+  const [rolesResult, profile, matchData, bookmarkedJobIds] = await Promise.all([
+    fetchUserRolesFromService(userId),
+    fetchServerProfile(userId),
+    fetchServerMatchData(userId),
+    fetchServerBookmarks(userId),
+  ]);
+
+  return {
+    isAdmin: rolesIncludeAdmin(rolesResult.ok ? rolesResult.roles : ['user']),
+    profile,
+    matchData,
+    bookmarkedJobIds,
+  };
+}
 
 // Renders auth/profile bootstrap independently inside a Suspense boundary.
 async function BulletinDataContainer({
@@ -24,45 +54,24 @@ async function BulletinDataContainer({
   params: Promise<{ locale: string }>;
   searchParams: Promise<BulletinSearchParams>;
 }) {
-  const [auth, resolvedParams, resolvedSearchParams] = await Promise.all([
+  // Resolve auth, locale, and searchParams in parallel — no sequential waterfall.
+  const [auth, parsedLocale, resolvedSearchParams] = await Promise.all([
     getRequestUser(),
-    params,
+    resolveLocale(params),
     searchParams,
   ]);
-  const validLocales = routing.locales as readonly string[];
-  const locale = validLocales.includes(resolvedParams.locale)
-    ? resolvedParams.locale
-    : routing.defaultLocale;
-  const parsedLocale = parseLocale(locale);
 
-  let isAdmin = false;
-  let initialUserId: string | null = null;
-  let initialProfile: Awaited<ReturnType<typeof fetchServerProfile>> = null;
-  let initialMatchData: SerializedMatchData | undefined = undefined;
-  let initialBookmarkedJobIds: string[] | undefined = undefined;
-
-  if (auth.ok) {
-    initialUserId = auth.user.id;
-    const [rolesResult, profile, matchData, bookmarkedJobIds] = await Promise.all([
-      fetchUserRolesFromService(auth.user.id),
-      fetchServerProfile(auth.user.id),
-      fetchServerMatchData(auth.user.id),
-      fetchServerBookmarks(auth.user.id),
-    ]);
-    const resolvedRoles = rolesResult.ok ? rolesResult.roles : ['user'];
-    isAdmin = rolesIncludeAdmin(resolvedRoles);
-    initialProfile = profile;
-    initialMatchData = matchData;
-    initialBookmarkedJobIds = bookmarkedJobIds;
-  }
+  // For unauthenticated users, skip all user-metadata DB calls entirely.
+  const userId = auth.ok ? auth.user.id : null;
+  const userData = userId ? await fetchAuthenticatedUserData(userId) : null;
 
   const initialBulletinData = await buildInitialBulletinData({
     locale: parsedLocale,
     searchParams: resolvedSearchParams,
-    userId: initialUserId,
-    profile: initialProfile,
-    matchData: initialMatchData,
-    bookmarkedJobIds: initialBookmarkedJobIds,
+    userId,
+    profile: userData?.profile ?? null,
+    matchData: userData?.matchData,
+    bookmarkedJobIds: userData?.bookmarkedJobIds,
   });
 
   return (
@@ -70,12 +79,12 @@ async function BulletinDataContainer({
       initialJobs={initialBulletinData.jobs}
       initialScrapeTime={initialBulletinData.scrapeTime}
       initialSkillLabels={initialBulletinData.skillLabels}
-      initialUserId={initialUserId}
+      initialUserId={userId}
       isLoggedIn={auth.ok}
-      isAdmin={isAdmin}
+      isAdmin={userData?.isAdmin ?? false}
       initialMatchData={initialBulletinData.matchData}
       initialBookmarkedJobIds={initialBulletinData.bookmarkedJobIds}
-      initialProfile={initialProfile}
+      initialProfile={userData?.profile ?? null}
       initialFilteredJobsCount={initialBulletinData.filteredJobsCount}
       initialTotalJobsCount={initialBulletinData.totalJobsCount}
       initialTotalPages={initialBulletinData.totalPages}

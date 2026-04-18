@@ -62,7 +62,7 @@ describe('GET /api/bulletin (handler contract)', () => {
       },
     });
     
-    mockGetRequestUser.mockResolvedValue({ ok: false, error: 'unauthorized' });
+    mockGetRequestUser.mockResolvedValue({ ok: false, authError: 'unauthorized' } as any);
   });
 
   it('returns JSON and public Cache-Control with locale from query', async () => {
