@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { BULLETIN_CACHE_TAG } from '@/app/api/bulletin/route';
+import { BULLETIN_CACHE_TAG } from '@/lib/bulletin/server-data';
+ 
+export const dynamic = 'force-dynamic';
 
 const REVALIDATE_SECRET = process.env.REVALIDATE_SECRET ?? process.env.REVALIDATION_SECRET;
 
