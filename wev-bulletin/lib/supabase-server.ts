@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+ 
 /**
  * Server-only Supabase client. Uses service role key.
  * Only import this in API routes or Server Components — never in client components.
@@ -32,17 +32,17 @@ const getSupabaseServer = () => {
 };
  
 // Lazy-initialized singleton
-let _supabaseServer: any = null;
+let _supabaseServer: SupabaseClient | null = null;
  
 /**
  * Lazy-initialized service-role client.
  * Using a Proxy to maintain the existing variable-style export for consumers.
  */
-export const supabaseServer = new Proxy({} as any, {
+export const supabaseServer: SupabaseClient = new Proxy({} as unknown as SupabaseClient, {
   get(_, prop) {
     if (!_supabaseServer) {
       _supabaseServer = getSupabaseServer();
     }
-    return _supabaseServer[prop];
+    return (_supabaseServer as any)[prop as keyof SupabaseClient];
   },
 });
