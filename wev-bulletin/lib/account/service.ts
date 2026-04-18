@@ -3,6 +3,7 @@ import 'server-only';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { PasswordVerifier, ValidationError, AuthenticationError } from './password-verifier';
+import { PasswordSchema } from '@/lib/schemas/account';
 
 export class AccountServiceError extends Error {
   constructor(
@@ -55,16 +56,11 @@ export async function updatePasswordForCurrentUser({
   currentPassword: string;
   newPassword: string;
 }) {
-  if (!newPassword?.trim()) {
-    throw new AccountServiceError('New password is required.', 400, 'NEW_PASSWORD_REQUIRED');
-  }
-
-  if (newPassword.length < PasswordVerifier.MIN_PASSWORD_LENGTH) {
-    throw new AccountServiceError(
-      `New password must be at least ${PasswordVerifier.MIN_PASSWORD_LENGTH} characters.`,
-      400,
-      'PASSWORD_TOO_SHORT'
-    );
+  const result = PasswordSchema.safeParse(newPassword);
+  if (!result.success) {
+    const error = result.error.errors[0];
+    const code = newPassword ? 'PASSWORD_TOO_SHORT' : 'NEW_PASSWORD_REQUIRED';
+    throw new AccountServiceError(error.message, 400, code);
   }
 
   try {
