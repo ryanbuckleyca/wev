@@ -1,6 +1,32 @@
 import type { PostgrestFilterBuilder } from '@supabase/postgrest-js';
-import { type BulletinFilters, type JobSortOption } from '@/lib/bulletin/job-query';
+import { type BulletinFilters, type JobSortOption, JOBS_SELECT_COLUMNS } from '@/lib/bulletin/job-query';
 import { JOBS_MAX_AGE_MS, POSTED_WITHIN_DAYS } from './constants';
+
+// Minimal types to satisfy Supabase's GenericSchema constraint without using 'any'
+export interface JobTable {
+  Row: Record<string, unknown>;
+  Insert: Record<string, unknown>;
+  Update: Record<string, unknown>;
+  Relationships: unknown[];
+}
+
+export interface JobView {
+  Row: Record<string, unknown>;
+  Insert: Record<string, unknown>;
+  Update: Record<string, unknown>;
+  Relationships: unknown[];
+}
+
+export interface JobFunction {
+  Args: Record<string, unknown>;
+  Returns: unknown;
+}
+
+export interface JobSchema {
+  Tables: Record<string, JobTable>;
+  Views: Record<string, JobView>;
+  Functions: Record<string, JobFunction>;
+}
 
 export function getRecentJobsCutoffIso(now = Date.now()): string {
   return new Date(now - JOBS_MAX_AGE_MS).toISOString();
@@ -31,9 +57,10 @@ export function getPostedWithinCutoffIso(
 }
 
 export function applyFiltersToJobsQuery(
-  query: PostgrestFilterBuilder<any, any, any, string>,
+  // @ts-expect-error PostgrestFilterBuilder has excessively deep instantiation for modular helper types
+  query: PostgrestFilterBuilder<JobSchema, JobTable, unknown, string>,
   filters: BulletinFilters,
-): PostgrestFilterBuilder<any, any, any, string> {
+): PostgrestFilterBuilder<JobSchema, JobTable, unknown, string> {
   const now = filters.now ?? Date.now();
 
   let next = query.gte('date_posted', getRecentJobsCutoffIso(now));
@@ -85,9 +112,10 @@ export function applyFiltersToJobsQuery(
 }
 
 export function applyDatabaseSort(
-  query: PostgrestFilterBuilder<any, any, any, string>,
+  // @ts-expect-error PostgrestFilterBuilder has excessively deep instantiation for modular helper types
+  query: PostgrestFilterBuilder<JobSchema, JobTable, unknown, string>,
   sortBy: JobSortOption,
-): PostgrestFilterBuilder<any, any, any, string> {
+): PostgrestFilterBuilder<JobSchema, JobTable, unknown, string> {
   switch (sortBy) {
     case 'date-asc':
       return query.order('date_posted', { ascending: true, nullsFirst: false });

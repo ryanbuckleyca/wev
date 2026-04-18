@@ -21,7 +21,8 @@ vi.mock('@/lib/supabase-server', () => {
 
   return {
     supabaseServer: {
-      from: vi.fn().mockReturnValue(mockChain as any),
+      // @ts-expect-error Mock implementation doesn't need to satisfy complex Postgrest types
+      from: vi.fn().mockReturnValue(mockChain),
     },
   };
 });

@@ -4,6 +4,7 @@ import { unstable_cache } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
 import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import normalizeJobsWithSource from '@/lib/normalize-job';
+import type { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 import {
@@ -24,6 +25,8 @@ import {
   getRecentJobsCutoffIso,
   applyFiltersToJobsQuery,
   applyDatabaseSort,
+  type JobSchema,
+  type JobTable,
 } from './query-builder';
 import { type ParsedBulletinRequest, type BulletinSearchParams, parseBulletinRequest } from './parse-request';
 import { fetchServerMatchData, type SerializedMatchData } from './user-data';
@@ -141,9 +144,9 @@ async function queryJobsWithDatabasePagination({
   currentPage: number;
 }> {
   const runQuery = async (page: number) => {
-    let query: PostgrestFilterBuilder<any, any, any, string> = supabaseServer
-      .from('jobs')
-      .select(JOBS_SELECT_COLUMNS, { count: 'exact' });
+    // @ts-expect-error Instantiation depth issue with modular helpers
+    let query: PostgrestFilterBuilder<JobSchema, JobTable, unknown, string> =
+      supabaseServer.from('jobs').select(JOBS_SELECT_COLUMNS, { count: 'exact' });
     query = applyFiltersToJobsQuery(query, request.filters);
     query = applyDatabaseSort(query, request.sortBy);
 
