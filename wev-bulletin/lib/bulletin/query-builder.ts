@@ -1,3 +1,4 @@
+import type { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 import { type BulletinFilters, type JobSortOption } from '@/lib/bulletin/job-query';
 import { JOBS_MAX_AGE_MS, POSTED_WITHIN_DAYS } from './constants';
 
@@ -29,7 +30,14 @@ export function getPostedWithinCutoffIso(
   return new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
-export function applyFiltersToJobsQuery(query: any, filters: BulletinFilters): any {
+export function applyFiltersToJobsQuery<
+  Schema extends Record<string, any>,
+  Row extends Record<string, any>,
+  Result,
+>(
+  query: PostgrestFilterBuilder<Schema, Row, Result>,
+  filters: BulletinFilters,
+): PostgrestFilterBuilder<Schema, Row, Result> {
   const now = filters.now ?? Date.now();
 
   let next = query.gte('date_posted', getRecentJobsCutoffIso(now));
@@ -80,7 +88,14 @@ export function applyFiltersToJobsQuery(query: any, filters: BulletinFilters): a
   return next;
 }
 
-export function applyDatabaseSort(query: any, sortBy: JobSortOption): any {
+export function applyDatabaseSort<
+  Schema extends Record<string, any>,
+  Row extends Record<string, any>,
+  Result,
+>(
+  query: PostgrestFilterBuilder<Schema, Row, Result>,
+  sortBy: JobSortOption,
+): PostgrestFilterBuilder<Schema, Row, Result> {
   switch (sortBy) {
     case 'date-asc':
       return query.order('date_posted', { ascending: true, nullsFirst: false });

@@ -34,7 +34,7 @@ const profileUpdateSchema = z
   })
   .strict();
 
-function applyProfileDefaults(row: any): Profile {
+function applyProfileDefaults(row: Partial<Profile>): Profile {
   return {
     ...row,
     values: Array.isArray(row.values) ? row.values : [],

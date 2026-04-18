@@ -1,5 +1,5 @@
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
-import type { SerializedMatchData } from '@/lib/bulletin/server-data';
+import type { SerializedMatchData } from '@/lib/bulletin/user-data';
 import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/job-query';
 import type { BulletinFilterOptions } from '@/lib/bulletin/filter-options';
 import type { SkillLabel } from '@/lib/resolve-skill-labels';

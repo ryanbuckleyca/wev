@@ -3,14 +3,13 @@ import {
   queryBulletinJobs,
   parseBulletinRequestFromUrlSearchParams,
   BULLETIN_CACHE_TAG,
+  MATCH_SORT_OPTIONS,
 } from '@/lib/bulletin/server-data';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { parseLocale } from '@/lib/resolve-skill-labels';
 
 // Re-export so /api/revalidate-jobs can reference the same tag.
 export { BULLETIN_CACHE_TAG };
-
-const MATCH_SORTS = new Set(['match-desc', 'value-match-desc', 'skill-match-desc']);
 
 const NO_STORE_HEADERS = {
   'Cache-Control': 'no-store, max-age=0, must-revalidate',
@@ -28,7 +27,7 @@ export async function GET(request: Request) {
     const includeAllFilteredJobs = searchParams.get('all') === 'true';
 
     let userId: string | null = null;
-    if (MATCH_SORTS.has(parsedRequest.sortBy)) {
+    if (MATCH_SORT_OPTIONS.has(parsedRequest.sortBy as any)) {
       const auth = await getRequestUser();
       if (auth.ok) {
         userId = auth.user.id;
