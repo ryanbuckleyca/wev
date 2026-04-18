@@ -1,5 +1,8 @@
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 
+export const PROFILE_COLUMNS =
+  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, created_at, updated_at' as const;
+
 export type Profile = {
   id: string;
   full_name: string | null;

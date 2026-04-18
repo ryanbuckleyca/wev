@@ -259,24 +259,35 @@ export function useBulletinFetch(
   );
 
   const fetchAllFilteredJobs = useCallback(async (): Promise<JobPosting[]> => {
-    const response = await fetch(
-      `/api/bulletin?${buildBulletinQueryString({
-        locale,
-        request: effectiveRequest,
-        includeAllFilteredJobs: true,
-      })}`,
-      {
-        cache: 'no-cache',
-      },
-    );
+    activeControllerRef.current?.abort();
+    const controller = new AbortController();
+    activeControllerRef.current = controller;
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error ?? t('loadFailed'));
+    try {
+      const response = await fetch(
+        `/api/bulletin?${buildBulletinQueryString({
+          locale,
+          request: effectiveRequest,
+          includeAllFilteredJobs: true,
+        })}`,
+        {
+          signal: controller.signal,
+          cache: 'no-cache',
+        },
+      );
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error ?? t('loadFailed'));
+      }
+
+      const data = (await response.json()) as BulletinApiPayload;
+      return data.jobs ?? [];
+    } finally {
+      if (activeControllerRef.current === controller) {
+        activeControllerRef.current = null;
+      }
     }
-
-    const data = (await response.json()) as BulletinApiPayload;
-    return data.jobs ?? [];
   }, [effectiveRequest, locale, t]);
 
   const initialFetchDone = useRef(hasInitialRenderData);

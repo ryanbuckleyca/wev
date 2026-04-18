@@ -113,8 +113,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     };
 
-    void syncAuth();
-
+    /**
+     * We use polling and window focus events instead of Supabase Realtime
+     * to avoid shipping the full Supabase client bundle to the browser.
+     * This keeps the client-side footprint small but means session changes
+     * may have a slight delay if the window stays visible.
+     */
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         void syncAuth();
@@ -125,12 +129,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void syncAuth();
     };
 
+    // Fallback polling for long-lived sessions (every 5 minutes)
+    const pollInterval = window.setInterval(() => {
+      void syncAuth();
+    }, 5 * 60 * 1000);
+
     window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       mounted = false;
       controller.abort();
+      window.clearInterval(pollInterval);
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

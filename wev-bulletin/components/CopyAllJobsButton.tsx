@@ -139,7 +139,7 @@ export default function CopyAllJobsButton({
       // Fallback for browsers that don't support ClipboardItem (e.g., Firefox) or if it fails
       try {
         const jobsToCopy = fetchJobs ? await fetchJobs() : jobs;
-        const text = formatJobsAsText(jobsToCopy, t);
+        const text = formatJobsAsText(jobsToCopy, t, locale);
         await navigator.clipboard.writeText(text);
         setCopied(true);
 
@@ -152,13 +152,12 @@ export default function CopyAllJobsButton({
         // Final fallback for older browsers using execCommand
         const textArea = document.createElement('textarea');
         const jobsToCopy = fetchJobs ? await fetchJobs() : jobs;
-        textArea.value = formatJobsAsText(jobsToCopy, t);
+        textArea.value = formatJobsAsText(jobsToCopy, t, locale);
         document.body.appendChild(textArea);
         textArea.select();
         try {
           document.execCommand('copy');
           setCopied(true);
-
           copiedTimeoutRef.current = setTimeout(() => {
             setCopied(false);
             copiedTimeoutRef.current = null;

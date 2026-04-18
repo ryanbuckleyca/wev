@@ -27,6 +27,14 @@ export const JOB_SORT_OPTIONS = [
 
 export type JobSortOption = (typeof JOB_SORT_OPTIONS)[number];
 
+export const MATCH_SORT_OPTIONS = new Set<JobSortOption>([
+  'match-desc',
+  'value-match-desc',
+  'skill-match-desc',
+]);
+
+export const DATABASE_SORT_OPTIONS = new Set<JobSortOption>(['date-desc', 'date-asc', 'org-asc']);
+
 export type BulletinFilters = {
   searchQuery: string;
   selectedOrganizations: string[];

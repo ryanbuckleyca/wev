@@ -13,7 +13,7 @@ interface PaginationProps {
 
 type PaginationToken = number | 'ellipsis';
 
-function buildPaginationTokens(currentPage: number, totalPages: number): PaginationToken[] {
+export function buildPaginationTokens(currentPage: number, totalPages: number): PaginationToken[] {
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, index) => index + 1);
   }
