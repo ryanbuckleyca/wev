@@ -104,7 +104,7 @@ export async function PATCH(request: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json(
-        { error: `Validation failed: ${result.error.errors.map((e) => e.message).join(', ')}` },
+        { error: `Validation failed: ${result.error.issues.map((e: z.ZodIssue) => e.message).join(', ')}` },
         { status: 400 },
       );
     }

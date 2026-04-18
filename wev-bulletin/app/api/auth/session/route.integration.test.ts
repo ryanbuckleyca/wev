@@ -31,12 +31,17 @@ describe('API Route: /api/auth/session', () => {
   });
 
   it('returns user data and roles if authenticated', async () => {
-    // @ts-expect-error Mocking for test
     mockGetRequestUser.mockResolvedValue({ 
       ok: true, 
-      user: { id: 'u123', email: 'test@example.com' } 
+      user: { 
+        id: 'u123', 
+        email: 'test@example.com',
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+      } as any
     });
-    // @ts-expect-error Mocking for test
     mockFetchUserRoles.mockResolvedValue({ ok: true, roles: ['admin'] });
 
     const response = await GET();

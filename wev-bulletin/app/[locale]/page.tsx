@@ -10,7 +10,6 @@ import {
   fetchServerProfile,
   type BulletinSearchParams,
 } from '@/lib/bulletin/server-data';
-import BulletinPageContentSkeleton from '@/components/BulletinPageContentSkeleton';
 import BulletinPageClient from '@/components/BulletinPageClient';
 import BulletinPageScaffold from '@/components/BulletinPageScaffold';
 import { parseLocale } from '@/lib/resolve-skill-labels';
@@ -104,7 +103,7 @@ export default function Home({
   // inflating the initial HTML/RSC response.
   return (
     <BulletinPageScaffold>
-      <Suspense fallback={<BulletinPageContentSkeleton />}>
+      <Suspense fallback={null}>
         <BulletinDataContainer params={params} searchParams={searchParams} />
       </Suspense>
     </BulletinPageScaffold>

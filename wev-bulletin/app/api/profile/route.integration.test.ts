@@ -8,20 +8,25 @@ vi.mock('@/lib/auth/request-user', () => ({
   getRequestUser: vi.fn(),
 }));
 
-vi.mock('@/lib/supabase-server', () => ({
-  supabaseServer: {
-    from: vi.fn().mockReturnThis(),
+vi.mock('@/lib/supabase-server', () => {
+  const mockChain = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     maybeSingle: vi.fn(),
     upsert: vi.fn().mockReturnThis(),
     update: vi.fn().mockReturnThis(),
     single: vi.fn(),
-  },
-}));
+  };
+
+  return {
+    supabaseServer: {
+      from: vi.fn().mockReturnValue(mockChain),
+    },
+  };
+});
 
 const mockGetRequestUser = vi.mocked(getRequestUser);
-const mockSupabase = vi.mocked(supabaseServer);
+const mockSupabaseChain = (vi.mocked(supabaseServer.from) as any).getMockImplementation()?.();
 
 describe('API Route: /api/profile', () => {
   beforeEach(() => {
@@ -30,14 +35,26 @@ describe('API Route: /api/profile', () => {
 
   describe('GET', () => {
     it('returns 401 if unauthorized', async () => {
-      mockGetRequestUser.mockResolvedValue({ ok: false, error: 'unauthorized', status: 401 });
+      mockGetRequestUser.mockResolvedValue({ ok: false, authError: 'unauthorized' } as any);
       const response = await GET();
       expect(response.status).toBe(401);
     });
 
     it('returns profile data if authorized', async () => {
-      mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'u123', email: 'test@example.com' } });
-      mockSupabase.maybeSingle.mockResolvedValue({ data: { id: 'u123', full_name: 'Test' }, error: null });
+      mockGetRequestUser.mockResolvedValue({ 
+        ok: true, 
+        user: { 
+          id: 'u123', 
+          email: 'test@example.com',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        } as any 
+      });
+      
+      const chain = vi.mocked(supabaseServer.from('profiles'));
+      chain.maybeSingle.mockResolvedValue({ data: { id: 'u123', full_name: 'Test' }, error: null });
 
       const response = await GET();
       const body = await response.json();
@@ -48,7 +65,17 @@ describe('API Route: /api/profile', () => {
 
   describe('PATCH', () => {
     it('returns 400 for invalid schema', async () => {
-      mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'u123', email: 'test@example.com' } });
+      mockGetRequestUser.mockResolvedValue({ 
+        ok: true, 
+        user: { 
+          id: 'u123', 
+          email: 'test@example.com',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        } as any 
+      });
       const request = new NextRequest('http://l/api/profile', {
         method: 'PATCH',
         body: JSON.stringify({ unknown_field: 'error' }),
@@ -59,8 +86,20 @@ describe('API Route: /api/profile', () => {
     });
 
     it('returns updated profile on success', async () => {
-      mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'u123', email: 'test@example.com' } });
-      mockSupabase.single.mockResolvedValue({ data: { id: 'u123', full_name: 'New Name' }, error: null });
+      mockGetRequestUser.mockResolvedValue({ 
+        ok: true, 
+        user: { 
+          id: 'u123', 
+          email: 'test@example.com',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        } as any 
+      });
+      
+      const chain = vi.mocked(supabaseServer.from('profiles'));
+      chain.single.mockResolvedValue({ data: { id: 'u123', full_name: 'New Name' }, error: null });
 
       const request = new NextRequest('http://l/api/profile', {
         method: 'PATCH',

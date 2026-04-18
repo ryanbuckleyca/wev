@@ -1,7 +1,6 @@
 'use client';
 
 import { useLocale } from 'next-intl';
-import BulletinPageContentSkeleton from '@/components/BulletinPageContentSkeleton';
 import BulletinPageView from '@/components/BulletinPageView';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
@@ -96,7 +95,7 @@ export default function BulletinPageClient({
   );
 
   if (data.loading && data.allJobs.length === 0 && !data.error) {
-    return <BulletinPageContentSkeleton />;
+    return null;
   }
 
   return (
