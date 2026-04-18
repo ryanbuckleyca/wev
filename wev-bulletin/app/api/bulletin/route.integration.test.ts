@@ -4,6 +4,7 @@ import {
   queryBulletinJobs,
   parseBulletinRequestFromUrlSearchParams,
 } from '@/lib/bulletin/server-data';
+import { getRequestUser } from '@/lib/auth/request-user';
 
 /**
  * Route handler contract: locale/query parsing + no-store policy + server-data shape.
@@ -17,6 +18,12 @@ vi.mock('@/lib/bulletin/server-data', () => ({
 
 const mockParseRequest = vi.mocked(parseBulletinRequestFromUrlSearchParams);
 const mockQueryBulletinJobs = vi.mocked(queryBulletinJobs);
+
+vi.mock('@/lib/auth/request-user', () => ({
+  getRequestUser: vi.fn(),
+}));
+
+const mockGetRequestUser = vi.mocked(getRequestUser);
 
 describe('GET /api/bulletin (handler contract)', () => {
   beforeEach(() => {
@@ -54,9 +61,11 @@ describe('GET /api/bulletin (handler contract)', () => {
         sources: [],
       },
     });
+    
+    mockGetRequestUser.mockResolvedValue({ ok: false, error: 'unauthorized' });
   });
 
-  it('returns JSON and no-store Cache-Control with locale from query', async () => {
+  it('returns JSON and public Cache-Control with locale from query', async () => {
     const response = await GET(new Request('http://localhost/api/bulletin?locale=fr'));
 
     expect(mockQueryBulletinJobs).toHaveBeenCalledWith(
@@ -65,7 +74,7 @@ describe('GET /api/bulletin (handler contract)', () => {
       }),
     );
     expect(response.status).toBe(200);
-    expect(response.headers.get('Cache-Control')).toContain('no-store');
+    expect(response.headers.get('Cache-Control')).toContain('public, max-age');
 
     const body = (await response.json()) as Record<string, unknown>;
     expect(body.jobs).toEqual([]);
@@ -74,6 +83,40 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(body.filteredJobsCount).toBe(0);
     expect(body.totalJobsCount).toBe(0);
     expect(body.totalPages).toBe(0);
+  });
+
+  it('returns JSON and no-store Cache-Control when performing personalized sorts', async () => {
+    mockParseRequest.mockReturnValueOnce({
+      filters: {
+        searchQuery: '',
+        selectedOrganizations: [],
+        selectedProvinces: [],
+        selectedMunicipalities: [],
+        selectedEmploymentTypes: [],
+        selectedSources: [],
+        selectedWorkTypes: [],
+        showOnlySse: true,
+        showJobsWithoutSalary: true,
+        postedWithin: '2-weeks',
+      },
+      sortBy: 'match-desc',
+      currentPage: 1,
+    });
+    
+    mockGetRequestUser.mockResolvedValueOnce({ 
+      ok: true, 
+      user: { id: 'test-user-id' } 
+    } as any);
+
+    const response = await GET(new Request('http://localhost/api/bulletin?locale=en'));
+
+    expect(mockQueryBulletinJobs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'test-user-id',
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toContain('no-store');
   });
 
   it('defaults locale to English when the locale query is missing', async () => {

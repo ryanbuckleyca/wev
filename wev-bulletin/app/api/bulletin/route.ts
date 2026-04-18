@@ -16,6 +16,10 @@ const NO_STORE_HEADERS = {
   'Cache-Control': 'no-store, max-age=0, must-revalidate',
 };
 
+const PUBLIC_CACHE_HEADERS = {
+  'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60',
+};
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -39,6 +43,8 @@ export async function GET(request: Request) {
       includeAllFilteredJobs,
     });
 
+    const responseHeaders = userId ? NO_STORE_HEADERS : PUBLIC_CACHE_HEADERS;
+
     return NextResponse.json(
       {
         jobs: data.jobs,
@@ -51,7 +57,7 @@ export async function GET(request: Request) {
         filterOptions: data.filterOptions,
       },
       {
-        headers: NO_STORE_HEADERS,
+        headers: responseHeaders,
       },
     );
   } catch (err) {
