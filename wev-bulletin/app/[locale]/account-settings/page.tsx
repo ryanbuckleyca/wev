@@ -18,6 +18,9 @@ import ErrorList from '@/components/ErrorList';
 import Button from '@/components/Button';
 import DeleteAccountModal from '@/components/DeleteAccountModal';
 
+import { UpdatePasswordSchema, UpdateEmailSchema } from '@/lib/schemas/account';
+import { ZodError } from 'zod/v3';
+
 export default function AccountSettingsPage() {
   const t = useTranslations();
   const { user, loading } = useRequireAuth();
@@ -54,20 +57,32 @@ export default function AccountSettingsPage() {
   const validatePasswordForm = (): boolean => {
     const errors: string[] = [];
 
-    if (!currentPassword) {
-      errors.push(t('accountSettings.currentPasswordRequired'));
+    try {
+      UpdatePasswordSchema.parse({ currentPassword, newPassword });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        error.errors.forEach((err) => {
+          if (err.code === 'too_small' && err.path[0] === 'newPassword') {
+            errors.push(t('accountSettings.passwordWeak'));
+          } else if (err.path[0] === 'currentPassword') {
+            errors.push(t('accountSettings.currentPasswordRequired'));
+          } else {
+            errors.push(err.message);
+          }
+        });
+      }
     }
-    if (!newPassword) {
-      errors.push(t('accountSettings.newPasswordRequired'));
-    }
+
     if (!confirmPassword) {
       errors.push(t('accountSettings.confirmPasswordRequired'));
-    }
-    if (newPassword !== confirmPassword) {
+    } else if (newPassword !== confirmPassword) {
       errors.push(t('accountSettings.passwordsDontMatch'));
     }
+
     if (newPassword && (!newPasswordStrength || !newPasswordStrength.isAcceptable)) {
-      errors.push(t('accountSettings.passwordWeak'));
+      if (!errors.includes(t('accountSettings.passwordWeak'))) {
+        errors.push(t('accountSettings.passwordWeak'));
+      }
     }
 
     setPasswordErrors(errors);
@@ -77,15 +92,10 @@ export default function AccountSettingsPage() {
   const validateEmailForm = (): boolean => {
     setEmailError('');
 
-    if (!newEmail) {
-      setEmailError(t('accountSettings.emailRequired'));
-      return false;
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail)) {
-      setEmailError(t('accountSettings.invalidEmailFormat'));
+    const result = UpdateEmailSchema.safeParse({ email: newEmail });
+    if (!result.success) {
+      const error = result.error.errors[0];
+      setEmailError(error.code === 'invalid_string' ? t('accountSettings.invalidEmailFormat') : error.message);
       return false;
     }
 
