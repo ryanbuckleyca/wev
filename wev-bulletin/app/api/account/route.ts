@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+ 
+export const dynamic = 'force-dynamic';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';
 import { logger } from '@/lib/logger';
 import { AccountServiceError, updatePasswordForCurrentUser } from '@/lib/account/service';
+import { UpdatePasswordSchema } from '@/lib/schemas/account';
+
+import { ZodError } from 'zod/v3';
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -13,8 +18,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const currentPassword = typeof body.currentPassword === 'string' ? body.currentPassword : '';
-    const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
+    const { currentPassword, newPassword } = UpdatePasswordSchema.parse(body);
 
     await updatePasswordForCurrentUser({
       currentPassword,
@@ -23,6 +27,13 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ message: 'Password updated successfully' }, { status: 200 });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { error: error.issues[0].message, details: error.issues },
+        { status: 400 }
+      );
+    }
+
     if (error instanceof AccountServiceError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }

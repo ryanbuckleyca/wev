@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { PasswordSchema } from '@/lib/schemas/account';
 
 export class ValidationError extends Error {
   constructor(message: string, readonly code: string) {
@@ -18,9 +19,6 @@ export class AuthenticationError extends Error {
 }
 
 export class PasswordVerifier {
-  public static readonly MIN_PASSWORD_LENGTH = 8;
-  public static readonly EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
   constructor() {}
 
   /**
@@ -70,15 +68,12 @@ export class PasswordVerifier {
    * Validate password before attempting RPC.
    */
   private validateInputs(password: string): void {
-    if (!password) {
-      throw new ValidationError('Password is required', 'PASSWORD_REQUIRED');
-    }
-
-    if (password.length < PasswordVerifier.MIN_PASSWORD_LENGTH) {
-      throw new ValidationError(
-        `Password must be at least ${PasswordVerifier.MIN_PASSWORD_LENGTH} characters`,
-        'PASSWORD_TOO_SHORT'
-      );
+    const result = PasswordSchema.safeParse(password);
+    
+    if (!result.success) {
+      const issue = result.error.issues[0];
+      const code = password ? 'PASSWORD_TOO_SHORT' : 'PASSWORD_REQUIRED';
+      throw new ValidationError(issue.message, code);
     }
   }
 }
