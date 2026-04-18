@@ -62,7 +62,7 @@ describe('GET /api/bulletin (handler contract)', () => {
       },
     });
     
-    mockGetRequestUser.mockResolvedValue({ ok: false, authError: 'unauthorized' } as any);
+    mockGetRequestUser.mockResolvedValue({ ok: false, authError: 'unauthorized' } as unknown as any);
   });
 
   it('returns JSON and public Cache-Control with locale from query', async () => {
@@ -106,7 +106,7 @@ describe('GET /api/bulletin (handler contract)', () => {
     mockGetRequestUser.mockResolvedValueOnce({ 
       ok: true, 
       user: { id: 'test-user-id' } 
-    } as any);
+    } as unknown as any);
 
     const response = await GET(new Request('http://localhost/api/bulletin?locale=en'));
 

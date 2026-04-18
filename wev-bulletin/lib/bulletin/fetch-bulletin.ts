@@ -155,7 +155,7 @@ async function queryJobsWithDatabasePagination({
   };
 
   let resolvedPage = Math.max(1, request.currentPage);
-  let { data, error, count } = await runQuery(resolvedPage);
+  const { data, error, count } = await runQuery(resolvedPage);
 
   if (error) {
     throw new Error(error.message);

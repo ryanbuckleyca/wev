@@ -31,8 +31,8 @@ export function getPostedWithinCutoffIso(
 }
 
 export function applyFiltersToJobsQuery<
-  Schema extends Record<string, any>,
-  Row extends Record<string, any>,
+  Schema extends Record<string, unknown>,
+  Row extends Record<string, unknown>,
   Result,
 >(
   query: PostgrestFilterBuilder<Schema, Row, Result>,
@@ -89,8 +89,8 @@ export function applyFiltersToJobsQuery<
 }
 
 export function applyDatabaseSort<
-  Schema extends Record<string, any>,
-  Row extends Record<string, any>,
+  Schema extends Record<string, unknown>,
+  Row extends Record<string, unknown>,
   Result,
 >(
   query: PostgrestFilterBuilder<Schema, Row, Result>,

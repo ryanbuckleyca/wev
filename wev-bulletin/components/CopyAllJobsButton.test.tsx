@@ -7,9 +7,7 @@ const originalClipboard = navigator.clipboard;
 const originalClipboardItem = globalThis.ClipboardItem;
 const originalBlob = globalThis.Blob;
 
-type MockClipboardWriteItem = {
-  items?: Record<string, { content: string }>;
-};
+
 
 type GlobalWithClipboardMocks = typeof globalThis & {
   ClipboardItem?: typeof ClipboardItem;
@@ -27,8 +25,8 @@ describe('CopyAllJobsButton', () => {
       Blob?: new (parts: string[], opts?: { type?: string }) => { content: string; type: string };
     };
     globalAny.ClipboardItem = class {
-      items: Record<string, any>;
-      constructor(items: Record<string, any>) {
+      items: Record<string, unknown>;
+      constructor(items: Record<string, unknown>) {
         this.items = items;
       }
     };
@@ -42,7 +40,7 @@ describe('CopyAllJobsButton', () => {
     };
 
     writeMock.mockReset();
-    writeMock.mockImplementation(async (items: any[]) => {
+    writeMock.mockImplementation(async (items: unknown[]) => {
       const item = items[0];
       if (item?.items?.['text/plain']) {
         let plainTextData = item.items['text/plain'];

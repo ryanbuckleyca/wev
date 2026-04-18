@@ -27,15 +27,15 @@ describe('API Route: /api/bookmarks/item', () => {
 
   describe('POST', () => {
     it('returns 401 if unauthorized', async () => {
-      mockGetRequestUser.mockResolvedValue({ ok: false, error: 'unauthorized', status: 401 } as any);
+      mockGetRequestUser.mockResolvedValue({ ok: false, error: 'unauthorized', status: 401 } as unknown as any);
       const request = new NextRequest('http://l/api/bookmarks/item', { method: 'POST' });
       const response = await POST(request);
       expect(response.status).toBe(401);
     });
 
     it('returns ok on success', async () => {
-      mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'u1' } } as any);
-      // @ts-ignore
+      mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'u1' } } as unknown as any);
+      // @ts-expect-error Mocking Supabase
       mockSupabase.insert.mockResolvedValue({ error: null });
 
       const request = new NextRequest('http://l/api/bookmarks/item', { 
@@ -50,8 +50,8 @@ describe('API Route: /api/bookmarks/item', () => {
 
   describe('DELETE', () => {
     it('returns ok on success', async () => {
-      mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'u1' } } as any);
-      // @ts-ignore
+      mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'u1' } } as unknown as any);
+      // @ts-expect-error Mocking Supabase
       mockSupabase.delete().eq().eq.mockResolvedValue({ error: null });
 
       const request = new NextRequest('http://l/api/bookmarks/item', { 

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const includeAllFilteredJobs = searchParams.get('all') === 'true';
 
     let userId: string | null = null;
-    if (MATCH_SORT_OPTIONS.has(parsedRequest.sortBy as any)) {
+    if (MATCH_SORT_OPTIONS.has(parsedRequest.sortBy as string)) {
       const auth = await getRequestUser();
       if (auth.ok) {
         userId = auth.user.id;
