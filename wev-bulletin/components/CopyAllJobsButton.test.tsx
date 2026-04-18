@@ -27,8 +27,8 @@ describe('CopyAllJobsButton', () => {
       Blob?: new (parts: string[], opts?: { type?: string }) => { content: string; type: string };
     };
     globalAny.ClipboardItem = class {
-      items: Record<string, Blob>;
-      constructor(items: Record<string, Blob>) {
+      items: Record<string, any>;
+      constructor(items: Record<string, any>) {
         this.items = items;
       }
     };
@@ -42,10 +42,14 @@ describe('CopyAllJobsButton', () => {
     };
 
     writeMock.mockReset();
-    writeMock.mockImplementation(async (items: MockClipboardWriteItem[]) => {
+    writeMock.mockImplementation(async (items: any[]) => {
       const item = items[0];
       if (item?.items?.['text/plain']) {
-        capturedPlainText = item.items['text/plain'].content;
+        let plainTextData = item.items['text/plain'];
+        if (plainTextData instanceof Promise) {
+          plainTextData = await plainTextData;
+        }
+        capturedPlainText = plainTextData.content;
       }
     });
 

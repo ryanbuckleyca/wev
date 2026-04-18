@@ -90,6 +90,7 @@ export default function CopyAllJobsButton({
   const t = useTranslations();
   const locale = useLocale();
   const [copied, setCopied] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const copiedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Clear any existing timeout when component unmounts
@@ -102,36 +103,40 @@ export default function CopyAllJobsButton({
   }, []);
 
   const handleCopy = async () => {
-    if (jobs.length === 0) return;
+    if (jobs.length === 0 || isFetching) return;
 
-    // Clear any existing timeout
     if (copiedTimeoutRef.current) {
       clearTimeout(copiedTimeoutRef.current);
     }
 
-    try {
-      const jobsToCopy = fetchJobs ? await fetchJobs() : jobs;
-      const text = formatJobsAsText(jobsToCopy, t, locale);
-      const html = formatJobsAsHTML(jobsToCopy, t, locale);
+    setIsFetching(true);
 
-      // Use Clipboard API with both HTML and plain text formats
-      // This matches what the browser copies when you manually select and copy
+    try {
+      const jobsPromise = fetchJobs ? fetchJobs() : Promise.resolve(jobs);
+
+      // Web API standard dictates passing Promises to ClipboardItem preserves the synchronous user activation context
+      const htmlBlobPromise = jobsPromise.then(
+        (jobsToCopy) => new Blob([formatJobsAsHTML(jobsToCopy, t, locale)], { type: 'text/html' }),
+      );
+      const textBlobPromise = jobsPromise.then(
+        (jobsToCopy) => new Blob([formatJobsAsText(jobsToCopy, t, locale)], { type: 'text/plain' }),
+      );
+
       const clipboardItem = new ClipboardItem({
-        'text/html': new Blob([html], { type: 'text/html' }),
-        'text/plain': new Blob([text], { type: 'text/plain' }),
+        'text/html': htmlBlobPromise,
+        'text/plain': textBlobPromise,
       });
 
       await navigator.clipboard.write([clipboardItem]);
       setCopied(true);
 
-      // Set timeout to reset copied state
       copiedTimeoutRef.current = setTimeout(() => {
         setCopied(false);
         copiedTimeoutRef.current = null;
       }, 2000);
     } catch (err) {
       console.error('Failed to copy with ClipboardItem, trying plain text:', err);
-      // Fallback to plain text if ClipboardItem fails
+      // Fallback for browsers that don't support ClipboardItem (e.g., Firefox) or if it fails
       try {
         const jobsToCopy = fetchJobs ? await fetchJobs() : jobs;
         const text = formatJobsAsText(jobsToCopy, t);
@@ -143,8 +148,8 @@ export default function CopyAllJobsButton({
           copiedTimeoutRef.current = null;
         }, 2000);
       } catch (textErr) {
-        console.error('Failed to copy:', textErr);
-        // Final fallback for older browsers
+        console.error('Failed plain text copy:', textErr);
+        // Final fallback for older browsers using execCommand
         const textArea = document.createElement('textarea');
         const jobsToCopy = fetchJobs ? await fetchJobs() : jobs;
         textArea.value = formatJobsAsText(jobsToCopy, t);
@@ -159,10 +164,12 @@ export default function CopyAllJobsButton({
             copiedTimeoutRef.current = null;
           }, 2000);
         } catch (fallbackErr) {
-          console.error('Fallback copy failed:', fallbackErr);
+          console.error('Fallback execCommand failed:', fallbackErr);
         }
         document.body.removeChild(textArea);
       }
+    } finally {
+      setIsFetching(false);
     }
   };
 
@@ -170,13 +177,13 @@ export default function CopyAllJobsButton({
     <div title={jobs.length > 0 ? t('buttons.copyJobsTitle', { count: jobs.length }) : undefined}>
       <Button
         onClick={handleCopy}
-        disabled={copied || jobs.length === 0}
+        disabled={copied || jobs.length === 0 || isFetching}
         variant="secondary"
         size="md"
         fullWidth={false}
         className={buttonClassName}
       >
-        {copied ? t('buttons.copied') : t('buttons.copyAllJobs')}
+        {isFetching ? t('buttons.copying') : copied ? t('buttons.copied') : t('buttons.copyAllJobs')}
       </Button>
     </div>
   );
