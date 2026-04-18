@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+ 
+export const dynamic = 'force-dynamic';
 import { revalidatePath } from 'next/cache';
 import { unauthorizedResponse } from '@/lib/http-errors';
 import { logger } from '@/lib/logger';

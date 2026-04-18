@@ -5,10 +5,9 @@ import { parseLocale } from '@/lib/resolve-skill-labels';
 // Re-export so /api/revalidate-jobs can reference the same tag.
 export { BULLETIN_CACHE_TAG };
 
-// NOTE: force-dynamic intentionally removed. The response now carries
-// Cache-Control headers so browsers and any CDN layer can cache it for
-// 5 minutes, serving stale while revalidating in the background.
-// unstable_cache inside fetchBulletinJobs handles server-side DB caching.
+// NOTE: force-dynamic restored to resolve build failures during static analysis.
+// The response still carries Cache-Control headers for browser/CDN caching.
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {

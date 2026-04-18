@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminResponse } from '@/lib/auth/require-admin';
 import { logger } from '@/lib/logger';
+ 
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
