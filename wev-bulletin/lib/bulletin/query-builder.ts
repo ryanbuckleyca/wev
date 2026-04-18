@@ -30,14 +30,10 @@ export function getPostedWithinCutoffIso(
   return new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
-export function applyFiltersToJobsQuery<
-  Schema extends Record<string, unknown>,
-  Row extends Record<string, unknown>,
-  Result,
->(
-  query: PostgrestFilterBuilder<Schema, Row, Result, string>,
+export function applyFiltersToJobsQuery(
+  query: PostgrestFilterBuilder<any, any, any, string>,
   filters: BulletinFilters,
-): PostgrestFilterBuilder<Schema, Row, Result, string> {
+): PostgrestFilterBuilder<any, any, any, string> {
   const now = filters.now ?? Date.now();
 
   let next = query.gte('date_posted', getRecentJobsCutoffIso(now));
@@ -88,14 +84,10 @@ export function applyFiltersToJobsQuery<
   return next;
 }
 
-export function applyDatabaseSort<
-  Schema extends Record<string, unknown>,
-  Row extends Record<string, unknown>,
-  Result,
->(
-  query: PostgrestFilterBuilder<Schema, Row, Result, string>,
+export function applyDatabaseSort(
+  query: PostgrestFilterBuilder<any, any, any, string>,
   sortBy: JobSortOption,
-): PostgrestFilterBuilder<Schema, Row, Result, string> {
+): PostgrestFilterBuilder<any, any, any, string> {
   switch (sortBy) {
     case 'date-asc':
       return query.order('date_posted', { ascending: true, nullsFirst: false });

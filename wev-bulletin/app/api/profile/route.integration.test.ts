@@ -21,7 +21,7 @@ vi.mock('@/lib/supabase-server', () => {
 
   return {
     supabaseServer: {
-      from: vi.fn().mockReturnValue(mockChain),
+      from: vi.fn().mockReturnValue(mockChain as any),
     },
   };
 });

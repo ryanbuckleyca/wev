@@ -4,6 +4,7 @@ import {
   parseBulletinRequestFromUrlSearchParams,
   BULLETIN_CACHE_TAG,
   MATCH_SORT_OPTIONS,
+  type JobSortOption,
 } from '@/lib/bulletin/server-data';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { parseLocale } from '@/lib/resolve-skill-labels';
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
     const includeAllFilteredJobs = searchParams.get('all') === 'true';
 
     let userId: string | null = null;
-    if (MATCH_SORT_OPTIONS.has(parsedRequest.sortBy as string)) {
+    if (MATCH_SORT_OPTIONS.has(parsedRequest.sortBy as JobSortOption)) {
       const auth = await getRequestUser();
       if (auth.ok) {
         userId = auth.user.id;

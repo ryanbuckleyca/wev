@@ -141,7 +141,9 @@ async function queryJobsWithDatabasePagination({
   currentPage: number;
 }> {
   const runQuery = async (page: number) => {
-    let query = supabaseServer.from('jobs').select(JOBS_SELECT_COLUMNS, { count: 'exact' });
+    let query: PostgrestFilterBuilder<any, any, any, string> = supabaseServer
+      .from('jobs')
+      .select(JOBS_SELECT_COLUMNS, { count: 'exact' });
     query = applyFiltersToJobsQuery(query, request.filters);
     query = applyDatabaseSort(query, request.sortBy);
 
