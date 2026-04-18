@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST, DELETE } from './route';
-import { getRequestUser } from '@/lib/auth/request-user';
+import { getRequestUser, type RequestUserResult } from '@/lib/auth/request-user';
 import { supabaseServer } from '@/lib/supabase-server';
 
 vi.mock('@/lib/auth/request-user', () => ({
@@ -27,14 +27,14 @@ describe('API Route: /api/bookmarks/item', () => {
 
   describe('POST', () => {
     it('returns 401 if unauthorized', async () => {
-      mockGetRequestUser.mockResolvedValue({ ok: false, error: 'unauthorized', status: 401 } as unknown as any);
+      mockGetRequestUser.mockResolvedValue({ ok: false, authError: 'unauthorized' } as RequestUserResult);
       const request = new NextRequest('http://l/api/bookmarks/item', { method: 'POST' });
       const response = await POST(request);
       expect(response.status).toBe(401);
     });
 
     it('returns ok on success', async () => {
-      mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'u1' } } as unknown as any);
+      mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'u1' } } as RequestUserResult);
       // @ts-expect-error Mocking Supabase
       mockSupabase.insert.mockResolvedValue({ error: null });
 
@@ -50,7 +50,7 @@ describe('API Route: /api/bookmarks/item', () => {
 
   describe('DELETE', () => {
     it('returns ok on success', async () => {
-      mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'u1' } } as unknown as any);
+      mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'u1' } } as RequestUserResult);
       // @ts-expect-error Mocking Supabase
       mockSupabase.delete().eq().eq.mockResolvedValue({ error: null });
 

@@ -4,7 +4,7 @@ import {
   queryBulletinJobs,
   parseBulletinRequestFromUrlSearchParams,
 } from '@/lib/bulletin/server-data';
-import { getRequestUser } from '@/lib/auth/request-user';
+import { getRequestUser, type RequestUserResult } from '@/lib/auth/request-user';
 
 /**
  * Route handler contract: locale/query parsing + no-store policy + server-data shape.
@@ -62,7 +62,7 @@ describe('GET /api/bulletin (handler contract)', () => {
       },
     });
     
-    mockGetRequestUser.mockResolvedValue({ ok: false, authError: 'unauthorized' } as unknown as any);
+    mockGetRequestUser.mockResolvedValue({ ok: false, authError: 'unauthorized' } as RequestUserResult);
   });
 
   it('returns JSON and public Cache-Control with locale from query', async () => {
@@ -106,7 +106,7 @@ describe('GET /api/bulletin (handler contract)', () => {
     mockGetRequestUser.mockResolvedValueOnce({ 
       ok: true, 
       user: { id: 'test-user-id' } 
-    } as unknown as any);
+    } as RequestUserResult);
 
     const response = await GET(new Request('http://localhost/api/bulletin?locale=en'));
 
