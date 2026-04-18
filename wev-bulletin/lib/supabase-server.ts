@@ -43,6 +43,7 @@ export const supabaseServer: SupabaseClient = new Proxy({} as unknown as Supabas
     if (!_supabaseServer) {
       _supabaseServer = getSupabaseServer();
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (_supabaseServer as any)[prop as keyof SupabaseClient];
   },
 });
