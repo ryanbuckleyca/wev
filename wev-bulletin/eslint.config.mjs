@@ -16,6 +16,7 @@ export default defineConfig([
     files: ['next.config.mjs'],
   },
   globalIgnores([
+    '**/*.mjs',
     '.next/**',
     'out/**',
     'build/**',

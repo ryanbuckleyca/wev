@@ -17,9 +17,15 @@ runtimes:
     - python@3.10.8
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
+  ignore:
+    - linters: [eslint]
+      paths:
+        - "**/*.mjs"
+        - eslint.config.mjs
+  disabled:
+    - black
+    - isort
   enabled:
-    - black@26.3.1
-    - isort@8.0.1
     - actionlint@1.7.12
     - bandit@1.9.4
     - checkov@3.2.521
@@ -34,7 +40,7 @@ lint:
     - taplo@0.10.0
     - trufflehog@3.94.3
     - yamllint@1.38.0
-    - eslint@10.2.1
+    - eslint@9.14.0
     - pyright@1.1.409
     - sqlfluff@4.1.0
 actions:
