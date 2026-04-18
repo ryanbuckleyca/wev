@@ -6,11 +6,12 @@ import {
   readPagePerformanceSnapshot,
 } from '@e2e/support/performance';
 
+const isCI = !!process.env.CI;
 const JOB_BOARD_PERFORMANCE_BUDGET_MS = {
-  domContentLoadedMs: 2_500,
-  interactiveReadyMs: 2_500,
-  loadEventMs: 3_500,
-  responseStartMs: 1_500,
+  domContentLoadedMs: isCI ? 2_500 : 5_000,
+  interactiveReadyMs: isCI ? 2_500 : 5_000,
+  loadEventMs: isCI ? 3_500 : 7_000,
+  responseStartMs: isCI ? 1_500 : 3_500,
 } as const;
 
 test.use({
