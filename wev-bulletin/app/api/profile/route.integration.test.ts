@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+import { User } from '@supabase/supabase-js';
 import { GET, PATCH } from './route';
-import { getRequestUser } from '@/lib/auth/request-user';
+import { getRequestUser, type RequestUserResult } from '@/lib/auth/request-user';
 import { supabaseServer } from '@/lib/supabase-server';
 
 vi.mock('@/lib/auth/request-user', () => ({
@@ -26,7 +27,6 @@ vi.mock('@/lib/supabase-server', () => {
 });
 
 const mockGetRequestUser = vi.mocked(getRequestUser);
-const mockSupabaseChain = (vi.mocked(supabaseServer.from) as any).getMockImplementation()?.();
 
 describe('API Route: /api/profile', () => {
   beforeEach(() => {
@@ -35,7 +35,7 @@ describe('API Route: /api/profile', () => {
 
   describe('GET', () => {
     it('returns 401 if unauthorized', async () => {
-      mockGetRequestUser.mockResolvedValue({ ok: false, authError: 'unauthorized' } as any);
+      mockGetRequestUser.mockResolvedValue({ ok: false, authError: 'unauthorized' } as RequestUserResult);
       const response = await GET();
       expect(response.status).toBe(401);
     });
@@ -50,7 +50,7 @@ describe('API Route: /api/profile', () => {
           user_metadata: {},
           aud: 'authenticated',
           created_at: new Date().toISOString(),
-        } as any 
+        } as unknown as User 
       });
       
       const chain = vi.mocked(supabaseServer.from('profiles'));
@@ -74,7 +74,7 @@ describe('API Route: /api/profile', () => {
           user_metadata: {},
           aud: 'authenticated',
           created_at: new Date().toISOString(),
-        } as any 
+        } as unknown as User 
       });
       const request = new NextRequest('http://l/api/profile', {
         method: 'PATCH',
@@ -95,7 +95,7 @@ describe('API Route: /api/profile', () => {
           user_metadata: {},
           aud: 'authenticated',
           created_at: new Date().toISOString(),
-        } as any 
+        } as unknown as User 
       });
       
       const chain = vi.mocked(supabaseServer.from('profiles'));

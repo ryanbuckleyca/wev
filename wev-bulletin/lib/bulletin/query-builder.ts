@@ -35,9 +35,9 @@ export function applyFiltersToJobsQuery<
   Row extends Record<string, unknown>,
   Result,
 >(
-  query: PostgrestFilterBuilder<Schema, Row, Result, any>,
+  query: PostgrestFilterBuilder<Schema, Row, Result, string>,
   filters: BulletinFilters,
-): PostgrestFilterBuilder<Schema, Row, Result, any> {
+): PostgrestFilterBuilder<Schema, Row, Result, string> {
   const now = filters.now ?? Date.now();
 
   let next = query.gte('date_posted', getRecentJobsCutoffIso(now));
@@ -93,9 +93,9 @@ export function applyDatabaseSort<
   Row extends Record<string, unknown>,
   Result,
 >(
-  query: PostgrestFilterBuilder<Schema, Row, Result, any>,
+  query: PostgrestFilterBuilder<Schema, Row, Result, string>,
   sortBy: JobSortOption,
-): PostgrestFilterBuilder<Schema, Row, Result, any> {
+): PostgrestFilterBuilder<Schema, Row, Result, string> {
   switch (sortBy) {
     case 'date-asc':
       return query.order('date_posted', { ascending: true, nullsFirst: false });

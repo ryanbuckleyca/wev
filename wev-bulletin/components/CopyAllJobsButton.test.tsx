@@ -40,14 +40,14 @@ describe('CopyAllJobsButton', () => {
     };
 
     writeMock.mockReset();
-    writeMock.mockImplementation(async (items: any[]) => {
-      const item = items[0] as { items?: Record<string, any> };
+    writeMock.mockImplementation(async (items: unknown[]) => {
+      const item = items[0] as { items?: Record<string, { content: string }> };
       if (item?.items?.['text/plain']) {
         let plainTextData = item.items['text/plain'];
         if (plainTextData instanceof Promise) {
-          plainTextData = await plainTextData;
+          plainTextData = await (plainTextData as Promise<{ content: string }>);
         }
-        capturedPlainText = (plainTextData as any).content;
+        capturedPlainText = (plainTextData as { content: string }).content;
       }
     });
 

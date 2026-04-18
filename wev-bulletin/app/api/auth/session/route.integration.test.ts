@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { User } from '@supabase/supabase-js';
 import { GET } from './route';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
@@ -40,7 +41,7 @@ describe('API Route: /api/auth/session', () => {
         user_metadata: {},
         aud: 'authenticated',
         created_at: new Date().toISOString(),
-      } as any
+      } as unknown as User
     });
     mockFetchUserRoles.mockResolvedValue({ ok: true, roles: ['admin'] });
 
