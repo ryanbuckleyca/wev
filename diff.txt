@@ -1,0 +1,4416 @@
+diff --git a/e2e/tests/job-board.perf.spec.ts b/e2e/tests/job-board.perf.spec.ts
+index c38a7ad..88b8489 100644
+--- a/e2e/tests/job-board.perf.spec.ts
++++ b/e2e/tests/job-board.perf.spec.ts
+@@ -1,5 +1,6 @@
+ import { test, expect } from '@e2e/fixtures';
+ import { expectJobBoardReady } from '@e2e/support/job-board';
++import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
+ import {
+   attachPerformanceSnapshot,
+   readElapsedNavigationTime,
+@@ -7,12 +8,14 @@ import {
+ } from '@e2e/support/performance';
+ 
+ const JOB_BOARD_PERFORMANCE_BUDGET_MS = {
+-  domContentLoadedMs: 2_500,
+-  interactiveReadyMs: 2_500,
+-  loadEventMs: 3_500,
+-  responseStartMs: 1_500,
++  domContentLoadedMs: 1_800,
++  interactiveReadyMs: 1_800,
++  loadEventMs: 2_800,
++  responseStartMs: 1_000,
+ } as const;
+ 
++const POST_READY_LOADING_GUARD_MS = 2_500;
++
+ test.use({
+   screenshot: 'off',
+   trace: 'off',
+@@ -20,6 +23,8 @@ test.use({
+ });
+ 
+ test.describe('Job board performance @perf', () => {
++  test.describe.configure({ retries: 0 });
++
+   test('renders the seeded English bulletin within the baseline budget @perf', async ({
+     jobBoardPage,
+     expectations,
+@@ -32,6 +37,19 @@ test.describe('Job board performance @perf', () => {
+       String(expectations.jobCount),
+     );
+ 
++    const loadingStateLocator = jobBoardPage.page.getByTestId(JOB_BOARD_TEST_IDS.pageLoadingState);
++    await expect(loadingStateLocator).toHaveCount(0);
++
++    const loadingStateReappeared = await jobBoardPage.page
++      .waitForSelector(`[data-testid="${JOB_BOARD_TEST_IDS.pageLoadingState}"]`, {
++        state: 'attached',
++        timeout: POST_READY_LOADING_GUARD_MS,
++      })
++      .then(() => true)
++      .catch(() => false);
++
++    expect(loadingStateReappeared).toBe(false);
++
+     const interactiveReadyMs = await readElapsedNavigationTime(jobBoardPage.page);
+ 
+     await jobBoardPage.page.waitForLoadState('load');
+diff --git a/wev-bulletin/app/[locale]/layout.tsx b/wev-bulletin/app/[locale]/layout.tsx
+index d739194..7323016 100644
+--- a/wev-bulletin/app/[locale]/layout.tsx
++++ b/wev-bulletin/app/[locale]/layout.tsx
+@@ -25,13 +25,7 @@ export default async function LocaleLayout({
+   const { locale: rawLocale } = await params;
+   const validLocales = routing.locales as readonly string[];
+   const locale = validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale;
+-  const defaultMessages = await getMessages({ locale: routing.defaultLocale });
+-  const localeMessages =
+-    locale === routing.defaultLocale ? defaultMessages : await getMessages({ locale });
+-  const messages = {
+-    ...defaultMessages,
+-    ...localeMessages,
+-  };
++  const messages = await getMessages({ locale });
+   const cookieStore = await cookies();
+   const theme = cookieStore.get('theme')?.value === 'dark' ? 'dark' : 'light';
+ 
+diff --git a/wev-bulletin/app/[locale]/loading.tsx b/wev-bulletin/app/[locale]/loading.tsx
+deleted file mode 100644
+index 11baabc..0000000
+--- a/wev-bulletin/app/[locale]/loading.tsx
++++ /dev/null
+@@ -1,5 +0,0 @@
+-import LoadingIndicator from '@/components/LoadingIndicator';
+-
+-export default function GlobalLoading() {
+-  return <LoadingIndicator />;
+-}
+diff --git a/wev-bulletin/app/[locale]/login/page.test.tsx b/wev-bulletin/app/[locale]/login/page.test.tsx
+index 1165096..a2dc116 100644
+--- a/wev-bulletin/app/[locale]/login/page.test.tsx
++++ b/wev-bulletin/app/[locale]/login/page.test.tsx
+@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
+ import { fireEvent, render, screen, waitFor } from '@/test-utils';
+ import LoginPage from './page';
+ import { createClient } from '@/lib/supabase/client';
+-import type { User } from '@supabase/supabase-js';
+ import { useAuth } from '@/contexts/AuthContext';
+ import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
+ import { createMockAuthContext } from '@/test-utils/auth-context-mock';
+@@ -129,7 +128,7 @@ describe('LoginPage', () => {
+   it('redirects away when the user is already authenticated', async () => {
+     vi.mocked(useAuth).mockReturnValue(
+       createMockAuthContext({
+-        user: { id: 'user-1', email: 'existing@example.com' } as User,
++        user: { id: 'user-1', email: 'existing@example.com' },
+         loading: false,
+       }),
+     );
+diff --git a/wev-bulletin/app/[locale]/page.tsx b/wev-bulletin/app/[locale]/page.tsx
+index 78352a6..68f0f39 100644
+--- a/wev-bulletin/app/[locale]/page.tsx
++++ b/wev-bulletin/app/[locale]/page.tsx
+@@ -1,74 +1,103 @@
+ import { Suspense } from 'react';
+ import { routing } from '@/i18n/routing';
+-import { parseLocale } from '@/lib/resolve-skill-labels';
+ import { getRequestUser } from '@/lib/auth/request-user';
+ import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
+ import { rolesIncludeAdmin } from '@/lib/auth';
+ import {
+-  fetchBulletinJobs,
++  buildInitialBulletinData,
+   fetchServerBookmarks,
+   fetchServerMatchData,
+   fetchServerProfile,
++  type BulletinSearchParams,
++  type SerializedMatchData,
+ } from '@/lib/bulletin/server-data';
++import BulletinPageContentSkeleton from '@/components/BulletinPageContentSkeleton';
+ import BulletinPageClient from '@/components/BulletinPageClient';
+-import BulletinPageSkeleton from '@/components/BulletinPageSkeleton';
++import BulletinPageScaffold from '@/components/BulletinPageScaffold';
++import { parseLocale } from '@/lib/resolve-skill-labels';
+ 
+-// Renders the data fetch independently inside a Suspense boundary
+-async function BulletinDataContainer({ parsedLocale }: { parsedLocale: 'en' | 'fr' }) {
+-  const authPromise = getRequestUser();
+-  const bulletinDataPromise = fetchBulletinJobs(parsedLocale);
+-  const auth = await authPromise;
++// Renders auth/profile bootstrap independently inside a Suspense boundary.
++async function BulletinDataContainer({
++  params,
++  searchParams,
++}: {
++  params: Promise<{ locale: string }>;
++  searchParams: Promise<BulletinSearchParams>;
++}) {
++  const [auth, resolvedParams, resolvedSearchParams] = await Promise.all([
++    getRequestUser(),
++    params,
++    searchParams,
++  ]);
++  const validLocales = routing.locales as readonly string[];
++  const locale = validLocales.includes(resolvedParams.locale)
++    ? resolvedParams.locale
++    : routing.defaultLocale;
++  const parsedLocale = parseLocale(locale);
+ 
+   let isAdmin = false;
+   let initialUserId: string | null = null;
+-  let initialMatchData = undefined;
+-  let initialBookmarkedJobIds = undefined;
+-  let initialProfile = null;
++  let initialProfile: Awaited<ReturnType<typeof fetchServerProfile>> = null;
++  let initialMatchData: SerializedMatchData | undefined = undefined;
++  let initialBookmarkedJobIds: string[] | undefined = undefined;
+ 
+   if (auth.ok) {
+     initialUserId = auth.user.id;
+-    const [rolesResult, matchData, bookmarkedJobIds, profile] = await Promise.all([
++    const [rolesResult, profile, matchData, bookmarkedJobIds] = await Promise.all([
+       fetchUserRolesFromService(auth.user.id),
++      fetchServerProfile(auth.user.id),
+       fetchServerMatchData(auth.user.id),
+       fetchServerBookmarks(auth.user.id),
+-      fetchServerProfile(auth.user.id),
+     ]);
+     const resolvedRoles = rolesResult.ok ? rolesResult.roles : ['user'];
+     isAdmin = rolesIncludeAdmin(resolvedRoles);
++    initialProfile = profile;
+     initialMatchData = matchData;
+     initialBookmarkedJobIds = bookmarkedJobIds;
+-    initialProfile = profile;
+   }
+ 
+-  const bulletinData = await bulletinDataPromise;
++  const initialBulletinData = await buildInitialBulletinData({
++    locale: parsedLocale,
++    searchParams: resolvedSearchParams,
++    userId: initialUserId,
++    profile: initialProfile,
++    matchData: initialMatchData,
++    bookmarkedJobIds: initialBookmarkedJobIds,
++  });
+ 
+   return (
+     <BulletinPageClient
+-      initialJobs={bulletinData.jobs}
+-      initialScrapeTime={bulletinData.lastScrapeTime}
+-      initialSkillLabels={bulletinData.skillLabels}
++      initialJobs={initialBulletinData.jobs}
++      initialScrapeTime={initialBulletinData.scrapeTime}
++      initialSkillLabels={initialBulletinData.skillLabels}
+       initialUserId={initialUserId}
+       isLoggedIn={auth.ok}
+       isAdmin={isAdmin}
+-      initialMatchData={initialMatchData}
+-      initialBookmarkedJobIds={initialBookmarkedJobIds}
++      initialMatchData={initialBulletinData.matchData}
++      initialBookmarkedJobIds={initialBulletinData.bookmarkedJobIds}
+       initialProfile={initialProfile}
++      initialFilteredJobsCount={initialBulletinData.filteredJobsCount}
++      initialTotalJobsCount={initialBulletinData.totalJobsCount}
++      initialTotalPages={initialBulletinData.totalPages}
+     />
+   );
+ }
+ 
+-export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
+-  const { locale: rawLocale } = await params;
+-  const validLocales = routing.locales as readonly string[];
+-  const locale = validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale;
+-  const parsedLocale = parseLocale(locale);
+-
+-  // The outer page renders the instant HTML layout shell immediately.
+-  // The BulletinDataContainer loads the cached jobs payload and any authenticated
+-  // user metadata in parallel inside the Suspense boundary.
++export default function Home({
++  params,
++  searchParams,
++}: {
++  params: Promise<{ locale: string }>;
++  searchParams: Promise<BulletinSearchParams>;
++}) {
++  // Render the shell immediately and stream auth/profile bootstrap inside it.
++  // The jobs payload still hydrates from /api/bulletin on the client to avoid
++  // inflating the initial HTML/RSC response.
+   return (
+-    <Suspense fallback={<BulletinPageSkeleton />}>
+-      <BulletinDataContainer parsedLocale={parsedLocale} />
+-    </Suspense>
++    <BulletinPageScaffold>
++      <Suspense fallback={<BulletinPageContentSkeleton />}>
++        <BulletinDataContainer params={params} searchParams={searchParams} />
++      </Suspense>
++    </BulletinPageScaffold>
+   );
+ }
+diff --git a/wev-bulletin/app/api/auth/session/route.ts b/wev-bulletin/app/api/auth/session/route.ts
+new file mode 100644
+index 0000000..75285b7
+--- /dev/null
++++ b/wev-bulletin/app/api/auth/session/route.ts
+@@ -0,0 +1,48 @@
++import { NextResponse } from 'next/server';
++import { getRequestUser } from '@/lib/auth/request-user';
++import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
++
++export const dynamic = 'force-dynamic';
++
++type SessionUser = {
++  id: string;
++  email: string | null;
++};
++
++const NO_STORE_HEADERS = {
++  'cache-control': 'no-store, max-age=0, must-revalidate',
++};
++
++export async function GET() {
++  try {
++    const auth = await getRequestUser();
++
++    if (!auth.ok) {
++      return NextResponse.json(
++        {
++          user: null,
++          roles: ['user'],
++        },
++        { headers: NO_STORE_HEADERS },
++      );
++    }
++
++    const user: SessionUser = {
++      id: auth.user.id,
++      email: auth.user.email ?? null,
++    };
++
++    const rolesResult = await fetchUserRolesFromService(auth.user.id);
++    const roles = rolesResult.ok ? rolesResult.roles : ['user'];
++
++    return NextResponse.json({ user, roles }, { headers: NO_STORE_HEADERS });
++  } catch {
++    return NextResponse.json(
++      {
++        user: null,
++        roles: ['user'],
++      },
++      { status: 500, headers: NO_STORE_HEADERS },
++    );
++  }
++}
+diff --git a/wev-bulletin/app/api/bookmarks/item/route.ts b/wev-bulletin/app/api/bookmarks/item/route.ts
+new file mode 100644
+index 0000000..367a797
+--- /dev/null
++++ b/wev-bulletin/app/api/bookmarks/item/route.ts
+@@ -0,0 +1,69 @@
++import { NextRequest, NextResponse } from 'next/server';
++import { getRequestUser } from '@/lib/auth/request-user';
++import { unauthorizedResponse } from '@/lib/http-errors';
++import { supabaseServer } from '@/lib/supabase-server';
++
++function parseJobId(raw: unknown): string | null {
++  return typeof raw === 'string' && raw.length > 0 ? raw : null;
++}
++
++export async function POST(request: NextRequest) {
++  try {
++    const auth = await getRequestUser();
++    if (!auth.ok) {
++      return unauthorizedResponse('Not authenticated');
++    }
++
++    const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
++    const jobId = parseJobId(body?.jobId);
++    if (!jobId) {
++      return NextResponse.json({ error: 'Missing jobId' }, { status: 400 });
++    }
++
++    const { error } = await supabaseServer
++      .from('bookmarks')
++      .insert([{ user_id: auth.user.id, job_id: jobId }]);
++
++    if (error) {
++      return NextResponse.json({ error: error.message || 'Failed to add bookmark' }, { status: 500 });
++    }
++
++    return NextResponse.json({ ok: true });
++  } catch (error) {
++    const message = error instanceof Error ? error.message : 'Failed to add bookmark';
++    return NextResponse.json({ error: message }, { status: 500 });
++  }
++}
++
++export async function DELETE(request: NextRequest) {
++  try {
++    const auth = await getRequestUser();
++    if (!auth.ok) {
++      return unauthorizedResponse('Not authenticated');
++    }
++
++    const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
++    const jobId = parseJobId(body?.jobId);
++    if (!jobId) {
++      return NextResponse.json({ error: 'Missing jobId' }, { status: 400 });
++    }
++
++    const { error } = await supabaseServer
++      .from('bookmarks')
++      .delete()
++      .eq('user_id', auth.user.id)
++      .eq('job_id', jobId);
++
++    if (error) {
++      return NextResponse.json(
++        { error: error.message || 'Failed to remove bookmark' },
++        { status: 500 },
++      );
++    }
++
++    return NextResponse.json({ ok: true });
++  } catch (error) {
++    const message = error instanceof Error ? error.message : 'Failed to remove bookmark';
++    return NextResponse.json({ error: message }, { status: 500 });
++  }
++}
+diff --git a/wev-bulletin/app/api/bulletin/route.integration.test.ts b/wev-bulletin/app/api/bulletin/route.integration.test.ts
+index 10e1acb..35028e6 100644
+--- a/wev-bulletin/app/api/bulletin/route.integration.test.ts
++++ b/wev-bulletin/app/api/bulletin/route.integration.test.ts
+@@ -1,53 +1,101 @@
+ import { beforeEach, describe, expect, it, vi } from 'vitest';
+ import { GET } from './route';
+-import { fetchBulletinJobs } from '@/lib/bulletin/server-data';
++import {
++  queryBulletinJobs,
++  parseBulletinRequestFromUrlSearchParams,
++} from '@/lib/bulletin/server-data';
+ 
+ /**
+- * Route handler contract: locale parsing + cache policy + server-data shape.
+- * `fetchBulletinJobs` is mocked so the suite does not require a live DB (CI-safe).
++ * Route handler contract: locale/query parsing + no-store policy + server-data shape.
++ * Server data functions are mocked so the suite does not require a live DB (CI-safe).
+  */
+ vi.mock('@/lib/bulletin/server-data', () => ({
+-  fetchBulletinJobs: vi.fn(),
++  parseBulletinRequestFromUrlSearchParams: vi.fn(),
++  queryBulletinJobs: vi.fn(),
++  BULLETIN_CACHE_TAG: 'bulletin-jobs',
+ }));
+ 
+-const mockFetchBulletinJobs = vi.mocked(fetchBulletinJobs);
++const mockParseRequest = vi.mocked(parseBulletinRequestFromUrlSearchParams);
++const mockQueryBulletinJobs = vi.mocked(queryBulletinJobs);
+ 
+ describe('GET /api/bulletin (handler contract)', () => {
+   beforeEach(() => {
+     vi.clearAllMocks();
+-    mockFetchBulletinJobs.mockResolvedValue({
++    mockParseRequest.mockReturnValue({
++      filters: {
++        searchQuery: '',
++        selectedOrganizations: [],
++        selectedProvinces: [],
++        selectedMunicipalities: [],
++        selectedEmploymentTypes: [],
++        selectedSources: [],
++        selectedWorkTypes: [],
++        showOnlySse: true,
++        showJobsWithoutSalary: true,
++        postedWithin: '2-weeks',
++      },
++      sortBy: 'date-desc',
++      currentPage: 1,
++    });
++
++    mockQueryBulletinJobs.mockResolvedValue({
+       jobs: [],
+       lastScrapeTime: '2020-01-01T00:00:00.000Z',
+       skillLabels: {},
++      filteredJobsCount: 0,
++      totalJobsCount: 0,
++      totalPages: 0,
++      currentPage: 1,
++      filterOptions: {
++        organizations: [],
++        provinces: [],
++        municipalitiesByProvince: {},
++        employmentTypes: [],
++        sources: [],
++      },
+     });
+   });
+ 
+-  it('returns JSON and Cache-Control with locale from query', async () => {
++  it('returns JSON and no-store Cache-Control with locale from query', async () => {
+     const response = await GET(new Request('http://localhost/api/bulletin?locale=fr'));
+ 
+-    expect(mockFetchBulletinJobs).toHaveBeenCalledWith('fr');
++    expect(mockQueryBulletinJobs).toHaveBeenCalledWith(
++      expect.objectContaining({
++        locale: 'fr',
++      }),
++    );
+     expect(response.status).toBe(200);
+-    expect(response.headers.get('Cache-Control')).toContain('max-age=300');
+-    expect(response.headers.get('Cache-Control')).toContain('stale-while-revalidate');
++    expect(response.headers.get('Cache-Control')).toContain('no-store');
+ 
+     const body = (await response.json()) as Record<string, unknown>;
+     expect(body.jobs).toEqual([]);
+     expect(body.lastScrapeTime).toBe('2020-01-01T00:00:00.000Z');
+     expect(body.skillLabels).toEqual({});
++    expect(body.filteredJobsCount).toBe(0);
++    expect(body.totalJobsCount).toBe(0);
++    expect(body.totalPages).toBe(0);
+   });
+ 
+   it('defaults locale to English when the locale query is missing', async () => {
+     await GET(new Request('http://localhost/api/bulletin'));
+-    expect(mockFetchBulletinJobs).toHaveBeenCalledWith('en');
++    expect(mockQueryBulletinJobs).toHaveBeenCalledWith(
++      expect.objectContaining({
++        locale: 'en',
++      }),
++    );
+   });
+ 
+   it('defaults locale to English when the locale query is not fr', async () => {
+     await GET(new Request('http://localhost/api/bulletin?locale=de'));
+-    expect(mockFetchBulletinJobs).toHaveBeenCalledWith('en');
++    expect(mockQueryBulletinJobs).toHaveBeenCalledWith(
++      expect.objectContaining({
++        locale: 'en',
++      }),
++    );
+   });
+ 
+-  it('returns 500 when fetchBulletinJobs throws', async () => {
+-    mockFetchBulletinJobs.mockRejectedValue(new Error('db unavailable'));
++  it('returns 500 when queryBulletinJobs throws', async () => {
++    mockQueryBulletinJobs.mockRejectedValue(new Error('db unavailable'));
+ 
+     const response = await GET(new Request('http://localhost/api/bulletin'));
+     expect(response.status).toBe(500);
+diff --git a/wev-bulletin/app/api/bulletin/route.ts b/wev-bulletin/app/api/bulletin/route.ts
+index f2e50f9..b2e6640 100644
+--- a/wev-bulletin/app/api/bulletin/route.ts
++++ b/wev-bulletin/app/api/bulletin/route.ts
+@@ -1,35 +1,61 @@
+ import { NextResponse } from 'next/server';
+-import { fetchBulletinJobs, BULLETIN_CACHE_TAG } from '@/lib/bulletin/server-data';
++import {
++  queryBulletinJobs,
++  parseBulletinRequestFromUrlSearchParams,
++  BULLETIN_CACHE_TAG,
++} from '@/lib/bulletin/server-data';
++import { getRequestUser } from '@/lib/auth/request-user';
+ import { parseLocale } from '@/lib/resolve-skill-labels';
+ 
+ // Re-export so /api/revalidate-jobs can reference the same tag.
+ export { BULLETIN_CACHE_TAG };
+ 
+-// NOTE: force-dynamic intentionally removed. The response now carries
+-// Cache-Control headers so browsers and any CDN layer can cache it for
+-// 5 minutes, serving stale while revalidating in the background.
+-// unstable_cache inside fetchBulletinJobs handles server-side DB caching.
++const MATCH_SORTS = new Set(['match-desc', 'value-match-desc', 'skill-match-desc']);
++
++const NO_STORE_HEADERS = {
++  'Cache-Control': 'no-store, max-age=0, must-revalidate',
++};
+ 
+ export async function GET(request: Request) {
+   try {
+     const { searchParams } = new URL(request.url);
+     const locale = parseLocale(searchParams.get('locale'));
++    const parsedRequest = parseBulletinRequestFromUrlSearchParams(searchParams);
++    const includeAllFilteredJobs = searchParams.get('all') === 'true';
++
++    let userId: string | null = null;
++    if (MATCH_SORTS.has(parsedRequest.sortBy)) {
++      const auth = await getRequestUser();
++      if (auth.ok) {
++        userId = auth.user.id;
++      }
++    }
+ 
+-    const data = await fetchBulletinJobs(locale);
++    const data = await queryBulletinJobs({
++      locale,
++      request: parsedRequest,
++      userId,
++      includeFilterOptions: true,
++      includeAllFilteredJobs,
++    });
+ 
+     return NextResponse.json(
+-      { jobs: data.jobs, lastScrapeTime: data.lastScrapeTime, skillLabels: data.skillLabels },
+       {
+-        headers: {
+-          // Browsers/CDN: serve fresh for 5 min, then stale-while-revalidating.
+-          // The explicit refresh() call in useBulletinData uses cache:'no-cache'
+-          // to bypass this when the admin triggers a manual re-scrape.
+-          'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60',
+-        },
++        jobs: data.jobs,
++        lastScrapeTime: data.lastScrapeTime,
++        skillLabels: data.skillLabels,
++        filteredJobsCount: data.filteredJobsCount,
++        totalJobsCount: data.totalJobsCount,
++        totalPages: data.totalPages,
++        currentPage: data.currentPage,
++        filterOptions: data.filterOptions,
++      },
++      {
++        headers: NO_STORE_HEADERS,
+       },
+     );
+   } catch (err) {
+     const message = err instanceof Error ? err.message : 'Failed to fetch bulletin';
+-    return NextResponse.json({ error: message }, { status: 500 });
++    return NextResponse.json({ error: message }, { status: 500, headers: NO_STORE_HEADERS });
+   }
+ }
+diff --git a/wev-bulletin/app/api/profile/route.ts b/wev-bulletin/app/api/profile/route.ts
+new file mode 100644
+index 0000000..5504313
+--- /dev/null
++++ b/wev-bulletin/app/api/profile/route.ts
+@@ -0,0 +1,285 @@
++import { NextRequest, NextResponse } from 'next/server';
++import { getRequestUser } from '@/lib/auth/request-user';
++import { unauthorizedResponse } from '@/lib/http-errors';
++import { supabaseServer } from '@/lib/supabase-server';
++import { isWorkType } from '@/lib/work-types';
++import type { ProfileUpdateData } from '@/lib/supabase/profiles';
++
++const PROFILE_COLUMNS =
++  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, created_at, updated_at' as const;
++
++const ALLOWED_PROFILE_UPDATE_KEYS = [
++  'full_name',
++  'bio',
++  'values',
++  'values_rated',
++  'skills',
++  'skills_rated',
++  'work_types',
++  'lat',
++  'lng',
++  'municipality',
++  'province',
++  'location_display_name',
++  'profile_photo_url',
++] as const;
++
++const ALLOWED_PROFILE_UPDATE_KEY_SET = new Set<string>(ALLOWED_PROFILE_UPDATE_KEYS);
++
++function isRecord(value: unknown): value is Record<string, unknown> {
++  return typeof value === 'object' && value !== null && !Array.isArray(value);
++}
++
++function isStringArray(value: unknown): value is string[] {
++  return Array.isArray(value) && value.every((item) => typeof item === 'string');
++}
++
++function isNullableString(value: unknown): value is string | null {
++  return value === null || typeof value === 'string';
++}
++
++function isNullableFiniteNumber(value: unknown): value is number | null {
++  return value === null || (typeof value === 'number' && Number.isFinite(value));
++}
++
++function isValidRank(value: unknown): value is number {
++  return typeof value === 'number' && Number.isInteger(value) && value > 0;
++}
++
++function isRatedValueArray(value: unknown): boolean {
++  if (value === null) return true;
++  if (!Array.isArray(value)) return false;
++
++  return value.every((item) => {
++    if (!isRecord(item) || typeof item.value !== 'string') return false;
++    if (!('rank' in item) || item.rank == null) return true;
++    return isValidRank(item.rank);
++  });
++}
++
++function isRatedSkillArray(value: unknown): boolean {
++  if (value === null) return true;
++  if (!Array.isArray(value)) return false;
++
++  return value.every((item) => {
++    if (!isRecord(item) || typeof item.skill !== 'string') return false;
++    if (!('rank' in item) || item.rank == null) return true;
++    return isValidRank(item.rank);
++  });
++}
++
++function parseProfileUpdatePayload(body: Record<string, unknown>): {
++  ok: true;
++  payload: ProfileUpdateData;
++} | {
++  ok: false;
++  error: string;
++} {
++  const unknownKeys = Object.keys(body).filter((key) => !ALLOWED_PROFILE_UPDATE_KEY_SET.has(key));
++  if (unknownKeys.length > 0) {
++    return {
++      ok: false,
++      error: `Unknown profile field(s): ${unknownKeys.join(', ')}`,
++    };
++  }
++
++  const payload: ProfileUpdateData = {};
++
++  if ('full_name' in body) {
++    if (!isNullableString(body.full_name)) {
++      return { ok: false, error: 'full_name must be a string or null' };
++    }
++    payload.full_name = body.full_name;
++  }
++
++  if ('bio' in body) {
++    if (!isNullableString(body.bio)) {
++      return { ok: false, error: 'bio must be a string or null' };
++    }
++    payload.bio = body.bio;
++  }
++
++  if ('values' in body) {
++    if (!isStringArray(body.values)) {
++      return { ok: false, error: 'values must be an array of strings' };
++    }
++    payload.values = body.values;
++  }
++
++  if ('skills' in body) {
++    if (!isStringArray(body.skills)) {
++      return { ok: false, error: 'skills must be an array of strings' };
++    }
++    payload.skills = body.skills;
++  }
++
++  if ('values_rated' in body) {
++    if (!isRatedValueArray(body.values_rated)) {
++      return { ok: false, error: 'values_rated must be a valid rated values array or null' };
++    }
++    payload.values_rated = body.values_rated as ProfileUpdateData['values_rated'];
++  }
++
++  if ('skills_rated' in body) {
++    if (!isRatedSkillArray(body.skills_rated)) {
++      return { ok: false, error: 'skills_rated must be a valid rated skills array or null' };
++    }
++    payload.skills_rated = body.skills_rated as ProfileUpdateData['skills_rated'];
++  }
++
++  if ('work_types' in body) {
++    if (!isStringArray(body.work_types) || !body.work_types.every(isWorkType)) {
++      return {
++        ok: false,
++        error: 'work_types must be an array containing only remote, hybrid, or office',
++      };
++    }
++    payload.work_types = body.work_types;
++  }
++
++  if ('lat' in body) {
++    if (!isNullableFiniteNumber(body.lat)) {
++      return { ok: false, error: 'lat must be a finite number or null' };
++    }
++    payload.lat = body.lat;
++  }
++
++  if ('lng' in body) {
++    if (!isNullableFiniteNumber(body.lng)) {
++      return { ok: false, error: 'lng must be a finite number or null' };
++    }
++    payload.lng = body.lng;
++  }
++
++  if ('municipality' in body) {
++    if (!isNullableString(body.municipality)) {
++      return { ok: false, error: 'municipality must be a string or null' };
++    }
++    payload.municipality = body.municipality;
++  }
++
++  if ('province' in body) {
++    if (!isNullableString(body.province)) {
++      return { ok: false, error: 'province must be a string or null' };
++    }
++    payload.province = body.province;
++  }
++
++  if ('location_display_name' in body) {
++    if (!isNullableString(body.location_display_name)) {
++      return { ok: false, error: 'location_display_name must be a string or null' };
++    }
++    payload.location_display_name = body.location_display_name;
++  }
++
++  if ('profile_photo_url' in body) {
++    if (!isNullableString(body.profile_photo_url)) {
++      return { ok: false, error: 'profile_photo_url must be a string or null' };
++    }
++    payload.profile_photo_url = body.profile_photo_url;
++  }
++
++  if (Object.keys(payload).length === 0) {
++    return { ok: false, error: 'No allowed profile fields were provided' };
++  }
++
++  return { ok: true, payload };
++}
++
++function applyProfileDefaults(row: Record<string, unknown>): Record<string, unknown> {
++  return {
++    ...row,
++    values: Array.isArray(row.values) ? row.values : [],
++    skills: Array.isArray(row.skills) ? row.skills : [],
++    work_types: Array.isArray(row.work_types) ? row.work_types : [],
++  };
++}
++
++async function readOrCreateProfile(userId: string) {
++  const { data, error } = await supabaseServer
++    .from('profiles')
++    .select(PROFILE_COLUMNS)
++    .eq('id', userId)
++    .maybeSingle();
++
++  if (!error && data) {
++    return applyProfileDefaults(data as Record<string, unknown>);
++  }
++
++  const nowIso = new Date().toISOString();
++  const createResult = await supabaseServer
++    .from('profiles')
++    .upsert(
++      {
++        id: userId,
++        updated_at: nowIso,
++      },
++      {
++        onConflict: 'id',
++        ignoreDuplicates: false,
++      },
++    )
++    .select(PROFILE_COLUMNS)
++    .single();
++
++  if (createResult.error) {
++    throw new Error(createResult.error.message || 'Failed to create profile');
++  }
++
++  return applyProfileDefaults(createResult.data as Record<string, unknown>);
++}
++
++export async function GET() {
++  try {
++    const auth = await getRequestUser();
++    if (!auth.ok) {
++      return unauthorizedResponse('Not authenticated');
++    }
++
++    const profile = await readOrCreateProfile(auth.user.id);
++    return NextResponse.json({ profile });
++  } catch (error) {
++    const message = error instanceof Error ? error.message : 'Failed to fetch profile';
++    return NextResponse.json({ error: message }, { status: 500 });
++  }
++}
++
++export async function PATCH(request: NextRequest) {
++  try {
++    const auth = await getRequestUser();
++    if (!auth.ok) {
++      return unauthorizedResponse('Not authenticated');
++    }
++
++    const body = (await request.json().catch(() => null)) as unknown;
++    if (!isRecord(body)) {
++      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
++    }
++
++    const parsed = parseProfileUpdatePayload(body);
++    if (!parsed.ok) {
++      return NextResponse.json({ error: parsed.error }, { status: 400 });
++    }
++
++    const updatePayload = {
++      ...parsed.payload,
++      updated_at: new Date().toISOString(),
++    };
++
++    const { data, error } = await supabaseServer
++      .from('profiles')
++      .update(updatePayload)
++      .eq('id', auth.user.id)
++      .select(PROFILE_COLUMNS)
++      .single();
++
++    if (error) {
++      return NextResponse.json({ error: error.message || 'Failed to update profile' }, { status: 500 });
++    }
++
++    return NextResponse.json({ profile: applyProfileDefaults(data as Record<string, unknown>) });
++  } catch (error) {
++    const message = error instanceof Error ? error.message : 'Failed to update profile';
++    return NextResponse.json({ error: message }, { status: 500 });
++  }
++}
+diff --git a/wev-bulletin/components/BulletinPageClient.tsx b/wev-bulletin/components/BulletinPageClient.tsx
+index 9560512..294783e 100644
+--- a/wev-bulletin/components/BulletinPageClient.tsx
++++ b/wev-bulletin/components/BulletinPageClient.tsx
+@@ -1,6 +1,7 @@
+ 'use client';
+ 
+ import { useLocale } from 'next-intl';
++import BulletinPageContentSkeleton from '@/components/BulletinPageContentSkeleton';
+ import BulletinPageView from '@/components/BulletinPageView';
+ import { useAuth } from '@/contexts/AuthContext';
+ import { useProfile } from '@/contexts/ProfileContext';
+@@ -10,11 +11,16 @@ import type { SerializedMatchData } from '@/lib/bulletin/server-data';
+ import type { JobPosting } from '@/lib/supabase';
+ import type { Profile } from '@/lib/supabase/profiles';
+ import type { SkillLabel } from '@/lib/bulletin/types';
++import type { BulletinFilterOptions } from '@/lib/bulletin/filter-options';
+ 
+ interface BulletinPageClientProps {
+-  initialJobs: JobPosting[];
+-  initialScrapeTime: string | null;
+-  initialSkillLabels: Record<string, SkillLabel>;
++  initialJobs?: JobPosting[];
++  initialScrapeTime?: string | null;
++  initialSkillLabels?: Record<string, SkillLabel>;
++  initialFilteredJobsCount?: number;
++  initialTotalJobsCount?: number;
++  initialTotalPages?: number;
++  initialFilterOptions?: BulletinFilterOptions;
+   initialUserId?: string | null;
+   isLoggedIn: boolean;
+   isAdmin: boolean;
+@@ -27,14 +33,18 @@ interface BulletinPageClientProps {
+ /**
+  * Client entry point for the bulletin page.
+  *
+- * Receives all initial data from the Server Component parent so the page
+- * renders immediately with no loading states. Handles client-side interactivity:
+- * URL-synced filters, pagination, and reactive auth (login/logout after mount).
++ * Receives lightweight auth/profile state from the Server Component parent.
++ * The full bulletin payload can be omitted to keep the initial HTML lean, in
++ * which case the client hydrates from /api/bulletin after mount.
+  */
+ export default function BulletinPageClient({
+   initialJobs,
+   initialScrapeTime,
+   initialSkillLabels,
++  initialFilteredJobsCount,
++  initialTotalJobsCount,
++  initialTotalPages,
++  initialFilterOptions,
+   initialUserId,
+   isLoggedIn,
+   isAdmin,
+@@ -74,6 +84,10 @@ export default function BulletinPageClient({
+     {
+       jobs: initialJobs,
+       scrapeTime: initialScrapeTime,
++      filteredJobsCount: initialFilteredJobsCount,
++      totalJobsCount: initialTotalJobsCount,
++      totalPages: initialTotalPages,
++      filterOptions: initialFilterOptions,
+       userId: initialUserId ?? null,
+       matchData: initialMatchData,
+       bookmarkedJobIds: initialBookmarkedJobIds,
+@@ -81,6 +95,10 @@ export default function BulletinPageClient({
+     },
+   );
+ 
++  if (data.loading && data.allJobs.length === 0 && !data.error) {
++    return <BulletinPageContentSkeleton />;
++  }
++
+   return (
+     <BulletinPageView
+       isAdmin={effectiveIsAdmin}
+diff --git a/wev-bulletin/components/BulletinPageContentSkeleton.tsx b/wev-bulletin/components/BulletinPageContentSkeleton.tsx
+new file mode 100644
+index 0000000..2310c3b
+--- /dev/null
++++ b/wev-bulletin/components/BulletinPageContentSkeleton.tsx
+@@ -0,0 +1,100 @@
++'use client';
++
++import { useState } from 'react';
++import { useTranslations } from 'next-intl';
++import { Search1Outlined } from '@lineiconshq/free-icons';
++import { Lineicons } from '@lineiconshq/react-lineicons';
++import FilterIcon from '@/components/FilterIcon';
++import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
++
++function SkeletonBlock({ className }: { className: string }) {
++  return <div aria-hidden className={`animate-pulse rounded-wev-btn bg-muted/70 ${className}`} />;
++}
++
++export default function BulletinPageContentSkeleton() {
++  const t = useTranslations();
++  const [filtersExpanded, setFiltersExpanded] = useState(false);
++
++  return (
++    <div data-testid={JOB_BOARD_TEST_IDS.pageLoadingState}>
++      <div className="bg-card border border-border rounded-wev-card mb-4 overflow-hidden">
++        <div className="p-3 sm:p-4">
++          <div className="flex items-center gap-2.5">
++            <div className="relative flex-1">
++              <label htmlFor="search-loading" className="sr-only">
++                {t('search.label')}
++              </label>
++              <Lineicons
++                icon={Search1Outlined}
++                size={16}
++                className="absolute left-3 top-1/2 -translate-y-1/2 text-wev-text-tertiary pointer-events-none"
++                aria-hidden
++              />
++              <input
++                id="search-loading"
++                type="text"
++                readOnly
++                value=""
++                placeholder={t('search.placeholder')}
++                className="w-full h-10 pl-9 pr-3 border border-border rounded-wev-btn bg-card text-sm text-foreground"
++              />
++            </div>
++
++            <button
++              type="button"
++              onClick={() => setFiltersExpanded((current) => !current)}
++              className="h-10 px-3 border border-border rounded-wev-btn bg-card text-sm text-muted-foreground transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
++              aria-expanded={filtersExpanded}
++              aria-controls="job-filters-loading"
++            >
++              <FilterIcon className="w-4 h-4" aria-hidden />
++              <span className="max-[519px]:hidden">{t('filters.showFilters')}</span>
++              <span className="inline-flex min-w-[1.25rem] h-5 px-1.5 items-center justify-center rounded-full bg-primary text-white text-xs font-semibold">
++                0
++              </span>
++            </button>
++          </div>
++        </div>
++
++        <div className="px-3 sm:px-4 py-2.5 bg-muted border-t border-border">
++          <SkeletonBlock className="h-4 w-40" />
++        </div>
++
++        {filtersExpanded && (
++          <div id="job-filters-loading" className="p-6 border-t border-border space-y-4">
++            <SkeletonBlock className="h-14 w-full" />
++            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
++              <SkeletonBlock className="h-28 w-full" />
++              <SkeletonBlock className="h-28 w-full" />
++              <SkeletonBlock className="h-40 w-full" />
++              <SkeletonBlock className="h-40 w-full" />
++            </div>
++          </div>
++        )}
++      </div>
++
++      <div className="flex items-center justify-between pl-2 pr-1 py-1 mb-4 gap-4">
++        <SkeletonBlock className="h-4 w-44" />
++        <SkeletonBlock className="h-8 w-40" />
++      </div>
++
++      <div className="space-y-6">
++        {Array.from({ length: 3 }).map((_, index) => (
++          <div
++            key={index}
++            className="bg-card border border-border rounded-wev-card overflow-hidden p-5 space-y-4"
++          >
++            <div className="flex items-start justify-between gap-4">
++              <div className="space-y-3 flex-1">
++                <SkeletonBlock className="h-6 w-3/4" />
++                <SkeletonBlock className="h-4 w-1/2" />
++              </div>
++              <SkeletonBlock className="h-9 w-24 shrink-0" />
++            </div>
++            <SkeletonBlock className="h-24 w-full rounded-wev-card" />
++          </div>
++        ))}
++      </div>
++    </div>
++  );
++}
+diff --git a/wev-bulletin/components/BulletinPageScaffold.tsx b/wev-bulletin/components/BulletinPageScaffold.tsx
+new file mode 100644
+index 0000000..2f9145a
+--- /dev/null
++++ b/wev-bulletin/components/BulletinPageScaffold.tsx
+@@ -0,0 +1,36 @@
++'use client';
++
++import Image from 'next/image';
++import { useTranslations } from 'next-intl';
++import WatercolorBackground from '@/components/WatercolorBackground';
++import { SITE_CONFIG } from '@/lib/site-config';
++
++export default function BulletinPageScaffold({ children }: { children: React.ReactNode }) {
++  const t = useTranslations();
++
++  return (
++    <main
++      className="min-h-screen pb-8 relative overflow-hidden"
++      style={{
++        background: 'var(--background)',
++      }}
++    >
++      <WatercolorBackground />
++      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
++        <header className="mb-8">
++          <Image
++            src={SITE_CONFIG.logotypeUrl}
++            alt={t('home.heading')}
++            width={100}
++            height={40}
++            className="main-logo wev-logotype w-[100px] h-auto mb-2"
++            priority
++          />
++          <h1 className="text-xl font-medium text-primary">{t('home.heading')}</h1>
++        </header>
++
++        {children}
++      </div>
++    </main>
++  );
++}
+diff --git a/wev-bulletin/components/BulletinPageSkeleton.tsx b/wev-bulletin/components/BulletinPageSkeleton.tsx
+index f7a4ee1..24eeadc 100644
+--- a/wev-bulletin/components/BulletinPageSkeleton.tsx
++++ b/wev-bulletin/components/BulletinPageSkeleton.tsx
+@@ -1,80 +1,10 @@
+-import Image from 'next/image';
+-import { SITE_CONFIG } from '@/lib/site-config';
+-
+-function SkeletonBlock({ className }: { className: string }) {
+-  return <div aria-hidden className={`animate-pulse rounded-wev-btn bg-muted/70 ${className}`} />;
+-}
++import BulletinPageContentSkeleton from '@/components/BulletinPageContentSkeleton';
++import BulletinPageScaffold from '@/components/BulletinPageScaffold';
+ 
+ export default function BulletinPageSkeleton() {
+   return (
+-    <main
+-      className="min-h-screen pb-8 relative overflow-hidden"
+-      style={{
+-        background: 'var(--background)',
+-      }}
+-    >
+-      <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+-        <div
+-          className="absolute -top-36 -left-28 h-[38rem] w-[38rem] rounded-full blur-[90px]"
+-          style={{
+-            background: 'var(--watercolor-lavender)',
+-            opacity: 'var(--lavender-opacity, 0.24)',
+-          }}
+-        />
+-        <div
+-          className="absolute -top-8 right-[-12rem] h-[32rem] w-[32rem] rounded-full blur-[90px]"
+-          style={{
+-            background: 'var(--watercolor-blue)',
+-            opacity: 'var(--blue-opacity, 0.2)',
+-          }}
+-        />
+-      </div>
+-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
+-        <header className="mb-8">
+-          <Image
+-            src={SITE_CONFIG.logotypeUrl}
+-            alt=""
+-            width={100}
+-            height={40}
+-            className="main-logo wev-logotype w-[100px] h-auto mb-2"
+-            priority
+-          />
+-          <SkeletonBlock className="h-7 w-56 max-w-full" />
+-        </header>
+-
+-        <div className="bg-card border border-border rounded-wev-card mb-4 p-4 sm:p-6 space-y-4">
+-          <SkeletonBlock className="h-11 w-full" />
+-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+-            <SkeletonBlock className="h-28 w-full" />
+-            <SkeletonBlock className="h-28 w-full" />
+-            <SkeletonBlock className="h-40 w-full" />
+-            <SkeletonBlock className="h-40 w-full" />
+-          </div>
+-        </div>
+-
+-        <div className="flex items-center justify-between pl-2 pr-1 py-1 mb-4 gap-4">
+-          <SkeletonBlock className="h-4 w-44" />
+-          <SkeletonBlock className="h-8 w-40" />
+-        </div>
+-
+-        <div className="space-y-6">
+-          {Array.from({ length: 3 }).map((_, index) => (
+-            <div
+-              key={index}
+-              className="bg-card border border-border rounded-wev-card overflow-hidden p-5 space-y-4"
+-            >
+-              <div className="flex items-start justify-between gap-4">
+-                <div className="space-y-3 flex-1">
+-                  <SkeletonBlock className="h-6 w-3/4" />
+-                  <SkeletonBlock className="h-4 w-1/2" />
+-                </div>
+-                <SkeletonBlock className="h-9 w-24 shrink-0" />
+-              </div>
+-              <SkeletonBlock className="h-24 w-full rounded-wev-card" />
+-            </div>
+-          ))}
+-        </div>
+-      </div>
+-    </main>
++    <BulletinPageScaffold>
++      <BulletinPageContentSkeleton />
++    </BulletinPageScaffold>
+   );
+ }
+diff --git a/wev-bulletin/components/BulletinPageView.test.tsx b/wev-bulletin/components/BulletinPageView.test.tsx
+index 6e26713..2077473 100644
+--- a/wev-bulletin/components/BulletinPageView.test.tsx
++++ b/wev-bulletin/components/BulletinPageView.test.tsx
+@@ -171,18 +171,29 @@ function createFilters(): BulletinFilterControls {
+ 
+ function createData(): BulletinDataState {
+   return {
+-    allJobs: baseJobs,
+-    filteredJobs: baseJobs.slice(0, 2),
+-    paginatedJobs: baseJobs.slice(0, 1),
++    allJobs: baseJobs.slice(0, 1),
++    filteredJobsCount: 2,
++    totalJobsCount: 3,
+     lastScrapeTime: 'March 28, 2026, 9:00 AM EDT',
+     loading: false,
+     error: null,
+     matchData: new Map(),
+     bookmarkedJobIds: new Set(['job-1']),
+     skillLabels: {},
++    filterOptions: {
++      organizations: ['Org One', 'Org Two'],
++      provinces: ['Ontario', 'Nova Scotia'],
++      municipalitiesByProvince: {
++        Ontario: ['Toronto'],
++        'Nova Scotia': ['Halifax'],
++      },
++      employmentTypes: [],
++      sources: [],
++    },
+     totalPages: 3,
+     itemsPerPage: 20,
+     refresh: vi.fn(async () => {}),
++    fetchAllFilteredJobs: vi.fn(async () => baseJobs.slice(0, 2)),
+     handleJobSseChange: vi.fn(),
+     handleJobBookmarkChange: vi.fn(),
+   };
+@@ -205,9 +216,9 @@ describe('BulletinPageView', () => {
+       />,
+     );
+ 
+-    expect(screen.getByText('job-filters:3:2:3')).toBeVisible();
++    expect(screen.getByText('job-filters:1:2:3')).toBeVisible();
+     expect(screen.getByText('job-listings:1')).toBeVisible();
+-    expect(screen.getByText('copy-jobs:2')).toBeVisible();
++    expect(screen.getByText('copy-jobs:1')).toBeVisible();
+     expect(screen.getByText(/Last updated/i)).toBeVisible();
+     expect(screen.getByText('sort:yes')).toBeVisible();
+     expect(screen.getByText('pagination:3')).toBeVisible();
+diff --git a/wev-bulletin/components/BulletinPageView.tsx b/wev-bulletin/components/BulletinPageView.tsx
+index 37913e4..d2659a9 100644
+--- a/wev-bulletin/components/BulletinPageView.tsx
++++ b/wev-bulletin/components/BulletinPageView.tsx
+@@ -1,16 +1,13 @@
+ 'use client';
+ 
+-import Image from 'next/image';
+ import { useTranslations } from 'next-intl';
+ import JobFilters from '@/components/JobFilters';
+ import JobListings from '@/components/JobListings';
+ import SortDropdown from '@/components/SortDropdown';
+ import ExpandAllToggle from '@/components/ExpandAllToggle';
+-import WatercolorBackground from '@/components/WatercolorBackground';
+ import ReScrapeButton from '@/components/ReScrapeButton';
+ import CopyAllJobsButton from '@/components/CopyAllJobsButton';
+ import Pagination from '@/components/Pagination';
+-import { SITE_CONFIG } from '@/lib/site-config';
+ import type { BulletinDataState } from '@/lib/bulletin/types';
+ import type { BulletinFilterControls } from '@/lib/hooks/useBulletinFilters';
+ import type { Profile } from '@/lib/supabase/profiles';
+@@ -37,86 +34,64 @@ export default function BulletinPageView({
+ 
+   return (
+     <BulletinFilterProvider filters={filters}>
+-      <main
+-        className="min-h-screen pb-8 relative overflow-hidden"
+-        style={{
+-          background: 'var(--background)',
+-        }}
+-      >
+-        <WatercolorBackground />
+-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
+-          <header className="mb-8">
+-            <Image
+-              src={SITE_CONFIG.logotypeUrl}
+-              alt={t('home.heading')}
+-              width={100}
+-              height={40}
+-              className="main-logo wev-logotype w-[100px] h-auto mb-2"
+-              priority
+-            />
+-            <h1 className="text-xl font-medium text-primary">{t('home.heading')}</h1>
+-          </header>
+-
+-          {isAdmin && (
+-            <div className="flex flex-col justify-start items-stretch gap-4 mb-6">
+-              <div className="flex flex-row gap-4 max-[442px]:flex-col max-[442px]:items-stretch">
+-                <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
+-                  <ReScrapeButton onComplete={data.refresh} />
+-                </div>
+-                <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
+-                  <CopyAllJobsButton jobs={data.filteredJobs} />
+-                </div>
++      <>
++        {isAdmin && (
++          <div className="flex flex-col justify-start items-stretch gap-4 mb-6">
++            <div className="flex flex-row gap-4 max-[442px]:flex-col max-[442px]:items-stretch">
++              <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
++                <ReScrapeButton onComplete={data.refresh} />
++              </div>
++              <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
++                <CopyAllJobsButton jobs={data.allJobs} />
+               </div>
+             </div>
+-          )}
++          </div>
++        )}
+ 
+-          <JobFilters
+-            jobs={data.allJobs}
+-            filteredJobsCount={data.filteredJobs.length}
+-            totalJobsCount={data.allJobs.length}
+-          />
++        <JobFilters
++          jobs={data.allJobs}
++          filteredJobsCount={data.filteredJobsCount}
++          totalJobsCount={data.totalJobsCount}
++        />
+ 
+-          {data.allJobs.length > 0 && (
+-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
+-              <div className="text-sm text-center sm:text-left text-xs text-muted-foreground">
+-                <span className="font-semibold text-wev-brand-accent">
+-                  {t('home.lastUpdated')}{' '}
+-                </span>
+-                <span>{data.lastScrapeTime || t('home.unknown')}</span>
+-              </div>
++        {data.allJobs.length > 0 && (
++          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
++            <div className="text-sm text-center sm:text-left text-xs text-muted-foreground">
++              <span className="font-semibold text-wev-brand-accent">{t('home.lastUpdated')} </span>
++              <span>{data.lastScrapeTime || t('home.unknown')}</span>
++            </div>
+ 
+-              <div className="flex items-center gap-2 mt-2 sm:mt-0 sm:justify-end">
+-                <SortDropdown showMatchOption={isLoggedIn} />
++            <div className="flex items-center gap-2 mt-2 sm:mt-0 sm:justify-end">
++              <SortDropdown showMatchOption={isLoggedIn} />
+ 
+-                <div className="w-0.5 h-3.5 bg-border" />
++              <div className="w-0.5 h-3.5 bg-border" />
+ 
+-                <ExpandAllToggle />
+-              </div>
++              <ExpandAllToggle />
+             </div>
+-          )}
++          </div>
++        )}
+ 
+-          <JobListings
+-            jobs={data.paginatedJobs}
+-            totalJobsCount={data.allJobs.length}
+-            loading={data.loading}
+-            error={data.error}
+-            isAdmin={isAdmin}
+-            userId={userId}
+-            profile={profile}
+-            matchData={data.matchData}
+-            bookmarkedJobIds={data.bookmarkedJobIds}
+-            onJobSseChange={data.handleJobSseChange}
+-            onJobBookmarkChange={data.handleJobBookmarkChange}
+-            skillLabels={data.skillLabels}
+-          />
++        <JobListings
++          jobs={data.allJobs}
++          totalJobsCount={data.totalJobsCount}
++          loading={data.loading}
++          error={data.error}
++          isAdmin={isAdmin}
++          userId={userId}
++          profile={profile}
++          matchData={data.matchData}
++          bookmarkedJobIds={data.bookmarkedJobIds}
++          onJobSseChange={data.handleJobSseChange}
++          onJobBookmarkChange={data.handleJobBookmarkChange}
++          skillLabels={data.skillLabels}
++        />
+ 
+-          <Pagination
+-            totalPages={data.totalPages}
+-            totalItems={data.filteredJobs.length}
+-            itemsPerPage={data.itemsPerPage}
+-          />
+-        </div>
+-      </main>
++        <Pagination
++          totalPages={data.totalPages}
++          totalItems={data.filteredJobsCount}
++          itemsPerPage={data.itemsPerPage}
++        />
++      </>
+     </BulletinFilterProvider>
+   );
+ }
+diff --git a/wev-bulletin/components/CopyAllJobsButton.tsx b/wev-bulletin/components/CopyAllJobsButton.tsx
+index 4feab9a..8a79a84 100644
+--- a/wev-bulletin/components/CopyAllJobsButton.tsx
++++ b/wev-bulletin/components/CopyAllJobsButton.tsx
+@@ -7,6 +7,7 @@ import Button from './Button';
+ 
+ interface CopyAllJobsButtonProps {
+   jobs: JobPosting[];
++  fetchJobs?: () => Promise<JobPosting[]>;
+   buttonClassName?: string;
+ }
+ 
+@@ -81,7 +82,11 @@ function formatJobsAsHTML(
+     .join('<br><br>');
+ }
+ 
+-export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobsButtonProps) {
++export default function CopyAllJobsButton({
++  jobs,
++  fetchJobs,
++  buttonClassName,
++}: CopyAllJobsButtonProps) {
+   const t = useTranslations();
+   const locale = useLocale();
+   const [copied, setCopied] = useState(false);
+@@ -105,8 +110,9 @@ export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobs
+     }
+ 
+     try {
+-      const text = formatJobsAsText(jobs, t, locale);
+-      const html = formatJobsAsHTML(jobs, t, locale);
++      const jobsToCopy = fetchJobs ? await fetchJobs() : jobs;
++      const text = formatJobsAsText(jobsToCopy, t, locale);
++      const html = formatJobsAsHTML(jobsToCopy, t, locale);
+ 
+       // Use Clipboard API with both HTML and plain text formats
+       // This matches what the browser copies when you manually select and copy
+@@ -127,7 +133,8 @@ export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobs
+       console.error('Failed to copy with ClipboardItem, trying plain text:', err);
+       // Fallback to plain text if ClipboardItem fails
+       try {
+-        const text = formatJobsAsText(jobs, t);
++        const jobsToCopy = fetchJobs ? await fetchJobs() : jobs;
++        const text = formatJobsAsText(jobsToCopy, t);
+         await navigator.clipboard.writeText(text);
+         setCopied(true);
+ 
+@@ -139,7 +146,8 @@ export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobs
+         console.error('Failed to copy:', textErr);
+         // Final fallback for older browsers
+         const textArea = document.createElement('textarea');
+-        textArea.value = formatJobsAsText(jobs, t);
++        const jobsToCopy = fetchJobs ? await fetchJobs() : jobs;
++        textArea.value = formatJobsAsText(jobsToCopy, t);
+         document.body.appendChild(textArea);
+         textArea.select();
+         try {
+diff --git a/wev-bulletin/components/Header.tsx b/wev-bulletin/components/Header.tsx
+index ee2448a..6bae134 100644
+--- a/wev-bulletin/components/Header.tsx
++++ b/wev-bulletin/components/Header.tsx
+@@ -1,14 +1,24 @@
+ 'use client';
+ 
+ import { useEffect, useState } from 'react';
++import dynamic from 'next/dynamic';
+ import Image from 'next/image';
+ import { useTranslations } from 'next-intl';
+ import { Link, usePathname } from '@/i18n/navigation';
+-import UserProfile from './UserProfile';
+-import ThemeToggle from './ThemeToggle';
+-import LocaleSwitcher from './LocaleSwitcher';
+ import { zIndex } from '@/lib/design-tokens';
+ 
++const UserProfile = dynamic(() => import('./UserProfile'), {
++  loading: () => <div className="h-10 w-10 rounded-full bg-border animate-pulse" />,
++});
++
++const ThemeToggle = dynamic(() => import('./ThemeToggle'), {
++  loading: () => <div className="h-8 w-14 rounded-full bg-border animate-pulse" />,
++});
++
++const LocaleSwitcher = dynamic(() => import('./LocaleSwitcher'), {
++  loading: () => <div className="h-8 w-[76px] rounded-full bg-border animate-pulse" />,
++});
++
+ const HEADER_LOGOTYPE_URL =
+   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';
+ 
+diff --git a/wev-bulletin/components/JobCard.test.tsx b/wev-bulletin/components/JobCard.test.tsx
+index 5ab563f..aa56148 100644
+--- a/wev-bulletin/components/JobCard.test.tsx
++++ b/wev-bulletin/components/JobCard.test.tsx
+@@ -5,20 +5,14 @@ import JobCard from './JobCard';
+ import type { JobPosting } from '@/lib/supabase';
+ import { mockRouter } from '@/test-stubs/constants';
+ 
+-vi.mock('@/lib/supabase/client', () => ({
+-  createClient: vi.fn(),
+-}));
+-
+ vi.mock('@/i18n/navigation', () => ({
+   useRouter: vi.fn(),
+ }));
+ 
+ vi.mock('@lineiconshq/react-lineicons', () => vi.importActual('./test-utils/lineicons-mock.ts'));
+ 
+-import { createClient } from '@/lib/supabase/client';
+ import { useRouter } from '@/i18n/navigation';
+ 
+-const mockCreateClient = vi.mocked(createClient);
+ const mockUseRouter = vi.mocked(useRouter);
+ 
+ const defaultJob: JobPosting = {
+@@ -38,19 +32,6 @@ const defaultJob: JobPosting = {
+   values: [],
+ };
+ 
+-function makeSupabaseClient() {
+-  return {
+-    from: vi.fn().mockReturnValue({
+-      insert: vi.fn().mockResolvedValue({ error: null }),
+-      delete: vi.fn().mockReturnValue({
+-        eq: vi.fn().mockReturnValue({
+-          eq: vi.fn().mockResolvedValue({ error: null }),
+-        }),
+-      }),
+-    }),
+-  };
+-}
+-
+ const BOOKMARK_LABEL = 'Bookmark job';
+ const COLLAPSE_LABEL = 'Collapse job details';
+ const EXPAND_LABEL = 'Expand job details';
+@@ -119,13 +100,20 @@ describe('JobCard', () => {
+   it('toggles the bookmark state for an authenticated user', async () => {
+     const user = userEvent.setup();
+     mockUseRouter.mockReturnValue(mockRouter() as never);
+-    mockCreateClient.mockReturnValue(makeSupabaseClient() as never);
++    const fetchMock = vi.fn().mockResolvedValue({
++      ok: true,
++      json: async () => ({}),
++    });
++    vi.stubGlobal('fetch', fetchMock);
+ 
+     renderJobCard({ initialBookmarked: false, userId: 'user-1' });
+ 
+     await user.click(screen.getByRole('button', { name: BOOKMARK_LABEL }));
+ 
+     expect(screen.getByRole('button', { name: 'Bookmarked (click to remove)' })).toBeVisible();
++    expect(fetchMock).toHaveBeenCalledWith('/api/bookmarks/item', expect.any(Object));
++
++    vi.unstubAllGlobals();
+   });
+ 
+   it('shows the SSE toggle button for admin users', () => {
+diff --git a/wev-bulletin/components/LoadingState.tsx b/wev-bulletin/components/LoadingState.tsx
+index d064443..2e08eb6 100644
+--- a/wev-bulletin/components/LoadingState.tsx
++++ b/wev-bulletin/components/LoadingState.tsx
+@@ -7,7 +7,7 @@ interface LoadingStateProps {
+ 
+ export default function LoadingState({
+   message = 'Loading...',
+-  fullScreen = true,
++  fullScreen = false,
+ }: LoadingStateProps) {
+   return <LoadingIndicator message={message} fullScreen={fullScreen} />;
+ }
+diff --git a/wev-bulletin/components/Pagination.test.tsx b/wev-bulletin/components/Pagination.test.tsx
+index aab2029..ca2c7a8 100644
+--- a/wev-bulletin/components/Pagination.test.tsx
++++ b/wev-bulletin/components/Pagination.test.tsx
+@@ -3,53 +3,6 @@ import { render, screen } from '@/test-utils';
+ import userEvent from '@testing-library/user-event';
+ import Pagination from './Pagination';
+ 
+-vi.mock('react-responsive-pagination', () => ({
+-  default: ({
+-    current,
+-    total,
+-    onPageChange,
+-    previousLabel,
+-    nextLabel,
+-    ariaPreviousLabel,
+-    ariaNextLabel,
+-  }: {
+-    current: number;
+-    total: number;
+-    onPageChange: (page: number) => void;
+-    previousLabel?: string;
+-    nextLabel?: string;
+-    ariaPreviousLabel?: string;
+-    ariaNextLabel?: string;
+-  }) => (
+-    <nav aria-label="Pagination">
+-      <button
+-        aria-label={ariaPreviousLabel}
+-        disabled={current === 1}
+-        onClick={() => onPageChange(current - 1)}
+-      >
+-        {previousLabel}
+-      </button>
+-      {Array.from({ length: total }, (_, i) => i + 1).map((page) => (
+-        <button
+-          key={page}
+-          onClick={() => onPageChange(page)}
+-          aria-current={page === current ? 'page' : undefined}
+-          className={page === current ? 'bg-primary' : ''}
+-        >
+-          {page}
+-        </button>
+-      ))}
+-      <button
+-        aria-label={ariaNextLabel}
+-        disabled={current === total}
+-        onClick={() => onPageChange(current + 1)}
+-      >
+-        {nextLabel}
+-      </button>
+-    </nav>
+-  ),
+-}));
+-
+ let mockCurrentPage = 1;
+ let mockSetCurrentPage = vi.fn();
+ 
+diff --git a/wev-bulletin/components/Pagination.tsx b/wev-bulletin/components/Pagination.tsx
+index 3c2885c..f53e8db 100644
+--- a/wev-bulletin/components/Pagination.tsx
++++ b/wev-bulletin/components/Pagination.tsx
+@@ -1,9 +1,6 @@
+ 'use client';
+ 
+ import { useTranslations } from 'next-intl';
+-import ResponsivePagination from 'react-responsive-pagination';
+-import { twMerge } from 'tailwind-merge';
+-import { dropEllipsis } from 'react-responsive-pagination/narrowBehaviour';
+ 
+ import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
+ import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
+@@ -14,11 +11,42 @@ interface PaginationProps {
+   itemsPerPage: number;
+ }
+ 
++type PaginationToken = number | 'ellipsis';
++
++function buildPaginationTokens(currentPage: number, totalPages: number): PaginationToken[] {
++  if (totalPages <= 7) {
++    return Array.from({ length: totalPages }, (_, index) => index + 1);
++  }
++
++  const tokens: PaginationToken[] = [1];
++  const start = Math.max(2, currentPage - 1);
++  const end = Math.min(totalPages - 1, currentPage + 1);
++
++  if (start > 2) {
++    tokens.push('ellipsis');
++  }
++
++  for (let page = start; page <= end; page += 1) {
++    tokens.push(page);
++  }
++
++  if (end < totalPages - 1) {
++    tokens.push('ellipsis');
++  }
++
++  tokens.push(totalPages);
++  return tokens;
++}
++
+ export default function Pagination({ totalPages, totalItems, itemsPerPage }: PaginationProps) {
+   const { currentPage, setCurrentPage: onPageChange } = useBulletinFilterContext();
+   const t = useTranslations();
+   const startItem = (currentPage - 1) * itemsPerPage + 1;
+   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
++  const pageTokens = buildPaginationTokens(currentPage, totalPages);
++
++  const baseButtonClasses =
++    'inline-flex items-center justify-center border border-border -ml-px first:ml-0 font-medium transition-colors overflow-hidden text-xs px-3 py-1.5 leading-none h-full';
+ 
+   if (totalPages <= 1) {
+     return (
+@@ -41,27 +69,66 @@ export default function Pagination({ totalPages, totalItems, itemsPerPage }: Pag
+         {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
+       </div>
+ 
+-      <div className="w-full">
+-        <ResponsivePagination
+-          current={currentPage}
+-          total={totalPages}
+-          onPageChange={onPageChange}
+-          previousLabel="&lsaquo;"
+-          nextLabel="&rsaquo;"
+-          ariaPreviousLabel={t('pagination.previous')}
+-          ariaNextLabel={t('pagination.next')}
+-          narrowBehaviour={dropEllipsis}
+-          classMerge={twMerge}
+-          containerClassName="flex justify-center"
+-          pageItemClassName="inline-flex items-center border border-border -ml-px first:ml-0 font-medium transition-colors overflow-hidden text-xs"
+-          activeItemClassName="bg-primary border-primary text-primary-foreground z-10"
+-          inactiveItemClassName="bg-background text-muted-foreground hover:bg-muted"
+-          disabledItemClassName="opacity-40 pointer-events-none bg-background text-muted-foreground"
+-          previousClassName="rounded-tl-[12px] rounded-bl-[12px] text-lg pb-1"
+-          nextClassName="rounded-tr-[12px] rounded-br-[12px] text-lg pb-1"
+-          pageLinkClassName="px-3 py-1.5 leading-none flex items-center justify-center h-full"
+-        />
+-      </div>
++      <nav className="w-full flex justify-center" aria-label="Pagination">
++        <button
++          type="button"
++          aria-label={t('pagination.previous')}
++          onClick={() => onPageChange(currentPage - 1)}
++          disabled={currentPage === 1}
++          className={`${baseButtonClasses} rounded-tl-[12px] rounded-bl-[12px] text-lg pb-1 ${
++            currentPage === 1
++              ? 'opacity-40 pointer-events-none bg-background text-muted-foreground'
++              : 'bg-background text-muted-foreground hover:bg-muted'
++          }`}
++        >
++          &lsaquo;
++        </button>
++
++        {pageTokens.map((token, index) => {
++          if (token === 'ellipsis') {
++            return (
++              <span
++                key={`ellipsis-${index}`}
++                className={`${baseButtonClasses} bg-background text-muted-foreground cursor-default`}
++                aria-hidden="true"
++              >
++                …
++              </span>
++            );
++          }
++
++          const isActive = token === currentPage;
++          return (
++            <button
++              key={token}
++              type="button"
++              onClick={() => onPageChange(token)}
++              aria-current={isActive ? 'page' : undefined}
++              className={`${baseButtonClasses} ${
++                isActive
++                  ? 'bg-primary border-primary text-primary-foreground z-10'
++                  : 'bg-background text-muted-foreground hover:bg-muted'
++              }`}
++            >
++              {token}
++            </button>
++          );
++        })}
++
++        <button
++          type="button"
++          aria-label={t('pagination.next')}
++          onClick={() => onPageChange(currentPage + 1)}
++          disabled={currentPage === totalPages}
++          className={`${baseButtonClasses} rounded-tr-[12px] rounded-br-[12px] text-lg pb-1 ${
++            currentPage === totalPages
++              ? 'opacity-40 pointer-events-none bg-background text-muted-foreground'
++              : 'bg-background text-muted-foreground hover:bg-muted'
++          }`}
++        >
++          &rsaquo;
++        </button>
++      </nav>
+     </div>
+   );
+ }
+diff --git a/wev-bulletin/components/Toaster.test.tsx b/wev-bulletin/components/Toaster.test.tsx
+index ef9238b..085ef2c 100644
+--- a/wev-bulletin/components/Toaster.test.tsx
++++ b/wev-bulletin/components/Toaster.test.tsx
+@@ -18,8 +18,14 @@ describe('ToasterProvider', () => {
+     expect(HotToaster).toHaveBeenCalledWith(
+       expect.objectContaining({
+         position: 'top-center',
++        containerStyle: expect.objectContaining({
++          pointerEvents: 'none',
++        }),
+         toastOptions: expect.objectContaining({
+           duration: 4000,
++          style: expect.objectContaining({
++            pointerEvents: 'auto',
++          }),
+         }),
+       }),
+       undefined,
+diff --git a/wev-bulletin/components/Toaster.tsx b/wev-bulletin/components/Toaster.tsx
+index 19e9713..b291350 100644
+--- a/wev-bulletin/components/Toaster.tsx
++++ b/wev-bulletin/components/Toaster.tsx
+@@ -62,7 +62,10 @@ export default function ToasterProvider() {
+   return (
+     <Toaster
+       position="top-center"
+-      containerStyle={{ top: 'max(8px, env(safe-area-inset-top))' }}
++      containerStyle={{
++        top: 'max(8px, env(safe-area-inset-top))',
++        pointerEvents: 'none',
++      }}
+       toastOptions={{
+         duration: 4000,
+         className: 'design-toast',
+@@ -78,12 +81,19 @@ export default function ToasterProvider() {
+           fontWeight: 500,
+           minWidth: '280px',
+           maxWidth: '480px',
++          pointerEvents: 'auto',
+         },
+         success: {
+-          style: TOAST_THEMES.success.style,
++          style: {
++            ...TOAST_THEMES.success.style,
++            pointerEvents: 'auto',
++          },
+         },
+         error: {
+-          style: TOAST_THEMES.error.style,
++          style: {
++            ...TOAST_THEMES.error.style,
++            pointerEvents: 'auto',
++          },
+         },
+       }}
+     >
+diff --git a/wev-bulletin/components/UserProfile.tsx b/wev-bulletin/components/UserProfile.tsx
+index d8e5bbb..05974a2 100644
+--- a/wev-bulletin/components/UserProfile.tsx
++++ b/wev-bulletin/components/UserProfile.tsx
+@@ -1,12 +1,11 @@
+ 'use client';
+ 
+-import { useState, useRef, useEffect, useMemo } from 'react';
++import { useState, useRef, useEffect } from 'react';
+ import { useTranslations, useLocale } from 'next-intl';
+ import { Link } from '@/i18n/navigation';
+ import notify from '@/lib/toast';
+ import { getSiteBaseUrl } from '@/lib/site-url';
+ import Button from '@/components/Button';
+-import { createClient } from '@/lib/supabase/client';
+ import { useAuth } from '@/contexts/AuthContext';
+ import { Lineicons } from '@lineiconshq/react-lineicons';
+ import { MenuHamburger1Outlined, XmarkOutlined } from '@lineiconshq/free-icons';
+@@ -31,7 +30,6 @@ export default function UserProfile({
+   const [isOpen, setIsOpen] = useState(false);
+   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+   const [isLoggingOut, setIsLoggingOut] = useState(false);
+-  const supabase = useMemo(() => createClient(), []);
+   const dropdownRef = useRef<HTMLDivElement>(null);
+   const mobileMenuRef = useRef<HTMLDivElement>(null);
+ 
+@@ -54,6 +52,8 @@ export default function UserProfile({
+     setIsLoggingOut(true);
+     setIsOpen(false);
+     try {
++      const { createClient } = await import('@/lib/supabase/client');
++      const supabase = createClient();
+       await supabase.auth.signOut();
+       // Hard redirect to avoid client-side navigation getting stuck (e.g. with useRequireAuth)
+       const base = getSiteBaseUrl() || window.location.origin;
+diff --git a/wev-bulletin/components/job-filters/types.ts b/wev-bulletin/components/job-filters/types.ts
+index df9b221..9c0e527 100644
+--- a/wev-bulletin/components/job-filters/types.ts
++++ b/wev-bulletin/components/job-filters/types.ts
+@@ -1,7 +1,9 @@
+ import type { JobPosting } from '@/lib/supabase';
++import type { BulletinFilterOptions } from '@/lib/bulletin/filter-options';
+ 
+ export interface JobFiltersProps {
+   jobs: JobPosting[];
+   filteredJobsCount?: number;
+   totalJobsCount?: number;
++  filterOptions?: BulletinFilterOptions;
+ }
+diff --git a/wev-bulletin/components/job-filters/useJobFiltersModel.ts b/wev-bulletin/components/job-filters/useJobFiltersModel.ts
+index 0127262..467a6c3 100644
+--- a/wev-bulletin/components/job-filters/useJobFiltersModel.ts
++++ b/wev-bulletin/components/job-filters/useJobFiltersModel.ts
+@@ -101,6 +101,7 @@ export function useJobFiltersModel({
+   jobs,
+   filteredJobsCount,
+   totalJobsCount,
++  filterOptions,
+ }: JobFiltersProps): JobFiltersModel {
+   const controls = useBulletinFilterContext();
+   const {
+@@ -302,9 +303,15 @@ export function useJobFiltersModel({
+     t,
+   ]);
+ 
+-  const { organizations, provinces, municipalitiesByProvince, employmentTypes, sources } = useMemo(
+-    () => buildFilterOptions(jobs),
+-    [jobs],
++  const {
++    organizations,
++    provinces,
++    municipalitiesByProvince,
++    employmentTypes,
++    sources,
++  } = useMemo(
++    () => filterOptions ?? buildFilterOptions(jobs),
++    [filterOptions, jobs],
+   );
+ 
+   const handleOrganizationToggle = useCallback(
+diff --git a/wev-bulletin/contexts/AuthContext.tsx b/wev-bulletin/contexts/AuthContext.tsx
+index 140a13d..b894494 100644
+--- a/wev-bulletin/contexts/AuthContext.tsx
++++ b/wev-bulletin/contexts/AuthContext.tsx
+@@ -5,18 +5,19 @@ import {
+   useContext,
+   useEffect,
+   useMemo,
+-  useRef,
+   useState,
+   type ReactNode,
+ } from 'react';
+-import type { User } from '@supabase/supabase-js';
+-import { createClient } from '@/lib/supabase/client';
+-import { parseRolesColumn } from '@/lib/auth';
++
++export type AuthUser = {
++  id: string;
++  email: string | null;
++};
+ 
+ export type UserRole = 'admin' | 'moderator' | 'user';
+ 
+ export interface AuthContextValue {
+-  user: User | null;
++  user: AuthUser | null;
+   role: UserRole;
+   roles: string[];
+   loading: boolean;
+@@ -46,189 +47,92 @@ function deriveRole(roles: string[]): UserRole {
+   return 'user';
+ }
+ 
+-// ─── In-flight deduplication + 5-minute memory cache ──────────────────────
+-const ROLES_CACHE_TTL_MS = 5 * 60 * 1000;
++type SessionResponse = {
++  user: AuthUser | null;
++  roles?: unknown;
++};
+ 
+-interface RolesCacheEntry {
++async function fetchAuthSession(signal?: AbortSignal): Promise<{
++  user: AuthUser | null;
+   roles: string[];
+-  fetchedAt: number;
+-}
+-
+-/** Module-level cache: survives re-renders but not full page reloads. */
+-const rolesCache = new Map<string, RolesCacheEntry>();
+-/** In-flight promises keyed by userId — prevents duplicate concurrent fetches. */
+-const inflight = new Map<string, Promise<string[]>>();
+-
+-async function fetchRolesForUser(
+-  supabase: ReturnType<typeof createClient>,
+-  userId: string,
+-): Promise<string[]> {
+-  // 1. Return cached value if still fresh.
+-  const cached = rolesCache.get(userId);
+-  if (cached && Date.now() - cached.fetchedAt < ROLES_CACHE_TTL_MS) {
+-    return cached.roles;
+-  }
+-
+-  // 2. Deduplicate: if there's already an in-flight request for this user, wait for it.
+-  const existing = inflight.get(userId);
+-  if (existing) return existing;
+-
+-  // 3. Perform the actual fetch.
+-  const promise = (async () => {
+-    try {
+-      const response = await fetch('/api/auth/roles', {
+-        method: 'GET',
+-        credentials: 'include',
+-        cache: 'no-store',
+-        headers: {
+-          'cache-control': 'no-store',
+-        },
+-      });
+-
+-      if (response.ok) {
+-        const payload = await response.json();
+-        if (payload && Array.isArray(payload.roles)) {
+-          const roles = normalizeRoles(
+-            payload.roles.filter(
+-              (role: unknown): role is string => typeof role === 'string' && role.length > 0,
+-            ),
+-          );
+-          rolesCache.set(userId, { roles, fetchedAt: Date.now() });
+-          return roles;
+-        }
+-      }
+-    } catch {
+-      // Fall back to direct browser query.
+-    }
++}> {
++  try {
++    const response = await fetch('/api/auth/session', {
++      method: 'GET',
++      credentials: 'include',
++      cache: 'no-store',
++      headers: {
++        'cache-control': 'no-store',
++      },
++      signal,
++    });
+ 
+-    try {
+-      const { data, error } = await supabase
+-        .from('user_roles')
+-        .select('roles')
+-        .eq('user_id', userId)
+-        .maybeSingle();
+-
+-      if (!error) {
+-        const roles = parseRolesColumn((data as { roles?: unknown } | null)?.roles);
+-        rolesCache.set(userId, { roles, fetchedAt: Date.now() });
+-        return roles;
+-      }
+-    } catch {
+-      // Keep default role when direct query fails.
++    if (!response.ok) {
++      return { user: null, roles: ['user'] };
+     }
+ 
+-    return ['user'];
+-  })();
++    const payload = (await response.json()) as SessionResponse;
++    const roles = Array.isArray(payload.roles)
++      ? normalizeRoles(
++          payload.roles.filter(
++            (role: unknown): role is string => typeof role === 'string' && role.length > 0,
++          ),
++        )
++      : ['user'];
+ 
+-  inflight.set(userId, promise);
+-  try {
+-    return await promise;
+-  } finally {
+-    inflight.delete(userId);
++    return {
++      user:
++        payload.user && typeof payload.user.id === 'string'
++          ? {
++              id: payload.user.id,
++              email: typeof payload.user.email === 'string' ? payload.user.email : null,
++            }
++          : null,
++      roles,
++    };
++  } catch {
++    return { user: null, roles: ['user'] };
+   }
+ }
+ 
+ export function AuthProvider({ children }: { children: ReactNode }) {
+-  const [user, setUser] = useState<User | null>(null);
++  const [user, setUser] = useState<AuthUser | null>(null);
+   const [roles, setRoles] = useState<string[]>(['user']);
+   const [loading, setLoading] = useState(true);
+-  const supabaseRef = useRef(createClient());
+-  const userIdRef = useRef<string | null>(null);
+-  const rolesResolvedForRef = useRef<string | null>(null);
+ 
+   useEffect(() => {
+     let mounted = true;
+-    const supabase = supabaseRef.current;
+-    const loadAuthState = async () => {
+-      try {
+-        // getSession() reads from local storage without a network round-trip.
+-        // We accept the trade-off: the session may be stale if the user was
+-        // banned/revoked, but this is acceptable for initial page load.
+-        const {
+-          data: { session },
+-        } = await supabase.auth.getSession();
+-        
+-        const resolvedUser = session?.user ?? null;
+-
+-        if (!mounted) return;
+-
+-        userIdRef.current = resolvedUser?.id ?? null;
+-        setUser(resolvedUser);
+-        setRoles(['user']);
+-        setLoading(false);
+-
+-        if (resolvedUser) {
+-          fetchRolesForUser(supabase, resolvedUser.id)
+-            .then((resolvedRoles) => {
+-              if (!mounted) return;
+-              rolesResolvedForRef.current = resolvedUser!.id;
+-              setRoles(resolvedRoles);
+-            })
+-            .catch(() => {
+-              if (!mounted) return;
+-              setRoles(['user']);
+-            });
+-        }
+-      } catch {
+-        if (!mounted) return;
+-        userIdRef.current = null;
+-        rolesResolvedForRef.current = null;
+-        setUser(null);
+-        setRoles(['user']);
+-        setLoading(false);
+-      }
+-    };
++    const controller = new AbortController();
+ 
+-    loadAuthState();
+-
+-    const {
+-      data: { subscription },
+-    } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
++    const syncAuth = async () => {
++      const session = await fetchAuthSession(controller.signal);
+       if (!mounted) return;
+ 
+-      // Use session.user directly - it's validated by Supabase
+-      const nextUser = session?.user ?? null;
+-      const userChanged = nextUser?.id !== userIdRef.current;
+-
+-      userIdRef.current = nextUser?.id ?? null;
+-      setUser(nextUser);
++      setUser(session.user);
++      setRoles(normalizeRoles(session.roles));
+       setLoading(false);
++    };
+ 
+-      if (!nextUser) {
+-        rolesResolvedForRef.current = null;
+-        setRoles(['user']);
+-      } else if (userChanged) {
+-        rolesResolvedForRef.current = null;
+-        setRoles(['user']);
+-        fetchRolesForUser(supabaseRef.current, nextUser.id)
+-          .then((resolvedRoles) => {
+-            if (!mounted) return;
+-            rolesResolvedForRef.current = nextUser.id;
+-            setRoles(resolvedRoles);
+-          })
+-          .catch(() => {
+-            if (!mounted) return;
+-            setRoles(['user']);
+-          });
+-      } else if (event === 'TOKEN_REFRESHED' && rolesResolvedForRef.current === nextUser.id) {
+-        // Same user, token just refreshed — roles haven't changed.
+-      } else if (rolesResolvedForRef.current !== nextUser.id) {
+-        fetchRolesForUser(supabaseRef.current, nextUser.id)
+-          .then((resolvedRoles) => {
+-            if (!mounted) return;
+-            rolesResolvedForRef.current = nextUser.id;
+-            setRoles(resolvedRoles);
+-          })
+-          .catch(() => {
+-            if (!mounted) return;
+-            setRoles(['user']);
+-          });
++    void syncAuth();
++
++    const handleVisibilityChange = () => {
++      if (document.visibilityState === 'visible') {
++        void syncAuth();
+       }
+-    });
++    };
++
++    const handleWindowFocus = () => {
++      void syncAuth();
++    };
++
++    window.addEventListener('focus', handleWindowFocus);
++    document.addEventListener('visibilitychange', handleVisibilityChange);
+ 
+     return () => {
+       mounted = false;
+-      subscription.unsubscribe();
++      controller.abort();
++      window.removeEventListener('focus', handleWindowFocus);
++      document.removeEventListener('visibilitychange', handleVisibilityChange);
+     };
+   }, []);
+ 
+diff --git a/wev-bulletin/lib/bulletin/client-data.ts b/wev-bulletin/lib/bulletin/client-data.ts
+index cf4bca5..2384d50 100644
+--- a/wev-bulletin/lib/bulletin/client-data.ts
++++ b/wev-bulletin/lib/bulletin/client-data.ts
+@@ -1,4 +1,3 @@
+-import { createClient } from '@/lib/supabase/client';
+ import { parseDateString } from '@/lib/date-utils';
+ 
+ export function formatLastScrapeTime(
+@@ -33,6 +32,7 @@ export async function fetchBookmarkedJobIds(
+   if (jobIds.length === 0) return new Set<string>();
+ 
+   try {
++    const { createClient } = await import('@/lib/supabase/client');
+     const supabase = createClient();
+     const { data, error } = await supabase
+       .from('bookmarks')
+diff --git a/wev-bulletin/lib/bulletin/job-query.ts b/wev-bulletin/lib/bulletin/job-query.ts
+index 28dbcf6..c739a33 100644
+--- a/wev-bulletin/lib/bulletin/job-query.ts
++++ b/wev-bulletin/lib/bulletin/job-query.ts
+@@ -2,6 +2,8 @@ import type { JobMatchData, JobPosting } from '@/lib/supabase';
+ import { toAnnual } from '@/lib/compensation/helpers';
+ import { parseDateMs } from '@/lib/date-utils';
+ 
++export const BULLETIN_ITEMS_PER_PAGE = 20;
++
+ export const POSTED_WITHIN_FILTER_OPTIONS = [
+   '1-week',
+   '2-weeks',
+diff --git a/wev-bulletin/lib/bulletin/match-map.ts b/wev-bulletin/lib/bulletin/match-map.ts
+index f6d562c..20fc839 100644
+--- a/wev-bulletin/lib/bulletin/match-map.ts
++++ b/wev-bulletin/lib/bulletin/match-map.ts
+@@ -1,4 +1,3 @@
+-import { createClient } from '@/lib/supabase/client';
+ import type { JobMatchData } from '@/lib/supabase';
+ 
+ type JobMatchRow = {
+@@ -42,6 +41,7 @@ export async function fetchMatchMapForJobs(
+   if (jobIds.length === 0) return new Map();
+ 
+   try {
++    const { createClient } = await import('@/lib/supabase/client');
+     const supabase = createClient();
+     const { data, error } = await supabase
+       .from('job_matches')
+diff --git a/wev-bulletin/lib/bulletin/server-data.ts b/wev-bulletin/lib/bulletin/server-data.ts
+index bf94ecb..e98bb4c 100644
+--- a/wev-bulletin/lib/bulletin/server-data.ts
++++ b/wev-bulletin/lib/bulletin/server-data.ts
+@@ -1,23 +1,533 @@
+ import 'server-only';
+ 
+ import { unstable_cache } from 'next/cache';
++import {
++  BULLETIN_ITEMS_PER_PAGE,
++  JOB_SORT_OPTIONS,
++  POSTED_WITHIN_FILTER_OPTIONS,
++  filterJobs,
++  sortJobs,
++  type BulletinFilters,
++  type JobSortOption,
++} from '@/lib/bulletin/job-query';
++import { type BulletinFilterOptions } from '@/lib/bulletin/filter-options';
+ import { supabaseServer } from '@/lib/supabase-server';
+ import normalizeJobsWithSource from '@/lib/normalize-job';
+ import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
+ import type { JobMatchData, JobPosting } from '@/lib/supabase';
+ import type { Profile } from '@/lib/supabase/profiles';
++import { normalizeWorkTypes } from '@/lib/work-types';
+ 
+ export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
+ 
+ /** Jobs older than this are never shown in the bulletin. */
+ const JOBS_MAX_AGE_MS = 28 * 24 * 60 * 60 * 1000;
+ 
+-/**
+- * Fetches and normalizes all bulletin jobs. Cached server-side for 5 minutes,
+- * busted by /api/revalidate-jobs after a scrape. En/fr cached separately via args.
+- */
+-export const fetchBulletinJobs = unstable_cache(
+-  async (locale: 'en' | 'fr') => {
++const JOBS_SELECT_COLUMNS =
++  'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, skills, unit_text, min_value, max_value, hours_per_week' as const;
++
++const MATCH_SORT_OPTIONS = new Set<JobSortOption>([
++  'match-desc',
++  'value-match-desc',
++  'skill-match-desc',
++]);
++
++const DATABASE_SORT_OPTIONS = new Set<JobSortOption>(['date-desc', 'date-asc', 'org-asc']);
++
++const POSTED_WITHIN_DAYS: Record<Exclude<(typeof POSTED_WITHIN_FILTER_OPTIONS)[number], 'any'>, number> = {
++  '1-week': 7,
++  '2-weeks': 14,
++  '3-weeks': 21,
++  '1-month': 30,
++};
++
++type SearchParamValue = string | string[] | undefined;
++export type BulletinSearchParams = Record<string, SearchParamValue>;
++
++interface BulletinJobRowsResult {
++  jobs: JobPosting[];
++  lastScrapeTime: string | null;
++}
++
++interface BulletinMetaResult {
++  lastScrapeTime: string | null;
++  totalJobsCount: number;
++}
++
++export interface ParsedBulletinRequest {
++  currentPage: number;
++  filters: BulletinFilters;
++  sortBy: JobSortOption;
++}
++
++export interface BulletinQueryResult {
++  jobs: JobPosting[];
++  lastScrapeTime: string | null;
++  skillLabels: Record<string, import('@/lib/resolve-skill-labels').SkillLabel>;
++  filteredJobsCount: number;
++  totalJobsCount: number;
++  totalPages: number;
++  currentPage: number;
++  filterOptions?: BulletinFilterOptions;
++}
++
++interface QueryBulletinJobsOptions {
++  locale: 'en' | 'fr';
++  request: ParsedBulletinRequest;
++  userId?: string | null;
++  includeFilterOptions?: boolean;
++  includeAllFilteredJobs?: boolean;
++}
++
++interface BuildInitialBulletinDataOptions {
++  locale: 'en' | 'fr';
++  searchParams: BulletinSearchParams;
++  userId?: string | null;
++  profile?: Profile | null;
++  matchData?: SerializedMatchData;
++  bookmarkedJobIds?: string[];
++}
++
++type FilterOptionRow = {
++  organization: string | null;
++  province: string | null;
++  municipality: string | null;
++  employment_type: string | null;
++  sources?: { name?: string | null } | Array<{ name?: string | null }> | null;
++};
++
++function getRecentJobsCutoffIso(now = Date.now()): string {
++  return new Date(now - JOBS_MAX_AGE_MS).toISOString();
++}
++
++function sanitizeSearchTerm(raw: string): string {
++  return raw
++    .trim()
++    .replace(/[(),]/g, ' ')
++    .replace(/[%_]/g, ' ')
++    .replace(/\s+/g, ' ');
++}
++
++function getPostedWithinCutoffIso(
++  postedWithin: (typeof POSTED_WITHIN_FILTER_OPTIONS)[number],
++  now = Date.now(),
++): string | null {
++  if (postedWithin === 'any') {
++    return null;
++  }
++
++  return new Date(now - POSTED_WITHIN_DAYS[postedWithin] * 24 * 60 * 60 * 1000).toISOString();
++}
++
++function applyFiltersToJobsQuery(query: any, filters: BulletinFilters): any {
++  const now = filters.now ?? Date.now();
++
++  let next = query.gte('date_posted', getRecentJobsCutoffIso(now));
++
++  const searchTerm = sanitizeSearchTerm(filters.searchQuery);
++  if (searchTerm.length > 0) {
++    next = next.or(
++      [
++        `job_title.ilike.%${searchTerm}%`,
++        `summary.ilike.%${searchTerm}%`,
++        `organization.ilike.%${searchTerm}%`,
++        `location.ilike.%${searchTerm}%`,
++        `municipality.ilike.%${searchTerm}%`,
++        `province.ilike.%${searchTerm}%`,
++      ].join(','),
++    );
++  }
++
++  if (filters.selectedOrganizations.length > 0) {
++    next = next.in('organization', filters.selectedOrganizations);
++  }
++
++  if (filters.selectedProvinces.length > 0) {
++    next = next.in('province', filters.selectedProvinces);
++  }
++
++  if (filters.selectedMunicipalities.length > 0) {
++    next = next.in('municipality', filters.selectedMunicipalities);
++  }
++
++  if (filters.selectedEmploymentTypes.length > 0) {
++    next = next.in('employment_type', filters.selectedEmploymentTypes);
++  }
++
++  if (filters.selectedWorkTypes.length > 0) {
++    next = next.in('work_type', filters.selectedWorkTypes);
++  }
++
++  if (filters.showOnlySse) {
++    next = next.eq('is_sse', true);
++  }
++
++  const postedWithinCutoffIso = getPostedWithinCutoffIso(filters.postedWithin, now);
++  if (postedWithinCutoffIso) {
++    next = next.gte('date_posted', postedWithinCutoffIso);
++  }
++
++  return next;
++}
++
++function applyDatabaseSort(query: any, sortBy: JobSortOption): any {
++  switch (sortBy) {
++    case 'date-asc':
++      return query.order('date_posted', { ascending: true, nullsFirst: false });
++    case 'org-asc':
++      return query
++        .order('organization', { ascending: true, nullsFirst: false })
++        .order('date_posted', { ascending: false, nullsFirst: false });
++    case 'date-desc':
++    default:
++      return query.order('date_posted', { ascending: false, nullsFirst: false });
++  }
++}
++
++function getSourceName(
++  source: { name?: string | null } | Array<{ name?: string | null }> | null | undefined,
++): string | null {
++  if (Array.isArray(source)) {
++    return source[0]?.name ?? null;
++  }
++
++  return source?.name ?? null;
++}
++
++function buildFilterOptionsFromRows(rows: FilterOptionRow[]): BulletinFilterOptions {
++  const organizations = new Set<string>();
++  const provinces = new Set<string>();
++  const municipalitiesByProvince: Record<string, Set<string>> = {};
++  const employmentTypes = new Set<string>();
++  const sources = new Set<string>();
++
++  for (const row of rows) {
++    if (row.organization) organizations.add(row.organization);
++    if (row.employment_type) employmentTypes.add(row.employment_type);
++
++    const sourceName = getSourceName(row.sources ?? null);
++    if (sourceName) sources.add(sourceName);
++
++    if (!row.province) continue;
++
++    provinces.add(row.province);
++    if (!municipalitiesByProvince[row.province]) {
++      municipalitiesByProvince[row.province] = new Set<string>();
++    }
++
++    if (row.municipality) {
++      municipalitiesByProvince[row.province].add(row.municipality);
++    }
++  }
++
++  const sortedMunicipalitiesByProvince: Record<string, string[]> = {};
++  for (const province of Object.keys(municipalitiesByProvince).sort()) {
++    sortedMunicipalitiesByProvince[province] = Array.from(municipalitiesByProvince[province]).sort();
++  }
++
++  return {
++    organizations: Array.from(organizations).sort(),
++    provinces: Array.from(provinces).sort(),
++    municipalitiesByProvince: sortedMunicipalitiesByProvince,
++    employmentTypes: Array.from(employmentTypes).sort(),
++    sources: Array.from(sources).sort(),
++  };
++}
++
++function shouldUseDatabasePagination(
++  sortBy: JobSortOption,
++  filters: BulletinFilters,
++): boolean {
++  return (
++    DATABASE_SORT_OPTIONS.has(sortBy) &&
++    filters.showJobsWithoutSalary &&
++    filters.selectedSources.length === 0
++  );
++}
++
++async function queryJobsWithDatabasePagination({
++  request,
++  includeAllFilteredJobs,
++}: {
++  request: ParsedBulletinRequest;
++  includeAllFilteredJobs: boolean;
++}): Promise<{
++  jobs: JobPosting[];
++  filteredJobsCount: number;
++  totalPages: number;
++  currentPage: number;
++}> {
++  const runQuery = async (page: number) => {
++    let query = supabaseServer.from('jobs').select(JOBS_SELECT_COLUMNS, { count: 'exact' });
++    query = applyFiltersToJobsQuery(query, request.filters);
++    query = applyDatabaseSort(query, request.sortBy);
++
++    if (!includeAllFilteredJobs) {
++      const start = (page - 1) * BULLETIN_ITEMS_PER_PAGE;
++      const end = start + BULLETIN_ITEMS_PER_PAGE - 1;
++      query = query.range(start, end);
++    }
++
++    return await query;
++  };
++
++  let resolvedPage = Math.max(1, request.currentPage);
++  let { data, error, count } = await runQuery(resolvedPage);
++
++  if (error) {
++    throw new Error(error.message);
++  }
++
++  const filteredJobsCount = count ?? 0;
++  const totalPages = Math.ceil(filteredJobsCount / BULLETIN_ITEMS_PER_PAGE);
++
++  if (!includeAllFilteredJobs && totalPages > 0 && resolvedPage > totalPages) {
++    resolvedPage = totalPages;
++    const rerun = await runQuery(resolvedPage);
++    if (rerun.error) {
++      throw new Error(rerun.error.message);
++    }
++
++    data = rerun.data;
++  }
++
++  return {
++    jobs: normalizeJobsWithSource(data) as unknown as JobPosting[],
++    filteredJobsCount,
++    totalPages,
++    currentPage: totalPages === 0 ? 1 : resolvedPage,
++  };
++}
++
++async function queryJobsWithInMemorySort({
++  request,
++  userId,
++  includeAllFilteredJobs,
++}: {
++  request: ParsedBulletinRequest;
++  userId: string | null;
++  includeAllFilteredJobs: boolean;
++}): Promise<{
++  jobs: JobPosting[];
++  filteredJobsCount: number;
++  totalPages: number;
++  currentPage: number;
++}> {
++  let query = supabaseServer.from('jobs').select(JOBS_SELECT_COLUMNS);
++  query = applyFiltersToJobsQuery(query, request.filters);
++
++  const { data, error } = await query;
++  if (error) {
++    throw new Error(error.message);
++  }
++
++  const jobs = normalizeJobsWithSource(data) as unknown as JobPosting[];
++  const filteredJobs = filterJobs(jobs, request.filters);
++
++  let matchMap = new Map<string, JobMatchData>();
++  if (userId && shouldUseMatchSort(request.sortBy)) {
++    const serializedMatchData = await fetchServerMatchData(userId);
++    matchMap = new Map(Object.entries(serializedMatchData));
++  }
++
++  const sortedJobs = sortJobs(filteredJobs, request.sortBy, matchMap);
++  const totalPages = Math.ceil(sortedJobs.length / BULLETIN_ITEMS_PER_PAGE);
++  const resolvedPage = totalPages === 0 ? 1 : Math.min(Math.max(request.currentPage, 1), totalPages);
++
++  const pageJobs = includeAllFilteredJobs
++    ? sortedJobs
++    : sortedJobs.slice(
++        (resolvedPage - 1) * BULLETIN_ITEMS_PER_PAGE,
++        resolvedPage * BULLETIN_ITEMS_PER_PAGE,
++      );
++
++  return {
++    jobs: pageJobs,
++    filteredJobsCount: sortedJobs.length,
++    totalPages,
++    currentPage: resolvedPage,
++  };
++}
++
++function getFirstValue(value: SearchParamValue): string | null {
++  if (Array.isArray(value)) {
++    return value[0] ?? null;
++  }
++  return value ?? null;
++}
++
++function getStringArray(value: SearchParamValue, defaultValue: string[]): string[] {
++  if (Array.isArray(value)) {
++    return value.filter((item): item is string => Boolean(item));
++  }
++  if (typeof value === 'string' && value.length > 0) {
++    return [value];
++  }
++  return defaultValue;
++}
++
++function getBooleanValue(value: SearchParamValue, defaultValue: boolean): boolean {
++  const raw = getFirstValue(value);
++  if (!raw) return defaultValue;
++  if (raw === 'true') return true;
++  if (raw === 'false') return false;
++  return defaultValue;
++}
++
++function getPositiveIntValue(value: SearchParamValue, defaultValue: number): number {
++  const raw = getFirstValue(value);
++  const parsed = Number.parseInt(raw ?? '', 10);
++  return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
++}
++
++function getLiteralValue<T extends readonly string[]>(
++  value: SearchParamValue,
++  validValues: T,
++  defaultValue: T[number],
++): T[number] {
++  const raw = getFirstValue(value);
++  return raw && validValues.includes(raw as T[number]) ? (raw as T[number]) : defaultValue;
++}
++
++function pickRecordKeys<T>(record: Record<string, T>, keys: Set<string>): Record<string, T> {
++  return Object.fromEntries(
++    Object.entries(record).filter(([key]) => keys.has(key)),
++  );
++}
++
++function parseBulletinRequest(
++  searchParams: BulletinSearchParams,
++  profile: Profile | null,
++  userId: string | null,
++): ParsedBulletinRequest {
++  const defaultWorkTypes = userId ? normalizeWorkTypes(profile?.work_types) : [];
++  const defaultProvinces = userId && profile?.province ? [profile.province] : [];
++  const defaultMunicipalities = userId && profile?.municipality ? [profile.municipality] : [];
++
++  return {
++    currentPage: getPositiveIntValue(searchParams.page, 1),
++    sortBy: getLiteralValue(searchParams.sort, JOB_SORT_OPTIONS, 'date-desc'),
++    filters: {
++      searchQuery: getFirstValue(searchParams.q) ?? '',
++      selectedOrganizations: getStringArray(searchParams.org, []),
++      selectedProvinces: getStringArray(searchParams.province, defaultProvinces),
++      selectedMunicipalities: getStringArray(searchParams.municipality, defaultMunicipalities),
++      selectedEmploymentTypes: getStringArray(searchParams.employment, []),
++      selectedSources: getStringArray(searchParams.source, []),
++      selectedWorkTypes: getStringArray(searchParams.workType, defaultWorkTypes),
++      showOnlySse: getBooleanValue(searchParams.sse, true),
++      showJobsWithoutSalary: getBooleanValue(searchParams.salary, true),
++      postedWithin: getLiteralValue(searchParams.posted, POSTED_WITHIN_FILTER_OPTIONS, '2-weeks'),
++    },
++  };
++}
++
++function toSearchParamValueArray(values: string[]): SearchParamValue {
++  if (values.length === 0) return undefined;
++  if (values.length === 1) return values[0];
++  return values;
++}
++
++export function toBulletinSearchParams(searchParams: URLSearchParams): BulletinSearchParams {
++  return {
++    q: toSearchParamValueArray(searchParams.getAll('q')),
++    org: toSearchParamValueArray(searchParams.getAll('org')),
++    province: toSearchParamValueArray(searchParams.getAll('province')),
++    municipality: toSearchParamValueArray(searchParams.getAll('municipality')),
++    employment: toSearchParamValueArray(searchParams.getAll('employment')),
++    source: toSearchParamValueArray(searchParams.getAll('source')),
++    workType: toSearchParamValueArray(searchParams.getAll('workType')),
++    sse: toSearchParamValueArray(searchParams.getAll('sse')),
++    salary: toSearchParamValueArray(searchParams.getAll('salary')),
++    posted: toSearchParamValueArray(searchParams.getAll('posted')),
++    sort: toSearchParamValueArray(searchParams.getAll('sort')),
++    page: toSearchParamValueArray(searchParams.getAll('page')),
++  };
++}
++
++export function parseBulletinRequestFromUrlSearchParams(
++  searchParams: URLSearchParams,
++): ParsedBulletinRequest {
++  return parseBulletinRequest(toBulletinSearchParams(searchParams), null, null);
++}
++
++function shouldUseMatchSort(sortBy: JobSortOption) {
++  return MATCH_SORT_OPTIONS.has(sortBy);
++}
++
++export async function queryBulletinJobs({
++  locale,
++  request,
++  userId = null,
++  includeFilterOptions = false,
++  includeAllFilteredJobs = false,
++}: QueryBulletinJobsOptions): Promise<BulletinQueryResult> {
++  const [bulletinMeta, jobsResult, filterOptions] = await Promise.all([
++    fetchBulletinMeta(),
++    shouldUseDatabasePagination(request.sortBy, request.filters)
++      ? queryJobsWithDatabasePagination({ request, includeAllFilteredJobs })
++      : queryJobsWithInMemorySort({ request, userId, includeAllFilteredJobs }),
++    includeFilterOptions ? fetchCachedFilterOptions() : Promise.resolve(undefined),
++  ]);
++
++  const labelMap = await resolveSkillLabels(supabaseServer, jobsResult.jobs, locale);
++
++  return {
++    jobs: jobsResult.jobs,
++    lastScrapeTime: bulletinMeta.lastScrapeTime,
++    skillLabels: Object.fromEntries(labelMap),
++    filteredJobsCount: jobsResult.filteredJobsCount,
++    totalJobsCount: bulletinMeta.totalJobsCount,
++    totalPages: jobsResult.totalPages,
++    currentPage: jobsResult.currentPage,
++    filterOptions,
++  };
++}
++
++const fetchBulletinMeta = unstable_cache(
++  async (): Promise<BulletinMetaResult> => {
++    const [scrapeResult, countResult] = await Promise.all([
++      supabaseServer
++        .from('scrape_runs')
++        .select('run_at')
++        .order('run_at', { ascending: false })
++        .limit(1)
++        .maybeSingle(),
++      supabaseServer
++        .from('jobs')
++        .select('id', { count: 'exact', head: true })
++        .gte('date_posted', getRecentJobsCutoffIso()),
++    ]);
++
++    if (scrapeResult.error) throw new Error(scrapeResult.error.message);
++    if (countResult.error) throw new Error(countResult.error.message);
++
++    return {
++      lastScrapeTime: scrapeResult.data?.run_at ?? null,
++      totalJobsCount: countResult.count ?? 0,
++    };
++  },
++  [BULLETIN_CACHE_TAG, 'meta'],
++  { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
++);
++
++const fetchCachedFilterOptions = unstable_cache(
++  async (): Promise<BulletinFilterOptions> => {
++    const { data, error } = await supabaseServer
++      .from('jobs')
++      .select('organization, province, municipality, employment_type, sources(name), date_posted')
++      .gte('date_posted', getRecentJobsCutoffIso());
++
++    if (error) throw new Error(error.message);
++
++    return buildFilterOptionsFromRows((data ?? []) as unknown as FilterOptionRow[]);
++  },
++  [BULLETIN_CACHE_TAG, 'filter-options'],
++  { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
++);
++
++const fetchBulletinJobRows = unstable_cache(
++  async (): Promise<BulletinJobRowsResult> => {
+     const [scrapeResult, jobsResult] = await Promise.all([
+       supabaseServer
+         .from('scrape_runs')
+@@ -37,16 +547,31 @@ export const fetchBulletinJobs = unstable_cache(
+     if (scrapeResult.error) throw new Error(scrapeResult.error.message);
+     if (jobsResult.error) throw new Error(jobsResult.error.message);
+ 
+-    const jobsWithSource = normalizeJobsWithSource(jobsResult.data);
+-    const labelMap = await resolveSkillLabels(supabaseServer, jobsWithSource, locale);
+-
+     return {
+-      jobs: jobsWithSource as unknown as JobPosting[],
++      jobs: normalizeJobsWithSource(jobsResult.data) as unknown as JobPosting[],
+       lastScrapeTime: scrapeResult.data?.run_at ?? null,
++    };
++  },
++  [BULLETIN_CACHE_TAG, 'rows'],
++  { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
++);
++
++/**
++ * Fetches and normalizes all bulletin jobs. Cached server-side for 5 minutes,
++ * busted by /api/revalidate-jobs after a scrape. En/fr cached separately via args.
++ */
++export const fetchBulletinJobs = unstable_cache(
++  async (locale: 'en' | 'fr') => {
++    const bulletinRows = await fetchBulletinJobRows();
++    const labelMap = await resolveSkillLabels(supabaseServer, bulletinRows.jobs, locale);
++
++    return {
++      jobs: bulletinRows.jobs,
++      lastScrapeTime: bulletinRows.lastScrapeTime,
+       skillLabels: Object.fromEntries(labelMap),
+     };
+   },
+-  [BULLETIN_CACHE_TAG],
++  [BULLETIN_CACHE_TAG, 'full'],
+   { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
+ );
+ 
+@@ -56,6 +581,38 @@ export const fetchBulletinJobs = unstable_cache(
+  */
+ export type SerializedMatchData = Record<string, JobMatchData>;
+ 
++export async function buildInitialBulletinData({
++  locale,
++  searchParams,
++  userId = null,
++  profile = null,
++  matchData,
++  bookmarkedJobIds,
++}: BuildInitialBulletinDataOptions) {
++  const serverRequest = parseBulletinRequest(searchParams, profile, userId);
++
++  const queryResult = await queryBulletinJobs({
++    locale,
++    request: serverRequest,
++    userId: userId ?? null,
++    includeFilterOptions: true,
++  });
++
++  const visibleJobIds = new Set(queryResult.jobs.map((job) => job.id));
++
++  return {
++    jobs: queryResult.jobs,
++    scrapeTime: queryResult.lastScrapeTime,
++    skillLabels: queryResult.skillLabels,
++    matchData: matchData ? pickRecordKeys(matchData, visibleJobIds) : undefined,
++    bookmarkedJobIds: bookmarkedJobIds?.filter((jobId) => visibleJobIds.has(jobId)),
++    filteredJobsCount: queryResult.filteredJobsCount,
++    totalJobsCount: queryResult.totalJobsCount,
++    totalPages: queryResult.totalPages,
++    filterOptions: queryResult.filterOptions,
++  };
++}
++
+ /**
+  * Fetches ALL job_match rows for a user (no job_id filter) so this can run
+  * in parallel with the jobs fetch. The caller filters to relevant job IDs.
+diff --git a/wev-bulletin/lib/bulletin/types.ts b/wev-bulletin/lib/bulletin/types.ts
+index 6541956..4eaed1e 100644
+--- a/wev-bulletin/lib/bulletin/types.ts
++++ b/wev-bulletin/lib/bulletin/types.ts
+@@ -1,35 +1,45 @@
+ import type { JobMatchData, JobPosting } from '@/lib/supabase';
+ import type { SerializedMatchData } from '@/lib/bulletin/server-data';
+ import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/job-query';
++import type { BulletinFilterOptions } from '@/lib/bulletin/filter-options';
+ import type { SkillLabel } from '@/lib/resolve-skill-labels';
+ 
+ export type { SkillLabel };
+ 
+ /**
+  * Server-side data passed from the Server Component via BulletinPageClient.
++ *
++ * The jobs payload is optional so the page can avoid embedding the entire
++ * bulletin dataset in the initial RSC/HTML response.
+  */
+ export interface InitialBulletinData {
+-  jobs: JobPosting[];
+-  scrapeTime: string | null;
++  jobs?: JobPosting[];
++  scrapeTime?: string | null;
+   userId?: string | null;
+   matchData?: SerializedMatchData;
+   bookmarkedJobIds?: string[];
+   skillLabels?: Record<string, SkillLabel>;
++  filteredJobsCount?: number;
++  totalJobsCount?: number;
++  totalPages?: number;
++  filterOptions?: BulletinFilterOptions;
+ }
+ 
+ export interface BulletinDataState {
+   allJobs: JobPosting[];
+-  filteredJobs: JobPosting[];
+-  paginatedJobs: JobPosting[];
++  filteredJobsCount: number;
++  totalJobsCount: number;
+   lastScrapeTime: string | null;
+   loading: boolean;
+   error: string | null;
+   matchData: Map<string, JobMatchData>;
+   bookmarkedJobIds: Set<string>;
+   skillLabels: Record<string, SkillLabel>;
++  filterOptions: BulletinFilterOptions;
+   totalPages: number;
+   itemsPerPage: number;
+   refresh: () => Promise<void>;
++  fetchAllFilteredJobs: () => Promise<JobPosting[]>;
+   handleJobSseChange: (jobId: string, isSse: boolean) => void;
+   handleJobBookmarkChange: (job: JobPosting, bookmarked: boolean) => void;
+ }
+diff --git a/wev-bulletin/lib/hooks/useBookmarkAction.ts b/wev-bulletin/lib/hooks/useBookmarkAction.ts
+index d313f9d..a242ea5 100644
+--- a/wev-bulletin/lib/hooks/useBookmarkAction.ts
++++ b/wev-bulletin/lib/hooks/useBookmarkAction.ts
+@@ -1,7 +1,6 @@
+ 'use client';
+ 
+ import { useState } from 'react';
+-import { createClient } from '@/lib/supabase/client';
+ import { useRouter } from '@/i18n/navigation';
+ import { type JobPosting } from '@/lib/supabase';
+ 
+@@ -31,21 +30,21 @@ export function useBookmarkAction(
+     onToggle?.(job, newState);
+ 
+     setIsLoading(true);
+-    const supabase = createClient();
+ 
+     try {
+-      if (newState) {
+-        const { error } = await supabase
+-          .from('bookmarks')
+-          .insert([{ user_id: userId, job_id: job.id }]);
+-        if (error) throw error;
+-      } else {
+-        const { error } = await supabase
+-          .from('bookmarks')
+-          .delete()
+-          .eq('user_id', userId)
+-          .eq('job_id', job.id);
+-        if (error) throw error;
++      const response = await fetch('/api/bookmarks/item', {
++        method: newState ? 'POST' : 'DELETE',
++        credentials: 'include',
++        headers: {
++          'content-type': 'application/json',
++          'cache-control': 'no-store',
++        },
++        body: JSON.stringify({ jobId: job.id }),
++      });
++
++      if (!response.ok) {
++        const payload = (await response.json().catch(() => ({}))) as { error?: string };
++        throw new Error(payload.error || 'Failed to update bookmark');
+       }
+     } catch (err) {
+       console.error('Bookmark update failed:', err);
+diff --git a/wev-bulletin/lib/hooks/useBulletinData.ts b/wev-bulletin/lib/hooks/useBulletinData.ts
+index e66e080..d4107df 100644
+--- a/wev-bulletin/lib/hooks/useBulletinData.ts
++++ b/wev-bulletin/lib/hooks/useBulletinData.ts
+@@ -4,7 +4,6 @@ import { useCallback } from 'react';
+ import type { JobPosting } from '@/lib/supabase';
+ import { useBulletinFetch } from './useBulletinFetch';
+ import { useUserJobMeta } from './useUserJobMeta';
+-import { useJobFilters } from './useJobFilters';
+ import type {
+   InitialBulletinData,
+   BulletinDataState,
+@@ -17,13 +16,33 @@ export function useBulletinData(
+   options: UseBulletinDataOptions,
+   initialData?: InitialBulletinData,
+ ): BulletinDataState {
+-  const { setCurrentPage } = options;
++  const { filters, sortBy, currentPage, setCurrentPage } = options;
+ 
+-  // 1. Data Fetching Layer
+-  const { allJobs, setAllJobs, lastScrapeTime, skillLabels, loading, error, refresh } =
+-    useBulletinFetch(locale, initialData, () => {
+-      void setCurrentPage(1);
+-    });
++  // 1. Data Fetching Layer (server-driven pagination/filter/search)
++  const {
++    allJobs,
++    setAllJobs,
++    lastScrapeTime,
++    skillLabels,
++    filteredJobsCount,
++    totalJobsCount,
++    totalPages,
++    itemsPerPage,
++    filterOptions,
++    loading,
++    error,
++    refresh,
++    fetchAllFilteredJobs,
++  } = useBulletinFetch(
++    locale,
++    {
++      filters,
++      sortBy,
++      currentPage,
++    },
++    initialData,
++    setCurrentPage,
++  );
+ 
+   // 2. User Meta Layer (Matches & Bookmarks)
+   const { matchData, setBookmarkedJobIds, bookmarkedJobIds } = useUserJobMeta(
+@@ -32,10 +51,7 @@ export function useBulletinData(
+     initialData,
+   );
+ 
+-  // 3. Transformation Layer (Filter, Sort, Paginate)
+-  const filters = useJobFilters(allJobs, matchData, options);
+-
+-  // 4. Optimistic Action Handlers
++  // 3. Optimistic Action Handlers
+   const handleJobSseChange = useCallback(
+     (jobId: string, isSse: boolean) => {
+       setAllJobs((prev) => prev.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job)));
+@@ -57,17 +73,19 @@ export function useBulletinData(
+ 
+   return {
+     allJobs,
+-    filteredJobs: filters.filteredJobs,
+-    paginatedJobs: filters.paginatedJobs,
++    filteredJobsCount,
++    totalJobsCount,
+     lastScrapeTime,
+     loading,
+     error,
+     matchData,
+     bookmarkedJobIds,
+     skillLabels,
+-    totalPages: filters.totalPages,
+-    itemsPerPage: filters.itemsPerPage,
++    filterOptions,
++    totalPages,
++    itemsPerPage,
+     refresh,
++    fetchAllFilteredJobs,
+     handleJobSseChange,
+     handleJobBookmarkChange,
+   };
+diff --git a/wev-bulletin/lib/hooks/useBulletinFetch.test.tsx b/wev-bulletin/lib/hooks/useBulletinFetch.test.tsx
+new file mode 100644
+index 0000000..ca889fd
+--- /dev/null
++++ b/wev-bulletin/lib/hooks/useBulletinFetch.test.tsx
+@@ -0,0 +1,210 @@
++import { afterEach, describe, expect, it, vi } from 'vitest';
++import { renderHook, waitFor } from '@testing-library/react';
++import { NextIntlClientProvider } from 'next-intl';
++import type { ReactNode } from 'react';
++import enMessages from '@/messages/en.json';
++import { useBulletinFetch } from './useBulletinFetch';
++import type { InitialBulletinData } from '@/lib/bulletin/types';
++import type { JobPosting } from '@/lib/supabase';
++import type { BulletinFilters } from '@/lib/bulletin/job-query';
++
++const TEST_JOB: JobPosting = {
++  id: 'job-1',
++  job_title: 'Policy Analyst',
++  organization: 'Org One',
++  location: 'Toronto, ON',
++  municipality: 'Toronto',
++  province: 'Ontario',
++  work_type: 'hybrid',
++  date_posted: '2026-03-01T00:00:00.000Z',
++  close_date: null,
++  wage: '$80,000',
++  listing_url: 'https://example.com/job-1',
++  is_sse: true,
++};
++
++function IntlWrapper({ children }: { children: ReactNode }) {
++  return (
++    <NextIntlClientProvider locale="en" messages={enMessages}>
++      {children}
++    </NextIntlClientProvider>
++  );
++}
++
++const DEFAULT_FILTERS: BulletinFilters = {
++  searchQuery: '',
++  selectedOrganizations: [],
++  selectedProvinces: [],
++  selectedMunicipalities: [],
++  selectedEmploymentTypes: [],
++  selectedSources: [],
++  selectedWorkTypes: [],
++  showOnlySse: true,
++  showJobsWithoutSalary: true,
++  postedWithin: '2-weeks',
++};
++
++describe('useBulletinFetch', () => {
++  afterEach(() => {
++    vi.unstubAllGlobals();
++    vi.restoreAllMocks();
++  });
++
++  it('fetches bulletin data when there is no initial page payload', async () => {
++    const fetchMock = vi.fn().mockResolvedValue({
++      ok: true,
++      json: async () => ({
++        jobs: [TEST_JOB],
++        lastScrapeTime: null,
++        skillLabels: {},
++        filteredJobsCount: 1,
++        totalJobsCount: 1,
++        totalPages: 1,
++        currentPage: 1,
++        filterOptions: {
++          organizations: ['Org One'],
++          provinces: ['Ontario'],
++          municipalitiesByProvince: { Ontario: ['Toronto'] },
++          employmentTypes: ['full-time'],
++          sources: ['Org One'],
++        },
++      }),
++    });
++    vi.stubGlobal('fetch', fetchMock);
++
++    const { result } = renderHook(
++      () =>
++        useBulletinFetch('en', {
++          filters: DEFAULT_FILTERS,
++          sortBy: 'date-desc',
++          currentPage: 1,
++        }),
++      { wrapper: IntlWrapper },
++    );
++
++    expect(result.current.loading).toBe(true);
++
++    await waitFor(() => {
++      expect(fetchMock).toHaveBeenCalledWith(
++        '/api/bulletin?locale=en&page=1&sort=date-desc&sse=true&salary=true&posted=2-weeks',
++        expect.objectContaining({
++          cache: 'no-cache',
++        }),
++      );
++    });
++
++    await waitFor(() => {
++      expect(result.current.loading).toBe(false);
++    });
++
++    expect(result.current.allJobs).toEqual([TEST_JOB]);
++    expect(result.current.filteredJobsCount).toBe(1);
++    expect(result.current.totalJobsCount).toBe(1);
++    expect(result.current.totalPages).toBe(1);
++  });
++
++  it('skips the client fetch when the server already supplied jobs', () => {
++    const fetchMock = vi.fn();
++    vi.stubGlobal('fetch', fetchMock);
++
++    const initialData: InitialBulletinData = {
++      jobs: [TEST_JOB],
++      scrapeTime: null,
++      skillLabels: {},
++    };
++
++    const { result } = renderHook(
++      () =>
++        useBulletinFetch(
++          'en',
++          {
++            filters: DEFAULT_FILTERS,
++            sortBy: 'date-desc',
++            currentPage: 1,
++          },
++          initialData,
++        ),
++      { wrapper: IntlWrapper },
++    );
++
++    expect(result.current.loading).toBe(false);
++    expect(result.current.allJobs).toEqual([TEST_JOB]);
++    expect(fetchMock).not.toHaveBeenCalled();
++  });
++
++  it('re-fetches when request state changes (e.g. pagination)', async () => {
++    const SECOND_JOB: JobPosting = {
++      ...TEST_JOB,
++      id: 'job-2',
++      job_title: 'Program Coordinator',
++      listing_url: 'https://example.com/job-2',
++    };
++
++    const fetchMock = vi.fn().mockResolvedValue({
++      ok: true,
++      json: async () => ({
++        jobs: [SECOND_JOB],
++        lastScrapeTime: null,
++        skillLabels: {},
++        filteredJobsCount: 2,
++        totalJobsCount: 2,
++        totalPages: 2,
++        currentPage: 2,
++        filterOptions: {
++          organizations: ['Org One'],
++          provinces: ['Ontario'],
++          municipalitiesByProvince: { Ontario: ['Toronto'] },
++          employmentTypes: ['full-time'],
++          sources: ['Org One'],
++        },
++      }),
++    });
++
++    vi.stubGlobal('fetch', fetchMock);
++
++    const initialData: InitialBulletinData = {
++      jobs: [TEST_JOB],
++      scrapeTime: null,
++      skillLabels: {},
++      filteredJobsCount: 2,
++      totalJobsCount: 2,
++      totalPages: 2,
++    };
++
++    const { result, rerender } = renderHook(
++      ({ page }) =>
++        useBulletinFetch(
++          'en',
++          {
++            filters: DEFAULT_FILTERS,
++            sortBy: 'date-desc',
++            currentPage: page,
++          },
++          initialData,
++        ),
++      {
++        wrapper: IntlWrapper,
++        initialProps: { page: 1 },
++      },
++    );
++
++    expect(fetchMock).not.toHaveBeenCalled();
++
++    rerender({ page: 2 });
++
++    await waitFor(() => {
++      expect(fetchMock).toHaveBeenCalledWith(
++        '/api/bulletin?locale=en&page=2&sort=date-desc&sse=true&salary=true&posted=2-weeks',
++        expect.objectContaining({
++          cache: 'no-cache',
++        }),
++      );
++    });
++
++    await waitFor(() => {
++      expect(result.current.loading).toBe(false);
++    });
++
++    expect(result.current.allJobs).toEqual([SECOND_JOB]);
++  });
++});
+diff --git a/wev-bulletin/lib/hooks/useBulletinFetch.ts b/wev-bulletin/lib/hooks/useBulletinFetch.ts
+index 347aef7..5f0b576 100644
+--- a/wev-bulletin/lib/hooks/useBulletinFetch.ts
++++ b/wev-bulletin/lib/hooks/useBulletinFetch.ts
+@@ -1,21 +1,144 @@
+ 'use client';
+ 
+-import { useState, useCallback, useRef, useEffect } from 'react';
++import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+ import { useTranslations } from 'next-intl';
+ import { formatLastScrapeTime } from '@/lib/bulletin/client-data';
++import {
++  BULLETIN_ITEMS_PER_PAGE,
++  type BulletinFilters,
++  type JobSortOption,
++} from '@/lib/bulletin/job-query';
+ import type { JobPosting } from '@/lib/supabase';
+ import type { InitialBulletinData, SkillLabel } from '@/lib/bulletin/types';
++import type { BulletinFilterOptions } from '@/lib/bulletin/filter-options';
+ 
+ const FETCH_TIMEOUT_MS = 10_000;
++const SEARCH_DEBOUNCE_MS = 250;
++
++const EMPTY_FILTER_OPTIONS: BulletinFilterOptions = {
++  organizations: [],
++  provinces: [],
++  municipalitiesByProvince: {},
++  employmentTypes: [],
++  sources: [],
++};
++
++interface BulletinRequestState {
++  filters: BulletinFilters;
++  sortBy: JobSortOption;
++  currentPage: number;
++}
++
++interface BulletinApiPayload {
++  jobs?: JobPosting[];
++  lastScrapeTime?: string | null;
++  skillLabels?: Record<string, SkillLabel>;
++  filteredJobsCount?: number;
++  totalJobsCount?: number;
++  totalPages?: number;
++  currentPage?: number;
++  filterOptions?: BulletinFilterOptions;
++}
++
++function appendStringArray(params: URLSearchParams, key: string, values: string[]) {
++  values.forEach((value) => {
++    if (value.length > 0) {
++      params.append(key, value);
++    }
++  });
++}
++
++export function buildBulletinQueryString({
++  locale,
++  request,
++  includeAllFilteredJobs = false,
++}: {
++  locale: string;
++  request: BulletinRequestState;
++  includeAllFilteredJobs?: boolean;
++}) {
++  const { filters, sortBy, currentPage } = request;
++  const params = new URLSearchParams();
++
++  params.set('locale', locale);
++  params.set('page', String(currentPage));
++  params.set('sort', sortBy);
++  params.set('sse', String(filters.showOnlySse));
++  params.set('salary', String(filters.showJobsWithoutSalary));
++  params.set('posted', filters.postedWithin);
++
++  if (filters.searchQuery.trim().length > 0) {
++    params.set('q', filters.searchQuery.trim());
++  }
++
++  appendStringArray(params, 'org', filters.selectedOrganizations);
++  appendStringArray(params, 'province', filters.selectedProvinces);
++  appendStringArray(params, 'municipality', filters.selectedMunicipalities);
++  appendStringArray(params, 'employment', filters.selectedEmploymentTypes);
++  appendStringArray(params, 'source', filters.selectedSources);
++  appendStringArray(params, 'workType', filters.selectedWorkTypes);
++
++  if (includeAllFilteredJobs) {
++    params.set('all', 'true');
++  }
++
++  return params.toString();
++}
+ 
+ export function useBulletinFetch(
+   locale: string,
++  request: BulletinRequestState,
+   initialData?: InitialBulletinData,
+-  onDataLoaded?: (jobs: JobPosting[]) => void,
++  onResolvedPage?: (page: number) => Promise<unknown> | void,
+ ) {
+   const t = useTranslations('home.errors');
+   const requestIdRef = useRef(0);
+-  const hasInitialData = !!initialData;
++  const activeControllerRef = useRef<AbortController | null>(null);
++
++  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(request.filters.searchQuery);
++
++  useEffect(() => {
++    const timeoutId = window.setTimeout(() => {
++      setDebouncedSearchQuery(request.filters.searchQuery);
++    }, SEARCH_DEBOUNCE_MS);
++
++    return () => window.clearTimeout(timeoutId);
++  }, [request.filters.searchQuery]);
++
++  const effectiveRequest = useMemo<BulletinRequestState>(
++    () => ({
++      currentPage: request.currentPage,
++      sortBy: request.sortBy,
++      filters: {
++        postedWithin: request.filters.postedWithin,
++        searchQuery: debouncedSearchQuery,
++        selectedEmploymentTypes: request.filters.selectedEmploymentTypes,
++        selectedMunicipalities: request.filters.selectedMunicipalities,
++        selectedOrganizations: request.filters.selectedOrganizations,
++        selectedProvinces: request.filters.selectedProvinces,
++        selectedSources: request.filters.selectedSources,
++        selectedWorkTypes: request.filters.selectedWorkTypes,
++        showJobsWithoutSalary: request.filters.showJobsWithoutSalary,
++        showOnlySse: request.filters.showOnlySse,
++      },
++    }),
++    [
++      debouncedSearchQuery,
++      request.currentPage,
++      request.sortBy,
++      request.filters.postedWithin,
++      request.filters.showJobsWithoutSalary,
++      request.filters.showOnlySse,
++      request.filters.selectedEmploymentTypes,
++      request.filters.selectedMunicipalities,
++      request.filters.selectedOrganizations,
++      request.filters.selectedProvinces,
++      request.filters.selectedSources,
++      request.filters.selectedWorkTypes,
++    ],
++  );
++
++  const hasInitialRenderData = Array.isArray(initialData?.jobs);
+ 
+   const [allJobs, setAllJobs] = useState<JobPosting[]>(() => initialData?.jobs ?? []);
+   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(() =>
+@@ -24,40 +147,88 @@ export function useBulletinFetch(
+   const [skillLabels, setSkillLabels] = useState<Record<string, SkillLabel>>(
+     () => initialData?.skillLabels ?? {},
+   );
+-  const [loading, setLoading] = useState(!hasInitialData);
++  const [filteredJobsCount, setFilteredJobsCount] = useState<number>(
++    () => initialData?.filteredJobsCount ?? initialData?.jobs?.length ?? 0,
++  );
++  const [totalJobsCount, setTotalJobsCount] = useState<number>(
++    () => initialData?.totalJobsCount ?? initialData?.jobs?.length ?? 0,
++  );
++  const [totalPages, setTotalPages] = useState<number>(() => initialData?.totalPages ?? 1);
++  const [filterOptions, setFilterOptions] = useState<BulletinFilterOptions>(
++    () => initialData?.filterOptions ?? EMPTY_FILTER_OPTIONS,
++  );
++  const [loading, setLoading] = useState(!hasInitialRenderData);
+   const [error, setError] = useState<string | null>(null);
+ 
+-  const refresh = useCallback(async () => {
++  const queryKey = useMemo(
++    () =>
++      JSON.stringify({
++        locale,
++        request: effectiveRequest,
++      }),
++    [locale, effectiveRequest],
++  );
++
++  const loadJobs = useCallback(async ({
++    showLoading,
++  }: {
++    showLoading: boolean;
++  }) => {
+     const requestId = requestIdRef.current + 1;
+     requestIdRef.current = requestId;
+-    setLoading(true);
+-    setError(null);
+ 
++    activeControllerRef.current?.abort();
+     const controller = new AbortController();
++    activeControllerRef.current = controller;
++
++    if (showLoading) {
++      setLoading(true);
++    }
++    setError(null);
++
+     const timeoutId = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+ 
+     try {
+-      const response = await fetch(`/api/bulletin?locale=${locale}`, {
+-        signal: controller.signal,
+-        cache: 'no-cache',
+-      });
++      const response = await fetch(
++        `/api/bulletin?${buildBulletinQueryString({
++          locale,
++          request: effectiveRequest,
++        })}`,
++        {
++          signal: controller.signal,
++          cache: 'no-cache',
++        },
++      );
+ 
+       if (!response.ok) {
+         const body = await response.json().catch(() => ({}));
+         throw new Error(body.error ?? t('loadFailed'));
+       }
+ 
+-      const data = await response.json();
++      const data = (await response.json()) as BulletinApiPayload;
+       if (requestId !== requestIdRef.current) return;
+ 
+       const formattedTime = formatLastScrapeTime(data.lastScrapeTime, locale);
+       setLastScrapeTime(formattedTime);
+       setAllJobs(data.jobs ?? []);
++      setFilteredJobsCount(data.filteredJobsCount ?? data.jobs?.length ?? 0);
++      setTotalJobsCount(data.totalJobsCount ?? data.jobs?.length ?? 0);
++      setTotalPages(data.totalPages ?? 1);
+       if (data.skillLabels) {
+         setSkillLabels(data.skillLabels);
+       }
++      if (data.filterOptions) {
++        setFilterOptions(data.filterOptions);
++      }
++
++      if (
++        typeof data.currentPage === 'number' &&
++        data.currentPage !== effectiveRequest.currentPage
++      ) {
++        void onResolvedPage?.(data.currentPage);
++      }
++
+       setLoading(false);
+-      onDataLoaded?.(data.jobs ?? []);
+     } catch (fetchError) {
+       if (requestId !== requestIdRef.current) return;
+       console.error('Error fetching bulletin data:', fetchError);
+@@ -73,15 +244,57 @@ export function useBulletinFetch(
+       setLoading(false);
+     } finally {
+       window.clearTimeout(timeoutId);
++      if (activeControllerRef.current === controller) {
++        activeControllerRef.current = null;
++      }
+     }
+-  }, [locale, t, onDataLoaded]);
++  }, [locale, effectiveRequest, onResolvedPage, t]);
++
++  const refresh = useCallback(
++    async () =>
++      loadJobs({
++        showLoading: true,
++      }),
++    [loadJobs],
++  );
++
++  const fetchAllFilteredJobs = useCallback(async (): Promise<JobPosting[]> => {
++    const response = await fetch(
++      `/api/bulletin?${buildBulletinQueryString({
++        locale,
++        request: effectiveRequest,
++        includeAllFilteredJobs: true,
++      })}`,
++      {
++        cache: 'no-cache',
++      },
++    );
++
++    if (!response.ok) {
++      const body = await response.json().catch(() => ({}));
++      throw new Error(body.error ?? t('loadFailed'));
++    }
++
++    const data = (await response.json()) as BulletinApiPayload;
++    return data.jobs ?? [];
++  }, [effectiveRequest, locale, t]);
++
++  const initialFetchDone = useRef(hasInitialRenderData);
++
++  useEffect(() => {
++    if (initialFetchDone.current) {
++      initialFetchDone.current = false;
++      return;
++    }
++
++    void loadJobs({ showLoading: true });
++  }, [loadJobs, queryKey]);
+ 
+-  const initialFetchDone = useRef(hasInitialData);
+   useEffect(() => {
+-    if (initialFetchDone.current) return;
+-    initialFetchDone.current = true;
+-    void refresh();
+-  }, [refresh]);
++    return () => {
++      activeControllerRef.current?.abort();
++    };
++  }, []);
+ 
+   return {
+     allJobs,
+@@ -89,8 +302,14 @@ export function useBulletinFetch(
+     lastScrapeTime,
+     skillLabels,
+     setSkillLabels,
++    filteredJobsCount,
++    totalJobsCount,
++    totalPages,
++    filterOptions,
+     loading,
+     error,
++    itemsPerPage: BULLETIN_ITEMS_PER_PAGE,
+     refresh,
++    fetchAllFilteredJobs,
+   };
+ }
+diff --git a/wev-bulletin/lib/hooks/useBulletinFilterActions.ts b/wev-bulletin/lib/hooks/useBulletinFilterActions.ts
+new file mode 100644
+index 0000000..621bd61
+--- /dev/null
++++ b/wev-bulletin/lib/hooks/useBulletinFilterActions.ts
+@@ -0,0 +1,88 @@
++import { useCallback } from 'react';
++import type { WorkType } from '@/lib/work-types';
++import type { PostedWithinSelection } from '@/lib/bulletin/job-query';
++
++export function useBulletinFilterActions(
++  setters: {
++    setSearchQuery: (val: string) => Promise<unknown> | void;
++    setSelectedOrganizations: (val: string[]) => Promise<unknown> | void;
++    setSelectedProvinces: (val: string[]) => Promise<unknown> | void;
++    setSelectedMunicipalities: (val: string[]) => Promise<unknown> | void;
++    setSelectedEmploymentTypes: (val: string[]) => Promise<unknown> | void;
++    setSelectedSources: (val: string[]) => Promise<unknown> | void;
++    setSelectedWorkTypes: (val: string[]) => Promise<unknown> | void;
++    setShowOnlySse: (val: boolean) => Promise<unknown> | void;
++    setShowJobsWithoutSalary: (val: boolean) => Promise<unknown> | void;
++    setPostedWithin: (val: PostedWithinSelection) => Promise<unknown> | void;
++  },
++  profileContext: {
++    profileWorkTypes: WorkType[];
++    profileMunicipality: string | null;
++    profileProvince: string | null;
++  }
++) {
++  const {
++    setSearchQuery,
++    setSelectedOrganizations,
++    setSelectedProvinces,
++    setSelectedMunicipalities,
++    setSelectedEmploymentTypes,
++    setSelectedSources,
++    setSelectedWorkTypes,
++    setShowOnlySse,
++    setShowJobsWithoutSalary,
++    setPostedWithin,
++  } = setters;
++
++  const { profileWorkTypes, profileMunicipality, profileProvince } = profileContext;
++
++  const resetCommonFilters = useCallback(() => {
++    void setSearchQuery('');
++    void setSelectedOrganizations([]);
++    void setSelectedProvinces([]);
++    void setSelectedMunicipalities([]);
++    void setSelectedEmploymentTypes([]);
++    void setSelectedSources([]);
++  }, [
++    setSearchQuery,
++    setSelectedOrganizations,
++    setSelectedProvinces,
++    setSelectedMunicipalities,
++    setSelectedEmploymentTypes,
++    setSelectedSources,
++  ]);
++
++  const clearAllFilters = useCallback(() => {
++    resetCommonFilters();
++    void setSelectedWorkTypes([]);
++    void setShowOnlySse(false);
++    void setShowJobsWithoutSalary(true);
++    void setPostedWithin('any');
++  }, [resetCommonFilters, setSelectedWorkTypes, setShowOnlySse, setShowJobsWithoutSalary, setPostedWithin]);
++
++  const applySuggestedDefaults = useCallback(() => {
++    resetCommonFilters();
++    void setSelectedWorkTypes(profileWorkTypes);
++    void setShowOnlySse(true);
++    void setShowJobsWithoutSalary(true);
++    void setPostedWithin('2-weeks');
++  }, [resetCommonFilters, profileWorkTypes, setSelectedWorkTypes, setShowOnlySse, setShowJobsWithoutSalary, setPostedWithin]);
++
++  const handleResetToProfileWorkTypes = useCallback(() => {
++    if (profileWorkTypes.length === 0) return;
++    void setSelectedWorkTypes(profileWorkTypes);
++  }, [profileWorkTypes, setSelectedWorkTypes]);
++
++  const handleResetToProfileLocation = useCallback(() => {
++    if (!profileMunicipality || !profileProvince) return;
++    void setSelectedProvinces([profileProvince]);
++    void setSelectedMunicipalities([profileMunicipality]);
++  }, [profileMunicipality, profileProvince, setSelectedProvinces, setSelectedMunicipalities]);
++
++  return {
++    clearAllFilters,
++    applySuggestedDefaults,
++    handleResetToProfileWorkTypes,
++    handleResetToProfileLocation,
++  };
++}
+diff --git a/wev-bulletin/lib/hooks/useBulletinFilters.ts b/wev-bulletin/lib/hooks/useBulletinFilters.ts
+index fcfd3da..111d0d3 100644
+--- a/wev-bulletin/lib/hooks/useBulletinFilters.ts
++++ b/wev-bulletin/lib/hooks/useBulletinFilters.ts
+@@ -1,27 +1,16 @@
+ 'use client';
+ 
+-import { useCallback, useMemo, useState } from 'react';
++import { useMemo, useState } from 'react';
+ import { useSearchParams } from 'next/navigation';
+-import {
+-  parseAsArrayOf,
+-  parseAsBoolean,
+-  parseAsInteger,
+-  parseAsString,
+-  parseAsStringLiteral,
+-  useQueryState,
+-} from 'nuqs';
+ import { useAuth } from '@/contexts/AuthContext';
+ import { useProfile } from '@/contexts/ProfileContext';
+ import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
+ import type { Profile } from '@/lib/supabase/profiles';
+ import { useProfileSync } from './useProfileSync';
+-import {
+-  JOB_SORT_OPTIONS,
+-  POSTED_WITHIN_FILTER_OPTIONS,
+-  type BulletinFilters,
+-  type JobSortOption,
+-  type PostedWithinSelection,
+-} from '@/lib/bulletin/job-query';
++import type { BulletinFilters, JobSortOption, PostedWithinSelection } from '@/lib/bulletin/job-query';
++import { useBulletinQueryState } from './useBulletinQueryState';
++import { useBulletinFilterActions } from './useBulletinFilterActions';
++import { useBulletinPaginationReset } from './useBulletinPaginationReset';
+ 
+ type QueryStateSetter<T> = (value: T) => Promise<unknown> | void;
+ 
+@@ -96,65 +85,33 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
+   const initialProfileMunicipality =
+     initialUserId && initialProfile?.municipality ? [initialProfile.municipality] : [];
+ 
+-  const [searchQuery, setSearchQuery] = useQueryState('q', parseAsString.withDefault(''));
+-  const [selectedOrganizations, setSelectedOrganizations] = useQueryState(
+-    'org',
+-    parseAsArrayOf(parseAsString).withDefault([]),
+-  );
+-  const [selectedProvinces, setSelectedProvinces] = useQueryState(
+-    'province',
+-    parseAsArrayOf(parseAsString).withDefault(initialProfileProvince),
+-  );
+-  const [selectedMunicipalities, setSelectedMunicipalities] = useQueryState(
+-    'municipality',
+-    parseAsArrayOf(parseAsString).withDefault(initialProfileMunicipality),
+-  );
+-  const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useQueryState(
+-    'employment',
+-    parseAsArrayOf(parseAsString).withDefault([]),
+-  );
+-  const [selectedSources, setSelectedSources] = useQueryState(
+-    'source',
+-    parseAsArrayOf(parseAsString).withDefault([]),
+-  );
+-  const [selectedWorkTypes, setSelectedWorkTypes] = useQueryState(
+-    'workType',
+-    parseAsArrayOf(parseAsString).withDefault(initialProfileWorkTypes),
+-  );
+-  const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true));
+-  const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState(
+-    'salary',
+-    parseAsBoolean.withDefault(true),
+-  );
+-  const [postedWithin, setPostedWithin] = useQueryState(
+-    'posted',
+-    parseAsStringLiteral(POSTED_WITHIN_FILTER_OPTIONS).withDefault('2-weeks'),
++  const { filters, state, setters } = useBulletinQueryState(
++    initialProfileProvince,
++    initialProfileMunicipality,
++    initialProfileWorkTypes
+   );
++
+   const [filtersExpanded, setFiltersExpanded] = useState(false);
+-  const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
+   const [allJobsExpanded, setAllJobsExpanded] = useState(true);
+-  const [sortBy, setSortBy] = useQueryState(
+-    'sort',
+-    parseAsStringLiteral(JOB_SORT_OPTIONS).withDefault('date-desc'),
+-  );
++
++  useBulletinPaginationReset(filters, state.sortBy, state.currentPage, setters.setCurrentPage);
+ 
+   const profileWorkTypes = useMemo(
+     () => normalizeWorkTypes(effectiveProfile?.work_types),
+     [effectiveProfile?.work_types],
+   );
+   const normalizedSelectedWorkTypes = useMemo(
+-    () => normalizeWorkTypes(selectedWorkTypes),
+-    [selectedWorkTypes],
++    () => normalizeWorkTypes(state.selectedWorkTypes),
++    [state.selectedWorkTypes],
+   );
+ 
+   const profileMunicipality = effectiveProfile?.municipality ?? null;
+   const profileProvince = effectiveProfile?.province ?? null;
+ 
+-  // Sync work types from profile on first load
+   useProfileSync(userId, effectiveProfileLoading, 'workType', {
+     profileValue: profileWorkTypes,
+     selectedValue: normalizedSelectedWorkTypes,
+-    setter: setSelectedWorkTypes,
++    setter: setters.setSelectedWorkTypes,
+     shouldSync: (profileValue, selectedValue, hasQueryParam) => {
+       if (!profileValue || profileValue.length === 0) return false;
+       if (hasQueryParam || selectedValue.length > 0) return false;
+@@ -162,13 +119,12 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
+     },
+   });
+ 
+-  // Sync location from profile on first load
+   useProfileSync(userId, effectiveProfileLoading, 'municipality', {
+     profileValue: profileMunicipality && profileProvince ? [profileProvince, profileMunicipality] : null,
+-    selectedValue: [...selectedProvinces, ...selectedMunicipalities],
++    selectedValue: [...state.selectedProvinces, ...state.selectedMunicipalities],
+     setter: ([province, municipality]) => {
+-      void setSelectedProvinces([province]);
+-      void setSelectedMunicipalities([municipality]);
++      void setters.setSelectedProvinces([province]);
++      void setters.setSelectedMunicipalities([municipality]);
+     },
+     shouldSync: (profileValue, selectedValue, hasQueryParam) => {
+       if (!profileValue) return false;
+@@ -178,53 +134,26 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
+     },
+   });
+ 
+-  const handleResetToProfileWorkTypes = useCallback(() => {
+-    if (profileWorkTypes.length === 0) return;
+-    void setSelectedWorkTypes(profileWorkTypes);
+-  }, [profileWorkTypes, setSelectedWorkTypes]);
+-
+-  const handleResetToProfileLocation = useCallback(() => {
+-    if (!profileMunicipality || !profileProvince) return;
+-    void setSelectedProvinces([profileProvince]);
+-    void setSelectedMunicipalities([profileMunicipality]);
+-  }, [profileMunicipality, profileProvince, setSelectedProvinces, setSelectedMunicipalities]);
++  const {
++    clearAllFilters,
++    applySuggestedDefaults,
++    handleResetToProfileWorkTypes,
++    handleResetToProfileLocation,
++  } = useBulletinFilterActions(setters, {
++    profileWorkTypes,
++    profileMunicipality,
++    profileProvince,
++  });
+ 
+   const isUsingProfileLocation = useMemo(() => {
+     if (!profileMunicipality || !profileProvince) return false;
+     return (
+-      selectedMunicipalities.length === 1 &&
+-      selectedMunicipalities[0] === profileMunicipality &&
+-      selectedProvinces.length === 1 &&
+-      selectedProvinces[0] === profileProvince
++      state.selectedMunicipalities.length === 1 &&
++      state.selectedMunicipalities[0] === profileMunicipality &&
++      state.selectedProvinces.length === 1 &&
++      state.selectedProvinces[0] === profileProvince
+     );
+-  }, [profileMunicipality, profileProvince, selectedMunicipalities, selectedProvinces]);
+-
+-  const filters = useMemo<BulletinFilters>(
+-    () => ({
+-      searchQuery,
+-      selectedOrganizations,
+-      selectedProvinces,
+-      selectedMunicipalities,
+-      selectedEmploymentTypes,
+-      selectedSources,
+-      selectedWorkTypes,
+-      showOnlySse,
+-      showJobsWithoutSalary,
+-      postedWithin,
+-    }),
+-    [
+-      searchQuery,
+-      selectedOrganizations,
+-      selectedProvinces,
+-      selectedMunicipalities,
+-      selectedEmploymentTypes,
+-      selectedSources,
+-      selectedWorkTypes,
+-      showOnlySse,
+-      showJobsWithoutSalary,
+-      postedWithin,
+-    ],
+-  );
++  }, [profileMunicipality, profileProvince, state.selectedMunicipalities, state.selectedProvinces]);
+ 
+   const isUsingProfileWorkTypes = useMemo(() => {
+     if (profileWorkTypes.length === 0) return false;
+@@ -234,82 +163,47 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
+   }, [normalizedSelectedWorkTypes, profileWorkTypes]);
+ 
+   const hasAnyFilters =
+-    !!searchQuery ||
+-    selectedOrganizations.length > 0 ||
+-    selectedProvinces.length > 0 ||
+-    selectedMunicipalities.length > 0 ||
+-    selectedEmploymentTypes.length > 0 ||
+-    selectedSources.length > 0 ||
+-    selectedWorkTypes.length > 0 ||
+-    !showOnlySse ||
+-    !showJobsWithoutSalary ||
+-    postedWithin !== 'any';
+-
+-  // Shared reset: clears every filter field back to its blank/empty value.
+-  // clearAllFilters and applySuggestedDefaults both call this, then override
+-  // the fields that differ between the two operations.
+-  const resetCommonFilters = useCallback(() => {
+-    void setSearchQuery('');
+-    void setSelectedOrganizations([]);
+-    void setSelectedProvinces([]);
+-    void setSelectedMunicipalities([]);
+-    void setSelectedEmploymentTypes([]);
+-    void setSelectedSources([]);
+-  }, [
+-    setSearchQuery,
+-    setSelectedOrganizations,
+-    setSelectedProvinces,
+-    setSelectedMunicipalities,
+-    setSelectedEmploymentTypes,
+-    setSelectedSources,
+-  ]);
+-
+-  const clearAllFilters = useCallback(() => {
+-    resetCommonFilters();
+-    void setSelectedWorkTypes([]);
+-    void setShowOnlySse(false);
+-    void setShowJobsWithoutSalary(true);
+-    void setPostedWithin('any');
+-  }, [resetCommonFilters, setSelectedWorkTypes, setShowOnlySse, setShowJobsWithoutSalary, setPostedWithin]);
+-
+-  const applySuggestedDefaults = useCallback(() => {
+-    resetCommonFilters();
+-    void setSelectedWorkTypes(profileWorkTypes);
+-    void setShowOnlySse(true);
+-    void setShowJobsWithoutSalary(true);
+-    void setPostedWithin('2-weeks');
+-  }, [resetCommonFilters, profileWorkTypes, setSelectedWorkTypes, setShowOnlySse, setShowJobsWithoutSalary, setPostedWithin]);
++    !!state.searchQuery ||
++    state.selectedOrganizations.length > 0 ||
++    state.selectedProvinces.length > 0 ||
++    state.selectedMunicipalities.length > 0 ||
++    state.selectedEmploymentTypes.length > 0 ||
++    state.selectedSources.length > 0 ||
++    state.selectedWorkTypes.length > 0 ||
++    !state.showOnlySse ||
++    !state.showJobsWithoutSalary ||
++    state.postedWithin !== 'any';
+ 
+   return {
+     filters,
+-    searchQuery,
+-    setSearchQuery,
+-    selectedOrganizations,
+-    setSelectedOrganizations,
+-    selectedProvinces,
+-    setSelectedProvinces,
+-    selectedMunicipalities,
+-    setSelectedMunicipalities,
+-    selectedEmploymentTypes,
+-    setSelectedEmploymentTypes,
+-    selectedSources,
+-    setSelectedSources,
+-    selectedWorkTypes,
+-    setSelectedWorkTypes,
+-    showOnlySse,
+-    setShowOnlySse,
+-    showJobsWithoutSalary,
+-    setShowJobsWithoutSalary,
+-    postedWithin,
+-    setPostedWithin,
++    searchQuery: state.searchQuery,
++    setSearchQuery: setters.setSearchQuery,
++    selectedOrganizations: state.selectedOrganizations,
++    setSelectedOrganizations: setters.setSelectedOrganizations,
++    selectedProvinces: state.selectedProvinces,
++    setSelectedProvinces: setters.setSelectedProvinces,
++    selectedMunicipalities: state.selectedMunicipalities,
++    setSelectedMunicipalities: setters.setSelectedMunicipalities,
++    selectedEmploymentTypes: state.selectedEmploymentTypes,
++    setSelectedEmploymentTypes: setters.setSelectedEmploymentTypes,
++    selectedSources: state.selectedSources,
++    setSelectedSources: setters.setSelectedSources,
++    selectedWorkTypes: state.selectedWorkTypes,
++    setSelectedWorkTypes: setters.setSelectedWorkTypes,
++    showOnlySse: state.showOnlySse,
++    setShowOnlySse: setters.setShowOnlySse,
++    showJobsWithoutSalary: state.showJobsWithoutSalary,
++    setShowJobsWithoutSalary: setters.setShowJobsWithoutSalary,
++    postedWithin: state.postedWithin,
++    setPostedWithin: setters.setPostedWithin,
+     filtersExpanded,
+     setFiltersExpanded,
+-    currentPage,
+-    setCurrentPage,
++    currentPage: state.currentPage,
++    setCurrentPage: setters.setCurrentPage,
+     allJobsExpanded,
+     setAllJobsExpanded,
+-    sortBy,
+-    setSortBy,
++    sortBy: state.sortBy,
++    setSortBy: setters.setSortBy,
+     profileWorkTypes,
+     isUsingProfileWorkTypes,
+     handleResetToProfileWorkTypes,
+diff --git a/wev-bulletin/lib/hooks/useBulletinPaginationReset.ts b/wev-bulletin/lib/hooks/useBulletinPaginationReset.ts
+new file mode 100644
+index 0000000..c4f6ab8
+--- /dev/null
++++ b/wev-bulletin/lib/hooks/useBulletinPaginationReset.ts
+@@ -0,0 +1,42 @@
++import { useRef, useEffect } from 'react';
++import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/job-query';
++
++function areFiltersEqual(prev: BulletinFilters, next: BulletinFilters) {
++  if (prev.searchQuery !== next.searchQuery) return false;
++  if (prev.showOnlySse !== next.showOnlySse) return false;
++  if (prev.showJobsWithoutSalary !== next.showJobsWithoutSalary) return false;
++  if (prev.postedWithin !== next.postedWithin) return false;
++  
++  if (prev.selectedOrganizations.join(',') !== next.selectedOrganizations.join(',')) return false;
++  if (prev.selectedProvinces.join(',') !== next.selectedProvinces.join(',')) return false;
++  if (prev.selectedMunicipalities.join(',') !== next.selectedMunicipalities.join(',')) return false;
++  if (prev.selectedEmploymentTypes.join(',') !== next.selectedEmploymentTypes.join(',')) return false;
++  if (prev.selectedSources.join(',') !== next.selectedSources.join(',')) return false;
++  if (prev.selectedWorkTypes.join(',') !== next.selectedWorkTypes.join(',')) return false;
++
++  return true;
++}
++
++export function useBulletinPaginationReset(
++  filters: BulletinFilters,
++  sortBy: JobSortOption,
++  currentPage: number,
++  setCurrentPage: (page: number) => Promise<unknown> | void
++) {
++  const previousFilters = useRef(filters);
++  const previousSortBy = useRef(sortBy);
++
++  useEffect(() => {
++    const filtersChanged = !areFiltersEqual(previousFilters.current, filters);
++    const sortChanged = previousSortBy.current !== sortBy;
++
++    if (filtersChanged || sortChanged) {
++      previousFilters.current = filters;
++      previousSortBy.current = sortBy;
++
++      if (currentPage !== 1) {
++        void setCurrentPage(1);
++      }
++    }
++  }, [filters, sortBy, currentPage, setCurrentPage]);
++}
+diff --git a/wev-bulletin/lib/hooks/useBulletinQueryState.test.tsx b/wev-bulletin/lib/hooks/useBulletinQueryState.test.tsx
+new file mode 100644
+index 0000000..6fa5e24
+--- /dev/null
++++ b/wev-bulletin/lib/hooks/useBulletinQueryState.test.tsx
+@@ -0,0 +1 @@
++// Let's create tests for it too or just write the files.
+diff --git a/wev-bulletin/lib/hooks/useBulletinQueryState.ts b/wev-bulletin/lib/hooks/useBulletinQueryState.ts
+new file mode 100644
+index 0000000..e2519a6
+--- /dev/null
++++ b/wev-bulletin/lib/hooks/useBulletinQueryState.ts
+@@ -0,0 +1,119 @@
++import {
++  parseAsArrayOf,
++  parseAsBoolean,
++  parseAsInteger,
++  parseAsString,
++  parseAsStringLiteral,
++  useQueryState,
++} from 'nuqs';
++import { useMemo } from 'react';
++import {
++  JOB_SORT_OPTIONS,
++  POSTED_WITHIN_FILTER_OPTIONS,
++  type BulletinFilters,
++} from '@/lib/bulletin/job-query';
++
++export function useBulletinQueryState(
++  initialProfileProvince: string[],
++  initialProfileMunicipality: string[],
++  initialProfileWorkTypes: string[]
++) {
++  const [searchQuery, setSearchQuery] = useQueryState('q', parseAsString.withDefault(''));
++  const [selectedOrganizations, setSelectedOrganizations] = useQueryState(
++    'org',
++    parseAsArrayOf(parseAsString).withDefault([]),
++  );
++  const [selectedProvinces, setSelectedProvinces] = useQueryState(
++    'province',
++    parseAsArrayOf(parseAsString).withDefault(initialProfileProvince),
++  );
++  const [selectedMunicipalities, setSelectedMunicipalities] = useQueryState(
++    'municipality',
++    parseAsArrayOf(parseAsString).withDefault(initialProfileMunicipality),
++  );
++  const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useQueryState(
++    'employment',
++    parseAsArrayOf(parseAsString).withDefault([]),
++  );
++  const [selectedSources, setSelectedSources] = useQueryState(
++    'source',
++    parseAsArrayOf(parseAsString).withDefault([]),
++  );
++  const [selectedWorkTypes, setSelectedWorkTypes] = useQueryState(
++    'workType',
++    parseAsArrayOf(parseAsString).withDefault(initialProfileWorkTypes),
++  );
++  const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true));
++  const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState(
++    'salary',
++    parseAsBoolean.withDefault(true),
++  );
++  const [postedWithin, setPostedWithin] = useQueryState(
++    'posted',
++    parseAsStringLiteral(POSTED_WITHIN_FILTER_OPTIONS).withDefault('2-weeks'),
++  );
++  const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
++  const [sortBy, setSortBy] = useQueryState(
++    'sort',
++    parseAsStringLiteral(JOB_SORT_OPTIONS).withDefault('date-desc'),
++  );
++
++  const filters = useMemo<BulletinFilters>(
++    () => ({
++      searchQuery,
++      selectedOrganizations,
++      selectedProvinces,
++      selectedMunicipalities,
++      selectedEmploymentTypes,
++      selectedSources,
++      selectedWorkTypes,
++      showOnlySse,
++      showJobsWithoutSalary,
++      postedWithin,
++    }),
++    [
++      searchQuery,
++      selectedOrganizations,
++      selectedProvinces,
++      selectedMunicipalities,
++      selectedEmploymentTypes,
++      selectedSources,
++      selectedWorkTypes,
++      showOnlySse,
++      showJobsWithoutSalary,
++      postedWithin,
++    ],
++  );
++
++  return {
++    filters,
++    state: {
++      searchQuery,
++      selectedOrganizations,
++      selectedProvinces,
++      selectedMunicipalities,
++      selectedEmploymentTypes,
++      selectedSources,
++      selectedWorkTypes,
++      showOnlySse,
++      showJobsWithoutSalary,
++      postedWithin,
++      currentPage,
++      sortBy,
++    },
++    setters: {
++      setSearchQuery,
++      setSelectedOrganizations,
++      setSelectedProvinces,
++      setSelectedMunicipalities,
++      setSelectedEmploymentTypes,
++      setSelectedSources,
++      setSelectedWorkTypes,
++      setShowOnlySse,
++      setShowJobsWithoutSalary,
++      setPostedWithin,
++      setCurrentPage,
++      setSortBy,
++    },
++  };
++}
+diff --git a/wev-bulletin/lib/hooks/useJobFilters.ts b/wev-bulletin/lib/hooks/useJobFilters.ts
+deleted file mode 100644
+index f1efbad..0000000
+--- a/wev-bulletin/lib/hooks/useJobFilters.ts
++++ /dev/null
+@@ -1,57 +0,0 @@
+-'use client';
+-
+-import { useMemo, useEffect, useRef } from 'react';
+-import { filterJobs, sortJobs } from '@/lib/bulletin/job-query';
+-import type { JobPosting, JobMatchData } from '@/lib/supabase';
+-import type { UseBulletinDataOptions } from '@/lib/bulletin/types';
+-
+-const ITEMS_PER_PAGE = 20;
+-
+-export function useJobFilters(
+-  allJobs: JobPosting[],
+-  matchData: Map<string, JobMatchData>,
+-  { filters, sortBy, currentPage, setCurrentPage }: UseBulletinDataOptions,
+-) {
+-  // Reset page to 1 when filters change
+-  const filterSnapshot = useMemo(() => JSON.stringify({ filters, sortBy }), [filters, sortBy]);
+-  const previousFilterSnapshot = useRef(filterSnapshot);
+-
+-  useEffect(() => {
+-    if (previousFilterSnapshot.current === filterSnapshot) return;
+-    previousFilterSnapshot.current = filterSnapshot;
+-    if (currentPage !== 1) {
+-      void setCurrentPage(1);
+-    }
+-  }, [filterSnapshot, currentPage, setCurrentPage]);
+-
+-  // Derived filtered results
+-  const filteredJobs = useMemo(
+-    () => sortJobs(filterJobs(allJobs, filters), sortBy, matchData),
+-    [allJobs, filters, sortBy, matchData],
+-  );
+-
+-  const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE);
+-
+-  // Sync current page with total pages
+-  useEffect(() => {
+-    if (totalPages === 0) {
+-      if (currentPage !== 1) void setCurrentPage(1);
+-      return;
+-    }
+-    if (currentPage > totalPages) {
+-      void setCurrentPage(totalPages);
+-    }
+-  }, [currentPage, totalPages, setCurrentPage]);
+-
+-  const paginatedJobs = useMemo(() => {
+-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+-    return filteredJobs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+-  }, [currentPage, filteredJobs]);
+-
+-  return {
+-    filteredJobs,
+-    paginatedJobs,
+-    totalPages,
+-    itemsPerPage: ITEMS_PER_PAGE,
+-  };
+-}
+diff --git a/wev-bulletin/lib/hooks/useRequireAuth.test.tsx b/wev-bulletin/lib/hooks/useRequireAuth.test.tsx
+index 84084dc..393f28e 100644
+--- a/wev-bulletin/lib/hooks/useRequireAuth.test.tsx
++++ b/wev-bulletin/lib/hooks/useRequireAuth.test.tsx
+@@ -1,7 +1,7 @@
+ import { beforeEach, describe, expect, it, vi } from 'vitest';
+ import { act, renderHook, waitFor } from '@testing-library/react';
+-import type { User } from '@supabase/supabase-js';
+ import { useAuth } from '@/contexts/AuthContext';
++import type { AuthUser } from '@/contexts/AuthContext';
+ import { useRequireAuth } from './useRequireAuth';
+ import { createMockAuthContext } from '@/test-utils/auth-context-mock';
+ import { mockRouterReplace } from '@/test-utils/i18n-navigation-mock';
+@@ -39,7 +39,7 @@ describe('useRequireAuth', () => {
+   it('does not redirect when a user is present', () => {
+     vi.mocked(useAuth).mockReturnValue(
+       createMockAuthContext({
+-        user: { id: 'u1', email: 'a@b.com' } as User,
++        user: { id: 'u1', email: 'a@b.com' },
+         loading: false,
+       }),
+     );
+@@ -50,7 +50,7 @@ describe('useRequireAuth', () => {
+   });
+ 
+   it('does not redirect when loading transitions to authenticated user', async () => {
+-    const authState = { user: null as User | null, loading: true };
++    const authState = { user: null as AuthUser | null, loading: true };
+     vi.mocked(useAuth).mockImplementation(() =>
+       createMockAuthContext({ user: authState.user, loading: authState.loading }),
+     );
+@@ -60,7 +60,7 @@ describe('useRequireAuth', () => {
+ 
+     await act(async () => {
+       authState.loading = false;
+-      authState.user = { id: 'u1', email: 'a@b.com' } as User;
++      authState.user = { id: 'u1', email: 'a@b.com' };
+       rerender();
+     });
+ 
+diff --git a/wev-bulletin/lib/supabase/profiles.ts b/wev-bulletin/lib/supabase/profiles.ts
+index aa5b102..3bf6008 100644
+--- a/wev-bulletin/lib/supabase/profiles.ts
++++ b/wev-bulletin/lib/supabase/profiles.ts
+@@ -1,9 +1,5 @@
+-import { createClient } from './client';
+ import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
+ 
+-const PROFILE_COLUMNS =
+-  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, created_at, updated_at' as const;
+-
+ export type Profile = {
+   id: string;
+   full_name: string | null;
+@@ -39,80 +35,61 @@ export type ProfileUpdateData = {
+   profile_photo_url?: string | null;
+ };
+ 
+-/**
+- * Create a blank profile for a user. Internal — called by getProfile when no row exists.
+- */
+-async function createProfile(userId: string): Promise<Profile> {
+-  const supabase = createClient();
++type ProfileApiResponse = {
++  profile?: Profile;
++  error?: string;
++};
+ 
+-  const { data, error } = await supabase
+-    .from('profiles')
+-    .upsert(
+-      {
+-        id: userId,
+-        updated_at: new Date().toISOString(),
+-      },
+-      {
+-        onConflict: 'id',
+-        ignoreDuplicates: false,
+-      },
+-    )
+-    .select(PROFILE_COLUMNS)
+-    .single();
++async function parseProfileResponse(response: Response): Promise<Profile> {
++  const payload = (await response.json().catch(() => ({}))) as ProfileApiResponse;
+ 
+-  if (error) {
+-    throw new Error(error.message || 'Failed to create profile');
++  if (!response.ok || !payload.profile) {
++    throw new Error(payload.error || 'Profile request failed');
+   }
+ 
+-  return data as Profile;
++  return payload.profile;
+ }
+ 
+ /**
+  * Fetch a user's profile, creating a blank one if it doesn't exist.
+  */
+ export async function getProfile(userId: string): Promise<Profile> {
+-  const supabase = createClient();
+-
+-  const { data, error } = await supabase
+-    .from('profiles')
+-    .select(PROFILE_COLUMNS)
+-    .eq('id', userId)
+-    .single();
+-
+-  if (error) {
+-    if (error.code === 'PGRST116') return createProfile(userId);
+-    console.error('Error fetching profile:', error);
+-    throw new Error(error.message || 'Failed to fetch profile');
++  // API resolves profile identity from the authenticated request.
++  // userId is retained for call-site compatibility and as a guard.
++  if (!userId) {
++    throw new Error('Not authenticated');
+   }
+ 
+-  return data as Profile;
++  const response = await fetch('/api/profile', {
++    method: 'GET',
++    credentials: 'include',
++    cache: 'no-store',
++    headers: {
++      'cache-control': 'no-store',
++    },
++  });
++
++  return parseProfileResponse(response);
+ }
+ 
+ /**
+  * Update a user's profile
+  */
+ export async function updateProfile(userId: string, updates: ProfileUpdateData): Promise<Profile> {
+-  const supabase = createClient();
+-
+-  // Match recalculation for user-driven profile edits is handled by the DB trigger on
+-  // `profiles`, not by calling `/api/matches/calculate-user`.
+-  const { data, error } = await supabase
+-    .from('profiles')
+-    .update({
+-      ...updates,
+-      updated_at: new Date().toISOString(),
+-    })
+-    .eq('id', userId)
+-    .select(PROFILE_COLUMNS)
+-    .single();
+-
+-  if (error) {
+-    console.error('Error updating profile:', error);
+-    const msg = [error.message, (error as { details?: string }).details]
+-      .filter(Boolean)
+-      .join(' — ');
+-    throw new Error(msg || 'Failed to update profile');
++  if (!userId) {
++    throw new Error('Not authenticated');
+   }
+ 
+-  return data as Profile;
++  const response = await fetch('/api/profile', {
++    method: 'PATCH',
++    credentials: 'include',
++    cache: 'no-store',
++    headers: {
++      'content-type': 'application/json',
++      'cache-control': 'no-store',
++    },
++    body: JSON.stringify(updates),
++  });
++
++  return parseProfileResponse(response);
+ }
+diff --git a/wev-bulletin/lib/testing/job-board-contract.ts b/wev-bulletin/lib/testing/job-board-contract.ts
+index 1c0e7ad..236cd1e 100644
+--- a/wev-bulletin/lib/testing/job-board-contract.ts
++++ b/wev-bulletin/lib/testing/job-board-contract.ts
+@@ -1,4 +1,5 @@
+ export const JOB_BOARD_TEST_IDS = {
++  pageLoadingState: 'job-board-page-loading-state',
+   filtersToggle: 'job-board-filters-toggle',
+   postedWithinGroup: 'job-board-posted-within-group',
+   workTypeGroup: 'job-board-work-type-group',
