@@ -37,8 +37,12 @@ test.describe('Change password flow @auth-email', () => {
         await page.getByLabel(/current password/i).fill(oldPassword);
         await page.getByLabel(/new password/i).fill(newPassword);
         await page.getByLabel(/confirm password/i).fill(newPassword);
+        
+        await authPage.submitWhenCaptchaReady(/^save changes$/i);
 
-        await page.getByRole('button', { name: /^save changes$/i }).click();
+        await expect(page.getByText(/password updated successfully/i)).toBeVisible({
+          timeout: 10_000,
+        });
 
         await expect(page).toHaveURL(/\/en\/account-settings(\/)?$/, { timeout: 10_000 });
       });
