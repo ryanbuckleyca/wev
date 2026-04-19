@@ -6,14 +6,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": true,
-    "baseUrl": ".",
+    "baseUrl": "."
   },
   "include": [
     "supabase/src/**/*.ts",
     "wev-bulletin/**/*.ts",
     "wev-bulletin/**/*.tsx"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

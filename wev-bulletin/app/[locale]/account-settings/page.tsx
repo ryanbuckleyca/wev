@@ -290,7 +290,9 @@ export default function AccountSettingsPage() {
           <Heading level={2} className="mb-4 text-red-600 dark:text-red-400">
             {t('deleteAccount.title')}
           </Heading>
-          <p className="text-sm text-red-600/90 dark:text-red-400/90 mb-4">{t('deleteAccount.description')}</p>
+          <p className="text-sm text-red-600/90 dark:text-red-400/90 mb-4">
+            {t('deleteAccount.description')}
+          </p>
           <Button
             onClick={() => setShowDeleteModal(true)}
             disabled={isUpdating}

@@ -3,7 +3,7 @@
 import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { useTranslations } from 'next-intl';
-import type { PostedWithinSelection } from '@/lib/bulletin/job-query';
+import type { PostedWithinSelection } from '@/lib/bulletin/types';
 import type { WorkType } from '@/lib/work-types';
 import Collapsible from './Collapsible';
 import FilterIcon from './FilterIcon';

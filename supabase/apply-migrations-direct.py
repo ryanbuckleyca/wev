@@ -80,7 +80,7 @@ def apply_migration(filename: str) -> bool:
     
     print(f"\n📝 Applying: {filename}")
     
-    sql = filepath.read_text('utf-8')
+    filepath.read_text('utf-8')
     
     # Note: Supabase REST API has limitations - it can't execute DDL via RPC
     print("   ⚠️  REST API cannot execute DDL statements")

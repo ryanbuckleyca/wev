@@ -32,11 +32,7 @@ describe('GET /api/bookmarks (handler contract)', () => {
       user: { id: 'bookmark-user-1', email: 'b@example.com' } as never,
     });
 
-    wireBookmarksRouteQueryMock(
-      mockFrom,
-      mockEq,
-      Promise.resolve({ data: [], error: null }),
-    );
+    wireBookmarksRouteQueryMock(mockFrom, mockEq, Promise.resolve({ data: [], error: null }));
   });
 
   it('returns 401 when unauthenticated', async () => {

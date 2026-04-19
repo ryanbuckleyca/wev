@@ -87,9 +87,7 @@ describe('GET /auth/callback', () => {
   });
 
   it('redirects to home when next is protocol-relative', async () => {
-    const request = new Request(
-      `${BASE}/auth/callback?code=abc&next=%2F%2Fevil.example%2F`,
-    );
+    const request = new Request(`${BASE}/auth/callback?code=abc&next=%2F%2Fevil.example%2F`);
     const response = await GET(request);
 
     expectRedirect(response, `${BASE}/`);
@@ -104,9 +102,7 @@ describe('GET /auth/callback', () => {
   });
 
   it('redirects to home when next uses a javascript: URL', async () => {
-    const request = new Request(
-      `${BASE}/auth/callback?code=abc&next=javascript%3Aalert(1)`,
-    );
+    const request = new Request(`${BASE}/auth/callback?code=abc&next=javascript%3Aalert(1)`);
     const response = await GET(request);
 
     expect(mockExchangeCodeForSession).toHaveBeenCalledWith('abc');

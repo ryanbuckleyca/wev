@@ -17,13 +17,13 @@ interface TurnstileWidgetProps {
 const TurnstileWidget = forwardRef<TurnstileInstance | null, TurnstileWidgetProps>(
   function TurnstileWidget({ onSuccess, onError, onExpire }, ref) {
     const { theme } = useTheme();
-    
+
     // Hydration check: useSyncExternalStore ensures we don't trigger cascading renders
     // while providing a stable 'true' on client and 'false' on server.
     const mounted = useSyncExternalStore(
       emptySubscribe,
       () => true,
-      () => false
+      () => false,
     );
 
     if (!mounted) {

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';
-import { supabaseServer } from '@/lib/supabase-server';
-import normalizeJobsWithSource from '@/lib/normalize-job';
+import { createClient } from '@/lib/supabase/server';
 import { resolveSkillLabels, attachSkillLabels, parseLocale } from '@/lib/resolve-skill-labels';
 
 export const dynamic = 'force-dynamic';

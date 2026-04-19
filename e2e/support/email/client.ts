@@ -1,22 +1,22 @@
-import type { InboxRef } from './inbox-manager';
+import type { InboxRef } from "./inbox-manager";
 import {
   createEphemeralInbox as createMailSlurpInbox,
   waitForInboxLink as waitForMailSlurpLink,
-} from './mailslurp-client';
+} from "./mailslurp-client";
 import {
   createEphemeralInbox as createMailpitInbox,
   waitForInboxLink as waitForMailpitLink,
-} from './mailpit-client';
+} from "./mailpit-client";
 
-export type EmailProvider = 'mailpit' | 'mailslurp';
+export type EmailProvider = "mailpit" | "mailslurp";
 
 function resolveEmailProvider(): EmailProvider {
   const explicit = process.env.E2E_EMAIL_PROVIDER?.trim().toLowerCase();
 
-  if (explicit === 'mailslurp') return 'mailslurp';
-  if (explicit === 'mailpit') return 'mailpit';
+  if (explicit === "mailslurp") return "mailslurp";
+  if (explicit === "mailpit") return "mailpit";
 
-  return process.env.MAILSLURP_API_KEY?.trim() ? 'mailslurp' : 'mailpit';
+  return process.env.MAILSLURP_API_KEY?.trim() ? "mailslurp" : "mailpit";
 }
 
 export function getEmailProvider(): EmailProvider {
@@ -25,18 +25,20 @@ export function getEmailProvider(): EmailProvider {
 
 export async function createEphemeralInbox(): Promise<InboxRef> {
   const provider = resolveEmailProvider();
-  return provider === 'mailslurp' ? createMailSlurpInbox() : createMailpitInbox();
+  return provider === "mailslurp"
+    ? createMailSlurpInbox()
+    : createMailpitInbox();
 }
 
 export async function waitForInboxLink(
   inboxId: string,
   linkHint: string,
   timeoutMs = 120_000,
-  sinceOverride?: Date
+  sinceOverride?: Date,
 ): Promise<string> {
   const provider = resolveEmailProvider();
 
-  return provider === 'mailslurp'
+  return provider === "mailslurp"
     ? waitForMailSlurpLink(inboxId, linkHint, timeoutMs, sinceOverride)
     : waitForMailpitLink(inboxId, linkHint, timeoutMs, sinceOverride);
 }
