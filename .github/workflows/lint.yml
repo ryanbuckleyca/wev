@@ -1,4 +1,4 @@
-name: Lint
+name: Code Quality
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   trunk_check:
-    name: Trunk Check
+    name: Boot Ubuntu Server
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
