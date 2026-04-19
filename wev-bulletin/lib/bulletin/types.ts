@@ -7,7 +7,13 @@ export type { SkillLabel };
 /**
  * Bulletin filter and sort constants/types.
  */
-export const POSTED_WITHIN_FILTER_OPTIONS = ['1-week', '2-weeks', '3-weeks', '1-month', 'any'] as const;
+export const POSTED_WITHIN_FILTER_OPTIONS = [
+  '1-week',
+  '2-weeks',
+  '3-weeks',
+  '1-month',
+  'any',
+] as const;
 
 export type PostedWithinSelection = (typeof POSTED_WITHIN_FILTER_OPTIONS)[number];
 

@@ -5,7 +5,7 @@
 -- Uses j.* so all current and future jobs columns are inherited automatically.
 
 CREATE OR REPLACE VIEW public.jobs_with_match_scores AS
-SELECT
+SELECT -- noqa: AM04
     j.*,
     s.name AS source_name,
     COALESCE(jm.score, 0)::NUMERIC AS match_score,

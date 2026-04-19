@@ -42,17 +42,17 @@ INSERT INTO public.jobs (
 )
 VALUES
 (
-    : job_1, 'Developer', 'Acme Inc', 'https://acme.com/dev', : src_1, 'remote'
+    : job_1, 'Developer', 'Acme Inc', 'https://acme.com/dev',: src_1, 'remote'
 ),
 (
-    : job_2, 'Designer', 'Acme Inc', 'https://acme.com/des', : src_1, 'hybrid'
+    : job_2, 'Designer', 'Acme Inc', 'https://acme.com/des',: src_1, 'hybrid'
 );
 
 -- Matches: User A has scores for job_1 only
 INSERT INTO public.job_matches (
     user_id, job_id, score, value_score, skill_score
 )
-VALUES (: user_a, : job_1, 0.85, 0.7, 0.9);
+VALUES (: user_a,: job_1, 0.85, 0.7, 0.9);
 
 -- ─── Test 1: View exists ────────────────────────────────────────────────────
 
@@ -81,14 +81,14 @@ SELECT has_column(
 -- Impersonate User A
 SELECT
     set_config(
-        'request.jwt.claims', format('{"sub": "%s"}', : user_a)::TEXT, TRUE
+        'request.jwt.claims', format('{"sub": "%s"}',: user_a)::TEXT, TRUE
     );
 SET LOCAL ROLE authenticated;
 
 SELECT is(
     (
         SELECT match_score::NUMERIC FROM public.jobs_with_match_scores
-        WHERE id = : job_1
+        WHERE id =: job_1
     ),
     0.85::NUMERIC,
     'User A sees their match score (0.85) for job_1'
@@ -99,7 +99,7 @@ SELECT is(
 SELECT is(
     (
         SELECT match_score::NUMERIC FROM public.jobs_with_match_scores
-        WHERE id = : job_2
+        WHERE id =: job_2
     ),
     0::NUMERIC,
     'User A sees match_score 0 for a job with no match row'
@@ -110,14 +110,14 @@ SELECT is(
 RESET ROLE;
 SELECT
     set_config(
-        'request.jwt.claims', format('{"sub": "%s"}', : user_b)::TEXT, TRUE
+        'request.jwt.claims', format('{"sub": "%s"}',: user_b)::TEXT, TRUE
     );
 SET LOCAL ROLE authenticated;
 
 SELECT is(
     (
         SELECT match_score::NUMERIC FROM public.jobs_with_match_scores
-        WHERE id = : job_1
+        WHERE id =: job_1
     ),
     0::NUMERIC,
     'User B sees match_score 0 for job_1 (only User A has a match)'
@@ -128,7 +128,7 @@ SELECT is(
 SELECT is(
     (
         SELECT source_name FROM public.jobs_with_match_scores
-        WHERE id = : job_1
+        WHERE id =: job_1
     ),
     'Test Source',
     'source_name is resolved from the joined sources table'
