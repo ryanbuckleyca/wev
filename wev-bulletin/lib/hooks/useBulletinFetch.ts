@@ -18,7 +18,9 @@ export function useBulletinFetch(
   const hasInitialData = !!initialData;
 
   const [paginatedJobs, setPaginatedJobs] = useState<JobPosting[]>(() => initialData?.jobs ?? []);
-  const [totalJobs, setTotalJobs] = useState<number>(initialData?.jobs?.length ?? 0);
+  const [totalJobs, setTotalJobs] = useState<number>(
+    initialData?.total ?? initialData?.jobs?.length ?? 0,
+  );
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(() =>
     initialData?.scrapeTime ? formatLastScrapeTime(initialData.scrapeTime, locale) : null,
   );

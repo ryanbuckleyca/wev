@@ -34,11 +34,15 @@ import { createClient } from '@/lib/supabase/server';
  */
 export async function fetchServerBulletinJobs(locale: 'en' | 'fr') {
   const supabase = await createClient();
+  const postedWithinDays = 14;
+  const postedCutoff = new Date(Date.now() - postedWithinDays * 24 * 60 * 60 * 1000).toISOString();
   const [scrapeTime, jobsResult] = await Promise.all([
     fetchLastScrapeTime(),
     supabase
       .from('matched_jobs')
       .select('*', { count: 'exact' })
+      .is('is_sse', true)
+      .gte('date_posted', postedCutoff)
       .order('date_posted', { ascending: false })
       .range(0, 19),
   ]);

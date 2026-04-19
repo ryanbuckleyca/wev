@@ -2,18 +2,12 @@ import { cookies } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
-import { Lexend_Deca } from 'next/font/google';
 import Header from '@/components/Header';
 import Toaster from '@/components/Toaster';
+import HtmlLangSync from '@/components/HtmlLangSync';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { routing } from '@/i18n/routing';
-
-const lexend = Lexend_Deca({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-lexend',
-});
 
 export default async function LocaleLayout({
   children,
@@ -36,30 +30,17 @@ export default async function LocaleLayout({
   const theme = cookieStore.get('theme')?.value === 'dark' ? 'dark' : 'light';
 
   return (
-    <html lang={locale} data-theme={theme} className={lexend.variable} suppressHydrationWarning>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        {/* Blocking script to apply persisted theme before first paint on
-            hard navigations (cookie may not be set on very first visit). */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t)}}catch(e){/* ignore theme errors */}})()`,
-          }}
-        />
-      </head>
-      <body className="font-sans antialiased" suppressHydrationWarning>
-        <NuqsAdapter>
-          <NextIntlClientProvider locale={locale} messages={messages}>
-            <AuthProvider>
-              <ProfileProvider>
-                <Header initialTheme={theme} />
-                {children}
-                <Toaster />
-              </ProfileProvider>
-            </AuthProvider>
-          </NextIntlClientProvider>
-        </NuqsAdapter>
-      </body>
-    </html>
+    <NuqsAdapter>
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        <HtmlLangSync lang={locale} />
+        <AuthProvider>
+          <ProfileProvider>
+            <Header initialTheme={theme} />
+            {children}
+            <Toaster />
+          </ProfileProvider>
+        </AuthProvider>
+      </NextIntlClientProvider>
+    </NuqsAdapter>
   );
 }
