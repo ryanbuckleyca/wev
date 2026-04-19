@@ -19,9 +19,9 @@ export function useBulletinData(
 ): BulletinDataState {
   // 1. Data Fetching Layer (DB Paginated)
   const {
-    paginatedJobs,
-    setPaginatedJobs,
-    totalJobs,
+    jobsOnPage,
+    setJobsOnPage,
+    totalMatchingJobs,
     lastScrapeTime,
     skillLabels,
     loading,
@@ -33,21 +33,21 @@ export function useBulletinData(
   // useUserJobMeta needs the current visible jobs or all known jobs it can bind matches to
   const { matchData, setBookmarkedJobIds, bookmarkedJobIds } = useUserJobMeta(
     userId,
-    paginatedJobs, // now binds to the currently viewed slice
+    jobsOnPage,
     initialData,
   );
 
   // 3. Transformation Layer (Filter, Paginate)
-  const filters = useJobFilters(totalJobs, options);
+  const filters = useJobFilters(totalMatchingJobs, options);
 
   // 4. Optimistic Action Handlers
   const handleJobSseChange = useCallback(
     (jobId: string, isSse: boolean) => {
-      setPaginatedJobs((prev) =>
+      setJobsOnPage((prev) =>
         prev.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job)),
       );
     },
-    [setPaginatedJobs],
+    [setJobsOnPage],
   );
 
   const handleJobBookmarkChange = useCallback(
@@ -63,10 +63,8 @@ export function useBulletinData(
   );
 
   return {
-    allJobs: paginatedJobs, // Deprecated conceptually but satisfies TS interfaces expecting `allJobs`.
-    filteredJobs: paginatedJobs,
-    paginatedJobs,
-    totalJobs: totalJobs,
+    jobsOnPage,
+    totalMatchingJobs,
     lastScrapeTime,
     loading,
     error,

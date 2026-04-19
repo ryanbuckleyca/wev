@@ -17,8 +17,8 @@ export function useBulletinFetch(
   const requestIdRef = useRef(0);
   const hasInitialData = !!initialData;
 
-  const [paginatedJobs, setPaginatedJobs] = useState<JobPosting[]>(() => initialData?.jobs ?? []);
-  const [totalJobs, setTotalJobs] = useState<number>(
+  const [jobsOnPage, setJobsOnPage] = useState<JobPosting[]>(() => initialData?.jobs ?? []);
+  const [totalMatchingJobs, setTotalMatchingJobs] = useState<number>(
     initialData?.total ?? initialData?.jobs?.length ?? 0,
   );
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(() =>
@@ -73,8 +73,8 @@ export function useBulletinFetch(
 
       const formattedTime = formatLastScrapeTime(data.lastScrapeTime, locale);
       setLastScrapeTime(formattedTime);
-      setPaginatedJobs(data.jobs ?? []);
-      setTotalJobs(data.total ?? 0);
+      setJobsOnPage(data.jobs ?? []);
+      setTotalMatchingJobs(data.total ?? 0);
       if (data.skillLabels) {
         setSkillLabels(data.skillLabels);
       }
@@ -107,9 +107,9 @@ export function useBulletinFetch(
   }, [refresh]);
 
   return {
-    paginatedJobs,
-    setPaginatedJobs,
-    totalJobs,
+    jobsOnPage,
+    setJobsOnPage,
+    totalMatchingJobs,
     lastScrapeTime,
     skillLabels,
     setSkillLabels,

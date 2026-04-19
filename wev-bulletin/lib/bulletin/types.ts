@@ -19,10 +19,8 @@ export interface InitialBulletinData {
 }
 
 export interface BulletinDataState {
-  allJobs: JobPosting[];
-  filteredJobs: JobPosting[];
-  paginatedJobs: JobPosting[];
-  totalJobs: number;
+  jobsOnPage: JobPosting[];
+  totalMatchingJobs: number;
   lastScrapeTime: string | null;
   loading: boolean;
   error: string | null;
