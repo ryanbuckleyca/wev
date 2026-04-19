@@ -19,12 +19,10 @@ export async function GET(req: Request) {
     }
 
     const { user } = auth;
-    const adminClient = supabaseServer;
-    const { data, error } = await adminClient
-      .from('jobs')
-      .select(
-        'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, skills, bookmarks!inner(user_id, created_at)',
-      )
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('jobs_with_match_scores')
+      .select('*, bookmarks!inner(user_id, created_at)')
       .eq('bookmarks.user_id', user.id)
       .order('date_posted', { ascending: false });
 
@@ -32,9 +30,17 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const jobsWithSource = normalizeJobsWithSource(data);
-    const labelMap = await resolveSkillLabels(adminClient, jobsWithSource, locale);
-    const jobs = attachSkillLabels(jobsWithSource, labelMap);
+    // View returns source_name directly and handles match JOINs automatically
+    const mappedJobs = (data ?? []).map((row) => {
+      const { source_name, ...rest } = row as Record<string, unknown>;
+      return {
+        ...rest,
+        source: source_name ?? null,
+      };
+    });
+
+    const labelMap = await resolveSkillLabels(supabase, mappedJobs, locale);
+    const jobs = attachSkillLabels(mappedJobs, labelMap);
 
     return NextResponse.json({ jobs });
   } catch (err) {

@@ -7,14 +7,13 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { useBulletinData } from '@/lib/hooks/useBulletinData';
 import { useBulletinFilters } from '@/lib/hooks/useBulletinFilters';
 import type { SerializedMatchData } from '@/lib/bulletin/server-data';
-import type { JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 import type { SkillLabel } from '@/lib/bulletin/types';
 
 interface BulletinPageClientProps {
-  initialJobs: JobPosting[];
   initialScrapeTime: string | null;
   initialSkillLabels: Record<string, SkillLabel>;
+  initialFilterOptions?: BulletinFilterOptions;
   initialUserId?: string | null;
   isLoggedIn: boolean;
   isAdmin: boolean;
@@ -27,14 +26,14 @@ interface BulletinPageClientProps {
 /**
  * Client entry point for the bulletin page.
  *
- * Receives all initial data from the Server Component parent so the page
- * renders immediately with no loading states. Handles client-side interactivity:
- * URL-synced filters, pagination, and reactive auth (login/logout after mount).
+ * Receives metadata from the Server Component parent so the page
+ * renders immediately with no loading states for auth/profile data.
+ * Job listings are fetched client-side via /api/bulletin with filter params.
  */
 export default function BulletinPageClient({
-  initialJobs,
   initialScrapeTime,
   initialSkillLabels,
+  initialFilterOptions,
   initialUserId,
   isLoggedIn,
   isAdmin,
@@ -72,12 +71,12 @@ export default function BulletinPageClient({
       setCurrentPage: filters.setCurrentPage,
     },
     {
-      jobs: initialJobs,
       scrapeTime: initialScrapeTime,
       userId: initialUserId ?? null,
       matchData: initialMatchData,
       bookmarkedJobIds: initialBookmarkedJobIds,
       skillLabels: initialSkillLabels,
+      filterOptions: initialFilterOptions,
     },
   );
 

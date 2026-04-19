@@ -4,12 +4,13 @@ import { useCallback } from 'react';
 import type { JobPosting } from '@/lib/supabase';
 import { useBulletinFetch } from './useBulletinFetch';
 import { useUserJobMeta } from './useUserJobMeta';
-import { useJobFilters } from './useJobFilters';
 import type {
   InitialBulletinData,
   BulletinDataState,
   UseBulletinDataOptions,
 } from '@/lib/bulletin/types';
+
+const ITEMS_PER_PAGE = 20;
 
 export function useBulletinData(
   locale: string,
@@ -17,30 +18,39 @@ export function useBulletinData(
   options: UseBulletinDataOptions,
   initialData?: InitialBulletinData,
 ): BulletinDataState {
-  const { setCurrentPage } = options;
+  const { filters, sortBy, currentPage } = options;
 
-  // 1. Data Fetching Layer
-  const { allJobs, setAllJobs, lastScrapeTime, skillLabels, loading, error, refresh } =
-    useBulletinFetch(locale, initialData, () => {
-      void setCurrentPage(1);
-    });
+  // 1. Data Fetching Layer — now includes filters/sort/page
+  const {
+    paginatedJobs,
+    setPaginatedJobs,
+    totalCount,
+    lastScrapeTime,
+    skillLabels,
+    filterOptions,
+    loading,
+    error,
+    refresh,
+  } = useBulletinFetch(locale, filters, sortBy, currentPage, initialData);
 
   // 2. User Meta Layer (Matches & Bookmarks)
   const { matchData, setBookmarkedJobIds, bookmarkedJobIds } = useUserJobMeta(
     userId,
-    allJobs,
+    paginatedJobs,
     initialData,
   );
 
-  // 3. Transformation Layer (Filter, Sort, Paginate)
-  const filters = useJobFilters(allJobs, matchData, options);
+  // 3. Pagination is done server-side — totalPages derived from totalCount
+  const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
 
   // 4. Optimistic Action Handlers
   const handleJobSseChange = useCallback(
     (jobId: string, isSse: boolean) => {
-      setAllJobs((prev) => prev.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job)));
+      setPaginatedJobs((prev) =>
+        prev.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job)),
+      );
     },
-    [setAllJobs],
+    [setPaginatedJobs],
   );
 
   const handleJobBookmarkChange = useCallback(
@@ -56,17 +66,17 @@ export function useBulletinData(
   );
 
   return {
-    allJobs,
-    filteredJobs: filters.filteredJobs,
-    paginatedJobs: filters.paginatedJobs,
+    paginatedJobs,
+    totalCount,
     lastScrapeTime,
     loading,
     error,
     matchData,
     bookmarkedJobIds,
     skillLabels,
-    totalPages: filters.totalPages,
-    itemsPerPage: filters.itemsPerPage,
+    filterOptions,
+    totalPages,
+    itemsPerPage: ITEMS_PER_PAGE,
     refresh,
     handleJobSseChange,
     handleJobBookmarkChange,
