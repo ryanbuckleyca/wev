@@ -12,7 +12,9 @@ SELECT -- noqa: AM04
     COALESCE(jm.value_score, 0)::NUMERIC AS match_value_score,
     COALESCE(jm.skill_score, 0)::NUMERIC AS match_skill_score,
     COALESCE(jm.work_type_score, 0)::NUMERIC AS match_work_type_score,
-    COALESCE(jm.location_score, 0)::NUMERIC AS match_location_score
+    COALESCE(jm.location_score, 0)::NUMERIC AS match_location_score,
+    public.annualize_v1(j.min_value, j.unit_text, j.hours_per_week) AS annual_min,
+    public.annualize_v1(j.max_value, j.unit_text, j.hours_per_week) AS annual_max
 FROM public.jobs AS j
 LEFT JOIN public.sources AS s ON j.source_id = s.id
 LEFT JOIN public.job_matches AS jm

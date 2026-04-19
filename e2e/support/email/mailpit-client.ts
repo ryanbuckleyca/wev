@@ -214,13 +214,16 @@ function extractEmailContentFromJson(json: unknown): string {
   ];
 
   const parts: string[] = [];
-
-  for (const key of stringKeys) {
-    const value = record[key];
-    if (typeof value === "string" && value.trim()) {
-      parts.push(value);
+  const collectFields = (target: Record<string, unknown>) => {
+    for (const key of stringKeys) {
+      const value = target[key];
+      if (typeof value === "string" && value.trim()) {
+        parts.push(value);
+      }
     }
-  }
+  };
+
+  collectFields(record);
 
   // Some APIs nest bodies under common names.
   const nestedCandidates = [
@@ -229,14 +232,10 @@ function extractEmailContentFromJson(json: unknown): string {
     record.email,
     record.Email,
   ];
+
   for (const nested of nestedCandidates) {
-    if (!nested || typeof nested !== "object") continue;
-    const nestedRecord = nested as Record<string, unknown>;
-    for (const key of stringKeys) {
-      const value = nestedRecord[key];
-      if (typeof value === "string" && value.trim()) {
-        parts.push(value);
-      }
+    if (nested && typeof nested === "object") {
+      collectFields(nested as Record<string, unknown>);
     }
   }
 

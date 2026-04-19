@@ -1,5 +1,6 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient, PostgrestFilterBuilder } from '@supabase/supabase-js';
 import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/types';
+import { BULLETIN_ITEMS_PER_PAGE, BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
 
 /** Columns selected from the jobs_with_match_scores View. */
 export const JOBS_VIEW_COLUMNS = [
@@ -27,12 +28,17 @@ export const JOBS_VIEW_COLUMNS = [
   'match_score',
   'match_value_score',
   'match_skill_score',
+  'annual_min',
+  'annual_max',
 ].join(', ');
 
-const ITEMS_PER_PAGE = 20;
-
-/** Jobs older than this are never shown in the bulletin. */
-const JOBS_MAX_AGE_DAYS = 28;
+/**
+ * Returns a ISO date string representing N days ago.
+ */
+function getDateDaysAgo(days: number, fromDate?: number): string {
+  const cutoff = new Date((fromDate ?? Date.now()) - days * 24 * 60 * 60 * 1000);
+  return cutoff.toISOString();
+}
 
 /**
  * Maps a sort option to the Supabase `.order()` call parameters.
@@ -44,9 +50,9 @@ function getSortColumn(sortBy: JobSortOption): { column: string; ascending: bool
     case 'date-asc':
       return { column: 'date_posted', ascending: true };
     case 'salary-desc':
-      return { column: 'min_value', ascending: false };
+      return { column: 'annual_min', ascending: false };
     case 'salary-asc':
-      return { column: 'min_value', ascending: true };
+      return { column: 'annual_min', ascending: true };
     case 'org-asc':
       return { column: 'organization', ascending: true };
     case 'match-desc':
@@ -62,13 +68,81 @@ function getSortColumn(sortBy: JobSortOption): { column: string; ascending: bool
 
 /**
  * Sanitise a user-provided search term for use inside PostgREST `.or()` filters.
- *
- * PostgREST uses commas to separate filter clauses and dots/parens for
- * operator syntax. Un-escaped special characters break the entire query.
  */
 export function sanitiseSearchTerm(raw: string): string {
-  // Strip characters that are meaningful in PostgREST filter DSL
   return raw.replace(/[.,()\\]/g, '').trim();
+}
+
+/**
+ * Applies all bulletin filters to the Supabase query.
+ */
+function applyBulletinFilters(
+  query: PostgrestFilterBuilder<any, any, any>,
+  filters: BulletinFilters,
+) {
+  let q = query;
+
+  // 1. Max age filter (always applied)
+  q = q.gte('date_posted', getDateDaysAgo(BULLETIN_MAX_AGE_DAYS));
+
+  // 2. Text search
+  if (filters.searchQuery) {
+    const term = sanitiseSearchTerm(filters.searchQuery);
+    if (term) {
+      const pattern = `%${term}%`;
+      q = q.or(
+        [
+          `job_title.ilike.${pattern}`,
+          `organization.ilike.${pattern}`,
+          `summary.ilike.${pattern}`,
+          `location.ilike.${pattern}`,
+          `municipality.ilike.${pattern}`,
+          `province.ilike.${pattern}`,
+        ].join(','),
+      );
+    }
+  }
+
+  // 3. Inclusion filters (Inclusion array filters)
+  const inclusionFilters = [
+    { key: 'organization', values: filters.selectedOrganizations },
+    { key: 'province', values: filters.selectedProvinces },
+    { key: 'municipality', values: filters.selectedMunicipalities },
+    { key: 'employment_type', values: filters.selectedEmploymentTypes },
+    { key: 'work_type', values: filters.selectedWorkTypes },
+    { key: 'source_name', values: filters.selectedSources },
+  ];
+
+  for (const { key, values } of inclusionFilters) {
+    if (values.length > 0) {
+      q = q.in(key, values);
+    }
+  }
+
+  // 4. Boolean/Flags
+  if (filters.showOnlySse) {
+    q = q.eq('is_sse', true);
+  }
+
+  if (!filters.showJobsWithoutSalary) {
+    q = q.or('wage.neq.,annual_min.not.is.null');
+  }
+
+  // 5. Time-based filter
+  if (filters.postedWithin && filters.postedWithin !== 'any') {
+    const daysMap: Record<string, number> = {
+      '1-week': 7,
+      '2-weeks': 14,
+      '3-weeks': 21,
+      '1-month': 30,
+    };
+    const days = daysMap[filters.postedWithin];
+    if (days) {
+      q = q.gte('date_posted', getDateDaysAgo(days, filters.now));
+    }
+  }
+
+  return q;
 }
 
 export interface BulletinQueryParams {
@@ -85,9 +159,6 @@ export interface BulletinQueryResult {
 
 /**
  * Builds and executes a Supabase query against the `jobs_with_match_scores` View.
- *
- * All filtering, sorting, and pagination happen at the database level.
- * The returned `totalCount` comes from PostgREST's `count: 'exact'` header.
  */
 export async function queryBulletinJobs(
   supabase: SupabaseClient,
@@ -95,94 +166,25 @@ export async function queryBulletinJobs(
 ): Promise<BulletinQueryResult> {
   const { filters, sortBy, page } = params;
 
-  // Start query with exact count for pagination
-
+  // Initial select with count
   let query = supabase.from('jobs_with_match_scores').select(JOBS_VIEW_COLUMNS, { count: 'exact' });
 
-  // ── Max age filter (always applied) ──────────────────────────────────
-  const cutoffDate = new Date(Date.now() - JOBS_MAX_AGE_DAYS * 24 * 60 * 60 * 1000);
-  query = query.gte('date_posted', cutoffDate.toISOString());
+  // Apply filtering logic
+  query = applyBulletinFilters(query as any, filters);
 
-  // ── Text search ──────────────────────────────────────────────────────
-  if (filters.searchQuery) {
-    const term = sanitiseSearchTerm(filters.searchQuery);
-    if (term) {
-      const pattern = `%${term}%`;
-      query = query.or(
-        [
-          `job_title.ilike.${pattern}`,
-          `organization.ilike.${pattern}`,
-          `summary.ilike.${pattern}`,
-          `location.ilike.${pattern}`,
-          `municipality.ilike.${pattern}`,
-          `province.ilike.${pattern}`,
-        ].join(','),
-      );
-    }
-  }
-
-  // ── Array-based inclusion filters ────────────────────────────────────
-  if (filters.selectedOrganizations.length > 0) {
-    query = query.in('organization', filters.selectedOrganizations);
-  }
-
-  if (filters.selectedProvinces.length > 0) {
-    query = query.in('province', filters.selectedProvinces);
-  }
-
-  if (filters.selectedMunicipalities.length > 0) {
-    query = query.in('municipality', filters.selectedMunicipalities);
-  }
-
-  if (filters.selectedEmploymentTypes.length > 0) {
-    query = query.in('employment_type', filters.selectedEmploymentTypes);
-  }
-
-  if (filters.selectedWorkTypes.length > 0) {
-    query = query.in('work_type', filters.selectedWorkTypes);
-  }
-
-  if (filters.selectedSources.length > 0) {
-    query = query.in('source_name', filters.selectedSources);
-  }
-
-  // ── Boolean filters ──────────────────────────────────────────────────
-  if (filters.showOnlySse) {
-    query = query.eq('is_sse', true);
-  }
-
-  if (!filters.showJobsWithoutSalary) {
-    // Exclude jobs that have neither a wage string nor a numeric min_value
-    query = query.or('wage.neq.,min_value.not.is.null');
-  }
-
-  // ── Posted-within date filter ────────────────────────────────────────
-  if (filters.postedWithin && filters.postedWithin !== 'any') {
-    const daysMap: Record<string, number> = {
-      '1-week': 7,
-      '2-weeks': 14,
-      '3-weeks': 21,
-      '1-month': 30,
-    };
-    const days = daysMap[filters.postedWithin];
-    if (days) {
-      const postedCutoff = new Date((filters.now ?? Date.now()) - days * 24 * 60 * 60 * 1000);
-      query = query.gte('date_posted', postedCutoff.toISOString());
-    }
-  }
-
-  // ── Sorting ──────────────────────────────────────────────────────────
+  // Apply sorting
   const { column, ascending } = getSortColumn(sortBy);
   query = query.order(column, { ascending, nullsFirst: false });
 
-  // Secondary sort to ensure stable pagination when primary values are identical
+  // Stable pagination tie-breakers
   if (column !== 'date_posted') {
     query = query.order('date_posted', { ascending: false });
   }
+  query = query.order('id', { ascending: true }); // Tertiary sort for absolute stability
 
-  // ── Pagination ───────────────────────────────────────────────────────
-  const offset = (page - 1) * ITEMS_PER_PAGE;
-  query = query.range(offset, offset + ITEMS_PER_PAGE - 1);
+  // Apply pagination
+  const offset = (page - 1) * BULLETIN_ITEMS_PER_PAGE;
+  query = query.range(offset, offset + BULLETIN_ITEMS_PER_PAGE - 1);
 
   const { data, error, count } = await query;
 
