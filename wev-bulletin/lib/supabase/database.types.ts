@@ -502,6 +502,8 @@ export type Database = {
     Views: {
       jobs_with_match_scores: {
         Row: {
+          annual_max: number | null;
+          annual_min: number | null;
           close_date: string | null;
           compensation_meta: Json | null;
           date_posted: string | null;

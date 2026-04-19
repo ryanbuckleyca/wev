@@ -1,16 +1,48 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useReducer, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { formatLastScrapeTime } from '@/lib/bulletin/client-data';
-import {
-  BULLETIN_FETCH_TIMEOUT_MS,
-  BULLETIN_SEARCH_DEBOUNCE_MS,
-} from '@/lib/bulletin/constants';
+import { BULLETIN_FETCH_TIMEOUT_MS, BULLETIN_SEARCH_DEBOUNCE_MS } from '@/lib/bulletin/constants';
 import type { JobPosting } from '@/lib/supabase';
 import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/types';
 import type { InitialBulletinData, SkillLabel } from '@/lib/bulletin/types';
 import type { BulletinFilterOptions } from '@/lib/bulletin/server-data';
+
+/** State managed by the useBulletinFetch hook. */
+interface BulletinState {
+  paginatedJobs: JobPosting[];
+  totalCount: number;
+  lastScrapeTime: string | null;
+  skillLabels: Record<string, SkillLabel>;
+  filterOptions: BulletinFilterOptions | null;
+  loading: boolean;
+  error: string | null;
+}
+
+type BulletinAction =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_SUCCESS'; payload: Partial<BulletinState> }
+  | { type: 'FETCH_ERROR'; payload: string }
+  | { type: 'SET_PAGINATED_JOBS'; payload: JobPosting[] | ((prev: JobPosting[]) => JobPosting[]) };
+
+function bulletinReducer(state: BulletinState, action: BulletinAction): BulletinState {
+  switch (action.type) {
+    case 'FETCH_START':
+      return { ...state, loading: true, error: null };
+    case 'FETCH_SUCCESS':
+      return { ...state, ...action.payload, loading: false, error: null };
+    case 'FETCH_ERROR':
+      return { ...state, loading: false, error: action.payload };
+    case 'SET_PAGINATED_JOBS': {
+      const nextJobs =
+        typeof action.payload === 'function' ? action.payload(state.paginatedJobs) : action.payload;
+      return { ...state, paginatedJobs: nextJobs };
+    }
+    default:
+      return state;
+  }
+}
 
 /**
  * Serialise BulletinFilters + sort/page into URL search params for /api/bulletin.
@@ -39,7 +71,7 @@ function buildQueryString(
   };
 
   for (const [filterKey, paramKey] of Object.entries(keyMap)) {
-    const values = (arrays as any)[filterKey];
+    const values = arrays[filterKey as keyof typeof arrays];
     if (Array.isArray(values) && values.length > 0) {
       params.set(paramKey, values.join(','));
     }
@@ -64,19 +96,17 @@ export function useBulletinFetch(
   const t = useTranslations('home.errors');
   const requestIdRef = useRef(0);
 
-  const [paginatedJobs, setPaginatedJobs] = useState<JobPosting[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(() =>
-    initialData?.scrapeTime ? formatLastScrapeTime(initialData.scrapeTime, locale) : null,
-  );
-  const [skillLabels, setSkillLabels] = useState<Record<string, SkillLabel>>(
-    () => initialData?.skillLabels ?? {},
-  );
-  const [filterOptions, setFilterOptions] = useState<BulletinFilterOptions | null>(
-    () => initialData?.filterOptions ?? null,
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(bulletinReducer, {
+    paginatedJobs: [],
+    totalCount: 0,
+    lastScrapeTime: initialData?.scrapeTime
+      ? formatLastScrapeTime(initialData.scrapeTime, locale)
+      : null,
+    skillLabels: initialData?.skillLabels ?? {},
+    filterOptions: initialData?.filterOptions ?? null,
+    loading: true,
+    error: null,
+  });
 
   const fetchJobs = useCallback(
     async (overrideFilters?: BulletinFilters, overridePage?: number) => {
@@ -84,8 +114,7 @@ export function useBulletinFetch(
       const activePage = overridePage ?? currentPage;
 
       const requestId = ++requestIdRef.current;
-      setLoading(true);
-      setError(null);
+      dispatch({ type: 'FETCH_START' });
 
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), BULLETIN_FETCH_TIMEOUT_MS);
@@ -104,18 +133,18 @@ export function useBulletinFetch(
         const data = await response.json();
         if (requestId !== requestIdRef.current) return;
 
-        setPaginatedJobs(data.jobs ?? []);
-        setTotalCount(data.totalCount ?? 0);
-        if (data.lastScrapeTime) {
-          setLastScrapeTime(formatLastScrapeTime(data.lastScrapeTime, locale));
-        }
-        if (data.skillLabels) {
-          setSkillLabels(data.skillLabels);
-        }
-        if (data.filterOptions) {
-          setFilterOptions(data.filterOptions);
-        }
-        setLoading(false);
+        dispatch({
+          type: 'FETCH_SUCCESS',
+          payload: {
+            paginatedJobs: data.jobs ?? [],
+            totalCount: data.totalCount ?? 0,
+            lastScrapeTime: data.lastScrapeTime
+              ? formatLastScrapeTime(data.lastScrapeTime, locale)
+              : state.lastScrapeTime,
+            skillLabels: data.skillLabels ?? state.skillLabels,
+            filterOptions: data.filterOptions ?? state.filterOptions,
+          },
+        });
       } catch (fetchError) {
         if (requestId !== requestIdRef.current) return;
         console.error('Error fetching bulletin data:', fetchError);
@@ -127,13 +156,21 @@ export function useBulletinFetch(
           message = fetchError.message;
         }
 
-        setError(message);
-        setLoading(false);
+        dispatch({ type: 'FETCH_ERROR', payload: message });
       } finally {
         window.clearTimeout(timeoutId);
       }
     },
-    [locale, filters, sortBy, currentPage, t],
+    [
+      locale,
+      filters,
+      sortBy,
+      currentPage,
+      t,
+      state.lastScrapeTime,
+      state.skillLabels,
+      state.filterOptions,
+    ],
   );
 
   // Debounce search query changes; execute other filter/sort changes immediately.
@@ -148,7 +185,6 @@ export function useBulletinFetch(
   const lastKeyRef = useRef(otherStateKey);
 
   useEffect(() => {
-    // Determine if we should debounce (only query changed) or fetch immediately
     const stateChanged = lastKeyRef.current !== otherStateKey;
     lastKeyRef.current = otherStateKey;
 
@@ -157,7 +193,6 @@ export function useBulletinFetch(
       searchDebounceRef.current = null;
     }
 
-    // Skip the very first render to avoid double-fetching (Server Component already provided initialData)
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
@@ -166,7 +201,6 @@ export function useBulletinFetch(
     if (stateChanged) {
       void fetchJobs();
     } else {
-      // Only search query changed
       searchDebounceRef.current = setTimeout(() => {
         void fetchJobs();
       }, BULLETIN_SEARCH_DEBOUNCE_MS);
@@ -179,21 +213,18 @@ export function useBulletinFetch(
     };
   }, [searchQuery, otherStateKey, fetchJobs]);
 
-  const refresh = useCallback(async () => {
-    await fetchJobs();
-  }, [fetchJobs]);
+  const setPaginatedJobs = useCallback(
+    (payload: JobPosting[] | ((prev: JobPosting[]) => JobPosting[])) => {
+      dispatch({ type: 'SET_PAGINATED_JOBS', payload });
+    },
+    [],
+  );
+
+  const refresh = fetchJobs;
 
   return {
-    paginatedJobs,
+    ...state,
     setPaginatedJobs,
-    totalCount,
-    lastScrapeTime,
-    skillLabels,
-    setSkillLabels,
-    filterOptions,
-    setFilterOptions,
-    loading,
-    error,
     refresh,
   };
 }

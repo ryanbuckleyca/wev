@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import type { JobPosting } from '@/lib/supabase';
+import { BULLETIN_ITEMS_PER_PAGE } from '@/lib/bulletin/constants';
 import { useBulletinFetch } from './useBulletinFetch';
 import { useUserJobMeta } from './useUserJobMeta';
 import type {
@@ -9,9 +9,6 @@ import type {
   BulletinDataState,
   UseBulletinDataOptions,
 } from '@/lib/bulletin/types';
-
-const ITEMS_PER_PAGE = 20;
-
 export function useBulletinData(
   locale: string,
   userId: string | null,
@@ -41,7 +38,7 @@ export function useBulletinData(
   );
 
   // 3. Pagination is done server-side — totalPages derived from totalCount
-  const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalCount / BULLETIN_ITEMS_PER_PAGE));
 
   // 4. Optimistic Action Handlers
   const handleJobSseChange = useCallback(
@@ -76,7 +73,7 @@ export function useBulletinData(
     skillLabels,
     filterOptions,
     totalPages,
-    itemsPerPage: ITEMS_PER_PAGE,
+    itemsPerPage: BULLETIN_ITEMS_PER_PAGE,
     refresh,
     handleJobSseChange,
     handleJobBookmarkChange,

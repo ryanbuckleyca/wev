@@ -1,4 +1,5 @@
 import type { SupabaseClient, PostgrestFilterBuilder } from '@supabase/supabase-js';
+import type { JobPosting } from '@/lib/supabase';
 import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/types';
 import { BULLETIN_ITEMS_PER_PAGE, BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
 
@@ -77,7 +78,7 @@ export function sanitiseSearchTerm(raw: string): string {
  * Applies all bulletin filters to the Supabase query.
  */
 function applyBulletinFilters(
-  query: PostgrestFilterBuilder<any, any, any>,
+  query: PostgrestFilterBuilder<Record<string, unknown>, Record<string, unknown>, unknown[]>,
   filters: BulletinFilters,
 ) {
   let q = query;
@@ -145,6 +146,30 @@ function applyBulletinFilters(
   return q;
 }
 
+/**
+ * Maps raw View rows to the public JobPosting domain model.
+ * Handles database-specific column renames like source_name -> source.
+ */
+function mapRowsToJobs(rows: Record<string, unknown>[]): JobPosting[] {
+  return rows.map((row) => {
+    const {
+      source_name,
+      // Strip internal scoring columns that aren't part of the JobPosting type yet
+      match_score: _s1,
+      match_value_score: _s2,
+      match_skill_score: _s3,
+      annual_min: _s4,
+      annual_max: _s5,
+      ...rest
+    } = row;
+
+    return {
+      ...(rest as JobPosting),
+      source: (source_name as string) ?? null,
+    };
+  });
+}
+
 export interface BulletinQueryParams {
   filters: BulletinFilters;
   sortBy: JobSortOption;
@@ -153,7 +178,7 @@ export interface BulletinQueryParams {
 }
 
 export interface BulletinQueryResult {
-  jobs: Record<string, unknown>[];
+  jobs: JobPosting[];
   totalCount: number;
 }
 
@@ -170,7 +195,14 @@ export async function queryBulletinJobs(
   let query = supabase.from('jobs_with_match_scores').select(JOBS_VIEW_COLUMNS, { count: 'exact' });
 
   // Apply filtering logic
-  query = applyBulletinFilters(query as any, filters);
+  query = applyBulletinFilters(
+    query as unknown as PostgrestFilterBuilder<
+      Record<string, unknown>,
+      Record<string, unknown>,
+      unknown[]
+    >,
+    filters,
+  );
 
   // Apply sorting
   const { column, ascending } = getSortColumn(sortBy);
@@ -191,7 +223,7 @@ export async function queryBulletinJobs(
   if (error) throw new Error(error.message);
 
   return {
-    jobs: (data ?? []) as Record<string, unknown>[],
+    jobs: mapRowsToJobs(data ?? []),
     totalCount: count ?? 0,
   };
 }

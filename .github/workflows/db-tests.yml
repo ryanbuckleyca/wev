@@ -1,28 +1,31 @@
 name: DB Tests
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
       - main
       - production
     paths:
-      - ".github/workflows/db-tests.yml"
-      - "package.json"
-      - "package-lock.json"
-      - "supabase/config.toml"
-      - "supabase/migrations/**"
-      - "supabase/tests/**"
+      - .github/workflows/db-tests.yml
+      - package.json
+      - package-lock.json
+      - supabase/config.toml
+      - supabase/migrations/**
+      - supabase/tests/**
   pull_request:
     branches:
       - main
       - production
     paths:
-      - ".github/workflows/db-tests.yml"
-      - "package.json"
-      - "package-lock.json"
-      - "supabase/config.toml"
-      - "supabase/migrations/**"
-      - "supabase/tests/**"
+      - .github/workflows/db-tests.yml
+      - package.json
+      - package-lock.json
+      - supabase/config.toml
+      - supabase/migrations/**
+      - supabase/tests/**
   workflow_dispatch:
 
 concurrency:
@@ -40,8 +43,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: 22
+          cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies

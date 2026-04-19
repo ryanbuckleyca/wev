@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  revalidateTag(BULLETIN_CACHE_TAG, 'default');
+  revalidateTag(BULLETIN_CACHE_TAG);
 
   return NextResponse.json({ revalidated: true, tag: BULLETIN_CACHE_TAG });
 }

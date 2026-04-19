@@ -1,9 +1,9 @@
 -- Security and Authentication tests
 -- Run with: supabase test db
 
-begin;
+BEGIN;
 
-select plan(5);
+SELECT plan(5);
 
 -- ─── Setup Users ─────────────────────────────────────────────────────────────
 
@@ -11,55 +11,55 @@ select plan(5);
 \set user_b '''00000000-0000-0000-0000-00000000000b'''
 
 -- Insert into auth.users (required for verify_user_password and RLS via auth.uid())
-insert into auth.users (id, email, encrypted_password)
-values 
+INSERT INTO auth.users (id, email, encrypted_password)
+VALUES 
   (:user_a, 'user_a@example.com', extensions.crypt('password123', extensions.gen_salt('bf'))),
   (:user_b, 'user_b@example.com', extensions.crypt('secret456', extensions.gen_salt('bf')));
 
 -- Insert into public.profiles
-insert into public.profiles (id, skills)
-values 
-  (:user_a, array['java']),
-  (:user_b, array['python']);
+INSERT INTO public.profiles (id, skills)
+VALUES 
+  (:user_a, ARRAY['java']),
+  (:user_b, ARRAY['python']);
 
 -- ─── Test 1: RLS - User A can see their own profile ──────────────────────────
 
 -- Impersonate User A
-select set_config('request.jwt.claims', format('{"sub": "%s"}', :user_a)::text, true);
-set local role authenticated;
+SELECT set_config('request.jwt.claims', format('{"sub": "%s"}', :user_a)::text, true);
+SET LOCAL ROLE authenticated;
 
-select is(
-  (select count(*)::int from public.profiles where id = :user_a),
+SELECT is(
+  (SELECT count(*)::int FROM public.profiles WHERE id = :user_a),
   1,
   'RLS: User A can select their own profile'
 );
 
 -- ─── Test 2: RLS - User A CANNOT see User B profile ──────────────────────────
 
-select is(
-  (select count(*)::int from public.profiles where id = :user_b),
+SELECT is(
+  (SELECT count(*)::int FROM public.profiles WHERE id = :user_b),
   0,
   'RLS: User A cannot select User B profile'
 );
 
 -- ─── Test 3: RLS - User A CANNOT see another user matches ────────────────────
 
-reset role; -- Back to superuser to insert fixture
-insert into public.job_matches (user_id, job_id, score)
-values (:user_b, '00000000-0000-0000-0000-00000000000c', 0.9);
+RESET ROLE; -- Back to superuser to insert fixture
+INSERT INTO public.job_matches (user_id, job_id, score)
+VALUES (:user_b, '00000000-0000-0000-0000-00000000000c', 0.9);
 
-set local role authenticated;
-select set_config('request.jwt.claims', format('{"sub": "%s"}', :user_a)::text, true);
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', format('{"sub": "%s"}', :user_a)::text, true);
 
-select is(
-  (select count(*)::int from public.job_matches where user_id = :user_b),
+SELECT is(
+  (SELECT count(*)::int FROM public.job_matches WHERE user_id = :user_b),
   0,
   'RLS: User A cannot select User B job matches'
 );
 
 -- ─── Test 4: verify_user_password (Success) ──────────────────────────────────
 
-select is(
+SELECT is(
   public.verify_user_password('password123'),
   'match',
   'verify_user_password: returns match for correct password'
@@ -67,12 +67,12 @@ select is(
 
 -- ─── Test 5: verify_user_password (Failure) ──────────────────────────────────
 
-select is(
+SELECT is(
   public.verify_user_password('wrong_password'),
   'mismatch',
   'verify_user_password: returns mismatch for incorrect password'
 );
 
-select * from finish();
+SELECT * FROM finish();
 
-rollback;
+ROLLBACK;

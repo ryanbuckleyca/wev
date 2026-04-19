@@ -1,9 +1,9 @@
 -- pgTAP tests for recalculate_matches_for_user RPC
 -- Run with: supabase test db
 
-begin;
+BEGIN;
 
-select plan(9);
+SELECT plan(9);
 
 -- ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -12,121 +12,121 @@ select plan(9);
 \set test_source_id '''00000000-0000-0000-0000-000000000003'''
 
 -- Source
-insert into public.sources (id, name, url)
-values (:test_source_id, 'pgTAP Test Source', 'https://pgtap-test.example.com')
-on conflict (id) do nothing;
+INSERT INTO public.sources (id, name, url)
+VALUES (:test_source_id, 'pgTAP Test Source', 'https://pgtap-test.example.com')
+ON CONFLICT (id) DO NOTHING;
 
 -- ESCO skills (1024-dim vectors: exact, and two semantically similar ones)
-insert into public.esco_skills (concept_uri, preferred_label_en, embedding)
-values
-  ('pgtap-skill-exact',      'Exact Skill',  null),
-  ('pgtap-skill-semantic-1', 'Management',   (select array_fill(0::float, array[1024])::vector)),
-  ('pgtap-skill-semantic-2', 'Leadership',   (select array_fill(0::float, array[1024])::vector))
-on conflict (concept_uri) do nothing;
+INSERT INTO public.esco_skills (concept_uri, preferred_label_en, embedding)
+VALUES
+  ('pgtap-skill-exact',      'Exact Skill',  NULL),
+  ('pgtap-skill-semantic-1', 'Management',   (SELECT array_fill(0::float, ARRAY[1024])::vector)),
+  ('pgtap-skill-semantic-2', 'Leadership',   (SELECT array_fill(0::float, ARRAY[1024])::vector))
+ON CONFLICT (concept_uri) DO NOTHING;
 
 -- Job: remote, Ottawa, values=[community,care], skills=[exact, semantic-2]
-insert into public.jobs (
+INSERT INTO public.jobs (
   id, source_id, job_title, organization, listing_url,
   skills, values, work_type, lat, lng, municipality, province
-) values (
+) VALUES (
   :test_job_id, :test_source_id, 'pgTAP Test Job', 'Test Org',
   'https://example.com/pgtap-job',
-  array['pgtap-skill-exact', 'pgtap-skill-semantic-2'],
-  array['community', 'care'],
+  ARRAY['pgtap-skill-exact', 'pgtap-skill-semantic-2'],
+  ARRAY['community', 'care'],
   'remote', 45.4215, -75.6972, 'Ottawa', 'ON'
-) on conflict (id) do nothing;
+) ON CONFLICT (id) DO NOTHING;
 
 -- ─── Test 1: exact match produces a high score ───────────────────────────────
 
-insert into public.profiles (id, skills, values, work_types, lat, lng, municipality, province)
-values (
+INSERT INTO public.profiles (id, skills, values, work_types, lat, lng, municipality, province)
+VALUES (
   :test_user_id,
-  array['pgtap-skill-exact'],
-  array['community', 'care'],
-  array['remote'],
+  ARRAY['pgtap-skill-exact'],
+  ARRAY['community', 'care'],
+  ARRAY['remote'],
   45.4247, -75.6950, 'Ottawa', 'ON'
-) on conflict (id) do nothing;
+) ON CONFLICT (id) DO NOTHING;
 
-select recalculate_matches_for_user(:test_user_id);
+SELECT recalculate_matches_for_user(:test_user_id);
 
-select ok(
-  (select score from public.job_matches
-   where user_id = :test_user_id and job_id = :test_job_id) > 0.7,
+SELECT ok(
+  (SELECT score FROM public.job_matches
+   WHERE user_id = :test_user_id AND job_id = :test_job_id) > 0.7,
   'exact match: score > 0.7'
 );
 
-select ok(
-  (select 'community' = any(shared_values) from public.job_matches
-   where user_id = :test_user_id and job_id = :test_job_id),
+SELECT ok(
+  (SELECT 'community' = ANY(shared_values) FROM public.job_matches
+   WHERE user_id = :test_user_id AND job_id = :test_job_id),
   'exact match: shared_values contains community'
 );
 
-select ok(
-  (select location_score = 1.0 from public.job_matches
-   where user_id = :test_user_id and job_id = :test_job_id),
+SELECT ok(
+  (SELECT location_score = 1.0 FROM public.job_matches
+   WHERE user_id = :test_user_id AND job_id = :test_job_id),
   'exact match: Ottawa-to-Ottawa location_score = 1.0'
 );
 
 -- ─── Test 2: value mismatch drops score ──────────────────────────────────────
 
-update public.profiles
-set values = array['growth']  -- no overlap with job values
-where id = :test_user_id;
+UPDATE public.profiles
+SET values = ARRAY['growth']  -- no overlap with job values
+WHERE id = :test_user_id;
 
-select recalculate_matches_for_user(:test_user_id);
+SELECT recalculate_matches_for_user(:test_user_id);
 
-select ok(
-  (select score from public.job_matches
-   where user_id = :test_user_id and job_id = :test_job_id) < 0.5,
+SELECT ok(
+  (SELECT score FROM public.job_matches
+   WHERE user_id = :test_user_id AND job_id = :test_job_id) < 0.5,
   'value mismatch: score < 0.5'
 );
 
-select ok(
-  (select value_score = 0 from public.job_matches
-   where user_id = :test_user_id and job_id = :test_job_id),
+SELECT ok(
+  (SELECT value_score = 0 FROM public.job_matches
+   WHERE user_id = :test_user_id AND job_id = :test_job_id),
   'value mismatch: value_score = 0'
 );
 
 -- ─── Test 3: remote job + onsite user → location_score is NULL ───────────────
 
-update public.profiles
-set work_types = array['onsite'], lat = 49.2827, lng = -123.1207,
+UPDATE public.profiles
+SET work_types = ARRAY['onsite'], lat = 49.2827, lng = -123.1207,
     municipality = 'Vancouver', province = 'BC'
-where id = :test_user_id;
+WHERE id = :test_user_id;
 
-select recalculate_matches_for_user(:test_user_id);
+SELECT recalculate_matches_for_user(:test_user_id);
 
-select ok(
-  (select location_score is null from public.job_matches
-   where user_id = :test_user_id and job_id = :test_job_id),
+SELECT ok(
+  (SELECT location_score IS NULL FROM public.job_matches
+   WHERE user_id = :test_user_id AND job_id = :test_job_id),
   'remote job + onsite user: location_score is NULL'
 );
 
 -- ─── Test 4: semantic similarity produces a score ──────────────────────────────
 -- User has Management, Job has Leadership. They share 1.0 similarity in fixtures.
 
-update public.profiles
-set skills = array['pgtap-skill-semantic-1']
-where id = :test_user_id;
+UPDATE public.profiles
+SET skills = ARRAY['pgtap-skill-semantic-1']
+WHERE id = :test_user_id;
 
-select recalculate_matches_for_user(:test_user_id);
+SELECT recalculate_matches_for_user(:test_user_id);
 
-select ok(
-  (select skill_score > 0.5 from public.job_matches
-   where user_id = :test_user_id and job_id = :test_job_id),
+SELECT ok(
+  (SELECT skill_score > 0.5 FROM public.job_matches
+   WHERE user_id = :test_user_id AND job_id = :test_job_id),
   'semantic match: skill_score > 0.5 (Management vs Leadership)'
 );
 
 -- ─── Test 5: trigger automatically recalculates matches ──────────────────────
 -- We update the profile and check matches WITHOUT calling the RPC manually.
 
-update public.profiles
-set skills = array['pgtap-skill-exact']
-where id = :test_user_id;
+UPDATE public.profiles
+SET skills = ARRAY['pgtap-skill-exact']
+WHERE id = :test_user_id;
 
-select ok(
-  (select skill_score = 1.0 from public.job_matches
-   where user_id = :test_user_id and job_id = :test_job_id),
+SELECT ok(
+  (SELECT skill_score = 1.0 FROM public.job_matches
+   WHERE user_id = :test_user_id AND job_id = :test_job_id),
   'trigger: profile update automatically updates job_matches skill_score'
 );
 
@@ -135,32 +135,32 @@ select ok(
 
 \set test_job_id_2 '''00000000-0000-0000-0000-000000000004'''
 
-insert into public.jobs (
+INSERT INTO public.jobs (
   id, source_id, job_title, organization, listing_url,
   skills, values, work_type, lat, lng, municipality, province
-) values (
+) VALUES (
   :test_job_id_2, :test_source_id, 'pgTAP Test Job 2', 'Test Org',
   'https://example.com/pgtap-job-2',
-  array['pgtap-skill-exact'],
-  array['community'],
+  ARRAY['pgtap-skill-exact'],
+  ARRAY['community'],
   'remote', 45.4215, -75.6972, 'Ottawa', 'ON'
-) on conflict (id) do nothing;
+) ON CONFLICT (id) DO NOTHING;
 
-select recalculate_matches_for_job(:test_job_id_2);
+SELECT recalculate_matches_for_job(:test_job_id_2);
 
-select ok(
-  exists(select 1 from public.job_matches where user_id = :test_user_id and job_id = :test_job_id_2),
+SELECT ok(
+  EXISTS(SELECT 1 FROM public.job_matches WHERE user_id = :test_user_id AND job_id = :test_job_id_2),
   'job-initiated: recalculate_matches_for_job creates match for existing user'
 );
 
 -- ─── Cleanup ─────────────────────────────────────────────────────────────────
 
-delete from public.job_matches where user_id = :test_user_id;
-delete from public.profiles    where id = :test_user_id;
-delete from public.jobs        where id = :test_job_id;
-delete from public.sources     where id = :test_source_id;
-delete from public.esco_skills where concept_uri like 'pgtap-%';
+DELETE FROM public.job_matches WHERE user_id = :test_user_id;
+DELETE FROM public.profiles    WHERE id = :test_user_id;
+DELETE FROM public.jobs        where id = :test_job_id;
+DELETE FROM public.sources     WHERE id = :test_source_id;
+DELETE FROM public.esco_skills WHERE concept_uri LIKE 'pgtap-%';
 
-select * from finish();
+SELECT * FROM finish();
 
-rollback;
+ROLLBACK;

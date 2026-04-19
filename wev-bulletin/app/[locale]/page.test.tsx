@@ -53,7 +53,7 @@ vi.mock('nuqs', async () => {
     parseAsString: makeParser(''),
     parseAsBoolean: makeParser(false),
     parseAsInteger: makeParser(0),
-    parseAsStringLiteral: (values: string[]) => makeParser(values[0]),
+    parseAsStringLiteral: (values: string[]) => makeParser(values?.[0]),
     parseAsArrayOf: () => makeParser([] as string[]),
     useQueryState: (key: string, parser?: { defaultValue?: unknown }) => {
       const initial = Array.isArray(parser?.defaultValue)

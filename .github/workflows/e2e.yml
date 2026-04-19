@@ -1,34 +1,37 @@
 name: E2E Tests
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
       - main
       - production
     paths:
-      - "e2e/**"
-      - "wev-bulletin/**"
-      - "supabase/config.toml"
-      - "supabase/migrations/**"
-      - "supabase/seed/**"
-      - "supabase/src/**"
-      - ".github/workflows/e2e.yml"
-      - "package.json"
-      - "package-lock.json"
+      - e2e/**
+      - wev-bulletin/**
+      - supabase/config.toml
+      - supabase/migrations/**
+      - supabase/seed/**
+      - supabase/src/**
+      - .github/workflows/e2e.yml
+      - package.json
+      - package-lock.json
   pull_request:
     branches:
       - main
       - production
     paths:
-      - "e2e/**"
-      - "wev-bulletin/**"
-      - "supabase/config.toml"
-      - "supabase/migrations/**"
-      - "supabase/seed/**"
-      - "supabase/src/**"
-      - ".github/workflows/e2e.yml"
-      - "package.json"
-      - "package-lock.json"
+      - e2e/**
+      - wev-bulletin/**
+      - supabase/config.toml
+      - supabase/migrations/**
+      - supabase/seed/**
+      - supabase/src/**
+      - .github/workflows/e2e.yml
+      - package.json
+      - package-lock.json
   workflow_dispatch:
 
 concurrency:
@@ -46,8 +49,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: 22
+          cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Cache Playwright binaries
@@ -128,6 +131,7 @@ jobs:
           NEXT_PUBLIC_SITE_URL: http://localhost:3000
           # Turnstile test site key so auth forms can render captcha reliably in CI builds.
           NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+          # checkov:skip=CKV_SECRET_6: This is a dummy secret used only for E2E tests in ephemeral environments
           REVALIDATE_SECRET: dummy-e2e-cache-secret
         run: npm run build --prefix wev-bulletin
 

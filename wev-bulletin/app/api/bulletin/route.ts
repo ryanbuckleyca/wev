@@ -9,7 +9,7 @@ import {
 import { parseLocale } from '@/lib/resolve-skill-labels';
 import { queryBulletinJobs } from '@/lib/bulletin/query-builder';
 import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/types';
-import { POSTED_WITHIN_FILTER_OPTIONS, JOB_SORT_OPTIONS } from '@/lib/bulletin/types';
+import { POSTED_WITHIN_FILTER_OPTIONS, JOB_SORT_OPTIONS } from '@/lib/bulletin/constants';
 
 // Re-export so /api/revalidate-jobs and /api/bulletin/jobs/[id] can reference the same tag.
 export { BULLETIN_CACHE_TAG };
@@ -60,7 +60,6 @@ export async function GET(request: Request) {
     };
 
     // ── Execute queries in parallel ──────────────────────────────────────
-    // Use per-request user-scoped client so the View's auth.uid() resolves.
     const supabase = await createClient();
 
     const [queryResult, skillLabels, lastScrapeTime, filterOptions] = await Promise.all([
@@ -70,20 +69,9 @@ export async function GET(request: Request) {
       fetchBulletinFilterOptions(),
     ]);
 
-    // ── Map View rows to the expected JobPosting shape ────────────────────
-    const jobs = queryResult.jobs.map((row) => {
-      // source_name comes from the View; map it to 'source' for client compat
-      const { source_name, _match_score, _match_value_score, _match_skill_score, ...rest } =
-        row as Record<string, unknown>;
-      return {
-        ...rest,
-        source: source_name ?? null,
-      };
-    });
-
     return NextResponse.json(
       {
-        jobs,
+        jobs: queryResult.jobs,
         totalCount: queryResult.totalCount,
         lastScrapeTime,
         skillLabels,
@@ -91,8 +79,7 @@ export async function GET(request: Request) {
       },
       {
         headers: {
-          // Per-request results — short cache to reduce DB hits for identical
-          // rapid-fire requests (e.g. pagination clicks), but not long-lived.
+          // Per-request user-specific results — short cache for pagination speed.
           'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
         },
       },

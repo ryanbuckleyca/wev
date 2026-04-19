@@ -1,24 +1,27 @@
 name: Test and Build
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
       - main
       - production
     paths:
-      - "wev-bulletin/**"
-      - ".github/workflows/build.yml"
-      - "package.json"
-      - "package-lock.json"
+      - wev-bulletin/**
+      - .github/workflows/build.yml
+      - package.json
+      - package-lock.json
   pull_request:
     branches:
       - main
       - production
     paths:
-      - "wev-bulletin/**"
-      - ".github/workflows/build.yml"
-      - "package.json"
-      - "package-lock.json"
+      - wev-bulletin/**
+      - .github/workflows/build.yml
+      - package.json
+      - package-lock.json
   workflow_dispatch:
 
 concurrency:
@@ -37,8 +40,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: 22
+          cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
