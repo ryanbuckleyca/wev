@@ -5,7 +5,7 @@ import { getRequestUser } from '@/lib/auth/request-user';
 import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
 import { rolesIncludeAdmin } from '@/lib/auth';
 import {
-  fetchBulletinJobs,
+  fetchServerBulletinJobs,
   fetchServerBookmarks,
   fetchServerMatchData,
   fetchServerProfile,
@@ -16,7 +16,7 @@ import BulletinPageSkeleton from '@/components/BulletinPageSkeleton';
 // Renders the data fetch independently inside a Suspense boundary
 async function BulletinDataContainer({ parsedLocale }: { parsedLocale: 'en' | 'fr' }) {
   const authPromise = getRequestUser();
-  const bulletinDataPromise = fetchBulletinJobs(parsedLocale);
+  const bulletinDataPromise = fetchServerBulletinJobs(parsedLocale);
   const auth = await authPromise;
 
   let isAdmin = false;
