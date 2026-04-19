@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   build_and_test:
-    name: Run Tests & Build
+    name: Next.js CI
     runs-on: ubuntu-latest
 
     steps:
