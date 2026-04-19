@@ -65,7 +65,8 @@ function buildE2EUserIdentity(seed: string): {
     .slice(0, 36);
   const seedHash = createHash("sha256").update(seed).digest("hex").slice(0, 10);
 
-  const localPart = `${localPartPrefix}+${seedSlug || "test-user"}-${seedHash}`.slice(0, 64);
+  const localPart =
+    `${localPartPrefix}+${seedSlug || "test-user"}-${seedHash}`.slice(0, 64);
   return {
     email: `${localPart}@${domain}`,
     password,
