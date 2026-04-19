@@ -5,7 +5,9 @@ import { getRequestUser } from '@/lib/auth/request-user';
 import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
 import { rolesIncludeAdmin } from '@/lib/auth';
 import {
-  fetchBulletinJobs,
+  fetchSkillLabels,
+  fetchLastScrapeTime,
+  fetchBulletinFilterOptions,
   fetchServerBookmarks,
   fetchServerMatchData,
   fetchServerProfile,
@@ -16,8 +18,13 @@ import BulletinPageSkeleton from '@/components/BulletinPageSkeleton';
 // Renders the data fetch independently inside a Suspense boundary
 async function BulletinDataContainer({ parsedLocale }: { parsedLocale: 'en' | 'fr' }) {
   const authPromise = getRequestUser();
-  const bulletinDataPromise = fetchBulletinJobs(parsedLocale);
-  const auth = await authPromise;
+  // Fetch cached metadata in parallel with auth
+  const [auth, skillLabels, lastScrapeTime, filterOptions] = await Promise.all([
+    authPromise,
+    fetchSkillLabels(parsedLocale),
+    fetchLastScrapeTime(),
+    fetchBulletinFilterOptions(),
+  ]);
 
   let isAdmin = false;
   let initialUserId: string | null = null;
@@ -40,13 +47,11 @@ async function BulletinDataContainer({ parsedLocale }: { parsedLocale: 'en' | 'f
     initialProfile = profile;
   }
 
-  const bulletinData = await bulletinDataPromise;
-
   return (
     <BulletinPageClient
-      initialJobs={bulletinData.jobs}
-      initialScrapeTime={bulletinData.lastScrapeTime}
-      initialSkillLabels={bulletinData.skillLabels}
+      initialScrapeTime={lastScrapeTime}
+      initialSkillLabels={skillLabels}
+      initialFilterOptions={filterOptions}
       initialUserId={initialUserId}
       isLoggedIn={auth.ok}
       isAdmin={isAdmin}
@@ -64,8 +69,9 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   const parsedLocale = parseLocale(locale);
 
   // The outer page renders the instant HTML layout shell immediately.
-  // The BulletinDataContainer loads the cached jobs payload and any authenticated
-  // user metadata in parallel inside the Suspense boundary.
+  // The BulletinDataContainer loads cached metadata and any authenticated
+  // user data in parallel inside the Suspense boundary.
+  // Job listing data is fetched client-side via /api/bulletin with filter params.
   return (
     <Suspense fallback={<BulletinPageSkeleton />}>
       <BulletinDataContainer parsedLocale={parsedLocale} />

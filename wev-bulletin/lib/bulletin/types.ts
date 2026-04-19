@@ -1,5 +1,5 @@
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
-import type { SerializedMatchData } from '@/lib/bulletin/server-data';
+import type { SerializedMatchData, BulletinFilterOptions } from '@/lib/bulletin/server-data';
 import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/job-query';
 import type { SkillLabel } from '@/lib/resolve-skill-labels';
 
@@ -9,24 +9,24 @@ export type { SkillLabel };
  * Server-side data passed from the Server Component via BulletinPageClient.
  */
 export interface InitialBulletinData {
-  jobs: JobPosting[];
   scrapeTime: string | null;
   userId?: string | null;
   matchData?: SerializedMatchData;
   bookmarkedJobIds?: string[];
   skillLabels?: Record<string, SkillLabel>;
+  filterOptions?: BulletinFilterOptions;
 }
 
 export interface BulletinDataState {
-  allJobs: JobPosting[];
-  filteredJobs: JobPosting[];
   paginatedJobs: JobPosting[];
+  totalCount: number;
   lastScrapeTime: string | null;
   loading: boolean;
   error: string | null;
   matchData: Map<string, JobMatchData>;
   bookmarkedJobIds: Set<string>;
   skillLabels: Record<string, SkillLabel>;
+  filterOptions: BulletinFilterOptions | null;
   totalPages: number;
   itemsPerPage: number;
   refresh: () => Promise<void>;

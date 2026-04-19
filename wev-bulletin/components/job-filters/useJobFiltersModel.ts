@@ -101,6 +101,7 @@ export function useJobFiltersModel({
   jobs,
   filteredJobsCount,
   totalJobsCount,
+  filterOptions,
 }: JobFiltersProps): JobFiltersModel {
   const controls = useBulletinFilterContext();
   const {
@@ -303,8 +304,8 @@ export function useJobFiltersModel({
   ]);
 
   const { organizations, provinces, municipalitiesByProvince, employmentTypes, sources } = useMemo(
-    () => buildFilterOptions(jobs),
-    [jobs],
+    () => filterOptions || buildFilterOptions(jobs),
+    [filterOptions, jobs],
   );
 
   const handleOrganizationToggle = useCallback(

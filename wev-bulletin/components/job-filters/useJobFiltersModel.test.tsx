@@ -84,6 +84,16 @@ function createProps(): JobFiltersProps {
     ] as JobPosting[],
     filteredJobsCount: 1,
     totalJobsCount: 2,
+    filterOptions: {
+      organizations: ['Org One', 'Org Two'],
+      provinces: ['Ontario', 'Nova Scotia'],
+      municipalitiesByProvince: {
+        Ontario: ['Toronto'],
+        'Nova Scotia': ['Halifax'],
+      },
+      employmentTypes: ['Full-time', 'Contract'],
+      sources: ['Source One', 'Source Two'],
+    },
   };
 }
 
@@ -131,5 +141,4 @@ describe('useJobFiltersModel', () => {
     expect(mockControls.setSearchQuery).toHaveBeenCalledWith('');
     expect(mockControls.setSelectedProvinces).toHaveBeenCalledWith([]);
   });
-
 });
