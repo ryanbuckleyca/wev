@@ -20,7 +20,7 @@ lint:
   ignore:
     - linters: [eslint]
       paths:
-        - "**/*.mjs"
+        - "wev-bulletin/next.config.mjs"
         - eslint.config.mjs
   disabled:
     - black
