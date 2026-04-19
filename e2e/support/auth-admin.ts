@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 type AuthAdminClient = {
   auth: {
@@ -9,7 +9,9 @@ type AuthAdminClient = {
         };
         error: { message: string } | null;
       }>;
-      deleteUser: (id: string) => Promise<{ error: { message: string } | null }>;
+      deleteUser: (
+        id: string,
+      ) => Promise<{ error: { message: string } | null }>;
     };
   };
 };
@@ -33,7 +35,9 @@ async function findUserIdByEmail(
   while (true) {
     const users = await admin.auth.admin.listUsers({ page, perPage });
     if (users.error) {
-      throw new Error(`Failed listing users for deletion: ${users.error.message}`);
+      throw new Error(
+        `Failed listing users for deletion: ${users.error.message}`,
+      );
     }
 
     const hit = users.data.users.find(
@@ -50,11 +54,13 @@ async function findUserIdByEmail(
 }
 
 function getServiceRoleClient() {
-  const supabaseUrl = getRequiredEnv('SUPABASE_URL');
+  const supabaseUrl = getRequiredEnv("SUPABASE_URL");
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!serviceRoleKey) {
-    throw new Error('Missing required e2e environment variable: SUPABASE_SERVICE_ROLE_KEY');
+    throw new Error(
+      "Missing required e2e environment variable: SUPABASE_SERVICE_ROLE_KEY",
+    );
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {
@@ -62,15 +68,19 @@ function getServiceRoleClient() {
   });
 }
 
-export async function getAuthUserIdByEmail(email: string): Promise<string | null> {
+export async function getAuthUserIdByEmail(
+  email: string,
+): Promise<string | null> {
   const admin = getServiceRoleClient();
   return findUserIdByEmail(admin as AuthAdminClient, email);
 }
 
-export async function recalculateMatchesForUserId(userId: string): Promise<void> {
+export async function recalculateMatchesForUserId(
+  userId: string,
+): Promise<void> {
   const supabase = getServiceRoleClient();
 
-  const { error } = await supabase.rpc('recalculate_matches_for_user', {
+  const { error } = await supabase.rpc("recalculate_matches_for_user", {
     p_user_id: userId,
   });
 
@@ -88,13 +98,15 @@ export async function recalculateMatchesForEmail(email: string): Promise<void> {
   await recalculateMatchesForUserId(userId);
 }
 
-export async function countJobMatchesForUserId(userId: string): Promise<number> {
+export async function countJobMatchesForUserId(
+  userId: string,
+): Promise<number> {
   const supabase = getServiceRoleClient();
 
   const { count, error } = await supabase
-    .from('job_matches')
-    .select('job_id', { count: 'exact', head: true })
-    .eq('user_id', userId);
+    .from("job_matches")
+    .select("job_id", { count: "exact", head: true })
+    .eq("user_id", userId);
 
   if (error) {
     throw new Error(`Failed counting job matches: ${error.message}`);

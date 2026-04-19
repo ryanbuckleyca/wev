@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { formatLastScrapeTime } from '@/lib/bulletin/client-data';
 import type { JobPosting } from '@/lib/supabase';
-import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/job-query';
+import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/types';
 import type { InitialBulletinData, SkillLabel } from '@/lib/bulletin/types';
 import type { BulletinFilterOptions } from '@/lib/bulletin/server-data';
 

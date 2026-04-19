@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/job-query';
+import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/types';
 
 /** Columns selected from the jobs_with_match_scores View. */
 export const JOBS_VIEW_COLUMNS = [
@@ -96,7 +96,7 @@ export async function queryBulletinJobs(
   const { filters, sortBy, page } = params;
 
   // Start query with exact count for pagination
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let query = supabase.from('jobs_with_match_scores').select(JOBS_VIEW_COLUMNS, { count: 'exact' });
 
   // ── Max age filter (always applied) ──────────────────────────────────

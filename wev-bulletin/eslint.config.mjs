@@ -6,10 +6,22 @@ export default defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ['**/*.ts', '**/*.tsx'],
+    settings: {
+      next: {
+        rootDir: 'wev-bulletin/',
+      },
+    },
+  },
+  {
+    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.cjs'],
     rules: {
       'react/prop-types': 'off',
       'react/no-unescaped-entities': 'off',
+      '@typescript-eslint/no-unused-expressions': 'off', // Disable to prevent crashing in this environment
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
     },
   },
   {

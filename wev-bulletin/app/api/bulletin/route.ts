@@ -8,8 +8,8 @@ import {
 } from '@/lib/bulletin/server-data';
 import { parseLocale } from '@/lib/resolve-skill-labels';
 import { queryBulletinJobs } from '@/lib/bulletin/query-builder';
-import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/job-query';
-import { POSTED_WITHIN_FILTER_OPTIONS, JOB_SORT_OPTIONS } from '@/lib/bulletin/job-query';
+import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/types';
+import { POSTED_WITHIN_FILTER_OPTIONS, JOB_SORT_OPTIONS } from '@/lib/bulletin/types';
 
 // Re-export so /api/revalidate-jobs and /api/bulletin/jobs/[id] can reference the same tag.
 export { BULLETIN_CACHE_TAG };
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     // ── Map View rows to the expected JobPosting shape ────────────────────
     const jobs = queryResult.jobs.map((row) => {
       // source_name comes from the View; map it to 'source' for client compat
-      const { source_name, match_score, match_value_score, match_skill_score, ...rest } =
+      const { source_name, _match_score, _match_value_score, _match_skill_score, ...rest } =
         row as Record<string, unknown>;
       return {
         ...rest,

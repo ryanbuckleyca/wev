@@ -1,12 +1,12 @@
-import { EmailUrlExtractor } from './url-extractor';
-import type { InboxRef } from './inbox-manager';
+import { EmailUrlExtractor } from "./url-extractor";
+import type { InboxRef } from "./inbox-manager";
 
-const DEFAULT_MAILPIT_BASE_URL = 'http://127.0.0.1:54324';
+const DEFAULT_MAILPIT_BASE_URL = "http://127.0.0.1:54324";
 
 const createdAtByInboxId = new Map<string, Date>();
 
 class NotSupportedEmailApiError extends Error {
-  override name = 'NotSupportedEmailApiError';
+  override name = "NotSupportedEmailApiError";
 }
 
 function resolveMailServerBaseUrl(): URL {
@@ -15,15 +15,16 @@ function resolveMailServerBaseUrl(): URL {
     process.env.E2E_MAILPIT_BASE_URL?.trim() ||
     DEFAULT_MAILPIT_BASE_URL;
 
-  const url = raw.includes('://') ? new URL(raw) : new URL(`http://${raw}`);
+  const url = raw.includes("://") ? new URL(raw) : new URL(`http://${raw}`);
 
   // Safety: E2E should only ever hit a local email capture service.
   const host = url.hostname.toLowerCase();
-  const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  const isLocal =
+    host === "localhost" || host === "127.0.0.1" || host === "::1";
   if (!isLocal) {
     throw new Error(
       `Refusing to query non-local email server (${url.hostname}). ` +
-        `Set MAILPIT_BASE_URL to a localhost URL or run tests with a local Supabase stack.`
+        `Set MAILPIT_BASE_URL to a localhost URL or run tests with a local Supabase stack.`,
     );
   }
 
@@ -35,17 +36,17 @@ function normalizeEmail(email: string): string {
 }
 
 function extractMessageId(message: unknown): string | null {
-  if (!message || typeof message !== 'object') return null;
+  if (!message || typeof message !== "object") return null;
   const record = message as Record<string, unknown>;
 
   const id = record.ID ?? record.Id ?? record.id;
-  if (typeof id === 'string' && id.trim()) return id.trim();
+  if (typeof id === "string" && id.trim()) return id.trim();
 
   return null;
 }
 
 function extractMessageTimestampMs(message: unknown): number {
-  if (!message || typeof message !== 'object') return 0;
+  if (!message || typeof message !== "object") return 0;
   const record = message as Record<string, unknown>;
 
   const candidates = [
@@ -60,12 +61,12 @@ function extractMessageTimestampMs(message: unknown): number {
   ];
 
   for (const value of candidates) {
-    if (typeof value === 'number' && Number.isFinite(value)) {
+    if (typeof value === "number" && Number.isFinite(value)) {
       // Mailpit may return unix seconds or unix ms. If it's too small, assume seconds.
       return value < 10_000_000_000 ? value * 1000 : value;
     }
 
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const ms = Date.parse(value);
       if (!Number.isNaN(ms)) return ms;
     }
@@ -75,11 +76,11 @@ function extractMessageTimestampMs(message: unknown): number {
 }
 
 function extractRecipients(message: unknown): string[] {
-  if (!message || typeof message !== 'object') return [];
+  if (!message || typeof message !== "object") return [];
   const record = message as Record<string, unknown>;
 
   const to = record.To ?? record.to;
-  if (typeof to === 'string') {
+  if (typeof to === "string") {
     return [to];
   }
 
@@ -87,18 +88,18 @@ function extractRecipients(message: unknown): string[] {
     const emails: string[] = [];
 
     for (const entry of to) {
-      if (typeof entry === 'string') {
+      if (typeof entry === "string") {
         emails.push(entry);
         continue;
       }
 
-      if (entry && typeof entry === 'object') {
+      if (entry && typeof entry === "object") {
         const r = entry as Record<string, unknown>;
         const address = r.Address ?? r.address ?? r.Email ?? r.email;
-        if (typeof address === 'string') emails.push(address);
+        if (typeof address === "string") emails.push(address);
 
         const nameAndAddress = r.Name ?? r.name;
-        if (typeof nameAndAddress === 'string') emails.push(nameAndAddress);
+        if (typeof nameAndAddress === "string") emails.push(nameAndAddress);
       }
     }
 
@@ -108,7 +109,10 @@ function extractRecipients(message: unknown): string[] {
   return [];
 }
 
-function messageMatchesRecipient(message: unknown, emailAddress: string): boolean {
+function messageMatchesRecipient(
+  message: unknown,
+  emailAddress: string,
+): boolean {
   const target = normalizeEmail(emailAddress);
   return extractRecipients(message)
     .map(normalizeEmail)
@@ -116,29 +120,33 @@ function messageMatchesRecipient(message: unknown, emailAddress: string): boolea
 }
 
 async function fetchJson(url: URL): Promise<unknown> {
-  const res = await fetch(url.toString(), { method: 'GET' });
+  const res = await fetch(url.toString(), { method: "GET" });
   if (!res.ok) {
-    throw new Error(`Email API request failed (${res.status}) at ${url.pathname}`);
+    throw new Error(
+      `Email API request failed (${res.status}) at ${url.pathname}`,
+    );
   }
   return res.json();
 }
 
 async function fetchText(url: URL): Promise<string> {
-  const res = await fetch(url.toString(), { method: 'GET' });
+  const res = await fetch(url.toString(), { method: "GET" });
   if (!res.ok) {
-    throw new Error(`Email API request failed (${res.status}) at ${url.pathname}`);
+    throw new Error(
+      `Email API request failed (${res.status}) at ${url.pathname}`,
+    );
   }
   return res.text();
 }
 
 async function listMailpitMessages(baseUrl: URL): Promise<unknown[]> {
-  const url = new URL('/api/v1/messages', baseUrl);
-  url.searchParams.set('limit', '50');
+  const url = new URL("/api/v1/messages", baseUrl);
+  url.searchParams.set("limit", "50");
 
-  const res = await fetch(url.toString(), { method: 'GET' });
+  const res = await fetch(url.toString(), { method: "GET" });
 
   if (res.status === 404) {
-    throw new NotSupportedEmailApiError('Not a Mailpit API');
+    throw new NotSupportedEmailApiError("Not a Mailpit API");
   }
 
   if (!res.ok) {
@@ -149,7 +157,7 @@ async function listMailpitMessages(baseUrl: URL): Promise<unknown[]> {
 
   if (Array.isArray(json)) return json;
 
-  if (json && typeof json === 'object') {
+  if (json && typeof json === "object") {
     const record = json as Record<string, unknown>;
 
     const messages = record.messages ?? record.Messages;
@@ -159,14 +167,20 @@ async function listMailpitMessages(baseUrl: URL): Promise<unknown[]> {
   return [];
 }
 
-async function listInbucketMailboxMessages(baseUrl: URL, emailAddress: string): Promise<unknown[]> {
-  const localPart = normalizeEmail(emailAddress).split('@')[0];
-  const url = new URL(`/api/v1/mailbox/${encodeURIComponent(localPart)}`, baseUrl);
+async function listInbucketMailboxMessages(
+  baseUrl: URL,
+  emailAddress: string,
+): Promise<unknown[]> {
+  const localPart = normalizeEmail(emailAddress).split("@")[0];
+  const url = new URL(
+    `/api/v1/mailbox/${encodeURIComponent(localPart)}`,
+    baseUrl,
+  );
 
-  const res = await fetch(url.toString(), { method: 'GET' });
+  const res = await fetch(url.toString(), { method: "GET" });
 
   if (res.status === 404) {
-    throw new NotSupportedEmailApiError('Not an Inbucket API');
+    throw new NotSupportedEmailApiError("Not an Inbucket API");
   }
 
   if (!res.ok) {
@@ -178,66 +192,77 @@ async function listInbucketMailboxMessages(baseUrl: URL, emailAddress: string): 
 }
 
 function extractEmailContentFromJson(json: unknown): string {
-  if (!json || typeof json !== 'object') return '';
+  if (!json || typeof json !== "object") return "";
   const record = json as Record<string, unknown>;
 
   const stringKeys = [
-    'HTML',
-    'Html',
-    'html',
-    'Text',
-    'text',
-    'Body',
-    'body',
-    'Raw',
-    'raw',
-    'Snippet',
-    'snippet',
-    'content',
-    'Content',
-    'message',
-    'Message',
+    "HTML",
+    "Html",
+    "html",
+    "Text",
+    "text",
+    "Body",
+    "body",
+    "Raw",
+    "raw",
+    "Snippet",
+    "snippet",
+    "content",
+    "Content",
+    "message",
+    "Message",
   ];
 
   const parts: string[] = [];
 
   for (const key of stringKeys) {
     const value = record[key];
-    if (typeof value === 'string' && value.trim()) {
+    if (typeof value === "string" && value.trim()) {
       parts.push(value);
     }
   }
 
   // Some APIs nest bodies under common names.
-  const nestedCandidates = [record.data, record.Data, record.email, record.Email];
+  const nestedCandidates = [
+    record.data,
+    record.Data,
+    record.email,
+    record.Email,
+  ];
   for (const nested of nestedCandidates) {
-    if (!nested || typeof nested !== 'object') continue;
+    if (!nested || typeof nested !== "object") continue;
     const nestedRecord = nested as Record<string, unknown>;
     for (const key of stringKeys) {
       const value = nestedRecord[key];
-      if (typeof value === 'string' && value.trim()) {
+      if (typeof value === "string" && value.trim()) {
         parts.push(value);
       }
     }
   }
 
-  return parts.join('\n\n');
+  return parts.join("\n\n");
 }
 
-async function getMailpitMessageContent(baseUrl: URL, messageId: string): Promise<string> {
-  const jsonUrl = new URL(`/api/v1/message/${encodeURIComponent(messageId)}`, baseUrl);
+async function getMailpitMessageContent(
+  baseUrl: URL,
+  messageId: string,
+): Promise<string> {
+  const jsonUrl = new URL(
+    `/api/v1/message/${encodeURIComponent(messageId)}`,
+    baseUrl,
+  );
 
-  const res = await fetch(jsonUrl.toString(), { method: 'GET' });
+  const res = await fetch(jsonUrl.toString(), { method: "GET" });
   if (res.status === 404) {
-    throw new NotSupportedEmailApiError('Mailpit message endpoint missing');
+    throw new NotSupportedEmailApiError("Mailpit message endpoint missing");
   }
 
   if (!res.ok) {
     throw new Error(`Mailpit get message failed (${res.status})`);
   }
 
-  const contentType = res.headers.get('content-type') ?? '';
-  if (contentType.includes('application/json')) {
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
     const json: unknown = await res.json();
     const content = extractEmailContentFromJson(json);
     if (content.trim()) return content;
@@ -247,7 +272,10 @@ async function getMailpitMessageContent(baseUrl: URL, messageId: string): Promis
   }
 
   // Fallback endpoints commonly exposed by Mailpit.
-  const htmlUrl = new URL(`/api/v1/message/${encodeURIComponent(messageId)}/html`, baseUrl);
+  const htmlUrl = new URL(
+    `/api/v1/message/${encodeURIComponent(messageId)}/html`,
+    baseUrl,
+  );
   try {
     const html = await fetchText(htmlUrl);
     if (html.trim()) return html;
@@ -255,7 +283,10 @@ async function getMailpitMessageContent(baseUrl: URL, messageId: string): Promis
     // ignore
   }
 
-  const textUrl = new URL(`/api/v1/message/${encodeURIComponent(messageId)}/text`, baseUrl);
+  const textUrl = new URL(
+    `/api/v1/message/${encodeURIComponent(messageId)}/text`,
+    baseUrl,
+  );
   try {
     const text = await fetchText(textUrl);
     if (text.trim()) return text;
@@ -263,19 +294,19 @@ async function getMailpitMessageContent(baseUrl: URL, messageId: string): Promis
     // ignore
   }
 
-  return '';
+  return "";
 }
 
 async function getInbucketMessageContent(
   baseUrl: URL,
   emailAddress: string,
-  messageId: string
+  messageId: string,
 ): Promise<string> {
-  const localPart = normalizeEmail(emailAddress).split('@')[0];
+  const localPart = normalizeEmail(emailAddress).split("@")[0];
 
   const mailboxUrl = new URL(
     `/api/v1/mailbox/${encodeURIComponent(localPart)}/${encodeURIComponent(messageId)}`,
-    baseUrl
+    baseUrl,
   );
 
   try {
@@ -286,20 +317,23 @@ async function getInbucketMessageContent(
     // ignore
   }
 
-  const messageUrl = new URL(`/api/v1/message/${encodeURIComponent(messageId)}`, baseUrl);
+  const messageUrl = new URL(
+    `/api/v1/message/${encodeURIComponent(messageId)}`,
+    baseUrl,
+  );
   try {
-    const res = await fetch(messageUrl.toString(), { method: 'GET' });
-    if (!res.ok) return '';
+    const res = await fetch(messageUrl.toString(), { method: "GET" });
+    if (!res.ok) return "";
 
-    const contentType = res.headers.get('content-type') ?? '';
-    if (contentType.includes('application/json')) {
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
       const json: unknown = await res.json();
       return extractEmailContentFromJson(json);
     }
 
     return await res.text();
   } catch {
-    return '';
+    return "";
   }
 }
 
@@ -315,7 +349,7 @@ export async function waitForInboxLink(
   inboxId: string,
   linkHint: string,
   timeoutMs = 120_000,
-  sinceOverride?: Date
+  sinceOverride?: Date,
 ): Promise<string> {
   const baseUrl = resolveMailServerBaseUrl();
   const extractor = new EmailUrlExtractor();
@@ -324,20 +358,22 @@ export async function waitForInboxLink(
   const emailAddress = inboxId;
 
   const since =
-    sinceOverride ?? createdAtByInboxId.get(inboxId) ?? new Date(Date.now() - 60_000);
+    sinceOverride ??
+    createdAtByInboxId.get(inboxId) ??
+    new Date(Date.now() - 60_000);
   const deadline = Date.now() + timeoutMs;
 
-  let apiMode: 'mailpit' | 'inbucket' | null = null;
+  let apiMode: "mailpit" | "inbucket" | null = null;
 
   while (Date.now() < deadline) {
     // Detect API mode once.
     if (!apiMode) {
       try {
         await listMailpitMessages(baseUrl);
-        apiMode = 'mailpit';
+        apiMode = "mailpit";
       } catch (err) {
         if (err instanceof NotSupportedEmailApiError) {
-          apiMode = 'inbucket';
+          apiMode = "inbucket";
         } else {
           throw err;
         }
@@ -347,16 +383,18 @@ export async function waitForInboxLink(
     let messages: unknown[] = [];
 
     try {
-      if (apiMode === 'mailpit') {
+      if (apiMode === "mailpit") {
         messages = await listMailpitMessages(baseUrl);
-        messages = messages.filter((m) => messageMatchesRecipient(m, emailAddress));
+        messages = messages.filter((m) =>
+          messageMatchesRecipient(m, emailAddress),
+        );
       } else {
         messages = await listInbucketMailboxMessages(baseUrl, emailAddress);
       }
     } catch (err) {
       // If our detection guessed wrong, retry with the other mode.
       if (err instanceof NotSupportedEmailApiError) {
-        apiMode = apiMode === 'mailpit' ? 'inbucket' : 'mailpit';
+        apiMode = apiMode === "mailpit" ? "inbucket" : "mailpit";
       } else {
         throw err;
       }
@@ -375,7 +413,7 @@ export async function waitForInboxLink(
     for (const candidate of candidates) {
       const messageId = candidate.id!;
       const content =
-        apiMode === 'mailpit'
+        apiMode === "mailpit"
           ? await getMailpitMessageContent(baseUrl, messageId)
           : await getInbucketMessageContent(baseUrl, emailAddress, messageId);
 
@@ -388,6 +426,6 @@ export async function waitForInboxLink(
 
   throw new Error(
     `Timed out waiting for an email link containing "${linkHint}" for ${emailAddress}. ` +
-      `Is the local Supabase email capture service running at ${baseUrl.origin}?`
+      `Is the local Supabase email capture service running at ${baseUrl.origin}?`,
   );
 }

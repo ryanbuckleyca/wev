@@ -7,6 +7,7 @@ import {
 } from '@/lib/bulletin/server-data';
 import { queryBulletinJobs } from '@/lib/bulletin/query-builder';
 import { createClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Route handler contract: locale parsing + cache policy + server-data shape.
@@ -38,7 +39,7 @@ describe('GET /api/bulletin (handler contract)', () => {
     vi.clearAllMocks();
 
     // Mock Supabase client
-    mockCreateClient.mockResolvedValue({} as any);
+    mockCreateClient.mockResolvedValue({} as unknown as SupabaseClient);
 
     // Default mock returns
     mockQueryBulletinJobs.mockResolvedValue({
