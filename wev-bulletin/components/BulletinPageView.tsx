@@ -72,8 +72,8 @@ export default function BulletinPageView({
 
           <JobFilters
             jobs={data.allJobs}
-            filteredJobsCount={data.filteredJobs.length}
-            totalJobsCount={data.allJobs.length}
+            filteredJobsCount={data.totalJobs}
+            totalJobsCount={data.totalJobs}
           />
 
           {data.allJobs.length > 0 && (
@@ -97,7 +97,7 @@ export default function BulletinPageView({
 
           <JobListings
             jobs={data.paginatedJobs}
-            totalJobsCount={data.allJobs.length}
+            totalJobsCount={data.totalJobs}
             loading={data.loading}
             error={data.error}
             isAdmin={isAdmin}
@@ -112,7 +112,7 @@ export default function BulletinPageView({
 
           <Pagination
             totalPages={data.totalPages}
-            totalItems={data.filteredJobs.length}
+            totalItems={data.totalJobs}
             itemsPerPage={data.itemsPerPage}
           />
         </div>

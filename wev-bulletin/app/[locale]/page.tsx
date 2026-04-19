@@ -46,6 +46,7 @@ async function BulletinDataContainer({ parsedLocale }: { parsedLocale: 'en' | 'f
     <BulletinPageClient
       initialJobs={bulletinData.jobs}
       initialScrapeTime={bulletinData.lastScrapeTime}
+      initialTotalJobs={bulletinData.total}
       initialSkillLabels={bulletinData.skillLabels}
       initialUserId={initialUserId}
       isLoggedIn={auth.ok}

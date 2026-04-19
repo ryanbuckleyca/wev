@@ -66,6 +66,7 @@ export function useBulletinData(
     allJobs: paginatedJobs, // Deprecated conceptually but satisfies TS interfaces expecting `allJobs`.
     filteredJobs: paginatedJobs,
     paginatedJobs,
+    totalJobs: totalJobs,
     lastScrapeTime,
     loading,
     error,

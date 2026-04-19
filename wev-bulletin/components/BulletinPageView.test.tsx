@@ -174,6 +174,7 @@ function createData(): BulletinDataState {
     allJobs: baseJobs,
     filteredJobs: baseJobs.slice(0, 2),
     paginatedJobs: baseJobs.slice(0, 1),
+    totalJobs: 3,
     lastScrapeTime: 'March 28, 2026, 9:00 AM EDT',
     loading: false,
     error: null,
@@ -205,7 +206,7 @@ describe('BulletinPageView', () => {
       />,
     );
 
-    expect(screen.getByText('job-filters:3:2:3')).toBeVisible();
+    expect(screen.getByText('job-filters:3:3:3')).toBeVisible();
     expect(screen.getByText('job-listings:1')).toBeVisible();
     expect(screen.getByText('copy-jobs:2')).toBeVisible();
     expect(screen.getByText(/Last updated/i)).toBeVisible();
