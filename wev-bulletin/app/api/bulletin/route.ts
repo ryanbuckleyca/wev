@@ -34,7 +34,12 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const locale = parseLocale(searchParams.get('locale'));
     const page = parseBoundedInteger(searchParams.get('page'), 1, 1, MAX_PAGE);
-    const limit = parseBoundedInteger(searchParams.get('limit'), ITEMS_PER_PAGE, 1, MAX_ITEMS_PER_PAGE);
+    const limit = parseBoundedInteger(
+      searchParams.get('limit'),
+      ITEMS_PER_PAGE,
+      1,
+      MAX_ITEMS_PER_PAGE,
+    );
     const searchQuery = (searchParams.get('q') ?? '').trim().slice(0, MAX_SEARCH_QUERY_LENGTH);
     const searchColumn = locale === 'fr' ? 'fts_fr' : 'fts_en';
     const sortBy = searchParams.get('sortBy') || 'date-desc';

@@ -81,7 +81,9 @@ describe('GET /api/bookmarks (handler contract)', () => {
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              order: vi.fn(() => Promise.resolve({ data: null, error: { message: 'query failed' } })),
+              order: vi.fn(() =>
+                Promise.resolve({ data: null, error: { message: 'query failed' } }),
+              ),
             })),
           })),
         };
