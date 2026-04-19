@@ -3,6 +3,14 @@ import { createClient } from '@supabase/supabase-js';
 type AuthAdminClient = {
   auth: {
     admin: {
+      createUser: (args: {
+        email: string;
+        password: string;
+        email_confirm?: boolean;
+      }) => Promise<{
+        data: { user: { id: string } | null };
+        error: { message: string } | null;
+      }>;
       listUsers: (args: { page: number; perPage: number }) => Promise<{
         data: {
           users: Array<{ id: string; email?: string | null }>;
@@ -20,6 +28,35 @@ function getRequiredEnv(name: string): string {
     throw new Error(`Missing required e2e environment variable: ${name}`);
   }
   return value;
+}
+
+type ManagedE2EUser = {
+  email: string;
+  id: string;
+  password: string;
+};
+
+function buildE2EUserIdentity(seed: string): { email: string; password: string } {
+  const configuredPassword = process.env.E2E_TEST_USER_PASSWORD?.trim();
+  const password = configuredPassword && configuredPassword.length >= 8
+    ? configuredPassword
+    : 'WevE2E!Password123';
+
+  const localPartPrefix = (process.env.E2E_TEST_USER_PREFIX?.trim() || 'wev-e2e')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-');
+  const domain = (process.env.E2E_TEST_USER_DOMAIN?.trim() || 'example.com').toLowerCase();
+  const normalizedSeed = seed
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 36);
+
+  const localPart = `${localPartPrefix}+${normalizedSeed || 'test-user'}`.slice(0, 64);
+  return {
+    email: `${localPart}@${domain}`,
+    password,
+  };
 }
 
 async function findUserIdByEmail(
@@ -113,4 +150,54 @@ export async function deleteAuthUserByEmail(email: string): Promise<void> {
   if (deletion.error) {
     throw new Error(`Failed deleting auth user: ${deletion.error.message}`);
   }
+}
+
+export async function createManagedE2EUser(seed: string): Promise<ManagedE2EUser> {
+  const { email, password } = buildE2EUserIdentity(seed);
+  const admin = getServiceRoleClient() as unknown as AuthAdminClient & ReturnType<typeof getServiceRoleClient>;
+
+  const existingId = await findUserIdByEmail(admin, email);
+  if (existingId) {
+    const deleted = await admin.auth.admin.deleteUser(existingId);
+    if (deleted.error) {
+      throw new Error(`Failed deleting existing e2e auth user: ${deleted.error.message}`);
+    }
+  }
+
+  const created = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (created.error || !created.data.user?.id) {
+    throw new Error(`Failed creating e2e auth user: ${created.error?.message || 'missing user id'}`);
+  }
+
+  const userId = created.data.user.id;
+
+  const { error: profileError } = await admin.from('profiles').upsert({
+    id: userId,
+    full_name: 'E2E Test User',
+    skills: [],
+    values: [],
+    work_types: ['remote'],
+  });
+  if (profileError) {
+    throw new Error(`Failed preparing e2e profile row: ${profileError.message}`);
+  }
+
+  const { error: roleError } = await admin.from('user_roles').upsert({
+    user_id: userId,
+    roles: ['user'],
+  });
+  if (roleError) {
+    throw new Error(`Failed preparing e2e user role row: ${roleError.message}`);
+  }
+
+  return {
+    email,
+    id: userId,
+    password,
+  };
 }
