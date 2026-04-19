@@ -148,6 +148,7 @@ describe('Home page work type defaults', () => {
         initialJobs={[]}
         initialScrapeTime={null}
         initialSkillLabels={{}}
+        initialTotalJobs={0}
         initialUserId="user-1"
         isLoggedIn={true}
         isAdmin={false}

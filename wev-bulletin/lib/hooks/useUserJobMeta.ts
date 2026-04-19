@@ -8,7 +8,7 @@ import type { InitialBulletinData } from '@/lib/bulletin/types';
 
 export function useUserJobMeta(
   userId: string | null,
-  allJobs: JobPosting[],
+  jobsOnPage: JobPosting[],
   initialData?: InitialBulletinData,
 ) {
   const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(
@@ -36,14 +36,14 @@ export function useUserJobMeta(
   useEffect(() => {
     // If no user or no jobs, there is nothing to fetch.
     // The state is already reset by the render-time sync above.
-    if (!userId || allJobs.length === 0) return;
+    if (!userId || jobsOnPage.length === 0) return;
     if (hydratedServerUserMetaRef.current) {
       hydratedServerUserMetaRef.current = false;
       return;
     }
 
     let cancelled = false;
-    const jobIds = allJobs.map((job) => job.id);
+    const jobIds = jobsOnPage.map((job) => job.id);
 
     void Promise.all([
       fetchMatchMapForJobs(userId, jobIds),
@@ -57,7 +57,7 @@ export function useUserJobMeta(
     return () => {
       cancelled = true;
     };
-  }, [allJobs, userId]);
+  }, [jobsOnPage, userId]);
 
   return {
     matchData,

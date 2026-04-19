@@ -7,14 +7,32 @@ export { BULLETIN_CACHE_TAG };
 export const dynamic = 'force-dynamic';
 
 const ITEMS_PER_PAGE = 20;
+const MAX_ITEMS_PER_PAGE = 100;
+const MAX_PAGE = 1_000;
+const MAX_SEARCH_QUERY_LENGTH = 200;
+
+function parseBoundedInteger(
+  rawValue: string | null,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  if (rawValue == null) return fallback;
+
+  const parsed = Number(rawValue);
+  if (!Number.isInteger(parsed)) return fallback;
+
+  return Math.min(max, Math.max(min, parsed));
+}
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const locale = parseLocale(searchParams.get('locale'));
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || String(ITEMS_PER_PAGE), 10);
-    const searchQuery = searchParams.get('q');
+    const page = parseBoundedInteger(searchParams.get('page'), 1, 1, MAX_PAGE);
+    const limit = parseBoundedInteger(searchParams.get('limit'), ITEMS_PER_PAGE, 1, MAX_ITEMS_PER_PAGE);
+    const searchQuery = (searchParams.get('q') ?? '').trim().slice(0, MAX_SEARCH_QUERY_LENGTH);
+    const searchColumn = locale === 'fr' ? 'fts_fr' : 'fts_en';
     const sortBy = searchParams.get('sortBy') || 'date-desc';
     const postedWithin = searchParams.get('postedWithin') || 'any';
 
@@ -32,12 +50,8 @@ export async function GET(request: Request) {
     let query = supabase.from('matched_jobs').select('*', { count: 'exact' });
 
     // 1. Text Search (FTS)
-    if (searchQuery) {
-      // Basic split and join by '&' to make a websearch-like query
-      const formattedQuery = searchQuery.trim().split(/\s+/).join(' & ');
-      if (formattedQuery) {
-        query = query.textSearch('fts', formattedQuery);
-      }
+    if (searchQuery.length > 0) {
+      query = query.textSearch(searchColumn, searchQuery, { type: 'websearch' });
     }
 
     // 2. Exact Matchers
