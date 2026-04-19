@@ -9,7 +9,8 @@ import { resolveSkillLabels } from '../../../lib/resolve-skill-labels';
 
 // Mock Supabase Server Client
 vi.mock('@/lib/supabase/server', () => {
-  const chain: any = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chain: Record<string, any> = {
     select: vi.fn(() => chain),
     textSearch: vi.fn(() => chain),
     in: vi.fn(() => chain),

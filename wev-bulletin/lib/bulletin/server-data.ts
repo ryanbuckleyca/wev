@@ -2,15 +2,11 @@ import 'server-only';
 
 import { unstable_cache } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
-import normalizeJobsWithSource from '@/lib/normalize-job';
 import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
-
-/** Jobs older than this are never shown in the bulletin. */
-const JOBS_MAX_AGE_MS = 28 * 24 * 60 * 60 * 1000;
 
 /**
  * Fetches and caches the last scrape time.
