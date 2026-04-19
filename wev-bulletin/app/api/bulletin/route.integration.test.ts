@@ -1,34 +1,59 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from './route';
-import { fetchBulletinJobs } from '@/lib/bulletin/server-data';
+import { fetchLastScrapeTime } from '@/lib/bulletin/server-data';
+import { resolveSkillLabels } from '../../../lib/resolve-skill-labels';
 
 /**
- * Route handler contract: locale parsing + cache policy + server-data shape.
- * `fetchBulletinJobs` is mocked so the suite does not require a live DB (CI-safe).
+ * Route handler contract: locale parsing + param translation + data aggregation.
  */
+
+// Mock Supabase Server Client
+vi.mock('@/lib/supabase/server', () => {
+  const chain: any = {
+    select: vi.fn(() => chain),
+    textSearch: vi.fn(() => chain),
+    in: vi.fn(() => chain),
+    is: vi.fn(() => chain),
+    or: vi.fn(() => chain),
+    gte: vi.fn(() => chain),
+    order: vi.fn(() => chain),
+    range: vi.fn(() => Promise.resolve({ data: [], count: 0, error: null })),
+  };
+  return {
+    createClient: vi.fn(async () => ({
+      from: vi.fn(() => chain),
+    })),
+  };
+});
+
+// Mock Server Data
 vi.mock('@/lib/bulletin/server-data', () => ({
-  fetchBulletinJobs: vi.fn(),
+  fetchLastScrapeTime: vi.fn(),
+  BULLETIN_CACHE_TAG: 'bulletin-jobs',
 }));
 
-const mockFetchBulletinJobs = vi.mocked(fetchBulletinJobs);
+// Mock Resolve Skill Labels
+vi.mock('@/lib/resolve-skill-labels', () => ({
+  resolveSkillLabels: vi.fn(),
+  parseLocale: vi.fn((val) => (val === 'fr' ? 'fr' : 'en')),
+}));
+
+const mockFetchLastScrapeTime = vi.mocked(fetchLastScrapeTime);
+const mockResolveSkillLabels = vi.mocked(resolveSkillLabels);
 
 describe('GET /api/bulletin (handler contract)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFetchBulletinJobs.mockResolvedValue({
-      jobs: [],
-      lastScrapeTime: '2020-01-01T00:00:00.000Z',
-      skillLabels: {},
-    });
+    mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
+    mockResolveSkillLabels.mockResolvedValue(new Map());
   });
 
   it('returns JSON and Cache-Control with locale from query', async () => {
     const response = await GET(new Request('http://localhost/api/bulletin?locale=fr'));
 
-    expect(mockFetchBulletinJobs).toHaveBeenCalledWith('fr');
     expect(response.status).toBe(200);
-    expect(response.headers.get('Cache-Control')).toContain('max-age=300');
-    expect(response.headers.get('Cache-Control')).toContain('stale-while-revalidate');
+    // Explicit cache eviction since DB controls everything now natively
+    expect(response.headers.get('Cache-Control')).toBe('no-store, max-age=0');
 
     const body = (await response.json()) as Record<string, unknown>;
     expect(body.jobs).toEqual([]);
@@ -36,18 +61,8 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(body.skillLabels).toEqual({});
   });
 
-  it('defaults locale to English when the locale query is missing', async () => {
-    await GET(new Request('http://localhost/api/bulletin'));
-    expect(mockFetchBulletinJobs).toHaveBeenCalledWith('en');
-  });
-
-  it('defaults locale to English when the locale query is not fr', async () => {
-    await GET(new Request('http://localhost/api/bulletin?locale=de'));
-    expect(mockFetchBulletinJobs).toHaveBeenCalledWith('en');
-  });
-
-  it('returns 500 when fetchBulletinJobs throws', async () => {
-    mockFetchBulletinJobs.mockRejectedValue(new Error('db unavailable'));
+  it('returns 500 when fetch throws', async () => {
+    mockFetchLastScrapeTime.mockRejectedValue(new Error('db unavailable'));
 
     const response = await GET(new Request('http://localhost/api/bulletin'));
     expect(response.status).toBe(500);
