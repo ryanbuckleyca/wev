@@ -1,4 +1,4 @@
-name: Code Quality
+name: Static Analysis (Trunk)
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   trunk_check:
-    name: Boot Ubuntu Server
+    name: Run Trunk Linter
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
