@@ -16,6 +16,8 @@ export default defineConfig([
     files: ['next.config.mjs'],
   },
   globalIgnores([
+    'next.config.mjs',
+    'eslint.config.mjs',
     '.next/**',
     'out/**',
     'build/**',
