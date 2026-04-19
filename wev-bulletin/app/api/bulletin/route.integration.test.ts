@@ -119,7 +119,9 @@ describe('GET /api/bulletin (handler contract)', () => {
 
   it('uses locale-aware websearch FTS and skips empty search text', async () => {
     await GET(new Request('http://localhost/api/bulletin?locale=fr&q=  economie sociale  '));
-    expect(mockTextSearch).toHaveBeenCalledWith('fts_fr', 'economie sociale', { type: 'websearch' });
+    expect(mockTextSearch).toHaveBeenCalledWith('fts_fr', 'economie sociale', {
+      type: 'websearch',
+    });
 
     vi.clearAllMocks();
     mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
