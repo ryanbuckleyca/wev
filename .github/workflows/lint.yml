@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   trunk_check:
-    name: Boot Ubuntu Server
+    name: Trunk Linter
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
