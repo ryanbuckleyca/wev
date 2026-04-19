@@ -130,6 +130,25 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(mockTextSearch).not.toHaveBeenCalled();
   });
 
+  it('falls back to legacy fts column when locale-aware FTS columns are unavailable', async () => {
+    mockRange
+      .mockResolvedValueOnce({
+        data: null,
+        count: null,
+        error: { code: '42703', message: 'undefined column' },
+      })
+      .mockResolvedValueOnce({ data: [], count: 0, error: null });
+
+    await GET(new Request('http://localhost/api/bulletin?locale=en&q=Community Builder 25'));
+
+    expect(mockTextSearch).toHaveBeenNthCalledWith(1, 'fts_en', 'Community Builder 25', {
+      type: 'websearch',
+    });
+    expect(mockTextSearch).toHaveBeenNthCalledWith(2, 'fts', 'Community Builder 25', {
+      type: 'websearch',
+    });
+  });
+
   it('translates sort and filters into query-chain calls', async () => {
     await GET(
       new Request(
