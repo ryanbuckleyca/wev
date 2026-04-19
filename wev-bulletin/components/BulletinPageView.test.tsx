@@ -171,15 +171,15 @@ function createFilters(): BulletinFilterControls {
 
 function createData(): BulletinDataState {
   return {
-    allJobs: baseJobs,
-    filteredJobs: baseJobs.slice(0, 2),
     paginatedJobs: baseJobs.slice(0, 1),
+    totalCount: 3,
     lastScrapeTime: 'March 28, 2026, 9:00 AM EDT',
     loading: false,
     error: null,
     matchData: new Map(),
     bookmarkedJobIds: new Set(['job-1']),
     skillLabels: {},
+    filterOptions: null,
     totalPages: 3,
     itemsPerPage: 20,
     refresh: vi.fn(async () => {}),
@@ -205,9 +205,9 @@ describe('BulletinPageView', () => {
       />,
     );
 
-    expect(screen.getByText('job-filters:3:2:3')).toBeVisible();
+    expect(screen.getByText('job-filters:1:3:3')).toBeVisible();
     expect(screen.getByText('job-listings:1')).toBeVisible();
-    expect(screen.getByText('copy-jobs:2')).toBeVisible();
+    expect(screen.getByText('copy-jobs:1')).toBeVisible();
     expect(screen.getByText(/Last updated/i)).toBeVisible();
     expect(screen.getByText('sort:yes')).toBeVisible();
     expect(screen.getByText('pagination:3')).toBeVisible();

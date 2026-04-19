@@ -11,13 +11,18 @@ export function wireBookmarksRouteQueryMock(
   mockFrom: Mock,
   mockEq: Mock,
   orderResult: PostgrestOrderResult,
+  mockOrder?: Mock,
 ): void {
+  const orderFn = mockOrder || vi.fn();
+  orderFn.mockReturnValue(orderResult);
+
   mockEq.mockReturnValue({
-    order: vi.fn(() => orderResult),
+    order: orderFn,
+  });
+  const mockSelect = vi.fn().mockReturnValue({
+    eq: mockEq,
   });
   mockFrom.mockReturnValue({
-    select: vi.fn(() => ({
-      eq: mockEq,
-    })),
+    select: mockSelect,
   });
 }

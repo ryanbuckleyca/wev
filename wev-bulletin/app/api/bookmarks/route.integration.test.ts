@@ -7,19 +7,24 @@ import { wireBookmarksRouteQueryMock } from '@/test-utils/bookmarks-route-mock';
  * Handler contract: auth gate + real normalize/label pipeline with an empty DB result (no ESCO round-trip).
  * Supabase query chain is mocked at the client boundary — keep aligned with `route.ts` (from → select → eq → order).
  */
-const { mockFrom, mockEq } = vi.hoisted(() => ({
-  mockFrom: vi.fn(),
-  mockEq: vi.fn(),
+const { mockFrom, mockEq, mockOrder, mockSelect } = vi.hoisted(() => ({
+  mockFrom: vi.fn().mockReturnThis(),
+  mockSelect: vi.fn().mockReturnThis(),
+  mockEq: vi.fn().mockReturnThis(),
+  mockOrder: vi.fn().mockReturnThis(),
 }));
 
 vi.mock('@/lib/auth/request-user', () => ({
   getRequestUser: vi.fn(),
 }));
 
-vi.mock('@/lib/supabase-server', () => ({
-  supabaseServer: {
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn().mockResolvedValue({
     from: mockFrom,
-  },
+    select: mockSelect,
+    eq: mockEq,
+    order: mockOrder,
+  }),
 }));
 
 const mockGetRequestUser = vi.mocked(getRequestUser);
@@ -32,7 +37,12 @@ describe('GET /api/bookmarks (handler contract)', () => {
       user: { id: 'bookmark-user-1', email: 'b@example.com' } as never,
     });
 
-    wireBookmarksRouteQueryMock(mockFrom, mockEq, Promise.resolve({ data: [], error: null }));
+    wireBookmarksRouteQueryMock(
+      mockFrom,
+      mockEq,
+      Promise.resolve({ data: [], error: null }),
+      mockOrder,
+    );
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -54,8 +64,9 @@ describe('GET /api/bookmarks (handler contract)', () => {
     expect(Array.isArray(body.jobs)).toBe(true);
     expect(body.jobs).toHaveLength(0);
 
-    expect(mockFrom).toHaveBeenCalledWith('jobs');
+    expect(mockFrom).toHaveBeenCalledWith('jobs_with_match_scores');
     expect(mockEq).toHaveBeenCalledWith('bookmarks.user_id', 'bookmark-user-1');
+    expect(mockOrder).toHaveBeenCalledWith('date_posted', { ascending: false });
   });
 
   it('returns 500 when Supabase returns an error', async () => {
@@ -63,6 +74,7 @@ describe('GET /api/bookmarks (handler contract)', () => {
       mockFrom,
       mockEq,
       Promise.resolve({ data: null, error: { message: 'query failed' } }),
+      mockOrder,
     );
 
     const response = await GET(new Request('http://localhost/api/bookmarks'));
