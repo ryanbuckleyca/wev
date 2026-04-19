@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { formatLastScrapeTime } from '@/lib/bulletin/client-data';
+import {
+  BULLETIN_FETCH_TIMEOUT_MS,
+  BULLETIN_SEARCH_DEBOUNCE_MS,
+} from '@/lib/bulletin/constants';
 import type { JobPosting } from '@/lib/supabase';
 import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/types';
 import type { InitialBulletinData, SkillLabel } from '@/lib/bulletin/types';
 import type { BulletinFilterOptions } from '@/lib/bulletin/server-data';
-
-const FETCH_TIMEOUT_MS = 10_000;
-const SEARCH_DEBOUNCE_MS = 300;
 
 /**
  * Serialise BulletinFilters + sort/page into URL search params for /api/bulletin.
@@ -25,24 +26,30 @@ function buildQueryString(
   params.set('page', String(page));
   params.set('sort', sortBy);
 
-  if (filters.searchQuery) params.set('q', filters.searchQuery);
-  if (filters.selectedOrganizations.length > 0)
-    params.set('org', filters.selectedOrganizations.join(','));
-  if (filters.selectedProvinces.length > 0)
-    params.set('province', filters.selectedProvinces.join(','));
-  if (filters.selectedMunicipalities.length > 0)
-    params.set('municipality', filters.selectedMunicipalities.join(','));
-  if (filters.selectedEmploymentTypes.length > 0)
-    params.set('employment', filters.selectedEmploymentTypes.join(','));
-  if (filters.selectedSources.length > 0) params.set('source', filters.selectedSources.join(','));
-  if (filters.selectedWorkTypes.length > 0)
-    params.set('workType', filters.selectedWorkTypes.join(','));
+  const { searchQuery, ...arrays } = filters;
+  if (searchQuery) params.set('q', searchQuery);
 
-  // Only include booleans when they differ from the API defaults
+  const keyMap: Record<string, string> = {
+    selectedOrganizations: 'org',
+    selectedProvinces: 'province',
+    selectedMunicipalities: 'municipality',
+    selectedEmploymentTypes: 'employment',
+    selectedSources: 'source',
+    selectedWorkTypes: 'workType',
+  };
+
+  for (const [filterKey, paramKey] of Object.entries(keyMap)) {
+    const values = (arrays as any)[filterKey];
+    if (Array.isArray(values) && values.length > 0) {
+      params.set(paramKey, values.join(','));
+    }
+  }
+
   if (!filters.showOnlySse) params.set('sse', 'false');
   if (!filters.showJobsWithoutSalary) params.set('salary', 'false');
-  if (filters.postedWithin && filters.postedWithin !== 'any')
+  if (filters.postedWithin && filters.postedWithin !== 'any') {
     params.set('posted', filters.postedWithin);
+  }
 
   return params.toString();
 }
@@ -76,13 +83,12 @@ export function useBulletinFetch(
       const activeFilters = overrideFilters ?? filters;
       const activePage = overridePage ?? currentPage;
 
-      const requestId = requestIdRef.current + 1;
-      requestIdRef.current = requestId;
+      const requestId = ++requestIdRef.current;
       setLoading(true);
       setError(null);
 
       const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      const timeoutId = window.setTimeout(() => controller.abort(), BULLETIN_FETCH_TIMEOUT_MS);
 
       try {
         const qs = buildQueryString(locale, activeFilters, sortBy, activePage);
@@ -130,48 +136,40 @@ export function useBulletinFetch(
     [locale, filters, sortBy, currentPage, t],
   );
 
-  // Debounced refetch on search query changes, immediate refetch for other changes
+  // Debounce search query changes; execute other filter/sort changes immediately.
+  const { searchQuery, ...otherFilters } = filters;
+  const otherStateKey = useMemo(
+    () => JSON.stringify({ otherFilters, sortBy, currentPage }),
+    [otherFilters, sortBy, currentPage],
+  );
+
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevFiltersRef = useRef<string>('');
-  const initialFetchDone = useRef(false);
+  const isFirstRender = useRef(true);
+  const lastKeyRef = useRef(otherStateKey);
 
   useEffect(() => {
-    const filtersKey = JSON.stringify({ filters, sortBy, currentPage });
-
-    // Skip if nothing changed (e.g. re-render without actual state change)
-    if (prevFiltersRef.current === filtersKey && initialFetchDone.current) return;
-
-    const prevKey = prevFiltersRef.current;
-    prevFiltersRef.current = filtersKey;
-
-    // Determine if only the search query changed (for debouncing)
-    const onlySearchChanged =
-      initialFetchDone.current &&
-      prevKey &&
-      (() => {
-        try {
-          const prev = JSON.parse(prevKey);
-          const curr = JSON.parse(filtersKey);
-          const prevWithoutSearch = { ...prev, filters: { ...prev.filters, searchQuery: '' } };
-          const currWithoutSearch = { ...curr, filters: { ...curr.filters, searchQuery: '' } };
-          return JSON.stringify(prevWithoutSearch) === JSON.stringify(currWithoutSearch);
-        } catch {
-          return false;
-        }
-      })();
+    // Determine if we should debounce (only query changed) or fetch immediately
+    const stateChanged = lastKeyRef.current !== otherStateKey;
+    lastKeyRef.current = otherStateKey;
 
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
       searchDebounceRef.current = null;
     }
 
-    if (onlySearchChanged) {
+    // Skip the very first render to avoid double-fetching (Server Component already provided initialData)
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    if (stateChanged) {
+      void fetchJobs();
+    } else {
+      // Only search query changed
       searchDebounceRef.current = setTimeout(() => {
         void fetchJobs();
-      }, SEARCH_DEBOUNCE_MS);
-    } else {
-      initialFetchDone.current = true;
-      void fetchJobs();
+      }, BULLETIN_SEARCH_DEBOUNCE_MS);
     }
 
     return () => {
@@ -179,7 +177,7 @@ export function useBulletinFetch(
         clearTimeout(searchDebounceRef.current);
       }
     };
-  }, [filters, sortBy, currentPage, fetchJobs]);
+  }, [searchQuery, otherStateKey, fetchJobs]);
 
   const refresh = useCallback(async () => {
     await fetchJobs();
