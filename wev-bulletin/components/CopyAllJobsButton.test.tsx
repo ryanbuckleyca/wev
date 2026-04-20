@@ -122,7 +122,7 @@ describe('CopyAllJobsButton', () => {
     render(<CopyAllJobsButton jobs={filteredAndSortedJobs} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Copy All Jobs' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Copy This Page' }));
     });
 
     expect(writeMock).toHaveBeenCalledTimes(1);
@@ -145,7 +145,7 @@ describe('CopyAllJobsButton', () => {
     render(<CopyAllJobsButton jobs={[job]} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Copy All Jobs' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Copy This Page' }));
     });
 
     expect(capturedPlainText).toContain('Who: Only Org');
@@ -157,7 +157,7 @@ describe('CopyAllJobsButton', () => {
     render(<CopyAllJobsButton jobs={[job]} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Copy All Jobs' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Copy This Page' }));
     });
 
     expect(screen.getByRole('button', { name: 'Copied!' })).toBeVisible();
@@ -165,7 +165,7 @@ describe('CopyAllJobsButton', () => {
 
   it('renders a disabled button when there are no jobs', () => {
     render(<CopyAllJobsButton jobs={[]} />);
-    const btn = screen.getByRole('button', { name: 'Copy All Jobs' });
+    const btn = screen.getByRole('button', { name: 'Copy This Page' });
     expect(btn).toBeDisabled();
   });
 });
