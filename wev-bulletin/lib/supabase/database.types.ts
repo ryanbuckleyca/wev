@@ -185,6 +185,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "job_skills_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "matched_jobs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "job_skills_skill_id_fkey"
             columns: ["skill_id"]
             isOneToOne: false
@@ -202,6 +209,9 @@ export type Database = {
           employment_type: string | null
           external_job_id: string | null
           extra: Json
+          fts: unknown
+          fts_en: unknown
+          fts_fr: unknown
           geocode_accuracy_type: string | null
           hours_per_week: number | null
           id: string
@@ -239,6 +249,9 @@ export type Database = {
           employment_type?: string | null
           external_job_id?: string | null
           extra?: Json
+          fts?: unknown
+          fts_en?: unknown
+          fts_fr?: unknown
           geocode_accuracy_type?: string | null
           hours_per_week?: number | null
           id?: string
@@ -276,6 +289,9 @@ export type Database = {
           employment_type?: string | null
           external_job_id?: string | null
           extra?: Json
+          fts?: unknown
+          fts_en?: unknown
+          fts_fr?: unknown
           geocode_accuracy_type?: string | null
           hours_per_week?: number | null
           id?: string
@@ -499,7 +515,61 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      matched_jobs: {
+        Row: {
+          close_date: string | null
+          compensation_meta: Json | null
+          date_posted: string | null
+          description: string | null
+          employment_type: string | null
+          external_job_id: string | null
+          extra: Json | null
+          fts: unknown
+          fts_en: unknown
+          fts_fr: unknown
+          geocode_accuracy_type: string | null
+          hours_per_week: number | null
+          id: string | null
+          is_remote: boolean | null
+          is_sse: boolean | null
+          job_title: string | null
+          language: string | null
+          lat: number | null
+          listing_url: string | null
+          lng: number | null
+          location: string | null
+          match_score: number | null
+          max_value: number | null
+          min_value: number | null
+          municipality: string | null
+          organization: string | null
+          province: string | null
+          scraped_at: string | null
+          skill_score: number | null
+          skills: string[] | null
+          skills_rated: Json | null
+          source: string | null
+          source_id: string | null
+          sse_details: Json | null
+          sse_rating: string | null
+          summary: string | null
+          unit_text: string | null
+          value_score: number | null
+          values: string[] | null
+          values_rated: Json | null
+          wage: string | null
+          work_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       annualize_v1: {
