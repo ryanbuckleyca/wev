@@ -27,7 +27,7 @@ vi.mock('@/components/ReScrapeButton', () => ({
   ),
 }));
 
-vi.mock('@/components/CopyAllJobsButton', () => ({
+vi.mock('@/components/CopyPageJobsButton', () => ({
   default: ({ jobs }: { jobs: JobPosting[] }) => <div>copy-jobs:{jobs.length}</div>,
 }));
 

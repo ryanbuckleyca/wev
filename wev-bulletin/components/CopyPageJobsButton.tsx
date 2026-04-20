@@ -5,11 +5,6 @@ import { useTranslations, useLocale } from 'next-intl';
 import { JobPosting } from '@/lib/supabase';
 import Button from './Button';
 
-interface CopyAllJobsButtonProps {
-  jobs: JobPosting[];
-  buttonClassName?: string;
-}
-
 function formatDate(dateString: string, locale?: string): string {
   // Parse date string - if it doesn't have timezone, treat as UTC
   let date: Date;
@@ -81,7 +76,15 @@ function formatJobsAsHTML(
     .join('<br><br>');
 }
 
-export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobsButtonProps) {
+interface CopyPageJobsButtonProps {
+  jobs: JobPosting[];
+  buttonClassName?: string;
+}
+
+export default function CopyPageJobsButton({
+  jobs,
+  buttonClassName,
+}: CopyPageJobsButtonProps) {
   const t = useTranslations();
   const locale = useLocale();
   const [copied, setCopied] = useState(false);
