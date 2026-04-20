@@ -60,3 +60,6 @@ backups/
 *.tmp
 *.temp
 rclone-log.txt
+trunk_output.txt
+trunk_report.txt
+trunk_results.txt
