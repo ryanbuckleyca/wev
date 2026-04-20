@@ -22,7 +22,10 @@ CREATE INDEX IF NOT EXISTS jobs_fts_en_idx ON jobs USING GIN (fts_en);
 CREATE INDEX IF NOT EXISTS jobs_fts_fr_idx ON jobs USING GIN (fts_fr);
 
 -- Recreate the view so Postgres re-expands j.* and includes newly-added columns.
-CREATE OR REPLACE VIEW matched_jobs WITH (security_invoker = true) AS
+-- DROP + CREATE avoids CREATE OR REPLACE column-position restrictions.
+DROP VIEW IF EXISTS matched_jobs;
+
+CREATE VIEW matched_jobs WITH (security_invoker = true) AS
 SELECT
   j.*,
   s.name AS source,

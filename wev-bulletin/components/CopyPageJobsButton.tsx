@@ -81,10 +81,7 @@ interface CopyPageJobsButtonProps {
   buttonClassName?: string;
 }
 
-export default function CopyPageJobsButton({
-  jobs,
-  buttonClassName,
-}: CopyPageJobsButtonProps) {
+export default function CopyPageJobsButton({ jobs, buttonClassName }: CopyPageJobsButtonProps) {
   const t = useTranslations();
   const locale = useLocale();
   const [copied, setCopied] = useState(false);
