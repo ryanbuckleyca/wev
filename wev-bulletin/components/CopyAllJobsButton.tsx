@@ -159,7 +159,9 @@ export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobs
   };
 
   return (
-    <div title={jobs.length > 0 ? t('buttons.copyJobsTitle', { count: jobs.length }) : undefined}>
+    <div
+      title={jobs.length > 0 ? t('buttons.copyPageJobsTitle', { count: jobs.length }) : undefined}
+    >
       <Button
         onClick={handleCopy}
         disabled={copied || jobs.length === 0}
@@ -168,7 +170,7 @@ export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobs
         fullWidth={false}
         className={buttonClassName}
       >
-        {copied ? t('buttons.copied') : t('buttons.copyAllJobs')}
+        {copied ? t('buttons.copied') : t('buttons.copyPageJobs')}
       </Button>
     </div>
   );

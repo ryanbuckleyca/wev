@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from './route';
 import { fetchLastScrapeTime } from '@/lib/bulletin/server-data';
-import { resolveSkillLabels } from '../../../lib/resolve-skill-labels';
+import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
 
 /**
  * Route handler contract: locale parsing + param translation + data aggregation.
