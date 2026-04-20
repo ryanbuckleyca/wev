@@ -2,53 +2,63 @@ import 'server-only';
 
 import { unstable_cache } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
-import normalizeJobsWithSource from '@/lib/normalize-job';
 import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
 
-/** Jobs older than this are never shown in the bulletin. */
-const JOBS_MAX_AGE_MS = 28 * 24 * 60 * 60 * 1000;
-
 /**
- * Fetches and normalizes all bulletin jobs. Cached server-side for 5 minutes,
- * busted by /api/revalidate-jobs after a scrape. En/fr cached separately via args.
+ * Fetches and caches the last scrape time.
  */
-export const fetchBulletinJobs = unstable_cache(
-  async (locale: 'en' | 'fr') => {
-    const [scrapeResult, jobsResult] = await Promise.all([
-      supabaseServer
-        .from('scrape_runs')
-        .select('run_at')
-        .order('run_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabaseServer
-        .from('jobs')
-        .select(
-          'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source_id, sources(name), values, skills, unit_text, min_value, max_value, hours_per_week',
-        )
-        .gte('date_posted', new Date(Date.now() - JOBS_MAX_AGE_MS).toISOString())
-        .order('date_posted', { ascending: false }),
-    ]);
+export const fetchLastScrapeTime = unstable_cache(
+  async () => {
+    const { data, error } = await supabaseServer
+      .from('scrape_runs')
+      .select('run_at')
+      .order('run_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (scrapeResult.error) throw new Error(scrapeResult.error.message);
-    if (jobsResult.error) throw new Error(jobsResult.error.message);
-
-    const jobsWithSource = normalizeJobsWithSource(jobsResult.data);
-    const labelMap = await resolveSkillLabels(supabaseServer, jobsWithSource, locale);
-
-    return {
-      jobs: jobsWithSource as unknown as JobPosting[],
-      lastScrapeTime: scrapeResult.data?.run_at ?? null,
-      skillLabels: Object.fromEntries(labelMap),
-    };
+    if (error) throw new Error(error.message);
+    return data?.run_at ?? null;
   },
-  [BULLETIN_CACHE_TAG],
+  ['bulletin-scrape-time'],
   { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
 );
+
+import { createClient } from '@/lib/supabase/server';
+
+/**
+ * Fetches the initial page of bulletin jobs for SSR.
+ */
+export async function fetchServerBulletinJobs(locale: 'en' | 'fr') {
+  const supabase = await createClient();
+  const postedWithinDays = 14;
+  const postedCutoff = new Date(Date.now() - postedWithinDays * 24 * 60 * 60 * 1000).toISOString();
+  const [scrapeTime, jobsResult] = await Promise.all([
+    fetchLastScrapeTime(),
+    supabase
+      .from('matched_jobs')
+      .select('*', { count: 'exact' })
+      .is('is_sse', true)
+      .gte('date_posted', postedCutoff)
+      .order('date_posted', { ascending: false })
+      .range(0, 19),
+  ]);
+
+  if (jobsResult.error) throw new Error(jobsResult.error.message);
+
+  const jobs = jobsResult.data as unknown as JobPosting[];
+  const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
+
+  return {
+    jobs,
+    total: jobsResult.count ?? 0,
+    lastScrapeTime: scrapeTime,
+    skillLabels: Object.fromEntries(labelMap),
+  };
+}
 
 /**
  * Serializable match data shape for Server → Client Component prop transfer.

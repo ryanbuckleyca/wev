@@ -23,6 +23,10 @@ lint:
         - wev-bulletin/next.config.mjs
         - wev-bulletin/eslint.config.mjs
         - eslint.config.mjs
+        - wev-bulletin/**/*.js
+    - linters: [sqlfluff]
+      paths:
+        - supabase/migrations/**
   disabled:
     - black
     - isort
@@ -41,7 +45,7 @@ lint:
     - taplo@0.10.0
     - trufflehog@3.94.3
     - yamllint@1.38.0
-    - eslint@9.14.0
+    - eslint@9.39.4
     - pyright@1.1.409
     - sqlfluff@4.1.0
 actions:
