@@ -8,7 +8,7 @@ import SortDropdown from '@/components/SortDropdown';
 import ExpandAllToggle from '@/components/ExpandAllToggle';
 import WatercolorBackground from '@/components/WatercolorBackground';
 import ReScrapeButton from '@/components/ReScrapeButton';
-import CopyAllJobsButton from '@/components/CopyAllJobsButton';
+import CopyPageJobsButton from '@/components/CopyPageJobsButton';
 import Pagination from '@/components/Pagination';
 import { SITE_CONFIG } from '@/lib/site-config';
 import type { BulletinDataState } from '@/lib/bulletin/types';
@@ -64,7 +64,7 @@ export default function BulletinPageView({
                   <ReScrapeButton onComplete={data.refresh} />
                 </div>
                 <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
-                  <CopyAllJobsButton jobs={data.jobsOnPage} />
+                  <CopyPageJobsButton jobs={data.jobsOnPage} />
                 </div>
               </div>
             </div>
