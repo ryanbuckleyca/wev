@@ -193,8 +193,8 @@
     "reScrapeStarting": "Starting...",
     "reScrapeQueued": "Queued...",
     "reScrapeRunning": "Running...",
-    "copyAllJobs": "Copy All Jobs",
-    "copyJobsTitle": "Copy {count, plural, one {# job} other {# jobs}} to clipboard",
+    "copyPageJobs": "Copy This Page",
+    "copyPageJobsTitle": "Copy {count, plural, one {# job on this page} other {# jobs on this page}} to clipboard",
     "copied": "Copied!"
   },
   "auth": {

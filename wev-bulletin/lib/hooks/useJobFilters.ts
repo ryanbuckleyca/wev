@@ -1,19 +1,17 @@
 'use client';
 
-import { useMemo, useEffect, useRef } from 'react';
-import { filterJobs, sortJobs } from '@/lib/bulletin/job-query';
-import type { JobPosting, JobMatchData } from '@/lib/supabase';
+import { useEffect, useRef } from 'react';
 import type { UseBulletinDataOptions } from '@/lib/bulletin/types';
 
+// The server fetches 20 items at a time
 const ITEMS_PER_PAGE = 20;
 
 export function useJobFilters(
-  allJobs: JobPosting[],
-  matchData: Map<string, JobMatchData>,
+  totalJobs: number,
   { filters, sortBy, currentPage, setCurrentPage }: UseBulletinDataOptions,
 ) {
-  // Reset page to 1 when filters change
-  const filterSnapshot = useMemo(() => JSON.stringify({ filters, sortBy }), [filters, sortBy]);
+  // Reset page to 1 when filters or sort change
+  const filterSnapshot = JSON.stringify({ filters, sortBy });
   const previousFilterSnapshot = useRef(filterSnapshot);
 
   useEffect(() => {
@@ -24,33 +22,16 @@ export function useJobFilters(
     }
   }, [filterSnapshot, currentPage, setCurrentPage]);
 
-  // Derived filtered results
-  const filteredJobs = useMemo(
-    () => sortJobs(filterJobs(allJobs, filters), sortBy, matchData),
-    [allJobs, filters, sortBy, matchData],
-  );
+  const totalPages = Math.max(1, Math.ceil(totalJobs / ITEMS_PER_PAGE));
 
-  const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE);
-
-  // Sync current page with total pages
+  // Sync current page with total pages (e.g., if total pages shrinks)
   useEffect(() => {
-    if (totalPages === 0) {
-      if (currentPage !== 1) void setCurrentPage(1);
-      return;
-    }
-    if (currentPage > totalPages) {
+    if (currentPage > totalPages && totalPages > 0) {
       void setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages, setCurrentPage]);
 
-  const paginatedJobs = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredJobs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [currentPage, filteredJobs]);
-
   return {
-    filteredJobs,
-    paginatedJobs,
     totalPages,
     itemsPerPage: ITEMS_PER_PAGE,
   };

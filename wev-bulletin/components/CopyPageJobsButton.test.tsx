@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@/test-utils';
-import CopyAllJobsButton from './CopyAllJobsButton';
+import CopyPageJobsButton from './CopyPageJobsButton';
 import type { JobPosting } from '@/lib/supabase';
 
 const originalClipboard = navigator.clipboard;
@@ -16,7 +16,7 @@ type GlobalWithClipboardMocks = typeof globalThis & {
   Blob?: typeof Blob;
 };
 
-describe('CopyAllJobsButton', () => {
+describe('CopyPageJobsButton', () => {
   const writeMock = vi.fn().mockResolvedValue(undefined);
   let capturedPlainText = '';
 
@@ -119,10 +119,10 @@ describe('CopyAllJobsButton', () => {
 
     const filteredAndSortedJobs = [jobB, jobA];
 
-    render(<CopyAllJobsButton jobs={filteredAndSortedJobs} />);
+    render(<CopyPageJobsButton jobs={filteredAndSortedJobs} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Copy All Jobs' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Copy This Page' }));
     });
 
     expect(writeMock).toHaveBeenCalledTimes(1);
@@ -142,10 +142,10 @@ describe('CopyAllJobsButton', () => {
       job_title: 'Only Role',
     });
 
-    render(<CopyAllJobsButton jobs={[job]} />);
+    render(<CopyPageJobsButton jobs={[job]} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Copy All Jobs' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Copy This Page' }));
     });
 
     expect(capturedPlainText).toContain('Who: Only Org');
@@ -154,18 +154,18 @@ describe('CopyAllJobsButton', () => {
 
   it('shows "Copied!" after a successful copy', async () => {
     const job = makeJob({ id: 'x' });
-    render(<CopyAllJobsButton jobs={[job]} />);
+    render(<CopyPageJobsButton jobs={[job]} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Copy All Jobs' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Copy This Page' }));
     });
 
     expect(screen.getByRole('button', { name: 'Copied!' })).toBeVisible();
   });
 
   it('renders a disabled button when there are no jobs', () => {
-    render(<CopyAllJobsButton jobs={[]} />);
-    const btn = screen.getByRole('button', { name: 'Copy All Jobs' });
+    render(<CopyPageJobsButton jobs={[]} />);
+    const btn = screen.getByRole('button', { name: 'Copy This Page' });
     expect(btn).toBeDisabled();
   });
 });

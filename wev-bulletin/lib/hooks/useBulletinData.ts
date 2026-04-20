@@ -17,30 +17,37 @@ export function useBulletinData(
   options: UseBulletinDataOptions,
   initialData?: InitialBulletinData,
 ): BulletinDataState {
-  const { setCurrentPage } = options;
-
-  // 1. Data Fetching Layer
-  const { allJobs, setAllJobs, lastScrapeTime, skillLabels, loading, error, refresh } =
-    useBulletinFetch(locale, initialData, () => {
-      void setCurrentPage(1);
-    });
+  // 1. Data Fetching Layer (DB Paginated)
+  const {
+    jobsOnPage,
+    setJobsOnPage,
+    totalMatchingJobs,
+    lastScrapeTime,
+    skillLabels,
+    loading,
+    error,
+    refresh,
+  } = useBulletinFetch(locale, options, initialData);
 
   // 2. User Meta Layer (Matches & Bookmarks)
+  // useUserJobMeta needs the current visible jobs or all known jobs it can bind matches to
   const { matchData, setBookmarkedJobIds, bookmarkedJobIds } = useUserJobMeta(
     userId,
-    allJobs,
+    jobsOnPage,
     initialData,
   );
 
-  // 3. Transformation Layer (Filter, Sort, Paginate)
-  const filters = useJobFilters(allJobs, matchData, options);
+  // 3. Transformation Layer (Filter, Paginate)
+  const filters = useJobFilters(totalMatchingJobs, options);
 
   // 4. Optimistic Action Handlers
   const handleJobSseChange = useCallback(
     (jobId: string, isSse: boolean) => {
-      setAllJobs((prev) => prev.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job)));
+      setJobsOnPage((prev) =>
+        prev.map((job) => (job.id === jobId ? { ...job, is_sse: isSse } : job)),
+      );
     },
-    [setAllJobs],
+    [setJobsOnPage],
   );
 
   const handleJobBookmarkChange = useCallback(
@@ -56,9 +63,8 @@ export function useBulletinData(
   );
 
   return {
-    allJobs,
-    filteredJobs: filters.filteredJobs,
-    paginatedJobs: filters.paginatedJobs,
+    jobsOnPage,
+    totalMatchingJobs,
     lastScrapeTime,
     loading,
     error,

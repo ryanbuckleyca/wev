@@ -11,6 +11,7 @@ export type { SkillLabel };
 export interface InitialBulletinData {
   jobs: JobPosting[];
   scrapeTime: string | null;
+  total: number;
   userId?: string | null;
   matchData?: SerializedMatchData;
   bookmarkedJobIds?: string[];
@@ -18,9 +19,8 @@ export interface InitialBulletinData {
 }
 
 export interface BulletinDataState {
-  allJobs: JobPosting[];
-  filteredJobs: JobPosting[];
-  paginatedJobs: JobPosting[];
+  jobsOnPage: JobPosting[];
+  totalMatchingJobs: number;
   lastScrapeTime: string | null;
   loading: boolean;
   error: string | null;

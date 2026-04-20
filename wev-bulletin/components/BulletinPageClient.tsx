@@ -15,6 +15,7 @@ interface BulletinPageClientProps {
   initialJobs: JobPosting[];
   initialScrapeTime: string | null;
   initialSkillLabels: Record<string, SkillLabel>;
+  initialTotalJobs: number;
   initialUserId?: string | null;
   isLoggedIn: boolean;
   isAdmin: boolean;
@@ -35,6 +36,7 @@ export default function BulletinPageClient({
   initialJobs,
   initialScrapeTime,
   initialSkillLabels,
+  initialTotalJobs,
   initialUserId,
   isLoggedIn,
   isAdmin,
@@ -74,6 +76,7 @@ export default function BulletinPageClient({
     {
       jobs: initialJobs,
       scrapeTime: initialScrapeTime,
+      total: initialTotalJobs,
       userId: initialUserId ?? null,
       matchData: initialMatchData,
       bookmarkedJobIds: initialBookmarkedJobIds,

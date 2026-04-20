@@ -193,8 +193,8 @@
     "reScrapeStarting": "Démarrage...",
     "reScrapeQueued": "En file d'attente...",
     "reScrapeRunning": "En cours...",
-    "copyAllJobs": "Copier tous les emplois",
-    "copyJobsTitle": "Copier {count, plural, one {# emploi} other {# emplois}} dans le presse-papiers",
+    "copyPageJobs": "Copier cette page",
+    "copyPageJobsTitle": "Copier {count, plural, one {# emploi de cette page} other {# emplois de cette page}} dans le presse-papiers",
     "copied": "Copié !"
   },
   "auth": {

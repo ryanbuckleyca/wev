@@ -5,11 +5,6 @@ import { useTranslations, useLocale } from 'next-intl';
 import { JobPosting } from '@/lib/supabase';
 import Button from './Button';
 
-interface CopyAllJobsButtonProps {
-  jobs: JobPosting[];
-  buttonClassName?: string;
-}
-
 function formatDate(dateString: string, locale?: string): string {
   // Parse date string - if it doesn't have timezone, treat as UTC
   let date: Date;
@@ -81,7 +76,12 @@ function formatJobsAsHTML(
     .join('<br><br>');
 }
 
-export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobsButtonProps) {
+interface CopyPageJobsButtonProps {
+  jobs: JobPosting[];
+  buttonClassName?: string;
+}
+
+export default function CopyPageJobsButton({ jobs, buttonClassName }: CopyPageJobsButtonProps) {
   const t = useTranslations();
   const locale = useLocale();
   const [copied, setCopied] = useState(false);
@@ -159,7 +159,9 @@ export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobs
   };
 
   return (
-    <div title={jobs.length > 0 ? t('buttons.copyJobsTitle', { count: jobs.length }) : undefined}>
+    <div
+      title={jobs.length > 0 ? t('buttons.copyPageJobsTitle', { count: jobs.length }) : undefined}
+    >
       <Button
         onClick={handleCopy}
         disabled={copied || jobs.length === 0}
@@ -168,7 +170,7 @@ export default function CopyAllJobsButton({ jobs, buttonClassName }: CopyAllJobs
         fullWidth={false}
         className={buttonClassName}
       >
-        {copied ? t('buttons.copied') : t('buttons.copyAllJobs')}
+        {copied ? t('buttons.copied') : t('buttons.copyPageJobs')}
       </Button>
     </div>
   );

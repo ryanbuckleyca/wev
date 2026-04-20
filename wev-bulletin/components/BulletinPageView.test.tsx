@@ -27,7 +27,7 @@ vi.mock('@/components/ReScrapeButton', () => ({
   ),
 }));
 
-vi.mock('@/components/CopyAllJobsButton', () => ({
+vi.mock('@/components/CopyPageJobsButton', () => ({
   default: ({ jobs }: { jobs: JobPosting[] }) => <div>copy-jobs:{jobs.length}</div>,
 }));
 
@@ -171,9 +171,8 @@ function createFilters(): BulletinFilterControls {
 
 function createData(): BulletinDataState {
   return {
-    allJobs: baseJobs,
-    filteredJobs: baseJobs.slice(0, 2),
-    paginatedJobs: baseJobs.slice(0, 1),
+    jobsOnPage: baseJobs.slice(0, 1),
+    totalMatchingJobs: 3,
     lastScrapeTime: 'March 28, 2026, 9:00 AM EDT',
     loading: false,
     error: null,
@@ -205,9 +204,9 @@ describe('BulletinPageView', () => {
       />,
     );
 
-    expect(screen.getByText('job-filters:3:2:3')).toBeVisible();
+    expect(screen.getByText('job-filters:1:3:3')).toBeVisible();
     expect(screen.getByText('job-listings:1')).toBeVisible();
-    expect(screen.getByText('copy-jobs:2')).toBeVisible();
+    expect(screen.getByText('copy-jobs:1')).toBeVisible();
     expect(screen.getByText(/Last updated/i)).toBeVisible();
     expect(screen.getByText('sort:yes')).toBeVisible();
     expect(screen.getByText('pagination:3')).toBeVisible();

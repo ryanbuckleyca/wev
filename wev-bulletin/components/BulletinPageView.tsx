@@ -8,7 +8,7 @@ import SortDropdown from '@/components/SortDropdown';
 import ExpandAllToggle from '@/components/ExpandAllToggle';
 import WatercolorBackground from '@/components/WatercolorBackground';
 import ReScrapeButton from '@/components/ReScrapeButton';
-import CopyAllJobsButton from '@/components/CopyAllJobsButton';
+import CopyPageJobsButton from '@/components/CopyPageJobsButton';
 import Pagination from '@/components/Pagination';
 import { SITE_CONFIG } from '@/lib/site-config';
 import type { BulletinDataState } from '@/lib/bulletin/types';
@@ -64,19 +64,19 @@ export default function BulletinPageView({
                   <ReScrapeButton onComplete={data.refresh} />
                 </div>
                 <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
-                  <CopyAllJobsButton jobs={data.filteredJobs} />
+                  <CopyPageJobsButton jobs={data.jobsOnPage} />
                 </div>
               </div>
             </div>
           )}
 
           <JobFilters
-            jobs={data.allJobs}
-            filteredJobsCount={data.filteredJobs.length}
-            totalJobsCount={data.allJobs.length}
+            jobs={data.jobsOnPage}
+            filteredJobsCount={data.totalMatchingJobs}
+            totalJobsCount={data.totalMatchingJobs}
           />
 
-          {data.allJobs.length > 0 && (
+          {data.jobsOnPage.length > 0 && (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
               <div className="text-sm text-center sm:text-left text-xs text-muted-foreground">
                 <span className="font-semibold text-wev-brand-accent">
@@ -96,8 +96,8 @@ export default function BulletinPageView({
           )}
 
           <JobListings
-            jobs={data.paginatedJobs}
-            totalJobsCount={data.allJobs.length}
+            jobs={data.jobsOnPage}
+            totalJobsCount={data.totalMatchingJobs}
             loading={data.loading}
             error={data.error}
             isAdmin={isAdmin}
@@ -112,7 +112,7 @@ export default function BulletinPageView({
 
           <Pagination
             totalPages={data.totalPages}
-            totalItems={data.filteredJobs.length}
+            totalItems={data.totalMatchingJobs}
             itemsPerPage={data.itemsPerPage}
           />
         </div>
