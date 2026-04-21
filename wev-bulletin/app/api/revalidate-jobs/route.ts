@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { BULLETIN_CACHE_TAG } from '@/lib/bulletin/server-data';
  
 export const dynamic = 'force-dynamic';
 
 const REVALIDATE_SECRET = process.env.REVALIDATE_SECRET ?? process.env.REVALIDATION_SECRET;
+const BULLETIN_REVALIDATE_PATHS = ['/en', '/fr', '/en/jobs', '/fr/jobs', '/fr/emplois'] as const;
+
+function revalidateBulletinPaths() {
+  for (const path of BULLETIN_REVALIDATE_PATHS) {
+    revalidatePath(path, 'page');
+  }
+}
 
 /**
  * POST /api/revalidate-jobs
@@ -28,6 +35,7 @@ export async function POST(request: Request) {
   }
 
   revalidateTag(BULLETIN_CACHE_TAG, 'default');
+  revalidateBulletinPaths();
 
   return NextResponse.json({ revalidated: true, tag: BULLETIN_CACHE_TAG });
 }

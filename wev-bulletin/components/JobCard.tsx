@@ -24,6 +24,7 @@ interface JobCardProps {
   updatingId: string | null;
   initialExpanded?: boolean;
   match?: JobMatchData | null;
+  matchLoading?: boolean;
   initialBookmarked?: boolean;
   selectedWorkTypes?: string[];
   skillLabels?: Record<string, SkillLabel>;
@@ -39,6 +40,7 @@ export default function JobCard({
   updatingId,
   initialExpanded = true,
   match: matchProp,
+  matchLoading = false,
   initialBookmarked = false,
   selectedWorkTypes,
   skillLabels: skillLabelsProp,
@@ -188,6 +190,7 @@ export default function JobCard({
             totalMatchPercentage={scoreData?.total ?? 0}
             matchTooltipContent={matchTooltipContent}
             showTooltip={Boolean(userId && matchProp && matchTooltipContent)}
+            showMatchLoading={Boolean(userId && matchLoading && !matchProp)}
             fadeBackground="var(--muted)"
             workType={job.work_type}
             selectedWorkTypes={selectedWorkTypes || []}

@@ -1,0 +1,1020 @@
+
+> wev@1.0.0 test:e2e
+> npm run test:e2e --prefix e2e
+
+
+> e2e@1.0.0 test:e2e
+> playwright test
+
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+[2m[WebServer] [22m
+[2m[WebServer] [22m> bulletin@0.1.0 build
+[2m[WebServer] [22m> next build
+[2m[WebServer] [22m
+[2m[WebServer] [22m[33m[1m⚠[22m[39m `eslint` configuration in next.config.mjs is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[2m[WebServer] [22m[33m[1m⚠[22m[39m Invalid next.config.mjs options detected: 
+[2m[WebServer] [22m[33m[1m⚠[22m[39m     Unrecognized key(s) in object: 'eslint'
+[2m[WebServer] [22m[33m[1m⚠[22m[39m See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[2m[WebServer] [22m[1m[38;2;173;127;168m▲ Next.js 16.2.3[39m[22m (Turbopack)
+[2m[WebServer] [22m- Experiments (use with caution):
+[2m[WebServer] [22m  [1m✓[22m externalDir
+[2m[WebServer] [22m
+[2m[WebServer] [22m[33m[1m⚠[22m[39m The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[2m[WebServer] [22m[37m[1m [22m[39m Creating an optimized production build ...
+[2m[WebServer] [22m[32m[1m✓[22m[39m Compiled successfully in 4.9s
+[2m[WebServer] [22m[37m[1m [22m[39m Running TypeScript ...
+[2m[WebServer] [22m[37m[1m [22m[39m Finished TypeScript in 5.2s ...
+[2m[WebServer] [22m[37m[1m [22m[39m Collecting page data using 7 workers ...
+[2m[WebServer] [22m[37m[1m [22m[39m Generating static pages using 7 workers (0/8) ...
+[2m[WebServer] [22m[37m[1m [22m[39m Generating static pages using 7 workers (2/8) 
+[2m[WebServer] [22m[37m[1m [22m[39m Generating static pages using 7 workers (4/8) 
+[2m[WebServer] [22m[37m[1m [22m[39m Generating static pages using 7 workers (6/8) 
+[2m[WebServer] [22m[32m[1m✓[22m[39m Generating static pages using 7 workers (8/8) in 92ms
+[2m[WebServer] [22m[37m[1m [22m[39m Finalizing page optimization ...
+[2m[WebServer] [22m
+[2m[WebServer] [22m[4mRoute (app)[24m
+[2m[WebServer] [22m┌ ƒ /_not-found
+[2m[WebServer] [22m├ ƒ /[locale]
+[2m[WebServer] [22m├ ƒ /[locale]/account-settings
+[2m[WebServer] [22m├ ƒ /[locale]/bookmarks
+[2m[WebServer] [22m├ ƒ /[locale]/emplois
+[2m[WebServer] [22m├ ƒ /[locale]/forgot-password
+[2m[WebServer] [22m├ ƒ /[locale]/jobs
+[2m[WebServer] [22m├ ƒ /[locale]/login
+[2m[WebServer] [22m├ ƒ /[locale]/profile
+[2m[WebServer] [22m├ ƒ /[locale]/reset-password
+[2m[WebServer] [22m├ ƒ /[locale]/signup
+[2m[WebServer] [22m├ ƒ /[locale]/style-guide
+[2m[WebServer] [22m├ ƒ /api/account
+[2m[WebServer] [22m├ ƒ /api/account/delete
+[2m[WebServer] [22m├ ƒ /api/auth/roles
+[2m[WebServer] [22m├ ƒ /api/bookmarks
+[2m[WebServer] [22m├ ƒ /api/bulletin
+[2m[WebServer] [22m├ ƒ /api/bulletin/jobs/[id]
+[2m[WebServer] [22m├ ƒ /api/github/status
+[2m[WebServer] [22m├ ƒ /api/github/workflow
+[2m[WebServer] [22m├ ƒ /api/locations/search
+[2m[WebServer] [22m├ ƒ /api/matches/calculate-job
+[2m[WebServer] [22m├ ƒ /api/matches/calculate-user
+[2m[WebServer] [22m├ ƒ /api/matches/recalculate-mine
+[2m[WebServer] [22m├ ƒ /api/revalidate-jobs
+[2m[WebServer] [22m├ ƒ /api/skills/all
+[2m[WebServer] [22m├ ƒ /api/skills/by-uri
+[2m[WebServer] [22m├ ƒ /api/skills/revalidate
+[2m[WebServer] [22m├ ƒ /api/skills/search
+[2m[WebServer] [22m├ ƒ /auth/auth-code-error
+[2m[WebServer] [22m├ ƒ /auth/callback
+[2m[WebServer] [22m├ ƒ /auth/signout
+[2m[WebServer] [22m├ ○ /robots.txt
+[2m[WebServer] [22m└ ○ /sitemap.xml
+[2m[WebServer] [22m
+[2m[WebServer] [22m
+[2m[WebServer] [22mƒ Proxy (Middleware)
+[2m[WebServer] [22m
+[2m[WebServer] [22m○  (Static)   prerendered as static content
+[2m[WebServer] [22mƒ  (Dynamic)  server-rendered on demand
+[2m[WebServer] [22m
+[2m[WebServer] [22m
+[2m[WebServer] [22m> bulletin@0.1.0 start
+[2m[WebServer] [22m> next start
+[2m[WebServer] [22m
+[2m[WebServer] [22m[1m[38;2;173;127;168m▲ Next.js 16.2.3[39m[22m
+[2m[WebServer] [22m- Local:         http://localhost:3100
+[2m[WebServer] [22m- Network:       http://192.168.0.12:3100
+[2m[WebServer] [22m[32m[1m✓[22m[39m Ready in 94ms
+[2m[WebServer] [22m[33m[1m⚠[22m[39m `eslint` configuration in next.config.mjs is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[2m[WebServer] [22m[33m[1m⚠[22m[39m Invalid next.config.mjs options detected: 
+[2m[WebServer] [22m[33m[1m⚠[22m[39m     Unrecognized key(s) in object: 'eslint'
+[2m[WebServer] [22m[33m[1m⚠[22m[39m See more info here: https://nextjs.org/docs/messages/invalid-next-config
+▶ E2E Global Setup: Initializing test environment...
+▶ Seeding test database: http://localhost:54321
+▶ Seeding esco_skills from /Users/ryanbuckley/code/wev/supabase/seed/esco_skills_index.json (9733 skills)
+✅ Seeded esco_skills.
+✅ E2E Global Setup: Database seeded successfully.
+▶ Revalidating Next.js job cache at http://localhost:3100...
+✅ E2E Global Setup: Next.js cache revalidated.
+(node:29664) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 31 tests using 4 workers
+
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+(node:29785) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:29782) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:29783) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:29784) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22m{"level":30,"time":1776728098185,"pid":29781,"hostname":"Ryans-MacBook-Air.local","name":"wev-bulletin","userId":"4ad95dff-c94e-454f-9f6a-858ac7ca9153","at":"2026-04-20T23:34:58.185Z","msg":"Account deleted"}
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+  ✓   1 [chromium] › tests/auth/signup.spec.ts:13:7 › Signup flow @auth-email › creates account and confirms email (12.0s)
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+  ✓   3 [chromium] › tests/auth/account-deletion.spec.ts:14:7 › Account deletion flow @auth-email › deletes account successfully (15.6s)
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+  ✓   5 [chromium] › tests/auth/signup.spec.ts:37:7 › Signup flow @auth-email › does not reveal account existence for duplicate email (7.1s)
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+  ✓   6 [chromium] › tests/auth/account-deletion.spec.ts:45:7 › Account deletion flow @auth-email › requires correct password for deletion (4.7s)
+  ✓   8 [chromium] › tests/job-board.spec.ts:58:7 › Job board › loads the English job board with seeded jobs (507ms)
+  ✓   4 [chromium] › tests/auth/change-password.spec.ts:15:7 › Change password flow @auth-email › keeps session after password change and requires new password (20.8s)
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+  ✓   9 [chromium] › tests/job-board.spec.ts:73:7 › Job board › switches locales without losing repeated query params (1.3s)
+  ✓   2 [chromium] › tests/auth/password-reset.spec.ts:16:7 › Password reset flow @auth-email › resets password successfully (23.0s)
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+  ✓  12 [chromium] › tests/auth/password-reset.spec.ts:43:7 › Password reset flow @auth-email › handles invalid reset link gracefully (1.2s)
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+  ✘  11 [chromium] › tests/job-board.spec.ts:95:7 › Job board › search narrows the list to a matching seeded job (5.8s)
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+  ✘  14 [chromium] › tests/job-board.spec.ts:109:7 › Job board › shows the empty state when search removes every job (5.6s)
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22m{"level":30,"time":1776728122790,"pid":29781,"hostname":"Ryans-MacBook-Air.local","name":"wev-bulletin","userId":"9252411f-600f-4b45-b80e-9e95b8d29fd6","at":"2026-04-20T23:35:22.790Z","msg":"Account deleted"}
+  ✘  10 [chromium] › tests/mutating/bookmarks.spec.ts:7:7 › Bookmarks flow › bookmarks from job board and shows it on bookmarks page (15.2s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✓   7 [chromium] › tests/auth-email.spec.ts:17:7 › Auth email flows @auth-email › signup, confirm email, login, reset password, and delete account (20.4s)
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[2m[WebServer] [22mUsing the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+  ✘  15 [chromium] › tests/job-board.spec.ts:124:7 › Job board › paginates through the seeded dataset (5.8s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  17 [chromium] › tests/job-board.spec.ts:145:7 › Job board › filters to jobs posted within one week (5.6s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  16 [chromium] › tests/mutating/profile.spec.ts:6:7 › Profile editing flow › enforces skills/values limits and persists ordering (13.7s)
+  ✘  18 [chromium] › tests/job-board.spec.ts:164:9 › Job board › filters by work type: Remote (5.7s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  19 [chromium] › tests/job-board.spec.ts:164:9 › Job board › filters by work type: Hybrid (5.6s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  20 [chromium] › tests/job-board.spec.ts:164:9 › Job board › filters by work type: Office (5.7s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  21 [chromium] › tests/job-board.spec.ts:182:9 › Job board › filters by source: Centre for Social Innovation (5.6s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  22 [chromium] › tests/job-board.spec.ts:182:9 › Job board › filters by source: GoodWork (5.6s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  23 [chromium] › tests/job-board.spec.ts:182:9 › Job board › filters by source: Centraide (5.6s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  24 [chromium] › tests/job-board.spec.ts:199:7 › Job board › filters by organization (5.9s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  25 [chromium] › tests/job-board.spec.ts:215:9 › Job board › filters by employment type: full-time (5.7s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  26 [chromium] › tests/job-board.spec.ts:215:9 › Job board › filters by employment type: contract (5.6s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  27 [chromium] › tests/job-board.spec.ts:233:9 › Job board › filters by province: ON (5.7s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  28 [chromium] › tests/job-board.spec.ts:233:9 › Job board › filters by province: QC (5.7s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  29 [chromium] › tests/job-board.spec.ts:250:7 › Job board › filters by municipality (5.6s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  30 [chromium] › tests/job-board.spec.ts:265:7 › Job board › hides salaryless jobs when salary filtering is disabled (5.7s)
+▶ Playwright Config: Loading...
+▶ Playwright Config: testDir = /Users/ryanbuckley/code/wev/e2e/tests
+  ✘  31 [chromium] › tests/job-board.spec.ts:286:7 › Job board › reveals non-SSE jobs when the SSE-only filter is disabled (5.7s)
+  ✘  13 [chromium] › tests/mutating/matching.spec.ts:12:7 › Matching + job card interactions › shows match UI and allows expanding/scrolling job-card pills (3.1m)
+
+
+  1) [chromium] › tests/job-board.spec.ts:95:7 › Job board › search narrows the list to a matching seeded job 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  getByTestId('job-card')
+    Expected: [32m1[39m
+    Received: [31m0[39m
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toHaveCount" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('job-card')[22m
+    [2m    9 × locator resolved to 0 elements[22m
+    [2m      - unexpected value "0"[22m
+
+
+      50 |   }
+      51 |
+    > 52 |   await expect(jobBoardPage.jobCards).toHaveCount(
+         |                                       ^
+      53 |     Math.min(totalJobs, expectations.firstPageCount),
+      54 |   );
+      55 | }
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:52:39)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:106:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-search-b45a3-st-to-a-matching-seeded-job-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-search-b45a3-st-to-a-matching-seeded-job-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-search-b45a3-st-to-a-matching-seeded-job-chromium/error-context.md
+
+  2) [chromium] › tests/job-board.spec.ts:109:7 › Job board › shows the empty state when search removes every job 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-empty-state"]:visible').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-empty-state"]:visible').first()[22m
+
+
+      45 |
+      46 |   if (totalJobs === 0) {
+    > 47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+         |                                           ^
+      48 |     await expect(jobBoardPage.jobCards).toHaveCount(0);
+      49 |     return;
+      50 |   }
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:47:43)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:121:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-shows--cd6d0-en-search-removes-every-job-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-shows--cd6d0-en-search-removes-every-job-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-shows--cd6d0-en-search-removes-every-job-chromium/error-context.md
+
+  3) [chromium] › tests/job-board.spec.ts:124:7 › Job board › paginates through the seeded dataset ─
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  getByTestId('job-card')
+    Expected: [32m5[39m
+    Received: [31m0[39m
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toHaveCount" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('job-card')[22m
+    [2m    9 × locator resolved to 0 elements[22m
+    [2m      - unexpected value "0"[22m
+
+
+      134 |       .poll(() => new URL(jobBoardPage.page.url()).searchParams.get("page"))
+      135 |       .toBe("2");
+    > 136 |     await expect(jobBoardPage.jobCards).toHaveCount(
+          |                                         ^
+      137 |       expectations.secondPageCount,
+      138 |     );
+      139 |     await expect(jobBoardPage.paginationSummary).toContainText("21-25");
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:136:41
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-paginates-through-the-seeded-dataset-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-paginates-through-the-seeded-dataset-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-paginates-through-the-seeded-dataset-chromium/error-context.md
+
+  4) [chromium] › tests/job-board.spec.ts:145:7 › Job board › filters to jobs posted within one week 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"15"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:156:11
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-to-jobs-posted-within-one-week-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-to-jobs-posted-within-one-week-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-to-jobs-posted-within-one-week-chromium/error-context.md
+
+  5) [chromium] › tests/job-board.spec.ts:164:9 › Job board › filters by work type: Remote ─────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"9"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:173:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-work-type-Remote-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-work-type-Remote-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-by-work-type-Remote-chromium/error-context.md
+
+  6) [chromium] › tests/job-board.spec.ts:164:9 › Job board › filters by work type: Hybrid ─────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"8"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:173:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-work-type-Hybrid-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-work-type-Hybrid-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-by-work-type-Hybrid-chromium/error-context.md
+
+  7) [chromium] › tests/job-board.spec.ts:164:9 › Job board › filters by work type: Office ─────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"8"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:173:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-work-type-Office-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-work-type-Office-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-by-work-type-Office-chromium/error-context.md
+
+  8) [chromium] › tests/job-board.spec.ts:182:9 › Job board › filters by source: Centre for Social Innovation 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"4"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:191:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filter-9862c-entre-for-Social-Innovation-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filter-9862c-entre-for-Social-Innovation-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filter-9862c-entre-for-Social-Innovation-chromium/error-context.md
+
+  9) [chromium] › tests/job-board.spec.ts:182:9 › Job board › filters by source: GoodWork ──────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"4"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:191:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-source-GoodWork-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-source-GoodWork-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-by-source-GoodWork-chromium/error-context.md
+
+  10) [chromium] › tests/job-board.spec.ts:182:9 › Job board › filters by source: Centraide ────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"4"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:191:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-source-Centraide-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-source-Centraide-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-by-source-Centraide-chromium/error-context.md
+
+  11) [chromium] › tests/job-board.spec.ts:199:7 › Job board › filters by organization ─────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"7"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:207:11
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-organization-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-organization-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-by-organization-chromium/error-context.md
+
+  12) [chromium] › tests/job-board.spec.ts:215:9 › Job board › filters by employment type: full-time 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"13"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:224:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-employment-type-full-time-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-employment-type-full-time-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-by-employment-type-full-time-chromium/error-context.md
+
+  13) [chromium] › tests/job-board.spec.ts:215:9 › Job board › filters by employment type: contract 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"12"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:224:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-employment-type-contract-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-employment-type-contract-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-by-employment-type-contract-chromium/error-context.md
+
+  14) [chromium] › tests/job-board.spec.ts:233:9 › Job board › filters by province: ON ─────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"8"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:242:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-province-ON-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-province-ON-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-by-province-ON-chromium/error-context.md
+
+  15) [chromium] › tests/job-board.spec.ts:233:9 › Job board › filters by province: QC ─────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"8"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:242:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-province-QC-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-province-QC-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-by-province-QC-chromium/error-context.md
+
+  16) [chromium] › tests/job-board.spec.ts:250:7 › Job board › filters by municipality ─────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"4"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:258:11
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-municipality-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-filters-by-municipality-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-filters-by-municipality-chromium/error-context.md
+
+  17) [chromium] › tests/job-board.spec.ts:265:7 › Job board › hides salaryless jobs when salary filtering is disabled 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"22"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:272:11
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-hides--c06f9-alary-filtering-is-disabled-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-hides--c06f9-alary-filtering-is-disabled-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-hides--c06f9-alary-filtering-is-disabled-chromium/error-context.md
+
+  18) [chromium] › tests/job-board.spec.ts:286:7 › Job board › reveals non-SSE jobs when the SSE-only filter is disabled 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-testid="job-board-pagination-summary"]:visible').first()
+    Expected substring: [32m"27"[39m
+    Received string:    [31m"Showing 1-20 of 25 jobs"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="job-board-pagination-summary"]:visible').first()[22m
+    [2m    9 × locator resolved to <div data-testid="job-board-pagination-summary" class="text-sm text-foreground text-center">…</div>[22m
+    [2m      - unexpected value "Showing 1-20 of 25 jobs"[22m
+
+
+      42 |   expectations: typeof SEEDED_JOB_BOARD_EXPECTATIONS,
+      43 | ): Promise<void> {
+    > 44 |   await expect(jobBoardPage.paginationSummary).toContainText(String(totalJobs));
+         |                                                ^
+      45 |
+      46 |   if (totalJobs === 0) {
+      47 |     await expect(jobBoardPage.emptyState).toBeVisible();
+        at expectVisibleResults (/Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:44:48)
+        at /Users/ryanbuckley/code/wev/e2e/tests/job-board.spec.ts:293:11
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-reveal-b758d-SSE-only-filter-is-disabled-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/job-board-Job-board-reveal-b758d-SSE-only-filter-is-disabled-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/job-board-Job-board-reveal-b758d-SSE-only-filter-is-disabled-chromium/error-context.md
+
+  19) [chromium] › tests/mutating/bookmarks.spec.ts:7:7 › Bookmarks flow › bookmarks from job board and shows it on bookmarks page 
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveURL[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Expected pattern: [32m/\/en(\/)?$/[39m
+    Received string:  [31m"http://localhost:3100/en?workType=remote"[39m
+    Timeout: 10000ms
+
+    Call log:
+    [2m  - Expect "toHaveURL" with timeout 10000ms[22m
+    [2m    4 × unexpected value "http://localhost:3100/en/login"[22m
+    [2m    10 × unexpected value "http://localhost:3100/en?workType=remote"[22m
+
+
+       at ../fixtures/index.ts:45
+
+      43 |       await authPage.gotoLogin("en");
+      44 |       await authPage.login(user.email, user.password);
+    > 45 |       await expect(page).toHaveURL(/\/en(\/)?$/, { timeout: 10_000 });
+         |                          ^
+      46 |       await runFixture(user);
+      47 |     } finally {
+      48 |       await deleteAuthUserByEmail(user.email).catch(() => undefined);
+        at Object.loggedInUser (/Users/ryanbuckley/code/wev/e2e/fixtures/index.ts:45:26)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/mutating-bookmarks-Bookmar-ade73--shows-it-on-bookmarks-page-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/mutating-bookmarks-Bookmar-ade73--shows-it-on-bookmarks-page-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/mutating-bookmarks-Bookmar-ade73--shows-it-on-bookmarks-page-chromium/error-context.md
+
+  20) [chromium] › tests/mutating/matching.spec.ts:12:7 › Matching + job card interactions › shows match UI and allows expanding/scrolling job-card pills › Open match details popover 
+
+    [31mTest timeout of 180000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 180000ms exceeded.
+    Call log:
+    [2m  - waiting for getByTestId('job-card').filter({ has: getByRole('button', { name: /view match details/i }) }).first().getByRole('button', { name: /view match details/i })[22m
+    [2m    - locator resolved to <div tabindex="0" role="button" type="button" data-state="closed" aria-expanded="false" aria-haspopup="dialog" aria-controls="radix-_r_28_" aria-label="View match details" class="inline-flex cursor-help ">…</div>[22m
+    [2m  - attempting click action[22m
+    [2m    - waiting for element to be visible, enabled and stable[22m
+    [2m    - element is not stable[22m
+    [2m  - retrying click action[22m
+    [2m    - waiting for element to be visible, enabled and stable[22m
+    [2m  - element was detached from the DOM, retrying[22m
+
+
+      110 |       await jobCard
+      111 |         .getByRole("button", { name: /view match details/i })
+    > 112 |         .click();
+          |          ^
+      113 |       await expect(page.getByText(/total match/i)).toBeVisible({
+      114 |         timeout: 10_000,
+      115 |       });
+        at /Users/ryanbuckley/code/wev/e2e/tests/mutating/matching.spec.ts:112:10
+        at /Users/ryanbuckley/code/wev/e2e/tests/mutating/matching.spec.ts:103:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/mutating-matching-Matching-3e58a-ng-scrolling-job-card-pills-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/mutating-matching-Matching-3e58a-ng-scrolling-job-card-pills-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/mutating-matching-Matching-3e58a-ng-scrolling-job-card-pills-chromium/error-context.md
+
+  21) [chromium] › tests/mutating/profile.spec.ts:6:7 › Profile editing flow › enforces skills/values limits and persists ordering 
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveURL[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Expected pattern: [32m/\/en(\/)?$/[39m
+    Received string:  [31m"http://localhost:3100/en?workType=remote"[39m
+    Timeout: 10000ms
+
+    Call log:
+    [2m  - Expect "toHaveURL" with timeout 10000ms[22m
+    [2m    4 × unexpected value "http://localhost:3100/en/login"[22m
+    [2m    10 × unexpected value "http://localhost:3100/en?workType=remote"[22m
+
+
+       at ../fixtures/index.ts:45
+
+      43 |       await authPage.gotoLogin("en");
+      44 |       await authPage.login(user.email, user.password);
+    > 45 |       await expect(page).toHaveURL(/\/en(\/)?$/, { timeout: 10_000 });
+         |                          ^
+      46 |       await runFixture(user);
+      47 |     } finally {
+      48 |       await deleteAuthUserByEmail(user.email).catch(() => undefined);
+        at Object.loggedInUser (/Users/ryanbuckley/code/wev/e2e/fixtures/index.ts:45:26)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e/.output/mutating-profile-Profile-e-fd2bb-imits-and-persists-ordering-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    e2e/.output/mutating-profile-Profile-e-fd2bb-imits-and-persists-ordering-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e/.output/mutating-profile-Profile-e-fd2bb-imits-and-persists-ordering-chromium/error-context.md
+
+  21 failed
+    [chromium] › tests/job-board.spec.ts:95:7 › Job board › search narrows the list to a matching seeded job 
+    [chromium] › tests/job-board.spec.ts:109:7 › Job board › shows the empty state when search removes every job 
+    [chromium] › tests/job-board.spec.ts:124:7 › Job board › paginates through the seeded dataset ──
+    [chromium] › tests/job-board.spec.ts:145:7 › Job board › filters to jobs posted within one week 
+    [chromium] › tests/job-board.spec.ts:164:9 › Job board › filters by work type: Remote ──────────
+    [chromium] › tests/job-board.spec.ts:164:9 › Job board › filters by work type: Hybrid ──────────
+    [chromium] › tests/job-board.spec.ts:164:9 › Job board › filters by work type: Office ──────────
+    [chromium] › tests/job-board.spec.ts:182:9 › Job board › filters by source: Centre for Social Innovation 
+    [chromium] › tests/job-board.spec.ts:182:9 › Job board › filters by source: GoodWork ───────────
+    [chromium] › tests/job-board.spec.ts:182:9 › Job board › filters by source: Centraide ──────────
+    [chromium] › tests/job-board.spec.ts:199:7 › Job board › filters by organization ───────────────
+    [chromium] › tests/job-board.spec.ts:215:9 › Job board › filters by employment type: full-time ─
+    [chromium] › tests/job-board.spec.ts:215:9 › Job board › filters by employment type: contract ──
+    [chromium] › tests/job-board.spec.ts:233:9 › Job board › filters by province: ON ───────────────
+    [chromium] › tests/job-board.spec.ts:233:9 › Job board › filters by province: QC ───────────────
+    [chromium] › tests/job-board.spec.ts:250:7 › Job board › filters by municipality ───────────────
+    [chromium] › tests/job-board.spec.ts:265:7 › Job board › hides salaryless jobs when salary filtering is disabled 
+    [chromium] › tests/job-board.spec.ts:286:7 › Job board › reveals non-SSE jobs when the SSE-only filter is disabled 
+    [chromium] › tests/mutating/bookmarks.spec.ts:7:7 › Bookmarks flow › bookmarks from job board and shows it on bookmarks page 
+    [chromium] › tests/mutating/matching.spec.ts:12:7 › Matching + job card interactions › shows match UI and allows expanding/scrolling job-card pills 
+    [chromium] › tests/mutating/profile.spec.ts:6:7 › Profile editing flow › enforces skills/values limits and persists ordering 
+  10 passed (3.7m)
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report[39m
+[36m[39m

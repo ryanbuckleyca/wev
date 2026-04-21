@@ -176,6 +176,51 @@ export class JobBoardPage {
     await checkbox.uncheck();
   }
 
+  /**
+   * Wait for data to refetch after a filter change.
+   * Waits for the job cards to reload by checking if their count changes or stabilizes to expected value.
+   */
+  async waitForResultsToUpdate(timeoutMs: number = 15_000): Promise<void> {
+    // Wait for loading state to appear and disappear, indicating a fetch cycle
+    // First, give the component time to recognize the filter change
+    await this.page.waitForTimeout(100);
+    
+    // Poll for the pagination summary text to change or stabilize
+    // This is a simple heuristic - we assume the initial load shows all 25 jobs
+    // Once filters apply, the pagination summary should show different text
+    let lastText = await this.paginationSummary.textContent({ timeout: 1000 }).catch(() => "");
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < timeoutMs) {
+      await this.page.waitForTimeout(200);
+      const currentText = await this.paginationSummary.textContent({ timeout: 1000 }).catch(() => "");
+      
+      // If text changed, give it a moment to stabilize
+      if (currentText !== lastText && currentText.length > 0) {
+        await this.page.waitForTimeout(200);
+        const stabilizedText = await this.paginationSummary.textContent({ timeout: 1000 }).catch(() => "");
+        if (stabilizedText === currentText) {
+          // Text has stabilized to a new value - fetch is complete
+          return;
+        }
+        lastText = currentText;
+      }
+      
+      // Also check if results are loaded by waiting for job cards to be present
+      const cardCount = await this.jobCards.count();
+      if (cardCount > 0) {
+        return; // Results are displayed
+      }
+      
+      // Check if we've reached an empty state (pagination text indicates 0 results)
+      if (currentText && (currentText.includes(' 0 ') || currentText.includes('of 0'))) {
+        return; // Empty state reached
+      }
+    }
+    
+    throw new Error(`Results did not update within ${timeoutMs}ms`);
+  }
+
   currentLocale(): JobBoardLocale {
     const pathname = new URL(this.page.url()).pathname;
     return pathname.startsWith("/fr/") ? "fr" : "en";

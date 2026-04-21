@@ -99,6 +99,7 @@ export default function BulletinPageView({
             jobs={data.jobsOnPage}
             totalJobsCount={data.totalMatchingJobs}
             loading={data.loading}
+            userMetaLoading={data.userMetaLoading}
             error={data.error}
             isAdmin={isAdmin}
             userId={userId}
