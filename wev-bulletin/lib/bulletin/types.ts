@@ -23,6 +23,7 @@ export interface BulletinDataState {
   totalMatchingJobs: number;
   lastScrapeTime: string | null;
   loading: boolean;
+  userMetaLoading: boolean;
   error: string | null;
   matchData: Map<string, JobMatchData>;
   bookmarkedJobIds: Set<string>;

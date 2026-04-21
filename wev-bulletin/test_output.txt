@@ -1,0 +1,7 @@
+npm error Lifecycle script `test:e2e` failed with error:
+npm error workspace bulletin@0.1.0
+npm error location /Users/ryanbuckley/code/wev/wev-bulletin
+npm error Missing script: "test:e2e"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run --workspace=bulletin@0.1.0

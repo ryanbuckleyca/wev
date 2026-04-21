@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from './route';
 import { fetchLastScrapeTime } from '@/lib/bulletin/server-data';
 import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
+import { getRequestUser } from '@/lib/auth/request-user';
 
 /**
  * Route handler contract: locale parsing + param translation + data aggregation.
@@ -13,7 +14,7 @@ const {
   mockTextSearch,
   mockIn,
   mockIs,
-  mockOr,
+  mockEq,
   mockGte,
   mockOrder,
   mockRange,
@@ -23,7 +24,7 @@ const {
   const mockTextSearch = vi.fn();
   const mockIn = vi.fn();
   const mockIs = vi.fn();
-  const mockOr = vi.fn();
+  const mockEq = vi.fn();
   const mockGte = vi.fn();
   const mockOrder = vi.fn();
   const mockRange = vi.fn();
@@ -33,10 +34,20 @@ const {
     mockTextSearch,
     mockIn,
     mockIs,
-    mockOr,
+    mockEq,
     mockGte,
     mockOrder,
     mockRange,
+  };
+});
+
+vi.mock('next/cache', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/cache')>();
+  return {
+    ...actual,
+    unstable_cache: <TArgs extends unknown[], TResult>(
+      fn: (...args: TArgs) => TResult,
+    ) => fn,
   };
 });
 
@@ -48,7 +59,7 @@ vi.mock('@/lib/supabase/server', () => {
   mockTextSearch.mockImplementation(() => chain);
   mockIn.mockImplementation(() => chain);
   mockIs.mockImplementation(() => chain);
-  mockOr.mockImplementation(() => chain);
+  mockEq.mockImplementation(() => chain);
   mockGte.mockImplementation(() => chain);
   mockOrder.mockImplementation(() => chain);
   mockRange.mockImplementation(() => Promise.resolve({ data: [], count: 0, error: null }));
@@ -57,7 +68,7 @@ vi.mock('@/lib/supabase/server', () => {
   chain.textSearch = mockTextSearch;
   chain.in = mockIn;
   chain.is = mockIs;
-  chain.or = mockOr;
+  chain.eq = mockEq;
   chain.gte = mockGte;
   chain.order = mockOrder;
   chain.range = mockRange;
@@ -73,6 +84,13 @@ vi.mock('@/lib/supabase/server', () => {
 vi.mock('@/lib/bulletin/server-data', () => ({
   fetchLastScrapeTime: vi.fn(),
   BULLETIN_CACHE_TAG: 'bulletin-jobs',
+  BULLETIN_CACHE_REVALIDATE_SECONDS: 60,
+  BULLETIN_JOB_SELECT:
+    'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week',
+}));
+
+vi.mock('@/lib/auth/request-user', () => ({
+  getRequestUser: vi.fn(),
 }));
 
 // Mock Resolve Skill Labels
@@ -83,12 +101,14 @@ vi.mock('@/lib/resolve-skill-labels', () => ({
 
 const mockFetchLastScrapeTime = vi.mocked(fetchLastScrapeTime);
 const mockResolveSkillLabels = vi.mocked(resolveSkillLabels);
+const mockGetRequestUser = vi.mocked(getRequestUser);
 
 describe('GET /api/bulletin (handler contract)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
     mockResolveSkillLabels.mockResolvedValue(new Map());
+    mockGetRequestUser.mockResolvedValue({ ok: false, authError: null });
     mockRange.mockResolvedValue({ data: [], count: 0, error: null });
   });
 
@@ -96,7 +116,6 @@ describe('GET /api/bulletin (handler contract)', () => {
     const response = await GET(new Request('http://localhost/api/bulletin?locale=fr'));
 
     expect(response.status).toBe(200);
-    // Explicit cache eviction since DB controls everything now natively
     expect(response.headers.get('Cache-Control')).toBe('no-store, max-age=0');
     expect(mockFrom).toHaveBeenCalledWith('matched_jobs');
 
@@ -126,6 +145,7 @@ describe('GET /api/bulletin (handler contract)', () => {
     vi.clearAllMocks();
     mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
     mockResolveSkillLabels.mockResolvedValue(new Map());
+    mockGetRequestUser.mockResolvedValue({ ok: false, authError: null });
     mockRange.mockResolvedValue({ data: [], count: 0, error: null });
 
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=   '));
@@ -160,8 +180,21 @@ describe('GET /api/bulletin (handler contract)', () => {
 
     expect(mockIs).toHaveBeenCalledWith('is_sse', true);
     expect(mockIn).toHaveBeenCalledWith('organization', ['Org A', 'Org B']);
+    expect(mockEq).toHaveBeenCalledWith('has_compensation', true);
     expect(mockOrder).toHaveBeenCalledWith('min_value', { ascending: false, nullsFirst: false });
     expect(mockGte).toHaveBeenCalledWith('date_posted', expect.any(String));
+  });
+
+  it('partitions cached query input using authenticated user id', async () => {
+    mockGetRequestUser.mockResolvedValue({
+      ok: true,
+      user: { id: 'user-123' },
+    } as never);
+
+    await GET(new Request('http://localhost/api/bulletin?locale=en'));
+
+    expect(mockGetRequestUser).toHaveBeenCalled();
+    expect(mockRange).toHaveBeenCalled();
   });
 
   it('returns 500 when fetch throws', async () => {

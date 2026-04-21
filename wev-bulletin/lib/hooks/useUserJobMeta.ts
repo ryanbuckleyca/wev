@@ -11,18 +11,20 @@ export function useUserJobMeta(
   jobsOnPage: JobPosting[],
   initialData?: InitialBulletinData,
 ) {
+  const hasHydratedServerMeta =
+    initialData?.userId === userId &&
+    (initialData?.matchData !== undefined || initialData?.bookmarkedJobIds !== undefined);
+
   const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(
     () => new Map(Object.entries(initialData?.matchData ?? {})),
   );
   const [bookmarkedJobIds, setBookmarkedJobIds] = useState<Set<string>>(
     () => new Set(initialData?.bookmarkedJobIds ?? []),
   );
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [currentUserId, setCurrentUserId] = useState(userId);
-  const hydratedServerUserMetaRef = useRef(
-    initialData?.userId === userId &&
-      (initialData?.matchData !== undefined || initialData?.bookmarkedJobIds !== undefined),
-  );
+  const hydratedServerUserMetaRef = useRef(hasHydratedServerMeta);
 
   // Reset state synchronously during render if the user identity changes.
   // This follows React's "Resetting state on prop change" pattern and
@@ -31,28 +33,40 @@ export function useUserJobMeta(
     setCurrentUserId(userId);
     setMatchData(new Map());
     setBookmarkedJobIds(new Set());
+    setIsLoading(false);
   }
 
   useEffect(() => {
     // If no user or no jobs, there is nothing to fetch.
     // The state is already reset by the render-time sync above.
-    if (!userId || jobsOnPage.length === 0) return;
+    if (!userId || jobsOnPage.length === 0) {
+      setIsLoading(false);
+      return;
+    }
     if (hydratedServerUserMetaRef.current) {
       hydratedServerUserMetaRef.current = false;
+      setIsLoading(false);
       return;
     }
 
     let cancelled = false;
     const jobIds = jobsOnPage.map((job) => job.id);
+    setIsLoading(true);
 
     void Promise.all([
       fetchMatchMapForJobs(userId, jobIds),
       fetchBookmarkedJobIds(userId, jobIds),
-    ]).then(([matches, bookmarked]) => {
-      if (cancelled) return;
-      setMatchData(matches);
-      setBookmarkedJobIds(bookmarked);
-    });
+    ])
+      .then(([matches, bookmarked]) => {
+        if (cancelled) return;
+        setMatchData(matches);
+        setBookmarkedJobIds(bookmarked);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
 
     return () => {
       cancelled = true;
@@ -64,5 +78,6 @@ export function useUserJobMeta(
     setMatchData,
     bookmarkedJobIds,
     setBookmarkedJobIds,
+    isLoading,
   };
 }

@@ -31,7 +31,8 @@ export function useBulletinData(
 
   // 2. User Meta Layer (Matches & Bookmarks)
   // useUserJobMeta needs the current visible jobs or all known jobs it can bind matches to
-  const { matchData, setBookmarkedJobIds, bookmarkedJobIds } = useUserJobMeta(
+  const { matchData, setBookmarkedJobIds, bookmarkedJobIds, isLoading: userMetaLoading } =
+    useUserJobMeta(
     userId,
     jobsOnPage,
     initialData,
@@ -67,6 +68,7 @@ export function useBulletinData(
     totalMatchingJobs,
     lastScrapeTime,
     loading,
+    userMetaLoading,
     error,
     matchData,
     bookmarkedJobIds,
