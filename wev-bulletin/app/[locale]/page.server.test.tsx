@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from '@/test-utils';
 
-const { mockBulletinPageClient, mockGetRequestUser, mockFetchUserRoles, mockFetchServerBulletinJobs } =
-  vi.hoisted(() => ({
-    mockBulletinPageClient: vi.fn(),
-    mockGetRequestUser: vi.fn(),
-    mockFetchUserRoles: vi.fn(),
-    mockFetchServerBulletinJobs: vi.fn(),
-  }));
+const {
+  mockBulletinPageClient,
+  mockGetRequestUser,
+  mockFetchUserRoles,
+  mockFetchServerBulletinJobs,
+} = vi.hoisted(() => ({
+  mockBulletinPageClient: vi.fn(),
+  mockGetRequestUser: vi.fn(),
+  mockFetchUserRoles: vi.fn(),
+  mockFetchServerBulletinJobs: vi.fn(),
+}));
 
 vi.mock('@/components/BulletinPageClient', () => ({
   default: (props: unknown) => {

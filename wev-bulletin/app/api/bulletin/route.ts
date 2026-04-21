@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import {
-  BULLETIN_CACHE_REVALIDATE_SECONDS,
   BULLETIN_CACHE_TAG,
   BULLETIN_JOB_SELECT,
   fetchLastScrapeTime,
@@ -62,9 +61,7 @@ function createBuildQueryFn(
   const end = start + input.limit - 1;
 
   return (vectorColumn: string) => {
-    let query = supabase
-      .from('matched_jobs')
-      .select(BULLETIN_JOB_SELECT, { count: 'exact' });
+    let query = supabase.from('matched_jobs').select(BULLETIN_JOB_SELECT, { count: 'exact' });
 
     // 1. Text Search (FTS)
     if (input.searchQuery.length > 0) {
@@ -131,25 +128,6 @@ function createBuildQueryFn(
   };
 }
 
-const generateCacheKey = (input: BulletinApiQueryInput): string => {
-  // Generate a unique cache key based on all filter parameters
-  return [
-    input.searchQuery || 'q:_',
-    input.orgs.length ? `org:${input.orgs.sort().join(',')}` : 'org:_',
-    input.provs.length ? `prov:${input.provs.sort().join(',')}` : 'prov:_',
-    input.munis.length ? `muni:${input.munis.sort().join(',')}` : 'muni:_',
-    input.emps.length ? `emp:${input.emps.sort().join(',')}` : 'emp:_',
-    input.srcs.length ? `src:${input.srcs.sort().join(',')}` : 'src:_',
-    input.works.length ? `work:${input.works.sort().join(',')}` : 'work:_',
-    input.onlySse ? 'sse:1' : 'sse:0',
-    input.noSalary ? 'nosal:1' : 'nosal:0',
-    input.postedWithin !== 'any' ? `posted:${input.postedWithin}` : 'posted:any',
-    input.sortBy !== 'date-desc' ? `sort:${input.sortBy}` : 'sort:_',
-    `page:${input.page}`,
-    `user:${input.userCacheKey}`,
-  ].join('|');
-};
-
 async function fetchBulletinApiPayload(
   input: BulletinApiQueryInput,
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -163,7 +141,11 @@ async function fetchBulletinApiPayload(
   ]);
   let jobsResult = initialJobsResult;
 
-  if (jobsResult.error && input.searchQuery.length > 0 && isUndefinedColumnError(jobsResult.error)) {
+  if (
+    jobsResult.error &&
+    input.searchQuery.length > 0 &&
+    isUndefinedColumnError(jobsResult.error)
+  ) {
     jobsResult = await buildQuery('fts');
   }
 
@@ -230,14 +212,11 @@ export async function GET(request: Request) {
 
     const payload = await fetchBulletinApiPayload(input, supabase);
 
-    return NextResponse.json(
-      payload,
-      {
-        headers: {
-          'Cache-Control': 'no-store, max-age=0',
-        },
+    return NextResponse.json(payload, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
       },
-    );
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to fetch bulletin';
     return NextResponse.json({ error: message }, { status: 500 });

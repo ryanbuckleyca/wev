@@ -4,9 +4,7 @@ import { parseLocale } from '@/lib/resolve-skill-labels';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
 import { rolesIncludeAdmin } from '@/lib/auth';
-import {
-  fetchServerBulletinJobs,
-} from '@/lib/bulletin/server-data';
+import { fetchServerBulletinJobs } from '@/lib/bulletin/server-data';
 import BulletinPageClient from '@/components/BulletinPageClient';
 import BulletinPageSkeleton from '@/components/BulletinPageSkeleton';
 
