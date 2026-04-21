@@ -40,23 +40,20 @@ export function useUserJobMeta(
     // If no user or no jobs, there is nothing to fetch.
     // The state is already reset by the render-time sync above.
     if (!userId || jobsOnPage.length === 0) {
-      setIsLoading(false);
       return;
     }
     if (hydratedServerUserMetaRef.current) {
       hydratedServerUserMetaRef.current = false;
-      setIsLoading(false);
       return;
     }
 
     let cancelled = false;
     const jobIds = jobsOnPage.map((job) => job.id);
+    // Safe to set state synchronously at the start of effect with cancellation guard
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
 
-    void Promise.all([
-      fetchMatchMapForJobs(userId, jobIds),
-      fetchBookmarkedJobIds(userId, jobIds),
-    ])
+    void Promise.all([fetchMatchMapForJobs(userId, jobIds), fetchBookmarkedJobIds(userId, jobIds)])
       .then(([matches, bookmarked]) => {
         if (cancelled) return;
         setMatchData(matches);

@@ -115,7 +115,11 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
   ]);
   let jobsResult = initialJobsResult;
 
-  if (jobsResult.error && input.searchQuery.length > 0 && isUndefinedColumnError(jobsResult.error)) {
+  if (
+    jobsResult.error &&
+    input.searchQuery.length > 0 &&
+    isUndefinedColumnError(jobsResult.error)
+  ) {
     jobsResult = await buildQuery('fts');
   }
 

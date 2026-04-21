@@ -27,7 +27,9 @@ describe('POST /api/revalidate-jobs', () => {
 
     const { POST } = await import('./route');
 
-    const response = await POST(new Request('http://localhost/api/revalidate-jobs', { method: 'POST' }));
+    const response = await POST(
+      new Request('http://localhost/api/revalidate-jobs', { method: 'POST' }),
+    );
 
     expect(response.status).toBe(503);
     const body = (await response.json()) as { error: string };

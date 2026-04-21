@@ -45,9 +45,7 @@ vi.mock('next/cache', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/cache')>();
   return {
     ...actual,
-    unstable_cache: <TArgs extends unknown[], TResult>(
-      fn: (...args: TArgs) => TResult,
-    ) => fn,
+    unstable_cache: <TArgs extends unknown[], TResult>(fn: (...args: TArgs) => TResult) => fn,
   };
 });
 

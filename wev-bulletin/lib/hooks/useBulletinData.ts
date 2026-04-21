@@ -31,12 +31,12 @@ export function useBulletinData(
 
   // 2. User Meta Layer (Matches & Bookmarks)
   // useUserJobMeta needs the current visible jobs or all known jobs it can bind matches to
-  const { matchData, setBookmarkedJobIds, bookmarkedJobIds, isLoading: userMetaLoading } =
-    useUserJobMeta(
-    userId,
-    jobsOnPage,
-    initialData,
-  );
+  const {
+    matchData,
+    setBookmarkedJobIds,
+    bookmarkedJobIds,
+    isLoading: userMetaLoading,
+  } = useUserJobMeta(userId, jobsOnPage, initialData);
 
   // 3. Transformation Layer (Filter, Paginate)
   const filters = useJobFilters(totalMatchingJobs, options);
