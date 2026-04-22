@@ -175,6 +175,7 @@ function createData(): BulletinDataState {
     totalMatchingJobs: 3,
     lastScrapeTime: 'March 28, 2026, 9:00 AM EDT',
     loading: false,
+    userMetaLoading: false,
     error: null,
     matchData: new Map(),
     bookmarkedJobIds: new Set(['job-1']),

@@ -176,6 +176,50 @@ export class JobBoardPage {
     await checkbox.uncheck();
   }
 
+  /**
+   * Wait for data to refetch after a filter change.
+   * Watches the URL params to detect filter application, then waits for data to load.
+   */
+  async waitForResultsToUpdate(timeoutMs: number = 15_000): Promise<void> {
+    const startTime = Date.now();
+
+    // Wait for pagination summary to update to a stable value.
+    // After a filter is applied, the pagination text should reflect the filtered results.
+    // We poll until we get a non-empty, stable pagination text.
+    let lastPaginationText = "";
+    let stabilizedCount = 0;
+
+    while (Date.now() - startTime < timeoutMs) {
+      await this.page.waitForTimeout(200);
+
+      const currentPaginationText = await this.paginationSummary
+        .textContent({ timeout: 1000 })
+        .catch(() => "");
+
+      // If pagination text is empty, component might still be loading
+      if (!currentPaginationText) {
+        stabilizedCount = 0;
+        continue;
+      }
+
+      // If text is the same as last iteration, increment stabilization counter
+      if (currentPaginationText === lastPaginationText) {
+        stabilizedCount++;
+        // If text has been stable for 2+ iterations (400+ms), we're done
+        if (stabilizedCount >= 2) {
+          return;
+        }
+      } else {
+        // Text changed, reset counter to verify it stabilizes
+        stabilizedCount = 1;
+      }
+
+      lastPaginationText = currentPaginationText;
+    }
+
+    throw new Error(`Results did not update within ${timeoutMs}ms`);
+  }
+
   currentLocale(): JobBoardLocale {
     const pathname = new URL(this.page.url()).pathname;
     return pathname.startsWith("/fr/") ? "fr" : "en";

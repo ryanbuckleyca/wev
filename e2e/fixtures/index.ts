@@ -42,7 +42,18 @@ export const test = base.extend<E2EFixtures>({
     try {
       await authPage.gotoLogin("en");
       await authPage.login(user.email, user.password);
-      await expect(page).toHaveURL(/\/en(\/)?$/, { timeout: 10_000 });
+
+      // Wait for redirect away from login page - either to home or with auth params
+      // Check that we're NOT on the login form anymore
+      await expect(
+        page.getByRole("heading", { name: /log in/i }),
+      ).not.toBeVisible({
+        timeout: 10_000,
+      });
+
+      // Also wait to ensure we're on an /en path
+      await page.waitForURL(/\/en/, { timeout: 10_000 });
+
       await runFixture(user);
     } finally {
       await deleteAuthUserByEmail(user.email).catch(() => undefined);

@@ -99,6 +99,7 @@ test.describe("Job board", () => {
     await loadEnglishJobBoard(jobBoardPage);
 
     await jobBoardPage.searchFor(expectations.sampleJobs.searchMatch);
+    await jobBoardPage.waitForResultsToUpdate();
 
     await expect
       .poll(() => new URL(jobBoardPage.page.url()).searchParams.get("q"))
@@ -114,6 +115,7 @@ test.describe("Job board", () => {
     await expect(jobBoardPage.jobCards.first()).toBeVisible();
 
     await jobBoardPage.searchFor("no-such-role-for-playwright");
+    await jobBoardPage.waitForResultsToUpdate();
 
     await expect
       .poll(() => new URL(jobBoardPage.page.url()).searchParams.get("q"))
@@ -129,6 +131,7 @@ test.describe("Job board", () => {
     await expect(jobBoardPage.paginationSummary).toContainText("1-20");
 
     await jobBoardPage.goToPage(2);
+    await jobBoardPage.waitForResultsToUpdate();
 
     await expect
       .poll(() => new URL(jobBoardPage.page.url()).searchParams.get("page"))
@@ -152,6 +155,7 @@ test.describe("Job board", () => {
       "postedWithin",
       FILTER_LABELS.postedWithin.oneWeek,
     );
+    await jobBoardPage.waitForResultsToUpdate();
 
     await expectVisibleResults(
       jobBoardPage,
@@ -170,6 +174,7 @@ test.describe("Job board", () => {
         "workType",
         FILTER_LABELS.workType[key],
       );
+      await jobBoardPage.waitForResultsToUpdate();
       await expectVisibleResults(
         jobBoardPage,
         expectations.workTypeCounts[key],
@@ -188,6 +193,7 @@ test.describe("Job board", () => {
         "source",
         FILTER_LABELS.source[key],
       );
+      await jobBoardPage.waitForResultsToUpdate();
       await expectVisibleResults(
         jobBoardPage,
         expectations.sourceCounts[key],
@@ -203,6 +209,7 @@ test.describe("Job board", () => {
       "organization",
       FILTER_LABELS.organization.partner1,
     );
+    await jobBoardPage.waitForResultsToUpdate();
 
     await expectVisibleResults(
       jobBoardPage,
@@ -221,6 +228,7 @@ test.describe("Job board", () => {
         "employmentType",
         FILTER_LABELS.employmentType[key],
       );
+      await jobBoardPage.waitForResultsToUpdate();
       await expectVisibleResults(
         jobBoardPage,
         expectations.employmentTypeCounts[key],
@@ -239,6 +247,7 @@ test.describe("Job board", () => {
         "province",
         FILTER_LABELS.province[key],
       );
+      await jobBoardPage.waitForResultsToUpdate();
       await expectVisibleResults(
         jobBoardPage,
         expectations.provinceCounts[key],
@@ -269,6 +278,7 @@ test.describe("Job board", () => {
     await loadEnglishJobBoard(jobBoardPage);
 
     await jobBoardPage.setBooleanFilter("salary", false);
+    await jobBoardPage.waitForResultsToUpdate();
     await expectVisibleResults(
       jobBoardPage,
       expectations.salaryListedCount,
@@ -276,6 +286,7 @@ test.describe("Job board", () => {
     );
 
     await jobBoardPage.searchFor(expectations.sampleJobs.salarylessVisible);
+    await jobBoardPage.waitForResultsToUpdate();
     await expect(
       jobBoardPage.jobCards.filter({
         hasText: expectations.sampleJobs.salarylessVisible,
@@ -290,6 +301,7 @@ test.describe("Job board", () => {
     await loadEnglishJobBoard(jobBoardPage);
 
     await jobBoardPage.setBooleanFilter("sse", false);
+    await jobBoardPage.waitForResultsToUpdate();
     await expectVisibleResults(
       jobBoardPage,
       expectations.sseOffCount,
@@ -297,6 +309,7 @@ test.describe("Job board", () => {
     );
 
     await jobBoardPage.searchFor(expectations.sampleJobs.nonSseOnly);
+    await jobBoardPage.waitForResultsToUpdate();
     await expectVisibleResults(jobBoardPage, 1, expectations);
   });
 });

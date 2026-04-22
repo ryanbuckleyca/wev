@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
 import { requireAdminResponse } from '@/lib/auth/require-admin';
 import { BULLETIN_CACHE_TAG } from '@/lib/bulletin/server-data';
 
 export const dynamic = 'force-dynamic';
+
+const BULLETIN_REVALIDATE_PATHS = ['/en', '/fr', '/en/jobs', '/fr/jobs', '/fr/emplois'] as const;
+
+function revalidateBulletinPaths() {
+  for (const path of BULLETIN_REVALIDATE_PATHS) {
+    revalidatePath(path, 'page');
+  }
+}
 
 export async function PATCH(
   _request: NextRequest,
@@ -35,6 +43,7 @@ export async function PATCH(
     }
 
     revalidateTag(BULLETIN_CACHE_TAG, 'default');
+    revalidateBulletinPaths();
 
     return NextResponse.json(data);
   } catch (err) {

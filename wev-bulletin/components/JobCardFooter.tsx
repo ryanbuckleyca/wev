@@ -18,6 +18,7 @@ interface JobCardFooterProps {
   totalMatchPercentage: number;
   matchTooltipContent: ReactNode | null;
   showTooltip: boolean;
+  showMatchLoading?: boolean;
   fadeBackground?: string;
   workType?: 'remote' | 'hybrid' | 'office';
   selectedWorkTypes?: string[];
@@ -33,6 +34,7 @@ export default function JobCardFooter({
   totalMatchPercentage,
   matchTooltipContent,
   showTooltip,
+  showMatchLoading = false,
   fadeBackground = 'var(--muted)',
   workType,
   selectedWorkTypes = [],
@@ -229,6 +231,22 @@ export default function JobCardFooter({
               <span className="text-sm font-medium text-foreground">{totalMatchPercentage}%</span>
             </div>
           </InfoPopover>
+        </div>
+      )}
+
+      {showMatchLoading && !showTooltip && (
+        <div
+          className="flex items-center justify-center pr-4 border-r border-border"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span
+              aria-hidden="true"
+              className="h-4 w-4 rounded-full border-2 border-border border-t-primary animate-spin"
+            />
+            <span>{t('common.loading')}</span>
+          </div>
         </div>
       )}
 

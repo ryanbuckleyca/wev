@@ -1,46 +1,171 @@
 import 'server-only';
 
-import { unstable_cache } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
-import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
+import { createClient } from '@/lib/supabase/server';
+import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
+export const BULLETIN_JOB_SELECT =
+  'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week';
 
-/**
- * Fetches and caches the last scrape time.
- */
-export const fetchLastScrapeTime = unstable_cache(
-  async () => {
-    const { data, error } = await supabaseServer
-      .from('scrape_runs')
-      .select('run_at')
-      .order('run_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+export type BulletinQueryInput = {
+  locale: 'en' | 'fr';
+  page: number;
+  limit: number;
+  searchQuery: string;
+  sortBy: string;
+  postedWithin: string;
+  orgs: string[];
+  provs: string[];
+  munis: string[];
+  emps: string[];
+  srcs: string[];
+  works: string[];
+  onlySse: boolean;
+  noSalary: boolean;
+  // Included for cache key partitioning to prevent cross-user match-sort leakage.
+  userCacheKey: string;
+};
 
-    if (error) throw new Error(error.message);
-    return data?.run_at ?? null;
-  },
-  ['bulletin-scrape-time'],
-  { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
-);
+type BulletinQueryResult = {
+  jobs: JobPosting[];
+  total: number;
+  lastScrapeTime: string | null;
+  skillLabels: Record<string, SkillLabel>;
+};
 
-import { createClient } from '@/lib/supabase/server';
+function isUndefinedColumnError(error: { code?: string } | null): boolean {
+  return error?.code === '42703';
+}
 
-/**
- * Fetches the initial page of bulletin jobs for SSR.
- */
-export async function fetchServerBulletinJobs(locale: 'en' | 'fr') {
+function postedWithinToDays(postedWithin: string): number | null {
+  if (postedWithin === '1-week') return 7;
+  if (postedWithin === '2-weeks') return 14;
+  if (postedWithin === '3-weeks') return 21;
+  if (postedWithin === '1-month') return 30;
+  return null;
+}
+
+async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQueryResult> {
   const supabase = await createClient();
+  const start = (input.page - 1) * input.limit;
+  const end = start + input.limit - 1;
+  const searchColumn = input.locale === 'fr' ? 'fts_fr' : 'fts_en';
+
+  const buildQuery = (vectorColumn: string) => {
+    let query = supabase.from('matched_jobs').select(BULLETIN_JOB_SELECT, { count: 'exact' });
+
+    if (input.searchQuery.length > 0) {
+      query = query.textSearch(vectorColumn, input.searchQuery, { type: 'websearch' });
+    }
+
+    if (input.orgs.length) query = query.in('organization', input.orgs);
+    if (input.provs.length) query = query.in('province', input.provs);
+    if (input.munis.length) query = query.in('municipality', input.munis);
+    if (input.emps.length) query = query.in('employment_type', input.emps);
+    if (input.srcs.length) query = query.in('source', input.srcs);
+    if (input.works.length) query = query.in('work_type', input.works);
+    if (input.onlySse) query = query.is('is_sse', true);
+    if (!input.noSalary) query = query.eq('has_compensation', true);
+
+    const postedWithinDays = postedWithinToDays(input.postedWithin);
+    if (postedWithinDays != null) {
+      const cutoff = new Date(Date.now() - postedWithinDays * 24 * 60 * 60 * 1000).toISOString();
+      query = query.gte('date_posted', cutoff);
+    }
+
+    switch (input.sortBy) {
+      case 'date-asc':
+        query = query.order('date_posted', { ascending: true });
+        break;
+      case 'match-desc':
+        query = query.order('match_score', { ascending: false });
+        break;
+      case 'value-match-desc':
+        query = query.order('value_score', { ascending: false });
+        break;
+      case 'skill-match-desc':
+        query = query.order('skill_score', { ascending: false });
+        break;
+      case 'salary-desc':
+        query = query.order('min_value', { ascending: false, nullsFirst: false });
+        break;
+      case 'salary-asc':
+        query = query.order('min_value', { ascending: true, nullsFirst: false });
+        break;
+      case 'org-asc':
+        query = query.order('organization', { ascending: true });
+        break;
+      case 'date-desc':
+      default:
+        query = query.order('date_posted', { ascending: false });
+        break;
+    }
+
+    return query.range(start, end);
+  };
+
+  const [initialJobsResult, scrapeTime] = await Promise.all([
+    buildQuery(searchColumn),
+    fetchLastScrapeTime(),
+  ]);
+  let jobsResult = initialJobsResult;
+
+  if (
+    jobsResult.error &&
+    input.searchQuery.length > 0 &&
+    isUndefinedColumnError(jobsResult.error)
+  ) {
+    jobsResult = await buildQuery('fts');
+  }
+
+  if (jobsResult.error) {
+    throw new Error(jobsResult.error.message);
+  }
+
+  const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
+  const labelMap = await resolveSkillLabels(supabase, jobs, input.locale);
+
+  return {
+    jobs,
+    total: jobsResult.count ?? 0,
+    lastScrapeTime: scrapeTime,
+    skillLabels: Object.fromEntries(labelMap),
+  };
+}
+
+export async function fetchCachedBulletinQueryPayload(
+  input: BulletinQueryInput,
+): Promise<BulletinQueryResult> {
+  return runBulletinQuery(input);
+}
+
+/**
+ * Fetches and returns the last scrape time.
+ */
+export async function fetchLastScrapeTime(): Promise<string | null> {
+  const { data, error } = await supabaseServer
+    .from('scrape_runs')
+    .select('run_at')
+    .order('run_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data?.run_at ?? null;
+}
+
+const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
   const postedWithinDays = 14;
   const postedCutoff = new Date(Date.now() - postedWithinDays * 24 * 60 * 60 * 1000).toISOString();
+
   const [scrapeTime, jobsResult] = await Promise.all([
     fetchLastScrapeTime(),
-    supabase
+    supabaseServer
       .from('matched_jobs')
-      .select('*', { count: 'exact' })
+      .select(BULLETIN_JOB_SELECT, { count: 'exact' })
       .is('is_sse', true)
       .gte('date_posted', postedCutoff)
       .order('date_posted', { ascending: false })
@@ -49,7 +174,7 @@ export async function fetchServerBulletinJobs(locale: 'en' | 'fr') {
 
   if (jobsResult.error) throw new Error(jobsResult.error.message);
 
-  const jobs = jobsResult.data as unknown as JobPosting[];
+  const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
   const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
 
   return {
@@ -58,6 +183,13 @@ export async function fetchServerBulletinJobs(locale: 'en' | 'fr') {
     lastScrapeTime: scrapeTime,
     skillLabels: Object.fromEntries(labelMap),
   };
+};
+
+/**
+ * Fetches the initial page of bulletin jobs for SSR.
+ */
+export async function fetchServerBulletinJobs(locale: 'en' | 'fr') {
+  return fetchServerBulletinJobsImpl(locale);
 }
 
 /**
