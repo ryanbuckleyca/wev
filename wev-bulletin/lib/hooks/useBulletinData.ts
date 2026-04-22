@@ -22,6 +22,7 @@ export function useBulletinData(
     jobsOnPage,
     setJobsOnPage,
     totalMatchingJobs,
+    availableJobsCount,
     lastScrapeTime,
     skillLabels,
     loading,
@@ -66,6 +67,7 @@ export function useBulletinData(
   return {
     jobsOnPage,
     totalMatchingJobs,
+    availableJobsCount,
     lastScrapeTime,
     loading,
     userMetaLoading,
