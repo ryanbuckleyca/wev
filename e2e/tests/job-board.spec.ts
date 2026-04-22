@@ -312,4 +312,36 @@ test.describe("Job board", () => {
     await jobBoardPage.waitForResultsToUpdate();
     await expectVisibleResults(jobBoardPage, 1, expectations);
   });
+
+  test("shows filter-specific empty state message when filters hide all jobs", async ({
+    jobBoardPage,
+  }) => {
+    await loadEnglishJobBoard(jobBoardPage);
+    await expect(jobBoardPage.jobCards.first()).toBeVisible();
+
+    // Apply a contradictory filter combination through controls that remain available:
+    // seeded remote jobs do not belong to a province, so ON + Remote should hide all jobs.
+    await jobBoardPage.toggleFilterCheckbox(
+      "province",
+      FILTER_LABELS.province.on,
+    );
+    await jobBoardPage.waitForResultsToUpdate();
+    await jobBoardPage.selectFilterButton(
+      "workType",
+      FILTER_LABELS.workType.remote,
+    );
+    await jobBoardPage.waitForResultsToUpdate();
+
+    // Verify the empty state shows the filter-specific message
+    await expect(jobBoardPage.emptyState).toBeVisible();
+    await expect(jobBoardPage.emptyState).toContainText(
+      "Your filters are hiding all",
+    );
+    await expect(jobBoardPage.emptyState).toContainText("available jobs");
+    await expect(
+      jobBoardPage.emptyState.getByRole("button", {
+        name: /clear all filters/i,
+      }),
+    ).toBeVisible();
+  });
 });

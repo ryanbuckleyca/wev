@@ -21,6 +21,7 @@ export interface InitialBulletinData {
 export interface BulletinDataState {
   jobsOnPage: JobPosting[];
   totalMatchingJobs: number;
+  availableJobsCount: number;
   lastScrapeTime: string | null;
   loading: boolean;
   userMetaLoading: boolean;
@@ -37,6 +38,7 @@ export interface BulletinDataState {
 
 export interface UseBulletinDataOptions {
   filters: BulletinFilters;
+  hasAnyFilters: boolean;
   sortBy: JobSortOption;
   currentPage: number;
   setCurrentPage: (page: number) => Promise<unknown> | void;
