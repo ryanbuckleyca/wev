@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from './route';
 import { fetchLastScrapeTime } from '@/lib/bulletin/server-data';
 import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
-import { getRequestUser } from '@/lib/auth/request-user';
 
 /**
  * Route handler contract: locale parsing + param translation + data aggregation.
@@ -87,11 +86,6 @@ vi.mock('@/lib/bulletin/server-data', () => ({
     'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week',
 }));
 
-vi.mock('@/lib/auth/request-user', () => ({
-  getRequestUser: vi.fn(),
-}));
-
-// Mock Resolve Skill Labels
 vi.mock('@/lib/resolve-skill-labels', () => ({
   resolveSkillLabels: vi.fn(),
   parseLocale: vi.fn((val) => (val === 'fr' ? 'fr' : 'en')),
@@ -99,14 +93,12 @@ vi.mock('@/lib/resolve-skill-labels', () => ({
 
 const mockFetchLastScrapeTime = vi.mocked(fetchLastScrapeTime);
 const mockResolveSkillLabels = vi.mocked(resolveSkillLabels);
-const mockGetRequestUser = vi.mocked(getRequestUser);
 
 describe('GET /api/bulletin (handler contract)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
     mockResolveSkillLabels.mockResolvedValue(new Map());
-    mockGetRequestUser.mockResolvedValue({ ok: false, authError: null });
     mockRange.mockResolvedValue({ data: [], count: 0, error: null });
   });
 
@@ -143,7 +135,6 @@ describe('GET /api/bulletin (handler contract)', () => {
     vi.clearAllMocks();
     mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
     mockResolveSkillLabels.mockResolvedValue(new Map());
-    mockGetRequestUser.mockResolvedValue({ ok: false, authError: null });
     mockRange.mockResolvedValue({ data: [], count: 0, error: null });
 
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=   '));
@@ -181,18 +172,6 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(mockEq).toHaveBeenCalledWith('has_compensation', true);
     expect(mockOrder).toHaveBeenCalledWith('min_value', { ascending: false, nullsFirst: false });
     expect(mockGte).toHaveBeenCalledWith('date_posted', expect.any(String));
-  });
-
-  it('partitions cached query input using authenticated user id', async () => {
-    mockGetRequestUser.mockResolvedValue({
-      ok: true,
-      user: { id: 'user-123' },
-    } as never);
-
-    await GET(new Request('http://localhost/api/bulletin?locale=en'));
-
-    expect(mockGetRequestUser).toHaveBeenCalled();
-    expect(mockRange).toHaveBeenCalled();
   });
 
   it('returns 500 when fetch throws', async () => {

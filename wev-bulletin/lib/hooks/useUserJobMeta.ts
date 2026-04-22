@@ -42,6 +42,7 @@ export function useUserJobMeta(
     if (!userId || jobsOnPage.length === 0) {
       // Explicitly clear loading state in case a fetch was in-flight.
       // The cleanup's cancellation guard would otherwise prevent .finally() from running.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoading(false);
       return;
     }
@@ -53,7 +54,7 @@ export function useUserJobMeta(
     let cancelled = false;
     const jobIds = jobsOnPage.map((job) => job.id);
     // Safe to set state synchronously at the start of effect with cancellation guard
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setIsLoading(true);
 
     void Promise.all([fetchMatchMapForJobs(userId, jobIds), fetchBookmarkedJobIds(userId, jobIds)])

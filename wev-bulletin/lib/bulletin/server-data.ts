@@ -159,9 +159,7 @@ export async function fetchLastScrapeTime(): Promise<string | null> {
 
 const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
   const postedWithinDays = 14;
-  const postedCutoff = new Date(
-    Date.now() - postedWithinDays * 24 * 60 * 60 * 1000,
-  ).toISOString();
+  const postedCutoff = new Date(Date.now() - postedWithinDays * 24 * 60 * 60 * 1000).toISOString();
 
   const [scrapeTime, jobsResult] = await Promise.all([
     fetchLastScrapeTime(),
