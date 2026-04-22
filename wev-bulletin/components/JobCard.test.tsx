@@ -179,6 +179,22 @@ describe('JobCard', () => {
     vi.unstubAllGlobals();
   });
 
+  it('shows a loading state for match details while user metadata is fetching', () => {
+    mockUseRouter.mockReturnValue(mockRouter() as never);
+
+    renderJobCard({
+      userId: 'user-1',
+      matchLoading: true,
+      job: {
+        ...defaultJob,
+        values: ['Advancement'],
+      },
+    });
+
+    expect(screen.getByRole('status')).toBeVisible();
+    expect(screen.getByText('Loading...')).toBeVisible();
+  });
+
   it('caps displayed skills to five pills for users', async () => {
     const skills = [
       'skill-one',

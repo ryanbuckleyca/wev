@@ -5,12 +5,14 @@ vi.mock('next/cache', async (importOriginal) => {
   return {
     ...actual,
     revalidateTag: vi.fn(),
+    revalidatePath: vi.fn(),
   };
 });
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { PATCH } from './route';
 import { adminGateUnauthorized } from '@/test-utils/admin-route';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
 const { mockSingle, mockSupabase } = vi.hoisted(() => {
   const mockSingle = vi.fn();
@@ -76,6 +78,12 @@ describe('PATCH /api/bulletin/jobs/[id]', () => {
     const data = await response.json();
     expect(data).toEqual({ id: 'job-1', is_sse: true });
     expect(mockSingle).toHaveBeenCalled();
+    expect(revalidateTag).toHaveBeenCalledWith('bulletin-jobs', 'default');
+    expect(revalidatePath).toHaveBeenCalledWith('/en', 'page');
+    expect(revalidatePath).toHaveBeenCalledWith('/fr', 'page');
+    expect(revalidatePath).toHaveBeenCalledWith('/en/jobs', 'page');
+    expect(revalidatePath).toHaveBeenCalledWith('/fr/jobs', 'page');
+    expect(revalidatePath).toHaveBeenCalledWith('/fr/emplois', 'page');
   });
 
   it('returns 400 when is_sse is not a boolean', async () => {

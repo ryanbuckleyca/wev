@@ -14,6 +14,7 @@ import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 interface JobListingsProps {
   jobs: JobPosting[];
   loading: boolean;
+  userMetaLoading?: boolean;
   error: string | null;
   isAdmin: boolean;
   userId: string | null;
@@ -29,6 +30,7 @@ interface JobListingsProps {
 export default function JobListings({
   jobs,
   loading,
+  userMetaLoading = false,
   error,
   isAdmin,
   userId,
@@ -138,6 +140,7 @@ export default function JobListings({
             updatingId={updatingId}
             initialExpanded={allExpanded}
             match={matchData?.get(job.id)}
+            matchLoading={userMetaLoading}
             initialBookmarked={bookmarkedJobIds?.has(job.id) ?? false}
             selectedWorkTypes={selectedWorkTypes}
             skillLabels={skillLabels}
