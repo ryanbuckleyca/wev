@@ -178,52 +178,68 @@ export class JobBoardPage {
 
   /**
    * Wait for data to refetch after a filter change.
-   * Waits for the job cards to reload by checking if their count changes or stabilizes to expected value.
+   * Captures initial state and waits for observable changes indicating new data has loaded.
+   * Detects refetch completion by monitoring the first job card's text/ID or pagination summary.
    */
   async waitForResultsToUpdate(timeoutMs: number = 15_000): Promise<void> {
-    // Wait for loading state to appear and disappear, indicating a fetch cycle
-    // First, give the component time to recognize the filter change
-    await this.page.waitForTimeout(100);
-
-    // Poll for the pagination summary text to change or stabilize
-    // This is a simple heuristic - we assume the initial load shows all 25 jobs
-    // Once filters apply, the pagination summary should show different text
-    let lastText = await this.paginationSummary
+    // Capture initial state to detect when new data arrives
+    const initialPaginationText = await this.paginationSummary
       .textContent({ timeout: 1000 })
       .catch(() => "");
+
+    // Try to get the first card's visible text as a change indicator
+    const firstCard = this.jobCards.first();
+    let initialFirstCardText: string | null = null;
+    try {
+      initialFirstCardText = await firstCard
+        .textContent({ timeout: 500 })
+        .catch(() => null);
+    } catch {
+      // First card might not exist yet, that's okay
+    }
+
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeoutMs) {
       await this.page.waitForTimeout(200);
-      const currentText = await this.paginationSummary
+
+      const currentPaginationText = await this.paginationSummary
         .textContent({ timeout: 1000 })
         .catch(() => "");
 
-      // If text changed, give it a moment to stabilize
-      if (currentText !== lastText && currentText.length > 0) {
+      // Check if pagination text has changed from initial (indicates refetch completed)
+      if (
+        currentPaginationText &&
+        currentPaginationText !== initialPaginationText
+      ) {
+        // Text changed, wait a moment for any final renders to settle
         await this.page.waitForTimeout(200);
-        const stabilizedText = await this.paginationSummary
-          .textContent({ timeout: 1000 })
-          .catch(() => "");
-        if (stabilizedText === currentText) {
-          // Text has stabilized to a new value - fetch is complete
+        return;
+      }
+
+      // Also check if the first card has changed (different job is now first)
+      if (initialFirstCardText !== null) {
+        const currentFirstCardText = await firstCard
+          .textContent({ timeout: 500 })
+          .catch(() => null);
+
+        if (
+          currentFirstCardText &&
+          currentFirstCardText !== initialFirstCardText
+        ) {
+          // First card changed, indicating new results loaded
+          await this.page.waitForTimeout(200);
           return;
         }
-        lastText = currentText;
       }
 
-      // Also check if results are loaded by waiting for job cards to be present
-      const cardCount = await this.jobCards.count();
-      if (cardCount > 0) {
-        return; // Results are displayed
-      }
-
-      // Check if we've reached an empty state (pagination text indicates 0 results)
+      // Check for empty state (pagination indicates 0 results)
       if (
-        currentText &&
-        (currentText.includes(" 0 ") || currentText.includes("of 0"))
+        currentPaginationText &&
+        (currentPaginationText.includes(" 0 ") ||
+          currentPaginationText.includes("of 0"))
       ) {
-        return; // Empty state reached
+        return; // Empty state reached after filter
       }
     }
 

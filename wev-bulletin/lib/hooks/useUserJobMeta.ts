@@ -40,6 +40,9 @@ export function useUserJobMeta(
     // If no user or no jobs, there is nothing to fetch.
     // The state is already reset by the render-time sync above.
     if (!userId || jobsOnPage.length === 0) {
+      // Explicitly clear loading state in case a fetch was in-flight.
+      // The cleanup's cancellation guard would otherwise prevent .finally() from running.
+      setIsLoading(false);
       return;
     }
     if (hydratedServerUserMetaRef.current) {

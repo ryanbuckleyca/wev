@@ -4,7 +4,6 @@ import {
   BULLETIN_JOB_SELECT,
   fetchLastScrapeTime,
 } from '@/lib/bulletin/server-data';
-import { getRequestUser } from '@/lib/auth/request-user';
 import { parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import { createClient } from '@/lib/supabase/server';
 
@@ -31,8 +30,6 @@ type BulletinApiQueryInput = {
   works: string[];
   onlySse: boolean;
   noSalary: boolean;
-  // Included for cache key partitioning to prevent cross-user match-sort leakage.
-  userCacheKey: string;
 };
 
 function isUndefinedColumnError(error: { code?: string } | null): boolean {
@@ -186,10 +183,8 @@ export async function GET(request: Request) {
     const works = searchParams.getAll('works');
     const onlySse = searchParams.get('sse') === 'true';
     const noSalary = searchParams.get('nosal') === 'true';
-    const auth = await getRequestUser();
-    const userCacheKey = auth.ok ? auth.user.id : 'anon';
 
-    // Create supabase client OUTSIDE cache boundary
+    // Create supabase client
     const supabase = await createClient();
 
     const input: BulletinApiQueryInput = {
@@ -207,7 +202,6 @@ export async function GET(request: Request) {
       works,
       onlySse,
       noSalary,
-      userCacheKey,
     };
 
     const payload = await fetchBulletinApiPayload(input, supabase);

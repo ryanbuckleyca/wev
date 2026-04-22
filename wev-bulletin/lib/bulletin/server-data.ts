@@ -1,6 +1,5 @@
 import 'server-only';
 
-import { unstable_cache } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels';
@@ -8,7 +7,6 @@ import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
-export const BULLETIN_CACHE_REVALIDATE_SECONDS = 60;
 export const BULLETIN_JOB_SELECT =
   'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week';
 
@@ -138,76 +136,62 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
   };
 }
 
-const fetchCachedBulletinQuery = unstable_cache(
-  async (input: BulletinQueryInput) => runBulletinQuery(input),
-  ['bulletin-query-v1'],
-  { tags: [BULLETIN_CACHE_TAG], revalidate: BULLETIN_CACHE_REVALIDATE_SECONDS },
-);
-
 export async function fetchCachedBulletinQueryPayload(
   input: BulletinQueryInput,
 ): Promise<BulletinQueryResult> {
-  return fetchCachedBulletinQuery(input);
+  return runBulletinQuery(input);
 }
 
 /**
- * Fetches and caches the last scrape time.
+ * Fetches and returns the last scrape time.
  */
-export const fetchLastScrapeTime = unstable_cache(
-  async () => {
-    const { data, error } = await supabaseServer
-      .from('scrape_runs')
-      .select('run_at')
-      .order('run_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+export async function fetchLastScrapeTime(): Promise<string | null> {
+  const { data, error } = await supabaseServer
+    .from('scrape_runs')
+    .select('run_at')
+    .order('run_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-    if (error) throw new Error(error.message);
-    return data?.run_at ?? null;
-  },
-  ['bulletin-scrape-time'],
-  { tags: [BULLETIN_CACHE_TAG], revalidate: 300 },
-);
+  if (error) throw new Error(error.message);
+  return data?.run_at ?? null;
+}
 
-const fetchServerBulletinJobsCached = unstable_cache(
-  async (locale: 'en' | 'fr') => {
-    const postedWithinDays = 14;
-    const postedCutoff = new Date(
-      Date.now() - postedWithinDays * 24 * 60 * 60 * 1000,
-    ).toISOString();
+const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
+  const postedWithinDays = 14;
+  const postedCutoff = new Date(
+    Date.now() - postedWithinDays * 24 * 60 * 60 * 1000,
+  ).toISOString();
 
-    const [scrapeTime, jobsResult] = await Promise.all([
-      fetchLastScrapeTime(),
-      supabaseServer
-        .from('matched_jobs')
-        .select(BULLETIN_JOB_SELECT, { count: 'exact' })
-        .is('is_sse', true)
-        .gte('date_posted', postedCutoff)
-        .order('date_posted', { ascending: false })
-        .range(0, 19),
-    ]);
+  const [scrapeTime, jobsResult] = await Promise.all([
+    fetchLastScrapeTime(),
+    supabaseServer
+      .from('matched_jobs')
+      .select(BULLETIN_JOB_SELECT, { count: 'exact' })
+      .is('is_sse', true)
+      .gte('date_posted', postedCutoff)
+      .order('date_posted', { ascending: false })
+      .range(0, 19),
+  ]);
 
-    if (jobsResult.error) throw new Error(jobsResult.error.message);
+  if (jobsResult.error) throw new Error(jobsResult.error.message);
 
-    const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
-    const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
+  const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
+  const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
 
-    return {
-      jobs,
-      total: jobsResult.count ?? 0,
-      lastScrapeTime: scrapeTime,
-      skillLabels: Object.fromEntries(labelMap),
-    };
-  },
-  ['bulletin-server-initial-v2'],
-  { tags: [BULLETIN_CACHE_TAG], revalidate: BULLETIN_CACHE_REVALIDATE_SECONDS },
-);
+  return {
+    jobs,
+    total: jobsResult.count ?? 0,
+    lastScrapeTime: scrapeTime,
+    skillLabels: Object.fromEntries(labelMap),
+  };
+};
 
 /**
  * Fetches the initial page of bulletin jobs for SSR.
  */
 export async function fetchServerBulletinJobs(locale: 'en' | 'fr') {
-  return fetchServerBulletinJobsCached(locale);
+  return fetchServerBulletinJobsImpl(locale);
 }
 
 /**
