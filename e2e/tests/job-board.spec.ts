@@ -312,4 +312,40 @@ test.describe("Job board", () => {
     await jobBoardPage.waitForResultsToUpdate();
     await expectVisibleResults(jobBoardPage, 1, expectations);
   });
+
+  test("shows filter-specific empty state message when filters hide all jobs", async ({
+    jobBoardPage,
+    expectations,
+  }) => {
+    await loadEnglishJobBoard(jobBoardPage);
+    await expect(jobBoardPage.jobCards.first()).toBeVisible();
+
+    // Apply filters that will hide all jobs
+    await jobBoardPage.selectFilterButton(
+      "workType",
+      FILTER_LABELS.workType.remote,
+    );
+    await jobBoardPage.selectFilterButton(
+      "workType",
+      FILTER_LABELS.workType.hybrid,
+    );
+    await jobBoardPage.selectFilterButton(
+      "workType",
+      FILTER_LABELS.workType.office,
+    );
+    await jobBoardPage.waitForResultsToUpdate();
+
+    // Verify the empty state shows the filter-specific message
+    await expect(jobBoardPage.emptyState).toBeVisible();
+    await expect(jobBoardPage.emptyState).toContainText(
+      "Your filters are hiding all"
+    );
+    await expect(jobBoardPage.emptyState).toContainText("available jobs");
+    await expect(
+      jobBoardPage.emptyState.getByRole("button", {
+        name: /clear all filters/i,
+      })
+    ).toBeVisible();
+  });
 });
+

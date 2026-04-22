@@ -67,7 +67,7 @@ describe('JobListings empty state', () => {
     const filters = createMockFilters({ hasAnyFilters: true });
     renderWithFilters({ ...defaultProps, totalJobsCount: 12 }, filters);
 
-    expect(screen.getByText('No job postings found.')).toBeVisible();
+    expect(screen.queryByText('No job postings found.')).not.toBeInTheDocument();
     expect(screen.getByText('Your filters are hiding all 12 available jobs.')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Clear all filters' })).toBeVisible();
   });
@@ -76,6 +76,7 @@ describe('JobListings empty state', () => {
     const filters = createMockFilters({ hasAnyFilters: true });
     renderWithFilters({ ...defaultProps, totalJobsCount: 12, userId: 'user-1' }, filters);
 
+    expect(screen.getByText('Your filters are hiding all 12 available jobs.')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Edit in profile' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Edit in profile' })).toHaveAttribute('href', '/profile');
   });
@@ -84,6 +85,7 @@ describe('JobListings empty state', () => {
     const filters = createMockFilters({ hasAnyFilters: true });
     renderWithFilters({ ...defaultProps, totalJobsCount: 12, userId: null }, filters);
 
+    expect(screen.getByText('Your filters are hiding all 12 available jobs.')).toBeVisible();
     expect(screen.queryByRole('link', { name: 'Edit in profile' })).not.toBeInTheDocument();
   });
 
