@@ -11,7 +11,15 @@ vi.mock('@/lib/supabase/client', () => ({
 
 vi.mock('@/i18n/navigation', () => ({
   useRouter: vi.fn(),
-  Link: ({ children, href, className }: { children: React.ReactNode; href: string; className?: string }) => (
+  Link: ({
+    children,
+    href,
+    className,
+  }: {
+    children: React.ReactNode;
+    href: string;
+    className?: string;
+  }) => (
     <a href={href} className={className}>
       {children}
     </a>
@@ -20,7 +28,9 @@ vi.mock('@/i18n/navigation', () => ({
 
 vi.mock('@lineiconshq/react-lineicons', () => vi.importActual('./test-utils/lineicons-mock.ts'));
 
-function createMockFilters(overrides: Partial<BulletinFilterControls> = {}): BulletinFilterControls {
+function createMockFilters(
+  overrides: Partial<BulletinFilterControls> = {},
+): BulletinFilterControls {
   return {
     ...overrides,
     hasAnyFilters: overrides.hasAnyFilters ?? false,
@@ -28,11 +38,14 @@ function createMockFilters(overrides: Partial<BulletinFilterControls> = {}): Bul
   } as unknown as BulletinFilterControls;
 }
 
-function renderWithFilters(props: React.ComponentProps<typeof JobListings>, filters: BulletinFilterControls) {
+function renderWithFilters(
+  props: React.ComponentProps<typeof JobListings>,
+  filters: BulletinFilterControls,
+) {
   return render(
     <BulletinFilterContext.Provider value={filters}>
       <JobListings {...props} />
-    </BulletinFilterContext.Provider>
+    </BulletinFilterContext.Provider>,
   );
 }
 
@@ -78,7 +91,10 @@ describe('JobListings empty state', () => {
 
     expect(screen.getByText('Your filters are hiding all 12 available jobs.')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Edit in profile' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Edit in profile' })).toHaveAttribute('href', '/profile');
+    expect(screen.getByRole('link', { name: 'Edit in profile' })).toHaveAttribute(
+      'href',
+      '/profile',
+    );
   });
 
   it('hides the edit profile link when user is logged out', () => {
@@ -93,9 +109,9 @@ describe('JobListings empty state', () => {
     const user = userEvent.setup();
     const clearAllFilters = vi.fn();
     const filters = createMockFilters({ hasAnyFilters: true, clearAllFilters });
-    
+
     renderWithFilters({ ...defaultProps, totalJobsCount: 12 }, filters);
-    
+
     await user.click(screen.getByRole('button', { name: 'Clear all filters' }));
     expect(clearAllFilters).toHaveBeenCalledOnce();
   });
