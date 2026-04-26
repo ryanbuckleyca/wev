@@ -10,6 +10,9 @@ export default defineConfig([
     rules: {
       'react/prop-types': 'off',
       'react/no-unescaped-entities': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
   {

@@ -197,11 +197,13 @@ describe('DeleteAccountModal', () => {
     // Capture the click promise so we can check loading state while it's pending,
     // then await it to avoid dangling unsettled promises.
     const clickPromise = user.click(deleteButton);
-    
+
     // Should show loading state immediately while fetch is pending
     const loadingButton = await screen.findByRole('button', { name: /deleting/i });
     expect(loadingButton).toBeVisible();
-    expect(loadingButton).toBeDisabled();
+    await waitFor(() => {
+      expect(loadingButton).toBeDisabled();
+    });
 
     // Await the click action to complete properly
     await clickPromise;

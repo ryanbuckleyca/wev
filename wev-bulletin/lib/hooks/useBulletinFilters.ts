@@ -79,7 +79,9 @@ interface UseBulletinFiltersOptions {
   initialUserId?: string | null;
 }
 
-export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): BulletinFilterControls {
+export function useBulletinFilters(
+  options: UseBulletinFiltersOptions = {},
+): BulletinFilterControls {
   const { initialProfile = null, initialUserId = null } = options;
   const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
@@ -92,7 +94,8 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     () => (initialUserId ? normalizeWorkTypes(initialProfile?.work_types) : []),
     [initialProfile?.work_types, initialUserId],
   );
-  const initialProfileProvince = initialUserId && initialProfile?.province ? [initialProfile.province] : [];
+  const initialProfileProvince =
+    initialUserId && initialProfile?.province ? [initialProfile.province] : [];
   const initialProfileMunicipality =
     initialUserId && initialProfile?.municipality ? [initialProfile.municipality] : [];
 
@@ -164,7 +167,8 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
 
   // Sync location from profile on first load
   useProfileSync(userId, effectiveProfileLoading, 'municipality', {
-    profileValue: profileMunicipality && profileProvince ? [profileProvince, profileMunicipality] : null,
+    profileValue:
+      profileMunicipality && profileProvince ? [profileProvince, profileMunicipality] : null,
     selectedValue: [...selectedProvinces, ...selectedMunicipalities],
     setter: ([province, municipality]) => {
       void setSelectedProvinces([province]);
@@ -270,7 +274,13 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     void setShowOnlySse(false);
     void setShowJobsWithoutSalary(true);
     void setPostedWithin('any');
-  }, [resetCommonFilters, setSelectedWorkTypes, setShowOnlySse, setShowJobsWithoutSalary, setPostedWithin]);
+  }, [
+    resetCommonFilters,
+    setSelectedWorkTypes,
+    setShowOnlySse,
+    setShowJobsWithoutSalary,
+    setPostedWithin,
+  ]);
 
   const applySuggestedDefaults = useCallback(() => {
     resetCommonFilters();
@@ -278,7 +288,14 @@ export function useBulletinFilters(options: UseBulletinFiltersOptions = {}): Bul
     void setShowOnlySse(true);
     void setShowJobsWithoutSalary(true);
     void setPostedWithin('2-weeks');
-  }, [resetCommonFilters, profileWorkTypes, setSelectedWorkTypes, setShowOnlySse, setShowJobsWithoutSalary, setPostedWithin]);
+  }, [
+    resetCommonFilters,
+    profileWorkTypes,
+    setSelectedWorkTypes,
+    setShowOnlySse,
+    setShowJobsWithoutSalary,
+    setPostedWithin,
+  ]);
 
   return {
     filters,

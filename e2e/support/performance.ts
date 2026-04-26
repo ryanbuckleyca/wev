@@ -1,4 +1,4 @@
-import type { Page, TestInfo } from '@playwright/test';
+import type { Page, TestInfo } from "@playwright/test";
 
 export type PagePerformanceSnapshot = {
   domContentLoadedMs: number;
@@ -17,11 +17,11 @@ export async function readPagePerformanceSnapshot(
 ): Promise<PagePerformanceSnapshot> {
   return page.evaluate((readyTimeMs) => {
     const [navigationEntry] = performance.getEntriesByType(
-      'navigation',
+      "navigation",
     ) as PerformanceNavigationTiming[];
 
     if (!navigationEntry) {
-      throw new Error('Navigation timing entry unavailable.');
+      throw new Error("Navigation timing entry unavailable.");
     }
 
     return {
@@ -40,6 +40,6 @@ export async function attachPerformanceSnapshot(
 ): Promise<void> {
   await testInfo.attach(name, {
     body: Buffer.from(JSON.stringify(snapshot, null, 2)),
-    contentType: 'application/json',
+    contentType: "application/json",
   });
 }

@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
- 
+
 /**
  * Server-only Supabase client. Uses service role key.
  * Only import this in API routes or Server Components — never in client components.
@@ -12,7 +12,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 const getSupabaseServer = () => {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
- 
+
   if (!url || !key) {
     // Only throw if we are NOT in a build environment or if explicitly requested.
     // During 'next build', some routes are statically analyzed and this module is evaluated.
@@ -25,15 +25,15 @@ const getSupabaseServer = () => {
     }
     throw new Error('Missing Supabase server env. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
   }
- 
+
   return createClient(url, key, {
     auth: { persistSession: false },
   });
 };
- 
+
 // Lazy-initialized singleton
 let _supabaseServer: SupabaseClient | null = null;
- 
+
 /**
  * Lazy-initialized service-role client.
  * Using a Proxy to maintain the existing variable-style export for consumers.
@@ -43,7 +43,6 @@ export const supabaseServer: SupabaseClient = new Proxy({} as unknown as Supabas
     if (!_supabaseServer) {
       _supabaseServer = getSupabaseServer();
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (_supabaseServer as any)[prop as keyof SupabaseClient];
   },
 });

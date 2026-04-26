@@ -131,5 +131,4 @@ describe('useJobFiltersModel', () => {
     expect(mockControls.setSearchQuery).toHaveBeenCalledWith('');
     expect(mockControls.setSelectedProvinces).toHaveBeenCalledWith([]);
   });
-
 });
