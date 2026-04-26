@@ -22,7 +22,7 @@ export class EmailUrlExtractor {
    * Normalize email text by removing quoted-printable soft line breaks.
    */
   private normalizeEmailText(text: string): string {
-    return text.replace(EMAIL_SOFT_WRAP_PATTERN, '');
+    return text.replace(EMAIL_SOFT_WRAP_PATTERN, "");
   }
 
   /**
@@ -31,9 +31,9 @@ export class EmailUrlExtractor {
   private findAllUrls(normalizedContent: string): string[] {
     const hrefUrls = this.extractHrefUrls(normalizedContent);
     const plainUrls = this.extractPlainUrls(normalizedContent);
-    
+
     const allUrls = [...hrefUrls, ...plainUrls];
-    return allUrls.map(url => this.normalizeUrl(url));
+    return allUrls.map((url) => this.normalizeUrl(url));
   }
 
   /**
@@ -41,7 +41,7 @@ export class EmailUrlExtractor {
    */
   private extractHrefUrls(content: string): string[] {
     const matches = Array.from(content.matchAll(HREF_PATTERN));
-    return matches.map(match => match[1]);
+    return matches.map((match) => match[1]);
   }
 
   /**
@@ -56,10 +56,10 @@ export class EmailUrlExtractor {
    */
   private normalizeUrl(url: string): string {
     return url
-      .replaceAll('&amp;', '&')
-      .replaceAll('=\r\n', '')
-      .replaceAll('=\n', '')
-      .replace(TRAILING_PUNCTUATION, '');
+      .replaceAll("&amp;", "&")
+      .replaceAll("=\r\n", "")
+      .replaceAll("=\n", "")
+      .replace(TRAILING_PUNCTUATION, "");
   }
 
   /**
@@ -67,8 +67,8 @@ export class EmailUrlExtractor {
    */
   private findBestMatch(urls: string[], hint: string): string | null {
     const normalizedHint = hint.toLowerCase();
-    const candidates = urls.filter(url => 
-      url.toLowerCase().includes(normalizedHint)
+    const candidates = urls.filter((url) =>
+      url.toLowerCase().includes(normalizedHint),
     );
 
     if (candidates.length === 0) return null;
@@ -84,17 +84,22 @@ export class EmailUrlExtractor {
   /**
    * Find preferred auth verification URL if hint is for auth callback.
    */
-  private findPreferredAuthUrl(candidates: string[], hint: string): string | null {
-    if (!hint.includes('/auth/callback')) return null;
+  private findPreferredAuthUrl(
+    candidates: string[],
+    hint: string,
+  ): string | null {
+    if (!hint.includes("/auth/callback")) return null;
 
-    return candidates.find(url => {
-      const lower = url.toLowerCase();
-      return (
-        lower.includes('/auth/v1/verify') &&
-        lower.includes('token=') &&
-        lower.includes('redirect_to=')
-      );
-    }) ?? null;
+    return (
+      candidates.find((url) => {
+        const lower = url.toLowerCase();
+        return (
+          lower.includes("/auth/v1/verify") &&
+          lower.includes("token=") &&
+          lower.includes("redirect_to=")
+        );
+      }) ?? null
+    );
   }
 
   /**

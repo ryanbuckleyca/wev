@@ -1,18 +1,20 @@
-import { expect, type Browser } from '@playwright/test';
-import type { AppLocale } from '@/i18n/routing';
-import { AuthPage } from '@e2e/pages/auth.page';
-import { getEmailProvider, waitForInboxLink, type InboxRef } from './email';
+import { expect, type Browser } from "@playwright/test";
+import type { AppLocale } from "@/i18n/routing";
+import { AuthPage } from "@e2e/pages/auth.page";
+import { getEmailProvider, waitForInboxLink, type InboxRef } from "./email";
 
 export async function submitSignupAndExpectCheckEmail(
   authPage: AuthPage,
   email: string,
   password: string,
-  locale: AppLocale = 'en',
+  locale: AppLocale = "en",
 ): Promise<void> {
   const page = authPage.page;
   await authPage.gotoSignup(locale);
   await authPage.signup(email, password);
-  await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible({
+  await expect(
+    page.getByRole("heading", { name: /check your email/i }),
+  ).toBeVisible({
     timeout: 10_000,
   });
 }
@@ -20,47 +22,59 @@ export async function submitSignupAndExpectCheckEmail(
 export async function confirmEmailFromInboxAndExpectHome(
   authPage: AuthPage,
   inbox: InboxRef,
-  locale: AppLocale = 'en',
+  locale: AppLocale = "en",
   timeoutMs?: number,
 ): Promise<void> {
   const page = authPage.page;
   const effectiveTimeoutMs =
-    timeoutMs ?? (getEmailProvider() === 'mailpit' ? 30_000 : 90_000);
+    timeoutMs ?? (getEmailProvider() === "mailpit" ? 30_000 : 90_000);
 
   const confirmationLink = await waitForInboxLink(
     inbox.id,
-    '/auth/callback',
+    "/auth/callback",
     effectiveTimeoutMs,
   );
   await page.goto(confirmationLink);
-  await expect(page).toHaveURL(new RegExp(`/${locale}(\\/)?$`), { timeout: 10_000 });
+  await expect(page).toHaveURL(new RegExp(`/${locale}(\\/)?$`), {
+    timeout: 10_000,
+  });
 }
 
 export async function resetPasswordFromInboxAndExpectHome(
   authPage: AuthPage,
   inbox: InboxRef,
   newPassword: string,
-  locale: AppLocale = 'en',
+  locale: AppLocale = "en",
   timeoutMs?: number,
 ): Promise<void> {
   const page = authPage.page;
   const effectiveTimeoutMs =
-    timeoutMs ?? (getEmailProvider() === 'mailpit' ? 30_000 : 90_000);
+    timeoutMs ?? (getEmailProvider() === "mailpit" ? 30_000 : 90_000);
 
   await authPage.gotoForgotPassword(locale);
   await authPage.requestPasswordReset(inbox.emailAddress);
-  await expect(page.getByRole('heading', { name: /check your email/i })).toBeVisible({
+  await expect(
+    page.getByRole("heading", { name: /check your email/i }),
+  ).toBeVisible({
     timeout: 10_000,
   });
 
-  const resetLink = await waitForInboxLink(inbox.id, 'reset-password', effectiveTimeoutMs);
+  const resetLink = await waitForInboxLink(
+    inbox.id,
+    "reset-password",
+    effectiveTimeoutMs,
+  );
   await page.goto(resetLink);
-  await expect(page.getByRole('heading', { name: /reset password/i })).toBeVisible({
+  await expect(
+    page.getByRole("heading", { name: /reset password/i }),
+  ).toBeVisible({
     timeout: 10_000,
   });
 
   await authPage.resetPassword(newPassword);
-  await expect(page).toHaveURL(new RegExp(`/${locale}(\\/)?$`), { timeout: 10_000 });
+  await expect(page).toHaveURL(new RegExp(`/${locale}(\\/)?$`), {
+    timeout: 10_000,
+  });
 }
 
 export async function expectLoginFailsInFreshContext(
@@ -72,11 +86,13 @@ export async function expectLoginFailsInFreshContext(
   try {
     const page = await context.newPage();
     const authPage = new AuthPage(page);
-    await authPage.gotoLogin('en');
+    await authPage.gotoLogin("en");
     await authPage.login(email, password);
 
     await expect(
-      page.getByText(/invalid login credentials|email not confirmed|user not found/i),
+      page.getByText(
+        /invalid login credentials|email not confirmed|user not found/i,
+      ),
     ).toBeVisible({ timeout: 10_000 });
   } finally {
     await context.close();
@@ -92,7 +108,7 @@ export async function expectLoginSucceedsInFreshContext(
   try {
     const page = await context.newPage();
     const authPage = new AuthPage(page);
-    await authPage.gotoLogin('en');
+    await authPage.gotoLogin("en");
     await authPage.login(email, password);
     await expect(page).toHaveURL(/\/en(\/)?$/);
   } finally {

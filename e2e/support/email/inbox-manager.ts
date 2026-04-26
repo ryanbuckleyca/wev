@@ -1,12 +1,12 @@
-import { MailSlurp } from 'mailslurp-client';
+import { MailSlurp } from "mailslurp-client";
 
 export interface InboxRef {
   id: string;
   emailAddress: string;
 }
 
-const E2E_INBOX_TAG = 'wev-e2e-auth';
-const INBOX_QUOTA_ERROR_CODE = 'W_429_SUBSCRIPTION_FREE_LIMIT';
+const E2E_INBOX_TAG = "wev-e2e-auth";
+const INBOX_QUOTA_ERROR_CODE = "W_429_SUBSCRIPTION_FREE_LIMIT";
 
 /**
  * Manages MailSlurp inbox lifecycle with pooling and quota handling.
@@ -23,7 +23,7 @@ export class InboxManager {
    */
   async getOrCreateInbox(): Promise<InboxRef> {
     const pooledInboxes = await this.loadPooledInboxes();
-    
+
     if (pooledInboxes.length > 0) {
       return this.getPooledInbox(pooledInboxes);
     }
@@ -41,10 +41,10 @@ export class InboxManager {
 
     const now = Date.now();
     const allInboxes = await this.mailslurp.getInboxes();
-    
+
     const validInboxes = allInboxes
-      .filter(inbox => this.isValidE2EInbox(inbox, now))
-      .map(inbox => inbox.id);
+      .filter((inbox) => this.isValidE2EInbox(inbox, now))
+      .map((inbox) => inbox.id);
 
     this.discoveredInboxIds = validInboxes;
     return validInboxes;
@@ -55,7 +55,7 @@ export class InboxManager {
    */
   private isValidE2EInbox(
     inbox: { expiresAt?: Date | string | null; tags?: string[] | null },
-    now: number
+    now: number,
   ): boolean {
     const expiresAtMs = inbox.expiresAt
       ? new Date(inbox.expiresAt).getTime()
@@ -68,9 +68,10 @@ export class InboxManager {
    * Get a pooled inbox using round-robin selection.
    */
   private async getPooledInbox(pooledInboxIds: string[]): Promise<InboxRef> {
-    const inboxId = pooledInboxIds[this.pooledInboxIndex % pooledInboxIds.length];
+    const inboxId =
+      pooledInboxIds[this.pooledInboxIndex % pooledInboxIds.length];
     this.pooledInboxIndex += 1;
-    
+
     return this.prepareInbox(inboxId);
   }
 
@@ -82,7 +83,9 @@ export class InboxManager {
     const inbox = await this.mailslurp.getInbox(inboxId);
 
     if (!inbox.id || !inbox.emailAddress) {
-      throw new Error(`MailSlurp inbox "${inboxId}" is missing id or emailAddress`);
+      throw new Error(
+        `MailSlurp inbox "${inboxId}" is missing id or emailAddress`,
+      );
     }
 
     return { id: inbox.id, emailAddress: inbox.emailAddress };
@@ -99,7 +102,9 @@ export class InboxManager {
       });
 
       if (!inbox.id || !inbox.emailAddress) {
-        throw new Error('MailSlurp returned an inbox without id or emailAddress');
+        throw new Error(
+          "MailSlurp returned an inbox without id or emailAddress",
+        );
       }
 
       return { id: inbox.id, emailAddress: inbox.emailAddress };
@@ -119,8 +124,8 @@ export class InboxManager {
     // Quota exceeded - try to use any existing inbox
     const fallbackInboxes = await this.mailslurp.getInboxes();
     const fallbackIds = fallbackInboxes
-      .filter(inbox => !!inbox.id)
-      .map(inbox => inbox.id);
+      .filter((inbox) => !!inbox.id)
+      .map((inbox) => inbox.id);
 
     if (fallbackIds.length > 0) {
       return this.getPooledInbox(fallbackIds);
@@ -128,7 +133,7 @@ export class InboxManager {
 
     throw new Error(
       `MailSlurp create inbox quota exceeded and no existing inboxes were found. ` +
-      `Create at least one inbox tagged "${E2E_INBOX_TAG}" in app.mailslurp.com.`
+        `Create at least one inbox tagged "${E2E_INBOX_TAG}" in app.mailslurp.com.`,
     );
   }
 
@@ -138,8 +143,8 @@ export class InboxManager {
   private isQuotaExceededError(error: unknown): boolean {
     return (
       error !== null &&
-      typeof error === 'object' &&
-      'errorCode' in error &&
+      typeof error === "object" &&
+      "errorCode" in error &&
       (error as { errorCode?: string }).errorCode === INBOX_QUOTA_ERROR_CODE
     );
   }

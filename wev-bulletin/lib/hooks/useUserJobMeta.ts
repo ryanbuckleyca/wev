@@ -42,7 +42,7 @@ export function useUserJobMeta(
     if (!userId || jobsOnPage.length === 0) {
       // Explicitly clear loading state in case a fetch was in-flight.
       // The cleanup's cancellation guard would otherwise prevent .finally() from running.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setIsLoading(false);
       return;
     }
