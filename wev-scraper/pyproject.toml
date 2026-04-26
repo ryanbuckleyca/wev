@@ -9,19 +9,19 @@ description = "Job scraper and processing engine for the WEV project"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "python-dotenv",
-    "supabase",
-    "requests",
-    "playwright",
-    "playwright-stealth",
-    "python-dateutil",
-    "geocodio-library-python",
-    "google-genai",
+  "python-dotenv",
+  "supabase",
+  "requests",
+  "playwright",
+  "playwright-stealth",
+  "python-dateutil",
+  "geocodio-library-python",
+  "google-genai",
 ]
 
 [tool.setuptools]
 packages = ["lib", "utils", "scrapers", "llm"]
-package-dir = {"" = "."}
+package-dir = { "" = "." }
 
 [tool.ruff]
 line-length = 100

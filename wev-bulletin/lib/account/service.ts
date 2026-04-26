@@ -16,7 +16,6 @@ export class AccountServiceError extends Error {
   }
 }
 
-
 async function verifyPassword(
   password: string,
   invalidCredentialsMessage: string,
@@ -28,9 +27,8 @@ async function verifyPassword(
     await verifier.verify(password);
   } catch (error) {
     if (error instanceof ValidationError) {
-      const message = error.code === 'PASSWORD_REQUIRED' && requiredMessage 
-        ? requiredMessage 
-        : error.message;
+      const message =
+        error.code === 'PASSWORD_REQUIRED' && requiredMessage ? requiredMessage : error.message;
       throw new AccountServiceError(message, 400, error.code);
     }
 
@@ -41,7 +39,8 @@ async function verifyPassword(
         throw error;
       }
 
-      const message = error.code === 'INVALID_CREDENTIALS' ? invalidCredentialsMessage : error.message;
+      const message =
+        error.code === 'INVALID_CREDENTIALS' ? invalidCredentialsMessage : error.message;
       throw new AccountServiceError(message, 401, error.code);
     }
 
@@ -64,7 +63,11 @@ export async function updatePasswordForCurrentUser({
   }
 
   try {
-    await verifyPassword(currentPassword, 'Current password is incorrect.', 'Current password is required.');
+    await verifyPassword(
+      currentPassword,
+      'Current password is incorrect.',
+      'Current password is required.',
+    );
   } catch (error) {
     // If user has no password, they can set one for the first time without currentPassword
     if (error instanceof AuthenticationError && error.code === 'NO_PASSWORD_SET') {
@@ -108,4 +111,3 @@ export async function deleteAccountForCurrentUser({
     throw error;
   }
 }
-

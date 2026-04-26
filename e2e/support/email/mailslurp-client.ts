@@ -1,15 +1,17 @@
-import { MailSlurp } from 'mailslurp-client';
-import { InboxManager, type InboxRef } from './inbox-manager';
-import { EmailWaiter } from './email-waiter';
+import { MailSlurp } from "mailslurp-client";
+import { InboxManager, type InboxRef } from "./inbox-manager";
+import { EmailWaiter } from "./email-waiter";
 
 /**
  * Factory for creating MailSlurp client.
  */
 function createMailSlurpClient(): MailSlurp {
   const apiKey = process.env.MAILSLURP_API_KEY?.trim();
-  
+
   if (!apiKey) {
-    throw new Error('Missing required e2e environment variable: MAILSLURP_API_KEY');
+    throw new Error(
+      "Missing required e2e environment variable: MAILSLURP_API_KEY",
+    );
   }
 
   return new MailSlurp({ apiKey });
@@ -52,7 +54,7 @@ export async function createEphemeralInbox(): Promise<InboxRef> {
 
 /**
  * Wait for an email containing a link that matches the hint.
- * 
+ *
  * @param inboxId - The inbox ID to monitor
  * @param linkHint - A substring to search for in URLs (e.g., '/auth/callback')
  * @param timeoutMs - Maximum time to wait in milliseconds (default: 120000)
@@ -63,7 +65,7 @@ export async function waitForInboxLink(
   inboxId: string,
   linkHint: string,
   timeoutMs = 120_000,
-  sinceOverride?: Date
+  sinceOverride?: Date,
 ): Promise<string> {
   const waiter = getEmailWaiter();
   return waiter.waitForLink(inboxId, linkHint, {

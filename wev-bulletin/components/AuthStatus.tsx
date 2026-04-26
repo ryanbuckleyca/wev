@@ -28,7 +28,9 @@ export default function AuthStatus() {
     } = supabase.auth.onAuthStateChange(async () => {
       // Don't use the session parameter to avoid Supabase warnings
       // Fetch user directly to validate against the server
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       setUser(user);
     });
 

@@ -15,7 +15,5 @@
       "@supabase/database.types": ["../supabase/src/database.types"]
     }
   },
-  "include": [
-    "**/*.ts"
-  ]
+  "include": ["**/*.ts"]
 }

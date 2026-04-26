@@ -11,7 +11,7 @@ interface ProfileSyncOptions<T> {
 /**
  * Synchronizes profile values with selected values on first load.
  * Prevents overwriting user selections if they've already made changes.
- * 
+ *
  * @param userId - Current user ID (null if not logged in)
  * @param profileLoading - Whether profile is still loading
  * @param queryParamName - Name of the query parameter to check
@@ -21,7 +21,7 @@ export function useProfileSync<T>(
   userId: string | null,
   profileLoading: boolean,
   queryParamName: string,
-  options: ProfileSyncOptions<T>
+  options: ProfileSyncOptions<T>,
 ): void {
   const appliedUserIdRef = useRef<string | null>(null);
   const searchParams = useSearchParams();

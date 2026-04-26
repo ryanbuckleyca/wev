@@ -1,8 +1,8 @@
-import { resetAndSeedDatabase } from './src/seeder';
-import path from 'node:path';
-import fs from 'node:fs';
-import readline from 'node:readline';
-import { config as loadEnv } from 'dotenv';
+import { resetAndSeedDatabase } from "./src/seeder";
+import path from "node:path";
+import fs from "node:fs";
+import readline from "node:readline";
+import { config as loadEnv } from "dotenv";
 
 /**
  * Standalone script to seed the STAGING database (wev-test).
@@ -12,7 +12,10 @@ import { config as loadEnv } from 'dotenv';
  */
 
 function prompt(question: string): Promise<string> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
   return new Promise((resolve) => {
     rl.question(question, (answer) => {
       rl.close();
@@ -22,10 +25,10 @@ function prompt(question: string): Promise<string> {
 }
 
 async function main() {
-  console.log('▶ Loading Staging environment variables...');
+  console.log("▶ Loading Staging environment variables...");
 
   // Explicitly load .env.staging from root
-  const envPath = path.join(process.cwd(), '.env.staging');
+  const envPath = path.join(process.cwd(), ".env.staging");
 
   if (!fs.existsSync(envPath)) {
     console.error(`❌ Error: Staging environment file not found at ${envPath}`);
@@ -43,55 +46,66 @@ async function main() {
   const prodKey = process.env.SUPABASE_PROD_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey || !projectRef || !prodUrl || !prodKey) {
-    console.error('❌ Error: Missing staging or production credentials in .env.staging');
+    console.error(
+      "❌ Error: Missing staging or production credentials in .env.staging",
+    );
     process.exit(1);
   }
 
-  console.log('\n' + '!'.repeat(40));
-  console.log('⚠️  STAGING SYNC: MIRRORING PRODUCTION');
+  console.log("\n" + "!".repeat(40));
+  console.log("⚠️  STAGING SYNC: MIRRORING PRODUCTION");
   console.log(`TARGET: ${projectRef} (${supabaseUrl})`);
   console.log(`SOURCE: PRODUCTION (${prodUrl})`);
-  console.log('!'.repeat(40) + '\n');
+  console.log("!".repeat(40) + "\n");
 
-  const isForce = process.argv.includes('--force');
+  const isForce = process.argv.includes("--force");
 
   if (!isForce) {
     if (!process.stdout.isTTY) {
       console.error(
-        '❌ Error: Staging seed requires an interactive terminal. Use --force flag to bypass in CI.',
+        "❌ Error: Staging seed requires an interactive terminal. Use --force flag to bypass in CI.",
       );
       process.exit(1);
     }
-    
+
     // Confirm before any async work; rl is created and closed inside prompt()
     const answer = await prompt(
       'This will delete all existing data in STAGING and replace it with a production-mirror.\nType "YES" to confirm: ',
     );
-    if (answer !== 'YES') {
-      console.log('Aborting.');
+    if (answer !== "YES") {
+      console.log("Aborting.");
       process.exit(0);
     }
   }
 
   try {
-    const { createClient } = await import('@supabase/supabase-js');
+    const { createClient } = await import("@supabase/supabase-js");
 
     // 1. Fetch live sources from Production
-    console.log('▶ Fetching authentic sources from Production...');
-    const prodClient = createClient(prodUrl, prodKey, { auth: { persistSession: false } });
-    const { data: prodSources, error: fetchError } = await prodClient.from('sources').select('*');
+    console.log("▶ Fetching authentic sources from Production...");
+    const prodClient = createClient(prodUrl, prodKey, {
+      auth: { persistSession: false },
+    });
+    const { data: prodSources, error: fetchError } = await prodClient
+      .from("sources")
+      .select("*");
 
     if (fetchError || !prodSources) {
-      throw new Error(`Failed to fetch production sources: ${fetchError?.message}`);
+      throw new Error(
+        `Failed to fetch production sources: ${fetchError?.message}`,
+      );
     }
 
     console.log(`✅ Found ${prodSources.length} production sources.`);
 
     // 2. Seed Staging using production source overrides
     console.log(`▶ Seeding staging project: ${projectRef}`);
-    await resetAndSeedDatabase({ projectRef, serviceRoleKey, supabaseUrl }, prodSources);
+    await resetAndSeedDatabase(
+      { projectRef, serviceRoleKey, supabaseUrl },
+      prodSources,
+    );
 
-    console.log('✅ Staging database synced with Production successfully.');
+    console.log("✅ Staging database synced with Production successfully.");
     process.exit(0);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
