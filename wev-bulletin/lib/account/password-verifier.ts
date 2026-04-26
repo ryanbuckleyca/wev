@@ -5,14 +5,21 @@ import { logger } from '@/lib/logger';
 import { PasswordSchema } from '@/lib/schemas/account';
 
 export class ValidationError extends Error {
-  constructor(message: string, readonly code: string) {
+  constructor(
+    message: string,
+    readonly code: string,
+  ) {
     super(message);
     this.name = 'ValidationError';
   }
 }
 
 export class AuthenticationError extends Error {
-  constructor(message: string, readonly code: string, readonly cause?: unknown) {
+  constructor(
+    message: string,
+    readonly code: string,
+    readonly cause?: unknown,
+  ) {
     super(message);
     this.name = 'AuthenticationError';
   }
@@ -24,15 +31,15 @@ export class PasswordVerifier {
   /**
    * Verify a user's password using a database RPC.
    * This bypasses GoTrue's CAPTCHA and rate limiting for logins.
-   * 
+   *
    * @throws {ValidationError} If inputs are invalid
    * @throws {AuthenticationError} If verification fails
    */
   async verify(password: string): Promise<void> {
     const supabase = await createServerClient();
-    
-    const { data: status, error } = await supabase.rpc('verify_user_password', { 
-      password 
+
+    const { data: status, error } = await supabase.rpc('verify_user_password', {
+      password,
     });
 
     if (error) {
@@ -41,17 +48,13 @@ export class PasswordVerifier {
         error,
       });
 
-      throw new AuthenticationError(
-        'Verification system error',
-        'SYSTEM_ERROR',
-        error
-      );
+      throw new AuthenticationError('Verification system error', 'SYSTEM_ERROR', error);
     }
 
     if (status === 'no_password') {
       throw new AuthenticationError(
         'This account uses a social login and does not have a password.',
-        'NO_PASSWORD_SET'
+        'NO_PASSWORD_SET',
       );
     }
 
@@ -69,7 +72,7 @@ export class PasswordVerifier {
    */
   private validateInputs(password: string): void {
     const result = PasswordSchema.safeParse(password);
-    
+
     if (!result.success) {
       const issue = result.error.issues[0];
       const code = password ? 'PASSWORD_TOO_SHORT' : 'PASSWORD_REQUIRED';
@@ -77,6 +80,3 @@ export class PasswordVerifier {
     }
   }
 }
-
-
-

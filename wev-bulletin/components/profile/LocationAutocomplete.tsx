@@ -65,8 +65,6 @@ export default function LocationAutocomplete({
   inputId,
 }: LocationAutocompleteProps) {
   const t = useTranslations('profile');
-  const tRef = useRef(t);
-  tRef.current = t;
   const listboxId = useId();
 
   const [query, setQuery] = useState(value?.display_name ?? '');
@@ -84,29 +82,32 @@ export default function LocationAutocomplete({
     setHasSelection(value !== null);
   }, [value?.display_name]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const search = useCallback(async (q: string) => {
-    if (q.length < LOCATION_MIN_QUERY_LENGTH) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
-    setIsSearching(true);
-    setApiError(null);
-    try {
-      const res = await fetch(`/api/locations/search?q=${encodeURIComponent(q)}`);
-      if (!res.ok) throw new Error('Search failed');
-      const data: LocationSelection[] = await res.json();
-      setResults(data);
-      setIsOpen(data.length > 0);
-      setActiveIndex(0);
-    } catch {
-      setApiError(tRef.current('locationSearchError'));
-      setResults([]);
-      setIsOpen(false);
-    } finally {
-      setIsSearching(false);
-    }
-  }, []);
+  const search = useCallback(
+    async (q: string) => {
+      if (q.length < LOCATION_MIN_QUERY_LENGTH) {
+        setResults([]);
+        setIsOpen(false);
+        return;
+      }
+      setIsSearching(true);
+      setApiError(null);
+      try {
+        const res = await fetch(`/api/locations/search?q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error('Search failed');
+        const data: LocationSelection[] = await res.json();
+        setResults(data);
+        setIsOpen(data.length > 0);
+        setActiveIndex(0);
+      } catch {
+        setApiError(t('locationSearchError'));
+        setResults([]);
+        setIsOpen(false);
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [t],
+  );
 
   const { debounced: debouncedSearch, cancel: cancelDebounce } = useDebounce(search, DEBOUNCE_MS);
 
@@ -197,7 +198,7 @@ export default function LocationAutocomplete({
           <ul
             id={listboxId}
             role="listbox"
-            aria-label={tRef.current('locationSuggestionsLabel')}
+            aria-label={t('locationSuggestionsLabel')}
             className="max-h-60 overflow-y-auto py-1"
           >
             {results.map((result, i) => (

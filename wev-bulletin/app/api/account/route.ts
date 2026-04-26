@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
- 
+
 export const dynamic = 'force-dynamic';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';
@@ -30,7 +30,7 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof ZodError) {
       return NextResponse.json(
         { error: error.issues[0].message, details: error.issues },
-        { status: 400 }
+        { status: 400 },
       );
     }
 

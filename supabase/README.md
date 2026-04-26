@@ -18,6 +18,7 @@ npm run migrate:local
 ```
 
 This command automatically:
+
 1. Resets the local database (`supabase db reset`)
 2. Applies all migrations in `supabase/migrations/`
 3. Seeds the data using `supabase/seed-local.ts`
