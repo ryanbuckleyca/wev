@@ -69,5 +69,7 @@ Local emails are intercepted by **Mailpit**.
 
 - `npm run migrate:local`: Full database reset & seed.
 - `npx supabase status`: Check local Supabase services.
-- `npm run scrape`: Run a local scrape iteration.
+- `npm run scrape`: Run a local scrape iteration (uses `.env`, writes to local DB).
+- `npm run scrape:publish`: Run scrape with local LLMs but write results to the prod DB. Pulls only Supabase credentials from `.env.production`; everything else (LLM keys, `ENV_MODE`, feature flags) stays from `.env`. Prompts for `YES` confirmation.
+- `npm run scrape:prod`: Run scrape fully against prod — loads all of `.env.production` (DB + LLM keys + flags), so LLM calls hit prod-configured providers. Prompts for `YES` confirmation.
 - `npm run test`: Run all tests across the monorepo.

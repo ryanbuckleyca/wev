@@ -10,7 +10,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from dotenv import find_dotenv, load_dotenv
+from dotenv import dotenv_values, find_dotenv, load_dotenv
 
 from utils.env import is_truthy_env
 
@@ -39,6 +39,36 @@ def load_env_file(env_file: str | Path) -> None:
     the base env. May be called multiple times with different files.
     """
     load_dotenv(env_file, override=True)
+
+
+# Keys that identify which Supabase target to use. `load_db_credentials_only`
+# reads only these from a target env file so local LLM/feature config in the
+# active env (`ENV_MODE=local`, `JINA_API_KEY`, `GROQ_API_KEY`, etc.) is left
+# intact when "publishing" results to a different DB.
+_SUPABASE_DB_KEYS: tuple[str, ...] = (
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_PROD_URL",
+    "SUPABASE_PROD_SERVICE_ROLE_KEY",
+    "SUPABASE_PROJECT_REF",
+)
+
+
+def load_db_credentials_only(env_file: str | Path) -> list[str]:
+    """Apply only Supabase DB credentials from env_file to os.environ.
+
+    Used by `scrape.py --publish` to swap the DB target while keeping the
+    rest of the active env (LLM keys, feature flags, ENV_MODE, etc.) untouched.
+    Returns the list of keys that were actually applied.
+    """
+    values = dotenv_values(env_file)
+    applied: list[str] = []
+    for key in _SUPABASE_DB_KEYS:
+        value = values.get(key)
+        if value is not None:
+            os.environ[key] = value
+            applied.append(key)
+    return applied
 
 def get_env(name: str, default: str | None = None) -> str | None:
     """Read a raw environment variable after ensuring env is loaded."""
@@ -73,20 +103,33 @@ def _strip_trailing_slash(value: str | None) -> str:
 
 
 def get_supabase_settings() -> SupabaseSettings:
-    """Return the active Supabase credentials for the current runtime mode."""
+    """Return the active Supabase credentials for the current runtime mode.
+
+    When USE_PROD_DB=1, prefer the SUPABASE_PROD_* prefixed credentials. If those
+    aren't set, fall back to SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — this
+    supports the override-file pattern where `.env.production` is loaded with
+    override=True and rewrites the unprefixed names in place (see scrape.py).
+    """
     raw_url = get_env("SUPABASE_URL")
     prod_url = get_env("SUPABASE_PROD_URL")
     raw_key = get_env("SUPABASE_SERVICE_ROLE_KEY")
     prod_key = get_env("SUPABASE_PROD_SERVICE_ROLE_KEY")
 
-    if is_truthy_env("USE_PROD_DB"):
-        url = _strip_trailing_slash(prod_url)
-        secret_key = prod_key or ""
+    use_prod = is_truthy_env("USE_PROD_DB")
+    if use_prod:
+        url = _strip_trailing_slash(prod_url or raw_url)
+        secret_key = prod_key or raw_key or ""
     else:
         url = _strip_trailing_slash(raw_url)
         secret_key = raw_key or ""
 
     if not url or not secret_key:
+        if use_prod:
+            raise ValueError(
+                "Production Supabase credentials not set. Provide either "
+                "SUPABASE_PROD_URL/SUPABASE_PROD_SERVICE_ROLE_KEY or override "
+                "SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY via .env.production."
+            )
         raise ValueError("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set")
 
     return SupabaseSettings(url=url, secret_key=secret_key)
