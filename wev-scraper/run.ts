@@ -10,14 +10,18 @@ function execVerbose(cmd: string, args: string[] = []) {
   }
 }
 
-async function confirmProd(): Promise<boolean> {
+async function confirmProd(mode: "prod" | "publish"): Promise<boolean> {
+  const label =
+    mode === "prod"
+      ? "PRODUCTION (full)"
+      : "PRODUCTION DB (publish — local LLMs)";
   return new Promise((resolve) => {
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stderr,
     });
     rl.question(
-      "⚠️  RUNNING AGAINST PRODUCTION. Type 'YES' to continue: ",
+      `⚠️  RUNNING AGAINST ${label}. Type 'YES' to continue: `,
       (answer) => {
         rl.close();
         resolve(answer === "YES");
@@ -49,11 +53,12 @@ async function main() {
   const args = process.argv.slice(2);
   const task = args[0];
   const isProd = args.includes("--prod");
+  const isPublish = args.includes("--publish");
 
   // Prompt before any output is piped — readline uses stderr so it's visible
   // even when stdout is piped (e.g. `npm run scrape -- --prod 2>&1 | head`).
-  if (isProd && process.stdin.isTTY) {
-    const confirmed = await confirmProd();
+  if ((isProd || isPublish) && process.stdin.isTTY) {
+    const confirmed = await confirmProd(isProd ? "prod" : "publish");
     if (!confirmed) process.exit(0);
     // Signal to scrape.py that the prod confirmation has already been handled
     process.env.PROD_CONFIRMED = "1";

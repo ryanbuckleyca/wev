@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Set
 
-from settings import ensure_env_loaded, load_env_file
+from settings import ensure_env_loaded, load_db_credentials_only, load_env_file
 
 # Ensure CI sees output immediately
 if hasattr(sys.stdout, "reconfigure"):
@@ -292,7 +292,16 @@ class ScraperOrchestrator:
 def parse_args():
     import argparse
     parser = argparse.ArgumentParser(description="WEV Scraper Orchestrator")
-    parser.add_argument("--prod", action="store_true", help="Use production database")
+    parser.add_argument(
+        "--prod",
+        action="store_true",
+        help="Full prod: load .env.production (DB + LLM keys + flags) and target prod DB",
+    )
+    parser.add_argument(
+        "--publish",
+        action="store_true",
+        help="Local LLMs, prod DB: keep .env (LLM keys, ENV_MODE) but swap DB creds from .env.production",
+    )
     parser.add_argument("--staging", action="store_true", help="Use staging (.env.staging) environment")
     parser.add_argument("--dry-run", "--dry", action="store_true", help="Skip database writes")
     parser.add_argument("--compare", action="store_true", help="Dry run + compare with DB")
@@ -323,11 +332,22 @@ def initialize_runtime_env(args):
             _log(f"⚠️ Warning: --staging flag used but {staging_env} not found.")
 
     # 3. Apply Production Overrides if requested
-    if args.prod:
+    if args.prod or args.publish:
         prod_env = root_dir / ".env.production" if (root_dir / ".env.production").exists() else script_dir / ".env.production"
-        if prod_env.exists():
+        if not prod_env.exists():
+            _log(f"❌ {prod_env.name} not found — required for --prod / --publish.")
+            sys.exit(1)
+        if args.prod:
+            # Full prod: override everything in .env.production (DB + LLM + flags)
             _log(f"▶ Loading Production Overrides from {prod_env.name}")
             load_env_file(prod_env)
+        else:
+            # Publish: only swap DB credentials, leave LLM/feature config intact
+            applied = load_db_credentials_only(prod_env)
+            _log(
+                f"▶ Publish mode: loaded {len(applied)} DB credential(s) from "
+                f"{prod_env.name} ({', '.join(applied)}); LLM/feature config kept from .env"
+            )
 
 
 def main():
@@ -350,18 +370,23 @@ def main():
             if os.environ.get(flag) is None:
                 os.environ[flag] = "0"
 
-    if args.prod:
+    if args.prod and args.publish:
+        print("Error: --prod and --publish are mutually exclusive.", file=sys.stderr)
+        sys.exit(2)
+
+    if args.prod or args.publish:
         os.environ["USE_PROD_DB"] = "1"
         # Guard against accidental prod runs when invoked directly (bypassing run.ts).
         # run.ts handles the prompt and sets PROD_CONFIRMED=1 before spawning this script.
         if sys.stdin.isatty() and os.environ.get("PROD_CONFIRMED") != "1":
-            confirm = input("⚠️  RUNNING AGAINST PRODUCTION. Type 'YES' to continue: ")
+            mode = "PRODUCTION (full)" if args.prod else "PRODUCTION DB (publish — local LLMs)"
+            confirm = input(f"⚠️  RUNNING AGAINST {mode}. Type 'YES' to continue: ")
             if confirm != "YES":
                 sys.exit(0)
 
     # 3. Orchestrate
     orchestrator = ScraperOrchestrator(
-        use_prod=args.prod,
+        use_prod=args.prod or args.publish,
         dry_run=args.dry_run or args.compare,
         compare_only=args.compare
     )
