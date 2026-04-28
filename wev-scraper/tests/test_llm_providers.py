@@ -1,6 +1,18 @@
 from unittest.mock import MagicMock, patch
 
+from llm.base import LLMProviderError, error_suggests_try_next_provider
 from llm.factory import get_provider
+
+
+def test_error_suggests_try_next_provider_503():
+    err = LLMProviderError(
+        "503 UNAVAILABLE high demand try again later"
+    )
+    assert error_suggests_try_next_provider(err) is True
+
+
+def test_error_suggests_try_next_provider_403():
+    assert error_suggests_try_next_provider(LLMProviderError("403 PERMISSION_DENIED")) is False
 
 
 def test_get_provider_local_mode():

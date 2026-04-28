@@ -54,14 +54,14 @@ The Makefile auto-detects a torch-compatible Python (`python3.11` → `python3.1
 
 ## LLM / embeddings (scraper)
 
-- **Jina v3** (skill embeddings): runs **locally** via `transformers` + `torch` (`make setup-py-dev`, ~570MB model on first use).
-- **Ollama** (optional, for local text LLM in `.env`): unified post-processor and SSE classifier try Ollama first when configured, then Gemini → Groq. Install from [ollama.com/download](https://ollama.com/download), run `ollama serve`, and pull `LOCAL_LLM_MODEL` (e.g. `ollama pull llama3.2:3b`).
-- **`scrape:publish` / `process:publish`** keep your machine’s `.env` (local embeddings + local LLM setup if you use it) while writing to **production** Supabase.
-- **`scrape:prod` / `process:prod`** load all of `.env.production`, so API keys and flags come from there—use when you intend a fully prod-configured run.
-- **Gemini** / **Groq**: API keys as needed for cloud fallbacks or prod-mode runs. Gemini free tier can be tight on volume; consider paid tier or smaller batches (`--limit` on the post-processor).
+- **Jina v3** (skill embeddings): runs **locally** when `ENV_MODE=local` (via `transformers` + `torch`; `make setup-py-dev`, ~570MB model on first use). Any other `ENV_MODE` (e.g. `prod` or unset after a prod overlay) uses the REST API path when configured.
+- **Ollama** (optional): used for unified / local LLM work when `ENV_MODE=local`. Install from [ollama.com/download](https://ollama.com/download), run `ollama serve`, and pull `LOCAL_LLM_MODEL` (e.g. `ollama pull llama3.2:3b`).
+- **`scrape:publish` / `process:publish`:** prod Supabase from `.env.production`, and the runner sets **`ENV_MODE=local`** so embeddings + text LLM stay on your machine (keys and setup from `.env`).
+- **`scrape:prod` / `process:prod`:** loads `.env.production` over `.env` and sets **`ENV_MODE=prod`**. Only `ENV_MODE=local` selects local-first LLMs (Ollama, local Jina); `prod` keeps your prod keys from winning over a leftover `local` in `.env`.
+- **Gemini** / **Groq**: API keys as needed for `*:prod` and cloud fallbacks. Gemini free tier can be tight on volume; consider paid tier or smaller batches (`--limit` on the post-processor).
 
 ## Notes
 
-- `.env.production` is gitignored. It must contain prod Supabase credentials. In **`publish`** mode, only those DB keys are applied; the rest of the process still uses `.env`. In **`prod`** mode, `.env.production` overrides `.env` for all keys it defines.
+- In **`publish`** mode, only prod Supabase keys are applied from `.env.production`; the runner sets `ENV_MODE=local` so **prod DB + local LLMs/embeddings** (typical “push from my machine” workflow). In **`prod`** mode, the full prod file is layered on `.env`, then `ENV_MODE=prod` so you don’t accidentally keep `ENV_MODE=local` from `.env` when you meant a fully prod-configured run.
 - Pre-push hook runs `npm run verify:fix`. To bypass: `SKIP_VERIFY=1 git push` or `npm run push:skip`.
 - Avoid wrapping scraper Python in `dotenv-cli` (**first-wins**). Use `npm run scrape:prod`, `scrape:publish`, `process:prod`, or `process:publish` so env layering matches `scrape.py` / `unified_post_processor.py`.
