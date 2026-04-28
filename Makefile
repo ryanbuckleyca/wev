@@ -8,6 +8,11 @@ VENV := $(SCRAPER_DIR)/venv
 PIP := $(VENV)/bin/pip
 PY := $(VENV)/bin/python3
 
+# Pick a torch-compatible Python for the scraper venv.
+# Intel macOS only has torch wheels for Python 3.10/3.11; Python 3.13 has none.
+# Override with: make setup PYTHON_BIN=python3.12
+PYTHON_BIN ?= $(shell command -v python3.11 2>/dev/null || command -v python3.12 2>/dev/null || command -v python3.10 2>/dev/null || command -v python3)
+
 .PHONY: help setup setup-node setup-py setup-py-dev setup-env doctor clean-py reset
 
 help:
@@ -34,11 +39,13 @@ setup-node:
 	npm install
 
 $(VENV):
-	cd $(SCRAPER_DIR) && python3 -m venv venv
+	@echo "Creating venv with $(PYTHON_BIN) ($$($(PYTHON_BIN) --version))"
+	cd $(SCRAPER_DIR) && $(PYTHON_BIN) -m venv venv
 
 setup-py: $(VENV)
 	$(PIP) install --quiet --upgrade pip
 	$(PIP) install --quiet -r $(SCRAPER_DIR)/requirements.txt
+	cd $(SCRAPER_DIR) && venv/bin/pip install --quiet -e .
 
 setup-py-dev: setup-py
 	$(PIP) install --quiet -r $(SCRAPER_DIR)/requirements-dev.txt
