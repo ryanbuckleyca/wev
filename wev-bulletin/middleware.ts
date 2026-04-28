@@ -39,6 +39,6 @@ export const config = {
      * /api IS intentionally included so Supabase session cookies are
      * refreshed for API routes (avoids 401s after token expiry).
      */
-    '/((?!auth|_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp|json|txt|xml|ico|map|woff|woff2|ttf|otf)$).*)',
+    '/((?!auth|_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

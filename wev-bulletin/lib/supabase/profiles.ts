@@ -2,14 +2,7 @@ import { createClient } from './client';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 
 const PROFILE_COLUMNS =
-  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, cv_import, created_at, updated_at' as const;
-
-export type CvImportMetadata = {
-  filename: string;
-  imported_at: string;
-  source: 'cv_upload';
-  locale: 'en' | 'fr';
-};
+  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, created_at, updated_at' as const;
 
 export type Profile = {
   id: string;
@@ -26,7 +19,6 @@ export type Profile = {
   province: string | null;
   location_display_name: string | null;
   profile_photo_url: string | null;
-  cv_import: CvImportMetadata | null;
   created_at: string;
   updated_at: string;
 };
@@ -45,7 +37,6 @@ export type ProfileUpdateData = {
   province?: string | null;
   location_display_name?: string | null;
   profile_photo_url?: string | null;
-  cv_import?: CvImportMetadata | null;
 };
 
 /**
