@@ -104,7 +104,7 @@ class GeminiProvider(BaseLLMProvider):
 
         t0 = time.perf_counter()
         logger.info("Gemini.complete: acquiring HTTP client…")
-        print(f"  … gemini: resolving client… (t+0.0s)", flush=True)
+        print("  … gemini: resolving client… (t+0.0s)", flush=True)
         client = self._get_client()
         types = self._types
         t_client = time.perf_counter() - t0
