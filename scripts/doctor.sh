@@ -110,7 +110,9 @@ if command -v ollama >/dev/null 2>&1; then
 	if curl -sf http://localhost:11434/api/tags >/dev/null 2>&1; then
 		LOCAL_MODEL="${LOCAL_LLM_MODEL:-llama3.2:3b}"
 		MODEL_BASE="${LOCAL_MODEL%%:*}"
-		if ollama list 2>/dev/null | awk 'NR>1 {print $1}' | grep -q "^${MODEL_BASE}"; then
+		OLLAMA_LIST="$(ollama list 2>/dev/null || true)"
+		MODEL_NAMES="$(printf '%s\n' "${OLLAMA_LIST}" | awk 'NR>1 {print $1}' || true)"
+		if printf '%s\n' "${MODEL_NAMES}" | grep -q "^${MODEL_BASE}"; then
 			ok "ollama running (${OLLAMA_VER}); model ${LOCAL_MODEL} pulled"
 		else
 			warn "ollama running but model ${LOCAL_MODEL} not pulled — run: ollama pull ${LOCAL_MODEL}"
