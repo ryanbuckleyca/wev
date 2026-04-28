@@ -10,6 +10,22 @@ function execVerbose(cmd: string, args: string[] = []) {
   }
 }
 
+// Pick a torch-compatible Python for venv creation.
+// On Intel macOS, torch only has wheels for Python 3.10/3.11; 3.12+ has none.
+// Override with PYTHON_BIN=python3.12 to force a specific version.
+function pickPythonInterpreter(): string {
+  if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
+  const candidates =
+    process.platform === "win32"
+      ? ["python"]
+      : ["python3.11", "python3.12", "python3.10", "python3"];
+  for (const candidate of candidates) {
+    const probe = spawnSync(candidate, ["--version"], { stdio: "ignore" });
+    if (probe.status === 0) return candidate;
+  }
+  return process.platform === "win32" ? "python" : "python3";
+}
+
 async function confirmProd(mode: "prod" | "publish"): Promise<boolean> {
   const label =
     mode === "prod"
@@ -45,8 +61,11 @@ async function main() {
   const venvPlaywrightCmd = path.join(venvBinDir, "playwright");
 
   if (!fs.existsSync("venv")) {
-    console.log("▶ Rebuilding Python Virtual Environment...");
-    execVerbose(pythonCmdName, ["-m", "venv", "venv"]);
+    const interpreter = pickPythonInterpreter();
+    console.log(
+      `▶ Rebuilding Python Virtual Environment with ${interpreter}...`,
+    );
+    execVerbose(interpreter, ["-m", "venv", "venv"]);
   }
 
   // Pass-through arguments
