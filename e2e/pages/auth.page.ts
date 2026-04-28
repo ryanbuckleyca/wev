@@ -1,9 +1,9 @@
-import { expect, type Locator, type Page } from '@playwright/test';
-import { getLocalizedPathname, type AppLocale } from '@/i18n/routing';
+import { expect, type Locator, type Page } from "@playwright/test";
+import { getLocalizedPathname, type AppLocale } from "@/i18n/routing";
 
 function localizedPath(
   locale: AppLocale,
-  pathname: '/signup' | '/login' | '/forgot-password' | '/account-settings',
+  pathname: "/signup" | "/login" | "/forgot-password" | "/account-settings",
 ) {
   return `/${locale}${getLocalizedPathname(pathname, locale)}`;
 }
@@ -15,20 +15,20 @@ export class AuthPage {
     this.page = page;
   }
 
-  async gotoSignup(locale: AppLocale = 'en'): Promise<void> {
-    await this.page.goto(localizedPath(locale, '/signup'));
+  async gotoSignup(locale: AppLocale = "en"): Promise<void> {
+    await this.page.goto(localizedPath(locale, "/signup"));
   }
 
-  async gotoLogin(locale: AppLocale = 'en'): Promise<void> {
-    await this.page.goto(localizedPath(locale, '/login'));
+  async gotoLogin(locale: AppLocale = "en"): Promise<void> {
+    await this.page.goto(localizedPath(locale, "/login"));
   }
 
-  async gotoForgotPassword(locale: AppLocale = 'en'): Promise<void> {
-    await this.page.goto(localizedPath(locale, '/forgot-password'));
+  async gotoForgotPassword(locale: AppLocale = "en"): Promise<void> {
+    await this.page.goto(localizedPath(locale, "/forgot-password"));
   }
 
-  async gotoAccountSettings(locale: AppLocale = 'en'): Promise<void> {
-    await this.page.goto(localizedPath(locale, '/account-settings'));
+  async gotoAccountSettings(locale: AppLocale = "en"): Promise<void> {
+    await this.page.goto(localizedPath(locale, "/account-settings"));
   }
 
   private async tryCompleteCaptcha(): Promise<void> {
@@ -62,9 +62,12 @@ export class AuthPage {
     await submitButton.click();
   }
 
-  async submitWhenCaptchaReady(buttonName: RegExp, timeoutMs = 90_000): Promise<void> {
+  async submitWhenCaptchaReady(
+    buttonName: RegExp,
+    timeoutMs = 90_000,
+  ): Promise<void> {
     await this.submitWhenCaptchaReadyLocator(
-      this.page.getByRole('button', { name: buttonName }),
+      this.page.getByRole("button", { name: buttonName }),
       timeoutMs,
     );
   }
@@ -107,13 +110,16 @@ export class AuthPage {
     await fields.nth(0).fill(newPassword);
     await fields.nth(1).fill(newPassword);
 
-    await this.page.getByRole('button', { name: /update password/i }).click();
+    await this.page.getByRole("button", { name: /update password/i }).click();
   }
 
-  async openDeleteAccountModal(locale: AppLocale = 'en'): Promise<Locator> {
+  async openDeleteAccountModal(locale: AppLocale = "en"): Promise<Locator> {
     await this.gotoAccountSettings(locale);
-    await this.page.getByRole('button', { name: /^delete account$/i }).first().click();
-    const dialog = this.page.getByRole('dialog');
+    await this.page
+      .getByRole("button", { name: /^delete account$/i })
+      .first()
+      .click();
+    const dialog = this.page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     return dialog;
   }
@@ -127,14 +133,14 @@ export class AuthPage {
   async submitDeleteAccount(
     locale: AppLocale,
     currentPassword: string,
-    confirmationText: 'DELETE' | 'SUPPRIMER' = 'DELETE',
+    confirmationText: "DELETE" | "SUPPRIMER" = "DELETE",
   ): Promise<void> {
     const dialog = await this.openDeleteAccountModal(locale);
     await dialog.getByPlaceholder(/current password/i).fill(currentPassword);
     await dialog.getByPlaceholder(confirmationText).fill(confirmationText);
 
     await this.submitWhenCaptchaReadyLocator(
-      dialog.getByRole('button', { name: /^delete account$/i }).first(),
+      dialog.getByRole("button", { name: /^delete account$/i }).first(),
     );
   }
 }

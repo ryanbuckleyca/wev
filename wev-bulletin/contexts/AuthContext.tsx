@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        
+
         const resolvedUser = session?.user ?? null;
 
         if (!mounted) return;

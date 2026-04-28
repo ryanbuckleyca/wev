@@ -13,6 +13,7 @@ Jobs are tagged with ESCO skills via Jina v3 vector embeddings. Job text is embe
 Runs automatically after every scrape when `SHOULD_TAG_SKILLS=1`.
 
 **To run manually:**
+
 ```bash
 python -m scripts.tag_esco_skills_vector --limit 10        # 10 most recent jobs
 python -m scripts.tag_esco_skills_vector --job-ids <uuid>  # specific jobs
@@ -24,9 +25,9 @@ python -m scripts.tag_esco_skills_vector --prod
 
 **Env flags:**
 
-| Flag | Effect |
-|------|--------|
-| `SHOULD_TAG_SKILLS=1` | Enable skills tagging |
+| Flag                     | Effect                              |
+| ------------------------ | ----------------------------------- |
+| `SHOULD_TAG_SKILLS=1`    | Enable skills tagging               |
 | `SHOULD_RE_TAG_SKILLS=1` | Retag jobs that already have skills |
 
 ---
@@ -133,17 +134,17 @@ python scripts/cleanup_job_duplicates.py --prod
 
 ## Common env flags
 
-| Flag | Effect |
-|------|--------|
-| `SHOULD_CLASSIFY=1` | Run SSE classification |
-| `SHOULD_RE_CLASSIFY=1` | Re-classify already-classified jobs |
-| `SHOULD_GEOCODE=1` | Run geocoding |
-| `SHOULD_RE_GEOCODE=1` | Re-geocode already-geocoded jobs |
-| `SHOULD_SUMMARIZE=1` | Generate summaries |
-| `SHOULD_RE_SUMMARIZE=1` | Regenerate existing summaries |
-| `SHOULD_TAG_VALUES=1` | Tag work values |
-| `SHOULD_RE_TAG_VALUES=1` | Retag existing values |
-| `SHOULD_TAG_SKILLS=1` | Tag ESCO skills via vector embeddings |
-| `SHOULD_RE_TAG_SKILLS=1` | Retag jobs that already have skills |
-| `SHOULD_OVERRIDE_EXISTING=1` | Overwrite existing jobs on scrape |
-| `CONFIRM_PROD_RUN=YES` | Skip interactive prompt for `--prod` in CI |
+| Flag                         | Effect                                     |
+| ---------------------------- | ------------------------------------------ |
+| `SHOULD_CLASSIFY=1`          | Run SSE classification                     |
+| `SHOULD_RE_CLASSIFY=1`       | Re-classify already-classified jobs        |
+| `SHOULD_GEOCODE=1`           | Run geocoding                              |
+| `SHOULD_RE_GEOCODE=1`        | Re-geocode already-geocoded jobs           |
+| `SHOULD_SUMMARIZE=1`         | Generate summaries                         |
+| `SHOULD_RE_SUMMARIZE=1`      | Regenerate existing summaries              |
+| `SHOULD_TAG_VALUES=1`        | Tag work values                            |
+| `SHOULD_RE_TAG_VALUES=1`     | Retag existing values                      |
+| `SHOULD_TAG_SKILLS=1`        | Tag ESCO skills via vector embeddings      |
+| `SHOULD_RE_TAG_SKILLS=1`     | Retag jobs that already have skills        |
+| `SHOULD_OVERRIDE_EXISTING=1` | Overwrite existing jobs on scrape          |
+| `CONFIRM_PROD_RUN=YES`       | Skip interactive prompt for `--prod` in CI |

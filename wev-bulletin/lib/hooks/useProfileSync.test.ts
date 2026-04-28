@@ -20,7 +20,7 @@ describe('useProfileSync', () => {
         selectedValue: 'selected-value',
         setter,
         shouldSync,
-      })
+      }),
     );
 
     expect(setter).not.toHaveBeenCalled();
@@ -37,7 +37,7 @@ describe('useProfileSync', () => {
         selectedValue: 'selected-value',
         setter,
         shouldSync,
-      })
+      }),
     );
 
     expect(setter).not.toHaveBeenCalled();
@@ -54,7 +54,7 @@ describe('useProfileSync', () => {
         selectedValue: 'selected-value',
         setter,
         shouldSync,
-      })
+      }),
     );
 
     expect(shouldSync).toHaveBeenCalledWith('profile-value', 'selected-value', false);
@@ -71,7 +71,7 @@ describe('useProfileSync', () => {
         selectedValue: 'selected-value',
         setter,
         shouldSync,
-      })
+      }),
     );
 
     expect(shouldSync).toHaveBeenCalled();
@@ -88,7 +88,7 @@ describe('useProfileSync', () => {
         selectedValue: 'selected-value',
         setter,
         shouldSync,
-      })
+      }),
     );
 
     expect(shouldSync).toHaveBeenCalled();
@@ -107,7 +107,7 @@ describe('useProfileSync', () => {
           setter,
           shouldSync,
         }),
-      { initialProps: { userId: 'user-123' } }
+      { initialProps: { userId: 'user-123' } },
     );
 
     expect(setter).toHaveBeenCalledTimes(1);
@@ -131,7 +131,7 @@ describe('useProfileSync', () => {
           setter,
           shouldSync,
         }),
-      { initialProps: { userId: 'user-123' } }
+      { initialProps: { userId: 'user-123' } },
     );
 
     expect(setter).toHaveBeenCalledTimes(1);
@@ -155,7 +155,7 @@ describe('useProfileSync', () => {
           setter,
           shouldSync,
         }),
-      { initialProps: { userId: 'user-123' as string | null } }
+      { initialProps: { userId: 'user-123' as string | null } },
     );
 
     expect(setter).toHaveBeenCalledTimes(1);

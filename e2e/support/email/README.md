@@ -19,21 +19,25 @@ email/
 ## Benefits
 
 ### 1. Testability
+
 - Each class can be unit tested independently
 - No need to hit MailSlurp API for URL extraction tests
 - Mock dependencies easily for integration tests
 
 ### 2. Maintainability
+
 - Each file has a single, clear responsibility
 - Functions are 5-20 lines instead of 100+
 - No duplicated code (removed 4 duplicate function calls)
 
 ### 3. Extensibility
+
 - Easy to add new email providers (implement same interface)
 - URL extraction logic can be customized per provider
 - Polling strategy can be swapped out
 
 ### 4. Readability
+
 - Clear class and method names
 - Constants instead of magic numbers
 - Comprehensive JSDoc comments
@@ -43,7 +47,7 @@ email/
 ### Basic Usage (unchanged API)
 
 ```typescript
-import { createEphemeralInbox, waitForInboxLink } from './email';
+import { createEphemeralInbox, waitForInboxLink } from "./email";
 
 // Create an inbox
 const inbox = await createEphemeralInbox();
@@ -51,19 +55,19 @@ const inbox = await createEphemeralInbox();
 // Wait for an email with a specific link
 const verifyUrl = await waitForInboxLink(
   inbox.id,
-  '/auth/callback',
-  120_000 // timeout in ms
+  "/auth/callback",
+  120_000, // timeout in ms
 );
 ```
 
 ### Advanced Usage (new capabilities)
 
 ```typescript
-import { EmailUrlExtractor, InboxManager, EmailWaiter } from './email';
+import { EmailUrlExtractor, InboxManager, EmailWaiter } from "./email";
 
 // Use URL extractor independently
 const extractor = new EmailUrlExtractor();
-const url = extractor.extractMatchingUrl(emailBody, 'verify');
+const url = extractor.extractMatchingUrl(emailBody, "verify");
 
 // Manage inboxes with custom MailSlurp client
 const manager = new InboxManager(customMailSlurpClient);
@@ -71,9 +75,9 @@ const inbox = await manager.getOrCreateInbox();
 
 // Wait for emails with custom options
 const waiter = new EmailWaiter(customMailSlurpClient);
-const link = await waiter.waitForLink(inbox.id, 'reset', {
+const link = await waiter.waitForLink(inbox.id, "reset", {
   timeoutMs: 60_000,
-  since: new Date('2024-01-01'),
+  since: new Date("2024-01-01"),
 });
 ```
 
@@ -82,6 +86,7 @@ const link = await waiter.waitForLink(inbox.id, 'reset', {
 ### 1. Eliminated Code Duplication
 
 **Before:** `extractLinkFromRecentEmails` called 4 times
+
 ```typescript
 const recovered = await extractLinkFromRecentEmails(...);
 if (recovered) return recovered;
@@ -89,6 +94,7 @@ if (recovered) return recovered;
 ```
 
 **After:** Single method with clear retry logic
+
 ```typescript
 private async searchRecentEmails(...): Promise<string | null>
 ```
@@ -96,6 +102,7 @@ private async searchRecentEmails(...): Promise<string | null>
 ### 2. Separated Concerns
 
 **Before:** One function did everything
+
 - Poll for emails
 - Extract URLs
 - Handle timeouts
@@ -103,6 +110,7 @@ private async searchRecentEmails(...): Promise<string | null>
 - Retry logic
 
 **After:** Each class has one job
+
 - `EmailWaiter`: Polling and retry logic
 - `EmailUrlExtractor`: URL parsing
 - `InboxManager`: Inbox lifecycle
@@ -110,6 +118,7 @@ private async searchRecentEmails(...): Promise<string | null>
 ### 3. Better Error Handling
 
 **Before:** Silent failures
+
 ```typescript
 } catch {
   // ignore probe failures
@@ -117,6 +126,7 @@ private async searchRecentEmails(...): Promise<string | null>
 ```
 
 **After:** Logged warnings
+
 ```typescript
 } catch (error) {
   console.warn('[MailSlurp] Failed to check for missed emails:', error);
@@ -127,13 +137,15 @@ private async searchRecentEmails(...): Promise<string | null>
 ### 4. Testable URL Extraction
 
 **Before:** Inline regex and string manipulation
+
 ```typescript
-const hrefMatches = Array.from(normalizedText.matchAll(/href=(?:"|')([^"']+)(?:"|')/gi)).map(
-  (match) => match[1],
-);
+const hrefMatches = Array.from(
+  normalizedText.matchAll(/href=(?:"|')([^"']+)(?:"|')/gi),
+).map((match) => match[1]);
 ```
 
 **After:** Testable methods with clear names
+
 ```typescript
 private extractHrefUrls(content: string): string[]
 private extractPlainUrls(content: string): string[]
@@ -143,12 +155,14 @@ private normalizeUrl(url: string): string
 ### 5. Eliminated Global State
 
 **Before:** Module-level mutable state
+
 ```typescript
 let pooledInboxIndex = 0;
 let discoveredInboxIds: string[] | null = null;
 ```
 
 **After:** Encapsulated in class instances
+
 ```typescript
 class InboxManager {
   private pooledInboxIndex = 0;
@@ -159,11 +173,13 @@ class InboxManager {
 ## Testing
 
 Run unit tests:
+
 ```bash
 npm test e2e/support/email/url-extractor.test.ts
 ```
 
 The URL extractor has comprehensive test coverage including:
+
 - Plain text URL extraction
 - HTML href attribute parsing
 - Quoted-printable encoding
@@ -178,15 +194,16 @@ To use the new modular structure:
 
 ```typescript
 // Old (still works)
-import { createEphemeralInbox, waitForInboxLink } from './mailslurp';
+import { createEphemeralInbox, waitForInboxLink } from "./mailslurp";
 
 // New (recommended)
-import { createEphemeralInbox, waitForInboxLink } from './email';
+import { createEphemeralInbox, waitForInboxLink } from "./email";
 ```
 
 ## Future Enhancements
 
 1. **Email Provider Abstraction**
+
    ```typescript
    interface EmailProvider {
      createInbox(): Promise<InboxRef>;
@@ -213,9 +230,9 @@ import { createEphemeralInbox, waitForInboxLink } from './email';
 ## Constants
 
 ```typescript
-DEFAULT_TIMEOUT_MS = 120_000      // 2 minutes
-DEFAULT_LOOKBACK_MS = 120_000     // 2 minutes
-MAX_WAIT_WINDOW_MS = 45_000       // 45 seconds
-RETRY_DELAY_MS = 5_000            // 5 seconds
-MAX_RECENT_EMAILS = 20            // emails to check
+DEFAULT_TIMEOUT_MS = 120_000; // 2 minutes
+DEFAULT_LOOKBACK_MS = 120_000; // 2 minutes
+MAX_WAIT_WINDOW_MS = 45_000; // 45 seconds
+RETRY_DELAY_MS = 5_000; // 5 seconds
+MAX_RECENT_EMAILS = 20; // emails to check
 ```

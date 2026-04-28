@@ -448,8 +448,8 @@ export default function StyleGuidePage() {
           <p className="design-section-intro">
             Navigation components use the same visual styles as buttons. LinkButton and StyledLink
             default to <code className="text-sm">prefetch=&#123;false&#125;</code>; pass{' '}
-            <code className="text-sm">prefetch=&#123;true&#125;</code> when you want Next.js to prefetch
-            that route.
+            <code className="text-sm">prefetch=&#123;true&#125;</code> when you want Next.js to
+            prefetch that route.
           </p>
 
           <div className="design-button-grid">
