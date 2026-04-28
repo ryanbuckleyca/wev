@@ -23,7 +23,11 @@ Constraints for the scraper:
   - Summaries and values are handled by Groq (see factory.py).
 """
 
+import logging
+import os
 import re
+import threading
+import time
 
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.prompts import (
@@ -31,6 +35,8 @@ from llm.prompts import (
     build_summary_system_prompt,
 )
 from settings import get_gemini_api_key
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiProvider(BaseLLMProvider):
@@ -74,7 +80,13 @@ class GeminiProvider(BaseLLMProvider):
             )
         self._genai = genai
         self._types = types
-        self._client = genai.Client(api_key=self._api_key)
+        # Milliseconds; unified + Google Search grounding can run tens of seconds — avoid hanging forever.
+        timeout_ms = int(os.environ.get("GEMINI_HTTP_TIMEOUT_MS", "600000"))
+        self._http_timeout_ms = timeout_ms
+        self._client = genai.Client(
+            api_key=self._api_key,
+            http_options=types.HttpOptions(timeout=timeout_ms),
+        )
         return self._client
 
     def is_available(self) -> bool:
@@ -89,36 +101,98 @@ class GeminiProvider(BaseLLMProvider):
             system: Optional system instruction passed via GenerateContentConfig.
         """
         from llm.config import should_use_grounding
-        
+
+        t0 = time.perf_counter()
+        logger.info("Gemini.complete: acquiring HTTP client…")
+        print("  … gemini: resolving client… (t+0.0s)", flush=True)
         client = self._get_client()
         types = self._types
-        
-        # Check if grounding should be used for this task via the explicit 'task' kwarg.
+        t_client = time.perf_counter() - t0
+        logger.info(f"Gemini.complete: client ready in {t_client:.3f}s")
+
         task_type = kwargs.get("task")
         use_grounding = should_use_grounding(task_type) if task_type else False
-        
+        resolved_model = model or self._model
+        timeout_ms = getattr(self, "_http_timeout_ms", None) or int(
+            os.environ.get("GEMINI_HTTP_TIMEOUT_MS", "600000")
+        )
+
         if use_grounding:
-            # Enable Google Search grounding
             config = types.GenerateContentConfig(
                 system_instruction=system,
-                tools=[types.Tool(google_search=types.GoogleSearch())]
+                tools=[types.Tool(google_search=types.GoogleSearch())],
             )
         else:
-            # No grounding
             config = types.GenerateContentConfig(system_instruction=system) if system else None
-            
+
+        print(
+            f"  … gemini: invoking generate_content "
+            f"model={resolved_model} grounding={use_grounding} "
+            f"task={task_type or '—'} timeout_ms={timeout_ms} "
+            f"prompt_chars={len(prompt)} (setup {time.perf_counter() - t0:.2f}s)",
+            flush=True,
+        )
+        logger.info(
+            "Gemini.generate_content: model=%s grounding=%s task=%s timeout_ms=%s prompt_chars=%s",
+            resolved_model,
+            use_grounding,
+            task_type,
+            timeout_ms,
+            len(prompt),
+        )
+
+        stop_hb = threading.Event()
+        hb_sec = int(os.environ.get("GEMINI_HEARTBEAT_SEC", "30"))
+
+        def _heartbeat() -> None:
+            if hb_sec <= 0:
+                return
+            total = 0
+            while not stop_hb.wait(hb_sec):
+                total += hb_sec
+                msg = (
+                    f"Gemini HTTP still in flight ({total}s elapsed; "
+                    f"server-side timeout {timeout_ms / 1000:.0f}s; key …{self._key_last4()})"
+                )
+                logger.info(msg)
+                print(f"  … {msg}", flush=True)
+
+        hb_thread: threading.Thread | None = None
+        if hb_sec > 0:
+            hb_thread = threading.Thread(target=_heartbeat, name="gemini-heartbeat", daemon=True)
+            hb_thread.start()
+
+        t_api = time.perf_counter()
         try:
-            response = client.models.generate_content(
-                model=model or self._model,
-                contents=prompt,
-                config=config,
-            )
-        except Exception as e:
-            raise LLMProviderError(f"Gemini completion error: {e}") from e
+            try:
+                response = client.models.generate_content(
+                    model=resolved_model,
+                    contents=prompt,
+                    config=config,
+                )
+            except Exception as e:
+                raise LLMProviderError(f"Gemini completion error: {e}") from e
+        finally:
+            stop_hb.set()
+
+        api_s = time.perf_counter() - t_api
+        total_s = time.perf_counter() - t0
         text = getattr(response, "text", "")
         if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
             text = text or getattr(response.candidates[0].content.parts[0], "text", "") or ""
-        return text or ""
+        text = text or ""
+        logger.info(
+            "Gemini.complete: generate_content finished api=%.2fs total=%.2fs response_chars=%s",
+            api_s,
+            total_s,
+            len(text),
+        )
+        print(
+            f"  … gemini: generate_content returned in {api_s:.1f}s "
+            f"(total {total_s:.1f}s, {len(text)} chars)",
+            flush=True,
+        )
+        return text
 
     def get_token_limits(self) -> dict:
         """Return token limits for Gemini provider.

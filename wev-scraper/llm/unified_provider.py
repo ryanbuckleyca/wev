@@ -1,24 +1,31 @@
 """Unified LLM provider with multi-tier fallback for complete job processing.
 
-Primary: gemini-2.5-flash (free tier: 10 RPM, 250K TPM, 20 RPD, 500 grounding/day)
-Fallback: gemini-2.5-flash-lite (free tier: 5 RPM, 250K TPM, 20 RPD, 500 grounding/day)
-Final: groq (free tier: ~10 RPM, 12K TPM, 1,000 requests/hour, no grounding)
+Tries backends in order (e.g. local Ollama when ``ENV_MODE=local``, else Gemini Flash,
+Flash-Lite, Groq). Each call uses ``task=unified``: summary + values + SSE fields are
+all inferred from the job text in one JSON payload.
 
-Extracts: summary, values, is_sse in one call.
+Live **Google Search** in the Gemini SDK is off for ``task=unified`` unless
+``FORCE_GROUNDING=1`` — that is independent of whether SSE columns appear in the prompt.
 """
 
 import logging
 from typing import Any, Dict, List
 
 from llm.base import BaseLLMProvider, LLMProviderError
+from llm.config import should_use_grounding
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
+from llm.local_grounded import LocalGroundedProvider
 from llm.prompts import (
     get_unified_prompt_instructions,
     get_unified_system_prompt,
 )
+from settings import is_local_env
 
 logger = logging.getLogger(__name__)
+
+# Single prompt shape for every backend: always request SSE *fields* (model infers from text).
+UNIFIED_INCLUDE_SSE_FIELDS = True
 
 
 class UnifiedJobProcessor:
@@ -27,24 +34,29 @@ class UnifiedJobProcessor:
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key
 
-        # Initialize providers in fallback order, skipping any that aren't configured.
+        # When ENV_MODE=local, local_grounded (Ollama) is preferred over API providers.
+        # Tavily inside LocalGroundedProvider is only used when task=="sse", not for unified.
+        local_first = [
+            ("local_grounded", lambda: LocalGroundedProvider(), "Ollama (local LLM)"),
+        ] if is_local_env() else []
+
         candidates = [
-            ("gemini-2.5-flash",      lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash"),      True,  "Gemini 2.5 Flash with grounding"),
-            ("gemini-2.5-flash-lite", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash-lite"), True,  "Gemini 2.5 Flash-Lite with grounding"),
-            ("groq",                  lambda: GroqProvider(),                                                  False, "Groq (no grounding)"),
+            *local_first,
+            ("gemini-2.5-flash", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash"), "Gemini 2.5 Flash"),
+            ("gemini-2.5-flash-lite", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash-lite"), "Gemini 2.5 Flash-Lite"),
+            ("groq", lambda: GroqProvider(), "Groq"),
         ]
 
         self.providers = []
-        for name, factory, has_grounding, description in candidates:
+        for name, factory, description in candidates:
             try:
                 self.providers.append({
                     "name": name,
                     "provider": factory(),
-                    "has_grounding": has_grounding,
                     "description": description,
                 })
             except Exception as e:
-                logger.debug(f"Skipping provider {name} (not configured): {e}")
+                logger.warning("Skipping LLM provider %s (not usable): %s", name, e)
 
         self.last_successful_provider = None
 
@@ -54,7 +66,9 @@ class UnifiedJobProcessor:
         if not provider.is_available():
             raise LLMProviderError(f"Provider {provider_info['name']} not available")
         try:
-            return self._process_with_provider(jobs, provider, include_sse=provider_info["has_grounding"])
+            return self._process_with_provider(
+                jobs, provider, include_sse=UNIFIED_INCLUDE_SSE_FIELDS,
+            )
         except Exception as e:
             logger.warning(f"Provider {provider_info['name']} failed: {e}")
             raise
@@ -183,10 +197,9 @@ class UnifiedJobProcessor:
                 if not provider.is_available():
                     raise LLMProviderError(f"Provider {provider_name} not available")
 
-                include_sse = provider_info["has_grounding"]
-                system = get_unified_system_prompt(include_sse=include_sse)
+                system = get_unified_system_prompt(include_sse=UNIFIED_INCLUDE_SSE_FIELDS)
 
-                def build_prompt(batch: List[Dict], _sse: bool = include_sse) -> str:
+                def build_prompt(batch: List[Dict], _sse: bool = UNIFIED_INCLUDE_SSE_FIELDS) -> str:
                     return self._build_unified_prompt(batch, include_sse=_sse)
 
                 def parse_response(raw: str, batch: List[Dict]) -> List[Any]:
@@ -202,11 +215,17 @@ class UnifiedJobProcessor:
                     build_prompt=build_prompt,
                     parse_response=parse_response,
                     system=system,
+                    task="unified",
                 )
 
                 self.last_successful_provider = provider_name
-                grounding_status = "with grounding" if include_sse else "without grounding"
-                logger.info(f"✅ Success with {provider_name} {grounding_status}: processed {len(all_results)} jobs")
+                _gs = should_use_grounding("unified")
+                logger.info(
+                    "✅ Success with %s: processed %s jobs (google_search_grounding=%s)",
+                    provider_name,
+                    len(all_results),
+                    _gs,
+                )
 
                 if attempted_providers[0] != provider_name:
                     logger.info(f"🔄 Fallback successful: {attempted_providers[0]} → {provider_name}")
@@ -215,7 +234,9 @@ class UnifiedJobProcessor:
                     "results": all_results,
                     "count": len(all_results),
                     "provider": provider_name,
-                    "has_grounding": include_sse,
+                    "uses_google_search_grounding": _gs,
+                    # Backward compat: real web search only when FORCE_GROUNDING / task enables it
+                    "has_grounding": _gs,
                     "attempted_providers": attempted_providers,
                 }
 
