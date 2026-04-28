@@ -1,7 +1,7 @@
-import path from 'node:path';
-import { config as loadEnv } from 'dotenv';
+import path from "node:path";
+import { config as loadEnv } from "dotenv";
 
-loadEnv({ path: path.resolve(process.cwd(), '.env') });
+loadEnv({ path: path.resolve(process.cwd(), ".env") });
 
 function failConfig(scriptName: string, message: string): never {
   console.error(`[${scriptName}] Configuration error: ${message}`);
@@ -13,7 +13,7 @@ function getRequiredEnv(scriptName: string, envName: string): string {
   if (!value) {
     failConfig(
       scriptName,
-      `Missing ${envName}. Refusing to continue without an explicit Supabase target.`
+      `Missing ${envName}. Refusing to continue without an explicit Supabase target.`,
     );
   }
   return value;
@@ -22,7 +22,7 @@ function getRequiredEnv(scriptName: string, envName: string): string {
 function getRequiredAnyEnv(
   scriptName: string,
   envNames: string[],
-  description?: string
+  description?: string,
 ): string {
   for (const envName of envNames) {
     const value = process.env[envName]?.trim();
@@ -33,9 +33,9 @@ function getRequiredAnyEnv(
 
   failConfig(
     scriptName,
-    `Missing ${envNames.join(' or ')}${
-      description ? ` (${description})` : ''
-    }. Refusing to continue without explicit Supabase credentials.`
+    `Missing ${envNames.join(" or ")}${
+      description ? ` (${description})` : ""
+    }. Refusing to continue without explicit Supabase credentials.`,
   );
 }
 
@@ -47,10 +47,10 @@ interface ScriptConfigParams {
 
 export function getSupabaseScriptConfig(
   scriptName: string,
-  { urlEnv, keyEnvNames, keyDescription }: ScriptConfigParams
+  { urlEnv, keyEnvNames, keyDescription }: ScriptConfigParams,
 ) {
   const standardizedKeys = keyEnvNames.map((k) =>
-    k.replace('SECRET_KEY', 'SERVICE_ROLE_KEY')
+    k.replace("SECRET_KEY", "SERVICE_ROLE_KEY"),
   );
 
   return {
@@ -58,7 +58,7 @@ export function getSupabaseScriptConfig(
     serviceRoleKey: getRequiredAnyEnv(
       scriptName,
       standardizedKeys,
-      keyDescription
+      keyDescription,
     ),
   };
 }

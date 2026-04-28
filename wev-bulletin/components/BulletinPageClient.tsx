@@ -69,6 +69,7 @@ export default function BulletinPageClient({
     effectiveUserId,
     {
       filters: filters.filters,
+      hasAnyFilters: filters.hasAnyFilters,
       sortBy: filters.sortBy,
       currentPage: filters.currentPage,
       setCurrentPage: filters.setCurrentPage,

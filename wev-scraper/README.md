@@ -25,6 +25,7 @@ Set `TAVILY_API_KEY` in `.env` for grounded SSE classification locally.
 The scraper uses [Webshare](https://www.webshare.io/) proxies to bypass Cloudflare protection on certain sites (e.g., Ma Communauté).
 
 ### Webshare Free Plan
+
 - 10 datacenter proxies
 - 1GB/month bandwidth
 - Rotating proxy endpoint included
@@ -32,6 +33,7 @@ The scraper uses [Webshare](https://www.webshare.io/) proxies to bypass Cloudfla
 ### Setup
 
 Use the **Rotating Proxy Endpoint** for automatic IP rotation:
+
 ```bash
 PROXY_SERVER=http://p.webshare.io:80  # or ports 1080, 3128, 9999-29999
 PROXY_USERNAME=your_username
@@ -66,25 +68,29 @@ Batch maintenance scripts (values tagging, geocoding, legacy match helpers, env 
 The scraper uses different LLM providers depending on the task and environment:
 
 ### Production (default)
+
 - **Job summaries & values**: Groq (llama-3.3-70b) - no grounding required
 - **SSE classification**: Gemini 2.5 Flash with Google Search grounding to verify organization type and governance
 
 ### Local development (`ENV_MODE=local`)
+
 - **All tasks**: LocalGroundedProvider using Tavily search + Ollama (mistral model)
 - Avoids hitting external APIs during development
 
 ### Grounding Configuration
+
 **Only SSE classification uses grounding by default** to save API costs and improve performance.
 
-| Task Type | Uses Grounding | Production | Local Development |
-|-----------|----------------|------------|-------------------|
-| SSE classification | ✅ Yes | Gemini + Google Search | Tavily + Ollama |
-| Job summaries | ❌ No | Groq | Ollama |
-| Values tagging | ❌ No | Groq | Ollama |
-| Location extraction | ❌ No | Groq | Ollama |
-| Skills extraction | ❌ No | Groq | Ollama |
+| Task Type           | Uses Grounding | Production             | Local Development |
+| ------------------- | -------------- | ---------------------- | ----------------- |
+| SSE classification  | ✅ Yes         | Gemini + Google Search | Tavily + Ollama   |
+| Job summaries       | ❌ No          | Groq                   | Ollama            |
+| Values tagging      | ❌ No          | Groq                   | Ollama            |
+| Location extraction | ❌ No          | Groq                   | Ollama            |
+| Skills extraction   | ❌ No          | Groq                   | Ollama            |
 
 **Environment overrides:**
+
 ```bash
 # Force grounding for ALL tasks
 FORCE_GROUNDING=1
@@ -94,6 +100,7 @@ FORCE_GROUNDING=0
 ```
 
 ### Setup
+
 1. **For production (Gemini/Groq)**:
    - Get Gemini API key: https://aistudio.google.com/app/apikey
    - Set `GEMINI_API_KEY` in `.env`
@@ -107,6 +114,7 @@ FORCE_GROUNDING=0
    - Set `ENV_MODE=local` in `.env`
 
 ### Rate limits (Gemini free tier)
+
 - Gemini 2.5 Flash: 4 RPM / 24 RPD
 - Gemini 2.5 Flash Lite: 8 RPM / 22 RPD
 - SSE classification uses 1 request per job

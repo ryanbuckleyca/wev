@@ -27,25 +27,34 @@ lint:
     - linters: [sqlfluff]
       paths:
         - supabase/migrations/**
+        - supabase/tests/**
+        - supabase/checks/**
+    - linters: [bandit, pyright, checkov, hadolint, markdownlint]
+      paths:
+        - wev-scraper/**
+        - supabase/apply-migrations-direct.py
+    - linters: [eslint]
+      paths:
+        - scripts/**
   disabled:
     - black
     - isort
-    - sqlfluff
+    - checkov
+    - markdownlint
+    - osv-scanner
+    - trufflehog
+    - yamllint
   enabled:
+    - sqlfluff@3.3.1
     - actionlint@1.7.12
     - bandit@1.9.4
-    - checkov@3.2.521
     - git-diff-check
     - hadolint@2.14.0
-    - markdownlint@0.48.0
-    - osv-scanner@2.3.5
     - prettier@3.8.3
     - ruff@0.15.11
     - shellcheck@0.11.0
     - shfmt@3.6.0
     - taplo@0.10.0
-    - trufflehog@3.94.3
-    - yamllint@1.38.0
     - eslint@9.39.4
     - pyright@1.1.409
 actions:

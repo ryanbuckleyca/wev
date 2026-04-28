@@ -73,7 +73,7 @@ export default function BulletinPageView({
           <JobFilters
             jobs={data.jobsOnPage}
             filteredJobsCount={data.totalMatchingJobs}
-            totalJobsCount={data.totalMatchingJobs}
+            totalJobsCount={data.availableJobsCount}
           />
 
           {data.jobsOnPage.length > 0 && (
@@ -97,7 +97,7 @@ export default function BulletinPageView({
 
           <JobListings
             jobs={data.jobsOnPage}
-            totalJobsCount={data.totalMatchingJobs}
+            totalJobsCount={data.availableJobsCount}
             loading={data.loading}
             userMetaLoading={data.userMetaLoading}
             error={data.error}

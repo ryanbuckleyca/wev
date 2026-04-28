@@ -92,28 +92,30 @@ export default function JobListings({
         className="bg-card border border-border rounded-wev-card p-12 text-center flex flex-col items-center justify-center gap-4"
         data-testid={JOB_BOARD_TEST_IDS.emptyState}
       >
-        <p className="text-foreground text-lg">{t('jobListings.noJobs')}</p>
-
-        {shouldShowFilterClearPrompt && (
-          <div className="flex flex-col items-center gap-6 mt-2 max-w-md w-full">
-            <p className="text-muted-foreground">
+        {shouldShowFilterClearPrompt ? (
+          <>
+            <p className="text-foreground text-lg">
               {t('jobListings.showingFiltered', { total: totalJobsCount })}
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
-              <Button
-                variant="secondary"
-                onClick={filterContext?.clearAllFilters}
-                className="w-full sm:w-auto"
-              >
-                {t('jobListings.clearFilters')}
-              </Button>
-              {userId && (
-                <LinkButton href="/profile" variant="primary" className="w-full sm:w-auto">
-                  {t('filters.workType.profileLink')}
-                </LinkButton>
-              )}
+            <div className="flex flex-col items-center gap-6 mt-2 max-w-md w-full">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+                <Button
+                  variant="secondary"
+                  onClick={filterContext?.clearAllFilters}
+                  className="w-full sm:w-auto"
+                >
+                  {t('jobListings.clearFilters')}
+                </Button>
+                {userId && (
+                  <LinkButton href="/profile" variant="primary" className="w-full sm:w-auto">
+                    {t('filters.workType.profileLink')}
+                  </LinkButton>
+                )}
+              </div>
             </div>
-          </div>
+          </>
+        ) : (
+          <p className="text-foreground text-lg">{t('jobListings.noJobs')}</p>
         )}
       </div>
     );

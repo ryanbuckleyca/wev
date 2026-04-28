@@ -173,6 +173,7 @@ function createData(): BulletinDataState {
   return {
     jobsOnPage: baseJobs.slice(0, 1),
     totalMatchingJobs: 3,
+    availableJobsCount: 7,
     lastScrapeTime: 'March 28, 2026, 9:00 AM EDT',
     loading: false,
     userMetaLoading: false,
@@ -205,7 +206,7 @@ describe('BulletinPageView', () => {
       />,
     );
 
-    expect(screen.getByText('job-filters:1:3:3')).toBeVisible();
+    expect(screen.getByText('job-filters:1:3:7')).toBeVisible();
     expect(screen.getByText('job-listings:1')).toBeVisible();
     expect(screen.getByText('copy-jobs:1')).toBeVisible();
     expect(screen.getByText(/Last updated/i)).toBeVisible();

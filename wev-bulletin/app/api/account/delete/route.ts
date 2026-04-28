@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
- 
+
 export const dynamic = 'force-dynamic';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';

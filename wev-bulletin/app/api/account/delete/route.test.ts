@@ -163,4 +163,3 @@ describe('/api/account/delete', () => {
     expect(mockDeleteUser).toHaveBeenCalledWith('user-123');
   });
 });
-

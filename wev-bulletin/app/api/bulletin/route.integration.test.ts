@@ -50,7 +50,6 @@ vi.mock('next/cache', async (importOriginal) => {
 
 // Mock Supabase Server Client
 vi.mock('@/lib/supabase/server', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chain: Record<string, any> = {};
   mockSelect.mockImplementation(() => chain);
   mockTextSearch.mockImplementation(() => chain);

@@ -175,7 +175,7 @@ describe('ProfilePage skills integration', () => {
     const removeButton = await screen.findByRole('button', {
       name: /remove data analysis/i,
     });
-    await user.click(removeButton);
+    screen.debug(); await user.click(removeButton);
     await user.click(screen.getByRole('button', { name: /save profile/i }));
 
     await waitFor(() => {
