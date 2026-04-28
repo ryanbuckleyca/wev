@@ -5,7 +5,11 @@ Replaces separate classify_existing_jobs.py, tag_job_values.py, and tag_job_skil
 with a single unified processor that extracts all data in one LLM call.
 
 Usage:
-    python unified_post_processor.py [--task sse|values|skills|all] [--limit N]
+    python unified_post_processor.py [--task sse|values|summary|all] [--limit N]
+        [--prod | --publish] [--job-id ID ...] [--dry-run] [--verbose]
+
+    --prod     Load all of .env.production (full prod overrides).
+    --publish  Keep .env for LLMs/embeddings; apply only Supabase keys from .env.production.
 """
 
 import argparse
@@ -16,12 +20,21 @@ from typing import Any, Dict, List
 
 # Load env before any DB import. We can't rely on dotenv-cli at the npm layer
 # because it is first-wins (won't override .env values from .env.production).
-# Mirror scrape.py: always load .env, then if --prod is set, override with
-# .env.production so SUPABASE_URL/SERVICE_ROLE_KEY point at prod.
-from settings import ensure_env_loaded, load_env_file  # noqa: E402
+# Mirror scrape.py: always load .env; --prod loads all of .env.production;
+# --publish swaps only Supabase keys from .env.production (LLM/jina config stays from .env).
+from settings import (  # noqa: E402
+    ensure_env_loaded,
+    load_db_credentials_only,
+    load_env_file,
+)
 
 ensure_env_loaded()
-if "--prod" in sys.argv:
+_has_prod = "--prod" in sys.argv
+_has_publish = "--publish" in sys.argv
+if _has_prod and _has_publish:
+    print("Error: --prod and --publish are mutually exclusive.", file=sys.stderr)
+    sys.exit(2)
+if _has_prod or _has_publish:
     _root = Path(__file__).resolve().parent.parent.parent
     _scraper = Path(__file__).resolve().parent.parent
     _prod_env = (
@@ -30,9 +43,20 @@ if "--prod" in sys.argv:
         else _scraper / ".env.production"
     )
     if not _prod_env.exists():
-        print(f"❌ {_prod_env} not found — required for --prod.", file=sys.stderr)
+        print(
+            f"❌ {_prod_env} not found — required for --prod / --publish.",
+            file=sys.stderr,
+        )
         sys.exit(1)
-    load_env_file(_prod_env)
+    if _has_prod:
+        print(f"▶ Loading production overrides from {_prod_env.name}")
+        load_env_file(_prod_env)
+    else:
+        applied = load_db_credentials_only(_prod_env)
+        print(
+            f"▶ Publish mode: loaded {len(applied)} DB credential(s) from "
+            f"{_prod_env.name} ({', '.join(applied)}); LLM/feature config kept from .env"
+        )
     os.environ["USE_PROD_DB"] = "1"
 
 from llm.factory import get_unified_processor  # noqa: E402
@@ -252,25 +276,36 @@ def main():
     parser.add_argument("--limit", type=int, default=100, help="Maximum jobs to process")
     parser.add_argument("--job-id", nargs="+", help="Specific job IDs to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't save to database")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--prod",
+        action="store_true",
+        help="Full prod: load all of .env.production (DB + LLM keys + flags)",
+    )
+    group.add_argument(
+        "--publish",
+        action="store_true",
+        help="Publish: keep .env for LLMs/Jina; apply only Supabase keys from .env.production",
+    )
     parser.add_argument("--verbose", action="store_true", help="Detailed logging")
-    parser.add_argument("--prod", action="store_true", help="Run against production database")
 
     args = parser.parse_args()
 
-    # Handle production flag (env vars + USE_PROD_DB are already set at module
-    # load above; this block only handles the interactive confirmation).
-    if args.prod:
-        confirm = os.environ.get("CONFIRM_PROD_RUN")
-        if sys.stdin.isatty():
-            print("\nWARNING: You are about to run against the PRODUCTION database.")
-            print("This will modify real data.\n")
-            resp = input("Type YES to continue, anything else to abort: ")
-            if resp.strip() != "YES":
-                print("Aborted.")
+    # Confirmation (run.ts sets PROD_CONFIRMED=1 after its prompt; CI may use CONFIRM_PROD_RUN=YES)
+    if args.prod or args.publish:
+        if sys.stdin.isatty() and os.environ.get("PROD_CONFIRMED") != "1":
+            mode = "PRODUCTION (full)" if args.prod else "PRODUCTION DB (publish — local LLMs)"
+            confirm = input(f"⚠️  RUNNING AGAINST {mode}. Type 'YES' to continue: ")
+            if confirm != "YES":
+                sys.exit(0)
+        elif not sys.stdin.isatty() and os.environ.get("PROD_CONFIRMED") != "1":
+            if os.environ.get("CONFIRM_PROD_RUN") != "YES":
+                print(
+                    "Refusing production run in non-interactive mode. "
+                    "Set CONFIRM_PROD_RUN=YES (or run via npm run process:prod / process:publish).",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
-        elif confirm != "YES":
-            print("Refusing to run against production in non-interactive mode. Set CONFIRM_PROD_RUN=YES to override.")
-            sys.exit(1)
 
     # Process jobs
     result = process_jobs_unified(

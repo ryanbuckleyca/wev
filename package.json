@@ -39,6 +39,8 @@
     "scrape": "npx tsx wev-scraper/run.ts scrape",
     "scrape:prod": "npm run scrape -- --prod",
     "scrape:publish": "npm run scrape -- --publish",
+    "process:prod": "npx tsx wev-scraper/run.ts unified-post -- --prod",
+    "process:publish": "npx tsx wev-scraper/run.ts unified-post -- --publish",
     "lint": "trunk check",
     "lint:fix": "trunk fmt && trunk check --fix",
     "tsc": "npm run tsc --prefix wev-bulletin",
