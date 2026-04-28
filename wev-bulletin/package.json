@@ -10,8 +10,7 @@
     "tsc": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "build:esco-labels": "node scripts/build-esco-labels.mjs"
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -33,11 +32,9 @@
     "geolib": "^3.3.4",
     "groq-sdk": "^0.8.0",
     "lucide-react": "^0.577.0",
-    "mammoth": "^1.9.1",
     "next": "^16.1.6",
     "next-intl": "^4.8.3",
     "nuqs": "^2.8.9",
-    "pdfjs-dist": "^5.4.296",
     "pino": "^10.3.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -46,7 +43,6 @@
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.5.0",
     "tailwind-scrollbar-hide": "^4.0.0",
-    "tesseract.js": "^6.0.1",
     "tippy.js": "^6.3.7",
     "zod": "^4.3.6"
   },

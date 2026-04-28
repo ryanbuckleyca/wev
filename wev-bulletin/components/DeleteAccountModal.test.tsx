@@ -171,7 +171,7 @@ describe('DeleteAccountModal', () => {
   });
 
   it('shows loading state during deletion', async () => {
-    // Long enough that assertions run while the request is still pending (avoid racing waitFor).
+    // Mock a delayed response
     mockFetch.mockImplementation(
       () =>
         new Promise((resolve) =>
@@ -181,7 +181,7 @@ describe('DeleteAccountModal', () => {
                 ok: true,
                 json: async () => ({ message: 'Account successfully deleted' }),
               }),
-            5000,
+            100,
           ),
         ),
     );
@@ -198,20 +198,22 @@ describe('DeleteAccountModal', () => {
     // then await it to avoid dangling unsettled promises.
     const clickPromise = user.click(deleteButton);
 
-    // Same render as "Deleting..." — isDeleting is true, so the button must be disabled.
+    // Should show loading state immediately while fetch is pending
     const loadingButton = await screen.findByRole('button', { name: /deleting/i });
     expect(loadingButton).toBeVisible();
-    expect(loadingButton).toBeDisabled();
+    await waitFor(() => {
+      expect(loadingButton).toBeDisabled();
+    });
 
     // Await the click action to complete properly
     await clickPromise;
 
-    // Wait for final state (redirect) — fetch is delayed 5s above.
+    // Wait for final state (redirect)
     await waitFor(
       () => {
         expect(window.location.href).toBe('/');
       },
-      { timeout: 8_000 },
+      { timeout: 200 },
     );
   });
 

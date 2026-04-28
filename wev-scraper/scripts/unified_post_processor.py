@@ -159,6 +159,10 @@ def process_jobs_unified(
     filtered_jobs = all_filtered_jobs
     print(f"✓ Filtered to {len(filtered_jobs)} eligible jobs total")
 
+    if limit > 0:
+        filtered_jobs = filtered_jobs[:limit]
+        print(f"✓ Applied --limit: processing up to {len(filtered_jobs)} job(s)")
+
     if not filtered_jobs:
         print("No eligible jobs to process.")
         return counts
