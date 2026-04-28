@@ -2,6 +2,10 @@
   "name": "wev",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.12.0",
+    "npm": ">=10"
+  },
   "workspaces": [
     "e2e",
     "wev-bulletin",
@@ -34,6 +38,9 @@
     "test:scraper": "cd wev-scraper && . venv/bin/activate && pytest tests",
     "scrape": "npx tsx wev-scraper/run.ts scrape",
     "scrape:prod": "npm run scrape -- --prod",
+    "scrape:publish": "npm run scrape -- --publish",
+    "process:prod": "npx tsx wev-scraper/run.ts unified-post --prod",
+    "process:publish": "npx tsx wev-scraper/run.ts unified-post --publish",
     "lint": "trunk check",
     "lint:fix": "trunk fmt && trunk check --fix",
     "tsc": "npm run tsc --prefix wev-bulletin",
