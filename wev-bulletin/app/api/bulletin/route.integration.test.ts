@@ -112,6 +112,7 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(body.jobs).toEqual([]);
     expect(body.lastScrapeTime).toBe('2020-01-01T00:00:00.000Z');
     expect(body.skillLabels).toEqual({});
+    expect(body.loadFailed).toBe(false);
   });
 
   it('clamps pagination params to bounded safe values', async () => {
@@ -173,12 +174,35 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(mockGte).toHaveBeenCalledWith('date_posted', expect.any(String));
   });
 
-  it('returns 500 when fetch throws', async () => {
+  it('returns fallback payload when scrape-time lookup throws', async () => {
     mockFetchLastScrapeTime.mockRejectedValue(new Error('db unavailable'));
 
     const response = await GET(new Request('http://localhost/api/bulletin'));
-    expect(response.status).toBe(500);
-    const body = (await response.json()) as { error: string };
-    expect(body.error).toBe('db unavailable');
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      jobs: unknown[];
+      total: number;
+      lastScrapeTime: string | null;
+      loadFailed: boolean;
+    };
+    expect(body.jobs).toEqual([]);
+    expect(body.total).toBe(0);
+    expect(body.lastScrapeTime).toBeNull();
+    expect(body.loadFailed).toBe(false);
+  });
+
+  it('returns fallback payload when matched_jobs query fails', async () => {
+    mockRange.mockResolvedValueOnce({
+      data: null,
+      count: 0,
+      error: { message: 'fetch failed' },
+    });
+
+    const response = await GET(new Request('http://localhost/api/bulletin'));
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { jobs: unknown[]; total: number; loadFailed: boolean };
+    expect(body.jobs).toEqual([]);
+    expect(body.total).toBe(0);
+    expect(body.loadFailed).toBe(true);
   });
 });

@@ -161,28 +161,39 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
   const postedWithinDays = 14;
   const postedCutoff = new Date(Date.now() - postedWithinDays * 24 * 60 * 60 * 1000).toISOString();
 
-  const [scrapeTime, jobsResult] = await Promise.all([
-    fetchLastScrapeTime(),
-    supabaseServer
-      .from('matched_jobs')
-      .select(BULLETIN_JOB_SELECT, { count: 'exact' })
-      .is('is_sse', true)
-      .gte('date_posted', postedCutoff)
-      .order('date_posted', { ascending: false })
-      .range(0, 19),
-  ]);
+  try {
+    const [scrapeTime, jobsResult] = await Promise.all([
+      fetchLastScrapeTime(),
+      supabaseServer
+        .from('matched_jobs')
+        .select(BULLETIN_JOB_SELECT, { count: 'exact' })
+        .is('is_sse', true)
+        .gte('date_posted', postedCutoff)
+        .order('date_posted', { ascending: false })
+        .range(0, 19),
+    ]);
 
-  if (jobsResult.error) throw new Error(jobsResult.error.message);
+    if (jobsResult.error) throw new Error(jobsResult.error.message);
 
-  const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
-  const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
+    const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
+    const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
 
-  return {
-    jobs,
-    total: jobsResult.count ?? 0,
-    lastScrapeTime: scrapeTime,
-    skillLabels: Object.fromEntries(labelMap),
-  };
+    return {
+      jobs,
+      total: jobsResult.count ?? 0,
+      lastScrapeTime: scrapeTime,
+      skillLabels: Object.fromEntries(labelMap),
+      loadFailed: false,
+    };
+  } catch {
+    return {
+      jobs: [] as JobPosting[],
+      total: 0,
+      lastScrapeTime: null,
+      skillLabels: {} as Record<string, SkillLabel>,
+      loadFailed: true,
+    };
+  }
 };
 
 /**
@@ -267,7 +278,7 @@ export async function fetchServerProfile(userId: string): Promise<Profile | null
     const { data, error } = await supabaseServer
       .from('profiles')
       .select(
-        'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, created_at, updated_at',
+        'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, cv_import, created_at, updated_at',
       )
       .eq('id', userId)
       .maybeSingle();

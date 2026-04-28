@@ -132,9 +132,10 @@ async function fetchBulletinApiPayload(
   const searchColumn = input.locale === 'fr' ? 'fts_fr' : 'fts_en';
   const buildQuery = createBuildQueryFn(supabase, input);
 
+  const scrapeTimePromise = fetchLastScrapeTime().catch(() => null);
   const [initialJobsResult, scrapeTime] = await Promise.all([
     buildQuery(searchColumn),
-    fetchLastScrapeTime(),
+    scrapeTimePromise,
   ]);
   let jobsResult = initialJobsResult;
 
@@ -146,7 +147,15 @@ async function fetchBulletinApiPayload(
     jobsResult = await buildQuery('fts');
   }
 
-  if (jobsResult.error) throw new Error(jobsResult.error.message);
+  if (jobsResult.error) {
+    return {
+      jobs: [],
+      total: 0,
+      lastScrapeTime: scrapeTime,
+      skillLabels: {},
+      loadFailed: true,
+    };
+  }
 
   const jobs = jobsResult.data;
   const labelMap = await resolveSkillLabels(supabase, jobs, input.locale);
@@ -156,6 +165,7 @@ async function fetchBulletinApiPayload(
     total: jobsResult.count ?? 0,
     lastScrapeTime: scrapeTime,
     skillLabels: Object.fromEntries(labelMap),
+    loadFailed: false,
   };
 }
 

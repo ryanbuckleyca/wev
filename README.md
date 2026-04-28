@@ -2,74 +2,53 @@
 
 Welcome to the Wev project. This repository contains the Bulletin app, the Scraper service, and the Supabase infrastructure.
 
-## 🛠 Prerequisites
+## Prerequisites (manual install)
 
-- **Docker Desktop**: Required for local Supabase.
-- **Node.js**: v18+ (v20+ recommended).
-- **Python**: 3.10+ (for the scraper).
+These cannot be automated; install them first.
 
-## 🚀 Quick Start (Local Development)
+- **Node.js**: `>=20.12` (an `.nvmrc` is provided — run `nvm use`).
+- **Python**: `>=3.10`.
+- **Docker Desktop**: required for local Supabase. Must be running before `npm run migrate:local`.
+- **Supabase CLI**: installed automatically as a dev dependency via `npm install`.
 
-### 1. Installation
+Run `make doctor` at any time to check that the above are correctly installed.
 
-Install root dependencies and set up venvs:
-
-```bash
-npm install
-cd wev-scraper && python3 -m venv venv && . venv/bin/activate && pip install -r requirements.txt && cd ..
-```
-
-### 2. Environment Setup
-
-Copy the example environment file:
+## Quick Start (local dev)
 
 ```bash
-cp .env.example .env
-```
-
-_(Ensure `SUPABASE_SERVICE_ROLE_KEY` matches your local Supabase instance if it changes.)_
-
-### 3. Database & Seeding
-
-Initialize the database, apply migrations, and seed the default dataset:
-
-```bash
-npm run migrate:local
-```
-
-### 4. Skills Setup
-
-Populate the ESCO skills database (required for profile search):
-
-```bash
+nvm use                     # pick the Node version pinned in .nvmrc
+make setup                  # npm install + scraper venv + requirements (incl. -dev) + .env scaffold
+# edit .env with your secrets
+# start Docker Desktop
+npm run migrate:local       # full DB reset + seed
 npm run skills:index -- --upsert-db
+npm run skills:embeddings   # populate ESCO embeddings (needed for skills matching)
+npm run dev                 # http://localhost:3000
 ```
 
-_(Optional) Seed embeddings for semantic matching:_
+Local emails are intercepted by **Mailpit** at [http://localhost:54324](http://localhost:54324).
 
-```bash
-npm run skills:embeddings
-```
+## Make targets
 
-### 5. Start the Application
+- `make setup` — full bootstrap: `npm install` + scraper venv + `requirements.txt` + `requirements-dev.txt` + scaffold `.env`.
+- `make setup-py` / `make setup-py-dev` — Python deps only (dev adds torch/ruff/pyright/etc.).
+- `make setup-env` — copy `.env.example` → `.env` if missing.
+- `make doctor` — verify Node/Python/Docker/Supabase versions.
+- `make clean-py` — wipe the scraper venv (use if it gets corrupted).
+- `make reset` — `clean-py` then `setup`.
 
-```bash
-npm run dev
-```
+## Useful npm scripts
 
-The app will be available at [http://localhost:3000](http://localhost:3000).
+- `npm run dev` — start the Bulletin app.
+- `npm run migrate:local` — full local DB reset & seed.
+- `npx supabase status` — check local Supabase services.
+- `npm run scrape` — run a local scrape iteration (uses `.env`, writes to local DB).
+- `npm run scrape:publish` — local LLMs, **prod DB**. Pulls only Supabase credentials from `.env.production`; everything else (LLM keys, `ENV_MODE`, feature flags) stays from `.env`. Requires `requirements-dev.txt` (torch) since `ENV_MODE=local` is preserved. Prompts for `YES`.
+- `npm run scrape:prod` — **full prod**. Loads all of `.env.production`, including `ENV_MODE=api`, so the Jina REST API is used and torch is not required. Prompts for `YES`.
+- `npm run test` — full test suite (Bulletin + scraper).
+- `npm run verify` — lint + tsc + tests (run automatically on `git push`; bypass with `npm run push:skip`).
 
-## 📧 Testing Email Flow
+## Notes
 
-Local emails are intercepted by **Mailpit**.
-
-- Dashboard: [http://localhost:54324](http://localhost:54324)
-
-## 🐳 Useful Commands
-
-- `npm run migrate:local`: Full database reset & seed.
-- `npx supabase status`: Check local Supabase services.
-- `npm run scrape`: Run a local scrape iteration (uses `.env`, writes to local DB).
-- `npm run scrape:publish`: Run scrape with local LLMs but write results to the prod DB. Pulls only Supabase credentials from `.env.production`; everything else (LLM keys, `ENV_MODE`, feature flags) stays from `.env`. Prompts for `YES` confirmation.
-- `npm run scrape:prod`: Run scrape fully against prod — loads all of `.env.production` (DB + LLM keys + flags), so LLM calls hit prod-configured providers. Prompts for `YES` confirmation.
-- `npm run test`: Run all tests across the monorepo.
+- `.env.production` is gitignored. It must contain at minimum the prod Supabase credentials and `ENV_MODE=api`. LLM keys (`JINA_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`) are inherited from `.env` unless explicitly overridden.
+- Pre-push hook runs `npm run verify:fix`. If you need to bypass it: `SKIP_VERIFY=1 git push` or `npm run push:skip`.

@@ -2,6 +2,10 @@
   "name": "wev",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.12.0",
+    "npm": ">=10"
+  },
   "workspaces": [
     "e2e",
     "wev-bulletin",
