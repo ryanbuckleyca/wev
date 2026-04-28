@@ -96,7 +96,7 @@ async function main() {
   const scriptPath = taskMap[task];
 
   if (scriptPath) {
-    const scriptArgs = args.slice(1);
+    const scriptArgs = args.slice(1).filter((a) => a !== "--");
 
     // Ensure dependencies are synced if we're running a main task
     if (

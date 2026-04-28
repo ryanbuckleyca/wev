@@ -295,12 +295,12 @@ def parse_args():
     parser.add_argument(
         "--prod",
         action="store_true",
-        help="Full prod: load .env.production (DB + LLM keys + flags) and target prod DB",
+        help="Full prod: load .env.production (DB + LLM keys + flags), set ENV_MODE=prod, target prod DB",
     )
     parser.add_argument(
         "--publish",
         action="store_true",
-        help="Local LLMs, prod DB: keep .env (LLM keys, ENV_MODE) but swap DB creds from .env.production",
+        help="Prod DB: Supabase keys from .env.production; set ENV_MODE=local (local LLMs/embeddings + rest of .env)",
     )
     parser.add_argument("--staging", action="store_true", help="Use staging (.env.staging) environment")
     parser.add_argument("--dry-run", "--dry", action="store_true", help="Skip database writes")
@@ -341,13 +341,17 @@ def initialize_runtime_env(args):
             # Full prod: override everything in .env.production (DB + LLM + flags)
             _log(f"▶ Loading Production Overrides from {prod_env.name}")
             load_env_file(prod_env)
+            os.environ["ENV_MODE"] = "prod"
+            _log("▶ LLM routing: ENV_MODE=prod (--prod — not local-first LLMs)")
         else:
-            # Publish: only swap DB credentials, leave LLM/feature config intact
+            # Publish: only swap DB credentials, leave other .env keys for feature flags
             applied = load_db_credentials_only(prod_env)
             _log(
                 f"▶ Publish mode: loaded {len(applied)} DB credential(s) from "
                 f"{prod_env.name} ({', '.join(applied)}); LLM/feature config kept from .env"
             )
+            os.environ["ENV_MODE"] = "local"
+            _log("▶ LLM routing: ENV_MODE=local (--publish → local LLMs / embeddings)")
 
 
 def main():

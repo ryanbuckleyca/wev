@@ -65,6 +65,10 @@ elif os.environ.get("USE_PROD_DB") == "1":
 else:
     print("🧪 Using TEST database")
 
+# Deferred imports: `utils.db` and `JinaEmbeddingService` (and their dependencies)
+# read Supabase / Jina config from `os.environ` as soon as they load. They must run
+# only after `ensure_env_loaded()`, optional `.env.production`, and the --prod gate
+# above. noqa: E402 tells ruff/flake8 to allow imports after executable code.
 from llm.jina_embedding import ConfigurationError, JinaEmbeddingService  # noqa: E402
 from utils.db import fetch_all_rows, supabase  # noqa: E402
 

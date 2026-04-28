@@ -5,7 +5,7 @@ Processes jobs with a single LLM call to extract:
 - Summary
 - Raw Skills 
 - Work Values
-- SSE Classification (with grounding when available)
+- SSE classification (inferred from job text in unified path; optional live search if FORCE_GROUNDING=1)
 
 Fallback chain: gemini-flash → gemini-flash-lite → groq
 """
@@ -150,13 +150,14 @@ def process_jobs_unified(
             
             counts["batches_processed"] += 1
             counts["provider_used"] = result.get("provider")
-            counts["grounding_available"] = result.get("has_grounding", False)
-            
+            uses_search = result.get("uses_google_search_grounding", result.get("has_grounding", False))
+            counts["grounding_available"] = uses_search
+
             print(f"  ✓ Batch {batch_num} complete using {result.get('provider')}")
-            if result.get("has_grounding"):
-                print("  ✓ Web grounding used for SSE classification")
+            if uses_search:
+                print("  ✓ Google Search tools on (FORCE_GROUNDING) for this run")
             else:
-                print("  ⚠ SSE classification without grounding")
+                print("  ✓ SSE inferred from job text (unified path — no live web search)")
                 
         except Exception as e:
             scraper_log(f"✗ Batch {batch_num} failed: {e}")

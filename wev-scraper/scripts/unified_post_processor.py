@@ -8,8 +8,10 @@ Usage:
     python unified_post_processor.py [--task sse|values|summary|all] [--limit N]
         [--prod | --publish] [--job-id ID ...] [--dry-run] [--verbose]
 
-    --prod     Load all of .env.production (full prod overrides).
-    --publish  Keep .env for LLMs/embeddings; apply only Supabase keys from .env.production.
+    --prod     Load all of .env.production (full prod overrides); force ENV_MODE=prod
+               so local-first routing is off (is_local_env() is only True for ENV_MODE=local).
+    --publish  Prod DB credentials from .env.production; force ENV_MODE=local so local
+               LLMs and on-device embeddings are used.
 """
 
 import argparse
@@ -20,8 +22,8 @@ from typing import Any, Dict, List
 
 # Load env before any DB import. We can't rely on dotenv-cli at the npm layer
 # because it is first-wins (won't override .env values from .env.production).
-# Mirror scrape.py: always load .env; --prod loads all of .env.production;
-# --publish swaps only Supabase keys from .env.production (LLM/jina config stays from .env).
+# Mirror scrape.py: always load .env; --prod loads all of .env.production then sets
+# ENV_MODE=prod (anything but local disables local-first LLMs); --publish sets local.
 from settings import (  # noqa: E402
     ensure_env_loaded,
     load_db_credentials_only,
@@ -51,14 +53,25 @@ if _has_prod or _has_publish:
     if _has_prod:
         print(f"▶ Loading production overrides from {_prod_env.name}")
         load_env_file(_prod_env)
+        # Full prod: .env.production may omit ENV_MODE; base .env often has ENV_MODE=local.
+        # is_local_env() is True only for ENV_MODE=local — use ``prod`` so Gemini/Groq from prod file win.
+        os.environ["ENV_MODE"] = "prod"
+        print("▶ LLM routing: ENV_MODE=prod (not local — use keys from .env.production)", flush=True)
     else:
         applied = load_db_credentials_only(_prod_env)
         print(
             f"▶ Publish mode: loaded {len(applied)} DB credential(s) from "
             f"{_prod_env.name} ({', '.join(applied)}); LLM/feature config kept from .env"
         )
+        # Publish: prod DB keys from .env.production, machine-local LLM stack (Ollama, local Jina).
+        os.environ["ENV_MODE"] = "local"
+        print("▶ LLM routing: ENV_MODE=local (--publish → local LLMs / embeddings)", flush=True)
     os.environ["USE_PROD_DB"] = "1"
 
+# Deferred imports: `utils.db`, `llm.factory`, and `utils.log` transitively load clients
+# that read `os.environ` (Supabase URL/keys, LLM provider config). Import them only after
+# the `--prod` / `--publish` bootstrap above so the right DB target and keys are set.
+# noqa: E402 — imports intentionally follow executable env setup; silences ruff/flake8.
 from llm.factory import get_unified_processor  # noqa: E402
 from utils.db import supabase  # noqa: E402
 from utils.log import scraper_log  # noqa: E402
@@ -102,7 +115,7 @@ def process_jobs_unified(
     task_descriptions = {
         "summary": "Job summarization (1 sentence)",
         "values": "Values tagging (from taxonomy)",
-        "sse": "SSE classification (with web search grounding)"
+        "sse": "SSE classification (no Google Search unless FORCE_GROUNDING=1)",
     }
 
     if task == "all":
@@ -280,12 +293,12 @@ def main():
     group.add_argument(
         "--prod",
         action="store_true",
-        help="Full prod: load all of .env.production (DB + LLM keys + flags)",
+        help="Full prod: .env.production over .env; ENV_MODE=prod (non-local LLM routing)",
     )
     group.add_argument(
         "--publish",
         action="store_true",
-        help="Publish: keep .env for LLMs/Jina; apply only Supabase keys from .env.production",
+        help="Prod DB creds from .env.production; ENV_MODE=local (Ollama / local Jina)",
     )
     parser.add_argument("--verbose", action="store_true", help="Detailed logging")
 
