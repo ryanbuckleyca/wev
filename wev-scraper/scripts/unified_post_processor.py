@@ -11,15 +11,33 @@ Usage:
 import argparse
 import os
 import sys
+from pathlib import Path
 from typing import Any, Dict, List
 
-# Set production flag BEFORE importing db module
+# Load env before any DB import. We can't rely on dotenv-cli at the npm layer
+# because it is first-wins (won't override .env values from .env.production).
+# Mirror scrape.py: always load .env, then if --prod is set, override with
+# .env.production so SUPABASE_URL/SERVICE_ROLE_KEY point at prod.
+from settings import ensure_env_loaded, load_env_file  # noqa: E402
+
+ensure_env_loaded()
 if "--prod" in sys.argv:
+    _root = Path(__file__).resolve().parent.parent.parent
+    _scraper = Path(__file__).resolve().parent.parent
+    _prod_env = (
+        _root / ".env.production"
+        if (_root / ".env.production").exists()
+        else _scraper / ".env.production"
+    )
+    if not _prod_env.exists():
+        print(f"❌ {_prod_env} not found — required for --prod.", file=sys.stderr)
+        sys.exit(1)
+    load_env_file(_prod_env)
     os.environ["USE_PROD_DB"] = "1"
 
-from llm.factory import get_unified_processor
-from utils.db import supabase
-from utils.log import scraper_log
+from llm.factory import get_unified_processor  # noqa: E402
+from utils.db import supabase  # noqa: E402
+from utils.log import scraper_log  # noqa: E402
 
 
 def process_jobs_unified(
@@ -235,7 +253,8 @@ def main():
 
     args = parser.parse_args()
 
-    # Handle production flag
+    # Handle production flag (env vars + USE_PROD_DB are already set at module
+    # load above; this block only handles the interactive confirmation).
     if args.prod:
         confirm = os.environ.get("CONFIRM_PROD_RUN")
         if sys.stdin.isatty():
@@ -248,8 +267,6 @@ def main():
         elif confirm != "YES":
             print("Refusing to run against production in non-interactive mode. Set CONFIRM_PROD_RUN=YES to override.")
             sys.exit(1)
-
-        os.environ["USE_PROD_DB"] = "1"
 
     # Process jobs
     result = process_jobs_unified(
