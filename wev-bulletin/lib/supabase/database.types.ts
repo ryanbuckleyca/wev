@@ -352,6 +352,7 @@ export type Database = {
       profiles: {
         Row: {
           bio: string | null;
+          cv_import: Json | null;
           created_at: string | null;
           full_name: string | null;
           id: string;
@@ -370,6 +371,7 @@ export type Database = {
         };
         Insert: {
           bio?: string | null;
+          cv_import?: Json | null;
           created_at?: string | null;
           full_name?: string | null;
           id: string;
@@ -388,6 +390,7 @@ export type Database = {
         };
         Update: {
           bio?: string | null;
+          cv_import?: Json | null;
           created_at?: string | null;
           full_name?: string | null;
           id?: string;

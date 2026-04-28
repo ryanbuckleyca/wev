@@ -31,7 +31,9 @@ export function useBulletinFetch(
     () => initialData?.skillLabels ?? {},
   );
   const [loading, setLoading] = useState(!hasInitialData);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    initialData?.initialLoadFailed ? t('loadFailed') : null,
+  );
 
   const { filters, hasAnyFilters, sortBy, currentPage } = options;
 
@@ -68,11 +70,22 @@ export function useBulletinFetch(
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(body.error ?? t('loadFailed'));
+        const errorMessage =
+          typeof body.error === 'string' && body.error.trim().length > 0
+            ? body.error
+            : t('loadFailed');
+        if (requestId !== requestIdRef.current) return;
+        setError(errorMessage);
+        setLoading(false);
+        return;
       }
 
       const data = await response.json();
       if (requestId !== requestIdRef.current) return;
+
+      if (data.loadFailed) {
+        setError(t('loadFailed'));
+      }
 
       const formattedTime = formatLastScrapeTime(data.lastScrapeTime, locale);
       setLastScrapeTime(formattedTime);
@@ -85,6 +98,9 @@ export function useBulletinFetch(
       if (data.skillLabels) {
         setSkillLabels(data.skillLabels);
       }
+      if (!data.loadFailed) {
+        setError(null);
+      }
       setLoading(false);
     } catch (fetchError) {
       if (requestId !== requestIdRef.current) return;
@@ -93,7 +109,9 @@ export function useBulletinFetch(
       let message = t('loadFailed');
       if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
         message = t('timeout');
-      } else if (fetchError instanceof Error) {
+      } else if (fetchError instanceof TypeError) {
+        message = t('loadFailed');
+      } else if (fetchError instanceof Error && fetchError.message.trim().length > 0) {
         message = fetchError.message;
       }
 
