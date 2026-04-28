@@ -37,7 +37,8 @@ fi
 
 # --- npm --------------------------------------------------------------------
 if command -v npm >/dev/null 2>&1; then
-	ok "npm $(npm --version)"
+	NPM_VER="$(npm --version)"
+	ok "npm ${NPM_VER}"
 else
 	bad "npm not found"
 fi
@@ -55,9 +56,10 @@ for cand in python3.11 python3.12 python3.10; do
 done
 
 if [[ -n ${SCRAPER_PY} ]]; then
-	ok "${SCRAPER_PY} available for scraper venv ($(${SCRAPER_PY} --version 2>&1))"
+	SCRAPER_PY_VER="$(${SCRAPER_PY} --version 2>&1)"
+	ok "${SCRAPER_PY} available for scraper venv (${SCRAPER_PY_VER})"
 elif command -v python3 >/dev/null 2>&1; then
-	PY_RAW="$(python3 --version 2>&1 | awk '{print $2}')"
+	PY_RAW="$(python3 --version 2>&1 | awk '{print $2}' || true)"
 	bad "no python3.10/3.11/3.12 found — system python3 is ${PY_RAW} (torch wheels unavailable for 3.13+)"
 else
 	bad "python3 not found"
@@ -79,7 +81,8 @@ fi
 if [[ -x ./node_modules/.bin/supabase ]]; then
 	ok "supabase CLI (local devDependency)"
 elif command -v supabase >/dev/null 2>&1; then
-	ok "supabase CLI ($(supabase --version | head -n1))"
+	SUPA_VER="$(supabase --version | head -n1 || true)"
+	ok "supabase CLI (${SUPA_VER})"
 else
 	warn "supabase CLI missing — run: npm install"
 fi
