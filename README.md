@@ -10,6 +10,7 @@ These cannot be automated; install them first.
 - **Python**: `3.10`, `3.11`, or `3.12` (Python 3.13 has no torch wheel on macOS x86_64). Python 3.11 is the safest choice on Intel Mac.
 - **Docker Desktop**: required for local Supabase. Must be running before `npm run migrate:local`.
 - **Supabase CLI**: installed automatically as a dev dependency via `npm install`.
+- **Ollama** (optional, for `ENV_MODE=local` LLM): install from [ollama.com/download](https://ollama.com/download) or `brew install ollama`. Then run `ollama serve` (or open the desktop app) and pull the model in `.env`'s `LOCAL_LLM_MODEL` (default `llama3.2:3b`): `ollama pull llama3.2:3b`. Without Ollama, the scraper falls back to Gemini → Groq.
 
 Run `make doctor` at any time to verify everything's installed at the right versions.
 
@@ -53,8 +54,9 @@ The Makefile auto-detects a torch-compatible Python (`python3.11` → `python3.1
 ## LLM providers used by the scraper (`ENV_MODE=local` default)
 
 - **Jina v3** (skill embeddings): runs locally via `transformers`+`torch`. Installed by `make setup-py-dev`. To call the Jina REST API instead, set `ENV_MODE=api` and provide `JINA_API_KEY`.
-- **Gemini** (job summarization, values tagging, SSE classification): always called via API. Requires `GEMINI_API_KEY`. **Note**: the free tier is capped at 20 requests/day per model — large backlogs need a paid tier or staggered runs.
-- **Groq** (CV → values inference in the bulletin): API-only. Requires `GROQ_API_KEY`.
+- **Ollama** (job summarization, values tagging, SSE classification when `ENV_MODE=local`): the unified post-processor and SSE classifier prefer `LocalGroundedProvider` first, then fall back to Gemini → Groq if Ollama isn't reachable. Requires the daemon (`ollama serve`) and the model named in `LOCAL_LLM_MODEL` (default `llama3.2:3b`) to be pulled.
+- **Gemini** (used as fallback when local is unavailable, or as primary when `ENV_MODE=api`): requires `GEMINI_API_KEY`. **Note**: the free tier is capped at 20 requests/day per model — large backlogs need a paid tier, Ollama, or staggered runs.
+- **Groq** (CV → values inference in the bulletin; final fallback for the scraper unified processor): API-only. Requires `GROQ_API_KEY`.
 
 ## Notes
 

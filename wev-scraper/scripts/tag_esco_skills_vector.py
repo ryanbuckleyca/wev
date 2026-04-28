@@ -21,6 +21,27 @@ import logging
 import os
 import sys
 import time
+from pathlib import Path
+
+# Load env before any DB import. Mirror unified_post_processor.py: always load
+# .env, then if --prod is set, override with .env.production so SUPABASE_URL /
+# SUPABASE_SERVICE_ROLE_KEY point at prod. We can't rely on dotenv-cli at the
+# npm layer because it is first-wins (won't override .env values).
+from settings import ensure_env_loaded, load_env_file  # noqa: E402
+
+ensure_env_loaded()
+if "--prod" in sys.argv[1:]:
+    _root = Path(__file__).resolve().parent.parent.parent
+    _scraper = Path(__file__).resolve().parent.parent
+    _prod_env = (
+        _root / ".env.production"
+        if (_root / ".env.production").exists()
+        else _scraper / ".env.production"
+    )
+    if not _prod_env.exists():
+        print(f"❌ {_prod_env} not found — required for --prod.", file=sys.stderr)
+        sys.exit(1)
+    load_env_file(_prod_env)
 
 # --prod confirmation before utils.db import
 if "--prod" in sys.argv[1:] and os.environ.get("CONFIRM_PROD_RUN") == "YES":
@@ -44,8 +65,8 @@ elif os.environ.get("USE_PROD_DB") == "1":
 else:
     print("🧪 Using TEST database")
 
-from llm.jina_embedding import ConfigurationError, JinaEmbeddingService
-from utils.db import fetch_all_rows, supabase
+from llm.jina_embedding import ConfigurationError, JinaEmbeddingService  # noqa: E402
+from utils.db import fetch_all_rows, supabase  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

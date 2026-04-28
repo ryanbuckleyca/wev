@@ -13,10 +13,12 @@ from typing import Any, Dict, List
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
+from llm.local_grounded import LocalGroundedProvider
 from llm.prompts import (
     get_unified_prompt_instructions,
     get_unified_system_prompt,
 )
+from settings import is_local_env
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,17 @@ class UnifiedJobProcessor:
         self.api_key = api_key
 
         # Initialize providers in fallback order, skipping any that aren't configured.
+        # When ENV_MODE=local, local_grounded (Ollama) is preferred over the API
+        # providers so that backlogs can be processed without consuming Gemini/Groq
+        # quota. has_grounding=True for local_grounded means "include SSE field in
+        # the unified prompt"; the actual Tavily search is gated by task=="sse"
+        # inside LocalGroundedProvider, so unified calls never hit Tavily.
+        local_first = [
+            ("local_grounded", lambda: LocalGroundedProvider(), True, "Ollama (local LLM)"),
+        ] if is_local_env() else []
+
         candidates = [
+            *local_first,
             ("gemini-2.5-flash",      lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash"),      True,  "Gemini 2.5 Flash with grounding"),
             ("gemini-2.5-flash-lite", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash-lite"), True,  "Gemini 2.5 Flash-Lite with grounding"),
             ("groq",                  lambda: GroqProvider(),                                                  False, "Groq (no grounding)"),
