@@ -8,6 +8,8 @@ const createWorkerMock = vi.fn();
 
 vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
   getDocument: getDocumentMock,
+  GlobalWorkerOptions: { workerSrc: 'https://cdn.test/pdfjs.worker.stub.mjs' },
+  version: '5.4.296',
 }));
 
 vi.mock('tesseract.js', () => ({
@@ -67,6 +69,15 @@ describe('CV import integration — OCR fallback + extraction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockEscoLabelsFetch();
+    // jsdom has no real canvas; OCR path needs a 2D context for page.render.
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {
+      return {
+        canvas: this,
+        drawImage: vi.fn(),
+        fillRect: vi.fn(),
+        getImageData: vi.fn(),
+      } as unknown as CanvasRenderingContext2D;
+    });
   });
 
   afterEach(() => {
@@ -75,7 +86,7 @@ describe('CV import integration — OCR fallback + extraction', () => {
 
   it('uses PDF text layer when available (OCR not used) and still extracts skills/values', async () => {
     const pdfWithTextLayer = makePdfDocument(
-      'Experienced in project management and community outreach. Seeking challenge-driven roles.',
+      'Experienced in project management and community outreach. Seeking challenge and growth in new roles.',
     );
 
     getDocumentMock.mockReturnValue({ promise: Promise.resolve(pdfWithTextLayer) });
