@@ -10,11 +10,9 @@ These cannot be automated; install them first.
 - **Python**: `3.10`, `3.11`, or `3.12` (Python 3.13 has no torch wheel on macOS x86_64). Python 3.11 is the safest choice on Intel Mac.
 - **Docker Desktop**: required for local Supabase. Must be running before `npm run migrate:local`.
 - **Supabase CLI**: installed automatically as a dev dependency via `npm install`.
-- **Ollama** (optional, for `ENV_MODE=local` LLM): install from [ollama.com/download](https://ollama.com/download) or `brew install ollama`. Then run `ollama serve` (or open the desktop app) and pull the model in `.env`'s `LOCAL_LLM_MODEL` (default `llama3.2:3b`): `ollama pull llama3.2:3b`. Without Ollama, the scraper falls back to Gemini → Groq.
+- **Ollama** (optional): for local LLM during `*:publish` runs; see **LLM / embeddings** below. `make doctor` checks it.
 
-Run `make doctor` at any time to verify everything's installed at the right versions.
-
-## Quick Start (local dev)
+Run `make doctor` to verify versions and venv/.env.
 
 ```bash
 nvm use                     # pick the Node version pinned in .nvmrc
@@ -32,7 +30,7 @@ Local emails are intercepted by **Mailpit** at [http://localhost:54324](http://l
 ## Make targets
 
 - `make setup` — full bootstrap: `npm install` + scraper venv + `requirements.txt` (editable install) + `requirements-dev.txt` + scaffold `.env`.
-- `make setup-py` / `make setup-py-dev` — Python deps only. `setup-py-dev` adds **torch / transformers / einops** for the local Jina v3 embedding model used by `ENV_MODE=local`. Required for any scrape that does skills tagging or vector embeddings.
+- `make setup-py` / `make setup-py-dev` — Python deps only. `setup-py-dev` adds **torch / transformers / einops** for **local Jina v3** skill embeddings. Required for any scrape that does skills tagging or vector embeddings.
 - `make setup-env` — copy `.env.example` → `.env` if missing.
 - `make doctor` — verify Node/Python/Docker/Supabase versions and venv/.env presence.
 - `make clean-py` — wipe the scraper venv (use if it gets corrupted).
@@ -46,20 +44,24 @@ The Makefile auto-detects a torch-compatible Python (`python3.11` → `python3.1
 - `npm run migrate:local` — full local DB reset & seed (uses fixture data from `supabase/src/dataset.ts`).
 - `npx supabase status` — check local Supabase services.
 - `npm run scrape` — local scrape iteration: uses `.env`, writes to local DB.
-- `npm run scrape:publish` — local LLMs, **prod DB**. Pulls only Supabase credentials from `.env.production`; everything else (LLM keys, `ENV_MODE`, feature flags) stays from `.env`. Prompts for `YES`.
+- `npm run scrape:publish` — local LLMs / local Jina, **prod DB**. Pulls only Supabase credentials from `.env.production`; LLM keys and embedding setup stay from `.env`. Prompts for `YES`.
 - `npm run scrape:prod` — **full prod**. Loads all of `.env.production` over `.env`, so any prod-specific overrides apply. Prompts for `YES`.
+- `npm run process:publish` — run the **unified post-processor** (summary / values / SSE) with the same publish semantics: prod DB, config from `.env`. Use when a scrape finished but post-process failed or needs a re-run.
+- `npm run process:prod` — unified post-processor with **full** `.env.production` overrides (same idea as `scrape:prod`). Prompts for `YES`.
+- Extra CLI args pass through: `npm run process:publish -- --limit 50 --verbose`.
 - `npm run test` — full test suite (Bulletin + scraper).
 - `npm run verify` — lint + tsc + tests (run automatically on `git push`; bypass with `npm run push:skip`).
 
-## LLM providers used by the scraper (`ENV_MODE=local` default)
+## LLM / embeddings (scraper)
 
-- **Jina v3** (skill embeddings): runs locally via `transformers`+`torch`. Installed by `make setup-py-dev`. To call the Jina REST API instead, set `ENV_MODE=api` and provide `JINA_API_KEY`.
-- **Ollama** (job summarization, values tagging, SSE classification when `ENV_MODE=local`): the unified post-processor and SSE classifier prefer `LocalGroundedProvider` first, then fall back to Gemini → Groq if Ollama isn't reachable. Requires the daemon (`ollama serve`) and the model named in `LOCAL_LLM_MODEL` (default `llama3.2:3b`) to be pulled.
-- **Gemini** (used as fallback when local is unavailable, or as primary when `ENV_MODE=api`): requires `GEMINI_API_KEY`. **Note**: the free tier is capped at 20 requests/day per model — large backlogs need a paid tier, Ollama, or staggered runs.
-- **Groq** (CV → values inference in the bulletin; final fallback for the scraper unified processor): API-only. Requires `GROQ_API_KEY`.
+- **Jina v3** (skill embeddings): runs **locally** via `transformers` + `torch` (`make setup-py-dev`, ~570MB model on first use).
+- **Ollama** (optional, for local text LLM in `.env`): unified post-processor and SSE classifier try Ollama first when configured, then Gemini → Groq. Install from [ollama.com/download](https://ollama.com/download), run `ollama serve`, and pull `LOCAL_LLM_MODEL` (e.g. `ollama pull llama3.2:3b`).
+- **`scrape:publish` / `process:publish`** keep your machine’s `.env` (local embeddings + local LLM setup if you use it) while writing to **production** Supabase.
+- **`scrape:prod` / `process:prod`** load all of `.env.production`, so API keys and flags come from there—use when you intend a fully prod-configured run.
+- **Gemini** / **Groq**: API keys as needed for cloud fallbacks or prod-mode runs. Gemini free tier can be tight on volume; consider paid tier or smaller batches (`--limit` on the post-processor).
 
 ## Notes
 
-- `.env.production` is gitignored. It must contain the prod Supabase credentials and any prod-specific overrides. LLM keys (`JINA_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`) are inherited from `.env` unless explicitly overridden.
+- `.env.production` is gitignored. It must contain prod Supabase credentials. In **`publish`** mode, only those DB keys are applied; the rest of the process still uses `.env`. In **`prod`** mode, `.env.production` overrides `.env` for all keys it defines.
 - Pre-push hook runs `npm run verify:fix`. To bypass: `SKIP_VERIFY=1 git push` or `npm run push:skip`.
-- Avoid wrapping scraper Python scripts in `dotenv-cli`: it is **first-wins** and will not override `.env` values from `.env.production`. Scripts that need to target prod (`scrape.py`, `unified_post_processor.py`) load `.env.production` themselves when `--prod` is passed.
+- Avoid wrapping scraper Python in `dotenv-cli` (**first-wins**). Use `npm run scrape:prod`, `scrape:publish`, `process:prod`, or `process:publish` so env layering matches `scrape.py` / `unified_post_processor.py`.

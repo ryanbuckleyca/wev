@@ -88,6 +88,7 @@ async function main() {
     scrape: "scrape.py",
     "skills:index": "scripts/build_esco_skills_index.py",
     "skills:embeddings": "scripts/seed_esco_embeddings.py",
+    "unified-post": "scripts/unified_post_processor.py",
     normalize: "utils/data_updater.py",
     "municipality-backfill": "utils/backfill_municipality_canonical.py",
   };
@@ -98,7 +99,11 @@ async function main() {
     const scriptArgs = args.slice(1);
 
     // Ensure dependencies are synced if we're running a main task
-    if (["scrape", "skills:index", "skills:embeddings"].includes(task)) {
+    if (
+      ["scrape", "skills:index", "skills:embeddings", "unified-post"].includes(
+        task,
+      )
+    ) {
       console.log("▶ Syncing Python Dependencies...");
       execVerbose(venvPipCmd, ["install", "--quiet", "-r", "requirements.txt"]);
       execVerbose(venvPipCmd, ["install", "--quiet", "-e", "."]);
