@@ -171,16 +171,12 @@ describe('DeleteAccountModal', () => {
   });
 
   it('shows loading state during deletion', async () => {
-    // Keep fetch pending without real (or fake) wall-clock delay: vi.useFakeTimers()
-    // fights userEvent + waitFor in jsdom; an explicit resolver is deterministic for CI.
-    let resolveDeleteFetch!: (value: {
-      ok: boolean;
-      json: () => Promise<{ message: string }>;
-    }) => void;
+    // Use a deferred promise so the test can deterministically assert loading state
+    let resolveFetch: (value: any) => void = () => {};
     mockFetch.mockImplementation(
       () =>
         new Promise((resolve) => {
-          resolveDeleteFetch = resolve;
+          resolveFetch = resolve;
         }),
     );
 
@@ -192,19 +188,22 @@ describe('DeleteAccountModal', () => {
 
     await user.type(passwordInput, 'mypassword123');
     await user.type(confirmInput, 'DELETE');
-
+    // Capture the click promise so we can check loading state while it's pending,
+    // then await it to avoid dangling unsettled promises.
     const clickPromise = user.click(deleteButton);
 
+    // Same render as "Deleting..." — isDeleting is true, so the button must be disabled.
     const loadingButton = await screen.findByRole('button', { name: /deleting/i });
     expect(loadingButton).toBeVisible();
     expect(loadingButton).toBeDisabled();
 
-    resolveDeleteFetch({
-      ok: true,
-      json: async () => ({ message: 'Account successfully deleted' }),
-    });
+    // Resolve the fetch now so the click completes and the redirect happens
+    resolveFetch({ ok: true, json: async () => ({ message: 'Account successfully deleted' }) });
+
+    // Await the click action to complete properly
     await clickPromise;
 
+    // Wait for final state (redirect)
     await waitFor(() => {
       expect(window.location.href).toBe('/');
     });

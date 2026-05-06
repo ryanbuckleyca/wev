@@ -6,9 +6,9 @@ Welcome to the Wev project. This repository contains the Bulletin app, the Scrap
 
 These cannot be automated; install them first.
 
-- **Node.js**: `>=20.12` — `.nvmrc` is provided, so `nvm use` picks it up.
+- **Node.js**: v22.22.2+ (the repo pins Node 22.22.2 in `.nvmrc`; use `nvm use` before running installs or tests).
 - **Python**: `3.10`, `3.11`, or `3.12` (Python 3.13 has no torch wheel on macOS x86_64). Python 3.11 is the safest choice on Intel Mac.
-- **Docker Desktop**: required for local Supabase. Must be running before `npm run migrate:local`.
+- **Docker Desktop**: Required for local Supabase. Must be running before `npm run migrate:local`.
 - **Supabase CLI**: installed automatically as a dev dependency via `npm install`.
 - **Ollama** (optional): for local LLM during `*:publish` runs; see **LLM / embeddings** below. `make doctor` checks it.
 

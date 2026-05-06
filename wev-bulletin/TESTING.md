@@ -17,6 +17,9 @@ _Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.c
 
 ## Stack
 
+- Run Vitest and Next.js tasks with the Node version pinned in the repo's `.nvmrc`.
+- Older Node releases can fail before the suite starts, so if tests crash at startup, check `nvm use` first.
+
 | Tool                                                                                   | Purpose                                                     |
 | -------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | [Vitest](https://vitest.dev/)                                                          | Fast, ESM-native test runner (Jest-compatible)              |
@@ -213,7 +216,13 @@ const defaultProps = {
 };
 ```
 
-### 9. Only Use `vi.fn()` for Functions You Assert On
+### 9. Make Async Tests Deterministic
+
+When a test needs to observe an intermediate loading state, do not rely on arbitrary delays like `setTimeout(100)` or other timing guesses. Prefer a deferred promise, a controlled mock, or fake timers so the test decides exactly when the async work resolves.
+
+This keeps assertions stable in CI and local runs, especially for buttons that briefly switch to states like `Loading...` or `Deleting...`. Resolve the pending work explicitly in the test after asserting the intermediate UI.
+
+### 10. Only Use `vi.fn()` for Functions You Assert On
 
 `vi.fn()` creates a tracked mock. Only use it when you plan to assert on it (`toHaveBeenCalled`, `toHaveBeenCalledWith`, etc.). For callbacks you don't assert on, use a plain no-op function instead.
 
@@ -232,7 +241,7 @@ await user.click(screen.getByRole('button', { name: 'Next' }));
 expect(handleChange).toHaveBeenCalledWith(2);
 ```
 
-### 10. Keep Helpers and Constants in the Top Scope
+### 11. Keep Helpers and Constants in the Top Scope
 
 Shared helper functions and immutable constants belong at the **top of the file** (outside `describe`), not nested inside it. This visually separates setup from test logic.
 
@@ -257,7 +266,7 @@ describe('MyComponent', () => {
 });
 ```
 
-### 11. Don't Loop Over Assertions
+### 12. Don't Loop Over Assertions
 
 Avoid `for` / `forEach` loops around `expect()` calls. When a loop-based assertion fails, the error message doesn't tell you _which_ iteration broke. Write each expectation explicitly — it's more readable and produces clear failure output.
 
