@@ -204,11 +204,9 @@ describe('DeleteAccountModal', () => {
     await clickPromise;
 
     // Wait for final state (redirect)
-    await waitFor(
-      () => {
-        expect(window.location.href).toBe('/');
-      }
-    );
+    await waitFor(() => {
+      expect(window.location.href).toBe('/');
+    });
   });
 
   it('accepts SUPPRIMER for French locale', async () => {
