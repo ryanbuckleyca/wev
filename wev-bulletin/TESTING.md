@@ -266,7 +266,7 @@ describe('MyComponent', () => {
 });
 ```
 
-### 11. Don't Loop Over Assertions
+### 12. Don't Loop Over Assertions
 
 Avoid `for` / `forEach` loops around `expect()` calls. When a loop-based assertion fails, the error message doesn't tell you _which_ iteration broke. Write each expectation explicitly — it's more readable and produces clear failure output.
 
