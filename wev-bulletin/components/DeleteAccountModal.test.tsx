@@ -171,19 +171,13 @@ describe('DeleteAccountModal', () => {
   });
 
   it('shows loading state during deletion', async () => {
-    // Long enough that assertions run while the request is still pending (avoid racing waitFor).
+    // Use a deferred promise so the test can deterministically assert loading state
+    let resolveFetch: (value: any) => void = () => {};
     mockFetch.mockImplementation(
       () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: async () => ({ message: 'Account successfully deleted' }),
-              }),
-            5000,
-          ),
-        ),
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
     );
 
     render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />);
@@ -203,16 +197,16 @@ describe('DeleteAccountModal', () => {
     expect(loadingButton).toBeVisible();
     expect(loadingButton).toBeDisabled();
 
+    // Resolve the fetch now so the click completes and the redirect happens
+    resolveFetch({ ok: true, json: async () => ({ message: 'Account successfully deleted' }) });
+
     // Await the click action to complete properly
     await clickPromise;
 
-    // Wait for final state (redirect) — fetch is delayed 5s above.
-    await waitFor(
-      () => {
-        expect(window.location.href).toBe('/');
-      },
-      { timeout: 8_000 },
-    );
+    // Wait for final state (redirect)
+    await waitFor(() => {
+      expect(window.location.href).toBe('/');
+    });
   });
 
   it('accepts SUPPRIMER for French locale', async () => {
