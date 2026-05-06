@@ -5,7 +5,7 @@ Welcome to the Wev project. This repository contains the Bulletin app, the Scrap
 ## 🛠 Prerequisites
 
 - **Docker Desktop**: Required for local Supabase.
-- **Node.js**: v20.12.0+ (the repo pins Node 20.12.0 in `.nvmrc`; use `nvm use` before running installs or tests).
+- **Node.js**: v22.22.2+ (the repo pins Node 22.22.2 in `.nvmrc`; use `nvm use` before running installs or tests).
 - **Python**: 3.10+ (for the scraper).
 
 ## 🚀 Quick Start (Local Development)
