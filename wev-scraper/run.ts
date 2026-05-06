@@ -10,14 +10,34 @@ function execVerbose(cmd: string, args: string[] = []) {
   }
 }
 
-async function confirmProd(): Promise<boolean> {
+// Pick a torch-compatible Python for venv creation.
+// On Intel macOS, torch only has wheels for Python 3.10/3.11; 3.12+ has none.
+// Override with PYTHON_BIN=python3.12 to force a specific version.
+function pickPythonInterpreter(): string {
+  if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
+  const candidates =
+    process.platform === "win32"
+      ? ["python"]
+      : ["python3.11", "python3.12", "python3.10", "python3"];
+  for (const candidate of candidates) {
+    const probe = spawnSync(candidate, ["--version"], { stdio: "ignore" });
+    if (probe.status === 0) return candidate;
+  }
+  return process.platform === "win32" ? "python" : "python3";
+}
+
+async function confirmProd(mode: "prod" | "publish"): Promise<boolean> {
+  const label =
+    mode === "prod"
+      ? "PRODUCTION (full)"
+      : "PRODUCTION DB (publish — local LLMs)";
   return new Promise((resolve) => {
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stderr,
     });
     rl.question(
-      "⚠️  RUNNING AGAINST PRODUCTION. Type 'YES' to continue: ",
+      `⚠️  RUNNING AGAINST ${label}. Type 'YES' to continue: `,
       (answer) => {
         rl.close();
         resolve(answer === "YES");
@@ -41,19 +61,23 @@ async function main() {
   const venvPlaywrightCmd = path.join(venvBinDir, "playwright");
 
   if (!fs.existsSync("venv")) {
-    console.log("▶ Rebuilding Python Virtual Environment...");
-    execVerbose(pythonCmdName, ["-m", "venv", "venv"]);
+    const interpreter = pickPythonInterpreter();
+    console.log(
+      `▶ Rebuilding Python Virtual Environment with ${interpreter}...`,
+    );
+    execVerbose(interpreter, ["-m", "venv", "venv"]);
   }
 
   // Pass-through arguments
   const args = process.argv.slice(2);
   const task = args[0];
   const isProd = args.includes("--prod");
+  const isPublish = args.includes("--publish");
 
   // Prompt before any output is piped — readline uses stderr so it's visible
   // even when stdout is piped (e.g. `npm run scrape -- --prod 2>&1 | head`).
-  if (isProd && process.stdin.isTTY) {
-    const confirmed = await confirmProd();
+  if ((isProd || isPublish) && process.stdin.isTTY) {
+    const confirmed = await confirmProd(isProd ? "prod" : "publish");
     if (!confirmed) process.exit(0);
     // Signal to scrape.py that the prod confirmation has already been handled
     process.env.PROD_CONFIRMED = "1";
@@ -64,6 +88,7 @@ async function main() {
     scrape: "scrape.py",
     "skills:index": "scripts/build_esco_skills_index.py",
     "skills:embeddings": "scripts/seed_esco_embeddings.py",
+    "unified-post": "scripts/unified_post_processor.py",
     normalize: "utils/data_updater.py",
     "municipality-backfill": "utils/backfill_municipality_canonical.py",
   };
@@ -71,10 +96,14 @@ async function main() {
   const scriptPath = taskMap[task];
 
   if (scriptPath) {
-    const scriptArgs = args.slice(1);
+    const scriptArgs = args.slice(1).filter((a) => a !== "--");
 
     // Ensure dependencies are synced if we're running a main task
-    if (["scrape", "skills:index", "skills:embeddings"].includes(task)) {
+    if (
+      ["scrape", "skills:index", "skills:embeddings", "unified-post"].includes(
+        task,
+      )
+    ) {
       console.log("▶ Syncing Python Dependencies...");
       execVerbose(venvPipCmd, ["install", "--quiet", "-r", "requirements.txt"]);
       execVerbose(venvPipCmd, ["install", "--quiet", "-e", "."]);
