@@ -33,28 +33,31 @@ DEFAULT_SLEEP_SECONDS = 0.0
 
 
 def _count_remaining() -> int:
-    """Count total jobs where lat IS NULL and municipality or province is non-null."""
+    """Count total jobs where lat or lng is NULL and municipality or province is non-null."""
     resp = (
         supabase.table("jobs")
         .select("id", count="exact")
-        .is_("lat", "null")
+        .or_("lat.is.null,lng.is.null")
         .or_("municipality.not.is.null,province.not.is.null")
         .execute()
     )
     return resp.count or 0
 
 
-def _fetch_batch(batch_size: int, offset: int) -> list[dict]:
-    """Fetch a batch of jobs needing geocoding."""
-    resp = (
+def _fetch_batch(batch_size: int, last_id: str | None = None) -> list[dict]:
+    """Fetch a batch of jobs needing geocoding using keyset pagination."""
+    query = (
         supabase.table("jobs")
-        .select("id, location, municipality, province")
-        .is_("lat", "null")
+        .select("id, location, municipality, province, lat, lng")
+        .or_("lat.is.null,lng.is.null")
         .or_("municipality.not.is.null,province.not.is.null")
         .order("id")
-        .range(offset, offset + batch_size - 1)
-        .execute()
+        .limit(batch_size)
     )
+    if last_id:
+        query = query.gt("id", last_id)
+    
+    resp = query.execute()
     return resp.data or []
 
 
@@ -86,17 +89,17 @@ def run_backfill(batch_size: int = DEFAULT_BATCH_SIZE, sleep_seconds: float = DE
     geocoded = 0
     skipped = 0
     errors = 0
-    offset = 0
+    last_id = None
     batch_num = 0
 
     while True:
-        rows = _fetch_batch(batch_size, offset)
+        rows = _fetch_batch(batch_size, last_id)
         if not rows:
             logger.info("No more rows to process. Backfill complete.")
             break
 
         batch_num += 1
-        logger.info("Batch %d: processing %d rows (offset=%d)", batch_num, len(rows), offset)
+        logger.info("Batch %d: processing %d rows (last_id=%s)", batch_num, len(rows), last_id)
 
         for row in rows:
             job_id = row["id"]
@@ -135,14 +138,25 @@ def run_backfill(batch_size: int = DEFAULT_BATCH_SIZE, sleep_seconds: float = DE
                     time.sleep(sleep_seconds)
                 continue
 
+            # Only update fields that are currently missing
+            update_payload = {}
+            if row.get("lat") is None:
+                update_payload["lat"] = lat
+            if row.get("lng") is None:
+                update_payload["lng"] = lng
+                
+            if "lat" in update_payload or "lng" in update_payload:
+                update_payload["geocode_accuracy_type"] = accuracy_type
+
+            if not update_payload:
+                logger.debug("Skipping job id=%s: both coordinates already present", job_id)
+                skipped += 1
+                continue
+
             try:
-                supabase.table("jobs").update({
-                    "lat": lat,
-                    "lng": lng,
-                    "geocode_accuracy_type": accuracy_type,
-                }).eq("id", job_id).execute()
+                supabase.table("jobs").update(update_payload).eq("id", job_id).execute()
                 geocoded += 1
-                logger.debug("Updated job id=%s: lat=%s, lng=%s, accuracy=%s", job_id, lat, lng, accuracy_type)
+                logger.debug("Updated job id=%s: payload=%s", job_id, update_payload)
             except Exception as exc:
                 logger.error("DB update failed for job id=%s: %s", job_id, exc)
                 errors += 1
@@ -166,7 +180,7 @@ def run_backfill(batch_size: int = DEFAULT_BATCH_SIZE, sleep_seconds: float = DE
         if len(rows) < batch_size:
             break
 
-        offset += batch_size
+        last_id = rows[-1]["id"]
 
     summary = {
         "geocoded": geocoded,
