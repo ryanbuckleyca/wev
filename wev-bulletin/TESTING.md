@@ -17,6 +17,9 @@ _Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.c
 
 ## Stack
 
+- Run Vitest and Next.js tasks with the Node version pinned in the repo's `.nvmrc`.
+- Older Node releases can fail before the suite starts, so if tests crash at startup, check `nvm use` first.
+
 | Tool                                                                                   | Purpose                                                     |
 | -------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | [Vitest](https://vitest.dev/)                                                          | Fast, ESM-native test runner (Jest-compatible)              |
