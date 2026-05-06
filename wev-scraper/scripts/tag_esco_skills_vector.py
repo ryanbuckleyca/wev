@@ -42,6 +42,11 @@ if "--prod" in sys.argv[1:]:
         print(f"❌ {_prod_env} not found — required for --prod.", file=sys.stderr)
         sys.exit(1)
     load_env_file(_prod_env)
+    # Match unified_post_processor.py: base .env may have ENV_MODE=local (local Jina
+    # embeddings need torch + HF). Prod skill tagging should use Jina API
+    # (JINA_API_KEY) instead.
+    os.environ["ENV_MODE"] = "prod"
+    print("▶ LLM/embed routing: ENV_MODE=prod (Jina API, not local torch)")
 
 # --prod confirmation before utils.db import
 if "--prod" in sys.argv[1:] and os.environ.get("CONFIRM_PROD_RUN") == "YES":
@@ -69,7 +74,11 @@ else:
 # read Supabase / Jina config from `os.environ` as soon as they load. They must run
 # only after `ensure_env_loaded()`, optional `.env.production`, and the --prod gate
 # above. noqa: E402 tells ruff/flake8 to allow imports after executable code.
-from llm.jina_embedding import ConfigurationError, JinaEmbeddingService  # noqa: E402
+from llm.jina_embedding import (  # noqa: E402
+    MAX_API_EMBEDDING_INPUT_CHARS,
+    ConfigurationError,
+    JinaEmbeddingService,
+)
 from utils.db import fetch_all_rows, supabase  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -84,14 +93,17 @@ def build_job_embedding_text(job: dict) -> str:
     Concatenates available fields with ' | ' separator, omitting absent/empty ones.
     Format: {job_title} | {organization} | {summary} | {description}
 
-    The combined text is truncated to ~32,000 chars (Jina v3's 8192-token limit
-    at ~4 chars/token). Priority fields (title, org, summary) are included in full;
-    only the description tail gets cut if the total exceeds the limit.
+    The string sent to :meth:`JinaEmbeddingService.embed` is a single element of
+    the API ``input`` list: ``{"input": [text], "model": "...", "task": "...", ...}``.
+    The server enforces a **token** cap (~8194 for jina-embeddings-v3), not a
+    character cap. Slicing at 32k **characters** assumed ~4 chars per token (rough
+    for English only); French/CJK/emoji-heavy text can exceed the token limit long
+    before 32k chars, which caused 400 errors. The combined string is cut to
+    :data:`llm.jina_embedding.MAX_API_EMBEDDING_INPUT_CHARS` instead.
 
     NOTE: organization is included for industry inference. Monitor match quality
     and consider dropping it if it introduces noise on org-heavy job titles.
     """
-    _JINA_CHAR_LIMIT = 32_000
     parts = []
     if job.get("job_title"):
         parts.append(job["job_title"].strip())
@@ -101,7 +113,7 @@ def build_job_embedding_text(job: dict) -> str:
         parts.append(job["summary"].strip())
     if job.get("description"):
         parts.append(job["description"].strip())
-    return " | ".join(parts)[:_JINA_CHAR_LIMIT]
+    return " | ".join(parts)[:MAX_API_EMBEDDING_INPUT_CHARS]
 
 
 def select_skills(

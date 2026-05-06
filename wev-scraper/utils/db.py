@@ -79,6 +79,15 @@ def fetch_all_rows(
 
 def _job_row(job, source_id):
     """Build the dict used for insert/update (shared fields)."""
+    # `.get("work_type", "office")` is wrong when the key exists with value None
+    # (common after JSON/DB merges) — that passes NULL to NOT NULL work_type.
+    _wt = job.get("work_type")
+    if _wt not in ("remote", "hybrid", "office"):
+        _wt = "office"
+    _remote = job.get("is_remote")
+    if _remote is None:
+        _remote = False
+
     row = {
         "source_id": source_id,
         "organization": job["organization"],
@@ -89,8 +98,8 @@ def _job_row(job, source_id):
         "lat": job.get("lat"),
         "lng": job.get("lng"),
         "geocode_accuracy_type": job.get("geocode_accuracy_type"),
-        "is_remote": job.get("is_remote", False),
-        "work_type": job.get("work_type", "office"),
+        "is_remote": _remote,
+        "work_type": _wt,
         "date_posted": job["date_posted"],
         "close_date": job["close_date"],
         "listing_url": job["listing_url"],

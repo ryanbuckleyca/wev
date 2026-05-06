@@ -10,9 +10,10 @@ function execVerbose(cmd: string, args: string[] = []) {
   }
 }
 
-// Pick a torch-compatible Python for venv creation.
-// On Intel macOS, torch only has wheels for Python 3.10/3.11; 3.12+ has none.
-// Override with PYTHON_BIN=python3.12 to force a specific version.
+// Pick a Python for venv creation (wev-scraper requires-python: 3.10–3.12 in pyproject.toml).
+// Order matches the Makefile: prefer 3.11, then 3.12, then 3.10 — 3.11 is the safest default
+// on Intel macOS for torch/transformers wheels; 3.12 is fine on most platforms (see repo README).
+// Override with PYTHON_BIN=… to force a specific interpreter.
 function pickPythonInterpreter(): string {
   if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
   const candidates =

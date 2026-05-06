@@ -8,9 +8,10 @@ VENV := $(SCRAPER_DIR)/venv
 PIP := $(VENV)/bin/pip
 PY := $(VENV)/bin/python3
 
-# Pick a torch-compatible Python for the scraper venv.
-# Intel macOS only has torch wheels for Python 3.10/3.11; Python 3.13 has none.
-# Override with: make setup PYTHON_BIN=python3.12
+# Pick a Python for the scraper venv (wev-scraper/pyproject.toml: requires-python >=3.10,<3.13).
+# Prefer 3.11, then 3.12, then 3.10 — 3.11 is the best default on Intel macOS for torch/transformers;
+# 3.12 is fine on most platforms. Do not use 3.13+ for dev-deps torch on macOS x86_64 (no wheel).
+# Override with: make setup PYTHON_BIN=python3.10
 PYTHON_BIN ?= $(shell command -v python3.11 2>/dev/null || command -v python3.12 2>/dev/null || command -v python3.10 2>/dev/null || command -v python3)
 
 .PHONY: help setup setup-node setup-py setup-py-dev setup-env doctor clean-py reset
