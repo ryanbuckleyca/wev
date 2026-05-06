@@ -107,6 +107,8 @@ class BaseLLMProvider(ABC):
         system: str | None = None,
         token_budget: int | None = None,
         fixed_overhead_tokens: int = 0,
+        *,
+        raise_for_fallback: bool = False,
         **kwargs,
     ) -> list:
         """Send items to the LLM in token-aware batches.
@@ -127,6 +129,11 @@ class BaseLLMProvider(ABC):
                           (e.g. a candidate pool included once per call).
                           These are subtracted from the budget before sizing
                           per-item estimates, so batches are larger.
+            raise_for_fallback: If True, quota / timeout / transient upstream
+                          errors from ``complete()`` are re-raised so a
+                          multi-provider caller (e.g. ``UnifiedJobProcessor``)
+                          can try the next backend. If False (default), those
+                          errors fill the batch with ``None`` and continue.
             **kwargs: Extra kwargs forwarded to complete().
 
         Returns:
@@ -208,6 +215,7 @@ class BaseLLMProvider(ABC):
                     # Force a tighter budget so the recursive call splits further if needed
                     token_budget=max_per_request // 2,
                     fixed_overhead_tokens=fixed_overhead_tokens,
+                    raise_for_fallback=raise_for_fallback,
                     **kwargs,
                 )
                 results.extend(sub_results)
@@ -253,20 +261,24 @@ class BaseLLMProvider(ABC):
                         system=system,
                         token_budget=max_per_request // 2,
                         fixed_overhead_tokens=fixed_overhead_tokens,
+                        raise_for_fallback=raise_for_fallback,
                         **kwargs,
                     )
                     results.extend(sub_results)
                     continue
-                # 429 / quota exhausted — re-raise so the caller's fallback chain can try the next provider
-                if "429" in err_str or "quota" in err_str.lower() or "resource_exhausted" in err_str.lower() or "rate limit" in err_str.lower():
+                # 429 / quota / timeout / transient — optionally re-raise for multi-provider fallback
+                if raise_for_fallback and (
+                    "429" in err_str
+                    or "quota" in err_str.lower()
+                    or "resource_exhausted" in err_str.lower()
+                    or "rate limit" in err_str.lower()
+                ):
                     logger.warning(f"[batch {i}/{total_batches}] quota/rate-limit, re-raising for fallback: {e}")
                     raise
-                # HTTP read timeout — let unified processor fall back to the next provider
-                if "timeout" in err_str.lower() or "timed out" in err_str.lower():
+                if raise_for_fallback and ("timeout" in err_str.lower() or "timed out" in err_str.lower()):
                     logger.warning(f"[batch {i}/{total_batches}] request timeout, re-raising for fallback: {e}")
                     raise
-                # Transient capacity / upstream (e.g. Gemini 503) — try Groq, etc.
-                if error_suggests_try_next_provider(e):
+                if raise_for_fallback and error_suggests_try_next_provider(e):
                     logger.warning(
                         f"[batch {i}/{total_batches}] upstream/transient error, re-raising for fallback: {e}"
                     )

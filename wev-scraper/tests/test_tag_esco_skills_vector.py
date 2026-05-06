@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+from llm.jina_embedding import MAX_API_EMBEDDING_INPUT_CHARS
 from scripts.tag_esco_skills_vector import (
     build_job_embedding_text,
     select_skills,
@@ -32,7 +33,18 @@ def test_build_job_embedding_text_all_fields():
     assert "Software Engineer" in text
     assert "Acme Corp" in text
     assert "Build great things" in text
-    assert "A" * 2000 in text  # full description included (no 1000-char truncation)
+    assert "A" * 2000 in text  # full description included (under char cap)
+
+
+def test_build_job_embedding_text_respects_token_safe_char_cap():
+    job = {
+        "job_title": "T",
+        "organization": "O",
+        "summary": "S",
+        "description": "D" * (MAX_API_EMBEDDING_INPUT_CHARS * 2),
+    }
+    text = build_job_embedding_text(job)
+    assert len(text) == MAX_API_EMBEDDING_INPUT_CHARS
 
 
 def test_build_job_embedding_text_missing_fields():

@@ -157,10 +157,10 @@ class GeminiProvider(BaseLLMProvider):
                 logger.info(msg)
                 print(f"  … {msg}", flush=True)
 
-        hb_thread: threading.Thread | None = None
         if hb_sec > 0:
-            hb_thread = threading.Thread(target=_heartbeat, name="gemini-heartbeat", daemon=True)
-            hb_thread.start()
+            threading.Thread(
+                target=_heartbeat, name="gemini-heartbeat", daemon=True
+            ).start()
 
         t_api = time.perf_counter()
         try:
