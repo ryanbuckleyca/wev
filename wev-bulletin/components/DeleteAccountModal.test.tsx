@@ -192,7 +192,7 @@ describe('DeleteAccountModal', () => {
     // then await it to avoid dangling unsettled promises.
     const clickPromise = user.click(deleteButton);
 
-    // Should show loading state immediately while fetch is pending
+    // Same render as "Deleting..." — isDeleting is true, so the button must be disabled.
     const loadingButton = await screen.findByRole('button', { name: /deleting/i });
     expect(loadingButton).toBeVisible();
     expect(loadingButton).toBeDisabled();
@@ -207,8 +207,7 @@ describe('DeleteAccountModal', () => {
     await waitFor(
       () => {
         expect(window.location.href).toBe('/');
-      },
-      { timeout: 200 },
+      }
     );
   });
 

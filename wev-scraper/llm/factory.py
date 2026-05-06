@@ -151,9 +151,12 @@ def get_unified_processor(**kwargs) -> "UnifiedJobProcessor":
 
     The unified processor handles: summary + raw_skills + values + SSE classification
     in a single LLM call with automatic fallback:
-    1. gemini-2.5-flash (10 RPM, grounding)
-    2. gemini-2.5-flash-lite (5 RPM, grounding)
-    3. groq (~10 RPM, no grounding)
+    1. gemini-2.5-flash
+    2. gemini-2.5-flash-lite
+    3. groq (~10 RPM; same JSON shape including SSE fields, no web search tools)
+
+    When Gemini returns transient errors (503, overload), ``complete_batch`` re-raises so
+    this chain can try Groq.
 
     Args:
         **kwargs: Passed to UnifiedJobProcessor constructor (e.g. api_key).

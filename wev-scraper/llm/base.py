@@ -7,6 +7,7 @@ without changing calling code. Use the factory in llm.factory to get a provider.
 from __future__ import annotations
 
 import logging
+import time
 from abc import ABC, abstractmethod
 from typing import Callable
 
@@ -25,6 +26,25 @@ class LLMProviderError(Exception):
     """Raised when an LLM provider fails (rate limit, API error, etc.)."""
 
     pass
+
+
+def error_suggests_try_next_provider(error: LLMProviderError | str) -> bool:
+    """Return True when a multi-provider orchestrator should try the next backend.
+
+    Used for transient capacity / upstream errors (e.g. Gemini 503) where another
+    provider (Groq) may still succeed for the same prompt.
+    """
+    err_str = str(error).lower()
+    return (
+        "503" in err_str
+        or "502" in err_str
+        or "504" in err_str
+        or "unavailable" in err_str
+        or "overloaded" in err_str
+        or "high demand" in err_str
+        or "try again later" in err_str
+        or "deadline exceeded" in err_str
+    )
 
 
 class BaseLLMProvider(ABC):
@@ -195,11 +215,32 @@ class BaseLLMProvider(ABC):
 
             logger.info(f"[batch {i}/{total_batches}] {len(batch)} items, ~{estimated} tokens")
             print(f"  Batch {i}/{total_batches}: {len(batch)} items, ~{estimated} estimated tokens", flush=True)
-
+            _prov = type(self).__name__
+            _task = kwargs.get("task") or "—"
+            _wait_hint = (
+                "local Ollama inference can be slow on CPU; Ctrl+C aborts"
+                if _prov == "LocalGroundedProvider"
+                else "remote HTTP/API can take minutes; Ctrl+C aborts"
+            )
+            print(
+                f"  → LLM in flight… provider={_prov} task={_task} ({_wait_hint})",
+                flush=True,
+            )
+            t_llm = time.perf_counter()
             try:
                 raw = self.complete(prompt, system=system, **kwargs)
+                _elapsed = time.perf_counter() - t_llm
+                logger.info(
+                    f"[batch {i}/{total_batches}] complete() returned in {_elapsed:.2f}s ({_prov})"
+                )
+                print(f"  ← LLM returned in {_elapsed:.1f}s ({len(batch)} items)", flush=True)
                 batch_results = parse_response(raw, batch)
             except LLMProviderError as e:
+                _elapsed = time.perf_counter() - t_llm
+                logger.warning(
+                    f"[batch {i}/{total_batches}] complete() failed after {_elapsed:.2f}s ({_prov}): {e}"
+                )
+                print(f"  ← LLM failed after {_elapsed:.1f}s: {e}", flush=True)
                 err_str = str(e)
                 # 413 = request too large — split and retry rather than dropping results
                 if "413" in err_str and len(batch) > 1:
@@ -220,8 +261,17 @@ class BaseLLMProvider(ABC):
                 if "429" in err_str or "quota" in err_str.lower() or "resource_exhausted" in err_str.lower() or "rate limit" in err_str.lower():
                     logger.warning(f"[batch {i}/{total_batches}] quota/rate-limit, re-raising for fallback: {e}")
                     raise
+                # HTTP read timeout — let unified processor fall back to the next provider
+                if "timeout" in err_str.lower() or "timed out" in err_str.lower():
+                    logger.warning(f"[batch {i}/{total_batches}] request timeout, re-raising for fallback: {e}")
+                    raise
+                # Transient capacity / upstream (e.g. Gemini 503) — try Groq, etc.
+                if error_suggests_try_next_provider(e):
+                    logger.warning(
+                        f"[batch {i}/{total_batches}] upstream/transient error, re-raising for fallback: {e}"
+                    )
+                    raise
                 logger.warning(f"[batch {i}/{total_batches}] LLM call failed: {e}")
-                print(f"  [batch {i}/{total_batches}] LLM call failed: {e}", flush=True)
                 batch_results = [None] * len(batch)
 
             results.extend(batch_results)
