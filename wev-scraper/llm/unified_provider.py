@@ -216,6 +216,7 @@ class UnifiedJobProcessor:
                     parse_response=parse_response,
                     system=system,
                     task="unified",
+                    raise_for_fallback=True,
                 )
 
                 self.last_successful_provider = provider_name

@@ -171,19 +171,17 @@ describe('DeleteAccountModal', () => {
   });
 
   it('shows loading state during deletion', async () => {
-    // Long enough that assertions run while the request is still pending (avoid racing waitFor).
+    // Keep fetch pending without real (or fake) wall-clock delay: vi.useFakeTimers()
+    // fights userEvent + waitFor in jsdom; an explicit resolver is deterministic for CI.
+    let resolveDeleteFetch!: (value: {
+      ok: boolean;
+      json: () => Promise<{ message: string }>;
+    }) => void;
     mockFetch.mockImplementation(
       () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: async () => ({ message: 'Account successfully deleted' }),
-              }),
-            5000,
-          ),
-        ),
+        new Promise((resolve) => {
+          resolveDeleteFetch = resolve;
+        }),
     );
 
     render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />);
@@ -194,25 +192,22 @@ describe('DeleteAccountModal', () => {
 
     await user.type(passwordInput, 'mypassword123');
     await user.type(confirmInput, 'DELETE');
-    // Capture the click promise so we can check loading state while it's pending,
-    // then await it to avoid dangling unsettled promises.
+
     const clickPromise = user.click(deleteButton);
 
-    // Same render as "Deleting..." — isDeleting is true, so the button must be disabled.
     const loadingButton = await screen.findByRole('button', { name: /deleting/i });
     expect(loadingButton).toBeVisible();
     expect(loadingButton).toBeDisabled();
 
-    // Await the click action to complete properly
+    resolveDeleteFetch({
+      ok: true,
+      json: async () => ({ message: 'Account successfully deleted' }),
+    });
     await clickPromise;
 
-    // Wait for final state (redirect) — fetch is delayed 5s above.
-    await waitFor(
-      () => {
-        expect(window.location.href).toBe('/');
-      },
-      { timeout: 8_000 },
-    );
+    await waitFor(() => {
+      expect(window.location.href).toBe('/');
+    });
   });
 
   it('accepts SUPPRIMER for French locale', async () => {

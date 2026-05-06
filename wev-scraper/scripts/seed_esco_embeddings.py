@@ -41,7 +41,11 @@ else:
     print("🧪 Using TEST database")
 
 # USE_PROD_DB must be set before importing utils.db, which creates the Supabase client at module load time.
-from llm.jina_embedding import ConfigurationError, JinaEmbeddingService  # noqa: E402
+from llm.jina_embedding import (  # noqa: E402
+    MAX_API_EMBEDDING_INPUT_CHARS,
+    ConfigurationError,
+    JinaEmbeddingService,
+)
 from utils.db import fetch_all_rows, supabase  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -52,11 +56,11 @@ def build_skill_embedding_text(skill: dict) -> str:
     """Build the embedding input text for an ESCO skill.
 
     Concatenates available fields with ' | ' separator, omitting any that are
-    absent or empty. Truncated to ~32,000 chars (Jina v3's 8192-token limit).
+    absent or empty. Truncated to :data:`MAX_API_EMBEDDING_INPUT_CHARS` (see
+    :mod:`llm.jina_embedding` — API limit is tokens, not characters).
 
     Format: {preferred_label_en} | {preferred_label_fr} | {description_en} | {scope_note_en}
     """
-    _JINA_CHAR_LIMIT = 32_000
     parts = []
     if skill.get("preferred_label_en"):
         parts.append(skill["preferred_label_en"].strip())
@@ -66,7 +70,7 @@ def build_skill_embedding_text(skill: dict) -> str:
         parts.append(skill["description_en"].strip())
     if skill.get("scope_note_en"):
         parts.append(skill["scope_note_en"].strip())
-    return " | ".join(parts)[:_JINA_CHAR_LIMIT]
+    return " | ".join(parts)[:MAX_API_EMBEDDING_INPUT_CHARS]
 
 
 # ---------------------------------------------------------------------------
