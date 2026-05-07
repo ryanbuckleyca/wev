@@ -2,6 +2,7 @@ import 'server-only';
 
 import { supabaseServer } from '@/lib/supabase-server';
 import { createClient } from '@/lib/supabase/server';
+import { BULLETIN_MAX_AGE_DAYS } from './constants';
 import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
@@ -71,8 +72,9 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     if (input.onlySse) query = query.is('is_sse', true);
     if (!input.noSalary) query = query.eq('has_compensation', true);
 
-    const MAX_AGE_DAYS = 28;
-    const maxAgeCutoff = new Date(Date.now() - MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const maxAgeCutoff = new Date(
+      Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
     query = query.gte('date_posted', maxAgeCutoff);
 
     const postedWithinDays = postedWithinToDays(input.postedWithin); // this mapping uses numbers, but they will be clamped since maxAgeCutoff is handled.
@@ -115,7 +117,10 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
   const totalAvailableQuery = supabase
     .from('matched_jobs')
     .select('id', { count: 'exact', head: true })
-    .gte('date_posted', new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString());
+    .gte(
+      'date_posted',
+      new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+    );
 
   const [initialJobsResult, scrapeTime, totalAvailableResult] = await Promise.all([
     buildQuery(searchColumn),
@@ -170,7 +175,9 @@ export async function fetchLastScrapeTime(): Promise<string | null> {
 }
 
 const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
-  const postedCutoff = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString();
+  const postedCutoff = new Date(
+    Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
 
   const totalAvailableQuery = supabaseServer
     .from('matched_jobs')

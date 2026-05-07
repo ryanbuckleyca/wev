@@ -5,6 +5,7 @@ import {
   fetchLastScrapeTime,
 } from '@/lib/bulletin/server-data';
 import { parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
+import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
 import { createClient } from '@/lib/supabase/server';
 
 export { BULLETIN_CACHE_TAG };
@@ -79,8 +80,9 @@ function createBuildQueryFn(
     }
 
     // 3. Date Filters
-    const MAX_AGE_DAYS = 28; // 4 weeks limit for all operations
-    const maxAgeCutoff = new Date(Date.now() - MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const maxAgeCutoff = new Date(
+      Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
     query = query.gte('date_posted', maxAgeCutoff);
 
     if (input.postedWithin !== 'any') {
@@ -137,8 +139,9 @@ async function fetchBulletinApiPayload(
   const buildQuery = createBuildQueryFn(supabase, input);
 
   // Get total available jobs (<= 4 weeks old, no other filters)
-  const MAX_AGE_DAYS = 28;
-  const maxAgeCutoff = new Date(Date.now() - MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const maxAgeCutoff = new Date(
+    Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
   const totalAvailableQuery = supabase
     .from('matched_jobs')
     .select('id', { count: 'exact' })
