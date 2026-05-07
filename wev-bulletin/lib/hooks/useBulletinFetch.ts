@@ -22,7 +22,7 @@ export function useBulletinFetch(
     initialData?.total ?? initialData?.jobs?.length ?? 0,
   );
   const [availableJobsCount, setAvailableJobsCount] = useState<number>(
-    initialData?.total ?? initialData?.jobs?.length ?? 0,
+    initialData?.totalAvailable ?? 0,
   );
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(() =>
     initialData?.scrapeTime ? formatLastScrapeTime(initialData.scrapeTime, locale) : null,
@@ -33,7 +33,7 @@ export function useBulletinFetch(
   const [loading, setLoading] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
 
-  const { filters, hasAnyFilters, sortBy, currentPage } = options;
+  const { filters, sortBy, currentPage } = options;
 
   const refresh = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
@@ -77,11 +77,10 @@ export function useBulletinFetch(
       const formattedTime = formatLastScrapeTime(data.lastScrapeTime, locale);
       setLastScrapeTime(formattedTime);
       const nextTotal = data.total ?? 0;
+      const nextAvailable = data.totalAvailable ?? 0;
       setJobsOnPage(data.jobs ?? []);
       setTotalMatchingJobs(nextTotal);
-      setAvailableJobsCount((previousCount) =>
-        nextTotal > 0 || !hasAnyFilters ? nextTotal : previousCount,
-      );
+      setAvailableJobsCount(nextAvailable);
       if (data.skillLabels) {
         setSkillLabels(data.skillLabels);
       }
@@ -102,7 +101,7 @@ export function useBulletinFetch(
     } finally {
       window.clearTimeout(timeoutId);
     }
-  }, [locale, t, filters, hasAnyFilters, sortBy, currentPage]);
+  }, [locale, t, filters, sortBy, currentPage]);
 
   const initialFetchDone = useRef(hasInitialData);
   useEffect(() => {

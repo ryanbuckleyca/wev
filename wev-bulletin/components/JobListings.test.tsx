@@ -115,4 +115,42 @@ describe('JobListings empty state', () => {
     await user.click(screen.getByRole('button', { name: 'Clear all filters' }));
     expect(clearAllFilters).toHaveBeenCalledOnce();
   });
+
+  it('shows "Your filters are hiding all X available jobs" when filters eliminate all results, accounting for the 4-week age limit', () => {
+    // totalJobsCount represents jobs <= 4 weeks old (not filtered by user preferences)
+    // When user has filters that hide all of these, show the message
+    const filters = createMockFilters({ hasAnyFilters: true });
+    renderWithFilters({ ...defaultProps, jobs: [], totalJobsCount: 42 }, filters);
+
+    expect(screen.getByText('Your filters are hiding all 42 available jobs.')).toBeVisible();
+  });
+
+  it('shows standard "No job postings found." when there are no filters and totalJobsCount is 0', () => {
+    const filters = createMockFilters({ hasAnyFilters: false });
+    renderWithFilters({ ...defaultProps, jobs: [], totalJobsCount: 0 }, filters);
+
+    expect(screen.getByText('No job postings found.')).toBeVisible();
+    expect(screen.queryByText(/Your filters are hiding/)).not.toBeInTheDocument();
+  });
+
+  it('distinguishes empty state for logged-in user with filters hiding jobs', () => {
+    const filters = createMockFilters({ hasAnyFilters: true });
+    renderWithFilters(
+      { ...defaultProps, jobs: [], totalJobsCount: 5, userId: 'user-123' },
+      filters,
+    );
+
+    expect(screen.getByText('Your filters are hiding all 5 available jobs.')).toBeVisible();
+    // Edit profile link should be visible for logged-in users
+    expect(screen.getByRole('link', { name: 'Edit in profile' })).toBeVisible();
+  });
+
+  it('distinguishes empty state for logged-out user with filters hiding jobs', () => {
+    const filters = createMockFilters({ hasAnyFilters: true });
+    renderWithFilters({ ...defaultProps, jobs: [], totalJobsCount: 5, userId: null }, filters);
+
+    expect(screen.getByText('Your filters are hiding all 5 available jobs.')).toBeVisible();
+    // Edit profile link should NOT be visible for logged-out users
+    expect(screen.queryByRole('link', { name: 'Edit in profile' })).not.toBeInTheDocument();
+  });
 });

@@ -1,0 +1,690 @@
+
+> wev@1.0.0 test:bulletin
+> dotenv -e .env.test -- npm run test --prefix wev-bulletin
+
+
+> bulletin@0.1.0 test
+> vitest run
+
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.4 /Users/ry/code/wev/wev-bulletin
+
+ ✓ app/[locale]/reset-password/page.test.tsx (5 tests) 33312ms
+     ✓ shows invalid link state when there is no session  8896ms
+     ✓ updates password and redirects on success  9152ms
+     ✓ shows weak password error when strength is not acceptable  4292ms
+     ✓ shows mismatch error when passwords differ  5613ms
+     ✓ shows update error when updateUser fails  5345ms
+ ✓ components/JobCard.test.tsx (10 tests) 34843ms
+     ✓ renders job details when the card is expanded  10981ms
+     ✓ shows a bookmark button and a collapse button  1774ms
+     ✓ collapses and expands the card body when the toggle button is clicked  3257ms
+     ✓ redirects an unauthenticated user to /login when clicking bookmark  1132ms
+     ✓ toggles the bookmark state for an authenticated user  2275ms
+     ✓ shows the SSE toggle button for admin users  1092ms
+     ✓ does not show the SSE toggle button for non-admin users  846ms
+     ✓ shows the match score and value pills for a logged-in user with a match  5081ms
+     ✓ shows a loading state for match details while user metadata is fetching  1233ms
+     ✓ caps displayed skills to five pills for users  6926ms
+ ❯ app/[locale]/login/page.test.tsx (6 tests | 1 failed) 43037ms
+     × shows captcha required when the form is submitted without a completed captcha 15490ms
+     ✓ shows captcha error when Turnstile reports an error  3196ms
+     ✓ clears captcha and requires verification again after Turnstile expires  7974ms
+     ✓ calls signInWithPassword and redirects after a successful login  7929ms
+     ✓ shows an error when signInWithPassword returns an error  8164ms
+     ✓ redirects away when the user is already authenticated 268ms
+ ❯ app/[locale]/account-settings/page.test.tsx (9 tests | 1 failed) 52169ms
+     ✓ renders account settings form  14012ms
+     ✓ renders delete account section  3323ms
+     ✓ delete account section has danger styling  2974ms
+     ✓ opens delete account modal when delete button is clicked  3160ms
+     ✓ closes delete account modal when close is clicked  3723ms
+     ✓ has save button disabled when no changes are made  1583ms
+     ✓ enables save button when email is changed  7343ms
+     ✓ shows current email in the form  514ms
+     × sends password changes through the account API route 15483ms
+ ❯ app/[locale]/profile/page.test.tsx (4 tests | 3 failed) 57116ms
+     ✓ hydrates existing skills on mount via /api/skills/by-uri  5788ms
+     × removing a chip updates form data and save payload 10225ms
+     × saves concept_uri[] (not labels) after selecting a search result 16561ms
+     × blocks save and shows error when skills exceed limit 24345ms
+ ✓ components/ValuesSelector.test.tsx (11 tests) 63133ms
+       ✓ renders search trigger with profile placeholder  7647ms
+       ✓ opens modal with all category groups  9491ms
+       ✓ categories are collapsed by default inside modal  4912ms
+       ✓ expands category when header clicked  8314ms
+       ✓ collapses category when header clicked again  6244ms
+       ✓ calls onToggle when a value row is clicked  6585ms
+       ✓ shows checkbox checked for selected values  11071ms
+       ✓ renders French category labels in modal  5347ms
+       ✓ shows Done control with French label  3120ms
+ ❯ app/[locale]/page.test.tsx (1 test | 1 failed) 20375ms
+     × adds the profile work type to default filters after the profile loads 20164ms
+ ✓ components/ExpandablePills.test.tsx (8 tests) 23362ms
+     ✓ renders collapsed state by default  6064ms
+     ✓ expands when summary pill chevron is clicked  4376ms
+     ✓ shows collapse button at end when expanded  1853ms
+     ✓ collapses when end collapse button is clicked  3564ms
+     ✓ updates tooltip text when expanded  1168ms
+     ✓ applies correct matched state to collapse button  1747ms
+     ✓ handles multiple groups independently  2303ms
+     ✓ renders preItems before groups  2198ms
+ ✓ components/JobSearch.test.tsx (16 tests) 24075ms
+     ✓ renders the search input with an accessible label  5191ms
+     ✓ calls onSearchChange when the user types  2024ms
+     ✓ displays the filtered and total job counts  1025ms
+     ✓ uses the singular "job" when totalJobsCount is 1  653ms
+     ✓ uses the plural "jobs" when totalJobsCount is greater than 1  947ms
+     ✓ renders a filter toggle button showing the chip count  2650ms
+     ✓ calls onFiltersExpandedChange when the filter button is clicked  900ms
+     ✓ renders active filter chips as removable pills  840ms
+     ✓ calls chip onRemove when the remove button on a chip is clicked  1865ms
+     ✓ shows "Show all jobs" link when filters are active  1428ms
+     ✓ shows "Use suggested filters" link when not using suggested defaults  1177ms
+     ✓ calls onClearAllFilters when "Show all jobs" is clicked  1294ms
+     ✓ calls onApplySuggestedDefaults when "Use suggested filters" is clicked  1251ms
+     ✓ hides action links when no filters are active and defaults are applied  878ms
+     ✓ sets aria-expanded on the filter toggle button  1644ms
+ ✓ components/Pagination.test.tsx (11 tests) 19192ms
+     ✓ shows item range text  5428ms
+     ✓ shows singular "job" when totalItems is 1 and totalPages <= 1  771ms
+     ✓ disables Previous on first page  2085ms
+     ✓ disables Next on last page  1610ms
+     ✓ calls onPageChange with next page when Next is clicked  2085ms
+     ✓ calls onPageChange with previous page when Previous is clicked  1436ms
+     ✓ calls onPageChange when a page number is clicked  1402ms
+     ✓ renders page number buttons  1759ms
+     ✓ marks the current page with aria-current  1139ms
+     ✓ highlights the current page with active class  1179ms
+ ❯ components/DeleteAccountModal.test.tsx (10 tests | 5 failed) 106422ms
+     ✓ does not render when closed  1534ms
+     ✓ renders modal content when open  11399ms
+     ✓ has form fields and buttons  4213ms
+     ✓ calls onClose when cancel button is clicked  2999ms
+     ✓ shows error when password is missing  9234ms
+     × shows error when confirmation is wrong 15701ms
+     × successfully deletes account 15401ms
+     × handles API error 15305ms
+     × shows loading state during deletion 15299ms
+     × accepts SUPPRIMER for French locale 15163ms
+ ✓ components/ReScrapeButton.test.tsx (16 tests) 19954ms
+     ✓ renders "Re-scrape Data" and is enabled initially  6039ms
+     ✓ shows "Starting..." and disables the button immediately after click  2085ms
+     ✓ shows error toast and re-enables if the workflow trigger request fails  1129ms
+     ✓ shows "Queued..." after a successful trigger while waiting for initial delay  1333ms
+     ✓ transitions Queued → Running → complete and calls onComplete on success  2387ms
+     ✓ stays "Queued..." for extra ticks when run not visible yet, then resolves  1072ms
+     ✓ shows error and resets on workflow failure conclusion  1329ms
+     ✓ shows error, stops polling, and resets on non-OK status API response  834ms
+     ✓ does not throw or call setState after unmount  448ms
+     ✓ persists scrape state to localStorage after successful trigger  429ms
+     ✓ clears localStorage on successful completion  476ms
+     ✓ clears localStorage on failure  438ms
+     ✓ clears localStorage when trigger request fails  435ms
+     ✓ resumes polling from localStorage on mount and completes  430ms
+     ✓ resumes with "Running..." when localStorage has running status  510ms
+     ✓ discards expired localStorage state and renders idle  387ms
+ ✓ components/profile/LocationAutocomplete.test.tsx (4 tests) 16413ms
+     ✓ selection stores coords — onChange called with lat, lng, display_name, name, province  12599ms
+     ✓ text modification after selection clears coords — onChange(null) called  984ms
+     ✓ clear button sets null — onChange(null) called when X is clicked  972ms
+     ✓ API error shows message — error text is displayed when fetch fails  1702ms
+ ❯ app/[locale]/signup/page.test.tsx (1 test | 1 failed) 15435ms
+     × shows the inline success state after signup 15320ms
+ ✓ components/PillSelector.test.tsx (5 tests) 9876ms
+     ✓ renders all options as buttons  5551ms
+     ✓ calls onSelectionChange with the toggled option added (multi-select)  1459ms
+     ✓ calls onSelectionChange with the option removed when already selected (multi-select)  968ms
+     ✓ replaces the selection in single-select mode  803ms
+     ✓ applies selected styling to active options  1008ms
+ ✓ lib/i18n.test.tsx (7 tests) 12328ms
+       ✓ renders Pagination with English text  7398ms
+       ✓ renders Pill with English remove label  764ms
+       ✓ renders Pagination with French text  2531ms
+       ✓ renders Pill with French remove label  549ms
+       ✓ same component renders differently per locale  848ms
+ ✓ app/[locale]/forgot-password/page.test.tsx (1 test) 14128ms
+     ✓ shows the shared check email state after requesting a reset link  13952ms
+ ✓ components/CopyPageJobsButton.test.tsx (4 tests) 10152ms
+     ✓ copies only the provided jobs in the given order  6985ms
+     ✓ does not include jobs that were not passed in  907ms
+     ✓ shows "Copied!" after a successful copy  1355ms
+     ✓ renders a disabled button when there are no jobs  892ms
+ ✓ components/JobListings.test.tsx (6 tests) 11560ms
+     ✓ does not show clear button when there are no filters applied  5223ms
+     ✓ does not show clear button when total jobs is 0 (database is empty)  971ms
+     ✓ shows clear button and filtered counts when filters hide all jobs  2257ms
+     ✓ shows the edit profile link when user is logged in and filters hide all jobs  1259ms
+     ✓ hides the edit profile link when user is logged out  688ms
+     ✓ calls clearAllFilters when the clear button is clicked  1095ms
+ ✓ components/LocaleSwitcher.test.tsx (4 tests) 8800ms
+     ✓ renders a single toggle button with EN/FR segments  6315ms
+     ✓ calls router.replace with French locale when clicking while in English  1320ms
+     ✓ preserves query params when switching locales  485ms
+     ✓ preserves repeated query params without collapsing them into an object  669ms
+ ✓ components/Button.test.tsx (10 tests) 11214ms
+     ✓ renders children text  5251ms
+     ✓ defaults to type="button"  992ms
+     ✓ accepts type="submit"  586ms
+     ✓ calls onClick when clicked  1108ms
+     ✓ is disabled when disabled prop is true  543ms
+     ✓ is disabled when loading is true  469ms
+     ✓ does not call onClick when disabled  450ms
+     ✓ applies variant classes  920ms
+     ✓ applies size classes  401ms
+     ✓ applies fullWidth class when true  379ms
+ ✓ components/CheckEmailCard.test.tsx (1 test) 8877ms
+     ✓ renders the shared check email UI and counts down from 30s  8812ms
+ ✓ components/Pill.test.tsx (8 tests) 7720ms
+     ✓ renders children text  4827ms
+     ✓ shows a remove button when removable is true  1297ms
+     ✓ calls onRemove when the remove button is clicked  1306ms
+ ✓ components/BulletinPageView.test.tsx (2 tests) 10262ms
+     ✓ wires listing and admin action props from hook state  8965ms
+     ✓ hides admin actions and match sorting when no user context is available  1212ms
+ ✓ components/ProgressDonut.test.tsx (7 tests) 8853ms
+     ✓ renders a progress donut element  5261ms
+     ✓ renders the correct percentage visually  861ms
+     ✓ clamps percentage to 0 minimum  697ms
+     ✓ clamps percentage to 100 maximum  574ms
+     ✓ applies the correct size for sm  458ms
+     ✓ applies the correct size for lg  422ms
+     ✓ applies custom className  403ms
+ ✓ components/BannerMessage.test.tsx (6 tests) 5299ms
+     ✓ renders the message text  1060ms
+     ✓ has role="alert" for screen readers  3724ms
+ ✓ app/auth/auth-code-error/page.test.tsx (2 tests) 6936ms
+     ✓ links to English login when Accept-Language prefers English  5573ms
+     ✓ links to French login when Accept-Language prefers French  1212ms
+ ✓ components/ErrorMessage.test.tsx (4 tests) 4633ms
+     ✓ renders children text  4226ms
+stderr | app/api/revalidate-jobs/route.test.ts > POST /api/revalidate-jobs > returns 503 when revalidation secret is not configured
+[revalidate-jobs] REVALIDATE_SECRET (or REVALIDATION_SECRET) is not set — endpoint is disabled.
+
+ ✓ hooks/useJobMatch.test.ts (5 tests) 1005ms
+     ✓ returns null match and stops loading immediately when there is no user  481ms
+ ✓ app/api/revalidate-jobs/route.test.ts (3 tests) 2887ms
+     ✓ returns 503 when revalidation secret is not configured  2504ms
+ ✓ app/[locale]/page.server.test.tsx (2 tests) 1154ms
+     ✓ defers user meta hydration and renders with server jobs payload  920ms
+ ✓ lib/compensation/annualize-parity.test.ts (58 tests) 493ms
+ ✓ lib/hooks/useRequireAuth.test.tsx (4 tests) 963ms
+     ✓ does not redirect while auth is loading  615ms
+ ✓ lib/compensation/formatCompensation.property.test.ts (16 tests) 643ms
+     ✓ 'HOUR + null hours → isInferred=true'  437ms
+ ✓ lib/hooks/useProfileSync.test.ts (8 tests) 952ms
+     ✓ does not sync when user is not logged in  419ms
+ ✓ lib/compensation/toAnnual.property.test.ts (96 tests) 267ms
+ ✓ lib/hooks/useUserJobMeta.test.tsx (3 tests) 959ms
+     ✓ exposes loading while user meta fetch is in-flight  568ms
+ ✓ lib/bulletin/match-map.test.ts (3 tests) 281ms
+ ✓ app/api/bookmarks/route.integration.test.ts (5 tests) 467ms
+ ✓ app/api/bulletin/route.integration.test.ts (6 tests) 463ms
+ ✓ lib/bulletin/client-data.test.ts (3 tests) 682ms
+     ✓ formats scrape timestamps for the bulletin header  530ms
+ ✓ app/api/matches/calculate-job/route.test.ts (4 tests) 366ms
+ ✓ components/job-filters/useJobFiltersModel.test.tsx (1 test) 594ms
+     ✓ builds active filter chips with working remove handlers  498ms
+ ✓ app/api/account/route.test.ts (5 tests) 567ms
+ ✓ app/auth/callback/route.test.ts (11 tests) 470ms
+ ✓ lib/values.test.ts (16 tests) 380ms
+ ✓ app/api/skills/search/route.test.ts (3 tests) 736ms
+     ✓ returns [] for empty/short query and does not call supabase  320ms
+     ✓ dedupes identical term+definition rows and keeps the highest-ranked one  335ms
+ ✓ app/api/github/status/route.test.ts (2 tests) 352ms
+ ✓ lib/bulletin/job-sort.property.test.ts (26 tests) 190ms
+ ✓ app/auth/callback/route.integration.test.ts (5 tests) 250ms
+ ✓ app/api/matches/calculate-user/route.test.ts (4 tests) 341ms
+ ✓ lib/account/password-verifier.test.ts (7 tests) 242ms
+ ✓ lib/migration-backfill.test.ts (15 tests) 270ms
+ ✓ app/api/auth/roles/route.test.ts (3 tests) 286ms
+ ✓ lib/integration/profile-values-rated.test.ts (12 tests) 282ms
+ ✓ app/api/account/delete/route.test.ts (5 tests) 515ms
+ ✓ lib/password-strength.test.ts (7 tests) 303ms
+ ✓ app/api/bulletin/jobs/[id]/route.test.ts (3 tests) 341ms
+ ✓ lib/http-errors.test.ts (3 tests) 257ms
+ ✓ components/Toaster.test.tsx (1 test) 490ms
+     ✓ uses top-center toaster defaults  364ms
+ ✓ lib/auth/user-roles.test.ts (8 tests) 161ms
+ ✓ lib/auth/require-admin.test.ts (6 tests) 290ms
+ ✓ app/auth/signout/route.integration.test.ts (3 tests) 187ms
+ ✓ lib/bulletin/server-data.test.ts (1 test) 225ms
+ ✓ app/api/github/workflow/route.test.ts (3 tests) 242ms
+ ✓ lib/auth/sanitize-next-path.test.ts (7 tests) 120ms
+ ✓ lib/hooks/useProfileForm.test.tsx (8 tests) 123ms
+ ✓ lib/auth/server-user-roles.test.ts (3 tests) 183ms
+ ✓ lib/value-ratings.test.ts (9 tests) 100ms
+ ✓ lib/normalize-job.test.ts (8 tests) 155ms
+ ✓ lib/site-url.test.ts (3 tests) 117ms
+ ✓ lib/bulletin/filter-options.test.ts (3 tests) 107ms
+ ✓ lib/bulletin/job-query.test.ts (3 tests) 118ms
+ ✓ lib/auth/request-user.test.ts (3 tests) 92ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/DeleteAccountModal.test.tsx > DeleteAccountModal > shows error when confirmation is wrong
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ components/DeleteAccountModal.test.tsx:101:3
+     99|   });
+    100|
+    101|   it('shows error when confirmation is wrong', async () => {
+       |   ^
+    102|     render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />);
+    103|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  components/DeleteAccountModal.test.tsx > DeleteAccountModal > successfully deletes account
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ components/DeleteAccountModal.test.tsx:117:3
+    115|   });
+    116|
+    117|   it('successfully deletes account', async () => {
+       |   ^
+    118|     mockFetch.mockResolvedValueOnce({
+    119|       ok: true,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  components/DeleteAccountModal.test.tsx > DeleteAccountModal > handles API error
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ components/DeleteAccountModal.test.tsx:148:3
+    146|   });
+    147|
+    148|   it('handles API error', async () => {
+       |   ^
+    149|     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementat…
+    150|     mockFetch.mockResolvedValueOnce({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  components/DeleteAccountModal.test.tsx > DeleteAccountModal > shows loading state during deletion
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ components/DeleteAccountModal.test.tsx:173:3
+    171|   });
+    172|
+    173|   it('shows loading state during deletion', async () => {
+       |   ^
+    174|     // Use a deferred promise so the test can deterministically assert…
+    175|     let resolveFetch: (value: any) => void = () => {};
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  components/DeleteAccountModal.test.tsx > DeleteAccountModal > accepts SUPPRIMER for French locale
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ components/DeleteAccountModal.test.tsx:212:3
+    210|   });
+    211|
+    212|   it('accepts SUPPRIMER for French locale', async () => {
+       |   ^
+    213|     mockFetch.mockResolvedValueOnce({
+    214|       ok: true,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+ FAIL  app/[locale]/page.test.tsx > Home page work type defaults > adds the profile work type to default filters after the profile loads
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ app/[locale]/page.test.tsx:141:3
+    139|   });
+    140|
+    141|   it('adds the profile work type to default filters after the profile …
+       |   ^
+    142|     // page.tsx is now an async Server Component that can't be rendere…
+    143|     // tests. We test BulletinPageClient directly with server-provided…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+ FAIL  app/[locale]/account-settings/page.test.tsx > AccountSettingsPage > sends password changes through the account API route
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ app/[locale]/account-settings/page.test.tsx:177:3
+    175|   });
+    176|
+    177|   it('sends password changes through the account API route', async () …
+       |   ^
+    178|     render(<AccountSettingsPage />);
+    179|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/12]⎯
+
+ FAIL  app/[locale]/login/page.test.tsx > LoginPage > shows captcha required when the form is submitted without a completed captcha
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ app/[locale]/login/page.test.tsx:40:3
+     38|   });
+     39|
+     40|   it('shows captcha required when the form is submitted without a comp…
+       |   ^
+     41|     const user = userEvent.setup();
+     42|     const { container } = render(<LoginPage />);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/12]⎯
+
+ FAIL  app/[locale]/profile/page.test.tsx > ProfilePage skills integration > removing a chip updates form data and save payload
+TestingLibraryElementError: Unable to find role="button" and name `/remove data analysis/i`
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-[var(--background)] pt-24"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"rounded-lg border border-border bg-card text-foreground shadow-sm p-6"[39m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"design-type-h1 mb-6"[39m
+          [36m>[39m
+            [0mMy Profile[0m
+          [36m</h1>[39m
+          [36m<form[39m
+            [33mclass[39m=[32m"flex flex-col space-y-6"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"space-y-2"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-sm font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 block mb-2"[39m
+                  [33mfor[39m=[32m"full-name"[39m
+                [36m>[39m
+                  [0mFull Name[0m
+                [36m</label>[39m
+                [36m<input[39m
+                  [33mclass[39m=[32m"flex h-10 w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-2 text-[13px] font-medium text-gray-900 shadow-sm transition-all file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-100/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus-visible:ring-zinc-800/50"[39m
+                  [33mid[39m=[32m"full-name"[39m
+                  [33mplaceholder[39m=[32m"Enter your full name"[39m
+                  [33mtype[39m=[32m"text"[39m
+                  [33mvalue[39m=[32m"Test User"[39m
+                [36m/>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"space-y-0"[39m
+                [36m>[39m
+                  [36m<label[39m
+                    [33mclass[39m=[32m"text-sm font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 block mb-2"[39m
+                    [33mfor[39m=[32m"bio"[39m
+                  [36m>[39m
+                    [0mBio[0m
+                  [36m</label>[39m
+                  [36m<textarea[39m
+                    [33maria-invalid[39m=[32m"false"[39m
+                    [33mclass[39m=[32m"px-4 py-3 text-[13px] font-medium border border-gray-100 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-200 focus:ring-2 focus:ring-gray-100/50 transition-all dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-800/50 w-full"[39m
+                    [33mid[39m=[32m"bio"[39m
+                    [33mplaceholder[39m=[32m"Tell us about yourself..."[39m
+                    [33mrows[39m=[32m"4"[39m
+                  [36m>[39m
+                    [0mBio[0m
+                  [36m</textarea>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center gap-2 mb-2"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"text-sm font-semibold leading-none text-foreground"[39m
+                  [36m>[39m
+                    [0mSkills[0m
+                  [36m</h2>[39m
+                  [36m<span[39m
+                    [33maria-label[39m=[32m"0/10"[39m
+                    [33mclass[39m=[32m"text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400"[39m
+                  [36m>[39m
+                    [0m0[0m
+                    [0m/[0m
+                    [0m10[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-3"[39m
+                [36m>[39m
+                  [36m<button[39m
+                    [33maria-expanded[39m=[32m"false"[39m
+                    [33maria-haspopup[39m=[32m"dialog"[39m
+                    [33maria-label[39m=[32m"Search and add skills, opens dialog"[39m
+                    [33mclass[39m=[32m"flex w-full items-center gap-2 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 text-left transition-all hover:border-gray-200 dark:bg-zinc-900/50 dark:border-zinc-800 dark:hover:border-zinc-700"[39m
+                    [33mtype[39m=[32m"button"[39m
+                  [36m>[39m
+                    [36m<svg[39m
+                      [33maria-hidden[39m=[32m"true"[39m
+                      [33mclass[39m=[32m"lucide lucide-search h-4 w-4 shrink-0 text-gray-400"[39m
+                      [33mfill[39m=[32m"none"[39m
+                      [33mheight[39m=[32m"24"[39m
+                      [33mstroke[39m=[32m"currentColor"[39m
+                      [33mstroke-linecap[39m=[32m"round"[39m
+                      [33mstroke-linejoin[39m=[32m"round"[39m
+                      [33mstroke-width[39m=[32m"2"[39m
+                      [33mviewBox[39m=[32m"0 0 24 24"[39m
+                      [33mwidth[39m=[32m"24"[39m
+                      [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                    [36m>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m21 21-4.34-4.34"[39m
+                      [36m/>[39m
+                      [36m<circle[39m
+                        [33mcx[39m=[32m"11"[39m
+                        [33mcy[39m=[32m"11"[39m
+                        [33mr[39m=[32m"8"[39m
+                      [36m/>[39m
+                    [36m</svg>[39m
+                    [36m<span[39m
+                      [33maria-hidden[39m=[32m"true"[39m
+                      [33mclass[39m=[32m"min-w-0 flex-1 text-[13px] font-medium text-gray-400"[39m
+                    [36m>[39m
+                      [0mSearch to add skills…[0m
+                    [36m</span>[39m
+                  [36m</button>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center gap-2 mb-2"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"text-sm font-semibold leading-none text-foreground"[39m
+                  [36m>[39m
+                    [0mWork Values[0m
+                  [36m</h2>[39m
+                  [3...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-[var(--background)] pt-24"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"rounded-lg border border-border bg-card text-foreground shadow-sm p-6"[39m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"design-type-h1 mb-6"[39m
+          [36m>[39m
+            [0mMy Profile[0m
+          [36m</h1>[39m
+          [36m<form[39m
+            [33mclass[39m=[32m"flex flex-col space-y-6"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"space-y-2"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-sm font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 block mb-2"[39m
+                  [33mfor[39m=[32m"full-name"[39m
+                [36m>[39m
+                  [0mFull Name[0m
+                [36m</label>[39m
+                [36m<input[39m
+                  [33mclass[39m=[32m"flex h-10 w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-2 text-[13px] font-medium text-gray-900 shadow-sm transition-all file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-100/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus-visible:ring-zinc-800/50"[39m
+                  [33mid[39m=[32m"full-name"[39m
+                  [33mplaceholder[39m=[32m"Enter your full name"[39m
+                  [33mtype[39m=[32m"text"[39m
+                  [33mvalue[39m=[32m"Test User"[39m
+                [36m/>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"space-y-0"[39m
+                [36m>[39m
+                  [36m<label[39m
+                    [33mclass[39m=[32m"text-sm font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 block mb-2"[39m
+                    [33mfor[39m=[32m"bio"[39m
+                  [36m>[39m
+                    [0mBio[0m
+                  [36m</label>[39m
+                  [36m<textarea[39m
+                    [33maria-invalid[39m=[32m"false"[39m
+                    [33mclass[39m=[32m"px-4 py-3 text-[13px] font-medium border border-gray-100 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-200 focus:ring-2 focus:ring-gray-100/50 transition-all dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-800/50 w-full"[39m
+                    [33mid[39m=[32m"bio"[39m
+                    [33mplaceholder[39m=[32m"Tell us about yourself..."[39m
+                    [33mrows[39m=[32m"4"[39m
+                  [36m>[39m
+                    [0mBio[0m
+                  [36m</textarea>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center gap-2 mb-2"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"text-sm font-semibold leading-none text-foreground"[39m
+                  [36m>[39m
+                    [0mSkills[0m
+                  [36m</h2>[39m
+                  [36m<span[39m
+                    [33maria-label[39m=[32m"0/10"[39m
+                    [33mclass[39m=[32m"text-xs font-semibold tabular-nums rounded-full px-3 py-1 transition-colors bg-muted text-muted-foreground dark:bg-zinc-800 dark:text-zinc-400"[39m
+                  [36m>[39m
+                    [0m0[0m
+                    [0m/[0m
+                    [0m10[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-3"[39m
+                [36m>[39m
+                  [36m<button[39m
+                    [33maria-expanded[39m=[32m"false"[39m
+                    [33maria-haspopup[39m=[32m"dialog"[39m
+                    [33maria-label[39m=[32m"Search and add skills, opens dialog"[39m
+                    [33mclass[39m=[32m"flex w-full items-center gap-2 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 text-left transition-all hover:border-gray-200 dark:bg-zinc-900/50 dark:border-zinc-800 dark:hover:border-zinc-700"[39m
+                    [33mtype[39m=[32m"button"[39m
+                  [36m>[39m
+                    [36m<svg[39m
+                      [33maria-hidden[39m=[32m"true"[39m
+                      [33mclass[39m=[32m"lucide lucide-search h-4 w-4 shrink-0 text-gray-400"[39m
+                      [33mfill[39m=[32m"none"[39m
+                      [33mheight[39m=[32m"24"[39m
+                      [33mstroke[39m=[32m"currentColor"[39m
+                      [33mstroke-linecap[39m=[32m"round"[39m
+                      [33mstroke-linejoin[39m=[32m"round"[39m
+                      [33mstroke-width[39m=[32m"2"[39m
+                      [33mviewBox[39m=[32m"0 0 24 24"[39m
+                      [33mwidth[39m=[32m"24"[39m
+                      [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                    [36m>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"m21 21-4.34-4.34"[39m
+                      [36m/>[39m
+                      [36m<circle[39m
+                        [33mcx[39m=[32m"11"[39m
+                        [33mcy[39m=[32m"11"[39m
+                        [33mr[39m=[32m"8"[39m
+                      [36m/>[39m
+                    [36m</svg>[39m
+                    [36m<span[39m
+                      [33maria-hidden[39m=[32m"true"[39m
+                      [33mclass[39m=[32m"min-w-0 flex-1 text-[13px] font-medium text-gray-400"[39m
+                    [36m>[39m
+                      [0mSearch to add skills…[0m
+                    [36m</span>[39m
+                  [36m</button>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center gap-2 mb-2"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"text-sm font-semibold leading-none text-foreground"[39m
+                  [36m>[39m
+                    [0mWork Values[0m
+                  [36m</h2>[39m
+                  [3...
+ ❯ waitForWrapper ../node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ ../node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ app/[locale]/profile/page.test.tsx:175:39
+    173|     render(<ProfilePage />);
+    174|
+    175|     const removeButton = await screen.findByRole('button', {
+       |                                       ^
+    176|       name: /remove data analysis/i,
+    177|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/12]⎯
+
+ FAIL  app/[locale]/profile/page.test.tsx > ProfilePage skills integration > saves concept_uri[] (not labels) after selecting a search result
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ app/[locale]/profile/page.test.tsx:191:3
+    189|   });
+    190|
+    191|   it('saves concept_uri[] (not labels) after selecting a search result…
+       |   ^
+    192|     const user = userEvent.setup();
+    193|     const fetchMock = vi.fn((input: RequestInfo | URL) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/12]⎯
+
+ FAIL  app/[locale]/profile/page.test.tsx > ProfilePage skills integration > blocks save and shows error when skills exceed limit
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ app/[locale]/profile/page.test.tsx:263:3
+    261|   });
+    262|
+    263|   it('blocks save and shows error when skills exceed limit', async () …
+       |   ^
+    264|     const user = userEvent.setup();
+    265|     const profileAtMaxSkills = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/12]⎯
+
+ FAIL  app/[locale]/signup/page.test.tsx > SignupPage > shows the inline success state after signup
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ app/[locale]/signup/page.test.tsx:40:3
+     38|   });
+     39|
+     40|   it('shows the inline success state after signup', async () => {
+       |   ^
+     41|     const user = userEvent.setup();
+     42|     render(<SignupPage />);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/12]⎯
+
+
+ Test Files  6 failed | 68 passed (74)
+      Tests  12 failed | 580 passed (592)
+   Start at  01:38:48
+   Duration  364.51s (transform 59.75s, setup 241.96s, import 171.01s, tests 680.14s, environment 1139.48s)
+
