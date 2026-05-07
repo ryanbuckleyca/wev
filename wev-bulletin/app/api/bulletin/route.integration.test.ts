@@ -17,6 +17,7 @@ const {
   mockGte,
   mockOrder,
   mockRange,
+  mockLimit,
 } = vi.hoisted(() => {
   const mockFrom = vi.fn();
   const mockSelect = vi.fn();
@@ -27,6 +28,7 @@ const {
   const mockGte = vi.fn();
   const mockOrder = vi.fn();
   const mockRange = vi.fn();
+  const mockLimit = vi.fn();
   return {
     mockFrom,
     mockSelect,
@@ -37,6 +39,7 @@ const {
     mockGte,
     mockOrder,
     mockRange,
+    mockLimit,
   };
 });
 
@@ -59,6 +62,7 @@ vi.mock('@/lib/supabase/server', () => {
   mockGte.mockImplementation(() => chain);
   mockOrder.mockImplementation(() => chain);
   mockRange.mockImplementation(() => Promise.resolve({ data: [], count: 0, error: null }));
+  mockLimit.mockImplementation(() => Promise.resolve({ data: [], count: 0, error: null }));
 
   chain.select = mockSelect;
   chain.textSearch = mockTextSearch;
@@ -68,6 +72,7 @@ vi.mock('@/lib/supabase/server', () => {
   chain.gte = mockGte;
   chain.order = mockOrder;
   chain.range = mockRange;
+  chain.limit = mockLimit;
 
   return {
     createClient: vi.fn(async () => ({
@@ -180,5 +185,22 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(response.status).toBe(500);
     const body = (await response.json()) as { error: string };
     expect(body.error).toBe('db unavailable');
+  });
+
+  it('always applies 4-week (28 day) age limit regardless of postedWithin filter', async () => {
+    // Even when postedWithin=any, should still filter to 28 days max
+    await GET(new Request('http://localhost/api/bulletin?postedWithin=any'));
+    expect(mockGte).toHaveBeenCalledWith('date_posted', expect.any(String));
+  });
+
+  it('returns both total (filtered) and totalAvailable (all non-old jobs)', async () => {
+    mockRange.mockResolvedValue({ data: [{ id: 'job-1' }], count: 5, error: null });
+
+    const response = await GET(new Request('http://localhost/api/bulletin'));
+    const body = (await response.json()) as Record<string, unknown>;
+
+    // Should have both: total (matching filters) and totalAvailable (all jobs <= 4 weeks)
+    expect(body).toHaveProperty('total');
+    expect(body).toHaveProperty('totalAvailable');
   });
 });

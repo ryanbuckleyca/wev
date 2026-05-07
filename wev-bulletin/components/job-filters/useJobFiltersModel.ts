@@ -173,8 +173,8 @@ export function useJobFiltersModel({
     showJobsWithoutSalary &&
     postedWithin === '2-weeks';
 
-  const filteredJobsCountResolved = filteredJobsCount ?? jobs.length;
-  const totalJobsCountResolved = totalJobsCount ?? jobs.length;
+  const filteredJobsCountResolved = filteredJobsCount ?? 0;
+  const totalJobsCountResolved = totalJobsCount ?? 0;
 
   const activeFilterChips = useMemo(() => {
     const chips: ActiveFilterChip[] = [];
