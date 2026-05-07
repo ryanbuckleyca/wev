@@ -32,6 +32,7 @@ export type BulletinQueryInput = {
 type BulletinQueryResult = {
   jobs: JobPosting[];
   total: number;
+  totalAvailable: number;
   lastScrapeTime: string | null;
   skillLabels: Record<string, SkillLabel>;
 };
