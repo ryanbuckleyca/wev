@@ -118,14 +118,22 @@ type PdfJsModule = {
 
 let cachedPdfJs: PdfJsModule | null = null;
 
-import * as pdfjs from 'pdfjs-dist/build/pdf.mjs';
-
 async function loadPdfJs(): Promise<PdfJsModule> {
   if (process.env.VITEST === 'true') {
     return (globalThis as any).MOCK_PDFJS;
   }
   if (cachedPdfJs) return cachedPdfJs;
-  const pdfjs = (await import('pdfjs-dist/legacy/build/pdf.mjs')) as PdfJsModule;
+  const pdfPath = 'pdfjs-dist/legacy/build/pdf.mjs';
+  const pdfjs = (await import(/* @vite-ignore */ pdfPath)) as PdfJsModule;
+
+  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+    const version = pdfjs.version ?? '5.4.296';
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/legacy/build/pdf.worker.min.mjs`;
+  }
+
+  cachedPdfJs = pdfjs;
+  return pdfjs;
+}
 
 async function parsePdfText(arrayBuffer: ArrayBuffer): Promise<string> {
   const pdfjs = await loadPdfJs();

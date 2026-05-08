@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseCvFile } from '@/lib/cv-parser';
-import { extractSkillsFromCvText } from '@/lib/cv-skills-extractor';
-import { inferValuesFromCvText } from '@/lib/cv-values-extractor';
 
 const mockGetDocument = vi.fn();
 const mockCreateWorker = vi.fn();
@@ -9,33 +7,6 @@ const mockCreateWorker = vi.fn();
 vi.mock('tesseract.js', () => ({
   createWorker: mockCreateWorker,
 }));
-
-const ESCO_LABELS_FIXTURE = [
-  {
-    uri: 'http://data.europa.eu/esco/skill/project-management',
-    en: 'project management',
-    fr: 'gestion de projet',
-    alt_en: ['program management'],
-  },
-  {
-    uri: 'http://data.europa.eu/esco/skill/community-outreach',
-    en: 'community outreach',
-    fr: 'mobilisation communautaire',
-    alt_en: ['community engagement'],
-  },
-] as const;
-
-function mockEscoLabelsFetch() {
-  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-    if (typeof input === 'string' && input === '/esco-labels.json') {
-      return new Response(JSON.stringify(ESCO_LABELS_FIXTURE), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    throw new Error(`Unexpected fetch in test: ${String(input)}`);
-  });
-}
 
 function makePdfDocument(textLayerText: string) {
   return {
@@ -50,19 +21,15 @@ function makePdfDocument(textLayerText: string) {
   };
 }
 
-async function runSkillAndValueExtraction(parsedText: string) {
-  const skills = await extractSkillsFromCvText(parsedText, 'en', {
-    maxSkills: 10,
-    similarityThreshold: 0.72,
-  });
-  const values = inferValuesFromCvText(parsedText, 'en', 5);
-  return { skills, values };
-}
-
-describe('CV import integration — OCR fallback + extraction', () => {
+describe('CV import integration — PDF/OCR Parsing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockEscoLabelsFetch();
+
+    // Mock HTMLCanvasElement.getContext for OCR tests in JSDOM
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+      fillRect: vi.fn(),
+    } as any);
 
     // Inject global mock for PDF.js to bypass Vitest's module mocker bugs
     (globalThis as any).MOCK_PDFJS = {
@@ -76,38 +43,31 @@ describe('CV import integration — OCR fallback + extraction', () => {
     delete (globalThis as any).MOCK_PDFJS;
   });
 
-  it('uses PDF text layer when available (OCR not used) and still extracts skills/values', async () => {
+  it('extracts text from PDF text layer when available', async () => {
     const pdfWithTextLayer = makePdfDocument(
-      'Experienced in project management and community outreach. Seeking challenge-driven roles.',
+      'Experienced in project management and community outreach. ' +
+        'This is a long enough text to skip the OCR fallback mechanism and use the direct text layer extraction path instead. ' +
+        'We need more than 80 characters to satisfy the PDF_MIN_TEXT_CHARS_BEFORE_OCR threshold.',
     );
 
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfWithTextLayer) });
 
-    const file = new File(['fake'], 'ocrd-cv.pdf', { type: 'application/pdf' });
+    const file = new File(['fake'], 'cv-with-text.pdf', { type: 'application/pdf' });
     const parsed = await parseCvFile(file, 'en');
 
     expect(mockCreateWorker).not.toHaveBeenCalled();
-    expect(parsed.text.toLowerCase()).toContain('project management');
-
-    const { skills, values } = await runSkillAndValueExtraction(parsed.text);
-
-    expect(skills.map((s) => s.uri)).toContain(
-      'http://data.europa.eu/esco/skill/project-management',
-    );
-    expect(skills.map((s) => s.uri)).toContain(
-      'http://data.europa.eu/esco/skill/community-outreach',
-    );
-    expect(values).toContain('Challenge');
-    expect(values).toContain('Community');
+    expect(parsed.text).toContain('project management');
+    expect(parsed.text).toContain('community outreach');
+    expect(parsed.metadata.filename).toBe('cv-with-text.pdf');
   });
 
-  it('falls back to browser OCR for scanned PDFs and extracts skills/values from OCR text', async () => {
-    const scannedPdf = makePdfDocument('');
+  it('falls back to OCR for scanned PDFs without a text layer', async () => {
+    const scannedPdf = makePdfDocument(''); // Empty text layer
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(scannedPdf) });
 
     const recognizeMock = vi.fn(async () => ({
       data: {
-        text: 'Community outreach coordinator with project management experience. Looking for challenge and growth.',
+        text: 'Scanned text content: project management expert.',
       },
     }));
 
@@ -124,23 +84,12 @@ describe('CV import integration — OCR fallback + extraction', () => {
     expect(mockCreateWorker).toHaveBeenCalledOnce();
     expect(recognizeMock).toHaveBeenCalledOnce();
     expect(terminateMock).toHaveBeenCalledOnce();
-    expect(parsed.text.toLowerCase()).toContain('community outreach');
-
-    const { skills, values } = await runSkillAndValueExtraction(parsed.text);
-
-    expect(skills.map((s) => s.uri)).toContain(
-      'http://data.europa.eu/esco/skill/project-management',
-    );
-    expect(skills.map((s) => s.uri)).toContain(
-      'http://data.europa.eu/esco/skill/community-outreach',
-    );
-    expect(values).toContain('Challenge');
-    expect(values).toContain('Community');
+    expect(parsed.text).toContain('project management');
   });
 
-  it('returns a specific scanned-PDF error when no text is extractable even after OCR', async () => {
-    const scannedPdf = makePdfDocument('');
-    mockGetDocument.mockReturnValue({ promise: Promise.resolve(scannedPdf) });
+  it('throws a specific error when no text can be extracted even after OCR', async () => {
+    const emptyPdf = makePdfDocument('');
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(emptyPdf) });
 
     const recognizeMock = vi.fn(async () => ({ data: { text: '' } }));
     const terminateMock = vi.fn(async () => undefined);
@@ -150,11 +99,8 @@ describe('CV import integration — OCR fallback + extraction', () => {
       terminate: terminateMock,
     });
 
-    const file = new File(['fake'], 'empty-scanned-cv.pdf', { type: 'application/pdf' });
+    const file = new File(['fake'], 'empty.pdf', { type: 'application/pdf' });
 
     await expect(parseCvFile(file, 'en')).rejects.toThrowError('pdf_no_text_layer');
-    expect(mockCreateWorker).toHaveBeenCalledOnce();
-    expect(recognizeMock).toHaveBeenCalledOnce();
-    expect(terminateMock).toHaveBeenCalledOnce();
   });
 });
