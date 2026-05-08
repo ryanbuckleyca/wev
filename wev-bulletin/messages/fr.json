@@ -347,7 +347,6 @@
     "updateFailed": "Échec de la mise à jour du profil",
     "photoUploadSuccess": "Photo téléversée avec succès !",
     "photoUploadFailed": "Échec du téléchargement de la photo",
-    "locationAndWorkSetting": "Lieu & Mode de travail",
     "location": "Ville / Région actuelle",
     "locationHint": "Indiquez votre lieu préféré pour activer la correspondance basée sur la distance. Si vous avez classé Lieu comme valeur, cela a plus de poids dans vos correspondances.",
     "locationPriorityCallout": "Vous avez priorisé Lieu — ces préférences ont plus de poids dans vos correspondances.",

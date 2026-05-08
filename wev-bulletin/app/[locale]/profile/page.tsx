@@ -80,6 +80,14 @@ export default function ProfilePage() {
               htmlFor="full-name"
             />
 
+            <WorkSettingSection
+              workTypes={formData.work_types}
+              location={formData.location}
+              onWorkTypeToggle={handleWorkTypeToggle}
+              onLocationChange={(val) => setFormData({ ...formData, location: val })}
+              hasLocationValue={hasLocationValue}
+            />
+
             {/* Bio */}
             <div>
               <FormTextarea
@@ -162,14 +170,6 @@ export default function ProfilePage() {
                 locale={locale}
               />
             </div>
-
-            <WorkSettingSection
-              workTypes={formData.work_types}
-              location={formData.location}
-              onWorkTypeToggle={handleWorkTypeToggle}
-              onLocationChange={(val) => setFormData({ ...formData, location: val })}
-              hasLocationValue={hasLocationValue}
-            />
           </div>
 
           {/* Actions */}
