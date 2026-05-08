@@ -3,15 +3,11 @@ import { parseCvFile } from '@/lib/cv-parser';
 import { extractSkillsFromCvText } from '@/lib/cv-skills-extractor';
 import { inferValuesFromCvText } from '@/lib/cv-values-extractor';
 
-const getDocumentMock = vi.fn();
-const createWorkerMock = vi.fn();
-
-vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
-  getDocument: getDocumentMock,
-}));
+const mockGetDocument = vi.fn();
+const mockCreateWorker = vi.fn();
 
 vi.mock('tesseract.js', () => ({
-  createWorker: createWorkerMock,
+  createWorker: mockCreateWorker,
 }));
 
 const ESCO_LABELS_FIXTURE = [
@@ -67,10 +63,17 @@ describe('CV import integration — OCR fallback + extraction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockEscoLabelsFetch();
+
+    // Inject global mock for PDF.js to bypass Vitest's module mocker bugs
+    (globalThis as any).MOCK_PDFJS = {
+      getDocument: mockGetDocument,
+      GlobalWorkerOptions: { workerSrc: '' },
+    };
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    delete (globalThis as any).MOCK_PDFJS;
   });
 
   it('uses PDF text layer when available (OCR not used) and still extracts skills/values', async () => {
@@ -78,12 +81,12 @@ describe('CV import integration — OCR fallback + extraction', () => {
       'Experienced in project management and community outreach. Seeking challenge-driven roles.',
     );
 
-    getDocumentMock.mockReturnValue({ promise: Promise.resolve(pdfWithTextLayer) });
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfWithTextLayer) });
 
     const file = new File(['fake'], 'ocrd-cv.pdf', { type: 'application/pdf' });
     const parsed = await parseCvFile(file, 'en');
 
-    expect(createWorkerMock).not.toHaveBeenCalled();
+    expect(mockCreateWorker).not.toHaveBeenCalled();
     expect(parsed.text.toLowerCase()).toContain('project management');
 
     const { skills, values } = await runSkillAndValueExtraction(parsed.text);
@@ -100,7 +103,7 @@ describe('CV import integration — OCR fallback + extraction', () => {
 
   it('falls back to browser OCR for scanned PDFs and extracts skills/values from OCR text', async () => {
     const scannedPdf = makePdfDocument('');
-    getDocumentMock.mockReturnValue({ promise: Promise.resolve(scannedPdf) });
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(scannedPdf) });
 
     const recognizeMock = vi.fn(async () => ({
       data: {
@@ -110,7 +113,7 @@ describe('CV import integration — OCR fallback + extraction', () => {
 
     const terminateMock = vi.fn(async () => undefined);
 
-    createWorkerMock.mockResolvedValue({
+    mockCreateWorker.mockResolvedValue({
       recognize: recognizeMock,
       terminate: terminateMock,
     });
@@ -118,7 +121,7 @@ describe('CV import integration — OCR fallback + extraction', () => {
     const file = new File(['fake'], 'scanned-cv.pdf', { type: 'application/pdf' });
     const parsed = await parseCvFile(file, 'en');
 
-    expect(createWorkerMock).toHaveBeenCalledOnce();
+    expect(mockCreateWorker).toHaveBeenCalledOnce();
     expect(recognizeMock).toHaveBeenCalledOnce();
     expect(terminateMock).toHaveBeenCalledOnce();
     expect(parsed.text.toLowerCase()).toContain('community outreach');
@@ -137,12 +140,12 @@ describe('CV import integration — OCR fallback + extraction', () => {
 
   it('returns a specific scanned-PDF error when no text is extractable even after OCR', async () => {
     const scannedPdf = makePdfDocument('');
-    getDocumentMock.mockReturnValue({ promise: Promise.resolve(scannedPdf) });
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(scannedPdf) });
 
     const recognizeMock = vi.fn(async () => ({ data: { text: '' } }));
     const terminateMock = vi.fn(async () => undefined);
 
-    createWorkerMock.mockResolvedValue({
+    mockCreateWorker.mockResolvedValue({
       recognize: recognizeMock,
       terminate: terminateMock,
     });
@@ -150,7 +153,7 @@ describe('CV import integration — OCR fallback + extraction', () => {
     const file = new File(['fake'], 'empty-scanned-cv.pdf', { type: 'application/pdf' });
 
     await expect(parseCvFile(file, 'en')).rejects.toThrowError('pdf_no_text_layer');
-    expect(createWorkerMock).toHaveBeenCalledOnce();
+    expect(mockCreateWorker).toHaveBeenCalledOnce();
     expect(recognizeMock).toHaveBeenCalledOnce();
     expect(terminateMock).toHaveBeenCalledOnce();
   });
