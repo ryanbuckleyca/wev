@@ -126,7 +126,7 @@ export default function CVImportButton({
         if (skillsRes?.ok) {
           skills = (((await skillsRes.json()) as { skills?: EscoSkill[] }).skills ?? []);
         }
-        
+
         if (skills.length === 0) {
           const { extractSkillsFromCvText } = await import('@/lib/cv-skills-extractor');
           skills = await extractSkillsFromCvText(parsed.text, locale);
@@ -259,6 +259,7 @@ export default function CVImportButton({
           </p>
         </div>
       </div>
+      <br />
 
       {metadata && (
         <CVReviewModal
