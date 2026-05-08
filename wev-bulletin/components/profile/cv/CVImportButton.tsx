@@ -114,25 +114,18 @@ export default function CVImportButton({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: parsed.text }),
-          }).catch(() => null),
+          }),
           fetch('/api/cv/values', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: parsed.text }),
-          }).catch(() => null),
+          }),
         ]);
 
-        let skills: EscoSkill[] = [];
-        if (skillsRes?.ok) {
-          skills = (((await skillsRes.json()) as { skills?: EscoSkill[] }).skills ?? []);
-        }
-
-        if (skills.length === 0) {
-          const { extractSkillsFromCvText } = await import('@/lib/cv-skills-extractor');
-          skills = await extractSkillsFromCvText(parsed.text, locale);
-        }
-
-        const values = valuesRes?.ok
+        const skills = skillsRes.ok
+          ? (((await skillsRes.json()) as { skills?: EscoSkill[] }).skills ?? [])
+          : [];
+        const values = valuesRes.ok
           ? (((await valuesRes.json()) as { values?: string[] }).values ?? [])
           : [];
 
