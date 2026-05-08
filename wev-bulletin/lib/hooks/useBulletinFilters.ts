@@ -245,7 +245,7 @@ export function useBulletinFilters(
     selectedEmploymentTypes.length > 0 ||
     selectedSources.length > 0 ||
     selectedWorkTypes.length > 0 ||
-    !showOnlySse ||
+    showOnlySse ||
     !showJobsWithoutSalary ||
     postedWithin !== 'any';
 

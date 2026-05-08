@@ -2,6 +2,7 @@ import 'server-only';
 
 import { supabaseServer } from '@/lib/supabase-server';
 import { createClient } from '@/lib/supabase/server';
+import { BULLETIN_MAX_AGE_DAYS } from './constants';
 import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
@@ -32,6 +33,7 @@ export type BulletinQueryInput = {
 type BulletinQueryResult = {
   jobs: JobPosting[];
   total: number;
+  totalAvailable: number;
   lastScrapeTime: string | null;
   skillLabels: Record<string, SkillLabel>;
 };
@@ -70,7 +72,12 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     if (input.onlySse) query = query.is('is_sse', true);
     if (!input.noSalary) query = query.eq('has_compensation', true);
 
-    const postedWithinDays = postedWithinToDays(input.postedWithin);
+    const maxAgeCutoff = new Date(
+      Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    query = query.gte('date_posted', maxAgeCutoff);
+
+    const postedWithinDays = postedWithinToDays(input.postedWithin); // this mapping uses numbers, but they will be clamped since maxAgeCutoff is handled.
     if (postedWithinDays != null) {
       const cutoff = new Date(Date.now() - postedWithinDays * 24 * 60 * 60 * 1000).toISOString();
       query = query.gte('date_posted', cutoff);
@@ -107,9 +114,18 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     return query.range(start, end);
   };
 
-  const [initialJobsResult, scrapeTime] = await Promise.all([
+  const totalAvailableQuery = supabase
+    .from('matched_jobs')
+    .select('id', { count: 'exact', head: true })
+    .gte(
+      'date_posted',
+      new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+    );
+
+  const [initialJobsResult, scrapeTime, totalAvailableResult] = await Promise.all([
     buildQuery(searchColumn),
     fetchLastScrapeTime(),
+    totalAvailableQuery,
   ]);
   let jobsResult = initialJobsResult;
 
@@ -131,6 +147,7 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
   return {
     jobs,
     total: jobsResult.count ?? 0,
+    totalAvailable: totalAvailableResult.count ?? 0,
     lastScrapeTime: scrapeTime,
     skillLabels: Object.fromEntries(labelMap),
   };
@@ -158,10 +175,16 @@ export async function fetchLastScrapeTime(): Promise<string | null> {
 }
 
 const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
-  const postedWithinDays = 14;
-  const postedCutoff = new Date(Date.now() - postedWithinDays * 24 * 60 * 60 * 1000).toISOString();
+  const postedCutoff = new Date(
+    Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
 
-  const [scrapeTime, jobsResult] = await Promise.all([
+  const totalAvailableQuery = supabaseServer
+    .from('matched_jobs')
+    .select('id', { count: 'exact', head: true })
+    .gte('date_posted', postedCutoff);
+
+  const [scrapeTime, jobsResult, totalAvailableResult] = await Promise.all([
     fetchLastScrapeTime(),
     supabaseServer
       .from('matched_jobs')
@@ -170,6 +193,7 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
       .gte('date_posted', postedCutoff)
       .order('date_posted', { ascending: false })
       .range(0, 19),
+    totalAvailableQuery,
   ]);
 
   if (jobsResult.error) throw new Error(jobsResult.error.message);
@@ -180,6 +204,7 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
   return {
     jobs,
     total: jobsResult.count ?? 0,
+    totalAvailable: totalAvailableResult.count ?? 0,
     lastScrapeTime: scrapeTime,
     skillLabels: Object.fromEntries(labelMap),
   };

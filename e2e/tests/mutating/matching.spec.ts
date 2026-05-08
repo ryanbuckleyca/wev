@@ -34,7 +34,7 @@ test.describe("Matching + job card interactions", () => {
       });
       await expect(skillsDialog).toBeVisible();
 
-      await skillsDialog.getByPlaceholder(/search to add skills/i).fill("a");
+      await skillsDialog.getByPlaceholder(/search to add skills/i).fill("mana");
       const skillsListbox = skillsDialog.getByRole("listbox", {
         name: /skill search results/i,
       });

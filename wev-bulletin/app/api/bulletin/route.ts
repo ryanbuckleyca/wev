@@ -5,6 +5,7 @@ import {
   fetchLastScrapeTime,
 } from '@/lib/bulletin/server-data';
 import { parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
+import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
 import { createClient } from '@/lib/supabase/server';
 
 export { BULLETIN_CACHE_TAG };
@@ -79,6 +80,11 @@ function createBuildQueryFn(
     }
 
     // 3. Date Filters
+    const maxAgeCutoff = new Date(
+      Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    query = query.gte('date_posted', maxAgeCutoff);
+
     if (input.postedWithin !== 'any') {
       const days =
         input.postedWithin === '1-week'
@@ -87,7 +93,7 @@ function createBuildQueryFn(
             ? 14
             : input.postedWithin === '3-weeks'
               ? 21
-              : 30;
+              : 30; // Will be clamped by maxAgeCutoff above anyway
       const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
       query = query.gte('date_posted', cutoff);
     }
@@ -132,9 +138,20 @@ async function fetchBulletinApiPayload(
   const searchColumn = input.locale === 'fr' ? 'fts_fr' : 'fts_en';
   const buildQuery = createBuildQueryFn(supabase, input);
 
-  const [initialJobsResult, scrapeTime] = await Promise.all([
+  // Get total available jobs (<= 4 weeks old, no other filters)
+  const maxAgeCutoff = new Date(
+    Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const totalAvailableQuery = supabase
+    .from('matched_jobs')
+    .select('id', { count: 'exact' })
+    .gte('date_posted', maxAgeCutoff)
+    .limit(0);
+
+  const [initialJobsResult, scrapeTime, totalAvailableResult] = await Promise.all([
     buildQuery(searchColumn),
     fetchLastScrapeTime(),
+    totalAvailableQuery,
   ]);
   let jobsResult = initialJobsResult;
 
@@ -147,6 +164,9 @@ async function fetchBulletinApiPayload(
   }
 
   if (jobsResult.error) throw new Error(jobsResult.error.message);
+  if (totalAvailableResult.error) {
+    console.error('Error fetching total available jobs:', totalAvailableResult.error.message);
+  }
 
   const jobs = jobsResult.data;
   const labelMap = await resolveSkillLabels(supabase, jobs, input.locale);
@@ -154,6 +174,7 @@ async function fetchBulletinApiPayload(
   return {
     jobs,
     total: jobsResult.count ?? 0,
+    totalAvailable: totalAvailableResult.count ?? 0,
     lastScrapeTime: scrapeTime,
     skillLabels: Object.fromEntries(labelMap),
   };
