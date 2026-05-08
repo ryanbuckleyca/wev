@@ -12,6 +12,7 @@ export interface InitialBulletinData {
   jobs: JobPosting[];
   scrapeTime: string | null;
   total: number;
+  totalAvailable?: number;
   userId?: string | null;
   matchData?: SerializedMatchData;
   bookmarkedJobIds?: string[];

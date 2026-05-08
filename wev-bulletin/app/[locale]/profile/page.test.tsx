@@ -175,7 +175,7 @@ describe('ProfilePage skills integration', () => {
     const removeButton = await screen.findByRole('button', {
       name: /remove data analysis/i,
     });
-    screen.debug(); await user.click(removeButton);
+    await user.click(removeButton);
     await user.click(screen.getByRole('button', { name: /save profile/i }));
 
     await waitFor(() => {
@@ -260,7 +260,11 @@ describe('ProfilePage skills integration', () => {
     expect(new Set(savePayload.skills)).toEqual(new Set(['uri-1', 'uri-2']));
   });
 
-  it('blocks save and shows error when skills exceed limit', async () => {
+  it('blocks save and shows error when skills exceed limit', { timeout: 30_000 }, async () => {
+    // This test renders 10 hydrated skills, opens a modal, searches for a skill,
+    // selects a result, and validates the save is blocked.  Under full-suite
+    // resource contention it can exceed the 15 s global timeout.
+
     const user = userEvent.setup();
     const profileAtMaxSkills = {
       ...baseProfile,
@@ -323,7 +327,8 @@ describe('ProfilePage skills integration', () => {
 
     await user.click(screen.getByRole('button', { name: /search and add skills/i }));
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
-    await user.type(searchInput, 'Extra');
+    await user.click(searchInput);
+    await user.paste('Extra');
     await user.click(await screen.findByRole('option', { name: /Extra skill/i }));
     await user.click(screen.getByRole('button', { name: /done/i }));
     await user.click(screen.getByRole('button', { name: /save profile/i }));
