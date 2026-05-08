@@ -59,24 +59,18 @@ async function loadEscoLabels(): Promise<EscoSlimLabel[]> {
 
 function scoreTermAgainstCv(term: string, cvNormalized: string, cvTokens: Set<string>): number {
   const normalizedTerm = normalizeText(term);
-  if (!normalizedTerm) return 0;
+  if (!normalizedTerm || normalizedTerm.length < 4) return 0;
 
+  // Exact phrase match gets a perfect score
   if (
     cvNormalized.includes(` ${normalizedTerm} `) ||
-    cvNormalized.startsWith(`${normalizedTerm} `)
+    cvNormalized.startsWith(`${normalizedTerm} `) ||
+    cvNormalized.endsWith(` ${normalizedTerm}`)
   ) {
     return 1;
   }
 
-  const termTokens = tokenize(normalizedTerm);
-  if (termTokens.length === 0) return 0;
-
-  let overlap = 0;
-  for (const token of termTokens) {
-    if (cvTokens.has(token)) overlap += 1;
-  }
-
-  return overlap / termTokens.length;
+  return 0;
 }
 
 function toProfileSkill(skill: EscoSlimLabel): EscoSkill {
