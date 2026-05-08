@@ -18,6 +18,7 @@ import Heading from '@/components/Heading';
 import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
 import Alert from '@/components/ui/Alert';
+import CVImportButton from '@/components/profile/cv/CVImportButton';
 
 export default function ProfilePage() {
   const t = useTranslations();
@@ -25,6 +26,7 @@ export default function ProfilePage() {
   const { user, loading } = useRequireAuth();
 
   const {
+    profile,
     profileLoading,
     profileError,
     formData,
@@ -44,6 +46,7 @@ export default function ProfilePage() {
     handleValueRemove,
     isSaving,
     handleSaveProfile,
+    handleSaveCvImport,
     handleWorkTypeToggle,
   } = useProfileForm(locale);
 
@@ -92,6 +95,23 @@ export default function ProfilePage() {
 
             {/* Skills */}
             <div>
+              <CVImportButton
+                locale={locale}
+                allSkills={allSkills}
+                workValues={workValues}
+                cvImport={profile?.cv_import ?? null}
+                isSaving={isSaving}
+                onConfirmImport={async ({ skills, values, skillCutoff, valueCutoff, cvImport }) =>
+                  handleSaveCvImport({
+                    nextSkills: skills,
+                    nextValues: values,
+                    skillCutoff,
+                    valueCutoff,
+                    cvImport,
+                  })
+                }
+              />
+
               <div className="flex items-center gap-2 mb-2">
                 <h2 className="text-sm font-semibold leading-none text-foreground">
                   {t('profile.skills')}
