@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import { supabaseServer } from '@/lib/supabase-server';
 import { VALUES_DICTIONARY, VALUES_LIST } from '@/lib/values';
@@ -71,46 +72,50 @@ Return JSON:
 type SkillPhrase = { phrase: string; prominence: number };
 type LlmResult = { skills: SkillPhrase[]; values: string[] };
 
-function parseLlmResponse(content: string): LlmResult {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    return { skills: [], values: [] };
-  }
-  const obj = parsed as { skills?: unknown; values?: unknown };
+const SkillPhraseSchema = z.union([
+  z.string().min(3).transform((phrase) => ({ phrase: phrase.trim(), prominence: 5 })),
+  z.object({
+    phrase: z.string().min(3),
+    prominence: z.coerce.number().min(1).max(10).catch(5).optional().default(5),
+  }).transform((obj) => ({
+    phrase: obj.phrase.trim(),
+    prominence: obj.prominence,
+  })),
+]);
 
-  const rawSkills = Array.isArray(obj.skills) ? obj.skills : [];
-  const skills: SkillPhrase[] = [];
-  for (const item of rawSkills) {
-    if (typeof item === 'string' && item.trim().length > 2) {
-      skills.push({ phrase: item.trim(), prominence: 5 });
-    } else if (item && typeof item === 'object') {
-      const entry = item as { phrase?: unknown; prominence?: unknown };
-      const phrase = typeof entry.phrase === 'string' ? entry.phrase.trim() : '';
-      const prominence =
-        typeof entry.prominence === 'number' ? Math.max(1, Math.min(10, entry.prominence)) : 5;
-      if (phrase.length > 2) {
-        skills.push({ phrase, prominence });
+const LlmResponseSchema = z.object({
+  skills: z.array(SkillPhraseSchema.catch({ phrase: '', prominence: 0 }))
+    .transform((arr) => arr.filter((s) => s.phrase.length >= 3))
+    .catch([])
+    .optional()
+    .default([]),
+  values: z.array(z.string())
+    .transform((arr) => {
+      const allowed = new Set<string>(VALUES_LIST);
+      const seen = new Set<string>();
+      const valid: string[] = [];
+      for (const v of arr) {
+        const trimmed = v.trim();
+        if (allowed.has(trimmed) && !seen.has(trimmed)) {
+          seen.add(trimmed);
+          valid.push(trimmed);
+          if (valid.length >= MAX_VALUES) break;
+        }
       }
-    }
-  }
+      return valid;
+    })
+    .catch([])
+    .optional()
+    .default([]),
+});
 
-  const allowed = new Set<string>(VALUES_LIST);
-  const rawValues = Array.isArray(obj.values) ? obj.values : [];
-  const values: string[] = [];
-  const seenValues = new Set<string>();
-  for (const item of rawValues) {
-    if (typeof item !== 'string') continue;
-    const v = item.trim();
-    if (allowed.has(v) && !seenValues.has(v)) {
-      seenValues.add(v);
-      values.push(v);
-      if (values.length >= MAX_VALUES) break;
-    }
+function parseLlmResponse(content: string): LlmResult {
+  try {
+    const parsed = JSON.parse(content);
+    return LlmResponseSchema.parse(parsed) as LlmResult;
+  } catch (error) {
+    throw new Error('llm_parsing_failed', { cause: error });
   }
-
-  return { skills, values };
 }
 
 // ---------------------------------------------------------------------------
