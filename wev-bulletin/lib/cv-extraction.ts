@@ -75,21 +75,28 @@ type SkillPhrase = { phrase: string; prominence: number };
 type LlmResult = { skills: SkillPhrase[]; values: string[] };
 
 const SkillPhraseSchema = z.union([
-  z.string().min(3).transform((phrase) => ({ phrase: phrase.trim(), prominence: 5 })),
-  z.object({
-    phrase: z.string().min(3),
-    prominence: z.coerce.number().min(1).max(10).catch(5).optional().default(5),
-  }).transform((obj) => ({
-    phrase: obj.phrase.trim(),
-    prominence: obj.prominence,
-  })),
+  z
+    .string()
+    .min(3)
+    .transform((phrase) => ({ phrase: phrase.trim(), prominence: 5 })),
+  z
+    .object({
+      phrase: z.string().min(3),
+      prominence: z.coerce.number().min(1).max(10).catch(5).optional().default(5),
+    })
+    .transform((obj) => ({
+      phrase: obj.phrase.trim(),
+      prominence: obj.prominence,
+    })),
 ]);
 
 const LlmResponseSchema = z.object({
-  skills: z.array(SkillPhraseSchema.catch({ phrase: '', prominence: 0 }))
+  skills: z
+    .array(SkillPhraseSchema.catch({ phrase: '', prominence: 0 }))
     .transform((arr) => arr.filter((s) => s.phrase.length >= 3))
     .catch([]),
-  values: z.array(z.string())
+  values: z
+    .array(z.string())
     .transform((arr) => {
       const allowed = new Set<string>(VALUES_LIST);
       const seen = new Set<string>();
@@ -204,7 +211,7 @@ export function scoreCandidates(
 
   for (const row of rows) {
     if (row.similarity < SCORE_FLOOR) continue;
-    
+
     const phraseIdx = row.query_index;
     const prominence = skillPhrases[phraseIdx]?.prominence ?? 5;
     const promWeight = prominence / 10;
@@ -232,7 +239,7 @@ async function linkPhrasesToEsco(
   const supabase = supabaseServer;
 
   // Run a single batched RPC to avoid exhausting the Supabase connection pool
-  const query_embeddings = embeddings.map(vec => `[${vec.join(',')}]`);
+  const query_embeddings = embeddings.map((vec) => `[${vec.join(',')}]`);
   const { data, error } = await supabase.rpc('match_skills_by_embedding', {
     query_embeddings,
     match_count: RPC_MATCHES_PER_PHRASE,
