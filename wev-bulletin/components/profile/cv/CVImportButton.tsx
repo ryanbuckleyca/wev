@@ -4,10 +4,8 @@ import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'rea
 import { useTranslations } from 'next-intl';
 import Button from '@/components/Button';
 import Alert from '@/components/ui/Alert';
-import CVReviewModal from '@/components/profile/cv/CVReviewModal';
 import { parseCvFile, readCvFileBytes, type CvImportMetadata } from '@/lib/cv-parser';
 import type { EscoSkill } from '@/lib/types/skills';
-import type { WorkValue } from '@/lib/values';
 import notify from '@/lib/toast';
 
 type FileSystemFileHandleLike = {
@@ -55,23 +53,17 @@ function getCvImportErrorMessage(
 
 type CVImportButtonProps = {
   locale: 'en' | 'fr';
-  allSkills: EscoSkill[];
-  workValues: WorkValue[];
   cvImport: CvImportMetadata | null;
   isSaving: boolean;
   onConfirmImport: (data: {
     skills: EscoSkill[];
     values: string[];
-    skillCutoff: number;
-    valueCutoff: number;
     cvImport: CvImportMetadata;
   }) => Promise<void>;
 };
 
 export default function CVImportButton({
   locale,
-  allSkills,
-  workValues,
   cvImport,
   isSaving,
   onConfirmImport,
@@ -80,10 +72,6 @@ export default function CVImportButton({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [isParsing, setIsParsing] = useState(false);
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [suggestedSkills, setSuggestedSkills] = useState<EscoSkill[]>([]);
-  const [suggestedValues, setSuggestedValues] = useState<string[]>([]);
-  const [metadata, setMetadata] = useState<CvImportMetadata | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const lastImportedLabel = useMemo(() => {
@@ -109,30 +97,23 @@ export default function CVImportButton({
       try {
         const bytes = await bytesPromise;
         const parsed = await parseCvFile({ bytes, name: filename, type: fileType }, locale);
-        const [skillsRes, valuesRes] = await Promise.all([
-          fetch('/api/cv/skills', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: parsed.text }),
-          }),
-          fetch('/api/cv/values', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: parsed.text }),
-          }),
-        ]);
+        const extractRes = await fetch('/api/cv/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: parsed.text }),
+        });
 
-        const skills = skillsRes.ok
-          ? (((await skillsRes.json()) as { skills?: EscoSkill[] }).skills ?? [])
-          : [];
-        const values = valuesRes.ok
-          ? (((await valuesRes.json()) as { values?: string[] }).values ?? [])
-          : [];
+        const extracted = extractRes.ok
+          ? ((await extractRes.json()) as { skills?: EscoSkill[]; values?: string[] })
+          : { skills: [], values: [] };
+        const skills = extracted.skills ?? [];
+        const values = extracted.values ?? [];
 
-        setSuggestedSkills(skills);
-        setSuggestedValues(values);
-        setMetadata(parsed.metadata);
-        setIsReviewOpen(true);
+        await onConfirmImport({
+          skills,
+          values,
+          cvImport: parsed.metadata,
+        });
       } catch (error) {
         if (typeof console !== 'undefined') {
           console.error('[cv-import] processing failed', {
@@ -251,32 +232,13 @@ export default function CVImportButton({
             {t('cvImportDropHint')} · {t('cvImportPrivacyHint')}
           </p>
         </div>
+        {cvImport?.filename && (
+          <p className="mt-3 text-xs font-medium text-amber-600 dark:text-amber-500">
+            ⚠️ Note: Re-importing a CV will replace your current profile skills and values.
+          </p>
+        )}
       </div>
       <br />
-
-      {metadata && (
-        <CVReviewModal
-          isOpen={isReviewOpen}
-          locale={locale}
-          allSkills={allSkills}
-          workValues={workValues}
-          initialSkills={suggestedSkills}
-          initialValues={suggestedValues}
-          fileName={metadata.filename}
-          isConfirming={isSaving}
-          onCancel={() => setIsReviewOpen(false)}
-          onConfirm={async ({ skills, values, skillCutoff, valueCutoff }) => {
-            await onConfirmImport({
-              skills,
-              values,
-              skillCutoff,
-              valueCutoff,
-              cvImport: metadata,
-            });
-            setIsReviewOpen(false);
-          }}
-        />
-      )}
     </div>
   );
 }
