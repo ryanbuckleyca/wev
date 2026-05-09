@@ -123,8 +123,7 @@ async function loadPdfJs(): Promise<PdfJsModule> {
     return (globalThis as any).MOCK_PDFJS;
   }
   if (cachedPdfJs) return cachedPdfJs;
-  const pdfPath = 'pdfjs-dist/legacy/build/pdf.mjs';
-  const pdfjs = (await import(/* @vite-ignore */ pdfPath)) as PdfJsModule;
+  const pdfjs = (await import(/* @vite-ignore */ 'pdfjs-dist/legacy/build/pdf.mjs')) as unknown as PdfJsModule;
 
   if (!pdfjs.GlobalWorkerOptions.workerSrc) {
     const version = pdfjs.version ?? '5.4.296';
@@ -135,29 +134,28 @@ async function loadPdfJs(): Promise<PdfJsModule> {
   return pdfjs;
 }
 
-async function parsePdfText(arrayBuffer: ArrayBuffer): Promise<string> {
-  const pdfjs = await loadPdfJs();
-  const loadingTask = pdfjs.getDocument({
-    data: arrayBuffer,
-    isEvalSupported: false,
-  });
-  const pdf = await loadingTask.promise;
-
+async function extractPdfTextLayer(pdf: any): Promise<string> {
   const pages: string[] = [];
+  let totalChars = 0;
+
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
     const textContent = await page.getTextContent();
     const pageText = textContent.items.map((item: { str?: string }) => item.str ?? '').join(' ');
     pages.push(pageText);
-  }
+    totalChars += pageText.trim().length;
 
-  const textLayerText = normalizeText(pages.join('\n'));
-  if (textLayerText.length >= PDF_MIN_TEXT_CHARS_BEFORE_OCR) {
-    return textLayerText;
+    // Circuit breaker: if first 3 pages are empty, skip further text layer extraction
+    // and let the caller decide if OCR is needed.
+    if (pageNumber === 3 && totalChars === 0 && pdf.numPages > 3) {
+      break;
+    }
   }
+  return normalizeText(pages.join('\n'));
+}
 
-  const tesseractModule = 'tesseract.js';
-  const tesseract = (await import(tesseractModule)) as {
+async function extractPdfOcr(pdf: any): Promise<string> {
+  const tesseract = (await import('tesseract.js')) as unknown as {
     createWorker: (languages?: string) => Promise<{
       recognize: (
         image: HTMLCanvasElement,
@@ -189,18 +187,37 @@ async function parsePdfText(arrayBuffer: ArrayBuffer): Promise<string> {
       const result = await worker.recognize(canvas);
       const pageText = normalizeText(result.data.text ?? '');
       if (pageText) ocrPages.push(pageText);
+
+      // Cleanup canvas memory
+      canvas.width = 0;
+      canvas.height = 0;
     }
 
-    const ocrText = normalizeText(ocrPages.join('\n'));
-    return ocrText || textLayerText;
+    return normalizeText(ocrPages.join('\n'));
   } finally {
     await worker.terminate();
   }
 }
 
+async function parsePdfText(arrayBuffer: ArrayBuffer): Promise<string> {
+  const pdfjs = await loadPdfJs();
+  const loadingTask = pdfjs.getDocument({
+    data: arrayBuffer,
+    isEvalSupported: false,
+  });
+  const pdf = await loadingTask.promise;
+
+  const textLayerText = await extractPdfTextLayer(pdf);
+  if (textLayerText.length >= PDF_MIN_TEXT_CHARS_BEFORE_OCR) {
+    return textLayerText;
+  }
+
+  const ocrText = await extractPdfOcr(pdf);
+  return ocrText || textLayerText;
+}
+
 async function parseDocxText(arrayBuffer: ArrayBuffer): Promise<string> {
-  const mammothModule = 'mammoth';
-  const mammoth = (await import(mammothModule)) as {
+  const mammoth = (await import('mammoth')) as unknown as {
     extractRawText: (input: { arrayBuffer: ArrayBuffer }) => Promise<{ value: string }>;
   };
   const result = await mammoth.extractRawText({ arrayBuffer });

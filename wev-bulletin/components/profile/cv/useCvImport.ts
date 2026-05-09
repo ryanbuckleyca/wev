@@ -56,6 +56,35 @@ function getCvImportErrorMessage(
 }
 
 // ---------------------------------------------------------------------------
+// Pipeline Logic
+// ---------------------------------------------------------------------------
+
+export async function executeCvImportPipeline(
+  file: File,
+  bytesPromise: Promise<ArrayBuffer>,
+  locale: 'en' | 'fr',
+): Promise<{ skills: EscoSkill[]; values: string[]; cvImport: CvImportMetadata }> {
+  const bytes = await bytesPromise;
+  const parsed = await parseCvFile({ bytes, name: file.name, type: file.type }, locale);
+
+  const extractRes = await fetch('/api/cv/extract', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: parsed.text }),
+  });
+
+  const extracted = extractRes.ok
+    ? ((await extractRes.json()) as { skills?: EscoSkill[]; values?: string[] })
+    : { skills: [], values: [] };
+
+  return {
+    skills: extracted.skills ?? [],
+    values: extracted.values ?? [],
+    cvImport: parsed.metadata,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
@@ -75,50 +104,28 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
   const [isParsing, setIsParsing] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const processFile = (file: File, bytesPromise: Promise<ArrayBuffer>) => {
-    const filename = file.name;
-    const fileType = file.type;
-
+  const processFile = async (file: File, bytesPromise: Promise<ArrayBuffer>) => {
     setIsParsing(true);
 
-    void (async () => {
-      try {
-        const bytes = await bytesPromise;
-        const parsed = await parseCvFile({ bytes, name: filename, type: fileType }, locale);
-        const extractRes = await fetch('/api/cv/extract', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: parsed.text }),
+    try {
+      const result = await executeCvImportPipeline(file, bytesPromise, locale);
+      await onConfirmImport(result);
+    } catch (error) {
+      if (typeof console !== 'undefined') {
+        console.error('[cv-import] processing failed', {
+          name: error instanceof Error ? error.name : typeof error,
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          error,
         });
-
-        const extracted = extractRes.ok
-          ? ((await extractRes.json()) as { skills?: EscoSkill[]; values?: string[] })
-          : { skills: [], values: [] };
-        const skills = extracted.skills ?? [];
-        const values = extracted.values ?? [];
-
-        await onConfirmImport({
-          skills,
-          values,
-          cvImport: parsed.metadata,
-        });
-      } catch (error) {
-        if (typeof console !== 'undefined') {
-          console.error('[cv-import] processing failed', {
-            name: error instanceof Error ? error.name : typeof error,
-            message: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-            error,
-          });
-        }
-        notify.error(getCvImportErrorMessage(t, error));
-      } finally {
-        setIsParsing(false);
-        if (inputRef.current) {
-          inputRef.current.value = '';
-        }
       }
-    })();
+      notify.error(getCvImportErrorMessage(t, error));
+    } finally {
+      setIsParsing(false);
+      if (inputRef.current) {
+        inputRef.current.value = '';
+      }
+    }
   };
 
   const onPickFile = async () => {

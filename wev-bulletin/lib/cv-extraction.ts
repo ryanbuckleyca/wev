@@ -205,41 +205,34 @@ async function linkPhrasesToEsco(
   const cvWords = buildCvWordSet(cvText);
   const supabase = supabaseServer;
 
-  // Run phrase searches in chunks to avoid exhausting the Supabase connection pool
-  const rpcResults: { data: unknown; error: unknown }[] = [];
-  const chunkSize = 5;
-  for (let i = 0; i < embeddings.length; i += chunkSize) {
-    const chunk = embeddings.slice(i, i + chunkSize);
-    const chunkResults = await Promise.all(
-      chunk.map((vec) =>
-        supabase.rpc('match_skills_by_embedding', {
-          query_embedding: `[${vec.join(',')}]`,
-          match_count: RPC_MATCHES_PER_PHRASE,
-        }),
-      ),
-    );
-    rpcResults.push(...chunkResults);
+  // Run a single batched RPC to avoid exhausting the Supabase connection pool
+  const query_embeddings = embeddings.map(vec => `[${vec.join(',')}]`);
+  const { data, error } = await supabase.rpc('match_skills_by_embedding', {
+    query_embeddings,
+    match_count: RPC_MATCHES_PER_PHRASE,
+  });
+
+  if (error) {
+    logger.warn({ err: error, userId }, 'match_skills_by_embedding failure');
   }
 
+  type BatchMatchRow = MatchRow & { query_index: number };
   const bestByUri = new Map<string, ScoredMatch>();
-  for (let i = 0; i < rpcResults.length; i++) {
-    const { data, error } = rpcResults[i];
-    const prominence = skillPhrases[i]?.prominence ?? 5;
+
+  for (const row of (data ?? []) as BatchMatchRow[]) {
+    if (row.similarity < SCORE_FLOOR) continue;
+    
+    const phraseIdx = row.query_index;
+    const prominence = skillPhrases[phraseIdx]?.prominence ?? 5;
     const promWeight = prominence / 10;
 
-    if (error) {
-      logger.warn({ err: error, userId }, 'match_skills_by_embedding partial failure');
-      continue;
-    }
-    for (const row of (data ?? []) as MatchRow[]) {
-      if (row.similarity < SCORE_FLOOR) continue;
-      const relevance = labelRelevance(row.preferred_label_en ?? '', cvWords);
-      if (relevance < 0.4) continue;
-      const score = row.similarity * promWeight * relevance;
-      const existing = bestByUri.get(row.concept_uri);
-      if (!existing || score > existing.score) {
-        bestByUri.set(row.concept_uri, { ...row, score });
-      }
+    const relevance = labelRelevance(row.preferred_label_en ?? '', cvWords);
+    if (relevance < 0.4) continue;
+
+    const score = row.similarity * promWeight * relevance;
+    const existing = bestByUri.get(row.concept_uri);
+    if (!existing || score > existing.score) {
+      bestByUri.set(row.concept_uri, { ...row, score });
     }
   }
 
