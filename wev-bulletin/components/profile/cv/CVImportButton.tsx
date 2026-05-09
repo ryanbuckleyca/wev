@@ -234,7 +234,7 @@ export default function CVImportButton({
         </div>
         {cvImport?.filename && (
           <p className="mt-3 text-xs font-medium text-amber-600 dark:text-amber-500">
-            ⚠️ Note: Re-importing a CV will replace your current profile skills and values.
+            ⚠️ Note: Re-importing a CV will replace the skills and values currently selected in the form. You can review them before saving.
           </p>
         )}
       </div>
