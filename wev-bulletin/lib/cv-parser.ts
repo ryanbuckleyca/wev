@@ -121,7 +121,9 @@ async function loadPdfJs(): Promise<PdfJsModule> {
     return (globalThis as any).MOCK_PDFJS;
   }
   if (cachedPdfJs) return cachedPdfJs;
-  const pdfjs = (await import(/* @vite-ignore */ 'pdfjs-dist/legacy/build/pdf.mjs')) as unknown as PdfJsModule;
+  const pdfjs = (await import(
+    /* @vite-ignore */ 'pdfjs-dist/legacy/build/pdf.mjs'
+  )) as unknown as PdfJsModule;
 
   if (!pdfjs.GlobalWorkerOptions.workerSrc) {
     const version = pdfjs.version ?? '5.4.296';
