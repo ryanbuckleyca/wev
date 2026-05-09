@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
-  
+
   if (typeof body.text !== 'string' || body.text.trim().length < 10) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     logger.error('GROQ_API_KEY missing — cannot extract CV skills/values');
     return NextResponse.json({ error: 'provider_unavailable' }, { status: 503 });
   }
-  
+
   if (!jinaKey) {
     logger.error('JINA_API_KEY missing — cannot embed CV skill phrases');
     return NextResponse.json({ error: 'provider_unavailable' }, { status: 503 });
@@ -63,14 +63,14 @@ export async function POST(request: Request) {
       groqKey,
       jinaKey,
     });
-    
+
     return NextResponse.json(result);
   } catch (error) {
     // If the error message is "extraction_failed", it was already logged
     if (error instanceof Error && error.message === 'extraction_failed') {
       return NextResponse.json({ error: 'extraction_failed' }, { status: 502 });
     }
-    
+
     logger.error({ err: error, userId: auth.user.id }, 'Unexpected CV extraction error');
     return NextResponse.json({ error: 'extraction_failed' }, { status: 502 });
   }
