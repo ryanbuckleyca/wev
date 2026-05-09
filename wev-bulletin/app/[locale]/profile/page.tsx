@@ -46,7 +46,7 @@ export default function ProfilePage() {
     handleValueRemove,
     isSaving,
     handleSaveProfile,
-    handleSaveCvImport,
+    handleApplyCvImport,
     handleWorkTypeToggle,
   } = useProfileForm(locale);
 
@@ -105,16 +105,12 @@ export default function ProfilePage() {
             <div>
               <CVImportButton
                 locale={locale}
-                allSkills={allSkills}
-                workValues={workValues}
                 cvImport={profile?.cv_import ?? null}
                 isSaving={isSaving}
-                onConfirmImport={async ({ skills, values, skillCutoff, valueCutoff, cvImport }) =>
-                  handleSaveCvImport({
+                onConfirmImport={async ({ skills, values, cvImport }) =>
+                  handleApplyCvImport({
                     nextSkills: skills,
                     nextValues: values,
-                    skillCutoff,
-                    valueCutoff,
                     cvImport,
                   })
                 }
