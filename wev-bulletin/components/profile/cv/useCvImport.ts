@@ -59,7 +59,7 @@ function getCvImportErrorMessage(
 // Pipeline Logic
 // ---------------------------------------------------------------------------
 
-export async function executeCvImportPipeline(
+async function executeCvImportPipeline(
   file: File,
   bytesPromise: Promise<ArrayBuffer>,
   locale: 'en' | 'fr',
