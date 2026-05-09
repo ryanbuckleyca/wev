@@ -1,15 +1,10 @@
 import { createClient } from './client';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
+export type { CvImportMetadata } from '@/lib/types/cv';
+import type { CvImportMetadata } from '@/lib/types/cv';
 
 const PROFILE_COLUMNS =
   'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, cv_import, created_at, updated_at' as const;
-
-export type CvImportMetadata = {
-  filename: string;
-  imported_at: string;
-  source: 'cv_upload';
-  locale: 'en' | 'fr';
-};
 
 export type Profile = {
   id: string;
