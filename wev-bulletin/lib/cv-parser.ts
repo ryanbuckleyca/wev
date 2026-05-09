@@ -1,11 +1,7 @@
 'use client';
 
-export type CvImportMetadata = {
-  filename: string;
-  imported_at: string;
-  source: 'cv_upload';
-  locale: 'en' | 'fr';
-};
+export type { CvImportMetadata } from '@/lib/types/cv';
+import type { CvImportMetadata } from '@/lib/types/cv';
 
 export type ParsedCvResult = {
   text: string;
@@ -234,23 +230,12 @@ export async function readCvFileBytes(file: File): Promise<ArrayBuffer> {
  * Accepts either a File (for tests / direct uses) or pre-read bytes.
  */
 export async function parseCvFile(
-  fileOrBytes: File | { bytes: ArrayBuffer; name: string; type: string },
+  fileBytes: { bytes: ArrayBuffer; name: string; type: string },
   locale: 'en' | 'fr',
 ): Promise<ParsedCvResult> {
-  let arrayBuffer: ArrayBuffer;
-  let name: string;
-  let type: string;
-
-  if (fileOrBytes instanceof File) {
-    validateCvFile(fileOrBytes);
-    arrayBuffer = await readFileAsArrayBuffer(fileOrBytes);
-    name = fileOrBytes.name;
-    type = fileOrBytes.type;
-  } else {
-    arrayBuffer = fileOrBytes.bytes;
-    name = fileOrBytes.name;
-    type = fileOrBytes.type;
-  }
+  const arrayBuffer = fileBytes.bytes;
+  const name = fileBytes.name;
+  const type = fileBytes.type;
 
   const extension = getLowercaseExtension(name);
 
