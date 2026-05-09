@@ -16,7 +16,9 @@ const MAX_VALUES = 5;
 const MAX_SKILLS = 10;
 /** Per-phrase RPC: fetch top 3 so dedup has fallback candidates. */
 const RPC_MATCHES_PER_PHRASE = 3;
-const SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '0.25');
+const rawScoreFloor = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '0.25');
+const SCORE_FLOOR = Number.isFinite(rawScoreFloor) ? rawScoreFloor : 0.25;
+const RELEVANCE_FLOOR = 0.4;
 
 const JINA_URL = 'https://api.jina.ai/v1/embeddings';
 const JINA_MODEL = 'jina-embeddings-v3';
@@ -195,6 +197,34 @@ function toEscoSkill(row: EscoMetaRow): EscoSkill {
 }
 
 type ScoredMatch = MatchRow & { score: number };
+export type BatchMatchRow = MatchRow & { query_index: number };
+
+export function scoreCandidates(
+  rows: BatchMatchRow[],
+  skillPhrases: SkillPhrase[],
+  cvWords: Set<string>,
+): ScoredMatch[] {
+  const bestByUri = new Map<string, ScoredMatch>();
+
+  for (const row of rows) {
+    if (row.similarity < SCORE_FLOOR) continue;
+    
+    const phraseIdx = row.query_index;
+    const prominence = skillPhrases[phraseIdx]?.prominence ?? 5;
+    const promWeight = prominence / 10;
+
+    const relevance = labelRelevance(row.preferred_label_en ?? '', cvWords);
+    if (relevance < RELEVANCE_FLOOR) continue;
+
+    const score = row.similarity * promWeight * relevance;
+    const existing = bestByUri.get(row.concept_uri);
+    if (!existing || score > existing.score) {
+      bestByUri.set(row.concept_uri, { ...row, score });
+    }
+  }
+
+  return [...bestByUri.values()].sort((a, b) => b.score - a.score);
+}
 
 async function linkPhrasesToEsco(
   skillPhrases: SkillPhrase[],
@@ -216,33 +246,14 @@ async function linkPhrasesToEsco(
     logger.warn({ err: error, userId }, 'match_skills_by_embedding failure');
   }
 
-  type BatchMatchRow = MatchRow & { query_index: number };
-  const bestByUri = new Map<string, ScoredMatch>();
-
-  for (const row of (data ?? []) as BatchMatchRow[]) {
-    if (row.similarity < SCORE_FLOOR) continue;
-    
-    const phraseIdx = row.query_index;
-    const prominence = skillPhrases[phraseIdx]?.prominence ?? 5;
-    const promWeight = prominence / 10;
-
-    const relevance = labelRelevance(row.preferred_label_en ?? '', cvWords);
-    if (relevance < 0.4) continue;
-
-    const score = row.similarity * promWeight * relevance;
-    const existing = bestByUri.get(row.concept_uri);
-    if (!existing || score > existing.score) {
-      bestByUri.set(row.concept_uri, { ...row, score });
-    }
-  }
-
-  const topMatches = [...bestByUri.values()].sort((a, b) => b.score - a.score).slice(0, MAX_SKILLS);
+  const scoredMatches = scoreCandidates((data ?? []) as BatchMatchRow[], skillPhrases, cvWords);
+  const topMatches = scoredMatches.slice(0, MAX_SKILLS);
 
   logger.info(
     {
       userId,
       phrasesSearched: embeddings.length,
-      uniqueCandidates: bestByUri.size,
+      uniqueCandidates: scoredMatches.length,
       kept: topMatches.length,
       topScore: topMatches[0]?.score ?? null,
       topSimilarity: topMatches[0]?.similarity ?? null,

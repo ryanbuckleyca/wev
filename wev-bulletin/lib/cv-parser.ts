@@ -225,6 +225,11 @@ export async function readCvFileBytes(file: File): Promise<ArrayBuffer> {
   return readFileAsArrayBuffer(file);
 }
 
+function selectParser(ext: string, mime: string) {
+  if (ext === '.pdf' || mime === 'application/pdf') return parsePdfText;
+  return parseDocxText;
+}
+
 /**
  * Browser-only CV parser. Never sends files off-device.
  * Accepts either a File (for tests / direct uses) or pre-read bytes.
@@ -238,15 +243,8 @@ export async function parseCvFile(
   const type = fileBytes.type;
 
   const extension = getLowercaseExtension(name);
-
-  const text =
-    extension === '.pdf'
-      ? await parsePdfText(arrayBuffer)
-      : extension === '.docx'
-        ? await parseDocxText(arrayBuffer)
-        : type === 'application/pdf'
-          ? await parsePdfText(arrayBuffer)
-          : await parseDocxText(arrayBuffer);
+  const parser = selectParser(extension, type);
+  const text = await parser(arrayBuffer);
 
   if (!text) {
     if (extension === '.pdf' || type === 'application/pdf') {
