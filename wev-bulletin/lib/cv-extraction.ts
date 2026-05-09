@@ -88,9 +88,8 @@ function parseLlmResponse(content: string): LlmResult {
     } else if (item && typeof item === 'object') {
       const entry = item as { phrase?: unknown; prominence?: unknown };
       const phrase = typeof entry.phrase === 'string' ? entry.phrase.trim() : '';
-      const prominence = typeof entry.prominence === 'number'
-        ? Math.max(1, Math.min(10, entry.prominence))
-        : 5;
+      const prominence =
+        typeof entry.prominence === 'number' ? Math.max(1, Math.min(10, entry.prominence)) : 5;
       if (phrase.length > 2) {
         skills.push({ phrase, prominence });
       }
@@ -118,10 +117,7 @@ function parseLlmResponse(content: string): LlmResult {
 // Stage 2: Jina embedding
 // ---------------------------------------------------------------------------
 
-async function embedPhrases(
-  phrases: string[],
-  apiKey: string,
-): Promise<number[][]> {
+async function embedPhrases(phrases: string[], apiKey: string): Promise<number[][]> {
   if (phrases.length === 0) return [];
 
   const resp = await fetch(JINA_URL, {
@@ -242,9 +238,7 @@ async function linkPhrasesToEsco(
     }
   }
 
-  const topMatches = [...bestByUri.values()]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_SKILLS);
+  const topMatches = [...bestByUri.values()].sort((a, b) => b.score - a.score).slice(0, MAX_SKILLS);
 
   logger.info(
     {

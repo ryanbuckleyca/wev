@@ -12,7 +12,7 @@ describe('nlp-utils', () => {
     });
 
     it('preserves French accents', () => {
-      const cvText = 'Développement d\'applications Web frontend.';
+      const cvText = "Développement d'applications Web frontend.";
       const set = buildCvWordSet(cvText);
       expect(set.has('développement')).toBe(true);
       expect(set.has('applications')).toBe(true);
@@ -56,12 +56,12 @@ describe('nlp-utils', () => {
     });
 
     it('works correctly with French labels and accents', () => {
-      const cvText = 'J\'ai fait beaucoup de développement logiciel.';
+      const cvText = "J'ai fait beaucoup de développement logiciel.";
       const cvSet = buildCvWordSet(cvText);
       // "développement" and "logiciel" are both in cvSet. "de" is a stop word/short word.
       const score = labelRelevance('développement de logiciel', cvSet);
       expect(score).toBe(1.0);
-      
+
       const score2 = labelRelevance('développement web', cvSet);
       // "développement" is present (1), "web" is missing (0)
       expect(score2).toBe(0.5);
