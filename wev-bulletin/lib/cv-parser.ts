@@ -90,6 +90,18 @@ function mapFileReadError(error: unknown): Error {
   return error instanceof Error ? error : new Error('cvImportFailed');
 }
 
+type PdfDocument = {
+  numPages: number;
+  getPage: (pageNumber: number) => Promise<{
+    getViewport: (params: { scale: number }) => { width: number; height: number };
+    getTextContent: () => Promise<{ items: Array<{ str?: string }> }>;
+    render: (params: {
+      canvasContext: CanvasRenderingContext2D;
+      viewport: { width: number; height: number };
+    }) => { promise: Promise<void> };
+  }>;
+};
+
 type PdfJsModule = {
   version?: string;
   GlobalWorkerOptions: { workerSrc: string };
@@ -98,17 +110,7 @@ type PdfJsModule = {
     disableWorker?: boolean;
     isEvalSupported?: boolean;
   }) => {
-    promise: Promise<{
-      numPages: number;
-      getPage: (pageNumber: number) => Promise<{
-        getViewport: (params: { scale: number }) => { width: number; height: number };
-        getTextContent: () => Promise<{ items: Array<{ str?: string }> }>;
-        render: (params: {
-          canvasContext: CanvasRenderingContext2D;
-          viewport: { width: number; height: number };
-        }) => { promise: Promise<void> };
-      }>;
-    }>;
+    promise: Promise<PdfDocument>;
   };
 };
 
@@ -130,7 +132,7 @@ async function loadPdfJs(): Promise<PdfJsModule> {
   return pdfjs;
 }
 
-async function extractPdfTextLayer(pdf: any): Promise<string> {
+async function extractPdfTextLayer(pdf: PdfDocument): Promise<string> {
   const pages: string[] = [];
   let totalChars = 0;
 
@@ -150,7 +152,7 @@ async function extractPdfTextLayer(pdf: any): Promise<string> {
   return normalizeText(pages.join('\n'));
 }
 
-async function extractPdfOcr(pdf: any): Promise<string> {
+async function extractPdfOcr(pdf: PdfDocument): Promise<string> {
   const tesseract = (await import('tesseract.js')) as unknown as {
     createWorker: (languages?: string) => Promise<{
       recognize: (

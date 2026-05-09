@@ -96,7 +96,6 @@ export default function CVImportButton({
           </p>
         )}
       </div>
-      <br />
     </div>
   );
 }
