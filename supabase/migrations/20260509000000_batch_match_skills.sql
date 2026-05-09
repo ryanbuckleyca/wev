@@ -2,7 +2,7 @@ DROP FUNCTION IF EXISTS match_skills_by_embedding(vector, int);
 
 CREATE OR REPLACE FUNCTION match_skills_by_embedding(
     query_embeddings vector(1024)[],
-    match_count     int DEFAULT 80
+    match_count     int DEFAULT 5
 )
 RETURNS TABLE (
     query_index        int,

@@ -53,7 +53,7 @@ describe('CV import integration — PDF/OCR Parsing', () => {
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfWithTextLayer) });
 
     const file = new File(['fake'], 'cv-with-text.pdf', { type: 'application/pdf' });
-    const parsed = await parseCvFile(file, 'en');
+    const parsed = await parseCvFile({ bytes: await file.arrayBuffer(), name: file.name, type: file.type }, 'en');
 
     expect(mockCreateWorker).not.toHaveBeenCalled();
     expect(parsed.text).toContain('project management');
@@ -79,7 +79,7 @@ describe('CV import integration — PDF/OCR Parsing', () => {
     });
 
     const file = new File(['fake'], 'scanned-cv.pdf', { type: 'application/pdf' });
-    const parsed = await parseCvFile(file, 'en');
+    const parsed = await parseCvFile({ bytes: await file.arrayBuffer(), name: file.name, type: file.type }, 'en');
 
     expect(mockCreateWorker).toHaveBeenCalledOnce();
     expect(recognizeMock).toHaveBeenCalledOnce();
@@ -101,6 +101,6 @@ describe('CV import integration — PDF/OCR Parsing', () => {
 
     const file = new File(['fake'], 'empty.pdf', { type: 'application/pdf' });
 
-    await expect(parseCvFile(file, 'en')).rejects.toThrowError('pdf_no_text_layer');
+    await expect(parseCvFile({ bytes: await file.arrayBuffer(), name: file.name, type: file.type }, 'en')).rejects.toThrowError('pdf_no_text_layer');
   });
 });

@@ -73,9 +73,11 @@ export async function executeCvImportPipeline(
     body: JSON.stringify({ text: parsed.text }),
   });
 
-  const extracted = extractRes.ok
-    ? ((await extractRes.json()) as { skills?: EscoSkill[]; values?: string[] })
-    : { skills: [], values: [] };
+  if (!extractRes.ok) {
+    const body = await extractRes.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? 'extraction_failed');
+  }
+  const extracted = (await extractRes.json()) as { skills?: EscoSkill[]; values?: string[] };
 
   return {
     skills: extracted.skills ?? [],
