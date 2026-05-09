@@ -40,6 +40,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     bio: '',
     work_types: [] as WorkType[],
     location: null as LocationState | null,
+    cv_import: null as CvImportMetadata | null,
   });
 
   const { allSkills, isLoading: isLibraryLoading } = useSkillsLibrary(locale);
@@ -86,6 +87,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
               province: profile.province ?? '',
             }
           : null,
+      cv_import: profile.cv_import ?? null,
     });
 
     // Hydrate Values
@@ -166,6 +168,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
         municipality: formData.location?.name ?? null,
         province: formData.location?.province ?? null,
         location_display_name: formData.location?.display_name ?? null,
+        cv_import: formData.cv_import,
       });
       notify.success(t('updateSuccess'));
       void fetch('/api/matches/recalculate-mine', { method: 'POST' });
@@ -176,65 +179,26 @@ export function useProfileForm(locale: 'en' | 'fr') {
     }
   }, [formData, values, skills, updateProfile, t]);
 
-  const handleSaveCvImport = useCallback(
-    async ({
+  const handleApplyCvImport = useCallback(
+    ({
       nextSkills,
       nextValues,
-      skillCutoff,
-      valueCutoff,
       cvImport,
     }: {
       nextSkills: EscoSkill[];
       nextValues: string[];
-      skillCutoff: number;
-      valueCutoff: number;
       cvImport: CvImportMetadata;
     }) => {
-      const error = validateProfileLimits(nextValues.length, nextSkills.length);
-      if (error) {
-        notify.error(t(error.key, error.params ?? {}));
-        return;
-      }
+      // Just apply to local state so the user can review them on the page.
+      skills.setItems(nextSkills);
+      skills.setCutoff(nextSkills.length);
+      values.setItems(nextValues);
+      values.setCutoff(nextValues.length);
+      setFormData((prev) => ({ ...prev, cv_import: cvImport }));
 
-      setIsSaving(true);
-      try {
-        const valuesRated: RatedValue[] = nextValues.map((v, i) =>
-          i < valueCutoff ? { value: v, rank: i + 1 } : { value: v },
-        );
-        const skillsRated: RatedSkill[] = nextSkills.map((s, i) =>
-          i < skillCutoff ? { skill: s.uri, rank: i + 1 } : { skill: s.uri },
-        );
-
-        await updateProfile({
-          full_name: formData.full_name || null,
-          bio: formData.bio || null,
-          values: nextValues.slice(0, MAX_PROFILE_VALUES),
-          values_rated: valuesRated,
-          skills: nextSkills.map((s) => s.uri).slice(0, MAX_PROFILE_SKILLS),
-          skills_rated: skillsRated,
-          work_types: normalizeWorkTypes(formData.work_types),
-          lat: formData.location?.lat ?? null,
-          lng: formData.location?.lng ?? null,
-          municipality: formData.location?.name ?? null,
-          province: formData.location?.province ?? null,
-          location_display_name: formData.location?.display_name ?? null,
-          cv_import: cvImport,
-        });
-
-        skills.setItems(nextSkills);
-        skills.setCutoff(skillCutoff);
-        values.setItems(nextValues);
-        values.setCutoff(valueCutoff);
-
-        notify.success(t('cvImportSuccess'));
-        void fetch('/api/matches/recalculate-mine', { method: 'POST' });
-      } catch (err) {
-        notify.error(err instanceof Error ? err.message : t('updateFailed'));
-      } finally {
-        setIsSaving(false);
-      }
+      notify.success(t('cvImportSuccess'));
     },
-    [formData, skills, t, updateProfile, values],
+    [skills, values, t],
   );
 
   return {
@@ -258,7 +222,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     handleValueRemove: values.remove,
     isSaving,
     handleSaveProfile,
-    handleSaveCvImport,
+    handleApplyCvImport,
     handleWorkTypeToggle,
   };
 }
