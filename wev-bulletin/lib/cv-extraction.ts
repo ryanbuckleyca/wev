@@ -88,9 +88,7 @@ const SkillPhraseSchema = z.union([
 const LlmResponseSchema = z.object({
   skills: z.array(SkillPhraseSchema.catch({ phrase: '', prominence: 0 }))
     .transform((arr) => arr.filter((s) => s.phrase.length >= 3))
-    .catch([])
-    .optional()
-    .default([]),
+    .catch([]),
   values: z.array(z.string())
     .transform((arr) => {
       const allowed = new Set<string>(VALUES_LIST);
@@ -106,9 +104,7 @@ const LlmResponseSchema = z.object({
       }
       return valid;
     })
-    .catch([])
-    .optional()
-    .default([]),
+    .catch([]),
 });
 
 function parseLlmResponse(content: string): LlmResult {
