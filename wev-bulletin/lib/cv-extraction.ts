@@ -93,8 +93,7 @@ const SkillPhraseSchema = z.union([
 const LlmResponseSchema = z.object({
   skills: z
     .array(SkillPhraseSchema.catch({ phrase: '', prominence: 0 }))
-    .transform((arr) => arr.filter((s) => s.phrase.length >= 3))
-    .catch([]),
+    .transform((arr) => arr.filter((s) => s.phrase.length >= 3)),
   values: z
     .array(z.string())
     .transform((arr) => {
@@ -110,8 +109,7 @@ const LlmResponseSchema = z.object({
         }
       }
       return valid;
-    })
-    .catch([]),
+    }),
 });
 
 function parseLlmResponse(content: string): LlmResult {
@@ -202,7 +200,7 @@ function toEscoSkill(row: EscoMetaRow): EscoSkill {
 type ScoredMatch = MatchRow & { score: number };
 export type BatchMatchRow = MatchRow & { query_index: number };
 
-export function scoreCandidates(
+export function rankAndFilterCandidates(
   rows: BatchMatchRow[],
   skillPhrases: SkillPhrase[],
   cvWords: Set<string>,
@@ -249,7 +247,7 @@ async function linkPhrasesToEsco(
     logger.warn({ err: error, userId }, 'match_skills_by_embedding failure');
   }
 
-  const scoredMatches = scoreCandidates((data ?? []) as BatchMatchRow[], skillPhrases, cvWords);
+  const scoredMatches = rankAndFilterCandidates((data ?? []) as BatchMatchRow[], skillPhrases, cvWords);
   const topMatches = scoredMatches.slice(0, MAX_SKILLS);
 
   logger.info(
@@ -296,19 +294,7 @@ async function linkPhrasesToEsco(
 // Main Extractor Function
 // ---------------------------------------------------------------------------
 
-export async function extractSkillsAndValuesFromCv({
-  cvText,
-  userId,
-  groqKey,
-  jinaKey,
-}: {
-  cvText: string;
-  userId: string;
-  groqKey: string;
-  jinaKey: string;
-}): Promise<{ skills: EscoSkill[]; values: string[] }> {
-  // Stage 1: LLM extraction
-  let llmResult: LlmResult;
+async function extractWithLlm(cvText: string, groqKey: string, userId: string): Promise<LlmResult> {
   try {
     const completion = await new Groq({ apiKey: groqKey }).chat.completions.create({
       model: GROQ_MODEL,
@@ -321,7 +307,7 @@ export async function extractSkillsAndValuesFromCv({
       ],
     });
     const content = completion.choices?.[0]?.message?.content ?? '';
-    llmResult = parseLlmResponse(content);
+    const llmResult = parseLlmResponse(content);
     logger.info(
       {
         userId,
@@ -331,12 +317,26 @@ export async function extractSkillsAndValuesFromCv({
       },
       'CV LLM extraction result',
     );
+    return llmResult;
   } catch (error) {
     logger.error({ err: error, userId }, 'CV LLM extraction failed');
     throw new Error('extraction_failed');
   }
+}
 
-  // Stage 2 + 3: Embed phrases → link to ESCO
+export async function extractSkillsAndValuesFromCv({
+  cvText,
+  userId,
+  groqKey,
+  jinaKey,
+}: {
+  cvText: string;
+  userId: string;
+  groqKey: string;
+  jinaKey: string;
+}): Promise<{ skills: EscoSkill[]; values: string[] }> {
+  const llmResult = await extractWithLlm(cvText, groqKey, userId);
+
   let skills: EscoSkill[] = [];
   if (llmResult.skills.length > 0) {
     try {
