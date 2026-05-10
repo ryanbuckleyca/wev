@@ -25,12 +25,14 @@ import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';
 import { logger } from '@/lib/logger';
 import { extractSkillsAndValuesFromCv } from '@/lib/cv-extraction';
+import { CvImportError } from '@/lib/types/cv-errors';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const RequestSchema = z.object({
   text: z.string().trim().min(10).max(15000, 'CV text is too long (max 15000 characters)'),
+  locale: z.enum(['en', 'fr']).default('en'),
 });
 
 export async function POST(request: Request) {
@@ -66,13 +68,13 @@ export async function POST(request: Request) {
       userId: auth.user.id,
       groqKey,
       jinaKey,
+      locale: body.locale,
     });
 
     return NextResponse.json(result);
   } catch (error) {
-    // If the error message is "extraction_failed", it was already logged
-    if (error instanceof Error && error.message === 'extraction_failed') {
-      return NextResponse.json({ error: 'extraction_failed' }, { status: 502 });
+    if (error instanceof CvImportError) {
+      return NextResponse.json({ error: error.code }, { status: 502 });
     }
 
     logger.error({ err: error, userId: auth.user.id }, 'Unexpected CV extraction error');
