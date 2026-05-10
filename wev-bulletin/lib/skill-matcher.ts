@@ -84,9 +84,9 @@ export async function linkPhrasesToEsco(
   cvText: string,
   userId: string,
   locale: 'en' | 'fr',
+  supabase = supabaseServer,
 ): Promise<EscoSkill[]> {
   const cvWords = buildCvWordSet(cvText, locale);
-  const supabase = supabaseServer;
   const scoreFloor = getScoreFloor();
 
   // Run a single batched RPC to avoid exhausting the Supabase connection pool
