@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from '@/i18n/navigation';
 import { type JobPosting } from '@/lib/supabase';
@@ -17,6 +17,11 @@ export function useBookmarkAction(
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Sync internal state with external prop changes (e.g. after a re-fetch)
+  useEffect(() => {
+    setBookmarked(initialBookmarked);
+  }, [initialBookmarked]);
 
   const toggleBookmark = async () => {
     if (!userId) {
