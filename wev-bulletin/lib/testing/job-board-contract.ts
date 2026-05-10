@@ -13,4 +13,5 @@ export const JOB_BOARD_TEST_IDS = {
   jobCard: 'job-card',
   paginationSummary: 'job-board-pagination-summary',
   emptyState: 'job-board-empty-state',
+  bookmarkButton: 'job-card-bookmark-button',
 } as const;
