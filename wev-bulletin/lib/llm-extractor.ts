@@ -74,35 +74,43 @@ const LlmResponseSchema = z.object({
   skills: z
     .array(SkillPhraseSchema.catch({ phrase: '', prominence: 0 }))
     .transform((arr) => arr.filter((s) => s.phrase.length >= 3)),
-  values: z
-    .array(z.string())
-    .transform((arr) => {
-      const allowed = new Set<string>(VALUES_LIST);
-      const seen = new Set<string>();
-      const valid: string[] = [];
-      for (const v of arr) {
-        const trimmed = v.trim();
-        if (allowed.has(trimmed) && !seen.has(trimmed)) {
-          seen.add(trimmed);
-          valid.push(trimmed);
-          if (valid.length >= MAX_VALUES) break;
-        }
+  values: z.array(z.string()).transform((arr) => {
+    const allowed = new Set<string>(VALUES_LIST);
+    const seen = new Set<string>();
+    const valid: string[] = [];
+    for (const v of arr) {
+      const trimmed = v.trim();
+      if (allowed.has(trimmed) && !seen.has(trimmed)) {
+        seen.add(trimmed);
+        valid.push(trimmed);
+        if (valid.length >= MAX_VALUES) break;
       }
-      return valid;
-    }),
+    }
+    return valid;
+  }),
 });
 
 function parseLlmResponse(content: string): LlmResult {
   try {
-    const cleanContent = content.replace(/^```(?:json)?/im, '').replace(/```$/m, '').trim();
+    const cleanContent = content
+      .replace(/^```(?:json)?/im, '')
+      .replace(/```$/m, '')
+      .trim();
     const parsed = JSON.parse(cleanContent);
     return LlmResponseSchema.parse(parsed) as LlmResult;
   } catch (error) {
-    throw new CvImportError('llm_parsing_failed', error instanceof Error ? error.message : String(error));
+    throw new CvImportError(
+      'llm_parsing_failed',
+      error instanceof Error ? error.message : String(error),
+    );
   }
 }
 
-export async function extractWithLlm(cvText: string, groqKey: string, userId: string): Promise<LlmResult> {
+export async function extractWithLlm(
+  cvText: string,
+  groqKey: string,
+  userId: string,
+): Promise<LlmResult> {
   try {
     const completion = await new Groq({ apiKey: groqKey }).chat.completions.create({
       model: GROQ_MODEL,

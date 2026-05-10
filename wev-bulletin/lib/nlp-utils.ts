@@ -11,7 +11,11 @@ function getStopWords(locale: 'en' | 'fr' = 'en'): Set<string> {
  * Lowercase, remove punctuation (keeping Unicode letters), split into words,
  * and filter by length (>= 3). Optionally removes stop words.
  */
-export function tokenize(text: string, removeStopWords: boolean = false, locale: 'en' | 'fr' = 'en'): string[] {
+export function tokenize(
+  text: string,
+  removeStopWords: boolean = false,
+  locale: 'en' | 'fr' = 'en',
+): string[] {
   const stopWords = getStopWords(locale);
   return text
     .toLowerCase()
@@ -34,7 +38,11 @@ export function buildCvWordSet(text: string, locale: 'en' | 'fr' = 'en'): Set<st
  * Returns 0.0–1.0. A label like "lead a team in water management" gets
  * penalized when "water" never appears in the CV.
  */
-export function labelRelevance(escoLabel: string, cvWordsSet: Set<string>, locale: 'en' | 'fr' = 'en'): number {
+export function labelRelevance(
+  escoLabel: string,
+  cvWordsSet: Set<string>,
+  locale: 'en' | 'fr' = 'en',
+): number {
   const labelWords = tokenize(escoLabel, true, locale);
 
   if (labelWords.length === 0) return 1; // If only stop words, don't penalize

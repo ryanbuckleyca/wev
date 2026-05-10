@@ -51,7 +51,7 @@ export function rankAndFilterCandidates(
   rows: BatchMatchRow[],
   skillPhrases: SkillPhrase[],
   cvWords: Set<string>,
-  locale: 'en' | 'fr'
+  locale: 'en' | 'fr',
 ): ScoredMatch[] {
   const bestByUri = new Map<string, ScoredMatch>();
 
@@ -80,7 +80,7 @@ export async function linkPhrasesToEsco(
   embeddings: number[][],
   cvText: string,
   userId: string,
-  locale: 'en' | 'fr'
+  locale: 'en' | 'fr',
 ): Promise<EscoSkill[]> {
   const cvWords = buildCvWordSet(cvText, locale);
   const supabase = supabaseServer;
@@ -96,7 +96,12 @@ export async function linkPhrasesToEsco(
     logger.warn({ err: error, userId }, 'match_skills_by_embedding failure');
   }
 
-  const scoredMatches = rankAndFilterCandidates((data ?? []) as BatchMatchRow[], skillPhrases, cvWords, locale);
+  const scoredMatches = rankAndFilterCandidates(
+    (data ?? []) as BatchMatchRow[],
+    skillPhrases,
+    cvWords,
+    locale,
+  );
   const topMatches = scoredMatches.slice(0, MAX_SKILLS);
 
   logger.info(

@@ -85,21 +85,26 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
 
   const processFile = async (file: File) => {
     if (isParsing) return;
-    
+
     abortControllerRef.current?.abort();
     abortControllerRef.current = new AbortController();
-    
+
     setIsParsing(true);
     notify.info(t('cvParsingWaitWarning'), { duration: 8000 });
 
     try {
       // Start reading bytes immediately
       const bytesPromise = readCvFileBytes(file);
-      const result = await executeCvImportPipeline(file, bytesPromise, locale, abortControllerRef.current.signal);
+      const result = await executeCvImportPipeline(
+        file,
+        bytesPromise,
+        locale,
+        abortControllerRef.current.signal,
+      );
       await onConfirmImport(result);
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return;
-      
+
       if (typeof console !== 'undefined') {
         console.error('[cv-import] processing failed', {
           name: error instanceof Error ? error.name : typeof error,
