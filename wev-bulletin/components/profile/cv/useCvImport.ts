@@ -28,7 +28,7 @@ function getCvImportErrorMessage(
     case 'no_extractable_text':
       return t('no_extractable_text');
     default:
-      return t('cvImportFailed');
+      return t('cv_import_failed');
   }
 }
 
@@ -107,12 +107,7 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
       if (error instanceof Error && error.name === 'AbortError') return;
 
       if (typeof console !== 'undefined') {
-        console.error('[cv-import] processing failed', {
-          name: error instanceof Error ? error.name : typeof error,
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-          error,
-        });
+        console.error('[cv-import]', error);
       }
       notify.error(getCvImportErrorMessage(t, error));
     } finally {

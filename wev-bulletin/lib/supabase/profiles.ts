@@ -111,6 +111,24 @@ export async function updateProfile(userId: string, updates: ProfileUpdateData):
     .single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // Row didn't exist, create it with the updates
+      const { data: newData, error: newError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .select(PROFILE_COLUMNS)
+        .single();
+      
+      if (!newError) return newData as Profile;
+      
+      console.error('Error creating profile on update:', newError);
+      throw new Error(newError.message || 'Failed to update profile');
+    }
+
     console.error('Error updating profile:', error);
     const msg = [error.message, (error as { details?: string }).details]
       .filter(Boolean)
