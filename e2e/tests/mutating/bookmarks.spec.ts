@@ -20,16 +20,15 @@ test.describe("Bookmarks flow", () => {
     const jobTitle = cardLabel.split(" at ")[0]?.trim() ?? "";
     expect(jobTitle.length).toBeGreaterThan(0);
 
-    const bookmarkButton = firstCard.getByRole("button", {
-      name: /bookmark job|bookmarked|remove bookmark/i,
-    });
+    const bookmarkButton = firstCard.getByTestId("job-card-bookmark-button");
     await bookmarkButton.click();
 
-    await expect(
-      firstCard.getByRole("button", {
-        name: /bookmarked|remove bookmark/i,
-      }),
-    ).toBeVisible({ timeout: 10_000 });
+    // Expect the button state to change to bookmarked
+    await expect(bookmarkButton).toHaveAttribute(
+      "aria-label",
+      /bookmarked|remove bookmark/i,
+      { timeout: 10_000 },
+    );
 
     await page.goto("/en/bookmarks");
     await expect(
