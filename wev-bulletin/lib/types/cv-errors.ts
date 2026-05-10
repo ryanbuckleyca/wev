@@ -1,4 +1,4 @@
-export type CvImportErrorCode = 
+export type CvImportErrorCode =
   | 'unsupported_file_type'
   | 'empty_file'
   | 'file_too_large'
@@ -12,7 +12,10 @@ export type CvImportErrorCode =
   | 'cvImportFailed';
 
 export class CvImportError extends Error {
-  constructor(public code: CvImportErrorCode, message?: string) {
+  constructor(
+    public code: CvImportErrorCode,
+    message?: string,
+  ) {
     super(message || code);
     this.name = 'CvImportError';
   }
