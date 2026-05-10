@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import notify from '@/lib/toast';
-import { parseCvFile, readCvFileBytes, type CvImportMetadata } from '@/lib/cv-parser';
+import type { CvImportMetadata } from '@/lib/types/cv';
 import type { EscoSkill } from '@/lib/types/skills';
 import { useFilePicker } from './useFilePicker';
 
@@ -38,30 +38,34 @@ function getCvImportErrorMessage(
 
 async function executeCvImportPipeline(
   file: File,
-  bytesPromise: Promise<ArrayBuffer>,
   locale: 'en' | 'fr',
   signal?: AbortSignal,
 ): Promise<{ skills: EscoSkill[]; values: string[]; cvImport: CvImportMetadata }> {
-  const bytes = await bytesPromise;
-  const parsed = await parseCvFile({ bytes, name: file.name, type: file.type }, locale);
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('locale', locale);
 
   const extractRes = await fetch('/api/cv/extract', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: parsed.text, locale }),
+    body: formData,
     signal,
   });
 
   if (!extractRes.ok) {
-    const body = await extractRes.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? 'extraction_failed');
+    const body = await extractRes.json().catch(() => ({})) as { error?: string; detail?: string };
+    console.error('[cv-import] API error:', extractRes.status, body);
+    throw new Error(body.error ?? 'extraction_failed');
   }
-  const extracted = (await extractRes.json()) as { skills?: EscoSkill[]; values?: string[] };
+  const result = (await extractRes.json()) as {
+    skills: EscoSkill[];
+    values: string[];
+    metadata: CvImportMetadata;
+  };
 
   return {
-    skills: extracted.skills ?? [],
-    values: extracted.values ?? [],
-    cvImport: parsed.metadata,
+    skills: result.skills ?? [],
+    values: result.values ?? [],
+    cvImport: result.metadata,
   };
 }
 
@@ -93,11 +97,8 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
     notify.info(t('cvParsingWaitWarning'), { duration: 8000 });
 
     try {
-      // Start reading bytes immediately
-      const bytesPromise = readCvFileBytes(file);
       const result = await executeCvImportPipeline(
         file,
-        bytesPromise,
         locale,
         abortControllerRef.current.signal,
       );

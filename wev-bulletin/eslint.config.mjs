@@ -31,7 +31,6 @@ export default defineConfig([
     'scripts/**/*.js',
     'supabase/**/*.js',
     'tailwind.config.js',
-    'public/**/*.min.mjs',
     'public/**/*.mjs',
     'public/**/*.js',
   ]),
