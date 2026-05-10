@@ -102,7 +102,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Skills */}
-            <div>
+            <div className="space-y-6">
               <CVImportButton
                 locale={locale}
                 cvImport={profile?.cv_import ?? null}
