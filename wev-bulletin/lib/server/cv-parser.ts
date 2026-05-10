@@ -61,7 +61,7 @@ async function parsePdfText(buffer: Buffer): Promise<string> {
     return text;
   } catch (error) {
     if (error instanceof CvImportError) throw error;
-    throw new CvImportError('cvImportFailed', error instanceof Error ? error.message : undefined);
+    throw new CvImportError('cv_import_failed', error instanceof Error ? error.message : undefined);
   }
 }
 
@@ -71,23 +71,52 @@ async function parseDocxText(buffer: Buffer): Promise<string> {
     const result = await mammoth.default.extractRawText({ buffer });
     return normalizeText(result.value || '');
   } catch (error) {
-    throw new CvImportError('cvImportFailed', error instanceof Error ? error.message : undefined);
+    throw new CvImportError('cv_import_failed', error instanceof Error ? error.message : undefined);
   }
+}
+
+const MAX_FILE_SIZE = 6 * 1024 * 1024;
+
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+
+function getExtension(name: string): string {
+  const dotIdx = name.lastIndexOf('.');
+  return dotIdx >= 0 ? name.slice(dotIdx + 1).toLowerCase() : '';
+}
+
+function isPdf(ext: string, mime: string): boolean {
+  return ext === 'pdf' || mime === 'application/pdf';
+}
+
+function isDocx(ext: string, mime: string): boolean {
+  return ext === 'docx' || mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 }
 
 export async function parseCvOnServer(
   file: File,
   locale: 'en' | 'fr'
 ): Promise<ParsedCvResult> {
-  const buffer = Buffer.from(await file.arrayBuffer());
+  // Validate before reading into memory
+  if (file.size <= 0) throw new CvImportError('empty_file');
+  if (file.size > MAX_FILE_SIZE) throw new CvImportError('file_too_large');
+
   const name = file.name;
   const type = file.type;
-  const extension = name.toLowerCase().split('.').pop();
+  const ext = getExtension(name);
+
+  if (!isPdf(ext, type) && !isDocx(ext, type) && !ALLOWED_MIME_TYPES.has(type)) {
+    throw new CvImportError('unsupported_file_type');
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
 
   let text = '';
-  if (extension === 'pdf' || type === 'application/pdf') {
+  if (isPdf(ext, type)) {
     text = await parsePdfText(buffer);
-  } else if (extension === 'docx' || type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+  } else if (isDocx(ext, type)) {
     text = await parseDocxText(buffer);
   } else {
     throw new CvImportError('unsupported_file_type');

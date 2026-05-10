@@ -4,14 +4,13 @@ import { logger } from '@/lib/logger';
 import { VALUES_DICTIONARY, VALUES_LIST } from '@/lib/values';
 import { CvImportError } from '@/lib/types/cv-errors';
 
-const GROQ_MODEL = process.env.GROQ_MODEL_CV ?? 'llama-3.3-70b-versatile';
 const MAX_TEXT_CHARS = 12_000;
 const MAX_VALUES = 5;
 
 export type SkillPhrase = { phrase: string; prominence: number };
 export type LlmResult = { skills: SkillPhrase[]; values: string[] };
 
-function buildPrompt(cvText: string): string {
+export function buildPrompt(cvText: string): string {
   const valuesTaxonomy = VALUES_LIST.map(
     (label) => `- ${label}: ${VALUES_DICTIONARY[label].description}`,
   ).join('\n');
@@ -90,7 +89,7 @@ const LlmResponseSchema = z.object({
   }),
 });
 
-function parseLlmResponse(content: string): LlmResult {
+export function parseLlmResponse(content: string): LlmResult {
   try {
     const cleanContent = content
       .replace(/^```(?:json)?/im, '')
@@ -110,10 +109,11 @@ export async function extractWithLlm(
   cvText: string,
   groqKey: string,
   userId: string,
+  groqModel: string,
 ): Promise<LlmResult> {
   try {
     const completion = await new Groq({ apiKey: groqKey }).chat.completions.create({
-      model: GROQ_MODEL,
+      model: groqModel,
       temperature: 0.1,
       max_tokens: 1200,
       response_format: { type: 'json_object' },

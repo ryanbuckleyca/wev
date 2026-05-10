@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import Button from '@/components/Button';
 import Alert from '@/components/ui/Alert';
-import type { CvImportMetadata } from '@/lib/cv-parser';
+import type { CvImportMetadata } from '@/lib/types/cv';
 import type { EscoSkill } from '@/lib/types/skills';
 import { useCvImport } from './useCvImport';
 
