@@ -126,8 +126,7 @@ async function loadPdfJs(): Promise<PdfJsModule> {
   )) as unknown as PdfJsModule;
 
   if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-    const version = pdfjs.version ?? '5.4.296';
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/legacy/build/pdf.worker.min.mjs`;
+    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
   }
 
   cachedPdfJs = pdfjs;

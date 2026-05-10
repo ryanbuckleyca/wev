@@ -19,6 +19,7 @@
  * career) are correctly represented.
  */
 
+import { z } from 'zod';
 import { NextResponse } from 'next/server';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';
@@ -28,19 +29,22 @@ import { extractSkillsAndValuesFromCv } from '@/lib/cv-extraction';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+const RequestSchema = z.object({
+  text: z.string().trim().min(10).max(15000, 'CV text is too long (max 15000 characters)'),
+});
+
 export async function POST(request: Request) {
   const auth = await getRequestUser();
   if (!auth.ok) return unauthorizedResponse('Not authenticated');
 
-  let body: { text?: unknown };
+  let body: z.infer<typeof RequestSchema>;
   try {
-    body = (await request.json()) as { text?: unknown };
-  } catch {
+    body = RequestSchema.parse(await request.json());
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'invalid_request', issues: error.issues }, { status: 400 });
+    }
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
-  }
-
-  if (typeof body.text !== 'string' || body.text.trim().length < 10) {
-    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
 
   const groqKey = process.env.GROQ_API_KEY;
@@ -58,7 +62,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await extractSkillsAndValuesFromCv({
-      cvText: body.text.trim(),
+      cvText: body.text,
       userId: auth.user.id,
       groqKey,
       jinaKey,

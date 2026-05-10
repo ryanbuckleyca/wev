@@ -325,6 +325,7 @@
     "cvReimportWarning": "⚠️ Remarque : La réimportation d'un CV remplacera les compétences et les valeurs actuellement sélectionnées dans le formulaire. Vous pourrez les revoir avant de sauvegarder.",
     "cvImportInputLabel": "Téléverser un fichier CV",
     "cvImportDropHint": "Ou glissez un PDF/DOCX ici (Note : écrase les compétences actuelles)",
+    "cvParsingWaitWarning": "Analyse de votre CV... Cela peut prendre un moment, surtout pour les PDF numérisés.",
     "cvImportedIndicator": "CV importé : {fileName} — {importedAt}",
     "cvImportSuccess": "CV traité avec succès. Examinez vos nouvelles compétences ci-dessous.",
     "unsupported_file_type": "Seuls les fichiers PDF et DOCX sont pris en charge.",
