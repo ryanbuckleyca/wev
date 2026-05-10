@@ -19,7 +19,6 @@
  * career) are correctly represented.
  */
 
-import { z } from 'zod';
 import { NextResponse } from 'next/server';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';
@@ -30,54 +29,54 @@ import { CvImportError } from '@/lib/types/cv-errors';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const RequestSchema = z.object({
-  text: z.string().trim().min(10).max(15000, 'CV text is too long (max 15000 characters)'),
-  locale: z.enum(['en', 'fr']).default('en'),
-});
-
 export async function POST(request: Request) {
   const auth = await getRequestUser();
   if (!auth.ok) return unauthorizedResponse('Not authenticated');
 
-  let body: z.infer<typeof RequestSchema>;
-  try {
-    body = RequestSchema.parse(await request.json());
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'invalid_request', issues: error.issues }, { status: 400 });
-    }
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
-  }
-
   const groqKey = process.env.GROQ_API_KEY;
   const jinaKey = process.env.JINA_API_KEY;
 
-  if (!groqKey) {
-    logger.error('GROQ_API_KEY missing — cannot extract CV skills/values');
-    return NextResponse.json({ error: 'provider_unavailable' }, { status: 503 });
-  }
-
-  if (!jinaKey) {
-    logger.error('JINA_API_KEY missing — cannot embed CV skill phrases');
+  if (!groqKey || !jinaKey) {
+    logger.error('Missing API keys for CV extraction');
     return NextResponse.json({ error: 'provider_unavailable' }, { status: 503 });
   }
 
   try {
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    const locale = (formData.get('locale') as 'en' | 'fr') || 'en';
+
+    if (!file) {
+      return NextResponse.json({ error: 'no_file_provided' }, { status: 400 });
+    }
+
+    // 1. Parse CV (PDF/DOCX) on the server
+    const { parseCvOnServer } = await import('@/lib/server/cv-parser');
+    const { text, metadata } = await parseCvOnServer(file, locale);
+
+    // 2. Extract Skills and Values from text
     const result = await extractSkillsAndValuesFromCv({
-      cvText: body.text,
+      cvText: text,
       userId: auth.user.id,
       groqKey,
       jinaKey,
-      locale: body.locale,
+      locale,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      metadata,
+    });
   } catch (error) {
     if (error instanceof CvImportError) {
-      return NextResponse.json({ error: error.code }, { status: 502 });
+      return NextResponse.json({ error: error.code }, { status: 400 });
     }
-
-    logger.error({ err: error, userId: auth.user.id }, 'Unexpected CV extraction error');
-    return NextResponse.json({ error: 'extraction_failed' }, { status: 502 });
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    logger.error({ err: error, message, stack, userId: auth.user.id }, 'CV Extraction Error');
+    return NextResponse.json(
+      { error: 'extraction_failed', detail: message },
+      { status: 500 },
+    );
   }
 }
