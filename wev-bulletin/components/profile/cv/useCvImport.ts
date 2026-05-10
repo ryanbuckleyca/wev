@@ -63,6 +63,7 @@ async function executeCvImportPipeline(
   file: File,
   bytesPromise: Promise<ArrayBuffer>,
   locale: 'en' | 'fr',
+  signal?: AbortSignal,
 ): Promise<{ skills: EscoSkill[]; values: string[]; cvImport: CvImportMetadata }> {
   const bytes = await bytesPromise;
   const parsed = await parseCvFile({ bytes, name: file.name, type: file.type }, locale);
@@ -71,6 +72,7 @@ async function executeCvImportPipeline(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text: parsed.text }),
+    signal,
   });
 
   if (!extractRes.ok) {
@@ -103,16 +105,25 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
   const t = useTranslations('profile');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const processFile = async (file: File, bytesPromise: Promise<ArrayBuffer>) => {
+    if (isParsing) return;
+    
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = new AbortController();
+    
     setIsParsing(true);
+    notify.info(t('cvParsingWaitWarning'), { duration: 8000 });
 
     try {
-      const result = await executeCvImportPipeline(file, bytesPromise, locale);
+      const result = await executeCvImportPipeline(file, bytesPromise, locale, abortControllerRef.current.signal);
       await onConfirmImport(result);
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      
       if (typeof console !== 'undefined') {
         console.error('[cv-import] processing failed', {
           name: error instanceof Error ? error.name : typeof error,
