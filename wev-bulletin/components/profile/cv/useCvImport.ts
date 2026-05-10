@@ -1,32 +1,9 @@
-import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import notify from '@/lib/toast';
 import { parseCvFile, readCvFileBytes, type CvImportMetadata } from '@/lib/cv-parser';
 import type { EscoSkill } from '@/lib/types/skills';
-
-// ---------------------------------------------------------------------------
-// File Picker Utilities
-// ---------------------------------------------------------------------------
-
-type FileSystemFileHandleLike = {
-  getFile: () => Promise<File>;
-};
-
-type ShowOpenFilePicker = (options?: {
-  types?: Array<{
-    description?: string;
-    accept: Record<string, string[]>;
-  }>;
-  multiple?: boolean;
-  excludeAcceptAllOption?: boolean;
-}) => Promise<FileSystemFileHandleLike[]>;
-
-function getShowOpenFilePicker(): ShowOpenFilePicker | null {
-  if (typeof window === 'undefined') return null;
-  const candidate = (window as unknown as { showOpenFilePicker?: ShowOpenFilePicker })
-    .showOpenFilePicker;
-  return typeof candidate === 'function' ? candidate : null;
-}
+import { useFilePicker } from './useFilePicker';
 
 // ---------------------------------------------------------------------------
 // Error Handling
@@ -36,8 +13,8 @@ function getCvImportErrorMessage(
   t: ReturnType<typeof useTranslations<'profile'>>,
   error: unknown,
 ): string {
-  const message = error instanceof Error ? error.message : '';
-  switch (message) {
+  const code = error instanceof Error ? error.message : '';
+  switch (code) {
     case 'unsupported_file_type':
       return t('unsupported_file_type');
     case 'empty_file':
@@ -71,7 +48,7 @@ async function executeCvImportPipeline(
   const extractRes = await fetch('/api/cv/extract', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: parsed.text }),
+    body: JSON.stringify({ text: parsed.text, locale }),
     signal,
   });
 
@@ -103,13 +80,10 @@ type UseCvImportOptions = {
 
 export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
   const t = useTranslations('profile');
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const abortControllerRef = useRef<AbortController | null>(null);
   const [isParsing, setIsParsing] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
 
-  const processFile = async (file: File, bytesPromise: Promise<ArrayBuffer>) => {
+  const processFile = async (file: File) => {
     if (isParsing) return;
     
     abortControllerRef.current?.abort();
@@ -119,6 +93,8 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
     notify.info(t('cvParsingWaitWarning'), { duration: 8000 });
 
     try {
+      // Start reading bytes immediately
+      const bytesPromise = readCvFileBytes(file);
       const result = await executeCvImportPipeline(file, bytesPromise, locale, abortControllerRef.current.signal);
       await onConfirmImport(result);
     } catch (error) {
@@ -135,78 +111,24 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
       notify.error(getCvImportErrorMessage(t, error));
     } finally {
       setIsParsing(false);
-      if (inputRef.current) {
-        inputRef.current.value = '';
-      }
     }
   };
 
-  const onPickFile = async () => {
-    const showOpenFilePicker = getShowOpenFilePicker();
-    if (!showOpenFilePicker) {
-      inputRef.current?.click();
-      return;
-    }
-    try {
-      const [handle] = await showOpenFilePicker({
-        types: [
-          {
-            description: 'CV',
-            accept: {
-              'application/pdf': ['.pdf'],
-              'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-            },
-          },
-        ],
-        multiple: false,
-        excludeAcceptAllOption: true,
-      });
-      if (!handle) return;
-      const file = await handle.getFile();
-      processFile(file, readCvFileBytes(file));
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return;
-      }
-      inputRef.current?.click();
-    }
-  };
-
-  const onFileSelected = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    processFile(file, readCvFileBytes(file));
-  };
-
-  const onDragOver = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'copy';
-    }
-    if (!isDragOver) setIsDragOver(true);
-  };
-
-  const onDragLeave = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const onDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragOver(false);
-    const file = event.dataTransfer?.files?.[0];
-    if (!file) return;
-    processFile(file, readCvFileBytes(file));
-  };
+  const filePicker = useFilePicker({
+    acceptTypes: [
+      {
+        description: 'CV',
+        accept: {
+          'application/pdf': ['.pdf'],
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+        },
+      },
+    ],
+    onFileSelect: processFile,
+  });
 
   return {
-    inputRef,
+    ...filePicker,
     isParsing,
-    isDragOver,
-    onPickFile,
-    onFileSelected,
-    onDragOver,
-    onDragLeave,
-    onDrop,
   };
 }

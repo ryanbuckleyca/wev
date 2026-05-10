@@ -2,6 +2,7 @@
 
 export type { CvImportMetadata } from '@/lib/types/cv';
 import type { CvImportMetadata } from '@/lib/types/cv';
+import { CvImportError } from '@/lib/types/cv-errors';
 
 export type ParsedCvResult = {
   text: string;
@@ -37,29 +38,29 @@ export function validateCvFile(file: File): void {
   const extOk = ext === '.pdf' || ext === '.docx';
 
   if (!mimeOk && !extOk) {
-    throw new Error('unsupported_file_type');
+    throw new CvImportError('unsupported_file_type');
   }
 
   if (file.size <= 0) {
-    throw new Error('empty_file');
+    throw new CvImportError('empty_file');
   }
 
   if (file.size > MAX_CV_FILE_SIZE_BYTES) {
-    throw new Error('file_too_large');
+    throw new CvImportError('file_too_large');
   }
 }
 
 function readWithFileReader(file: File): Promise<ArrayBuffer> {
   return new Promise<ArrayBuffer>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(reader.error ?? new Error('file_read_failed'));
-    reader.onabort = () => reject(new Error('file_read_failed'));
+    reader.onerror = () => reject(new CvImportError('file_read_failed', reader.error?.message));
+    reader.onabort = () => reject(new CvImportError('file_read_failed'));
     reader.onload = () => {
       const result = reader.result;
       if (result instanceof ArrayBuffer) {
         resolve(result);
       } else {
-        reject(new Error('file_read_failed'));
+        reject(new CvImportError('file_read_failed'));
       }
     };
     reader.readAsArrayBuffer(file);
@@ -85,9 +86,9 @@ function mapFileReadError(error: unknown): Error {
       error.name === 'SecurityError' ||
       error.name === 'NotAllowedError')
   ) {
-    return new Error('file_read_failed');
+    return new CvImportError('file_read_failed');
   }
-  return error instanceof Error ? error : new Error('cvImportFailed');
+  return error instanceof Error ? error : new CvImportError('cvImportFailed');
 }
 
 type PdfDocument = {
@@ -251,9 +252,9 @@ export async function parseCvFile(
 
   if (!text) {
     if (extension === '.pdf' || type === 'application/pdf') {
-      throw new Error('pdf_no_text_layer');
+      throw new CvImportError('pdf_no_text_layer');
     }
-    throw new Error('no_extractable_text');
+    throw new CvImportError('no_extractable_text');
   }
 
   return {
