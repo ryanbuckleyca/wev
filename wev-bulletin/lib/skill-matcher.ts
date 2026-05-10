@@ -6,8 +6,10 @@ import type { SkillPhrase } from './llm-extractor';
 
 const MAX_SKILLS = 10;
 const RPC_MATCHES_PER_PHRASE = 3;
-const rawScoreFloor = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '0.25');
-const SCORE_FLOOR = Number.isFinite(rawScoreFloor) ? rawScoreFloor : 0.25;
+function getScoreFloor(): number {
+  const rawScoreFloor = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '0.25');
+  return Number.isFinite(rawScoreFloor) ? rawScoreFloor : 0.25;
+}
 const RELEVANCE_FLOOR = 0.4;
 
 type MatchRow = {
@@ -52,11 +54,12 @@ export function rankAndFilterCandidates(
   skillPhrases: SkillPhrase[],
   cvWords: Set<string>,
   locale: 'en' | 'fr',
+  scoreFloor: number = getScoreFloor(),
 ): ScoredMatch[] {
   const bestByUri = new Map<string, ScoredMatch>();
 
   for (const row of rows) {
-    if (row.similarity < SCORE_FLOOR) continue;
+    if (row.similarity < scoreFloor) continue;
 
     const phraseIdx = row.query_index;
     const prominence = skillPhrases[phraseIdx]?.prominence ?? 5;
@@ -84,6 +87,7 @@ export async function linkPhrasesToEsco(
 ): Promise<EscoSkill[]> {
   const cvWords = buildCvWordSet(cvText, locale);
   const supabase = supabaseServer;
+  const scoreFloor = getScoreFloor();
 
   // Run a single batched RPC to avoid exhausting the Supabase connection pool
   const query_embeddings = embeddings.map((vec) => `[${vec.join(',')}]`);
@@ -101,6 +105,7 @@ export async function linkPhrasesToEsco(
     skillPhrases,
     cvWords,
     locale,
+    scoreFloor,
   );
   const topMatches = scoredMatches.slice(0, MAX_SKILLS);
 
@@ -112,7 +117,7 @@ export async function linkPhrasesToEsco(
       kept: topMatches.length,
       topScore: topMatches[0]?.score ?? null,
       topSimilarity: topMatches[0]?.similarity ?? null,
-      floor: SCORE_FLOOR,
+      floor: scoreFloor,
     },
     'CV skills two-stage linking stats',
   );

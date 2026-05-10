@@ -10,14 +10,16 @@ export async function extractSkillsAndValuesFromCv({
   groqKey,
   jinaKey,
   locale,
+  groqModel,
 }: {
   cvText: string;
   userId: string;
   groqKey: string;
   jinaKey: string;
   locale: 'en' | 'fr';
+  groqModel: string;
 }): Promise<{ skills: EscoSkill[]; values: string[] }> {
-  const llmResult = await extractWithLlm(cvText, groqKey, userId);
+  const llmResult = await extractWithLlm(cvText, groqKey, userId, groqModel);
 
   let skills: EscoSkill[] = [];
   if (llmResult.skills.length > 0) {
