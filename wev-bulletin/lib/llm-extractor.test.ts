@@ -21,7 +21,8 @@ describe('llm-extractor', () => {
 
   describe('parseLlmResponse', () => {
     it('parses well-formed JSON', () => {
-      const raw = '{"skills": [{"phrase": "React development", "prominence": 9}, {"phrase": "Node.js", "prominence": 5}], "values": ["Advancement", "Independence"]}';
+      const raw =
+        '{"skills": [{"phrase": "React development", "prominence": 9}, {"phrase": "Node.js", "prominence": 5}], "values": ["Advancement", "Independence"]}';
       const result = parseLlmResponse(raw);
       expect(result.skills).toHaveLength(2);
       expect(result.skills[0].phrase).toBe('React development');
@@ -29,7 +30,8 @@ describe('llm-extractor', () => {
     });
 
     it('cleans up markdown formatting around JSON', () => {
-      const raw = '```json\n{"skills": [{"phrase": "CSS", "prominence": 3}], "values": ["Friendship"]}\n```';
+      const raw =
+        '```json\n{"skills": [{"phrase": "CSS", "prominence": 3}], "values": ["Friendship"]}\n```';
       const result = parseLlmResponse(raw);
       expect(result.skills).toHaveLength(1);
     });
@@ -57,7 +59,8 @@ describe('llm-extractor', () => {
     });
 
     it('caps values to a maximum of 5', () => {
-      const raw = '{"skills": [], "values": ["Advancement", "Independence", "Recognition", "Community", "Friendship", "Stability"]}';
+      const raw =
+        '{"skills": [], "values": ["Advancement", "Independence", "Recognition", "Community", "Friendship", "Stability"]}';
       const result = parseLlmResponse(raw);
       expect(result.values).toHaveLength(5);
     });

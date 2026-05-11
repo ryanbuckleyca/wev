@@ -122,9 +122,9 @@ export async function updateProfile(userId: string, updates: ProfileUpdateData):
         })
         .select(PROFILE_COLUMNS)
         .single();
-      
+
       if (!newError) return newData as Profile;
-      
+
       console.error('Error creating profile on update:', newError);
       throw new Error(newError.message || 'Failed to update profile');
     }
