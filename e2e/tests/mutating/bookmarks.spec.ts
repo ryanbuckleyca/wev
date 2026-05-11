@@ -29,6 +29,10 @@ test.describe("Bookmarks flow", () => {
       /bookmarked|remove bookmark/i,
       { timeout: 10_000 },
     );
+    // Wait for the loading state to finish before navigating to ensure state persistence
+    await expect(bookmarkButton).not.toHaveAttribute("aria-busy", "true", {
+      timeout: 10_000,
+    });
 
     await page.goto("/en/bookmarks");
     await expect(

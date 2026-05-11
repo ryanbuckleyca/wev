@@ -86,6 +86,7 @@ export default function JobCardHeader({
           title={bookmarked ? t('jobCard.removeBookmark') : t('jobCard.bookmarkJob')}
           aria-label={bookmarked ? t('jobCard.bookmarked') : t('jobCard.bookmarkJobLabel')}
           disabled={bookmarkLoading}
+          aria-busy={bookmarkLoading}
         >
           {bookmarked ? (
             <Lineicons icon={Bookmark1Solid} size={16} className="text-wev-info" />

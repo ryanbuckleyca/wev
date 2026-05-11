@@ -93,8 +93,6 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
   const [isParsing, setIsParsing] = useState(false);
 
   const processFile = async (file: File) => {
-    if (isParsing) return;
-
     abortControllerRef.current?.abort();
     abortControllerRef.current = new AbortController();
 
