@@ -1,5 +1,5 @@
 import { eng, fra } from 'stopword';
-import type { CvLocale } from '@/lib/types/cv';
+import type { CvLocale } from '@/lib/cv/types';
 
 const STOP_WORDS_EN = new Set(eng);
 const STOP_WORDS_FR = new Set(fra);

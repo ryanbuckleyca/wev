@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parseLlmResponse, type LlmResult } from './llm-extractor';
-import { buildPrompt } from './prompts/cv-extraction';
+import { parseLlmResponse, type LlmResult } from './llm';
+import { buildPrompt } from './prompts';
 
 describe('llm-extractor', () => {
   describe('buildPrompt', () => {

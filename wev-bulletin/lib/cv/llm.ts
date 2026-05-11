@@ -1,9 +1,10 @@
 import Groq from 'groq-sdk';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
-import { buildPrompt, MAX_VALUES } from '@/lib/prompts/cv-extraction';
+import { buildPrompt, MAX_VALUES } from './prompts';
+import { CvImportError } from './errors';
+import type { CvLocale } from './types';
 import { VALUES_LIST } from '@/lib/values';
-import { CvImportError } from '@/lib/types/cv-errors';
 
 export type SkillPhrase = { phrase: string; prominence: number };
 export type LlmResult = { skills: SkillPhrase[]; values: string[] };

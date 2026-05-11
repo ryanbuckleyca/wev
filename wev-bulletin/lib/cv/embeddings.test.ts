@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { embedPhrases } from './vector-embedder';
+import { embedPhrases } from './embeddings';
 
 // Mock global fetch
 const fetchMock = vi.fn();

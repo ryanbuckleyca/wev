@@ -1,6 +1,6 @@
 import 'server-only';
-import { CvImportError } from '@/lib/types/cv-errors';
-import type { CvImportMetadata, CvLocale } from '@/lib/types/cv';
+import { CvImportError } from './errors';
+import type { CvImportMetadata, CvLocale } from './types';
 
 export type ParsedCvResult = {
   text: string;
@@ -51,7 +51,7 @@ async function parsePdfText(buffer: Buffer): Promise<string> {
       data: new Uint8Array(buffer),
       disableWorker: true,
       isEvalSupported: false,
-    });
+    } as any);
     const pdf = await loadingTask.promise;
     const text = await extractPdfTextLayer(pdf);
 

@@ -6,7 +6,7 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { useRankedList } from '@/lib/hooks/useRankedList';
 import { type EscoSkill } from '@/lib/types/skills';
 import { type WorkValue, buildWorkValues, getValueDefinition } from '@/lib/values';
-import type { CvImportMetadata } from '@/lib/supabase/profiles';
+import type { CvImportMetadata } from '@/lib/cv/types';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 import { adjustCutoffOnRemove, adjustCutoffOnReorder } from '@/lib/ranked-list';
