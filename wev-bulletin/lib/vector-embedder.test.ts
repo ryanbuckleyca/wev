@@ -29,7 +29,7 @@ describe('vector-embedder', () => {
 
     const result = await embedPhrases(['phrase 0', 'phrase 1'], 'fake-key');
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    
+
     // Check sorting by index
     expect(result).toHaveLength(2);
     expect(result[0][0]).toBe(0.1);
