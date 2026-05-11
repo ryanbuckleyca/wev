@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
+import type { CvLocale } from '@/lib/types/cv';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -46,7 +47,7 @@ function displayKey(term: string, definition: string | null, scopeNote: string |
   return `${normalizeSkillText(term)}::${normalizeSkillText(definition)}::${normalizeSkillText(scopeNote)}`;
 }
 
-function parseLocale(value: string | null): 'en' | 'fr' {
+function parseLocale(value: string | null): CvLocale {
   return (value ?? '').toLowerCase() === 'fr' ? 'fr' : 'en';
 }
 

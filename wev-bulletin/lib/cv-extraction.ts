@@ -3,6 +3,7 @@ import type { EscoSkill } from '@/lib/types/skills';
 import { extractWithLlm } from './llm-extractor';
 import { embedPhrases } from './vector-embedder';
 import { linkPhrasesToEsco } from './skill-matcher';
+import type { CvLocale } from '@/lib/types/cv';
 
 export async function extractSkillsAndValuesFromCv({
   cvText,
@@ -16,12 +17,14 @@ export async function extractSkillsAndValuesFromCv({
   userId: string;
   groqKey: string;
   jinaKey: string;
-  locale: 'en' | 'fr';
+  locale: CvLocale;
   groqModel: string;
-}): Promise<{ skills: EscoSkill[]; values: string[] }> {
+}): Promise<{ skills: EscoSkill[]; values: string[]; warnings: string[] }> {
   const llmResult = await extractWithLlm(cvText, groqKey, userId, groqModel);
 
   let skills: EscoSkill[] = [];
+  const warnings: string[] = [];
+
   if (llmResult.skills.length > 0) {
     try {
       const phrases = llmResult.skills.map((s) => s.phrase);
@@ -31,7 +34,10 @@ export async function extractSkillsAndValuesFromCv({
       logger.error({ err: error, userId }, 'CV skill linking failed');
       throw error;
     }
+  } else {
+    logger.warn({ userId }, 'CV LLM extracted zero skills');
+    warnings.push('no_skills_extracted');
   }
 
-  return { skills, values: llmResult.values };
+  return { skills, values: llmResult.values, warnings };
 }
