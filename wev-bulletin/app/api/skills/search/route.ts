@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
+import type { CvLocale } from '@/lib/types/cv';
 
 // Removed dynamic constraints to allow Edge-Caching
 // export const dynamic = 'force-dynamic'
@@ -36,8 +37,9 @@ function parseLimit(value: string | null): number {
   return Math.max(1, Math.min(MAX_LIMIT, parsed));
 }
 
-function parseLocale(value: string | null): 'en' | 'fr' {
-  return (value ?? '').toLowerCase() === 'fr' ? 'fr' : 'en';
+function parseLocale(value: string | null): CvLocale {
+  const rawLocale = (value ?? '').toLowerCase();
+  return rawLocale === 'fr' ? 'fr' : 'en';
 }
 
 export async function GET(request: Request) {

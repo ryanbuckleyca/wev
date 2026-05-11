@@ -25,6 +25,7 @@ import { unauthorizedResponse } from '@/lib/http-errors';
 import { logger } from '@/lib/logger';
 import { extractSkillsAndValuesFromCv } from '@/lib/cv-extraction';
 import { CvImportError } from '@/lib/types/cv-errors';
+import type { CvLocale } from '@/lib/types/cv';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const rawLocale = formData.get('locale');
-    const locale: 'en' | 'fr' = rawLocale === 'fr' ? 'fr' : 'en';
+    const locale: CvLocale = rawLocale === 'fr' ? 'fr' : 'en';
 
     if (!file) {
       return NextResponse.json({ error: 'no_file_provided' }, { status: 400 });

@@ -1,9 +1,10 @@
 import { eng, fra } from 'stopword';
+import type { CvLocale } from '@/lib/types/cv';
 
 const STOP_WORDS_EN = new Set(eng);
 const STOP_WORDS_FR = new Set(fra);
 
-function getStopWords(locale: 'en' | 'fr' = 'en'): Set<string> {
+function getStopWords(locale: CvLocale = 'en'): Set<string> {
   return locale === 'fr' ? STOP_WORDS_FR : STOP_WORDS_EN;
 }
 
@@ -14,7 +15,7 @@ function getStopWords(locale: 'en' | 'fr' = 'en'): Set<string> {
 export function tokenize(
   text: string,
   removeStopWords: boolean = false,
-  locale: 'en' | 'fr' = 'en',
+  locale: CvLocale = 'en',
 ): string[] {
   const stopWords = getStopWords(locale);
   return text
@@ -29,7 +30,7 @@ export function tokenize(
 }
 
 /** Build a set of all lowercase words in the CV for fast lookup, supporting Unicode letters. */
-export function buildCvWordSet(text: string, locale: 'en' | 'fr' = 'en'): Set<string> {
+export function buildCvWordSet(text: string, locale: CvLocale = 'en'): Set<string> {
   return new Set(tokenize(text, false, locale));
 }
 
@@ -41,7 +42,7 @@ export function buildCvWordSet(text: string, locale: 'en' | 'fr' = 'en'): Set<st
 export function labelRelevance(
   escoLabel: string,
   cvWordsSet: Set<string>,
-  locale: 'en' | 'fr' = 'en',
+  locale: CvLocale = 'en',
 ): number {
   const labelWords = tokenize(escoLabel, true, locale);
 

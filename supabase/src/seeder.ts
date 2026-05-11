@@ -165,6 +165,8 @@ async function seedTables(
 
 function findEscoSkillsIndexPath(): string {
   const candidates = [
+    path.resolve(__dirname, "../backups/backup_public_esco_skills.json"),
+    path.resolve(process.cwd(), "supabase/backups/backup_public_esco_skills.json"),
     path.resolve(__dirname, "../seed/esco_skills_index.json"),
     path.resolve(process.cwd(), "supabase/seed/esco_skills_index.json"),
     path.resolve(process.cwd(), "seed/esco_skills_index.json"),
@@ -173,37 +175,50 @@ function findEscoSkillsIndexPath(): string {
   const match = candidates.find((candidate) => fs.existsSync(candidate));
   if (!match) {
     throw new Error(
-      "Missing ESCO skills seed file. Expected supabase/seed/esco_skills_index.json from repo root.",
+      "Missing ESCO skills seed file. Expected supabase/seed/esco_skills_index.json or supabase/backups/backup_public_esco_skills.json from repo root.",
     );
   }
   return match;
 }
 
-function parseEscoSkillsPayload(filePath: string): EscoIndexSkillRecord[] {
+function parseEscoSkillsPayload(filePath: string): any[] {
   const raw = fs.readFileSync(filePath, "utf-8");
-  const payload = JSON.parse(raw) as EscoSkillsPayload;
-  if (!payload || !Array.isArray(payload.skills)) {
+  const payload = JSON.parse(raw);
+
+  // Handle backup format (plain array) or index format ({ skills: [] })
+  const records = Array.isArray(payload) ? payload : payload.skills;
+
+  if (!Array.isArray(records)) {
     throw new Error(`Invalid ESCO skills payload at ${filePath}`);
   }
-  return payload.skills.filter((skill) => !!skill?.concept_uri);
+  return records.filter((skill) => !!skill?.concept_uri);
 }
 
-function toEscoDbRow(skill: EscoIndexSkillRecord, timestamp: string) {
+function toEscoDbRow(skill: any, timestamp: string) {
   return {
     concept_uri: skill.concept_uri,
     skill_type: skill.skill_type ?? null,
     reuse_level: skill.reuse_level ?? null,
     preferred_label_en:
-      skill.preferred_label?.en ?? skill.preferred_label?.fr ?? null,
+      skill.preferred_label_en ??
+      skill.preferred_label?.en ??
+      skill.preferred_label?.fr ??
+      null,
     preferred_label_fr:
-      skill.preferred_label?.fr ?? skill.preferred_label?.en ?? null,
-    alternative_label_en: skill.alternative_label?.en ?? [],
-    alternative_label_fr: skill.alternative_label?.fr ?? [],
-    description_en: skill.description?.en ?? null,
-    description_fr: skill.description?.fr ?? null,
-    scope_note_en: skill.scope_note?.en ?? null,
-    scope_note_fr: skill.scope_note?.fr ?? null,
-    updated_at: timestamp,
+      skill.preferred_label_fr ??
+      skill.preferred_label?.fr ??
+      skill.preferred_label?.en ??
+      null,
+    alternative_label_en:
+      skill.alternative_label_en ?? skill.alternative_label?.en ?? [],
+    alternative_label_fr:
+      skill.alternative_label_fr ?? skill.alternative_label?.fr ?? [],
+    description_en: skill.description_en ?? skill.description?.en ?? null,
+    description_fr: skill.description_fr ?? skill.description?.fr ?? null,
+    scope_note_en: skill.scope_note_en ?? skill.scope_note?.en ?? null,
+    scope_note_fr: skill.scope_note_fr ?? skill.scope_note?.fr ?? null,
+    embedding: skill.embedding ?? null,
+    updated_at: skill.updated_at ?? timestamp,
   };
 }
 
