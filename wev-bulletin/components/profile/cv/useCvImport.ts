@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import notify from '@/lib/toast';
-import type { CvImportMetadata } from '@/lib/types/cv';
+import type { CvImportMetadata, CvLocale } from '@/lib/types/cv';
 import type { EscoSkill } from '@/lib/types/skills';
 import { useFilePicker } from './useFilePicker';
 
@@ -21,8 +21,6 @@ function getCvImportErrorMessage(
       return t('empty_file');
     case 'file_too_large':
       return t('file_too_large');
-    case 'file_read_failed':
-      return t('file_read_failed');
     case 'pdf_no_text_layer':
       return t('pdf_no_text_layer');
     case 'no_extractable_text':
@@ -38,9 +36,9 @@ function getCvImportErrorMessage(
 
 async function executeCvImportPipeline(
   file: File,
-  locale: 'en' | 'fr',
+  locale: CvLocale,
   signal?: AbortSignal,
-): Promise<{ skills: EscoSkill[]; values: string[]; cvImport: CvImportMetadata }> {
+): Promise<{ skills: EscoSkill[]; values: string[]; cvImport: CvImportMetadata; warnings: string[] }> {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('locale', locale);
@@ -60,12 +58,14 @@ async function executeCvImportPipeline(
     skills: EscoSkill[];
     values: string[];
     metadata: CvImportMetadata;
+    warnings?: string[];
   };
 
   return {
     skills: result.skills ?? [],
     values: result.values ?? [],
     cvImport: result.metadata,
+    warnings: result.warnings ?? [],
   };
 }
 
@@ -74,7 +74,7 @@ async function executeCvImportPipeline(
 // ---------------------------------------------------------------------------
 
 type UseCvImportOptions = {
-  locale: 'en' | 'fr';
+  locale: CvLocale;
   onConfirmImport: (data: {
     skills: EscoSkill[];
     values: string[];
@@ -102,6 +102,9 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
         locale,
         abortControllerRef.current.signal,
       );
+      if (result.warnings.includes('no_skills_extracted')) {
+        notify.warn(t('no_skills_extracted_warning'));
+      }
       await onConfirmImport(result);
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return;

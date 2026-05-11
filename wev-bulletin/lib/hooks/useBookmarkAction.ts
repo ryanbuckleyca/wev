@@ -15,13 +15,15 @@ export function useBookmarkAction(
   onToggle?: (job: JobPosting, bookmarked: boolean) => void,
 ) {
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
+  const [prevInitial, setPrevInitial] = useState(initialBookmarked);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // Sync internal state with external prop changes (e.g. after a re-fetch)
-  useEffect(() => {
+  // Sync internal state with external prop changes during render (React best practice)
+  if (initialBookmarked !== prevInitial) {
+    setPrevInitial(initialBookmarked);
     setBookmarked(initialBookmarked);
-  }, [initialBookmarked]);
+  }
 
   const toggleBookmark = async () => {
     if (!userId) {

@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { supabaseServer } from '@/lib/supabase-server';
 import type { EscoSkill } from '@/lib/types/skills';
 import { buildCvWordSet, labelRelevance } from '@/lib/nlp-utils';
+import type { CvLocale } from '@/lib/types/cv';
 import type { SkillPhrase } from './llm-extractor';
 
 const MAX_SKILLS = 10;
@@ -53,7 +54,7 @@ export function rankAndFilterCandidates(
   rows: BatchMatchRow[],
   skillPhrases: SkillPhrase[],
   cvWords: Set<string>,
-  locale: 'en' | 'fr',
+  locale: CvLocale,
   scoreFloor: number = getScoreFloor(),
 ): ScoredMatch[] {
   const bestByUri = new Map<string, ScoredMatch>();
@@ -83,7 +84,7 @@ export async function linkPhrasesToEsco(
   embeddings: number[][],
   cvText: string,
   userId: string,
-  locale: 'en' | 'fr',
+  locale: CvLocale,
   supabase = supabaseServer,
 ): Promise<EscoSkill[]> {
   const cvWords = buildCvWordSet(cvText, locale);

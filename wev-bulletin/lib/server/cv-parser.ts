@@ -1,6 +1,6 @@
 import 'server-only';
 import { CvImportError } from '@/lib/types/cv-errors';
-import type { CvImportMetadata } from '@/lib/types/cv';
+import type { CvImportMetadata, CvLocale } from '@/lib/types/cv';
 
 export type ParsedCvResult = {
   text: string;
@@ -97,7 +97,7 @@ function isDocx(ext: string, mime: string): boolean {
 
 export async function parseCvOnServer(
   file: File,
-  locale: 'en' | 'fr'
+  locale: CvLocale
 ): Promise<ParsedCvResult> {
   // Validate before reading into memory
   if (file.size <= 0) throw new CvImportError('empty_file');
