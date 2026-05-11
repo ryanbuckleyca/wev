@@ -324,7 +324,7 @@
     "cvReimportButton": "Re-import CV",
     "cvReimportWarning": "⚠️ Note: Re-importing a CV will replace the skills and values currently selected in the form. You can review them before saving.",
     "cvImportInputLabel": "Upload CV file",
-    "cvImportDropHint": "Or drag a PDF/DOCX here (Note: overwrites current skills)",
+    "cvImportDropHint": "Or drag a PDF/DOCX here (Note: replaces current skills and values)",
     "cvParsingWaitWarning": "Parsing your CV... This may take a moment, especially for scanned PDFs.",
     "cvImportedIndicator": "CV imported: {fileName} — {importedAt}",
     "cvImportSuccess": "CV processed successfully. Review your new skills below.",

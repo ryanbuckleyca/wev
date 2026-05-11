@@ -105,7 +105,7 @@ export default function ProfilePage() {
             <div className="space-y-6">
               <CVImportButton
                 locale={locale}
-                cvImport={profile?.cv_import ?? null}
+                cvImport={formData.cv_import ?? null}
                 isSaving={isSaving}
                 onConfirmImport={async ({ skills, values, cvImport }) =>
                   handleApplyCvImport({

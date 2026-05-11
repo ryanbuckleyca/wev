@@ -52,9 +52,23 @@ export function useFilePicker({ acceptTypes, onFileSelect }: FilePickerOptions) 
     }
   };
 
+  const isAcceptedFile = (file: File) => {
+    if (!acceptTypes || acceptTypes.length === 0) return true;
+    return acceptTypes.some((t) => {
+      const mimeTypes = Object.keys(t.accept);
+      const extensions = Object.values(t.accept).flat();
+      return (
+        mimeTypes.includes(file.type) ||
+        extensions.some((ext) => file.name.toLowerCase().endsWith(ext.toLowerCase()))
+      );
+    });
+  };
+
   const onFileSelected = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) onFileSelect(file);
+    if (file && isAcceptedFile(file)) {
+      onFileSelect(file);
+    }
     if (inputRef.current) inputRef.current.value = '';
   };
 
@@ -75,7 +89,9 @@ export function useFilePicker({ acceptTypes, onFileSelect }: FilePickerOptions) 
     event.preventDefault();
     setIsDragOver(false);
     const file = event.dataTransfer?.files?.[0];
-    if (file) onFileSelect(file);
+    if (file && isAcceptedFile(file)) {
+      onFileSelect(file);
+    }
   };
 
   return {

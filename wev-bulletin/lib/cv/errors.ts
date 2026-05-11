@@ -7,6 +7,8 @@ export type CvImportErrorCode =
   | 'llm_parsing_failed'
   | 'extraction_failed'
   | 'jina_bad_dimensions'
+  | 'jina_bad_response'
+  | 'jina_misaligned_response'
   | 'embedding_failed'
   | 'cv_import_failed';
 
