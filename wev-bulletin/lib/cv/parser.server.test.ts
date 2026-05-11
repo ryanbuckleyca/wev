@@ -43,7 +43,7 @@ describe('Server-side CV Parser', () => {
 
     mockGetDocument.mockResolvedValue(pdfWithTextLayer);
 
-    const { parseCvOnServer } = await import('./cv-parser');
+    const { parseCvOnServer } = await import('./parser.server');
     const file = new File(['fake'], 'cv.pdf', { type: 'application/pdf' });
     const parsed = await parseCvOnServer(file, 'en');
 
@@ -52,7 +52,7 @@ describe('Server-side CV Parser', () => {
   });
 
   it('extracts text from DOCX', async () => {
-    const { parseCvOnServer } = await import('./cv-parser');
+    const { parseCvOnServer } = await import('./parser.server');
     const file = new File(['fake'], 'cv.docx', {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
@@ -63,7 +63,7 @@ describe('Server-side CV Parser', () => {
   });
 
   it('throws error for unsupported file types', async () => {
-    const { parseCvOnServer } = await import('./cv-parser');
+    const { parseCvOnServer } = await import('./parser.server');
     const file = new File(['fake'], 'cv.txt', { type: 'text/plain' });
     await expect(parseCvOnServer(file, 'en')).rejects.toThrowError('unsupported_file_type');
   });
@@ -72,7 +72,7 @@ describe('Server-side CV Parser', () => {
     const emptyPdf = makePdfDocument('');
     mockGetDocument.mockResolvedValue(emptyPdf);
 
-    const { parseCvOnServer } = await import('./cv-parser');
+    const { parseCvOnServer } = await import('./parser.server');
     const file = new File(['fake'], 'scanned.pdf', { type: 'application/pdf' });
     await expect(parseCvOnServer(file, 'en')).rejects.toThrowError('pdf_no_text_layer');
   });

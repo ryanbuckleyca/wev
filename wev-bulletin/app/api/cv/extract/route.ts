@@ -23,9 +23,9 @@ import { NextResponse } from 'next/server';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';
 import { logger } from '@/lib/logger';
-import { extractSkillsAndValuesFromCv } from '@/lib/cv-extraction';
-import { CvImportError } from '@/lib/types/cv-errors';
-import type { CvLocale } from '@/lib/types/cv';
+import { extractSkillsAndValuesFromCv } from '@/lib/cv';
+import { CvImportError } from '@/lib/cv/errors';
+import type { CvLocale } from '@/lib/cv/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     }
 
     // 1. Parse CV (PDF/DOCX) on the server
-    const { parseCvOnServer } = await import('@/lib/server/cv-parser');
+    const { parseCvOnServer } = await import('@/lib/cv/parser.server');
     const { text, metadata } = await parseCvOnServer(file, locale);
 
     // 2. Extract Skills and Values from text

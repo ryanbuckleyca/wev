@@ -1,9 +1,9 @@
 import { logger } from '@/lib/logger';
 import type { EscoSkill } from '@/lib/types/skills';
-import { extractWithLlm } from './llm-extractor';
-import { embedPhrases } from './vector-embedder';
-import { linkPhrasesToEsco } from './skill-matcher';
-import type { CvLocale } from '@/lib/types/cv';
+import { extractWithLlm } from './llm';
+import { embedPhrases } from './embeddings';
+import { linkPhrasesToEsco } from './matcher';
+import type { CvLocale } from './types';
 
 export async function extractSkillsAndValuesFromCv({
   cvText,
