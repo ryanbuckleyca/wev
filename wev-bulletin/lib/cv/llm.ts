@@ -47,10 +47,8 @@ const LlmResponseSchema = z.object({
 
 export function parseLlmResponse(content: string): LlmResult {
   try {
-    const cleanContent = content
-      .replace(/^```(?:json)?/im, '')
-      .replace(/```$/m, '')
-      .trim();
+    const match = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    const cleanContent = (match ? match[1] : content).trim();
     const parsed = JSON.parse(cleanContent);
     return LlmResponseSchema.parse(parsed) as LlmResult;
   } catch (error) {
@@ -84,10 +82,9 @@ export async function extractWithLlm(
       {
         userId,
         skillCount: llmResult.skills.length,
-        skills: llmResult.skills.map((s) => `${s.phrase} (${s.prominence})`),
-        values: llmResult.values,
+        valueCount: llmResult.values.length,
       },
-      'CV LLM extraction result',
+      'CV LLM extraction successful',
     );
     return llmResult;
   } catch (error) {

@@ -43,13 +43,14 @@ export async function POST(request: Request) {
 
   try {
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const rawFile = formData.get('file');
+    if (!(rawFile instanceof File) || rawFile.size === 0) {
+      return NextResponse.json({ error: 'invalid_file' }, { status: 400 });
+    }
+    const file: File = rawFile;
+
     const rawLocale = formData.get('locale');
     const locale: CvLocale = rawLocale === 'fr' ? 'fr' : 'en';
-
-    if (!file) {
-      return NextResponse.json({ error: 'no_file_provided' }, { status: 400 });
-    }
 
     // 1. Parse CV (PDF/DOCX) on the server
     const { parseCvOnServer } = await import('@/lib/cv/parser.server');

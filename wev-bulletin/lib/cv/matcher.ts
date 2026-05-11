@@ -66,7 +66,8 @@ export function rankAndFilterCandidates(
     const prominence = skillPhrases[phraseIdx]?.prominence ?? 5;
     const promWeight = prominence / 10;
 
-    const relevance = labelRelevance(row.preferred_label_en ?? '', cvWords, locale);
+    const label = locale === 'fr' ? row.preferred_label_fr : row.preferred_label_en;
+    const relevance = labelRelevance(label ?? '', cvWords, locale);
     if (relevance < RELEVANCE_FLOOR) continue;
 
     const score = row.similarity * promWeight * relevance;

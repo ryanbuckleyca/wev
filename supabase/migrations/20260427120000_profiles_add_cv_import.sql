@@ -10,6 +10,10 @@ comment on column public.profiles.cv_import is
 alter table public.profiles
   add constraint cv_import_shape check (
     cv_import is null or (
-      cv_import ? 'filename' and cv_import ? 'imported_at'
+      jsonb_typeof(cv_import->'filename') = 'string' and
+      jsonb_typeof(cv_import->'imported_at') = 'string' and
+      jsonb_typeof(cv_import->'source') = 'string' and
+      jsonb_typeof(cv_import->'locale') = 'string' and
+      (cv_import->>'imported_at')::timestamptz is not null
     )
   );
