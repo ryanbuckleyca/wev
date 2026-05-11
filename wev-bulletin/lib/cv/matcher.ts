@@ -2,8 +2,8 @@ import { logger } from '@/lib/logger';
 import { supabaseServer } from '@/lib/supabase-server';
 import type { EscoSkill } from '@/lib/types/skills';
 import { buildCvWordSet, labelRelevance } from '@/lib/nlp-utils';
-import type { CvLocale } from '@/lib/types/cv';
-import type { SkillPhrase } from './llm-extractor';
+import type { CvLocale } from './types';
+import type { SkillPhrase } from './llm';
 
 const MAX_SKILLS = 10;
 const RPC_MATCHES_PER_PHRASE = 3;

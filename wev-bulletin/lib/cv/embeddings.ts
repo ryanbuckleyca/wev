@@ -1,4 +1,4 @@
-import { CvImportError } from '@/lib/types/cv-errors';
+import { CvImportError } from './errors';
 
 const JINA_URL = 'https://api.jina.ai/v1/embeddings';
 const JINA_MODEL = 'jina-embeddings-v3';

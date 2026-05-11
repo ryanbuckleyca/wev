@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { rankAndFilterCandidates, type BatchMatchRow } from './skill-matcher';
+import { rankAndFilterCandidates, type BatchMatchRow } from './matcher';
 
 vi.mock('@/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },

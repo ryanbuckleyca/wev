@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import notify from '@/lib/toast';
-import type { CvImportMetadata, CvLocale } from '@/lib/types/cv';
+import type { CvImportMetadata, CvLocale } from '@/lib/cv/types';
 import type { EscoSkill } from '@/lib/types/skills';
 import { useFilePicker } from './useFilePicker';
 
@@ -104,7 +104,7 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
     try {
       const result = await executeCvImportPipeline(file, locale, abortControllerRef.current.signal);
       if (result.warnings.includes('no_skills_extracted')) {
-        notify.warn(t('no_skills_extracted_warning'));
+        notify.warning(t('no_skills_extracted_warning'));
       }
       await onConfirmImport(result);
     } catch (error) {
