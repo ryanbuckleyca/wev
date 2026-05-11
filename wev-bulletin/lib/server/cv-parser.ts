@@ -92,13 +92,13 @@ function isPdf(ext: string, mime: string): boolean {
 }
 
 function isDocx(ext: string, mime: string): boolean {
-  return ext === 'docx' || mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  return (
+    ext === 'docx' ||
+    mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  );
 }
 
-export async function parseCvOnServer(
-  file: File,
-  locale: CvLocale
-): Promise<ParsedCvResult> {
+export async function parseCvOnServer(file: File, locale: CvLocale): Promise<ParsedCvResult> {
   // Validate before reading into memory
   if (file.size <= 0) throw new CvImportError('empty_file');
   if (file.size > MAX_FILE_SIZE) throw new CvImportError('file_too_large');

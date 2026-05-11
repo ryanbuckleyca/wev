@@ -3,7 +3,9 @@ dotenv.config({ path: '../.env' });
 import { supabaseServer } from './lib/supabase-server';
 
 async function checkDb() {
-  const { count, error } = await supabaseServer.from('esco_skills').select('*', { count: 'exact', head: true });
+  const { count, error } = await supabaseServer
+    .from('esco_skills')
+    .select('*', { count: 'exact', head: true });
   console.log('Total skills:', count);
   console.log('Error:', error);
 

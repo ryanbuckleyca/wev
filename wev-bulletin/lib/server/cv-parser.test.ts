@@ -38,7 +38,7 @@ describe('Server-side CV Parser', () => {
   it('extracts text from PDF text layer', async () => {
     const pdfWithTextLayer = makePdfDocument(
       'Experienced in project management and community outreach. ' +
-        'This is a long enough text to satisfy the PDF_MIN_TEXT_CHARS_BEFORE_OCR threshold.'
+        'This is a long enough text to satisfy the PDF_MIN_TEXT_CHARS_BEFORE_OCR threshold.',
     );
 
     mockGetDocument.mockResolvedValue(pdfWithTextLayer);
@@ -53,8 +53,8 @@ describe('Server-side CV Parser', () => {
 
   it('extracts text from DOCX', async () => {
     const { parseCvOnServer } = await import('./cv-parser');
-    const file = new File(['fake'], 'cv.docx', { 
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+    const file = new File(['fake'], 'cv.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
     const parsed = await parseCvOnServer(file, 'en');
 

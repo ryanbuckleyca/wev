@@ -38,7 +38,12 @@ async function executeCvImportPipeline(
   file: File,
   locale: CvLocale,
   signal?: AbortSignal,
-): Promise<{ skills: EscoSkill[]; values: string[]; cvImport: CvImportMetadata; warnings: string[] }> {
+): Promise<{
+  skills: EscoSkill[];
+  values: string[];
+  cvImport: CvImportMetadata;
+  warnings: string[];
+}> {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('locale', locale);
@@ -50,7 +55,7 @@ async function executeCvImportPipeline(
   });
 
   if (!extractRes.ok) {
-    const body = await extractRes.json().catch(() => ({})) as { error?: string; detail?: string };
+    const body = (await extractRes.json().catch(() => ({}))) as { error?: string; detail?: string };
     console.error('[cv-import] API error:', extractRes.status, body);
     throw new Error(body.error ?? 'extraction_failed');
   }
@@ -97,11 +102,7 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
     notify.info(t('cvParsingWaitWarning'), { duration: 8000 });
 
     try {
-      const result = await executeCvImportPipeline(
-        file,
-        locale,
-        abortControllerRef.current.signal,
-      );
+      const result = await executeCvImportPipeline(file, locale, abortControllerRef.current.signal);
       if (result.warnings.includes('no_skills_extracted')) {
         notify.warn(t('no_skills_extracted_warning'));
       }
