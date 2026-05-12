@@ -63,7 +63,10 @@ export function rankAndFilterCandidates(
     if (row.similarity < scoreFloor) continue;
 
     const phraseIdx = row.query_index;
-    const prominence = skillPhrases[phraseIdx]?.prominence ?? 5;
+    const isValidIdx =
+      Number.isInteger(phraseIdx) && phraseIdx >= 0 && phraseIdx < skillPhrases.length;
+
+    const prominence = isValidIdx ? skillPhrases[phraseIdx].prominence : 5;
     const promWeight = prominence / 10;
 
     const label = locale === 'fr' ? row.preferred_label_fr : row.preferred_label_en;

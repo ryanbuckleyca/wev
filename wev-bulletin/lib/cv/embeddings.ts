@@ -57,7 +57,11 @@ export async function embedPhrases(phrases: string[], apiKey: string): Promise<n
         `Index mismatch at position ${i}: expected ${i}, found ${item.index}`,
       );
     }
-    if (!Array.isArray(item.embedding) || item.embedding.length !== JINA_DIM) {
+    if (
+      !Array.isArray(item.embedding) ||
+      item.embedding.length !== JINA_DIM ||
+      !item.embedding.every(Number.isFinite)
+    ) {
       throw new CvImportError('jina_bad_dimensions');
     }
     return item.embedding;
