@@ -45,7 +45,10 @@ describe('vector-embedder', () => {
       status: 401,
     });
 
-    await expect(embedPhrases(['test'], 'fake-key')).rejects.toThrowError('jina_401');
+    await expect(embedPhrases(['test'], 'fake-key')).rejects.toMatchObject({
+      code: 'embedding_failed',
+      message: 'jina_401',
+    });
   });
 
   it('throws jina_bad_dimensions if embedding length is wrong', async () => {
@@ -58,7 +61,9 @@ describe('vector-embedder', () => {
       }),
     });
 
-    await expect(embedPhrases(['test'], 'fake-key')).rejects.toThrowError('jina_bad_dimensions');
+    await expect(embedPhrases(['test'], 'fake-key')).rejects.toMatchObject({
+      code: 'jina_bad_dimensions',
+    });
   });
 
   it('throws jina_misaligned_response if indices are not contiguous', async () => {
@@ -72,9 +77,9 @@ describe('vector-embedder', () => {
       }),
     });
 
-    await expect(embedPhrases(['p0', 'p1'], 'fake-key')).rejects.toThrowError(
-      'jina_misaligned_response',
-    );
+    await expect(embedPhrases(['p0', 'p1'], 'fake-key')).rejects.toMatchObject({
+      code: 'jina_misaligned_response',
+    });
   });
 
   it('throws jina_bad_response if data is missing', async () => {
@@ -83,6 +88,8 @@ describe('vector-embedder', () => {
       json: async () => ({}),
     });
 
-    await expect(embedPhrases(['test'], 'fake-key')).rejects.toThrowError('jina_bad_response');
+    await expect(embedPhrases(['test'], 'fake-key')).rejects.toMatchObject({
+      code: 'jina_bad_response',
+    });
   });
 });
