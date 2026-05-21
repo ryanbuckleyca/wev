@@ -58,6 +58,13 @@ class GeminiProvider(BaseLLMProvider):
         
         self._model = model or "gemini-2.5-flash-lite"
         self._client = None
+        
+        try:
+            timeout_sec = int(os.environ.get("GEMINI_CALL_TIMEOUT_SEC", "90"))
+        except ValueError:
+            logger.warning("Invalid GEMINI_CALL_TIMEOUT_SEC value; defaulting to 90s.")
+            timeout_sec = 90
+        self._call_timeout_sec = timeout_sec
     
     def _key_last4(self) -> str:
         if not self._api_key:
@@ -80,8 +87,9 @@ class GeminiProvider(BaseLLMProvider):
             )
         self._genai = genai
         self._types = types
-        # Milliseconds; unified + Google Search grounding can run tens of seconds — avoid hanging forever.
-        timeout_ms = int(os.environ.get("GEMINI_HTTP_TIMEOUT_MS", "600000"))
+        # Set HTTP socket timeout based on call timeout (default 90s)
+        # Successful unified calls finish in 7-45s; anything longer is likely hanging.
+        timeout_ms = self._call_timeout_sec * 1000
         self._http_timeout_ms = timeout_ms
         self._client = genai.Client(
             api_key=self._api_key,
@@ -91,6 +99,13 @@ class GeminiProvider(BaseLLMProvider):
 
     def is_available(self) -> bool:
         return bool(self._api_key or get_gemini_api_key())
+
+    def _extract_text(self, response) -> str:
+        """Extract text content from a Gemini response object safely."""
+        text = getattr(response, "text", "")
+        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+            text = text or getattr(response.candidates[0].content.parts[0], "text", "") or ""
+        return text or ""
 
     def complete(self, prompt: str, model: str | None = None, system: str | None = None, **kwargs) -> str:
         """Generic text completion via Gemini.
@@ -113,9 +128,7 @@ class GeminiProvider(BaseLLMProvider):
         task_type = kwargs.get("task")
         use_grounding = should_use_grounding(task_type) if task_type else False
         resolved_model = model or self._model
-        timeout_ms = getattr(self, "_http_timeout_ms", None) or int(
-            os.environ.get("GEMINI_HTTP_TIMEOUT_MS", "600000")
-        )
+        timeout_ms = self._call_timeout_sec * 1000
 
         if use_grounding:
             config = types.GenerateContentConfig(
@@ -164,23 +177,34 @@ class GeminiProvider(BaseLLMProvider):
 
         t_api = time.perf_counter()
         try:
-            try:
-                response = client.models.generate_content(
-                    model=resolved_model,
-                    contents=prompt,
-                    config=config,
-                )
-            except Exception as e:
-                raise LLMProviderError(f"Gemini completion error: {e}") from e
+            response = client.models.generate_content(
+                model=resolved_model,
+                contents=prompt,
+                config=config,
+            )
+        except Exception as e:
+            from google.genai.errors import APIError, ServerError
+            
+            is_timeout = False
+            if isinstance(e, TimeoutError):
+                is_timeout = True
+            elif isinstance(e, (ServerError, APIError)):
+                if getattr(e, "code", None) in (408, 504):
+                    is_timeout = True
+                
+            if is_timeout:
+                raise LLMProviderError(
+                    f"Gemini call timed out "
+                    f"(model={resolved_model}, prompt_chars={len(prompt)}). "
+                    f"The model may be stuck in an extended thinking loop."
+                ) from e
+            raise LLMProviderError(f"Gemini completion error: {e}") from e
         finally:
             stop_hb.set()
 
         api_s = time.perf_counter() - t_api
         total_s = time.perf_counter() - t0
-        text = getattr(response, "text", "")
-        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-            text = text or getattr(response.candidates[0].content.parts[0], "text", "") or ""
-        text = text or ""
+        text = self._extract_text(response)
         logger.info(
             "Gemini.complete: generate_content finished api=%.2fs total=%.2fs response_chars=%s",
             api_s,
@@ -260,10 +284,8 @@ class GeminiProvider(BaseLLMProvider):
                     f"Gemini API key invalid or permission denied. Check GEMINI_API_KEY. key_last4={self._key_last4()} raw_error={err_msg_raw}"
                 ) from e
             raise LLMProviderError(f"Gemini API error: key_last4={self._key_last4()} raw_error={err_msg_raw}") from e
-        out = getattr(response, "text", None) or ""
-        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-            out = out or getattr(response.candidates[0].content.parts[0], "text", None) or ""
-        summary = (out or "").strip().strip('"').strip("'")
+        
+        summary = self._extract_text(response).strip().strip('"').strip("'")
         summary = summary.replace("**", "")
         colon_prefix = re.match(r'^[^.]{1,60}: ', summary)
         if colon_prefix:
