@@ -17,6 +17,7 @@ dependencies = [
   "python-dateutil",
   "geocodio-library-python",
   "google-genai",
+  "tenacity",
 ]
 
 [tool.setuptools]
