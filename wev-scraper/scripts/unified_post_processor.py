@@ -15,13 +15,14 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 # Load env before any DB import. We can't rely on dotenv-cli at the npm layer
 # because it is first-wins (won't override .env values from .env.production).
@@ -278,7 +279,6 @@ def _build_update_data(task: str, job_result: dict) -> dict:
             update_data["values_rated"] = job_result["values_rated"]
 
     if task in ["all", "sse"] and "is_sse" in job_result:
-        import json
         update_data["is_sse"] = job_result["is_sse"]
         if "sse_confidence" in job_result or "sse_details" in job_result:
             update_data["sse_details"] = json.dumps({
@@ -289,21 +289,36 @@ def _build_update_data(task: str, job_result: dict) -> dict:
     return update_data
 
 
-@retry(stop=stop_after_attempt(4), wait=wait_exponential(multiplier=2))
+def is_transient_db_error(e: Exception) -> bool:
+    """Return True if the DB error is transient and should be retried."""
+    code = getattr(e, "code", None)
+    if code:
+        code_str = str(code)
+        # Postgres transient codes (53xxx, 08xxx) or PostgREST 5xx HTTP codes
+        if code_str.startswith("53") or code_str.startswith("08") or code_str.startswith("50"):
+            return True
+        return False
+        
+    err_name = type(e).__name__
+    if err_name in ("TimeoutError", "ConnectionError", "ReadTimeout", "APIError"):
+        return True
+    return False
+
+@retry(
+    stop=stop_after_attempt(4), 
+    wait=wait_exponential(multiplier=2),
+    retry=retry_if_exception(is_transient_db_error)
+)
 def _try_db_write(job: dict, update_data: dict) -> None:
-    """Attempt a single DB write, automatically retrying on failure.
+    """Attempt a single DB write, automatically retrying on transient failures.
 
     Raises an exception if it permanently fails after retries.
     """
     try:
         supabase.table("jobs").update(update_data).eq("id", job["id"]).execute()
     except Exception as db_err:
-        err_str = str(db_err)
-        pg_code = ""
-        if "'code':" in err_str:
-            code_match = re.search(r"'code':\s*'(\w+)'", err_str)
-            if code_match:
-                pg_code = f" [PG:{code_match.group(1)}]"
+        code = getattr(db_err, "code", None)
+        pg_code = f" [PG:{code}]" if code else ""
         scraper_log(f"✗ DB write attempt failed for job {job['id']}{pg_code}: {db_err}")
         raise
 
