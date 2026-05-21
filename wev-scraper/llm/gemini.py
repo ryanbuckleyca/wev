@@ -183,12 +183,14 @@ class GeminiProvider(BaseLLMProvider):
                 config=config,
             )
         except Exception as e:
+            from google.genai.errors import APIError, ClientError, ServerError
+            
             is_timeout = False
-            err_name = type(e).__name__
-            if err_name in ("Timeout", "DeadlineExceeded", "TimeoutError"):
+            if isinstance(e, TimeoutError):
                 is_timeout = True
-            elif err_name == "APIError" and getattr(e, "code", None) in (408, 504):
-                is_timeout = True
+            elif isinstance(e, (ServerError, APIError)):
+                if getattr(e, "code", None) in (408, 504):
+                    is_timeout = True
                 
             if is_timeout:
                 raise LLMProviderError(
