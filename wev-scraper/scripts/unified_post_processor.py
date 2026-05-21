@@ -297,7 +297,6 @@ def is_transient_db_error(e: Exception) -> bool:
         # Postgres transient codes (53xxx, 08xxx) or PostgREST 5xx HTTP codes
         if code_str.startswith("53") or code_str.startswith("08") or code_str.startswith("50"):
             return True
-        return False
         
     err_name = type(e).__name__
     if err_name in ("TimeoutError", "ConnectionError", "ReadTimeout"):
