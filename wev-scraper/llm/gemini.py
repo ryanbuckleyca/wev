@@ -58,6 +58,13 @@ class GeminiProvider(BaseLLMProvider):
         
         self._model = model or "gemini-2.5-flash-lite"
         self._client = None
+        
+        try:
+            timeout_sec = int(os.environ.get("GEMINI_CALL_TIMEOUT_SEC", "90"))
+        except ValueError:
+            logger.warning("Invalid GEMINI_CALL_TIMEOUT_SEC value; defaulting to 90s.")
+            timeout_sec = 90
+        self._call_timeout_sec = timeout_sec
     
     def _key_last4(self) -> str:
         if not self._api_key:
@@ -82,8 +89,7 @@ class GeminiProvider(BaseLLMProvider):
         self._types = types
         # Set HTTP socket timeout based on call timeout (default 90s)
         # Successful unified calls finish in 7-45s; anything longer is likely hanging.
-        timeout_sec = int(os.environ.get("GEMINI_CALL_TIMEOUT_SEC", "90"))
-        timeout_ms = timeout_sec * 1000
+        timeout_ms = self._call_timeout_sec * 1000
         self._http_timeout_ms = timeout_ms
         self._client = genai.Client(
             api_key=self._api_key,
@@ -115,8 +121,7 @@ class GeminiProvider(BaseLLMProvider):
         task_type = kwargs.get("task")
         use_grounding = should_use_grounding(task_type) if task_type else False
         resolved_model = model or self._model
-        timeout_sec = int(os.environ.get("GEMINI_CALL_TIMEOUT_SEC", "90"))
-        timeout_ms = getattr(self, "_http_timeout_ms", None) or (timeout_sec * 1000)
+        timeout_ms = getattr(self, "_http_timeout_ms", None) or (self._call_timeout_sec * 1000)
 
         if use_grounding:
             config = types.GenerateContentConfig(
@@ -171,8 +176,14 @@ class GeminiProvider(BaseLLMProvider):
                 config=config,
             )
         except Exception as e:
-            err_msg = str(e).lower()
-            if "timeout" in err_msg or "deadline" in err_msg:
+            is_timeout = False
+            err_name = type(e).__name__
+            if err_name in ("Timeout", "DeadlineExceeded", "TimeoutError"):
+                is_timeout = True
+            elif err_name == "APIError" and getattr(e, "code", None) in (408, 504):
+                is_timeout = True
+                
+            if is_timeout:
                 raise LLMProviderError(
                     f"Gemini call timed out "
                     f"(model={resolved_model}, prompt_chars={len(prompt)}). "
