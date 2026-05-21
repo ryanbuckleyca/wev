@@ -16,10 +16,12 @@ Usage:
 
 import argparse
 import os
+import re
 import sys
-import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
+
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Load env before any DB import. We can't rely on dotenv-cli at the npm layer
 # because it is first-wins (won't override .env values from .env.production).
@@ -206,9 +208,6 @@ def process_jobs_unified(
         return counts
 
     # Process in smaller batches using unified processor
-    # Track DB write failures so we can retry at the end without re-calling the LLM
-    failed_writes: List[Tuple[dict, dict]] = []  # (job, update_data)
-
     try:
         # Process filtered jobs in smaller batches
         processed_count = 0
@@ -235,11 +234,17 @@ def process_jobs_unified(
                     update_data = _build_update_data(task, job_result)
 
                     if update_data:
-                        ok = _try_db_write(job, update_data, counts)
-                        if ok:
+                        try:
+                            _try_db_write(job, update_data)
+                            if "summary" in update_data:
+                                counts["updated"]["summary"] += 1
+                            if "values" in update_data:
+                                counts["updated"]["values"] += 1
+                            if "is_sse" in update_data:
+                                counts["updated"]["sse"] += 1
                             processed_count += 1
-                        else:
-                            failed_writes.append((job, update_data))
+                        except Exception as db_err:
+                            counts["errors"] += 1
                 else:
                     processed_count += 1
 
@@ -256,36 +261,6 @@ def process_jobs_unified(
     except Exception as e:
         scraper_log(f"✗ Processing failed: {e}")
         counts["errors"] += len(filtered_jobs)
-
-    # ── Retry failed DB writes ────────────────────────────────────────────
-    if failed_writes:
-        print(f"\n⟳ Retrying {len(failed_writes)} failed DB write(s)…")
-        max_retries = 3
-        still_failed: List[Tuple[dict, dict]] = []
-
-        for job, update_data in failed_writes:
-            written = False
-            for attempt in range(1, max_retries + 1):
-                delay = 2 ** attempt  # 2s, 4s, 8s
-                print(f"  Retry {attempt}/{max_retries} for job {job['id'][:8]}… (backoff {delay}s)")
-                time.sleep(delay)
-                if _try_db_write(job, update_data, counts):
-                    counts["processed"] += 1
-                    counts["errors"] -= 1  # undo the error counted on first failure
-                    written = True
-                    print(f"  ✓ Retry succeeded for job {job['id'][:8]}")
-                    break
-            if not written:
-                still_failed.append((job, update_data))
-                scraper_log(
-                    f"✗ Permanently failed DB write for job {job['id']} "
-                    f"after {max_retries} retries"
-                )
-
-        if still_failed:
-            print(f"✗ {len(still_failed)} job(s) could not be written after retries")
-        else:
-            print(f"✓ All {len(failed_writes)} retried write(s) succeeded")
 
     return counts
 
@@ -314,36 +289,23 @@ def _build_update_data(task: str, job_result: dict) -> dict:
     return update_data
 
 
-def _try_db_write(job: dict, update_data: dict, counts: dict) -> bool:
-    """Attempt a single DB write. Returns True on success, False on failure.
+@retry(stop=stop_after_attempt(4), wait=wait_exponential(multiplier=2))
+def _try_db_write(job: dict, update_data: dict) -> None:
+    """Attempt a single DB write, automatically retrying on failure.
 
-    On failure, logs the error with Postgres error code and increments
-    counts["errors"].
+    Raises an exception if it permanently fails after retries.
     """
     try:
         supabase.table("jobs").update(update_data).eq("id", job["id"]).execute()
-        if "summary" in update_data:
-            counts["updated"]["summary"] += 1
-        if "values" in update_data:
-            counts["updated"]["values"] += 1
-        if "is_sse" in update_data:
-            counts["updated"]["sse"] += 1
-        return True
     except Exception as db_err:
         err_str = str(db_err)
-        # Extract Postgres error code if available for diagnostics
         pg_code = ""
         if "'code':" in err_str:
-            try:
-                import re
-                code_match = re.search(r"'code':\s*'(\w+)'", err_str)
-                if code_match:
-                    pg_code = f" [PG:{code_match.group(1)}]"
-            except Exception:
-                pass
-        scraper_log(f"✗ DB write failed for job {job['id']}{pg_code}: {db_err}")
-        counts["errors"] += 1
-        return False
+            code_match = re.search(r"'code':\s*'(\w+)'", err_str)
+            if code_match:
+                pg_code = f" [PG:{code_match.group(1)}]"
+        scraper_log(f"✗ DB write attempt failed for job {job['id']}{pg_code}: {db_err}")
+        raise
 
 
 def main():
