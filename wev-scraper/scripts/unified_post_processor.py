@@ -243,7 +243,7 @@ def process_jobs_unified(
                             if "is_sse" in update_data:
                                 counts["updated"]["sse"] += 1
                             processed_count += 1
-                        except Exception as db_err:
+                        except Exception:
                             counts["errors"] += 1
                 else:
                     processed_count += 1
