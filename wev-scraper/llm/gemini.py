@@ -23,6 +23,7 @@ Constraints for the scraper:
   - Summaries and values are handled by Groq (see factory.py).
 """
 
+import concurrent.futures
 import logging
 import os
 import re
@@ -80,8 +81,10 @@ class GeminiProvider(BaseLLMProvider):
             )
         self._genai = genai
         self._types = types
-        # Milliseconds; unified + Google Search grounding can run tens of seconds — avoid hanging forever.
-        timeout_ms = int(os.environ.get("GEMINI_HTTP_TIMEOUT_MS", "600000"))
+        # HTTP socket timeout (ms).  120s is generous; successful unified calls
+        # finish in 7-45s.  A separate active call deadline (GEMINI_CALL_TIMEOUT_SEC)
+        # fires first for a cleaner error path.
+        timeout_ms = int(os.environ.get("GEMINI_HTTP_TIMEOUT_MS", "120000"))
         self._http_timeout_ms = timeout_ms
         self._client = genai.Client(
             api_key=self._api_key,
@@ -114,7 +117,7 @@ class GeminiProvider(BaseLLMProvider):
         use_grounding = should_use_grounding(task_type) if task_type else False
         resolved_model = model or self._model
         timeout_ms = getattr(self, "_http_timeout_ms", None) or int(
-            os.environ.get("GEMINI_HTTP_TIMEOUT_MS", "600000")
+            os.environ.get("GEMINI_HTTP_TIMEOUT_MS", "120000")
         )
 
         if use_grounding:
@@ -162,18 +165,35 @@ class GeminiProvider(BaseLLMProvider):
                 target=_heartbeat, name="gemini-heartbeat", daemon=True
             ).start()
 
+        # Active call deadline — shorter than the HTTP socket timeout so we get
+        # a clear error and fall back to the next provider promptly.  Successful
+        # unified calls finish in 7-45s; anything past this limit is likely the
+        # model stuck in an extended thinking loop.
+        call_timeout_sec = int(os.environ.get("GEMINI_CALL_TIMEOUT_SEC", "90"))
+
         t_api = time.perf_counter()
+        _executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         try:
+            future = _executor.submit(
+                client.models.generate_content,
+                model=resolved_model,
+                contents=prompt,
+                config=config,
+            )
             try:
-                response = client.models.generate_content(
-                    model=resolved_model,
-                    contents=prompt,
-                    config=config,
+                response = future.result(timeout=call_timeout_sec)
+            except concurrent.futures.TimeoutError:
+                _executor.shutdown(wait=False, cancel_futures=True)
+                raise LLMProviderError(
+                    f"Gemini call timed out after {call_timeout_sec}s "
+                    f"(model={resolved_model}, prompt_chars={len(prompt)}). "
+                    f"The model may be stuck in an extended thinking loop."
                 )
             except Exception as e:
                 raise LLMProviderError(f"Gemini completion error: {e}") from e
         finally:
             stop_hb.set()
+            _executor.shutdown(wait=False)
 
         api_s = time.perf_counter() - t_api
         total_s = time.perf_counter() - t0
