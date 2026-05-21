@@ -263,7 +263,7 @@ describe('ProfilePage skills integration', () => {
   it('blocks save and shows error when skills exceed limit', { timeout: 60_000 }, async () => {
     // This test renders 10 hydrated skills, opens a modal, searches for a skill,
     // selects a result, and validates the save is blocked.  Under full-suite
-    // resource contention it can exceed the 15 s global timeout.
+    // resource contention it can exceed the 30 s global timeout.
 
     const user = userEvent.setup();
     const profileAtMaxSkills = {
