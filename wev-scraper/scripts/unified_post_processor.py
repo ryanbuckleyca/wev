@@ -17,7 +17,6 @@ Usage:
 import argparse
 import json
 import os
-import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -244,7 +243,8 @@ def process_jobs_unified(
                             if "is_sse" in update_data:
                                 counts["updated"]["sse"] += 1
                             processed_count += 1
-                        except Exception:
+                        except Exception as e:
+                            scraper_log(f"✗ DB write permanently failed for job {job['id']}: {e}")
                             counts["errors"] += 1
                 else:
                     processed_count += 1
@@ -300,7 +300,7 @@ def is_transient_db_error(e: Exception) -> bool:
         return False
         
     err_name = type(e).__name__
-    if err_name in ("TimeoutError", "ConnectionError", "ReadTimeout", "APIError"):
+    if err_name in ("TimeoutError", "ConnectionError", "ReadTimeout"):
         return True
     return False
 
