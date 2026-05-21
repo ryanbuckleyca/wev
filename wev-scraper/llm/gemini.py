@@ -100,6 +100,13 @@ class GeminiProvider(BaseLLMProvider):
     def is_available(self) -> bool:
         return bool(self._api_key or get_gemini_api_key())
 
+    def _extract_text(self, response) -> str:
+        """Extract text content from a Gemini response object safely."""
+        text = getattr(response, "text", "")
+        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+            text = text or getattr(response.candidates[0].content.parts[0], "text", "") or ""
+        return text or ""
+
     def complete(self, prompt: str, model: str | None = None, system: str | None = None, **kwargs) -> str:
         """Generic text completion via Gemini.
 
@@ -121,7 +128,7 @@ class GeminiProvider(BaseLLMProvider):
         task_type = kwargs.get("task")
         use_grounding = should_use_grounding(task_type) if task_type else False
         resolved_model = model or self._model
-        timeout_ms = getattr(self, "_http_timeout_ms", None) or (self._call_timeout_sec * 1000)
+        timeout_ms = self._call_timeout_sec * 1000
 
         if use_grounding:
             config = types.GenerateContentConfig(
@@ -195,10 +202,7 @@ class GeminiProvider(BaseLLMProvider):
 
         api_s = time.perf_counter() - t_api
         total_s = time.perf_counter() - t0
-        text = getattr(response, "text", "")
-        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-            text = text or getattr(response.candidates[0].content.parts[0], "text", "") or ""
-        text = text or ""
+        text = self._extract_text(response)
         logger.info(
             "Gemini.complete: generate_content finished api=%.2fs total=%.2fs response_chars=%s",
             api_s,
@@ -278,10 +282,8 @@ class GeminiProvider(BaseLLMProvider):
                     f"Gemini API key invalid or permission denied. Check GEMINI_API_KEY. key_last4={self._key_last4()} raw_error={err_msg_raw}"
                 ) from e
             raise LLMProviderError(f"Gemini API error: key_last4={self._key_last4()} raw_error={err_msg_raw}") from e
-        out = getattr(response, "text", None) or ""
-        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-            out = out or getattr(response.candidates[0].content.parts[0], "text", None) or ""
-        summary = (out or "").strip().strip('"').strip("'")
+        
+        summary = self._extract_text(response).strip().strip('"').strip("'")
         summary = summary.replace("**", "")
         colon_prefix = re.match(r'^[^.]{1,60}: ', summary)
         if colon_prefix:
