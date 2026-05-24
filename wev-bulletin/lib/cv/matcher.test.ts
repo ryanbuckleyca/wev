@@ -16,20 +16,20 @@ describe('skill-matcher', () => {
         {
           query_index: 0,
           concept_uri: '1',
-          preferred_label_en: 'A',
+          preferred_label_en: 'wordA',
           preferred_label_fr: '',
           similarity: 0.9,
         },
         {
           query_index: 0,
           concept_uri: '2',
-          preferred_label_en: 'B',
+          preferred_label_en: 'wordB',
           preferred_label_fr: '',
           similarity: 0.1,
         }, // below floor
       ];
       const phrases = [{ phrase: 'Test', prominence: 5 }];
-      const cvWords = new Set(['a']);
+      const cvWords = new Set(['worda']);
 
       const result = rankAndFilterCandidates(rows, phrases, cvWords, 'en', 0.25);
       expect(result).toHaveLength(1);
@@ -61,14 +61,14 @@ describe('skill-matcher', () => {
         {
           query_index: 0,
           concept_uri: 'uri_A',
-          preferred_label_en: 'A',
+          preferred_label_en: 'wordA',
           preferred_label_fr: '',
           similarity: 0.6,
         },
         {
           query_index: 1,
           concept_uri: 'uri_A',
-          preferred_label_en: 'A',
+          preferred_label_en: 'wordA',
           preferred_label_fr: '',
           similarity: 0.8,
         }, // higher similarity
@@ -77,7 +77,7 @@ describe('skill-matcher', () => {
         { phrase: 'phrase1', prominence: 5 },
         { phrase: 'phrase2', prominence: 5 },
       ];
-      const cvWords = new Set(['a']);
+      const cvWords = new Set(['worda']);
 
       const result = rankAndFilterCandidates(rows, phrases, cvWords, 'en', 0.25);
       expect(result).toHaveLength(1);
@@ -118,27 +118,27 @@ describe('skill-matcher', () => {
         {
           query_index: 0,
           concept_uri: '2',
-          preferred_label_en: 'B',
+          preferred_label_en: 'wordB',
           preferred_label_fr: '',
           similarity: 0.5,
         },
         {
           query_index: 0,
           concept_uri: '1',
-          preferred_label_en: 'A',
+          preferred_label_en: 'wordA',
           preferred_label_fr: '',
           similarity: 0.9,
         },
         {
           query_index: 0,
           concept_uri: '3',
-          preferred_label_en: 'C',
+          preferred_label_en: 'wordC',
           preferred_label_fr: '',
           similarity: 0.7,
         },
       ];
       const phrases = [{ phrase: 'test', prominence: 5 }];
-      const cvWords = new Set(['a', 'b', 'c']); // 1.0 relevance for all
+      const cvWords = new Set(['worda', 'wordb', 'wordc']); // 1.0 relevance for all
 
       const result = rankAndFilterCandidates(rows, phrases, cvWords, 'en', 0.25);
       expect(result.map((r) => r.concept_uri)).toEqual(['1', '3', '2']);

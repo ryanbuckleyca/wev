@@ -330,7 +330,7 @@
     "cvImportSuccess": "CV traité avec succès. Examinez vos nouvelles compétences ci-dessous.",
     "unsupported_file_type": "Seuls les fichiers PDF et DOCX sont pris en charge.",
     "empty_file": "Le fichier sélectionné est vide.",
-    "file_too_large": "Le fichier est trop volumineux pour un import local. Utilisez un fichier de moins de 6 Mo.",
+    "file_too_large": "Le fichier est trop volumineux pour un import local. Utilisez un fichier de moins de 4 Mo.",
     "file_read_failed": "Votre navigateur ne peut pas lire ce fichier. Enregistrez-le localement puis réessayez.",
     "pdf_no_text_layer": "Impossible d'extraire du texte lisible de ce PDF.",
     "no_extractable_text": "Nous n'avons pu extraire aucun texte lisible de ce document. S'il s'agit d'un PDF basé sur une image, veuillez essayer un format basé sur le texte.",

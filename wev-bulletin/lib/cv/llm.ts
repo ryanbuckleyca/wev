@@ -1,7 +1,7 @@
 import Groq from 'groq-sdk';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
-import { buildPrompt, MAX_VALUES } from './prompts';
+import { buildPrompt, MAX_VALUES, PROMPT_VERSION } from './prompts';
 import { CvImportError } from './errors';
 import type { CvLocale } from './types';
 import { VALUES_LIST } from '@/lib/values';
@@ -65,12 +65,19 @@ export function parseLlmResponse(content: string): LlmResult {
   }
 }
 
-export async function extractWithLlm(
-  cvText: string,
-  groqKey: string,
-  userId: string,
-  groqModel: string,
-): Promise<LlmResult> {
+export type ExtractWithLlmOptions = {
+  cvText: string;
+  groqKey: string;
+  userId: string;
+  groqModel: string;
+};
+
+export async function extractWithLlm({
+  cvText,
+  groqKey,
+  userId,
+  groqModel,
+}: ExtractWithLlmOptions): Promise<LlmResult> {
   try {
     const groq = new Groq({ 
       apiKey: groqKey,
@@ -94,6 +101,7 @@ export async function extractWithLlm(
         userId,
         skillCount: llmResult.skills.length,
         valueCount: llmResult.values.length,
+        promptVersion: PROMPT_VERSION,
       },
       'CV LLM extraction successful',
     );

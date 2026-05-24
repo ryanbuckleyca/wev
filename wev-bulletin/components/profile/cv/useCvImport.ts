@@ -3,7 +3,7 @@ import { useTranslations } from 'next-intl';
 import notify from '@/lib/toast';
 import type { CvImportMetadata, CvLocale } from '@/lib/cv/types';
 import type { EscoSkill } from '@/lib/types/skills';
-import { CV_FILE_PICKER_TYPES } from '@/lib/constants/files';
+import { CV_FILE_PICKER_TYPES, MAX_CV_FILE_SIZE_BYTES } from '@/lib/constants/files';
 import { useFilePicker } from './useFilePicker';
 
 // ---------------------------------------------------------------------------
@@ -15,33 +15,10 @@ function getCvImportErrorMessage(
   error: unknown,
 ): string {
   const code = error instanceof Error ? error.message : '';
-  switch (code) {
-    case 'unsupported_file_type':
-      return t('unsupported_file_type');
-    case 'empty_file':
-      return t('empty_file');
-    case 'file_too_large':
-      return t('file_too_large');
-    case 'pdf_no_text_layer':
-      return t('pdf_no_text_layer');
-    case 'no_extractable_text':
-      return t('no_extractable_text');
-    case 'provider_unavailable':
-      return t('provider_unavailable');
-    case 'invalid_file':
-      return t('invalid_file');
-    case 'extraction_failed':
-      return t('extraction_failed');
-    case 'llm_parsing_failed':
-      return t('llm_parsing_failed');
-    case 'jina_bad_dimensions':
-    case 'jina_bad_response':
-    case 'jina_misaligned_response':
-    case 'embedding_failed':
-      return t('embedding_failed');
-    default:
-      return t('cv_import_failed');
-  }
+  // Fallback to 'embedding_failed' for Jina errors
+  if (code.startsWith('jina_')) return t('embedding_failed');
+  // All other error codes are valid translation keys; fall back to generic message
+  return t(code as any, { defaultMessage: t('cv_import_failed') });
 }
 
 // ---------------------------------------------------------------------------
@@ -107,7 +84,7 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
   const [isParsing, setIsParsing] = useState(false);
 
   const processFile = async (file: File) => {
-    if (file.size > 4 * 1024 * 1024) {
+    if (file.size > MAX_CV_FILE_SIZE_BYTES) {
       notify.error(getCvImportErrorMessage(t, new Error('file_too_large')));
       return;
     }

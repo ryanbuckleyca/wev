@@ -29,9 +29,28 @@ import type { CvLocale } from '@/lib/cv/types';
 
 export const dynamic = 'force-dynamic';
 
+const rateLimitMap = new Map<string, { count: number; startTime: number }>();
+
 export async function POST(request: Request) {
   const auth = await getRequestUser();
   if (!auth.ok) return unauthorizedResponse('Not authenticated');
+
+  // Simple in-memory rate limit (per isolate): 5 requests per 10 minutes
+  const now = Date.now();
+  const userId = auth.user.id;
+  let usage = rateLimitMap.get(userId);
+  if (usage && now - usage.startTime > 10 * 60 * 1000) {
+    usage = undefined;
+  }
+  if (!usage) {
+    usage = { count: 0, startTime: now };
+    rateLimitMap.set(userId, usage);
+  }
+  if (usage.count >= 5) {
+    logger.warn({ userId }, 'CV extraction rate limit exceeded');
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+  usage.count += 1;
 
   const groqKey = process.env.GROQ_API_KEY;
   const jinaKey = process.env.JINA_API_KEY;

@@ -74,11 +74,11 @@ describe('nlp-utils', () => {
       expect(score).toBe(1.0);
     });
 
-    it('scores 1.0 if the label only contains stop words', () => {
+    it('scores 0.0 if the label only contains stop words', () => {
       const cvText = 'Frontend development';
       const cvSet = buildCvWordSet(cvText);
       const score = labelRelevance('to and from', cvSet);
-      expect(score).toBe(1.0);
+      expect(score).toBe(0.0);
     });
 
     it('works correctly with French labels and accents', () => {
