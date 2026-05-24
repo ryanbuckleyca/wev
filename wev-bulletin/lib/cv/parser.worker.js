@@ -1,7 +1,10 @@
 import { parentPort, workerData } from 'worker_threads';
 
 function normalizeText(input) {
-  return input.replace(/\u0000/g, ' ').replace(/\s+/g, ' ').trim();
+  return input
+    .replace(/\u0000/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 async function parsePdf(buffer) {
@@ -12,7 +15,7 @@ async function parsePdf(buffer) {
     isEvalSupported: false,
   });
   const pdf = await loadingTask.promise;
-  
+
   const pages = [];
   let totalChars = 0;
   let consecutiveEmpty = 0;

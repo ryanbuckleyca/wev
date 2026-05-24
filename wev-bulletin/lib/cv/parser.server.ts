@@ -2,7 +2,11 @@ import 'server-only';
 import { Worker } from 'node:worker_threads';
 import { CvImportError } from './errors';
 import type { CvImportMetadata, CvLocale } from './types';
-import { ALLOWED_CV_MIME_TYPES, CV_MIME_TYPES, MAX_CV_FILE_SIZE_BYTES } from '@/lib/constants/files';
+import {
+  ALLOWED_CV_MIME_TYPES,
+  CV_MIME_TYPES,
+  MAX_CV_FILE_SIZE_BYTES,
+} from '@/lib/constants/files';
 
 export type ParsedCvResult = {
   text: string;
@@ -37,11 +41,11 @@ async function parseDocumentInWorker(buffer: Buffer, type: 'pdf' | 'docx'): Prom
     });
     worker.on('exit', (code) => {
       clearTimeout(timeout);
-      if (code !== 0) reject(new CvImportError('cv_import_failed', `Worker exited with code ${code}`));
+      if (code !== 0)
+        reject(new CvImportError('cv_import_failed', `Worker exited with code ${code}`));
     });
   });
 }
-
 
 function getExtension(name: string): string {
   const dotIdx = name.lastIndexOf('.');

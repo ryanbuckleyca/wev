@@ -36,7 +36,6 @@ test.describe("Profile editing flow", () => {
     });
 
     await test.step("Import CV to auto-fill skills and values", async () => {
-
       // Mock the CV extraction API to avoid calling the real LLM in E2E tests
       await page.route("**/api/cv/extract", async (route) => {
         await route.fulfill({
@@ -64,18 +63,26 @@ test.describe("Profile editing flow", () => {
 
       // The file input is hidden, so we need to set its files directly via the locator
       await page.locator('input[type="file"]').setInputFiles({
-        name: 'test.pdf',
-        mimeType: 'application/pdf',
-        buffer: Buffer.from('dummy content'),
+        name: "test.pdf",
+        mimeType: "application/pdf",
+        buffer: Buffer.from("dummy content"),
       });
 
       // Verify the extracted skill was added to the UI
-      const skillsContainer = page.getByRole("button", { name: /search and add skills/i }).locator("..");
-      await expect(skillsContainer.getByRole("button", { name: /^remove React/i })).toBeVisible({ timeout: 10_000 });
-      
+      const skillsContainer = page
+        .getByRole("button", { name: /search and add skills/i })
+        .locator("..");
+      await expect(
+        skillsContainer.getByRole("button", { name: /^remove React/i }),
+      ).toBeVisible({ timeout: 10_000 });
+
       // Verify the extracted value was added to the UI
-      const valuesContainer = page.getByRole("button", { name: /search and add work values/i }).locator("..");
-      await expect(valuesContainer.getByRole("button", { name: /^remove Advancement/i })).toBeVisible();
+      const valuesContainer = page
+        .getByRole("button", { name: /search and add work values/i })
+        .locator("..");
+      await expect(
+        valuesContainer.getByRole("button", { name: /^remove Advancement/i }),
+      ).toBeVisible();
     });
 
     const skillsTrigger = page.getByRole("button", {

@@ -26,15 +26,13 @@ const SkillPhraseSchema = z.union([
 ]);
 
 const LlmResponseSchema = z.object({
-  skills: z
-    .array(z.unknown())
-    .transform((arr) => 
-      arr
-        .map((s) => SkillPhraseSchema.safeParse(s))
-        .filter((res) => res.success)
-        .map((res) => res.data)
-        .filter((s) => s.phrase.length >= 3)
-    ),
+  skills: z.array(z.unknown()).transform((arr) =>
+    arr
+      .map((s) => SkillPhraseSchema.safeParse(s))
+      .filter((res) => res.success)
+      .map((res) => res.data)
+      .filter((s) => s.phrase.length >= 3),
+  ),
   values: z.array(z.string()).transform((arr) => {
     const allowed = new Set<string>(VALUES_LIST);
     const seen = new Set<string>();
@@ -79,10 +77,10 @@ export async function extractWithLlm({
   groqModel,
 }: ExtractWithLlmOptions): Promise<LlmResult> {
   try {
-    const groq = new Groq({ 
+    const groq = new Groq({
       apiKey: groqKey,
       maxRetries: 3,
-      timeout: 30000
+      timeout: 30000,
     });
     const completion = await groq.chat.completions.create({
       model: groqModel,

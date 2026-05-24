@@ -13,15 +13,15 @@ const messages = {
     cvImportDropHint: 'or drag and drop PDF/DOCX',
     cvReimportWarning: 'This will overwrite your current skills and values.',
     cvImportedIndicator: 'Last imported: {fileName} on {importedAt}',
-    cvParsingWaitWarning: 'Parsing your CV, please wait...'
-  }
+    cvParsingWaitWarning: 'Parsing your CV, please wait...',
+  },
 };
 
 function renderWithIntl(ui: React.ReactElement) {
   return render(
     <NextIntlClientProvider locale="en" messages={messages}>
       {ui}
-    </NextIntlClientProvider>
+    </NextIntlClientProvider>,
   );
 }
 
@@ -40,7 +40,7 @@ describe('CVImportButton', () => {
         cvImport={null}
         isSaving={false}
         onConfirmImport={async () => {}}
-      />
+      />,
     );
 
     expect(screen.getByRole('button', { name: 'Import from CV' })).toBeVisible();
@@ -56,8 +56,13 @@ describe('CVImportButton', () => {
       json: async () => ({
         skills: [{ concept_uri: 'test-uri', term: 'Test Skill', score: 0.9 }],
         values: ['Innovation'],
-        metadata: { filename: 'test.pdf', imported_at: '2023-10-01T12:00:00Z', source: 'cv_upload', locale: 'en' }
-      })
+        metadata: {
+          filename: 'test.pdf',
+          imported_at: '2023-10-01T12:00:00Z',
+          source: 'cv_upload',
+          locale: 'en',
+        },
+      }),
     });
 
     renderWithIntl(
@@ -66,14 +71,14 @@ describe('CVImportButton', () => {
         cvImport={null}
         isSaving={false}
         onConfirmImport={handleConfirmImport}
-      />
+      />,
     );
 
     const file = new File(['dummy content'], 'test.pdf', { type: 'application/pdf' });
-    
+
     // We get the input via querySelector since it is hidden and might not have a label that userEvent easily finds
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    
+
     // Simulate user selecting a file
     await user.upload(input, file);
 
@@ -82,7 +87,12 @@ describe('CVImportButton', () => {
         skills: [{ concept_uri: 'test-uri', term: 'Test Skill', score: 0.9 }],
         values: ['Innovation'],
         warnings: [],
-        cvImport: { filename: 'test.pdf', imported_at: '2023-10-01T12:00:00Z', source: 'cv_upload', locale: 'en' }
+        cvImport: {
+          filename: 'test.pdf',
+          imported_at: '2023-10-01T12:00:00Z',
+          source: 'cv_upload',
+          locale: 'en',
+        },
       });
     });
   });
@@ -95,11 +105,11 @@ describe('CVImportButton', () => {
           filename: 'old.pdf',
           imported_at: '2023-10-01T12:00:00Z',
           source: 'cv_upload',
-          locale: 'en'
+          locale: 'en',
         }}
         isSaving={false}
         onConfirmImport={async () => {}}
-      />
+      />,
     );
 
     expect(screen.getByRole('button', { name: 'Update from CV' })).toBeVisible();
