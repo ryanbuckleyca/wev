@@ -68,7 +68,7 @@ export function labelRelevance(
 ): number {
   const labelWords = tokenize(escoLabel, true, locale);
 
-  if (labelWords.length === 0) return 1; // If only stop words, don't penalize
+  if (labelWords.length === 0) return 0; // If only stop words, we have no evidence of relevance
 
   let hits = 0;
   for (const w of labelWords) {

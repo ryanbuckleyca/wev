@@ -5,13 +5,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // worker without actually spawning a thread (which can't see vitest mocks).
 const mockPostMessage = vi.fn();
 
-vi.mock('worker_threads', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('worker_threads')>();
+vi.mock('node:worker_threads', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:worker_threads')>();
   return {
     ...actual,
     Worker: vi.fn().mockImplementation(function (this: any) {
-      this._listeners = {} as Record<string, Function>;
-      this.on = vi.fn((event: string, cb: Function) => {
+      this._listeners = {} as Record<string, (...args: any[]) => void>;
+      this.on = vi.fn((event: string, cb: (...args: any[]) => void) => {
         this._listeners[event] = cb;
       });
       this.terminate = vi.fn();

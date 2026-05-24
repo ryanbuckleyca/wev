@@ -45,22 +45,21 @@ type EscoIndexSkillRecord = {
   concept_uri: string;
   skill_type?: string;
   reuse_level?: string;
-  preferred_label?: {
-    en?: string;
-    fr?: string;
-  };
-  alternative_label?: {
-    en?: string[];
-    fr?: string[];
-  };
-  description?: {
-    en?: string;
-    fr?: string;
-  };
-  scope_note?: {
-    en?: string;
-    fr?: string;
-  };
+  preferred_label?: { en?: string; fr?: string };
+  alternative_label?: { en?: string[]; fr?: string[] };
+  description?: { en?: string; fr?: string };
+  scope_note?: { en?: string; fr?: string };
+  // Backup format support
+  preferred_label_en?: string;
+  preferred_label_fr?: string;
+  alternative_label_en?: string[];
+  alternative_label_fr?: string[];
+  description_en?: string;
+  description_fr?: string;
+  scope_note_en?: string;
+  scope_note_fr?: string;
+  embedding?: number[];
+  updated_at?: string;
 };
 
 type EscoSkillsPayload = {
@@ -184,7 +183,7 @@ function findEscoSkillsIndexPath(): string {
   return match;
 }
 
-function parseEscoSkillsPayload(filePath: string): any[] {
+function parseEscoSkillsPayload(filePath: string): EscoIndexSkillRecord[] {
   const raw = fs.readFileSync(filePath, "utf-8");
   const payload = JSON.parse(raw);
 
@@ -197,7 +196,7 @@ function parseEscoSkillsPayload(filePath: string): any[] {
   return records.filter((skill) => !!skill?.concept_uri);
 }
 
-function toEscoDbRow(skill: any, timestamp: string) {
+function toEscoDbRow(skill: EscoIndexSkillRecord, timestamp: string) {
   return {
     concept_uri: skill.concept_uri,
     skill_type: skill.skill_type ?? null,

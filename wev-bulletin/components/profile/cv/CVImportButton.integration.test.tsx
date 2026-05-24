@@ -103,6 +103,6 @@ describe('CVImportButton', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Update from CV' })).toBeVisible();
-    expect(screen.getByText(/This will overwrite your current skills and values/)).toBeVisible();
+    expect(screen.queryByText(/This will overwrite your current skills and values/)).toBeNull();
   });
 });

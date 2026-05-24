@@ -1,25 +1,5 @@
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 
-type FileSystemFileHandleLike = {
-  getFile: () => Promise<File>;
-};
-
-type ShowOpenFilePicker = (options?: {
-  types?: Array<{
-    description?: string;
-    accept: Record<string, string[]>;
-  }>;
-  multiple?: boolean;
-  excludeAcceptAllOption?: boolean;
-}) => Promise<FileSystemFileHandleLike[]>;
-
-function getShowOpenFilePicker(): ShowOpenFilePicker | null {
-  if (typeof window === 'undefined') return null;
-  const candidate = (window as unknown as { showOpenFilePicker?: ShowOpenFilePicker })
-    .showOpenFilePicker;
-  return typeof candidate === 'function' ? candidate : null;
-}
-
 export type FilePickerOptions = {
   acceptTypes?: Array<{ description: string; accept: Record<string, string[]> }>;
   onFileSelect: (file: File) => void;
@@ -29,27 +9,8 @@ export function useFilePicker({ acceptTypes, onFileSelect }: FilePickerOptions) 
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const onPickFile = async () => {
-    const showOpenFilePicker = getShowOpenFilePicker();
-    if (!showOpenFilePicker) {
-      inputRef.current?.click();
-      return;
-    }
-    try {
-      const [handle] = await showOpenFilePicker({
-        types: acceptTypes,
-        multiple: false,
-        excludeAcceptAllOption: true,
-      });
-      if (!handle) return;
-      const file = await handle.getFile();
-      onFileSelect(file);
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return;
-      }
-      inputRef.current?.click();
-    }
+  const onPickFile = () => {
+    inputRef.current?.click();
   };
 
   const isAcceptedFile = (file: File) => {

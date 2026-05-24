@@ -7,9 +7,13 @@ import type { SkillPhrase } from './llm';
 
 const MAX_SKILLS = 10;
 const RPC_MATCHES_PER_PHRASE = 3;
+let _scoreFloor: number | null = null;
 function getScoreFloor(): number {
-  const rawScoreFloor = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '0.25');
-  return Number.isFinite(rawScoreFloor) ? rawScoreFloor : 0.25;
+  if (_scoreFloor === null) {
+    const rawScoreFloor = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '0.25');
+    _scoreFloor = Number.isFinite(rawScoreFloor) ? rawScoreFloor : 0.25;
+  }
+  return _scoreFloor;
 }
 const RELEVANCE_FLOOR = 0.4;
 

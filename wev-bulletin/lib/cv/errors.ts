@@ -1,3 +1,7 @@
+/**
+ * These error codes are used directly as translation keys in the profile namespace.
+ * Do not change these without also updating en.json and fr.json.
+ */
 export type CvImportErrorCode =
   | 'unsupported_file_type'
   | 'empty_file'

@@ -2,6 +2,7 @@ import { VALUES_DICTIONARY, VALUES_LIST } from '@/lib/values';
 
 export const MAX_TEXT_CHARS = 12_000;
 export const MAX_VALUES = 5;
+export const PROMPT_VERSION = 1;
 
 function truncateAtWord(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;

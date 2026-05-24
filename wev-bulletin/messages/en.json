@@ -330,7 +330,7 @@
     "cvImportSuccess": "CV processed successfully. Review your new skills below.",
     "unsupported_file_type": "Only PDF and DOCX files are supported.",
     "empty_file": "The selected file is empty.",
-    "file_too_large": "File is too large for in-browser import. Please use a file under 6MB.",
+    "file_too_large": "File is too large for in-browser import. Please use a file under 4MB.",
     "file_read_failed": "Your browser could not read this file. Re-save/download it locally and try again.",
     "pdf_no_text_layer": "We couldn't extract readable text from this PDF.",
     "no_extractable_text": "We couldn't extract any readable text from this document. If it's an image-based PDF, please try a text-based format.",
