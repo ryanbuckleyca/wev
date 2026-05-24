@@ -65,3 +65,6 @@ The Makefile auto-detects a torch-compatible Python (`python3.11` → `python3.1
 - In **`publish`** mode, only prod Supabase keys are applied from `.env.production`; the runner sets `ENV_MODE=local` so **prod DB + local LLMs/embeddings** (typical “push from my machine” workflow). In **`prod`** mode, the full prod file is layered on `.env`, then `ENV_MODE=prod` so you don’t accidentally keep `ENV_MODE=local` from `.env` when you meant a fully prod-configured run.
 - Pre-push hook runs `npm run verify:fix`. To bypass: `SKIP_VERIFY=1 git push` or `npm run push:skip`.
 - Avoid wrapping scraper Python in `dotenv-cli` (**first-wins**). Use `npm run scrape:prod`, `scrape:publish`, `process:prod`, or `process:publish` so env layering matches `scrape.py` / `unified_post_processor.py`.
+
+## Architectural Roadmap
+- **CV Uploads**: Currently implemented as a synchronous API route with inline `worker_threads` for parsing to avoid event loop blocking. As scale increases, this should be moved to a decoupled Background Job / Microservice architecture (uploading to Supabase Storage -> async queue processing) to fully resolve potential HTTP load-balancer timeouts.

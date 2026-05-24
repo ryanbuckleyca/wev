@@ -38,8 +38,8 @@ function parseLimit(value: string | null): number {
 }
 
 function parseLocale(value: string | null): CvLocale {
-  const rawLocale = (value ?? '').toLowerCase();
-  return rawLocale === 'fr' ? 'fr' : 'en';
+  const rawLocale = (value ?? '').trim().toLowerCase();
+  return rawLocale.startsWith('fr') ? 'fr' : 'en';
 }
 
 export async function GET(request: Request) {

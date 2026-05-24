@@ -3,6 +3,13 @@ import { VALUES_DICTIONARY, VALUES_LIST } from '@/lib/values';
 export const MAX_TEXT_CHARS = 12_000;
 export const MAX_VALUES = 5;
 
+function truncateAtWord(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  const sliced = text.slice(0, maxLen);
+  const lastSpace = Math.max(sliced.lastIndexOf(' '), sliced.lastIndexOf('\n'));
+  return lastSpace > 0 ? sliced.slice(0, lastSpace) : sliced;
+}
+
 export function buildPrompt(cvText: string): string {
   const valuesTaxonomy = VALUES_LIST.map(
     (label) => `- ${label}: ${VALUES_DICTIONARY[label].description}`,
@@ -36,7 +43,7 @@ ${valuesTaxonomy}
 
 CV:
 """
-${cvText.slice(0, MAX_TEXT_CHARS)}
+${truncateAtWord(cvText, MAX_TEXT_CHARS)}
 """
 
 Return JSON:
