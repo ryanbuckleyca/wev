@@ -6,6 +6,7 @@ import Button from '@/components/Button';
 import Alert from '@/components/ui/Alert';
 import type { CvImportMetadata } from '@/lib/cv/types';
 import type { EscoSkill } from '@/lib/types/skills';
+import { CV_HTML_ACCEPT_STRING } from '@/lib/constants/files';
 import { useCvImport } from './useCvImport';
 
 type CVImportButtonProps = {
@@ -57,7 +58,7 @@ export default function CVImportButton({
         ref={inputRef}
         type="file"
         className="hidden"
-        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        accept={CV_HTML_ACCEPT_STRING}
         onChange={onFileSelected}
         aria-label={t('cvImportInputLabel')}
       />

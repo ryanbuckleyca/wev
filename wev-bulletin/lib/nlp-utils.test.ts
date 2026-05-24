@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCvWordSet, labelRelevance } from './nlp-utils';
+import { buildCvWordSet, labelRelevance, tokenize } from './nlp-utils';
 
 describe('nlp-utils', () => {
   describe('buildCvWordSet', () => {
@@ -11,15 +11,41 @@ describe('nlp-utils', () => {
       expect(set.has('react')).toBe(true);
     });
 
-    it('preserves French accents', () => {
+    it('preserves French accents and apostrophes', () => {
       const cvText = "Développement d'applications Web frontend.";
       const set = buildCvWordSet(cvText);
       expect(set.has('développement')).toBe(true);
-      expect(set.has('applications')).toBe(true);
+      // d'applications is now kept as a single token (apostrophe preserved)
+      expect(set.has("d'applications")).toBe(true);
       expect(set.has('web')).toBe(true);
       expect(set.has('frontend')).toBe(true);
-      // d'applications becomes "d" and "applications". "d" is < 3 chars so it is filtered out.
-      expect(set.has('d')).toBe(false);
+    });
+  });
+
+  describe('tokenize tech tokens', () => {
+    it('preserves C++ as cplusplus', () => {
+      const tokens = tokenize('Experienced in C++ development');
+      expect(tokens).toContain('cplusplus');
+      expect(tokens).toContain('experienced');
+      expect(tokens).toContain('development');
+    });
+
+    it('preserves C# as csharp', () => {
+      const tokens = tokenize('Built APIs with C# and .NET');
+      expect(tokens).toContain('csharp');
+      expect(tokens).toContain('dotnet');
+    });
+
+    it('preserves F# as fsharp', () => {
+      const tokens = tokenize('Functional programming in F#');
+      expect(tokens).toContain('fsharp');
+    });
+
+    it('preserves digits in tokens like 3D, H2O, S3', () => {
+      const tokens = tokenize('3D modelling and AWS S3 integration');
+      expect(tokens).toContain('3d');
+      expect(tokens).toContain('s3');
+      expect(tokens).toContain('modelling');
     });
   });
 
@@ -65,6 +91,13 @@ describe('nlp-utils', () => {
       const score2 = labelRelevance('développement web', cvSet);
       // "développement" is present (1), "web" is missing (0)
       expect(score2).toBe(0.5);
+    });
+
+    it('matches tech tokens between CV and ESCO labels', () => {
+      const cvText = 'Proficient in C++ and .NET framework';
+      const cvSet = buildCvWordSet(cvText);
+      const score = labelRelevance('C++ development', cvSet);
+      expect(score).toBe(0.5); // "cplusplus" matches, "development" doesn't
     });
   });
 });

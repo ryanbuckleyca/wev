@@ -3,6 +3,7 @@ import { useTranslations } from 'next-intl';
 import notify from '@/lib/toast';
 import type { CvImportMetadata, CvLocale } from '@/lib/cv/types';
 import type { EscoSkill } from '@/lib/types/skills';
+import { CV_FILE_PICKER_TYPES } from '@/lib/constants/files';
 import { useFilePicker } from './useFilePicker';
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,19 @@ function getCvImportErrorMessage(
       return t('pdf_no_text_layer');
     case 'no_extractable_text':
       return t('no_extractable_text');
+    case 'provider_unavailable':
+      return t('provider_unavailable');
+    case 'invalid_file':
+      return t('invalid_file');
+    case 'extraction_failed':
+      return t('extraction_failed');
+    case 'llm_parsing_failed':
+      return t('llm_parsing_failed');
+    case 'jina_bad_dimensions':
+    case 'jina_bad_response':
+    case 'jina_misaligned_response':
+    case 'embedding_failed':
+      return t('embedding_failed');
     default:
       return t('cv_import_failed');
   }
@@ -93,6 +107,11 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
   const [isParsing, setIsParsing] = useState(false);
 
   const processFile = async (file: File) => {
+    if (file.size > 4 * 1024 * 1024) {
+      notify.error(getCvImportErrorMessage(t, new Error('file_too_large')));
+      return;
+    }
+
     abortControllerRef.current?.abort();
     abortControllerRef.current = new AbortController();
 
@@ -118,15 +137,7 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
   };
 
   const filePicker = useFilePicker({
-    acceptTypes: [
-      {
-        description: 'CV',
-        accept: {
-          'application/pdf': ['.pdf'],
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-        },
-      },
-    ],
+    acceptTypes: CV_FILE_PICKER_TYPES,
     onFileSelect: processFile,
   });
 
