@@ -5,24 +5,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // worker without actually spawning a thread (which can't see vitest mocks).
 const mockPostMessage = vi.fn();
 
-vi.mock('node:worker_threads', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:worker_threads')>();
+vi.mock('node:worker_threads', () => {
+  const MockWorker = vi.fn().mockImplementation(function (this: any) {
+    this._listeners = {} as Record<string, (...args: any[]) => void>;
+    this.on = vi.fn((event: string, cb: (...args: any[]) => void) => {
+      this._listeners[event] = cb;
+    });
+    this.terminate = vi.fn();
+    // Schedule the message callback async so .on() handlers are registered first
+    setTimeout(() => {
+      if (mockPostMessage.mock.calls.length > 0) {
+        const msg = mockPostMessage.mock.calls[mockPostMessage.mock.calls.length - 1][0];
+        this._listeners['message']?.(msg);
+      }
+    }, 0);
+  });
+
   return {
-    ...actual,
-    Worker: vi.fn().mockImplementation(function (this: any) {
-      this._listeners = {} as Record<string, (...args: any[]) => void>;
-      this.on = vi.fn((event: string, cb: (...args: any[]) => void) => {
-        this._listeners[event] = cb;
-      });
-      this.terminate = vi.fn();
-      // Schedule the message callback async so .on() handlers are registered first
-      setTimeout(() => {
-        if (mockPostMessage.mock.calls.length > 0) {
-          const msg = mockPostMessage.mock.calls[mockPostMessage.mock.calls.length - 1][0];
-          this._listeners['message']?.(msg);
-        }
-      }, 0);
-    }),
+    default: { Worker: MockWorker },
+    Worker: MockWorker,
   };
 });
 
@@ -55,9 +56,7 @@ describe('Server-side CV Parser', () => {
   });
 
   it('extracts text from DOCX via worker thread', async () => {
-    mockPostMessage.mockImplementation(() => [
-      { success: true, text: 'Extracted DOCX text' },
-    ]);
+    mockPostMessage.mockImplementation(() => [{ success: true, text: 'Extracted DOCX text' }]);
 
     const { parseCvOnServer } = await import('./parser.server');
     const file = new File(['fake-docx-bytes'], 'cv.docx', {
@@ -76,9 +75,7 @@ describe('Server-side CV Parser', () => {
   });
 
   it('throws error when worker reports pdf_no_text_layer', async () => {
-    mockPostMessage.mockImplementation(() => [
-      { success: false, error: 'pdf_no_text_layer' },
-    ]);
+    mockPostMessage.mockImplementation(() => [{ success: false, error: 'pdf_no_text_layer' }]);
 
     const { parseCvOnServer } = await import('./parser.server');
     const file = new File(['fake-pdf-bytes'], 'scanned.pdf', { type: 'application/pdf' });

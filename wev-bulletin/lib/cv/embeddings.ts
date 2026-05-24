@@ -14,7 +14,10 @@ async function retryAsync<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
         throw error;
       }
       if (attempt >= maxRetries) {
-        throw new CvImportError('embedding_failed', error instanceof Error ? error.message : String(error));
+        throw new CvImportError(
+          'embedding_failed',
+          error instanceof Error ? error.message : String(error),
+        );
       }
       const delay = Math.pow(2, attempt) * 1000;
       await new Promise((resolve) => setTimeout(resolve, delay));
@@ -24,7 +27,7 @@ async function retryAsync<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
 }
 
 export async function embedPhrases(phrases: string[], apiKey: string): Promise<number[][]> {
-  const validPhrases = phrases.map(p => p.trim()).filter(p => p.length > 0);
+  const validPhrases = phrases.map((p) => p.trim()).filter((p) => p.length > 0);
   if (validPhrases.length === 0) return [];
 
   const json = await retryAsync(async () => {
@@ -50,7 +53,7 @@ export async function embedPhrases(phrases: string[], apiKey: string): Promise<n
       throw new CvImportError('embedding_failed', `jina_${resp.status}`);
     }
 
-    return await resp.json() as any;
+    return (await resp.json()) as any;
   });
 
   if (!json?.data || !Array.isArray(json.data)) {
