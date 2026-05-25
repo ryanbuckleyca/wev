@@ -37,7 +37,9 @@ const CLEAR_TABLES: ClearTable[] = [
 ];
 
 const INSERT_BATCH_SIZE = 50;
-const ESCO_UPSERT_BATCH_SIZE = 500;
+// Smaller batches avoid hitting PostgREST statement timeouts when upserting
+// large vector payloads (1024-dim embeddings). 100 rows ≈ ~400KB per request.
+const ESCO_UPSERT_BATCH_SIZE = 100;
 
 type EscoIndexSkillRecord = {
   concept_uri: string;

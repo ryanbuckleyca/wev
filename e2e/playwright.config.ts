@@ -48,7 +48,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
   /* Two workers is a good fit for the hosted runner without overloading Next.js or Supabase. */
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 2 : 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ["list"],
@@ -90,7 +90,7 @@ export default defineConfig({
     reuseExistingServer: false,
     stdout: "pipe",
     stderr: "pipe",
-    timeout: 300_000,
+    timeout: 420_000,
     env: {
       ...process.env,
       NEXT_PUBLIC_SITE_URL: PLAYWRIGHT_BASE_URL,

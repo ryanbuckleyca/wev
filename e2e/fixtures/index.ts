@@ -43,16 +43,10 @@ export const test = base.extend<E2EFixtures>({
       await authPage.gotoLogin("en");
       await authPage.login(user.email, user.password);
 
-      // Wait for redirect away from login page - either to home or with auth params
-      // Check that we're NOT on the login form anymore
-      await expect(
-        page.getByRole("heading", { name: /log in/i }),
-      ).not.toBeVisible({
-        timeout: 10_000,
-      });
-
-      // Also wait to ensure we're on an /en path
-      await page.waitForURL(/\/en/, { timeout: 10_000 });
+      // Wait for redirect to the home page — this is the reliable success signal.
+      // Checking for the login heading to disappear is fragile because Playwright
+      // can re-resolve the locator against the new page's DOM mid-navigation.
+      await page.waitForURL(/\/en(\/)?$/, { timeout: 15_000 });
 
       await runFixture(user);
     } finally {
