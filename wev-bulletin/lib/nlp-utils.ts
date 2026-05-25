@@ -51,7 +51,12 @@ export function tokenize(
     });
 }
 
-/** Build a set of all lowercase words in the CV for fast lookup, supporting Unicode letters. */
+/** Build a set of all lowercase words in the CV for fast lookup, supporting Unicode letters.
+ *
+ * Intentionally does NOT remove stop words — we keep the CV word set broad so
+ * that `labelRelevance` can look up any word. Stop words are filtered on the
+ * label side (in `labelRelevance`) where they carry no signal about relevance.
+ */
 export function buildCvWordSet(text: string, locale: CvLocale = 'en'): Set<string> {
   return new Set(tokenize(text, false, locale));
 }

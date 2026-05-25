@@ -29,6 +29,8 @@ async function parsePdf(buffer) {
 
     if (trimmedLen === 0) {
       consecutiveEmpty += 1;
+      // Bail early only if we've seen nothing but empty pages so far.
+      // Once any page has text, we must continue — later pages may have content.
       if (consecutiveEmpty >= 3 && totalChars === 0) break;
     } else {
       consecutiveEmpty = 0;

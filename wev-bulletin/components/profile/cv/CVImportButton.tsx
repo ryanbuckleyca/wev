@@ -17,7 +17,7 @@ type CVImportButtonProps = {
     skills: EscoSkill[];
     values: string[];
     cvImport: CvImportMetadata;
-  }) => Promise<void>;
+  }) => void;
 };
 
 export default function CVImportButton({
@@ -91,7 +91,7 @@ export default function CVImportButton({
           </Button>
           <p className="text-xs text-muted-foreground">{t('cvImportDropHint')}</p>
         </div>
-        {cvImport?.filename && isDragOver && (
+        {cvImport?.filename && (
           <p className="mt-3 text-xs font-medium text-amber-600 dark:text-amber-500">
             {t('cvReimportWarning')}
           </p>

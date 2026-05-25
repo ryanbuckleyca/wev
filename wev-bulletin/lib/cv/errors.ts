@@ -6,6 +6,7 @@ export type CvImportErrorCode =
   | 'unsupported_file_type'
   | 'empty_file'
   | 'file_too_large'
+  | 'file_read_failed'
   | 'pdf_no_text_layer'
   | 'no_extractable_text'
   | 'llm_parsing_failed'
@@ -25,3 +26,9 @@ export class CvImportError extends Error {
     this.name = 'CvImportError';
   }
 }
+
+/**
+ * Signals a transient failure (network hiccup, rate limit, 5xx) that is safe
+ * to retry. Use this instead of a magic string on the message field.
+ */
+export class TransientCvError extends CvImportError {}

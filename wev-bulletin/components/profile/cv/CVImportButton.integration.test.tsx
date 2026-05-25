@@ -35,12 +35,7 @@ describe('CVImportButton', () => {
 
   it('renders the import button and hidden file input', () => {
     renderWithIntl(
-      <CVImportButton
-        locale="en"
-        cvImport={null}
-        isSaving={false}
-        onConfirmImport={async () => {}}
-      />,
+      <CVImportButton locale="en" cvImport={null} isSaving={false} onConfirmImport={() => {}} />,
     );
 
     expect(screen.getByRole('button', { name: 'Import from CV' })).toBeVisible();
@@ -97,7 +92,7 @@ describe('CVImportButton', () => {
     });
   });
 
-  it('shows re-import text if cvImport metadata is present', () => {
+  it('shows re-import text and warning if cvImport metadata is present', () => {
     renderWithIntl(
       <CVImportButton
         locale="en"
@@ -108,11 +103,12 @@ describe('CVImportButton', () => {
           locale: 'en',
         }}
         isSaving={false}
-        onConfirmImport={async () => {}}
+        onConfirmImport={() => {}}
       />,
     );
 
     expect(screen.getByRole('button', { name: 'Update from CV' })).toBeVisible();
-    expect(screen.queryByText(/This will overwrite your current skills and values/)).toBeNull();
+    // Warning is always visible when a previous import exists (not just on drag)
+    expect(screen.getByText(/This will overwrite your current skills and values/)).toBeVisible();
   });
 });

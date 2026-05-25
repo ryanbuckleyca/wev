@@ -181,19 +181,21 @@ export function useProfileForm(locale: 'en' | 'fr') {
 
   const handleApplyCvImport = useCallback(
     ({
-      nextSkills,
-      nextValues,
+      skills: nextSkills,
+      values: nextValues,
       cvImport,
     }: {
-      nextSkills: EscoSkill[];
-      nextValues: string[];
+      skills: EscoSkill[];
+      values: string[];
       cvImport: CvImportMetadata;
     }) => {
-      // Just apply to local state so the user can review them on the page.
+      // Apply to local state so the user can review before saving.
+      // Only update cutoff when there are actual items — avoid hiding
+      // manually-added skills/values when the CV returns an empty list.
       skills.setItems(nextSkills);
-      skills.setCutoff(nextSkills.length);
+      if (nextSkills.length > 0) skills.setCutoff(nextSkills.length);
       values.setItems(nextValues);
-      values.setCutoff(nextValues.length);
+      if (nextValues.length > 0) values.setCutoff(nextValues.length);
       setFormData((prev) => ({ ...prev, cv_import: cvImport }));
 
       notify.success(t('cvImportSuccess'));

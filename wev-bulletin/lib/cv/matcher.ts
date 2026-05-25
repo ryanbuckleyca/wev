@@ -2,19 +2,14 @@ import { logger } from '@/lib/logger';
 import { supabaseServer } from '@/lib/supabase-server';
 import type { EscoSkill } from '@/lib/types/skills';
 import { buildCvWordSet, labelRelevance } from '@/lib/nlp-utils';
+import { CvImportError } from './errors';
 import type { CvLocale } from './types';
 import type { SkillPhrase } from './llm';
 
 const MAX_SKILLS = 10;
 const RPC_MATCHES_PER_PHRASE = 3;
-let _scoreFloor: number | null = null;
-function getScoreFloor(): number {
-  if (_scoreFloor === null) {
-    const rawScoreFloor = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '0.25');
-    _scoreFloor = Number.isFinite(rawScoreFloor) ? rawScoreFloor : 0.25;
-  }
-  return _scoreFloor;
-}
+// Read once at module load. Override via CV_SKILLS_SCORE_FLOOR env var.
+const SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '') || 0.25;
 const RELEVANCE_FLOOR = 0.4;
 
 type MatchRow = {
@@ -59,7 +54,7 @@ export function rankAndFilterCandidates(
   skillPhrases: SkillPhrase[],
   cvWords: Set<string>,
   locale: CvLocale,
-  scoreFloor: number = getScoreFloor(),
+  scoreFloor: number = SCORE_FLOOR,
 ): ScoredMatch[] {
   const bestByUri = new Map<string, ScoredMatch>();
 
@@ -96,7 +91,6 @@ export async function linkPhrasesToEsco(
   supabase = supabaseServer,
 ): Promise<EscoSkill[]> {
   const cvWords = buildCvWordSet(cvText, locale);
-  const scoreFloor = getScoreFloor();
 
   // Run a single batched RPC to avoid exhausting the Supabase connection pool
   const query_embeddings = embeddings.map((vec) => `[${vec.join(',')}]`);
@@ -106,7 +100,8 @@ export async function linkPhrasesToEsco(
   });
 
   if (error) {
-    logger.warn({ err: error, userId }, 'match_skills_by_embedding failure');
+    logger.error({ err: error, userId }, 'match_skills_by_embedding failure');
+    throw new CvImportError('embedding_failed', error.message);
   }
 
   const scoredMatches = rankAndFilterCandidates(
@@ -114,7 +109,6 @@ export async function linkPhrasesToEsco(
     skillPhrases,
     cvWords,
     locale,
-    scoreFloor,
   );
   const topMatches = scoredMatches.slice(0, MAX_SKILLS);
 
@@ -126,7 +120,7 @@ export async function linkPhrasesToEsco(
       kept: topMatches.length,
       topScore: topMatches[0]?.score ?? null,
       topSimilarity: topMatches[0]?.similarity ?? null,
-      floor: scoreFloor,
+      floor: SCORE_FLOOR,
     },
     'CV skills two-stage linking stats',
   );

@@ -29,6 +29,9 @@ import type { CvLocale } from '@/lib/cv/types';
 
 export const dynamic = 'force-dynamic';
 
+// NOTE: This rate limiter is in-memory and only correct with a single instance.
+// We run 1 Northflank instance so this is fine. If horizontal scaling is ever
+// added, replace with a Supabase-backed implementation.
 const rateLimitMap = new Map<string, { count: number; startTime: number }>();
 
 export async function POST(request: Request) {

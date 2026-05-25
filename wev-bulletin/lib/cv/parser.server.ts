@@ -1,12 +1,9 @@
 import 'server-only';
 import { Worker } from 'node:worker_threads';
+import path from 'node:path';
 import { CvImportError } from './errors';
 import type { CvImportMetadata, CvLocale } from './types';
-import {
-  ALLOWED_CV_MIME_TYPES,
-  CV_MIME_TYPES,
-  MAX_CV_FILE_SIZE_BYTES,
-} from '@/lib/constants/files';
+import { CV_MIME_TYPES, MAX_CV_FILE_SIZE_BYTES } from '@/lib/constants/files';
 
 export type ParsedCvResult = {
   text: string;
@@ -16,8 +13,11 @@ export type ParsedCvResult = {
 const WORKER_TIMEOUT_MS = 30_000;
 
 async function parseDocumentInWorker(buffer: Buffer, type: 'pdf' | 'docx'): Promise<string> {
+  // Use path.resolve(__dirname) instead of new URL(import.meta.url) — Turbopack
+  // cannot statically analyse the URL constructor pattern for Node worker_threads.
+  const workerPath = path.resolve(__dirname, 'parser.worker.js');
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./parser.worker.js', import.meta.url), {
+    const worker = new Worker(workerPath, {
       workerData: { buffer, type },
     });
 
@@ -52,33 +52,28 @@ function getExtension(name: string): string {
   return dotIdx >= 0 ? name.slice(dotIdx + 1).toLowerCase() : '';
 }
 
-function isPdf(ext: string, mime: string): boolean {
-  return ext === 'pdf' || mime === CV_MIME_TYPES.PDF;
-}
-
-function isDocx(ext: string, mime: string): boolean {
-  return ext === 'docx' || mime === CV_MIME_TYPES.DOCX;
+function getDocumentType(ext: string, mime: string): 'pdf' | 'docx' | null {
+  if (ext === 'pdf' || mime === CV_MIME_TYPES.PDF) return 'pdf';
+  if (ext === 'docx' || mime === CV_MIME_TYPES.DOCX) return 'docx';
+  return null;
 }
 
 export async function parseCvOnServer(file: File, locale: CvLocale): Promise<ParsedCvResult> {
-  // Validate before reading into memory
   if (file.size <= 0) throw new CvImportError('empty_file');
   if (file.size > MAX_CV_FILE_SIZE_BYTES) throw new CvImportError('file_too_large');
 
-  const name = file.name;
-  const type = file.type;
-  const ext = getExtension(name);
+  const ext = getExtension(file.name);
+  const docType = getDocumentType(ext, file.type);
+  if (!docType) throw new CvImportError('unsupported_file_type');
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  let text = '';
-  if (isPdf(ext, type)) {
-    text = await parseDocumentInWorker(buffer, 'pdf');
-  } else if (isDocx(ext, type)) {
-    text = await parseDocumentInWorker(buffer, 'docx');
-  } else {
-    throw new CvImportError('unsupported_file_type');
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(await file.arrayBuffer());
+  } catch {
+    throw new CvImportError('file_read_failed');
   }
+
+  const text = await parseDocumentInWorker(buffer, docType);
 
   if (!text) {
     throw new CvImportError('no_extractable_text');
@@ -87,8 +82,10 @@ export async function parseCvOnServer(file: File, locale: CvLocale): Promise<Par
   return {
     text,
     metadata: {
-      filename: name,
+      filename: file.name,
       imported_at: new Date().toISOString(),
+      // 'cv_upload' is the only source today. Extend this union when other
+      // import paths are added (e.g. 'linkedin_import').
       source: 'cv_upload',
       locale,
     },

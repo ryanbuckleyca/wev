@@ -1,5 +1,10 @@
 DROP FUNCTION IF EXISTS match_skills_by_embedding(vector, int);
 
+-- NOTE: This function relies on a vector index (ivfflat or hnsw) on
+-- esco_skills.embedding. Without it, the LATERAL ORDER BY <=> degrades to a
+-- full sequential scan per input embedding. Verify the index exists before
+-- deploying to production:
+--   SELECT indexname FROM pg_indexes WHERE tablename = 'esco_skills';
 CREATE OR REPLACE FUNCTION match_skills_by_embedding(
     query_embeddings vector(1024)[],
     match_count     int DEFAULT 5

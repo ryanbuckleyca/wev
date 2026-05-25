@@ -19,7 +19,9 @@ export function useBookmarkAction(
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // Sync internal state with external prop changes during render (React best practice)
+  // Sync internal state with external prop changes during render.
+  // This is the React-recommended pattern for derived state (avoids useEffect).
+  // It causes a double render on prop change, which is acceptable for a toggle button.
   if (initialBookmarked !== prevInitial) {
     setPrevInitial(initialBookmarked);
     setBookmarked(initialBookmarked);

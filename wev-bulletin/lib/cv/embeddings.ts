@@ -1,73 +1,74 @@
-import { CvImportError } from './errors';
+import { CvImportError, TransientCvError } from './errors';
 
 const JINA_URL = 'https://api.jina.ai/v1/embeddings';
 const JINA_MODEL = 'jina-embeddings-v3';
 const JINA_DIM = 1024;
-
-async function retryAsync<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
-  let attempt = 1;
-  while (true) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (error instanceof CvImportError && error.message !== 'transient') {
-        throw error;
-      }
-      if (attempt >= maxRetries) {
-        throw new CvImportError(
-          'embedding_failed',
-          error instanceof Error ? error.message : String(error),
-        );
-      }
-      const delay = Math.pow(2, attempt) * 1000;
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      attempt++;
-    }
-  }
-}
+const MAX_RETRIES = 3;
 
 export async function embedPhrases(phrases: string[], apiKey: string): Promise<number[][]> {
   const validPhrases = phrases.map((p) => p.trim()).filter((p) => p.length > 0);
   if (validPhrases.length === 0) return [];
 
-  const json = await retryAsync(async () => {
-    const resp = await fetch(JINA_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: JINA_MODEL,
-        dimensions: JINA_DIM,
-        task: 'retrieval.query',
-        input: validPhrases,
-      }),
-      signal: AbortSignal.timeout(20_000), // Shorter timeout for faster retries
-    });
-
-    if (!resp.ok) {
-      if ([429, 502, 503, 504].includes(resp.status)) {
-        throw new CvImportError('embedding_failed', 'transient');
+  let attempt = 1;
+  while (true) {
+    try {
+      const json = await fetchEmbeddings(validPhrases, apiKey);
+      return parseEmbeddingResponse(json, validPhrases.length);
+    } catch (error) {
+      if (!(error instanceof TransientCvError)) throw error;
+      if (attempt >= MAX_RETRIES) {
+        throw new CvImportError(
+          'embedding_failed',
+          error instanceof Error ? error.message : String(error),
+        );
       }
-      throw new CvImportError('embedding_failed', `jina_${resp.status}`);
+      await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+      attempt++;
     }
+  }
+}
 
-    return (await resp.json()) as any;
+async function fetchEmbeddings(phrases: string[], apiKey: string): Promise<unknown> {
+  const resp = await fetch(JINA_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: JINA_MODEL,
+      dimensions: JINA_DIM,
+      task: 'retrieval.query',
+      input: phrases,
+    }),
+    signal: AbortSignal.timeout(20_000),
   });
 
-  if (!json?.data || !Array.isArray(json.data)) {
+  if (!resp.ok) {
+    if ([429, 502, 503, 504].includes(resp.status)) {
+      throw new TransientCvError('embedding_failed', `transient_${resp.status}`);
+    }
+    throw new CvImportError('embedding_failed', `jina_${resp.status}`);
+  }
+
+  return resp.json();
+}
+
+function parseEmbeddingResponse(json: unknown, expectedCount: number): number[][] {
+  const data = (json as any)?.data;
+
+  if (!data || !Array.isArray(data)) {
     throw new CvImportError('jina_bad_response', 'Missing data array');
   }
 
-  if (json.data.length !== validPhrases.length) {
+  if (data.length !== expectedCount) {
     throw new CvImportError(
       'jina_misaligned_response',
-      `Expected ${validPhrases.length} items, got ${json.data.length}`,
+      `Expected ${expectedCount} items, got ${data.length}`,
     );
   }
 
-  const sorted = [...json.data].sort((a, b) => a.index - b.index);
+  const sorted = [...data].sort((a, b) => a.index - b.index);
 
   return sorted.map((item, i) => {
     if (item.index !== i) {

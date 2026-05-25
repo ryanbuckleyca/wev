@@ -107,13 +107,7 @@ export default function ProfilePage() {
                 locale={locale}
                 cvImport={formData.cv_import ?? null}
                 isSaving={isSaving}
-                onConfirmImport={async ({ skills, values, cvImport }) =>
-                  handleApplyCvImport({
-                    nextSkills: skills,
-                    nextValues: values,
-                    cvImport,
-                  })
-                }
+                onConfirmImport={handleApplyCvImport}
               />
 
               <div className="flex items-center gap-2 mb-2">

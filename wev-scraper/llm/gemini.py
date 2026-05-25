@@ -46,7 +46,7 @@ class GeminiProvider(BaseLLMProvider):
 
     def __init__(self, api_key: str | None = None, model: str | None = None):
         """Initialize Gemini provider with API key and model.
-        
+
         Args:
             api_key: Google AI API key. If None, uses GEMINI_API_KEY env var.
             model: Model name. Defaults to gemini-2.5-flash-lite.
@@ -55,17 +55,17 @@ class GeminiProvider(BaseLLMProvider):
         self._api_key = (api_key or get_gemini_api_key() or "").strip()
         if not self._api_key:
             raise ValueError("GEMINI_API_KEY required")
-        
+
         self._model = model or "gemini-2.5-flash-lite"
         self._client = None
-        
+
         try:
             timeout_sec = int(os.environ.get("GEMINI_CALL_TIMEOUT_SEC", "90"))
         except ValueError:
             logger.warning("Invalid GEMINI_CALL_TIMEOUT_SEC value; defaulting to 90s.")
             timeout_sec = 90
         self._call_timeout_sec = timeout_sec
-    
+
     def _key_last4(self) -> str:
         if not self._api_key:
             return "none"
@@ -101,7 +101,13 @@ class GeminiProvider(BaseLLMProvider):
         return bool(self._api_key or get_gemini_api_key())
 
     def _extract_text(self, response) -> str:
-        """Extract text content from a Gemini response object safely."""
+        """Extract text content from a Gemini response object safely.
+
+        The SDK's response.text property already aggregates candidates[0].content.parts,
+        but we fall back to reading parts[0].text directly as a defensive measure against
+        known SDK versions where response.text can return an empty string despite content
+        being present in the parts array.
+        """
         text = getattr(response, "text", "")
         if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
             text = text or getattr(response.candidates[0].content.parts[0], "text", "") or ""
@@ -184,14 +190,14 @@ class GeminiProvider(BaseLLMProvider):
             )
         except Exception as e:
             from google.genai.errors import APIError, ServerError
-            
+
             is_timeout = False
             if isinstance(e, TimeoutError):
                 is_timeout = True
             elif isinstance(e, (ServerError, APIError)):
                 if getattr(e, "code", None) in (408, 504):
                     is_timeout = True
-                
+
             if is_timeout:
                 raise LLMProviderError(
                     f"Gemini call timed out "
@@ -284,7 +290,7 @@ class GeminiProvider(BaseLLMProvider):
                     f"Gemini API key invalid or permission denied. Check GEMINI_API_KEY. key_last4={self._key_last4()} raw_error={err_msg_raw}"
                 ) from e
             raise LLMProviderError(f"Gemini API error: key_last4={self._key_last4()} raw_error={err_msg_raw}") from e
-        
+
         summary = self._extract_text(response).strip().strip('"').strip("'")
         summary = summary.replace("**", "")
         colon_prefix = re.match(r'^[^.]{1,60}: ', summary)

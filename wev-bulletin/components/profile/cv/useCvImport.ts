@@ -75,7 +75,7 @@ type UseCvImportOptions = {
     skills: EscoSkill[];
     values: string[];
     cvImport: CvImportMetadata;
-  }) => Promise<void>;
+  }) => void;
 };
 
 export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
@@ -104,9 +104,7 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return;
 
-      if (typeof console !== 'undefined') {
-        console.error('[cv-import]', error);
-      }
+      console.error('[cv-import]', error);
       notify.error(getCvImportErrorMessage(t, error));
     } finally {
       setIsParsing(false);
