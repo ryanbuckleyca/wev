@@ -207,6 +207,9 @@ export async function createManagedE2EUser(
 
   const userId = created.data.user.id;
 
+  // Brief pause to let GoTrue fully propagate the new user before login attempts.
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
   const { error: profileError } = await admin.from("profiles").upsert({
     id: userId,
     full_name: "E2E Test User",

@@ -16,6 +16,13 @@ test.describe("Bookmarks flow", () => {
     const firstCard = jobBoardPage.jobCards.first();
     await expect(firstCard).toBeVisible();
 
+    // Wait for auth session to hydrate in the client before interacting with
+    // auth-gated actions. The user avatar/menu button only appears once the
+    // session is resolved, so it's a reliable signal that userId is available.
+    await expect(page.getByRole("button", { name: /open menu/i })).toBeVisible({
+      timeout: 10_000,
+    });
+
     const cardLabel = (await firstCard.getAttribute("aria-label")) ?? "";
     const jobTitle = cardLabel.split(" at ")[0]?.trim() ?? "";
     expect(jobTitle.length).toBeGreaterThan(0);

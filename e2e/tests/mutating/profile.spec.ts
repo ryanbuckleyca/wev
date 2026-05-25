@@ -1,4 +1,35 @@
 import { test, expect } from "@e2e/fixtures";
+import type { Locator, Page } from "@playwright/test";
+
+async function selectedRemoveLabels(
+  container: Locator,
+): Promise<Array<string | null>> {
+  return container
+    .getByRole("button", { name: /^remove /i })
+    .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
+}
+
+async function moveFirstSelectedItemDown(
+  page: Page,
+  container: Locator,
+): Promise<Array<string | null>> {
+  const before = await selectedRemoveLabels(container);
+  const handles = container.getByRole("button", {
+    name: /^drag to reorder$/i,
+  });
+
+  await expect(handles.nth(1)).toBeVisible();
+  await handles.first().focus();
+  await page.keyboard.press("ArrowDown");
+
+  await expect
+    .poll(async () => (await selectedRemoveLabels(container))[0], {
+      timeout: 10_000,
+    })
+    .not.toBe(before[0]);
+
+  return selectedRemoveLabels(container);
+}
 
 test.describe("Profile editing flow", () => {
   test.setTimeout(180_000);
@@ -79,40 +110,8 @@ test.describe("Profile editing flow", () => {
         .click();
       await expect(page.getByText(/you've selected more than/i)).toHaveCount(0);
 
-      const beforeOrder = await skillsContainer
-        .getByRole("button", { name: /^remove /i })
-        .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-
-      const handles = skillsContainer.getByRole("button", {
-        name: /^drag to reorder$/i,
-      });
-      const from = handles.nth(0);
-      const to = handles.nth(1);
-
-      const fromBox = await from.boundingBox();
-      const toBox = await to.boundingBox();
-      if (!fromBox || !toBox) throw new Error("Could not measure drag handles");
-
-      await page.mouse.move(
-        fromBox.x + fromBox.width / 2,
-        fromBox.y + fromBox.height / 2,
-      );
-      await page.mouse.down();
-      await page.mouse.move(
-        toBox.x + toBox.width / 2,
-        toBox.y + toBox.height + 5,
-        {
-          steps: 12,
-        },
-      );
-      await page.mouse.up();
-
-      const afterOrder = await skillsContainer
-        .getByRole("button", { name: /^remove /i })
-        .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-
+      const afterOrder = await moveFirstSelectedItemDown(page, skillsContainer);
       skillsOrderAfterReorder = afterOrder;
-      expect(afterOrder[0]).not.toBe(beforeOrder[0]);
 
       await page.getByRole("button", { name: /^save profile$/i }).click();
       await expect(
@@ -170,40 +169,8 @@ test.describe("Profile editing flow", () => {
         .click();
       await expect(page.getByText(/you've selected more than/i)).toHaveCount(0);
 
-      const before = await valuesContainer
-        .getByRole("button", { name: /^remove /i })
-        .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-
-      const handles = valuesContainer.getByRole("button", {
-        name: /^drag to reorder$/i,
-      });
-      const from = handles.nth(0);
-      const to = handles.nth(1);
-
-      const fromBox = await from.boundingBox();
-      const toBox = await to.boundingBox();
-      if (!fromBox || !toBox) throw new Error("Could not measure drag handles");
-
-      await page.mouse.move(
-        fromBox.x + fromBox.width / 2,
-        fromBox.y + fromBox.height / 2,
-      );
-      await page.mouse.down();
-      await page.mouse.move(
-        toBox.x + toBox.width / 2,
-        toBox.y + toBox.height + 5,
-        {
-          steps: 12,
-        },
-      );
-      await page.mouse.up();
-
-      const after = await valuesContainer
-        .getByRole("button", { name: /^remove /i })
-        .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-
+      const after = await moveFirstSelectedItemDown(page, valuesContainer);
       valuesOrderAfterReorder = after;
-      expect(after[0]).not.toBe(before[0]);
 
       await page.getByRole("button", { name: /^save profile$/i }).click();
       await expect(
