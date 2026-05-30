@@ -48,7 +48,6 @@ function SortableRow({
   index,
   isRanked,
   itemCount,
-  rankCutoff,
   onKeyboardReorder,
   onRemove,
 }: {
@@ -56,8 +55,7 @@ function SortableRow({
   index: number;
   isRanked: boolean;
   itemCount: number;
-  rankCutoff: number;
-  onKeyboardReorder: (fromIndex: number, toIndex: number, rankCutoff: number) => void;
+  onKeyboardReorder: (fromIndex: number, toIndex: number) => void;
   onRemove: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -82,7 +80,7 @@ function SortableRow({
     if (nextIndex < 0 || nextIndex >= itemCount) return;
 
     event.preventDefault();
-    onKeyboardReorder(index, nextIndex, rankCutoff);
+    onKeyboardReorder(index, nextIndex);
   };
 
   return (
@@ -256,8 +254,8 @@ export default function SortableSelectedList({
   );
 
   const handleKeyboardReorder = useCallback(
-    (fromIndex: number, toIndex: number, nextCutoff: number) => {
-      onReorder(fromIndex, toIndex, nextCutoff);
+    (fromIndex: number, toIndex: number) => {
+      onReorder(fromIndex, toIndex);
     },
     [onReorder],
   );
@@ -292,7 +290,6 @@ export default function SortableSelectedList({
                 index={item.originalIndex}
                 isRanked={item.isRanked}
                 itemCount={items.length}
-                rankCutoff={rankCutoff}
                 onKeyboardReorder={handleKeyboardReorder}
                 onRemove={onRemove}
               />
