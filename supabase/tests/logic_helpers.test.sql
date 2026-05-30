@@ -62,7 +62,7 @@ select is(
 -- Verify that match_skills_by_embedding returns the target skill when given its exact embedding
 select is(
   (select concept_uri from public.match_skills_by_embedding(
-    (select array_fill(1.0::float, array[1024])::vector),
+    array[(select array_fill(1.0::float, array[1024])::vector)],
     1
   )),
   'pgtap-skill-vector-test',
