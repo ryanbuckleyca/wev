@@ -1,27 +1,23 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
+import { skillDisplayKey } from '@/lib/skills/display';
+import { parseLocale } from '@/lib/locale';
+import type { CvLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 const MAX_URIS = 200;
 
 function parseUris(value: string | null): string[] {
-  if (!value) {
-    return [];
-  }
+  if (!value) return [];
   const seen = new Set<string>();
   const result: string[] = [];
   for (const part of value.split(',')) {
     const uri = part.trim();
-    if (!uri || seen.has(uri)) {
-      continue;
-    }
+    if (!uri || seen.has(uri)) continue;
     seen.add(uri);
     result.push(uri);
-    if (result.length >= MAX_URIS) {
-      break;
-    }
+    if (result.length >= MAX_URIS) break;
   }
   return result;
 }
@@ -38,18 +34,6 @@ type SkillRow = {
   scope_note_fr: string;
 };
 
-function normalizeSkillText(value: string | null | undefined): string {
-  return (value ?? '').trim().toLowerCase();
-}
-
-function displayKey(term: string, definition: string | null, scopeNote: string | null): string {
-  return `${normalizeSkillText(term)}::${normalizeSkillText(definition)}::${normalizeSkillText(scopeNote)}`;
-}
-
-function parseLocale(value: string | null): 'en' | 'fr' {
-  return (value ?? '').toLowerCase() === 'fr' ? 'fr' : 'en';
-}
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -60,21 +44,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ skills: [] });
     }
 
-    const supabase = supabaseServer;
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServer
       .from('esco_skills')
       .select(
-        `
-        concept_uri,
-        skill_type,
-        reuse_level,
-        preferred_label_en,
-        preferred_label_fr,
-        description_en,
-        description_fr,
-        scope_note_en,
-        scope_note_fr
-      `,
+        `concept_uri, skill_type, reuse_level,
+         preferred_label_en, preferred_label_fr,
+         description_en, description_fr,
+         scope_note_en, scope_note_fr`,
       )
       .in('concept_uri', uris);
 
@@ -114,10 +90,8 @@ export async function GET(request: Request) {
         };
       })
       .filter((row) => {
-        const key = displayKey(row.term, row.definition, row.scope_note);
-        if (seenDisplay.has(key)) {
-          return false;
-        }
+        const key = skillDisplayKey(row.term, row.definition, row.scope_note);
+        if (seenDisplay.has(key)) return false;
         seenDisplay.add(key);
         return true;
       });
