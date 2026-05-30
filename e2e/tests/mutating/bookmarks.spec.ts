@@ -28,7 +28,9 @@ test.describe("Bookmarks flow", () => {
     const jobTitle = cardLabel.split(" at ")[0]?.trim() ?? "";
     expect(jobTitle.length).toBeGreaterThan(0);
 
-    const bookmarkButton = firstCard.getByTestId(JOB_BOARD_TEST_IDS.bookmarkButton);
+    const bookmarkButton = firstCard.getByTestId(
+      JOB_BOARD_TEST_IDS.bookmarkButton,
+    );
     await bookmarkButton.click();
 
     // Expect the button state to change to bookmarked
