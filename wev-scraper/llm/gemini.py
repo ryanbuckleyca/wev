@@ -64,6 +64,7 @@ class GeminiProvider(BaseLLMProvider):
         except ValueError:
             logger.warning("Invalid GEMINI_CALL_TIMEOUT_SEC value; defaulting to 90s.")
             timeout_sec = 90
+        timeout_sec = max(timeout_sec, 1)
         self._call_timeout_sec = timeout_sec
 
     def _key_last4(self) -> str:
