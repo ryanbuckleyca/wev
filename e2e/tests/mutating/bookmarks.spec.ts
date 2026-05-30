@@ -1,5 +1,6 @@
 import { test, expect } from "@e2e/fixtures";
 import { loadEnglishJobBoard } from "@e2e/support/job-board";
+import { JOB_BOARD_TEST_IDS } from "@/lib/testing/job-board-contract";
 
 test.describe("Bookmarks flow", () => {
   test.setTimeout(120_000);
@@ -27,7 +28,7 @@ test.describe("Bookmarks flow", () => {
     const jobTitle = cardLabel.split(" at ")[0]?.trim() ?? "";
     expect(jobTitle.length).toBeGreaterThan(0);
 
-    const bookmarkButton = firstCard.getByTestId("job-card-bookmark-button");
+    const bookmarkButton = firstCard.getByTestId(JOB_BOARD_TEST_IDS.bookmarkButton);
     await bookmarkButton.click();
 
     // Expect the button state to change to bookmarked
