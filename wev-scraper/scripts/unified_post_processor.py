@@ -19,7 +19,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Literal
 
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
@@ -235,7 +235,7 @@ def process_jobs_unified(
 
                     if update_data:
                         try:
-                            _try_db_write(job, update_data)
+                            _try_db_write(job, update_data, supabase)
                             if "summary" in update_data:
                                 counts["updated"]["summary"] += 1
                             if "values" in update_data:
@@ -266,7 +266,10 @@ def process_jobs_unified(
     return counts
 
 
-def _build_update_data(task: str, job_result: dict) -> dict:
+TaskType = Literal["all", "summary", "values", "sse"]
+
+
+def _build_update_data(task: TaskType, job_result: dict) -> dict:
     """Build the DB update payload from a single job's LLM result."""
     update_data: dict = {}
 
@@ -297,24 +300,24 @@ def is_transient_db_error(e: Exception) -> bool:
         # Postgres transient codes (53xxx, 08xxx) or PostgREST 5xx HTTP codes
         if code_str.startswith("53") or code_str.startswith("08") or code_str.startswith("50"):
             return True
-        
+
     err_name = type(e).__name__
     if err_name in ("TimeoutError", "ConnectionError", "ReadTimeout"):
         return True
     return False
 
 @retry(
-    stop=stop_after_attempt(4), 
+    stop=stop_after_attempt(4),
     wait=wait_exponential(multiplier=2),
     retry=retry_if_exception(is_transient_db_error)
 )
-def _try_db_write(job: dict, update_data: dict) -> None:
+def _try_db_write(job: dict, update_data: dict, db_client) -> None:
     """Attempt a single DB write, automatically retrying on transient failures.
 
     Raises an exception if it permanently fails after retries.
     """
     try:
-        supabase.table("jobs").update(update_data).eq("id", job["id"]).execute()
+        db_client.table("jobs").update(update_data).eq("id", job["id"]).execute()
     except Exception as db_err:
         code = getattr(db_err, "code", None)
         pg_code = f" [PG:{code}]" if code else ""
