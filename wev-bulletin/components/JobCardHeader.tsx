@@ -9,6 +9,7 @@ import {
   ChevronDownSolid,
 } from '@lineiconshq/free-icons';
 import { type JobPosting } from '@/lib/supabase';
+import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 interface JobCardHeaderProps {
   job: JobPosting;
@@ -80,10 +81,12 @@ export default function JobCardHeader({
       <div className="flex items-center gap-1.5 shrink-0">
         <button
           onClick={onBookmarkToggle}
+          data-testid={JOB_BOARD_TEST_IDS.bookmarkButton}
           className="wev-icon-btn"
           title={bookmarked ? t('jobCard.removeBookmark') : t('jobCard.bookmarkJob')}
           aria-label={bookmarked ? t('jobCard.bookmarked') : t('jobCard.bookmarkJobLabel')}
           disabled={bookmarkLoading}
+          aria-busy={bookmarkLoading}
         >
           {bookmarked ? (
             <Lineicons icon={Bookmark1Solid} size={16} className="text-wev-info" />
