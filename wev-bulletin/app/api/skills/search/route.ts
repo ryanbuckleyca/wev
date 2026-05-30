@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
+import { NextResponse } from 'next/server';
+import { supabaseServer } from '@/lib/supabase-server';
 import { skillDisplayKey } from '@/lib/skills/display';
 import { parseLocale } from '@/lib/locale';
-import type { CvLocale } from '@/lib/locale';
 
 // Removed dynamic constraints to allow Edge-Caching
 // export const dynamic = 'force-dynamic'
