@@ -104,6 +104,36 @@ function main() {
     console.log("▶ Regenerating TypeScript types...");
     execVerbose("npx tsx supabase/generate-types.ts local");
 
+    console.log("▶ Ensuring ESCO skill embeddings are populated...");
+    const backupPath = path.resolve(
+      process.cwd(),
+      "supabase/backups/backup_public_esco_skills.json",
+    );
+    if (fs.existsSync(backupPath)) {
+      console.log("  ✓ Backup found. Verifying embeddings...");
+      // If the backup was restored by the seeder, this will find 0 missing and exit instantly.
+      execVerbose("npm run skills:embeddings -- --limit 1");
+    } else {
+      const hasJinaKey = !!process.env.JINA_API_KEY;
+      const isLocalEnv = process.env.ENV_MODE === "local";
+      if (!hasJinaKey && !isLocalEnv) {
+        console.log(
+          "  ⚠️  No backup found and JINA_API_KEY is not set — skipping embedding step.",
+        );
+        console.log(
+          "  ℹ️  To populate embeddings, either restore from backup or set JINA_API_KEY.",
+        );
+      } else {
+        console.log(
+          "  ⚠️  No backup found at supabase/backups/backup_public_esco_skills.json",
+        );
+        console.log(
+          "  ▶ Running FULL Jina embedding (this will take several minutes)...",
+        );
+        execVerbose("npm run skills:embeddings");
+      }
+    }
+
     console.log("✨ Done.");
   } else if (target === "staging" || target === "prod") {
     console.log(`▶ Starting migration for ${target}...`);
