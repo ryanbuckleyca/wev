@@ -3,13 +3,10 @@ ALTER TABLE public.jobs
 ADD COLUMN IF NOT EXISTS has_compensation boolean GENERATED ALWAYS AS (
   nullif(btrim(coalesce(wage, '')), '') IS NOT NULL OR min_value IS NOT NULL
 ) STORED;
-
 CREATE INDEX IF NOT EXISTS jobs_has_compensation_date_posted_idx
   ON public.jobs (has_compensation, date_posted DESC);
-
 -- Recreate view so j.* re-expands and includes the newly-added generated column.
 DROP VIEW IF EXISTS public.matched_jobs;
-
 CREATE VIEW public.matched_jobs WITH (security_invoker = true) AS
 SELECT
   j.*,

@@ -6,6 +6,10 @@
 -- full sequential scan per input embedding. Verify the index exists before
 -- deploying to production:
 --   SELECT indexname FROM pg_indexes WHERE tablename = 'esco_skills';
+
+-- Drop the old scalar overload — it is superseded by the array version below.
+DROP FUNCTION IF EXISTS match_skills_by_embedding(vector, int);
+
 CREATE OR REPLACE FUNCTION match_skills_by_embedding(
     query_embeddings vector(1024)[],
     match_count     int DEFAULT 5
