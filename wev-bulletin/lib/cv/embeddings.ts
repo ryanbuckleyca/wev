@@ -68,6 +68,10 @@ function parseEmbeddingResponse(json: unknown, expectedCount: number): number[][
     );
   }
 
+  if (data.some((item: any) => typeof item?.index !== 'number')) {
+    throw new CvImportError('jina_bad_response', 'Missing or non-numeric index in response item');
+  }
+
   const sorted = [...data].sort((a, b) => a.index - b.index);
 
   return sorted.map((item, i) => {
