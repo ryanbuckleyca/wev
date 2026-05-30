@@ -28,6 +28,7 @@ async function parseDocumentInWorker(buffer: Buffer, type: 'pdf' | 'docx'): Prom
 
     worker.on('message', (msg) => {
       clearTimeout(timeout);
+      void worker.terminate();
       if (msg.success) resolve(msg.text);
       else {
         if (msg.error === 'pdf_no_text_layer') reject(new CvImportError('pdf_no_text_layer'));
