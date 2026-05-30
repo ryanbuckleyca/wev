@@ -42,4 +42,26 @@ def test_get_provider_explicit_local():
         assert isinstance(prov, LocalGroundedProvider)
 
 
+def test_gemini_provider_timeout_clamping():
+    """GeminiProvider should clamp GEMINI_CALL_TIMEOUT_SEC to a minimum of 1 second."""
+    from llm.gemini import GeminiProvider
+
+    with patch.dict("os.environ", {"GEMINI_CALL_TIMEOUT_SEC": "0", "GEMINI_API_KEY": "test-key-1234"}):
+        provider = GeminiProvider()
+        assert provider._call_timeout_sec == 1
+
+    with patch.dict("os.environ", {"GEMINI_CALL_TIMEOUT_SEC": "-10", "GEMINI_API_KEY": "test-key-1234"}):
+        provider = GeminiProvider()
+        assert provider._call_timeout_sec == 1
+
+    with patch.dict("os.environ", {"GEMINI_CALL_TIMEOUT_SEC": "invalid", "GEMINI_API_KEY": "test-key-1234"}):
+        provider = GeminiProvider()
+        assert provider._call_timeout_sec == 90
+
+    with patch.dict("os.environ", {"GEMINI_CALL_TIMEOUT_SEC": "45", "GEMINI_API_KEY": "test-key-1234"}):
+        provider = GeminiProvider()
+        assert provider._call_timeout_sec == 45
+
+
+
 
