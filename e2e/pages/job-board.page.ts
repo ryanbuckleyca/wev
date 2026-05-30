@@ -81,6 +81,7 @@ export class JobBoardPage {
   readonly paginationSummary: Locator;
   readonly emptyState: Locator;
   readonly filters: FilterLocators;
+  private paginationTextBeforeUpdate: string | null = null;
 
   constructor(page: Page) {
     const visibleByTestId = (testId: string): Locator =>
@@ -122,6 +123,7 @@ export class JobBoardPage {
   }
 
   async goToPage(pageNumber: number): Promise<void> {
+    await this.markResultsUpdateStart();
     await this.page
       .getByRole("link", { name: String(pageNumber), exact: true })
       .click();
@@ -134,6 +136,7 @@ export class JobBoardPage {
   }
 
   async searchFor(query: string): Promise<void> {
+    await this.markResultsUpdateStart();
     await this.searchInput.fill(query);
   }
 
@@ -148,6 +151,7 @@ export class JobBoardPage {
     optionLabel: string,
   ): Promise<void> {
     await this.openFilters();
+    await this.markResultsUpdateStart();
     await this.filters[filter]
       .getByRole("button", { name: optionLabel, exact: true })
       .click();
@@ -158,6 +162,7 @@ export class JobBoardPage {
     optionLabel: string,
   ): Promise<void> {
     await this.openFilters();
+    await this.markResultsUpdateStart();
     await this.filters[filter].getByLabel(optionLabel, { exact: true }).click();
   }
 
@@ -166,6 +171,7 @@ export class JobBoardPage {
     checked: boolean,
   ): Promise<void> {
     await this.openFilters();
+    await this.markResultsUpdateStart();
 
     const checkbox = this.filters[filter].getByRole("checkbox");
     if (checked) {
@@ -182,6 +188,7 @@ export class JobBoardPage {
    */
   async waitForResultsToUpdate(timeoutMs: number = 15_000): Promise<void> {
     const startTime = Date.now();
+    const previousPaginationText = this.paginationTextBeforeUpdate;
 
     // Wait for pagination summary to update to a stable value.
     // After a filter is applied, the pagination text should reflect the filtered results.
@@ -202,11 +209,20 @@ export class JobBoardPage {
         continue;
       }
 
+      if (
+        previousPaginationText !== null &&
+        currentPaginationText === previousPaginationText
+      ) {
+        stabilizedCount = 0;
+        continue;
+      }
+
       // If text is the same as last iteration, increment stabilization counter
       if (currentPaginationText === lastPaginationText) {
         stabilizedCount++;
         // If text has been stable for 2+ iterations (400+ms), we're done
         if (stabilizedCount >= 2) {
+          this.paginationTextBeforeUpdate = null;
           return;
         }
       } else {
@@ -218,6 +234,12 @@ export class JobBoardPage {
     }
 
     throw new Error(`Results did not update within ${timeoutMs}ms`);
+  }
+
+  private async markResultsUpdateStart(): Promise<void> {
+    this.paginationTextBeforeUpdate = await this.paginationSummary
+      .textContent({ timeout: 1000 })
+      .catch(() => null);
   }
 
   currentLocale(): JobBoardLocale {
