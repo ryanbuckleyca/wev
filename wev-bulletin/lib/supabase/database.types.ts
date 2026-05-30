@@ -599,16 +599,26 @@ export type Database = {
         };
         Returns: number;
       };
-      match_skills_by_embedding: {
-        Args: { match_count?: number; query_embeddings: string[] };
-        Returns: {
-          concept_uri: string;
-          preferred_label_en: string;
-          preferred_label_fr: string;
-          query_index: number;
-          similarity: number;
-        }[];
-      };
+      match_skills_by_embedding:
+        | {
+            Args: { match_count?: number; query_embedding: string };
+            Returns: {
+              concept_uri: string;
+              preferred_label_en: string;
+              preferred_label_fr: string;
+              similarity: number;
+            }[];
+          }
+        | {
+            Args: { match_count?: number; query_embeddings: string[] };
+            Returns: {
+              concept_uri: string;
+              preferred_label_en: string;
+              preferred_label_fr: string;
+              query_index: number;
+              similarity: number;
+            }[];
+          };
       rank_weight: { Args: { rank: number; total: number }; Returns: number };
       recalculate_matches_for_job: {
         Args: { p_job_id: string };

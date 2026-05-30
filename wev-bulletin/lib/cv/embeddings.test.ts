@@ -1,0 +1,95 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { embedPhrases } from './embeddings';
+
+describe('vector-embedder', () => {
+  let fetchMock = vi.fn();
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns empty array when given no phrases', async () => {
+    const result = await embedPhrases([], 'fake-key');
+    expect(result).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('calls Jina API and maps embeddings correctly', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          { index: 1, embedding: new Array(1024).fill(0.2) },
+          { index: 0, embedding: new Array(1024).fill(0.1) },
+        ],
+      }),
+    });
+
+    const result = await embedPhrases(['phrase 0', 'phrase 1'], 'fake-key');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Check sorting by index
+    expect(result).toHaveLength(2);
+    expect(result[0][0]).toBe(0.1);
+    expect(result[1][0]).toBe(0.2);
+  });
+
+  it('throws embedding_failed on non-ok response', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+    });
+
+    await expect(embedPhrases(['test'], 'fake-key')).rejects.toMatchObject({
+      code: 'embedding_failed',
+      message: 'jina_401',
+    });
+  });
+
+  it('throws jina_bad_dimensions if embedding length is wrong', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          { index: 0, embedding: [0.1, 0.2] }, // only 2 dims instead of 1024
+        ],
+      }),
+    });
+
+    await expect(embedPhrases(['test'], 'fake-key')).rejects.toMatchObject({
+      code: 'jina_bad_dimensions',
+    });
+  });
+
+  it('throws jina_misaligned_response if indices are not contiguous', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          { index: 0, embedding: new Array(1024).fill(0.1) },
+          { index: 2, embedding: new Array(1024).fill(0.2) }, // missing index 1
+        ],
+      }),
+    });
+
+    await expect(embedPhrases(['p0', 'p1'], 'fake-key')).rejects.toMatchObject({
+      code: 'jina_misaligned_response',
+    });
+  });
+
+  it('throws jina_bad_response if data is missing', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+
+    await expect(embedPhrases(['test'], 'fake-key')).rejects.toMatchObject({
+      code: 'jina_bad_response',
+    });
+  });
+});
