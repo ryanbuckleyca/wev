@@ -207,6 +207,7 @@ export type Database = {
           fts_en: unknown;
           fts_fr: unknown;
           geocode_accuracy_type: string | null;
+          has_compensation: boolean | null;
           hours_per_week: number | null;
           id: string;
           is_remote: boolean | null;
@@ -247,6 +248,7 @@ export type Database = {
           fts_en?: unknown;
           fts_fr?: unknown;
           geocode_accuracy_type?: string | null;
+          has_compensation?: boolean | null;
           hours_per_week?: number | null;
           id?: string;
           is_remote?: boolean | null;
@@ -287,6 +289,7 @@ export type Database = {
           fts_en?: unknown;
           fts_fr?: unknown;
           geocode_accuracy_type?: string | null;
+          has_compensation?: boolean | null;
           hours_per_week?: number | null;
           id?: string;
           is_remote?: boolean | null;
@@ -353,6 +356,7 @@ export type Database = {
         Row: {
           bio: string | null;
           created_at: string | null;
+          cv_import: Json | null;
           full_name: string | null;
           id: string;
           lat: number | null;
@@ -371,6 +375,7 @@ export type Database = {
         Insert: {
           bio?: string | null;
           created_at?: string | null;
+          cv_import?: Json | null;
           full_name?: string | null;
           id: string;
           lat?: number | null;
@@ -389,6 +394,7 @@ export type Database = {
         Update: {
           bio?: string | null;
           created_at?: string | null;
+          cv_import?: Json | null;
           full_name?: string | null;
           id?: string;
           lat?: number | null;
@@ -522,6 +528,7 @@ export type Database = {
           fts_en: unknown;
           fts_fr: unknown;
           geocode_accuracy_type: string | null;
+          has_compensation: boolean | null;
           hours_per_week: number | null;
           id: string | null;
           is_remote: boolean | null;
@@ -593,11 +600,12 @@ export type Database = {
         Returns: number;
       };
       match_skills_by_embedding: {
-        Args: { match_count?: number; query_embedding: string };
+        Args: { match_count?: number; query_embeddings: string[] };
         Returns: {
           concept_uri: string;
           preferred_label_en: string;
           preferred_label_fr: string;
+          query_index: number;
           similarity: number;
         }[];
       };
@@ -610,6 +618,21 @@ export type Database = {
         Args: { p_user_id: string };
         Returns: undefined;
       };
+      search_esco_skills: {
+        Args: { p_limit?: number; p_locale?: string; p_query: string };
+        Returns: {
+          concept_uri: string;
+          definition: string;
+          matched_alias: string;
+          reuse_level: string;
+          scope_note: string;
+          score: number;
+          skill_type: string;
+          term: string;
+        }[];
+      };
+      show_limit: { Args: never; Returns: number };
+      show_trgm: { Args: { '': string }; Returns: string[] };
       unaccent: { Args: { '': string }; Returns: string };
       verify_user_password: { Args: { password: string }; Returns: string };
     };
