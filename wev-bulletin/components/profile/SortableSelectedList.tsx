@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type KeyboardEvent } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -47,11 +47,17 @@ function SortableRow({
   item,
   index,
   isRanked,
+  itemCount,
+  rankCutoff,
+  onKeyboardReorder,
   onRemove,
 }: {
   item: SortableItem;
   index: number;
   isRanked: boolean;
+  itemCount: number;
+  rankCutoff: number;
+  onKeyboardReorder: (fromIndex: number, toIndex: number, rankCutoff: number) => void;
   onRemove: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -63,6 +69,20 @@ function SortableRow({
     transform: CSS.Translate.toString(transform),
     transition,
     zIndex: isDragging ? 10 : undefined,
+  };
+
+  const handleHandleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+      listeners?.onKeyDown?.(event);
+      return;
+    }
+
+    const direction = event.key === 'ArrowDown' ? 1 : -1;
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= itemCount) return;
+
+    event.preventDefault();
+    onKeyboardReorder(index, nextIndex, rankCutoff);
   };
 
   return (
@@ -91,6 +111,7 @@ function SortableRow({
         type="button"
         {...attributes}
         {...listeners}
+        onKeyDown={handleHandleKeyDown}
         className="shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 dark:text-zinc-600 dark:hover:text-zinc-400 touch-none p-1 -m-1"
         aria-label="Drag to reorder"
       >
@@ -234,6 +255,13 @@ export default function SortableSelectedList({
     [workingItems, items, onReorder],
   );
 
+  const handleKeyboardReorder = useCallback(
+    (fromIndex: number, toIndex: number, nextCutoff: number) => {
+      onReorder(fromIndex, toIndex, nextCutoff);
+    },
+    [onReorder],
+  );
+
   if (items.length === 0) return null;
 
   return (
@@ -263,6 +291,9 @@ export default function SortableSelectedList({
                 item={item}
                 index={item.originalIndex}
                 isRanked={item.isRanked}
+                itemCount={items.length}
+                rankCutoff={rankCutoff}
+                onKeyboardReorder={handleKeyboardReorder}
                 onRemove={onRemove}
               />
             );
