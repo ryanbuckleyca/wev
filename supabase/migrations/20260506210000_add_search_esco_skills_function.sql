@@ -14,6 +14,12 @@ AS $$
   SELECT unaccent('unaccent', $1);
 $$;
 
+-- DROP before CREATE OR REPLACE because Postgres does not allow changing the
+-- return type of an existing function via OR REPLACE. If the function was
+-- previously deployed with a different return signature, this ensures a clean
+-- recreation without requiring manual intervention on the remote database.
+DROP FUNCTION IF EXISTS search_esco_skills(text, int, text);
+
 CREATE OR REPLACE FUNCTION search_esco_skills(
     p_query   text,
     p_limit   int DEFAULT 20,
@@ -65,7 +71,7 @@ BEGIN
                 e.skill_type,
                 e.reuse_level,
                 a.alias AS matched_alias,
-                CASE 
+                CASE
                     WHEN lower(f_unaccent(COALESCE(e.%1$I, e.%2$I, ''))) %% $1 OR lower(f_unaccent(a.alias)) %% $1
                     THEN GREATEST(
                         similarity(lower(f_unaccent(COALESCE(e.%1$I, e.%2$I, ''))), $1),
@@ -88,13 +94,13 @@ BEGIN
                 e.skill_type,
                 e.reuse_level,
                 NULL::text AS matched_alias,
-                CASE 
+                CASE
                     WHEN lower(f_unaccent(COALESCE(e.%1$I, e.%2$I, ''))) %% $1
                     THEN similarity(lower(f_unaccent(COALESCE(e.%1$I, e.%2$I, ''))), $1)
                     ELSE 0.1 -- low fallback score
                 END AS score
             FROM esco_skills e
-            WHERE 
+            WHERE
                 lower(f_unaccent(COALESCE(e.%1$I, e.%2$I, ''))) %% $1
                 OR (length($1) < 3 AND lower(f_unaccent(COALESCE(e.%1$I, e.%2$I, ''))) LIKE $1 || '%%')
         ),

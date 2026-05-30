@@ -5,7 +5,6 @@
 -- Ensure pgcrypto is enabled (required for crypt function)
 -- In Supabase, this is often already in the 'extensions' schema
 create extension if not exists pgcrypto with schema extensions;
-
 create or replace function public.verify_user_password(password text)
 returns text
 language plpgsql
@@ -31,11 +30,7 @@ begin
   end if;
 end;
 $$;
-
-
-
 -- Ensure only authenticated users can call this
 revoke all on function public.verify_user_password(text) from public;
 grant execute on function public.verify_user_password(text) to authenticated;
-
 comment on function public.verify_user_password(text) is 'Verifies a user password against the encrypted_password in auth.users using pgcrypto.';
