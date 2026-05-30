@@ -1,6 +1,8 @@
 import { createClient } from './client';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
-import type { CvImportMetadata } from '@/lib/cv/types';
+
+// Stub for PR 4 build isolation (actual type introduced in PR 5)
+export type CvImportMetadata = Record<string, any>;
 
 const PROFILE_COLUMNS =
   'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, cv_import, created_at, updated_at' as const;
