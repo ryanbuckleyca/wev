@@ -66,6 +66,56 @@ test.describe("Profile editing flow", () => {
       await suggestions.getByRole("option").first().click();
     });
 
+    await test.step("Import CV to auto-fill skills and values", async () => {
+      // Mock the CV extraction API to avoid calling the real LLM in E2E tests
+      await page.route("**/api/cv/extract", async (route) => {
+        await route.fulfill({
+          status: 200,
+          json: {
+            skills: [
+              {
+                uri: "http://data.europa.eu/esco/skill/e87498c3-f09b-4ca0-be58-3cc22b4044af",
+                preferredLabel: { en: "React", fr: "React" },
+                skillType: "skill",
+                reuseLevel: "cross-sector",
+              },
+            ],
+            values: ["Advancement"],
+            metadata: {
+              filename: "test.pdf",
+              imported_at: new Date().toISOString(),
+              source: "cv_upload",
+              locale: "en",
+            },
+            warnings: [],
+          },
+        });
+      });
+
+      // The file input is hidden, so we need to set its files directly via the locator
+      await page.locator('input[type="file"]').setInputFiles({
+        name: "test.pdf",
+        mimeType: "application/pdf",
+        buffer: Buffer.from("dummy content"),
+      });
+
+      // Verify the extracted skill was added to the UI
+      const skillsContainer = page
+        .getByRole("button", { name: /search and add skills/i })
+        .locator("..");
+      await expect(
+        skillsContainer.getByRole("button", { name: /^remove React/i }),
+      ).toBeVisible({ timeout: 10_000 });
+
+      // Verify the extracted value was added to the UI
+      const valuesContainer = page
+        .getByRole("button", { name: /search and add work values/i })
+        .locator("..");
+      await expect(
+        valuesContainer.getByRole("button", { name: /^remove Advancement/i }),
+      ).toBeVisible();
+    });
+
     const skillsTrigger = page.getByRole("button", {
       name: /search and add skills/i,
     });
@@ -88,7 +138,7 @@ test.describe("Profile editing flow", () => {
         timeout: 10_000,
       });
 
-      for (let i = 0; i < 11; i += 1) {
+      for (let i = 0; i < 10; i += 1) {
         await listbox.getByRole("option").nth(i).click();
       }
 
@@ -141,7 +191,6 @@ test.describe("Profile editing flow", () => {
         "Security",
         "Stability",
         "Independence",
-        "Advancement",
       ];
 
       const listbox = dialog.getByRole("listbox", { name: /work values/i });

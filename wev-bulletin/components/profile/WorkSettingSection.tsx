@@ -36,10 +36,6 @@ export default function WorkSettingSection({
 
   return (
     <div>
-      <h2 className="text-sm font-semibold leading-none text-foreground mb-2">
-        {t('profile.locationAndWorkSetting')}
-      </h2>
-
       {/* Work Type Preference */}
       <div>
         <FormLabel>{t('profile.workType')}</FormLabel>

@@ -6,6 +6,7 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { useRankedList } from '@/lib/hooks/useRankedList';
 import { type EscoSkill } from '@/lib/types/skills';
 import { type WorkValue, buildWorkValues, getValueDefinition } from '@/lib/values';
+import type { CvImportMetadata } from '@/lib/cv/types';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 import { adjustCutoffOnRemove, adjustCutoffOnReorder } from '@/lib/ranked-list';
@@ -39,6 +40,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     bio: '',
     work_types: [] as WorkType[],
     location: null as LocationState | null,
+    cv_import: null as CvImportMetadata | null,
   });
 
   const { allSkills, isLoading: isLibraryLoading } = useSkillsLibrary(locale);
@@ -85,6 +87,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
               province: profile.province ?? '',
             }
           : null,
+      cv_import: profile.cv_import ?? null,
     });
 
     // Hydrate Values
@@ -165,6 +168,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
         municipality: formData.location?.name ?? null,
         province: formData.location?.province ?? null,
         location_display_name: formData.location?.display_name ?? null,
+        cv_import: formData.cv_import,
       });
       notify.success(t('updateSuccess'));
       void fetch('/api/matches/recalculate-mine', { method: 'POST' });
@@ -174,6 +178,30 @@ export function useProfileForm(locale: 'en' | 'fr') {
       setIsSaving(false);
     }
   }, [formData, values, skills, updateProfile, t]);
+
+  const handleApplyCvImport = useCallback(
+    ({
+      skills: nextSkills,
+      values: nextValues,
+      cvImport,
+    }: {
+      skills: EscoSkill[];
+      values: string[];
+      cvImport: CvImportMetadata;
+    }) => {
+      // Apply to local state so the user can review before saving.
+      // Only update cutoff when there are actual items — avoid hiding
+      // manually-added skills/values when the CV returns an empty list.
+      skills.setItems(nextSkills);
+      if (nextSkills.length > 0) skills.setCutoff(nextSkills.length);
+      values.setItems(nextValues);
+      if (nextValues.length > 0) values.setCutoff(nextValues.length);
+      setFormData((prev) => ({ ...prev, cv_import: cvImport }));
+
+      notify.success(t('cvImportSuccess'));
+    },
+    [skills, values, t],
+  );
 
   return {
     profile,
@@ -196,6 +224,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     handleValueRemove: values.remove,
     isSaving,
     handleSaveProfile,
+    handleApplyCvImport,
     handleWorkTypeToggle,
   };
 }
