@@ -5,7 +5,6 @@
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS unaccent;
-
 -- Helper: strip accents for locale-neutral matching
 CREATE OR REPLACE FUNCTION f_unaccent(text)
 RETURNS text
@@ -13,13 +12,11 @@ LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
   SELECT unaccent('unaccent', $1);
 $$;
-
 -- DROP before CREATE OR REPLACE because Postgres does not allow changing the
 -- return type of an existing function via OR REPLACE. If the function was
 -- previously deployed with a different return signature, this ensures a clean
 -- recreation without requiring manual intervention on the remote database.
 DROP FUNCTION IF EXISTS search_esco_skills(text, int, text);
-
 CREATE OR REPLACE FUNCTION search_esco_skills(
     p_query   text,
     p_limit   int DEFAULT 20,
