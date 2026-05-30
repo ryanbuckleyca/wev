@@ -66,8 +66,6 @@ test.describe("Profile editing flow", () => {
       await suggestions.getByRole("option").first().click();
     });
 
-
-
     const skillsTrigger = page.getByRole("button", {
       name: /search and add skills/i,
     });
