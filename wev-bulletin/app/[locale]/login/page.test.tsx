@@ -94,6 +94,10 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /^log in$/i }));
 
     await waitFor(() => {
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
+    });
+
+    await waitFor(() => {
       expect(mockSignInWithPassword).toHaveBeenCalledWith({
         email: 'test@example.com',
         password: 'StrongPass123!',
@@ -137,6 +141,7 @@ describe('LoginPage', () => {
     render(<LoginPage />);
 
     await waitFor(() => {
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
       expect(mockRouterReplace).toHaveBeenCalledWith('/');
     });
   });

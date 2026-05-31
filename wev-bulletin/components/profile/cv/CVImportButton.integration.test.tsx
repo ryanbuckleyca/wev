@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CVImportButton from './CVImportButton';
 import { NextIntlClientProvider } from 'next-intl';
@@ -14,7 +14,12 @@ const messages = {
     cvImportDropHint: 'or drag and drop PDF/DOCX',
     cvReimportWarning: 'This will overwrite your current skills and values.',
     cvImportedIndicator: 'Last imported: {fileName} on {importedAt}',
+    cvUploadStartingWarning: 'Uploading your CV...',
     cvParsingWaitWarning: 'Parsing your CV, please wait...',
+    cvReviewingExperienceWarning: 'Reviewing your experience...',
+    cvDeterminingSkillsWarning: 'Determining your skills and values...',
+    cvParsingStillWorkingWarning:
+      'Still working on your CV... This can take up to a minute. Please remain on this page while it finishes.',
     cv_import_failed: 'CV import failed. Please try another file.',
     rate_limit_exceeded:
       "You've reached the CV import limit. Please wait a bit before trying again.",
@@ -228,4 +233,90 @@ describe('CVImportButton', () => {
     });
     expect(globalFetchMock).not.toHaveBeenCalled();
   });
+
+  it('updates the parsing toast when the import keeps running', async () => {
+    vi.useFakeTimers();
+    const handleConfirmImport = vi.fn();
+    let resolveFetch: ((value: any) => void) | undefined;
+
+    globalFetchMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+
+    renderWithIntl(
+      <CVImportButton
+        locale="en"
+        cvImport={null}
+        isSaving={false}
+        onConfirmImport={handleConfirmImport}
+      />,
+    );
+
+    const file = new File(['dummy content'], 'test.pdf', { type: 'application/pdf' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(notify.info).toHaveBeenNthCalledWith(
+      1,
+      'Uploading your CV...',
+      expect.objectContaining({
+        id: 'cv-import-progress',
+        duration: 60000,
+      }),
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(15000);
+    });
+
+    expect(notify.info).toHaveBeenNthCalledWith(
+      2,
+      'Parsing your CV, please wait...',
+      expect.objectContaining({
+        id: 'cv-import-progress',
+        duration: 52000,
+      }),
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    expect(notify.info).toHaveBeenNthCalledWith(
+      5,
+      'Still working on your CV... This can take up to a minute. Please remain on this page while it finishes.',
+      expect.objectContaining({
+        id: 'cv-import-progress',
+        duration: 15000,
+      }),
+    );
+
+    await act(async () => {
+      resolveFetch?.({
+        ok: true,
+        json: async () => ({
+          skills: [],
+          values: [],
+          warnings: [],
+          metadata: {
+            filename: 'test.pdf',
+            imported_at: '2023-10-01T12:00:00Z',
+            source: 'cv_upload',
+            locale: 'en',
+          },
+        }),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(handleConfirmImport).toHaveBeenCalled();
+    expect(notify.dismiss).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
 });
