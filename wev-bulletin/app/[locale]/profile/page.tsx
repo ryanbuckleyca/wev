@@ -26,15 +26,12 @@ export default function ProfilePage() {
   const { user, loading } = useRequireAuth();
 
   const {
-    profile,
     profileLoading,
     profileError,
     formData,
     setFormData,
     selectedSkills,
     skillCutoff,
-    allSkills,
-    isLibraryLoading,
     handleSkillToggle,
     handleSkillReorder,
     handleSkillRemove,
@@ -124,14 +121,12 @@ export default function ProfilePage() {
               )}
 
               <SkillsSelector
-                allItems={allSkills}
                 selectedSkills={selectedSkills}
                 skillCutoff={skillCutoff}
                 onToggle={handleSkillToggle}
                 onReorder={handleSkillReorder}
                 onRemove={handleSkillRemove}
                 locale={locale}
-                isLoading={isLibraryLoading}
               />
             </div>
 

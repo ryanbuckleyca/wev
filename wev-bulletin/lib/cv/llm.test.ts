@@ -12,38 +12,44 @@ describe('llm-extractor', () => {
 
     it('includes values taxonomy and instructions', () => {
       const prompt = buildPrompt('Sample CV');
-      expect(prompt).toContain('TASK A — SKILL PHRASES');
+      expect(prompt).toContain('TASK A — NORMALIZED SKILLS');
       expect(prompt).toContain('TASK B — WORK VALUES');
       expect(prompt).toContain('Sample CV');
       expect(prompt).toContain('Return JSON');
+      expect(prompt).toContain('Good outputs: "Team leadership"');
+      expect(prompt).toContain('Bad outputs: "Led a team in water management"');
+      expect(prompt).toContain('"evidence": "..."');
     });
 
     it('builds a French prompt when locale is fr and still requires canonical English values', () => {
       const prompt = buildPrompt('CV exemple', 'fr');
       expect(prompt).toContain("Tu analyses le CV d'une candidate ou d'un candidat");
-      expect(prompt).toContain('TACHE A - EXPRESSIONS DE COMPETENCES');
+      expect(prompt).toContain('TACHE A - COMPETENCES NORMALISEES');
       expect(prompt).toContain(
         'Valeurs autorisees: utilise exactement les libelles canoniques anglais',
       );
       expect(prompt).toContain('CV exemple');
       expect(prompt).toContain('- Advancement:');
       expect(prompt).toContain('"values": ["CanonicalEnglishValue1", ...]');
+      expect(prompt).toContain('Mauvaises sorties: "Led a team in water management"');
+      expect(prompt).toContain('"evidence": "..."');
     });
   });
 
   describe('parseLlmResponse', () => {
     it('parses well-formed JSON', () => {
       const raw =
-        '{"skills": [{"phrase": "React development", "prominence": 9}, {"phrase": "Node.js", "prominence": 5}], "values": ["Advancement", "Independence"]}';
+        '{"skills": [{"phrase": "React development", "evidence": "Built React applications for public services", "prominence": 9}, {"phrase": "Node.js services", "evidence": "Maintained Node.js APIs", "prominence": 5}], "values": ["Advancement", "Independence"]}';
       const result = parseLlmResponse(raw);
       expect(result.skills).toHaveLength(2);
       expect(result.skills[0].phrase).toBe('React development');
+      expect(result.skills[0].evidence).toContain('Built React applications');
       expect(result.values).toEqual(['Advancement', 'Independence']);
     });
 
     it('cleans up markdown formatting around JSON', () => {
       const raw =
-        '```json\n{"skills": [{"phrase": "CSS", "prominence": 3}], "values": ["Friendship"]}\n```';
+        '```json\n{"skills": [{"phrase": "CSS architecture", "evidence": "Maintained CSS systems", "prominence": 3}], "values": ["Friendship"]}\n```';
       const result = parseLlmResponse(raw);
       expect(result.skills).toHaveLength(1);
     });
@@ -53,6 +59,20 @@ describe('llm-extractor', () => {
       const result = parseLlmResponse(raw);
       expect(result.skills).toHaveLength(2);
       expect(result.skills[0].prominence).toBe(5);
+      expect(result.skills[0].evidence).toBe('HTML');
+    });
+
+    it('filters out sentence-like skill phrases', () => {
+      const raw =
+        '{"skills": [{"phrase": "Led a team in water management", "evidence": "Led a team in water management", "prominence": 8}, {"phrase": "Team leadership", "evidence": "Led a team of six staff", "prominence": 8}], "values": []}';
+      const result = parseLlmResponse(raw);
+      expect(result.skills).toEqual([
+        {
+          phrase: 'Team leadership',
+          evidence: 'Led a team of six staff',
+          prominence: 8,
+        },
+      ]);
     });
 
     it('filters out invalid or duplicate values', () => {

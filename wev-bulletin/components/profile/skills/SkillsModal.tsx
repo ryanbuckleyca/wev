@@ -9,39 +9,6 @@ import SelectionBrowseModal from '../SelectionBrowseModal';
 
 const ID = 'profile-skills-listbox';
 
-export interface SkillMatch extends EscoSkill {
-  label: string;
-  matchedAlias?: string | null;
-}
-
-function filterSkills(query: string, allItems: EscoSkill[], locale: 'en' | 'fr'): SkillMatch[] {
-  if (!query) return [];
-  const q = query.toLowerCase();
-  const hits: { skill: SkillMatch; score: number }[] = [];
-
-  for (const skill of allItems) {
-    const label = skill.preferredLabel[locale] || '';
-    const lower = label.toLowerCase();
-
-    if (lower.startsWith(q)) {
-      hits.push({ skill: { ...skill, label }, score: 2 });
-      continue;
-    }
-    if (lower.includes(q)) {
-      hits.push({ skill: { ...skill, label }, score: 1 });
-      continue;
-    }
-
-    const alias = skill.aliases?.find((a) => a.toLowerCase().includes(q));
-    if (alias) hits.push({ skill: { ...skill, label, matchedAlias: alias }, score: 0 });
-  }
-
-  return hits
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 100)
-    .map((h) => h.skill);
-}
-
 interface SkillsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -51,7 +18,8 @@ interface SkillsModalProps {
   selected: EscoSkill[];
   onRemove: (uri: string) => void;
   onToggle: (skill: EscoSkill) => void;
-  allItems: EscoSkill[];
+  skills: EscoSkill[];
+  hasQuery: boolean;
   isLoading: boolean;
   locale: 'en' | 'fr';
 }
@@ -65,15 +33,15 @@ export default function SkillsModal({
   selected,
   onRemove,
   onToggle,
-  allItems,
+  skills,
+  hasQuery,
   isLoading,
   locale,
 }: SkillsModalProps) {
   const t = useTranslations('profile');
   const inputRef = useRef<HTMLInputElement>(null);
-  const filteredSkills = filterSkills(query, allItems, locale);
   const selectedUris = new Set(selected.map((s) => s.uri));
-  const listboxInDom = query && filteredSkills.length > 0;
+  const listboxInDom = skills.length > 0;
 
   return (
     <SelectionBrowseModal
@@ -137,11 +105,12 @@ export default function SkillsModal({
         <SkillsList
           listboxId={ID}
           ariaDescribedBy={`${ID}-kbd-hint`}
-          skills={filteredSkills}
+          skills={skills}
           selectedUris={selectedUris}
           onToggle={onToggle}
           locale={locale}
-          hasQuery={!!query}
+          hasQuery={hasQuery}
+          isLoading={isLoading}
         />
       </div>
     </SelectionBrowseModal>

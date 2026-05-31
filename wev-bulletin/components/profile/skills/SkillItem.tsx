@@ -1,11 +1,11 @@
 import { Badge } from '@/components/ui/Badge';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { useTranslations } from 'next-intl';
-import type { SkillMatch } from './SkillsModal';
+import type { EscoSkill } from '@/lib/types/skills';
 
 interface SkillItemProps {
   id: string;
-  skill: SkillMatch;
+  skill: EscoSkill;
   isActive: boolean;
   isSelected: boolean;
   onToggle: () => void;
@@ -65,7 +65,7 @@ export default function SkillItem({
       />
       <div className="min-w-0 flex-1 overflow-hidden">
         <p className="text-[13px] font-bold text-gray-900 dark:text-zinc-100 break-words">
-          {skill.label}
+          {skill.preferredLabel[locale]}
         </p>
         {skill.description?.[locale] && (
           <p className="mt-0.5 text-[11px] font-medium leading-relaxed text-gray-500 dark:text-zinc-400 line-clamp-2 break-words">
