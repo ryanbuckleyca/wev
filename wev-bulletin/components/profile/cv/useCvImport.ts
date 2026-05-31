@@ -4,7 +4,7 @@ import notify from '@/lib/toast';
 import type { CvImportMetadata, CvLocale } from '@/lib/cv/types';
 import type { EscoSkill } from '@/lib/types/skills';
 import { CV_FILE_PICKER_TYPES, MAX_CV_FILE_SIZE_BYTES } from '@/lib/constants/files';
-import { useFilePicker } from './useFilePicker';
+import { useFilePicker, type FilePickerRejectReason } from './useFilePicker';
 
 // ---------------------------------------------------------------------------
 // Error Handling
@@ -83,7 +83,15 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [isParsing, setIsParsing] = useState(false);
 
+  const handleRejectedFile = (_file: File, reason: FilePickerRejectReason) => {
+    notify.error(getCvImportErrorMessage(t, new Error(reason)));
+  };
+
   const processFile = async (file: File) => {
+    if (file.size <= 0) {
+      notify.error(getCvImportErrorMessage(t, new Error('empty_file')));
+      return;
+    }
     if (file.size > MAX_CV_FILE_SIZE_BYTES) {
       notify.error(getCvImportErrorMessage(t, new Error('file_too_large')));
       return;
@@ -114,6 +122,7 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
   const filePicker = useFilePicker({
     acceptTypes: CV_FILE_PICKER_TYPES,
     onFileSelect: processFile,
+    onRejectFile: handleRejectedFile,
   });
 
   return {

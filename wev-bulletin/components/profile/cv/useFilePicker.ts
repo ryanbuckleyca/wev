@@ -1,11 +1,14 @@
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 
+export type FilePickerRejectReason = 'unsupported_file_type' | 'empty_file';
+
 export type FilePickerOptions = {
   acceptTypes?: Array<{ description: string; accept: Record<string, string[]> }>;
   onFileSelect: (file: File) => void;
+  onRejectFile?: (file: File, reason: FilePickerRejectReason) => void;
 };
 
-export function useFilePicker({ acceptTypes, onFileSelect }: FilePickerOptions) {
+export function useFilePicker({ acceptTypes, onFileSelect, onRejectFile }: FilePickerOptions) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -25,11 +28,21 @@ export function useFilePicker({ acceptTypes, onFileSelect }: FilePickerOptions) 
     });
   };
 
+  const handleFile = (file: File) => {
+    if (file.size <= 0) {
+      onRejectFile?.(file, 'empty_file');
+      return;
+    }
+    if (!isAcceptedFile(file)) {
+      onRejectFile?.(file, 'unsupported_file_type');
+      return;
+    }
+    onFileSelect(file);
+  };
+
   const onFileSelected = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && isAcceptedFile(file)) {
-      onFileSelect(file);
-    }
+    if (file) handleFile(file);
     if (inputRef.current) inputRef.current.value = '';
   };
 
@@ -50,9 +63,7 @@ export function useFilePicker({ acceptTypes, onFileSelect }: FilePickerOptions) 
     event.preventDefault();
     setIsDragOver(false);
     const file = event.dataTransfer?.files?.[0];
-    if (file && isAcceptedFile(file)) {
-      onFileSelect(file);
-    }
+    if (file) handleFile(file);
   };
 
   return {
