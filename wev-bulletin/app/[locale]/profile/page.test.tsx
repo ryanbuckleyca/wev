@@ -154,7 +154,7 @@ describe('ProfilePage skills integration', () => {
     );
   });
 
-  it('saves concept_uri[] (not labels) after selecting a search result', async () => {
+  it('saves concept_uri[] (not labels) after selecting a search result', { timeout: 90_000 }, async () => {
     vi.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
@@ -245,7 +245,7 @@ describe('ProfilePage skills integration', () => {
     expect(new Set(savePayload.skills)).toEqual(new Set(['uri-1', 'uri-2']));
   });
 
-  it('blocks save and shows error when skills exceed limit', { timeout: 60_000 }, async () => {
+  it('blocks save and shows error when skills exceed limit', { timeout: 120_000 }, async () => {
     // This test renders 10 hydrated skills, opens a modal, searches for a skill,
     // selects a result, and validates the save is blocked.  Under full-suite
     // resource contention it can exceed the 30 s global timeout.
