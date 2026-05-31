@@ -64,6 +64,17 @@ describe('Server-side CV Parser', () => {
     expect(parsed.metadata.filename).toBe('cv.docx');
   });
 
+  it('accepts short but valid PDF text from the worker', async () => {
+    nextWorkerResponse = { success: true, text: 'Short CV summary' };
+
+    const { parseCvOnServer } = await import('./parser.server');
+    const file = new File(['fake-pdf-bytes'], 'short.pdf', { type: 'application/pdf' });
+
+    const parsed = await parseCvOnServer(file, 'en');
+    expect(parsed.text).toBe('Short CV summary');
+    expect(parsed.metadata.filename).toBe('short.pdf');
+  });
+
   it('throws error for unsupported file types', async () => {
     const { parseCvOnServer } = await import('./parser.server');
     const file = new File(['fake'], 'cv.txt', { type: 'text/plain' });
