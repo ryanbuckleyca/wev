@@ -10,7 +10,7 @@ export type ParsedCvResult = {
   metadata: CvImportMetadata;
 };
 
-const WORKER_TIMEOUT_MS = 30_000;
+const WORKER_TIMEOUT_MS = 60_000;
 
 async function parseDocumentInWorker(buffer: Buffer, type: 'pdf' | 'docx'): Promise<string> {
   // Use path.resolve(__dirname) instead of new URL(import.meta.url) — Turbopack
