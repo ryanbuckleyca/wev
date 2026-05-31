@@ -56,14 +56,24 @@ const SkillPhraseSchema = z.union([
   z
     .object({
       phrase: z.string().min(3),
-      evidence: z.string().min(3).optional(),
+      evidence: z.string().optional(),
       prominence: z.coerce.number().min(1).max(10).catch(5).optional().default(5),
     })
-    .transform((obj) => ({
-      phrase: normalizeSkillText(obj.phrase),
-      evidence: normalizeSkillText(obj.evidence ?? obj.phrase),
-      prominence: obj.prominence,
-    })),
+    .transform((obj) => {
+      const normalizedPhrase = normalizeSkillText(obj.phrase);
+      let finalEvidence = normalizedPhrase;
+      if (obj.evidence) {
+        const trimmedEvidence = obj.evidence.trim();
+        if (trimmedEvidence.length >= 3) {
+          finalEvidence = normalizeSkillText(trimmedEvidence);
+        }
+      }
+      return {
+        phrase: normalizedPhrase,
+        evidence: finalEvidence,
+        prominence: obj.prominence,
+      };
+    }),
 ]);
 
 const LlmResponseSchema = z.object({
