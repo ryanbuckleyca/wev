@@ -34,9 +34,6 @@ vi.mock('@/hooks/usePasswordStrength', () => ({
   })),
 }));
 
-// Mock toast
-vi.mock('@/lib/toast', () => import('@/test-utils/toast-mock'));
-
 // Mock DeleteAccountModal
 vi.mock('@/components/DeleteAccountModal', () => ({
   default: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>
