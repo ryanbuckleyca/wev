@@ -3,9 +3,8 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { skillDisplayKey } from '@/lib/skills/display';
 import { parseLocale } from '@/lib/locale';
 
-// Removed dynamic constraints to allow Edge-Caching
-// export const dynamic = 'force-dynamic'
-// export const revalidate = 0
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 20;
@@ -77,7 +76,7 @@ export async function GET(request: Request) {
       {
         status: 200,
         headers: {
-          'Cache-Control': 'public, s-maxage=604800, stale-while-revalidate=86400',
+          'Cache-Control': 'no-store',
         },
       },
     );

@@ -1,16 +1,27 @@
 import { logger } from '@/lib/logger';
 import { supabaseServer } from '@/lib/supabase-server';
 import type { EscoSkill } from '@/lib/types/skills';
-import { buildCvWordSet, labelRelevance } from '@/lib/nlp-utils';
+import {
+  buildCvWordSet,
+  buildTokenSet,
+  isTaskLikeText,
+  labelRelevance,
+  textCoverage,
+  tokenize,
+  unsupportedTokenRatio,
+} from '@/lib/nlp-utils';
 import { CvImportError } from './errors';
 import type { CvLocale } from './types';
 import type { SkillPhrase } from './llm';
 
 const MAX_SKILLS = 10;
-const RPC_MATCHES_PER_PHRASE = 3;
+const HYDRATE_CANDIDATES_LIMIT = 30;
+const RPC_MATCHES_PER_PHRASE = 10;
 // Read once at module load. Override via CV_SKILLS_SCORE_FLOOR env var.
 const SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '') || 0.25;
 const RELEVANCE_FLOOR = 0.4;
+const FINAL_SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_FINAL_SCORE_FLOOR ?? '') || 0.25;
+const UNSUPPORTED_TOKEN_RATIO_CEILING = 0.55;
 
 type MatchRow = {
   concept_uri: string;
@@ -46,8 +57,19 @@ function toEscoSkill(row: EscoMetaRow): EscoSkill {
   };
 }
 
-export type ScoredMatch = MatchRow & { score: number };
+export type ScoredMatch = BatchMatchRow & { score: number };
 export type BatchMatchRow = MatchRow & { query_index: number };
+
+function getPreferredLabel(
+  row:
+    | Pick<BatchMatchRow, 'preferred_label_en' | 'preferred_label_fr'>
+    | Pick<EscoMetaRow, 'preferred_label_en' | 'preferred_label_fr'>,
+  locale: CvLocale,
+): string {
+  return locale === 'fr'
+    ? row.preferred_label_fr || row.preferred_label_en || ''
+    : row.preferred_label_en || row.preferred_label_fr || '';
+}
 
 export function rankAndFilterCandidates(
   rows: BatchMatchRow[],
@@ -68,7 +90,7 @@ export function rankAndFilterCandidates(
     const prominence = isValidIdx ? skillPhrases[phraseIdx].prominence : 5;
     const promWeight = prominence / 10;
 
-    const label = locale === 'fr' ? row.preferred_label_fr : row.preferred_label_en;
+    const label = getPreferredLabel(row, locale);
     const relevance = labelRelevance(label ?? '', cvWords, locale);
     if (relevance < RELEVANCE_FLOOR) continue;
 
@@ -80,6 +102,61 @@ export function rankAndFilterCandidates(
   }
 
   return [...bestByUri.values()].sort((a, b) => b.score - a.score);
+}
+
+function bestAliasCoverage(
+  aliases: string[] | undefined,
+  supportWords: Set<string>,
+  locale: CvLocale,
+): number {
+  if (!aliases || aliases.length === 0) return 0;
+  return aliases.reduce((best, alias) => Math.max(best, textCoverage(alias, supportWords, locale)), 0);
+}
+
+function scoreHydratedCandidate(
+  match: ScoredMatch,
+  meta: EscoMetaRow,
+  skillPhrases: SkillPhrase[],
+  cvWords: Set<string>,
+  locale: CvLocale,
+): number {
+  const skillPhrase = skillPhrases[match.query_index];
+  if (!skillPhrase) return 0;
+
+  const label = getPreferredLabel(meta, locale);
+  const phraseWords = buildTokenSet(skillPhrase.phrase, true, locale);
+  const evidenceWords = buildTokenSet(skillPhrase.evidence, true, locale);
+  const localSupportWords = new Set([...phraseWords, ...evidenceWords]);
+  const fallbackSupportWords = localSupportWords.size > 0 ? localSupportWords : cvWords;
+
+  const phraseOverlap = textCoverage(label, phraseWords, locale);
+  const evidenceOverlap = textCoverage(label, evidenceWords, locale);
+  const cvOverlap = labelRelevance(label, cvWords, locale);
+  const aliasOverlap = Math.max(
+    bestAliasCoverage(meta.alternative_label_en ?? undefined, fallbackSupportWords, locale),
+    bestAliasCoverage(meta.alternative_label_fr ?? undefined, fallbackSupportWords, locale),
+  );
+  const unsupportedRatio = unsupportedTokenRatio(label, fallbackSupportWords, locale);
+  if (
+    unsupportedRatio > UNSUPPORTED_TOKEN_RATIO_CEILING ||
+    (phraseOverlap < 0.34 && evidenceOverlap < 0.34 && cvOverlap < RELEVANCE_FLOOR)
+  ) {
+    return 0;
+  }
+
+  const labelTokenCount = tokenize(label, true, locale).length;
+  const supportScore = phraseOverlap * 0.45 + evidenceOverlap * 0.35 + cvOverlap * 0.2;
+  const aliasBonus = aliasOverlap * 0.15;
+  const unsupportedPenalty = unsupportedRatio * 0.35;
+  const taskPenalty = isTaskLikeText(label, locale) ? 0.2 : 0;
+  const lengthPenalty = Math.max(0, labelTokenCount - 6) * 0.04;
+  const qualityScore = Math.max(
+    0,
+    supportScore + aliasBonus - unsupportedPenalty - taskPenalty - lengthPenalty,
+  );
+  const promWeight = 0.5 + skillPhrase.prominence / 20;
+
+  return match.similarity * promWeight * qualityScore;
 }
 
 export async function linkPhrasesToEsco(
@@ -110,22 +187,22 @@ export async function linkPhrasesToEsco(
     cvWords,
     locale,
   );
-  const topMatches = scoredMatches.slice(0, MAX_SKILLS);
+  const candidateMatches = scoredMatches.slice(0, HYDRATE_CANDIDATES_LIMIT);
 
   logger.info(
     {
       userId,
       phrasesSearched: embeddings.length,
       uniqueCandidates: scoredMatches.length,
-      kept: topMatches.length,
-      topScore: topMatches[0]?.score ?? null,
-      topSimilarity: topMatches[0]?.similarity ?? null,
+      shortlisted: candidateMatches.length,
+      topScore: candidateMatches[0]?.score ?? null,
+      topSimilarity: candidateMatches[0]?.similarity ?? null,
       floor: SCORE_FLOOR,
     },
     'CV skills two-stage linking stats',
   );
 
-  if (topMatches.length === 0) return [];
+  if (candidateMatches.length === 0) return [];
 
   const { data: metaData, error: metaError } = await supabase
     .from('esco_skills')
@@ -134,16 +211,46 @@ export async function linkPhrasesToEsco(
     )
     .in(
       'concept_uri',
-      topMatches.map((m) => m.concept_uri),
+      candidateMatches.map((m) => m.concept_uri),
     );
 
   if (metaError) {
     logger.error({ err: metaError, userId }, 'esco_skills hydrate failed');
-    return [];
+    throw new CvImportError('embedding_failed', metaError.message);
   }
 
   const metaByUri = new Map(
     ((metaData ?? []) as EscoMetaRow[]).map((row) => [row.concept_uri, row]),
+  );
+
+  const rerankedMatches = candidateMatches
+    .map((match) => {
+      const meta = metaByUri.get(match.concept_uri);
+      if (!meta) return null;
+      const score = scoreHydratedCandidate(match, meta, skillPhrases, cvWords, locale);
+      return score > 0 ? { ...match, score } : null;
+    })
+    .filter((match): match is ScoredMatch => Boolean(match))
+    .sort((a, b) => b.score - a.score);
+
+  const topScore = rerankedMatches[0]?.score ?? 0;
+  const topMatches = rerankedMatches
+    .filter(
+      (match, index) =>
+        match.score >= FINAL_SCORE_FLOOR &&
+        (index < 3 || topScore === 0 || match.score >= topScore * 0.45),
+    )
+    .slice(0, MAX_SKILLS);
+
+  logger.info(
+    {
+      userId,
+      rerankedCandidates: rerankedMatches.length,
+      kept: topMatches.length,
+      topFinalScore: topMatches[0]?.score ?? null,
+      finalScoreFloor: FINAL_SCORE_FLOOR,
+    },
+    'CV skills reranking stats',
   );
 
   return topMatches

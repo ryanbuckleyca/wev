@@ -29,6 +29,8 @@ test-results/
 .coverage
 htmlcov/
 .pytest_cache/
+wev-bulletin/test_output.txt
+wev-bulletin/test_output*.txt
 
 # Editor / AI tools
 .ai/
