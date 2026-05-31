@@ -6,21 +6,62 @@ import { CvImportError } from './errors';
 import type { CvLocale } from './types';
 import { VALUES_LIST } from '@/lib/values';
 
-export type SkillPhrase = { phrase: string; prominence: number };
+export type SkillPhrase = { phrase: string; evidence: string; prominence: number };
 export type LlmResult = { skills: SkillPhrase[]; values: string[] };
+
+const MAX_SKILL_PHRASE_WORDS = 8;
+const SENTENCE_LIKE_SKILL_PREFIXES = [
+  'led ',
+  'lead ',
+  'managed ',
+  'manage ',
+  'worked ',
+  'work ',
+  'responsible for ',
+  'assisted ',
+  'assist ',
+  'supported ',
+  'support ',
+  'dirige ',
+  'diriger ',
+  'gere ',
+  'gerer ',
+  'travaille ',
+  'travailler ',
+  'responsable de ',
+];
+
+function normalizeSkillText(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function isLikelyReusableSkillPhrase(phrase: string): boolean {
+  const normalized = normalizeSkillText(phrase).toLowerCase();
+  if (!normalized) return false;
+
+  const wordCount = normalized.split(/\s+/).length;
+  if (wordCount > MAX_SKILL_PHRASE_WORDS) return false;
+  return !SENTENCE_LIKE_SKILL_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+}
 
 const SkillPhraseSchema = z.union([
   z
     .string()
     .min(3)
-    .transform((phrase) => ({ phrase: phrase.trim(), prominence: 5 })),
+    .transform((phrase) => ({
+      phrase: normalizeSkillText(phrase),
+      evidence: normalizeSkillText(phrase),
+      prominence: 5,
+    })),
   z
     .object({
       phrase: z.string().min(3),
+      evidence: z.string().min(3).optional(),
       prominence: z.coerce.number().min(1).max(10).catch(5).optional().default(5),
     })
     .transform((obj) => ({
-      phrase: obj.phrase.trim(),
+      phrase: normalizeSkillText(obj.phrase),
+      evidence: normalizeSkillText(obj.evidence ?? obj.phrase),
       prominence: obj.prominence,
     })),
 ]);
@@ -31,7 +72,8 @@ const LlmResponseSchema = z.object({
       .map((s) => SkillPhraseSchema.safeParse(s))
       .filter((res) => res.success)
       .map((res) => res.data)
-      .filter((s) => s.phrase.length >= 3),
+      .filter((s) => s.phrase.length >= 3 && s.evidence.length >= 3)
+      .filter((s) => isLikelyReusableSkillPhrase(s.phrase)),
   ),
   values: z.array(z.string()).transform((arr) => {
     const allowed = new Set<string>(VALUES_LIST);
