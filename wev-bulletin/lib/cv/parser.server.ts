@@ -3,7 +3,11 @@ import { Worker } from 'node:worker_threads';
 import path from 'node:path';
 import { CvImportError } from './errors';
 import type { CvImportMetadata, CvLocale } from './types';
-import { CV_MIME_TYPES, MAX_CV_FILE_SIZE_BYTES, CV_PARSING_TIMEOUT_MS } from '@/lib/constants/files';
+import {
+  CV_MIME_TYPES,
+  MAX_CV_FILE_SIZE_BYTES,
+  CV_PARSING_TIMEOUT_MS,
+} from '@/lib/constants/files';
 
 export type ParsedCvResult = {
   text: string;
