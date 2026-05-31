@@ -1,6 +1,4 @@
 import { parentPort, workerData } from 'worker_threads';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 
 function normalizeText(input) {
   return input
@@ -11,12 +9,10 @@ function normalizeText(input) {
 
 async function parsePdf(buffer) {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  // In bundled server output, pdfjs fake-worker auto-discovery points at a
-  // non-existent `.next/server/chunks/pdf.worker.mjs`. Force a concrete Node
-  // file URL so PDF parsing works in production.
-  pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(
-    path.resolve(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'),
-  ).href;
+  // In Node, pdfjs uses its fake-worker path and first checks
+  // `globalThis.pdfjsWorker.WorkerMessageHandler`. Preloading the worker module
+  // avoids brittle runtime path resolution inside bundled server output.
+  globalThis.pdfjsWorker ??= await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(buffer),
     disableWorker: true,

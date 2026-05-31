@@ -124,4 +124,11 @@ Status: [OPEN]
 
 ## Fix Direction
 
-- Configure `pdfjs-dist` in the server worker with an explicit Node-resolvable worker source instead of relying on bundled auto-discovery of `pdf.worker.mjs`.
+- Configure `pdfjs-dist` in the server worker without relying on runtime path resolution for `workerSrc`.
+- The more robust approach is to preload `pdfjs-dist/legacy/build/pdf.worker.mjs` and assign it to `globalThis.pdfjsWorker`, which is exactly what PDF.js checks first in Node fake-worker mode.
+
+## Fix Iteration
+
+- First attempted fix: point `workerSrc` at a filesystem path under `node_modules`.
+- Result: still failed in staging because that deployment layout did not expose the worker file at the assumed path.
+- Revised fix: directly import `pdfjs-dist/legacy/build/pdf.worker.mjs` and set `globalThis.pdfjsWorker` before calling `getDocument()`.
