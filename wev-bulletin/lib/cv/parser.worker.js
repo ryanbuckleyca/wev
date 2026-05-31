@@ -37,7 +37,7 @@ async function parsePdf(buffer) {
     }
   }
   const text = normalizeText(pages.join('\n'));
-  if (text.length < 80) throw new Error('pdf_no_text_layer');
+  if (text.length === 0) throw new Error('pdf_no_text_layer');
   return text;
 }
 
