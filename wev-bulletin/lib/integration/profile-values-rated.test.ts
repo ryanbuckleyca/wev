@@ -68,7 +68,6 @@ function createMockUpdateProfile() {
       municipality: null,
       province: null,
       location_display_name: null,
-      cv_import: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
