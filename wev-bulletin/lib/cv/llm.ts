@@ -68,6 +68,7 @@ export type ExtractWithLlmOptions = {
   groqKey: string;
   userId: string;
   groqModel: string;
+  locale: CvLocale;
 };
 
 export async function extractWithLlm({
@@ -75,6 +76,7 @@ export async function extractWithLlm({
   groqKey,
   userId,
   groqModel,
+  locale,
 }: ExtractWithLlmOptions): Promise<LlmResult> {
   try {
     const groq = new Groq({
@@ -89,7 +91,7 @@ export async function extractWithLlm({
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: 'You output only valid JSON.' },
-        { role: 'user', content: buildPrompt(cvText) },
+        { role: 'user', content: buildPrompt(cvText, locale) },
       ],
     });
     const content = completion.choices?.[0]?.message?.content ?? '';

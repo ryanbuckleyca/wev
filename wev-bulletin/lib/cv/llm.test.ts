@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseLlmResponse, type LlmResult } from './llm';
+import { parseLlmResponse } from './llm';
 import { buildPrompt } from './prompts';
 
 describe('llm-extractor', () => {
@@ -16,6 +16,16 @@ describe('llm-extractor', () => {
       expect(prompt).toContain('TASK B — WORK VALUES');
       expect(prompt).toContain('Sample CV');
       expect(prompt).toContain('Return JSON');
+    });
+
+    it('builds a French prompt when locale is fr and still requires canonical English values', () => {
+      const prompt = buildPrompt('CV exemple', 'fr');
+      expect(prompt).toContain("Tu analyses le CV d'une candidate ou d'un candidat");
+      expect(prompt).toContain('TACHE A - EXPRESSIONS DE COMPETENCES');
+      expect(prompt).toContain('Valeurs autorisees: utilise exactement les libelles canoniques anglais');
+      expect(prompt).toContain('CV exemple');
+      expect(prompt).toContain('- Advancement:');
+      expect(prompt).toContain('"values": ["CanonicalEnglishValue1", ...]');
     });
   });
 

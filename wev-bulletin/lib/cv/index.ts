@@ -20,7 +20,7 @@ export async function extractSkillsAndValuesFromCv({
   locale: CvLocale;
   groqModel: string;
 }): Promise<{ skills: EscoSkill[]; values: string[]; warnings: string[] }> {
-  const llmResult = await extractWithLlm({ cvText, groqKey, userId, groqModel });
+  const llmResult = await extractWithLlm({ cvText, groqKey, userId, groqModel, locale });
 
   let skills: EscoSkill[] = [];
   const warnings: string[] = [];
