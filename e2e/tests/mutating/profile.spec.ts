@@ -31,8 +31,69 @@ async function moveFirstSelectedItemDown(
   return selectedRemoveLabels(container);
 }
 
+async function visibleSkillOptionLabels(listbox: Locator): Promise<string[]> {
+  return listbox.getByRole("option").evaluateAll((els) =>
+    els
+      .slice(0, 3)
+      .map((el) => {
+        const label = el.querySelector("p");
+        return label?.textContent?.trim() ?? "";
+      })
+      .filter(Boolean),
+  );
+}
+
 test.describe("Profile editing flow", () => {
   test.setTimeout(180_000);
+
+  test("shows starter skills before typing and restores them after clearing search", async ({
+    page,
+    loggedInUser,
+  }) => {
+    void loggedInUser;
+
+    await page.goto("/en/profile");
+    await expect(
+      page.getByRole("heading", { name: /^my profile$/i }),
+    ).toBeVisible({
+      timeout: 10_000,
+    });
+
+    const skillsTrigger = page.getByRole("button", {
+      name: /search and add skills/i,
+    });
+    await skillsTrigger.click();
+
+    const dialog = page.getByRole("dialog", {
+      name: /search and select skills/i,
+    });
+    await expect(dialog).toBeVisible();
+
+    const listbox = dialog.getByRole("listbox", {
+      name: /skill search results/i,
+    });
+    await expect(listbox.getByRole("option").first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    const starterLabels = await expect
+      .poll(() => visibleSkillOptionLabels(listbox))
+      .toHaveLength(3)
+      .then(() => visibleSkillOptionLabels(listbox));
+
+    const searchInput = dialog.getByPlaceholder(/search to add skills/i);
+    await searchInput.fill("mana");
+
+    await expect
+      .poll(() => visibleSkillOptionLabels(listbox))
+      .not.toEqual(starterLabels);
+
+    await searchInput.fill("");
+
+    await expect
+      .poll(() => visibleSkillOptionLabels(listbox))
+      .toEqual(starterLabels);
+  });
 
   test("enforces skills/values limits and persists ordering", async ({
     page,
