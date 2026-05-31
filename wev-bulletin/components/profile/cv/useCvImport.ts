@@ -19,6 +19,17 @@ const CV_PARSING_TOAST_STAGES = [
   { atMs: 45_000, key: 'cvParsingStillWorkingWarning' },
 ] as const;
 
+function showCvImportProgressToast(
+  t: ReturnType<typeof useTranslations<'profile'>>,
+  key: (typeof CV_PARSING_TOAST_STAGES)[number]['key'],
+  atMs: number,
+) {
+  notify.info(t(key), {
+    id: CV_IMPORT_TOAST_ID,
+    duration: Math.max(CV_PARSING_TIMEOUT_MS - atMs, 1000),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Error Handling
 // ---------------------------------------------------------------------------
@@ -117,12 +128,11 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
     abortControllerRef.current = controller;
 
     setIsParsing(true);
-    const progressToastTimers = CV_PARSING_TOAST_STAGES.map(({ atMs, key }) =>
+    const [firstStage, ...remainingStages] = CV_PARSING_TOAST_STAGES;
+    showCvImportProgressToast(t, firstStage.key, firstStage.atMs);
+    const progressToastTimers = remainingStages.map(({ atMs, key }) =>
       window.setTimeout(() => {
-        notify.info(t(key), {
-          id: CV_IMPORT_TOAST_ID,
-          duration: Math.max(CV_PARSING_TIMEOUT_MS - atMs, 1000),
-        });
+        showCvImportProgressToast(t, key, atMs);
       }, atMs),
     );
 
