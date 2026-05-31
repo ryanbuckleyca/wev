@@ -29,6 +29,10 @@ export type LocationState = {
 
 export { adjustCutoffOnRemove, adjustCutoffOnReorder, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES };
 
+export function resolveCvImportItems<T>(currentItems: T[], importedItems: T[]): T[] {
+  return importedItems.length > 0 ? importedItems : currentItems;
+}
+
 export function useProfileForm(locale: 'en' | 'fr') {
   const t = useTranslations('profile');
   const tValues = useTranslations('values');
@@ -190,11 +194,11 @@ export function useProfileForm(locale: 'en' | 'fr') {
       cvImport: CvImportMetadata;
     }) => {
       // Apply to local state so the user can review before saving.
-      // Only update cutoff when there are actual items — avoid hiding
-      // manually-added skills/values when the CV returns an empty list.
-      skills.setItems(nextSkills);
+      // Keep in-progress manual selections when the CV returns an empty list
+      // for a category, while still replacing that category on non-empty imports.
+      skills.setItems(resolveCvImportItems(skills.items, nextSkills));
       if (nextSkills.length > 0) skills.setCutoff(nextSkills.length);
-      values.setItems(nextValues);
+      values.setItems(resolveCvImportItems(values.items, nextValues));
       if (nextValues.length > 0) values.setCutoff(nextValues.length);
       setFormData((prev) => ({ ...prev, cv_import: cvImport }));
 
