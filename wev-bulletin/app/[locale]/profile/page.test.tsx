@@ -19,13 +19,7 @@ vi.mock('@/contexts/ProfileContext', () => ({
   useProfile: vi.fn(),
 }));
 
-vi.mock('@/lib/toast', () => ({
-  default: {
-    success: vi.fn(),
-    error: vi.fn(),
-    dismiss: vi.fn(),
-  },
-}));
+vi.mock('@/lib/toast', () => import('@/test-utils/toast-mock'));
 
 vi.mock('@/i18n/navigation', () => ({
   Link: ({

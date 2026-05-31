@@ -35,13 +35,7 @@ vi.mock('@/hooks/usePasswordStrength', () => ({
 }));
 
 // Mock toast
-vi.mock('@/lib/toast', () => ({
-  default: {
-    success: vi.fn(),
-    error: vi.fn(),
-    dismiss: vi.fn(),
-  },
-}));
+vi.mock('@/lib/toast', () => import('@/test-utils/toast-mock'));
 
 // Mock DeleteAccountModal
 vi.mock('@/components/DeleteAccountModal', () => ({
