@@ -1,4 +1,8 @@
-# Testing Guide — wev-bulletin
+# Testing Guide — wev
+
+_See [Principles of Automated Testing](https://www.lihaoyi.com/post/PrinciplesofAutomatedTesting.html) for the "why" behind these decisions. **Required reading** before writing tests in this codebase._
+
+---
 
 ## Why We Write Tests
 
@@ -15,18 +19,126 @@ Factors 1 and 2 are the standard reasons everyone cites. But the debates we have
 
 _Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.com/post/PrinciplesofAutomatedTesting.html)._
 
+---
+
 ## Stack
 
-- Run Vitest and Next.js tasks with the Node version pinned in the repo's `.nvmrc`.
-- Older Node releases can fail before the suite starts, so if tests crash at startup, check `nvm use` first.
+| Tool                                                                                   | Package        | Purpose                                                     |
+| -------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------- |
+| [Vitest](https://vitest.dev/)                                                          | `wev-bulletin` | Fast, ESM-native test runner (Jest-compatible)              |
+| [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro) | `wev-bulletin` | Render & query React components by user-visible behaviour   |
+| [@testing-library/user-event](https://testing-library.com/docs/user-event/intro)       | `wev-bulletin` | Simulate realistic user interactions (clicks, typing, etc.) |
+| [@testing-library/jest-dom](https://testing-library.com/docs/ecosystem-jest-dom)       | `wev-bulletin` | DOM matchers like `toBeVisible()`, `toBeDisabled()`         |
+| pytest                                                                                 | `wev-scraper`  | Python test runner                                          |
+| pytest-httpx / responses                                                               | `wev-scraper`  | Mock HTTP calls in scraper tests                            |
+| pgTAP                                                                                  | `supabase/`    | SQL-native tests for DB functions and RLS policies          |
+| [Playwright](https://playwright.dev/)                                                  | monorepo       | Cross-browser end-to-end coverage against the real app      |
 
-| Tool                                                                                   | Purpose                                                     |
-| -------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| [Vitest](https://vitest.dev/)                                                          | Fast, ESM-native test runner (Jest-compatible)              |
-| [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro) | Render & query React components by user-visible behaviour   |
-| [@testing-library/user-event](https://testing-library.com/docs/user-event/intro)       | Simulate realistic user interactions (clicks, typing, etc.) |
-| [@testing-library/jest-dom](https://testing-library.com/docs/ecosystem-jest-dom)       | DOM matchers like `toBeVisible()`, `toBeDisabled()`         |
-| [Playwright](https://playwright.dev/)                                                  | Cross-browser end-to-end coverage against the real app      |
+Run Vitest and Next.js tasks with the Node version pinned in the repo's `.nvmrc`. Older Node releases can fail before the suite starts, so if tests crash at startup, check `nvm use` first.
+
+---
+
+## Coverage Targets
+
+| Layer                                | Target                    |
+| ------------------------------------ | ------------------------- |
+| Business logic / utils (JS + Python) | 90%                       |
+| React components                     | 80%                       |
+| API routes / Server Actions          | 85%                       |
+| Custom hooks                         | 85%                       |
+| Scraper parsing logic                | 85%                       |
+| DB tests (pgTAP)                     | 100% of defined scenarios |
+| E2E critical flows                   | 100% of defined flows     |
+
+**CI gate:** 80% lines/branches repo-wide. Fail below it.
+
+---
+
+## What to Test
+
+**Always:**
+
+- Pure functions and data transformers (JS and Python)
+- Zod schemas — valid input, each invalid case, boundaries
+- Scoring and matching logic — core to the product, test every dimension
+- Component behaviour — interactions, conditional rendering, error/loading states
+- API routes and Server Actions — auth check, happy path, validation error, DB error
+- Scraper parsing logic — each source format, malformed input, missing fields
+- DB query logic — correct filters, ordering, joins (mock the client)
+
+**Never:**
+
+- Third-party library internals (Supabase, React Query, next-intl, requests, BeautifulSoup)
+- Generated code and types
+- Config files (`next.config.ts`, `tailwind.config.ts`, etc.)
+- One-liner wrappers covered incidentally by integration tests
+- Snapshot tests for UI components
+- CSS classnames or visual layout
+
+---
+
+## Running Tests
+
+```bash
+# Run all unit + integration tests
+npm test
+
+# Run DB tests (requires supabase start)
+npm run test:db
+
+# Watch mode
+npm run test:watch --prefix wev-bulletin
+
+# With coverage report
+npm run test:coverage --prefix wev-bulletin
+
+# Scraper
+cd wev-scraper && pytest
+cd wev-scraper && pytest --cov --cov-fail-under=85
+
+# E2E
+npm run test:e2e
+npm run test:e2e:auth-email
+npm run test:e2e:perf
+```
+
+---
+
+## File Structure
+
+Test files live **next to the files they test**, not in separate `__tests__` directories:
+
+```
+wev-bulletin/
+  components/
+    Button.tsx
+    Button.test.tsx
+    Pagination.tsx
+    Pagination.test.tsx
+  lib/
+    match-calculator.ts
+    match-calculator.test.ts
+    values.ts
+    values.test.ts
+  test-utils/
+    i18n-navigation-mock.tsx   # shared `@/i18n/navigation` Link + `useRouter` stub (`mockRouterReplace` / `mockRouterPush`)
+    require-admin-mock.ts
+  e2e/
+    tests/
+    pages/
+    support/
+
+wev-scraper/
+  scraper/
+    parsers/
+      base_coop.py
+      base_coop_test.py
+    conftest.py                # shared fixtures
+```
+
+Use `*.integration.test.ts` for tests that exercise multiple real pieces together while mocking only external boundaries. These run as part of the normal suite on every push.
+
+---
 
 ## Playwright E2E
 
@@ -43,6 +155,44 @@ _Adapted from Li Haoyi's [Principles of Automated Testing](https://www.lihaoyi.c
 - Auth email E2E uses Mailpit by default (local Supabase SMTP → Mailpit). Set `E2E_EMAIL_PROVIDER=mailslurp` plus `MAILSLURP_API_KEY` to use MailSlurp (auto-reuses inboxes tagged `wev-e2e-auth` when available; supports `MAILSLURP_INBOX_IDS` override). Without a MailSlurp key, the email helpers fall back to Mailpit.
 - Playwright derives `SUPABASE_PROJECT_REF` from `SUPABASE_URL` when needed, so you do not need to maintain a separate project-ref secret for e2e.
 - Playwright runs locally and in GitHub Actions (workflow starts local Supabase, builds the production Next.js app, then runs `npm run test:e2e`).
+
+---
+
+## Database Tests (pgTAP)
+
+SQL functions, RPCs, and RLS policies are tested directly in Postgres using [pgTAP](https://pgtap.org/). Tests live in `supabase/tests/` and run via:
+
+```bash
+supabase test db
+# or from the monorepo root:
+npm run test:db
+```
+
+**When they run in CI:** Only when `supabase/migrations/**` or `supabase/tests/**` changes.
+
+**Why pgTAP instead of Vitest:** The matching algorithm, RLS policies, and other DB functions are pure SQL. Testing them through a Node client adds unnecessary indirection. pgTAP runs the tests inside Postgres itself — faster, more precise, no Node boilerplate.
+
+---
+
+## Python / Scraper Tests (pytest)
+
+- Test files live next to source (`base_coop_test.py` beside `base_coop.py`).
+- Shared fixtures go in `conftest.py` at the appropriate level.
+- Mock HTTP calls with `pytest-httpx` or `responses` — never make real network calls in unit tests.
+- Use real fixture HTML/JSON sampled from each source. Cover the happy path, malformed input, and missing fields for every parser.
+- DB interaction tests use a transaction rollback fixture so each test starts clean without a full reseed.
+
+```python
+# conftest.py — transaction rollback fixture
+@pytest.fixture
+def db_session():
+    session = Session()
+    session.begin_nested()
+    yield session
+    session.rollback()
+```
+
+---
 
 ## Guiding Principles
 
@@ -130,7 +280,7 @@ await user.click(button);
 
 Always call `userEvent.setup()` at the top of each test that uses it.
 
-**Exception — disabled submit buttons:** When the UI intentionally disables the submit control (e.g. missing CAPTCHA, password strength not met), the browser often will not run the form’s `onSubmit` from Enter, and jsdom matches that. To still test the handler’s validation branch, dispatch `fireEvent.submit` on the `<form>` element and add a short comment explaining why `userEvent` cannot reach that path. (This subsection is the canonical reference for that exception; avoid hard-coding section numbers in test comments.)
+**Exception — disabled submit buttons:** When the UI intentionally disables the submit control (e.g. missing CAPTCHA, password strength not met), the browser often will not run the form's `onSubmit` from Enter, and jsdom matches that. To still test the handler's validation branch, dispatch `fireEvent.submit` on the `<form>` element and add a short comment explaining why `userEvent` cannot reach that path. (This subsection is the canonical reference for that exception; avoid hard-coding section numbers in test comments.)
 
 ### 6. Favour Integration Over Isolation
 
@@ -284,58 +434,13 @@ expect(screen.getByRole("button", { name: "4" })).toBeVisible();
 expect(screen.getByRole("button", { name: "5" })).toBeVisible();
 ```
 
-## File Structure
+### 13. Verify AI-Generated Tests Can Fail
 
-Test files live **next to the files they test**, not in separate `__tests__` directories:
+When using an AI coding tool to generate tests, treat the output as a first draft. After generation, break the relevant implementation (delete a line, flip a condition) and confirm the test goes red. Restore the code once verified. A test that stays green against a broken implementation is not a test.
 
-```
-components/
-  Button.tsx
-  Button.test.tsx
-  Pagination.tsx
-  Pagination.test.tsx
-lib/
-  match-calculator.ts
-  match-calculator.test.ts
-  values.ts
-  values.test.ts
-test-utils/
-  i18n-navigation-mock.tsx   # shared `@/i18n/navigation` Link + `useRouter` stub (`mockRouterReplace` / `mockRouterPush`)
-```
+**For AI agents writing tests:** after writing a test, temporarily break the implementation to confirm the test fails, then restore it before finishing.
 
-## Integration tests (Vitest)
-
-Use the `*.integration.test.ts` suffix for tests that exercise multiple real pieces together while mocking only external boundaries (network, DB). These run as part of the normal test suite on every push.
-
-## Database tests (pgTAP)
-
-SQL functions, RPCs, and RLS policies are tested directly in Postgres using [pgTAP](https://pgtap.org/). Tests live in `supabase/tests/` and run via:
-
-```bash
-supabase test db
-# or from the monorepo root:
-npm run test:db
-```
-
-**When they run in CI:** Only when `supabase/migrations/**` or `supabase/tests/**` changes.
-
-**Why pgTAP instead of Vitest:** The matching algorithm, RLS policies, and other DB functions are pure SQL. Testing them through a Node client adds unnecessary indirection. pgTAP runs the tests inside Postgres itself — faster, more precise, no Node boilerplate.
-
-## Running Tests
-
-```bash
-# Run all unit + integration tests
-npm test
-
-# Run DB tests (requires supabase start)
-npm run test:db
-
-# Watch mode
-npm run test:watch --prefix wev-bulletin
-
-# With coverage report
-npm run test:coverage --prefix wev-bulletin
-```
+---
 
 ## Writing a Test — Template
 
@@ -379,6 +484,8 @@ describe("MyComponent", () => {
 });
 ```
 
+---
+
 ## Quick Reference
 
 | Do                                        | Don't                                                 |
@@ -394,6 +501,9 @@ describe("MyComponent", () => {
 | Use `vi.fn()` only when you assert on it  | Create tracked mocks you never check                  |
 | Put helpers/constants at top scope        | Nest shared helpers inside `describe`                 |
 | Write each assertion explicitly           | Loop over `expect()` calls with `for`/`forEach`       |
+| Verify AI-generated tests can fail        | Commit AI-generated tests without checking them       |
+
+---
 
 ## Further Reading
 
@@ -401,3 +511,5 @@ describe("MyComponent", () => {
 - [Testing Library Docs](https://testing-library.com/docs/) — official guides for queries, `userEvent`, and `jest-dom` matchers.
 - [About Queries](https://testing-library.com/docs/queries/about) — query priority reference (which query to reach for first).
 - [UserEvent Introduction](https://testing-library.com/docs/user-event/intro) — why `userEvent` over `fireEvent`.
+- [pgTAP Documentation](https://pgtap.org/)
+- [pytest Documentation](https://docs.pytest.org/)
