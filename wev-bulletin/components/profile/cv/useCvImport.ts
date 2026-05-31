@@ -10,7 +10,14 @@ import {
 } from '@/lib/constants/files';
 import { useFilePicker, type FilePickerRejectReason } from './useFilePicker';
 
-const CV_PARSING_PROGRESS_UPDATE_MS = Math.min(15_000, Math.floor(CV_PARSING_TIMEOUT_MS / 2));
+const CV_IMPORT_TOAST_ID = 'cv-import-progress';
+const CV_PARSING_TOAST_STAGES = [
+  { atMs: 0, key: 'cvUploadStartingWarning' },
+  { atMs: 8_000, key: 'cvParsingWaitWarning' },
+  { atMs: 18_000, key: 'cvReviewingExperienceWarning' },
+  { atMs: 30_000, key: 'cvDeterminingSkillsWarning' },
+  { atMs: 45_000, key: 'cvParsingStillWorkingWarning' },
+] as const;
 
 // ---------------------------------------------------------------------------
 // Error Handling
@@ -110,17 +117,14 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
     abortControllerRef.current = controller;
 
     setIsParsing(true);
-    // Sync duration with server-side timeout
-    const toastId = notify.info(t('cvParsingWaitWarning'), { duration: CV_PARSING_TIMEOUT_MS });
-    const progressToastTimer =
-      CV_PARSING_PROGRESS_UPDATE_MS > 0
-        ? window.setTimeout(() => {
-            notify.info(t('cvParsingStillWorkingWarning'), {
-              id: toastId,
-              duration: Math.max(CV_PARSING_TIMEOUT_MS - CV_PARSING_PROGRESS_UPDATE_MS, 1000),
-            });
-          }, CV_PARSING_PROGRESS_UPDATE_MS)
-        : null;
+    const progressToastTimers = CV_PARSING_TOAST_STAGES.map(({ atMs, key }) =>
+      window.setTimeout(() => {
+        notify.info(t(key), {
+          id: CV_IMPORT_TOAST_ID,
+          duration: Math.max(CV_PARSING_TIMEOUT_MS - atMs, 1000),
+        });
+      }, atMs),
+    );
 
     try {
       const result = await executeCvImportPipeline(file, locale, controller.signal);
@@ -134,10 +138,8 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
       console.error('[cv-import]', error);
       notify.error(getCvImportErrorMessage(t, error));
     } finally {
-      if (progressToastTimer !== null) {
-        window.clearTimeout(progressToastTimer);
-      }
-      notify.dismiss(toastId);
+      progressToastTimers.forEach((timerId) => window.clearTimeout(timerId));
+      notify.dismiss(CV_IMPORT_TOAST_ID);
       if (abortControllerRef.current === controller) {
         setIsParsing(false);
       }
