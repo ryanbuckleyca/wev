@@ -42,6 +42,8 @@ async function parseDocumentInWorker(buffer: Buffer, type: 'pdf' | 'docx'): Prom
         if (msg.success) resolve(msg.text);
         else {
           if (msg.error === 'pdf_no_text_layer') reject(new CvImportError('pdf_no_text_layer'));
+          else if (msg.error === 'no_extractable_text')
+            reject(new CvImportError('no_extractable_text'));
           else reject(new CvImportError('cv_import_failed', msg.error));
         }
       });

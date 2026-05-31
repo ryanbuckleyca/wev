@@ -56,8 +56,9 @@ async function run() {
     }
 
     // Cleaned count: strip whitespace and non-word noise
+    // \p{L} matches any Unicode letter, \p{N} matches any Unicode number
     const cleaned = text
-      .replace(/[^\w\s]/g, '')
+      .replace(/[^\p{L}\p{N}\s]/gu, '')
       .replace(/\s+/g, ' ')
       .trim();
     const wordCount = cleaned.length > 0 ? cleaned.split(/\s+/).length : 0;
