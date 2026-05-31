@@ -25,7 +25,8 @@ const messages = {
     cvImportedIndicator: 'Last imported: {fileName} on {importedAt}',
     cvParsingWaitWarning: 'Parsing your CV, please wait...',
     cv_import_failed: 'CV import failed. Please try another file.',
-    rate_limit_exceeded: "You've reached the CV import limit. Please wait a bit before trying again.",
+    rate_limit_exceeded:
+      "You've reached the CV import limit. Please wait a bit before trying again.",
     unsupported_file_type: 'Only PDF and DOCX files are supported.',
     empty_file: 'The selected file is empty.',
   },

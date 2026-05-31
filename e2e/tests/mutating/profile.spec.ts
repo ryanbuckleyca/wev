@@ -93,7 +93,7 @@ test.describe("Profile editing flow", () => {
       });
 
       // The file input is hidden, so we need to set its files directly via the locator
-      await page.getByTestId('cv-file-input').setInputFiles({
+      await page.getByTestId("cv-file-input").setInputFiles({
         name: "test.pdf",
         mimeType: "application/pdf",
         buffer: Buffer.from("dummy content"),

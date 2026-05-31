@@ -137,7 +137,7 @@ describe('skill-matcher', () => {
   });
 
   describe('linkPhrasesToEsco', () => {
-    it('throws when esco_skills metadata hydration fails', async () => {
+    it('returns empty list when esco_skills metadata hydration fails', async () => {
       const supabase = {
         rpc: vi.fn().mockResolvedValue({
           data: [
@@ -161,19 +161,16 @@ describe('skill-matcher', () => {
         }),
       };
 
-      await expect(
-        linkPhrasesToEsco(
-          [{ phrase: 'React development', prominence: 10 }],
-          [new Array(1024).fill(0.1)],
-          'Built React applications',
-          'user-1',
-          'en',
-          supabase as any,
-        ),
-      ).rejects.toMatchObject({
-        code: 'embedding_failed',
-        message: 'database unavailable',
-      });
+      const result = await linkPhrasesToEsco(
+        [{ phrase: 'React development', prominence: 10 }],
+        [new Array(1024).fill(0.1)],
+        'Built React applications',
+        'user-1',
+        'en',
+        supabase as any,
+      );
+
+      expect(result).toEqual([]);
     });
   });
 });

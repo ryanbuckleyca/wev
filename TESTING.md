@@ -63,7 +63,7 @@ Focus on **what the component renders** and **how it behaves**, not how it achie
 expect(component.state.isOpen).toBe(true);
 
 // ✅ Good — testing what the user sees
-expect(screen.getByRole('dialog')).toBeVisible();
+expect(screen.getByRole("dialog")).toBeVisible();
 ```
 
 Avoid accessing component internals, refs, or state directly. Interact with the component through the DOM, just as a user would.
@@ -78,7 +78,7 @@ const { getByText } = render(<MyComponent />);
 
 // ✅ Prefer screen
 render(<MyComponent />);
-expect(screen.getByText('Hello')).toBeVisible();
+expect(screen.getByText("Hello")).toBeVisible();
 ```
 
 ### 3. Prefer Accessible Queries
@@ -95,10 +95,10 @@ Choose queries that reflect how users (and assistive technology) find elements. 
 
 ```tsx
 // ❌ Fragile — tied to test IDs or CSS classes
-screen.getByTestId('submit-btn');
+screen.getByTestId("submit-btn");
 
 // ✅ Accessible — matches how users find the button
-screen.getByRole('button', { name: 'Submit' });
+screen.getByRole("button", { name: "Submit" });
 ```
 
 ### 4. Use `toBeVisible()` Over `toBeInTheDocument()`
@@ -107,10 +107,10 @@ Elements can exist in the DOM but be hidden (`display: none`, `visibility: hidde
 
 ```tsx
 // ❌ Only checks DOM presence — element could be hidden
-expect(screen.getByText('Success')).toBeInTheDocument();
+expect(screen.getByText("Success")).toBeInTheDocument();
 
 // ✅ Confirms the element is visible to the user
-expect(screen.getByText('Success')).toBeVisible();
+expect(screen.getByText("Success")).toBeVisible();
 ```
 
 Use `not.toBeInTheDocument()` when asserting an element is **completely absent** from the DOM (e.g. conditionally rendered content).
@@ -146,10 +146,10 @@ Use real modules and dependencies where possible to ensure tests are meaningful 
 
 ```tsx
 // ❌ Over-mocking — mocking your own utility
-vi.mock('./calculateMatch', () => ({ calculateMatch: vi.fn() }));
+vi.mock("./calculateMatch", () => ({ calculateMatch: vi.fn() }));
 
 // ✅ Better — use the real function, mock only the external boundary
-vi.mock('@/lib/supabase/client');
+vi.mock("@/lib/supabase/client");
 ```
 
 ### API route tests: admin gate (`requireAdminResponse`)
@@ -160,9 +160,9 @@ Routes that call `requireAdminResponse()` from `@/lib/auth/require-admin` should
 2. Use the exported **`mockRequireAdminResponse`** — e.g. `mockResolvedValue(null)` when the handler should proceed as admin, or `mockResolvedValue(adminGateUnauthorized())` for a 401-style denial (see `@/test-utils/admin-route`).
 
 ```ts
-import { mockRequireAdminResponse } from '@/test-utils/require-admin-mock';
-import { POST } from './route';
-import { adminGateUnauthorized } from '@/test-utils/admin-route';
+import { mockRequireAdminResponse } from "@/test-utils/require-admin-mock";
+import { POST } from "./route";
+import { adminGateUnauthorized } from "@/test-utils/admin-route";
 
 // …
 
@@ -177,27 +177,27 @@ Each test should be fully isolated. Don't share mutable state (`let` variables, 
 
 ```tsx
 // ❌ Bad — shared mutable variable across tests
-describe('MyComponent', () => {
+describe("MyComponent", () => {
   let handler: ReturnType<typeof vi.fn>;
   beforeEach(() => {
     handler = vi.fn();
   });
 
-  it('calls handler on click', async () => {
+  it("calls handler on click", async () => {
     const user = userEvent.setup();
     render(<MyComponent onClick={handler} />);
-    await user.click(screen.getByRole('button'));
+    await user.click(screen.getByRole("button"));
     expect(handler).toHaveBeenCalled();
   });
 });
 
 // ✅ Good — each test creates its own state
-describe('MyComponent', () => {
-  it('calls handler on click', async () => {
+describe("MyComponent", () => {
+  it("calls handler on click", async () => {
     const user = userEvent.setup();
     const handleClick = vi.fn();
     render(<MyComponent onClick={handleClick} />);
-    await user.click(screen.getByRole('button'));
+    await user.click(screen.getByRole("button"));
     expect(handleClick).toHaveBeenCalledOnce();
   });
 });
@@ -237,7 +237,7 @@ render(<Pagination onPageChange={() => {}} />);
 // ✅ Good — vi.fn() used AND asserted on
 const handleChange = vi.fn();
 render(<Pagination onPageChange={handleChange} />);
-await user.click(screen.getByRole('button', { name: 'Next' }));
+await user.click(screen.getByRole("button", { name: "Next" }));
 expect(handleChange).toHaveBeenCalledWith(2);
 ```
 
@@ -249,19 +249,19 @@ Sub-describe blocks may define their own helpers. Single-use helpers belong insi
 
 ```tsx
 // ✅ Preferred — helpers at top scope
-import { render, screen } from '@testing-library/react';
-import MyComponent from './MyComponent';
+import { render, screen } from "@testing-library/react";
+import MyComponent from "./MyComponent";
 
-const defaultProps = { title: 'Hello', count: 5 };
+const defaultProps = { title: "Hello", count: 5 };
 
 function renderWithProps(overrides = {}) {
   return render(<MyComponent {...defaultProps} {...overrides} />);
 }
 
-describe('MyComponent', () => {
-  it('renders the title', () => {
+describe("MyComponent", () => {
+  it("renders the title", () => {
     renderWithProps();
-    expect(screen.getByText('Hello')).toBeVisible();
+    expect(screen.getByText("Hello")).toBeVisible();
   });
 });
 ```
@@ -273,15 +273,15 @@ Avoid `for` / `forEach` loops around `expect()` calls. When a loop-based asserti
 ```tsx
 // ❌ Bad — which iteration failed?
 for (let i = 1; i <= 5; i++) {
-  expect(screen.getByRole('button', { name: String(i) })).toBeVisible();
+  expect(screen.getByRole("button", { name: String(i) })).toBeVisible();
 }
 
 // ✅ Good — each assertion is explicit and self-describing
-expect(screen.getByRole('button', { name: '1' })).toBeVisible();
-expect(screen.getByRole('button', { name: '2' })).toBeVisible();
-expect(screen.getByRole('button', { name: '3' })).toBeVisible();
-expect(screen.getByRole('button', { name: '4' })).toBeVisible();
-expect(screen.getByRole('button', { name: '5' })).toBeVisible();
+expect(screen.getByRole("button", { name: "1" })).toBeVisible();
+expect(screen.getByRole("button", { name: "2" })).toBeVisible();
+expect(screen.getByRole("button", { name: "3" })).toBeVisible();
+expect(screen.getByRole("button", { name: "4" })).toBeVisible();
+expect(screen.getByRole("button", { name: "5" })).toBeVisible();
 ```
 
 ## File Structure
@@ -340,41 +340,41 @@ npm run test:coverage --prefix wev-bulletin
 ## Writing a Test — Template
 
 ```tsx
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import MyComponent from './MyComponent';
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import MyComponent from "./MyComponent";
 
-describe('MyComponent', () => {
-  it('renders the heading', () => {
+describe("MyComponent", () => {
+  it("renders the heading", () => {
     render(<MyComponent title="Hello" />);
-    expect(screen.getByRole('heading', { name: 'Hello' })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Hello" })).toBeVisible();
   });
 
-  it('calls onSubmit when the form is submitted', async () => {
+  it("calls onSubmit when the form is submitted", async () => {
     const user = userEvent.setup();
     const handleSubmit = vi.fn();
 
     render(<MyComponent onSubmit={handleSubmit} />);
 
-    await user.type(screen.getByLabelText('Email'), 'test@example.com');
-    await user.click(screen.getByRole('button', { name: 'Submit' }));
+    await user.type(screen.getByLabelText("Email"), "test@example.com");
+    await user.click(screen.getByRole("button", { name: "Submit" }));
 
-    expect(handleSubmit).toHaveBeenCalledWith('test@example.com');
+    expect(handleSubmit).toHaveBeenCalledWith("test@example.com");
   });
 
-  it('shows an error when input is empty', async () => {
+  it("shows an error when input is empty", async () => {
     const user = userEvent.setup();
     render(<MyComponent />);
 
-    await user.click(screen.getByRole('button', { name: 'Submit' }));
+    await user.click(screen.getByRole("button", { name: "Submit" }));
 
-    expect(screen.getByText('Email is required')).toBeVisible();
+    expect(screen.getByText("Email is required")).toBeVisible();
   });
 
-  it('does not render the modal initially', () => {
+  it("does not render the modal initially", () => {
     render(<MyComponent />);
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
 ```
