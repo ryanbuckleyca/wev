@@ -228,7 +228,9 @@ describe('ProfilePage skills integration', () => {
     });
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
     await user.type(searchInput, 'da');
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/skills/search?q=da&locale=en&limit=20', expect.anything());
+    });
     await user.click(await screen.findByRole('option', { name: /Data governance/i }));
     await user.click(screen.getByRole('button', { name: /done/i }));
     await user.click(screen.getByRole('button', { name: /save profile/i }));
@@ -319,7 +321,9 @@ describe('ProfilePage skills integration', () => {
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
     await user.click(searchInput);
     await user.paste('Extra');
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/skills/search?q=Extra&locale=en&limit=20', expect.anything());
+    });
     await user.click(await screen.findByRole('option', { name: /Extra skill/i }));
     await user.click(screen.getByRole('button', { name: /done/i }));
     await user.click(screen.getByRole('button', { name: /save profile/i }));
