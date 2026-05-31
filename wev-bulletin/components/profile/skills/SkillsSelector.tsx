@@ -5,34 +5,32 @@ import { useTranslations } from 'next-intl';
 import BrowseTrigger from '../BrowseTrigger';
 import SkillsModal from './SkillsModal';
 import SortableSelectedList from '../SortableSelectedList';
+import { useSkillResults } from './useSkillResults';
 import type { EscoSkill } from '@/lib/types/skills';
 
 export type { EscoSkill };
 
 interface SkillsSelectorProps {
-  allItems?: EscoSkill[];
   selectedSkills: EscoSkill[];
   skillCutoff: number;
   onToggle: (skill: EscoSkill) => void;
   onReorder: (from: number, to: number, newCutoff?: number) => void;
   onRemove: (uri: string) => void;
   locale: 'en' | 'fr';
-  isLoading?: boolean;
 }
 
 export default function SkillsSelector({
-  allItems = [],
   selectedSkills,
   skillCutoff,
   onToggle,
   onReorder,
   onRemove,
   locale,
-  isLoading = false,
 }: SkillsSelectorProps) {
   const t = useTranslations('profile');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const { skills, hasQuery, isLoading } = useSkillResults({ isOpen: open, query, locale });
 
   const handleClose = () => {
     setQuery('');
@@ -71,7 +69,8 @@ export default function SkillsSelector({
         selected={selectedSkills}
         onRemove={onRemove}
         onToggle={onToggle}
-        allItems={allItems}
+        skills={skills}
+        hasQuery={hasQuery}
         isLoading={isLoading}
         locale={locale}
       />
