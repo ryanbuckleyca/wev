@@ -23,6 +23,7 @@ vi.mock('@/lib/toast', () => ({
   default: {
     success: vi.fn(),
     error: vi.fn(),
+    dismiss: vi.fn(),
   },
 }));
 
