@@ -3,14 +3,16 @@ import { Worker } from 'node:worker_threads';
 import path from 'node:path';
 import { CvImportError } from './errors';
 import type { CvImportMetadata, CvLocale } from './types';
-import { CV_MIME_TYPES, MAX_CV_FILE_SIZE_BYTES } from '@/lib/constants/files';
+import {
+  CV_MIME_TYPES,
+  MAX_CV_FILE_SIZE_BYTES,
+  CV_PARSING_TIMEOUT_MS,
+} from '@/lib/constants/files';
 
 export type ParsedCvResult = {
   text: string;
   metadata: CvImportMetadata;
 };
-
-const WORKER_TIMEOUT_MS = 30_000;
 
 async function parseDocumentInWorker(buffer: Buffer, type: 'pdf' | 'docx'): Promise<string> {
   // Use path.resolve(__dirname) instead of new URL(import.meta.url) — Turbopack
@@ -34,7 +36,7 @@ async function parseDocumentInWorker(buffer: Buffer, type: 'pdf' | 'docx'): Prom
         worker.terminate();
         reject(new CvImportError('cv_import_failed', 'Worker timed out'));
       });
-    }, WORKER_TIMEOUT_MS);
+    }, CV_PARSING_TIMEOUT_MS);
 
     worker.on('message', (msg) => {
       settle(() => {

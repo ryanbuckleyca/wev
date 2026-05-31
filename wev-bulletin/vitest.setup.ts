@@ -8,6 +8,9 @@ import { beforeAll, afterAll, afterEach, vi } from 'vitest';
 // `server-only` throws when imported outside Next server; Vitest runs in Node.
 vi.mock('server-only', () => ({}));
 
+// Global mock for toast notifications
+vi.mock('@/lib/toast', () => import('@/test-utils/toast-mock'));
+
 // Set up Supabase env vars for tests
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'test-key';
