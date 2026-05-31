@@ -69,6 +69,7 @@ export type ExtractWithLlmOptions = {
   userId: string;
   groqModel: string;
   locale: CvLocale;
+  traceId?: string;
 };
 
 export async function extractWithLlm({
@@ -77,8 +78,12 @@ export async function extractWithLlm({
   userId,
   groqModel,
   locale,
+  traceId,
 }: ExtractWithLlmOptions): Promise<LlmResult> {
   try {
+    // #region debug-point D:groq-request-start
+    logger.info({ traceId, userId, groqModel }, '[DEBUG] CV Groq request start');
+    // #endregion
     const groq = new Groq({
       apiKey: groqKey,
       maxRetries: 3,
@@ -95,9 +100,13 @@ export async function extractWithLlm({
       ],
     });
     const content = completion.choices?.[0]?.message?.content ?? '';
+    // #region debug-point D:groq-request-done
+    logger.info({ traceId, userId, contentLength: content.length }, '[DEBUG] CV Groq request done');
+    // #endregion
     const llmResult = parseLlmResponse(content);
     logger.info(
       {
+        traceId,
         userId,
         skillCount: llmResult.skills.length,
         valueCount: llmResult.values.length,

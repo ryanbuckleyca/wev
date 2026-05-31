@@ -35,8 +35,17 @@ export const dynamic = 'force-dynamic';
 const rateLimitMap = new Map<string, { count: number; startTime: number }>();
 
 export async function POST(request: Request) {
+  const traceId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+  const startedAt = Date.now();
+  // #region debug-point A:route-entry
+  logger.info({ traceId }, '[DEBUG] CV extract route entered');
+  // #endregion
+
   const auth = await getRequestUser();
   if (!auth.ok) return unauthorizedResponse('Not authenticated');
+  // #region debug-point A:auth-ok
+  logger.info({ traceId, userId: auth.user.id }, '[DEBUG] CV extract auth succeeded');
+  // #endregion
 
   // Simple in-memory rate limit (per isolate): 5 requests per 10 minutes
   const now = Date.now();
@@ -50,6 +59,9 @@ export async function POST(request: Request) {
     rateLimitMap.set(userId, usage);
   }
   if (usage.count >= 5) {
+    // #region debug-point A:rate-limit
+    logger.warn({ traceId, userId }, '[DEBUG] CV extract rate limit exceeded');
+    // #endregion
     logger.warn({ userId }, 'CV extraction rate limit exceeded');
     return NextResponse.json({ error: 'rate_limit_exceeded' }, { status: 429 });
   }
@@ -59,27 +71,57 @@ export async function POST(request: Request) {
   const jinaKey = process.env.JINA_API_KEY;
 
   if (!groqKey || !jinaKey) {
+    // #region debug-point B:provider-keys-missing
+    logger.error(
+      { traceId, hasGroqKey: Boolean(groqKey), hasJinaKey: Boolean(jinaKey) },
+      '[DEBUG] CV extract provider keys missing',
+    );
+    // #endregion
     logger.error('Missing API keys for CV extraction');
     return NextResponse.json({ error: 'provider_unavailable' }, { status: 503 });
   }
 
   try {
     const formData = await request.formData();
+    // #region debug-point A:formdata-parsed
+    logger.info({ traceId, elapsedMs: Date.now() - startedAt }, '[DEBUG] CV extract form-data parsed');
+    // #endregion
     const rawFile = formData.get('file');
     if (!(rawFile instanceof File) || rawFile.size === 0) {
+      // #region debug-point A:invalid-file
+      logger.warn({ traceId, rawFileType: typeof rawFile }, '[DEBUG] CV extract invalid file payload');
+      // #endregion
       return NextResponse.json({ error: 'invalid_file' }, { status: 400 });
     }
     const file: File = rawFile;
 
     const rawLocale = formData.get('locale');
     const locale: CvLocale = rawLocale === 'fr' ? 'fr' : 'en';
+    // #region debug-point A:file-accepted
+    logger.info(
+      { traceId, filename: file.name, size: file.size, mime: file.type, locale },
+      '[DEBUG] CV extract file accepted',
+    );
+    // #endregion
 
     // 1. Parse CV (PDF/DOCX) on the server
     const { parseCvOnServer } = await import('@/lib/cv/parser.server');
+    // #region debug-point C:parse-start
+    logger.info({ traceId }, '[DEBUG] CV parse start');
+    // #endregion
     const { text, metadata } = await parseCvOnServer(file, locale);
+    // #region debug-point C:parse-done
+    logger.info(
+      { traceId, elapsedMs: Date.now() - startedAt, textLength: text.length, source: metadata.source },
+      '[DEBUG] CV parse done',
+    );
+    // #endregion
 
     // 2. Extract Skills and Values from text
     const groqModel = process.env.GROQ_MODEL_CV ?? 'llama-3.3-70b-versatile';
+    // #region debug-point D:extract-start
+    logger.info({ traceId, groqModel }, '[DEBUG] CV extract pipeline start');
+    // #endregion
     const result = await extractSkillsAndValuesFromCv({
       cvText: text,
       userId: auth.user.id,
@@ -87,7 +129,20 @@ export async function POST(request: Request) {
       jinaKey,
       locale,
       groqModel,
+      traceId,
     });
+    // #region debug-point D:extract-done
+    logger.info(
+      {
+        traceId,
+        elapsedMs: Date.now() - startedAt,
+        skillCount: result.skills.length,
+        valueCount: result.values.length,
+        warningCount: result.warnings.length,
+      },
+      '[DEBUG] CV extract pipeline done',
+    );
+    // #endregion
 
     return NextResponse.json({
       ...result,
@@ -95,6 +150,18 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    // #region debug-point E:route-catch
+    logger.error(
+      {
+        traceId,
+        userId: auth.user.id,
+        elapsedMs: Date.now() - startedAt,
+        errorName: error instanceof Error ? error.name : typeof error,
+        errorMessage: message,
+      },
+      '[DEBUG] CV extract route catch',
+    );
+    // #endregion
 
     if (error instanceof CvImportError) {
       return NextResponse.json(
