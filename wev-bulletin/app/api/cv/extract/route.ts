@@ -68,9 +68,9 @@ export async function POST(request: Request) {
         missing,
         hasGroq: !!groqKey,
         hasJina: !!jinaKey,
-        envKeys: Object.keys(process.env).filter(k => k.includes('GROQ') || k.includes('JINA'))
+        envKeys: Object.keys(process.env).filter((k) => k.includes('GROQ') || k.includes('JINA')),
       },
-      'Missing API keys for CV extraction'
+      'Missing API keys for CV extraction',
     );
     return NextResponse.json({ error: 'provider_unavailable' }, { status: 503 });
   }
@@ -107,14 +107,20 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof CvImportError) {
-      return NextResponse.json({ error: error.code }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: error.code,
+          detail: error.message,
+        },
+        { status: 400 },
+      );
     }
     const message = error instanceof Error ? error.message : String(error);
     logger.error({ err: error, userId: auth.user.id }, 'CV Extraction Error');
     return NextResponse.json(
       {
         error: 'extraction_failed',
-        ...(process.env.NODE_ENV !== 'production' && { detail: message }),
+        detail: message,
       },
       { status: 500 },
     );
