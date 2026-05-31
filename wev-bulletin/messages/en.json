@@ -336,6 +336,7 @@
     "no_extractable_text": "We couldn't extract any readable text from this document. If it's an image-based PDF, please try a text-based format.",
     "provider_unavailable": "The parsing service is currently unavailable. Please try again later.",
     "invalid_file": "The provided file is invalid or corrupt. Please check your file and try again.",
+    "rate_limit_exceeded": "You've reached the CV import limit. Please wait a bit before trying again.",
     "extraction_failed": "We encountered an error while extracting data from your CV. Please try again.",
     "llm_parsing_failed": "We could not understand the contents of your CV. Please ensure it is clearly formatted.",
     "embedding_failed": "An error occurred while matching your skills. Please try again.",

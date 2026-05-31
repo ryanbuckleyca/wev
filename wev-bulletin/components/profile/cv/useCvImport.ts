@@ -17,8 +17,8 @@ function getCvImportErrorMessage(
   const code = error instanceof Error ? error.message : '';
   // Fallback to 'embedding_failed' for Jina errors
   if (code.startsWith('jina_')) return t('embedding_failed');
-  // All other error codes are valid translation keys; fall back to generic message
-  return t(code as any, { defaultMessage: t('cv_import_failed') });
+  if (code === 'Too many requests') return t('rate_limit_exceeded');
+  return code && t.has(code) ? t(code as any) : t('cv_import_failed');
 }
 
 // ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ type UseCvImportOptions = {
     skills: EscoSkill[];
     values: string[];
     cvImport: CvImportMetadata;
-  }) => void;
+  }) => void | Promise<void>;
 };
 
 export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
