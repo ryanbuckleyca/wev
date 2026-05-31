@@ -5,15 +5,6 @@ import CVImportButton from './CVImportButton';
 import { NextIntlClientProvider } from 'next-intl';
 import notify from '@/lib/toast';
 
-vi.mock('@/lib/toast', () => ({
-  default: {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-  },
-}));
-
 // Mock translations
 const messages = {
   profile: {

@@ -21,14 +21,6 @@ vi.mock('@/lib/supabase/client', () => ({
   })),
 }));
 
-// Mock toast
-vi.mock('@/lib/toast', () => ({
-  default: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
-
 // Mock window.location
 Object.defineProperty(window, 'location', {
   value: { href: '' },
