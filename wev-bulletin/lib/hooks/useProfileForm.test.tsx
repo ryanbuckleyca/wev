@@ -8,6 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { resolveCvImportItems } from './useProfileForm';
 import { type RatedValue } from '@/lib/value-ratings';
 
 // ─── Pure logic extracted from useProfileForm ────────────────────────────────
@@ -32,6 +33,18 @@ function filterValuesRated(valuesRated: RatedValue[], selectedValues: string[]):
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('useProfileForm — valuesRated state transitions', () => {
+  describe('CV import state application', () => {
+    it('preserves existing items when the imported list is empty', () => {
+      expect(resolveCvImportItems(['existing-skill'], [])).toEqual(['existing-skill']);
+    });
+
+    it('replaces existing items when the imported list is non-empty', () => {
+      expect(resolveCvImportItems(['existing-skill'], ['imported-skill'])).toEqual([
+        'imported-skill',
+      ]);
+    });
+  });
+
   // Requirement 2.3: WHEN a value is deselected, THE ValuesSelector SHALL remove
   // its rank assignment from the form state.
   describe('deselect value → rank removed from valuesRated', () => {
