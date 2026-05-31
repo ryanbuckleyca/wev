@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: error.code,
-          detail: error.message,
+        ...(process.env.NODE_ENV !== 'production' && { detail: message }),
         },
         { status: 400 },
       );
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: 'extraction_failed',
-        detail: message,
+        ...(process.env.NODE_ENV !== 'production' && { detail: message }),
       },
       { status: 500 },
     );
