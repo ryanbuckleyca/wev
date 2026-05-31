@@ -3,7 +3,7 @@ import type { CvLocale } from './types';
 
 export const MAX_TEXT_CHARS = 12_000;
 export const MAX_VALUES = 5;
-export const PROMPT_VERSION = 2;
+export const PROMPT_VERSION = 3;
 
 function truncateAtWord(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
@@ -20,8 +20,8 @@ export function buildPrompt(cvText: string, locale: CvLocale = 'en'): string {
   if (locale === 'fr') {
     return `Tu analyses le CV d'une candidate ou d'un candidat. Effectue deux taches:
 
-TACHE A - EXPRESSIONS DE COMPETENCES
-Extrait 12 a 18 expressions distinctes de competences professionnelles du CV.
+TACHE A - COMPETENCES NORMALISEES
+Extrait 12 a 18 competences professionnelles distinctes du CV sous forme de capacites reutilisables et normalisees.
 Pour chaque competence, attribue un score de "prominence" de 1 a 10 indiquant a quel point cette competence est centrale dans le parcours de la personne selon:
 - Duree: plusieurs annees d'usage comptent plus qu'une seule mention
 - Profondeur: un travail senior/lead compte plus qu'un usage accessoire d'un outil
@@ -29,12 +29,17 @@ Pour chaque competence, attribue un score de "prominence" de 1 a 10 indiquant a 
 - Preuves: des accomplissements concrets (mesures, resultats) comptent plus qu'une simple mention
 
 Regles:
-- Chaque expression doit decrire une capacite specifique et contextuelle (par ex. "Developpement d'applications web frontend", pas seulement "programmation").
+- Chaque "phrase" doit etre une capacite reutilisable courte, idealement de 2 a 6 mots, sous forme nominale ou proche d'un intitule de competence.
+- Bonnes sorties: "Team leadership", "Water resource management", "Frontend web application development".
+- Mauvaises sorties: "Led a team in water management", "Responsible for managing water projects", "Worked with engineers on...".
+- N'utilise PAS des phrases completes, des responsabilites de poste, des accomplissements entiers, ni des formulations commencant par des verbes comme lead/manage/worked/responsible.
 - Regroupe les technologies tres proches dans une seule expression lorsqu'elles ont ete utilisees ensemble (par ex. "Analyse et visualisation de donnees avec Python et SQL" plutot que des expressions separees).
 - N'extrais PAS un outil, une plateforme ou un framework mineur comme competence autonome s'il n'a ete utilise qu'accessoirement dans un role plus large. Integre-le plutot dans la capacite plus generale. Donne a un logiciel specifique sa propre expression uniquement si le travail principal de la personne etait fortement centre dessus.
 - Couvre TOUS les domaines professionnels visibles dans le CV; ne laisse pas un seul domaine dominer la liste.
 - Extrait uniquement des competences que la personne a reellement demontrees ou pratiquees. N'infere pas a partir du seul titre du poste ni d'une collaboration avec d'autres specialistes.
 - Inclue a la fois des competences techniques (outils, technologies, methodes) et professionnelles (leadership, formation, conseil).
+- Pour chaque competence, fournis aussi une "evidence" tres courte: une citation ou reformulation fidele du CV qui prouve explicitement cette competence.
+- N'ajoute aucun domaine ou contexte qui n'est pas clairement soutenu par le texte du CV.
 - Si le texte du CV semble degrade ou mal formate (par ex. artefacts d'OCR), fais de ton mieux pour l'interpreter.
 
 TACHE B - VALEURS AU TRAVAIL
@@ -51,15 +56,15 @@ ${truncateAtWord(cvText, MAX_TEXT_CHARS)}
 
 Retourne uniquement du JSON:
 {
-  "skills": [{"phrase": "...", "prominence": 8}, ...],
+  "skills": [{"phrase": "...", "evidence": "...", "prominence": 8}, ...],
   "values": ["CanonicalEnglishValue1", ...]
 }`;
   }
 
   return `You are analyzing a candidate's CV. Perform two tasks:
 
-TASK A — SKILL PHRASES
-Extract 12 to 18 distinct professional skill phrases from the CV.
+TASK A — NORMALIZED SKILLS
+Extract 12 to 18 distinct professional skills from the CV as short, reusable, normalized capabilities.
 For each skill, assign a "prominence" score from 1 to 10 reflecting how central that skill is to the candidate's career based on:
 - Duration: years of sustained use outweighs a single mention
 - Depth: senior/lead-level work outweighs incidental use of a tool
@@ -67,12 +72,17 @@ For each skill, assign a "prominence" score from 1 to 10 reflecting how central 
 - Evidence: concrete achievements (metrics, outcomes) outweigh bare mentions
 
 Rules:
-- Each phrase should be a specific, contextual description of one capability (e.g. "Frontend web application development", not just "programming").
+- Each "phrase" must be a short reusable capability, ideally 2 to 6 words, written like a skill label or noun phrase.
+- Good outputs: "Team leadership", "Water resource management", "Frontend web application development".
+- Bad outputs: "Led a team in water management", "Responsible for managing water projects", "Worked with engineers on...".
+- Do NOT output full sentences, job responsibilities, complete achievements, or phrases starting with verbs like lead/manage/worked/responsible.
 - Consolidate closely related technologies into one phrase when they were used together (e.g. "Data analysis and visualization using Python and SQL" rather than separate phrases for each).
 - Do NOT extract a minor tool, platform, or framework as its own standalone skill phrase if it was only used incidentally within a larger role. Instead, fold it into the broader capability phrase. Only give a specific software tool its own phrase if the candidate's primary job was heavily centered on that tool.
 - Cover ALL professional domains evident in the CV — do not let one domain dominate the list.
 - Extract only skills the candidate has personally demonstrated or performed. Do not infer from job titles alone or from collaboration with specialists in other fields.
 - Include both technical skills (tools, technologies, methodologies) and professional skills (leadership, training, consulting).
+- For each skill, also provide a very short "evidence" quote or faithful paraphrase from the CV that explicitly supports the skill.
+- Do not introduce any domain or context that is not clearly supported by the CV text.
 - If the CV text appears damaged or poorly formatted (e.g. OCR artifacts), do your best to interpret it.
 
 TASK B — WORK VALUES
@@ -89,7 +99,7 @@ ${truncateAtWord(cvText, MAX_TEXT_CHARS)}
 
 Return JSON:
 {
-  "skills": [{"phrase": "...", "prominence": 8}, ...],
+  "skills": [{"phrase": "...", "evidence": "...", "prominence": 8}, ...],
   "values": ["Value1", ...]
 }`;
 }
