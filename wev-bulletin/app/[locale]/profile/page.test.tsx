@@ -101,20 +101,6 @@ describe('ProfilePage skills integration', () => {
           ],
         });
       }
-      if (url.startsWith('/api/skills/all?locale=en')) {
-        return jsonResponse({
-          skills: [
-            {
-              uri: 'uri-1',
-              term: 'Data analysis',
-              definition: 'Analyze structured datasets.',
-              type: 'knowledge',
-              level: 'cross-sector',
-              aliases: [],
-            },
-          ],
-        });
-      }
       return Promise.reject(new Error(`Unexpected URL: ${url}`));
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -124,6 +110,7 @@ describe('ProfilePage skills integration', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/skills/by-uri?uris=uri-1&locale=en');
     });
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('/api/skills/all'))).toBe(false);
     expect(await screen.findByText('Data analysis')).toBeInTheDocument();
   });
 
@@ -141,20 +128,6 @@ describe('ProfilePage skills integration', () => {
               scope_note: null,
               skill_type: 'knowledge',
               reuse_level: 'cross-sector',
-            },
-          ],
-        });
-      }
-      if (url.startsWith('/api/skills/all?locale=en')) {
-        return jsonResponse({
-          skills: [
-            {
-              uri: 'uri-1',
-              term: 'Data analysis',
-              definition: 'Analyze structured datasets.',
-              type: 'knowledge',
-              level: 'cross-sector',
-              aliases: [],
             },
           ],
         });
@@ -182,7 +155,8 @@ describe('ProfilePage skills integration', () => {
   });
 
   it('saves concept_uri[] (not labels) after selecting a search result', async () => {
-    const user = userEvent.setup();
+    vi.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.startsWith('/api/skills/by-uri?uris=uri-1&locale=en')) {
@@ -199,24 +173,41 @@ describe('ProfilePage skills integration', () => {
           ],
         });
       }
-      if (url.startsWith('/api/skills/all?locale=en')) {
+      if (url.startsWith('/api/skills/starter?locale=en&limit=10')) {
         return jsonResponse({
           skills: [
             {
-              uri: 'uri-1',
-              term: 'Data analysis',
-              definition: 'Analyze structured datasets.',
-              type: 'knowledge',
-              level: 'cross-sector',
-              aliases: [],
-            },
-            {
-              uri: 'uri-2',
+              concept_uri: 'uri-2',
               term: 'Data governance',
               definition: 'Manage data controls.',
-              type: 'skill',
-              level: 'transversal',
-              aliases: ['govern data'],
+              scope_note: null,
+              skill_type: 'skill',
+              reuse_level: 'transversal',
+              matched_alias: null,
+            },
+          ],
+        });
+      }
+      if (url.startsWith('/api/skills/search?q=da&locale=en&limit=20')) {
+        return jsonResponse({
+          skills: [
+            {
+              concept_uri: 'uri-1',
+              term: 'Data analysis',
+              definition: 'Analyze structured datasets.',
+              scope_note: null,
+              skill_type: 'knowledge',
+              reuse_level: 'cross-sector',
+              matched_alias: null,
+            },
+            {
+              concept_uri: 'uri-2',
+              term: 'Data governance',
+              definition: 'Manage data controls.',
+              scope_note: null,
+              skill_type: 'skill',
+              reuse_level: 'transversal',
+              matched_alias: 'govern data',
             },
           ],
         });
@@ -228,15 +219,16 @@ describe('ProfilePage skills integration', () => {
     render(<ProfilePage />);
 
     await waitFor(() => {
-      const call = fetchMock.mock.calls.find((c) =>
-        String(c[0]).match(/^\/api\/skills\/all\?locale=en&cb=/),
-      );
-      expect(call).toBeDefined();
+      expect(fetchMock).toHaveBeenCalledWith('/api/skills/by-uri?uris=uri-1&locale=en');
     });
 
     await user.click(screen.getByRole('button', { name: /search and add skills/i }));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/skills/starter?locale=en&limit=10', expect.anything());
+    });
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
     await user.type(searchInput, 'da');
+    await vi.advanceTimersByTimeAsync(200);
     await user.click(await screen.findByRole('option', { name: /Data governance/i }));
     await user.click(screen.getByRole('button', { name: /done/i }));
     await user.click(screen.getByRole('button', { name: /save profile/i }));
@@ -258,7 +250,8 @@ describe('ProfilePage skills integration', () => {
     // selects a result, and validates the save is blocked.  Under full-suite
     // resource contention it can exceed the 30 s global timeout.
 
-    const user = userEvent.setup();
+    vi.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const profileAtMaxSkills = {
       ...baseProfile,
       skills: Array.from({ length: MAX_PROFILE_SKILLS }, (_, i) => `uri-${i + 1}`),
@@ -286,24 +279,32 @@ describe('ProfilePage skills integration', () => {
           })),
         });
       }
-      if (url.startsWith('/api/skills/all?locale=en')) {
+      if (url.startsWith('/api/skills/starter?locale=en&limit=10')) {
         return jsonResponse({
           skills: [
-            ...Array.from({ length: MAX_PROFILE_SKILLS }, (_, i) => ({
-              uri: `uri-${i + 1}`,
-              term: `Skill ${i + 1}`,
-              definition: null,
-              type: 'skill',
-              level: 'cross-sector',
-              aliases: [] as string[],
-            })),
             {
-              uri: 'uri-11',
+              concept_uri: 'uri-11',
               term: 'Extra skill',
               definition: null,
-              type: 'skill',
-              level: 'cross-sector',
-              aliases: [] as string[],
+              scope_note: null,
+              skill_type: 'skill',
+              reuse_level: 'cross-sector',
+              matched_alias: null,
+            },
+          ],
+        });
+      }
+      if (url.startsWith('/api/skills/search?q=Extra&locale=en&limit=20')) {
+        return jsonResponse({
+          skills: [
+            {
+              concept_uri: 'uri-11',
+              term: 'Extra skill',
+              definition: null,
+              scope_note: null,
+              skill_type: 'skill',
+              reuse_level: 'cross-sector',
+              matched_alias: null,
             },
           ],
         });
@@ -314,14 +315,11 @@ describe('ProfilePage skills integration', () => {
 
     render(<ProfilePage />);
 
-    await waitFor(() =>
-      expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/api/skills/all'))).toBe(true),
-    );
-
     await user.click(screen.getByRole('button', { name: /search and add skills/i }));
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
     await user.click(searchInput);
     await user.paste('Extra');
+    await vi.advanceTimersByTimeAsync(200);
     await user.click(await screen.findByRole('option', { name: /Extra skill/i }));
     await user.click(screen.getByRole('button', { name: /done/i }));
     await user.click(screen.getByRole('button', { name: /save profile/i }));

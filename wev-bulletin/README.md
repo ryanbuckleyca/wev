@@ -267,22 +267,6 @@ python3 scripts/build_esco_skills_index.py --upsert-db
 
 Requires `SUPABASE_URL` and a service-role key (`SUPABASE_SERVICE_ROLE_KEY`).
 
-### ESCO Skills Cache Management
-
-The ESCO skills library (~13,485 skills) is cached indefinitely for optimal performance. The cache is automatically served from the Edge CDN.
-
-**Manual Cache Invalidation:**
-
-When you update ESCO skills in the database, manually invalidate the cache:
-
-```bash
-curl -X POST "https://your-domain.com/api/skills/revalidate?secret=YOUR_REVALIDATION_SECRET"
-```
-
-The `REVALIDATION_SECRET` must be set in your environment variables (`.env`, `.env.production`).
-
-**Future Enhancement:** Database webhooks can be configured to automatically trigger cache invalidation when the `esco_skills` table is modified. See `supabase/migrations/` for related SQL logic.
-
 ## Features
 
 - Display last scrape time from the `scrape_runs` table`

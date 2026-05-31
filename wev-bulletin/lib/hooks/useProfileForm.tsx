@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useRankedList } from '@/lib/hooks/useRankedList';
+import { fetchSkillsByUri } from '@/lib/skills/client';
 import { type EscoSkill } from '@/lib/types/skills';
 import { type WorkValue, buildWorkValues, getValueDefinition } from '@/lib/values';
 import type { CvImportMetadata } from '@/lib/cv/types';
@@ -16,7 +17,6 @@ import {
   partitionByRating,
   validateProfileLimits,
 } from '@/lib/profile/profileMapping';
-import { useSkillsLibrary, fetchSkillsByUri } from '@/lib/hooks/useSkillsLibrary';
 import notify from '@/lib/toast';
 
 export type LocationState = {
@@ -64,7 +64,6 @@ export function useProfileForm(locale: 'en' | 'fr') {
     cv_import: null as CvImportMetadata | null,
   });
 
-  const { allSkills, isLoading: isLibraryLoading } = useSkillsLibrary(locale);
   const skills = useRankedList<EscoSkill>((s) => s.uri);
   const values = useRankedList<string>((v) => v);
 
@@ -237,8 +236,6 @@ export function useProfileForm(locale: 'en' | 'fr') {
     setFormData,
     selectedSkills: skills.items,
     skillCutoff: skills.cutoff,
-    allSkills,
-    isLibraryLoading,
     handleSkillToggle: skills.toggle,
     handleSkillReorder: skills.reorder,
     handleSkillRemove: skills.remove,
