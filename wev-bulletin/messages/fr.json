@@ -189,10 +189,6 @@
     "markSseConfirm": "Marquer \"{title}\" chez {org} comme un emploi d'économie solidaire ?"
   },
   "buttons": {
-    "reScrape": "Ré-analyser les données",
-    "reScrapeStarting": "Démarrage...",
-    "reScrapeQueued": "En file d'attente...",
-    "reScrapeRunning": "En cours...",
     "copyPageJobs": "Copier cette page",
     "copyPageJobsTitle": "Copier {count, plural, one {# emploi de cette page} other {# emplois de cette page}} dans le presse-papiers",
     "copied": "Copié !"

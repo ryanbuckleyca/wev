@@ -1,6 +1,6 @@
 # WEV Bulletin
 
-A Next.js application for displaying job postings from a Supabase database with the ability to trigger GitHub Actions workflows for re-scraping data.
+A Next.js application for displaying job postings from a Supabase database.
 
 ## UI Components
 

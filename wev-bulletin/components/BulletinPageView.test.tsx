@@ -21,12 +21,6 @@ vi.mock('@/components/WatercolorBackground', () => ({
   default: () => <div data-testid="watercolor-background" />,
 }));
 
-vi.mock('@/components/ReScrapeButton', () => ({
-  default: ({ onComplete }: { onComplete: () => void }) => (
-    <button onClick={onComplete}>re-scrape</button>
-  ),
-}));
-
 vi.mock('@/components/CopyPageJobsButton', () => ({
   default: ({ jobs }: { jobs: JobPosting[] }) => <div>copy-jobs:{jobs.length}</div>,
 }));
@@ -212,9 +206,6 @@ describe('BulletinPageView', () => {
     expect(screen.getByText(/Last updated/i)).toBeVisible();
     expect(screen.getByText('sort:yes')).toBeVisible();
     expect(screen.getByText('pagination:3')).toBeVisible();
-
-    await user.click(screen.getByRole('button', { name: 're-scrape' }));
-    expect(data.refresh).toHaveBeenCalled();
   });
 
   it('hides admin actions and match sorting when no user context is available', () => {
@@ -232,7 +223,6 @@ describe('BulletinPageView', () => {
       />,
     );
 
-    expect(screen.queryByRole('button', { name: 're-scrape' })).not.toBeInTheDocument();
     expect(screen.queryByText(/copy-jobs:/)).not.toBeInTheDocument();
     expect(screen.getByText('sort:no')).toBeVisible();
   });
