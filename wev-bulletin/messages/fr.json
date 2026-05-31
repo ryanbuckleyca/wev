@@ -201,6 +201,7 @@
       "forgotPassword": "Mot de passe oublié ?",
       "submit": "Se connecter",
       "submitting": "Connexion...",
+      "redirecting": "Redirection...",
       "noAccount": "Vous n'avez pas de compte ?",
       "signUp": "S'inscrire",
       "captchaError": "La vérification CAPTCHA a échoué. Veuillez réessayer.",

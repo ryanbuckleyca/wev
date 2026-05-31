@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CVImportButton from './CVImportButton';
 import { NextIntlClientProvider } from 'next-intl';
@@ -229,6 +229,72 @@ describe('CVImportButton', () => {
       expect(notify.error).toHaveBeenCalledWith('The selected file is empty.');
     });
     expect(globalFetchMock).not.toHaveBeenCalled();
+  });
+
+  it('updates the parsing toast when the import keeps running', async () => {
+    vi.useFakeTimers();
+    const handleConfirmImport = vi.fn();
+    let resolveFetch: ((value: any) => void) | undefined;
+
+    globalFetchMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+
+    renderWithIntl(
+      <CVImportButton
+        locale="en"
+        cvImport={null}
+        isSaving={false}
+        onConfirmImport={handleConfirmImport}
+      />,
+    );
+
+    const file = new File(['dummy content'], 'test.pdf', { type: 'application/pdf' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(notify.info).toHaveBeenCalledWith('Parsing your CV, please wait...', {
+      duration: 60000,
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(15000);
+    });
+
+    expect(notify.info).toHaveBeenCalledWith(
+      'Still working on your CV... This can take up to a minute. Please remain on this page while it finishes.',
+      {
+        id: expect.any(String),
+        duration: 45000,
+      },
+    );
+
+    await act(async () => {
+      resolveFetch?.({
+        ok: true,
+        json: async () => ({
+          skills: [],
+          values: [],
+          warnings: [],
+          metadata: {
+            filename: 'test.pdf',
+            imported_at: '2023-10-01T12:00:00Z',
+            source: 'cv_upload',
+            locale: 'en',
+          },
+        }),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(handleConfirmImport).toHaveBeenCalled();
+    expect(notify.dismiss).toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
 });
