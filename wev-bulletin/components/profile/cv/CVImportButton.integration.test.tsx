@@ -3,6 +3,16 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CVImportButton from './CVImportButton';
 import { NextIntlClientProvider } from 'next-intl';
+import notify from '@/lib/toast';
+
+vi.mock('@/lib/toast', () => ({
+  default: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
+}));
 
 // Mock translations
 const messages = {
@@ -14,6 +24,8 @@ const messages = {
     cvReimportWarning: 'This will overwrite your current skills and values.',
     cvImportedIndicator: 'Last imported: {fileName} on {importedAt}',
     cvParsingWaitWarning: 'Parsing your CV, please wait...',
+    cv_import_failed: 'CV import failed. Please try another file.',
+    rate_limit_exceeded: "You've reached the CV import limit. Please wait a bit before trying again.",
   },
 };
 
@@ -31,6 +43,7 @@ describe('CVImportButton', () => {
   beforeEach(() => {
     globalFetchMock = vi.fn();
     global.fetch = globalFetchMock as any;
+    vi.clearAllMocks();
   });
 
   it('renders the import button and hidden file input', () => {
@@ -110,5 +123,57 @@ describe('CVImportButton', () => {
     expect(screen.getByRole('button', { name: 'Update from CV' })).toBeVisible();
     // Warning is always visible when a previous import exists (not just on drag)
     expect(screen.getByText(/This will overwrite your current skills and values/)).toBeVisible();
+  });
+
+  it('falls back to a generic message for unknown server error strings', async () => {
+    const user = userEvent.setup();
+
+    globalFetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({
+        error: 'upstream_service_meltdown',
+      }),
+    });
+
+    renderWithIntl(
+      <CVImportButton locale="en" cvImport={null} isSaving={false} onConfirmImport={() => {}} />,
+    );
+
+    const file = new File(['dummy content'], 'test.pdf', { type: 'application/pdf' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+    await user.upload(input, file);
+
+    await waitFor(() => {
+      expect(notify.error).toHaveBeenCalledWith('CV import failed. Please try another file.');
+    });
+  });
+
+  it('shows the translated rate limit message when the API returns a stable code', async () => {
+    const user = userEvent.setup();
+
+    globalFetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      json: async () => ({
+        error: 'rate_limit_exceeded',
+      }),
+    });
+
+    renderWithIntl(
+      <CVImportButton locale="en" cvImport={null} isSaving={false} onConfirmImport={() => {}} />,
+    );
+
+    const file = new File(['dummy content'], 'test.pdf', { type: 'application/pdf' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+    await user.upload(input, file);
+
+    await waitFor(() => {
+      expect(notify.error).toHaveBeenCalledWith(
+        "You've reached the CV import limit. Please wait a bit before trying again.",
+      );
+    });
   });
 });

@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   }
   if (usage.count >= 5) {
     logger.warn({ userId }, 'CV extraction rate limit exceeded');
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    return NextResponse.json({ error: 'rate_limit_exceeded' }, { status: 429 });
   }
   usage.count += 1;
 

@@ -336,6 +336,7 @@
     "no_extractable_text": "Nous n'avons pu extraire aucun texte lisible de ce document. S'il s'agit d'un PDF basé sur une image, veuillez essayer un format basé sur le texte.",
     "provider_unavailable": "Le service d'analyse est actuellement indisponible. Veuillez réessayer plus tard.",
     "invalid_file": "Le fichier fourni est invalide ou corrompu. Veuillez vérifier votre fichier et réessayer.",
+    "rate_limit_exceeded": "Vous avez atteint la limite d'importation de CV. Veuillez patienter un peu avant de réessayer.",
     "extraction_failed": "Nous avons rencontré une erreur lors de l'extraction des données de votre CV. Veuillez réessayer.",
     "llm_parsing_failed": "Nous n'avons pas pu comprendre le contenu de votre CV. Veuillez vous assurer qu'il est clairement formaté.",
     "embedding_failed": "Une erreur s'est produite lors de l'association de vos compétences. Veuillez réessayer.",
