@@ -22,7 +22,9 @@ describe('llm-extractor', () => {
       const prompt = buildPrompt('CV exemple', 'fr');
       expect(prompt).toContain("Tu analyses le CV d'une candidate ou d'un candidat");
       expect(prompt).toContain('TACHE A - EXPRESSIONS DE COMPETENCES');
-      expect(prompt).toContain('Valeurs autorisees: utilise exactement les libelles canoniques anglais');
+      expect(prompt).toContain(
+        'Valeurs autorisees: utilise exactement les libelles canoniques anglais',
+      );
       expect(prompt).toContain('CV exemple');
       expect(prompt).toContain('- Advancement:');
       expect(prompt).toContain('"values": ["CanonicalEnglishValue1", ...]');

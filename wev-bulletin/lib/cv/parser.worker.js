@@ -56,7 +56,10 @@ async function run() {
     }
 
     // Cleaned count: strip whitespace and non-word noise
-    const cleaned = text.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+    const cleaned = text
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     const wordCount = cleaned.length > 0 ? cleaned.split(/\s+/).length : 0;
     const charCount = cleaned.length;
 
