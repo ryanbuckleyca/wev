@@ -139,7 +139,7 @@ export async function linkPhrasesToEsco(
 
   if (metaError) {
     logger.error({ err: metaError, userId }, 'esco_skills hydrate failed');
-    return [];
+    throw new CvImportError('embedding_failed', metaError.message);
   }
 
   const metaByUri = new Map(
