@@ -27,7 +27,13 @@ async function fetchSkillRows(
   signal?: AbortSignal,
 ): Promise<RawSkillApiRow[]> {
   const response = signal ? await fetch(path, { signal }) : await fetch(path);
-  const body: { skills?: RawSkillApiRow[] } = response.ok ? await response.json() : { skills: [] };
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ message: 'Unknown error' }));
+    throw new Error(`Failed to fetch skills: ${response.status} - ${errorBody.message || response.statusText}`);
+  }
+
+  const body: { skills?: RawSkillApiRow[] } = await response.json();
 
   const seen = new Set<string>();
   return (body.skills ?? []).filter((skill) => {
