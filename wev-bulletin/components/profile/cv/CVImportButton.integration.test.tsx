@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CVImportButton from './CVImportButton';
@@ -44,8 +44,12 @@ describe('CVImportButton', () => {
 
   beforeEach(() => {
     globalFetchMock = vi.fn();
-    global.fetch = globalFetchMock as any;
+    vi.stubGlobal('fetch', globalFetchMock);
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('renders the import button and hidden file input', () => {

@@ -8,6 +8,7 @@ immutable
 as $$
   select payload is null or (
     jsonb_typeof(payload) = 'object'
+    and jsonb_object_length(payload) = 4
     and payload ?& array['filename', 'imported_at', 'source', 'locale']
     and jsonb_typeof(payload->'filename') = 'string'
     and length(btrim(payload->>'filename')) > 0

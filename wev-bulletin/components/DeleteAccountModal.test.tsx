@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import DeleteAccountModal from './DeleteAccountModal';
@@ -29,10 +29,6 @@ vi.mock('@/lib/toast', () => ({
   },
 }));
 
-// Mock fetch
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
-
 // Mock window.location
 Object.defineProperty(window, 'location', {
   value: { href: '' },
@@ -41,11 +37,17 @@ Object.defineProperty(window, 'location', {
 
 describe('DeleteAccountModal', () => {
   const user = userEvent.setup();
+  const mockFetch = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockClear();
     window.location.href = '';
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('does not render when closed', () => {
