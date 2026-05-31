@@ -5,51 +5,31 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: '14.1';
-  };
   public: {
     Tables: {
       bookmarks: {
         Row: {
-          created_at: string | null;
+          created_at: string;
           job_id: string;
           notes: string | null;
-          tags: string[] | null;
+          tags: string[];
           user_id: string;
         };
         Insert: {
-          created_at?: string | null;
+          created_at?: string;
           job_id: string;
           notes?: string | null;
-          tags?: string[] | null;
+          tags?: string[];
           user_id: string;
         };
         Update: {
-          created_at?: string | null;
+          created_at?: string;
           job_id?: string;
           notes?: string | null;
-          tags?: string[] | null;
+          tags?: string[];
           user_id?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'bookmarks_job_id_fkey';
-            columns: ['job_id'];
-            isOneToOne: false;
-            referencedRelation: 'jobs';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'bookmarks_job_id_fkey';
-            columns: ['job_id'];
-            isOneToOne: false;
-            referencedRelation: 'matched_jobs';
-            referencedColumns: ['id'];
-          },
-        ];
+        Relationships: [];
       };
       cities: {
         Row: {
@@ -83,49 +63,49 @@ export type Database = {
       };
       esco_skills: {
         Row: {
-          alternative_label_en: string[];
-          alternative_label_fr: string[];
+          alternative_label_en: string[] | null;
+          alternative_label_fr: string[] | null;
           concept_uri: string;
-          description_en: string;
-          description_fr: string;
+          description_en: string | null;
+          description_fr: string | null;
           embedding: string | null;
-          preferred_label_en: string;
-          preferred_label_fr: string;
-          reuse_level: string;
-          scope_note_en: string;
-          scope_note_fr: string;
-          skill_type: string;
-          updated_at: string;
+          preferred_label_en: string | null;
+          preferred_label_fr: string | null;
+          reuse_level: string | null;
+          scope_note_en: string | null;
+          scope_note_fr: string | null;
+          skill_type: string | null;
+          updated_at: string | null;
         };
         Insert: {
-          alternative_label_en?: string[];
-          alternative_label_fr?: string[];
+          alternative_label_en?: string[] | null;
+          alternative_label_fr?: string[] | null;
           concept_uri: string;
-          description_en?: string;
-          description_fr?: string;
+          description_en?: string | null;
+          description_fr?: string | null;
           embedding?: string | null;
-          preferred_label_en: string;
-          preferred_label_fr: string;
-          reuse_level?: string;
-          scope_note_en?: string;
-          scope_note_fr?: string;
-          skill_type?: string;
-          updated_at?: string;
+          preferred_label_en?: string | null;
+          preferred_label_fr?: string | null;
+          reuse_level?: string | null;
+          scope_note_en?: string | null;
+          scope_note_fr?: string | null;
+          skill_type?: string | null;
+          updated_at?: string | null;
         };
         Update: {
-          alternative_label_en?: string[];
-          alternative_label_fr?: string[];
+          alternative_label_en?: string[] | null;
+          alternative_label_fr?: string[] | null;
           concept_uri?: string;
-          description_en?: string;
-          description_fr?: string;
+          description_en?: string | null;
+          description_fr?: string | null;
           embedding?: string | null;
-          preferred_label_en?: string;
-          preferred_label_fr?: string;
-          reuse_level?: string;
-          scope_note_en?: string;
-          scope_note_fr?: string;
-          skill_type?: string;
-          updated_at?: string;
+          preferred_label_en?: string | null;
+          preferred_label_fr?: string | null;
+          reuse_level?: string | null;
+          scope_note_en?: string | null;
+          scope_note_fr?: string | null;
+          skill_type?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [];
       };
@@ -133,11 +113,11 @@ export type Database = {
         Row: {
           job_id: string;
           location_score: number | null;
-          score: number | null;
-          shared_skills: string[];
+          score: number;
+          shared_skills: string[] | null;
           shared_values: string[];
           skill_score: number | null;
-          updated_at: string | null;
+          updated_at: string;
           user_id: string;
           value_score: number | null;
           work_type_score: number | null;
@@ -145,11 +125,11 @@ export type Database = {
         Insert: {
           job_id: string;
           location_score?: number | null;
-          score?: number | null;
-          shared_skills?: string[];
+          score: number;
+          shared_skills?: string[] | null;
           shared_values?: string[];
           skill_score?: number | null;
-          updated_at?: string | null;
+          updated_at?: string;
           user_id: string;
           value_score?: number | null;
           work_type_score?: number | null;
@@ -157,31 +137,16 @@ export type Database = {
         Update: {
           job_id?: string;
           location_score?: number | null;
-          score?: number | null;
-          shared_skills?: string[];
+          score?: number;
+          shared_skills?: string[] | null;
           shared_values?: string[];
           skill_score?: number | null;
-          updated_at?: string | null;
+          updated_at?: string;
           user_id?: string;
           value_score?: number | null;
           work_type_score?: number | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'job_matches_job_id_fkey';
-            columns: ['job_id'];
-            isOneToOne: false;
-            referencedRelation: 'jobs';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'job_matches_job_id_fkey';
-            columns: ['job_id'];
-            isOneToOne: false;
-            referencedRelation: 'matched_jobs';
-            referencedColumns: ['id'];
-          },
-        ];
+        Relationships: [];
       };
       job_skills: {
         Row: {
@@ -259,13 +224,14 @@ export type Database = {
           organization: string;
           province: string | null;
           scraped_at: string;
-          skills: string[];
+          skills: string[] | null;
+          skills_rated: Json | null;
           source_id: string;
           sse_details: Json | null;
           sse_rating: string | null;
           summary: string | null;
           unit_text: string | null;
-          values: string[];
+          values: string[] | null;
           values_rated: Json | null;
           wage: string | null;
           work_type: string;
@@ -299,13 +265,14 @@ export type Database = {
           organization: string;
           province?: string | null;
           scraped_at?: string;
-          skills?: string[];
+          skills?: string[] | null;
+          skills_rated?: Json | null;
           source_id: string;
           sse_details?: Json | null;
           sse_rating?: string | null;
           summary?: string | null;
           unit_text?: string | null;
-          values?: string[];
+          values?: string[] | null;
           values_rated?: Json | null;
           wage?: string | null;
           work_type?: string;
@@ -339,13 +306,14 @@ export type Database = {
           organization?: string;
           province?: string | null;
           scraped_at?: string;
-          skills?: string[];
+          skills?: string[] | null;
+          skills_rated?: Json | null;
           source_id?: string;
           sse_details?: Json | null;
           sse_rating?: string | null;
           summary?: string | null;
           unit_text?: string | null;
-          values?: string[];
+          values?: string[] | null;
           values_rated?: Json | null;
           wage?: string | null;
           work_type?: string;
@@ -391,7 +359,6 @@ export type Database = {
           cv_import: Json | null;
           full_name: string | null;
           id: string;
-          ideal_work_environment: string | null;
           lat: number | null;
           lng: number | null;
           location_display_name: string | null;
@@ -411,7 +378,6 @@ export type Database = {
           cv_import?: Json | null;
           full_name?: string | null;
           id: string;
-          ideal_work_environment?: string | null;
           lat?: number | null;
           lng?: number | null;
           location_display_name?: string | null;
@@ -431,7 +397,6 @@ export type Database = {
           cv_import?: Json | null;
           full_name?: string | null;
           id?: string;
-          ideal_work_environment?: string | null;
           lat?: number | null;
           lng?: number | null;
           location_display_name?: string | null;
@@ -493,7 +458,15 @@ export type Database = {
           total_jobs_inserted?: number;
           total_sources?: number;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'scrape_runs_source_id_fkey';
+            columns: ['source_id'];
+            isOneToOne: false;
+            referencedRelation: 'sources';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       sources: {
         Row: {
@@ -575,6 +548,7 @@ export type Database = {
           scraped_at: string | null;
           skill_score: number | null;
           skills: string[] | null;
+          skills_rated: Json | null;
           source: string | null;
           source_id: string | null;
           sse_details: Json | null;
@@ -609,10 +583,6 @@ export type Database = {
       };
       earth: { Args: never; Returns: number };
       f_unaccent: { Args: { '': string }; Returns: string };
-      job_confidence_weight: {
-        Args: { p_job_rated: Json; p_value: string };
-        Returns: number;
-      };
       location_score_for_pair: {
         Args: {
           p_job_accuracy_type: string;
@@ -629,20 +599,27 @@ export type Database = {
         };
         Returns: number;
       };
-      match_skills_by_embedding: {
-        Args: { match_count?: number; query_embeddings: string[] };
-        Returns: {
-          concept_uri: string;
-          preferred_label_en: string;
-          preferred_label_fr: string;
-          query_index: number;
-          similarity: number;
-        }[];
-      };
-      rank_weight: {
-        Args: { p_rank: number; p_total: number };
-        Returns: number;
-      };
+      match_skills_by_embedding:
+        | {
+            Args: { match_count?: number; query_embedding: string };
+            Returns: {
+              concept_uri: string;
+              preferred_label_en: string;
+              preferred_label_fr: string;
+              similarity: number;
+            }[];
+          }
+        | {
+            Args: { match_count?: number; query_embeddings: string[] };
+            Returns: {
+              concept_uri: string;
+              preferred_label_en: string;
+              preferred_label_fr: string;
+              query_index: number;
+              similarity: number;
+            }[];
+          };
+      rank_weight: { Args: { rank: number; total: number }; Returns: number };
       recalculate_matches_for_job: {
         Args: { p_job_id: string };
         Returns: undefined;

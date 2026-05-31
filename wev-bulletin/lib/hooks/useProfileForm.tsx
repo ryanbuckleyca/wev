@@ -6,6 +6,7 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { useRankedList } from '@/lib/hooks/useRankedList';
 import { type EscoSkill } from '@/lib/types/skills';
 import { type WorkValue, buildWorkValues, getValueDefinition } from '@/lib/values';
+import type { CvImportMetadata } from '@/lib/cv/types';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 import { adjustCutoffOnRemove, adjustCutoffOnReorder } from '@/lib/ranked-list';
@@ -28,6 +29,27 @@ export type LocationState = {
 
 export { adjustCutoffOnRemove, adjustCutoffOnReorder, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES };
 
+export type CvImportStateUpdate<T> = {
+  items: T[];
+  cutoff: number;
+};
+
+/**
+ * Resolves the next state for a ranked list (skills or values) after a CV import.
+ * If the imported list is empty, we keep the current items and cutoff.
+ * If the imported list is non-empty, we replace the items and set the cutoff to the new length.
+ */
+export function resolveCvImportState<T>(
+  currentItems: T[],
+  currentCutoff: number,
+  importedItems: T[],
+): CvImportStateUpdate<T> {
+  if (importedItems.length === 0) {
+    return { items: currentItems, cutoff: currentCutoff };
+  }
+  return { items: importedItems, cutoff: importedItems.length };
+}
+
 export function useProfileForm(locale: 'en' | 'fr') {
   const t = useTranslations('profile');
   const tValues = useTranslations('values');
@@ -39,6 +61,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     bio: '',
     work_types: [] as WorkType[],
     location: null as LocationState | null,
+    cv_import: null as CvImportMetadata | null,
   });
 
   const { allSkills, isLoading: isLibraryLoading } = useSkillsLibrary(locale);
@@ -85,6 +108,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
               province: profile.province ?? '',
             }
           : null,
+      cv_import: profile.cv_import ?? null,
     });
 
     // Hydrate Values
@@ -165,6 +189,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
         municipality: formData.location?.name ?? null,
         province: formData.location?.province ?? null,
         location_display_name: formData.location?.display_name ?? null,
+        cv_import: formData.cv_import,
       });
       notify.success(t('updateSuccess'));
       void fetch('/api/matches/recalculate-mine', { method: 'POST' });
@@ -174,6 +199,35 @@ export function useProfileForm(locale: 'en' | 'fr') {
       setIsSaving(false);
     }
   }, [formData, values, skills, updateProfile, t]);
+
+  const handleApplyCvImport = useCallback(
+    ({
+      skills: nextSkills,
+      values: nextValues,
+      cvImport,
+    }: {
+      skills: EscoSkill[];
+      values: string[];
+      cvImport: CvImportMetadata;
+      warnings: string[];
+    }) => {
+      // Apply to local state so the user can review before saving.
+      // Keep in-progress manual selections when the CV returns an empty list
+      // for a category, while still replacing that category on non-empty imports.
+      const nextSkillsState = resolveCvImportState(skills.items, skills.cutoff, nextSkills);
+      skills.setItems(nextSkillsState.items);
+      skills.setCutoff(nextSkillsState.cutoff);
+
+      const nextValuesState = resolveCvImportState(values.items, values.cutoff, nextValues);
+      values.setItems(nextValuesState.items);
+      values.setCutoff(nextValuesState.cutoff);
+
+      setFormData((prev) => ({ ...prev, cv_import: cvImport }));
+
+      notify.success(t('cvImportSuccess'));
+    },
+    [skills, values, t],
+  );
 
   return {
     profile,
@@ -196,6 +250,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     handleValueRemove: values.remove,
     isSaving,
     handleSaveProfile,
+    handleApplyCvImport,
     handleWorkTypeToggle,
   };
 }
