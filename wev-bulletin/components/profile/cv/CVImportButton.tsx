@@ -16,6 +16,7 @@ type CVImportButtonProps = {
   onConfirmImport: (data: {
     skills: EscoSkill[];
     values: string[];
+    warnings: string[];
     cvImport: CvImportMetadata;
   }) => void;
 };
@@ -61,6 +62,7 @@ export default function CVImportButton({
         accept={CV_HTML_ACCEPT_STRING}
         onChange={onFileSelected}
         aria-label={t('cvImportInputLabel')}
+        data-testid="cv-file-input"
       />
 
       {cvImport?.filename && (

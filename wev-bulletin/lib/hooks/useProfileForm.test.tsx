@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { resolveCvImportItems } from './useProfileForm';
+import { resolveCvImportState } from './useProfileForm';
 import { type RatedValue } from '@/lib/value-ratings';
 
 // ─── Pure logic extracted from useProfileForm ────────────────────────────────
@@ -34,14 +34,28 @@ function filterValuesRated(valuesRated: RatedValue[], selectedValues: string[]):
 
 describe('useProfileForm — valuesRated state transitions', () => {
   describe('CV import state application', () => {
-    it('preserves existing items when the imported list is empty', () => {
-      expect(resolveCvImportItems(['existing-skill'], [])).toEqual(['existing-skill']);
+    it('preserves existing items and cutoff when the imported list is empty', () => {
+      const result = resolveCvImportState(['existing-skill'], 1, []);
+      expect(result).toEqual({
+        items: ['existing-skill'],
+        cutoff: 1,
+      });
     });
 
-    it('replaces existing items when the imported list is non-empty', () => {
-      expect(resolveCvImportItems(['existing-skill'], ['imported-skill'])).toEqual([
-        'imported-skill',
-      ]);
+    it('replaces existing items and updates cutoff when the imported list is non-empty', () => {
+      const result = resolveCvImportState(['existing-skill'], 1, ['imported-skill']);
+      expect(result).toEqual({
+        items: ['imported-skill'],
+        cutoff: 1,
+      });
+    });
+
+    it('updates cutoff to match length of non-empty imported list', () => {
+      const result = resolveCvImportState(['existing-skill'], 1, ['skill-1', 'skill-2']);
+      expect(result).toEqual({
+        items: ['skill-1', 'skill-2'],
+        cutoff: 2,
+      });
     });
   });
 

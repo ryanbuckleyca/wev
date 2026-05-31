@@ -39,6 +39,8 @@ htmlcov/
 .windsurf/
 .vscode/
 .cursorrules
+.trae/
+.agent/
 
 # Python
 .venv/

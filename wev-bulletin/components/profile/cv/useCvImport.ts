@@ -74,6 +74,7 @@ type UseCvImportOptions = {
   onConfirmImport: (data: {
     skills: EscoSkill[];
     values: string[];
+    warnings: string[];
     cvImport: CvImportMetadata;
   }) => void | Promise<void>;
 };
@@ -98,13 +99,14 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
     }
 
     abortControllerRef.current?.abort();
-    abortControllerRef.current = new AbortController();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setIsParsing(true);
     notify.info(t('cvParsingWaitWarning'), { duration: 8000 });
 
     try {
-      const result = await executeCvImportPipeline(file, locale, abortControllerRef.current.signal);
+      const result = await executeCvImportPipeline(file, locale, controller.signal);
       if (result.warnings.includes('no_skills_extracted')) {
         notify.warning(t('no_skills_extracted_warning'));
       }
@@ -115,7 +117,9 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
       console.error('[cv-import]', error);
       notify.error(getCvImportErrorMessage(t, error));
     } finally {
-      setIsParsing(false);
+      if (abortControllerRef.current === controller) {
+        setIsParsing(false);
+      }
     }
   };
 
