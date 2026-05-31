@@ -20,3 +20,5 @@ export const CV_FILE_PICKER_TYPES = [
 ];
 
 export const MAX_CV_FILE_SIZE_BYTES = 4 * 1024 * 1024;
+
+export const CV_PARSING_TIMEOUT_MS = 60_000;
