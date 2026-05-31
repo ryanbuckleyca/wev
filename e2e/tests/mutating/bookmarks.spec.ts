@@ -31,6 +31,11 @@ test.describe("Bookmarks flow", () => {
     const bookmarkButton = firstCard.getByTestId(
       JOB_BOARD_TEST_IDS.bookmarkButton,
     );
+
+    // Wait for the button to be enabled — it's disabled while bookmarkLoading is true.
+    // This also ensures effectiveUserId has propagated; if userId is null the click
+    // would redirect to /login instead of toggling.
+    await expect(bookmarkButton).toBeEnabled({ timeout: 10_000 });
     await bookmarkButton.click();
 
     // Expect the button state to change to bookmarked

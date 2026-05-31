@@ -162,6 +162,11 @@ export class JobBoardPage {
     optionLabel: string,
   ): Promise<void> {
     await this.openFilters();
+    // Wait for the filter section to be visible before capturing the current
+    // pagination text — openFilters() may animate in, and if the section isn't
+    // visible yet paginationSummary.textContent() returns null, which causes
+    // waitForResultsToUpdate to skip waiting for a change.
+    await this.filters[filter].waitFor({ state: "visible", timeout: 5_000 });
     await this.markResultsUpdateStart();
     await this.filters[filter].getByLabel(optionLabel, { exact: true }).click();
   }
