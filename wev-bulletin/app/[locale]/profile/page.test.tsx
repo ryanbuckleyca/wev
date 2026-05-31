@@ -223,15 +223,20 @@ describe('ProfilePage skills integration', () => {
     });
 
     await user.click(screen.getByRole('button', { name: /search and add skills/i }));
+    await vi.runOnlyPendingTimersAsync(); // Add here
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/skills/starter?locale=en&limit=10', expect.anything());
     });
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
     await user.type(searchInput, 'da');
     await vi.advanceTimersByTimeAsync(200);
+    await vi.runOnlyPendingTimersAsync(); // Add here
     await user.click(await screen.findByRole('option', { name: /Data governance/i }));
+    await vi.runOnlyPendingTimersAsync(); // Add here
     await user.click(screen.getByRole('button', { name: /done/i }));
+    await vi.runOnlyPendingTimersAsync(); // Add here
     await user.click(screen.getByRole('button', { name: /save profile/i }));
+    await vi.runOnlyPendingTimersAsync(); // Add here
 
     await waitFor(() => {
       expect(mockUpdateProfile).toHaveBeenCalled();
@@ -316,13 +321,18 @@ describe('ProfilePage skills integration', () => {
     render(<ProfilePage />);
 
     await user.click(screen.getByRole('button', { name: /search and add skills/i }));
+    await vi.runOnlyPendingTimersAsync(); // Add here
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
     await user.click(searchInput);
     await user.paste('Extra');
     await vi.advanceTimersByTimeAsync(200);
+    await vi.runOnlyPendingTimersAsync(); // Add here
     await user.click(await screen.findByRole('option', { name: /Extra skill/i }));
+    await vi.runOnlyPendingTimersAsync(); // Add here
     await user.click(screen.getByRole('button', { name: /done/i }));
+    await vi.runOnlyPendingTimersAsync(); // Add here
     await user.click(screen.getByRole('button', { name: /save profile/i }));
+    await vi.runOnlyPendingTimersAsync(); // Add here
 
     await waitFor(() => {
       expect(mockUpdateProfile).not.toHaveBeenCalled();
