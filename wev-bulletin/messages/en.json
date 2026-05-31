@@ -189,10 +189,6 @@
     "markSseConfirm": "Mark \"{title}\" at {org} as a Solidarity Economy job?"
   },
   "buttons": {
-    "reScrape": "Re-scrape Data",
-    "reScrapeStarting": "Starting...",
-    "reScrapeQueued": "Queued...",
-    "reScrapeRunning": "Running...",
     "copyPageJobs": "Copy This Page",
     "copyPageJobsTitle": "Copy {count, plural, one {# job on this page} other {# jobs on this page}} to clipboard",
     "copied": "Copied!"
