@@ -3,7 +3,11 @@ import { useTranslations } from 'next-intl';
 import notify from '@/lib/toast';
 import type { CvImportMetadata, CvLocale } from '@/lib/cv/types';
 import type { EscoSkill } from '@/lib/types/skills';
-import { CV_FILE_PICKER_TYPES, MAX_CV_FILE_SIZE_BYTES, CV_PARSING_TIMEOUT_MS } from '@/lib/constants/files';
+import {
+  CV_FILE_PICKER_TYPES,
+  MAX_CV_FILE_SIZE_BYTES,
+  CV_PARSING_TIMEOUT_MS,
+} from '@/lib/constants/files';
 import { useFilePicker, type FilePickerRejectReason } from './useFilePicker';
 
 // ---------------------------------------------------------------------------
