@@ -1,5 +1,6 @@
 import { createClient } from './client';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
+import { type Database } from './database.types';
 import { parseCvImportMetadata, type CvImportMetadata } from '@/lib/cv/types';
 
 const PROFILE_COLUMNS =
@@ -25,9 +26,7 @@ export type Profile = {
   updated_at: string;
 };
 
-type ProfileRow = Omit<Profile, 'cv_import'> & {
-  cv_import: unknown;
-};
+type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
 export type ProfileUpdateData = {
   full_name?: string | null;
@@ -45,6 +44,23 @@ export type ProfileUpdateData = {
   profile_photo_url?: string | null;
   cv_import?: CvImportMetadata | null;
 };
+
+/**
+ * Coalesce nullable DB fields to safe app defaults.
+ */
+function normalizeProfileRow(row: ProfileRow): Profile {
+  return {
+    ...row,
+    values: row.values ?? [],
+    skills: row.skills ?? [],
+    work_types: row.work_types ?? [],
+    cv_import: parseCvImportMetadata(row.cv_import),
+    values_rated: (row.values_rated as RatedValue[] | null) ?? null,
+    skills_rated: (row.skills_rated as RatedSkill[] | null) ?? null,
+    created_at: row.created_at ?? new Date(0).toISOString(),
+    updated_at: row.updated_at ?? new Date(0).toISOString(),
+  };
+}
 
 /**
  * Create a blank profile for a user. Internal — called by getProfile when no row exists.
@@ -122,11 +138,4 @@ export async function updateProfile(userId: string, updates: ProfileUpdateData):
   }
 
   return normalizeProfileRow(data as ProfileRow);
-}
-
-function normalizeProfileRow(row: ProfileRow): Profile {
-  return {
-    ...row,
-    cv_import: parseCvImportMetadata(row.cv_import),
-  };
 }
