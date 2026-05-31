@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CVImportButton from './CVImportButton';
 import { NextIntlClientProvider } from 'next-intl';
@@ -26,6 +26,8 @@ const messages = {
     cvParsingWaitWarning: 'Parsing your CV, please wait...',
     cv_import_failed: 'CV import failed. Please try another file.',
     rate_limit_exceeded: "You've reached the CV import limit. Please wait a bit before trying again.",
+    unsupported_file_type: 'Only PDF and DOCX files are supported.',
+    empty_file: 'The selected file is empty.',
   },
 };
 
@@ -175,5 +177,44 @@ describe('CVImportButton', () => {
         "You've reached the CV import limit. Please wait a bit before trying again.",
       );
     });
+  });
+
+  it('shows an error and skips the request when an unsupported file is dropped', async () => {
+    renderWithIntl(
+      <CVImportButton locale="en" cvImport={null} isSaving={false} onConfirmImport={() => {}} />,
+    );
+
+    const dropZone = screen.getByText('or drag and drop PDF/DOCX').closest('div');
+    expect(dropZone).toBeTruthy();
+
+    const file = new File(['bad'], 'notes.txt', { type: 'text/plain' });
+    fireEvent.drop(dropZone as HTMLDivElement, {
+      dataTransfer: {
+        files: [file],
+      },
+    });
+
+    await waitFor(() => {
+      expect(notify.error).toHaveBeenCalledWith('Only PDF and DOCX files are supported.');
+    });
+    expect(globalFetchMock).not.toHaveBeenCalled();
+  });
+
+  it('shows an error and skips the request when an empty file is selected', async () => {
+    const user = userEvent.setup();
+
+    renderWithIntl(
+      <CVImportButton locale="en" cvImport={null} isSaving={false} onConfirmImport={() => {}} />,
+    );
+
+    const file = new File([], 'empty.pdf', { type: 'application/pdf' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+    await user.upload(input, file);
+
+    await waitFor(() => {
+      expect(notify.error).toHaveBeenCalledWith('The selected file is empty.');
+    });
+    expect(globalFetchMock).not.toHaveBeenCalled();
   });
 });
