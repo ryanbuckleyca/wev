@@ -89,6 +89,16 @@ describe('Server-side CV Parser', () => {
     await expect(parseCvOnServer(file, 'en')).rejects.toThrowError('pdf_no_text_layer');
   });
 
+  it('throws error when worker reports no_extractable_text (DOCX case)', async () => {
+    nextWorkerResponse = { success: false, error: 'no_extractable_text' };
+
+    const { parseCvOnServer } = await import('./parser.server');
+    const file = new File(['fake-docx-bytes'], 'empty.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+    await expect(parseCvOnServer(file, 'en')).rejects.toThrowError('no_extractable_text');
+  });
+
   it('throws error for empty files', async () => {
     const { parseCvOnServer } = await import('./parser.server');
     const file = new File([], 'cv.pdf', { type: 'application/pdf' });
