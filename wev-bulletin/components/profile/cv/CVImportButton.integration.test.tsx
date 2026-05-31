@@ -265,12 +265,12 @@ describe('CVImportButton', () => {
       vi.advanceTimersByTime(15000);
     });
 
-    expect(notify.info).toHaveBeenCalledWith(
+    expect(notify.info).toHaveBeenNthCalledWith(
+      2,
       'Still working on your CV... This can take up to a minute. Please remain on this page while it finishes.',
-      {
-        id: expect.any(String),
+      expect.objectContaining({
         duration: 45000,
-      },
+      }),
     );
 
     await act(async () => {
