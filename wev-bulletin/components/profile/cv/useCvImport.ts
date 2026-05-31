@@ -3,7 +3,7 @@ import { useTranslations } from 'next-intl';
 import notify from '@/lib/toast';
 import type { CvImportMetadata, CvLocale } from '@/lib/cv/types';
 import type { EscoSkill } from '@/lib/types/skills';
-import { CV_FILE_PICKER_TYPES, MAX_CV_FILE_SIZE_BYTES } from '@/lib/constants/files';
+import { CV_FILE_PICKER_TYPES, MAX_CV_FILE_SIZE_BYTES, CV_PARSING_TIMEOUT_MS } from '@/lib/constants/files';
 import { useFilePicker, type FilePickerRejectReason } from './useFilePicker';
 
 // ---------------------------------------------------------------------------
@@ -104,7 +104,8 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
     abortControllerRef.current = controller;
 
     setIsParsing(true);
-    notify.info(t('cvParsingWaitWarning'), { duration: 8000 });
+    // Sync duration with server-side timeout
+    const toastId = notify.info(t('cvParsingWaitWarning'), { duration: CV_PARSING_TIMEOUT_MS });
 
     try {
       const result = await executeCvImportPipeline(file, locale, controller.signal);
@@ -118,6 +119,7 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
       console.error('[cv-import]', error);
       notify.error(getCvImportErrorMessage(t, error));
     } finally {
+      notify.dismiss(toastId);
       if (abortControllerRef.current === controller) {
         setIsParsing(false);
       }
