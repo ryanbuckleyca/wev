@@ -94,16 +94,17 @@ export async function POST(request: Request) {
       metadata,
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
     if (error instanceof CvImportError) {
       return NextResponse.json(
         {
           error: error.code,
-        ...(process.env.NODE_ENV !== 'production' && { detail: message }),
+          ...(process.env.NODE_ENV !== 'production' && { detail: message }),
         },
         { status: 400 },
       );
     }
-    const message = error instanceof Error ? error.message : String(error);
     logger.error({ err: error, userId: auth.user.id }, 'CV Extraction Error');
     return NextResponse.json(
       {
