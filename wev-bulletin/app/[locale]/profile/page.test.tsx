@@ -155,8 +155,8 @@ describe('ProfilePage skills integration', () => {
   });
 
   it('saves concept_uri[] (not labels) after selecting a search result', { timeout: 90_000 }, async () => {
-    vi.useFakeTimers();
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    // vi.useFakeTimers(); // Removed fake timers
+    const user = userEvent.setup(); // Removed advanceTimers
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.startsWith('/api/skills/by-uri?uris=uri-1&locale=en')) {
@@ -223,20 +223,20 @@ describe('ProfilePage skills integration', () => {
     });
 
     await user.click(screen.getByRole('button', { name: /search and add skills/i }));
-    await vi.runOnlyPendingTimersAsync(); // Add here
+    // await vi.runOnlyPendingTimersAsync(); // Removed
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/skills/starter?locale=en&limit=10', expect.anything());
     });
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
     await user.type(searchInput, 'da');
-    await vi.advanceTimersByTimeAsync(200);
-    await vi.runOnlyPendingTimersAsync(); // Add here
+    // await vi.advanceTimersByTimeAsync(200); // Removed
+    // await vi.runOnlyPendingTimersAsync(); // Removed
     await user.click(await screen.findByRole('option', { name: /Data governance/i }));
-    await vi.runOnlyPendingTimersAsync(); // Add here
+    // await vi.runOnlyPendingTimersAsync(); // Removed
     await user.click(screen.getByRole('button', { name: /done/i }));
-    await vi.runOnlyPendingTimersAsync(); // Add here
+    // await vi.runOnlyPendingTimersAsync(); // Removed
     await user.click(screen.getByRole('button', { name: /save profile/i }));
-    await vi.runOnlyPendingTimersAsync(); // Add here
+    // await vi.runOnlyPendingTimersAsync(); // Removed
 
     await waitFor(() => {
       expect(mockUpdateProfile).toHaveBeenCalled();
@@ -255,8 +255,8 @@ describe('ProfilePage skills integration', () => {
     // selects a result, and validates the save is blocked.  Under full-suite
     // resource contention it can exceed the 30 s global timeout.
 
-    vi.useFakeTimers();
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    // vi.useFakeTimers(); // Removed fake timers
+    const user = userEvent.setup(); // Removed advanceTimers
     const profileAtMaxSkills = {
       ...baseProfile,
       skills: Array.from({ length: MAX_PROFILE_SKILLS }, (_, i) => `uri-${i + 1}`),
@@ -321,18 +321,18 @@ describe('ProfilePage skills integration', () => {
     render(<ProfilePage />);
 
     await user.click(screen.getByRole('button', { name: /search and add skills/i }));
-    await vi.runOnlyPendingTimersAsync(); // Add here
+    // await vi.runOnlyPendingTimersAsync(); // Removed
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
     await user.click(searchInput);
     await user.paste('Extra');
-    await vi.advanceTimersByTimeAsync(200);
-    await vi.runOnlyPendingTimersAsync(); // Add here
+    // await vi.advanceTimersByTimeAsync(200); // Removed
+    // await vi.runOnlyPendingTimersAsync(); // Removed
     await user.click(await screen.findByRole('option', { name: /Extra skill/i }));
-    await vi.runOnlyPendingTimersAsync(); // Add here
+    // await vi.runOnlyPendingTimersAsync(); // Removed
     await user.click(screen.getByRole('button', { name: /done/i }));
-    await vi.runOnlyPendingTimersAsync(); // Add here
+    // await vi.runOnlyPendingTimersAsync(); // Removed
     await user.click(screen.getByRole('button', { name: /save profile/i }));
-    await vi.runOnlyPendingTimersAsync(); // Add here
+    // await vi.runOnlyPendingTimersAsync(); // Removed
 
     await waitFor(() => {
       expect(mockUpdateProfile).not.toHaveBeenCalled();

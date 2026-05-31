@@ -660,7 +660,7 @@ stderr | app/api/revalidate-jobs/route.test.ts > POST /api/revalidate-jobs > ret
  × app/[locale]/profile/page.test.tsx > ProfilePage skills integration > saves concept_uri[] (not labels) after selecting a search result 90030ms
    → Test timed out in 90000ms.
 If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
-t.tsx > ProfilePage skills integration > blocks save and shows error when skills exceed limit 120014ms
+ × app/[locale]/profile/page.test.tsx > ProfilePage skills integration > blocks save and shows error when skills exceed limit 120010ms
    → Test timed out in 120000ms.
 If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
 
@@ -695,6 +695,6 @@ If this is a long-running test, pass a timeout value as the last argument or con
 
  Test Files  1 failed | 78 passed (79)
       Tests  2 failed | 634 passed (636)
-   Start at  17:13:28
-   Duration  217.05s (transform 10.21s, setup 56.29s, import 28.39s, tests 281.31s, environment 192.84s)
+   Start at  17:15:28
+   Duration  221.04s (transform 12.28s, setup 57.93s, import 34.49s, tests 310.07s, environment 222.50s)
 
