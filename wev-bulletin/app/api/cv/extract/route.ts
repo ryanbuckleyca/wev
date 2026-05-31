@@ -59,8 +59,19 @@ export async function POST(request: Request) {
   const jinaKey = process.env.JINA_API_KEY;
 
   if (!groqKey || !jinaKey) {
-    const missing = [!groqKey && 'GROQ_API_KEY', !jinaKey && 'JINA_API_KEY'].filter(Boolean);
-    logger.error({ missing }, 'Missing API keys for CV extraction');
+    const missing = [];
+    if (!groqKey) missing.push('GROQ_API_KEY');
+    if (!jinaKey) missing.push('JINA_API_KEY');
+
+    logger.error(
+      {
+        missing,
+        hasGroq: !!groqKey,
+        hasJina: !!jinaKey,
+        envKeys: Object.keys(process.env).filter(k => k.includes('GROQ') || k.includes('JINA'))
+      },
+      'Missing API keys for CV extraction'
+    );
     return NextResponse.json({ error: 'provider_unavailable' }, { status: 503 });
   }
 
