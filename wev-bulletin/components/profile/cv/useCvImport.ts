@@ -18,6 +18,7 @@ function getCvImportErrorMessage(
   // Fallback to 'embedding_failed' for Jina errors
   if (code.startsWith('jina_')) return t('embedding_failed');
   if (code === 'Too many requests') return t('rate_limit_exceeded');
+  if (code === 'provider_unavailable') return t('provider_unavailable');
   return code && t.has(code) ? t(code as any) : t('cv_import_failed');
 }
 
