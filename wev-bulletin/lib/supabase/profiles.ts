@@ -1,6 +1,6 @@
 import { createClient } from './client';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
-import type { CvImportMetadata } from '@/lib/cv/types';
+import { parseCvImportMetadata, type CvImportMetadata } from '@/lib/cv/types';
 
 const PROFILE_COLUMNS =
   'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, cv_import, created_at, updated_at' as const;
@@ -23,6 +23,10 @@ export type Profile = {
   cv_import: CvImportMetadata | null;
   created_at: string;
   updated_at: string;
+};
+
+type ProfileRow = Omit<Profile, 'cv_import'> & {
+  cv_import: unknown;
 };
 
 export type ProfileUpdateData = {
@@ -67,7 +71,7 @@ async function createProfile(userId: string): Promise<Profile> {
     throw new Error(error.message || 'Failed to create profile');
   }
 
-  return data as Profile;
+  return normalizeProfileRow(data as ProfileRow);
 }
 
 /**
@@ -88,7 +92,7 @@ export async function getProfile(userId: string): Promise<Profile> {
     throw new Error(error.message || 'Failed to fetch profile');
   }
 
-  return data as Profile;
+  return normalizeProfileRow(data as ProfileRow);
 }
 
 /**
@@ -117,5 +121,12 @@ export async function updateProfile(userId: string, updates: ProfileUpdateData):
     throw new Error(msg || 'Failed to update profile');
   }
 
-  return data as Profile;
+  return normalizeProfileRow(data as ProfileRow);
+}
+
+function normalizeProfileRow(row: ProfileRow): Profile {
+  return {
+    ...row,
+    cv_import: parseCvImportMetadata(row.cv_import),
+  };
 }
