@@ -69,8 +69,16 @@ describe('CVImportButton', () => {
     globalFetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        skills: [{ concept_uri: 'test-uri', term: 'Test Skill', score: 0.9 }],
+        skills: [
+          {
+            uri: 'test-uri',
+            preferredLabel: { en: 'Test Skill', fr: 'Compétence Test' },
+            skillType: 'skill',
+            reuseLevel: 'cross-sector',
+          },
+        ],
         values: ['Innovation'],
+        warnings: [],
         metadata: {
           filename: 'test.pdf',
           imported_at: '2023-10-01T12:00:00Z',
@@ -99,7 +107,14 @@ describe('CVImportButton', () => {
 
     await waitFor(() => {
       expect(handleConfirmImport).toHaveBeenCalledWith({
-        skills: [{ concept_uri: 'test-uri', term: 'Test Skill', score: 0.9 }],
+        skills: [
+          {
+            uri: 'test-uri',
+            preferredLabel: { en: 'Test Skill', fr: 'Compétence Test' },
+            skillType: 'skill',
+            reuseLevel: 'cross-sector',
+          },
+        ],
         values: ['Innovation'],
         warnings: [],
         cvImport: {
