@@ -7,7 +7,6 @@ import JobListings from '@/components/JobListings';
 import SortDropdown from '@/components/SortDropdown';
 import ExpandAllToggle from '@/components/ExpandAllToggle';
 import WatercolorBackground from '@/components/WatercolorBackground';
-import ReScrapeButton from '@/components/ReScrapeButton';
 import CopyPageJobsButton from '@/components/CopyPageJobsButton';
 import Pagination from '@/components/Pagination';
 import { SITE_CONFIG } from '@/lib/site-config';
@@ -60,9 +59,6 @@ export default function BulletinPageView({
           {isAdmin && (
             <div className="flex flex-col justify-start items-stretch gap-4 mb-6">
               <div className="flex flex-row gap-4 max-[442px]:flex-col max-[442px]:items-stretch">
-                <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
-                  <ReScrapeButton onComplete={data.refresh} />
-                </div>
                 <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
                   <CopyPageJobsButton jobs={data.jobsOnPage} />
                 </div>

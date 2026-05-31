@@ -1,5 +1,6 @@
 import { createClient } from './client';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
+import { type Database } from './database.types';
 
 // Stub for PR 4 build isolation (actual type introduced in PR 5)
 export type CvImportMetadata = Record<string, any>;
@@ -27,6 +28,8 @@ export type Profile = {
   updated_at: string;
 };
 
+type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+
 export type ProfileUpdateData = {
   full_name?: string | null;
   bio?: string | null;
@@ -43,6 +46,23 @@ export type ProfileUpdateData = {
   profile_photo_url?: string | null;
   cv_import?: CvImportMetadata | null;
 };
+
+/**
+ * Coalesce nullable DB fields to safe app defaults.
+ */
+function normalizeProfileRow(row: ProfileRow): Profile {
+  return {
+    ...row,
+    values: row.values ?? [],
+    skills: row.skills ?? [],
+    work_types: row.work_types ?? [],
+    cv_import: row.cv_import as CvImportMetadata | null,
+    values_rated: (row.values_rated as RatedValue[] | null) ?? null,
+    skills_rated: (row.skills_rated as RatedSkill[] | null) ?? null,
+    created_at: row.created_at ?? new Date(0).toISOString(),
+    updated_at: row.updated_at ?? new Date(0).toISOString(),
+  };
+}
 
 /**
  * Create a blank profile for a user. Internal — called by getProfile when no row exists.
@@ -69,7 +89,7 @@ async function createProfile(userId: string): Promise<Profile> {
     throw new Error(error.message || 'Failed to create profile');
   }
 
-  return data as Profile;
+  return normalizeProfileRow(data as ProfileRow);
 }
 
 /**
@@ -90,7 +110,7 @@ export async function getProfile(userId: string): Promise<Profile> {
     throw new Error(error.message || 'Failed to fetch profile');
   }
 
-  return data as Profile;
+  return normalizeProfileRow(data as ProfileRow);
 }
 
 /**
@@ -119,5 +139,5 @@ export async function updateProfile(userId: string, updates: ProfileUpdateData):
     throw new Error(msg || 'Failed to update profile');
   }
 
-  return data as Profile;
+  return normalizeProfileRow(data as ProfileRow);
 }
