@@ -23,6 +23,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { captchaToken, turnstileProps, recycleTurnstileAfterAuthError } = useAuthTurnstile(
     t('auth.login.captchaError'),
@@ -33,6 +34,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
+      setIsRedirecting(true);
       router.replace('/');
     }
   }, [authLoading, user, router]);
@@ -40,6 +42,7 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setIsRedirecting(false);
     setError(null);
 
     if (!captchaToken) {
@@ -58,12 +61,20 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
       recycleTurnstileAfterAuthError();
+      setIsRedirecting(false);
+      setLoading(false);
     } else {
+      setIsRedirecting(true);
       router.replace('/');
     }
-
-    setLoading(false);
   }
+
+  const isSubmitting = loading || isRedirecting;
+  const submitLabel = isRedirecting
+    ? t('auth.login.redirecting')
+    : loading
+      ? t('auth.login.submitting')
+      : t('auth.login.submit');
 
   return (
     <PageLayout variant="centered">
@@ -104,8 +115,13 @@ export default function LoginPage() {
 
           <TurnstileWidget {...turnstileProps} />
 
-          <Button type="submit" disabled={loading || !captchaToken} loading={loading} fullWidth>
-            {loading ? t('auth.login.submitting') : t('auth.login.submit')}
+          <Button
+            type="submit"
+            disabled={isSubmitting || !captchaToken}
+            loading={isSubmitting}
+            fullWidth
+          >
+            {submitLabel}
           </Button>
         </FormContainer>
 
