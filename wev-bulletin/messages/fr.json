@@ -322,6 +322,7 @@
     "cvImportInputLabel": "Téléverser un fichier CV",
     "cvImportDropHint": "Ou glissez un PDF/DOCX ici (Note : remplace les compétences et les valeurs actuelles)",
     "cvParsingWaitWarning": "Analyse de votre CV... Cela peut prendre un moment, surtout pour les PDF numérisés.",
+    "cvParsingStillWorkingWarning": "L'analyse de votre CV est toujours en cours... Cela peut prendre jusqu'à une minute. Veuillez rester sur cette page pendant le traitement.",
     "cvImportedIndicator": "CV importé : {fileName} — {importedAt}",
     "cvImportSuccess": "CV traité avec succès. Examinez vos nouvelles compétences ci-dessous.",
     "unsupported_file_type": "Seuls les fichiers PDF et DOCX sont pris en charge.",

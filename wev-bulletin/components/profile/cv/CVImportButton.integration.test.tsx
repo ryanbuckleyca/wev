@@ -15,6 +15,8 @@ const messages = {
     cvReimportWarning: 'This will overwrite your current skills and values.',
     cvImportedIndicator: 'Last imported: {fileName} on {importedAt}',
     cvParsingWaitWarning: 'Parsing your CV, please wait...',
+    cvParsingStillWorkingWarning:
+      'Still working on your CV... This can take up to a minute. Please remain on this page while it finishes.',
     cv_import_failed: 'CV import failed. Please try another file.',
     rate_limit_exceeded:
       "You've reached the CV import limit. Please wait a bit before trying again.",
@@ -228,4 +230,5 @@ describe('CVImportButton', () => {
     });
     expect(globalFetchMock).not.toHaveBeenCalled();
   });
+
 });

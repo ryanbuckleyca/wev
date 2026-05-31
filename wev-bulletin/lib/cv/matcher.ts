@@ -89,15 +89,11 @@ export async function linkPhrasesToEsco(
   userId: string,
   locale: CvLocale,
   supabase = supabaseServer,
-  traceId?: string,
 ): Promise<EscoSkill[]> {
   const cvWords = buildCvWordSet(cvText, locale);
 
   // Run a single batched RPC to avoid exhausting the Supabase connection pool
   const query_embeddings = embeddings.map((vec) => `[${vec.join(',')}]`);
-  // #region debug-point D:rpc-start
-  logger.info({ traceId, userId, queryCount: query_embeddings.length }, '[DEBUG] CV ESCO RPC start');
-  // #endregion
   const { data, error } = await supabase.rpc('match_skills_by_embedding', {
     query_embeddings,
     match_count: RPC_MATCHES_PER_PHRASE,
@@ -107,12 +103,6 @@ export async function linkPhrasesToEsco(
     logger.error({ err: error, userId }, 'match_skills_by_embedding failure');
     throw new CvImportError('embedding_failed', error.message);
   }
-  // #region debug-point D:rpc-done
-  logger.info(
-    { traceId, userId, rowCount: Array.isArray(data) ? data.length : 0 },
-    '[DEBUG] CV ESCO RPC done',
-  );
-  // #endregion
 
   const scoredMatches = rankAndFilterCandidates(
     (data ?? []) as BatchMatchRow[],
@@ -137,9 +127,6 @@ export async function linkPhrasesToEsco(
 
   if (topMatches.length === 0) return [];
 
-  // #region debug-point D:hydrate-start
-  logger.info({ traceId, userId, topMatchCount: topMatches.length }, '[DEBUG] CV ESCO hydrate start');
-  // #endregion
   const { data: metaData, error: metaError } = await supabase
     .from('esco_skills')
     .select(
@@ -154,12 +141,6 @@ export async function linkPhrasesToEsco(
     logger.error({ err: metaError, userId }, 'esco_skills hydrate failed');
     return [];
   }
-  // #region debug-point D:hydrate-done
-  logger.info(
-    { traceId, userId, hydratedCount: Array.isArray(metaData) ? metaData.length : 0 },
-    '[DEBUG] CV ESCO hydrate done',
-  );
-  // #endregion
 
   const metaByUri = new Map(
     ((metaData ?? []) as EscoMetaRow[]).map((row) => [row.concept_uri, row]),

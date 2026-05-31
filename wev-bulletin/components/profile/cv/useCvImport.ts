@@ -10,6 +10,8 @@ import {
 } from '@/lib/constants/files';
 import { useFilePicker, type FilePickerRejectReason } from './useFilePicker';
 
+const CV_PARSING_PROGRESS_UPDATE_MS = Math.min(15_000, Math.floor(CV_PARSING_TIMEOUT_MS / 2));
+
 // ---------------------------------------------------------------------------
 // Error Handling
 // ---------------------------------------------------------------------------
@@ -110,6 +112,15 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
     setIsParsing(true);
     // Sync duration with server-side timeout
     const toastId = notify.info(t('cvParsingWaitWarning'), { duration: CV_PARSING_TIMEOUT_MS });
+    const progressToastTimer =
+      CV_PARSING_PROGRESS_UPDATE_MS > 0
+        ? window.setTimeout(() => {
+            notify.info(t('cvParsingStillWorkingWarning'), {
+              id: toastId,
+              duration: Math.max(CV_PARSING_TIMEOUT_MS - CV_PARSING_PROGRESS_UPDATE_MS, 1000),
+            });
+          }, CV_PARSING_PROGRESS_UPDATE_MS)
+        : null;
 
     try {
       const result = await executeCvImportPipeline(file, locale, controller.signal);
@@ -123,6 +134,9 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
       console.error('[cv-import]', error);
       notify.error(getCvImportErrorMessage(t, error));
     } finally {
+      if (progressToastTimer !== null) {
+        window.clearTimeout(progressToastTimer);
+      }
       notify.dismiss(toastId);
       if (abortControllerRef.current === controller) {
         setIsParsing(false);
