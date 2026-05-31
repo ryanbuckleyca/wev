@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { rankAndFilterCandidates, type BatchMatchRow } from './matcher';
+import { linkPhrasesToEsco, rankAndFilterCandidates, type BatchMatchRow } from './matcher';
 
 vi.mock('@/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -85,15 +85,6 @@ describe('skill-matcher', () => {
     });
 
     it('filters out candidates below RELEVANCE_FLOOR', () => {
-      const rows: BatchMatchRow[] = [
-        {
-          query_index: 0,
-          concept_uri: '1',
-          preferred_label_en: 'water management',
-          preferred_label_fr: '',
-          similarity: 0.9,
-        },
-      ];
       const phrases = [{ phrase: 'management', prominence: 5 }];
       // CV has 'management' but not 'water', so relevance is 0.5. Wait, 1/2 = 0.5.
       // If the floor is 0.4, it passes.
@@ -142,6 +133,44 @@ describe('skill-matcher', () => {
 
       const result = rankAndFilterCandidates(rows, phrases, cvWords, 'en', 0.25);
       expect(result.map((r) => r.concept_uri)).toEqual(['1', '3', '2']);
+    });
+  });
+
+  describe('linkPhrasesToEsco', () => {
+    it('returns empty list when esco_skills metadata hydration fails', async () => {
+      const supabase = {
+        rpc: vi.fn().mockResolvedValue({
+          data: [
+            {
+              query_index: 0,
+              concept_uri: 'skill:1',
+              preferred_label_en: 'React',
+              preferred_label_fr: 'React',
+              similarity: 0.9,
+            },
+          ],
+          error: null,
+        }),
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({
+              data: null,
+              error: { message: 'database unavailable' },
+            }),
+          }),
+        }),
+      };
+
+      const result = await linkPhrasesToEsco(
+        [{ phrase: 'React development', prominence: 10 }],
+        [new Array(1024).fill(0.1)],
+        'Built React applications',
+        'user-1',
+        'en',
+        supabase as any,
+      );
+
+      expect(result).toEqual([]);
     });
   });
 });

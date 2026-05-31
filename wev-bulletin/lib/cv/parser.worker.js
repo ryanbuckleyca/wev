@@ -37,7 +37,6 @@ async function parsePdf(buffer) {
     }
   }
   const text = normalizeText(pages.join('\n'));
-  if (text.length < 80) throw new Error('pdf_no_text_layer');
   return text;
 }
 
@@ -55,6 +54,20 @@ async function run() {
     } else {
       text = await parseDocx(workerData.buffer);
     }
+
+    // Cleaned count: strip whitespace and non-word noise
+    // \p{L} matches any Unicode letter, \p{N} matches any Unicode number
+    const cleaned = text
+      .replace(/[^\p{L}\p{N}\s]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const wordCount = cleaned.length > 0 ? cleaned.split(/\s+/).length : 0;
+    const charCount = cleaned.length;
+
+    if (charCount < 20 || wordCount < 5) {
+      throw new Error(workerData.type === 'pdf' ? 'pdf_no_text_layer' : 'no_extractable_text');
+    }
+
     parentPort?.postMessage({ success: true, text });
   } catch (e) {
     parentPort?.postMessage({ success: false, error: e.message });

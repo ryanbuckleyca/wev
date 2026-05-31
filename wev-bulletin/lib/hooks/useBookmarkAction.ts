@@ -15,8 +15,17 @@ export function useBookmarkAction(
   onToggle?: (job: JobPosting, bookmarked: boolean) => void,
 ) {
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
+  const [prevInitial, setPrevInitial] = useState(initialBookmarked);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Sync internal state with external prop changes during render.
+  // This is the React-recommended pattern for derived state (avoids useEffect).
+  // It causes a double render on prop change, which is acceptable for a toggle button.
+  if (initialBookmarked !== prevInitial) {
+    setPrevInitial(initialBookmarked);
+    setBookmarked(initialBookmarked);
+  }
 
   const toggleBookmark = async () => {
     if (!userId) {

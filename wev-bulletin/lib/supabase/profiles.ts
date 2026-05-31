@@ -1,9 +1,7 @@
 import { createClient } from './client';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 import { type Database } from './database.types';
-
-// Stub for PR 4 build isolation (actual type introduced in PR 5)
-export type CvImportMetadata = Record<string, any>;
+import { parseCvImportMetadata, type CvImportMetadata } from '@/lib/cv/types';
 
 const PROFILE_COLUMNS =
   'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, cv_import, created_at, updated_at' as const;
@@ -56,7 +54,7 @@ function normalizeProfileRow(row: ProfileRow): Profile {
     values: row.values ?? [],
     skills: row.skills ?? [],
     work_types: row.work_types ?? [],
-    cv_import: row.cv_import as CvImportMetadata | null,
+    cv_import: parseCvImportMetadata(row.cv_import),
     values_rated: (row.values_rated as RatedValue[] | null) ?? null,
     skills_rated: (row.skills_rated as RatedSkill[] | null) ?? null,
     created_at: row.created_at ?? new Date(0).toISOString(),

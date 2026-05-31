@@ -64,6 +64,17 @@ describe('Server-side CV Parser', () => {
     expect(parsed.metadata.filename).toBe('cv.docx');
   });
 
+  it('accepts short but valid PDF text from the worker', async () => {
+    nextWorkerResponse = { success: true, text: 'Short CV summary' };
+
+    const { parseCvOnServer } = await import('./parser.server');
+    const file = new File(['fake-pdf-bytes'], 'short.pdf', { type: 'application/pdf' });
+
+    const parsed = await parseCvOnServer(file, 'en');
+    expect(parsed.text).toBe('Short CV summary');
+    expect(parsed.metadata.filename).toBe('short.pdf');
+  });
+
   it('throws error for unsupported file types', async () => {
     const { parseCvOnServer } = await import('./parser.server');
     const file = new File(['fake'], 'cv.txt', { type: 'text/plain' });
@@ -76,6 +87,16 @@ describe('Server-side CV Parser', () => {
     const { parseCvOnServer } = await import('./parser.server');
     const file = new File(['fake-pdf-bytes'], 'scanned.pdf', { type: 'application/pdf' });
     await expect(parseCvOnServer(file, 'en')).rejects.toThrowError('pdf_no_text_layer');
+  });
+
+  it('throws error when worker reports no_extractable_text (DOCX case)', async () => {
+    nextWorkerResponse = { success: false, error: 'no_extractable_text' };
+
+    const { parseCvOnServer } = await import('./parser.server');
+    const file = new File(['fake-docx-bytes'], 'empty.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+    await expect(parseCvOnServer(file, 'en')).rejects.toThrowError('no_extractable_text');
   });
 
   it('throws error for empty files', async () => {
