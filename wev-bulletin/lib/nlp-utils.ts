@@ -51,6 +51,14 @@ export function tokenize(
     });
 }
 
+export function buildTokenSet(
+  text: string,
+  removeStopWords: boolean = true,
+  locale: CvLocale = 'en',
+): Set<string> {
+  return new Set(tokenize(text, removeStopWords, locale));
+}
+
 /** Build a set of all lowercase words in the CV for fast lookup, supporting Unicode letters.
  *
  * Intentionally does NOT remove stop words — we keep the CV word set broad so
@@ -59,6 +67,74 @@ export function tokenize(
  */
 export function buildCvWordSet(text: string, locale: CvLocale = 'en'): Set<string> {
   return new Set(tokenize(text, false, locale));
+}
+
+export function tokenCoverage(words: Iterable<string>, supportWords: Set<string>): number {
+  const uniqueWords = Array.from(new Set(words));
+  if (uniqueWords.length === 0) return 0;
+
+  let hits = 0;
+  for (const word of uniqueWords) {
+    if (supportWords.has(word)) hits++;
+  }
+  return hits / uniqueWords.length;
+}
+
+export function textCoverage(
+  text: string,
+  supportWords: Set<string>,
+  locale: CvLocale = 'en',
+): number {
+  return tokenCoverage(tokenize(text, true, locale), supportWords);
+}
+
+export function unsupportedTokenRatio(
+  text: string,
+  supportWords: Set<string>,
+  locale: CvLocale = 'en',
+): number {
+  const uniqueWords = Array.from(new Set(tokenize(text, true, locale)));
+  if (uniqueWords.length === 0) return 0;
+
+  let misses = 0;
+  for (const word of uniqueWords) {
+    if (!supportWords.has(word)) misses++;
+  }
+  return misses / uniqueWords.length;
+}
+
+const TASK_LABEL_PREFIXES_EN = [
+  'lead ',
+  'manage ',
+  'coordinate ',
+  'assist ',
+  'support ',
+  'perform ',
+  'carry out ',
+  'work with ',
+  'responsible for ',
+];
+
+const TASK_LABEL_PREFIXES_FR = [
+  'diriger ',
+  'gerer ',
+  'coordonner ',
+  'assister ',
+  'soutenir ',
+  'effectuer ',
+  'realiser ',
+  'travailler avec ',
+  'responsable de ',
+];
+
+export function isTaskLikeText(text: string, locale: CvLocale = 'en'): boolean {
+  const normalized = text.trim().toLowerCase();
+  const tokens = tokenize(normalized, true, locale);
+
+  if (tokens.length >= 7) return true;
+
+  const prefixes = locale === 'fr' ? TASK_LABEL_PREFIXES_FR : TASK_LABEL_PREFIXES_EN;
+  return prefixes.some((prefix) => normalized.startsWith(prefix));
 }
 
 /**
@@ -71,13 +147,5 @@ export function labelRelevance(
   cvWordsSet: Set<string>,
   locale: CvLocale = 'en',
 ): number {
-  const labelWords = tokenize(escoLabel, true, locale);
-
-  if (labelWords.length === 0) return 0; // If only stop words, we have no evidence of relevance
-
-  let hits = 0;
-  for (const w of labelWords) {
-    if (cvWordsSet.has(w)) hits++;
-  }
-  return hits / labelWords.length;
+  return textCoverage(escoLabel, cvWordsSet, locale);
 }
