@@ -21,29 +21,41 @@ async function parseDocumentInWorker(buffer: Buffer, type: 'pdf' | 'docx'): Prom
       workerData: { buffer, type },
     });
 
+    let settled = false;
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      fn();
+    };
+
     const timeout = setTimeout(() => {
-      worker.terminate();
-      reject(new CvImportError('cv_import_failed', 'Worker timed out'));
+      settle(() => {
+        worker.terminate();
+        reject(new CvImportError('cv_import_failed', 'Worker timed out'));
+      });
     }, WORKER_TIMEOUT_MS);
 
     worker.on('message', (msg) => {
-      clearTimeout(timeout);
-      void worker.terminate();
-      if (msg.success) resolve(msg.text);
-      else {
-        if (msg.error === 'pdf_no_text_layer') reject(new CvImportError('pdf_no_text_layer'));
-        else reject(new CvImportError('cv_import_failed', msg.error));
-      }
+      settle(() => {
+        void worker.terminate();
+        if (msg.success) resolve(msg.text);
+        else {
+          if (msg.error === 'pdf_no_text_layer') reject(new CvImportError('pdf_no_text_layer'));
+          else reject(new CvImportError('cv_import_failed', msg.error));
+        }
+      });
     });
 
     worker.on('error', (err) => {
-      clearTimeout(timeout);
-      reject(new CvImportError('cv_import_failed', err.message));
+      settle(() => reject(new CvImportError('cv_import_failed', err.message)));
     });
+
     worker.on('exit', (code) => {
-      clearTimeout(timeout);
       if (code !== 0)
-        reject(new CvImportError('cv_import_failed', `Worker exited with code ${code}`));
+        settle(() =>
+          reject(new CvImportError('cv_import_failed', `Worker exited with code ${code}`)),
+        );
     });
   });
 }
