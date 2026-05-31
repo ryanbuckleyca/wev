@@ -14,7 +14,10 @@ const messages = {
     cvImportDropHint: 'or drag and drop PDF/DOCX',
     cvReimportWarning: 'This will overwrite your current skills and values.',
     cvImportedIndicator: 'Last imported: {fileName} on {importedAt}',
+    cvUploadStartingWarning: 'Uploading your CV...',
     cvParsingWaitWarning: 'Parsing your CV, please wait...',
+    cvReviewingExperienceWarning: 'Reviewing your experience...',
+    cvDeterminingSkillsWarning: 'Determining your skills and values...',
     cvParsingStillWorkingWarning:
       'Still working on your CV... This can take up to a minute. Please remain on this page while it finishes.',
     cv_import_failed: 'CV import failed. Please try another file.',
@@ -257,9 +260,14 @@ describe('CVImportButton', () => {
 
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(notify.info).toHaveBeenCalledWith('Parsing your CV, please wait...', {
-      duration: 60000,
-    });
+    expect(notify.info).toHaveBeenNthCalledWith(
+      1,
+      'Uploading your CV...',
+      expect.objectContaining({
+        id: 'cv-import-progress',
+        duration: 60000,
+      }),
+    );
 
     await act(async () => {
       vi.advanceTimersByTime(15000);
@@ -267,9 +275,23 @@ describe('CVImportButton', () => {
 
     expect(notify.info).toHaveBeenNthCalledWith(
       2,
+      'Parsing your CV, please wait...',
+      expect.objectContaining({
+        id: 'cv-import-progress',
+        duration: 52000,
+      }),
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    expect(notify.info).toHaveBeenNthCalledWith(
+      5,
       'Still working on your CV... This can take up to a minute. Please remain on this page while it finishes.',
       expect.objectContaining({
-        duration: 45000,
+        id: 'cv-import-progress',
+        duration: 15000,
       }),
     );
 
