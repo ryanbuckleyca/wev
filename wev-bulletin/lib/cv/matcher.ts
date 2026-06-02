@@ -1,7 +1,7 @@
 import { logger } from '@/lib/logger';
 import { supabaseServer } from '@/lib/supabase-server';
 import type { EscoSkill } from '@/lib/types/skills';
-import { buildCvWordSet, labelRelevance } from '@/lib/nlp-utils';
+import { buildCvBigramSet, buildCvWordSet, labelRelevance } from '@/lib/nlp-utils';
 import { CvImportError } from './errors';
 import type { CvLocale } from './types';
 import type { SkillPhrase } from './llm';
@@ -10,7 +10,7 @@ const MAX_SKILLS = 10;
 const RPC_MATCHES_PER_PHRASE = 3;
 // Read once at module load. Override via CV_SKILLS_SCORE_FLOOR env var.
 const SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '') || 0.25;
-const RELEVANCE_FLOOR = 0.4;
+const RELEVANCE_FLOOR = 0.5;
 
 type MatchRow = {
   concept_uri: string;
@@ -55,6 +55,7 @@ export function rankAndFilterCandidates(
   cvWords: Set<string>,
   locale: CvLocale,
   scoreFloor: number = SCORE_FLOOR,
+  cvBigrams?: Set<string>,
 ): ScoredMatch[] {
   const bestByUri = new Map<string, ScoredMatch>();
 
@@ -69,7 +70,7 @@ export function rankAndFilterCandidates(
     const promWeight = prominence / 10;
 
     const label = locale === 'fr' ? row.preferred_label_fr : row.preferred_label_en;
-    const relevance = labelRelevance(label ?? '', cvWords, locale);
+    const relevance = labelRelevance(label ?? '', cvWords, locale, cvBigrams);
     if (relevance < RELEVANCE_FLOOR) continue;
 
     const score = row.similarity * promWeight * relevance;
@@ -91,6 +92,7 @@ export async function linkPhrasesToEsco(
   supabase = supabaseServer,
 ): Promise<EscoSkill[]> {
   const cvWords = buildCvWordSet(cvText, locale);
+  const cvBigrams = buildCvBigramSet(cvText, locale);
 
   // Run a single batched RPC to avoid exhausting the Supabase connection pool
   const query_embeddings = embeddings.map((vec) => `[${vec.join(',')}]`);
@@ -109,6 +111,8 @@ export async function linkPhrasesToEsco(
     skillPhrases,
     cvWords,
     locale,
+    SCORE_FLOOR,
+    cvBigrams,
   );
   const topMatches = scoredMatches.slice(0, MAX_SKILLS);
 

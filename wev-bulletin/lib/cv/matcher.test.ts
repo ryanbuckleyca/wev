@@ -110,7 +110,7 @@ describe('skill-matcher', () => {
       const cvWords = new Set(['management']); // 1 out of 4 words matches -> 0.25 relevance
 
       const result = rankAndFilterCandidates(rows2, phrases, cvWords, 'en', 0.25);
-      expect(result).toHaveLength(0); // dropped due to relevance < 0.4
+      expect(result).toHaveLength(0); // dropped due to relevance < 0.5
     });
 
     it('sorts results by score descending', () => {

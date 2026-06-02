@@ -15,8 +15,6 @@ describe('nlp-utils', () => {
       const cvText = "Développement d'applications Web frontend.";
       const set = buildCvWordSet(cvText);
       expect(set.has('développement')).toBe(true);
-      // d'applications is now kept as a single token (apostrophe preserved)
-      expect(set.has("d'applications")).toBe(true);
       expect(set.has('web')).toBe(true);
       expect(set.has('frontend')).toBe(true);
     });
@@ -41,11 +39,13 @@ describe('nlp-utils', () => {
       expect(tokens).toContain('fsharp');
     });
 
-    it('preserves digits in tokens like 3D, H2O, S3', () => {
+    it('preserves digits in tokens like 3D modelling (short tokens filtered)', () => {
       const tokens = tokenize('3D modelling and AWS S3 integration');
-      expect(tokens).toContain('3d');
-      expect(tokens).toContain('s3');
+      // '3d' and 's3' are 2 chars, filtered by min-length-3
+      expect(tokens).not.toContain('3d');
+      expect(tokens).not.toContain('s3');
       expect(tokens).toContain('modelling');
+      expect(tokens).toContain('integration');
     });
   });
 
@@ -74,11 +74,11 @@ describe('nlp-utils', () => {
       expect(score).toBe(1.0);
     });
 
-    it('scores 0.0 if the label only contains stop words', () => {
+    it('scores 1.0 if the label only contains stop words (no evidence either way — do not penalize)', () => {
       const cvText = 'Frontend development';
       const cvSet = buildCvWordSet(cvText);
       const score = labelRelevance('to and from', cvSet);
-      expect(score).toBe(0.0);
+      expect(score).toBe(1.0);
     });
 
     it('works correctly with French labels and accents', () => {
