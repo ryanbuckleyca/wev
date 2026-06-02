@@ -25,6 +25,7 @@
   },
   "scripts": {
     "dev": "dotenv -e .env -- npm run dev --prefix wev-bulletin",
+    "prep": "npx supabase start && npx supabase db reset && npm run seed:local",
     "prepare": "node scripts/prepare-git-hooks.cjs",
     "build": "dotenv -e .env -- npm run build --prefix wev-bulletin",
     "start": "npm start --prefix wev-bulletin",
