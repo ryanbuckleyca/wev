@@ -7,7 +7,7 @@ import type { CvLocale } from './types';
 import type { SkillPhrase } from './llm';
 
 const MAX_SKILLS = 10;
-const RPC_MATCHES_PER_PHRASE = 12;
+const RPC_MATCHES_PER_PHRASE = 3;
 // Read once at module load. Override via CV_SKILLS_SCORE_FLOOR env var.
 const SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '') || 0.25;
 const RELEVANCE_FLOOR = 0.4;
