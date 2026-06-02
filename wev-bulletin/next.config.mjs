@@ -21,9 +21,6 @@ const nextConfig = {
   experimental: {
     externalDir: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 };
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
