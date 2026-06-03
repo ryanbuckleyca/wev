@@ -123,12 +123,13 @@ ${cvSnippet}
 Candidate ESCO skills (index | URI | label):
 ${candidateList}
 
-Select up to ${MAX_SKILLS} skills that best match what this person has actually demonstrated. Be selective — only include skills clearly evidenced in the CV. Prefer broader, reusable skill labels over domain-specific variants unless the specific domain is explicitly mentioned in the CV. Order from best match to weakest.
+Select up to ${MAX_SKILLS} skills that best match what this person has actually demonstrated. Aim for ${MAX_SKILLS} — only return fewer if you genuinely cannot find that many clearly supported matches. Prefer broader, reusable skill labels over domain-specific variants unless the specific domain is explicitly mentioned in the CV. Order from best match to weakest.
 
 Rules:
 - Return ONLY URIs from the list above, exactly as written
 - Do not invent new URIs
-- Return fewer than ${MAX_SKILLS} if fewer are genuinely supported
+- Do not select skills with domain-specific qualifiers (e.g. ICT, marine, agricultural, legal, clinical) unless that specific domain is explicitly mentioned in the CV
+- Return fewer than ${MAX_SKILLS} only if fewer are genuinely supported
 
 Return JSON: {"selected": ["uri1", "uri2", ...]}`;
 
