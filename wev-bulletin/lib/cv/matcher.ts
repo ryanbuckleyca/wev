@@ -21,7 +21,7 @@ const RPC_MATCHES_PER_PHRASE = 10;
 const SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '') || 0.25;
 const RELEVANCE_FLOOR = 0.4;
 const FINAL_SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_FINAL_SCORE_FLOOR ?? '') || 0.15;
-const UNSUPPORTED_TOKEN_RATIO_CEILING = 0.75;
+const UNSUPPORTED_TOKEN_RATIO_CEILING = 0.60;
 
 type MatchRow = {
   concept_uri: string;
@@ -149,7 +149,7 @@ function scoreHydratedCandidate(
   const labelTokenCount = tokenize(label, true, locale).length;
   const supportScore = phraseOverlap * 0.45 + evidenceOverlap * 0.35 + cvOverlap * 0.2;
   const aliasBonus = aliasOverlap * 0.15;
-  const unsupportedPenalty = unsupportedRatio * 0.35;
+  const unsupportedPenalty = unsupportedRatio * 0.55;
   const taskPenalty = isTaskLikeText(label, locale) ? 0.08 : 0;
   const lengthPenalty = Math.max(0, labelTokenCount - 7) * 0.03;
   const qualityScore = Math.max(
