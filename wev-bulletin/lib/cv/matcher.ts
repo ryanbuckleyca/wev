@@ -110,7 +110,15 @@ async function rerankWithLlm(
 ): Promise<string[]> {
   const cvSnippet = cvText.slice(0, 3000);
   const candidateList = candidates
-    .map((c, i) => `${i + 1}. [${c.concept_uri}] ${getPreferredLabel(c, locale)}`)
+    .map((c, i) => {
+      const label = getPreferredLabel(c, locale);
+      const description =
+        locale === 'fr'
+          ? c.description_fr || c.description_en || ''
+          : c.description_en || c.description_fr || '';
+      const desc = description ? ` — ${description.slice(0, 120)}` : '';
+      return `${i + 1}. [${c.concept_uri}] ${label}${desc}`;
+    })
     .join('\n');
 
   const prompt = `You are matching ESCO skills to a candidate's CV.
@@ -123,7 +131,7 @@ ${cvSnippet}
 Candidate ESCO skills (index | URI | label):
 ${candidateList}
 
-Select up to ${MAX_SKILLS} skills that best match what this person has actually demonstrated. Aim for ${MAX_SKILLS} — only return fewer if you genuinely cannot find that many clearly supported matches. Prefer broader, reusable skill labels over domain-specific variants unless the specific domain is explicitly mentioned in the CV. Order from best match to weakest.
+Select up to ${MAX_SKILLS} skills that best match what this person has actually demonstrated. Aim for ${MAX_SKILLS} — only return fewer if you genuinely cannot find that many clearly supported matches. Read each skill's description carefully — reject any skill whose description describes work the candidate has not done, even if the label sounds plausible. Prefer broader, reusable skill labels over domain-specific variants unless the specific domain is explicitly mentioned in the CV. Order from best match to weakest.
 
 Rules:
 - Return ONLY URIs from the list above, exactly as written
@@ -138,7 +146,7 @@ Return JSON: {"selected": ["uri1", "uri2", ...]}`;
     const completion = await groq.chat.completions.create({
       model: groqModel,
       temperature: 0.0,
-      max_tokens: 400,
+      max_tokens: 500,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: 'You output only valid JSON.' },
