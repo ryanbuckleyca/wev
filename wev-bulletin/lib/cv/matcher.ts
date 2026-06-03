@@ -1,12 +1,8 @@
+import Groq from 'groq-sdk';
 import { logger } from '@/lib/logger';
 import { supabaseServer } from '@/lib/supabase-server';
 import type { EscoSkill } from '@/lib/types/skills';
-import {
-  buildCvWordSet,
-  buildTokenSet,
-  labelRelevance,
-  tokenize,
-} from '@/lib/nlp-utils';
+import { buildCvWordSet, labelRelevance } from '@/lib/nlp-utils';
 import { CvImportError } from './errors';
 import type { CvLocale } from './types';
 import type { SkillPhrase } from './llm';
@@ -14,10 +10,8 @@ import type { SkillPhrase } from './llm';
 const MAX_SKILLS = 10;
 const HYDRATE_CANDIDATES_LIMIT = 30;
 const RPC_MATCHES_PER_PHRASE = 10;
-// Read once at module load. Override via CV_SKILLS_SCORE_FLOOR env var.
 const SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '') || 0.25;
 const RELEVANCE_FLOOR = 0.4;
-const FINAL_SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_FINAL_SCORE_FLOOR ?? '') || 0.15;
 
 type MatchRow = {
   concept_uri: string;
@@ -87,7 +81,7 @@ export function rankAndFilterCandidates(
     const promWeight = prominence / 10;
 
     const label = getPreferredLabel(row, locale);
-    const relevance = labelRelevance(label ?? '', cvWords, locale);
+    const relevance = labelRelevance(label, cvWords, locale);
     if (relevance < RELEVANCE_FLOOR) continue;
 
     const score = row.similarity * promWeight * relevance;
@@ -100,34 +94,72 @@ export function rankAndFilterCandidates(
   return [...bestByUri.values()].sort((a, b) => b.score - a.score);
 }
 
-
-function scoreHydratedCandidate(
-  match: ScoredMatch,
-  meta: EscoMetaRow,
-  skillPhrases: SkillPhrase[],
-  cvWords: Set<string>,
+/**
+ * Use the LLM to select and rank the best ≤10 ESCO skills from the candidates.
+ * The LLM only sees the candidate list and CV text — it cannot invent new URIs.
+ * Returns ordered URIs. Falls back to empty array on any error (caller uses
+ * vector-score ordering as fallback).
+ */
+async function rerankWithLlm(
+  candidates: EscoMetaRow[],
+  cvText: string,
+  groqKey: string,
+  groqModel: string,
   locale: CvLocale,
-): number {
-  const skillPhrase = skillPhrases[match.query_index];
-  if (!skillPhrase) return 0;
+  userId: string,
+): Promise<string[]> {
+  const cvSnippet = cvText.slice(0, 3000);
+  const candidateList = candidates
+    .map((c, i) => `${i + 1}. [${c.concept_uri}] ${getPreferredLabel(c, locale)}`)
+    .join('\n');
 
-  const label = getPreferredLabel(meta, locale);
-  const labelTokens = tokenize(label, true, locale);
+  const prompt = `You are matching ESCO skills to a candidate's CV.
 
-  // Every token in the label must appear in either the CV text or the LLM
-  // phrase that generated this match. This is the primary domain-qualifier
-  // filter: "Agile project management" fails if "agile" isn't in the CV or
-  // phrase, while "coaching and mentoring" passes if both words are present.
-  const phraseWords = buildTokenSet(skillPhrase.phrase, true, locale);
-  const supportWords = new Set([...cvWords, ...phraseWords]);
-  if (labelTokens.some((t) => !supportWords.has(t))) {
-    return 0;
+CV (excerpt):
+"""
+${cvSnippet}
+"""
+
+Candidate ESCO skills (index | URI | label):
+${candidateList}
+
+Select up to ${MAX_SKILLS} skills that best match what this person has actually demonstrated. Be selective — only include skills clearly evidenced in the CV. Order from best match to weakest.
+
+Rules:
+- Return ONLY URIs from the list above, exactly as written
+- Do not invent new URIs
+- Return fewer than ${MAX_SKILLS} if fewer are genuinely supported
+
+Return JSON: {"selected": ["uri1", "uri2", ...]}`;
+
+  try {
+    const groq = new Groq({ apiKey: groqKey, maxRetries: 2, timeout: 20000 });
+    const completion = await groq.chat.completions.create({
+      model: groqModel,
+      temperature: 0.0,
+      max_tokens: 400,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'You output only valid JSON.' },
+        { role: 'user', content: prompt },
+      ],
+    });
+
+    const content = completion.choices?.[0]?.message?.content ?? '';
+    const parsed = JSON.parse(content);
+    const selected: unknown = parsed?.selected;
+
+    if (!Array.isArray(selected)) return [];
+
+    // Validate: only return URIs that are actually in the candidate set
+    const validUris = new Set(candidates.map((c) => c.concept_uri));
+    return (selected as unknown[])
+      .filter((u): u is string => typeof u === 'string' && validUris.has(u))
+      .slice(0, MAX_SKILLS);
+  } catch (err) {
+    logger.warn({ err, userId }, 'CV skill LLM reranking failed — using vector order');
+    return [];
   }
-
-  // Base score: similarity × prominence weight × CV word coverage
-  const cvOverlap = labelRelevance(label, cvWords, locale);
-  const promWeight = 0.5 + skillPhrase.prominence / 20;
-  return match.similarity * promWeight * cvOverlap;
 }
 
 export async function linkPhrasesToEsco(
@@ -136,11 +168,12 @@ export async function linkPhrasesToEsco(
   cvText: string,
   userId: string,
   locale: CvLocale,
+  groqKey?: string,
+  groqModel?: string,
   supabase = supabaseServer,
 ): Promise<EscoSkill[]> {
   const cvWords = buildCvWordSet(cvText, locale);
 
-  // Run a single batched RPC to avoid exhausting the Supabase connection pool
   const query_embeddings = embeddings.map((vec) => `[${vec.join(',')}]`);
   const { data, error } = await supabase.rpc('match_skills_by_embedding', {
     query_embeddings,
@@ -167,10 +200,8 @@ export async function linkPhrasesToEsco(
       uniqueCandidates: scoredMatches.length,
       shortlisted: candidateMatches.length,
       topScore: candidateMatches[0]?.score ?? null,
-      topSimilarity: candidateMatches[0]?.similarity ?? null,
-      floor: SCORE_FLOOR,
     },
-    'CV skills two-stage linking stats',
+    'CV skills candidate shortlist',
   );
 
   if (candidateMatches.length === 0) return [];
@@ -190,39 +221,36 @@ export async function linkPhrasesToEsco(
     throw new CvImportError('embedding_failed', metaError.message);
   }
 
-  const metaByUri = new Map(
-    ((metaData ?? []) as EscoMetaRow[]).map((row) => [row.concept_uri, row]),
-  );
+  const allMeta = (metaData ?? []) as EscoMetaRow[];
+  const metaByUri = new Map(allMeta.map((row) => [row.concept_uri, row]));
 
-  const rerankedMatches = candidateMatches
-    .map((match) => {
-      const meta = metaByUri.get(match.concept_uri);
-      if (!meta) return null;
-      const score = scoreHydratedCandidate(match, meta, skillPhrases, cvWords, locale);
-      return score > 0 ? { ...match, score } : null;
-    })
-    .filter((match): match is ScoredMatch => Boolean(match))
-    .sort((a, b) => b.score - a.score);
-
-  const topScore = rerankedMatches[0]?.score ?? 0;
-  const topMatches = rerankedMatches
-    .filter(
-      (match, index) =>
-        match.score >= FINAL_SCORE_FLOOR &&
-        (index < 3 || topScore === 0 || match.score >= topScore * 0.25),
-    )
-    .slice(0, MAX_SKILLS);
-
-  logger.info(
-    {
+  // LLM reranking: if we have Groq credentials, let the LLM pick the best matches.
+  // This replaces heuristic token-overlap filtering with semantic judgement.
+  if (groqKey && groqModel && allMeta.length > 0) {
+    const selectedUris = await rerankWithLlm(
+      allMeta,
+      cvText,
+      groqKey,
+      groqModel,
+      locale,
       userId,
-      rerankedCandidates: rerankedMatches.length,
-      kept: topMatches.length,
-      topFinalScore: topMatches[0]?.score ?? null,
-      finalScoreFloor: FINAL_SCORE_FLOOR,
-    },
-    'CV skills reranking stats',
-  );
+    );
+
+    if (selectedUris.length > 0) {
+      logger.info({ userId, kept: selectedUris.length }, 'CV skills LLM reranking complete');
+      return selectedUris
+        .map((uri) => metaByUri.get(uri))
+        .filter((row): row is EscoMetaRow => Boolean(row))
+        .map(toEscoSkill);
+    }
+
+    // LLM reranking returned nothing — fall through to vector-score ordering
+    logger.warn({ userId }, 'LLM reranking returned empty — falling back to vector order');
+  }
+
+  // Fallback: return top candidates ordered by vector score, no extra filtering
+  const topMatches = candidateMatches.slice(0, MAX_SKILLS);
+  logger.info({ userId, kept: topMatches.length }, 'CV skills vector-score fallback');
 
   return topMatches
     .map((m) => metaByUri.get(m.concept_uri))

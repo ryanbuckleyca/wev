@@ -29,7 +29,7 @@ export async function extractSkillsAndValuesFromCv({
     try {
       const phrases = llmResult.skills.map((s) => s.phrase);
       const embeddings = await embedPhrases(phrases, jinaKey);
-      skills = await linkPhrasesToEsco(llmResult.skills, embeddings, cvText, userId, locale);
+      skills = await linkPhrasesToEsco(llmResult.skills, embeddings, cvText, userId, locale, groqKey, groqModel);
     } catch (error) {
       logger.error({ err: error, userId }, 'CV skill linking failed');
       throw error;
