@@ -135,11 +135,12 @@ function scoreHydratedCandidate(
   const evidenceOverlap = textCoverage(label, evidenceWords, locale);
   const cvOverlap = labelRelevance(label, cvWords, locale);
 
-  // Hard filter: for short labels (≤4 content words), every content word must
-  // appear in the CV. This prevents "Agile project management" matching a CV
-  // that has "project management" but never mentions "agile".
+  // Hard filter: for very short labels (≤3 content words), every content word
+  // must appear in the CV. This blocks "Agile project management" when "agile"
+  // is absent, while still allowing "scientific research methodology" (4 tokens)
+  // to pass through to the ratio-based scoring.
   const labelTokens = tokenize(label, true, locale);
-  if (labelTokens.length <= 4 && labelTokens.some((t) => !cvWords.has(t))) {
+  if (labelTokens.length <= 3 && labelTokens.some((t) => !cvWords.has(t))) {
     return 0;
   }
 
@@ -249,7 +250,7 @@ export async function linkPhrasesToEsco(
     .filter(
       (match, index) =>
         match.score >= FINAL_SCORE_FLOOR &&
-        (index < 3 || topScore === 0 || match.score >= topScore * 0.3),
+        (index < 3 || topScore === 0 || match.score >= topScore * 0.25),
     )
     .slice(0, MAX_SKILLS);
 
