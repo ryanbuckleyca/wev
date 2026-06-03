@@ -20,8 +20,8 @@ const RPC_MATCHES_PER_PHRASE = 10;
 // Read once at module load. Override via CV_SKILLS_SCORE_FLOOR env var.
 const SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '') || 0.25;
 const RELEVANCE_FLOOR = 0.4;
-const FINAL_SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_FINAL_SCORE_FLOOR ?? '') || 0.25;
-const UNSUPPORTED_TOKEN_RATIO_CEILING = 0.55;
+const FINAL_SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_FINAL_SCORE_FLOOR ?? '') || 0.15;
+const UNSUPPORTED_TOKEN_RATIO_CEILING = 0.75;
 
 type MatchRow = {
   concept_uri: string;
@@ -126,8 +126,10 @@ function scoreHydratedCandidate(
   const label = getPreferredLabel(meta, locale);
   const phraseWords = buildTokenSet(skillPhrase.phrase, true, locale);
   const evidenceWords = buildTokenSet(skillPhrase.evidence, true, locale);
-  const localSupportWords = new Set([...phraseWords, ...evidenceWords]);
-  const fallbackSupportWords = localSupportWords.size > 0 ? localSupportWords : cvWords;
+  // Always include CV words in support set so ESCO label tokens from the
+  // candidate's domain aren't falsely penalized as "unsupported".
+  const localSupportWords = new Set([...phraseWords, ...evidenceWords, ...cvWords]);
+  const fallbackSupportWords = localSupportWords;
 
   const phraseOverlap = textCoverage(label, phraseWords, locale);
   const evidenceOverlap = textCoverage(label, evidenceWords, locale);
@@ -238,7 +240,7 @@ export async function linkPhrasesToEsco(
     .filter(
       (match, index) =>
         match.score >= FINAL_SCORE_FLOOR &&
-        (index < 3 || topScore === 0 || match.score >= topScore * 0.45),
+        (index < 3 || topScore === 0 || match.score >= topScore * 0.3),
     )
     .slice(0, MAX_SKILLS);
 
