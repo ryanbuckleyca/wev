@@ -150,8 +150,8 @@ function scoreHydratedCandidate(
   const supportScore = phraseOverlap * 0.45 + evidenceOverlap * 0.35 + cvOverlap * 0.2;
   const aliasBonus = aliasOverlap * 0.15;
   const unsupportedPenalty = unsupportedRatio * 0.35;
-  const taskPenalty = isTaskLikeText(label, locale) ? 0.2 : 0;
-  const lengthPenalty = Math.max(0, labelTokenCount - 6) * 0.04;
+  const taskPenalty = isTaskLikeText(label, locale) ? 0.08 : 0;
+  const lengthPenalty = Math.max(0, labelTokenCount - 7) * 0.03;
   const qualityScore = Math.max(
     0,
     supportScore + aliasBonus - unsupportedPenalty - taskPenalty - lengthPenalty,
