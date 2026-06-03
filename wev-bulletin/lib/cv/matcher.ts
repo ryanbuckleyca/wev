@@ -4,11 +4,8 @@ import type { EscoSkill } from '@/lib/types/skills';
 import {
   buildCvWordSet,
   buildTokenSet,
-  isTaskLikeText,
   labelRelevance,
-  textCoverage,
   tokenize,
-  unsupportedTokenRatio,
 } from '@/lib/nlp-utils';
 import { CvImportError } from './errors';
 import type { CvLocale } from './types';
@@ -21,7 +18,6 @@ const RPC_MATCHES_PER_PHRASE = 10;
 const SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '') || 0.25;
 const RELEVANCE_FLOOR = 0.4;
 const FINAL_SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_FINAL_SCORE_FLOOR ?? '') || 0.15;
-const UNSUPPORTED_TOKEN_RATIO_CEILING = 0.60;
 
 type MatchRow = {
   concept_uri: string;
@@ -104,14 +100,6 @@ export function rankAndFilterCandidates(
   return [...bestByUri.values()].sort((a, b) => b.score - a.score);
 }
 
-function bestAliasCoverage(
-  aliases: string[] | undefined,
-  supportWords: Set<string>,
-  locale: CvLocale,
-): number {
-  if (!aliases || aliases.length === 0) return 0;
-  return aliases.reduce((best, alias) => Math.max(best, textCoverage(alias, supportWords, locale)), 0);
-}
 
 function scoreHydratedCandidate(
   match: ScoredMatch,
@@ -124,51 +112,22 @@ function scoreHydratedCandidate(
   if (!skillPhrase) return 0;
 
   const label = getPreferredLabel(meta, locale);
-  const phraseWords = buildTokenSet(skillPhrase.phrase, true, locale);
-  const evidenceWords = buildTokenSet(skillPhrase.evidence, true, locale);
-  // Always include CV words in support set so ESCO label tokens from the
-  // candidate's domain aren't falsely penalized as "unsupported".
-  const localSupportWords = new Set([...phraseWords, ...evidenceWords, ...cvWords]);
-  const fallbackSupportWords = localSupportWords;
-
-  const phraseOverlap = textCoverage(label, phraseWords, locale);
-  const evidenceOverlap = textCoverage(label, evidenceWords, locale);
-  const cvOverlap = labelRelevance(label, cvWords, locale);
-
-  // Hard filter: for very short labels (≤3 content words), every content word
-  // must appear in the CV. This blocks "Agile project management" when "agile"
-  // is absent, while still allowing "scientific research methodology" (4 tokens)
-  // to pass through to the ratio-based scoring.
   const labelTokens = tokenize(label, true, locale);
-  if (labelTokens.length <= 3 && labelTokens.some((t) => !cvWords.has(t))) {
+
+  // Every token in the label must appear in either the CV text or the LLM
+  // phrase that generated this match. This is the primary domain-qualifier
+  // filter: "Agile project management" fails if "agile" isn't in the CV or
+  // phrase, while "coaching and mentoring" passes if both words are present.
+  const phraseWords = buildTokenSet(skillPhrase.phrase, true, locale);
+  const supportWords = new Set([...cvWords, ...phraseWords]);
+  if (labelTokens.some((t) => !supportWords.has(t))) {
     return 0;
   }
 
-  const aliasOverlap = Math.max(
-    bestAliasCoverage(meta.alternative_label_en ?? undefined, fallbackSupportWords, locale),
-    bestAliasCoverage(meta.alternative_label_fr ?? undefined, fallbackSupportWords, locale),
-  );
-  const unsupportedRatio = unsupportedTokenRatio(label, fallbackSupportWords, locale);
-  if (
-    unsupportedRatio > UNSUPPORTED_TOKEN_RATIO_CEILING ||
-    (phraseOverlap < 0.34 && evidenceOverlap < 0.34 && cvOverlap < RELEVANCE_FLOOR)
-  ) {
-    return 0;
-  }
-
-  const labelTokenCount = labelTokens.length;
-  const supportScore = phraseOverlap * 0.45 + evidenceOverlap * 0.35 + cvOverlap * 0.2;
-  const aliasBonus = aliasOverlap * 0.15;
-  const unsupportedPenalty = unsupportedRatio * 0.55;
-  const taskPenalty = isTaskLikeText(label, locale) ? 0.08 : 0;
-  const lengthPenalty = Math.max(0, labelTokenCount - 7) * 0.03;
-  const qualityScore = Math.max(
-    0,
-    supportScore + aliasBonus - unsupportedPenalty - taskPenalty - lengthPenalty,
-  );
+  // Base score: similarity × prominence weight × CV word coverage
+  const cvOverlap = labelRelevance(label, cvWords, locale);
   const promWeight = 0.5 + skillPhrase.prominence / 20;
-
-  return match.similarity * promWeight * qualityScore;
+  return match.similarity * promWeight * cvOverlap;
 }
 
 export async function linkPhrasesToEsco(
