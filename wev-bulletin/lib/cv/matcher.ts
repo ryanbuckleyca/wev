@@ -134,6 +134,15 @@ function scoreHydratedCandidate(
   const phraseOverlap = textCoverage(label, phraseWords, locale);
   const evidenceOverlap = textCoverage(label, evidenceWords, locale);
   const cvOverlap = labelRelevance(label, cvWords, locale);
+
+  // Hard filter: for short labels (≤4 content words), every content word must
+  // appear in the CV. This prevents "Agile project management" matching a CV
+  // that has "project management" but never mentions "agile".
+  const labelTokens = tokenize(label, true, locale);
+  if (labelTokens.length <= 4 && labelTokens.some((t) => !cvWords.has(t))) {
+    return 0;
+  }
+
   const aliasOverlap = Math.max(
     bestAliasCoverage(meta.alternative_label_en ?? undefined, fallbackSupportWords, locale),
     bestAliasCoverage(meta.alternative_label_fr ?? undefined, fallbackSupportWords, locale),
@@ -146,7 +155,7 @@ function scoreHydratedCandidate(
     return 0;
   }
 
-  const labelTokenCount = tokenize(label, true, locale).length;
+  const labelTokenCount = labelTokens.length;
   const supportScore = phraseOverlap * 0.45 + evidenceOverlap * 0.35 + cvOverlap * 0.2;
   const aliasBonus = aliasOverlap * 0.15;
   const unsupportedPenalty = unsupportedRatio * 0.55;
