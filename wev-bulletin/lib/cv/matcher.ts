@@ -123,7 +123,7 @@ ${cvSnippet}
 Candidate ESCO skills (index | URI | label):
 ${candidateList}
 
-Select up to ${MAX_SKILLS} skills that best match what this person has actually demonstrated. Be selective — only include skills clearly evidenced in the CV. Order from best match to weakest.
+Select up to ${MAX_SKILLS} skills that best match what this person has actually demonstrated. Be selective — only include skills clearly evidenced in the CV. Prefer broader, reusable skill labels over domain-specific variants unless the specific domain is explicitly mentioned in the CV. Order from best match to weakest.
 
 Rules:
 - Return ONLY URIs from the list above, exactly as written
