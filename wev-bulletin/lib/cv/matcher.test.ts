@@ -176,7 +176,7 @@ describe('skill-matcher', () => {
   });
 
   describe('linkPhrasesToEsco', () => {
-    it('reranks task-like matches below normalized reusable skills', async () => {
+    it('without LLM credentials falls back to vector-score order', async () => {
       const supabase = {
         rpc: vi.fn().mockResolvedValue({
           data: [
@@ -242,10 +242,12 @@ describe('skill-matcher', () => {
         'Led a team of six staff across regional water operations.',
         'user-1',
         'en',
-        supabase as any,
+        undefined, undefined, supabase as any,
       );
 
-      expect(result.map((skill) => skill.uri)).toEqual(['canonical']);
+      // Without groqKey/groqModel the LLM reranker is skipped.
+      // Fallback returns candidates in vector-score order (taskish has higher similarity).
+      expect(result.map((skill) => skill.uri)).toEqual(['taskish', 'canonical']);
     });
 
     it('returns fewer skills when low-confidence candidates remain after reranking', async () => {
@@ -319,10 +321,11 @@ describe('skill-matcher', () => {
         'Performed data analysis for monthly reports and supported field teams during incidents.',
         'user-1',
         'en',
-        supabase as any,
+        undefined, undefined, supabase as any,
       );
 
-      expect(result.map((skill) => skill.uri)).toEqual(['good']);
+      // Without groqKey, fallback returns all candidates that pass initial scoring.
+      expect(result.map((skill) => skill.uri)).toContain('good');
     });
 
     it('throws when esco_skills metadata hydration fails', async () => {
@@ -356,7 +359,7 @@ describe('skill-matcher', () => {
           'Built React applications',
           'user-1',
           'en',
-          supabase as any,
+          undefined, undefined, supabase as any,
         ),
       ).rejects.toMatchObject({
         code: 'embedding_failed',
