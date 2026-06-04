@@ -1,6 +1,7 @@
 import Groq from 'groq-sdk';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
+import { isTaskLikeText } from '@/lib/nlp-utils';
 import { buildPrompt, MAX_VALUES, PROMPT_VERSION } from './prompts';
 import { CvImportError } from './errors';
 import type { CvLocale } from './types';
@@ -9,39 +10,19 @@ import { VALUES_LIST } from '@/lib/values';
 export type SkillPhrase = { phrase: string; evidence: string; prominence: number };
 export type LlmResult = { skills: SkillPhrase[]; values: string[] };
 
-const MAX_SKILL_PHRASE_WORDS = 8;
-const SENTENCE_LIKE_SKILL_PREFIXES = [
-  'led ',
-  'lead ',
-  'managed ',
-  'manage ',
-  'worked ',
-  'work ',
-  'responsible for ',
-  'assisted ',
-  'assist ',
-  'supported ',
-  'support ',
-  'dirige ',
-  'diriger ',
-  'gere ',
-  'gerer ',
-  'travaille ',
-  'travailler ',
-  'responsable de ',
-];
-
 function normalizeSkillText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
 
-function isLikelyReusableSkillPhrase(phrase: string): boolean {
-  const normalized = normalizeSkillText(phrase).toLowerCase();
+/**
+ * Reject phrases that look like task descriptions or full sentences. We check
+ * both the EN and FR prefix lists because the LLM occasionally mixes
+ * languages, and we want a normalized noun-phrase skill label either way.
+ */
+function isReusableSkillPhrase(phrase: string): boolean {
+  const normalized = normalizeSkillText(phrase);
   if (!normalized) return false;
-
-  const wordCount = normalized.split(/\s+/).length;
-  if (wordCount > MAX_SKILL_PHRASE_WORDS) return false;
-  return !SENTENCE_LIKE_SKILL_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+  return !isTaskLikeText(normalized, 'en') && !isTaskLikeText(normalized, 'fr');
 }
 
 const SkillPhraseSchema = z.union([
@@ -61,13 +42,9 @@ const SkillPhraseSchema = z.union([
     })
     .transform((obj) => {
       const normalizedPhrase = normalizeSkillText(obj.phrase);
-      let finalEvidence = normalizedPhrase;
-      if (obj.evidence) {
-        const trimmedEvidence = obj.evidence.trim();
-        if (trimmedEvidence.length >= 3) {
-          finalEvidence = normalizeSkillText(trimmedEvidence);
-        }
-      }
+      const trimmedEvidence = obj.evidence?.trim() ?? '';
+      const finalEvidence =
+        trimmedEvidence.length >= 3 ? normalizeSkillText(trimmedEvidence) : normalizedPhrase;
       return {
         phrase: normalizedPhrase,
         evidence: finalEvidence,
@@ -83,7 +60,7 @@ const LlmResponseSchema = z.object({
       .filter((res) => res.success)
       .map((res) => res.data)
       .filter((s) => s.phrase.length >= 3 && s.evidence.length >= 3)
-      .filter((s) => isLikelyReusableSkillPhrase(s.phrase)),
+      .filter((s) => isReusableSkillPhrase(s.phrase)),
   ),
   values: z.array(z.string()).transform((arr) => {
     const allowed = new Set<string>(VALUES_LIST);

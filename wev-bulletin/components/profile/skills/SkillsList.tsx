@@ -2,6 +2,7 @@ import { useTranslations } from 'next-intl';
 import SkillItem from './SkillItem';
 import { useListbox } from '../useListbox';
 import type { EscoSkill } from '@/lib/types/skills';
+import LoadingIndicator from '../../LoadingIndicator';
 
 interface SkillsListProps {
   skills: EscoSkill[];
@@ -30,6 +31,14 @@ export default function SkillsList({
     skills.length,
     optPrefix,
   );
+
+  if (skills.length === 0 && isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-8">
+        <LoadingIndicator fullScreen={false} message={null} />
+      </div>
+    );
+  }
 
   if (!hasQuery && skills.length === 0 && !isLoading) {
     return <div className="py-8 text-center text-sm text-gray-400">{t('skillsEmptyState')}</div>;

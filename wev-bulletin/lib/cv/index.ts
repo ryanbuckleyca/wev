@@ -2,7 +2,8 @@ import { logger } from '@/lib/logger';
 import type { EscoSkill } from '@/lib/types/skills';
 import { extractWithLlm } from './llm';
 import { embedPhrases } from './embeddings';
-import { linkPhrasesToEsco } from './matcher';
+import { shortlistEscoCandidates, selectFinalSkills } from './matcher';
+import { createGroqReranker } from './reranker';
 import type { CvLocale } from './types';
 
 export async function extractSkillsAndValuesFromCv({
@@ -29,7 +30,22 @@ export async function extractSkillsAndValuesFromCv({
     try {
       const phrases = llmResult.skills.map((s) => s.phrase);
       const embeddings = await embedPhrases(phrases, jinaKey);
-      skills = await linkPhrasesToEsco(llmResult.skills, embeddings, cvText, userId, locale, groqKey, groqModel);
+
+      const candidates = await shortlistEscoCandidates({
+        skillPhrases: llmResult.skills,
+        embeddings,
+        cvText,
+        userId,
+        locale,
+      });
+
+      skills = await selectFinalSkills(
+        candidates,
+        cvText,
+        locale,
+        userId,
+        createGroqReranker(groqKey, groqModel),
+      );
     } catch (error) {
       logger.error({ err: error, userId }, 'CV skill linking failed');
       throw error;
