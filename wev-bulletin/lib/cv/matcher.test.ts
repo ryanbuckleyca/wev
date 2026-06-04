@@ -1,5 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
-import { linkPhrasesToEsco, rankAndFilterCandidates, type BatchMatchRow } from './matcher';
+import { shortlistEscoCandidates, selectFinalSkills, rankAndFilterCandidates, type BatchMatchRow } from './matcher';
+
+async function runMatcher(options: any) {
+  const candidates = await shortlistEscoCandidates(options);
+  return selectFinalSkills(
+    candidates,
+    options.cvText,
+    options.locale,
+    options.userId,
+    options.reranker,
+  );
+}
 
 vi.mock('@/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -175,193 +186,197 @@ describe('skill-matcher', () => {
     });
   });
 
-  describe('linkPhrasesToEsco', () => {
-    it('reranks task-like matches below normalized reusable skills', async () => {
-      const supabase = {
-        rpc: vi.fn().mockResolvedValue({
-          data: [
-            {
-              query_index: 0,
-              concept_uri: 'taskish',
-              preferred_label_en: 'lead a team in water management',
-              preferred_label_fr: 'lead a team in water management',
-              similarity: 0.95,
-            },
-            {
-              query_index: 0,
-              concept_uri: 'canonical',
-              preferred_label_en: 'team leadership',
-              preferred_label_fr: 'team leadership',
-              similarity: 0.9,
-            },
-          ],
-          error: null,
-        }),
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            in: vi.fn().mockResolvedValue({
-              data: [
-                {
-                  concept_uri: 'taskish',
-                  preferred_label_en: 'lead a team in water management',
-                  preferred_label_fr: 'lead a team in water management',
-                  description_en: null,
-                  description_fr: null,
-                  alternative_label_en: null,
-                  alternative_label_fr: null,
-                  skill_type: 'skill',
-                  reuse_level: 'cross-sector',
-                },
-                {
-                  concept_uri: 'canonical',
-                  preferred_label_en: 'team leadership',
-                  preferred_label_fr: 'team leadership',
-                  description_en: null,
-                  description_fr: null,
-                  alternative_label_en: ['lead teams'],
-                  alternative_label_fr: null,
-                  skill_type: 'skill',
-                  reuse_level: 'cross-sector',
-                },
-              ],
-              error: null,
-            }),
-          }),
-        }),
-      };
-
-      const result = await linkPhrasesToEsco(
-        [
+  describe('runMatcher', () => {
+    it('without LLM credentials falls back to vector-score order', async () => {
+      const mockRpc = vi.fn().mockResolvedValue({
+        data: [
           {
-            phrase: 'Team leadership',
-            evidence: 'Led a team of six staff across regional water operations',
-            prominence: 8,
+            query_index: 0,
+            concept_uri: 'a',
+            preferred_label_en: 'react',
+            similarity: 0.9,
+          },
+          {
+            query_index: 0,
+            concept_uri: 'b',
+            preferred_label_en: 'vue',
+            similarity: 0.8,
           },
         ],
-        [new Array(1024).fill(0.1)],
-        'Led a team of six staff across regional water operations.',
-        'user-1',
-        'en',
-        supabase as any,
-      );
+        error: null,
+      });
+      const mockSelect = vi.fn().mockResolvedValue({
+        data: [
+          { concept_uri: 'a', preferred_label_en: 'React' },
+          { concept_uri: 'b', preferred_label_en: 'Vue' },
+        ],
+        error: null,
+      });
 
-      expect(result.map((skill) => skill.uri)).toEqual(['canonical']);
+      const supabase = {
+        rpc: mockRpc,
+        from: () => ({ select: () => ({ in: mockSelect }) }),
+      } as any;
+
+      const result = await runMatcher({
+        skillPhrases: [
+          { phrase: 'react development', evidence: 'Built React apps', prominence: 10 },
+        ],
+        embeddings: [[0.1]],
+        cvText: 'React developer with 5 years experience and Vue skills',
+        userId: 'u1',
+        locale: 'en',
+        supabase,
+      });
+
+      expect(result).toHaveLength(2);
+      expect(result.map((skill: any) => skill.uri)).toEqual(['a', 'b']);
     });
 
     it('returns fewer skills when low-confidence candidates remain after reranking', async () => {
-      const supabase = {
-        rpc: vi.fn().mockResolvedValue({
-          data: [
-            {
-              query_index: 0,
-              concept_uri: 'good',
-              preferred_label_en: 'data analysis',
-              preferred_label_fr: 'data analysis',
-              similarity: 0.91,
-            },
-            {
-              query_index: 1,
-              concept_uri: 'weak',
-              preferred_label_en: 'manage marine rescue operations',
-              preferred_label_fr: 'manage marine rescue operations',
-              similarity: 0.89,
-            },
-          ],
-          error: null,
-        }),
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            in: vi.fn().mockResolvedValue({
-              data: [
-                {
-                  concept_uri: 'good',
-                  preferred_label_en: 'data analysis',
-                  preferred_label_fr: 'data analysis',
-                  description_en: null,
-                  description_fr: null,
-                  alternative_label_en: ['analyse data'],
-                  alternative_label_fr: null,
-                  skill_type: 'skill',
-                  reuse_level: 'cross-sector',
-                },
-                {
-                  concept_uri: 'weak',
-                  preferred_label_en: 'manage marine rescue operations',
-                  preferred_label_fr: 'manage marine rescue operations',
-                  description_en: null,
-                  description_fr: null,
-                  alternative_label_en: null,
-                  alternative_label_fr: null,
-                  skill_type: 'skill',
-                  reuse_level: 'cross-sector',
-                },
-              ],
-              error: null,
-            }),
-          }),
-        }),
-      };
-
-      const result = await linkPhrasesToEsco(
-        [
+      const mockRpc = vi.fn().mockResolvedValue({
+        data: [
           {
-            phrase: 'Data analysis',
-            evidence: 'Performed data analysis for monthly reports',
-            prominence: 9,
-          },
-          {
-            phrase: 'Operations support',
-            evidence: 'Supported field teams during incidents',
-            prominence: 5,
+            query_index: 0,
+            concept_uri: 'a',
+            preferred_label_en: 'react',
+            similarity: 0.9,
           },
         ],
-        [new Array(1024).fill(0.1), new Array(1024).fill(0.2)],
-        'Performed data analysis for monthly reports and supported field teams during incidents.',
-        'user-1',
-        'en',
-        supabase as any,
-      );
+        error: null,
+      });
+      // Mock metadata hydration for only 'a'
+      const mockSelect = vi.fn().mockResolvedValue({
+        data: [{ concept_uri: 'a', preferred_label_en: 'React' }],
+        error: null,
+      });
 
-      expect(result.map((skill) => skill.uri)).toEqual(['good']);
+      const supabase = {
+        rpc: mockRpc,
+        from: () => ({ select: () => ({ in: mockSelect }) }),
+      } as any;
+
+      const reranker = vi.fn().mockResolvedValue(['a', 'b']); // 'b' is not in candidate set
+
+      const result = await runMatcher({
+        skillPhrases: [
+          { phrase: 'react development', evidence: 'Built React apps', prominence: 10 },
+        ],
+        embeddings: [[0.1]],
+        cvText: 'React developer',
+        userId: 'u1',
+        locale: 'en',
+        reranker,
+        supabase,
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].uri).toBe('a');
     });
 
     it('throws when esco_skills metadata hydration fails', async () => {
+      const mockRpc = vi.fn().mockResolvedValue({
+        data: [{ query_index: 0, concept_uri: 'react', preferred_label_en: 'react', similarity: 0.9 }],
+        error: null,
+      });
+      const mockSelect = vi.fn().mockResolvedValue({
+        data: null,
+        error: { message: 'DB down' },
+      });
+
       const supabase = {
-        rpc: vi.fn().mockResolvedValue({
-          data: [
-            {
-              query_index: 0,
-              concept_uri: 'skill:1',
-              preferred_label_en: 'React',
-              preferred_label_fr: 'React',
-              similarity: 0.9,
-            },
-          ],
-          error: null,
-        }),
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            in: vi.fn().mockResolvedValue({
-              data: null,
-              error: { message: 'database unavailable' },
-            }),
-          }),
-        }),
-      };
+        rpc: mockRpc,
+        from: () => ({ select: () => ({ in: mockSelect }) }),
+      } as any;
 
       await expect(
-        linkPhrasesToEsco(
-          [{ phrase: 'React development', evidence: 'Built React applications', prominence: 10 }],
-          [new Array(1024).fill(0.1)],
-          'Built React applications',
-          'user-1',
-          'en',
-          supabase as any,
-        ),
-      ).rejects.toMatchObject({
-        code: 'embedding_failed',
-        message: 'database unavailable',
+        runMatcher({
+          skillPhrases: [
+            { phrase: 'React development', evidence: 'Built React applications', prominence: 10 },
+          ],
+          embeddings: [[0.1]],
+          cvText: 'React dev',
+          userId: 'u1',
+          locale: 'en',
+          supabase,
+        }),
+      ).rejects.toThrow('DB down');
+    });
+
+    it('uses reranker output ordering when reranker returns valid URIs', async () => {
+      const mockRpc = vi.fn().mockResolvedValue({
+        data: [
+          { query_index: 0, concept_uri: 'a', preferred_label_en: 'react', similarity: 0.8 },
+          { query_index: 0, concept_uri: 'b', preferred_label_en: 'leadership', similarity: 0.9 },
+        ],
+        error: null,
       });
+      const mockSelect = vi.fn().mockResolvedValue({
+        data: [
+          { concept_uri: 'a', preferred_label_en: 'React' },
+          { concept_uri: 'b', preferred_label_en: 'Leadership' },
+        ],
+        error: null,
+      });
+
+      const supabase = {
+        rpc: mockRpc,
+        from: () => ({ select: () => ({ in: mockSelect }) }),
+      } as any;
+
+      const reranker = vi.fn().mockResolvedValue(['b', 'a']);
+
+      const result = await runMatcher({
+        skillPhrases: [
+          { phrase: 'team leadership', evidence: 'Led teams', prominence: 10 },
+        ],
+        embeddings: [[0.1]],
+        cvText: 'Led React teams and demonstrated leadership',
+        userId: 'u1',
+        locale: 'en',
+        reranker,
+        supabase,
+      });
+
+      expect(result.map((s: any) => s.uri)).toEqual(['b', 'a']);
+    });
+
+    it('falls back to vector order when reranker returns empty', async () => {
+      const mockRpc = vi.fn().mockResolvedValue({
+        data: [
+          { query_index: 0, concept_uri: 'a', preferred_label_en: 'react', similarity: 0.9 },
+          { query_index: 0, concept_uri: 'b', preferred_label_en: 'leadership', similarity: 0.8 },
+        ],
+        error: null,
+      });
+      const mockSelect = vi.fn().mockResolvedValue({
+        data: [
+          { concept_uri: 'a', preferred_label_en: 'React' },
+          { concept_uri: 'b', preferred_label_en: 'Leadership' },
+        ],
+        error: null,
+      });
+
+      const supabase = {
+        rpc: mockRpc,
+        from: () => ({ select: () => ({ in: mockSelect }) }),
+      } as any;
+
+      const reranker = vi.fn().mockResolvedValue([]);
+
+      const result = await runMatcher({
+        skillPhrases: [
+          { phrase: 'team leadership', evidence: 'Led teams', prominence: 10 },
+        ],
+        embeddings: [[0.1]],
+        cvText: 'Led React teams with leadership skills',
+        userId: 'u1',
+        locale: 'en',
+        reranker,
+        supabase,
+      });
+
+      expect(result.map((s: any) => s.uri)).toEqual(['a', 'b']);
     });
   });
 });

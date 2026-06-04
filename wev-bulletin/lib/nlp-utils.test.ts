@@ -1,7 +1,35 @@
 import { describe, it, expect } from 'vitest';
-import { buildCvWordSet, labelRelevance, tokenize } from './nlp-utils';
+import { buildCvWordSet, labelRelevance, tokenize, isTaskLikeText } from './nlp-utils';
 
 describe('nlp-utils', () => {
+  describe('isTaskLikeText', () => {
+    it('returns true for phrases with 8 or more tokens', () => {
+      expect(isTaskLikeText('one two three four five six seven eight')).toBe(true);
+      expect(isTaskLikeText('this is a very long phrase that should be considered a task description')).toBe(true);
+    });
+
+    it('returns false for phrases with fewer than 8 tokens', () => {
+      expect(isTaskLikeText('one two three four five six seven')).toBe(false);
+    });
+
+    it('returns true for phrases starting with task prefixes', () => {
+      expect(isTaskLikeText('led a team of developers')).toBe(true);
+      expect(isTaskLikeText('managed project timelines')).toBe(true);
+      expect(isTaskLikeText('dirige une équipe', 'fr')).toBe(true);
+    });
+
+    it('returns true for single-word task verbs (the bug)', () => {
+      expect(isTaskLikeText('manage')).toBe(true);
+      expect(isTaskLikeText('diriger', 'fr')).toBe(true);
+    });
+
+    it('returns false for normal skill phrases', () => {
+      expect(isTaskLikeText('software development')).toBe(false);
+      expect(isTaskLikeText('project management')).toBe(false);
+      expect(isTaskLikeText('gestion de projet', 'fr')).toBe(false);
+    });
+  });
+
   describe('buildCvWordSet', () => {
     it('tokenizes English text', () => {
       const cvText = 'Developed frontend web applications using React.';

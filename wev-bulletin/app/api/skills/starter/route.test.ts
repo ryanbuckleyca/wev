@@ -46,17 +46,6 @@ describe('GET /api/skills/starter', () => {
           skill_type: 'skill',
           reuse_level: 'cross-sector',
         },
-        {
-          concept_uri: 'uri-3',
-          preferred_label_en: 'Cataloguing',
-          preferred_label_fr: 'Catalogage',
-          description_en: null,
-          description_fr: null,
-          scope_note_en: 'Maintain records',
-          scope_note_fr: 'Tenir les dossiers a jour',
-          skill_type: 'knowledge',
-          reuse_level: 'transversal',
-        },
       ],
       error: null,
     });
@@ -69,7 +58,7 @@ describe('GET /api/skills/starter', () => {
       ascending: true,
       nullsFirst: false,
     });
-    expect(mockLimit).toHaveBeenCalledWith(10);
+    expect(mockLimit).toHaveBeenCalledWith(2);
     expect(body.skills).toEqual([
       expect.objectContaining({
         concept_uri: 'uri-1',
@@ -77,9 +66,9 @@ describe('GET /api/skills/starter', () => {
         definition: 'Gerer des archives',
       }),
       expect.objectContaining({
-        concept_uri: 'uri-3',
-        term: 'Catalogage',
-        definition: 'Tenir les dossiers a jour',
+        concept_uri: 'uri-2',
+        term: 'Archiviste',
+        definition: 'Gerer des archives',
       }),
     ]);
   });

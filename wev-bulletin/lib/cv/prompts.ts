@@ -5,11 +5,91 @@ export const MAX_TEXT_CHARS = 12_000;
 export const MAX_VALUES = 5;
 export const PROMPT_VERSION = 3;
 
+export const RERANK_CV_SNIPPET_CHARS = 3_000;
+export const RERANK_DESCRIPTION_CHARS = 200;
+
 function truncateAtWord(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   const sliced = text.slice(0, maxLen);
   const lastSpace = Math.max(sliced.lastIndexOf(' '), sliced.lastIndexOf('\n'));
   return lastSpace > 0 ? sliced.slice(0, lastSpace) : sliced;
+}
+
+export type RerankCandidate = {
+  conceptUri: string;
+  label: string;
+  description: string;
+};
+
+function formatRerankCandidates(candidates: RerankCandidate[]): string {
+  return candidates
+    .map((c, i) => {
+      const desc = c.description
+        ? ` — ${c.description.slice(0, RERANK_DESCRIPTION_CHARS)}`
+        : '';
+      return `${i + 1}. [${c.conceptUri}] ${c.label}${desc}`;
+    })
+    .join('\n');
+}
+
+export function buildRerankPrompt(
+  cvText: string,
+  candidates: RerankCandidate[],
+  maxSkills: number,
+  locale: CvLocale = 'en',
+): string {
+  const cvSnippet = truncateAtWord(cvText, RERANK_CV_SNIPPET_CHARS);
+  const candidateList = formatRerankCandidates(candidates);
+
+  if (locale === 'fr') {
+    return `Tu evalues strictement les competences ESCO par rapport au CV d'une candidate ou d'un candidat.
+
+CV (extrait):
+"""
+${cvSnippet}
+"""
+
+Competences ESCO candidates:
+${candidateList}
+
+TACHE: Selectionne jusqu'a ${maxSkills} competences de la liste ci-dessus que cette personne a clairement demontrees. Vise ${maxSkills} mais retourne moins si necessaire.
+
+REGLES DE REJET STRICTES — rejette une competence si UNE des conditions suivantes s'applique:
+1. La description de la competence mentionne un domaine (TIC, technologie, logiciel, numerique, clinique, medical, agricole, marin, juridique, scientifique de type test d'hypotheses) qui n'est PAS mentionne dans le CV
+2. Le libelle de la competence contient un qualificatif de domaine (par ex. "TIC", "Agile", "Lean", "scientifique", "clinique") qui n'apparait pas dans le texte du CV
+3. La description decrit des activites que la personne n'a pas effectuees, meme si le libelle parait pertinent
+
+CRITERES DE SELECTION:
+- L'experience professionnelle reelle de la personne, pas seulement le chevauchement de mots-cles avec le libelle
+- Privilegie les libelles de competences larges et transferables aux variantes specifiques a un domaine
+- "gestion de projet" est acceptable; "gestion de projet TIC" ne l'est pas a moins que le CV mentionne les TIC
+
+Retourne du JSON: {"selected": ["uri1", "uri2", ...]} — uniquement des URIs de la liste ci-dessus, exactement tels qu'ecrits.`;
+  }
+
+  return `You are a strict skills assessor matching ESCO skills to a candidate's CV.
+
+CV (excerpt):
+"""
+${cvSnippet}
+"""
+
+Candidate ESCO skills:
+${candidateList}
+
+TASK: Select up to ${maxSkills} skills from the list above that this candidate has clearly demonstrated. Aim for ${maxSkills} but return fewer if necessary.
+
+STRICT REJECTION RULES — reject a skill if ANY of the following apply:
+1. The skill description mentions a domain (ICT, technology, software, digital, clinical, medical, agricultural, marine, legal, scientific hypothesis-testing) that is NOT mentioned in the CV
+2. The skill label contains a domain qualifier (e.g. "ICT", "Agile", "Lean", "scientific", "clinical") that does not appear in the CV text
+3. The skill description describes activities the candidate has not performed, even if the label sounds relevant
+
+SELECTION CRITERIA:
+- The candidate's actual work experience, not just keyword overlap with the label
+- Prefer broad, transferable skill labels over domain-specific variants
+- "project management" is acceptable; "ICT project management" is not unless the CV mentions ICT
+
+Return JSON: {"selected": ["uri1", "uri2", ...]} — only URIs from the list above, exactly as written.`;
 }
 
 export function buildPrompt(cvText: string, locale: CvLocale = 'en'): string {
