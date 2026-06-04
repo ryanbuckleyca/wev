@@ -233,8 +233,8 @@ export async function linkPhrasesToEsco(
   const allMeta = (metaData ?? []) as EscoMetaRow[];
   const metaByUri = new Map(allMeta.map((row) => [row.concept_uri, row]));
 
-  // LLM reranking: if we have Groq credentials, let the LLM pick the best matches.
-  // This replaces heuristic token-overlap filtering with semantic judgement.
+  // LLM reranking: let the LLM semantically select the best matches from the
+  // candidates. This is more accurate than heuristic token-overlap filtering.
   if (groqKey && groqModel && allMeta.length > 0) {
     const selectedUris = await rerankWithLlm(
       allMeta,
@@ -253,7 +253,6 @@ export async function linkPhrasesToEsco(
         .map(toEscoSkill);
     }
 
-    // LLM reranking returned nothing — fall through to vector-score ordering
     logger.warn({ userId }, 'LLM reranking returned empty — falling back to vector order');
   }
 
