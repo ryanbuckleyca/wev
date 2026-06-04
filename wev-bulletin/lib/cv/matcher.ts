@@ -116,37 +116,41 @@ async function rerankWithLlm(
         locale === 'fr'
           ? c.description_fr || c.description_en || ''
           : c.description_en || c.description_fr || '';
-      const desc = description ? ` — ${description.slice(0, 120)}` : '';
+      const desc = description ? ` — ${description.slice(0, 200)}` : '';
       return `${i + 1}. [${c.concept_uri}] ${label}${desc}`;
     })
     .join('\n');
 
-  const prompt = `You are matching ESCO skills to a candidate's CV.
+  const prompt = `You are a strict skills assessor matching ESCO skills to a candidate's CV.
 
 CV (excerpt):
 """
 ${cvSnippet}
 """
 
-Candidate ESCO skills (index | URI | label):
+Candidate ESCO skills:
 ${candidateList}
 
-Select up to ${MAX_SKILLS} skills that best match what this person has actually demonstrated. Aim for ${MAX_SKILLS} — only return fewer if you genuinely cannot find that many clearly supported matches. Read each skill's description carefully — reject any skill whose description describes work the candidate has not done, even if the label sounds plausible. Prefer broader, reusable skill labels over domain-specific variants unless the specific domain is explicitly mentioned in the CV. Order from best match to weakest.
+TASK: Select up to ${MAX_SKILLS} skills from the list above that this candidate has clearly demonstrated. Aim for ${MAX_SKILLS} but return fewer if necessary.
 
-Rules:
-- Return ONLY URIs from the list above, exactly as written
-- Do not invent new URIs
-- Do not select skills with domain-specific qualifiers (e.g. ICT, marine, agricultural, legal, clinical) unless that specific domain is explicitly mentioned in the CV
-- Return fewer than ${MAX_SKILLS} only if fewer are genuinely supported
+STRICT REJECTION RULES — reject a skill if ANY of the following apply:
+1. The skill description mentions a domain (ICT, technology, software, digital, clinical, medical, agricultural, marine, legal, scientific hypothesis-testing) that is NOT mentioned in the CV
+2. The skill label contains a domain qualifier (e.g. "ICT", "Agile", "Lean", "scientific", "clinical") that does not appear in the CV text
+3. The skill description describes activities the candidate has not performed, even if the label sounds relevant
 
-Return JSON: {"selected": ["uri1", "uri2", ...]}`;
+SELECTION CRITERIA:
+- The candidate's actual work experience, not just keyword overlap with the label
+- Prefer broad, transferable skill labels over domain-specific variants
+- "project management" is acceptable; "ICT project management" is not unless the CV mentions ICT
+
+Return JSON: {"selected": ["uri1", "uri2", ...]} — only URIs from the list above, exactly as written.`;
 
   try {
     const groq = new Groq({ apiKey: groqKey, maxRetries: 2, timeout: 25000 });
     const completion = await groq.chat.completions.create({
       model: groqModel,
       temperature: 0.0,
-      max_tokens: 800,
+      max_tokens: 1000,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: 'You output only valid JSON.' },
