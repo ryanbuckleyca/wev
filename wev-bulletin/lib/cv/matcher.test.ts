@@ -230,23 +230,23 @@ describe('skill-matcher', () => {
         }),
       };
 
-      const result = await linkPhrasesToEsco(
-        [
+      const result = await linkPhrasesToEsco({
+        skillPhrases: [
           {
             phrase: 'Team leadership',
             evidence: 'Led a team of six staff across regional water operations',
             prominence: 8,
           },
         ],
-        [new Array(1024).fill(0.1)],
-        'Led a team of six staff across regional water operations.',
-        'user-1',
-        'en',
-        undefined, undefined, supabase as any,
-      );
+        embeddings: [new Array(1024).fill(0.1)],
+        cvText: 'Led a team of six staff across regional water operations.',
+        userId: 'user-1',
+        locale: 'en',
+        supabase: supabase as any,
+      });
 
-      // Without groqKey/groqModel the LLM reranker is skipped.
-      // Fallback returns candidates in vector-score order (taskish has higher similarity).
+      // Without a reranker, fallback returns candidates in vector-score order
+      // (taskish has higher similarity).
       expect(result.map((skill) => skill.uri)).toEqual(['taskish', 'canonical']);
     });
 
@@ -304,8 +304,8 @@ describe('skill-matcher', () => {
         }),
       };
 
-      const result = await linkPhrasesToEsco(
-        [
+      const result = await linkPhrasesToEsco({
+        skillPhrases: [
           {
             phrase: 'Data analysis',
             evidence: 'Performed data analysis for monthly reports',
@@ -317,14 +317,15 @@ describe('skill-matcher', () => {
             prominence: 5,
           },
         ],
-        [new Array(1024).fill(0.1), new Array(1024).fill(0.2)],
-        'Performed data analysis for monthly reports and supported field teams during incidents.',
-        'user-1',
-        'en',
-        undefined, undefined, supabase as any,
-      );
+        embeddings: [new Array(1024).fill(0.1), new Array(1024).fill(0.2)],
+        cvText:
+          'Performed data analysis for monthly reports and supported field teams during incidents.',
+        userId: 'user-1',
+        locale: 'en',
+        supabase: supabase as any,
+      });
 
-      // Without groqKey, fallback returns all candidates that pass initial scoring.
+      // Without a reranker, fallback returns all candidates that pass initial scoring.
       expect(result.map((skill) => skill.uri)).toContain('good');
     });
 
@@ -353,18 +354,145 @@ describe('skill-matcher', () => {
       };
 
       await expect(
-        linkPhrasesToEsco(
-          [{ phrase: 'React development', evidence: 'Built React applications', prominence: 10 }],
-          [new Array(1024).fill(0.1)],
-          'Built React applications',
-          'user-1',
-          'en',
-          undefined, undefined, supabase as any,
-        ),
+        linkPhrasesToEsco({
+          skillPhrases: [
+            { phrase: 'React development', evidence: 'Built React applications', prominence: 10 },
+          ],
+          embeddings: [new Array(1024).fill(0.1)],
+          cvText: 'Built React applications',
+          userId: 'user-1',
+          locale: 'en',
+          supabase: supabase as any,
+        }),
       ).rejects.toMatchObject({
         code: 'embedding_failed',
         message: 'database unavailable',
       });
+    });
+
+    it('uses reranker output ordering when reranker returns valid URIs', async () => {
+      const supabase = {
+        rpc: vi.fn().mockResolvedValue({
+          data: [
+            {
+              query_index: 0,
+              concept_uri: 'a',
+              preferred_label_en: 'team leadership',
+              preferred_label_fr: 'team leadership',
+              similarity: 0.95,
+            },
+            {
+              query_index: 0,
+              concept_uri: 'b',
+              preferred_label_en: 'team leadership variant',
+              preferred_label_fr: 'team leadership variant',
+              similarity: 0.9,
+            },
+          ],
+          error: null,
+        }),
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  concept_uri: 'a',
+                  preferred_label_en: 'team leadership',
+                  preferred_label_fr: 'team leadership',
+                  description_en: null,
+                  description_fr: null,
+                  alternative_label_en: null,
+                  alternative_label_fr: null,
+                  skill_type: 'skill',
+                  reuse_level: 'cross-sector',
+                },
+                {
+                  concept_uri: 'b',
+                  preferred_label_en: 'team leadership variant',
+                  preferred_label_fr: 'team leadership variant',
+                  description_en: null,
+                  description_fr: null,
+                  alternative_label_en: null,
+                  alternative_label_fr: null,
+                  skill_type: 'skill',
+                  reuse_level: 'cross-sector',
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      };
+
+      const reranker = vi.fn().mockResolvedValue(['b', 'a']);
+
+      const result = await linkPhrasesToEsco({
+        skillPhrases: [
+          { phrase: 'team leadership', evidence: 'Led teams', prominence: 8 },
+        ],
+        embeddings: [new Array(1024).fill(0.1)],
+        cvText: 'Led teams across departments.',
+        userId: 'u',
+        locale: 'en',
+        reranker,
+        supabase: supabase as any,
+      });
+
+      expect(reranker).toHaveBeenCalledOnce();
+      expect(result.map((s) => s.uri)).toEqual(['b', 'a']);
+    });
+
+    it('falls back to vector order when reranker returns empty', async () => {
+      const supabase = {
+        rpc: vi.fn().mockResolvedValue({
+          data: [
+            {
+              query_index: 0,
+              concept_uri: 'a',
+              preferred_label_en: 'team leadership',
+              preferred_label_fr: 'team leadership',
+              similarity: 0.95,
+            },
+          ],
+          error: null,
+        }),
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  concept_uri: 'a',
+                  preferred_label_en: 'team leadership',
+                  preferred_label_fr: 'team leadership',
+                  description_en: null,
+                  description_fr: null,
+                  alternative_label_en: null,
+                  alternative_label_fr: null,
+                  skill_type: 'skill',
+                  reuse_level: 'cross-sector',
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      };
+
+      const reranker = vi.fn().mockResolvedValue([]);
+
+      const result = await linkPhrasesToEsco({
+        skillPhrases: [
+          { phrase: 'team leadership', evidence: 'Led teams', prominence: 8 },
+        ],
+        embeddings: [new Array(1024).fill(0.1)],
+        cvText: 'Led teams across departments.',
+        userId: 'u',
+        locale: 'en',
+        reranker,
+        supabase: supabase as any,
+      });
+
+      expect(result.map((s) => s.uri)).toEqual(['a']);
     });
   });
 });
