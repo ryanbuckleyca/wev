@@ -21,7 +21,14 @@ export async function extractSkillsAndValuesFromCv({
   locale: CvLocale;
   groqModel: string;
 }): Promise<{ skills: EscoSkill[]; values: string[]; warnings: string[] }> {
-  const llmResult = await extractWithLlm({ cvText, groqKey, userId, groqModel, locale });
+  // Guard against empty or obviously too short CV text
+  const trimmedText = cvText.trim();
+  if (trimmedText.length < 50) {
+    logger.warn({ userId, textLength: trimmedText.length }, 'CV text too short for extraction');
+    return { skills: [], values: [], warnings: ['no_skills_extracted'] };
+  }
+
+  const llmResult = await extractWithLlm({ cvText: trimmedText, groqKey, userId, groqModel, locale });
 
   let skills: EscoSkill[] = [];
   const warnings: string[] = [];

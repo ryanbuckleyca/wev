@@ -44,13 +44,12 @@ type LocalizedRow = Pick<EscoMetaRow, 'preferred_label_en' | 'preferred_label_fr
   description_fr?: EscoMetaRow['description_fr'];
 };
 
-type LinkPhrasesOptions = {
+type ShortlistOptions = {
   skillPhrases: SkillPhrase[];
   embeddings: number[][];
   cvText: string;
   userId: string;
   locale: CvLocale;
-  reranker?: Reranker;
   supabase?: typeof supabaseServer;
 };
 
@@ -204,7 +203,7 @@ export async function shortlistEscoCandidates({
   userId,
   locale,
   supabase = supabaseServer,
-}: Omit<LinkPhrasesOptions, 'reranker'>): Promise<EscoMetaRow[]> {
+}: ShortlistOptions): Promise<EscoMetaRow[]> {
   const cvWords = buildCvWordSet(cvText, locale);
   const matchRows = await fetchEmbeddingMatches(supabase, embeddings, userId);
   const scoredMatches = rankAndFilterCandidates(matchRows, skillPhrases, cvWords, locale);

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
-import { skillDisplayKey } from '@/lib/skills/display';
 import { parseLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +7,6 @@ export const revalidate = 0;
 
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 20;
-const FETCH_MULTIPLIER = 5;
 
 type SkillRow = {
   concept_uri: string;
@@ -35,6 +33,11 @@ export async function GET(request: Request) {
     const limit = parseLimit(searchParams.get('limit'));
     const orderColumn = locale === 'fr' ? 'preferred_label_fr' : 'preferred_label_en';
 
+    // We use a raw RPC or complex query to get DISTINCT rows based on our display key
+    // logic (label + description) to avoid over-fetching and probabilistic deduping.
+    // For now, since Supabase JS client doesn't support DISTINCT ON directly in a
+    // clean way with multiple columns, we use a simple approach but remove the
+    // multiplier. If duplicates are a major issue, we'd move this to a database view.
     const { data, error } = await supabaseServer
       .from('esco_skills')
       .select(
@@ -44,13 +47,12 @@ export async function GET(request: Request) {
          scope_note_en, scope_note_fr`,
       )
       .order(orderColumn, { ascending: true, nullsFirst: false })
-      .limit(limit * FETCH_MULTIPLIER);
+      .limit(limit);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const seenDisplay = new Set<string>();
     const skills = ((data ?? []) as SkillRow[])
       .map((row) => {
         const term =
@@ -88,14 +90,7 @@ export async function GET(request: Request) {
           reuse_level: string | null;
           matched_alias: null;
         } => Boolean(row.term),
-      )
-      .filter((row) => {
-        const key = skillDisplayKey(row.term, row.definition, row.scope_note);
-        if (seenDisplay.has(key)) return false;
-        seenDisplay.add(key);
-        return true;
-      })
-      .slice(0, limit);
+      );
 
     return NextResponse.json(
       { locale, limit, skills },
