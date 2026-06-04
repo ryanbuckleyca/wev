@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useAbortableFetch } from '@/hooks/useAbortableFetch';
 import { fetchSkillSearchResults, fetchStarterSkills } from '@/lib/skills/client';
 import type { EscoSkill } from '@/lib/types/skills';
@@ -35,13 +34,6 @@ export function useSkillResults({ isOpen, query, locale }: UseSkillResultsArgs) 
     isOpen && hasQuery,
     SEARCH_DEBOUNCE_MS,
   );
-
-  useEffect(() => {
-    if (!isOpen) {
-      setStarterSkills([]);
-      setSearchResults([]);
-    }
-  }, [isOpen, setStarterSkills, setSearchResults]);
 
   return {
     skills: (hasQuery ? searchResults : starterSkills) ?? [],
