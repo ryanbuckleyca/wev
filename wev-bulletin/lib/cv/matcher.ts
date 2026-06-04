@@ -142,11 +142,11 @@ Rules:
 Return JSON: {"selected": ["uri1", "uri2", ...]}`;
 
   try {
-    const groq = new Groq({ apiKey: groqKey, maxRetries: 2, timeout: 20000 });
+    const groq = new Groq({ apiKey: groqKey, maxRetries: 2, timeout: 25000 });
     const completion = await groq.chat.completions.create({
       model: groqModel,
       temperature: 0.0,
-      max_tokens: 500,
+      max_tokens: 800,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: 'You output only valid JSON.' },
@@ -236,6 +236,7 @@ export async function linkPhrasesToEsco(
   // LLM reranking: let the LLM semantically select the best matches from the
   // candidates. This is more accurate than heuristic token-overlap filtering.
   if (groqKey && groqModel && allMeta.length > 0) {
+    logger.info({ userId, candidates: allMeta.length }, 'CV skills starting LLM reranking');
     const selectedUris = await rerankWithLlm(
       allMeta,
       cvText,
