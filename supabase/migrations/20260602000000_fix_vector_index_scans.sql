@@ -1,24 +1,31 @@
 -- Fix for HNSW index scans in pgvector and scoped statement timeouts.
 --
--- Postgres query planner will default to a sequential scan for vector ORDER BY
+-- Postgres query planner will default to a sequential scan for vector ORDER BY 
 -- queries if there's a WHERE clause on the same column (like WHERE embedding IS NOT NULL)
--- unless specific conditions are met. Because the index inherently handles NULLs
--- or ignores them during similarity search, we can safely remove this WHERE clause
--- to enable lightning-fast HNSW index scans and resolve the statement timeouts.
+-- unless specific conditions are met. 
 --
--- Additionally, we scope the statement timeout to just these functions rather than
--- the entire role. This prevents unrelated runaway queries from holding connections
--- for 60s while giving HNSW search the headroom it needs.
+-- To resolve this while still filtering out rows without embeddings (which would 
+-- otherwise return NULL similarity and potentially slow down the scan), we 
+-- replace the HNSW index with a partial index that explicitly includes the 
+-- NOT NULL constraint. This allows the planner to use the index even when 
+-- the WHERE clause is present.
 
--- Undo any previous role-level timeout settings
+-- 1. Undo any previous role-level timeout settings
 ALTER ROLE authenticated RESET statement_timeout;
 ALTER ROLE authenticator RESET statement_timeout;
 
--- Update the batch overload with an optimized LATERAL join.
+-- 2. Replace the HNSW index with a partial index to support the NOT NULL filter
+DROP INDEX IF EXISTS esco_skills_embedding_hnsw;
+CREATE INDEX esco_skills_embedding_hnsw
+    ON esco_skills
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64)
+    WHERE embedding IS NOT NULL;
+
+-- 3. Update the batch overload with an optimized LATERAL join and NOT NULL filter.
 --
 -- The LATERAL join with an OFFSET 0 fence guarantees an index scan for each
--- vector while allowing the query to be parallelized by the Postgres planner,
--- which is more efficient than a sequential PL/pgSQL loop.
+-- vector while allowing the query to be parallelized by the Postgres planner.
 CREATE OR REPLACE FUNCTION match_skills_by_embedding(
     query_embeddings vector(1024)[],
     match_count     int DEFAULT 5
@@ -52,12 +59,13 @@ AS $func$
             e.preferred_label_fr,
             e.embedding
         FROM esco_skills e
+        WHERE e.embedding IS NOT NULL
         ORDER BY e.embedding <=> q.q_vec
         LIMIT match_count
     ) e;
 $func$;
 
--- Update the single vector overload
+-- 4. Update the single vector overload with the same filter and timeout.
 CREATE OR REPLACE FUNCTION match_skills_by_embedding(
     query_embedding vector(1024),
     match_count     int DEFAULT 80
@@ -77,6 +85,7 @@ AS $func$
         preferred_label_fr,
         1 - (embedding <=> query_embedding) AS similarity
     FROM esco_skills
+    WHERE embedding IS NOT NULL
     ORDER BY embedding <=> query_embedding
     LIMIT match_count;
 $func$;

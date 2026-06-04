@@ -265,7 +265,7 @@ describe('CVImportButton', () => {
       'Uploading your CV...',
       expect.objectContaining({
         id: 'cv-import-progress',
-        duration: 60000,
+        duration: Infinity,
       }),
     );
 
@@ -276,10 +276,10 @@ describe('CVImportButton', () => {
     expect(notify.info).toHaveBeenNthCalledWith(
       2,
       'Parsing your CV, please wait...',
-      expect.objectContaining({
+      {
         id: 'cv-import-progress',
-        duration: 52000,
-      }),
+        duration: Infinity,
+      },
     );
 
     await act(async () => {
@@ -289,10 +289,10 @@ describe('CVImportButton', () => {
     expect(notify.info).toHaveBeenNthCalledWith(
       5,
       'Still working on your CV... This can take up to a minute. Please remain on this page while it finishes.',
-      expect.objectContaining({
+      {
         id: 'cv-import-progress',
-        duration: 15000,
-      }),
+        duration: Infinity,
+      },
     );
 
     await act(async () => {
