@@ -20,7 +20,7 @@ export function useAbortableFetch<T, Args extends any[]>(
     }
 
     const controller = new AbortController();
-    
+
     const execute = async () => {
       setLoading(true);
       setError(null);
@@ -48,7 +48,10 @@ export function useAbortableFetch<T, Args extends any[]>(
       execute();
       return () => controller.abort();
     }
-  }, [enabled, debounceMs, ...args]);
+    // We intentionally use the spread of args to trigger the effect on any arg change.
+    // The caller is responsible for ensuring args is stable (e.g. via useMemo).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, debounceMs, fetcher, ...args]);
 
   return { data, loading, error, setData };
 }

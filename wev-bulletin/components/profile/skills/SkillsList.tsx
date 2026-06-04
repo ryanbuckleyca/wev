@@ -35,7 +35,7 @@ export default function SkillsList({
   if (skills.length === 0 && isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center py-8">
-        <LoadingIndicator fullScreen={false} message={null} />
+        <LoadingIndicator fullScreen={false} message={t('skillsLoading')} />
       </div>
     );
   }

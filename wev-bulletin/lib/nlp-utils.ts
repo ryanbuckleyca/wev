@@ -120,11 +120,11 @@ export function isTaskLikeText(
 ): boolean {
   const tokens = tokenize(text, false, locale);
   if (tokens.length === 0) return true;
-  if (tokens.length > maxWords) return true;
+  if (tokens.length >= maxWords) return true;
 
   const normalized = text.trim().toLowerCase();
   const prefixes = locale === 'fr' ? TASK_LABEL_PREFIXES_FR : TASK_LABEL_PREFIXES_EN;
-  return prefixes.some((prefix) => normalized.startsWith(prefix));
+  return prefixes.some((prefix) => normalized.startsWith(prefix) || normalized === prefix.trim());
 }
 
 /**
