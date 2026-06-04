@@ -16,14 +16,15 @@ import ErrorBox from '@/components/ErrorBox';
 import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
 import { useAuthTurnstile } from '@/hooks/useAuthTurnstile';
 
+type LoginStatus = 'idle' | 'submitting' | 'redirecting';
+
 export default function LoginPage() {
   const t = useTranslations();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [status, setStatus] = useState<LoginStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const { captchaToken, turnstileProps, recycleTurnstileAfterAuthError } = useAuthTurnstile(
     t('auth.login.captchaError'),
@@ -34,20 +35,19 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      setIsRedirecting(true);
+      setStatus('redirecting');
       router.replace('/');
     }
   }, [authLoading, user, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setIsRedirecting(false);
+    setStatus('submitting');
     setError(null);
 
     if (!captchaToken) {
       setError(t('auth.login.captchaRequired'));
-      setLoading(false);
+      setStatus('idle');
       return;
     }
 
@@ -61,20 +61,20 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
       recycleTurnstileAfterAuthError();
-      setIsRedirecting(false);
-      setLoading(false);
+      setStatus('idle');
     } else {
-      setIsRedirecting(true);
+      setStatus('redirecting');
       router.replace('/');
     }
   }
 
-  const isSubmitting = loading || isRedirecting;
-  const submitLabel = isRedirecting
-    ? t('auth.login.redirecting')
-    : loading
-      ? t('auth.login.submitting')
-      : t('auth.login.submit');
+  const isSubmitting = status === 'submitting' || status === 'redirecting';
+  const submitLabel =
+    status === 'redirecting'
+      ? t('auth.login.redirecting')
+      : status === 'submitting'
+        ? t('auth.login.submitting')
+        : t('auth.login.submit');
 
   return (
     <PageLayout variant="centered">

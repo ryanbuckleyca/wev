@@ -51,14 +51,6 @@ export function tokenize(
     });
 }
 
-export function buildTokenSet(
-  text: string,
-  removeStopWords: boolean = true,
-  locale: CvLocale = 'en',
-): Set<string> {
-  return new Set(tokenize(text, removeStopWords, locale));
-}
-
 /** Build a set of all lowercase words in the CV for fast lookup, supporting Unicode letters.
  *
  * Intentionally does NOT remove stop words — we keep the CV word set broad so
@@ -69,72 +61,70 @@ export function buildCvWordSet(text: string, locale: CvLocale = 'en'): Set<strin
   return new Set(tokenize(text, false, locale));
 }
 
-export function tokenCoverage(words: Iterable<string>, supportWords: Set<string>): number {
-  const uniqueWords = Array.from(new Set(words));
-  if (uniqueWords.length === 0) return 0;
-
-  let hits = 0;
-  for (const word of uniqueWords) {
-    if (supportWords.has(word)) hits++;
-  }
-  return hits / uniqueWords.length;
-}
-
-export function textCoverage(
-  text: string,
-  supportWords: Set<string>,
-  locale: CvLocale = 'en',
-): number {
-  return tokenCoverage(tokenize(text, true, locale), supportWords);
-}
-
-export function unsupportedTokenRatio(
-  text: string,
-  supportWords: Set<string>,
-  locale: CvLocale = 'en',
-): number {
-  const uniqueWords = Array.from(new Set(tokenize(text, true, locale)));
-  if (uniqueWords.length === 0) return 0;
-
-  let misses = 0;
-  for (const word of uniqueWords) {
-    if (!supportWords.has(word)) misses++;
-  }
-  return misses / uniqueWords.length;
-}
-
 const TASK_LABEL_PREFIXES_EN = [
+  'led ',
   'lead ',
   'manage ',
+  'managed ',
   'coordinate ',
-  'assist ',
-  'support ',
-  'perform ',
-  'carry out ',
+  'coordinated ',
+  'work ',
+  'worked ',
   'work with ',
+  'assist ',
+  'assisted ',
+  'support ',
+  'supported ',
+  'perform ',
+  'performed ',
+  'carry out ',
+  'carried out ',
   'responsible for ',
 ];
 
 const TASK_LABEL_PREFIXES_FR = [
+  'dirige ',
   'diriger ',
-  'gerer ',
+  'gère ',
+  'gérer ',
   'coordonner ',
-  'assister ',
-  'soutenir ',
-  'effectuer ',
-  'realiser ',
+  'coordonne ',
+  'travaille ',
+  'travailler ',
   'travailler avec ',
+  'assister ',
+  'assiste ',
+  'soutenir ',
+  'soutenu ',
+  'effectuer ',
+  'effectue ',
+  'réaliser ',
+  'réalise ',
   'responsable de ',
 ];
 
-export function isTaskLikeText(text: string, locale: CvLocale = 'en'): boolean {
+const DEFAULT_MAX_SKILL_PHRASE_WORDS = 8;
+
+/**
+ * Returns true if `text` reads like a task or full-sentence description rather
+ * than a normalized, reusable skill label.
+ *
+ * Heuristics:
+ *   - too many tokens (default >= 8) — skill labels are short noun phrases
+ *   - starts with an action verb prefix ("led ", "manage ", "responsible for ", …)
+ */
+export function isTaskLikeText(
+  text: string,
+  locale: CvLocale = 'en',
+  { maxWords = DEFAULT_MAX_SKILL_PHRASE_WORDS }: { maxWords?: number } = {},
+): boolean {
+  const tokens = tokenize(text, false, locale);
+  if (tokens.length === 0) return true;
+  if (tokens.length >= maxWords) return true;
+
   const normalized = text.trim().toLowerCase();
-  const tokens = tokenize(normalized, true, locale);
-
-  if (tokens.length >= 7) return true;
-
   const prefixes = locale === 'fr' ? TASK_LABEL_PREFIXES_FR : TASK_LABEL_PREFIXES_EN;
-  return prefixes.some((prefix) => normalized.startsWith(prefix));
+  return prefixes.some((prefix) => normalized.startsWith(prefix) || normalized === prefix.trim());
 }
 
 /**
@@ -147,5 +137,12 @@ export function labelRelevance(
   cvWordsSet: Set<string>,
   locale: CvLocale = 'en',
 ): number {
-  return textCoverage(escoLabel, cvWordsSet, locale);
+  const uniqueWords = Array.from(new Set(tokenize(escoLabel, true, locale)));
+  if (uniqueWords.length === 0) return 0;
+
+  let hits = 0;
+  for (const word of uniqueWords) {
+    if (cvWordsSet.has(word)) hits++;
+  }
+  return hits / uniqueWords.length;
 }

@@ -281,6 +281,7 @@
     "skillsEmptyState": "Tapez pour rechercher parmi 13 485 compétences ESCO",
     "skillsMinChars": "Tapez au moins 2 caractères pour rechercher.",
     "skillsNoResults": "Aucune compétence trouvée.",
+    "skillsLoading": "Chargement des compétences…",
     "skillsListboxLabel": "Résultats de recherche de compétences",
     "skillsListboxKbdHint": "Flèches pour parcourir les résultats, Espace ou Entrée pour basculer la sélection.",
     "skillsSelectedRegionLabel": "Compétences sélectionnées, {count, number} {count, plural, one {élément} other {éléments}}",

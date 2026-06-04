@@ -281,6 +281,7 @@
     "skillsEmptyState": "Type to search 13,485 ESCO skills",
     "skillsMinChars": "Type at least 2 characters to search.",
     "skillsNoResults": "No skills found.",
+    "skillsLoading": "Loading skills…",
     "skillsListboxLabel": "Skill search results",
     "skillsListboxKbdHint": "Use Arrow keys to move through results, Space or Enter to toggle selection.",
     "skillsSelectedRegionLabel": "Selected skills, {count, number} {count, plural, one {item} other {items}}",
