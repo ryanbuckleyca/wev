@@ -54,39 +54,53 @@ function postedWithinToDays(postedWithin: string): number | null {
   return null;
 }
 
+function getBulletinMaxAgeCutoff(): string {
+  return new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function applySearchFilter(query: any, vectorColumn: string, searchQuery: string) {
+  if (searchQuery.length > 0) {
+    const { formatted, type } = formatSearchQuery(searchQuery);
+    return query.textSearch(vectorColumn, formatted, { type });
+  }
+  return query;
+}
+
+function applyAgeFilter(query: any, postedWithin: string) {
+  const maxAgeCutoff = getBulletinMaxAgeCutoff();
+  query = query.gte('date_posted', maxAgeCutoff);
+
+  const postedWithinDays = postedWithinToDays(postedWithin);
+  if (postedWithinDays != null) {
+    const cutoff = new Date(Date.now() - postedWithinDays * 24 * 60 * 60 * 1000).toISOString();
+    query = query.gte('date_posted', cutoff);
+  }
+  return query;
+}
+
+function applyBulletinFilters(query: any, input: BulletinQueryInput) {
+  if (input.orgs.length) query = query.in('organization', input.orgs);
+  if (input.provs.length) query = query.in('province', input.provs);
+  if (input.munis.length) query = query.in('municipality', input.munis);
+  if (input.emps.length) query = query.in('employment_type', input.emps);
+  if (input.srcs.length) query = query.in('source', input.srcs);
+  if (input.works.length) query = query.in('work_type', input.works);
+  if (input.onlySse) query = query.is('is_sse', true);
+  if (!input.noSalary) query = query.eq('has_compensation', true);
+  return query;
+}
+
 async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQueryResult> {
   const supabase = await createClient();
   const start = (input.page - 1) * input.limit;
   const end = start + input.limit - 1;
   const searchColumn = input.locale === 'fr' ? 'fts_fr' : 'fts_en';
 
-  const buildQuery = (vectorColumn: string) => {
+  const buildJobsQuery = (vectorColumn: string) => {
     let query = supabase.from('matched_jobs').select(BULLETIN_JOB_SELECT, { count: 'exact' });
-
-    if (input.searchQuery.length > 0) {
-      const { formatted, type } = formatSearchQuery(input.searchQuery);
-      query = query.textSearch(vectorColumn, formatted, { type });
-    }
-
-    if (input.orgs.length) query = query.in('organization', input.orgs);
-    if (input.provs.length) query = query.in('province', input.provs);
-    if (input.munis.length) query = query.in('municipality', input.munis);
-    if (input.emps.length) query = query.in('employment_type', input.emps);
-    if (input.srcs.length) query = query.in('source', input.srcs);
-    if (input.works.length) query = query.in('work_type', input.works);
-    if (input.onlySse) query = query.is('is_sse', true);
-    if (!input.noSalary) query = query.eq('has_compensation', true);
-
-    const maxAgeCutoff = new Date(
-      Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
-    ).toISOString();
-    query = query.gte('date_posted', maxAgeCutoff);
-
-    const postedWithinDays = postedWithinToDays(input.postedWithin); // this mapping uses numbers, but they will be clamped since maxAgeCutoff is handled.
-    if (postedWithinDays != null) {
-      const cutoff = new Date(Date.now() - postedWithinDays * 24 * 60 * 60 * 1000).toISOString();
-      query = query.gte('date_posted', cutoff);
-    }
+    query = applySearchFilter(query, vectorColumn, input.searchQuery);
+    query = applyBulletinFilters(query, input);
+    query = applyAgeFilter(query, input.postedWithin);
 
     switch (input.sortBy) {
       case 'date-asc':
@@ -124,15 +138,8 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
       .from('matched_jobs')
       .select('organization, province, municipality, employment_type, source');
 
-    if (input.searchQuery.length > 0) {
-      const { formatted, type } = formatSearchQuery(input.searchQuery);
-      query = query.textSearch(vectorColumn, formatted, { type });
-    }
-
-    const maxAgeCutoff = new Date(
-      Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
-    ).toISOString();
-    query = query.gte('date_posted', maxAgeCutoff);
+    query = applySearchFilter(query, vectorColumn, input.searchQuery);
+    query = query.gte('date_posted', getBulletinMaxAgeCutoff());
 
     return query;
   };
@@ -140,14 +147,11 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
   const totalAvailableQuery = supabase
     .from('matched_jobs')
     .select('id', { count: 'exact', head: true })
-    .gte(
-      'date_posted',
-      new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString(),
-    );
+    .gte('date_posted', getBulletinMaxAgeCutoff());
 
   const [initialJobsResult, initialFilterOptionsResult, scrapeTime, totalAvailableResult] =
     await Promise.all([
-      buildQuery(searchColumn).range(start, end),
+      buildJobsQuery(searchColumn).range(start, end),
       buildFilterOptionsQuery(searchColumn),
       fetchLastScrapeTime(),
       totalAvailableQuery,
@@ -162,7 +166,7 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     isUndefinedColumnError(jobsResult.error)
   ) {
     [jobsResult, filterOptionsResult] = await Promise.all([
-      buildQuery('fts').range(start, end),
+      buildJobsQuery('fts').range(start, end),
       buildFilterOptionsQuery('fts'),
     ]);
   }
@@ -205,9 +209,7 @@ export async function fetchLastScrapeTime(): Promise<string | null> {
 }
 
 const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
-  const postedCutoff = new Date(
-    Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
-  ).toISOString();
+  const postedCutoff = getBulletinMaxAgeCutoff();
 
   const totalAvailableQuery = supabaseServer
     .from('matched_jobs')

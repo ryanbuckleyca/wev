@@ -10,8 +10,8 @@ export function formatSearchQuery(query: string): {
   const trimmed = query.trim();
   if (!trimmed) return { formatted: '', type: 'websearch' };
 
-  // If it's a single word with no special chars, use prefix matching
-  if (/^[a-zA-Z0-9]+$/.test(trimmed)) {
+  // If it's a single word (including Unicode/accented characters) with no special chars, use prefix matching
+  if (/^[\p{L}\p{N}]+$/u.test(trimmed)) {
     return { formatted: `${trimmed}:*`, type: 'plain' };
   }
 
