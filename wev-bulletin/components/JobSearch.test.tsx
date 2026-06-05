@@ -141,7 +141,7 @@ describe('JobSearch', () => {
   });
 
   it('calls chip onRemove when the remove button on a chip is clicked', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const handleRemoveSse = vi.fn();
     const chips: ActiveFilterChip[] = [
       { id: 'sse', label: 'SSE only', onRemove: handleRemoveSse },
@@ -156,9 +156,9 @@ describe('JobSearch', () => {
     expect(handleRemoveSse).toHaveBeenCalledOnce();
   });
 
-  it('shows "Show all jobs" link when filters are active', () => {
+  it('shows "Clear all filters" link when filters are active', () => {
     renderJobSearch({ hasAnyFilters: true });
-    expect(screen.getByRole('button', { name: 'Show all jobs' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Clear all filters' })).toBeVisible();
   });
 
   it('shows "Use suggested filters" link when not using suggested defaults', () => {
@@ -166,17 +166,25 @@ describe('JobSearch', () => {
     expect(screen.getByRole('button', { name: 'Use suggested filters' })).toBeVisible();
   });
 
-  it('calls onClearAllFilters when "Show all jobs" is clicked', async () => {
-    const user = userEvent.setup();
+  it('calls onClearAllFilters when "Clear all filters" is clicked', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const handleClear = vi.fn();
     renderJobSearch({ hasAnyFilters: true, onClearAllFilters: handleClear });
 
-    await user.click(screen.getByRole('button', { name: 'Show all jobs' }));
+    await user.click(screen.getByRole('button', { name: 'Clear all filters' }));
     expect(handleClear).toHaveBeenCalledOnce();
   });
 
+  it('updates local search input when searchQuery prop changes externally', () => {
+    const { rerender } = renderJobSearch({ searchQuery: 'initial' });
+    expect(screen.getByLabelText('Search jobs')).toHaveValue('initial');
+
+    rerender(<JobSearch {...defaultProps} searchQuery="" />);
+    expect(screen.getByLabelText('Search jobs')).toHaveValue('');
+  });
+
   it('calls onApplySuggestedDefaults when "Use suggested filters" is clicked', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const handleDefaults = vi.fn();
     renderJobSearch({ isSuggestedDefaults: false, onApplySuggestedDefaults: handleDefaults });
 

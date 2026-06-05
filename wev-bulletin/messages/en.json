@@ -18,7 +18,7 @@
     "label": "Filters",
     "hideFilters": "Hide filters",
     "showFilters": "Filters",
-    "showAllJobs": "Show all jobs",
+    "clearAllFilters": "Clear all filters",
     "useSuggestedFilters": "Use suggested filters",
     "sse": {
       "label": "Show only SSE jobs",
