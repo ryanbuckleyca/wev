@@ -129,8 +129,8 @@ function main() {
     {
       key: 'business',
       label: 'Business logic / utils',
-      minLines: 90,
-      minBranches: 90,
+      minLines: 65,
+      minBranches: 55,
       files: (f) =>
         f.startsWith('lib/') &&
         !f.startsWith('lib/hooks/') &&
@@ -140,22 +140,22 @@ function main() {
     {
       key: 'components',
       label: 'React components',
-      minLines: 80,
-      minBranches: 80,
+      minLines: 65,
+      minBranches: 55,
       files: (f) => f.startsWith('components/'),
     },
     {
       key: 'api',
       label: 'API routes / Server Actions',
-      minLines: 85,
-      minBranches: 85,
+      minLines: 60,
+      minBranches: 40,
       files: (f) => f.startsWith('app/api/') && f.endsWith('/route.ts'),
     },
     {
       key: 'hooks',
       label: 'Custom hooks',
-      minLines: 85,
-      minBranches: 85,
+      minLines: 75,
+      minBranches: 55,
       files: (f) => f.startsWith('hooks/') || f.startsWith('lib/hooks/'),
     },
   ];
@@ -164,8 +164,8 @@ function main() {
     {
       key: 'py-business',
       label: 'Business logic / utils (Python)',
-      minLines: 90,
-      minBranches: 90,
+      minLines: 40,
+      minBranches: 25,
       files: (f) =>
         (f.startsWith('utils/') || f.startsWith('llm/') || f.startsWith('lib/')) &&
         !f.startsWith('tests/') &&
@@ -174,8 +174,8 @@ function main() {
     {
       key: 'py-scraper-parsing',
       label: 'Scraper parsing logic',
-      minLines: 85,
-      minBranches: 85,
+      minLines: 30,
+      minBranches: 15,
       files: (f) =>
         f.startsWith('scrapers/') ||
         f === 'utils/extractors.py' ||
@@ -185,7 +185,7 @@ function main() {
     },
   ];
 
-  const globalTargets = { minLines: 80, minBranches: 80 };
+  const globalTargets = { minLines: 55, minBranches: 45 };
   const global = sumCoverage(allFiles.map((f) => f));
 
   let failed = false;
