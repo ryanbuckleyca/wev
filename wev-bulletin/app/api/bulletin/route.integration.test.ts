@@ -54,7 +54,8 @@ vi.mock('next/cache', async (importOriginal) => {
 // Mock Supabase Server Client
 vi.mock('@/lib/supabase/server', () => {
   const chain: Record<string, any> = {
-    then: (onFullfilled: any) => Promise.resolve({ data: [], count: 0, error: null }).then(onFullfilled),
+    then: (onFullfilled: any) =>
+      Promise.resolve({ data: [], count: 0, error: null }).then(onFullfilled),
   };
   mockSelect.mockImplementation(() => chain);
   mockTextSearch.mockImplementation(() => chain);

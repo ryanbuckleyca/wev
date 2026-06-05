@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@/test-utils';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, act } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import JobSearch from './JobSearch';
 import type { ActiveFilterChip } from './JobSearch';
@@ -23,6 +23,14 @@ function renderJobSearch(overrides: Partial<typeof defaultProps> = {}) {
 }
 
 describe('JobSearch', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders the search input with an accessible label', () => {
     renderJobSearch();
     expect(screen.getByLabelText('Search jobs')).toBeVisible();
@@ -34,12 +42,54 @@ describe('JobSearch', () => {
   });
 
   it('calls onSearchChange when the user types', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const handleSearch = vi.fn();
     renderJobSearch({ onSearchChange: handleSearch });
 
     await user.type(screen.getByLabelText('Search jobs'), 'a');
+
+    // Should not be called immediately due to debounce
+    expect(handleSearch).not.toHaveBeenCalled();
+
+    // Advance time to trigger debounce
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
     expect(handleSearch).toHaveBeenCalledWith('a');
+  });
+
+  it('shows a clear button when the search query is not empty', () => {
+    renderJobSearch({ searchQuery: 'designer' });
+    expect(screen.getByRole('button', { name: /clear search/i })).toBeVisible();
+  });
+
+  it('hides the clear button when the search query is empty', () => {
+    renderJobSearch({ searchQuery: '' });
+    expect(screen.queryByRole('button', { name: /clear search/i })).not.toBeInTheDocument();
+  });
+
+  it('clears the search input when the clear button is clicked', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const handleSearch = vi.fn();
+    // Render with an initial query
+    renderJobSearch({ searchQuery: 'designer', onSearchChange: handleSearch });
+
+    const clearBtn = screen.getByRole('button', { name: /clear search/i });
+    await user.click(clearBtn);
+
+    // The input should now be empty immediately
+    expect(screen.getByLabelText('Search jobs')).toHaveValue('');
+
+    // onSearchChange should not be called immediately
+    expect(handleSearch).not.toHaveBeenCalled();
+
+    // Advance time to trigger debounce
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(handleSearch).toHaveBeenCalledWith('');
   });
 
   it('displays the filtered and total job counts', () => {
