@@ -16,8 +16,18 @@ vi.mock('next-intl', async () => {
 
 // Mock i18n navigation
 vi.mock('@/i18n/navigation', () => ({
-  Link: ({ children, href, ...props }: { children: React.ReactNode; href: string; [key: string]: any }) => (
-    <a href={href} {...props}>{children}</a>
+  Link: ({
+    children,
+    href,
+    ...props
+  }: {
+    children: React.ReactNode;
+    href: string;
+    [key: string]: any;
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
   usePathname: vi.fn(() => '/'),
   useRouter: () => ({
@@ -46,7 +56,7 @@ describe('Header', () => {
     return render(
       <NextIntlClientProvider locale="en" messages={messages}>
         <Header {...props} />
-      </NextIntlClientProvider>
+      </NextIntlClientProvider>,
     );
   };
 
@@ -80,9 +90,12 @@ describe('Header', () => {
 
     // Mock getBoundingClientRect for the logo
     // Initially visible (bottom > 0)
-    mainLogo.getBoundingClientRect = vi.fn(() => ({
-      bottom: 100,
-    } as DOMRect));
+    mainLogo.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          bottom: 100,
+        }) as DOMRect,
+    );
 
     renderHeader();
 
@@ -90,9 +103,12 @@ describe('Header', () => {
     expect(logoContainer).toHaveClass('opacity-0');
 
     // Scroll down so logo is past (bottom < 0)
-    mainLogo.getBoundingClientRect = vi.fn(() => ({
-      bottom: -10,
-    } as DOMRect));
+    mainLogo.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          bottom: -10,
+        }) as DOMRect,
+    );
 
     // Trigger scroll
     fireEvent.scroll(window);
