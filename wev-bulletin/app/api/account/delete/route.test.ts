@@ -46,6 +46,10 @@ describe('DELETE /api/account/delete', () => {
     const response = await DELETE(request);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ message: 'Account successfully deleted' });
+    expect(vi.mocked(deleteAccountForCurrentUser)).toHaveBeenCalledWith({
+      userId: 'user-123',
+      password: 'correct-password',
+    });
   });
 
   it('returns error status if AccountServiceError is thrown', async () => {

@@ -100,7 +100,6 @@ function parsePythonCoverage(coverageJsonPath, repoRoot) {
 }
 
 function main() {
-  const strict = process.argv.includes('--strict');
   const repoRoot = path.resolve(__dirname, '..');
   const summaryPath = path.join(repoRoot, 'wev-bulletin', 'coverage', 'coverage-summary.json');
   if (!fs.existsSync(summaryPath)) {
@@ -225,6 +224,12 @@ function main() {
       .map((f) => ({ ...f, relPath: rel(f.filePath) }))
       .filter((f) => g.files(f.relPath));
 
+    if (files.length === 0) {
+      linesOut.push(`${g.label}: FAILED (no matching files found)`);
+      failed = true;
+      continue;
+    }
+
     const agg = sumCoverage(files);
     linesOut.push(
       `${g.label}: lines ${fmt(agg.lines)} (min ${g.minLines}%), branches ${fmt(agg.branches)} (min ${g.minBranches}%), files ${files.length}`,
@@ -236,6 +241,13 @@ function main() {
 
   for (const g of pythonGroups) {
     const files = python.files.filter((f) => g.files(f.filePath));
+
+    if (files.length === 0) {
+      linesOut.push(`${g.label}: FAILED (no matching files found)`);
+      failed = true;
+      continue;
+    }
+
     const agg = sumPythonCoverage(files);
     linesOut.push(
       `${g.label}: lines ${fmt(agg.lines)} (min ${g.minLines}%), branches ${fmt(agg.branches)} (min ${g.minBranches}%), files ${files.length}`,
@@ -246,7 +258,7 @@ function main() {
   }
 
   process.stdout.write(linesOut.join('\n') + '\n');
-  if (failed && strict) process.exit(1);
+  if (failed) process.exit(1);
   process.exit(0);
 }
 

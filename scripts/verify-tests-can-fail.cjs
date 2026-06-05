@@ -78,11 +78,18 @@ function main() {
         find: 'return url.rstrip("/") if url else ""',
         replace: 'return url if url else ""',
       },
-      command: 'cd wev-scraper && . venv/bin/activate && pytest tests/test_url.py',
+      command: 'cd wev-scraper && (./venv/bin/pytest || python3 -m pytest) tests/test_url.py',
     },
   ];
 
   for (const check of checks) {
+    process.stdout.write(`Running baseline for: ${check.label}\n`);
+    const baselineStatus = run(check.command, repoRoot);
+    if (baselineStatus !== 0) {
+      throw new Error(`Baseline failed (tests must pass before mutation): ${check.label}`);
+    }
+
+    process.stdout.write(`Running mutation for: ${check.label}\n`);
     const status = withMutation(check.mutation, () => run(check.command, repoRoot));
     expectFails(status, check.label);
   }
