@@ -4,11 +4,15 @@ import userEvent from '@testing-library/user-event';
 import AuthStatus from './AuthStatus';
 import { createClient } from '@/lib/supabase/client';
 
-// Mock next-intl
-vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => 'en',
-}));
+// Mock next-intl hooks (keep other exports real to avoid cross-test interference)
+vi.mock('next-intl', async () => {
+  const actual = await vi.importActual<typeof import('next-intl')>('next-intl');
+  return {
+    ...actual,
+    useTranslations: () => (key: string) => key,
+    useLocale: () => 'en',
+  };
+});
 
 // Mock supabase client
 vi.mock('@/lib/supabase/client', () => ({

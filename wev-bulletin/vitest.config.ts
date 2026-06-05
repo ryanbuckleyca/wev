@@ -15,7 +15,14 @@ export default defineConfig({
     css: false,
     coverage: {
       provider: 'v8',
-      include: ['lib/**/*.{ts,tsx}', 'components/**/*.{ts,tsx}', 'hooks/**/*.{ts,tsx}'],
+      reporter: ['text', 'json-summary', 'lcov'],
+      reportsDirectory: './coverage',
+      include: [
+        'lib/**/*.{ts,tsx}',
+        'components/**/*.{ts,tsx}',
+        'hooks/**/*.{ts,tsx}',
+        'app/api/**/*.{ts,tsx}',
+      ],
       exclude: ['**/*.test.{ts,tsx}'],
     },
   },

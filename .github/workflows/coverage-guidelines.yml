@@ -1,0 +1,71 @@
+name: Coverage Guidelines Report
+
+on:
+  push:
+    branches:
+      - main
+      - production
+    paths:
+      - "wev-bulletin/**"
+      - "wev-scraper/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "TESTING.md"
+      - ".github/workflows/coverage-guidelines.yml"
+  pull_request:
+    branches:
+      - main
+      - production
+    paths:
+      - "wev-bulletin/**"
+      - "wev-scraper/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "TESTING.md"
+      - ".github/workflows/coverage-guidelines.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage_guidelines:
+    name: Coverage report (non-blocking)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install scraper test deps
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-mock pytest-cov hypothesis
+        working-directory: wev-scraper
+
+      - name: Coverage guidelines report
+        env:
+          SUPABASE_URL: "https://test.supabase.co"
+          SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key"
+          NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co"
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "test-key"
+        run: npm run coverage:guidelines
