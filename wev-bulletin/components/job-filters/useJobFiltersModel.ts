@@ -99,6 +99,7 @@ export interface JobFiltersModel {
 
 export function useJobFiltersModel({
   jobs,
+  filterOptions: externalFilterOptions,
   filteredJobsCount,
   totalJobsCount,
 }: JobFiltersProps): JobFiltersModel {
@@ -303,8 +304,8 @@ export function useJobFiltersModel({
   ]);
 
   const { organizations, provinces, municipalitiesByProvince, employmentTypes, sources } = useMemo(
-    () => buildFilterOptions(jobs),
-    [jobs],
+    () => externalFilterOptions ?? buildFilterOptions(jobs),
+    [externalFilterOptions, jobs],
   );
 
   const handleOrganizationToggle = useCallback(

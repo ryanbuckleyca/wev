@@ -10,11 +10,13 @@ import type { SerializedMatchData } from '@/lib/bulletin/server-data';
 import type { JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 import type { SkillLabel } from '@/lib/bulletin/types';
+import type { BulletinFilterOptions } from '@/lib/bulletin/filter-options';
 
 interface BulletinPageClientProps {
   initialJobs: JobPosting[];
   initialScrapeTime: string | null;
   initialSkillLabels: Record<string, SkillLabel>;
+  initialFilterOptions: BulletinFilterOptions;
   initialTotalJobs: number;
   initialTotalAvailable?: number;
   initialUserId?: string | null;
@@ -37,6 +39,7 @@ export default function BulletinPageClient({
   initialJobs,
   initialScrapeTime,
   initialSkillLabels,
+  initialFilterOptions,
   initialTotalJobs,
   initialTotalAvailable,
   initialUserId,
@@ -81,10 +84,11 @@ export default function BulletinPageClient({
       scrapeTime: initialScrapeTime,
       total: initialTotalJobs,
       totalAvailable: initialTotalAvailable,
-      userId: initialUserId ?? null,
+      userId: initialUserId,
       matchData: initialMatchData,
       bookmarkedJobIds: initialBookmarkedJobIds,
       skillLabels: initialSkillLabels,
+      filterOptions: initialFilterOptions,
     },
   );
 

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@/test-utils';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, act, fireEvent } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import JobSearch from './JobSearch';
 import type { ActiveFilterChip } from './JobSearch';
@@ -23,6 +23,10 @@ function renderJobSearch(overrides: Partial<typeof defaultProps> = {}) {
 }
 
 describe('JobSearch', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders the search input with an accessible label', () => {
     renderJobSearch();
     expect(screen.getByLabelText('Search jobs')).toBeVisible();
@@ -34,12 +38,55 @@ describe('JobSearch', () => {
   });
 
   it('calls onSearchChange when the user types', async () => {
-    const user = userEvent.setup();
+    vi.useFakeTimers();
     const handleSearch = vi.fn();
     renderJobSearch({ onSearchChange: handleSearch });
 
-    await user.type(screen.getByLabelText('Search jobs'), 'a');
+    const input = screen.getByLabelText('Search jobs');
+    fireEvent.change(input, { target: { value: 'a' } });
+
+    // Should not be called immediately due to debounce
+    expect(handleSearch).not.toHaveBeenCalled();
+
+    // Advance time to trigger debounce
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
     expect(handleSearch).toHaveBeenCalledWith('a');
+  });
+
+  it('shows a clear button when the search query is not empty', () => {
+    renderJobSearch({ searchQuery: 'designer' });
+    expect(screen.getByRole('button', { name: /clear search/i })).toBeVisible();
+  });
+
+  it('hides the clear button when the search query is empty', () => {
+    renderJobSearch({ searchQuery: '' });
+    expect(screen.queryByRole('button', { name: /clear search/i })).not.toBeInTheDocument();
+  });
+
+  it('clears the search input when the clear button is clicked', async () => {
+    vi.useFakeTimers();
+    const handleSearch = vi.fn();
+    // Render with an initial query
+    renderJobSearch({ searchQuery: 'designer', onSearchChange: handleSearch });
+
+    const clearBtn = screen.getByRole('button', { name: /clear search/i });
+    fireEvent.click(clearBtn);
+
+    // The input should now be empty immediately
+    expect(screen.getByLabelText('Search jobs')).toHaveValue('');
+
+    // onSearchChange should not be called immediately
+    expect(handleSearch).not.toHaveBeenCalled();
+
+    // Advance time to trigger debounce
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(handleSearch).toHaveBeenCalledWith('');
   });
 
   it('displays the filtered and total job counts', () => {
@@ -77,6 +124,7 @@ describe('JobSearch', () => {
 
     await user.click(screen.getByRole('button', { name: /filters/i }));
     expect(handleExpand).toHaveBeenCalledWith(true);
+    expect(handleExpand).toHaveBeenCalledOnce();
   });
 
   it('renders active filter chips as removable pills', () => {
@@ -106,9 +154,9 @@ describe('JobSearch', () => {
     expect(handleRemoveSse).toHaveBeenCalledOnce();
   });
 
-  it('shows "Show all jobs" link when filters are active', () => {
+  it('shows "Clear all filters" link when filters are active', () => {
     renderJobSearch({ hasAnyFilters: true });
-    expect(screen.getByRole('button', { name: 'Show all jobs' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Clear all filters' })).toBeVisible();
   });
 
   it('shows "Use suggested filters" link when not using suggested defaults', () => {
@@ -116,13 +164,21 @@ describe('JobSearch', () => {
     expect(screen.getByRole('button', { name: 'Use suggested filters' })).toBeVisible();
   });
 
-  it('calls onClearAllFilters when "Show all jobs" is clicked', async () => {
+  it('calls onClearAllFilters when "Clear all filters" is clicked', async () => {
     const user = userEvent.setup();
     const handleClear = vi.fn();
     renderJobSearch({ hasAnyFilters: true, onClearAllFilters: handleClear });
 
-    await user.click(screen.getByRole('button', { name: 'Show all jobs' }));
+    await user.click(screen.getByRole('button', { name: 'Clear all filters' }));
     expect(handleClear).toHaveBeenCalledOnce();
+  });
+
+  it('updates local search input when searchQuery prop changes externally', () => {
+    const { rerender } = renderJobSearch({ searchQuery: 'initial' });
+    expect(screen.getByLabelText('Search jobs')).toHaveValue('initial');
+
+    rerender(<JobSearch {...defaultProps} searchQuery="" />);
+    expect(screen.getByLabelText('Search jobs')).toHaveValue('');
   });
 
   it('calls onApplySuggestedDefaults when "Use suggested filters" is clicked', async () => {
