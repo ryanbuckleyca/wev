@@ -8,7 +8,6 @@ from utils.extractors import (
     extract_salary_from_text,
     extract_title_from_blocks,
 )
-from utils.llm_location_extractor import extract_locations_for_jobs
 from utils.log import scraper_log
 
 MAX_PAGES = 50  # guard against infinite pagination loops
@@ -84,6 +83,7 @@ class GoodWorkScraper(BaseScraper):
             return jobs
         scraper_log(f"\nExtracting locations using LLM for {len(jobs)} jobs...")
         try:
+            from utils.llm_location_extractor import extract_locations_for_jobs
             extract_locations_for_jobs(jobs)
             scraper_log("Location extraction complete.")
         except Exception as e:
