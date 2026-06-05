@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { formatLastScrapeTime } from '@/lib/bulletin/client-data';
 import type { JobPosting } from '@/lib/supabase';
+import type { BulletinFilterOptions } from '@/lib/bulletin/filter-options';
 import type { InitialBulletinData, SkillLabel, UseBulletinDataOptions } from '@/lib/bulletin/types';
 
 const FETCH_TIMEOUT_MS = 10_000;
@@ -29,6 +30,16 @@ export function useBulletinFetch(
   );
   const [skillLabels, setSkillLabels] = useState<Record<string, SkillLabel>>(
     () => initialData?.skillLabels ?? {},
+  );
+  const [filterOptions, setFilterOptions] = useState<BulletinFilterOptions>(
+    () =>
+      initialData?.filterOptions ?? {
+        organizations: [],
+        provinces: [],
+        municipalitiesByProvince: {},
+        employmentTypes: [],
+        sources: [],
+      },
   );
   const [loading, setLoading] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +95,9 @@ export function useBulletinFetch(
       if (data.skillLabels) {
         setSkillLabels(data.skillLabels);
       }
+      if (data.filterOptions) {
+        setFilterOptions(data.filterOptions);
+      }
       setLoading(false);
     } catch (fetchError) {
       if (requestId !== requestIdRef.current) return;
@@ -120,6 +134,7 @@ export function useBulletinFetch(
     lastScrapeTime,
     skillLabels,
     setSkillLabels,
+    filterOptions,
     loading,
     error,
     refresh,

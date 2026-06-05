@@ -2,6 +2,7 @@ import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { SerializedMatchData } from '@/lib/bulletin/server-data';
 import type { BulletinFilters, JobSortOption } from '@/lib/bulletin/job-query';
 import type { SkillLabel } from '@/lib/resolve-skill-labels';
+import type { BulletinFilterOptions } from './filter-options';
 
 export type { SkillLabel };
 
@@ -17,6 +18,7 @@ export interface InitialBulletinData {
   matchData?: SerializedMatchData;
   bookmarkedJobIds?: string[];
   skillLabels?: Record<string, SkillLabel>;
+  filterOptions: BulletinFilterOptions;
 }
 
 export interface BulletinDataState {
@@ -30,6 +32,7 @@ export interface BulletinDataState {
   matchData: Map<string, JobMatchData>;
   bookmarkedJobIds: Set<string>;
   skillLabels: Record<string, SkillLabel>;
+  filterOptions: BulletinFilterOptions;
   totalPages: number;
   itemsPerPage: number;
   refresh: () => Promise<void>;

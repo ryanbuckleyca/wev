@@ -7,6 +7,8 @@ import FilterIcon from './FilterIcon';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { Search1Outlined } from '@lineiconshq/free-icons';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
+import { useState, useEffect } from 'react';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 
 export interface ActiveFilterChip {
   id: string;
@@ -44,6 +46,22 @@ export default function JobSearch({
 }: JobSearchProps) {
   const t = useTranslations();
   const placeholder = t('search.placeholder');
+
+  const [localQuery, setLocalQuery] = useState(searchQuery);
+  const debouncedQuery = useDebounce(localQuery, 300);
+
+  // Sync external changes (like clear all filters) to local state
+  useEffect(() => {
+    setLocalQuery(searchQuery);
+  }, [searchQuery]);
+
+  // Sync local changes to external state after debounce
+  useEffect(() => {
+    if (debouncedQuery !== searchQuery) {
+      onSearchChange(debouncedQuery);
+    }
+  }, [debouncedQuery, onSearchChange, searchQuery]);
+
   return (
     <>
       <div className="p-3 sm:p-4">
@@ -61,8 +79,8 @@ export default function JobSearch({
             <input
               type="text"
               id="search"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
+              value={localQuery}
+              onChange={(e) => setLocalQuery(e.target.value)}
               placeholder={placeholder}
               className="w-full h-10 pl-9 pr-3 border border-border rounded-wev-btn bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
             />

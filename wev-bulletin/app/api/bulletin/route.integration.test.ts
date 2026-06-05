@@ -53,7 +53,9 @@ vi.mock('next/cache', async (importOriginal) => {
 
 // Mock Supabase Server Client
 vi.mock('@/lib/supabase/server', () => {
-  const chain: Record<string, any> = {};
+  const chain: Record<string, any> = {
+    then: (onFullfilled: any) => Promise.resolve({ data: [], count: 0, error: null }).then(onFullfilled),
+  };
   mockSelect.mockImplementation(() => chain);
   mockTextSearch.mockImplementation(() => chain);
   mockIn.mockImplementation(() => chain);
@@ -131,9 +133,16 @@ describe('GET /api/bulletin (handler contract)', () => {
   });
 
   it('uses locale-aware websearch FTS and skips empty search text', async () => {
+    // Multi-word query uses websearch
     await GET(new Request('http://localhost/api/bulletin?locale=fr&q=  economie sociale  '));
     expect(mockTextSearch).toHaveBeenCalledWith('fts_fr', 'economie sociale', {
       type: 'websearch',
+    });
+
+    // Single word query uses prefix matching (plain type)
+    await GET(new Request('http://localhost/api/bulletin?locale=en&q=part'));
+    expect(mockTextSearch).toHaveBeenCalledWith('fts_en', 'part:*', {
+      type: 'plain',
     });
 
     vi.clearAllMocks();
@@ -156,10 +165,11 @@ describe('GET /api/bulletin (handler contract)', () => {
 
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=Community Builder 25'));
 
-    expect(mockTextSearch).toHaveBeenNthCalledWith(1, 'fts_en', 'Community Builder 25', {
+    // Called for both jobs query and filter options query
+    expect(mockTextSearch).toHaveBeenCalledWith('fts_en', 'Community Builder 25', {
       type: 'websearch',
     });
-    expect(mockTextSearch).toHaveBeenNthCalledWith(2, 'fts', 'Community Builder 25', {
+    expect(mockTextSearch).toHaveBeenCalledWith('fts', 'Community Builder 25', {
       type: 'websearch',
     });
   });
