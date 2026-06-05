@@ -113,6 +113,9 @@ npm run test:watch --prefix wev-bulletin
 # With coverage report
 npm run test:coverage --prefix wev-bulletin
 
+# Check coverage against TESTING.md targets (JS + Python)
+npm run coverage:guidelines
+
 # Scraper
 cd wev-scraper && pytest
 cd wev-scraper && pytest --cov --cov-fail-under=85

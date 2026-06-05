@@ -2,14 +2,18 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { usePasswordStrength } from './usePasswordStrength';
 
-// Mock next-intl
-vi.mock('next-intl', () => ({
-  useTranslations: () => {
-    const t = (key: string) => key;
-    t.has = (key: string) => true;
-    return t;
-  },
-}));
+// Mock next-intl hooks (keep other exports real to avoid cross-test interference)
+vi.mock('next-intl', async () => {
+  const actual = await vi.importActual<typeof import('next-intl')>('next-intl');
+  return {
+    ...actual,
+    useTranslations: () => {
+      const t = (key: string) => key;
+      t.has = (_: string) => true;
+      return t;
+    },
+  };
+});
 
 // Mock checkPasswordStrength
 vi.mock('@/lib/password-strength', () => ({

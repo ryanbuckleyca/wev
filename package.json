@@ -46,6 +46,8 @@
     "tsc": "npm run tsc --prefix wev-bulletin",
     "verify": "npm run lint && npm run tsc && npm run test",
     "verify:fix": "npm run lint:fix && npm run tsc && npm run test",
+    "coverage:guidelines": "npm run test:coverage --prefix wev-bulletin && node scripts/generate-scraper-coverage.cjs && node scripts/check-testing-guidelines-coverage.cjs",
+    "coverage:guidelines:strict": "npm run test:coverage --prefix wev-bulletin && node scripts/generate-scraper-coverage.cjs && node scripts/check-testing-guidelines-coverage.cjs --strict",
     "seed:local": "npx tsx supabase/seed-local.ts",
     "seed:staging": "npx tsx supabase/seed-staging.ts",
     "skills:index": "npx tsx wev-scraper/run.ts skills:index",
