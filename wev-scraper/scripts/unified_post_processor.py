@@ -219,7 +219,7 @@ def process_jobs_unified(
             result = processor.process_jobs(batch)
 
             if result is None:
-                scraper_log(f"✗ Processing failed: processor returned None")
+                scraper_log("✗ Processing failed: processor returned None")
                 counts["errors"] += len(batch)
                 continue
 
