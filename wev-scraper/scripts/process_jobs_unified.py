@@ -129,6 +129,11 @@ def process_jobs_unified(
             # Process with unified provider
             result = processor.process_jobs(batch)
             
+            if result is None:
+                scraper_log(f"✗ Batch {batch_num} failed: processor returned None")
+                counts["errors"] += len(batch)
+                continue
+
             if result.get("error"):
                 scraper_log(f"✗ Batch {batch_num} failed: {result['error']}")
                 counts["errors"] += len(batch)
@@ -136,9 +141,14 @@ def process_jobs_unified(
             
             # Update database for each job in batch
             for j, job in enumerate(batch):
-                if j < len(result["results"]):
+                if j < len(result.get("results", [])):
                     job_result = result["results"][j]
                     
+                    if not isinstance(job_result, dict) or not job_result:
+                        scraper_log(f"✗ Invalid or empty result for job {job['id']}")
+                        counts["errors"] += 1
+                        continue
+
                     if not dry_run:
                         _update_job_in_database(job["id"], job_result)
                     
