@@ -63,7 +63,7 @@ function createBuildQueryFn(
     // 1. Text Search (FTS)
     if (input.searchQuery.length > 0) {
       const { formatted, type } = formatSearchQuery(input.searchQuery);
-      query = query.textSearch(vectorColumn, formatted, { type });
+      query = query.textSearch(vectorColumn, formatted, { type: type as any });
     }
 
     // 2. Exact Matchers
@@ -131,29 +131,62 @@ function createBuildQueryFn(
   };
 }
 
-function createFilterOptionsQueryFn(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+async function fetchBulletinFacets(
+  supabase: any,
+  vectorColumn: string,
   input: BulletinApiQueryInput,
-) {
-  return (vectorColumn: string) => {
-    let query = supabase
-      .from('matched_jobs')
-      .select('organization, province, municipality, employment_type, source');
+): Promise<any[]> {
+  const buildBaseQuery = () => {
+    let query = supabase.from('matched_jobs');
 
     // 1. Text Search (FTS)
     if (input.searchQuery.length > 0) {
       const { formatted, type } = formatSearchQuery(input.searchQuery);
-      query = query.textSearch(vectorColumn, formatted, { type });
+      query = query.textSearch(vectorColumn, formatted, { type: type as any });
     }
 
-    // 2. Date Filters (Global for search query)
+    // 2. Date Filters (Global for search query + current date range selection)
     const maxAgeCutoff = new Date(
       Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
     ).toISOString();
     query = query.gte('date_posted', maxAgeCutoff);
 
+    if (input.postedWithin !== 'any') {
+      const days =
+        input.postedWithin === '1-week'
+          ? 7
+          : input.postedWithin === '2-weeks'
+            ? 14
+            : input.postedWithin === '3-weeks'
+              ? 21
+              : 30;
+      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      query = query.gte('date_posted', cutoff);
+    }
+
+    // 3. Other Non-Facet Filters
+    if (input.works.length) query = query.in('work_type', input.works);
+    if (input.onlySse) query = query.is('is_sse', true);
+    if (!input.noSalary) query = query.eq('has_compensation', true);
+
     return query;
   };
+
+  const [orgs, provs, munis, emps, srcs] = await Promise.all([
+    buildBaseQuery().select('organization'),
+    buildBaseQuery().select('province'),
+    buildBaseQuery().select('municipality'),
+    buildBaseQuery().select('employment_type'),
+    buildBaseQuery().select('source'),
+  ]);
+
+  return [
+    ...(orgs.data ?? []),
+    ...(provs.data ?? []),
+    ...(munis.data ?? []),
+    ...(emps.data ?? []),
+    ...(srcs.data ?? []),
+  ];
 }
 
 async function fetchBulletinApiPayload(
@@ -164,7 +197,6 @@ async function fetchBulletinApiPayload(
   const end = start + input.limit - 1;
   const searchColumn = input.locale === 'fr' ? 'fts_fr' : 'fts_en';
   const buildQuery = createBuildQueryFn(supabase, input);
-  const buildFilterOptionsQuery = createFilterOptionsQueryFn(supabase, input);
 
   // Get total available jobs (<= 4 weeks old, no other filters)
   const maxAgeCutoff = new Date(
@@ -176,30 +208,31 @@ async function fetchBulletinApiPayload(
     .gte('date_posted', maxAgeCutoff)
     .limit(0);
 
-  const [initialJobsResult, initialFilterOptionsResult, scrapeTime, totalAvailableResult] =
+  const [initialJobsResult, initialFilterOptionsData, scrapeTime, totalAvailableResult] =
     await Promise.all([
       buildQuery(searchColumn).range(start, end),
-      buildFilterOptionsQuery(searchColumn),
+      fetchBulletinFacets(supabase, searchColumn, input),
       fetchLastScrapeTime(),
       totalAvailableQuery,
     ]);
 
   let jobsResult = initialJobsResult;
-  let filterOptionsResult = initialFilterOptionsResult;
+  let filterOptionsData = initialFilterOptionsData;
 
   if (
     jobsResult.error &&
     input.searchQuery.length > 0 &&
     isUndefinedColumnError(jobsResult.error)
   ) {
-    [jobsResult, filterOptionsResult] = await Promise.all([
+    const [retryJobs, retryFacets] = await Promise.all([
       buildQuery('fts').range(start, end),
-      buildFilterOptionsQuery('fts'),
+      fetchBulletinFacets(supabase, 'fts', input),
     ]);
+    jobsResult = retryJobs;
+    filterOptionsData = retryFacets;
   }
 
   if (jobsResult.error) throw new Error(jobsResult.error.message);
-  if (filterOptionsResult.error) throw new Error(filterOptionsResult.error.message);
   if (totalAvailableResult.error) {
     console.error('Error fetching total available jobs:', totalAvailableResult.error.message);
   }
@@ -213,7 +246,7 @@ async function fetchBulletinApiPayload(
     totalAvailable: totalAvailableResult.count ?? 0,
     lastScrapeTime: scrapeTime,
     skillLabels: Object.fromEntries(labelMap),
-    filterOptions: buildFilterOptions((filterOptionsResult.data ?? []) as any[]),
+    filterOptions: buildFilterOptions(filterOptionsData as any[]),
   };
 }
 

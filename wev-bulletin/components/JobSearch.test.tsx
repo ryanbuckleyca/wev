@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@/test-utils';
+import { render, screen, act, fireEvent } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import JobSearch from './JobSearch';
 import type { ActiveFilterChip } from './JobSearch';
@@ -23,10 +23,6 @@ function renderJobSearch(overrides: Partial<typeof defaultProps> = {}) {
 }
 
 describe('JobSearch', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -42,11 +38,12 @@ describe('JobSearch', () => {
   });
 
   it('calls onSearchChange when the user types', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    vi.useFakeTimers();
     const handleSearch = vi.fn();
     renderJobSearch({ onSearchChange: handleSearch });
 
-    await user.type(screen.getByLabelText('Search jobs'), 'a');
+    const input = screen.getByLabelText('Search jobs');
+    fireEvent.change(input, { target: { value: 'a' } });
 
     // Should not be called immediately due to debounce
     expect(handleSearch).not.toHaveBeenCalled();
@@ -70,13 +67,13 @@ describe('JobSearch', () => {
   });
 
   it('clears the search input when the clear button is clicked', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    vi.useFakeTimers();
     const handleSearch = vi.fn();
     // Render with an initial query
     renderJobSearch({ searchQuery: 'designer', onSearchChange: handleSearch });
 
     const clearBtn = screen.getByRole('button', { name: /clear search/i });
-    await user.click(clearBtn);
+    fireEvent.click(clearBtn);
 
     // The input should now be empty immediately
     expect(screen.getByLabelText('Search jobs')).toHaveValue('');
@@ -127,6 +124,7 @@ describe('JobSearch', () => {
 
     await user.click(screen.getByRole('button', { name: /filters/i }));
     expect(handleExpand).toHaveBeenCalledWith(true);
+    expect(handleExpand).toHaveBeenCalledOnce();
   });
 
   it('renders active filter chips as removable pills', () => {
@@ -141,7 +139,7 @@ describe('JobSearch', () => {
   });
 
   it('calls chip onRemove when the remove button on a chip is clicked', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup();
     const handleRemoveSse = vi.fn();
     const chips: ActiveFilterChip[] = [
       { id: 'sse', label: 'SSE only', onRemove: handleRemoveSse },
@@ -167,7 +165,7 @@ describe('JobSearch', () => {
   });
 
   it('calls onClearAllFilters when "Clear all filters" is clicked', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup();
     const handleClear = vi.fn();
     renderJobSearch({ hasAnyFilters: true, onClearAllFilters: handleClear });
 
@@ -184,7 +182,7 @@ describe('JobSearch', () => {
   });
 
   it('calls onApplySuggestedDefaults when "Use suggested filters" is clicked', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup();
     const handleDefaults = vi.fn();
     renderJobSearch({ isSuggestedDefaults: false, onApplySuggestedDefaults: handleDefaults });
 
