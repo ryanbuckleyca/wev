@@ -63,28 +63,17 @@ export default function MunicipalityFilterSection({
                 </div>
                 {municipalities.map((municipality) => {
                   const isSelected = selectedMunicipalities.includes(municipality);
-                  const isFromSelectedProvince = isProvinceSelected;
 
                   return (
                     <label
                       key={`${province}-${municipality}`}
-                      className={`flex items-center space-x-2 py-1 cursor-pointer rounded px-2 ml-2 transition-colors ${
-                        isFromSelectedProvince
-                          ? 'hover:bg-primary-tint'
-                          : 'hover:bg-background opacity-75'
-                      }`}
+                      className="flex items-center space-x-2 py-1 cursor-pointer rounded px-2 ml-2 transition-colors hover:bg-primary-tint"
                     >
                       <Checkbox
                         checked={isSelected}
                         onChange={() => onToggleMunicipality(municipality)}
                       />
-                      <span
-                        className={`text-sm ${
-                          isFromSelectedProvince ? 'text-foreground' : 'text-muted-foreground'
-                        }`}
-                      >
-                        {municipality}
-                      </span>
+                      <span className="text-sm text-foreground">{municipality}</span>
                     </label>
                   );
                 })}
