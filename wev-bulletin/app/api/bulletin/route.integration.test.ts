@@ -140,10 +140,10 @@ describe('GET /api/bulletin (handler contract)', () => {
       type: 'websearch',
     });
 
-    // Single word query uses prefix matching (plain type)
+    // Single word query uses prefix matching (fts type)
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=part'));
     expect(mockTextSearch).toHaveBeenCalledWith('fts_en', 'part:*', {
-      type: 'plain',
+      type: 'fts',
     });
 
     vi.clearAllMocks();

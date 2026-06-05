@@ -27,7 +27,7 @@ export default function Header({
     }
 
     let cancelled = false;
-    let waitRaf = 0;
+    const waitRaf = 0;
 
     const update = () => {
       if (cancelled) return;
@@ -44,7 +44,7 @@ export default function Header({
     const onScrollOrResize = () => update();
 
     // Initial check and add listeners immediately.
-    // We don't wait for the logo, as the fallback logic (scrollY > 100) 
+    // We don't wait for the logo, as the fallback logic (scrollY > 100)
     // needs to work even if the logo is missing.
     update();
     window.addEventListener('scroll', onScrollOrResize, { passive: true });
