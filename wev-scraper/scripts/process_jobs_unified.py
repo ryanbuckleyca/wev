@@ -144,8 +144,8 @@ def process_jobs_unified(
                 if j < len(result.get("results", [])):
                     job_result = result["results"][j]
                     
-                    if job_result is None:
-                        scraper_log(f"✗ No result for job {job['id']}")
+                    if not isinstance(job_result, dict) or not job_result:
+                        scraper_log(f"✗ Invalid or empty result for job {job['id']}")
                         counts["errors"] += 1
                         continue
 
