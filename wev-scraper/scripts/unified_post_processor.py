@@ -230,8 +230,8 @@ def process_jobs_unified(
 
             # Update database based on task for this batch
             for job, job_result in zip(batch, result.get("results", []), strict=False):
-                if job_result is None:
-                    scraper_log(f"✗ No result for job {job['id']}")
+                if not isinstance(job_result, dict) or not job_result:
+                    scraper_log(f"✗ Invalid or empty result for job {job['id']}")
                     counts["errors"] += 1
                     continue
 
