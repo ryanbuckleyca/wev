@@ -3,7 +3,10 @@
  * If the query is a simple single word, it appends ':*' for prefix matching.
  * Otherwise, it returns the query as-is for websearch.
  */
-export function formatSearchQuery(query: string): { formatted: string; type: 'websearch' | 'plain' } {
+export function formatSearchQuery(query: string): {
+  formatted: string;
+  type: 'websearch' | 'plain';
+} {
   const trimmed = query.trim();
   if (!trimmed) return { formatted: '', type: 'websearch' };
 

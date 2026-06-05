@@ -5,7 +5,7 @@ import Pill from './Pill';
 import ButtonLink from './ButtonLink';
 import FilterIcon from './FilterIcon';
 import { Lineicons } from '@lineiconshq/react-lineicons';
-import { Search1Outlined } from '@lineiconshq/free-icons';
+import { Search1Outlined, XmarkOutlined } from '@lineiconshq/free-icons';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 import { useState, useEffect } from 'react';
 import { useDebounce } from '@/lib/hooks/useDebounce';
@@ -82,8 +82,18 @@ export default function JobSearch({
               value={localQuery}
               onChange={(e) => setLocalQuery(e.target.value)}
               placeholder={placeholder}
-              className="w-full h-10 pl-9 pr-3 border border-border rounded-wev-btn bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+              className="w-full h-10 pl-9 pr-10 border border-border rounded-wev-btn bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
             />
+            {localQuery && (
+              <button
+                type="button"
+                onClick={() => setLocalQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-wev-text-tertiary hover:text-foreground transition-colors p-1"
+                aria-label={t('search.clear')}
+              >
+                <Lineicons icon={XmarkOutlined} size={16} aria-hidden />
+              </button>
+            )}
           </div>
 
           <button

@@ -7,10 +7,7 @@ import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels'
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 
-import {
-  buildFilterOptions,
-  type BulletinFilterOptions,
-} from './filter-options';
+import { buildFilterOptions, type BulletinFilterOptions } from './filter-options';
 import { formatSearchQuery } from './search-utils';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';

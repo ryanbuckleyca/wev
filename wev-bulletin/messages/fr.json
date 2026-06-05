@@ -11,7 +11,8 @@
   "search": {
     "placeholder": "Rechercher par titre de poste, organisation, lieu...",
     "label": "Rechercher des emplois",
-    "button": "Rechercher des emplois"
+    "button": "Rechercher des emplois",
+    "clear": "Effacer la recherche"
   },
   "filters": {
     "label": "Filtres",

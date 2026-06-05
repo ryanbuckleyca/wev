@@ -11,7 +11,8 @@
   "search": {
     "placeholder": "Search by job title, organization, location...",
     "label": "Search jobs",
-    "button": "Search Jobs"
+    "button": "Search Jobs",
+    "clear": "Clear search"
   },
   "filters": {
     "label": "Filters",
