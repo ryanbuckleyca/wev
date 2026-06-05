@@ -11,6 +11,7 @@ const {
   mockFrom,
   mockSelect,
   mockTextSearch,
+  mockFilter,
   mockIn,
   mockIs,
   mockEq,
@@ -22,6 +23,7 @@ const {
   const mockFrom = vi.fn();
   const mockSelect = vi.fn();
   const mockTextSearch = vi.fn();
+  const mockFilter = vi.fn();
   const mockIn = vi.fn();
   const mockIs = vi.fn();
   const mockEq = vi.fn();
@@ -33,6 +35,7 @@ const {
     mockFrom,
     mockSelect,
     mockTextSearch,
+    mockFilter,
     mockIn,
     mockIs,
     mockEq,
@@ -59,6 +62,7 @@ vi.mock('@/lib/supabase/server', () => {
   };
   mockSelect.mockImplementation(() => chain);
   mockTextSearch.mockImplementation(() => chain);
+  mockFilter.mockImplementation(() => chain);
   mockIn.mockImplementation(() => chain);
   mockIs.mockImplementation(() => chain);
   mockEq.mockImplementation(() => chain);
@@ -69,6 +73,7 @@ vi.mock('@/lib/supabase/server', () => {
 
   chain.select = mockSelect;
   chain.textSearch = mockTextSearch;
+  chain.filter = mockFilter;
   chain.in = mockIn;
   chain.is = mockIs;
   chain.eq = mockEq;
@@ -140,11 +145,9 @@ describe('GET /api/bulletin (handler contract)', () => {
       type: 'websearch',
     });
 
-    // Single word query uses prefix matching (fts type)
+    // Single word query uses prefix matching (fts operator via .filter)
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=part'));
-    expect(mockTextSearch).toHaveBeenCalledWith('fts_en', 'part:*', {
-      type: 'fts',
-    });
+    expect(mockFilter).toHaveBeenCalledWith('fts_en', 'fts', 'part:*');
 
     vi.clearAllMocks();
     mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
@@ -153,6 +156,7 @@ describe('GET /api/bulletin (handler contract)', () => {
 
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=   '));
     expect(mockTextSearch).not.toHaveBeenCalled();
+    expect(mockFilter).not.toHaveBeenCalled();
   });
 
   it('falls back to legacy fts column when locale-aware FTS columns are unavailable', async () => {

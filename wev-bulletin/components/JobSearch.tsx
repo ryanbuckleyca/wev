@@ -49,18 +49,21 @@ export default function JobSearch({
 
   const [localQuery, setLocalQuery] = useState(searchQuery);
   const debouncedQuery = useDebounce(localQuery, 300);
-  const lastSyncedQuery = useRef(searchQuery);
+  const lastPropQuery = useRef(searchQuery);
 
   // Sync external changes (like clear all filters) to local state
   useEffect(() => {
-    setLocalQuery(searchQuery);
-    lastSyncedQuery.current = searchQuery;
+    if (searchQuery !== lastPropQuery.current) {
+      setLocalQuery(searchQuery);
+      lastPropQuery.current = searchQuery;
+    }
   }, [searchQuery]);
 
   // Sync local changes to external state after debounce
   useEffect(() => {
-    if (debouncedQuery !== lastSyncedQuery.current) {
-      lastSyncedQuery.current = debouncedQuery;
+    // Only call onSearchChange if the debounced value actually differs from the last prop we saw
+    if (debouncedQuery !== lastPropQuery.current) {
+      lastPropQuery.current = debouncedQuery;
       onSearchChange(debouncedQuery);
     }
   }, [debouncedQuery, onSearchChange]);

@@ -63,21 +63,19 @@ function createBuildQueryFn(
     // 1. Text Search (FTS)
     if (input.searchQuery.length > 0) {
       const { formatted, type } = formatSearchQuery(input.searchQuery);
-      query = query.textSearch(vectorColumn, formatted, { type: type as any });
+      if (type === 'fts') {
+        query = query.filter(vectorColumn, 'fts', formatted);
+      } else {
+        query = query.textSearch(vectorColumn, formatted, { type: type as any });
+      }
     }
 
-    // 2. Exact Matchers
+    // 2. Facet-like Filters
     if (input.orgs.length) query = query.in('organization', input.orgs);
     if (input.provs.length) query = query.in('province', input.provs);
     if (input.munis.length) query = query.in('municipality', input.munis);
     if (input.emps.length) query = query.in('employment_type', input.emps);
     if (input.srcs.length) query = query.in('source', input.srcs);
-    if (input.works.length) query = query.in('work_type', input.works);
-    if (input.onlySse) query = query.is('is_sse', true);
-
-    if (!input.noSalary) {
-      query = query.eq('has_compensation', true);
-    }
 
     // 3. Date Filters
     const maxAgeCutoff = new Date(
@@ -93,12 +91,17 @@ function createBuildQueryFn(
             ? 14
             : input.postedWithin === '3-weeks'
               ? 21
-              : 30; // Will be clamped by maxAgeCutoff above anyway
+              : 30;
       const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
       query = query.gte('date_posted', cutoff);
     }
 
-    // 4. Sorting & Pagination
+    // 4. Other Filters
+    if (input.works.length) query = query.in('work_type', input.works);
+    if (input.onlySse) query = query.is('is_sse', true);
+    if (!input.noSalary) query = query.eq('has_compensation', true);
+
+    // 5. Sorting
     switch (input.sortBy) {
       case 'date-asc':
         query = query.order('date_posted', { ascending: true });
@@ -136,57 +139,48 @@ async function fetchBulletinFacets(
   vectorColumn: string,
   input: BulletinApiQueryInput,
 ): Promise<any[]> {
-  const buildBaseQuery = () => {
-    let query = supabase.from('matched_jobs');
+  let query = supabase
+    .from('matched_jobs')
+    .select('organization, province, municipality, employment_type, source');
 
-    // 1. Text Search (FTS)
-    if (input.searchQuery.length > 0) {
-      const { formatted, type } = formatSearchQuery(input.searchQuery);
+  // 1. Text Search (FTS)
+  if (input.searchQuery.length > 0) {
+    const { formatted, type } = formatSearchQuery(input.searchQuery);
+    if (type === 'fts') {
+      query = query.filter(vectorColumn, 'fts', formatted);
+    } else {
       query = query.textSearch(vectorColumn, formatted, { type: type as any });
     }
+  }
 
-    // 2. Date Filters (Global for search query + current date range selection)
-    const maxAgeCutoff = new Date(
-      Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
-    ).toISOString();
-    query = query.gte('date_posted', maxAgeCutoff);
+  // 2. Date Filters (Global for search query + current date range selection)
+  const maxAgeCutoff = new Date(
+    Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  query = query.gte('date_posted', maxAgeCutoff);
 
-    if (input.postedWithin !== 'any') {
-      const days =
-        input.postedWithin === '1-week'
-          ? 7
-          : input.postedWithin === '2-weeks'
-            ? 14
-            : input.postedWithin === '3-weeks'
-              ? 21
-              : 30;
-      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-      query = query.gte('date_posted', cutoff);
-    }
+  if (input.postedWithin !== 'any') {
+    const days =
+      input.postedWithin === '1-week'
+        ? 7
+        : input.postedWithin === '2-weeks'
+          ? 14
+          : input.postedWithin === '3-weeks'
+            ? 21
+            : 30;
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    query = query.gte('date_posted', cutoff);
+  }
 
-    // 3. Other Non-Facet Filters
-    if (input.works.length) query = query.in('work_type', input.works);
-    if (input.onlySse) query = query.is('is_sse', true);
-    if (!input.noSalary) query = query.eq('has_compensation', true);
+  // 3. Other Non-Facet Filters
+  if (input.works.length) query = query.in('work_type', input.works);
+  if (input.onlySse) query = query.is('is_sse', true);
+  if (!input.noSalary) query = query.eq('has_compensation', true);
 
-    return query;
-  };
+  const { data, error } = await query.limit(5000);
+  if (error) throw new Error(error.message);
 
-  const [orgs, provs, munis, emps, srcs] = await Promise.all([
-    buildBaseQuery().select('organization'),
-    buildBaseQuery().select('province'),
-    buildBaseQuery().select('municipality'),
-    buildBaseQuery().select('employment_type'),
-    buildBaseQuery().select('source'),
-  ]);
-
-  return [
-    ...(orgs.data ?? []),
-    ...(provs.data ?? []),
-    ...(munis.data ?? []),
-    ...(emps.data ?? []),
-    ...(srcs.data ?? []),
-  ];
+  return data ?? [];
 }
 
 async function fetchBulletinApiPayload(

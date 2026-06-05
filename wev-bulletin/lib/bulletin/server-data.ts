@@ -61,6 +61,9 @@ function getBulletinMaxAgeCutoff(): string {
 function applySearchFilter(query: any, vectorColumn: string, searchQuery: string) {
   if (searchQuery.length > 0) {
     const { formatted, type } = formatSearchQuery(searchQuery);
+    if (type === 'fts') {
+      return query.filter(vectorColumn, 'fts', formatted);
+    }
     return query.textSearch(vectorColumn, formatted, { type: type as any });
   }
   return query;
@@ -99,31 +102,19 @@ async function fetchBulletinFacets(
   vectorColumn: string,
   input: BulletinQueryInput,
 ): Promise<BulletinFilterOptions> {
-  const buildBaseQuery = () => {
-    let query = supabase.from('matched_jobs');
-    query = applySearchFilter(query, vectorColumn, input.searchQuery);
-    query = applyAgeFilter(query, input.postedWithin);
-    query = applyNonFacetFilters(query, input);
-    return query;
-  };
+  let query = supabase
+    .from('matched_jobs')
+    .select('organization, province, municipality, employment_type, source');
 
-  const [orgs, provs, munis, emps, srcs] = await Promise.all([
-    buildBaseQuery().select('organization'),
-    buildBaseQuery().select('province'),
-    buildBaseQuery().select('municipality'),
-    buildBaseQuery().select('employment_type'),
-    buildBaseQuery().select('source'),
-  ]);
+  query = applySearchFilter(query, vectorColumn, input.searchQuery);
+  query = applyAgeFilter(query, input.postedWithin);
+  query = applyNonFacetFilters(query, input);
 
-  const allData = [
-    ...(orgs.data ?? []),
-    ...(provs.data ?? []),
-    ...(munis.data ?? []),
-    ...(emps.data ?? []),
-    ...(srcs.data ?? []),
-  ];
+  // Limit the impact of unbounded facet queries while keeping them relatively accurate
+  const { data, error } = await query.limit(5000);
+  if (error) throw new Error(error.message);
 
-  return buildFilterOptions(allData as any[]);
+  return buildFilterOptions((data ?? []) as any[]);
 }
 
 async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQueryResult> {
@@ -241,40 +232,26 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
     .select('id', { count: 'exact', head: true })
     .gte('date_posted', postedCutoff);
 
-  const buildBaseQuery = () =>
+  const [scrapeTime, jobsResult, totalAvailableResult, filterOptionsResult] = await Promise.all([
+    fetchLastScrapeTime(),
     supabaseServer
       .from('matched_jobs')
-      .select('id')
+      .select(BULLETIN_JOB_SELECT, { count: 'exact' })
       .gte('date_posted', postedCutoff)
-      .is('is_sse', true);
-
-  const [scrapeTime, jobsResult, totalAvailableResult, orgs, provs, munis, emps, srcs] =
-    await Promise.all([
-      fetchLastScrapeTime(),
-      supabaseServer
-        .from('matched_jobs')
-        .select(BULLETIN_JOB_SELECT, { count: 'exact' })
-        .gte('date_posted', postedCutoff)
-        .is('is_sse', true)
-        .order('date_posted', { ascending: false })
-        .range(0, 19),
-      totalAvailableQuery,
-      buildBaseQuery().select('organization'),
-      buildBaseQuery().select('province'),
-      buildBaseQuery().select('municipality'),
-      buildBaseQuery().select('employment_type'),
-      buildBaseQuery().select('source'),
-    ]);
+      .is('is_sse', true)
+      .order('date_posted', { ascending: false })
+      .range(0, 19),
+    totalAvailableQuery,
+    supabaseServer
+      .from('matched_jobs')
+      .select('organization, province, municipality, employment_type, source')
+      .gte('date_posted', postedCutoff)
+      .is('is_sse', true)
+      .limit(5000),
+  ]);
 
   if (jobsResult.error) throw new Error(jobsResult.error.message);
-
-  const allData = [
-    ...(orgs.data ?? []),
-    ...(provs.data ?? []),
-    ...(munis.data ?? []),
-    ...(emps.data ?? []),
-    ...(srcs.data ?? []),
-  ];
+  if (filterOptionsResult.error) throw new Error(filterOptionsResult.error.message);
 
   const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
   const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
@@ -285,7 +262,7 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
     totalAvailable: totalAvailableResult.count ?? 0,
     lastScrapeTime: scrapeTime,
     skillLabels: Object.fromEntries(labelMap),
-    filterOptions: buildFilterOptions(allData as any[]),
+    filterOptions: buildFilterOptions((filterOptionsResult.data ?? []) as any[]),
   };
 };
 
