@@ -132,6 +132,13 @@ describe('Home page work type defaults', () => {
         initialSkillLabels={{}}
         initialTotalJobs={0}
         initialUserId="user-1"
+        initialFilterOptions={{
+          organizations: [],
+          provinces: [],
+          municipalitiesByProvince: {},
+          employmentTypes: [],
+          sources: [],
+        }}
         isLoggedIn={true}
         isAdmin={false}
       />,
