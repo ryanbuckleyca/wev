@@ -11,13 +11,14 @@
   "search": {
     "placeholder": "Search by job title, organization, location...",
     "label": "Search jobs",
-    "button": "Search Jobs"
+    "button": "Search Jobs",
+    "clear": "Clear search"
   },
   "filters": {
     "label": "Filters",
     "hideFilters": "Hide filters",
     "showFilters": "Filters",
-    "showAllJobs": "Show all jobs",
+    "clearAllFilters": "Clear all filters",
     "useSuggestedFilters": "Use suggested filters",
     "sse": {
       "label": "Show only SSE jobs",

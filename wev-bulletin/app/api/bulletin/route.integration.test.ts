@@ -11,6 +11,7 @@ const {
   mockFrom,
   mockSelect,
   mockTextSearch,
+  mockFilter,
   mockIn,
   mockIs,
   mockEq,
@@ -22,6 +23,7 @@ const {
   const mockFrom = vi.fn();
   const mockSelect = vi.fn();
   const mockTextSearch = vi.fn();
+  const mockFilter = vi.fn();
   const mockIn = vi.fn();
   const mockIs = vi.fn();
   const mockEq = vi.fn();
@@ -33,6 +35,7 @@ const {
     mockFrom,
     mockSelect,
     mockTextSearch,
+    mockFilter,
     mockIn,
     mockIs,
     mockEq,
@@ -53,9 +56,13 @@ vi.mock('next/cache', async (importOriginal) => {
 
 // Mock Supabase Server Client
 vi.mock('@/lib/supabase/server', () => {
-  const chain: Record<string, any> = {};
+  const chain: Record<string, any> = {
+    then: (onFullfilled: any) =>
+      Promise.resolve({ data: [], count: 0, error: null }).then(onFullfilled),
+  };
   mockSelect.mockImplementation(() => chain);
   mockTextSearch.mockImplementation(() => chain);
+  mockFilter.mockImplementation(() => chain);
   mockIn.mockImplementation(() => chain);
   mockIs.mockImplementation(() => chain);
   mockEq.mockImplementation(() => chain);
@@ -66,6 +73,7 @@ vi.mock('@/lib/supabase/server', () => {
 
   chain.select = mockSelect;
   chain.textSearch = mockTextSearch;
+  chain.filter = mockFilter;
   chain.in = mockIn;
   chain.is = mockIs;
   chain.eq = mockEq;
@@ -131,10 +139,15 @@ describe('GET /api/bulletin (handler contract)', () => {
   });
 
   it('uses locale-aware websearch FTS and skips empty search text', async () => {
+    // Multi-word query uses websearch
     await GET(new Request('http://localhost/api/bulletin?locale=fr&q=  economie sociale  '));
     expect(mockTextSearch).toHaveBeenCalledWith('fts_fr', 'economie sociale', {
       type: 'websearch',
     });
+
+    // Single word query uses prefix matching (fts operator via .filter)
+    await GET(new Request('http://localhost/api/bulletin?locale=en&q=part'));
+    expect(mockFilter).toHaveBeenCalledWith('fts_en', 'fts', 'part:*');
 
     vi.clearAllMocks();
     mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
@@ -143,6 +156,7 @@ describe('GET /api/bulletin (handler contract)', () => {
 
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=   '));
     expect(mockTextSearch).not.toHaveBeenCalled();
+    expect(mockFilter).not.toHaveBeenCalled();
   });
 
   it('falls back to legacy fts column when locale-aware FTS columns are unavailable', async () => {
@@ -156,10 +170,11 @@ describe('GET /api/bulletin (handler contract)', () => {
 
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=Community Builder 25'));
 
-    expect(mockTextSearch).toHaveBeenNthCalledWith(1, 'fts_en', 'Community Builder 25', {
+    // Called for both jobs query and filter options query
+    expect(mockTextSearch).toHaveBeenCalledWith('fts_en', 'Community Builder 25', {
       type: 'websearch',
     });
-    expect(mockTextSearch).toHaveBeenNthCalledWith(2, 'fts', 'Community Builder 25', {
+    expect(mockTextSearch).toHaveBeenCalledWith('fts', 'Community Builder 25', {
       type: 'websearch',
     });
   });

@@ -27,35 +27,31 @@ export default function Header({
     }
 
     let cancelled = false;
-    let waitRaf = 0;
+    const waitRaf = 0;
 
     const update = () => {
       if (cancelled) return;
       const mainLogo = document.querySelector('.main-logo');
-      if (!(mainLogo instanceof HTMLElement)) return;
+      if (!(mainLogo instanceof HTMLElement)) {
+        // Fallback: if logo not found, check scroll position
+        setShouldShowHeader(window.scrollY > 100);
+        return;
+      }
       const { bottom } = mainLogo.getBoundingClientRect();
-      setShouldShowHeader(bottom < 0);
+      setShouldShowHeader(bottom <= 0);
     };
 
     const onScrollOrResize = () => update();
 
-    const waitForLogoThenListen = () => {
-      if (cancelled) return;
-      const mainLogo = document.querySelector('.main-logo');
-      if (!mainLogo) {
-        waitRaf = window.requestAnimationFrame(waitForLogoThenListen);
-        return;
-      }
-      update();
-      window.addEventListener('scroll', onScrollOrResize, { passive: true });
-      window.addEventListener('resize', onScrollOrResize, { passive: true });
-    };
-
-    waitForLogoThenListen();
+    // Initial check and add listeners immediately.
+    // We don't wait for the logo, as the fallback logic (scrollY > 100)
+    // needs to work even if the logo is missing.
+    update();
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize, { passive: true });
 
     return () => {
       cancelled = true;
-      window.cancelAnimationFrame(waitRaf);
       window.removeEventListener('scroll', onScrollOrResize);
       window.removeEventListener('resize', onScrollOrResize);
     };

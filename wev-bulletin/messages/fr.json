@@ -11,13 +11,14 @@
   "search": {
     "placeholder": "Rechercher par titre de poste, organisation, lieu...",
     "label": "Rechercher des emplois",
-    "button": "Rechercher des emplois"
+    "button": "Rechercher des emplois",
+    "clear": "Effacer la recherche"
   },
   "filters": {
     "label": "Filtres",
     "hideFilters": "Masquer les filtres",
     "showFilters": "Filtres",
-    "showAllJobs": "Afficher tous les emplois",
+    "clearAllFilters": "Effacer tous les filtres",
     "useSuggestedFilters": "Utiliser les filtres suggérés",
     "sse": {
       "label": "Afficher uniquement les emplois SSE",

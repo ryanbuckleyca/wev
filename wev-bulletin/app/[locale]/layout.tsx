@@ -5,6 +5,7 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import Header from '@/components/Header';
 import Toaster from '@/components/Toaster';
 import HtmlLangSync from '@/components/HtmlLangSync';
+import ThemeScript from '@/components/ThemeScript';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { routing } from '@/i18n/routing';
@@ -27,11 +28,13 @@ export default async function LocaleLayout({
     ...localeMessages,
   };
   const cookieStore = await cookies();
-  const theme = cookieStore.get('theme')?.value === 'dark' ? 'dark' : 'light';
+  // Default to dark mode if no cookie is set, matching ThemeScript fallback
+  const theme = cookieStore.get('theme')?.value === 'light' ? 'light' : 'dark';
 
   return (
     <NuqsAdapter>
       <NextIntlClientProvider locale={locale} messages={messages}>
+        <ThemeScript />
         <HtmlLangSync lang={locale} />
         <AuthProvider>
           <ProfileProvider>
