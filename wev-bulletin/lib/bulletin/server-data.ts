@@ -242,7 +242,11 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
     .gte('date_posted', postedCutoff);
 
   const buildBaseQuery = () =>
-    supabaseServer.from('matched_jobs').select('id').gte('date_posted', postedCutoff).is('is_sse', true);
+    supabaseServer
+      .from('matched_jobs')
+      .select('id')
+      .gte('date_posted', postedCutoff)
+      .is('is_sse', true);
 
   const [scrapeTime, jobsResult, totalAvailableResult, orgs, provs, munis, emps, srcs] =
     await Promise.all([
