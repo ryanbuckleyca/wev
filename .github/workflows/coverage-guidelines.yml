@@ -38,17 +38,19 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@39225597fd64c3c920b45a823994399e19f41c40 # v4.1.0
         with:
           node-version: "22"
           cache: "npm"
           cache-dependency-path: package-lock.json
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@f677139bee7f9c59c41428a2e1d8825a07297e2c # v5.3.0
         with:
           python-version: "3.11"
 
@@ -61,6 +63,14 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-mock pytest-cov hypothesis
         working-directory: wev-scraper
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-ms-playwright-${{ hashFiles('wev-scraper/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-ms-playwright-
 
       - name: Install Playwright browser (scraper tests)
         run: |

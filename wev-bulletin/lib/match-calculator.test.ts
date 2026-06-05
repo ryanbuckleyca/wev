@@ -78,5 +78,17 @@ describe('match-calculator', () => {
         expect.stringContaining('Error calling'),
       );
     });
+
+    it('logs an exception if rpc throws', async () => {
+      const mockException = new Error('Network error');
+      vi.mocked(supabaseServer.rpc).mockRejectedValue(mockException);
+
+      await calculateJobMatches('job-123');
+
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: mockException, jobId: 'job-123' }),
+        expect.stringContaining('Exception in'),
+      );
+    });
   });
 });

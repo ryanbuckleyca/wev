@@ -35,14 +35,6 @@ function main() {
     ? `. venv/bin/activate && pytest`
     : 'python3 -m pytest';
 
-  if (env.GITHUB_ACTIONS === 'true') {
-    const installCmd = fs.existsSync(activatePath)
-      ? `. venv/bin/activate && python3 -m playwright install --with-deps chromium`
-      : 'python3 -m playwright install --with-deps chromium';
-    const installCode = run(installCmd, scraperRoot, env);
-    if (installCode !== 0) process.exit(installCode);
-  }
-
   const code = run(
     [
       baseCmd,
@@ -51,6 +43,7 @@ function main() {
       '--cov-report=json:coverage/coverage.json',
       '--cov-report=term-missing',
       'tests',
+      'scrapers',
     ].join(' '),
     scraperRoot,
     env,

@@ -86,22 +86,26 @@ describe('AuthStatus', () => {
       configurable: true,
     });
 
-    render(<AuthStatus />);
+    try {
+      render(<AuthStatus />);
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /log out/i })).toBeVisible();
-    });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /log out/i })).toBeVisible();
+      });
 
-    await user.click(screen.getByRole('button', { name: /log out/i }));
+      await user.click(screen.getByRole('button', { name: /log out/i }));
 
-    expect(mockSupabase.auth.signOut).toHaveBeenCalled();
-    expect(window.location.href).toBe('http://localhost:3000/en');
-
-    // Restore original location
-    Object.defineProperty(window, 'location', {
-      value: originalLocation,
-      writable: true,
-      configurable: true,
-    });
+      expect(mockSupabase.auth.signOut).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(window.location.href).toBe('http://localhost:3000/en');
+      });
+    } finally {
+      // Restore original location
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      });
+    }
   });
 });
