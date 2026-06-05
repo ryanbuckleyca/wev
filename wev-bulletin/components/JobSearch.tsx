@@ -7,7 +7,7 @@ import FilterIcon from './FilterIcon';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { Search1Outlined, XmarkOutlined } from '@lineiconshq/free-icons';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 
 export interface ActiveFilterChip {
@@ -49,18 +49,21 @@ export default function JobSearch({
 
   const [localQuery, setLocalQuery] = useState(searchQuery);
   const debouncedQuery = useDebounce(localQuery, 300);
+  const lastSyncedQuery = useRef(searchQuery);
 
   // Sync external changes (like clear all filters) to local state
   useEffect(() => {
     setLocalQuery(searchQuery);
+    lastSyncedQuery.current = searchQuery;
   }, [searchQuery]);
 
   // Sync local changes to external state after debounce
   useEffect(() => {
-    if (debouncedQuery !== searchQuery) {
+    if (debouncedQuery !== lastSyncedQuery.current) {
+      lastSyncedQuery.current = debouncedQuery;
       onSearchChange(debouncedQuery);
     }
-  }, [debouncedQuery, onSearchChange, searchQuery]);
+  }, [debouncedQuery, onSearchChange]);
 
   return (
     <>
