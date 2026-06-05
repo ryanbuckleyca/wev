@@ -5,6 +5,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { JobPosting } from '@/lib/supabase';
 import type { WorkType } from '@/lib/work-types';
 import enMessages from '@/messages/en.json';
+import { buildFilterOptions, type BulletinFilterOptions } from '@/lib/bulletin/filter-options';
 import type { JobFiltersProps } from './types';
 import { useJobFiltersModel } from './useJobFiltersModel';
 
@@ -45,43 +46,46 @@ vi.mock('@/contexts/BulletinFilterContext', () => ({
 }));
 
 function createProps(): JobFiltersProps {
+  const jobs = [
+    {
+      id: 'job-1',
+      job_title: 'Policy Analyst',
+      organization: 'Org One',
+      location: 'Toronto, ON',
+      municipality: 'Toronto',
+      province: 'Ontario',
+      work_type: 'remote',
+      date_posted: '2026-03-01T00:00:00.000Z',
+      close_date: null,
+      wage: '$80,000',
+      listing_url: 'https://example.com/job-1',
+      employment_type: 'Full-time',
+      source: 'Source One',
+      is_sse: true,
+      summary: '',
+    },
+    {
+      id: 'job-2',
+      job_title: 'Planner',
+      organization: 'Org Two',
+      location: 'Halifax, NS',
+      municipality: 'Halifax',
+      province: 'Nova Scotia',
+      work_type: 'hybrid',
+      date_posted: '2026-03-02T00:00:00.000Z',
+      close_date: null,
+      wage: null,
+      listing_url: 'https://example.com/job-2',
+      employment_type: 'Contract',
+      source: 'Source Two',
+      is_sse: false,
+      summary: '',
+    },
+  ] as JobPosting[];
+
   return {
-    jobs: [
-      {
-        id: 'job-1',
-        job_title: 'Policy Analyst',
-        organization: 'Org One',
-        location: 'Toronto, ON',
-        municipality: 'Toronto',
-        province: 'Ontario',
-        work_type: 'remote',
-        date_posted: '2026-03-01T00:00:00.000Z',
-        close_date: null,
-        wage: '$80,000',
-        listing_url: 'https://example.com/job-1',
-        employment_type: 'Full-time',
-        source: 'Source One',
-        is_sse: true,
-        summary: '',
-      },
-      {
-        id: 'job-2',
-        job_title: 'Planner',
-        organization: 'Org Two',
-        location: 'Halifax, NS',
-        municipality: 'Halifax',
-        province: 'Nova Scotia',
-        work_type: 'hybrid',
-        date_posted: '2026-03-02T00:00:00.000Z',
-        close_date: null,
-        wage: null,
-        listing_url: 'https://example.com/job-2',
-        employment_type: 'Contract',
-        source: 'Source Two',
-        is_sse: false,
-        summary: '',
-      },
-    ] as JobPosting[],
+    jobs,
+    filterOptions: buildFilterOptions(jobs),
     filteredJobsCount: 1,
     totalJobsCount: 2,
   };
@@ -130,5 +134,39 @@ describe('useJobFiltersModel', () => {
     expect(mockControls.setPostedWithin).toHaveBeenCalledWith('any');
     expect(mockControls.setSearchQuery).toHaveBeenCalledWith('');
     expect(mockControls.setSelectedProvinces).toHaveBeenCalledWith([]);
+  });
+
+  it('should NOT hide other sources when a source is selected', () => {
+    const props1 = createProps();
+    const { result, rerender } = renderHook(({ props }) => useJobFiltersModel(props), {
+      wrapper: Wrapper,
+      initialProps: { props: props1 },
+    });
+
+    expect(result.current.sources).toContain('Source One');
+    expect(result.current.sources).toContain('Source Two');
+
+    // Simulate selecting "Source One", which causes the server to return only jobs with "Source One"
+    // but the filter options should still contain both sources (stable facets)
+    const props2 = {
+      ...props1,
+      jobs: props1.jobs.filter((j) => j.source === 'Source One'),
+      // filterOptions stays the same as it represents all available options for the current search
+    };
+
+    rerender({ props: props2 });
+
+    // This is the bug: currently it will only contain 'Source One'
+    // But it should still contain 'Source Two'
+    expect(result.current.sources).toContain('Source One');
+    expect(result.current.sources).toContain('Source Two');
+
+    // Verify same is true for organizations
+    expect(result.current.organizations).toContain('Org One');
+    expect(result.current.organizations).toContain('Org Two');
+
+    // Verify same is true for provinces
+    expect(result.current.provinces).toContain('Ontario');
+    expect(result.current.provinces).toContain('Nova Scotia');
   });
 });

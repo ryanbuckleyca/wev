@@ -7,6 +7,12 @@ import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels'
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 
+import {
+  buildFilterOptions,
+  type BulletinFilterOptions,
+} from './filter-options';
+import { formatSearchQuery } from './search-utils';
+
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
 export const BULLETIN_JOB_SELECT =
   'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week';
@@ -36,6 +42,7 @@ type BulletinQueryResult = {
   totalAvailable: number;
   lastScrapeTime: string | null;
   skillLabels: Record<string, SkillLabel>;
+  filterOptions: BulletinFilterOptions;
 };
 
 function isUndefinedColumnError(error: { code?: string } | null): boolean {
@@ -60,7 +67,8 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     let query = supabase.from('matched_jobs').select(BULLETIN_JOB_SELECT, { count: 'exact' });
 
     if (input.searchQuery.length > 0) {
-      query = query.textSearch(vectorColumn, input.searchQuery, { type: 'websearch' });
+      const { formatted, type } = formatSearchQuery(input.searchQuery);
+      query = query.textSearch(vectorColumn, formatted, { type });
     }
 
     if (input.orgs.length) query = query.in('organization', input.orgs);
@@ -111,7 +119,25 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
         break;
     }
 
-    return query.range(start, end);
+    return query;
+  };
+
+  const buildFilterOptionsQuery = (vectorColumn: string) => {
+    let query = supabase
+      .from('matched_jobs')
+      .select('organization, province, municipality, employment_type, source');
+
+    if (input.searchQuery.length > 0) {
+      const { formatted, type } = formatSearchQuery(input.searchQuery);
+      query = query.textSearch(vectorColumn, formatted, { type });
+    }
+
+    const maxAgeCutoff = new Date(
+      Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    query = query.gte('date_posted', maxAgeCutoff);
+
+    return query;
   };
 
   const totalAvailableQuery = supabase
@@ -122,24 +148,30 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
       new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString(),
     );
 
-  const [initialJobsResult, scrapeTime, totalAvailableResult] = await Promise.all([
-    buildQuery(searchColumn),
-    fetchLastScrapeTime(),
-    totalAvailableQuery,
-  ]);
+  const [initialJobsResult, initialFilterOptionsResult, scrapeTime, totalAvailableResult] =
+    await Promise.all([
+      buildQuery(searchColumn).range(start, end),
+      buildFilterOptionsQuery(searchColumn),
+      fetchLastScrapeTime(),
+      totalAvailableQuery,
+    ]);
+
   let jobsResult = initialJobsResult;
+  let filterOptionsResult = initialFilterOptionsResult;
 
   if (
     jobsResult.error &&
     input.searchQuery.length > 0 &&
     isUndefinedColumnError(jobsResult.error)
   ) {
-    jobsResult = await buildQuery('fts');
+    [jobsResult, filterOptionsResult] = await Promise.all([
+      buildQuery('fts').range(start, end),
+      buildFilterOptionsQuery('fts'),
+    ]);
   }
 
-  if (jobsResult.error) {
-    throw new Error(jobsResult.error.message);
-  }
+  if (jobsResult.error) throw new Error(jobsResult.error.message);
+  if (filterOptionsResult.error) throw new Error(filterOptionsResult.error.message);
 
   const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
   const labelMap = await resolveSkillLabels(supabase, jobs, input.locale);
@@ -150,6 +182,7 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     totalAvailable: totalAvailableResult.count ?? 0,
     lastScrapeTime: scrapeTime,
     skillLabels: Object.fromEntries(labelMap),
+    filterOptions: buildFilterOptions((filterOptionsResult.data ?? []) as any[]),
   };
 }
 
@@ -184,7 +217,12 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
     .select('id', { count: 'exact', head: true })
     .gte('date_posted', postedCutoff);
 
-  const [scrapeTime, jobsResult, totalAvailableResult] = await Promise.all([
+  const filterOptionsQuery = supabaseServer
+    .from('matched_jobs')
+    .select('organization, province, municipality, employment_type, source')
+    .gte('date_posted', postedCutoff);
+
+  const [scrapeTime, jobsResult, totalAvailableResult, filterOptionsResult] = await Promise.all([
     fetchLastScrapeTime(),
     supabaseServer
       .from('matched_jobs')
@@ -194,9 +232,11 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
       .order('date_posted', { ascending: false })
       .range(0, 19),
     totalAvailableQuery,
+    filterOptionsQuery,
   ]);
 
   if (jobsResult.error) throw new Error(jobsResult.error.message);
+  if (filterOptionsResult.error) throw new Error(filterOptionsResult.error.message);
 
   const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
   const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
@@ -207,6 +247,7 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
     totalAvailable: totalAvailableResult.count ?? 0,
     lastScrapeTime: scrapeTime,
     skillLabels: Object.fromEntries(labelMap),
+    filterOptions: buildFilterOptions((filterOptionsResult.data ?? []) as any[]),
   };
 };
 

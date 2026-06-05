@@ -68,6 +68,7 @@ export default function BulletinPageView({
 
           <JobFilters
             jobs={data.jobsOnPage}
+            filterOptions={data.filterOptions}
             filteredJobsCount={data.totalMatchingJobs}
             totalJobsCount={data.availableJobsCount}
           />

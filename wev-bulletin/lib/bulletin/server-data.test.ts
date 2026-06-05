@@ -1,43 +1,54 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockJobsEq, mockJobsRange, mockScrapeMaybeSingle, mockFrom, mockResolveSkillLabels } =
-  vi.hoisted(() => {
-    const mockJobsEq = vi.fn();
-    const mockJobsRange = vi.fn();
-    const mockScrapeMaybeSingle = vi.fn();
-    const mockResolveSkillLabels = vi.fn();
+const {
+  mockJobsEq,
+  mockJobsRange,
+  mockScrapeMaybeSingle,
+  mockFrom,
+  mockResolveSkillLabels,
+  jobsChain,
+} = vi.hoisted(() => {
+  const mockJobsEq = vi.fn();
+  const mockJobsRange = vi.fn();
+  const mockScrapeMaybeSingle = vi.fn();
+  const mockResolveSkillLabels = vi.fn();
 
-    const jobsChain = {
-      select: vi.fn(() => jobsChain),
-      is: vi.fn(() => jobsChain),
-      eq: mockJobsEq,
-      gte: vi.fn(() => jobsChain),
-      order: vi.fn(() => jobsChain),
-      range: mockJobsRange,
-      limit: vi.fn(() => jobsChain),
-    };
+  const jobsChain: any = {
+    select: vi.fn(() => jobsChain),
+    is: vi.fn(() => jobsChain),
+    eq: mockJobsEq,
+    gte: vi.fn(() => jobsChain),
+    order: vi.fn(() => jobsChain),
+    range: mockJobsRange,
+    limit: vi.fn(() => jobsChain),
+  };
+  jobsChain.then = (onFullfilled: any) =>
+    Promise.resolve({ data: [], count: 0, error: null }).then(onFullfilled);
 
-    const scrapeChain = {
-      select: vi.fn(() => scrapeChain),
-      order: vi.fn(() => scrapeChain),
-      limit: vi.fn(() => scrapeChain),
-      maybeSingle: mockScrapeMaybeSingle,
-    };
+  mockJobsEq.mockReturnValue(jobsChain);
 
-    const mockFrom = vi.fn((table: string) => {
-      if (table === 'matched_jobs') return jobsChain;
-      if (table === 'scrape_runs') return scrapeChain;
-      throw new Error(`Unexpected table: ${table}`);
-    });
+  const scrapeChain = {
+    select: vi.fn(() => scrapeChain),
+    order: vi.fn(() => scrapeChain),
+    limit: vi.fn(() => scrapeChain),
+    maybeSingle: mockScrapeMaybeSingle,
+  };
 
-    return {
-      mockJobsEq,
-      mockJobsRange,
-      mockScrapeMaybeSingle,
-      mockFrom,
-      mockResolveSkillLabels,
-    };
+  const mockFrom = vi.fn((table: string) => {
+    if (table === 'matched_jobs') return jobsChain;
+    if (table === 'scrape_runs') return scrapeChain;
+    throw new Error(`Unexpected table: ${table}`);
   });
+
+  return {
+    mockJobsEq,
+    mockJobsRange,
+    mockScrapeMaybeSingle,
+    mockFrom,
+    mockResolveSkillLabels,
+    jobsChain,
+  };
+});
 
 vi.mock('next/cache', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/cache')>();
@@ -86,18 +97,12 @@ describe('fetchServerBulletinJobs', () => {
 
   it('applies the 4-week (28-day) age limit to prevent old jobs from being returned', async () => {
     const { fetchServerBulletinJobs } = await import('./server-data');
-    const mockGte = vi.fn(() => ({
-      select: vi.fn(() => ({ order: vi.fn(() => ({ range: mockJobsRange })) })),
-      is: vi.fn(() => ({
-        gte: mockGte,
-        order: vi.fn(() => ({ range: mockJobsRange })),
-      })),
-    }));
 
     await fetchServerBulletinJobs('en');
 
     // Verify that a date filter was applied (gte for date_posted)
-    // The actual date will vary based on when the test runs, so we just check it was called
+    // We check both the jobs query and the filter options/total available queries
     expect(mockFrom).toHaveBeenCalledWith('matched_jobs');
+    expect(jobsChain.gte).toHaveBeenCalledWith('date_posted', expect.any(String));
   });
 });

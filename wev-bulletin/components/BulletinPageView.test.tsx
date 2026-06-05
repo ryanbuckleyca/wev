@@ -175,6 +175,13 @@ function createData(): BulletinDataState {
     matchData: new Map(),
     bookmarkedJobIds: new Set(['job-1']),
     skillLabels: {},
+    filterOptions: {
+      organizations: [],
+      provinces: [],
+      municipalitiesByProvince: {},
+      employmentTypes: [],
+      sources: [],
+    },
     totalPages: 3,
     itemsPerPage: 20,
     refresh: vi.fn(async () => {}),

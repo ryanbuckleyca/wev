@@ -7,6 +7,8 @@ import {
 import { parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
 import { createClient } from '@/lib/supabase/server';
+import { buildFilterOptions } from '@/lib/bulletin/filter-options';
+import { formatSearchQuery } from '@/lib/bulletin/search-utils';
 
 export { BULLETIN_CACHE_TAG };
 export const dynamic = 'force-dynamic';
@@ -55,15 +57,13 @@ function createBuildQueryFn(
   supabase: Awaited<ReturnType<typeof createClient>>,
   input: BulletinApiQueryInput,
 ) {
-  const start = (input.page - 1) * input.limit;
-  const end = start + input.limit - 1;
-
   return (vectorColumn: string) => {
     let query = supabase.from('matched_jobs').select(BULLETIN_JOB_SELECT, { count: 'exact' });
 
     // 1. Text Search (FTS)
     if (input.searchQuery.length > 0) {
-      query = query.textSearch(vectorColumn, input.searchQuery, { type: 'websearch' });
+      const { formatted, type } = formatSearchQuery(input.searchQuery);
+      query = query.textSearch(vectorColumn, formatted, { type });
     }
 
     // 2. Exact Matchers
@@ -127,7 +127,32 @@ function createBuildQueryFn(
         break;
     }
 
-    return query.range(start, end);
+    return query;
+  };
+}
+
+function createFilterOptionsQueryFn(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  input: BulletinApiQueryInput,
+) {
+  return (vectorColumn: string) => {
+    let query = supabase
+      .from('matched_jobs')
+      .select('organization, province, municipality, employment_type, source');
+
+    // 1. Text Search (FTS)
+    if (input.searchQuery.length > 0) {
+      const { formatted, type } = formatSearchQuery(input.searchQuery);
+      query = query.textSearch(vectorColumn, formatted, { type });
+    }
+
+    // 2. Date Filters (Global for search query)
+    const maxAgeCutoff = new Date(
+      Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    query = query.gte('date_posted', maxAgeCutoff);
+
+    return query;
   };
 }
 
@@ -135,8 +160,11 @@ async function fetchBulletinApiPayload(
   input: BulletinApiQueryInput,
   supabase: Awaited<ReturnType<typeof createClient>>,
 ) {
+  const start = (input.page - 1) * input.limit;
+  const end = start + input.limit - 1;
   const searchColumn = input.locale === 'fr' ? 'fts_fr' : 'fts_en';
   const buildQuery = createBuildQueryFn(supabase, input);
+  const buildFilterOptionsQuery = createFilterOptionsQueryFn(supabase, input);
 
   // Get total available jobs (<= 4 weeks old, no other filters)
   const maxAgeCutoff = new Date(
@@ -148,22 +176,30 @@ async function fetchBulletinApiPayload(
     .gte('date_posted', maxAgeCutoff)
     .limit(0);
 
-  const [initialJobsResult, scrapeTime, totalAvailableResult] = await Promise.all([
-    buildQuery(searchColumn),
-    fetchLastScrapeTime(),
-    totalAvailableQuery,
-  ]);
+  const [initialJobsResult, initialFilterOptionsResult, scrapeTime, totalAvailableResult] =
+    await Promise.all([
+      buildQuery(searchColumn).range(start, end),
+      buildFilterOptionsQuery(searchColumn),
+      fetchLastScrapeTime(),
+      totalAvailableQuery,
+    ]);
+
   let jobsResult = initialJobsResult;
+  let filterOptionsResult = initialFilterOptionsResult;
 
   if (
     jobsResult.error &&
     input.searchQuery.length > 0 &&
     isUndefinedColumnError(jobsResult.error)
   ) {
-    jobsResult = await buildQuery('fts');
+    [jobsResult, filterOptionsResult] = await Promise.all([
+      buildQuery('fts').range(start, end),
+      buildFilterOptionsQuery('fts'),
+    ]);
   }
 
   if (jobsResult.error) throw new Error(jobsResult.error.message);
+  if (filterOptionsResult.error) throw new Error(filterOptionsResult.error.message);
   if (totalAvailableResult.error) {
     console.error('Error fetching total available jobs:', totalAvailableResult.error.message);
   }
@@ -177,6 +213,7 @@ async function fetchBulletinApiPayload(
     totalAvailable: totalAvailableResult.count ?? 0,
     lastScrapeTime: scrapeTime,
     skillLabels: Object.fromEntries(labelMap),
+    filterOptions: buildFilterOptions((filterOptionsResult.data ?? []) as any[]),
   };
 }
 
