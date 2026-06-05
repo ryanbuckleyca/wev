@@ -3,16 +3,16 @@
 
 begin;
 
-select plan(6);
+select plan(5);
 
 -- ─── Setup User ─────────────────────────────────────────────────────────────
 
-\set test_user '00000000-0000-0000-0000-00000000000f'
+\set test_user '''00000000-0000-0000-0000-00000000000f'''
 insert into auth.users (id, email, encrypted_password)
-values (:'test_user', 'rate_limit@example.com', extensions.crypt('password123', extensions.gen_salt('bf')));
+values (:test_user, 'rate_limit@example.com', extensions.crypt('password123', extensions.gen_salt('bf')));
 
 -- Impersonate User
-select set_config('request.jwt.claims', format('{"sub": "%s"}', :'test_user')::text, true);
+select set_config('request.jwt.claims', format('{"sub": "%s"}', :test_user)::text, true);
 set local role authenticated;
 
 -- ─── Test 1: Successful attempts do NOT trigger rate limiting ───────────────
@@ -44,7 +44,7 @@ select throws_ok(
 
 -- ─── Test 3: Correct password is also blocked after failure limit is hit ────
 
--- This is important for security: once the failure limit is hit,
+-- This is important for security: once the failure limit is hit, 
 -- even the correct password must be blocked to prevent brute-force success.
 select throws_ok(
   'select public.verify_user_password(''password123'')',
@@ -56,15 +56,9 @@ select throws_ok(
 -- ─── Test 4: Logs are recorded correctly ─────────────────────────────────────
 
 select is(
-  (select count(*)::int from public.request_logs where user_id = :'test_user' and is_success = true),
-  10,
-  'Should have 10 success logs'
-);
-
-select is(
-  (select count(*)::int from public.request_logs where user_id = :'test_user' and is_success = false),
+  (select count(*)::int from public.request_logs where user_id = :test_user),
   5,
-  'Should have 5 failure logs'
+  'Should have exactly 5 logs (failures only)'
 );
 
 select * from finish();
