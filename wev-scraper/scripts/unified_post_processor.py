@@ -218,6 +218,11 @@ def process_jobs_unified(
 
             result = processor.process_jobs(batch)
 
+            if result is None:
+                scraper_log("✗ Processing failed: processor returned None")
+                counts["errors"] += len(batch)
+                continue
+
             if result.get("error"):
                 scraper_log(f"✗ Processing failed: {result['error']}")
                 counts["errors"] += len(batch)
@@ -225,8 +230,8 @@ def process_jobs_unified(
 
             # Update database based on task for this batch
             for job, job_result in zip(batch, result.get("results", []), strict=False):
-                if not job_result:
-                    scraper_log(f"✗ No result for job {job['id']}")
+                if not isinstance(job_result, dict) or not job_result:
+                    scraper_log(f"✗ Invalid or empty result for job {job['id']}")
                     counts["errors"] += 1
                     continue
 
@@ -256,8 +261,11 @@ def process_jobs_unified(
                     print(f"  ✓ Processed job {job['id'][:8]}... ({', '.join(actions) or 'no actions'})")
 
         counts["processed"] = processed_count
-        counts["provider_used"] = result.get("provider")
-        print(f"✓ Processing complete using {result.get('provider')}")
+        if result:
+            counts["provider_used"] = result.get("provider")
+            print(f"✓ Processing complete using {result.get('provider')}")
+        else:
+            print("✓ Processing complete (no provider results)")
 
     except Exception as e:
         scraper_log(f"✗ Processing failed: {e}")
