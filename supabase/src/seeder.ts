@@ -1,5 +1,5 @@
 import { type SupabaseClient, createClient } from "@supabase/supabase-js";
-import type { Database } from "./database.types";
+import type { Database, TableInsert } from "./database.types";
 import {
   createSeedDataset,
   type SeedTables,
@@ -196,7 +196,10 @@ function parseEscoSkillsPayload(filePath: string): EscoIndexSkillRecord[] {
   return records.filter((skill) => !!skill?.concept_uri);
 }
 
-function toEscoDbRow(skill: EscoIndexSkillRecord, timestamp: string) {
+function toEscoDbRow(
+  skill: EscoIndexSkillRecord,
+  timestamp: string,
+): TableInsert<"esco_skills"> {
   return {
     concept_uri: skill.concept_uri,
     skill_type: skill.skill_type ?? null,
@@ -219,7 +222,9 @@ function toEscoDbRow(skill: EscoIndexSkillRecord, timestamp: string) {
     description_fr: skill.description_fr ?? skill.description?.fr ?? null,
     scope_note_en: skill.scope_note_en ?? skill.scope_note?.en ?? null,
     scope_note_fr: skill.scope_note_fr ?? skill.scope_note?.fr ?? null,
-    embedding: skill.embedding ?? null,
+    embedding: Array.isArray(skill.embedding)
+      ? `[${skill.embedding.join(",")}]`
+      : (skill.embedding ?? null),
     updated_at: skill.updated_at ?? timestamp,
   };
 }
@@ -241,7 +246,7 @@ async function seedEscoSkills(client: SupabaseClient<Database>): Promise<void> {
     const chunk = records
       .slice(i, i + ESCO_UPSERT_BATCH_SIZE)
       .map((skill) => toEscoDbRow(skill, timestamp));
-    const { error } = await (client as any)
+    const { error } = await client
       .from("esco_skills")
       .upsert(chunk, { onConflict: "concept_uri" });
 
