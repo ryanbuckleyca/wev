@@ -1,165 +1,66 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DELETE } from './route';
-import { NextRequest } from 'next/server';
 import { getRequestUser } from '@/lib/auth/request-user';
-
-const { mockRpc, mockDeleteUser } = vi.hoisted(() => ({
-  mockRpc: vi.fn(),
-  mockDeleteUser: vi.fn(),
-}));
+import { deleteAccountForCurrentUser, AccountServiceError } from '@/lib/account/service';
+import { NextRequest } from 'next/server';
 
 vi.mock('@/lib/auth/request-user', () => ({
   getRequestUser: vi.fn(),
 }));
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(() => ({
-    rpc: mockRpc,
-  })),
-}));
-
-vi.mock('@/lib/supabase-server', () => ({
-  supabaseServer: {
-    auth: {
-      admin: {
-        deleteUser: mockDeleteUser,
-      },
-    },
+vi.mock('@/lib/account/service', () => ({
+  deleteAccountForCurrentUser: vi.fn(),
+  AccountServiceError: class extends Error {
+    constructor(public message: string, public status: number) {
+      super(message);
+      this.name = 'AccountServiceError';
+    }
   },
 }));
 
-const mockGetRequestUser = vi.mocked(getRequestUser);
-
-describe('/api/account/delete', () => {
+describe('DELETE /api/account/delete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRpc.mockResolvedValue({
-      data: 'match',
-      error: null,
-    });
   });
 
-  it('should require authentication', async () => {
-    mockGetRequestUser.mockResolvedValue({
-      ok: false,
-      authError: new Error('Not authenticated'),
-    });
+  it('returns 401 if user is not authenticated', async () => {
+    vi.mocked(getRequestUser).mockResolvedValue({ ok: false, authError: 'Unauthorized' } as any);
 
-    const request = new NextRequest('http://localhost:3000/api/account/delete', {
+    const request = new NextRequest('http://localhost/api/account/delete', {
       method: 'DELETE',
-      body: JSON.stringify({ password: 'test123' }),
     });
 
     const response = await DELETE(request);
-    const data = await response.json();
-
     expect(response.status).toBe(401);
-    expect(data.error).toBe('Unauthorized');
   });
 
-  it('should require password', async () => {
-    mockGetRequestUser.mockResolvedValue({
-      ok: true,
-      user: {
-        id: 'user-123',
-        email: 'test@example.com',
-      } as never,
-    });
+  it('returns 200 on successful deletion', async () => {
+    vi.mocked(getRequestUser).mockResolvedValue({ ok: true, user: { id: 'user-123' } } as any);
+    vi.mocked(deleteAccountForCurrentUser).mockResolvedValue(undefined);
 
-    const request = new NextRequest('http://localhost:3000/api/account/delete', {
+    const request = new NextRequest('http://localhost/api/account/delete', {
       method: 'DELETE',
-      body: JSON.stringify({}), // No password
+      body: JSON.stringify({ password: 'correct-password' }),
     });
 
     const response = await DELETE(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('Password required for account deletion');
-  });
-
-  it('should reject an invalid password', async () => {
-    mockGetRequestUser.mockResolvedValue({
-      ok: true,
-      user: {
-        id: 'user-123',
-        email: 'test@example.com',
-      } as never,
-    });
-    mockRpc.mockResolvedValue({
-      data: 'mismatch',
-      error: null,
-    });
-
-    const request = new NextRequest('http://localhost:3000/api/account/delete', {
-      method: 'DELETE',
-      body: JSON.stringify({ password: 'wrong-password' }),
-    });
-
-    const response = await DELETE(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(data.error).toBe('Invalid password');
-    expect(mockDeleteUser).not.toHaveBeenCalled();
-  });
-
-  it('should return a server error when password verification fails for other reasons', async () => {
-    mockGetRequestUser.mockResolvedValue({
-      ok: true,
-      user: {
-        id: 'user-123',
-        email: 'test@example.com',
-      } as never,
-    });
-    mockRpc.mockResolvedValue({
-      data: null,
-      error: {
-        message: 'Database error',
-      },
-    });
-
-    const request = new NextRequest('http://localhost:3000/api/account/delete', {
-      method: 'DELETE',
-      body: JSON.stringify({ password: 'wrong-password' }),
-    });
-
-    const response = await DELETE(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(data.error).toBe('Verification system error');
-    expect(mockDeleteUser).not.toHaveBeenCalled();
-  });
-
-  it('should successfully delete account with a valid password', async () => {
-    mockGetRequestUser.mockResolvedValue({
-      ok: true,
-      user: {
-        id: 'user-123',
-        email: 'test@example.com',
-      } as never,
-    });
-
-    // Mock successful user deletion
-    mockDeleteUser.mockResolvedValue({
-      data: {},
-      error: null,
-    });
-
-    const request = new NextRequest('http://localhost:3000/api/account/delete', {
-      method: 'DELETE',
-      body: JSON.stringify({ password: 'validpassword123' }),
-    });
-
-    const response = await DELETE(request);
-    const data = await response.json();
-
     expect(response.status).toBe(200);
-    expect(data.message).toBe('Account successfully deleted');
-    expect(mockRpc).toHaveBeenCalledWith('verify_user_password', {
-      password: 'validpassword123',
+    expect(await response.json()).toEqual({ message: 'Account successfully deleted' });
+  });
+
+  it('returns error status if AccountServiceError is thrown', async () => {
+    vi.mocked(getRequestUser).mockResolvedValue({ ok: true, user: { id: 'user-123' } } as any);
+    vi.mocked(deleteAccountForCurrentUser).mockRejectedValue(
+      new AccountServiceError('Invalid password', 403),
+    );
+
+    const request = new NextRequest('http://localhost/api/account/delete', {
+      method: 'DELETE',
+      body: JSON.stringify({ password: 'wrong-password' }),
     });
-    expect(mockDeleteUser).toHaveBeenCalledWith('user-123');
+
+    const response = await DELETE(request);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'Invalid password' });
   });
 });

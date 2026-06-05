@@ -54,6 +54,27 @@ Run Vitest and Next.js tasks with the Node version pinned in the repo's `.nvmrc`
 
 ---
 
+## Mutation Smoke (Verify Tests Can Fail)
+
+`npm run test:mutation-smoke` is a lightweight sanity check that a small, curated set of tests will actually fail when their corresponding implementation logic is intentionally broken.
+
+It works by temporarily applying a few targeted “bad edits” (e.g. flip a condition, change a default), running the relevant test file(s), and asserting the suite goes red. The original source is then restored automatically.
+
+**When to run it:**
+
+- Before merging/refactoring core business logic (matching/scoring, auth/account flows, URL normalization, parsers).
+- After adding new tests for an area that previously had weak coverage.
+- If you suspect a test is “green but not asserting anything meaningful”.
+
+**When not to run it:**
+
+- On every single local edit (it runs multiple test commands and is intentionally heavier than a normal unit-test run).
+- In the default CI pipeline (it mutates files during execution and adds runtime to every push).
+
+If you want CI coverage, prefer a separate opt-in job (manual trigger or nightly) rather than gating every PR.
+
+---
+
 ## What to Test
 
 **Always:**
@@ -100,6 +121,11 @@ cd wev-scraper && pytest --cov --cov-fail-under=85
 npm run test:e2e
 npm run test:e2e:auth-email
 npm run test:e2e:perf
+
+# Mutation smoke (tests must fail when core logic is broken)
+# This temporarily edits a few implementation files, runs the relevant tests,
+# asserts they go red, then restores the original files.
+npm run test:mutation-smoke
 ```
 
 ---
