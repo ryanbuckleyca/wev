@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from scrapers.base import BaseScraper
-from tests.conftest import make_source
+from conftest import make_source
 
 
 class SimpleScraper(BaseScraper):

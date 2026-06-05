@@ -35,7 +35,7 @@
     "test:e2e:ui": "npm run test:e2e:ui --prefix e2e",
     "test:e2e:debug": "npm run test:e2e:debug --prefix e2e",
     "test:db": "supabase test db",
-    "test:scraper": "cd wev-scraper && . venv/bin/activate && pytest tests",
+    "test:scraper": "cd wev-scraper && (./venv/bin/pytest || python3 -m pytest) -p no:asyncio tests scrapers",
     "scrape": "npx tsx wev-scraper/run.ts scrape",
     "scrape:prod": "npm run scrape -- --prod",
     "scrape:publish": "npm run scrape -- --publish",
@@ -46,6 +46,8 @@
     "tsc": "npm run tsc --prefix wev-bulletin",
     "verify": "npm run lint && npm run tsc && npm run test",
     "verify:fix": "npm run lint:fix && npm run tsc && npm run test",
+    "coverage:guidelines": "npm run test:coverage --prefix wev-bulletin && node scripts/generate-scraper-coverage.cjs && node scripts/check-testing-guidelines-coverage.cjs",
+    "coverage:guidelines:strict": "npm run test:coverage --prefix wev-bulletin && node scripts/generate-scraper-coverage.cjs && node scripts/check-testing-guidelines-coverage.cjs --strict",
     "seed:local": "npx tsx supabase/seed-local.ts",
     "seed:staging": "npx tsx supabase/seed-staging.ts",
     "skills:index": "npx tsx wev-scraper/run.ts skills:index",
@@ -61,6 +63,7 @@
     "restore:staging": "dotenv -e .env -e .env.staging -- npx tsx supabase/restore.ts",
     "sync:local": "npm run backup && npm run restore:test",
     "sync:staging": "npm run backup && npm run restore:staging",
-    "cleanup:duplicates": "npx tsx supabase/cleanup-duplicates.ts"
+    "cleanup:duplicates": "npx tsx supabase/cleanup-duplicates.ts",
+    "test:mutation-smoke": "node scripts/verify-tests-can-fail.cjs"
   }
 }

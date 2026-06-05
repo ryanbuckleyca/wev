@@ -1,5 +1,8 @@
 # requirements-dev.txt
 -r requirements.txt
+pytest
+pytest-mock
+pytest-cov
 tavily-python
 ollama
 ruff
