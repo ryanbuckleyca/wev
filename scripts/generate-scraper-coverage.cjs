@@ -38,6 +38,7 @@ function main() {
   const code = run(
     [
       baseCmd,
+      '-p no:asyncio',
       '--cov',
       '--cov-branch',
       '--cov-report=json:coverage/coverage.json',
