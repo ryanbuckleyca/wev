@@ -37,12 +37,14 @@ export default function BulletinPageView({
   return (
     <BulletinFilterProvider filters={filters}>
       <main
-        className="min-h-screen pb-8 relative overflow-hidden"
+        className="min-h-screen pb-8 relative"
         style={{
           background: 'var(--background)',
         }}
       >
-        <WatercolorBackground />
+        <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+          <WatercolorBackground />
+        </div>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
           <header className="mb-8">
             <Image

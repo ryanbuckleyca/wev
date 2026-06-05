@@ -32,9 +32,13 @@ export default function Header({
     const update = () => {
       if (cancelled) return;
       const mainLogo = document.querySelector('.main-logo');
-      if (!(mainLogo instanceof HTMLElement)) return;
+      if (!(mainLogo instanceof HTMLElement)) {
+        // Fallback: if logo not found, check scroll position
+        setShouldShowHeader(window.scrollY > 100);
+        return;
+      }
       const { bottom } = mainLogo.getBoundingClientRect();
-      setShouldShowHeader(bottom < 0);
+      setShouldShowHeader(bottom <= 0);
     };
 
     const onScrollOrResize = () => update();

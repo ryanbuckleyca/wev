@@ -102,4 +102,29 @@ describe('Header', () => {
 
     document.body.removeChild(mainLogo);
   });
+
+  it('becomes visible when scrolling down even if the main logo is not found', async () => {
+    vi.mocked(usePathname).mockReturnValue('/');
+
+    // Ensure no main-logo is in the document
+    const mainLogo = document.querySelector('.main-logo');
+    if (mainLogo) mainLogo.remove();
+
+    renderHeader();
+
+    const logoContainer = screen.getByLabelText('heading').parentElement;
+    expect(logoContainer).toHaveClass('opacity-0');
+
+    // Mock window.scrollY
+    Object.defineProperty(window, 'scrollY', { value: 150, writable: true });
+
+    // Trigger scroll
+    fireEvent.scroll(window);
+
+    // Fallback logic should show header
+    expect(logoContainer).toHaveClass('opacity-100');
+
+    // Reset scrollY
+    Object.defineProperty(window, 'scrollY', { value: 0, writable: true });
+  });
 });
