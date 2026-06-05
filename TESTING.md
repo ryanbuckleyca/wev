@@ -119,6 +119,7 @@ npm run coverage:guidelines
 # Scraper
 cd wev-scraper && pytest
 cd wev-scraper && pytest --cov --cov-fail-under=85
+cd wev-scraper && python3 -m playwright install chromium
 
 # E2E
 npm run test:e2e
