@@ -35,7 +35,7 @@
     "test:e2e:ui": "npm run test:e2e:ui --prefix e2e",
     "test:e2e:debug": "npm run test:e2e:debug --prefix e2e",
     "test:db": "supabase test db",
-    "test:scraper": "cd wev-scraper && (./venv/bin/pytest || python3 -m pytest) tests scrapers",
+    "test:scraper": "cd wev-scraper && (./venv/bin/pytest || python3 -m pytest) -p no:asyncio tests scrapers",
     "scrape": "npx tsx wev-scraper/run.ts scrape",
     "scrape:prod": "npm run scrape -- --prod",
     "scrape:publish": "npm run scrape -- --publish",
