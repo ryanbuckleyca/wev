@@ -22,7 +22,30 @@ create policy "Users can view their own request logs"
   on public.request_logs for select
   using (auth.uid() = user_id);
 
--- 2. Update verify_user_password RPC
+-- 2. Maintenance: Scheduled purge for old logs (retention: 7 days)
+-- We use pg_cron if available, otherwise logs are pruned during verification failures.
+create extension if not exists pg_cron with schema extensions;
+
+-- Create a purge function that can be called manually or by cron
+create or replace function public.purge_request_logs()
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  delete from public.request_logs
+  where created_at < now() - interval '7 days';
+end;
+$$;
+
+-- Schedule the purge to run daily at midnight
+select cron.schedule(
+  'purge-request-logs',
+  '0 0 * * *',
+  'select public.purge_request_logs()'
+);
+
+-- 3. Update verify_user_password RPC
 create or replace function public.verify_user_password(password text)
 returns text
 language plpgsql
@@ -78,6 +101,12 @@ begin
 
   -- 5. Log ONLY failed attempts to prevent unbounded table growth
   if v_result = 'mismatch' then
+    -- Prune logs older than 7 days for this user to keep the table clean
+    -- even if the global scheduled purge isn't running.
+    delete from public.request_logs
+    where user_id = v_user_id
+      and created_at < now() - interval '7 days';
+
     insert into public.request_logs (user_id, event_name)
     values (v_user_id, 'verify_password');
   end if;
