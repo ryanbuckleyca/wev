@@ -142,7 +142,7 @@ export default function JobSearch({
           <div className="flex flex-wrap items-center gap-3">
             {hasAnyFilters && (
               <ButtonLink onClick={onClearAllFilters} tone="muted" size="xs" className="underline">
-                {t('filters.showAllJobs')}
+                {t('filters.clearAllFilters')}
               </ButtonLink>
             )}
             {!isSuggestedDefaults && (
