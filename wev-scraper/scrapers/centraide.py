@@ -52,7 +52,7 @@ class CentraideScraper(BaseScraper):
         if date:
             return date
         try:
-            text = page.inner_text()
+            text = page.locator("body").inner_text()
             m = re.search(r"Publié le\s*(\d{1,2}\s+[A-Za-zéûàèÎû\-]+\s+\d{4})", text, re.I)
             if m:
                 return m.group(1)
@@ -77,11 +77,12 @@ class CentraideScraper(BaseScraper):
             try:
                 loc = page.locator(sel).first
                 if loc.count() >= 1:
-                    try:
-                        page.eval_on_selector(sel, "el => { el.querySelectorAll('table').forEach(t=>t.remove()); }")
-                    except Exception:
-                        pass
-                    text = loc.inner_text()
+                    # Get text without tables by using a clone
+                    text = loc.evaluate("""el => {
+                        const clone = el.cloneNode(true);
+                        clone.querySelectorAll('table').forEach(t => t.remove());
+                        return clone.textContent;
+                    }""")
                     if text and text.strip():
                         return text
             except Exception:
