@@ -1,11 +1,12 @@
 """Tests for BaseScraper utility methods using minimal inline HTML."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import pytest
 from playwright.sync_api import Locator
 
-from scrapers.base import BaseScraper
 from conftest import make_source
+from scrapers.base import BaseScraper
 
 
 class StubScraper(BaseScraper):
@@ -344,7 +345,6 @@ def test_retry_bails_on_403_non_ci(monkeypatch):
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     scraper = BaseScraper(make_source())
     mock_func = MagicMock(side_effect=Exception("403 Forbidden"))
-    import pytest
     with pytest.raises(Exception, match="403 Forbidden"):
         scraper._retry(mock_func)
     assert mock_func.call_count == 1
@@ -355,7 +355,6 @@ def test_retry_bails_on_403_non_ci(monkeypatch):
 def test_is_error_page_403(page):
     page.set_content("<html><head><title>403 Forbidden</title></head><body></body></html>")
     scraper = BaseScraper(make_source())
-    import pytest
     with pytest.raises(Exception, match="403 Forbidden"):
         scraper._is_error_page(page)
 
@@ -363,7 +362,6 @@ def test_is_error_page_403(page):
 def test_is_error_page_404(page):
     page.set_content("<html><head><title>404 Not Found</title></head><body></body></html>")
     scraper = BaseScraper(make_source())
-    import pytest
     with pytest.raises(Exception, match="404 Not Found"):
         scraper._is_error_page(page)
 
@@ -371,7 +369,6 @@ def test_is_error_page_404(page):
 def test_is_error_page_cloudflare(page):
     page.set_content('<html><body><div class="cf-challenge"></div></body></html>')
     scraper = BaseScraper(make_source())
-    import pytest
     with pytest.raises(Exception, match="Cloudflare challenge"):
         scraper._is_error_page(page)
 
@@ -383,9 +380,9 @@ def test_extract_job_fields_stops_chronological(mock_recent, page):
     scraper = StubScraper(make_source())
     scraper.is_chronological = True
     page.set_content(JOB_PAGE_HTML)
-    
+
     scraper.extract_job_fields(page, {"date_posted": "2020-01-01"}, index=0)
-    
+
     assert scraper.should_quit_list is True
     assert len(scraper.jobs) == 0
 
@@ -397,11 +394,11 @@ def test_process_listing_items_skips_duplicates(page):
     scraper.existing_urls = {"https://example.com/job/1"}
     scraper.listings_page = page
     scraper.page = page
-    
+
     page.set_content('<a class="item" href="https://example.com/job/1">Job</a>')
     items = page.locator(".item")
     scraper._process_listing_items(items)
-    
+
     assert scraper.skipped_duplicates == 1
     assert len(scraper.jobs) == 0
 
@@ -412,12 +409,10 @@ def test_process_listing_items_reaches_max_jobs(page):
     scraper.listings_page = page
     scraper.page = page
     scraper.jobs = [{"id": "prev-job"}]
-    
+
     page.set_content('<a class="item" href="https://example.com/job/2">Job</a>')
     items = page.locator(".item")
     scraper._process_listing_items(items)
-    
+
     assert scraper.should_quit_list is True
     assert len(scraper.jobs) == 1
-
-from unittest.mock import MagicMock
