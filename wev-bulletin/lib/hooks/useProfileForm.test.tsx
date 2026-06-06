@@ -42,7 +42,10 @@ describe('useProfileForm', () => {
     const profile = {
       id: 'u1',
       updated_at: '2024-01-01',
-      values_rated: [{ value: 'V1', rank: 1 }, { value: 'V2', rank: null }],
+      values_rated: [
+        { value: 'V1', rank: 1 },
+        { value: 'V2', rank: null },
+      ],
     };
     vi.mocked(useProfile).mockReturnValue({
       profile,

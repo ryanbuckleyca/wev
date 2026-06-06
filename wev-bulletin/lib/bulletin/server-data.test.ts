@@ -133,7 +133,9 @@ describe('server-data', () => {
         callCount++;
         // Second and third calls in parallel are filterOptions and totalAvailable
         if (callCount === 2) {
-          return Promise.resolve({ data: null, error: { message: 'Filter Error' } }).then(onFulfilled);
+          return Promise.resolve({ data: null, error: { message: 'Filter Error' } }).then(
+            onFulfilled,
+          );
         }
         return Promise.resolve({ data: [], error: null }).then(onFulfilled);
       });
@@ -158,11 +160,11 @@ describe('server-data', () => {
     });
 
     it('throws error on failure', async () => {
-       mockQuery.then.mockImplementation((onFulfilled: any) => {
-         return Promise.resolve({ data: null, error: { message: 'Error' } }).then(onFulfilled);
-       });
-       await expect(fetchLastScrapeTime()).rejects.toThrow('Error');
-     });
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: null, error: { message: 'Error' } }).then(onFulfilled);
+      });
+      await expect(fetchLastScrapeTime()).rejects.toThrow('Error');
+    });
   });
 
   describe('fetchServerMatchData', () => {

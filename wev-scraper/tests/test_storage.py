@@ -1,6 +1,12 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from utils.storage import slug, upload_error_screenshot, _normalize_storage_path, build_public_storage_url
+
+from utils.storage import (
+    _normalize_storage_path,
+    build_public_storage_url,
+    slug,
+    upload_error_screenshot,
+)
+
 
 def test_slug():
     assert slug("Tech Corp") == "tech-corp"

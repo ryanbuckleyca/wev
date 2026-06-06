@@ -120,10 +120,12 @@ describe('createGroqReranker', () => {
     }
 
     expect(result).toEqual(['uri1']);
-    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
-      model: 'model',
-      messages: expect.any(Array),
-    }));
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'model',
+        messages: expect.any(Array),
+      }),
+    );
   });
 
   it('returns empty array on Groq error', async () => {

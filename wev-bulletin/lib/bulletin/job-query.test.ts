@@ -64,11 +64,15 @@ describe('job-query', () => {
     });
 
     it('filters by organization', () => {
-      expect(filterJobs(mockJobs, { ...defaultFilters, selectedOrganizations: ['Tech Corp'] })).toHaveLength(1);
+      expect(
+        filterJobs(mockJobs, { ...defaultFilters, selectedOrganizations: ['Tech Corp'] }),
+      ).toHaveLength(1);
     });
 
     it('filters by work type', () => {
-      expect(filterJobs(mockJobs, { ...defaultFilters, selectedWorkTypes: ['remote'] })).toHaveLength(1);
+      expect(
+        filterJobs(mockJobs, { ...defaultFilters, selectedWorkTypes: ['remote'] }),
+      ).toHaveLength(1);
     });
 
     it('filters by SSE', () => {
@@ -76,7 +80,9 @@ describe('job-query', () => {
     });
 
     it('filters by salary presence', () => {
-      expect(filterJobs(mockJobs, { ...defaultFilters, showJobsWithoutSalary: false })).toHaveLength(1);
+      expect(
+        filterJobs(mockJobs, { ...defaultFilters, showJobsWithoutSalary: false }),
+      ).toHaveLength(1);
     });
 
     it('filters by posted within', () => {
@@ -85,13 +91,21 @@ describe('job-query', () => {
     });
 
     it('filters by province and municipality', () => {
-      expect(filterJobs(mockJobs, { ...defaultFilters, selectedProvinces: ['Île-de-France'] })).toHaveLength(1);
-      expect(filterJobs(mockJobs, { ...defaultFilters, selectedMunicipalities: ['Lyon'] })).toHaveLength(1);
+      expect(
+        filterJobs(mockJobs, { ...defaultFilters, selectedProvinces: ['Île-de-France'] }),
+      ).toHaveLength(1);
+      expect(
+        filterJobs(mockJobs, { ...defaultFilters, selectedMunicipalities: ['Lyon'] }),
+      ).toHaveLength(1);
     });
 
     it('filters by employment type and source', () => {
-      expect(filterJobs(mockJobs, { ...defaultFilters, selectedEmploymentTypes: ['full-time'] })).toHaveLength(1);
-      expect(filterJobs(mockJobs, { ...defaultFilters, selectedSources: ['LinkedIn'] })).toHaveLength(1);
+      expect(
+        filterJobs(mockJobs, { ...defaultFilters, selectedEmploymentTypes: ['full-time'] }),
+      ).toHaveLength(1);
+      expect(
+        filterJobs(mockJobs, { ...defaultFilters, selectedSources: ['LinkedIn'] }),
+      ).toHaveLength(1);
     });
   });
 
