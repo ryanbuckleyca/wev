@@ -269,8 +269,9 @@ def _extract_explicit_location(location: str) -> Optional[str]:
         # Try to find "City, Province" inside parentheses
         for province in provinces:
             # City: capital letter + letters/accents/hyphens, can be multiple words separated by spaces
-            pattern = rf'([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{re.escape(province)}\b'
-            match = re.search(pattern, inside_parens, re.IGNORECASE)
+            # NOTE: removed re.IGNORECASE to ensure [A-Z] only matches capital letters
+            pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{re.escape(province)}\b'
+            match = re.search(pattern, inside_parens)
             if match:
                 city = match.group(1).strip()
                 if is_valid_city_name(city):
@@ -285,8 +286,8 @@ def _extract_explicit_location(location: str) -> Optional[str]:
         # Look for "City, Province" patterns (most common)
         for province in provinces:
             # City: capital letter + letters/accents/hyphens, can be multiple words separated by spaces
-            pattern = rf'([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{re.escape(province)}\b'
-            match = re.search(pattern, text_before_paren, re.IGNORECASE)
+            pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{re.escape(province)}\b'
+            match = re.search(pattern, text_before_paren)
             if match:
                 city = match.group(1).strip()
                 if is_valid_city_name(city):
@@ -361,8 +362,9 @@ def _extract_explicit_location(location: str) -> Optional[str]:
         # For 2-letter abbreviations, require word boundary on BOTH sides to prevent matching inside words
         # Pattern: Starts with capital, includes letters, hyphens, accents, spaces between words only
         province_pattern = rf'\b{re.escape(province)}\b' if len(province) == 2 else rf'{re.escape(province)}\b'
+        # Removed re.IGNORECASE here to ensure [A-Z] only matches uppercase
         pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)?)\s*,?\s*{province_pattern}'
-        match = re.search(pattern, location, re.IGNORECASE)
+        match = re.search(pattern, location)
         if match:
             city = match.group(1).strip()
             if is_valid_city_name(city):
@@ -373,8 +375,9 @@ def _extract_explicit_location(location: str) -> Optional[str]:
     for province in provinces:
         # For 2-letter abbreviations, require word boundary on BOTH sides to prevent matching inside words
         province_pattern = rf'\b{re.escape(province)}\b' if len(province) == 2 else rf'{re.escape(province)}\b'
+        # Removed re.IGNORECASE here to ensure [A-Z] only matches uppercase
         pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*),?\s*{province_pattern}'
-        match = re.search(pattern, location, re.IGNORECASE)
+        match = re.search(pattern, location)
         if match:
             city = match.group(1).strip()
             if not any(x in city.lower() for x in ['region', 'area', 'watershed', 'zone', 'office', 'space', 'gta', 'greater', 'lakes']):

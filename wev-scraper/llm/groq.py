@@ -97,8 +97,8 @@ def _strip_org_name(text: str, org_name: str) -> str:
     parts.sort(key=len, reverse=True)
     result = text
     for part in parts:
-        # Normalise spaces in the candidate so "Bâtiment7" matches "Bâtiment 7"
-        loose = re.sub(r'\s+', r'\\s*', re.escape(part))
+        # Escape then replace literal spaces with \s* to be flexible
+        loose = re.escape(part).replace(r'\ ', r'\s*').replace(' ', r'\s*')
         pattern = re.compile(r"'?s?\s*" + loose + r"'?s?", re.IGNORECASE)
         result = pattern.sub('', result)
     result = re.sub(r'\s{2,}', ' ', result).strip().strip(',').strip()

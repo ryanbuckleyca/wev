@@ -2,15 +2,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createGroqReranker, parseSelectedUris } from './reranker';
 import Groq from 'groq-sdk';
 
-vi.mock('groq-sdk', () => {
+const { mockCreate } = vi.hoisted(() => {
   return {
-    default: vi.fn().mockImplementation(() => ({
-      chat: {
-        completions: {
-          create: vi.fn().mockResolvedValue({ choices: [] }),
-        },
+    mockCreate: vi.fn(),
+  };
+});
+
+vi.mock('groq-sdk', () => {
+  const MockGroq = vi.fn().mockImplementation(function (this: any) {
+    this.chat = {
+      completions: {
+        create: mockCreate,
       },
-    })),
+    };
+  });
+  return {
+    default: MockGroq,
+    Groq: MockGroq,
   };
 });
 
@@ -74,6 +82,10 @@ describe('reranker - parseSelectedUris', () => {
 });
 
 describe('createGroqReranker', () => {
+  beforeEach(() => {
+    mockCreate.mockReset();
+  });
+
   it('returns empty array if no candidates', async () => {
     const reranker = createGroqReranker('key', 'model');
     const result = await reranker({
@@ -81,8 +93,66 @@ describe('createGroqReranker', () => {
       cvText: 'text',
       locale: 'en',
       maxSkills: 5,
-      userId: 'u1'
+      userId: 'u1',
     });
+    expect(result).toEqual([]);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('calls Groq and parses successful response', async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ selected: ['uri1'] }) } }],
+    });
+
+    const reranker = createGroqReranker('key', 'model');
+    const result = await reranker({
+      candidates: [{ conceptUri: 'uri1', label: 'L1', description: 'D1' }],
+      cvText: 'text',
+      locale: 'en',
+      maxSkills: 5,
+      userId: 'u1',
+    });
+
+    // If it fails, let's see why
+    const { logger } = await import('@/lib/logger');
+    if (result.length === 0) {
+      console.log('LOGGER WARN CALLS:', vi.mocked(logger.warn).mock.calls);
+    }
+
+    expect(result).toEqual(['uri1']);
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+      model: 'model',
+      messages: expect.any(Array),
+    }));
+  });
+
+  it('returns empty array on Groq error', async () => {
+    mockCreate.mockRejectedValue(new Error('API Error'));
+
+    const reranker = createGroqReranker('key', 'model');
+    const result = await reranker({
+      candidates: [{ conceptUri: 'uri1', label: 'L1', description: 'D1' }],
+      cvText: 'text',
+      locale: 'en',
+      maxSkills: 5,
+      userId: 'u1',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('handles empty choices from Groq', async () => {
+    mockCreate.mockResolvedValue({ choices: [] });
+
+    const reranker = createGroqReranker('key', 'model');
+    const result = await reranker({
+      candidates: [{ conceptUri: 'uri1', label: 'L1', description: 'D1' }],
+      cvText: 'text',
+      locale: 'en',
+      maxSkills: 5,
+      userId: 'u1',
+    });
+
     expect(result).toEqual([]);
   });
 });

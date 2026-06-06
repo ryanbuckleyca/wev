@@ -1,8 +1,38 @@
-import { describe, it, expect } from 'vitest';
-import { parseLlmResponse } from './llm';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { parseLlmResponse, extractWithLlm } from './llm';
 import { buildPrompt } from './prompts';
+import Groq from 'groq-sdk';
+
+const { mockCreate } = vi.hoisted(() => ({
+  mockCreate: vi.fn(),
+}));
+
+vi.mock('groq-sdk', () => {
+  const MockGroq = vi.fn().mockImplementation(function (this: any) {
+    this.chat = {
+      completions: {
+        create: mockCreate,
+      },
+    };
+  });
+  return {
+    default: MockGroq,
+    Groq: MockGroq,
+  };
+});
+
+vi.mock('@/lib/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
 describe('llm-extractor', () => {
+  beforeEach(() => {
+    mockCreate.mockReset();
+  });
+
   describe('buildPrompt', () => {
     it('truncates very long CV text', () => {
       const longText = 'a'.repeat(20000);
@@ -95,6 +125,47 @@ describe('llm-extractor', () => {
         '{"skills": [], "values": ["Advancement", "Independence", "Recognition", "Community", "Friendship", "Stability"]}';
       const result = parseLlmResponse(raw);
       expect(result.values).toHaveLength(5);
+    });
+  });
+
+  describe('extractWithLlm', () => {
+    const options = {
+      cvText: 'CV text',
+      groqKey: 'key',
+      userId: 'u1',
+      groqModel: 'model',
+      locale: 'en' as const,
+    };
+
+    it('successfully extracts and parses response', async () => {
+      const mockResult = {
+        skills: [{ phrase: 'React Development', evidence: 'E1', prominence: 5 }],
+        values: ['Advancement'],
+      };
+      mockCreate.mockResolvedValue({
+        choices: [{ message: { content: JSON.stringify(mockResult) } }],
+      });
+
+      const result = await extractWithLlm(options);
+      expect(result.skills).toHaveLength(1);
+      expect(result.values).toEqual(['Advancement']);
+    });
+
+    it('throws extraction_failed on generic error', async () => {
+      mockCreate.mockRejectedValue(new Error('API Error'));
+      await expect(extractWithLlm(options)).rejects.toThrow('extraction_failed');
+    });
+
+    it('rethrows CvImportError', async () => {
+      mockCreate.mockResolvedValue({
+        choices: [{ message: { content: 'invalid json' } }],
+      });
+      // We check for the code since the message is from JSON.parse
+      try {
+        await extractWithLlm(options);
+      } catch (e: any) {
+        expect(e.code).toBe('llm_parsing_failed');
+      }
     });
   });
 });

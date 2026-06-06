@@ -1,5 +1,6 @@
-import pytest
+
 from scrapers.ecocanada import EcoCanadaScraper
+
 
 def make_source():
     return {"id": "ecocanada", "url": "https://eco.ca/career-hub/job-board/", "name": "ECO Canada"}

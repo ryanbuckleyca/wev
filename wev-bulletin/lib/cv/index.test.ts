@@ -19,7 +19,8 @@ vi.mock('@/lib/logger', () => ({
 
 describe('extractSkillsAndValuesFromCv', () => {
   const mockParams = {
-    cvText: 'This is a long enough CV text for testing purposes. It should be at least 50 characters.',
+    cvText:
+      'This is a long enough CV text for testing purposes. It should be at least 50 characters.',
     userId: 'user-1',
     groqKey: 'groq-key',
     jinaKey: 'jina-key',
@@ -47,7 +48,9 @@ describe('extractSkillsAndValuesFromCv', () => {
     });
     vi.mocked(embedPhrases).mockResolvedValue([[0.1, 0.2]]);
     vi.mocked(shortlistEscoCandidates).mockResolvedValue([]);
-    vi.mocked(selectFinalSkills).mockResolvedValue([{ conceptUri: 'uri1', label: 'Coding' } as any]);
+    vi.mocked(selectFinalSkills).mockResolvedValue([
+      { conceptUri: 'uri1', label: 'Coding' } as any,
+    ]);
 
     const result = await extractSkillsAndValuesFromCv(mockParams);
 
