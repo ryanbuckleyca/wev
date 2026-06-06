@@ -6,7 +6,7 @@ import pytest
 from playwright.sync_api import Locator
 
 from conftest import make_source
-from scrapers.base import BaseScraper
+from scrapers.base import BaseScraper, _block_heavy_resources, _get_stealth, _is_ci
 
 
 class StubScraper(BaseScraper):
@@ -416,3 +416,61 @@ def test_process_listing_items_reaches_max_jobs(page):
 
     assert scraper.should_quit_list is True
     assert len(scraper.jobs) == 1
+
+
+# --- Utilities & Browser Lifecycle ---
+
+def test_is_ci(monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    assert _is_ci() is True
+    monkeypatch.setenv("GITHUB_ACTIONS", "false")
+    assert _is_ci() is False
+
+
+def test_get_stealth():
+    # Test lazy init and caching
+    with patch("playwright_stealth.Stealth") as mock_stealth_class:
+        import scrapers.base
+        # Reset cached instance for clean test
+        scrapers.base._STEALTH_INSTANCE = None
+
+        _get_stealth()
+        assert mock_stealth_class.call_count == 1
+        _get_stealth()
+        assert mock_stealth_class.call_count == 1
+
+
+@patch("playwright.sync_api.sync_playwright")
+def test_start_browser(mock_sync_pw):
+    scraper = BaseScraper(make_source())
+    mock_pw = mock_sync_pw.return_value.start.return_value
+    mock_browser = mock_pw.chromium.launch.return_value
+    mock_context = mock_browser.new_context.return_value
+    mock_page = mock_context.new_page.return_value
+
+    page = scraper.start_browser(headless=True)
+
+    assert page == mock_page
+    assert scraper.playwright == mock_pw
+    assert scraper.browser == mock_browser
+    assert scraper.context == mock_context
+
+
+def test_close_browser():
+    scraper = BaseScraper(make_source())
+    scraper.playwright = MagicMock()
+    scraper.browser = MagicMock()
+    scraper.context = MagicMock()
+
+    scraper.close_browser()
+
+    scraper.context.close.assert_called_once()
+    scraper.browser.close.assert_called_once()
+    scraper.playwright.stop.assert_called_once()
+
+
+def test_block_heavy_resources():
+    mock_context = MagicMock()
+    _block_heavy_resources(mock_context)
+    mock_context.route.assert_called_once()
+
