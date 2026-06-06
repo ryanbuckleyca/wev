@@ -1,5 +1,6 @@
-import pytest
-from utils.url import normalize_listing_url, add_url_dedup_variants, get_listing_url_variant
+
+from utils.url import add_url_dedup_variants, get_listing_url_variant, normalize_listing_url
+
 
 def test_normalize_listing_url():
     assert normalize_listing_url(" http://test.com/ ") == "http://test.com"

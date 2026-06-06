@@ -1,10 +1,8 @@
-import pytest
-from unittest.mock import MagicMock, patch
-import sys
+from unittest.mock import patch
 
 # Mock sys.argv before importing the script to avoid the production check
 with patch("sys.argv", ["tag_job_values.py"]):
-    from scripts.tag_job_values import tag_job_values, _should_skip_existing, _has_text_evidence
+    from scripts.tag_job_values import _has_text_evidence, _should_skip_existing, tag_job_values
 
 def test_should_skip_existing():
     assert _should_skip_existing({"values": ["v1"]}, retag=False) is True

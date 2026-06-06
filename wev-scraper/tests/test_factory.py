@@ -1,6 +1,7 @@
-import pytest
-from unittest.mock import patch, MagicMock
-from llm.factory import get_job_summary_provider, PROVIDERS
+from unittest.mock import MagicMock, patch
+
+from llm.factory import PROVIDERS, get_job_summary_provider
+
 
 def test_get_job_summary_provider_local():
     with patch("llm.factory._is_local_mode", return_value=True):

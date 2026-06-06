@@ -1,8 +1,10 @@
 import os
-import sys
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from scrape import ScraperOrchestrator, ScraperResults, initialize_runtime_env, main
+
 
 def test_scraper_results_init():
     results = ScraperResults(is_dry_run=True, is_compare_only=False)

@@ -1,8 +1,8 @@
-import pytest
 import json
-import time
 from unittest.mock import MagicMock, patch
-from llm.groq import GroqProvider, _strip_org_name, LLMProviderError
+
+from llm.groq import GroqProvider, _strip_org_name
+
 
 def test_strip_org_name():
     # Test with simple name

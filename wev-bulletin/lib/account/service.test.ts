@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { updatePasswordForCurrentUser, deleteAccountForCurrentUser, AccountServiceError } from './service';
+import {
+  updatePasswordForCurrentUser,
+  deleteAccountForCurrentUser,
+  AccountServiceError,
+} from './service';
 import { PasswordVerifier, ValidationError, AuthenticationError } from './password-verifier';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { supabaseServer } from '@/lib/supabase-server';
@@ -28,8 +32,20 @@ vi.mock('./password-verifier', () => {
   });
   return {
     PasswordVerifier: MockVerifier,
-    ValidationError: class extends Error { code = ''; constructor(m: string, c: string) { super(m); this.code = c; } },
-    AuthenticationError: class extends Error { code = ''; constructor(m: string, c: string) { super(m); this.code = c; } },
+    ValidationError: class extends Error {
+      code = '';
+      constructor(m: string, c: string) {
+        super(m);
+        this.code = c;
+      }
+    },
+    AuthenticationError: class extends Error {
+      code = '';
+      constructor(m: string, c: string) {
+        super(m);
+        this.code = c;
+      }
+    },
   };
 });
 
@@ -46,8 +62,9 @@ describe('AccountService', () => {
 
   describe('updatePasswordForCurrentUser', () => {
     it('throws error if new password is too short', async () => {
-      await expect(updatePasswordForCurrentUser({ currentPassword: 'p', newPassword: '1' }))
-        .rejects.toThrow(AccountServiceError);
+      await expect(
+        updatePasswordForCurrentUser({ currentPassword: 'p', newPassword: '1' }),
+      ).rejects.toThrow(AccountServiceError);
     });
 
     it('successfully updates password if current is verified', async () => {
@@ -85,8 +102,9 @@ describe('AccountService', () => {
     it('throws error if delete fails', async () => {
       mockVerify.mockResolvedValue(undefined);
       mockDeleteUser.mockResolvedValue({ error: { message: 'Delete failed' } } as any);
-      await expect(deleteAccountForCurrentUser({ password: 'pw', userId: 'u1' }))
-        .rejects.toThrow('Delete failed');
+      await expect(deleteAccountForCurrentUser({ password: 'pw', userId: 'u1' })).rejects.toThrow(
+        'Delete failed',
+      );
     });
   });
 });

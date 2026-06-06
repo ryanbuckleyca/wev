@@ -1,6 +1,9 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from scrapers.base import BaseScraper, _is_ci, _get_stealth
+
+import pytest
+
+from scrapers.base import BaseScraper, _get_stealth, _is_ci
+
 
 def test_is_ci():
     with patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}):

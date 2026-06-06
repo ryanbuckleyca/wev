@@ -1,13 +1,13 @@
-import json
-import pytest
 from unittest.mock import MagicMock, patch
+
 from scripts.unified_post_processor import (
-    process_jobs_unified,
     _build_update_data,
-    is_transient_db_error,
     _try_db_write,
-    main
+    is_transient_db_error,
+    main,
+    process_jobs_unified,
 )
+
 
 def test_build_update_data():
     job_result = {
@@ -52,8 +52,6 @@ def test_is_transient_db_error():
 @patch("scripts.unified_post_processor.supabase")
 def test_try_db_write_success(mock_supabase):
     mock_table = mock_supabase.table.return_value
-    mock_update = mock_table.update.return_value
-    mock_eq = mock_update.eq.return_value
 
     _try_db_write({"id": "j1"}, {"summary": "S"}, mock_supabase)
     mock_table.update.assert_called_with({"summary": "S"})

@@ -1,6 +1,7 @@
-import pytest
-from unittest.mock import MagicMock, patch
-from scripts.process_jobs_unified import process_jobs_unified, _update_job_in_database
+from unittest.mock import patch
+
+from scripts.process_jobs_unified import _update_job_in_database, process_jobs_unified
+
 
 @patch("scripts.process_jobs_unified.UnifiedJobProcessor")
 @patch("scripts.process_jobs_unified.supabase")
