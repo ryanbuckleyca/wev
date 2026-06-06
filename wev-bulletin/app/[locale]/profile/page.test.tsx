@@ -39,6 +39,15 @@ vi.mock('@/i18n/navigation', () => ({
   },
 }));
 
+vi.mock('@/lib/toast', () => ({
+  default: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
+}));
+
 const baseProfile = {
   id: 'user-1',
   full_name: 'Test User',
