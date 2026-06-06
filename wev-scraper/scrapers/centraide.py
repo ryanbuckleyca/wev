@@ -81,7 +81,7 @@ class CentraideScraper(BaseScraper):
                     text = loc.evaluate("""el => {
                         const clone = el.cloneNode(true);
                         clone.querySelectorAll('table').forEach(t => t.remove());
-                        return clone.textContent;
+                        return clone.innerText;
                     }""")
                     if text and text.strip():
                         return text
