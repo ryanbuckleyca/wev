@@ -149,6 +149,9 @@ describe('ProfilePage skills integration', () => {
 
     render(<ProfilePage />);
 
+    // Wait for the skill to be hydrated and rendered
+    await screen.findByText('Data analysis');
+
     const removeButton = await screen.findByRole('button', {
       name: /remove data analysis/i,
     });
