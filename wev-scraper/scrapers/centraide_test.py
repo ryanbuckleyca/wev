@@ -42,7 +42,7 @@ def test_extract_description(page):
                 <section class="single-main">
                     <div class="entry-content">
                         This is a job description.
-                        <table>Should be removed</table>
+                        <table><tr><td>Should be removed</td></tr></table>
                     </div>
                 </section>
             </body>
