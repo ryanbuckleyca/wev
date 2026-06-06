@@ -1,0 +1,94 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.7, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/ry/code/wev/wev-scraper
+configfile: pytest.ini
+plugins: mock-3.15.1, cov-7.1.0, hypothesis-6.152.4, anyio-4.13.0
+collected 192 items
+
+scrapers/goodwork_test.py .....                                          [  2%]
+tests/test_backfill_compensation.py .....                                [  5%]
+tests/test_base.py ............................                          [ 19%]
+tests/test_base_sse.py .                                                 [ 20%]
+tests/test_compensation.py ....................                          [ 30%]
+tests/test_db_compensation.py .........                                  [ 35%]
+tests/test_dedup.py ...............                                      [ 43%]
+tests/test_extract_salary.py ..............................              [ 58%]
+tests/test_jina_embedding.py .....                                       [ 61%]
+tests/test_job_values_tagger.py ........                                 [ 65%]
+tests/test_llm_config.py ...                                             [ 67%]
+tests/test_llm_providers.py .....                                        [ 69%]
+tests/test_local_grounded.py ......                                      [ 72%]
+tests/test_municipality_canonical.py ..........                          [ 78%]
+tests/test_save_job.py .........                                         [ 82%]
+tests/test_settings.py .......                                           [ 86%]
+tests/test_tag_esco_skills_vector.py ..........                          [ 91%]
+tests/test_url.py ................                                       [100%]
+
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.11.7-final-0 _______________
+
+Name                                   Stmts   Miss  Cover
+----------------------------------------------------------
+conftest.py                               22      5    77%
+lib/__init__.py                            0      0   100%
+lib/compensation.py                      132     12    91%
+llm/__init__.py                            3      0   100%
+llm/base.py                              105     82    22%
+llm/config.py                              8      0   100%
+llm/factory.py                            70     39    44%
+llm/gemini.py                            136    106    22%
+llm/groq.py                              272    233    14%
+llm/jina_embedding.py                    101     45    55%
+llm/local_grounded.py                    122     46    62%
+llm/prompts.py                            43     29    33%
+scrape.py                                275    205    25%
+scrapers/base.py                         440    247    44%
+scrapers/centraide.py                    101     85    16%
+scrapers/coco.py                           8      1    88%
+scrapers/csi.py                           94     75    20%
+scrapers/ecocanada.py                    126     97    23%
+scrapers/goodwork.py                     165     95    42%
+scrapers/goodwork_test.py                 29     10    66%
+scrapers/macommunaute.py                 142    120    15%
+scrapers/registry.py                      12      2    83%
+scripts/__init__.py                        1      0   100%
+scripts/backfill_compensation.py          96     26    73%
+scripts/tag_esco_skills_vector.py        228    161    29%
+scripts/test_llm_location.py              40      1    98%
+scripts/test_work_type_detection.py       36      2    94%
+settings.py                               63      4    94%
+tests/__init__.py                          0      0   100%
+tests/test_backfill_compensation.py      125      1    99%
+tests/test_base.py                       176     70    60%
+tests/test_base_sse.py                    20      6    70%
+tests/test_compensation.py               117      0   100%
+tests/test_db_compensation.py            102      1    99%
+tests/test_dedup.py                      133      1    99%
+tests/test_extract_salary.py              17      0   100%
+tests/test_jina_embedding.py              76      5    93%
+tests/test_job_values_tagger.py           45      0   100%
+tests/test_llm_config.py                  17      0   100%
+tests/test_llm_providers.py               36      0   100%
+tests/test_local_grounded.py              50      0   100%
+tests/test_municipality_canonical.py       9      0   100%
+tests/test_save_job.py                   105      9    91%
+tests/test_settings.py                    72      0   100%
+tests/test_tag_esco_skills_vector.py      72      0   100%
+tests/test_url.py                         50      0   100%
+utils/constants.py                         1      0   100%
+utils/date_utils.py                       65     42    35%
+utils/db.py                              148     24    84%
+utils/env.py                               7      0   100%
+utils/extractors.py                       72     29    60%
+utils/field_management.py                 43     26    40%
+utils/job_values_prompts.py               15      7    53%
+utils/job_values_tagger.py                90     55    39%
+utils/llm_location_extractor.py           52     23    56%
+utils/location_parser.py                 250    207    17%
+utils/log.py                               2      0   100%
+utils/municipality_canonical.py           28      2    93%
+utils/normalize.py                       105     28    73%
+utils/url.py                              14      0   100%
+----------------------------------------------------------
+TOTAL                                   4984   2264    55%
+======================== 192 passed in 95.09s (0:01:35) ========================
