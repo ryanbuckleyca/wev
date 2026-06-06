@@ -1,5 +1,6 @@
-import pytest
+
 from scrapers.macommunaute import MaCommunauteScraper
+
 
 def make_source(url="https://macommunaute.ca/emplois/"):
     return {"id": "macommunaute", "url": url, "name": "Ma Communauté"}

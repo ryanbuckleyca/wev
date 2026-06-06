@@ -14,7 +14,7 @@ vi.mock('@/lib/match-calculator', () => ({
 vi.mock('next/server', async () => {
   const actual = await vi.importActual('next/server');
   return {
-    ...actual as any,
+    ...(actual as any),
     after: vi.fn((cb) => cb()), // execute immediately for test
   };
 });
@@ -35,7 +35,9 @@ describe('POST /api/matches/recalculate-mine', () => {
 
   it('returns 200 and calls calculateUserMatches if authenticated', async () => {
     vi.mocked(createClient).mockResolvedValue({
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }) },
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
+      },
     } as any);
 
     const response = await POST();

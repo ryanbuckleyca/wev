@@ -18,7 +18,7 @@ describe('CommandSelector', () => {
         query=""
         onQueryChange={vi.fn()}
         availableOptions={options}
-      />
+      />,
     );
     expect(screen.getByPlaceholderText('Select an option')).toBeInTheDocument();
   });
@@ -33,7 +33,7 @@ describe('CommandSelector', () => {
         query=""
         onQueryChange={vi.fn()}
         availableOptions={options}
-      />
+      />,
     );
     expect(screen.getByText('Option 1')).toBeInTheDocument();
   });
@@ -49,7 +49,7 @@ describe('CommandSelector', () => {
         query=""
         onQueryChange={onQueryChange}
         availableOptions={options}
-      />
+      />,
     );
     const input = screen.getByPlaceholderText('Select an option');
     fireEvent.change(input, { target: { value: 'test' } });

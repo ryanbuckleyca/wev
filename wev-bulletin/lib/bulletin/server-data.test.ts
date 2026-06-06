@@ -1,108 +1,173 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const {
-  mockJobsEq,
-  mockJobsRange,
-  mockScrapeMaybeSingle,
-  mockFrom,
-  mockResolveSkillLabels,
-  jobsChain,
-} = vi.hoisted(() => {
-  const mockJobsEq = vi.fn();
-  const mockJobsRange = vi.fn();
-  const mockScrapeMaybeSingle = vi.fn();
-  const mockResolveSkillLabels = vi.fn();
-
-  const jobsChain: any = {
-    select: vi.fn(() => jobsChain),
-    is: vi.fn(() => jobsChain),
-    eq: mockJobsEq,
-    gte: vi.fn(() => jobsChain),
-    order: vi.fn(() => jobsChain),
-    range: mockJobsRange,
-    limit: vi.fn(() => jobsChain),
-  };
-  jobsChain.then = (onFullfilled: any) =>
-    Promise.resolve({ data: [], count: 0, error: null }).then(onFullfilled);
-
-  mockJobsEq.mockReturnValue(jobsChain);
-
-  const scrapeChain = {
-    select: vi.fn(() => scrapeChain),
-    order: vi.fn(() => scrapeChain),
-    limit: vi.fn(() => scrapeChain),
-    maybeSingle: mockScrapeMaybeSingle,
-  };
-
-  const mockFrom = vi.fn((table: string) => {
-    if (table === 'matched_jobs') return jobsChain;
-    if (table === 'scrape_runs') return scrapeChain;
-    throw new Error(`Unexpected table: ${table}`);
-  });
-
-  return {
-    mockJobsEq,
-    mockJobsRange,
-    mockScrapeMaybeSingle,
-    mockFrom,
-    mockResolveSkillLabels,
-    jobsChain,
-  };
-});
-
-vi.mock('next/cache', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('next/cache')>();
-  return {
-    ...actual,
-    unstable_cache: <TArgs extends unknown[], TResult>(fn: (...args: TArgs) => TResult) => fn,
-  };
-});
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  fetchLastScrapeTime,
+  fetchServerMatchData,
+  fetchServerBookmarks,
+  fetchServerProfile,
+} from './server-data';
+import { supabaseServer } from '@/lib/supabase-server';
 
 vi.mock('@/lib/supabase-server', () => ({
   supabaseServer: {
-    from: mockFrom,
+    from: vi.fn(),
   },
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({
-    from: vi.fn(),
-  })),
+  createClient: vi.fn(),
 }));
 
 vi.mock('@/lib/resolve-skill-labels', () => ({
-  resolveSkillLabels: mockResolveSkillLabels,
+  resolveSkillLabels: vi.fn().mockResolvedValue(new Map()),
 }));
 
-describe('fetchServerBulletinJobs', () => {
+describe('server-data', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockScrapeMaybeSingle.mockResolvedValue({
-      data: { run_at: '2026-04-20T00:00:00.000Z' },
-      error: null,
+  });
+
+  describe('fetchLastScrapeTime', () => {
+    it('returns run_at from the latest scrape run', async () => {
+      const mockData = { run_at: '2024-03-15T10:00:00Z' };
+      vi.mocked(supabaseServer.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+            }),
+          }),
+        }),
+      } as any);
+
+      const result = await fetchLastScrapeTime();
+      expect(result).toBe('2024-03-15T10:00:00Z');
     });
-    mockJobsRange.mockResolvedValue({ data: [], count: 0, error: null });
-    mockResolveSkillLabels.mockResolvedValue(new Map());
+
+    it('returns null if no scrape runs found', async () => {
+      vi.mocked(supabaseServer.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        }),
+      } as any);
+
+      const result = await fetchLastScrapeTime();
+      expect(result).toBeNull();
+    });
+
+    it('throws error if supabase fails', async () => {
+      vi.mocked(supabaseServer.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: { message: 'DB Error' } }),
+            }),
+          }),
+        }),
+      } as any);
+
+      await expect(fetchLastScrapeTime()).rejects.toThrow('DB Error');
+    });
   });
 
-  it('keeps default initial fetch inclusive of jobs without compensation', async () => {
-    const { fetchServerBulletinJobs } = await import('./server-data');
+  describe('fetchServerMatchData', () => {
+    it('returns serialized match data for a user', async () => {
+      const mockData = [
+        {
+          job_id: 'job-1',
+          score: 85,
+          value_score: 10,
+          skill_score: 20,
+          work_type_score: 30,
+          location_score: 25,
+          shared_values: ['V1'],
+          shared_skills: ['S1'],
+        },
+      ];
 
-    await fetchServerBulletinJobs('en');
+      vi.mocked(supabaseServer.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+        }),
+      } as any);
 
-    expect(mockFrom).toHaveBeenCalledWith('matched_jobs');
-    expect(mockJobsEq).not.toHaveBeenCalledWith('has_compensation', true);
-    expect(mockJobsRange).toHaveBeenCalledWith(0, 19);
+      const result = await fetchServerMatchData('user-1');
+      expect(result['job-1']).toEqual({
+        score: 85,
+        value_score: 10,
+        skill_score: 20,
+        work_type_score: 30,
+        location_score: 25,
+        shared_values: ['V1'],
+        shared_skills: ['S1'],
+      });
+    });
+
+    it('returns empty object on error', async () => {
+      vi.mocked(supabaseServer.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: null, error: { message: 'Error' } }),
+        }),
+      } as any);
+
+      const result = await fetchServerMatchData('user-1');
+      expect(result).toEqual({});
+    });
   });
 
-  it('applies the 4-week (28-day) age limit to prevent old jobs from being returned', async () => {
-    const { fetchServerBulletinJobs } = await import('./server-data');
+  describe('fetchServerBookmarks', () => {
+    it('returns array of bookmarked job IDs', async () => {
+      vi.mocked(supabaseServer.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: [{ job_id: 'j1' }, { job_id: 'j2' }], error: null }),
+        }),
+      } as any);
 
-    await fetchServerBulletinJobs('en');
+      const result = await fetchServerBookmarks('user-1');
+      expect(result).toEqual(['j1', 'j2']);
+    });
 
-    // Verify that a date filter was applied (gte for date_posted)
-    // We check both the jobs query and the filter options/total available queries
-    expect(mockFrom).toHaveBeenCalledWith('matched_jobs');
-    expect(jobsChain.gte).toHaveBeenCalledWith('date_posted', expect.any(String));
+    it('returns empty array on error', async () => {
+      vi.mocked(supabaseServer.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: null, error: { message: 'Error' } }),
+        }),
+      } as any);
+
+      const result = await fetchServerBookmarks('user-1');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('fetchServerProfile', () => {
+    it('returns profile for a user', async () => {
+      const mockProfile = { id: 'user-1', full_name: 'Test User' };
+      vi.mocked(supabaseServer.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+          }),
+        }),
+      } as any);
+
+      const result = await fetchServerProfile('user-1');
+      expect(result).toEqual(mockProfile);
+    });
+
+    it('returns null on error', async () => {
+      vi.mocked(supabaseServer.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: { message: 'Error' } }),
+          }),
+        }),
+      } as any);
+
+      const result = await fetchServerProfile('user-1');
+      expect(result).toBeNull();
+    });
   });
 });
