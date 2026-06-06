@@ -1,5 +1,6 @@
-import pytest
+
 from scrapers.centraide import CentraideScraper
+
 
 def make_source():
     return {"id": "centraide", "url": "https://www.centraide-mtl.org/carrieres/", "name": "Centraide"}

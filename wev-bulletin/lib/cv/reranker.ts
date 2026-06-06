@@ -24,7 +24,7 @@ export type RerankerInput = {
  */
 export type Reranker = (input: RerankerInput) => Promise<string[]>;
 
-function parseSelectedUris(content: string, validUris: Set<string>, max: number): string[] {
+export function parseSelectedUris(content: string, validUris: Set<string>, max: number): string[] {
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);

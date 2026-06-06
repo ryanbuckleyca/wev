@@ -12,13 +12,7 @@ vi.mock('@/lib/hooks/useTheme', () => ({
 
 describe('TurnstileWidget', () => {
   it('renders the turnstile component when mounted', () => {
-    render(
-      <TurnstileWidget
-        onSuccess={vi.fn()}
-        onError={vi.fn()}
-        onExpire={vi.fn()}
-      />
-    );
+    render(<TurnstileWidget onSuccess={vi.fn()} onError={vi.fn()} onExpire={vi.fn()} />);
     expect(screen.getByTestId('mock-turnstile')).toBeInTheDocument();
   });
 });

@@ -8,12 +8,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 }));
 
 vi.mock('@/i18n/navigation', () => ({
-  Link: ({
-    href,
-    children,
-    prefetch,
-    ...props
-  }: any) => {
+  Link: ({ href, children, prefetch, ...props }: any) => {
     void prefetch;
     return (
       <a href={href} {...props}>
