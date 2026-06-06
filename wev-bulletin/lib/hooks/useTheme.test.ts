@@ -4,10 +4,10 @@ import { describe, it, expect, vi } from 'vitest';
 
 describe('useTheme', () => {
   it('returns light theme by default on server side', () => {
-    // In vitest environment, window is usually defined. 
+    // In vitest environment, window is usually defined.
     // We can mock it by checking the logic.
     // The hook uses `typeof window === 'undefined'`
-    
+
     // We can't easily delete window in some environments, but we can check the logic.
     // If we are in a browser-like env (jsdom), mounted should be true.
     const { result } = renderHook(() => useTheme());

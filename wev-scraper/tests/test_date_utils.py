@@ -1,7 +1,15 @@
 import os
-import pytest
 from datetime import datetime, timedelta, timezone
-from utils.date_utils import get_within_weeks, _translate_french_date, _parse_localized_date, is_recent_job
+
+import pytest
+
+from utils.date_utils import (
+    _parse_localized_date,
+    _translate_french_date,
+    get_within_weeks,
+    is_recent_job,
+)
+
 
 def test_get_within_weeks():
     # Test default

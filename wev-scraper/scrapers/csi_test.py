@@ -1,5 +1,6 @@
-import pytest
+
 from scrapers.csi import CSIScraper
+
 
 def make_source():
     return {"id": "csi", "url": "https://socialinnovation.org/jobs/", "name": "CSI"}
