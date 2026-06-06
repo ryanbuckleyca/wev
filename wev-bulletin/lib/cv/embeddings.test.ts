@@ -72,6 +72,8 @@ describe('embeddings - embedPhrases', () => {
     mockFetch.mockResolvedValue({ ok: false, status: 502 });
 
     const promise = embedPhrases(['p1'], 'key');
+    // Attach a dummy catch to prevent unhandled rejection warnings in Vitest
+    promise.catch(() => {});
 
     // Retry 1
     await vi.runAllTimersAsync();
