@@ -142,6 +142,12 @@ describe('ProfilePage skills integration', () => {
       name: /remove data analysis/i,
     });
     await user.click(removeButton);
+
+    // Ensure the skill is removed from the UI before saving
+    await waitFor(() => {
+      expect(screen.queryByText('Data analysis')).not.toBeInTheDocument();
+    });
+
     await user.click(screen.getByRole('button', { name: /save profile/i }));
 
     await waitFor(() => {
