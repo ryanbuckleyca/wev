@@ -13,6 +13,7 @@ LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
   SELECT unaccent('unaccent', $1);
 $$;
+DROP FUNCTION IF EXISTS search_esco_skills(text, int, text);
 
 CREATE OR REPLACE FUNCTION search_esco_skills(
     p_query   text,
