@@ -89,6 +89,13 @@ describe('useUserJobMeta', () => {
       },
       bookmarkedJobIds: ['job-1'],
       skillLabels: {},
+      filterOptions: {
+        organizations: [],
+        provinces: [],
+        municipalitiesByProvince: {},
+        employmentTypes: [],
+        sources: [],
+      },
     };
 
     const { result } = renderHook(() => useUserJobMeta('user-1', [baseJob], initialData));

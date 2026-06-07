@@ -29,6 +29,8 @@ test-results/
 .coverage
 htmlcov/
 .pytest_cache/
+wev-bulletin/test_output.txt
+wev-bulletin/test_output*.txt
 
 # Editor / AI tools
 .ai/
@@ -39,6 +41,9 @@ htmlcov/
 .windsurf/
 .vscode/
 .cursorrules
+.trae/
+.agent/
+AGENTS.md
 
 # Python
 .venv/

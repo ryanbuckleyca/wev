@@ -15,7 +15,7 @@ type ThemeToggleProps = {
   initialTheme?: ThemePreference;
 };
 
-export default function ThemeToggle({ initialTheme = 'light' }: ThemeToggleProps) {
+export default function ThemeToggle({ initialTheme = 'dark' }: ThemeToggleProps) {
   const t = useTranslations('ariaLabels.themeToggle');
   const [theme, setTheme] = useState<ThemePreference>(initialTheme);
   const transitionTimeoutRef = useRef<number | null>(null);

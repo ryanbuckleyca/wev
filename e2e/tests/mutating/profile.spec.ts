@@ -1,7 +1,99 @@
 import { test, expect } from "@e2e/fixtures";
+import type { Locator, Page } from "@playwright/test";
+
+async function selectedRemoveLabels(
+  container: Locator,
+): Promise<Array<string | null>> {
+  return container
+    .getByRole("button", { name: /^remove /i })
+    .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
+}
+
+async function moveFirstSelectedItemDown(
+  page: Page,
+  container: Locator,
+): Promise<Array<string | null>> {
+  const before = await selectedRemoveLabels(container);
+  const handles = container.getByRole("button", {
+    name: /^drag to reorder$/i,
+  });
+
+  await expect(handles.nth(1)).toBeVisible();
+  await handles.first().focus();
+  await page.keyboard.press("ArrowDown");
+
+  await expect
+    .poll(async () => (await selectedRemoveLabels(container))[0], {
+      timeout: 10_000,
+    })
+    .not.toBe(before[0]);
+
+  return selectedRemoveLabels(container);
+}
+
+async function visibleSkillOptionLabels(listbox: Locator): Promise<string[]> {
+  return listbox.getByRole("option").evaluateAll((els) =>
+    els
+      .slice(0, 3)
+      .map((el) => {
+        const label = el.querySelector("p");
+        return label?.textContent?.trim() ?? "";
+      })
+      .filter(Boolean),
+  );
+}
 
 test.describe("Profile editing flow", () => {
   test.setTimeout(180_000);
+
+  test("shows starter skills before typing and restores them after clearing search", async ({
+    page,
+    loggedInUser,
+  }) => {
+    void loggedInUser;
+
+    await page.goto("/en/profile");
+    await expect(
+      page.getByRole("heading", { name: /^my profile$/i }),
+    ).toBeVisible({
+      timeout: 10_000,
+    });
+
+    const skillsTrigger = page.getByRole("button", {
+      name: /search and add skills/i,
+    });
+    await skillsTrigger.click();
+
+    const dialog = page.getByRole("dialog", {
+      name: /search and select skills/i,
+    });
+    await expect(dialog).toBeVisible();
+
+    const listbox = dialog.getByRole("listbox", {
+      name: /skill search results/i,
+    });
+    await expect(listbox.getByRole("option").first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    const starterLabels = await expect
+      .poll(() => visibleSkillOptionLabels(listbox))
+      .toHaveLength(3)
+      .then(() => visibleSkillOptionLabels(listbox));
+
+    const searchInput = dialog.getByPlaceholder(/search to add skills/i);
+    await searchInput.fill("mana");
+
+    await expect
+      .poll(() => visibleSkillOptionLabels(listbox))
+      .not.toEqual(starterLabels);
+
+    await searchInput.fill("");
+
+    await expect
+      .poll(() => visibleSkillOptionLabels(listbox))
+      .toEqual(starterLabels);
+  });
 
   test("enforces skills/values limits and persists ordering", async ({
     page,
@@ -35,6 +127,56 @@ test.describe("Profile editing flow", () => {
       await suggestions.getByRole("option").first().click();
     });
 
+    await test.step("Import CV to auto-fill skills and values", async () => {
+      // Mock the CV extraction API to avoid calling the real LLM in E2E tests
+      await page.route("**/api/cv/extract", async (route) => {
+        await route.fulfill({
+          status: 200,
+          json: {
+            skills: [
+              {
+                uri: "http://data.europa.eu/esco/skill/e87498c3-f09b-4ca0-be58-3cc22b4044af",
+                preferredLabel: { en: "React", fr: "React" },
+                skillType: "skill",
+                reuseLevel: "cross-sector",
+              },
+            ],
+            values: ["Advancement"],
+            metadata: {
+              filename: "test.pdf",
+              imported_at: new Date().toISOString(),
+              source: "cv_upload",
+              locale: "en",
+            },
+            warnings: [],
+          },
+        });
+      });
+
+      // The file input is hidden, so we need to set its files directly via the locator
+      await page.getByTestId("cv-file-input").setInputFiles({
+        name: "test.pdf",
+        mimeType: "application/pdf",
+        buffer: Buffer.from("dummy content"),
+      });
+
+      // Verify the extracted skill was added to the UI
+      const skillsContainer = page
+        .getByRole("button", { name: /search and add skills/i })
+        .locator("..");
+      await expect(
+        skillsContainer.getByRole("button", { name: /^remove React/i }),
+      ).toBeVisible({ timeout: 10_000 });
+
+      // Verify the extracted value was added to the UI
+      const valuesContainer = page
+        .getByRole("button", { name: /search and add work values/i })
+        .locator("..");
+      await expect(
+        valuesContainer.getByRole("button", { name: /^remove Advancement/i }),
+      ).toBeVisible();
+    });
+
     const skillsTrigger = page.getByRole("button", {
       name: /search and add skills/i,
     });
@@ -57,7 +199,7 @@ test.describe("Profile editing flow", () => {
         timeout: 10_000,
       });
 
-      for (let i = 0; i < 11; i += 1) {
+      for (let i = 0; i < 10; i += 1) {
         await listbox.getByRole("option").nth(i).click();
       }
 
@@ -79,40 +221,8 @@ test.describe("Profile editing flow", () => {
         .click();
       await expect(page.getByText(/you've selected more than/i)).toHaveCount(0);
 
-      const beforeOrder = await skillsContainer
-        .getByRole("button", { name: /^remove /i })
-        .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-
-      const handles = skillsContainer.getByRole("button", {
-        name: /^drag to reorder$/i,
-      });
-      const from = handles.nth(0);
-      const to = handles.nth(1);
-
-      const fromBox = await from.boundingBox();
-      const toBox = await to.boundingBox();
-      if (!fromBox || !toBox) throw new Error("Could not measure drag handles");
-
-      await page.mouse.move(
-        fromBox.x + fromBox.width / 2,
-        fromBox.y + fromBox.height / 2,
-      );
-      await page.mouse.down();
-      await page.mouse.move(
-        toBox.x + toBox.width / 2,
-        toBox.y + toBox.height + 5,
-        {
-          steps: 12,
-        },
-      );
-      await page.mouse.up();
-
-      const afterOrder = await skillsContainer
-        .getByRole("button", { name: /^remove /i })
-        .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-
+      const afterOrder = await moveFirstSelectedItemDown(page, skillsContainer);
       skillsOrderAfterReorder = afterOrder;
-      expect(afterOrder[0]).not.toBe(beforeOrder[0]);
 
       await page.getByRole("button", { name: /^save profile$/i }).click();
       await expect(
@@ -142,7 +252,6 @@ test.describe("Profile editing flow", () => {
         "Security",
         "Stability",
         "Independence",
-        "Advancement",
       ];
 
       const listbox = dialog.getByRole("listbox", { name: /work values/i });
@@ -170,40 +279,8 @@ test.describe("Profile editing flow", () => {
         .click();
       await expect(page.getByText(/you've selected more than/i)).toHaveCount(0);
 
-      const before = await valuesContainer
-        .getByRole("button", { name: /^remove /i })
-        .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-
-      const handles = valuesContainer.getByRole("button", {
-        name: /^drag to reorder$/i,
-      });
-      const from = handles.nth(0);
-      const to = handles.nth(1);
-
-      const fromBox = await from.boundingBox();
-      const toBox = await to.boundingBox();
-      if (!fromBox || !toBox) throw new Error("Could not measure drag handles");
-
-      await page.mouse.move(
-        fromBox.x + fromBox.width / 2,
-        fromBox.y + fromBox.height / 2,
-      );
-      await page.mouse.down();
-      await page.mouse.move(
-        toBox.x + toBox.width / 2,
-        toBox.y + toBox.height + 5,
-        {
-          steps: 12,
-        },
-      );
-      await page.mouse.up();
-
-      const after = await valuesContainer
-        .getByRole("button", { name: /^remove /i })
-        .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-
+      const after = await moveFirstSelectedItemDown(page, valuesContainer);
       valuesOrderAfterReorder = after;
-      expect(after[0]).not.toBe(before[0]);
 
       await page.getByRole("button", { name: /^save profile$/i }).click();
       await expect(

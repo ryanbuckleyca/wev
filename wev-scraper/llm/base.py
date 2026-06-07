@@ -7,6 +7,7 @@ without changing calling code. Use the factory in llm.factory to get a provider.
 from __future__ import annotations
 
 import logging
+import time
 from abc import ABC, abstractmethod
 from typing import Callable
 
@@ -25,6 +26,25 @@ class LLMProviderError(Exception):
     """Raised when an LLM provider fails (rate limit, API error, etc.)."""
 
     pass
+
+
+def error_suggests_try_next_provider(error: LLMProviderError | str) -> bool:
+    """Return True when a multi-provider orchestrator should try the next backend.
+
+    Used for transient capacity / upstream errors (e.g. Gemini 503) where another
+    provider (Groq) may still succeed for the same prompt.
+    """
+    err_str = str(error).lower()
+    return (
+        "503" in err_str
+        or "502" in err_str
+        or "504" in err_str
+        or "unavailable" in err_str
+        or "overloaded" in err_str
+        or "high demand" in err_str
+        or "try again later" in err_str
+        or "deadline exceeded" in err_str
+    )
 
 
 class BaseLLMProvider(ABC):
@@ -87,6 +107,8 @@ class BaseLLMProvider(ABC):
         system: str | None = None,
         token_budget: int | None = None,
         fixed_overhead_tokens: int = 0,
+        *,
+        raise_for_fallback: bool = False,
         **kwargs,
     ) -> list:
         """Send items to the LLM in token-aware batches.
@@ -107,6 +129,11 @@ class BaseLLMProvider(ABC):
                           (e.g. a candidate pool included once per call).
                           These are subtracted from the budget before sizing
                           per-item estimates, so batches are larger.
+            raise_for_fallback: If True, quota / timeout / transient upstream
+                          errors from ``complete()`` are re-raised so a
+                          multi-provider caller (e.g. ``UnifiedJobProcessor``)
+                          can try the next backend. If False (default), those
+                          errors fill the batch with ``None`` and continue.
             **kwargs: Extra kwargs forwarded to complete().
 
         Returns:
@@ -188,6 +215,7 @@ class BaseLLMProvider(ABC):
                     # Force a tighter budget so the recursive call splits further if needed
                     token_budget=max_per_request // 2,
                     fixed_overhead_tokens=fixed_overhead_tokens,
+                    raise_for_fallback=raise_for_fallback,
                     **kwargs,
                 )
                 results.extend(sub_results)
@@ -195,11 +223,32 @@ class BaseLLMProvider(ABC):
 
             logger.info(f"[batch {i}/{total_batches}] {len(batch)} items, ~{estimated} tokens")
             print(f"  Batch {i}/{total_batches}: {len(batch)} items, ~{estimated} estimated tokens", flush=True)
-
+            _prov = type(self).__name__
+            _task = kwargs.get("task") or "—"
+            _wait_hint = (
+                "local Ollama inference can be slow on CPU; Ctrl+C aborts"
+                if _prov == "LocalGroundedProvider"
+                else "remote HTTP/API can take minutes; Ctrl+C aborts"
+            )
+            print(
+                f"  → LLM in flight… provider={_prov} task={_task} ({_wait_hint})",
+                flush=True,
+            )
+            t_llm = time.perf_counter()
             try:
                 raw = self.complete(prompt, system=system, **kwargs)
+                _elapsed = time.perf_counter() - t_llm
+                logger.info(
+                    f"[batch {i}/{total_batches}] complete() returned in {_elapsed:.2f}s ({_prov})"
+                )
+                print(f"  ← LLM returned in {_elapsed:.1f}s ({len(batch)} items)", flush=True)
                 batch_results = parse_response(raw, batch)
             except LLMProviderError as e:
+                _elapsed = time.perf_counter() - t_llm
+                logger.warning(
+                    f"[batch {i}/{total_batches}] complete() failed after {_elapsed:.2f}s ({_prov}): {e}"
+                )
+                print(f"  ← LLM failed after {_elapsed:.1f}s: {e}", flush=True)
                 err_str = str(e)
                 # 413 = request too large — split and retry rather than dropping results
                 if "413" in err_str and len(batch) > 1:
@@ -212,16 +261,29 @@ class BaseLLMProvider(ABC):
                         system=system,
                         token_budget=max_per_request // 2,
                         fixed_overhead_tokens=fixed_overhead_tokens,
+                        raise_for_fallback=raise_for_fallback,
                         **kwargs,
                     )
                     results.extend(sub_results)
                     continue
-                # 429 / quota exhausted — re-raise so the caller's fallback chain can try the next provider
-                if "429" in err_str or "quota" in err_str.lower() or "resource_exhausted" in err_str.lower() or "rate limit" in err_str.lower():
+                # 429 / quota / timeout / transient — optionally re-raise for multi-provider fallback
+                if raise_for_fallback and (
+                    "429" in err_str
+                    or "quota" in err_str.lower()
+                    or "resource_exhausted" in err_str.lower()
+                    or "rate limit" in err_str.lower()
+                ):
                     logger.warning(f"[batch {i}/{total_batches}] quota/rate-limit, re-raising for fallback: {e}")
                     raise
+                if raise_for_fallback and ("timeout" in err_str.lower() or "timed out" in err_str.lower()):
+                    logger.warning(f"[batch {i}/{total_batches}] request timeout, re-raising for fallback: {e}")
+                    raise
+                if raise_for_fallback and error_suggests_try_next_provider(e):
+                    logger.warning(
+                        f"[batch {i}/{total_batches}] upstream/transient error, re-raising for fallback: {e}"
+                    )
+                    raise
                 logger.warning(f"[batch {i}/{total_batches}] LLM call failed: {e}")
-                print(f"  [batch {i}/{total_batches}] LLM call failed: {e}", flush=True)
                 batch_results = [None] * len(batch)
 
             results.extend(batch_results)

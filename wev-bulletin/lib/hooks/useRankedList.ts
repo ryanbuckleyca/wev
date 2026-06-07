@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { adjustCutoffOnRemove, adjustCutoffOnReorder } from '@/lib/ranked-list';
 
 /**
@@ -58,5 +58,8 @@ export function useRankedList<T>(getId: (item: T) => string) {
     [getId],
   );
 
-  return { items, cutoff, setItems, setCutoff, toggle, reorder, remove };
+  return useMemo(
+    () => ({ items, cutoff, setItems, setCutoff, toggle, reorder, remove }),
+    [items, cutoff, toggle, reorder, remove],
+  );
 }

@@ -127,3 +127,43 @@ def test_job_row_graceful_degradation_on_extraction_error(mock_extract):
     assert row["compensation_meta"] is None
     # raw wage must still be preserved
     assert row["wage"] == "$60,000 / year"
+
+
+# ── work_type / is_remote: NOT NULL + Python .get(None) pitfall ───────────────
+
+
+@patch("utils.db.extract_and_guard")
+def test_job_row_coerces_null_work_type_and_is_remote(mock_extract):
+    """dict.get('work_type', 'office') returns None when key exists with value None."""
+    mock_extract.return_value = _make_extraction()
+    from utils.db import _job_row
+
+    j = _base_job()
+    j["work_type"] = None
+    j["is_remote"] = None
+    row = _job_row(j, "src-1")
+    assert row["work_type"] == "office"
+    assert row["is_remote"] is False
+
+
+@patch("utils.db.extract_and_guard")
+def test_job_row_preserves_valid_work_type(mock_extract):
+    mock_extract.return_value = _make_extraction()
+    from utils.db import _job_row
+
+    j = _base_job()
+    j["work_type"] = "hybrid"
+    j["is_remote"] = False
+    row = _job_row(j, "src-1")
+    assert row["work_type"] == "hybrid"
+
+
+@patch("utils.db.extract_and_guard")
+def test_job_row_invalid_work_type_falls_back_to_office(mock_extract):
+    mock_extract.return_value = _make_extraction()
+    from utils.db import _job_row
+
+    j = _base_job()
+    j["work_type"] = "onsite"
+    row = _job_row(j, "src-1")
+    assert row["work_type"] == "office"

@@ -97,8 +97,8 @@ def _strip_org_name(text: str, org_name: str) -> str:
     parts.sort(key=len, reverse=True)
     result = text
     for part in parts:
-        # Normalise spaces in the candidate so "Bâtiment7" matches "Bâtiment 7"
-        loose = re.sub(r'\s+', r'\\s*', re.escape(part))
+        # Escape then replace literal spaces with \s* to be flexible
+        loose = re.escape(part).replace(r'\ ', r'\s*')
         pattern = re.compile(r"'?s?\s*" + loose + r"'?s?", re.IGNORECASE)
         result = pattern.sub('', result)
     result = re.sub(r'\s{2,}', ' ', result).strip().strip(',').strip()
@@ -118,8 +118,8 @@ class GroqProvider(BaseLLMProvider):
     def __init__(self, api_key: Optional[str] = None, **kwargs):
         self._api_key = (api_key or os.environ.get("GROQ_API_KEY", "")).strip()
         if not self._api_key:
-            raise LLMProviderError(
-                "Groq API key not configured. Set GROQ_API_KEY in .env."
+            logger.warning(
+                "GROQ_API_KEY not set — Groq will be unavailable (no API fallback when Gemini fails)."
             )
         self._base_url = kwargs.get("base_url") or GROQ_BASE_URL
         self._model = kwargs.get("model") or DEFAULT_MODEL
@@ -246,6 +246,12 @@ class GroqProvider(BaseLLMProvider):
         system: Optional[str] = None,
         **kwargs,
     ) -> str:
+        json_mode = kwargs.get("json_mode")
+        if json_mode is None:
+            # Unified post-processor expects a top-level JSON *array*; Groq's json_object
+            # mode requires a top-level object and breaks parsing if the model obeys the API.
+            json_mode = kwargs.get("task") != "unified"
+
         messages: list[dict] = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -258,8 +264,7 @@ class GroqProvider(BaseLLMProvider):
         if stop:
             payload["stop"] = stop
 
-        # Force JSON mode if requested (default for skills extraction)
-        if kwargs.get("json_mode", True):
+        if json_mode:
             payload["response_format"] = {"type": "json_object"}
 
         # Use the specified model or current model with fallback

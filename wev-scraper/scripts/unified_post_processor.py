@@ -5,21 +5,79 @@ Replaces separate classify_existing_jobs.py, tag_job_values.py, and tag_job_skil
 with a single unified processor that extracts all data in one LLM call.
 
 Usage:
-    python unified_post_processor.py [--task sse|values|skills|all] [--limit N]
+    python unified_post_processor.py [--task sse|values|summary|all] [--limit N]
+        [--prod | --publish] [--job-id ID ...] [--dry-run] [--verbose]
+
+    --prod     Load all of .env.production (full prod overrides); force ENV_MODE=prod
+               so local-first routing is off (is_local_env() is only True for ENV_MODE=local).
+    --publish  Prod DB credentials from .env.production; force ENV_MODE=local so local
+               LLMs and on-device embeddings are used.
 """
 
 import argparse
+import json
 import os
 import sys
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Literal
 
-# Set production flag BEFORE importing db module
-if "--prod" in sys.argv:
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
+
+# Load env before any DB import. We can't rely on dotenv-cli at the npm layer
+# because it is first-wins (won't override .env values from .env.production).
+# Mirror scrape.py: always load .env; --prod loads all of .env.production then sets
+# ENV_MODE=prod (anything but local disables local-first LLMs); --publish sets local.
+from settings import (  # noqa: E402
+    ensure_env_loaded,
+    load_db_credentials_only,
+    load_env_file,
+)
+
+ensure_env_loaded()
+_has_prod = "--prod" in sys.argv
+_has_publish = "--publish" in sys.argv
+if _has_prod and _has_publish:
+    print("Error: --prod and --publish are mutually exclusive.", file=sys.stderr)
+    sys.exit(2)
+if _has_prod or _has_publish:
+    _root = Path(__file__).resolve().parent.parent.parent
+    _scraper = Path(__file__).resolve().parent.parent
+    _prod_env = (
+        _root / ".env.production"
+        if (_root / ".env.production").exists()
+        else _scraper / ".env.production"
+    )
+    if not _prod_env.exists():
+        print(
+            f"❌ {_prod_env} not found — required for --prod / --publish.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if _has_prod:
+        print(f"▶ Loading production overrides from {_prod_env.name}")
+        load_env_file(_prod_env)
+        # Full prod: .env.production may omit ENV_MODE; base .env often has ENV_MODE=local.
+        # is_local_env() is True only for ENV_MODE=local — use ``prod`` so Gemini/Groq from prod file win.
+        os.environ["ENV_MODE"] = "prod"
+        print("▶ LLM routing: ENV_MODE=prod (not local — use keys from .env.production)", flush=True)
+    else:
+        applied = load_db_credentials_only(_prod_env)
+        print(
+            f"▶ Publish mode: loaded {len(applied)} DB credential(s) from "
+            f"{_prod_env.name} ({', '.join(applied)}); LLM/feature config kept from .env"
+        )
+        # Publish: prod DB keys from .env.production, machine-local LLM stack (Ollama, local Jina).
+        os.environ["ENV_MODE"] = "local"
+        print("▶ LLM routing: ENV_MODE=local (--publish → local LLMs / embeddings)", flush=True)
     os.environ["USE_PROD_DB"] = "1"
 
-from llm.factory import get_unified_processor
-from utils.db import supabase
-from utils.log import scraper_log
+# Deferred imports: `utils.db`, `llm.factory`, and `utils.log` transitively load clients
+# that read `os.environ` (Supabase URL/keys, LLM provider config). Import them only after
+# the `--prod` / `--publish` bootstrap above so the right DB target and keys are set.
+# noqa: E402 — imports intentionally follow executable env setup; silences ruff/flake8.
+from llm.factory import get_unified_processor  # noqa: E402
+from utils.db import supabase  # noqa: E402
+from utils.log import scraper_log  # noqa: E402
 
 
 def process_jobs_unified(
@@ -60,7 +118,7 @@ def process_jobs_unified(
     task_descriptions = {
         "summary": "Job summarization (1 sentence)",
         "values": "Values tagging (from taxonomy)",
-        "sse": "SSE classification (with web search grounding)"
+        "sse": "SSE classification (no Google Search unless FORCE_GROUNDING=1)",
     }
 
     if task == "all":
@@ -141,6 +199,10 @@ def process_jobs_unified(
     filtered_jobs = all_filtered_jobs
     print(f"✓ Filtered to {len(filtered_jobs)} eligible jobs total")
 
+    if limit > 0:
+        filtered_jobs = filtered_jobs[:limit]
+        print(f"✓ Applied --limit: processing up to {len(filtered_jobs)} job(s)")
+
     if not filtered_jobs:
         print("No eligible jobs to process.")
         return counts
@@ -156,6 +218,11 @@ def process_jobs_unified(
 
             result = processor.process_jobs(batch)
 
+            if result is None:
+                scraper_log("✗ Processing failed: processor returned None")
+                counts["errors"] += len(batch)
+                continue
+
             if result.get("error"):
                 scraper_log(f"✗ Processing failed: {result['error']}")
                 counts["errors"] += len(batch)
@@ -163,61 +230,107 @@ def process_jobs_unified(
 
             # Update database based on task for this batch
             for job, job_result in zip(batch, result.get("results", []), strict=False):
-                    if not dry_run:
-                        update_data = {}
+                if not isinstance(job_result, dict) or not job_result:
+                    scraper_log(f"✗ Invalid or empty result for job {job['id']}")
+                    counts["errors"] += 1
+                    continue
 
-                        if task in ["all", "summary"] and job_result.get("summary"):
-                            update_data["summary"] = job_result["summary"]
+                if not dry_run:
+                    update_data = _build_update_data(task, job_result)
 
-                        if task in ["all", "values"] and job_result.get("values"):
-                            update_data["values"] = job_result["values"]
-                            if job_result.get("values_rated"):
-                                update_data["values_rated"] = job_result["values_rated"]
+                    if update_data:
+                        try:
+                            _try_db_write(job, update_data, supabase)
+                            if "summary" in update_data:
+                                counts["updated"]["summary"] += 1
+                            if "values" in update_data:
+                                counts["updated"]["values"] += 1
+                            if "is_sse" in update_data:
+                                counts["updated"]["sse"] += 1
+                            processed_count += 1
+                        except Exception as e:
+                            scraper_log(f"✗ DB write permanently failed for job {job['id']}: {e}")
+                            counts["errors"] += 1
+                else:
+                    processed_count += 1
 
-                        if task in ["all", "sse"] and "is_sse" in job_result:
-                            update_data["is_sse"] = job_result["is_sse"]
-                            if "sse_confidence" in job_result or "sse_details" in job_result:
-                                import json
-                                update_data["sse_details"] = json.dumps({
-                                    "confidence": job_result.get("sse_confidence", 0.0),
-                                    "reasoning": "Generated by unified processor"
-                                })
-
-                        if update_data:
-                            try:
-                                supabase.table("jobs").update(update_data).eq("id", job["id"]).execute()
-                                if "summary" in update_data:
-                                    counts["updated"]["summary"] += 1
-                                if "values" in update_data:
-                                    counts["updated"]["values"] += 1
-                                if "is_sse" in update_data:
-                                    counts["updated"]["sse"] += 1
-                                processed_count += 1
-                            except Exception as db_err:
-                                scraper_log(f"✗ DB write failed for job {job['id']}: {db_err}")
-                                counts["errors"] += 1
-                                continue
-                    else:
-                        processed_count += 1
-
-                    if verbose:
-                        actions = [k for k in ("summary", "values") if k in (job_result or {})]
-                        if "is_sse" in (job_result or {}):
-                            actions.append("SSE")
-                        print(f"  ✓ Processed job {job['id'][:8]}... ({', '.join(actions) or 'no actions'})")
-                    else:
-                        scraper_log(f"✗ No result for job {job['id']}")
-                        counts["errors"] += 1
+                if verbose:
+                    actions = [k for k in ("summary", "values") if k in job_result]
+                    if "is_sse" in job_result:
+                        actions.append("SSE")
+                    print(f"  ✓ Processed job {job['id'][:8]}... ({', '.join(actions) or 'no actions'})")
 
         counts["processed"] = processed_count
-        counts["provider_used"] = result.get("provider")
-        print(f"✓ Processing complete using {result.get('provider')}")
+        if result:
+            counts["provider_used"] = result.get("provider")
+            print(f"✓ Processing complete using {result.get('provider')}")
+        else:
+            print("✓ Processing complete (no provider results)")
 
     except Exception as e:
         scraper_log(f"✗ Processing failed: {e}")
         counts["errors"] += len(filtered_jobs)
 
     return counts
+
+
+TaskType = Literal["all", "summary", "values", "sse"]
+
+
+def _build_update_data(task: TaskType, job_result: dict) -> dict:
+    """Build the DB update payload from a single job's LLM result."""
+    update_data: dict = {}
+
+    if task in ["all", "summary"] and job_result.get("summary"):
+        update_data["summary"] = job_result["summary"]
+
+    if task in ["all", "values"] and job_result.get("values"):
+        update_data["values"] = job_result["values"]
+        if job_result.get("values_rated"):
+            update_data["values_rated"] = job_result["values_rated"]
+
+    if task in ["all", "sse"] and "is_sse" in job_result:
+        update_data["is_sse"] = job_result["is_sse"]
+        if "sse_confidence" in job_result or "sse_details" in job_result:
+            update_data["sse_details"] = json.dumps({
+                "confidence": job_result.get("sse_confidence", 0.0),
+                "reasoning": job_result.get("sse_details", "Generated by unified processor")
+            })
+
+    return update_data
+
+
+def is_transient_db_error(e: Exception) -> bool:
+    """Return True if the DB error is transient and should be retried."""
+    code = getattr(e, "code", None)
+    if code:
+        code_str = str(code)
+        # Postgres transient codes (53xxx, 08xxx) or PostgREST 5xx HTTP codes
+        if code_str.startswith("53") or code_str.startswith("08") or code_str.startswith("50"):
+            return True
+
+    err_name = type(e).__name__
+    if err_name in ("TimeoutError", "ConnectionError", "ReadTimeout"):
+        return True
+    return False
+
+@retry(
+    stop=stop_after_attempt(4),
+    wait=wait_exponential(multiplier=2),
+    retry=retry_if_exception(is_transient_db_error)
+)
+def _try_db_write(job: dict, update_data: dict, db_client) -> None:
+    """Attempt a single DB write, automatically retrying on transient failures.
+
+    Raises an exception if it permanently fails after retries.
+    """
+    try:
+        db_client.table("jobs").update(update_data).eq("id", job["id"]).execute()
+    except Exception as db_err:
+        code = getattr(db_err, "code", None)
+        pg_code = f" [PG:{code}]" if code else ""
+        scraper_log(f"✗ DB write attempt failed for job {job['id']}{pg_code}: {db_err}")
+        raise
 
 
 def main():
@@ -228,26 +341,36 @@ def main():
     parser.add_argument("--limit", type=int, default=100, help="Maximum jobs to process")
     parser.add_argument("--job-id", nargs="+", help="Specific job IDs to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't save to database")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--prod",
+        action="store_true",
+        help="Full prod: .env.production over .env; ENV_MODE=prod (non-local LLM routing)",
+    )
+    group.add_argument(
+        "--publish",
+        action="store_true",
+        help="Prod DB creds from .env.production; ENV_MODE=local (Ollama / local Jina)",
+    )
     parser.add_argument("--verbose", action="store_true", help="Detailed logging")
-    parser.add_argument("--prod", action="store_true", help="Run against production database")
 
     args = parser.parse_args()
 
-    # Handle production flag
-    if args.prod:
-        confirm = os.environ.get("CONFIRM_PROD_RUN")
-        if sys.stdin.isatty():
-            print("\nWARNING: You are about to run against the PRODUCTION database.")
-            print("This will modify real data.\n")
-            resp = input("Type YES to continue, anything else to abort: ")
-            if resp.strip() != "YES":
-                print("Aborted.")
+    # Confirmation (run.ts sets PROD_CONFIRMED=1 after its prompt; CI may use CONFIRM_PROD_RUN=YES)
+    if args.prod or args.publish:
+        if sys.stdin.isatty() and os.environ.get("PROD_CONFIRMED") != "1":
+            mode = "PRODUCTION (full)" if args.prod else "PRODUCTION DB (publish — local LLMs)"
+            confirm = input(f"⚠️  RUNNING AGAINST {mode}. Type 'YES' to continue: ")
+            if confirm != "YES":
+                sys.exit(0)
+        elif not sys.stdin.isatty() and os.environ.get("PROD_CONFIRMED") != "1":
+            if os.environ.get("CONFIRM_PROD_RUN") != "YES":
+                print(
+                    "Refusing production run in non-interactive mode. "
+                    "Set CONFIRM_PROD_RUN=YES (or run via npm run process:prod / process:publish).",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
-        elif confirm != "YES":
-            print("Refusing to run against production in non-interactive mode. Set CONFIRM_PROD_RUN=YES to override.")
-            sys.exit(1)
-
-        os.environ["USE_PROD_DB"] = "1"
 
     # Process jobs
     result = process_jobs_unified(

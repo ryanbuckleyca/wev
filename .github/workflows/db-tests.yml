@@ -50,5 +50,10 @@ jobs:
       - name: Start local Supabase
         run: ./node_modules/.bin/supabase start --yes --exclude gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
 
+      - name: Pre-pull pg_prove image
+        run: |
+          docker pull ghcr.io/supabase/pg_prove:3.36
+          docker tag ghcr.io/supabase/pg_prove:3.36 public.ecr.aws/supabase/pg_prove:3.36
+
       - name: Run DB tests
         run: npm run test:db

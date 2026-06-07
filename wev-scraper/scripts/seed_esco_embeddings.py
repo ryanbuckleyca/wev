@@ -41,7 +41,11 @@ else:
     print("🧪 Using TEST database")
 
 # USE_PROD_DB must be set before importing utils.db, which creates the Supabase client at module load time.
-from llm.jina_embedding import ConfigurationError, JinaEmbeddingService  # noqa: E402
+from llm.jina_embedding import (  # noqa: E402
+    MAX_API_EMBEDDING_INPUT_CHARS,
+    ConfigurationError,
+    JinaEmbeddingService,
+)
 from utils.db import fetch_all_rows, supabase  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -52,11 +56,11 @@ def build_skill_embedding_text(skill: dict) -> str:
     """Build the embedding input text for an ESCO skill.
 
     Concatenates available fields with ' | ' separator, omitting any that are
-    absent or empty. Truncated to ~32,000 chars (Jina v3's 8192-token limit).
+    absent or empty. Truncated to :data:`MAX_API_EMBEDDING_INPUT_CHARS` (see
+    :mod:`llm.jina_embedding` — API limit is tokens, not characters).
 
     Format: {preferred_label_en} | {preferred_label_fr} | {description_en} | {scope_note_en}
     """
-    _JINA_CHAR_LIMIT = 32_000
     parts = []
     if skill.get("preferred_label_en"):
         parts.append(skill["preferred_label_en"].strip())
@@ -66,7 +70,7 @@ def build_skill_embedding_text(skill: dict) -> str:
         parts.append(skill["description_en"].strip())
     if skill.get("scope_note_en"):
         parts.append(skill["scope_note_en"].strip())
-    return " | ".join(parts)[:_JINA_CHAR_LIMIT]
+    return " | ".join(parts)[:MAX_API_EMBEDDING_INPUT_CHARS]
 
 
 # ---------------------------------------------------------------------------
@@ -97,17 +101,8 @@ def seed_esco_embeddings(
     print(f"Limit:    {limit if limit else 'none'}")
     print()
 
-    # Initialize embedding service (fails fast if JINA_API_KEY missing in API mode)
-    try:
-        svc = JinaEmbeddingService()
-        mode = "local (HuggingFace MPS)" if svc.is_local else "API (jina.ai)"
-        print(f"✓ JinaEmbeddingService initialized — {mode}")
-    except ConfigurationError as e:
-        print(f"✗ {e}")
-        return {"processed": 0, "api_calls": 0, "elapsed": 0.0, "errors": 1}
-
-    # Fetch skills
-    print("\nFetching skills from esco_skills...")
+    # Fetch skills *first* — we only need the embedding service when there is work to do.
+    print("Fetching skills from esco_skills...")
     try:
         columns = "concept_uri, preferred_label_en, preferred_label_fr, description_en, scope_note_en"
         if retag:
@@ -146,6 +141,17 @@ def seed_esco_embeddings(
     if total == 0:
         print("Nothing to do.")
         return {"processed": 0, "api_calls": 0, "elapsed": 0.0, "errors": 0}
+
+    # Initialize embedding service only when there is actual work to do.
+    # This avoids requiring JINA_API_KEY (or loading ~570 MB local model) when
+    # the DB already has all embeddings (e.g. restored from backup).
+    try:
+        svc = JinaEmbeddingService()
+        mode = "local (HuggingFace MPS)" if svc.is_local else "API (jina.ai)"
+        print(f"✓ JinaEmbeddingService initialized — {mode}")
+    except ConfigurationError as e:
+        print(f"✗ {e}")
+        return {"processed": 0, "api_calls": 0, "elapsed": 0.0, "errors": 1}
 
     # Batch and embed
     batch_size = JinaEmbeddingService.BATCH_SIZE  # 128

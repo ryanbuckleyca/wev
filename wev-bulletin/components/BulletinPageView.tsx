@@ -7,7 +7,6 @@ import JobListings from '@/components/JobListings';
 import SortDropdown from '@/components/SortDropdown';
 import ExpandAllToggle from '@/components/ExpandAllToggle';
 import WatercolorBackground from '@/components/WatercolorBackground';
-import ReScrapeButton from '@/components/ReScrapeButton';
 import CopyPageJobsButton from '@/components/CopyPageJobsButton';
 import Pagination from '@/components/Pagination';
 import { SITE_CONFIG } from '@/lib/site-config';
@@ -38,12 +37,14 @@ export default function BulletinPageView({
   return (
     <BulletinFilterProvider filters={filters}>
       <main
-        className="min-h-screen pb-8 relative overflow-hidden"
+        className="min-h-screen pb-8 relative"
         style={{
           background: 'var(--background)',
         }}
       >
-        <WatercolorBackground />
+        <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+          <WatercolorBackground />
+        </div>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
           <header className="mb-8">
             <Image
@@ -61,9 +62,6 @@ export default function BulletinPageView({
             <div className="flex flex-col justify-start items-stretch gap-4 mb-6">
               <div className="flex flex-row gap-4 max-[442px]:flex-col max-[442px]:items-stretch">
                 <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
-                  <ReScrapeButton onComplete={data.refresh} />
-                </div>
-                <div className="max-[442px]:w-full [&_button]:max-[442px]:w-full">
                   <CopyPageJobsButton jobs={data.jobsOnPage} />
                 </div>
               </div>
@@ -72,6 +70,7 @@ export default function BulletinPageView({
 
           <JobFilters
             jobs={data.jobsOnPage}
+            filterOptions={data.filterOptions}
             filteredJobsCount={data.totalMatchingJobs}
             totalJobsCount={data.availableJobsCount}
           />

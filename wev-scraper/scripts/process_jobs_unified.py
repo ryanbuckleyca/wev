@@ -5,7 +5,7 @@ Processes jobs with a single LLM call to extract:
 - Summary
 - Raw Skills 
 - Work Values
-- SSE Classification (with grounding when available)
+- SSE classification (inferred from job text in unified path; optional live search if FORCE_GROUNDING=1)
 
 Fallback chain: gemini-flash → gemini-flash-lite → groq
 """
@@ -129,6 +129,11 @@ def process_jobs_unified(
             # Process with unified provider
             result = processor.process_jobs(batch)
             
+            if result is None:
+                scraper_log(f"✗ Batch {batch_num} failed: processor returned None")
+                counts["errors"] += len(batch)
+                continue
+
             if result.get("error"):
                 scraper_log(f"✗ Batch {batch_num} failed: {result['error']}")
                 counts["errors"] += len(batch)
@@ -136,9 +141,14 @@ def process_jobs_unified(
             
             # Update database for each job in batch
             for j, job in enumerate(batch):
-                if j < len(result["results"]):
+                if j < len(result.get("results", [])):
                     job_result = result["results"][j]
                     
+                    if not isinstance(job_result, dict) or not job_result:
+                        scraper_log(f"✗ Invalid or empty result for job {job['id']}")
+                        counts["errors"] += 1
+                        continue
+
                     if not dry_run:
                         _update_job_in_database(job["id"], job_result)
                     
@@ -150,13 +160,14 @@ def process_jobs_unified(
             
             counts["batches_processed"] += 1
             counts["provider_used"] = result.get("provider")
-            counts["grounding_available"] = result.get("has_grounding", False)
-            
+            uses_search = result.get("uses_google_search_grounding", result.get("has_grounding", False))
+            counts["grounding_available"] = uses_search
+
             print(f"  ✓ Batch {batch_num} complete using {result.get('provider')}")
-            if result.get("has_grounding"):
-                print("  ✓ Web grounding used for SSE classification")
+            if uses_search:
+                print("  ✓ Google Search tools on (FORCE_GROUNDING) for this run")
             else:
-                print("  ⚠ SSE classification without grounding")
+                print("  ✓ SSE inferred from job text (unified path — no live web search)")
                 
         except Exception as e:
             scraper_log(f"✗ Batch {batch_num} failed: {e}")

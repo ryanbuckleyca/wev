@@ -102,32 +102,14 @@ describe('Home page work type defaults', () => {
       new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
     );
 
-    mockUseProfile.mockImplementation(() => {
-      const [loading, setLoading] = useState(true);
-      useEffect(() => {
-        setLoading(false);
-      }, []);
-
-      if (loading) {
-        return {
-          profile: null,
-          loading: true,
-          error: null,
-          isUpdating: false,
-          refresh: () => Promise.resolve(),
-          updateProfile: () => Promise.resolve(null),
-        } as never;
-      }
-
-      return {
-        profile: profileWithWorkType,
-        loading: false,
-        error: null,
-        isUpdating: false,
-        refresh: () => Promise.resolve(),
-        updateProfile: () => Promise.resolve(null),
-      } as never;
-    });
+    mockUseProfile.mockReturnValue({
+      profile: profileWithWorkType,
+      loading: false,
+      error: null,
+      isUpdating: false,
+      refresh: () => Promise.resolve(),
+      updateProfile: () => Promise.resolve(null),
+    } as never);
   });
 
   afterEach(() => {
@@ -150,6 +132,13 @@ describe('Home page work type defaults', () => {
         initialSkillLabels={{}}
         initialTotalJobs={0}
         initialUserId="user-1"
+        initialFilterOptions={{
+          organizations: [],
+          provinces: [],
+          municipalitiesByProvince: {},
+          employmentTypes: [],
+          sources: [],
+        }}
         isLoggedIn={true}
         isAdmin={false}
       />,

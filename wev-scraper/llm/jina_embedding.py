@@ -27,6 +27,13 @@ class DimensionMismatchError(Exception):
     """Raised when an embedding has unexpected dimensions."""
 
 
+# Jina `/v1/embeddings` enforces ~8194 tokens per entry in `input` (see API error
+# "maximum of 8194 tokens"). We cap *characters* before the request. Do not use a
+# large fixed char budget (e.g. 32k): token count != character count — multilingual
+# and some scripts use far more tokens per character than ~4 (English heuristic).
+MAX_API_EMBEDDING_INPUT_CHARS = 7500
+
+
 class JinaEmbeddingService:
     JINA_API_URL = "https://api.jina.ai/v1/embeddings"
     MODEL = "jina-embeddings-v3"
@@ -128,6 +135,15 @@ class JinaEmbeddingService:
                 # Reset backoff counter — 429 is transient, not a server error
                 attempt = 0  # noqa: SIM113 — intentional reset
                 continue
+
+            if 400 <= resp.status_code < 500:
+                body = (resp.text or "")[:2000]
+                try:
+                    detail = resp.json()
+                except Exception:  # noqa: BLE001 — log raw body
+                    detail = body
+                logger.error("[jina] %s: %s", resp.status_code, detail)
+                resp.raise_for_status()
 
             if resp.status_code >= 500:
                 if attempt < max_5xx_retries:

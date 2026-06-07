@@ -5,6 +5,8 @@ Used when ENV_MODE=local to avoid hitting Gemini/Groq APIs during local developm
 
 import logging
 import os
+import threading
+import time
 
 from llm.base import BaseLLMProvider, LLMProviderError
 
@@ -128,13 +130,64 @@ class LocalGroundedProvider(BaseLLMProvider):
 
         try:
             import ollama
+
             options = {
-                'num_predict': 2000,
-                'temperature': 0.1,
+                "num_predict": 2000,
+                "temperature": 0.1,
             }
-            fmt = 'json' if json_mode else None
-            response = ollama.generate(model=self.model, prompt=prompt, options=options, format=fmt)
-            return response.get("response", "")
+            fmt = "json" if json_mode else None
+            print(
+                f"  … ollama: generate start model={self.model} json_format={bool(fmt)} "
+                f"prompt_chars={len(prompt)}",
+                flush=True,
+            )
+            logger.info(
+                "ollama.generate: model=%s json_format=%s prompt_chars=%s",
+                self.model,
+                bool(fmt),
+                len(prompt),
+            )
+            stop_hb = threading.Event()
+            hb_sec = int(os.environ.get("LOCAL_LLM_HEARTBEAT_SEC", "30"))
+
+            def _heartbeat() -> None:
+                if hb_sec <= 0:
+                    return
+                total = 0
+                while not stop_hb.wait(hb_sec):
+                    total += hb_sec
+                    msg = (
+                        f"Ollama generate still running ({total}s elapsed; model={self.model})"
+                    )
+                    logger.info(msg)
+                    print(f"  … {msg}", flush=True)
+
+            if hb_sec > 0:
+                threading.Thread(target=_heartbeat, name="ollama-heartbeat", daemon=True).start()
+
+            t0 = time.perf_counter()
+            try:
+                response = ollama.generate(
+                    model=self.model,
+                    prompt=prompt,
+                    options=options,
+                    format=fmt,
+                )
+            finally:
+                stop_hb.set()
+
+            elapsed = time.perf_counter() - t0
+            out = response.get("response", "") or ""
+            logger.info(
+                "ollama.generate: done in %.2fs response_chars=%s",
+                elapsed,
+                len(out),
+            )
+            print(
+                f"  … ollama: generate done in {elapsed:.1f}s ({len(out)} chars)",
+                flush=True,
+            )
+            return out
 
         except Exception as e:
             raise LLMProviderError(f"Ollama generation failed: {e}") from e
@@ -161,11 +214,22 @@ class LocalGroundedProvider(BaseLLMProvider):
         task_type = kwargs.get("task")
         use_grounding = should_use_grounding(task_type) if task_type else False
 
+        t0 = time.perf_counter()
         if use_grounding:
-            # Search for relevant context using a targeted query if provided,
-            # otherwise fall back to the first 200 chars of the prompt
             search_query = kwargs.get("search_query") or prompt[:200]
+            print(f"  … local_grounded: Tavily search (task={task_type})…", flush=True)
+            logger.info("local_grounded: tavily search query_len=%s", len(search_query))
             context = self._search_context(search_query)
+            logger.info(
+                "local_grounded: tavily returned in %.2fs context_chars=%s",
+                time.perf_counter() - t0,
+                len(context),
+            )
+            print(
+                f"  … local_grounded: Tavily done in {time.perf_counter() - t0:.1f}s "
+                f"(context {len(context)} chars)",
+                flush=True,
+            )
 
             full_prompt = f"""Using these search results as context:
 
@@ -173,10 +237,16 @@ class LocalGroundedProvider(BaseLLMProvider):
 
 Answer the following prompt: {prompt}"""
         else:
-            # Use prompt directly without search
             full_prompt = prompt
+            print(
+                f"  … local_grounded: no web search (task={task_type or '—'}); "
+                f"prompt → Ollama only",
+                flush=True,
+            )
 
         if system:
             full_prompt = f"{system}\n\n{full_prompt}"
 
-        return self._generate_with_ollama(full_prompt, json_mode=(task_type in ("sse", "unified", "json")))
+        return self._generate_with_ollama(
+            full_prompt, json_mode=(task_type in ("sse", "unified", "json"))
+        )

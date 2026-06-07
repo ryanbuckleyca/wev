@@ -11,32 +11,38 @@ const {
   mockFrom,
   mockSelect,
   mockTextSearch,
+  mockFilter,
   mockIn,
   mockIs,
   mockEq,
   mockGte,
   mockOrder,
   mockRange,
+  mockLimit,
 } = vi.hoisted(() => {
   const mockFrom = vi.fn();
   const mockSelect = vi.fn();
   const mockTextSearch = vi.fn();
+  const mockFilter = vi.fn();
   const mockIn = vi.fn();
   const mockIs = vi.fn();
   const mockEq = vi.fn();
   const mockGte = vi.fn();
   const mockOrder = vi.fn();
   const mockRange = vi.fn();
+  const mockLimit = vi.fn();
   return {
     mockFrom,
     mockSelect,
     mockTextSearch,
+    mockFilter,
     mockIn,
     mockIs,
     mockEq,
     mockGte,
     mockOrder,
     mockRange,
+    mockLimit,
   };
 });
 
@@ -50,24 +56,31 @@ vi.mock('next/cache', async (importOriginal) => {
 
 // Mock Supabase Server Client
 vi.mock('@/lib/supabase/server', () => {
-  const chain: Record<string, any> = {};
+  const chain: Record<string, any> = {
+    then: (onFullfilled: any) =>
+      Promise.resolve({ data: [], count: 0, error: null }).then(onFullfilled),
+  };
   mockSelect.mockImplementation(() => chain);
   mockTextSearch.mockImplementation(() => chain);
+  mockFilter.mockImplementation(() => chain);
   mockIn.mockImplementation(() => chain);
   mockIs.mockImplementation(() => chain);
   mockEq.mockImplementation(() => chain);
   mockGte.mockImplementation(() => chain);
   mockOrder.mockImplementation(() => chain);
   mockRange.mockImplementation(() => Promise.resolve({ data: [], count: 0, error: null }));
+  mockLimit.mockImplementation(() => Promise.resolve({ data: [], count: 0, error: null }));
 
   chain.select = mockSelect;
   chain.textSearch = mockTextSearch;
+  chain.filter = mockFilter;
   chain.in = mockIn;
   chain.is = mockIs;
   chain.eq = mockEq;
   chain.gte = mockGte;
   chain.order = mockOrder;
   chain.range = mockRange;
+  chain.limit = mockLimit;
 
   return {
     createClient: vi.fn(async () => ({
@@ -126,10 +139,15 @@ describe('GET /api/bulletin (handler contract)', () => {
   });
 
   it('uses locale-aware websearch FTS and skips empty search text', async () => {
+    // Multi-word query uses websearch
     await GET(new Request('http://localhost/api/bulletin?locale=fr&q=  economie sociale  '));
     expect(mockTextSearch).toHaveBeenCalledWith('fts_fr', 'economie sociale', {
       type: 'websearch',
     });
+
+    // Single word query uses prefix matching (fts operator via .filter)
+    await GET(new Request('http://localhost/api/bulletin?locale=en&q=part'));
+    expect(mockFilter).toHaveBeenCalledWith('fts_en', 'fts', 'part:*');
 
     vi.clearAllMocks();
     mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
@@ -138,6 +156,7 @@ describe('GET /api/bulletin (handler contract)', () => {
 
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=   '));
     expect(mockTextSearch).not.toHaveBeenCalled();
+    expect(mockFilter).not.toHaveBeenCalled();
   });
 
   it('falls back to legacy fts column when locale-aware FTS columns are unavailable', async () => {
@@ -151,10 +170,11 @@ describe('GET /api/bulletin (handler contract)', () => {
 
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=Community Builder 25'));
 
-    expect(mockTextSearch).toHaveBeenNthCalledWith(1, 'fts_en', 'Community Builder 25', {
+    // Called for both jobs query and filter options query
+    expect(mockTextSearch).toHaveBeenCalledWith('fts_en', 'Community Builder 25', {
       type: 'websearch',
     });
-    expect(mockTextSearch).toHaveBeenNthCalledWith(2, 'fts', 'Community Builder 25', {
+    expect(mockTextSearch).toHaveBeenCalledWith('fts', 'Community Builder 25', {
       type: 'websearch',
     });
   });
@@ -180,5 +200,22 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(response.status).toBe(500);
     const body = (await response.json()) as { error: string };
     expect(body.error).toBe('db unavailable');
+  });
+
+  it('always applies 4-week (28 day) age limit regardless of postedWithin filter', async () => {
+    // Even when postedWithin=any, should still filter to 28 days max
+    await GET(new Request('http://localhost/api/bulletin?postedWithin=any'));
+    expect(mockGte).toHaveBeenCalledWith('date_posted', expect.any(String));
+  });
+
+  it('returns both total (filtered) and totalAvailable (all non-old jobs)', async () => {
+    mockRange.mockResolvedValue({ data: [{ id: 'job-1' }], count: 5, error: null });
+
+    const response = await GET(new Request('http://localhost/api/bulletin'));
+    const body = (await response.json()) as Record<string, unknown>;
+
+    // Should have both: total (matching filters) and totalAvailable (all jobs <= 4 weeks)
+    expect(body).toHaveProperty('total');
+    expect(body).toHaveProperty('totalAvailable');
   });
 });

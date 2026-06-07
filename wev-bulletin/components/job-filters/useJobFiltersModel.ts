@@ -99,6 +99,7 @@ export interface JobFiltersModel {
 
 export function useJobFiltersModel({
   jobs,
+  filterOptions: externalFilterOptions,
   filteredJobsCount,
   totalJobsCount,
 }: JobFiltersProps): JobFiltersModel {
@@ -173,8 +174,8 @@ export function useJobFiltersModel({
     showJobsWithoutSalary &&
     postedWithin === '2-weeks';
 
-  const filteredJobsCountResolved = filteredJobsCount ?? jobs.length;
-  const totalJobsCountResolved = totalJobsCount ?? jobs.length;
+  const filteredJobsCountResolved = filteredJobsCount ?? 0;
+  const totalJobsCountResolved = totalJobsCount ?? 0;
 
   const activeFilterChips = useMemo(() => {
     const chips: ActiveFilterChip[] = [];
@@ -303,8 +304,8 @@ export function useJobFiltersModel({
   ]);
 
   const { organizations, provinces, municipalitiesByProvince, employmentTypes, sources } = useMemo(
-    () => buildFilterOptions(jobs),
-    [jobs],
+    () => externalFilterOptions ?? buildFilterOptions(jobs),
+    [externalFilterOptions, jobs],
   );
 
   const handleOrganizationToggle = useCallback(
