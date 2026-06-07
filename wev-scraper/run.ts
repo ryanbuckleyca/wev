@@ -49,8 +49,7 @@ async function confirmProd(mode: "prod" | "publish"): Promise<boolean> {
 
 function hasProdConfirmation(): boolean {
   return (
-    process.env.PROD_CONFIRMED === "1" ||
-    process.env.CONFIRM_PROD_RUN === "YES"
+    process.env.PROD_CONFIRMED === "1" || process.env.CONFIRM_PROD_RUN === "YES"
   );
 }
 

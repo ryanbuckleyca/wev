@@ -1,10 +1,9 @@
-import os
+
 from dotenv import load_dotenv
+from utils.db import supabase
 
 # Load production env
 load_dotenv(".env.production")
-
-from utils.db import supabase
 
 resp = supabase.table('sources').select('id,name,url').execute()
 for s in resp.data:
