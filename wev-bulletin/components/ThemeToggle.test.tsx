@@ -1,8 +1,12 @@
 import { render, screen, fireEvent } from '@/test-utils';
 import ThemeToggle from './ThemeToggle';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, afterEach } from 'vitest';
 
 describe('ThemeToggle', () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute('data-theme');
+  });
+
   it('renders correctly with initial light theme', () => {
     render(<ThemeToggle initialTheme="light" />);
     // When theme is light, aria-label should be "Switch to dark mode"

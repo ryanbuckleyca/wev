@@ -98,7 +98,7 @@ def _strip_org_name(text: str, org_name: str) -> str:
     result = text
     for part in parts:
         # Escape then replace literal spaces with \s* to be flexible
-        loose = re.escape(part).replace(r'\ ', r'\s*').replace(' ', r'\s*')
+        loose = re.escape(part).replace(r'\ ', r'\s*')
         pattern = re.compile(r"'?s?\s*" + loose + r"'?s?", re.IGNORECASE)
         result = pattern.sub('', result)
     result = re.sub(r'\s{2,}', ' ', result).strip().strip(',').strip()

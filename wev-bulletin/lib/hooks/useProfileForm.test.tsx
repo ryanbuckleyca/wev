@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useProfileForm } from './useProfileForm';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useProfile } from '@/contexts/ProfileContext';
@@ -56,11 +56,10 @@ describe('useProfileForm', () => {
 
     const { result } = renderHook(() => useProfileForm('en'));
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
+    await waitFor(() => {
+      expect(result.current.selectedValues).toEqual(['V1', 'V2']);
     });
 
-    expect(result.current.selectedValues).toEqual(['V1', 'V2']);
     expect(result.current.valueCutoff).toBe(1);
   });
 
@@ -83,8 +82,8 @@ describe('useProfileForm', () => {
 
     const { result } = renderHook(() => useProfileForm('en'));
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
+    await waitFor(() => {
+      expect(result.current.selectedSkills).toHaveLength(2);
     });
 
     act(() => {
@@ -113,18 +112,25 @@ describe('useProfileForm', () => {
       error: null,
       updateProfile: mockUpdateProfile,
     } as any);
-    vi.mocked(fetchSkillsByUri).mockResolvedValue([{ uri: 'uri1', label: 'Skill 1' }] as any);
+    vi.mocked(fetchSkillsByUri).mockResolvedValue([
+      { uri: 'uri1', preferredLabel: { en: 'Skill 1', fr: 'Skill 1' } },
+    ] as any);
 
     const { result } = renderHook(() => useProfileForm('en'));
 
     // Wait for hydration effect
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
+    await waitFor(
+      () => {
+        expect(result.current.selectedSkills).toHaveLength(1);
+      },
+      { timeout: 5000 },
+    );
 
     expect(result.current.formData.full_name).toBe('John Doe');
     expect(result.current.selectedValues).toEqual(['Ambition']);
-    expect(result.current.selectedSkills).toEqual([{ uri: 'uri1', label: 'Skill 1' }]);
+    expect(result.current.selectedSkills).toEqual([
+      { uri: 'uri1', preferredLabel: { en: 'Skill 1', fr: 'Skill 1' } },
+    ]);
   });
 
   it('handles work type toggle', () => {

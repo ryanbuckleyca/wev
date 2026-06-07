@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   updatePasswordForCurrentUser,
   deleteAccountForCurrentUser,
@@ -57,14 +58,20 @@ describe('AccountService', () => {
     vi.clearAllMocks();
     vi.mocked(createServerClient).mockResolvedValue({
       auth: { updateUser: mockUpdateUser },
-    } as any);
+    } as unknown as SupabaseClient);
   });
 
   describe('updatePasswordForCurrentUser', () => {
     it('throws error if new password is too short', async () => {
-      await expect(
-        updatePasswordForCurrentUser({ currentPassword: 'p', newPassword: '1' }),
-      ).rejects.toThrow(AccountServiceError);
+      try {
+        await updatePasswordForCurrentUser({ currentPassword: 'p', newPassword: '1' });
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AccountServiceError);
+        const err = error as AccountServiceError;
+        expect(err.code).toBe('PASSWORD_TOO_SHORT');
+        expect(err.message).toBeDefined();
+      }
     });
 
     it('successfully updates password if current is verified', async () => {
@@ -80,6 +87,23 @@ describe('AccountService', () => {
 
       await updatePasswordForCurrentUser({ currentPassword: 'old', newPassword: 'newPassword123' });
       expect(mockUpdateUser).toHaveBeenCalled();
+    });
+
+    it('throws error if updateUser returns error', async () => {
+      mockVerify.mockResolvedValue(undefined);
+      mockUpdateUser.mockResolvedValue({ error: new Error('Update failed') });
+
+      await expect(
+        updatePasswordForCurrentUser({ currentPassword: 'old', newPassword: 'newPassword123' }),
+      ).rejects.toThrow('Update failed');
+    });
+
+    it('throws error if verification fails with non-NO_PASSWORD_SET AuthenticationError', async () => {
+      mockVerify.mockRejectedValue(new AuthenticationError('invalid', 'INVALID_PASSWORD'));
+
+      await expect(
+        updatePasswordForCurrentUser({ currentPassword: 'old', newPassword: 'newPassword123' }),
+      ).rejects.toThrow('invalid');
     });
   });
 
@@ -101,10 +125,19 @@ describe('AccountService', () => {
 
     it('throws error if delete fails', async () => {
       mockVerify.mockResolvedValue(undefined);
-      mockDeleteUser.mockResolvedValue({ error: { message: 'Delete failed' } } as any);
+      mockDeleteUser.mockResolvedValue({ error: new Error('Delete failed') } as any);
       await expect(deleteAccountForCurrentUser({ password: 'pw', userId: 'u1' })).rejects.toThrow(
         'Delete failed',
       );
+    });
+
+    it('throws error if verification fails with non-NO_PASSWORD_SET AuthenticationError', async () => {
+      mockVerify.mockRejectedValue(new AuthenticationError('invalid', 'INVALID_PASSWORD'));
+
+      await expect(deleteAccountForCurrentUser({ password: 'pw', userId: 'u1' })).rejects.toThrow(
+        'invalid',
+      );
+      expect(mockDeleteUser).not.toHaveBeenCalled();
     });
   });
 });

@@ -113,12 +113,6 @@ describe('createGroqReranker', () => {
       userId: 'u1',
     });
 
-    // If it fails, let's see why
-    const { logger } = await import('@/lib/logger');
-    if (result.length === 0) {
-      console.log('LOGGER WARN CALLS:', vi.mocked(logger.warn).mock.calls);
-    }
-
     expect(result).toEqual(['uri1']);
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({

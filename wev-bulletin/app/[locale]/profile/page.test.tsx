@@ -176,7 +176,7 @@ describe('ProfilePage skills integration', () => {
 
   it(
     'saves concept_uri[] (not labels) after selecting a search result',
-    { timeout: 90_000 },
+    { timeout: 15_000 },
     async () => {
       // vi.useFakeTimers(); // Removed fake timers
       const user = userEvent.setup(); // Removed advanceTimers
@@ -277,7 +277,7 @@ describe('ProfilePage skills integration', () => {
     },
   );
 
-  it('blocks save and shows error when skills exceed limit', { timeout: 120_000 }, async () => {
+  it('blocks save and shows error when skills exceed limit', { timeout: 15_000 }, async () => {
     // This test renders 10 hydrated skills, opens a modal, searches for a skill,
     // selects a result, and validates the save is blocked.  Under full-suite
     // resource contention it can exceed the 30 s global timeout.
