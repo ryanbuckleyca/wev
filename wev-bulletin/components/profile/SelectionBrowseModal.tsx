@@ -6,8 +6,6 @@ import { ChevronLeft } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { zIndex } from '@/lib/design-tokens';
 
-const HEADER_OFFSET_REM = '5.75rem';
-
 export interface SelectionBrowseModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -117,15 +115,7 @@ export default function SelectionBrowseModal({
               ? 'fixed inset-0 flex flex-col overflow-hidden bg-card outline-none'
               : 'fixed inset-0 flex items-center justify-center p-4 pointer-events-none outline-none'
           }
-          style={
-            isMobile
-              ? { zIndex: zIndex.modal, height: `${viewportHeight}px` }
-              : {
-                  zIndex: zIndex.modal,
-                  paddingTop: `calc(${HEADER_OFFSET_REM} + 0.5rem)`,
-                  paddingBottom: '1rem',
-                }
-          }
+          style={isMobile ? { zIndex: zIndex.modal, height: `${viewportHeight}px` } : { zIndex: zIndex.modal }}
         >
           <DialogPrimitive.Title className="sr-only">{dialogAriaLabel}</DialogPrimitive.Title>
           {isMobile ? (
@@ -134,8 +124,8 @@ export default function SelectionBrowseModal({
             <div
               className="flex w-full max-w-[600px] flex-col overflow-hidden bg-card rounded-2xl border border-gray-200 shadow-2xl dark:border-zinc-800 pointer-events-auto"
               style={{
-                height: 'min(800px, calc(100dvh - 7.25rem))',
-                maxHeight: 'min(800px, calc(100dvh - 7.25rem))',
+                height: 'min(800px, calc(100dvh - 2rem))',
+                maxHeight: 'min(800px, calc(100dvh - 2rem))',
               }}
             >
               {inner}

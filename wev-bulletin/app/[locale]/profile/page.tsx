@@ -18,6 +18,7 @@ import Heading from '@/components/Heading';
 import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
 import Alert from '@/components/ui/Alert';
+import CVImportButton from '@/components/profile/cv/CVImportButton';
 
 export default function ProfilePage() {
   const t = useTranslations();
@@ -31,8 +32,6 @@ export default function ProfilePage() {
     setFormData,
     selectedSkills,
     skillCutoff,
-    allSkills,
-    isLibraryLoading,
     handleSkillToggle,
     handleSkillReorder,
     handleSkillRemove,
@@ -44,6 +43,7 @@ export default function ProfilePage() {
     handleValueRemove,
     isSaving,
     handleSaveProfile,
+    handleApplyCvImport,
     handleWorkTypeToggle,
   } = useProfileForm(locale);
 
@@ -77,6 +77,14 @@ export default function ProfilePage() {
               htmlFor="full-name"
             />
 
+            <WorkSettingSection
+              workTypes={formData.work_types}
+              location={formData.location}
+              onWorkTypeToggle={handleWorkTypeToggle}
+              onLocationChange={(val) => setFormData({ ...formData, location: val })}
+              hasLocationValue={hasLocationValue}
+            />
+
             {/* Bio */}
             <div>
               <FormTextarea
@@ -91,7 +99,14 @@ export default function ProfilePage() {
             </div>
 
             {/* Skills */}
-            <div>
+            <div className="space-y-6">
+              <CVImportButton
+                locale={locale}
+                cvImport={formData.cv_import ?? null}
+                isSaving={isSaving}
+                onConfirmImport={handleApplyCvImport}
+              />
+
               <div className="flex items-center gap-2 mb-2">
                 <h2 className="text-sm font-semibold leading-none text-foreground">
                   {t('profile.skills')}
@@ -106,14 +121,12 @@ export default function ProfilePage() {
               )}
 
               <SkillsSelector
-                allItems={allSkills}
                 selectedSkills={selectedSkills}
                 skillCutoff={skillCutoff}
                 onToggle={handleSkillToggle}
                 onReorder={handleSkillReorder}
                 onRemove={handleSkillRemove}
                 locale={locale}
-                isLoading={isLibraryLoading}
               />
             </div>
 
@@ -142,14 +155,6 @@ export default function ProfilePage() {
                 locale={locale}
               />
             </div>
-
-            <WorkSettingSection
-              workTypes={formData.work_types}
-              location={formData.location}
-              onWorkTypeToggle={handleWorkTypeToggle}
-              onLocationChange={(val) => setFormData({ ...formData, location: val })}
-              hasLocationValue={hasLocationValue}
-            />
           </div>
 
           {/* Actions */}

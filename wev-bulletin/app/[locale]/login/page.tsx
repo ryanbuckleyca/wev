@@ -16,13 +16,15 @@ import ErrorBox from '@/components/ErrorBox';
 import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
 import { useAuthTurnstile } from '@/hooks/useAuthTurnstile';
 
+type LoginStatus = 'idle' | 'submitting' | 'redirecting';
+
 export default function LoginPage() {
   const t = useTranslations();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<LoginStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const { captchaToken, turnstileProps, recycleTurnstileAfterAuthError } = useAuthTurnstile(
     t('auth.login.captchaError'),
@@ -33,18 +35,19 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
+      setStatus('redirecting');
       router.replace('/');
     }
   }, [authLoading, user, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    setStatus('submitting');
     setError(null);
 
     if (!captchaToken) {
       setError(t('auth.login.captchaRequired'));
-      setLoading(false);
+      setStatus('idle');
       return;
     }
 
@@ -58,12 +61,20 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
       recycleTurnstileAfterAuthError();
+      setStatus('idle');
     } else {
+      setStatus('redirecting');
       router.replace('/');
     }
-
-    setLoading(false);
   }
+
+  const isSubmitting = status === 'submitting' || status === 'redirecting';
+  const submitLabel =
+    status === 'redirecting'
+      ? t('auth.login.redirecting')
+      : status === 'submitting'
+        ? t('auth.login.submitting')
+        : t('auth.login.submit');
 
   return (
     <PageLayout variant="centered">
@@ -104,8 +115,13 @@ export default function LoginPage() {
 
           <TurnstileWidget {...turnstileProps} />
 
-          <Button type="submit" disabled={loading || !captchaToken} loading={loading} fullWidth>
-            {loading ? t('auth.login.submitting') : t('auth.login.submit')}
+          <Button
+            type="submit"
+            disabled={isSubmitting || !captchaToken}
+            loading={isSubmitting}
+            fullWidth
+          >
+            {submitLabel}
           </Button>
         </FormContainer>
 

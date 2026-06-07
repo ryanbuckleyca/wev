@@ -1,6 +1,18 @@
 from unittest.mock import MagicMock, patch
 
+from llm.base import LLMProviderError, error_suggests_try_next_provider
 from llm.factory import get_provider
+
+
+def test_error_suggests_try_next_provider_503():
+    err = LLMProviderError(
+        "503 UNAVAILABLE high demand try again later"
+    )
+    assert error_suggests_try_next_provider(err) is True
+
+
+def test_error_suggests_try_next_provider_403():
+    assert error_suggests_try_next_provider(LLMProviderError("403 PERMISSION_DENIED")) is False
 
 
 def test_get_provider_local_mode():
@@ -28,6 +40,28 @@ def test_get_provider_explicit_local():
         prov = get_provider(name="local_grounded")
         from llm.local_grounded import LocalGroundedProvider
         assert isinstance(prov, LocalGroundedProvider)
+
+
+def test_gemini_provider_timeout_clamping():
+    """GeminiProvider should clamp GEMINI_CALL_TIMEOUT_SEC to a minimum of 1 second."""
+    from llm.gemini import GeminiProvider
+
+    with patch.dict("os.environ", {"GEMINI_CALL_TIMEOUT_SEC": "0", "GEMINI_API_KEY": "test-key-1234"}):
+        provider = GeminiProvider()
+        assert provider._call_timeout_sec == 1
+
+    with patch.dict("os.environ", {"GEMINI_CALL_TIMEOUT_SEC": "-10", "GEMINI_API_KEY": "test-key-1234"}):
+        provider = GeminiProvider()
+        assert provider._call_timeout_sec == 1
+
+    with patch.dict("os.environ", {"GEMINI_CALL_TIMEOUT_SEC": "invalid", "GEMINI_API_KEY": "test-key-1234"}):
+        provider = GeminiProvider()
+        assert provider._call_timeout_sec == 90
+
+    with patch.dict("os.environ", {"GEMINI_CALL_TIMEOUT_SEC": "45", "GEMINI_API_KEY": "test-key-1234"}):
+        provider = GeminiProvider()
+        assert provider._call_timeout_sec == 45
+
 
 
 

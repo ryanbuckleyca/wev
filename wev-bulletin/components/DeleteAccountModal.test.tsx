@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@/test-utils';
 import userEvent from '@testing-library/user-event';
 import DeleteAccountModal from './DeleteAccountModal';
@@ -21,18 +21,6 @@ vi.mock('@/lib/supabase/client', () => ({
   })),
 }));
 
-// Mock toast
-vi.mock('@/lib/toast', () => ({
-  default: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
-
-// Mock fetch
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
-
 // Mock window.location
 Object.defineProperty(window, 'location', {
   value: { href: '' },
@@ -41,11 +29,17 @@ Object.defineProperty(window, 'location', {
 
 describe('DeleteAccountModal', () => {
   const user = userEvent.setup();
+  const mockFetch = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockClear();
     window.location.href = '';
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('does not render when closed', () => {
@@ -171,19 +165,13 @@ describe('DeleteAccountModal', () => {
   });
 
   it('shows loading state during deletion', async () => {
-    // Mock a delayed response
+    // Use a deferred promise so the test can deterministically assert loading state
+    let resolveFetch: (value: any) => void = () => {};
     mockFetch.mockImplementation(
       () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: async () => ({ message: 'Account successfully deleted' }),
-              }),
-            100,
-          ),
-        ),
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
     );
 
     render(<DeleteAccountModal isOpen={true} onClose={vi.fn()} />);
@@ -198,23 +186,21 @@ describe('DeleteAccountModal', () => {
     // then await it to avoid dangling unsettled promises.
     const clickPromise = user.click(deleteButton);
 
-    // Should show loading state immediately while fetch is pending
+    // Same render as "Deleting..." — isDeleting is true, so the button must be disabled.
     const loadingButton = await screen.findByRole('button', { name: /deleting/i });
     expect(loadingButton).toBeVisible();
-    await waitFor(() => {
-      expect(loadingButton).toBeDisabled();
-    });
+    expect(loadingButton).toBeDisabled();
+
+    // Resolve the fetch now so the click completes and the redirect happens
+    resolveFetch({ ok: true, json: async () => ({ message: 'Account successfully deleted' }) });
 
     // Await the click action to complete properly
     await clickPromise;
 
     // Wait for final state (redirect)
-    await waitFor(
-      () => {
-        expect(window.location.href).toBe('/');
-      },
-      { timeout: 200 },
-    );
+    await waitFor(() => {
+      expect(window.location.href).toBe('/');
+    });
   });
 
   it('accepts SUPPRIMER for French locale', async () => {

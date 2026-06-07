@@ -243,6 +243,54 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["user_roles"]["Insert"]>;
         Relationships: [];
       };
+      esco_skills: {
+        Row: {
+          alternative_label_en: string[] | null;
+          alternative_label_fr: string[] | null;
+          concept_uri: string;
+          description_en: string | null;
+          description_fr: string | null;
+          embedding: string | null;
+          preferred_label_en: string | null;
+          preferred_label_fr: string | null;
+          reuse_level: string | null;
+          scope_note_en: string | null;
+          scope_note_fr: string | null;
+          skill_type: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          alternative_label_en?: string[] | null;
+          alternative_label_fr?: string[] | null;
+          concept_uri: string;
+          description_en?: string | null;
+          description_fr?: string | null;
+          embedding?: string | null;
+          preferred_label_en?: string | null;
+          preferred_label_fr?: string | null;
+          reuse_level?: string | null;
+          scope_note_en?: string | null;
+          scope_note_fr?: string | null;
+          skill_type?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          alternative_label_en?: string[] | null;
+          alternative_label_fr?: string[] | null;
+          concept_uri?: string;
+          description_en?: string | null;
+          description_fr?: string | null;
+          embedding?: string | null;
+          preferred_label_en?: string | null;
+          preferred_label_fr?: string | null;
+          reuse_level?: string | null;
+          scope_note_en?: string | null;
+          scope_note_fr?: string | null;
+          skill_type?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

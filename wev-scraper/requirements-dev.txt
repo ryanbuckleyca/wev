@@ -1,13 +1,20 @@
 # requirements-dev.txt
 -r requirements.txt
+pytest
+pytest-mock
+pytest-cov
 tavily-python
 ollama
 ruff
 pyright
 
-# Local Jina v3 embedding model (ENV_MODE=local) + property-based testing
-# These are NOT needed in production — Jina REST API is used there instead.
-transformers>=4.40.0
-torch>=2.2.0
-einops>=0.7.0
+# Local Jina v3 embedding model (ENV_MODE=local) + property-based testing.
+# Versions are pinned for cross-platform compatibility:
+#   - torch 2.2.x is the last release with macOS x86_64 wheels.
+#   - transformers 5.x requires torch>=2.4, so we cap at the 4.x line.
+#   - numpy<2 is required by torch 2.2.x's compiled ABI.
+torch>=2.2.0,<2.3
+transformers>=4.40,<5
+einops>=0.7,<0.9
+numpy<2
 hypothesis>=6.100.0

@@ -1,14 +1,16 @@
 import { useTranslations } from 'next-intl';
 import SkillItem from './SkillItem';
 import { useListbox } from '../useListbox';
-import type { SkillMatch } from './SkillsModal';
+import type { EscoSkill } from '@/lib/types/skills';
+import LoadingIndicator from '../../LoadingIndicator';
 
 interface SkillsListProps {
-  skills: SkillMatch[];
+  skills: EscoSkill[];
   selectedUris: Set<string>;
-  onToggle: (skill: SkillMatch) => void;
+  onToggle: (skill: EscoSkill) => void;
   locale: 'en' | 'fr';
   hasQuery: boolean;
+  isLoading: boolean;
   listboxId: string;
   ariaDescribedBy?: string;
 }
@@ -19,6 +21,7 @@ export default function SkillsList({
   onToggle,
   locale,
   hasQuery,
+  isLoading,
   listboxId,
   ariaDescribedBy,
 }: SkillsListProps) {
@@ -29,11 +32,19 @@ export default function SkillsList({
     optPrefix,
   );
 
-  if (!hasQuery) {
+  if (skills.length === 0 && isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-8">
+        <LoadingIndicator fullScreen={false} message={t('skillsLoading')} />
+      </div>
+    );
+  }
+
+  if (!hasQuery && skills.length === 0 && !isLoading) {
     return <div className="py-8 text-center text-sm text-gray-400">{t('skillsEmptyState')}</div>;
   }
 
-  if (skills.length === 0) {
+  if (skills.length === 0 && !isLoading) {
     return (
       <div className="px-4 py-8 text-center text-sm text-gray-400">{t('skillsNoResults')}</div>
     );

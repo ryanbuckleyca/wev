@@ -5,8 +5,10 @@ import Pill from './Pill';
 import ButtonLink from './ButtonLink';
 import FilterIcon from './FilterIcon';
 import { Lineicons } from '@lineiconshq/react-lineicons';
-import { Search1Outlined } from '@lineiconshq/free-icons';
+import { Search1Outlined, XmarkOutlined } from '@lineiconshq/free-icons';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
+import { useState, useEffect, useRef } from 'react';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 
 export interface ActiveFilterChip {
   id: string;
@@ -44,6 +46,28 @@ export default function JobSearch({
 }: JobSearchProps) {
   const t = useTranslations();
   const placeholder = t('search.placeholder');
+
+  const [localQuery, setLocalQuery] = useState(searchQuery);
+  const debouncedQuery = useDebounce(localQuery, 300);
+  const lastPropQuery = useRef(searchQuery);
+
+  // Sync external changes (like clear all filters) to local state
+  useEffect(() => {
+    if (searchQuery !== lastPropQuery.current) {
+      setLocalQuery(searchQuery);
+      lastPropQuery.current = searchQuery;
+    }
+  }, [searchQuery]);
+
+  // Sync local changes to external state after debounce
+  useEffect(() => {
+    // Only call onSearchChange if the debounced value actually differs from the last prop we saw
+    if (debouncedQuery !== lastPropQuery.current) {
+      lastPropQuery.current = debouncedQuery;
+      onSearchChange(debouncedQuery);
+    }
+  }, [debouncedQuery, onSearchChange]);
+
   return (
     <>
       <div className="p-3 sm:p-4">
@@ -61,11 +85,21 @@ export default function JobSearch({
             <input
               type="text"
               id="search"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
+              value={localQuery}
+              onChange={(e) => setLocalQuery(e.target.value)}
               placeholder={placeholder}
-              className="w-full h-10 pl-9 pr-3 border border-border rounded-wev-btn bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+              className="w-full h-10 pl-9 pr-10 border border-border rounded-wev-btn bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
             />
+            {localQuery && (
+              <button
+                type="button"
+                onClick={() => setLocalQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-wev-text-tertiary hover:text-foreground transition-colors p-1"
+                aria-label={t('search.clear')}
+              >
+                <Lineicons icon={XmarkOutlined} size={16} aria-hidden />
+              </button>
+            )}
           </div>
 
           <button
@@ -114,7 +148,7 @@ export default function JobSearch({
           <div className="flex flex-wrap items-center gap-3">
             {hasAnyFilters && (
               <ButtonLink onClick={onClearAllFilters} tone="muted" size="xs" className="underline">
-                {t('filters.showAllJobs')}
+                {t('filters.clearAllFilters')}
               </ButtonLink>
             )}
             {!isSuggestedDefaults && (

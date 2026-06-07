@@ -1,8 +1,10 @@
 import { createClient } from './client';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
+import { type Database } from './database.types';
+import { parseCvImportMetadata, type CvImportMetadata } from '@/lib/cv/types';
 
 const PROFILE_COLUMNS =
-  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, created_at, updated_at' as const;
+  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, cv_import, created_at, updated_at' as const;
 
 export type Profile = {
   id: string;
@@ -19,9 +21,12 @@ export type Profile = {
   province: string | null;
   location_display_name: string | null;
   profile_photo_url: string | null;
+  cv_import: CvImportMetadata | null;
   created_at: string;
   updated_at: string;
 };
+
+type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
 export type ProfileUpdateData = {
   full_name?: string | null;
@@ -37,7 +42,25 @@ export type ProfileUpdateData = {
   province?: string | null;
   location_display_name?: string | null;
   profile_photo_url?: string | null;
+  cv_import?: CvImportMetadata | null;
 };
+
+/**
+ * Coalesce nullable DB fields to safe app defaults.
+ */
+function normalizeProfileRow(row: ProfileRow): Profile {
+  return {
+    ...row,
+    values: row.values ?? [],
+    skills: row.skills ?? [],
+    work_types: row.work_types ?? [],
+    cv_import: parseCvImportMetadata(row.cv_import),
+    values_rated: (row.values_rated as RatedValue[] | null) ?? null,
+    skills_rated: (row.skills_rated as RatedSkill[] | null) ?? null,
+    created_at: row.created_at ?? new Date(0).toISOString(),
+    updated_at: row.updated_at ?? new Date(0).toISOString(),
+  };
+}
 
 /**
  * Create a blank profile for a user. Internal — called by getProfile when no row exists.
@@ -64,7 +87,7 @@ async function createProfile(userId: string): Promise<Profile> {
     throw new Error(error.message || 'Failed to create profile');
   }
 
-  return data as Profile;
+  return normalizeProfileRow(data as ProfileRow);
 }
 
 /**
@@ -85,7 +108,7 @@ export async function getProfile(userId: string): Promise<Profile> {
     throw new Error(error.message || 'Failed to fetch profile');
   }
 
-  return data as Profile;
+  return normalizeProfileRow(data as ProfileRow);
 }
 
 /**
@@ -114,5 +137,5 @@ export async function updateProfile(userId: string, updates: ProfileUpdateData):
     throw new Error(msg || 'Failed to update profile');
   }
 
-  return data as Profile;
+  return normalizeProfileRow(data as ProfileRow);
 }

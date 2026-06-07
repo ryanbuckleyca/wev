@@ -266,6 +266,35 @@ Fetch skills by concept URIs.
 }
 ```
 
+### `GET /api/skills/starter`
+
+Fetch the small starter list shown when the profile skills modal opens before the user types.
+
+**Query Params**:
+
+- `locale` (optional): `en` or `fr` (default `en`)
+- `limit` (optional): maximum number of starter skills to return (default `10`, max `20`)
+
+**Response**:
+
+```json
+{
+  "locale": "en",
+  "limit": 10,
+  "skills": [
+    {
+      "concept_uri": "http://data.europa.eu/esco/skill/...",
+      "term": "Archive documentation",
+      "definition": "...",
+      "scope_note": null,
+      "skill_type": "skill",
+      "reuse_level": "cross-sector",
+      "matched_alias": null
+    }
+  ]
+}
+```
+
 ### `POST /api/skills/extract`
 
 Extract relevant skills from job description or resume text using Groq LLM.
@@ -306,6 +335,7 @@ npm test
 Test files:
 
 - `app/api/skills/search/route.test.ts`
+- `app/api/skills/starter/route.test.ts`
 - `app/api/skills/extract/route.test.ts`
 - `app/[locale]/profile/page.test.tsx` (includes max 10 skills test)
 

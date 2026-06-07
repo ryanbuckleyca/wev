@@ -31,7 +31,9 @@ export async function BulletinDataContainer({ parsedLocale }: { parsedLocale: 'e
       initialJobs={bulletinData.jobs}
       initialScrapeTime={bulletinData.lastScrapeTime}
       initialTotalJobs={bulletinData.total}
+      initialTotalAvailable={bulletinData.totalAvailable}
       initialSkillLabels={bulletinData.skillLabels}
+      initialFilterOptions={bulletinData.filterOptions}
       initialUserId={initialUserId}
       isLoggedIn={auth.ok}
       isAdmin={isAdmin}

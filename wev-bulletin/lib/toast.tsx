@@ -33,6 +33,7 @@ const notify = {
   error: (message: string, options?: ToastOptions) => makeToast('error', message, options),
   warning: (message: string, options?: ToastOptions) => makeToast('warning', message, options),
   info: (message: string, options?: ToastOptions) => makeToast('info', message, options),
+  dismiss: (id?: string) => toast.dismiss(id),
 };
 
 export default notify;
