@@ -8,9 +8,7 @@ ADD COLUMN IF NOT EXISTS fts tsvector GENERATED ALWAYS AS (
   setweight(to_tsvector('english', coalesce(province, '')), 'B') ||
   setweight(to_tsvector('english', coalesce(summary, '')), 'C')
 ) STORED;
-
 CREATE INDEX IF NOT EXISTS jobs_fts_idx ON jobs USING GIN (fts);
-
 -- Create or update the matched_jobs view
 CREATE OR REPLACE VIEW matched_jobs WITH (security_invoker = true) AS
 SELECT
