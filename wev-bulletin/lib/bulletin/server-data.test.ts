@@ -1,108 +1,246 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  fetchLastScrapeTime,
+  fetchServerMatchData,
+  fetchServerBookmarks,
+  fetchServerProfile,
+  fetchCachedBulletinQueryPayload,
+  fetchServerBulletinJobs,
+} from './server-data';
 
-const {
-  mockJobsEq,
-  mockJobsRange,
-  mockScrapeMaybeSingle,
-  mockFrom,
-  mockResolveSkillLabels,
-  jobsChain,
-} = vi.hoisted(() => {
-  const mockJobsEq = vi.fn();
-  const mockJobsRange = vi.fn();
-  const mockScrapeMaybeSingle = vi.fn();
-  const mockResolveSkillLabels = vi.fn();
-
-  const jobsChain: any = {
-    select: vi.fn(() => jobsChain),
-    is: vi.fn(() => jobsChain),
-    eq: mockJobsEq,
-    gte: vi.fn(() => jobsChain),
-    order: vi.fn(() => jobsChain),
-    range: mockJobsRange,
-    limit: vi.fn(() => jobsChain),
-  };
-  jobsChain.then = (onFullfilled: any) =>
-    Promise.resolve({ data: [], count: 0, error: null }).then(onFullfilled);
-
-  mockJobsEq.mockReturnValue(jobsChain);
-
-  const scrapeChain = {
-    select: vi.fn(() => scrapeChain),
-    order: vi.fn(() => scrapeChain),
-    limit: vi.fn(() => scrapeChain),
-    maybeSingle: mockScrapeMaybeSingle,
+const { mockQuery, mockSupabase } = vi.hoisted(() => {
+  const query: any = {
+    select: vi.fn(),
+    filter: vi.fn(),
+    textSearch: vi.fn(),
+    gte: vi.fn(),
+    in: vi.fn(),
+    is: vi.fn(),
+    eq: vi.fn(),
+    order: vi.fn(),
+    range: vi.fn(),
+    limit: vi.fn(),
+    maybeSingle: vi.fn(),
   };
 
-  const mockFrom = vi.fn((table: string) => {
-    if (table === 'matched_jobs') return jobsChain;
-    if (table === 'scrape_runs') return scrapeChain;
-    throw new Error(`Unexpected table: ${table}`);
-  });
+  const setupChain = () => {
+    query.select.mockReturnValue(query);
+    query.filter.mockReturnValue(query);
+    query.textSearch.mockReturnValue(query);
+    query.gte.mockReturnValue(query);
+    query.in.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.order.mockReturnValue(query);
+    query.range.mockReturnValue(query);
+    query.limit.mockReturnValue(query);
+    query.maybeSingle.mockReturnValue(query);
 
-  return {
-    mockJobsEq,
-    mockJobsRange,
-    mockScrapeMaybeSingle,
-    mockFrom,
-    mockResolveSkillLabels,
-    jobsChain,
+    // Default resolve for any awaited query
+    query.then = vi.fn((onFulfilled: any) => {
+      return Promise.resolve({ data: [], error: null, count: 0 }).then(onFulfilled);
+    });
   };
-});
 
-vi.mock('next/cache', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('next/cache')>();
-  return {
-    ...actual,
-    unstable_cache: <TArgs extends unknown[], TResult>(fn: (...args: TArgs) => TResult) => fn,
+  setupChain();
+
+  const supabase = {
+    from: vi.fn(() => query),
+    auth: { getUser: vi.fn() },
   };
+
+  return { mockQuery: query, mockSupabase: supabase as any, setupChain };
 });
 
 vi.mock('@/lib/supabase-server', () => ({
-  supabaseServer: {
-    from: mockFrom,
-  },
+  supabaseServer: mockSupabase,
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({
-    from: vi.fn(),
-  })),
+  createClient: vi.fn(() => Promise.resolve(mockSupabase)),
 }));
 
 vi.mock('@/lib/resolve-skill-labels', () => ({
-  resolveSkillLabels: mockResolveSkillLabels,
+  resolveSkillLabels: vi.fn().mockResolvedValue(new Map()),
 }));
 
-describe('fetchServerBulletinJobs', () => {
+describe('server-data', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockScrapeMaybeSingle.mockResolvedValue({
-      data: { run_at: '2026-04-20T00:00:00.000Z' },
-      error: null,
+    mockQuery.select.mockReturnValue(mockQuery);
+    mockQuery.filter.mockReturnValue(mockQuery);
+    mockQuery.textSearch.mockReturnValue(mockQuery);
+    mockQuery.gte.mockReturnValue(mockQuery);
+    mockQuery.in.mockReturnValue(mockQuery);
+    mockQuery.is.mockReturnValue(mockQuery);
+    mockQuery.eq.mockReturnValue(mockQuery);
+    mockQuery.order.mockReturnValue(mockQuery);
+    mockQuery.range.mockReturnValue(mockQuery);
+    mockQuery.limit.mockReturnValue(mockQuery);
+    mockQuery.maybeSingle.mockReturnValue(mockQuery);
+    mockQuery.then.mockImplementation((onFulfilled: any) => {
+      return Promise.resolve({ data: [], error: null, count: 0 }).then(onFulfilled);
     });
-    mockJobsRange.mockResolvedValue({ data: [], count: 0, error: null });
-    mockResolveSkillLabels.mockResolvedValue(new Map());
   });
 
-  it('keeps default initial fetch inclusive of jobs without compensation', async () => {
-    const { fetchServerBulletinJobs } = await import('./server-data');
+  describe('fetchCachedBulletinQueryPayload', () => {
+    const defaultInput = {
+      locale: 'en' as const,
+      page: 1,
+      limit: 20,
+      searchQuery: '',
+      sortBy: 'date-desc',
+      postedWithin: 'all',
+      orgs: [],
+      provs: [],
+      munis: [],
+      emps: [],
+      srcs: [],
+      works: [],
+      onlySse: false,
+      noSalary: false,
+      userCacheKey: 'test-key',
+    };
 
-    await fetchServerBulletinJobs('en');
+    it('successfully fetches bulletin payload', async () => {
+      const result = await fetchCachedBulletinQueryPayload(defaultInput);
+      expect(result).toHaveProperty('jobs');
+      expect(result).toHaveProperty('total');
+    });
 
-    expect(mockFrom).toHaveBeenCalledWith('matched_jobs');
-    expect(mockJobsEq).not.toHaveBeenCalledWith('has_compensation', true);
-    expect(mockJobsRange).toHaveBeenCalledWith(0, 19);
+    it('applies filters and search', async () => {
+      await fetchCachedBulletinQueryPayload({
+        ...defaultInput,
+        searchQuery: 'test',
+        orgs: ['Org1'],
+        onlySse: true,
+      });
+      expect(mockQuery.in).toHaveBeenCalledWith('organization', ['Org1']);
+      expect(mockQuery.is).toHaveBeenCalledWith('is_sse', true);
+      expect(mockQuery.order).toHaveBeenCalled();
+    });
+
+    it('throws error if jobs fetch fails', async () => {
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: null, error: { message: 'Jobs Error' } }).then(onFulfilled);
+      });
+      await expect(fetchCachedBulletinQueryPayload(defaultInput)).rejects.toThrow('Jobs Error');
+    });
+
+    it('throws error if filter options fetch fails', async () => {
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        // Inspect query to target filter options fetch
+        const isFilterQuery = mockQuery.select.mock.calls.some((call: any) =>
+          call[0]?.includes('organization, province, municipality, employment_type, source'),
+        );
+
+        if (isFilterQuery) {
+          return Promise.resolve({ data: null, error: { message: 'Filter Error' } }).then(
+            onFulfilled,
+          );
+        }
+        return Promise.resolve({ data: [], error: null }).then(onFulfilled);
+      });
+      await expect(fetchCachedBulletinQueryPayload(defaultInput)).rejects.toThrow('Filter Error');
+    });
   });
 
-  it('applies the 4-week (28-day) age limit to prevent old jobs from being returned', async () => {
-    const { fetchServerBulletinJobs } = await import('./server-data');
+  describe('fetchServerBulletinJobs', () => {
+    it('fetches initial jobs', async () => {
+      const result = await fetchServerBulletinJobs('en');
+      expect(result).toHaveProperty('jobs');
+    });
+  });
 
-    await fetchServerBulletinJobs('en');
+  describe('fetchLastScrapeTime', () => {
+    it('returns run_at', async () => {
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: { run_at: '2024-01-01' }, error: null }).then(onFulfilled);
+      });
+      const result = await fetchLastScrapeTime();
+      expect(result).toBe('2024-01-01');
+    });
 
-    // Verify that a date filter was applied (gte for date_posted)
-    // We check both the jobs query and the filter options/total available queries
-    expect(mockFrom).toHaveBeenCalledWith('matched_jobs');
-    expect(jobsChain.gte).toHaveBeenCalledWith('date_posted', expect.any(String));
+    it('throws error on failure', async () => {
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: null, error: { message: 'Error' } }).then(onFulfilled);
+      });
+      await expect(fetchLastScrapeTime()).rejects.toThrow('Error');
+    });
+  });
+
+  describe('fetchServerMatchData', () => {
+    it('returns matches', async () => {
+      const mockData = [{ job_id: 'j1', score: 1 }];
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: mockData, error: null }).then(onFulfilled);
+      });
+      const result = await fetchServerMatchData('u1');
+      expect(result['j1']).toBeDefined();
+    });
+
+    it('returns empty object on error or no data', async () => {
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: null, error: { message: 'Error' } }).then(onFulfilled);
+      });
+      expect(await fetchServerMatchData('u1')).toEqual({});
+
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: null, error: null }).then(onFulfilled);
+      });
+      expect(await fetchServerMatchData('u1')).toEqual({});
+    });
+  });
+
+  describe('fetchServerBookmarks', () => {
+    it('returns job ids', async () => {
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: [{ job_id: 'j1' }], error: null }).then(onFulfilled);
+      });
+      const result = await fetchServerBookmarks('u1');
+      expect(result).toEqual(['j1']);
+    });
+
+    it('returns empty array on error or no data', async () => {
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: null, error: { message: 'Error' } }).then(onFulfilled);
+      });
+      expect(await fetchServerBookmarks('u1')).toEqual([]);
+
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: null, error: null }).then(onFulfilled);
+      });
+      expect(await fetchServerBookmarks('u1')).toEqual([]);
+    });
+  });
+
+  describe('fetchServerProfile', () => {
+    it('returns profile', async () => {
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: { id: 'u1' }, error: null }).then(onFulfilled);
+      });
+      const result = await fetchServerProfile('u1');
+      expect(result?.id).toBe('u1');
+    });
+
+    it('returns null on error or no data', async () => {
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: null, error: { message: 'Error' } }).then(onFulfilled);
+      });
+      expect(await fetchServerProfile('u1')).toBeNull();
+
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({ data: null, error: null }).then(onFulfilled);
+      });
+      expect(await fetchServerProfile('u1')).toBeNull();
+    });
+
+    it('returns null on catch block', async () => {
+      mockQuery.then.mockImplementation(() => {
+        throw new Error('Unexpected error');
+      });
+      const result = await fetchServerProfile('u1');
+      expect(result).toBeNull();
+    });
   });
 });

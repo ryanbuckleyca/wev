@@ -40,12 +40,18 @@ _FRENCH_MONTH_PATTERNS = [
     (r"\bd[ée]c(?:\.|embre)?\b", "december"),
 ]
 
-
 def _translate_french_date(s: str) -> str:
     """Translate common French month names/abbreviations to English for parsing."""
     out = re.sub(r"\b1er\b", "1", s, flags=re.IGNORECASE)
     for pattern, repl in _FRENCH_MONTH_PATTERNS:
-        out = re.sub(pattern, repl, out, flags=re.IGNORECASE)
+        # If the pattern contains an optional dot, we need to handle word boundaries carefully
+        # since dot is not a word character. We replace the dot specifically if present.
+        if "(?:\\." in pattern:
+            # Match the abbreviation with optional dot/suffix
+            p = pattern.replace(r"\b", "") # Remove boundaries for custom handling
+            out = re.sub(rf"\b{p}(?=\s|\d|$)", repl, out, flags=re.IGNORECASE)
+        else:
+            out = re.sub(pattern, repl, out, flags=re.IGNORECASE)
     return out
 
 
