@@ -84,7 +84,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 26)),
       id: buildUuid(5),
       name: "COCO",
-      url: "https://coco.ca",
+      url: "https://coco-net.org/job-postings/",
     },
     {
       active: true,

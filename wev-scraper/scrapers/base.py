@@ -243,17 +243,21 @@ class BaseScraper:
             raise Exception(f"404 Not Found - {page.title()}")
 
         # Check for Cloudflare challenge
-        if "challenge-platform" in content_lower or "cf-challenge" in content_lower:
+        # We check title explicitly to avoid false positives when CF scripts are present but the page loaded successfully
+        if "cloudflare" in page_title or "attention required" in page_title or "just a moment" in page_title:
             raise Exception("Cloudflare challenge page detected")
 
         challenge_indicators = [
             "checking your browser",
             "please wait while we check",
             "verify you are human",
-            "just a moment",
         ]
+        
+        # If the title isn't a dead giveaway, check for strict challenge text in the body
         for indicator in challenge_indicators:
-            if indicator in content_lower:
+            # We don't just check content_lower, we want to make sure it's an actual challenge page
+            # Usually challenge pages have very short text content
+            if indicator in content_lower and len(page_content) < 50000:
                 raise Exception(f"Bot challenge detected: '{indicator}'")
 
     def get_listing_items(self, page):
@@ -663,21 +667,16 @@ class BaseScraper:
     def _build_context_headers(self, use_real_chrome: bool) -> tuple[dict[str, str], str | None]:
         """Build extra HTTP headers and optional user-agent for the browser context."""
         base_headers: dict[str, str] = {
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "en-CA,en-US;q=0.9,en;q=0.8",
             "Accept-Encoding": "gzip, deflate, br",
             "Upgrade-Insecure-Requests": "1",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-User": "?1",
         }
         
         # Always override user agent and Client Hints to prevent Cloudflare from detecting HeadlessChrome
         user_agent: str | None = BROWSER_USER_AGENT
         platform = '"Linux"' if _is_ci() else '"macOS"'
         base_headers.update({
-            "Sec-CH-UA": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+            "Sec-CH-UA": '"Google Chrome";v="149", "Chromium";v="149", "Not_A Brand";v="24"',
             "Sec-CH-UA-Mobile": "?0",
             "Sec-CH-UA-Platform": platform,
         })
@@ -698,12 +697,27 @@ class BaseScraper:
         return config
 
     def close_browser(self):
-        if self.context:
-            self.context.close()
-        if self.browser:
-            self.browser.close()
-        if self.playwright:
-            self.playwright.stop()
+        resources = [
+            (self.context, "close"),
+            (self.browser, "close"),
+            (self.playwright, "stop"),
+        ]
+        self.context = None
+        self.browser = None
+        self.playwright = None
+        self.page = None
+        self.listings_page = None
+
+        errors = []
+        for resource, method_name in resources:
+            if not resource:
+                continue
+            try:
+                getattr(resource, method_name)()
+            except Exception as e:
+                errors.append(e)
+        if errors:
+            raise errors[0]
 
     def build_full_url(self, relative_url, base_url=None):
         """
