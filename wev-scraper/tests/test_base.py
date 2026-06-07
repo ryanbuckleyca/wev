@@ -464,19 +464,30 @@ def test_start_browser(mock_sync_pw):
 
 def test_close_browser():
     scraper = BaseScraper(make_source())
-    scraper.playwright = MagicMock()
-    scraper.browser = MagicMock()
-    scraper.context = MagicMock()
+    mock_playwright = MagicMock()
+    mock_browser = MagicMock()
+    mock_context = MagicMock()
+    scraper.playwright = mock_playwright
+    scraper.browser = mock_browser
+    scraper.context = mock_context
 
     scraper.close_browser()
 
-    scraper.context.close.assert_called_once()
-    scraper.browser.close.assert_called_once()
-    scraper.playwright.stop.assert_called_once()
+    mock_context.close.assert_called_once()
+    mock_browser.close.assert_called_once()
+    mock_playwright.stop.assert_called_once()
+    assert scraper.context is None
+    assert scraper.browser is None
+    assert scraper.playwright is None
+
+    scraper.close_browser()
+
+    mock_context.close.assert_called_once()
+    mock_browser.close.assert_called_once()
+    mock_playwright.stop.assert_called_once()
 
 
 def test_block_heavy_resources():
     mock_context = MagicMock()
     _block_heavy_resources(mock_context)
     mock_context.route.assert_called_once()
-

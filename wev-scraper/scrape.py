@@ -30,6 +30,15 @@ CHECKED_FIELDS = [
 COMPARE_FIELDS = ["job_title", "organization", "location", "wage", "employment_type", "date_posted"]
 
 
+def _has_prod_confirmation() -> bool:
+    return os.environ.get("PROD_CONFIRMED") == "1" or os.environ.get("CONFIRM_PROD_RUN") == "YES"
+
+
+def _mark_prod_confirmed() -> None:
+    os.environ["PROD_CONFIRMED"] = "1"
+    os.environ["CONFIRM_PROD_RUN"] = "YES"
+
+
 @dataclass
 class ScraperResults:
     """Aggregated results of a scraping session."""
@@ -114,7 +123,7 @@ class ScraperOrchestrator:
 
     def _process_single_source(self, source: Dict[str, Any]):
         source_name = source.get("name", "Unknown Source")
-        scraper_class = get_scraper_class(source["id"])
+        scraper_class = get_scraper_class(source["id"], source_name=source_name)
 
         if not scraper_class:
             _log(f"Skipping {source_name}: No scraper implementation registered.")
@@ -382,11 +391,20 @@ def main():
         os.environ["USE_PROD_DB"] = "1"
         # Guard against accidental prod runs when invoked directly (bypassing run.ts).
         # run.ts handles the prompt and sets PROD_CONFIRMED=1 before spawning this script.
-        if sys.stdin.isatty() and os.environ.get("PROD_CONFIRMED") != "1":
+        if _has_prod_confirmation():
+            _mark_prod_confirmed()
+        elif sys.stdin.isatty():
             mode = "PRODUCTION (full)" if args.prod else "PRODUCTION DB (publish — local LLMs)"
             confirm = input(f"⚠️  RUNNING AGAINST {mode}. Type 'YES' to continue: ")
             if confirm != "YES":
                 sys.exit(0)
+            _mark_prod_confirmed()
+        else:
+            print(
+                "Refusing production run in non-interactive mode. Set CONFIRM_PROD_RUN=YES to override.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
     # 3. Orchestrate
     orchestrator = ScraperOrchestrator(
