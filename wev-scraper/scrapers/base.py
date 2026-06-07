@@ -622,8 +622,8 @@ class BaseScraper:
         headless = self._resolve_headless(headless)
         v: ViewportSize = viewport or {"width": 1280, "height": 720}
         self.playwright = sync_playwright().start()
-        self.browser = self._launch_browser(headless, v, use_real_chrome)
-        base_headers, user_agent = self._build_context_headers(use_real_chrome)
+        self.browser, using_real_chrome = self._launch_browser(headless, v, use_real_chrome)
+        base_headers, user_agent = self._build_context_headers(using_real_chrome)
         raw_proxy = self._build_proxy_config(use_proxy)
         optional_kwargs = {}
         if user_agent is not None:
@@ -660,10 +660,12 @@ class BaseScraper:
         ]
         if use_real_chrome:
             try:
-                return self.playwright.chromium.launch(headless=headless, channel="chrome", args=args)
+                browser = self.playwright.chromium.launch(headless=headless, channel="chrome", args=args)
+                return browser, True
             except Exception as e:
                 scraper_log(f"\tChrome launch failed ({e}), falling back to Chromium")
-        return self.playwright.chromium.launch(headless=headless, args=args)
+        browser = self.playwright.chromium.launch(headless=headless, args=args)
+        return browser, False
 
     def _build_context_headers(self, use_real_chrome: bool) -> tuple[dict[str, str], str | None]:
         """Build extra HTTP headers and optional user-agent for the browser context."""
@@ -673,7 +675,12 @@ class BaseScraper:
             "Upgrade-Insecure-Requests": "1",
         }
 
-        # Always override user agent and Client Hints to prevent Cloudflare from detecting HeadlessChrome
+        # Real Chrome already provides a coherent fingerprint. Only spoof the
+        # bundled Chromium path, where Playwright would otherwise expose
+        # HeadlessChrome markers.
+        if use_real_chrome:
+            return base_headers, None
+
         user_agent: str | None = BROWSER_USER_AGENT
 
         # Derive platform from user agent or environment to ensure consistency

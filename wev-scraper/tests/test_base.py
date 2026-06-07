@@ -446,6 +446,24 @@ def test_get_stealth(reset_stealth):
         assert mock_stealth_class.call_count == 1
 
 
+def test_build_context_headers_real_chrome_uses_browser_defaults():
+    scraper = BaseScraper(make_source())
+    headers, user_agent = scraper._build_context_headers(use_real_chrome=True)
+
+    assert user_agent is None
+    assert "Sec-CH-UA" not in headers
+    assert headers["Accept-Language"] == "en-CA,en-US;q=0.9,en;q=0.8"
+
+
+def test_build_context_headers_chromium_spoofs_fingerprint():
+    scraper = BaseScraper(make_source())
+    headers, user_agent = scraper._build_context_headers(use_real_chrome=False)
+
+    assert user_agent is not None
+    assert headers["Sec-CH-UA"] == '"Google Chrome";v="149", "Chromium";v="149", "Not_A Brand";v="24"'
+    assert headers["Sec-CH-UA-Mobile"] == "?0"
+
+
 @patch("playwright.sync_api.sync_playwright")
 def test_start_browser(mock_sync_pw):
     scraper = BaseScraper(make_source())
