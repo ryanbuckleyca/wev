@@ -13,6 +13,8 @@ const nextConfig = {
     ],
   },
   reactStrictMode: true,
+  output: 'standalone',
+  serverExternalPackages: ['pdfjs-dist', 'mammoth'],
   // Removed 'output: export' to enable SSR/hybrid mode
   // This allows API routes and server-side rendering
   turbopack: {
