@@ -1,6 +1,7 @@
 import { render, screen } from '@/test-utils';
 import ErrorBox from './ErrorBox';
 import { describe, expect, it } from 'vitest';
+import '@testing-library/jest-dom';
 
 describe('ErrorBox', () => {
   it('renders children correctly', () => {
@@ -11,6 +12,6 @@ describe('ErrorBox', () => {
   it('applies custom className', () => {
     render(<ErrorBox className="custom-class">Test Error</ErrorBox>);
     const box = screen.getByText('Test Error');
-    expect(box.className).toContain('custom-class');
+    expect(box).toHaveClass('custom-class');
   });
 });

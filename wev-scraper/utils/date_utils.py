@@ -46,7 +46,7 @@ def _translate_french_date(s: str) -> str:
     for pattern, repl in _FRENCH_MONTH_PATTERNS:
         # If the pattern contains an optional dot, we need to handle word boundaries carefully
         # since dot is not a word character. We replace the dot specifically if present.
-        if "(?:\.|ier)?" in pattern:
+        if "(?:\\." in pattern:
             # Match the abbreviation with optional dot/suffix
             p = pattern.replace(r"\b", "") # Remove boundaries for custom handling
             out = re.sub(rf"\b{p}(?=\s|\d|$)", repl, out, flags=re.IGNORECASE)

@@ -1,6 +1,7 @@
 import { render, screen } from '@/test-utils';
 import ErrorList from './ErrorList';
 import { describe, expect, it } from 'vitest';
+import '@testing-library/jest-dom';
 
 describe('ErrorList', () => {
   it('renders nothing if errors array is empty', () => {
@@ -16,7 +17,8 @@ describe('ErrorList', () => {
 
   it('applies custom className', () => {
     render(<ErrorList errors={['Error 1']} className="custom-class" />);
-    const container = screen.getByRole('list').parentElement;
-    expect(container?.className).toContain('custom-class');
+    const list = screen.getByRole('list');
+    const container = list.parentElement;
+    expect(container).toHaveClass('custom-class');
   });
 });

@@ -128,11 +128,13 @@ describe('server-data', () => {
     });
 
     it('throws error if filter options fetch fails', async () => {
-      let callCount = 0;
       mockQuery.then.mockImplementation((onFulfilled: any) => {
-        callCount++;
-        // Second and third calls in parallel are filterOptions and totalAvailable
-        if (callCount === 2) {
+        // Inspect query to target filter options fetch
+        const isFilterQuery = mockQuery.select.mock.calls.some((call: any) =>
+          call[0]?.includes('organization, province, municipality, employment_type, source'),
+        );
+
+        if (isFilterQuery) {
           return Promise.resolve({ data: null, error: { message: 'Filter Error' } }).then(
             onFulfilled,
           );

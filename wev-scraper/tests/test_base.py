@@ -420,20 +420,26 @@ def test_process_listing_items_reaches_max_jobs(page):
 
 # --- Utilities & Browser Lifecycle ---
 
+@pytest.fixture
+def reset_stealth():
+    """Fixture to reset the stealth instance and restore it after test."""
+    import scrapers.base
+    original = scrapers.base._stealth_instance
+    scrapers.base._stealth_instance = None
+    yield
+    scrapers.base._stealth_instance = original
+
+
 def test_is_ci(monkeypatch):
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     assert _is_ci() is True
-    monkeypatch.setenv("GITHUB_ACTIONS", "false")
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     assert _is_ci() is False
 
 
-def test_get_stealth():
+def test_get_stealth(reset_stealth):
     # Test lazy init and caching
     with patch("playwright_stealth.Stealth") as mock_stealth_class:
-        import scrapers.base
-        # Reset cached instance for clean test
-        scrapers.base._STEALTH_INSTANCE = None
-
         _get_stealth()
         assert mock_stealth_class.call_count == 1
         _get_stealth()
