@@ -251,6 +251,7 @@ class BaseScraper:
             "checking your browser",
             "please wait while we check",
             "verify you are human",
+            'class="cf-challenge"',
         ]
         
         # If the title isn't a dead giveaway, check for strict challenge text in the body

@@ -369,7 +369,7 @@ def test_is_error_page_404(page):
 def test_is_error_page_cloudflare(page):
     page.set_content('<html><body><div class="cf-challenge"></div></body></html>')
     scraper = BaseScraper(make_source())
-    with pytest.raises(Exception, match="Cloudflare challenge"):
+    with pytest.raises(Exception, match="Bot challenge detected"):
         scraper._is_error_page(page)
 
 

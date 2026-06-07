@@ -1,5 +1,6 @@
 
 from dotenv import load_dotenv
+
 from utils.db import supabase
 
 # Load production env
