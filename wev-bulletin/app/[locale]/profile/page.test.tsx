@@ -39,6 +39,15 @@ vi.mock('@/i18n/navigation', () => ({
   },
 }));
 
+vi.mock('@/lib/toast', () => ({
+  default: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
+}));
+
 const baseProfile = {
   id: 'user-1',
   full_name: 'Test User',
@@ -110,7 +119,9 @@ describe('ProfilePage skills integration', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/skills/by-uri?uris=uri-1&locale=en');
     });
-    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('/api/skills/all'))).toBe(false);
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('/api/skills/all'))).toBe(
+      false,
+    );
     expect(await screen.findByText('Data analysis')).toBeInTheDocument();
   });
 
@@ -138,10 +149,19 @@ describe('ProfilePage skills integration', () => {
 
     render(<ProfilePage />);
 
+    // Wait for the skill to be hydrated and rendered
+    await screen.findByText('Data analysis');
+
     const removeButton = await screen.findByRole('button', {
       name: /remove data analysis/i,
     });
     await user.click(removeButton);
+
+    // Ensure the skill is removed from the UI before saving
+    await waitFor(() => {
+      expect(screen.queryByText('Data analysis')).not.toBeInTheDocument();
+    });
+
     await user.click(screen.getByRole('button', { name: /save profile/i }));
 
     await waitFor(() => {
@@ -154,100 +174,110 @@ describe('ProfilePage skills integration', () => {
     );
   });
 
-  it('saves concept_uri[] (not labels) after selecting a search result', { timeout: 90_000 }, async () => {
-    // vi.useFakeTimers(); // Removed fake timers
-    const user = userEvent.setup(); // Removed advanceTimers
-    const fetchMock = vi.fn((input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.startsWith('/api/skills/by-uri?uris=uri-1&locale=en')) {
-        return jsonResponse({
-          skills: [
-            {
-              concept_uri: 'uri-1',
-              term: 'Data analysis',
-              definition: 'Analyze structured datasets.',
-              scope_note: null,
-              skill_type: 'knowledge',
-              reuse_level: 'cross-sector',
-            },
-          ],
-        });
-      }
-      if (url.startsWith('/api/skills/starter?locale=en&limit=10')) {
-        return jsonResponse({
-          skills: [
-            {
-              concept_uri: 'uri-2',
-              term: 'Data governance',
-              definition: 'Manage data controls.',
-              scope_note: null,
-              skill_type: 'skill',
-              reuse_level: 'transversal',
-              matched_alias: null,
-            },
-          ],
-        });
-      }
-      if (url.startsWith('/api/skills/search?q=da&locale=en&limit=20')) {
-        return jsonResponse({
-          skills: [
-            {
-              concept_uri: 'uri-1',
-              term: 'Data analysis',
-              definition: 'Analyze structured datasets.',
-              scope_note: null,
-              skill_type: 'knowledge',
-              reuse_level: 'cross-sector',
-              matched_alias: null,
-            },
-            {
-              concept_uri: 'uri-2',
-              term: 'Data governance',
-              definition: 'Manage data controls.',
-              scope_note: null,
-              skill_type: 'skill',
-              reuse_level: 'transversal',
-              matched_alias: 'govern data',
-            },
-          ],
-        });
-      }
-      return Promise.reject(new Error(`Unexpected URL: ${url}`));
-    });
-    vi.stubGlobal('fetch', fetchMock);
+  it(
+    'saves concept_uri[] (not labels) after selecting a search result',
+    { timeout: 15_000 },
+    async () => {
+      // vi.useFakeTimers(); // Removed fake timers
+      const user = userEvent.setup(); // Removed advanceTimers
+      const fetchMock = vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/skills/by-uri?uris=uri-1&locale=en')) {
+          return jsonResponse({
+            skills: [
+              {
+                concept_uri: 'uri-1',
+                term: 'Data analysis',
+                definition: 'Analyze structured datasets.',
+                scope_note: null,
+                skill_type: 'knowledge',
+                reuse_level: 'cross-sector',
+              },
+            ],
+          });
+        }
+        if (url.startsWith('/api/skills/starter?locale=en&limit=10')) {
+          return jsonResponse({
+            skills: [
+              {
+                concept_uri: 'uri-2',
+                term: 'Data governance',
+                definition: 'Manage data controls.',
+                scope_note: null,
+                skill_type: 'skill',
+                reuse_level: 'transversal',
+                matched_alias: null,
+              },
+            ],
+          });
+        }
+        if (url.startsWith('/api/skills/search?q=da&locale=en&limit=20')) {
+          return jsonResponse({
+            skills: [
+              {
+                concept_uri: 'uri-1',
+                term: 'Data analysis',
+                definition: 'Analyze structured datasets.',
+                scope_note: null,
+                skill_type: 'knowledge',
+                reuse_level: 'cross-sector',
+                matched_alias: null,
+              },
+              {
+                concept_uri: 'uri-2',
+                term: 'Data governance',
+                definition: 'Manage data controls.',
+                scope_note: null,
+                skill_type: 'skill',
+                reuse_level: 'transversal',
+                matched_alias: 'govern data',
+              },
+            ],
+          });
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+      vi.stubGlobal('fetch', fetchMock);
 
-    render(<ProfilePage />);
+      render(<ProfilePage />);
 
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/skills/by-uri?uris=uri-1&locale=en');
-    });
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith('/api/skills/by-uri?uris=uri-1&locale=en');
+      });
 
-    await user.click(screen.getByRole('button', { name: /search and add skills/i }));
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/skills/starter?locale=en&limit=10', expect.anything());
-    });
-    const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
-    await user.type(searchInput, 'da');
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/skills/search?q=da&locale=en&limit=20', expect.anything());
-    });
-    await user.click(await screen.findByRole('option', { name: /Data governance/i }));
-    await user.click(screen.getByRole('button', { name: /done/i }));
-    await user.click(screen.getByRole('button', { name: /save profile/i }));
+      await user.click(screen.getByRole('button', { name: /search and add skills/i }));
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/skills/starter?locale=en&limit=10',
+          expect.anything(),
+        );
+      });
+      const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
+      await user.type(searchInput, 'da');
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/skills/search?q=da&locale=en&limit=20',
+          expect.anything(),
+        );
+      });
+      await user.click(await screen.findByRole('option', { name: /Data governance/i }));
+      await user.click(screen.getByRole('button', { name: /done/i }));
+      await user.click(screen.getByRole('button', { name: /save profile/i }));
 
-    await waitFor(() => {
-      expect(mockUpdateProfile).toHaveBeenCalled();
-    });
+      await waitFor(() => {
+        expect(mockUpdateProfile).toHaveBeenCalled();
+      });
 
-    const savePayload = mockUpdateProfile.mock.calls[
-      mockUpdateProfile.mock.calls.length - 1
-    ][0] as {
-      skills: string[];
-    };
-    expect(new Set(savePayload.skills)).toEqual(new Set(['uri-1', 'uri-2']));
-  });
+      const savePayload = mockUpdateProfile.mock.calls[
+        mockUpdateProfile.mock.calls.length - 1
+      ][0] as {
+        skills: string[];
+      };
+      expect(new Set(savePayload.skills)).toEqual(new Set(['uri-1', 'uri-2']));
+    },
+  );
 
-  it('blocks save and shows error when skills exceed limit', { timeout: 120_000 }, async () => {
+  it('blocks save and shows error when skills exceed limit', { timeout: 15_000 }, async () => {
     // This test renders 10 hydrated skills, opens a modal, searches for a skill,
     // selects a result, and validates the save is blocked.  Under full-suite
     // resource contention it can exceed the 30 s global timeout.
@@ -322,7 +352,10 @@ describe('ProfilePage skills integration', () => {
     await user.click(searchInput);
     await user.paste('Extra');
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/skills/search?q=Extra&locale=en&limit=20', expect.anything());
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/skills/search?q=Extra&locale=en&limit=20',
+        expect.anything(),
+      );
     });
     await user.click(await screen.findByRole('option', { name: /Extra skill/i }));
     await user.click(screen.getByRole('button', { name: /done/i }));

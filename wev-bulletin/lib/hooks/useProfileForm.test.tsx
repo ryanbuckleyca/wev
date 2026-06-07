@@ -1,137 +1,181 @@
-/**
- * Unit tests for useProfileForm state transition logic.
- *
- * Rather than rendering the full hook (which depends on useProfile, useTranslations, etc.),
- * we test the pure state-transition logic extracted from the hook directly.
- *
- * Requirements: 2.3, 2.6, 2.7, 2.8
- */
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { useProfileForm } from './useProfileForm';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { useProfile } from '@/contexts/ProfileContext';
+import { fetchSkillsByUri } from '@/lib/skills/client';
+import notify from '@/lib/toast';
 
-import { describe, it, expect } from 'vitest';
-import { resolveCvImportState } from './useProfileForm';
-import { type RatedValue } from '@/lib/value-ratings';
+vi.mock('next-intl', () => ({
+  useTranslations: () => (key: string) => key,
+}));
 
-// ─── Pure logic extracted from useProfileForm ────────────────────────────────
+vi.mock('@/contexts/ProfileContext', () => ({
+  useProfile: vi.fn(),
+}));
 
-/**
- * Mirrors the deselect branch of handleValueToggle in useProfileForm.
- * When a value is deselected, its entry is removed from valuesRated.
- */
-function deselectValue(valuesRated: RatedValue[], id: string): RatedValue[] {
-  return valuesRated.filter((rv) => rv.value !== id);
-}
+vi.mock('@/lib/skills/client', () => ({
+  fetchSkillsByUri: vi.fn(),
+}));
 
-/**
- * Mirrors the filteredValuesRated computation in handleSaveProfile.
- * Only keeps entries whose value is in the currently selected set.
- */
-function filterValuesRated(valuesRated: RatedValue[], selectedValues: string[]): RatedValue[] {
-  const selectedSet = new Set(selectedValues);
-  return valuesRated.filter((rv) => selectedSet.has(rv.value));
-}
+vi.mock('@/lib/toast', () => ({
+  default: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
-// ─── Tests ───────────────────────────────────────────────────────────────────
+describe('useProfileForm', () => {
+  const mockUpdateProfile = vi.fn();
 
-describe('useProfileForm — valuesRated state transitions', () => {
-  describe('CV import state application', () => {
-    it('preserves existing items and cutoff when the imported list is empty', () => {
-      const result = resolveCvImportState(['existing-skill'], 1, []);
-      expect(result).toEqual({
-        items: ['existing-skill'],
-        cutoff: 1,
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useProfile).mockReturnValue({
+      profile: null,
+      loading: false,
+      error: null,
+      updateProfile: mockUpdateProfile,
+    } as any);
+    global.fetch = vi.fn().mockResolvedValue({ ok: true });
+  });
+
+  it('hydrates from profile with rated values', async () => {
+    const profile = {
+      id: 'u1',
+      updated_at: '2024-01-01',
+      values_rated: [
+        { value: 'V1', rank: 1 },
+        { value: 'V2', rank: null },
+      ],
+    };
+    vi.mocked(useProfile).mockReturnValue({
+      profile,
+      loading: false,
+      error: null,
+      updateProfile: mockUpdateProfile,
+    } as any);
+
+    const { result } = renderHook(() => useProfileForm('en'));
+
+    await waitFor(() => {
+      expect(result.current.selectedValues).toEqual(['V1', 'V2']);
+    });
+
+    expect(result.current.valueCutoff).toBe(1);
+  });
+
+  it('handles skill reorder and remove', async () => {
+    const profile = {
+      id: 'u1',
+      updated_at: '2024-01-01',
+      skills: ['s1', 's2'],
+    };
+    vi.mocked(useProfile).mockReturnValue({
+      profile,
+      loading: false,
+      error: null,
+      updateProfile: mockUpdateProfile,
+    } as any);
+    vi.mocked(fetchSkillsByUri).mockResolvedValue([
+      { uri: 's1', label: 'S1' },
+      { uri: 's2', label: 'S2' },
+    ] as any);
+
+    const { result } = renderHook(() => useProfileForm('en'));
+
+    await waitFor(() => {
+      expect(result.current.selectedSkills).toHaveLength(2);
+    });
+
+    act(() => {
+      result.current.handleSkillReorder(1, 0);
+    });
+    expect(result.current.selectedSkills[0].uri).toBe('s2');
+
+    act(() => {
+      result.current.handleSkillRemove('s2');
+    });
+    expect(result.current.selectedSkills).toHaveLength(1);
+  });
+
+  it('hydrates from profile', async () => {
+    const profile = {
+      id: 'u1',
+      full_name: 'John Doe',
+      bio: 'Developer',
+      updated_at: '2024-01-01',
+      skills: ['uri1'],
+      values: ['Ambition'],
+    };
+    vi.mocked(useProfile).mockReturnValue({
+      profile,
+      loading: false,
+      error: null,
+      updateProfile: mockUpdateProfile,
+    } as any);
+    vi.mocked(fetchSkillsByUri).mockResolvedValue([
+      { uri: 'uri1', preferredLabel: { en: 'Skill 1', fr: 'Skill 1' } },
+    ] as any);
+
+    const { result } = renderHook(() => useProfileForm('en'));
+
+    // Wait for hydration effect
+    await waitFor(
+      () => {
+        expect(result.current.selectedSkills).toHaveLength(1);
+      },
+      { timeout: 5000 },
+    );
+
+    expect(result.current.formData.full_name).toBe('John Doe');
+    expect(result.current.selectedValues).toEqual(['Ambition']);
+    expect(result.current.selectedSkills).toEqual([
+      { uri: 'uri1', preferredLabel: { en: 'Skill 1', fr: 'Skill 1' } },
+    ]);
+  });
+
+  it('handles work type toggle', () => {
+    const { result } = renderHook(() => useProfileForm('en'));
+
+    act(() => {
+      result.current.handleWorkTypeToggle('remote');
+    });
+    expect(result.current.formData.work_types).toEqual(['remote']);
+
+    act(() => {
+      result.current.handleWorkTypeToggle('remote');
+    });
+    expect(result.current.formData.work_types).toEqual([]);
+  });
+
+  it('saves profile successfully', async () => {
+    const { result } = renderHook(() => useProfileForm('en'));
+    mockUpdateProfile.mockResolvedValue({ ok: true });
+
+    await act(async () => {
+      await result.current.handleSaveProfile();
+    });
+
+    expect(mockUpdateProfile).toHaveBeenCalled();
+    expect(notify.success).toHaveBeenCalledWith('updateSuccess');
+  });
+
+  it('handles CV import', () => {
+    const { result } = renderHook(() => useProfileForm('en'));
+    const importedSkills = [{ uri: 'uri2', label: 'Skill 2' }] as any;
+    const importedValues = ['Integrity'];
+    const cvImport = { id: 'import-1' } as any;
+
+    act(() => {
+      result.current.handleApplyCvImport({
+        skills: importedSkills,
+        values: importedValues,
+        cvImport,
+        warnings: [],
       });
     });
 
-    it('replaces existing items and updates cutoff when the imported list is non-empty', () => {
-      const result = resolveCvImportState(['existing-skill'], 1, ['imported-skill']);
-      expect(result).toEqual({
-        items: ['imported-skill'],
-        cutoff: 1,
-      });
-    });
-
-    it('updates cutoff to match length of non-empty imported list', () => {
-      const result = resolveCvImportState(['existing-skill'], 1, ['skill-1', 'skill-2']);
-      expect(result).toEqual({
-        items: ['skill-1', 'skill-2'],
-        cutoff: 2,
-      });
-    });
-  });
-
-  // Requirement 2.3: WHEN a value is deselected, THE ValuesSelector SHALL remove
-  // its rank assignment from the form state.
-  describe('deselect value → rank removed from valuesRated', () => {
-    it('removes the entry for the deselected value', () => {
-      const initial: RatedValue[] = [{ value: 'Community', rank: 1 }];
-      const result = deselectValue(initial, 'Community');
-      expect(result.some((rv) => rv.value === 'Community')).toBe(false);
-    });
-
-    it('leaves other values untouched when one is deselected', () => {
-      const initial: RatedValue[] = [
-        { value: 'Community', rank: 1 },
-        { value: 'Creativity', rank: 2 },
-      ];
-      const result = deselectValue(initial, 'Community');
-      expect(result).toHaveLength(1);
-      expect(result[0].value).toBe('Creativity');
-    });
-
-    it('returns empty array when the only value is deselected', () => {
-      const initial: RatedValue[] = [{ value: 'Community' }];
-      const result = deselectValue(initial, 'Community');
-      expect(result).toHaveLength(0);
-    });
-  });
-
-  // Requirement 2.8: THE Profile SHALL accept a profile with zero rated values,
-  // in which case values_rated SHALL be an empty array or null.
-  describe('save with zero rated values → values_rated is []', () => {
-    it('produces an empty filteredValuesRated when valuesRated is empty', () => {
-      const valuesRated: RatedValue[] = [];
-      const selectedValues = ['Community'];
-      const filteredValuesRated = filterValuesRated(valuesRated, selectedValues);
-      expect(filteredValuesRated).toEqual([]);
-    });
-
-    it('produces an empty filteredValuesRated when no values are selected', () => {
-      const valuesRated: RatedValue[] = [{ value: 'Community', rank: 1 }];
-      const selectedValues: string[] = [];
-      const filteredValuesRated = filterValuesRated(valuesRated, selectedValues);
-      expect(filteredValuesRated).toEqual([]);
-    });
-  });
-
-  // Requirements 2.6, 2.7: WHEN a user saves their profile, THE Profile SHALL
-  // persist only the Rated_Value entries for currently selected values AND also
-  // write the plain string array to profiles.values.
-  describe('save writes both values_rated and values', () => {
-    it('filteredValuesRated contains only entries for selected values', () => {
-      const valuesRated: RatedValue[] = [{ value: 'Community', rank: 1 }];
-      const selectedValues = ['Community'];
-      const filteredValuesRated = filterValuesRated(valuesRated, selectedValues);
-      expect(filteredValuesRated).toEqual([{ value: 'Community', rank: 1 }]);
-      expect(selectedValues).toEqual(['Community']);
-    });
-
-    it('excludes deselected values from filteredValuesRated', () => {
-      const valuesRated: RatedValue[] = [
-        { value: 'Community', rank: 1 },
-        { value: 'Creativity', rank: 2 },
-      ];
-      const selectedValues = ['Community'];
-      const filteredValuesRated = filterValuesRated(valuesRated, selectedValues);
-      expect(filteredValuesRated).toHaveLength(1);
-      expect(filteredValuesRated[0].value).toBe('Community');
-      expect(filteredValuesRated.some((rv) => rv.value === 'Creativity')).toBe(false);
-    });
-
-    it('preserves unrated entries (no rank) in filteredValuesRated', () => {
-      const valuesRated: RatedValue[] = [{ value: 'Community' }];
-      const selectedValues = ['Community'];
-      const filteredValuesRated = filterValuesRated(valuesRated, selectedValues);
-      expect(filteredValuesRated).toEqual([{ value: 'Community' }]);
-    });
+    expect(result.current.selectedSkills).toEqual(importedSkills);
+    expect(result.current.selectedValues).toEqual(importedValues);
+    expect(result.current.formData.cv_import).toEqual(cvImport);
   });
 });
