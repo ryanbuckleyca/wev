@@ -253,7 +253,7 @@ class BaseScraper:
             "verify you are human",
             'class="cf-challenge"',
         ]
-        
+
         # If the title isn't a dead giveaway, check for strict challenge text in the body
         for indicator in challenge_indicators:
             # We don't just check content_lower, we want to make sure it's an actual challenge page
@@ -672,10 +672,20 @@ class BaseScraper:
             "Accept-Encoding": "gzip, deflate, br",
             "Upgrade-Insecure-Requests": "1",
         }
-        
+
         # Always override user agent and Client Hints to prevent Cloudflare from detecting HeadlessChrome
         user_agent: str | None = BROWSER_USER_AGENT
-        platform = '"Linux"' if _is_ci() else '"macOS"'
+
+        # Derive platform from user agent or environment to ensure consistency
+        if "macintosh" in user_agent.lower():
+            platform = '"macOS"'
+        elif "windows" in user_agent.lower():
+            platform = '"Windows"'
+        elif _is_ci():
+            platform = '"Linux"'
+        else:
+            platform = '"macOS"'
+
         base_headers.update({
             "Sec-CH-UA": '"Google Chrome";v="149", "Chromium";v="149", "Not_A Brand";v="24"',
             "Sec-CH-UA-Mobile": "?0",
@@ -699,24 +709,26 @@ class BaseScraper:
 
     def close_browser(self):
         resources = [
-            (self.context, "close"),
-            (self.browser, "close"),
-            (self.playwright, "stop"),
+            ("context", self.context, "close"),
+            ("browser", self.browser, "close"),
+            ("playwright", self.playwright, "stop"),
         ]
-        self.context = None
-        self.browser = None
-        self.playwright = None
-        self.page = None
-        self.listings_page = None
 
         errors = []
-        for resource, method_name in resources:
+        for attr_name, resource, method_name in resources:
             if not resource:
                 continue
             try:
                 getattr(resource, method_name)()
+                # Only null the attribute if closing succeeded
+                setattr(self, attr_name, None)
             except Exception as e:
                 errors.append(e)
+
+        # Always null the page references as they are tied to context/browser
+        self.page = None
+        self.listings_page = None
+
         if errors:
             raise errors[0]
 

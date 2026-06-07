@@ -487,6 +487,37 @@ def test_close_browser():
     mock_playwright.stop.assert_called_once()
 
 
+def test_close_browser_failure_handling():
+    """Ensure all resources are attempted to be closed even if one fails."""
+    scraper = BaseScraper(make_source())
+    mock_playwright = MagicMock()
+    mock_browser = MagicMock()
+    mock_context = MagicMock()
+
+    # Simulate failures
+    mock_context.close.side_effect = Exception("context-close-failed")
+    mock_browser.close.side_effect = Exception("browser-close-failed")
+
+    scraper.playwright = mock_playwright
+    scraper.browser = mock_browser
+    scraper.context = mock_context
+
+    # Should raise the first error encountered
+    with pytest.raises(Exception, match="context-close-failed"):
+        scraper.close_browser()
+
+    # All resources should still have been attempted
+    mock_context.close.assert_called_once()
+    mock_browser.close.assert_called_once()
+    mock_playwright.stop.assert_called_once()
+
+    # Attributes for failed closes should still be intact
+    assert scraper.context is not None
+    assert scraper.browser is not None
+    # Attribute for successful close should be None
+    assert scraper.playwright is None
+
+
 def test_block_heavy_resources():
     mock_context = MagicMock()
     _block_heavy_resources(mock_context)
