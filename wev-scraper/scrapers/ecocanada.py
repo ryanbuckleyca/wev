@@ -56,8 +56,12 @@ class EcoCanadaScraper(BaseScraper):
             loc.fill(province)
             
         page.get_by_role("button", name="Search Jobs").first.click()
-        # Wait for the results to refresh
-        page.wait_for_timeout(2000)
+        # Wait for the results to refresh by waiting for the current listings to detach
+        try:
+            page.wait_for_selector(self.listing_selector, state="detached", timeout=5000)
+        except Exception:
+            # If they don't detach quickly, they might already be gone or the refresh is slow
+            pass
         page.wait_for_selector(self.listing_selector, state="attached", timeout=15000)
 
     def get_listing_items(self, page):
