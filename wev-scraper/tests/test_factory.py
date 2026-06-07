@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from llm.factory import PROVIDERS, get_job_summary_provider
+from llm.factory import get_job_summary_provider
 
 
 def test_get_job_summary_provider_local():
