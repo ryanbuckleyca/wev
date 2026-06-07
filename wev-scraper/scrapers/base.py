@@ -661,11 +661,7 @@ class BaseScraper:
         return self.playwright.chromium.launch(headless=headless, args=args)
 
     def _build_context_headers(self, use_real_chrome: bool) -> tuple[dict[str, str], str | None]:
-        """Build extra HTTP headers and optional user-agent for the browser context.
-
-        Real Chrome provides its own UA/hints — don't override them.
-        Returns (headers, user_agent) where user_agent is None for real Chrome.
-        """
+        """Build extra HTTP headers and optional user-agent for the browser context."""
         base_headers: dict[str, str] = {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "en-CA,en-US;q=0.9,en;q=0.8",
@@ -676,15 +672,15 @@ class BaseScraper:
             "Sec-Fetch-Site": "none",
             "Sec-Fetch-User": "?1",
         }
-        user_agent: str | None = None
-        if not use_real_chrome:
-            platform = '"Linux"' if _is_ci() else '"macOS"'
-            user_agent = BROWSER_USER_AGENT
-            base_headers.update({
-                "Sec-CH-UA": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-                "Sec-CH-UA-Mobile": "?0",
-                "Sec-CH-UA-Platform": platform,
-            })
+        
+        # Always override user agent and Client Hints to prevent Cloudflare from detecting HeadlessChrome
+        user_agent: str | None = BROWSER_USER_AGENT
+        platform = '"Linux"' if _is_ci() else '"macOS"'
+        base_headers.update({
+            "Sec-CH-UA": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+            "Sec-CH-UA-Mobile": "?0",
+            "Sec-CH-UA-Platform": platform,
+        })
         return base_headers, user_agent
 
     def _build_proxy_config(self, use_proxy: bool) -> "ProxySettings | None":
