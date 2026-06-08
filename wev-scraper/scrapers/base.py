@@ -242,16 +242,24 @@ class BaseScraper:
         if "404" in page_title or "not found" in page_title or "introuvable" in page_title:
             raise Exception(f"404 Not Found - {page.title()}")
 
-        # Check for Cloudflare challenge
-        # We check title explicitly to avoid false positives when CF scripts are present but the page loaded successfully
-        if "cloudflare" in page_title or "attention required" in page_title or "just a moment" in page_title:
-            raise Exception("Cloudflare challenge page detected")
+        # Check for known anti-bot interstitials from the title or redirect URL.
+        # We check title explicitly to avoid false positives when challenge scripts
+        # are present but the page loaded successfully.
+        if (
+            "cloudflare" in page_title
+            or "attention required" in page_title
+            or "just a moment" in page_title
+            or "/.well-known/sgcaptcha/" in page.url
+        ):
+            raise Exception("Bot challenge page detected")
 
         challenge_indicators = [
             "checking your browser",
             "please wait while we check",
             "verify you are human",
             'class="cf-challenge"',
+            "/.well-known/sgcaptcha/",
+            "http-equiv=\"refresh\" content=\"0;/.well-known/sgcaptcha/",
         ]
 
         # If the title isn't a dead giveaway, check for strict challenge text in the body
