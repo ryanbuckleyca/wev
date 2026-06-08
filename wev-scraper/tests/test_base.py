@@ -26,6 +26,10 @@ class StubWithCustomExtract(BaseScraper):
         return "custom-title"
 
 
+class ForceHeadedStubScraper(BaseScraper):
+    force_headed = True
+
+
 # --- extract_with_selectors ---
 
 
@@ -295,6 +299,12 @@ def test_resolve_headless_env_other_value_does_not_force(monkeypatch):
     assert scraper._resolve_headless(True) is True
 
 
+def test_resolve_headless_scraper_can_force_headed(monkeypatch):
+    monkeypatch.delenv("SCRAPER_HEADED", raising=False)
+    scraper = ForceHeadedStubScraper(make_source())
+    assert scraper._resolve_headless(True) is False
+
+
 # --- get_job_url board-URL guard ---
 
 
@@ -371,6 +381,29 @@ def test_is_error_page_cloudflare(page):
     scraper = BaseScraper(make_source())
     with pytest.raises(Exception, match="Bot challenge detected"):
         scraper._is_error_page(page)
+
+
+def test_is_error_page_allows_manual_challenge_resume(page):
+    page.goto("data:text/html,<html></html>")
+    page.set_content('<html><body><div class="cf-challenge"></div></body></html>')
+    scraper = BaseScraper(make_source(name="Manual Test Source"))
+    scraper._resolved_headless = False
+
+    def complete_challenge(_prompt):
+        page.set_content("<html><head><title>Jobs</title></head><body>Listings ready</body></html>")
+        return ""
+
+    with patch("sys.stdin.isatty", return_value=True), patch("builtins.input", side_effect=complete_challenge):
+        scraper._is_error_page(page)
+
+
+def test_restore_page_scrollability_best_effort():
+    page = MagicMock()
+
+    BaseScraper._restore_page_scrollability(page)
+
+    page.add_style_tag.assert_called_once()
+    page.evaluate.assert_called_once()
 
 
 # --- extract_job_fields ---
