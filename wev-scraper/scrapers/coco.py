@@ -1,4 +1,4 @@
-from scrapers.base import BaseScraper, _is_ci
+from scrapers.base import BaseScraper
 
 
 class CocoScraper(BaseScraper):
@@ -7,7 +7,9 @@ class CocoScraper(BaseScraper):
     job_wait_selector = "article"
 
     def start_browser(self, headless=True, viewport=None):
-        return super().start_browser(headless=headless, viewport=viewport, use_proxy=_is_ci())
+        # COCO now intermittently serves an sgcaptcha interstitial unless traffic
+        # goes through the configured proxy path.
+        return super().start_browser(headless=headless, viewport=viewport, use_proxy=True)
 
     SELECTORS = {
         "job_title": "h1.entry-title",
