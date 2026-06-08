@@ -1,5 +1,8 @@
+import json
 import os
+import sys
 import time
+import urllib.request
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
@@ -30,6 +33,39 @@ def _get_stealth():
 
 
 _HEAVY_RESOURCE_TYPES = {"image", "stylesheet", "font", "media"}
+
+
+# #region debug-point shared:report
+def _debug_report(hypothesis_id: str, location: str, msg: str, data: dict | None = None, run_id: str = "pre-fix") -> None:
+    _p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", ".dbg", "csi-bot-challenge.env")
+    _u, _s = "http://127.0.0.1:7777/event", "csi-bot-challenge"
+    try:
+        with open(_p, encoding="utf-8") as f:
+            c = f.read()
+        _u = next((l.split("=", 1)[1] for l in c.splitlines() if l.startswith("DEBUG_SERVER_URL=")), _u)
+        _s = next((l.split("=", 1)[1] for l in c.splitlines() if l.startswith("DEBUG_SESSION_ID=")), _s)
+    except Exception:
+        pass
+    try:
+        urllib.request.urlopen(
+            urllib.request.Request(
+                _u,
+                data=json.dumps({
+                    "sessionId": _s,
+                    "runId": run_id,
+                    "hypothesisId": hypothesis_id,
+                    "location": location,
+                    "msg": f"[DEBUG] {msg}",
+                    "data": data or {},
+                    "ts": int(time.time() * 1000),
+                }).encode(),
+                headers={"Content-Type": "application/json"},
+            ),
+            timeout=1,
+        ).read()
+    except Exception:
+        pass
+# #endregion
 
 def _block_heavy_resources(context) -> None:
     """Block bandwidth-heavy resource types. Used when routing through a proxy."""
@@ -126,6 +162,7 @@ class BaseScraper:
     listing_selector = None
     job_wait_selector = None
     is_chronological = False
+    force_headed = False
     # Preferred: override `language` (e.g. "fr"); `date_language` is kept for
     # backwards-compatibility and, if set, takes precedence over `language`.
     language = "en"
@@ -150,6 +187,7 @@ class BaseScraper:
         self.next_button = None
         self.jobs = []
         self.scraped_urls = set()
+        self._resolved_headless = True
         # Flag to track if we should stop scraping early (for chronological scrapers)
         self.should_quit_list = False
         # Standardized job page wait/timeout configuration
@@ -179,6 +217,14 @@ class BaseScraper:
         """Retry func up to max_retries times. Bails immediately on 403s when no proxy is available."""
         for attempt in range(1, max_retries + 1):
             try:
+                # #region debug-point D:retry-attempt
+                _debug_report("D", "scrapers/base.py:_retry", "retry attempt", {
+                    "attempt": attempt,
+                    "max_retries": max_retries,
+                    "source": (self.source or {}).get("name"),
+                    "func": getattr(func, "__name__", "<callable>"),
+                })
+                # #endregion
                 scraper_log(f"\tAttempt {attempt}/{max_retries}...")
                 result = func(*args, **kwargs)
                 scraper_log("\t✅ Success")
@@ -186,6 +232,15 @@ class BaseScraper:
             except Exception as e:
                 error_msg = str(e)
                 is_403 = "403 forbidden" in error_msg.lower() or "ip blocked" in error_msg.lower()
+                # #region debug-point D:retry-error
+                _debug_report("D", "scrapers/base.py:_retry", "retry exception", {
+                    "attempt": attempt,
+                    "max_retries": max_retries,
+                    "source": (self.source or {}).get("name"),
+                    "error": error_msg[:400],
+                    "exception_type": type(e).__name__,
+                })
+                # #endregion
 
                 if "timeout" in error_msg.lower():
                     scraper_log(f"\t⚠️  Timeout (attempt {attempt}/{max_retries})")
@@ -214,13 +269,43 @@ class BaseScraper:
 
     def _goto_with_networkidle(self, page, url: str, timeout: int = 30000, networkidle_timeout: int = 15000):
         """Navigate to url, then wait for networkidle (best-effort — timeout is non-fatal)."""
-        page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+        # #region debug-point B:goto-start
+        _debug_report("B", "scrapers/base.py:_goto_with_networkidle", "goto start", {
+            "source": (self.source or {}).get("name"),
+            "url": url,
+            "timeout": timeout,
+            "networkidle_timeout": networkidle_timeout,
+        })
+        # #endregion
+        try:
+            response = page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+            # #region debug-point B:goto-success
+            _debug_report("B", "scrapers/base.py:_goto_with_networkidle", "goto success", {
+                "source": (self.source or {}).get("name"),
+                "request_url": url,
+                "final_url": getattr(page, "url", None),
+                "response_url": response.url if response else None,
+                "status": response.status if response else None,
+                "ok": response.ok if response else None,
+            })
+            # #endregion
+        except Exception as e:
+            # #region debug-point B:goto-failed
+            _debug_report("B", "scrapers/base.py:_goto_with_networkidle", "goto failed", {
+                "source": (self.source or {}).get("name"),
+                "request_url": url,
+                "current_url": getattr(page, "url", None),
+                "error": str(e)[:400],
+                "exception_type": type(e).__name__,
+            })
+            # #endregion
+            raise
         try:
             page.wait_for_load_state("networkidle", timeout=networkidle_timeout)
         except Exception:
             pass
 
-    def _is_error_page(self, page):
+    def _is_error_page(self, page, allow_manual_challenge: bool = True):
         """Check if the page is an error page (404, 403, Cloudflare challenge, etc.).
         Raises an exception with a descriptive message if an error page is detected.
         Re-raises if the page content cannot be read (closed/crashed page = retryable failure)."""
@@ -228,9 +313,27 @@ class BaseScraper:
             page_content = page.content()
             page_title = page.title().lower()
         except Exception as e:
+            # #region debug-point A:page-read-failed
+            _debug_report("A", "scrapers/base.py:_is_error_page", "page read failed", {
+                "source": (self.source or {}).get("name"),
+                "page_url": getattr(page, "url", None),
+                "error": str(e)[:400],
+                "exception_type": type(e).__name__,
+            })
+            # #endregion
             raise Exception(f"Could not read page content (page may be closed or crashed): {e}") from e
 
         content_lower = page_content.lower()
+        # #region debug-point A:page-snapshot
+        _debug_report("A", "scrapers/base.py:_is_error_page", "page snapshot", {
+            "source": (self.source or {}).get("name"),
+            "page_url": getattr(page, "url", None),
+            "page_title": page_title[:200],
+            "content_length": len(page_content),
+            "has_sgcaptcha_url": "/.well-known/sgcaptcha/" in getattr(page, "url", ""),
+            "has_sgcaptcha_meta": "/.well-known/sgcaptcha/" in content_lower,
+        })
+        # #endregion
 
         # Check for 403 forbidden
         if "403" in page_title or "forbidden" in page_title or "access denied" in page_title:
@@ -251,7 +354,11 @@ class BaseScraper:
             or "just a moment" in page_title
             or "/.well-known/sgcaptcha/" in page.url
         ):
-            raise Exception("Bot challenge page detected")
+            msg = "Bot challenge page detected"
+            if allow_manual_challenge and self._wait_for_manual_challenge(page, msg):
+                self._is_error_page(page, allow_manual_challenge=False)
+                return
+            raise Exception(msg)
 
         challenge_indicators = [
             "checking your browser",
@@ -267,7 +374,63 @@ class BaseScraper:
             # We don't just check content_lower, we want to make sure it's an actual challenge page
             # Usually challenge pages have very short text content
             if indicator in content_lower and len(page_content) < 50000:
-                raise Exception(f"Bot challenge detected: '{indicator}'")
+                msg = f"Bot challenge detected: '{indicator}'"
+                if allow_manual_challenge and self._wait_for_manual_challenge(page, msg):
+                    self._is_error_page(page, allow_manual_challenge=False)
+                    return
+                raise Exception(msg)
+
+    def _wait_for_manual_challenge(self, page, challenge_msg: str) -> bool:
+        """Pause a headed local run so the user can solve a bot challenge manually."""
+        if self._resolved_headless or not sys.stdin.isatty():
+            return False
+
+        source_name = (self.source or {}).get("name", "scraper")
+        self._restore_page_scrollability(page)
+        scraper_log(f"\t⚠️ {challenge_msg}")
+        scraper_log(
+            f"\t🧑‍💻 {source_name}: solve the browser challenge manually, then press Enter here to continue."
+        )
+        try:
+            input("Press Enter after you complete the browser challenge...")
+        except EOFError:
+            return False
+
+        try:
+            page.wait_for_load_state("domcontentloaded", timeout=15_000)
+        except Exception:
+            pass
+        try:
+            page.wait_for_load_state("networkidle", timeout=5_000)
+        except Exception:
+            pass
+        return True
+
+    @staticmethod
+    def _restore_page_scrollability(page) -> None:
+        """Best-effort override for pages that hide the document scrollbar."""
+        try:
+            page.add_style_tag(content="""
+                html, body {
+                    overflow: auto !important;
+                    overflow-y: auto !important;
+                    scrollbar-gutter: stable both-edges !important;
+                }
+            """)
+        except Exception:
+            pass
+        try:
+            page.evaluate("""
+                () => {
+                    for (const el of [document.documentElement, document.body]) {
+                        if (!el) continue;
+                        el.style.setProperty('overflow', 'auto', 'important');
+                        el.style.setProperty('overflow-y', 'auto', 'important');
+                    }
+                }
+            """)
+        except Exception:
+            pass
 
     def get_listing_items(self, page):
         """Get listing items with automatic retry logic for proxy rotation."""
@@ -277,6 +440,13 @@ class BaseScraper:
         def _get_items():
             # Check if we're on an error page before trying to find items
             self._is_error_page(page)
+            # #region debug-point E:listing-selector
+            _debug_report("E", "scrapers/base.py:get_listing_items", "waiting for listing selector", {
+                "source": (self.source or {}).get("name"),
+                "page_url": getattr(page, "url", None),
+                "selector": self.listing_selector,
+            })
+            # #endregion
 
             # Try to find the listing items
             page.wait_for_selector(self.listing_selector, state="attached", timeout=10_000)
@@ -611,8 +781,12 @@ class BaseScraper:
         capture_and_upload_error_screenshot(page, supabase, get_supabase_url(), source_name)
 
     def _resolve_headless(self, headless: bool) -> bool:
-        """Return False if the --headed flag was set via SCRAPER_HEADED env var."""
-        return False if os.environ.get("SCRAPER_HEADED") == "1" else headless
+        """Resolve whether this scraper should run headless."""
+        if os.environ.get("SCRAPER_HEADED") == "1":
+            return False
+        if getattr(self, "force_headed", False):
+            return False
+        return headless
 
     def start_browser(self, headless=True, viewport=None, use_proxy=False, use_real_chrome=True, use_stealth=True):
         """Launch browser and return the main page.
@@ -628,9 +802,28 @@ class BaseScraper:
         from playwright.sync_api import ViewportSize, sync_playwright
 
         headless = self._resolve_headless(headless)
+        self._resolved_headless = headless
         v: ViewportSize = viewport or {"width": 1280, "height": 720}
         self.playwright = sync_playwright().start()
+        # #region debug-point B:start-browser
+        _debug_report("B", "scrapers/base.py:start_browser", "launching browser", {
+            "source": (self.source or {}).get("name"),
+            "headless": headless,
+            "viewport": v,
+            "use_proxy": use_proxy,
+            "use_real_chrome": use_real_chrome,
+            "use_stealth": use_stealth,
+            "proxy_server_present": bool(os.environ.get("PROXY_SERVER")),
+        })
+        # #endregion
         self.browser, using_real_chrome = self._launch_browser(headless, v, use_real_chrome)
+        # #region debug-point B:browser-launched
+        _debug_report("B", "scrapers/base.py:start_browser", "browser launched", {
+            "source": (self.source or {}).get("name"),
+            "using_real_chrome": using_real_chrome,
+            "use_proxy": use_proxy,
+        })
+        # #endregion
         base_headers, user_agent = self._build_context_headers(using_real_chrome)
         raw_proxy = self._build_proxy_config(use_proxy)
         optional_kwargs = {}
@@ -810,6 +1003,7 @@ class BaseScraper:
                 assert self.context is not None
                 job_page = self.context.new_page()
                 job_page.goto(full_url, wait_until="domcontentloaded")
+                self._is_error_page(job_page)
 
                 if wait_selector and not self.safe_wait_for_selector(job_page, wait_selector, timeout):
                     raise Exception(f"Selector '{wait_selector}' not found")
