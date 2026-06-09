@@ -197,6 +197,29 @@ def test_main_flow(mock_orch_class, mock_init):
 
 @patch("scrape.initialize_runtime_env")
 @patch("scrape.ScraperOrchestrator")
+def test_main_vpn_enables_headed_mode(mock_orch_class, mock_init):
+    mock_orch = mock_orch_class.return_value
+    with patch("scrape.parse_args") as mock_args:
+        args = MagicMock()
+        args.prod = False
+        args.publish = False
+        args.dry_run = True
+        args.compare = False
+        args.provider = None
+        args.max_jobs = None
+        args.headed = False
+        args.vpn = True
+        mock_args.return_value = args
+
+        main()
+
+        assert os.environ["SCRAPER_HEADED"] == "1"
+        assert os.environ["SCRAPER_VPN_MODE"] == "1"
+        mock_orch.run.assert_called_once()
+
+
+@patch("scrape.initialize_runtime_env")
+@patch("scrape.ScraperOrchestrator")
 def test_main_prod_confirmation_propagates_to_child_scripts(mock_orch_class, mock_init, monkeypatch):
     monkeypatch.setenv("PROD_CONFIRMED", "1")
     monkeypatch.delenv("CONFIRM_PROD_RUN", raising=False)
