@@ -24,6 +24,7 @@ import time
 from typing import Any, Dict, List
 
 from llm.factory import DEFAULT_MODEL, get_provider
+    from utils.env import is_truthy_env
 
 
 def extract_locations_for_jobs(
@@ -73,7 +74,7 @@ def extract_locations_for_jobs(
 
 def _get_location_extraction_provider_name() -> str:
     """Return the provider used for location extraction."""
-    if os.environ.get("SCRAPER_VPN_MODE") == "1":
+    if is_truthy_env("SCRAPER_VPN_MODE"):
         return "gemini"
     return DEFAULT_MODEL
 

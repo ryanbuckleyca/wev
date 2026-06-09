@@ -195,9 +195,9 @@ cp .env.example .env
 
 Fill in your environment variables. The `wev-bulletin` project and its associated scripts require:
 
-*   **`SUPABASE_URL`**: Your local Supabase project URL (e.g., `http://127.0.0.1:54321`).
-*   **`SUPABASE_SERVICE_ROLE_KEY`**: Your Supabase service role key for your local instance. This can be found in your Supabase Studio or CLI output after `supabase start`. **Keep this secret.**
-*   **`WEV_GITHUB_TOKEN`**: A GitHub personal access token with `actions:write` permission (as detailed in the "GitHub Token Setup" section below).
+- **`SUPABASE_URL`**: Your local Supabase project URL (e.g., `http://127.0.0.1:54321`).
+- **`SUPABASE_SERVICE_ROLE_KEY`**: Your Supabase service role key for your local instance. This can be found in your Supabase Studio or CLI output after `supabase start`. **Keep this secret.**
+- **`WEV_GITHUB_TOKEN`**: A GitHub personal access token with `actions:write` permission (as detailed in the "GitHub Token Setup" section below).
 
 **Note:** The `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PROJECT_REF` are now derived internally by scripts, so you only need to explicitly set `SUPABASE_URL` for local development.
 
@@ -215,10 +215,10 @@ This single command performs the following operations:
 1.  **`npm install`**: Installs all Node.js dependencies for the `wev-bulletin` project.
 2.  **`npm run install:scraper-deps`**: Installs all Python dependencies for the `wev-scraper` project.
 3.  **`npm run prep`**:
-        *   **`npx supabase start`**: Starts your local Supabase services (requires Docker Desktop).
-        *   **`yes | npx supabase db reset`**: Resets your local Supabase database, applies all migrations from scratch, and runs any SQL seed scripts (`supabase/seed.sql`). The `yes |` automatically confirms the reset prompt.
-        *   **`npm run db:seed-local`**: Seeds your local database with deterministic job postings and other data using programmatic seeding defined in `supabase/src/seeder.ts`.
-        *   **`npm run skills:index`**: Fetches ESCO skills, generates embeddings, and upserts them into your Supabase database.
+    _ **`npx supabase start`**: Starts your local Supabase services (requires Docker Desktop).
+    _ **`yes | npx supabase db reset`**: Resets your local Supabase database, applies all migrations from scratch, and runs any SQL seed scripts (`supabase/seed.sql`). The `yes |` automatically confirms the reset prompt.
+    _ **`npm run db:seed-local`**: Seeds your local database with deterministic job postings and other data using programmatic seeding defined in `supabase/src/seeder.ts`.
+    _ **`npm run skills:index`**: Fetches ESCO skills, generates embeddings, and upserts them into your Supabase database.
 
 ### Running the Development Server
 
@@ -263,10 +263,6 @@ The application expects two tables in Supabase:
 Stores user↔job **work-values** match scores (`user_id`, `job_id`, `score`, `shared_values`). Implementation and tests live in this repo: **`lib/match-calculator.ts`**, **`lib/value-ratings.ts`**, **`lib/match-calculator.test.ts`**, **`lib/sql-ts-parity.test.ts`**. Database triggers and functions are defined in **`supabase/migrations/`** at the repository root.
 
 For **scraper scripts** that touch matching or bulk recompute, see **`wev-scraper/scripts/README.md`** (not duplicated here).
-
-
-
-
 
 ## Features
 
