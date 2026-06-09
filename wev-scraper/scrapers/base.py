@@ -163,6 +163,7 @@ class BaseScraper:
     job_wait_selector = None
     is_chronological = False
     force_headed = False
+    force_headed_on_vpn = False
     # Preferred: override `language` (e.g. "fr"); `date_language` is kept for
     # backwards-compatibility and, if set, takes precedence over `language`.
     language = "en"
@@ -789,6 +790,8 @@ class BaseScraper:
         if os.environ.get("SCRAPER_HEADED") == "1":
             return False
         if getattr(self, "force_headed", False):
+            return False
+        if getattr(self, "force_headed_on_vpn", False) and is_truthy_env("SCRAPER_VPN_MODE"):
             return False
         return headless
 

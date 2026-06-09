@@ -3,7 +3,7 @@ from scrapers.base import BaseScraper
 
 class CocoScraper(BaseScraper):
     is_chronological = True
-    force_headed = True
+    force_headed_on_vpn = True
     listing_selector = "ul.job_listings li.job_listing"
     job_wait_selector = "article"
 

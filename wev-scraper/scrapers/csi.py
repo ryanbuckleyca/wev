@@ -5,7 +5,7 @@ from utils.log import scraper_log
 
 class CSIScraper(BaseScraper):
     is_chronological = True
-    force_headed = True
+    force_headed_on_vpn = True
     listing_selector = "h4.elementor-heading-title a"
     job_wait_selector = "h2.elementor-heading-title"
 
