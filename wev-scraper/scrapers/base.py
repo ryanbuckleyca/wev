@@ -4,6 +4,27 @@ import sys
 import time
 import urllib.request
 from typing import TYPE_CHECKING
+import threading
+
+
+_DEBUG_REPORT_CONFIG = {
+    "enabled": False,
+    "url": "http://127.0.0.1:7777/event",
+    "session_id": "csi-bot-challenge",
+}
+
+def _initialize_debug_report_config():
+    _p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", ".dbg", "csi-bot-challenge.env")
+    try:
+        with open(_p, encoding="utf-8") as f:
+            c = f.read()
+        _DEBUG_REPORT_CONFIG["url"] = next((line.split("=", 1)[1] for line in c.splitlines() if line.startswith("DEBUG_SERVER_URL=")), _DEBUG_REPORT_CONFIG["url"])
+        _DEBUG_REPORT_CONFIG["session_id"] = next((line.split("=", 1)[1] for line in c.splitlines() if line.startswith("DEBUG_SESSION_ID=")), _DEBUG_REPORT_CONFIG["session_id"])
+        _DEBUG_REPORT_CONFIG["enabled"] = True
+    except Exception:
+        pass
+
+_initialize_debug_report_config()
 from urllib.parse import urlparse
 
 from utils.constants import BROWSER_USER_AGENT
@@ -36,35 +57,36 @@ _HEAVY_RESOURCE_TYPES = {"image", "stylesheet", "font", "media"}
 
 
 # #region debug-point shared:report
-def _debug_report(hypothesis_id: str, location: str, msg: str, data: dict | None = None, run_id: str = "pre-fix") -> None:
-    _p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", ".dbg", "csi-bot-challenge.env")
-    _u, _s = "http://127.0.0.1:7777/event", "csi-bot-challenge"
-    try:
-        with open(_p, encoding="utf-8") as f:
-            c = f.read()
-        _u = next((line.split("=", 1)[1] for line in c.splitlines() if line.startswith("DEBUG_SERVER_URL=")), _u)
-        _s = next((line.split("=", 1)[1] for line in c.splitlines() if line.startswith("DEBUG_SESSION_ID=")), _s)
-    except Exception:
-        pass
+def _send_debug_report_async(url, payload):
     try:
         urllib.request.urlopen(
             urllib.request.Request(
-                _u,
-                data=json.dumps({
-                    "sessionId": _s,
-                    "runId": run_id,
-                    "hypothesisId": hypothesis_id,
-                    "location": location,
-                    "msg": f"[DEBUG] {msg}",
-                    "data": data or {},
-                    "ts": int(time.time() * 1000),
-                }).encode(),
+                url,
+                data=json.dumps(payload).encode(),
                 headers={"Content-Type": "application/json"},
             ),
             timeout=1,
         ).read()
     except Exception:
         pass
+
+def _debug_report(hypothesis_id: str, location: str, msg: str, data: dict | None = None, run_id: str = "pre-fix") -> None:
+    if not _DEBUG_REPORT_CONFIG["enabled"]:
+        return
+
+    _u = _DEBUG_REPORT_CONFIG["url"]
+    _s = _DEBUG_REPORT_CONFIG["session_id"]
+
+    payload = {
+        "sessionId": _s,
+        "runId": run_id,
+        "hypothesisId": hypothesis_id,
+        "location": location,
+        "msg": f"[DEBUG] {msg}",
+        "data": data or {},
+        "ts": int(time.time() * 1000),
+    }
+    threading.Thread(target=_send_debug_report_async, args=(_u, payload)).start()
 # #endregion
 
 def _block_heavy_resources(context) -> None:
