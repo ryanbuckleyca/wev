@@ -30,6 +30,10 @@ class ForceHeadedStubScraper(BaseScraper):
     force_headed = True
 
 
+class ForceHeadedOnVPNStubScraper(BaseScraper):
+    force_headed_on_vpn = True
+
+
 # --- extract_with_selectors ---
 
 
@@ -302,6 +306,20 @@ def test_resolve_headless_env_other_value_does_not_force(monkeypatch):
 def test_resolve_headless_scraper_can_force_headed(monkeypatch):
     monkeypatch.delenv("SCRAPER_HEADED", raising=False)
     scraper = ForceHeadedStubScraper(make_source())
+    assert scraper._resolve_headless(True) is False
+
+
+def test_resolve_headless_scraper_force_headed_on_vpn_only(monkeypatch):
+    monkeypatch.delenv("SCRAPER_HEADED", raising=False)
+    monkeypatch.delenv("SCRAPER_VPN_MODE", raising=False)
+    scraper = ForceHeadedOnVPNStubScraper(make_source())
+    assert scraper._resolve_headless(True) is True
+
+
+def test_resolve_headless_scraper_force_headed_on_vpn_when_enabled(monkeypatch):
+    monkeypatch.delenv("SCRAPER_HEADED", raising=False)
+    monkeypatch.setenv("SCRAPER_VPN_MODE", "1")
+    scraper = ForceHeadedOnVPNStubScraper(make_source())
     assert scraper._resolve_headless(True) is False
 
 
