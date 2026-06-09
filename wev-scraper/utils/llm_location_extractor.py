@@ -24,7 +24,7 @@ import time
 from typing import Any, Dict, List
 
 from llm.factory import DEFAULT_MODEL, get_provider
-    from utils.env import is_truthy_env
+from utils.env import is_truthy_env
 
 
 def extract_locations_for_jobs(

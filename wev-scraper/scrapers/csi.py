@@ -28,6 +28,7 @@ class CSIScraper(BaseScraper):
         return super().start_browser(
             headless=headless,
             viewport={"width": 1280, "height": 1400},
+            use_proxy=True,
         )
 
     def setup_pagination(self, page):

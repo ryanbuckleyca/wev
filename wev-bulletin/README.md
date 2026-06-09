@@ -184,6 +184,8 @@ Before you begin, ensure you have the following installed and running:
 3.  **Docker Desktop**: Must be installed and running. Supabase local development relies on Docker containers.
 4.  **Supabase CLI**: Install globally (`npm i -g supabase`) or ensure `npx supabase` is available in your PATH.
 
+> **Windows users:** The `install:scraper-deps`, `prep`, and `setup` npm scripts rely on Unix shell features (`(cd ... && ...)`, `yes |`, `$VAR`). Run them from WSL, Git Bash, or a Docker-based environment; native PowerShell/cmd is not supported.
+
 ### Environment Variables
 
 Create a `.env` file in the **root of your monorepo** (`/wev/.env`) that both projects can share. You can start by copying the example:
@@ -215,10 +217,10 @@ This single command performs the following operations:
 1.  **`npm install`**: Installs all Node.js dependencies for the `wev-bulletin` project.
 2.  **`npm run install:scraper-deps`**: Installs all Python dependencies for the `wev-scraper` project.
 3.  **`npm run prep`**:
-    _ **`npx supabase start`**: Starts your local Supabase services (requires Docker Desktop).
-    _ **`yes | npx supabase db reset`**: Resets your local Supabase database, applies all migrations from scratch, and runs any SQL seed scripts (`supabase/seed.sql`). The `yes |` automatically confirms the reset prompt.
-    _ **`npm run db:seed-local`**: Seeds your local database with deterministic job postings and other data using programmatic seeding defined in `supabase/src/seeder.ts`.
-    _ **`npm run skills:index`**: Fetches ESCO skills, generates embeddings, and upserts them into your Supabase database.
+        *   **`npx supabase start`**: Starts your local Supabase services (requires Docker Desktop).
+        *   **`yes | npx supabase db reset`**: Resets your local Supabase database, applies all migrations from scratch, and runs any SQL seed scripts (`supabase/seed.sql`). The `yes |` automatically confirms the reset prompt.
+        *   **`npm run db:seed-local`**: Seeds your local database with deterministic job postings and other data using programmatic seeding defined in `supabase/src/seeder.ts`.
+        *   **`npm run skills:index`**: Fetches ESCO skills, generates embeddings, and upserts them into your Supabase database.
 
 ### Running the Development Server
 

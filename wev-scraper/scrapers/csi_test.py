@@ -70,7 +70,7 @@ def test_has_next_page(page):
     assert scraper.has_next_page(page) is False
 
 
-def test_start_browser_disables_proxy():
+def test_start_browser_enables_proxy():
     scraper = CSIScraper(make_source())
 
     with patch.object(BaseScraper, "start_browser", return_value="page") as mock_start:
@@ -80,7 +80,7 @@ def test_start_browser_disables_proxy():
     mock_start.assert_called_once_with(
         headless=True,
         viewport={"width": 1280, "height": 1400},
-        use_proxy=False,
+        use_proxy=True,
     )
 
 
