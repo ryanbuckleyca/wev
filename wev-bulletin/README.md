@@ -173,28 +173,62 @@ Follow our **left-secondary, right-primary** pattern for consistent UX:
 
 ## Setup
 
-1. Install dependencies:
+To get the project up and running locally, follow these steps:
+
+### Prerequisites
+
+Before you begin, ensure you have the following installed and running:
+
+1.  **Node.js (>=22.22.2)**: As specified in `package.json`.
+2.  **Python (>=3.10)**: Required for the `wev-scraper` project's scripts.
+3.  **Docker Desktop**: Must be installed and running. Supabase local development relies on Docker containers.
+4.  **Supabase CLI**: Install globally (`npm i -g supabase`) or ensure `npx supabase` is available in your PATH.
+
+### Environment Variables
+
+Create a `.env` file in the **root of your monorepo** (`/wev/.env`) that both projects can share. You can start by copying the example:
 
 ```bash
-npm install
-```
-
-2. Create a `.env` file in the project root (`/wev/.env`) that both projects can share:
-
-```bash
-# From the wev directory (project root)
+# From the monorepo root (e.g., /wev)
 cp .env.example .env
 ```
 
-3. Fill in your environment variables in the root `.env` file:
+Fill in your environment variables. The `wev-bulletin` project and its associated scripts require:
 
-- **wev-bulletin (Next.js)** — server-only (do not use NEXT_PUBLIC for the key):
-  - `SUPABASE_URL`: Your Supabase project URL
-  - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (used only in API routes; never exposed to the browser)
-- **wev-scraper** (if using the same env): `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` (or scraper-specific env)
-- `WEV_GITHUB_TOKEN`: A GitHub personal access token with `actions:write` permission
+*   **`SUPABASE_URL`**: Your local Supabase project URL (e.g., `http://127.0.0.1:54321`).
+*   **`SUPABASE_SERVICE_ROLE_KEY`**: Your Supabase service role key for your local instance. This can be found in your Supabase Studio or CLI output after `supabase start`. **Keep this secret.**
+*   **`WEV_GITHUB_TOKEN`**: A GitHub personal access token with `actions:write` permission (as detailed in the "GitHub Token Setup" section below).
 
-**Note:** The Supabase service role key must never be prefixed with ``— it is only used server-side in wev-bulletin (e.g.`/api/bulletin`). The `.env` file can live in the project root so both apps can access it; Next.js can load from the parent directory.
+**Note:** The `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PROJECT_REF` are now derived internally by scripts, so you only need to explicitly set `SUPABASE_URL` for local development.
+
+### One-Step Local Development Setup
+
+Navigate to the `wev-bulletin` directory and run the comprehensive setup script:
+
+```bash
+cd wev-bulletin
+npm run setup
+```
+
+This single command performs the following operations:
+
+1.  **`npm install`**: Installs all Node.js dependencies for the `wev-bulletin` project.
+2.  **`npm run install:scraper-deps`**: Installs all Python dependencies for the `wev-scraper` project.
+3.  **`npm run prep`**:
+        *   **`npx supabase start`**: Starts your local Supabase services (requires Docker Desktop).
+        *   **`yes | npx supabase db reset`**: Resets your local Supabase database, applies all migrations from scratch, and runs any SQL seed scripts (`supabase/seed.sql`). The `yes |` automatically confirms the reset prompt.
+        *   **`npm run db:seed-local`**: Seeds your local database with deterministic job postings and other data using programmatic seeding defined in `supabase/src/seeder.ts`.
+        *   **`npm run skills:index`**: Fetches ESCO skills, generates embeddings, and upserts them into your Supabase database.
+
+### Running the Development Server
+
+After the setup is complete, you can start the Next.js development server:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Database Schema
 
@@ -230,42 +264,9 @@ Stores user↔job **work-values** match scores (`user_id`, `job_id`, `score`, `s
 
 For **scraper scripts** that touch matching or bulk recompute, see **`wev-scraper/scripts/README.md`** (not duplicated here).
 
-## Development
 
-Run the development server:
 
-```bash
-npm run dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## ESCO Skills Index
-
-Normalize the raw ESCO CSV into a canonical, deduplicated skills index:
-
-```bash
-npm run skills:index
-```
-
-This script:
-
-- Deduplicates by `concept URI`
-- Keeps canonical label
-- Merges alt labels (`altLabel` + `hiddenLabel`)
-- Chooses best definition by priority: `description > scopeNote > definition`
-
-Output JSON:
-
-- `supabase/seed/esco_skills_index.json`
-
-Optional DB upsert:
-
-```bash
-python3 scripts/build_esco_skills_index.py --upsert-db
-```
-
-Requires `SUPABASE_URL` and a service-role key (`SUPABASE_SERVICE_ROLE_KEY`).
 
 ## Features
 
