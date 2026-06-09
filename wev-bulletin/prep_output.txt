@@ -1,0 +1,14 @@
+
+> bulletin@0.1.0 prep
+> npx supabase start && yes | npx supabase db reset && npm run db:seed-local && npm run install:scraper-deps && npm run skills:index -- --upsert-db --supabase-url $SUPABASE_URL --supabase-key $SUPABASE_SERVICE_ROLE_KEY
+
+Using workdir /Users/ry/code/wev
+failed to inspect service: Cannot connect to the Docker daemon at unix:///Users/ry/.docker/run/docker.sock. Is the docker daemon running?
+Docker Desktop is a prerequisite for local development. Follow the official docs to install: https://docs.docker.com/desktop
+npm error Lifecycle script `prep` failed with error:
+npm error code 1
+npm error path /Users/ry/code/wev/wev-bulletin
+npm error workspace bulletin@0.1.0
+npm error location /Users/ry/code/wev/wev-bulletin
+npm error command failed
+npm error command sh -c npx supabase start && yes | npx supabase db reset && npm run db:seed-local && npm run install:scraper-deps && npm run skills:index -- --upsert-db --supabase-url $SUPABASE_URL --supabase-key $SUPABASE_SERVICE_ROLE_KEY
