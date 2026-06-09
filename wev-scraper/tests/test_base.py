@@ -383,7 +383,21 @@ def test_is_error_page_cloudflare(page):
         scraper._is_error_page(page)
 
 
-def test_is_error_page_allows_manual_challenge_resume(page):
+def test_is_error_page_does_not_pause_without_vpn(page, monkeypatch):
+    monkeypatch.delenv("SCRAPER_VPN_MODE", raising=False)
+    page.set_content('<html><body><div class="cf-challenge"></div></body></html>')
+    scraper = BaseScraper(make_source(name="Manual Test Source"))
+    scraper._resolved_headless = False
+
+    with patch("sys.stdin.isatty", return_value=True), patch("builtins.input") as mock_input:
+        with pytest.raises(Exception, match="Bot challenge detected"):
+            scraper._is_error_page(page)
+
+    mock_input.assert_not_called()
+
+
+def test_is_error_page_allows_manual_challenge_resume_in_vpn_mode(page, monkeypatch):
+    monkeypatch.setenv("SCRAPER_VPN_MODE", "1")
     page.goto("data:text/html,<html></html>")
     page.set_content('<html><body><div class="cf-challenge"></div></body></html>')
     scraper = BaseScraper(make_source(name="Manual Test Source"))

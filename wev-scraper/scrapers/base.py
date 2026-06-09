@@ -42,8 +42,8 @@ def _debug_report(hypothesis_id: str, location: str, msg: str, data: dict | None
     try:
         with open(_p, encoding="utf-8") as f:
             c = f.read()
-        _u = next((l.split("=", 1)[1] for l in c.splitlines() if l.startswith("DEBUG_SERVER_URL=")), _u)
-        _s = next((l.split("=", 1)[1] for l in c.splitlines() if l.startswith("DEBUG_SESSION_ID=")), _s)
+        _u = next((line.split("=", 1)[1] for line in c.splitlines() if line.startswith("DEBUG_SERVER_URL=")), _u)
+        _s = next((line.split("=", 1)[1] for line in c.splitlines() if line.startswith("DEBUG_SESSION_ID=")), _s)
     except Exception:
         pass
     try:
@@ -382,7 +382,11 @@ class BaseScraper:
 
     def _wait_for_manual_challenge(self, page, challenge_msg: str) -> bool:
         """Pause a headed local run so the user can solve a bot challenge manually."""
-        if self._resolved_headless or not sys.stdin.isatty():
+        if (
+            self._resolved_headless
+            or not sys.stdin.isatty()
+            or not is_truthy_env("SCRAPER_VPN_MODE")
+        ):
             return False
 
         source_name = (self.source or {}).get("name", "scraper")

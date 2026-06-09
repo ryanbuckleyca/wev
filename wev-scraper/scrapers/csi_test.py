@@ -1,6 +1,7 @@
-from scrapers.csi import CSIScraper
-from scrapers.base import BaseScraper
 from unittest.mock import patch
+
+from scrapers.base import BaseScraper
+from scrapers.csi import CSIScraper
 
 
 def make_source():
