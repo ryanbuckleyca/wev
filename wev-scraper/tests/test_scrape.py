@@ -197,7 +197,8 @@ def test_main_flow(mock_orch_class, mock_init):
 
 @patch("scrape.initialize_runtime_env")
 @patch("scrape.ScraperOrchestrator")
-def test_main_vpn_enables_headed_mode(mock_orch_class, mock_init):
+def test_main_vpn_does_not_force_headed_mode(mock_orch_class, mock_init, monkeypatch):
+    monkeypatch.delenv("SCRAPER_HEADED", raising=False)
     mock_orch = mock_orch_class.return_value
     with patch("scrape.parse_args") as mock_args:
         args = MagicMock()
@@ -213,7 +214,7 @@ def test_main_vpn_enables_headed_mode(mock_orch_class, mock_init):
 
         main()
 
-        assert os.environ["SCRAPER_HEADED"] == "1"
+        assert "SCRAPER_HEADED" not in os.environ
         assert os.environ["SCRAPER_VPN_MODE"] == "1"
         mock_orch.run.assert_called_once()
 
