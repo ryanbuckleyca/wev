@@ -183,6 +183,7 @@ def test_main_flow(mock_orch_class, mock_init):
         args.provider = "groq"
         args.max_jobs = 5
         args.headed = True
+        args.vpn = True
         mock_args.return_value = args
 
         main()
@@ -190,6 +191,7 @@ def test_main_flow(mock_orch_class, mock_init):
         assert os.environ["LLM_PROVIDER"] == "groq"
         assert os.environ["MAX_JOBS_PER_SOURCE"] == "5"
         assert os.environ["SCRAPER_HEADED"] == "1"
+        assert os.environ["SCRAPER_VPN_MODE"] == "1"
         mock_orch.run.assert_called_once()
 
 
@@ -209,6 +211,7 @@ def test_main_prod_confirmation_propagates_to_child_scripts(mock_orch_class, moc
         args.provider = None
         args.max_jobs = None
         args.headed = False
+        args.vpn = False
         mock_args.return_value = args
 
         main()
@@ -234,6 +237,7 @@ def test_main_prod_noninteractive_requires_confirmation(mock_orch_class, mock_in
         args.provider = None
         args.max_jobs = None
         args.headed = False
+        args.vpn = False
         mock_args.return_value = args
 
         with pytest.raises(SystemExit) as exc:

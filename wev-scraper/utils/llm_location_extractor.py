@@ -1,6 +1,6 @@
 """LLM-based location extraction for job postings.
 
-Uses LLM (configured via DEFAULT_MODEL) to extract structured location data from raw location strings.
+Uses the default provider for location extraction, unless VPN mode requests Gemini.
 Handles edge cases like accented characters, French text, remote/hybrid locations,
 and regional descriptors that traditional regex patterns struggle with.
 
@@ -19,6 +19,7 @@ Usage:
 """
 
 import json
+import os
 import time
 from typing import Any, Dict, List
 
@@ -68,6 +69,13 @@ def extract_locations_for_jobs(
         # Rate limiting between batches
         if i + batch_size < len(jobs):
             time.sleep(rate_limit_seconds)
+
+
+def _get_location_extraction_provider_name() -> str:
+    """Return the provider used for location extraction."""
+    if os.environ.get("SCRAPER_VPN_MODE") == "1":
+        return "gemini"
+    return DEFAULT_MODEL
 
 
 def _extract_batch(locations: List[str]) -> List[Dict[str, Any]]:
@@ -136,15 +144,16 @@ Format: [{{"municipality": "...", "province": "...", "work_type": "remote|hybrid
     full_prompt = prompt.format(locations_json=locations_json)
 
     try:
-        # Call LLM using factory pattern
+        provider_name = _get_location_extraction_provider_name()
+        # VPN mode switches location extraction to Gemini; otherwise use the default provider.
         # json_mode=False because we need a top-level JSON array, not an object.
         # Groq's json_object mode only supports a single root object, which causes
         # the model to collapse all results into one entry.
-        provider = get_provider(name=DEFAULT_MODEL)
+        provider = get_provider(name=provider_name)
         response = provider.complete(full_prompt, json_mode=False)
 
         if not response:
-            raise Exception(f"{DEFAULT_MODEL} returned empty response")
+            raise Exception(f"{provider_name} returned empty response")
 
         text = response.strip()
         if text.startswith("```"):

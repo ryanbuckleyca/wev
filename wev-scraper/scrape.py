@@ -317,6 +317,7 @@ def parse_args():
     parser.add_argument("--provider", help="Force specific LLM provider")
     parser.add_argument("--max-jobs", type=int, help="Limit jobs per source")
     parser.add_argument("--headed", action="store_true", help="Show browser window (for debugging)")
+    parser.add_argument("--vpn", action="store_true", help="Enable VPN-specific scraper behavior")
     return parser.parse_args()
 
 
@@ -376,6 +377,8 @@ def main():
         os.environ["MAX_JOBS_PER_SOURCE"] = str(args.max_jobs)
     if args.headed:
         os.environ["SCRAPER_HEADED"] = "1"
+    if args.vpn:
+        os.environ["SCRAPER_VPN_MODE"] = "1"
     if args.dry_run or args.compare:
         os.environ["DRY_RUN"] = "1"
         # Disable LLM expensive steps in dry run by default
