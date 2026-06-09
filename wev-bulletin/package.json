@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "scrape:prod": "python3 ../wev-scraper/scrape.py \"$@\"",
+    "scrape:prod": "python3 ../wev-scraper/scrape.py",
     "scrape:prod:vpn": "python3 ../wev-scraper/scrape.py --vpn",
     "install:scraper-deps": "(cd ../wev-scraper && pip install -r requirements.txt)",
     "tsc": "tsc --noEmit",
