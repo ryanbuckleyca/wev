@@ -12,7 +12,7 @@ import { formatSearchQuery } from './search-utils';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
 export const BULLETIN_JOB_SELECT =
-  'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week';
+  'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week, language';
 
 export type BulletinQueryInput = {
   locale: 'en' | 'fr';
@@ -27,6 +27,7 @@ export type BulletinQueryInput = {
   emps: string[];
   srcs: string[];
   works: string[];
+  langs: string[];
   onlySse: boolean;
   noSalary: boolean;
   // Included for cache key partitioning to prevent cross-user match-sort leakage.
@@ -83,6 +84,7 @@ function applyAgeFilter(query: any, postedWithin: string) {
 
 function applyNonFacetFilters(query: any, input: BulletinQueryInput) {
   if (input.works.length) query = query.in('work_type', input.works);
+  if (input.langs.length) query = query.in('language', input.langs);
   if (input.onlySse) query = query.is('is_sse', true);
   if (!input.noSalary) query = query.eq('has_compensation', true);
   return query;
@@ -94,6 +96,7 @@ function applyBulletinFilters(query: any, input: BulletinQueryInput) {
   if (input.munis.length) query = query.in('municipality', input.munis);
   if (input.emps.length) query = query.in('employment_type', input.emps);
   if (input.srcs.length) query = query.in('source', input.srcs);
+  if (input.langs.length) query = query.in('language', input.langs);
   return applyNonFacetFilters(query, input);
 }
 

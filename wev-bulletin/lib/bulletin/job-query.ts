@@ -33,6 +33,7 @@ export type BulletinFilters = {
   selectedEmploymentTypes: string[];
   selectedSources: string[];
   selectedWorkTypes: string[];
+  selectedLanguages: string[];
   showOnlySse: boolean;
   showJobsWithoutSalary: boolean;
   postedWithin: PostedWithinSelection;
@@ -99,6 +100,13 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
       return false;
     }
 
+    if (
+      filters.selectedLanguages.length > 0 &&
+      (!job.language || !filters.selectedLanguages.includes(job.language))
+    ) {
+      return false;
+    }
+
     if (filters.showOnlySse && !job.is_sse) {
       return false;
     }
@@ -135,6 +143,10 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
       if (!job.source || !filters.selectedSources.includes(job.source)) {
         return false;
       }
+    }
+
+    if (!matchesNullableSelection(job.language, filters.selectedLanguages)) {
+      return false;
     }
 
     return true;
