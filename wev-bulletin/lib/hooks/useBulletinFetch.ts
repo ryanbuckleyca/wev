@@ -39,6 +39,7 @@ export function useBulletinFetch(
         municipalitiesByProvince: {},
         employmentTypes: [],
         sources: [],
+        languages: [],
       },
   );
   const [loading, setLoading] = useState(!hasInitialData);

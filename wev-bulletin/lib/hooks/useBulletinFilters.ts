@@ -41,6 +41,8 @@ export interface BulletinFilterControls {
   setSelectedSources: QueryStateSetter<string[]>;
   selectedWorkTypes: string[];
   setSelectedWorkTypes: QueryStateSetter<string[]>;
+  selectedLanguages: string[];
+  setSelectedLanguages: QueryStateSetter<string[]>;
   showOnlySse: boolean;
   setShowOnlySse: QueryStateSetter<boolean>;
   showJobsWithoutSalary: boolean;
@@ -123,6 +125,10 @@ export function useBulletinFilters(
   const [selectedWorkTypes, setSelectedWorkTypes] = useQueryState(
     'workType',
     parseAsArrayOf(parseAsString).withDefault(initialProfileWorkTypes),
+  );
+  const [selectedLanguages, setSelectedLanguages] = useQueryState(
+    'langs',
+    parseAsArrayOf(parseAsString).withDefault([]),
   );
   const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true));
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState(
@@ -212,6 +218,7 @@ export function useBulletinFilters(
       selectedEmploymentTypes,
       selectedSources,
       selectedWorkTypes,
+      selectedLanguages,
       showOnlySse,
       showJobsWithoutSalary,
       postedWithin,
@@ -224,6 +231,7 @@ export function useBulletinFilters(
       selectedEmploymentTypes,
       selectedSources,
       selectedWorkTypes,
+      selectedLanguages,
       showOnlySse,
       showJobsWithoutSalary,
       postedWithin,
@@ -245,6 +253,7 @@ export function useBulletinFilters(
     selectedEmploymentTypes.length > 0 ||
     selectedSources.length > 0 ||
     selectedWorkTypes.length > 0 ||
+    selectedLanguages.length > 0 ||
     showOnlySse ||
     !showJobsWithoutSalary ||
     postedWithin !== 'any';
@@ -259,6 +268,7 @@ export function useBulletinFilters(
     void setSelectedMunicipalities([]);
     void setSelectedEmploymentTypes([]);
     void setSelectedSources([]);
+    void setSelectedLanguages([]);
   }, [
     setSearchQuery,
     setSelectedOrganizations,
@@ -266,6 +276,7 @@ export function useBulletinFilters(
     setSelectedMunicipalities,
     setSelectedEmploymentTypes,
     setSelectedSources,
+    setSelectedLanguages,
   ]);
 
   const clearAllFilters = useCallback(() => {
@@ -313,6 +324,8 @@ export function useBulletinFilters(
     setSelectedSources,
     selectedWorkTypes,
     setSelectedWorkTypes,
+    selectedLanguages,
+    setSelectedLanguages,
     showOnlySse,
     setShowOnlySse,
     showJobsWithoutSalary,

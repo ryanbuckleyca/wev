@@ -97,6 +97,7 @@ describe('server-data', () => {
       emps: [],
       srcs: [],
       works: [],
+      langs: [],
       onlySse: false,
       noSalary: false,
       userCacheKey: 'test-key',
