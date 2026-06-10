@@ -244,21 +244,16 @@ describe('ProfilePage skills integration', () => {
       await waitFor(() => {
         expect(fetchMock).toHaveBeenCalledWith('/api/skills/by-uri?uris=uri-1&locale=en');
       });
+      await screen.findByText('Data analysis');
 
       await user.click(screen.getByRole('button', { name: /search and add skills/i }));
       await waitFor(() => {
-        expect(fetchMock).toHaveBeenCalledWith(
-          '/api/skills/starter?locale=en&limit=10',
-          expect.anything(),
-        );
+        expect(fetchMock).toHaveBeenCalledWith('/api/skills/starter?locale=en&limit=10', expect.anything());
       });
       const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
       await user.type(searchInput, 'da');
       await waitFor(() => {
-        expect(fetchMock).toHaveBeenCalledWith(
-          '/api/skills/search?q=da&locale=en&limit=20',
-          expect.anything(),
-        );
+        expect(fetchMock).toHaveBeenCalledWith('/api/skills/search?q=da&locale=en&limit=20', expect.anything());
       });
       await user.click(await screen.findByRole('option', { name: /Data governance/i }));
       await user.click(screen.getByRole('button', { name: /done/i }));
@@ -347,15 +342,20 @@ describe('ProfilePage skills integration', () => {
 
     render(<ProfilePage />);
 
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/skills/by-uri'));
+    });
+    await screen.findByText('Skill 1');
+
     await user.click(screen.getByRole('button', { name: /search and add skills/i }));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/skills/starter?locale=en&limit=10', expect.anything());
+    });
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
     await user.click(searchInput);
     await user.paste('Extra');
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/skills/search?q=Extra&locale=en&limit=20',
-        expect.anything(),
-      );
+      expect(fetchMock).toHaveBeenCalledWith('/api/skills/search?q=Extra&locale=en&limit=20', expect.anything());
     });
     await user.click(await screen.findByRole('option', { name: /Extra skill/i }));
     await user.click(screen.getByRole('button', { name: /done/i }));
