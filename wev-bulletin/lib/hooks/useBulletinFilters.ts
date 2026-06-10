@@ -127,7 +127,7 @@ export function useBulletinFilters(
     parseAsArrayOf(parseAsString).withDefault(initialProfileWorkTypes),
   );
   const [selectedLanguages, setSelectedLanguages] = useQueryState(
-    'langs',
+    'lang',
     parseAsArrayOf(parseAsString).withDefault([]),
   );
   const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true));

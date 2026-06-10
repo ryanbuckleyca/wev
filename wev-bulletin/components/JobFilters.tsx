@@ -29,6 +29,7 @@ export default function JobFilters(props: JobFiltersProps) {
     selectedEmploymentTypes,
     selectedSources,
     selectedWorkTypes,
+    selectedLanguages,
     showOnlySse,
     setShowOnlySse: onShowOnlySseChange,
     showJobsWithoutSalary,
@@ -143,6 +144,15 @@ export default function JobFilters(props: JobFiltersProps) {
                 </div>
               ) : null
             }
+          />
+        </div>
+
+        <div data-testid={JOB_BOARD_TEST_IDS.languageGroup}>
+          <FilterButtonGroup
+            label={t('filters.language.label')}
+            options={model.languageOptions}
+            isSelected={(value) => selectedLanguages.includes(value)}
+            onSelect={(value) => model.handleLanguageToggle(value)}
           />
         </div>
 
