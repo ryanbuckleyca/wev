@@ -132,7 +132,7 @@ export function useBulletinFilters(
   );
 
   const selectedLanguages = useMemo(() => {
-    if (langQuery.length > 0) return langQuery;
+    if (langQuery && langQuery.length > 0) return langQuery;
     const legacyLangs = searchParams?.getAll('langs') ?? [];
     if (legacyLangs.length > 0) {
       return legacyLangs.flatMap((l) => l.split(',')).filter(Boolean);
