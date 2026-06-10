@@ -152,7 +152,6 @@ def get_unified_system_prompt(include_sse: bool = False) -> str:
         base_parts.extend([
             "3. is_sse: boolean - true if social/solidarity economy (non-profit, cooperative, etc.)",
             "4. sse_confidence: float 0-1 for classification confidence",
-            "Use web search for SSE classification. ",
         ])
 
     base_parts.extend([
@@ -171,7 +170,7 @@ def get_unified_prompt_instructions(include_sse: bool = False) -> str:
         return (
             "For each job, extract: 1) Summary (1 sentence), "
             "2) Work values (top 5 most relevant from taxonomy — rank by strength of evidence and return only the 5 best), "
-            "3) SSE classification (using web search)."
+            "3) SSE classification."
         )
     else:
         return (
