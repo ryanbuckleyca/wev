@@ -24,6 +24,8 @@ def get_language_instruction() -> str:
         "IMPORTANT: Detect the language of the job posting. Look for French words, phrases, or job titles. "
         "If the posting contains French content, you MUST write the summary in French. "
         "If the posting is in French, write your sentence in French. If in English, write in English. "
+        "If the posting is written in both English and French, or explicitly requires both languages, "
+        "you may write the summary in either language."
     )
 
 
@@ -61,15 +63,15 @@ def build_summary_prompt(max_words: int, job_title: str | None = None, include_f
         get_summary_prompt_base(max_words),
         get_language_instruction(),
     ]
-    
+
     if include_formatting:
         prompt_parts.append(get_formatting_rules())
-    
+
     prompt_parts.append("\n\n")  # Add spacing before the text content
-    
+
     if job_title:
         prompt_parts.append(f"Job Title: {job_title}\n")
-    
+
     return "".join(prompt_parts)
 
 
@@ -111,7 +113,7 @@ def get_json_output_rules(max_values: int) -> str:
 
 def build_batch_summary_prompt(max_words: int, max_values: int) -> str:
     """Build the summary portion of a batch processing prompt.
-    
+
     Composes from the same shared components as build_summary_prompt,
     prefixed with "1." for numbered batch instructions.
     """
@@ -131,10 +133,10 @@ def get_json_system_prompt(include_sse: bool = False) -> str:
         "French job titles/descriptions → French summary. English → English. "
         "Look for French words, phrases, and job titles in the posting."
     )
-    
+
     if include_sse:
         base_prompt = base_prompt.replace("index, summary, skills, and values fields", "index, summary, skills, values, and SSE fields")
-    
+
     return base_prompt
 
 
@@ -145,21 +147,20 @@ def get_unified_system_prompt(include_sse: bool = False) -> str:
         "1. summary: 1 sentence describing the work and its impact",
         "2. values: array of the top 5 most relevant values from the provided taxonomy — rank by strength of evidence in the job text and return only the 5 best matches",
     ]
-    
+
     if include_sse:
         base_parts.extend([
             "3. is_sse: boolean - true if social/solidarity economy (non-profit, cooperative, etc.)",
             "4. sse_confidence: float 0-1 for classification confidence",
-            "Use web search for SSE classification. ",
         ])
-    
+
     base_parts.extend([
         "CRITICAL: Match the language of each job posting exactly. ",
         "French job titles/descriptions → French summary. English → English. ",
         "Look for French words, phrases, and job titles in the posting. ",
         "Output a raw JSON array only. No markdown, no code fences, no explanation."
     ])
-    
+
     return "\n".join(base_parts)
 
 
@@ -169,7 +170,7 @@ def get_unified_prompt_instructions(include_sse: bool = False) -> str:
         return (
             "For each job, extract: 1) Summary (1 sentence), "
             "2) Work values (top 5 most relevant from taxonomy — rank by strength of evidence and return only the 5 best), "
-            "3) SSE classification (using web search)."
+            "3) SSE classification."
         )
     else:
         return (
