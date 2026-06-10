@@ -24,6 +24,8 @@ def get_language_instruction() -> str:
         "IMPORTANT: Detect the language of the job posting. Look for French words, phrases, or job titles. "
         "If the posting contains French content, you MUST write the summary in French. "
         "If the posting is in French, write your sentence in French. If in English, write in English. "
+        "If the posting is written in both English and French, or explicitly requires both languages, "
+        "you may write the summary in either language, but note that the job is bilingual. "
     )
 
 
