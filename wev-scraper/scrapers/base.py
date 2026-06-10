@@ -3,8 +3,16 @@ import os
 import sys
 import time
 import urllib.request
-from typing import TYPE_CHECKING
 import threading
+from typing import TYPE_CHECKING
+from urllib.parse import urlparse
+
+from utils.constants import BROWSER_USER_AGENT
+from utils.date_utils import _parse_localized_date, is_recent_job
+from utils.env import is_truthy_env
+from utils.log import scraper_log
+from utils.normalize import normalize_job_data
+from utils.url import normalize_listing_url
 
 
 _DEBUG_REPORT_CONFIG = {
@@ -25,14 +33,6 @@ def _initialize_debug_report_config():
         pass
 
 _initialize_debug_report_config()
-from urllib.parse import urlparse
-
-from utils.constants import BROWSER_USER_AGENT
-from utils.date_utils import _parse_localized_date, is_recent_job
-from utils.env import is_truthy_env
-from utils.log import scraper_log
-from utils.normalize import normalize_job_data
-from utils.url import normalize_listing_url
 
 if TYPE_CHECKING:
     from playwright.sync_api import ProxySettings
