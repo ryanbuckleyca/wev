@@ -1,7 +1,8 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { render, screen, waitFor } from '@/test-utils';
+import { act } from 'react';
+import { fireEvent, render, screen, waitFor } from '@/test-utils';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfile } from '@/contexts/ProfileContext';
 import { MAX_PROFILE_SKILLS } from '@/lib/hooks/useProfileForm';
@@ -278,13 +279,15 @@ describe('ProfilePage skills integration', () => {
     },
   );
 
-  it('blocks save and shows error when skills exceed limit', { timeout: 15_000 }, async () => {
-    // This test renders 10 hydrated skills, opens a modal, searches for a skill,
-    // selects a result, and validates the save is blocked.  Under full-suite
-    // resource contention it can exceed the 30 s global timeout.
+  it('blocks save and shows error when skills exceed limit', async () => {
+    // This test renders 10 hydrated skills, opens a modal, searches for a
+    // skill, selects a result, and validates the save is blocked.
+    //
+    // We use fireEvent (not userEvent) throughout because userEvent's
+    // character-by-character typing and pointer-event settling is too slow
+    // when the component tree includes 10 sortable skill items with drag
+    // handles and popovers — it exceeds the default timeout locally.
 
-    // vi.useFakeTimers(); // Removed fake timers
-    const user = userEvent.setup(); // Removed advanceTimers
     const profileAtMaxSkills = {
       ...baseProfile,
       skills: Array.from({ length: MAX_PROFILE_SKILLS }, (_, i) => `uri-${i + 1}`),
@@ -353,29 +356,41 @@ describe('ProfilePage skills integration', () => {
     });
     await screen.findByText('Skill 1');
 
-    await user.click(screen.getByRole('button', { name: /search and add skills/i }));
+    // Open the skills modal
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /search and add skills/i }));
+    });
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/skills/starter?locale=en&limit=10',
         expect.anything(),
       );
     });
+
+    // Type search query in one shot (vs user.type which does character-by-character)
     const searchInput = await screen.findByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER);
-    await user.click(searchInput);
-    await user.paste('Extra');
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: 'Extra' } });
+    });
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/skills/search?q=Extra&locale=en&limit=20',
         expect.anything(),
       );
     });
-    await user.click(await screen.findByRole('option', { name: /Extra skill/i }));
-    await user.click(screen.getByRole('button', { name: /done/i }));
-    await user.click(screen.getByRole('button', { name: /save profile/i }));
 
-    await waitFor(() => {
-      expect(mockUpdateProfile).not.toHaveBeenCalled();
+    // Select the extra skill, close modal, try to save
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('option', { name: /Extra skill/i }));
     });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /done/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /save profile/i }));
+    });
+
+    expect(mockUpdateProfile).not.toHaveBeenCalled();
     expect(notify.error).toHaveBeenCalled();
   });
 });
