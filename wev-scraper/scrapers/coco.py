@@ -1,13 +1,14 @@
-from scrapers.base import BaseScraper, _is_ci
+from scrapers.base import BaseScraper
 
 
 class CocoScraper(BaseScraper):
     is_chronological = True
+    force_headed_on_vpn = True
     listing_selector = "ul.job_listings li.job_listing"
     job_wait_selector = "article"
 
     def start_browser(self, headless=True, viewport=None):
-        return super().start_browser(headless=headless, viewport=viewport, use_proxy=_is_ci())
+        return super().start_browser(headless=headless, viewport=viewport, use_proxy=False)
 
     SELECTORS = {
         "job_title": "h1.entry-title",

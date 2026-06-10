@@ -26,11 +26,9 @@ class EcoCanadaScraper(BaseScraper):
     }
 
     def start_browser(self, headless=True, viewport=None, **kwargs):
-        """Plain Chromium, no stealth, no real Chrome — the Acuspire widget renders fine with it."""
         return super().start_browser(
             headless=headless,
             viewport=viewport or {"width": 1280, "height": 1400},
-            use_real_chrome=False,
             use_stealth=False,
             **kwargs,
         )
@@ -39,17 +37,31 @@ class EcoCanadaScraper(BaseScraper):
         self._goto_with_networkidle(page, self.source["url"])
         self._accept_consent_popup(page)
         self._dismiss_overlay(page)
+        # Wait for the widget to appear before attempting to filter
+        page.wait_for_selector(self.listing_selector, state="attached", timeout=30000)
         if filter_value:
             self._apply_province_filter(page, filter_value)
-        page.wait_for_selector(self.listing_selector, state="attached", timeout=15000)
         scraper_log("\t✓ Job listings loaded")
 
     def _apply_province_filter(self, page, province: str):
         scraper_log(f"\tFiltering by province: {province}")
-        loc = page.get_by_placeholder("City or Province or Remote")
-        loc.wait_for(state="attached", timeout=30000)
-        loc.fill(province)
-        page.get_by_role("button", name="Search Jobs").click()
+        loc = page.get_by_placeholder("Province", exact=False)
+        try:
+            loc.first.wait_for(state="attached", timeout=15000)
+            loc.first.fill(province)
+        except Exception:
+            scraper_log("\t⚠️ Could not find placeholder, trying fallback class")
+            loc = page.locator(".acuspire-job-search input").first
+            loc.wait_for(state="attached", timeout=15000)
+            loc.fill(province)
+            
+        page.get_by_role("button", name="Search Jobs").first.click()
+        # Wait for the results to refresh by waiting for the current listings to detach
+        try:
+            page.wait_for_selector(self.listing_selector, state="detached", timeout=5000)
+        except Exception:
+            # If they don't detach quickly, they might already be gone or the refresh is slow
+            pass
         page.wait_for_selector(self.listing_selector, state="attached", timeout=15000)
 
     def get_listing_items(self, page):

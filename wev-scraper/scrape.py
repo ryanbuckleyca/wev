@@ -30,6 +30,15 @@ CHECKED_FIELDS = [
 COMPARE_FIELDS = ["job_title", "organization", "location", "wage", "employment_type", "date_posted"]
 
 
+def _has_prod_confirmation() -> bool:
+    return os.environ.get("PROD_CONFIRMED") == "1" or os.environ.get("CONFIRM_PROD_RUN") == "YES"
+
+
+def _mark_prod_confirmed() -> None:
+    os.environ["PROD_CONFIRMED"] = "1"
+    os.environ["CONFIRM_PROD_RUN"] = "YES"
+
+
 @dataclass
 class ScraperResults:
     """Aggregated results of a scraping session."""
@@ -114,7 +123,7 @@ class ScraperOrchestrator:
 
     def _process_single_source(self, source: Dict[str, Any]):
         source_name = source.get("name", "Unknown Source")
-        scraper_class = get_scraper_class(source["id"])
+        scraper_class = get_scraper_class(source["id"], source_name=source_name)
 
         if not scraper_class:
             _log(f"Skipping {source_name}: No scraper implementation registered.")
@@ -308,6 +317,7 @@ def parse_args():
     parser.add_argument("--provider", help="Force specific LLM provider")
     parser.add_argument("--max-jobs", type=int, help="Limit jobs per source")
     parser.add_argument("--headed", action="store_true", help="Show browser window (for debugging)")
+    parser.add_argument("--vpn", action="store_true", help="Enable VPN-specific scraper behavior")
     return parser.parse_args()
 
 
@@ -367,6 +377,8 @@ def main():
         os.environ["MAX_JOBS_PER_SOURCE"] = str(args.max_jobs)
     if args.headed:
         os.environ["SCRAPER_HEADED"] = "1"
+    if args.vpn:
+        os.environ["SCRAPER_VPN_MODE"] = "1"
     if args.dry_run or args.compare:
         os.environ["DRY_RUN"] = "1"
         # Disable LLM expensive steps in dry run by default
@@ -382,11 +394,20 @@ def main():
         os.environ["USE_PROD_DB"] = "1"
         # Guard against accidental prod runs when invoked directly (bypassing run.ts).
         # run.ts handles the prompt and sets PROD_CONFIRMED=1 before spawning this script.
-        if sys.stdin.isatty() and os.environ.get("PROD_CONFIRMED") != "1":
+        if _has_prod_confirmation():
+            _mark_prod_confirmed()
+        elif sys.stdin.isatty():
             mode = "PRODUCTION (full)" if args.prod else "PRODUCTION DB (publish — local LLMs)"
             confirm = input(f"⚠️  RUNNING AGAINST {mode}. Type 'YES' to continue: ")
             if confirm != "YES":
                 sys.exit(0)
+            _mark_prod_confirmed()
+        else:
+            print(
+                "Refusing production run in non-interactive mode. Set CONFIRM_PROD_RUN=YES to override.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
     # 3. Orchestrate
     orchestrator = ScraperOrchestrator(

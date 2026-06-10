@@ -47,6 +47,17 @@ async function confirmProd(mode: "prod" | "publish"): Promise<boolean> {
   });
 }
 
+function hasProdConfirmation(): boolean {
+  return (
+    process.env.PROD_CONFIRMED === "1" || process.env.CONFIRM_PROD_RUN === "YES"
+  );
+}
+
+function markProdConfirmed(): void {
+  process.env.PROD_CONFIRMED = "1";
+  process.env.CONFIRM_PROD_RUN = "YES";
+}
+
 async function main() {
   const scraperRootDir = path.resolve(__dirname);
   process.chdir(scraperRootDir);
@@ -77,11 +88,20 @@ async function main() {
 
   // Prompt before any output is piped — readline uses stderr so it's visible
   // even when stdout is piped (e.g. `npm run scrape -- --prod 2>&1 | head`).
-  if ((isProd || isPublish) && process.stdin.isTTY) {
-    const confirmed = await confirmProd(isProd ? "prod" : "publish");
-    if (!confirmed) process.exit(0);
-    // Signal to scrape.py that the prod confirmation has already been handled
-    process.env.PROD_CONFIRMED = "1";
+  if (isProd || isPublish) {
+    if (hasProdConfirmation()) {
+      markProdConfirmed();
+    } else if (process.stdin.isTTY) {
+      const confirmed = await confirmProd(isProd ? "prod" : "publish");
+      if (!confirmed) process.exit(0);
+      // Signal to Python children that the prod confirmation has already been handled.
+      markProdConfirmed();
+    } else {
+      console.error(
+        "Refusing production run in non-interactive mode. Set CONFIRM_PROD_RUN=YES to override.",
+      );
+      process.exit(1);
+    }
   }
 
   // Map task names to script paths
