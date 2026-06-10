@@ -40,7 +40,7 @@ describe('useBulletinFilters', () => {
     vi.clearAllMocks();
     vi.mocked(useAuth).mockReturnValue({ user: null, loading: false } as any);
     vi.mocked(useProfile).mockReturnValue({ profile: null, loading: false } as any);
-    vi.mocked(useSearchParams).mockReturnValue({ has: () => false } as any);
+    vi.mocked(useSearchParams).mockReturnValue({ has: () => false, getAll: () => [] } as any);
   });
 
   it('initializes with default values', () => {
