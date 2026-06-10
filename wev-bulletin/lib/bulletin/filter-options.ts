@@ -8,6 +8,7 @@ export type BulletinFilterOptions = {
   municipalitiesByProvince: MunicipalitiesByProvince;
   employmentTypes: string[];
   sources: string[];
+  languages: string[];
 };
 
 export function toggleSelection(items: string[], value: string): string[] {
@@ -20,11 +21,13 @@ export function buildFilterOptions(jobs: JobPosting[]): BulletinFilterOptions {
   const municipalitiesByProvince: Record<string, Set<string>> = {};
   const employmentTypes = new Set<string>();
   const sources = new Set<string>();
+  const languages = new Set<string>();
 
   jobs.forEach((job) => {
     if (job.organization) organizations.add(job.organization);
     if (job.source) sources.add(job.source);
     if (job.employment_type) employmentTypes.add(job.employment_type);
+    if (job.language) languages.add(job.language);
 
     if (!job.province) return;
     provinces.add(job.province);
@@ -53,6 +56,7 @@ export function buildFilterOptions(jobs: JobPosting[]): BulletinFilterOptions {
     municipalitiesByProvince: sortedMunicipalitiesByProvince,
     employmentTypes: Array.from(employmentTypes).sort(),
     sources: Array.from(sources).sort(),
+    languages: Array.from(languages).sort(),
   };
 }
 
