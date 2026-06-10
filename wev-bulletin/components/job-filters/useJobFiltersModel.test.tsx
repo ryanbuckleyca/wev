@@ -24,6 +24,8 @@ const mockControls = {
   setSelectedSources: vi.fn(),
   selectedWorkTypes: ['remote'],
   setSelectedWorkTypes: vi.fn(),
+  selectedLanguages: [],
+  setSelectedLanguages: vi.fn(),
   showOnlySse: true,
   setShowOnlySse: vi.fn(),
   showJobsWithoutSalary: false,

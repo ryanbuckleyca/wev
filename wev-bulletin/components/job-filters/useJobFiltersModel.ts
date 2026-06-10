@@ -121,7 +121,7 @@ export function useJobFiltersModel({
     setSelectedSources: onSourcesChange,
     selectedWorkTypes,
     setSelectedWorkTypes: onWorkTypesChange,
-    selectedLanguages,
+    selectedLanguages = [],
     setSelectedLanguages: onLanguagesChange,
     showOnlySse,
     setShowOnlySse: onShowOnlySseChange,
