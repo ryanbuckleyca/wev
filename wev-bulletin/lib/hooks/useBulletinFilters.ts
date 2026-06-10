@@ -126,9 +126,25 @@ export function useBulletinFilters(
     'workType',
     parseAsArrayOf(parseAsString).withDefault(initialProfileWorkTypes),
   );
-  const [selectedLanguages, setSelectedLanguages] = useQueryState(
-    'langs',
+  const [langQuery, setLangQuery] = useQueryState(
+    'lang',
     parseAsArrayOf(parseAsString).withDefault([]),
+  );
+
+  const selectedLanguages = useMemo(() => {
+    if (langQuery && langQuery.length > 0) return langQuery;
+    const legacyLangs = searchParams?.getAll('langs') ?? [];
+    if (legacyLangs.length > 0) {
+      return legacyLangs.flatMap((l) => l.split(',')).filter(Boolean);
+    }
+    return [];
+  }, [langQuery, searchParams]);
+
+  const setSelectedLanguages = useCallback(
+    (value: string[]) => {
+      void setLangQuery(value.length > 0 ? value : null);
+    },
+    [setLangQuery],
   );
   const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true));
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState(

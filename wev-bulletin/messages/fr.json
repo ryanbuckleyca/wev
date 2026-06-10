@@ -81,6 +81,12 @@
       "label": "Source",
       "noData": "Aucune donnée de source disponible"
     },
+    "language": {
+      "label": "Langue de publication",
+      "en": "Anglais",
+      "fr": "Français",
+      "bilingual": "Bilingue"
+    },
     "chips": {
       "posted": "Publié :",
       "sseShort": "SSE",
@@ -98,7 +104,9 @@
       "employmentType": "type d'emploi",
       "employmentTypes": "types d'emploi",
       "source": "source",
-      "sources": "sources"
+      "sources": "sources",
+      "language": "langue",
+      "languages": "langues"
     }
   },
   "sort": {
