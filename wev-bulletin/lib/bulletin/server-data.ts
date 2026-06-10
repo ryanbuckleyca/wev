@@ -84,7 +84,6 @@ function applyAgeFilter(query: any, postedWithin: string) {
 
 function applyNonFacetFilters(query: any, input: BulletinQueryInput) {
   if (input.works.length) query = query.in('work_type', input.works);
-  if (input.langs.length) query = query.in('language', input.langs);
   if (input.onlySse) query = query.is('is_sse', true);
   if (!input.noSalary) query = query.eq('has_compensation', true);
   return query;
@@ -107,7 +106,7 @@ async function fetchBulletinFacets(
 ): Promise<BulletinFilterOptions> {
   let query = supabase
     .from('matched_jobs')
-    .select('organization, province, municipality, employment_type, source');
+    .select('organization, province, municipality, employment_type, source, language');
 
   query = applySearchFilter(query, vectorColumn, input.searchQuery);
   query = applyAgeFilter(query, input.postedWithin);
@@ -247,7 +246,7 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
     totalAvailableQuery,
     supabaseServer
       .from('matched_jobs')
-      .select('organization, province, municipality, employment_type, source')
+      .select('organization, province, municipality, employment_type, source, language')
       .gte('date_posted', postedCutoff)
       .is('is_sse', true)
       .limit(5000),

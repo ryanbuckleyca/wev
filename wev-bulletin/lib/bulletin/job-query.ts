@@ -100,12 +100,7 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
       return false;
     }
 
-    if (
-      filters.selectedLanguages.length > 0 &&
-      (!job.language || !filters.selectedLanguages.includes(job.language))
-    ) {
-      return false;
-    }
+
 
     if (filters.showOnlySse && !job.is_sse) {
       return false;
