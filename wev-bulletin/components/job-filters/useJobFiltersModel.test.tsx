@@ -171,4 +171,31 @@ describe('useJobFiltersModel', () => {
     expect(result.current.provinces).toContain('Ontario');
     expect(result.current.provinces).toContain('Nova Scotia');
   });
+
+  it('verifies language filter behavior', () => {
+    mockControls.selectedLanguages = ['en'];
+    const props = createProps();
+    const { result } = renderHook(() => useJobFiltersModel(props), {
+      wrapper: Wrapper,
+    });
+
+    expect(result.current.languageOptions).toEqual([
+      { value: 'en', label: 'English' },
+      { value: 'fr', label: 'French' },
+      { value: 'bilingual', label: 'Bilingual' },
+    ]);
+
+    act(() => {
+      result.current.handleLanguageToggle('fr');
+    });
+    expect(mockControls.setSelectedLanguages).toHaveBeenCalledWith(['en', 'fr']);
+
+    act(() => {
+      const chip = result.current.activeFilterChips.find((c) => c.id === 'language-en');
+      chip?.onRemove?.();
+    });
+    expect(mockControls.setSelectedLanguages).toHaveBeenCalledWith([]);
+
+    mockControls.selectedLanguages = [];
+  });
 });
