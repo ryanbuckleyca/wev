@@ -46,6 +46,7 @@ describe('job-query', () => {
     selectedEmploymentTypes: [],
     selectedSources: [],
     selectedWorkTypes: [],
+    selectedLanguages: [],
     showOnlySse: false,
     showJobsWithoutSalary: true,
     postedWithin: 'any',

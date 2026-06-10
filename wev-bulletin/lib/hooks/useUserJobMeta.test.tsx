@@ -95,6 +95,7 @@ describe('useUserJobMeta', () => {
         municipalitiesByProvince: {},
         employmentTypes: [],
         sources: [],
+        languages: [],
       },
     };
 
