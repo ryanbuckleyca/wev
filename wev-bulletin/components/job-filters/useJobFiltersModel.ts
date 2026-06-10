@@ -173,6 +173,7 @@ export function useJobFiltersModel({
     selectedMunicipalities.length === 0 &&
     selectedEmploymentTypes.length === 0 &&
     selectedSources.length === 0 &&
+    selectedLanguages.length === 0 &&
     isWorkTypesDefault &&
     showOnlySse &&
     showJobsWithoutSalary &&

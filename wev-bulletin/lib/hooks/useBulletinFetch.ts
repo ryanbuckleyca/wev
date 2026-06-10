@@ -72,6 +72,7 @@ export function useBulletinFetch(
       filters.selectedEmploymentTypes.forEach((e) => params.append('emps', e));
       filters.selectedSources.forEach((s) => params.append('srcs', s));
       filters.selectedWorkTypes.forEach((w) => params.append('works', w));
+      filters.selectedLanguages.forEach((l) => params.append('langs', l));
 
       const response = await fetch(`/api/bulletin?${params.toString()}`, {
         signal: controller.signal,
