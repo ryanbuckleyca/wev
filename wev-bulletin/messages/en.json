@@ -85,7 +85,11 @@
       "label": "Posting Language",
       "en": "English",
       "fr": "French",
-      "bilingual": "Bilingual"
+      "bilingual": "Bilingual",
+      "profileDefault": "Using your profile preference: {languages}.",
+      "profileOverride": "Profile preference: {languages}. You can override this filter here.",
+      "profileLink": "Edit in profile",
+      "profileReset": "Reset to profile"
     },
     "chips": {
       "posted": "Posted:",
@@ -279,6 +283,8 @@
     "workValues": "Work Values",
     "workType": "Work Type Preference",
     "workTypeHint": "Used to pre-fill your job search filters. You can still override this on the jobs page.",
+    "languagePreference": "Language Preference",
+    "languagePreferenceHint": "Used to pre-fill your job search filters.",
     "workEnvironment": "Ideal Work Environment",
     "workEnvironmentPlaceholder": "Describe the environment you thrive in...",
     "workEnvironmentHint": "Up to {max} characters (about 250 words). This is private and only used to personalize your search.",

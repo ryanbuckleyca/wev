@@ -60,6 +60,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     full_name: '',
     bio: '',
     work_types: [] as WorkType[],
+    preferred_languages: [] as string[],
     location: null as LocationState | null,
     cv_import: null as CvImportMetadata | null,
   });
@@ -97,6 +98,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
       full_name: profile.full_name || '',
       bio: profile.bio || '',
       work_types: normalizeWorkTypes(profile.work_types),
+      preferred_languages: profile.preferred_languages ?? [],
       location:
         profile.lat != null && profile.lng != null && profile.location_display_name
           ? {
@@ -159,6 +161,15 @@ export function useProfileForm(locale: 'en' | 'fr') {
     }));
   }, []);
 
+  const handleLanguageToggle = useCallback((lang: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      preferred_languages: prev.preferred_languages.includes(lang)
+        ? prev.preferred_languages.filter((l) => l !== lang)
+        : [...prev.preferred_languages, lang],
+    }));
+  }, []);
+
   const handleSaveProfile = useCallback(async () => {
     const error = validateProfileLimits(values.items.length, skills.items.length);
     if (error) {
@@ -189,6 +200,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
         province: formData.location?.province ?? null,
         location_display_name: formData.location?.display_name ?? null,
         cv_import: formData.cv_import,
+        preferred_languages: formData.preferred_languages.length > 0 ? formData.preferred_languages : null,
       });
       notify.success(t('updateSuccess'));
       void fetch('/api/matches/recalculate-mine', { method: 'POST' });
@@ -249,5 +261,6 @@ export function useProfileForm(locale: 'en' | 'fr') {
     handleSaveProfile,
     handleApplyCvImport,
     handleWorkTypeToggle,
+    handleLanguageToggle,
   };
 }

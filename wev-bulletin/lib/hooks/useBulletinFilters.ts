@@ -64,6 +64,9 @@ export interface BulletinFilterControls {
   profileProvince: string | null;
   isUsingProfileLocation: boolean;
   handleResetToProfileLocation: () => void;
+  profileLanguages: string[];
+  isUsingProfileLanguages: boolean;
+  handleResetToProfileLanguages: () => void;
   hasAnyFilters: boolean;
   clearAllFilters: () => void;
   applySuggestedDefaults: () => void;
@@ -175,6 +178,11 @@ export function useBulletinFilters(
   const profileMunicipality = effectiveProfile?.municipality ?? null;
   const profileProvince = effectiveProfile?.province ?? null;
 
+  const profileLanguages = useMemo(
+    () => effectiveProfile?.preferred_languages ?? [],
+    [effectiveProfile?.preferred_languages],
+  );
+
   // Sync work types from profile on first load
   useProfileSync(userId, effectiveProfileLoading, 'workType', {
     profileValue: profileWorkTypes,
@@ -204,6 +212,18 @@ export function useBulletinFilters(
     },
   });
 
+  // Sync language preference from profile on first load
+  useProfileSync(userId, effectiveProfileLoading, 'lang', {
+    profileValue: profileLanguages,
+    selectedValue: selectedLanguages,
+    shouldSync: (profileValue, selectedValue, hasQueryParam) => {
+      if (!profileValue || profileValue.length === 0) return false;
+      if (hasQueryParam || selectedValue.length > 0) return false;
+      return true;
+    },
+    setter: setSelectedLanguages,
+  });
+
   const handleResetToProfileWorkTypes = useCallback(() => {
     if (profileWorkTypes.length === 0) return;
     void setSelectedWorkTypes(profileWorkTypes);
@@ -215,6 +235,11 @@ export function useBulletinFilters(
     void setSelectedMunicipalities([profileMunicipality]);
   }, [profileMunicipality, profileProvince, setSelectedProvinces, setSelectedMunicipalities]);
 
+  const handleResetToProfileLanguages = useCallback(() => {
+    if (profileLanguages.length === 0) return;
+    void setSelectedLanguages(profileLanguages);
+  }, [profileLanguages, setSelectedLanguages]);
+
   const isUsingProfileLocation = useMemo(() => {
     if (!profileMunicipality || !profileProvince) return false;
     return (
@@ -224,6 +249,12 @@ export function useBulletinFilters(
       selectedProvinces[0] === profileProvince
     );
   }, [profileMunicipality, profileProvince, selectedMunicipalities, selectedProvinces]);
+
+  const isUsingProfileLanguages = useMemo(() => {
+    if (profileLanguages.length === 0) return false;
+    if (selectedLanguages.length === 0) return false;
+    return hasSameSelections(profileLanguages, selectedLanguages);
+  }, [profileLanguages, selectedLanguages]);
 
   const filters = useMemo<BulletinFilters>(
     () => ({
@@ -363,6 +394,9 @@ export function useBulletinFilters(
     profileProvince,
     isUsingProfileLocation,
     handleResetToProfileLocation,
+    profileLanguages,
+    isUsingProfileLanguages,
+    handleResetToProfileLanguages,
     hasAnyFilters,
     clearAllFilters,
     applySuggestedDefaults,
