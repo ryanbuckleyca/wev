@@ -200,7 +200,8 @@ export function useProfileForm(locale: 'en' | 'fr') {
         province: formData.location?.province ?? null,
         location_display_name: formData.location?.display_name ?? null,
         cv_import: formData.cv_import,
-        preferred_languages: formData.preferred_languages.length > 0 ? formData.preferred_languages : null,
+        preferred_languages:
+          formData.preferred_languages.length > 0 ? formData.preferred_languages : null,
       });
       notify.success(t('updateSuccess'));
       void fetch('/api/matches/recalculate-mine', { method: 'POST' });
