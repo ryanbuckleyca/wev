@@ -9,7 +9,7 @@ import { type EscoSkill } from '@/lib/types/skills';
 import { type WorkValue, buildWorkValues, getValueDefinition } from '@/lib/values';
 import type { CvImportMetadata } from '@/lib/cv/types';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
-import { isSupportedLanguage } from '@/lib/languages';
+import { isSupportedLanguage, normalizeLanguages } from '@/lib/languages';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 import { adjustCutoffOnRemove, adjustCutoffOnReorder } from '@/lib/ranked-list';
 import {
@@ -99,7 +99,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
       full_name: profile.full_name || '',
       bio: profile.bio || '',
       work_types: normalizeWorkTypes(profile.work_types),
-      preferred_languages: profile.preferred_languages ?? [],
+      preferred_languages: normalizeLanguages(profile.preferred_languages),
       location:
         profile.lat != null && profile.lng != null && profile.location_display_name
           ? {

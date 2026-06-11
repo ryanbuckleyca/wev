@@ -21,6 +21,7 @@ import Alert from '@/components/ui/Alert';
 import CVImportButton from '@/components/profile/cv/CVImportButton';
 import FormLabel from '@/components/FormLabel';
 import { SUPPORTED_LANGUAGES } from '@/lib/languages';
+import TogglePillGroup from '@/components/profile/TogglePillGroup';
 
 export default function ProfilePage() {
   const t = useTranslations();
@@ -94,25 +95,14 @@ export default function ProfilePage() {
               <p className="text-xs text-muted-foreground mb-2">
                 {t('profile.languagePreferenceHint')}
               </p>
-              <div className="flex gap-2 flex-wrap">
-                {SUPPORTED_LANGUAGES.map((lang) => {
-                  const isSelected = formData.preferred_languages.includes(lang);
-                  return (
-                    <button
-                      key={lang}
-                      type="button"
-                      onClick={() => handleLanguageToggle(lang)}
-                      className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
-                        isSelected
-                          ? 'bg-primary text-white shadow-sm'
-                          : 'bg-gray-50 text-gray-700 border border-gray-100 dark:bg-zinc-800 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'
-                      }`}
-                    >
-                      {t(`filters.language.${lang}`)}
-                    </button>
-                  );
-                })}
-              </div>
+              <TogglePillGroup
+                options={SUPPORTED_LANGUAGES.map((lang) => ({
+                  value: lang,
+                  label: t(`filters.language.${lang}`),
+                }))}
+                selectedValues={formData.preferred_languages}
+                onToggle={handleLanguageToggle}
+              />
             </div>
 
             {/* Bio */}
