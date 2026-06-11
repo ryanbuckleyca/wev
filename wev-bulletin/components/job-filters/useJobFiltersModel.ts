@@ -78,6 +78,8 @@ export interface JobFiltersModel {
   isSuggestedDefaults: boolean;
   hasProfileWorkTypes: boolean;
   profileWorkTypeLabel: string;
+  hasProfileLanguages: boolean;
+  profileLanguageLabel: string;
   workTypeOptions: { value: string; label: string }[];
   languageOptions: { value: string; label: string }[];
   postedWithinOptions: { value: string; label: string }[];
@@ -130,6 +132,7 @@ export function useJobFiltersModel({
     postedWithin,
     setPostedWithin: onPostedWithinChange,
     profileWorkTypes = [],
+    profileLanguages = [],
     hasAnyFilters,
     clearAllFilters,
     applySuggestedDefaults,
@@ -165,6 +168,18 @@ export function useJobFiltersModel({
     () => profileWorkTypes.map((workType) => getWorkTypeLabel(workType)).join(', '),
     [getWorkTypeLabel, profileWorkTypes],
   );
+
+  const hasProfileLanguages = profileLanguages.length > 0;
+
+  const profileLanguageLabel = useMemo(() => {
+    const getLangLabel = (lang: string) => {
+      if (lang === 'en') return t('filters.language.en');
+      if (lang === 'fr') return t('filters.language.fr');
+      if (lang === 'bilingual') return t('filters.language.bilingual');
+      return lang;
+    };
+    return profileLanguages.map(getLangLabel).join(', ');
+  }, [profileLanguages, t]);
 
   const isSuggestedDefaults =
     !searchQuery &&
@@ -450,6 +465,8 @@ export function useJobFiltersModel({
     isSuggestedDefaults,
     hasProfileWorkTypes,
     profileWorkTypeLabel,
+    hasProfileLanguages,
+    profileLanguageLabel,
     workTypeOptions,
     languageOptions,
     postedWithinOptions,
