@@ -37,7 +37,7 @@ export type ProfileUpdateData = {
   skills?: string[];
   skills_rated?: RatedSkill[] | null;
   work_types?: string[];
-  preferred_languages?: string[];
+  preferred_languages?: string[] | null;
   lat?: number | null;
   lng?: number | null;
   municipality?: string | null;
