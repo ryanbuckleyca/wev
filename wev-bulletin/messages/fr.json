@@ -82,10 +82,19 @@
       "noData": "Aucune donnée de source disponible"
     },
     "language": {
-      "label": "Langue de publication",
+      "label": "Langue requise",
       "en": "Anglais",
       "fr": "Français",
-      "bilingual": "Bilingue"
+      "bilingual": "Bilingue",
+      "tooltip": {
+        "matchesFilter": "{lang} correspond à votre filtre de langue.",
+        "required": "Langue requise : {lang}.",
+        "doesNotMatch": "Ne correspond pas à votre filtre de langue ({lang} requis)."
+      },
+      "profileDefault": "Préférence du profil utilisée : {languages}.",
+      "profileOverride": "Préférence du profil : {languages}. Vous pouvez remplacer ce filtre ici.",
+      "profileLink": "Modifier le profil",
+      "profileReset": "Revenir au profil"
     },
     "chips": {
       "posted": "Publié :",
@@ -279,6 +288,8 @@
     "workValues": "Valeurs de travail",
     "workType": "Préférence de type de travail",
     "workTypeHint": "Utilisé pour préremplir vos filtres de recherche. Vous pouvez toujours modifier cela sur la page des emplois.",
+    "languagePreference": "Préférence de langue",
+    "languagePreferenceHint": "Utilisé pour préremplir le filtre Langue requise sur le tableau d'offres d'emploi.",
     "workEnvironment": "Environnement de travail idéal",
     "workEnvironmentPlaceholder": "Décrivez l'environnement dans lequel vous vous épanouissez...",
     "workEnvironmentHint": "Jusqu'à {max} caractères (environ 250 mots). Ce champ est privé et sert uniquement à personnaliser votre recherche.",

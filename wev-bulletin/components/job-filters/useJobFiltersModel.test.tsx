@@ -24,7 +24,7 @@ const mockControls = {
   setSelectedSources: vi.fn(),
   selectedWorkTypes: ['remote'],
   setSelectedWorkTypes: vi.fn(),
-  selectedLanguages: [],
+  selectedLanguages: [] as string[],
   setSelectedLanguages: vi.fn(),
   showOnlySse: true,
   setShowOnlySse: vi.fn(),
@@ -41,6 +41,9 @@ const mockControls = {
   profileProvince: null as string | null,
   isUsingProfileLocation: false,
   handleResetToProfileLocation: vi.fn(),
+  profileLanguages: [] as string[],
+  isUsingProfileLanguages: false,
+  handleResetToProfileLanguages: vi.fn(),
 };
 
 vi.mock('@/contexts/BulletinFilterContext', () => ({
