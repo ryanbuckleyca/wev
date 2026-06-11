@@ -86,6 +86,11 @@
       "en": "Anglais",
       "fr": "Français",
       "bilingual": "Bilingue",
+      "tooltip": {
+        "matchesFilter": "{lang} correspond à votre filtre de langue.",
+        "required": "Langue requise : {lang}.",
+        "doesNotMatch": "Ne correspond pas à votre filtre de langue ({lang} requis)."
+      },
       "profileDefault": "Préférence du profil utilisée : {languages}.",
       "profileOverride": "Préférence du profil : {languages}. Vous pouvez remplacer ce filtre ici.",
       "profileLink": "Modifier le profil",

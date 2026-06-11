@@ -156,9 +156,9 @@ export default function JobCardFooter({
     const isMatched = selectedLanguages.length === 0 || selectedLanguages.includes(language);
     const tooltip = isMatched
       ? selectedLanguages.length > 0
-        ? `${langLabel} matches your language filter.`
-        : `Required language: ${langLabel}.`
-      : `Does not match your language filter (${langLabel} required).`;
+        ? t('filters.language.tooltip.matchesFilter', { lang: langLabel })
+        : t('filters.language.tooltip.required', { lang: langLabel })
+      : t('filters.language.tooltip.doesNotMatch', { lang: langLabel });
 
     return {
       label: langLabel,
