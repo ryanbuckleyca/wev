@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
+import { normalizeLanguages } from '@/lib/languages';
 import type { Profile } from '@/lib/supabase/profiles';
 import { useProfileSync } from './useProfileSync';
 import {
@@ -179,7 +180,7 @@ export function useBulletinFilters(
   const profileProvince = effectiveProfile?.province ?? null;
 
   const profileLanguages = useMemo(
-    () => effectiveProfile?.preferred_languages ?? [],
+    () => normalizeLanguages(effectiveProfile?.preferred_languages),
     [effectiveProfile?.preferred_languages],
   );
 
