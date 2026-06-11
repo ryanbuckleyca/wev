@@ -82,7 +82,7 @@
       "noData": "No source data available"
     },
     "language": {
-      "label": "Posting Language",
+      "label": "Required Language",
       "en": "English",
       "fr": "French",
       "bilingual": "Bilingual",
@@ -284,7 +284,7 @@
     "workType": "Work Type Preference",
     "workTypeHint": "Used to pre-fill your job search filters. You can still override this on the jobs page.",
     "languagePreference": "Language Preference",
-    "languagePreferenceHint": "Used to pre-fill your job search filters.",
+    "languagePreferenceHint": "Used to pre-fill the Required Language filter on the job board.",
     "workEnvironment": "Ideal Work Environment",
     "workEnvironmentPlaceholder": "Describe the environment you thrive in...",
     "workEnvironmentHint": "Up to {max} characters (about 250 words). This is private and only used to personalize your search.",

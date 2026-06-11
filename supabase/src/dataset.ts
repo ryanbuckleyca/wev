@@ -29,6 +29,35 @@ const TOTAL_SEEDED_JOB_COUNT = 27;
 const TOTAL_SSE_JOB_COUNT = 25;
 const SALARYLESS_JOB_INDEXES = new Set([3, 11, 19]);
 
+// Language distribution reflecting a Montreal-focused SSE job market.
+// 27 jobs across a repeating 10-item pattern:
+//   bilingual-fr (×4), fr (×3), bilingual-en (×2), en (×1)
+// → ~40% bilingual French-primary, ~30% French-only,
+//   ~20% bilingual English-primary, ~10% English-only
+type JobLang = "en" | "fr" | "bilingual-fr" | "bilingual-en";
+const LANG_PATTERN: JobLang[] = [
+  "bilingual-fr",
+  "fr",
+  "bilingual-fr",
+  "en",
+  "bilingual-fr",
+  "fr",
+  "bilingual-en",
+  "fr",
+  "bilingual-fr",
+  "bilingual-en",
+];
+
+function jobLanguage(index: number): JobLang {
+  return LANG_PATTERN[index % LANG_PATTERN.length];
+}
+
+// Map internal variant to the DB value stored in the language column
+function dbLanguage(lang: JobLang): "en" | "fr" | "bilingual" {
+  if (lang === "bilingual-fr" || lang === "bilingual-en") return "bilingual";
+  return lang;
+}
+
 function buildUuid(index: number): string {
   return `00000000-0000-4000-8000-${index.toString().padStart(12, "0")}`;
 }
@@ -233,12 +262,41 @@ function createJobFixture(
   const scrapedAt = hoursAgo(now, index);
   const location = createJobLocation(index, workType);
   const salary = createJobSalary(index);
+  const language = jobLanguage(index);
+
+  // Job content reflects the required working language of the role.
+  // bilingual-fr: French-primary posting, notes English also required.
+  // fr:           Fully French posting, French only.
+  // bilingual-en: English-primary posting, notes French also required.
+  // en:           Fully English posting, English only.
+  const jobTitle =
+    language === "fr"
+      ? `Bâtisseur·se de communauté ${index + 1}`
+      : language === "bilingual-fr"
+        ? `Coordonnateur·trice communautaire ${index + 1} / Community Coordinator`
+        : language === "bilingual-en"
+          ? `Community Coordinator ${index + 1} / Coordonnateur·trice communautaire`
+          : `Community Builder ${index + 1}`;
+
+  const organization =
+    language === "fr" || language === "bilingual-fr"
+      ? `Partenaire WEV ${((index % 4) + 1).toString()}`
+      : `WEV Partner ${((index % 4) + 1).toString()}`;
+
+  const summary =
+    language === "fr"
+      ? `Poste en français — élément de graine ${index + 1}. Ce rôle requiert le français uniquement.`
+      : language === "bilingual-fr"
+        ? `Poste bilingue (français prioritaire) — élément de graine ${index + 1}. Ce rôle requiert le français et l'anglais. / This role requires French and English.`
+        : language === "bilingual-en"
+          ? `Bilingual role (English primary) — seed item ${index + 1}. This role requires English and French. / Ce rôle requiert l'anglais et le français.`
+          : `Deterministic bulletin seed item ${index + 1}. English only role.`;
 
   return {
     close_date: null,
     compensation_meta: salary.compensation_meta,
     date_posted: toIsoDate(datePosted),
-    description: `Owned e2e fixture for role ${index + 1}.`,
+    description: summary,
     employment_type: index % 2 === 0 ? "full-time" : "contract",
     extra: {},
     geocode_accuracy_type: location.geocode_accuracy_type,
@@ -248,8 +306,8 @@ function createJobFixture(
     // The bulletin defaults to the SSE-only filter, so the first 25 rows shape
     // the default landing state and the final 2 rows exercise that toggle.
     is_sse: index < TOTAL_SSE_JOB_COUNT,
-    job_title: `Community Builder ${index + 1}`,
-    language: index % 5 === 0 ? "fr" : "en",
+    job_title: jobTitle,
+    language: dbLanguage(language),
     lat: location.lat,
     listing_url: `https://wev.example/jobs/${index + 1}`,
     lng: location.lng,
@@ -257,14 +315,14 @@ function createJobFixture(
     max_value: salary.max_value,
     min_value: salary.min_value,
     municipality: location.municipality,
-    organization: `WEV Partner ${((index % 4) + 1).toString()}`,
+    organization,
     province: location.province,
     scraped_at: toIsoTimestamp(scrapedAt),
     source_id: sourceId,
     sse_details: null,
     sse_rating: null,
     skills: createSkillUris(index),
-    summary: `Deterministic bulletin seed item ${index + 1}.`,
+    summary,
     unit_text: salary.unit_text,
     values,
     values_rated: createRatedValues(values),
@@ -364,6 +422,7 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     ma_communaute_bene: 0,
   };
   const workTypeCounts = { hybrid: 0, office: 0, remote: 0 };
+  const languageCounts = { en: 0, fr: 0, bilingual: 0 };
   let salaryListedCount = 0;
   let oneWeekCount = 0;
 
@@ -387,7 +446,7 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     if (job.municipality === "Quebec City") municipalityCounts.quebecCity++;
     if (job.municipality === "Toronto") municipalityCounts.toronto++;
 
-    if (job.organization === "WEV Partner 1") organizationCounts.partner1++;
+    if (job.organization === "WEV Partner 1" || job.organization === "Partenaire WEV 1") organizationCounts.partner1++;
 
     if (!job.is_remote && job.province === "ON") provinceCounts.on++;
     if (!job.is_remote && job.province === "QC") provinceCounts.qc++;
@@ -403,11 +462,25 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     if (job.work_type === "office") workTypeCounts.office++;
     if (job.work_type === "remote") workTypeCounts.remote++;
 
+    if (job.language === "en") languageCounts.en++;
+    if (job.language === "fr") languageCounts.fr++;
+    if (job.language === "bilingual") languageCounts.bilingual++;
+
     // Calculate dates within a week (exactly matches the database `daysAgo` generator parameter logic)
     if (index % 12 < 7) {
       oneWeekCount++;
     }
   }
+
+  // sampleJobs: pick specific indexes and derive the expected title from the generator.
+  // index 25 → non-SSE boundary; index 24 → last SSE job; index 3 → salaryless SSE job.
+  const titleFor = (i: number) => {
+    const lang = jobLanguage(i);
+    if (lang === "fr") return `Bâtisseur·se de communauté ${i + 1}`;
+    if (lang === "bilingual-fr") return `Coordonnateur·trice communautaire ${i + 1} / Community Coordinator`;
+    if (lang === "bilingual-en") return `Community Coordinator ${i + 1} / Coordonnateur·trice communautaire`;
+    return `Community Builder ${i + 1}`;
+  };
 
   return {
     employmentTypeCounts,
@@ -418,10 +491,11 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     organizationCounts,
     provinceCounts,
     salaryListedCount,
+    languageCounts,
     sampleJobs: {
-      nonSseOnly: `Community Builder 26`, // Hardcoded testing anchor boundary
-      searchMatch: `Community Builder 25`,
-      salarylessVisible: "Community Builder 4",
+      nonSseOnly: titleFor(25), // first non-SSE job (index 25)
+      searchMatch: titleFor(24), // last SSE job (index 24)
+      salarylessVisible: titleFor(3), // salaryless SSE job (index 3)
     },
     secondPageCount: Math.max(0, sseJobs.length - 20),
     sourceCounts,
