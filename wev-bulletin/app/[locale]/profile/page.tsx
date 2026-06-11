@@ -20,6 +20,7 @@ import LinkButton from '@/components/LinkButton';
 import Alert from '@/components/ui/Alert';
 import CVImportButton from '@/components/profile/cv/CVImportButton';
 import FormLabel from '@/components/FormLabel';
+import { SUPPORTED_LANGUAGES } from '@/lib/languages';
 
 export default function ProfilePage() {
   const t = useTranslations();
@@ -94,7 +95,7 @@ export default function ProfilePage() {
                 {t('profile.languagePreferenceHint')}
               </p>
               <div className="flex gap-2 flex-wrap">
-                {(['en', 'fr', 'bilingual'] as const).map((lang) => {
+                {SUPPORTED_LANGUAGES.map((lang) => {
                   const isSelected = formData.preferred_languages.includes(lang);
                   return (
                     <button

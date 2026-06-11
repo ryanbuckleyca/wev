@@ -9,6 +9,7 @@ import { type EscoSkill } from '@/lib/types/skills';
 import { type WorkValue, buildWorkValues, getValueDefinition } from '@/lib/values';
 import type { CvImportMetadata } from '@/lib/cv/types';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
+import { isSupportedLanguage } from '@/lib/languages';
 import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 import { adjustCutoffOnRemove, adjustCutoffOnReorder } from '@/lib/ranked-list';
 import {
@@ -162,6 +163,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
   }, []);
 
   const handleLanguageToggle = useCallback((lang: string) => {
+    if (!isSupportedLanguage(lang)) return;
     setFormData((prev) => ({
       ...prev,
       preferred_languages: prev.preferred_languages.includes(lang)
