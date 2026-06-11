@@ -27,6 +27,7 @@ interface JobCardProps {
   matchLoading?: boolean;
   initialBookmarked?: boolean;
   selectedWorkTypes?: string[];
+  selectedLanguages?: string[];
   skillLabels?: Record<string, SkillLabel>;
 }
 
@@ -43,6 +44,7 @@ export default function JobCard({
   matchLoading = false,
   initialBookmarked = false,
   selectedWorkTypes,
+  selectedLanguages,
   skillLabels: skillLabelsProp,
 }: JobCardProps) {
   const t = useTranslations();
@@ -151,7 +153,10 @@ export default function JobCard({
     [dateLocale],
   );
 
-  const hasFooter = (job.values && job.values.length > 0) || (job.skills && job.skills.length > 0);
+  const hasFooter =
+    (job.values && job.values.length > 0) ||
+    (job.skills && job.skills.length > 0) ||
+    !!job.language;
 
   return (
     <article
@@ -194,6 +199,8 @@ export default function JobCard({
             fadeBackground="var(--muted)"
             workType={job.work_type}
             selectedWorkTypes={selectedWorkTypes || []}
+            language={job.language}
+            selectedLanguages={selectedLanguages || []}
           />
         </div>
       )}

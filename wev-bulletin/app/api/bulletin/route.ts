@@ -31,6 +31,7 @@ type BulletinApiQueryInput = {
   emps: string[];
   srcs: string[];
   works: string[];
+  langs: string[];
   onlySse: boolean;
   noSalary: boolean;
 };
@@ -76,6 +77,7 @@ function createBuildQueryFn(
     if (input.munis.length) query = query.in('municipality', input.munis);
     if (input.emps.length) query = query.in('employment_type', input.emps);
     if (input.srcs.length) query = query.in('source', input.srcs);
+    if (input.langs.length) query = query.in('language', input.langs);
 
     // 3. Date Filters
     const maxAgeCutoff = new Date(
@@ -98,6 +100,7 @@ function createBuildQueryFn(
 
     // 4. Other Filters
     if (input.works.length) query = query.in('work_type', input.works);
+    if (input.langs.length) query = query.in('language', input.langs);
     if (input.onlySse) query = query.is('is_sse', true);
     if (!input.noSalary) query = query.eq('has_compensation', true);
 
@@ -176,6 +179,7 @@ async function fetchBulletinFacets(
   if (input.works.length) query = query.in('work_type', input.works);
   if (input.onlySse) query = query.is('is_sse', true);
   if (!input.noSalary) query = query.eq('has_compensation', true);
+  if (input.langs.length) query = query.in('language', input.langs);
 
   const { data, error } = await query.limit(5000);
   if (error) throw new Error(error.message);
@@ -266,6 +270,7 @@ export async function GET(request: Request) {
     const emps = searchParams.getAll('emps');
     const srcs = searchParams.getAll('srcs');
     const works = searchParams.getAll('works');
+    const langs = searchParams.getAll('langs');
     const onlySse = searchParams.get('sse') === 'true';
     const noSalary = searchParams.get('nosal') === 'true';
 
@@ -285,6 +290,7 @@ export async function GET(request: Request) {
       emps,
       srcs,
       works,
+      langs,
       onlySse,
       noSalary,
     };

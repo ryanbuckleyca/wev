@@ -138,6 +138,7 @@ describe('Home page work type defaults', () => {
           municipalitiesByProvince: {},
           employmentTypes: [],
           sources: [],
+          languages: [],
         }}
         isLoggedIn={true}
         isAdmin={false}

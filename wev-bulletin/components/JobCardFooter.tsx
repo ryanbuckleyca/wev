@@ -22,6 +22,8 @@ interface JobCardFooterProps {
   fadeBackground?: string;
   workType?: 'remote' | 'hybrid' | 'office';
   selectedWorkTypes?: string[];
+  language?: string | null;
+  selectedLanguages?: string[];
 }
 
 export default function JobCardFooter({
@@ -38,6 +40,8 @@ export default function JobCardFooter({
   fadeBackground = 'var(--muted)',
   workType,
   selectedWorkTypes = [],
+  language,
+  selectedLanguages = [],
 }: JobCardFooterProps) {
   const t = useTranslations();
   const tValues = useTranslations('values');
@@ -137,6 +141,44 @@ export default function JobCardFooter({
     };
   };
 
+  const buildLanguagePill = (): ScrollablePillsItem | undefined => {
+    if (!language) return undefined;
+
+    const langLabel =
+      language === 'en'
+        ? t('filters.language.en')
+        : language === 'fr'
+          ? t('filters.language.fr')
+          : language === 'bilingual'
+            ? t('filters.language.bilingual')
+            : language;
+
+    // Only mark the pill as matched when a language filter is active and it matches.
+    // If no language filter is selected, the pill is not active but we still
+    // surface a descriptive tooltip indicating the job's required language.
+    let isMatched = false;
+    let tooltip = t('filters.language.tooltip.required', { lang: langLabel });
+
+    if (selectedLanguages.length === 0) {
+      // No language filter chosen: do not activate the pill, show required tooltip.
+      isMatched = false;
+      tooltip = t('filters.language.tooltip.required', { lang: langLabel });
+    } else {
+      isMatched = selectedLanguages.includes(language);
+      tooltip = isMatched
+        ? t('filters.language.tooltip.matchesFilter', { lang: langLabel })
+        : t('filters.language.tooltip.doesNotMatch', { lang: langLabel });
+    }
+
+    return {
+      label: langLabel,
+      tooltip,
+      isMatched,
+      icon: 'globe' as const,
+      type: 'language' as const,
+    };
+  };
+
   const matchedValueNames = sharedValues
     .map((value) => getValueTranslations(value).label)
     .join(', ');
@@ -213,7 +255,10 @@ export default function JobCardFooter({
 
   const valueSummaryPill = summaryItems.find((item) => item.icon === 'heart');
   const skillSummaryPill = summaryItems.find((item) => item.icon === 'briefcase');
-  const workTypePill = workType ? buildWorkTypePill() : undefined;
+  const workTypePill = buildWorkTypePill();
+  const languagePill = buildLanguagePill();
+
+  const preItems = [workTypePill, languagePill].filter(Boolean) as ScrollablePillsItem[];
 
   const groups: ExpandablePillGroup[] = [
     { key: 'values', summary: valueSummaryPill, items: valueItems },
@@ -252,7 +297,7 @@ export default function JobCardFooter({
 
       <div className="flex-1 min-w-0">
         <ExpandablePills
-          preItems={workTypePill ? [workTypePill] : []}
+          preItems={preItems}
           groups={groups}
           variant="default"
           fadeBackground={fadeBackground}

@@ -6,6 +6,7 @@ import { WORK_TYPES, type WorkType } from '@/lib/work-types';
 import FormLabel from '@/components/FormLabel';
 import LocationAutocomplete from '@/components/profile/LocationAutocomplete';
 import Alert from '@/components/ui/Alert';
+import TogglePillGroup from '@/components/profile/TogglePillGroup';
 import type { LocationState } from '@/lib/hooks/useProfileForm';
 
 interface WorkSettingSectionProps {
@@ -41,23 +42,14 @@ export default function WorkSettingSection({
         <FormLabel>{t('profile.workType')}</FormLabel>
         <p className="text-xs text-muted-foreground mb-2">{t('profile.workTypeHint')}</p>
         <div className="flex gap-2 flex-wrap">
-          {WORK_TYPES.map((workType) => {
-            const isSelected = workTypes.includes(workType);
-            return (
-              <button
-                key={workType}
-                type="button"
-                onClick={() => onWorkTypeToggle(workType)}
-                className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
-                  isSelected
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'bg-gray-50 text-gray-700 border border-gray-100 dark:bg-zinc-800 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'
-                }`}
-              >
-                {workTypeLabels[workType]}
-              </button>
-            );
-          })}
+          <TogglePillGroup
+            options={WORK_TYPES.map((workType) => ({
+              value: workType,
+              label: workTypeLabels[workType],
+            }))}
+            selectedValues={workTypes}
+            onToggle={(value) => onWorkTypeToggle(value as WorkType)}
+          />
         </div>
       </div>
 

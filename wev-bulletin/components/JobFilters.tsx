@@ -29,6 +29,7 @@ export default function JobFilters(props: JobFiltersProps) {
     selectedEmploymentTypes,
     selectedSources,
     selectedWorkTypes,
+    selectedLanguages,
     showOnlySse,
     setShowOnlySse: onShowOnlySseChange,
     showJobsWithoutSalary,
@@ -42,6 +43,8 @@ export default function JobFilters(props: JobFiltersProps) {
     profileMunicipality,
     isUsingProfileLocation = false,
     handleResetToProfileLocation: onResetToProfileLocation,
+    isUsingProfileLanguages = false,
+    handleResetToProfileLanguages: onResetToProfileLanguages,
   } = controls;
   const t = useTranslations();
   const model = useJobFiltersModel(props);
@@ -138,6 +141,42 @@ export default function JobFilters(props: JobFiltersProps) {
                       className="text-[var(--primary)] hover:underline"
                     >
                       {t('filters.workType.profileReset')}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null
+            }
+          />
+        </div>
+
+        <div data-testid={JOB_BOARD_TEST_IDS.languageGroup}>
+          <FilterButtonGroup
+            label={t('filters.language.label')}
+            options={model.languageOptions}
+            isSelected={(value) => selectedLanguages.includes(value)}
+            onSelect={(value) => model.handleLanguageToggle(value)}
+            helper={
+              model.hasProfileLanguages ? (
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {isUsingProfileLanguages
+                      ? t('filters.language.profileDefault', {
+                          languages: model.profileLanguageLabel,
+                        })
+                      : t('filters.language.profileOverride', {
+                          languages: model.profileLanguageLabel,
+                        })}
+                  </span>
+                  <StyledLink href="/profile" variant="text" size="sm" className="p-0">
+                    {t('filters.language.profileLink')}
+                  </StyledLink>
+                  {!isUsingProfileLanguages && onResetToProfileLanguages ? (
+                    <button
+                      type="button"
+                      onClick={onResetToProfileLanguages}
+                      className="text-[var(--primary)] hover:underline"
+                    >
+                      {t('filters.language.profileReset')}
                     </button>
                   ) : null}
                 </div>
