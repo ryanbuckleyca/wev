@@ -22,6 +22,8 @@ interface JobCardFooterProps {
   fadeBackground?: string;
   workType?: 'remote' | 'hybrid' | 'office';
   selectedWorkTypes?: string[];
+  language?: string | null;
+  selectedLanguages?: string[];
 }
 
 export default function JobCardFooter({
@@ -38,6 +40,8 @@ export default function JobCardFooter({
   fadeBackground = 'var(--muted)',
   workType,
   selectedWorkTypes = [],
+  language,
+  selectedLanguages = [],
 }: JobCardFooterProps) {
   const t = useTranslations();
   const tValues = useTranslations('values');
@@ -137,6 +141,34 @@ export default function JobCardFooter({
     };
   };
 
+  const buildLanguagePill = (): ScrollablePillsItem | undefined => {
+    if (!language) return undefined;
+
+    const langLabel =
+      language === 'en'
+        ? t('filters.language.en')
+        : language === 'fr'
+          ? t('filters.language.fr')
+          : language === 'bilingual'
+            ? t('filters.language.bilingual')
+            : language;
+
+    const isMatched = selectedLanguages.length === 0 || selectedLanguages.includes(language);
+    const tooltip = isMatched
+      ? selectedLanguages.length > 0
+        ? `${langLabel} matches your language filter.`
+        : `Required language: ${langLabel}.`
+      : `Does not match your language filter (${langLabel} required).`;
+
+    return {
+      label: langLabel,
+      tooltip,
+      isMatched,
+      icon: 'globe' as const,
+      type: 'language' as const,
+    };
+  };
+
   const matchedValueNames = sharedValues
     .map((value) => getValueTranslations(value).label)
     .join(', ');
@@ -213,7 +245,10 @@ export default function JobCardFooter({
 
   const valueSummaryPill = summaryItems.find((item) => item.icon === 'heart');
   const skillSummaryPill = summaryItems.find((item) => item.icon === 'briefcase');
-  const workTypePill = workType ? buildWorkTypePill() : undefined;
+  const workTypePill = buildWorkTypePill();
+  const languagePill = buildLanguagePill();
+
+  const preItems = [workTypePill, languagePill].filter(Boolean) as ScrollablePillsItem[];
 
   const groups: ExpandablePillGroup[] = [
     { key: 'values', summary: valueSummaryPill, items: valueItems },
@@ -252,7 +287,7 @@ export default function JobCardFooter({
 
       <div className="flex-1 min-w-0">
         <ExpandablePills
-          preItems={workTypePill ? [workTypePill] : []}
+          preItems={preItems}
           groups={groups}
           variant="default"
           fadeBackground={fadeBackground}
