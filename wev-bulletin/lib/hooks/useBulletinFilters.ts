@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
+import { normalizeLanguages } from '@/lib/languages';
 import type { Profile } from '@/lib/supabase/profiles';
 import { useProfileSync } from './useProfileSync';
 import {
@@ -41,6 +42,8 @@ export interface BulletinFilterControls {
   setSelectedSources: QueryStateSetter<string[]>;
   selectedWorkTypes: string[];
   setSelectedWorkTypes: QueryStateSetter<string[]>;
+  selectedLanguages: string[];
+  setSelectedLanguages: QueryStateSetter<string[]>;
   showOnlySse: boolean;
   setShowOnlySse: QueryStateSetter<boolean>;
   showJobsWithoutSalary: boolean;
@@ -62,6 +65,9 @@ export interface BulletinFilterControls {
   profileProvince: string | null;
   isUsingProfileLocation: boolean;
   handleResetToProfileLocation: () => void;
+  profileLanguages: string[];
+  isUsingProfileLanguages: boolean;
+  handleResetToProfileLanguages: () => void;
   hasAnyFilters: boolean;
   clearAllFilters: () => void;
   applySuggestedDefaults: () => void;
@@ -124,6 +130,26 @@ export function useBulletinFilters(
     'workType',
     parseAsArrayOf(parseAsString).withDefault(initialProfileWorkTypes),
   );
+  const [langQuery, setLangQuery] = useQueryState(
+    'lang',
+    parseAsArrayOf(parseAsString).withDefault([]),
+  );
+
+  const selectedLanguages = useMemo(() => {
+    if (langQuery && langQuery.length > 0) return langQuery;
+    const legacyLangs = searchParams?.getAll('langs') ?? [];
+    if (legacyLangs.length > 0) {
+      return legacyLangs.flatMap((l) => l.split(',')).filter(Boolean);
+    }
+    return [];
+  }, [langQuery, searchParams]);
+
+  const setSelectedLanguages = useCallback(
+    (value: string[]) => {
+      void setLangQuery(value.length > 0 ? value : null);
+    },
+    [setLangQuery],
+  );
   const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true));
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState(
     'salary',
@@ -152,6 +178,11 @@ export function useBulletinFilters(
 
   const profileMunicipality = effectiveProfile?.municipality ?? null;
   const profileProvince = effectiveProfile?.province ?? null;
+
+  const profileLanguages = useMemo(
+    () => normalizeLanguages(effectiveProfile?.preferred_languages),
+    [effectiveProfile?.preferred_languages],
+  );
 
   // Sync work types from profile on first load
   useProfileSync(userId, effectiveProfileLoading, 'workType', {
@@ -182,6 +213,18 @@ export function useBulletinFilters(
     },
   });
 
+  // Sync language preference from profile on first load
+  useProfileSync(userId, effectiveProfileLoading, 'lang', {
+    profileValue: profileLanguages,
+    selectedValue: selectedLanguages,
+    shouldSync: (profileValue, selectedValue, hasQueryParam) => {
+      if (!profileValue || profileValue.length === 0) return false;
+      if (hasQueryParam || selectedValue.length > 0) return false;
+      return true;
+    },
+    setter: setSelectedLanguages,
+  });
+
   const handleResetToProfileWorkTypes = useCallback(() => {
     if (profileWorkTypes.length === 0) return;
     void setSelectedWorkTypes(profileWorkTypes);
@@ -193,6 +236,11 @@ export function useBulletinFilters(
     void setSelectedMunicipalities([profileMunicipality]);
   }, [profileMunicipality, profileProvince, setSelectedProvinces, setSelectedMunicipalities]);
 
+  const handleResetToProfileLanguages = useCallback(() => {
+    if (profileLanguages.length === 0) return;
+    void setSelectedLanguages(profileLanguages);
+  }, [profileLanguages, setSelectedLanguages]);
+
   const isUsingProfileLocation = useMemo(() => {
     if (!profileMunicipality || !profileProvince) return false;
     return (
@@ -203,6 +251,12 @@ export function useBulletinFilters(
     );
   }, [profileMunicipality, profileProvince, selectedMunicipalities, selectedProvinces]);
 
+  const isUsingProfileLanguages = useMemo(() => {
+    if (profileLanguages.length === 0) return false;
+    if (selectedLanguages.length === 0) return false;
+    return hasSameSelections(profileLanguages, selectedLanguages);
+  }, [profileLanguages, selectedLanguages]);
+
   const filters = useMemo<BulletinFilters>(
     () => ({
       searchQuery,
@@ -212,6 +266,7 @@ export function useBulletinFilters(
       selectedEmploymentTypes,
       selectedSources,
       selectedWorkTypes,
+      selectedLanguages,
       showOnlySse,
       showJobsWithoutSalary,
       postedWithin,
@@ -224,6 +279,7 @@ export function useBulletinFilters(
       selectedEmploymentTypes,
       selectedSources,
       selectedWorkTypes,
+      selectedLanguages,
       showOnlySse,
       showJobsWithoutSalary,
       postedWithin,
@@ -245,6 +301,7 @@ export function useBulletinFilters(
     selectedEmploymentTypes.length > 0 ||
     selectedSources.length > 0 ||
     selectedWorkTypes.length > 0 ||
+    selectedLanguages.length > 0 ||
     showOnlySse ||
     !showJobsWithoutSalary ||
     postedWithin !== 'any';
@@ -259,6 +316,7 @@ export function useBulletinFilters(
     void setSelectedMunicipalities([]);
     void setSelectedEmploymentTypes([]);
     void setSelectedSources([]);
+    void setSelectedLanguages([]);
   }, [
     setSearchQuery,
     setSelectedOrganizations,
@@ -266,6 +324,7 @@ export function useBulletinFilters(
     setSelectedMunicipalities,
     setSelectedEmploymentTypes,
     setSelectedSources,
+    setSelectedLanguages,
   ]);
 
   const clearAllFilters = useCallback(() => {
@@ -313,6 +372,8 @@ export function useBulletinFilters(
     setSelectedSources,
     selectedWorkTypes,
     setSelectedWorkTypes,
+    selectedLanguages,
+    setSelectedLanguages,
     showOnlySse,
     setShowOnlySse,
     showJobsWithoutSalary,
@@ -334,6 +395,9 @@ export function useBulletinFilters(
     profileProvince,
     isUsingProfileLocation,
     handleResetToProfileLocation,
+    profileLanguages,
+    isUsingProfileLanguages,
+    handleResetToProfileLanguages,
     hasAnyFilters,
     clearAllFilters,
     applySuggestedDefaults,

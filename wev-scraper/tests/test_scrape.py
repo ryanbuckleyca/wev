@@ -183,6 +183,7 @@ def test_main_flow(mock_orch_class, mock_init):
         args.provider = "groq"
         args.max_jobs = 5
         args.headed = True
+        args.vpn = True
         mock_args.return_value = args
 
         main()
@@ -190,4 +191,81 @@ def test_main_flow(mock_orch_class, mock_init):
         assert os.environ["LLM_PROVIDER"] == "groq"
         assert os.environ["MAX_JOBS_PER_SOURCE"] == "5"
         assert os.environ["SCRAPER_HEADED"] == "1"
+        assert os.environ["SCRAPER_VPN_MODE"] == "1"
         mock_orch.run.assert_called_once()
+
+
+@patch("scrape.initialize_runtime_env")
+@patch("scrape.ScraperOrchestrator")
+def test_main_vpn_does_not_force_headed_mode(mock_orch_class, mock_init, monkeypatch):
+    monkeypatch.delenv("SCRAPER_HEADED", raising=False)
+    mock_orch = mock_orch_class.return_value
+    with patch("scrape.parse_args") as mock_args:
+        args = MagicMock()
+        args.prod = False
+        args.publish = False
+        args.dry_run = True
+        args.compare = False
+        args.provider = None
+        args.max_jobs = None
+        args.headed = False
+        args.vpn = True
+        mock_args.return_value = args
+
+        main()
+
+        assert "SCRAPER_HEADED" not in os.environ
+        assert os.environ["SCRAPER_VPN_MODE"] == "1"
+        mock_orch.run.assert_called_once()
+
+
+@patch("scrape.initialize_runtime_env")
+@patch("scrape.ScraperOrchestrator")
+def test_main_prod_confirmation_propagates_to_child_scripts(mock_orch_class, mock_init, monkeypatch):
+    monkeypatch.setenv("PROD_CONFIRMED", "1")
+    monkeypatch.delenv("CONFIRM_PROD_RUN", raising=False)
+    mock_orch = mock_orch_class.return_value
+
+    with patch("scrape.parse_args") as mock_args:
+        args = MagicMock()
+        args.prod = True
+        args.publish = False
+        args.dry_run = False
+        args.compare = False
+        args.provider = None
+        args.max_jobs = None
+        args.headed = False
+        args.vpn = False
+        mock_args.return_value = args
+
+        main()
+
+        assert os.environ["USE_PROD_DB"] == "1"
+        assert os.environ["PROD_CONFIRMED"] == "1"
+        assert os.environ["CONFIRM_PROD_RUN"] == "YES"
+        mock_orch.run.assert_called_once()
+
+
+@patch("scrape.initialize_runtime_env")
+@patch("scrape.ScraperOrchestrator")
+def test_main_prod_noninteractive_requires_confirmation(mock_orch_class, mock_init, monkeypatch):
+    monkeypatch.delenv("PROD_CONFIRMED", raising=False)
+    monkeypatch.delenv("CONFIRM_PROD_RUN", raising=False)
+
+    with patch("scrape.parse_args") as mock_args, patch("sys.stdin.isatty", return_value=False):
+        args = MagicMock()
+        args.prod = True
+        args.publish = False
+        args.dry_run = False
+        args.compare = False
+        args.provider = None
+        args.max_jobs = None
+        args.headed = False
+        args.vpn = False
+        mock_args.return_value = args
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        mock_orch_class.assert_not_called()

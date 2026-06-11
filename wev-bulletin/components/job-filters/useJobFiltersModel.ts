@@ -78,7 +78,10 @@ export interface JobFiltersModel {
   isSuggestedDefaults: boolean;
   hasProfileWorkTypes: boolean;
   profileWorkTypeLabel: string;
+  hasProfileLanguages: boolean;
+  profileLanguageLabel: string;
   workTypeOptions: { value: string; label: string }[];
+  languageOptions: { value: string; label: string }[];
   postedWithinOptions: { value: string; label: string }[];
   organizations: string[];
   provinces: string[];
@@ -93,6 +96,7 @@ export interface JobFiltersModel {
   handleEmploymentTypeToggle: (employmentType: string) => void;
   handleSourceToggle: (source: string) => void;
   handleWorkTypeToggle: (workType: WorkType) => void;
+  handleLanguageToggle: (lang: string) => void;
   clearAllFilters: () => void;
   applySuggestedDefaults: () => void;
 }
@@ -119,6 +123,8 @@ export function useJobFiltersModel({
     setSelectedSources: onSourcesChange,
     selectedWorkTypes,
     setSelectedWorkTypes: onWorkTypesChange,
+    selectedLanguages = [],
+    setSelectedLanguages: onLanguagesChange,
     showOnlySse,
     setShowOnlySse: onShowOnlySseChange,
     showJobsWithoutSalary,
@@ -126,6 +132,7 @@ export function useJobFiltersModel({
     postedWithin,
     setPostedWithin: onPostedWithinChange,
     profileWorkTypes = [],
+    profileLanguages = [],
     hasAnyFilters,
     clearAllFilters,
     applySuggestedDefaults,
@@ -162,6 +169,18 @@ export function useJobFiltersModel({
     [getWorkTypeLabel, profileWorkTypes],
   );
 
+  const hasProfileLanguages = profileLanguages.length > 0;
+
+  const profileLanguageLabel = useMemo(() => {
+    const getLangLabel = (lang: string) => {
+      if (lang === 'en') return t('filters.language.en');
+      if (lang === 'fr') return t('filters.language.fr');
+      if (lang === 'bilingual') return t('filters.language.bilingual');
+      return lang;
+    };
+    return profileLanguages.map(getLangLabel).join(', ');
+  }, [profileLanguages, t]);
+
   const isSuggestedDefaults =
     !searchQuery &&
     selectedOrganizations.length === 0 &&
@@ -169,6 +188,7 @@ export function useJobFiltersModel({
     selectedMunicipalities.length === 0 &&
     selectedEmploymentTypes.length === 0 &&
     selectedSources.length === 0 &&
+    selectedLanguages.length === 0 &&
     isWorkTypesDefault &&
     showOnlySse &&
     showJobsWithoutSalary &&
@@ -275,12 +295,26 @@ export function useJobFiltersModel({
         (source) => onSourcesChange(selectedSources.filter((item) => item !== source)),
       ),
     );
+    chips.push(
+      ...buildSelectionChips(
+        'language',
+        selectedLanguages,
+        (lang) => {
+          if (lang === 'en') return t('filters.language.en');
+          if (lang === 'fr') return t('filters.language.fr');
+          if (lang === 'bilingual') return t('filters.language.bilingual');
+          return lang;
+        },
+        (lang) => onLanguagesChange(selectedLanguages.filter((item) => item !== lang)),
+      ),
+    );
 
     return chips;
   }, [
     getTranslationOrFallback,
     getWorkTypeLabel,
     onEmploymentTypesChange,
+    onLanguagesChange,
     onMunicipalitiesChange,
     onOrganizationsChange,
     onPostedWithinChange,
@@ -293,6 +327,7 @@ export function useJobFiltersModel({
     postedWithin,
     searchQuery,
     selectedEmploymentTypes,
+    selectedLanguages,
     selectedMunicipalities,
     selectedOrganizations,
     selectedProvinces,
@@ -364,6 +399,13 @@ export function useJobFiltersModel({
     [onWorkTypesChange, selectedWorkTypes],
   );
 
+  const handleLanguageToggle = useCallback(
+    (lang: string) => {
+      onLanguagesChange(toggleSelection(selectedLanguages, lang));
+    },
+    [onLanguagesChange, selectedLanguages],
+  );
+
   const visibleMunicipalitiesByProvince = useMemo(
     () =>
       getVisibleMunicipalitiesByProvince({
@@ -394,6 +436,15 @@ export function useJobFiltersModel({
     [getWorkTypeLabel],
   );
 
+  const languageOptions = useMemo(
+    () => [
+      { value: 'en', label: t('filters.language.en') },
+      { value: 'fr', label: t('filters.language.fr') },
+      { value: 'bilingual', label: t('filters.language.bilingual') },
+    ],
+    [t],
+  );
+
   const postedWithinOptions = useMemo(
     () =>
       postedWithinButtonValues.map((value) => ({
@@ -414,7 +465,10 @@ export function useJobFiltersModel({
     isSuggestedDefaults,
     hasProfileWorkTypes,
     profileWorkTypeLabel,
+    hasProfileLanguages,
+    profileLanguageLabel,
     workTypeOptions,
+    languageOptions,
     postedWithinOptions,
     organizations,
     provinces,
@@ -429,6 +483,7 @@ export function useJobFiltersModel({
     handleEmploymentTypeToggle,
     handleSourceToggle,
     handleWorkTypeToggle,
+    handleLanguageToggle,
     clearAllFilters,
     applySuggestedDefaults,
   };

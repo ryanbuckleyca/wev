@@ -396,6 +396,7 @@ export type Database = {
           lng: number | null;
           location_display_name: string | null;
           municipality: string | null;
+          preferred_languages: string[] | null;
           profile_photo_url: string | null;
           province: string | null;
           skills: string[] | null;
@@ -416,6 +417,7 @@ export type Database = {
           lng?: number | null;
           location_display_name?: string | null;
           municipality?: string | null;
+          preferred_languages?: string[] | null;
           profile_photo_url?: string | null;
           province?: string | null;
           skills?: string[] | null;
@@ -436,6 +438,7 @@ export type Database = {
           lng?: number | null;
           location_display_name?: string | null;
           municipality?: string | null;
+          preferred_languages?: string[] | null;
           profile_photo_url?: string | null;
           province?: string | null;
           skills?: string[] | null;

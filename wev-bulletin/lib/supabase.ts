@@ -39,6 +39,7 @@ export interface JobPosting {
   /** Stored as bigint cents in the DB. Supabase JS client returns this as number. */
   max_value?: number | null;
   hours_per_week?: number | null;
+  language?: string | null;
   /** Metadata from the compensation extraction pipeline. Reserved for future use. */
   compensation_meta?: CompensationMeta | null;
 }

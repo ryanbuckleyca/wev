@@ -33,6 +33,7 @@ export default function FilterButtonGroup({
           <button
             key={option.value}
             type="button"
+            aria-pressed={isSelected(option.value)}
             onClick={() => onSelect(option.value)}
             className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
               isSelected(option.value)

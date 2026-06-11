@@ -95,7 +95,7 @@ vi.mock('@/lib/bulletin/server-data', () => ({
   BULLETIN_CACHE_TAG: 'bulletin-jobs',
   BULLETIN_CACHE_REVALIDATE_SECONDS: 60,
   BULLETIN_JOB_SELECT:
-    'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week',
+    'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week, language',
 }));
 
 vi.mock('@/lib/resolve-skill-labels', () => ({
@@ -182,12 +182,13 @@ describe('GET /api/bulletin (handler contract)', () => {
   it('translates sort and filters into query-chain calls', async () => {
     await GET(
       new Request(
-        'http://localhost/api/bulletin?sortBy=salary-desc&sse=true&orgs=Org+A&orgs=Org+B&postedWithin=1-week',
+        'http://localhost/api/bulletin?sortBy=salary-desc&sse=true&orgs=Org+A&orgs=Org+B&postedWithin=1-week&langs=en&langs=fr',
       ),
     );
 
     expect(mockIs).toHaveBeenCalledWith('is_sse', true);
     expect(mockIn).toHaveBeenCalledWith('organization', ['Org A', 'Org B']);
+    expect(mockIn).toHaveBeenCalledWith('language', ['en', 'fr']);
     expect(mockEq).toHaveBeenCalledWith('has_compensation', true);
     expect(mockOrder).toHaveBeenCalledWith('min_value', { ascending: false, nullsFirst: false });
     expect(mockGte).toHaveBeenCalledWith('date_posted', expect.any(String));

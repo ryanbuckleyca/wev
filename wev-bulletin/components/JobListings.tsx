@@ -49,6 +49,7 @@ export default function JobListings({
   const filterContext = useContext(BulletinFilterContext);
   const allExpanded = filterContext?.allJobsExpanded ?? true;
   const selectedWorkTypes = filterContext?.selectedWorkTypes;
+  const selectedLanguages = filterContext?.selectedLanguages;
 
   const handleSseToggle = async (job: JobPosting) => {
     const newValue = !job.is_sse;
@@ -145,6 +146,7 @@ export default function JobListings({
             matchLoading={userMetaLoading}
             initialBookmarked={bookmarkedJobIds?.has(job.id) ?? false}
             selectedWorkTypes={selectedWorkTypes}
+            selectedLanguages={selectedLanguages}
             skillLabels={skillLabels}
           />
         ))}

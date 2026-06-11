@@ -61,6 +61,7 @@ function createMockUpdateProfile() {
       skills: data.skills ?? [],
       skills_rated: data.skills_rated ?? null,
       work_types: data.work_types ?? [],
+      preferred_languages: data.preferred_languages ?? [],
       profile_photo_url: null,
       cv_import: null,
       lat: null,

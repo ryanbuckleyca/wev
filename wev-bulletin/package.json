@@ -13,7 +13,14 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "tsc": "tsc --noEmit"
+    "scrape:prod": "python3 ../wev-scraper/scrape.py",
+    "scrape:prod:vpn": "python3 ../wev-scraper/scrape.py --vpn",
+    "install:scraper-deps": "(cd ../wev-scraper && pip install -r requirements.txt)",
+    "tsc": "tsc --noEmit",
+    "skills:index": "python3 ../wev-scraper/scripts/build_esco_skills_index.py",
+    "db:seed-local": "tsx scripts/seed-local.ts",
+    "prep": "npx supabase start && yes | npx supabase db reset && npm run db:seed-local && npm run skills:index -- --upsert-db --supabase-url $SUPABASE_URL --supabase-key $SUPABASE_SERVICE_ROLE_KEY",
+    "setup": "npm install && npm run install:scraper-deps && npm run prep"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
