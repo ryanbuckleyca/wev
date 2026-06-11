@@ -7,6 +7,5 @@ ALTER TABLE public.profiles
 ALTER TABLE public.profiles
   ADD CONSTRAINT preferred_languages_valid CHECK (
     preferred_languages IS NULL OR
-    (SELECT bool_and(value IN ('en', 'fr', 'bilingual'))
-     FROM unnest(preferred_languages) AS value)
+    ARRAY['en', 'fr', 'bilingual'] @> preferred_languages
   );
