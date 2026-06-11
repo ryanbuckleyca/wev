@@ -58,6 +58,15 @@ function dbLanguage(lang: JobLang): "en" | "fr" | "bilingual" {
   return lang;
 }
 
+// Build a job title string for a given internal language variant and index.
+// Centralises title formatting used in both fixtures and expectations.
+function buildJobTitle(lang: JobLang, index: number): string {
+  if (lang === "fr") return `Bâtisseur·se de communauté ${index + 1}`;
+  if (lang === "bilingual-fr") return `Coordonnateur·trice communautaire ${index + 1} / Community Coordinator`;
+  if (lang === "bilingual-en") return `Community Coordinator ${index + 1} / Coordonnateur·trice communautaire`;
+  return `Community Builder ${index + 1}`;
+}
+
 function buildUuid(index: number): string {
   return `00000000-0000-4000-8000-${index.toString().padStart(12, "0")}`;
 }
@@ -269,19 +278,10 @@ function createJobFixture(
   // fr:           Fully French posting, French only.
   // bilingual-en: English-primary posting, notes French also required.
   // en:           Fully English posting, English only.
-  const jobTitle =
-    language === "fr"
-      ? `Bâtisseur·se de communauté ${index + 1}`
-      : language === "bilingual-fr"
-        ? `Coordonnateur·trice communautaire ${index + 1} / Community Coordinator`
-        : language === "bilingual-en"
-          ? `Community Coordinator ${index + 1} / Coordonnateur·trice communautaire`
-          : `Community Builder ${index + 1}`;
+  const jobTitle = buildJobTitle(language, index);
 
-  const organization =
-    language === "fr" || language === "bilingual-fr"
-      ? `Partenaire WEV ${((index % 4) + 1).toString()}`
-      : `WEV Partner ${((index % 4) + 1).toString()}`;
+  // Use a single canonical organization label in seed data; localize at render time.
+  const organization = `WEV Partner ${((index % 4) + 1).toString()}`;
 
   const summary =
     language === "fr"
@@ -446,7 +446,7 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     if (job.municipality === "Quebec City") municipalityCounts.quebecCity++;
     if (job.municipality === "Toronto") municipalityCounts.toronto++;
 
-    if (job.organization === "WEV Partner 1" || job.organization === "Partenaire WEV 1") organizationCounts.partner1++;
+    if (job.organization === "WEV Partner 1") organizationCounts.partner1++;
 
     if (!job.is_remote && job.province === "ON") provinceCounts.on++;
     if (!job.is_remote && job.province === "QC") provinceCounts.qc++;
@@ -474,13 +474,7 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
 
   // sampleJobs: pick specific indexes and derive the expected title from the generator.
   // index 25 → non-SSE boundary; index 24 → last SSE job; index 3 → salaryless SSE job.
-  const titleFor = (i: number) => {
-    const lang = jobLanguage(i);
-    if (lang === "fr") return `Bâtisseur·se de communauté ${i + 1}`;
-    if (lang === "bilingual-fr") return `Coordonnateur·trice communautaire ${i + 1} / Community Coordinator`;
-    if (lang === "bilingual-en") return `Community Coordinator ${i + 1} / Coordonnateur·trice communautaire`;
-    return `Community Builder ${i + 1}`;
-  };
+  const titleFor = (i: number) => buildJobTitle(jobLanguage(i), i);
 
   return {
     employmentTypeCounts,
