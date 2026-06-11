@@ -153,12 +153,22 @@ export default function JobCardFooter({
             ? t('filters.language.bilingual')
             : language;
 
-    const isMatched = selectedLanguages.length === 0 || selectedLanguages.includes(language);
-    const tooltip = isMatched
-      ? selectedLanguages.length > 0
+    // Only mark the pill as matched when a language filter is active and it matches.
+    // If no language filter is selected, the pill is not active but we still
+    // surface a descriptive tooltip indicating the job's required language.
+    let isMatched = false;
+    let tooltip = t('filters.language.tooltip.required', { lang: langLabel });
+
+    if (selectedLanguages.length === 0) {
+      // No language filter chosen: do not activate the pill, show required tooltip.
+      isMatched = false;
+      tooltip = t('filters.language.tooltip.required', { lang: langLabel });
+    } else {
+      isMatched = selectedLanguages.includes(language);
+      tooltip = isMatched
         ? t('filters.language.tooltip.matchesFilter', { lang: langLabel })
-        : t('filters.language.tooltip.required', { lang: langLabel })
-      : t('filters.language.tooltip.doesNotMatch', { lang: langLabel });
+        : t('filters.language.tooltip.doesNotMatch', { lang: langLabel });
+    }
 
     return {
       label: langLabel,
