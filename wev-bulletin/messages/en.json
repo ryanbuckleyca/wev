@@ -82,10 +82,19 @@
       "noData": "No source data available"
     },
     "language": {
-      "label": "Posting Language",
+      "label": "Required Language",
       "en": "English",
       "fr": "French",
-      "bilingual": "Bilingual"
+      "bilingual": "Bilingual",
+      "tooltip": {
+        "matchesFilter": "{lang} matches your language filter.",
+        "required": "Required language: {lang}.",
+        "doesNotMatch": "Does not match your language filter ({lang} required)."
+      },
+      "profileDefault": "Using your profile preference: {languages}.",
+      "profileOverride": "Profile preference: {languages}. You can override this filter here.",
+      "profileLink": "Edit in profile",
+      "profileReset": "Reset to profile"
     },
     "chips": {
       "posted": "Posted:",
@@ -279,6 +288,8 @@
     "workValues": "Work Values",
     "workType": "Work Type Preference",
     "workTypeHint": "Used to pre-fill your job search filters. You can still override this on the jobs page.",
+    "languagePreference": "Language Preference",
+    "languagePreferenceHint": "Used to pre-fill the Required Language filter on the job board.",
     "workEnvironment": "Ideal Work Environment",
     "workEnvironmentPlaceholder": "Describe the environment you thrive in...",
     "workEnvironmentHint": "Up to {max} characters (about 250 words). This is private and only used to personalize your search.",

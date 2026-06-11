@@ -19,6 +19,9 @@ import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
 import Alert from '@/components/ui/Alert';
 import CVImportButton from '@/components/profile/cv/CVImportButton';
+import FormLabel from '@/components/FormLabel';
+import { SUPPORTED_LANGUAGES } from '@/lib/languages';
+import TogglePillGroup from '@/components/profile/TogglePillGroup';
 
 export default function ProfilePage() {
   const t = useTranslations();
@@ -45,6 +48,7 @@ export default function ProfilePage() {
     handleSaveProfile,
     handleApplyCvImport,
     handleWorkTypeToggle,
+    handleLanguageToggle,
   } = useProfileForm(locale);
 
   const hasLocationValue = selectedValues.includes('Location');
@@ -84,6 +88,22 @@ export default function ProfilePage() {
               onLocationChange={(val) => setFormData({ ...formData, location: val })}
               hasLocationValue={hasLocationValue}
             />
+
+            {/* Language Preference */}
+            <div>
+              <FormLabel>{t('profile.languagePreference')}</FormLabel>
+              <p className="text-xs text-muted-foreground mb-2">
+                {t('profile.languagePreferenceHint')}
+              </p>
+              <TogglePillGroup
+                options={SUPPORTED_LANGUAGES.map((lang) => ({
+                  value: lang,
+                  label: t(`filters.language.${lang}`),
+                }))}
+                selectedValues={formData.preferred_languages}
+                onToggle={handleLanguageToggle}
+              />
+            </div>
 
             {/* Bio */}
             <div>

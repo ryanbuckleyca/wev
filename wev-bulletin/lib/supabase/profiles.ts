@@ -4,7 +4,7 @@ import { type Database } from './database.types';
 import { parseCvImportMetadata, type CvImportMetadata } from '@/lib/cv/types';
 
 const PROFILE_COLUMNS =
-  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, lat, lng, municipality, province, location_display_name, profile_photo_url, cv_import, created_at, updated_at' as const;
+  'id, full_name, bio, values, values_rated, skills, skills_rated, work_types, preferred_languages, lat, lng, municipality, province, location_display_name, profile_photo_url, cv_import, created_at, updated_at' as const;
 
 export type Profile = {
   id: string;
@@ -15,6 +15,7 @@ export type Profile = {
   skills: string[];
   skills_rated: RatedSkill[] | null;
   work_types: string[];
+  preferred_languages: string[];
   lat: number | null;
   lng: number | null;
   municipality: string | null;
@@ -36,6 +37,7 @@ export type ProfileUpdateData = {
   skills?: string[];
   skills_rated?: RatedSkill[] | null;
   work_types?: string[];
+  preferred_languages?: string[] | null;
   lat?: number | null;
   lng?: number | null;
   municipality?: string | null;
@@ -54,6 +56,7 @@ function normalizeProfileRow(row: ProfileRow): Profile {
     values: row.values ?? [],
     skills: row.skills ?? [],
     work_types: row.work_types ?? [],
+    preferred_languages: row.preferred_languages ?? [],
     cv_import: parseCvImportMetadata(row.cv_import),
     values_rated: (row.values_rated as RatedValue[] | null) ?? null,
     skills_rated: (row.skills_rated as RatedSkill[] | null) ?? null,

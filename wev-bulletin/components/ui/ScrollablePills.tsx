@@ -4,6 +4,7 @@ import {
   HeartSolid,
   Briefcase2Solid,
   LocationArrowRightSolid,
+  Globe1Outlined,
   ChevronDownOutlined,
 } from '@lineiconshq/free-icons';
 import HorizontalScrollWithFades from './HorizontalScrollWithFades';
@@ -13,8 +14,8 @@ export interface ScrollablePillsItem {
   label: string;
   tooltip?: string;
   isMatched?: boolean;
-  icon?: 'heart' | 'briefcase' | 'location';
-  type?: 'value' | 'skill' | 'summary' | 'workType';
+  icon?: 'heart' | 'briefcase' | 'location' | 'globe';
+  type?: 'value' | 'skill' | 'summary' | 'workType' | 'language';
   className?: string;
   groupId?: string;
   groupKey?: string;
@@ -104,6 +105,12 @@ export function ScrollablePills({
               ) : item.icon === 'location' ? (
                 <Lineicons
                   icon={LocationArrowRightSolid}
+                  size={12}
+                  className={`flex-shrink-0 ${item.isMatched ? 'text-wev-info' : 'text-gray-400'}`}
+                />
+              ) : item.icon === 'globe' ? (
+                <Lineicons
+                  icon={Globe1Outlined}
                   size={12}
                   className={`flex-shrink-0 ${item.isMatched ? 'text-wev-info' : 'text-gray-400'}`}
                 />
