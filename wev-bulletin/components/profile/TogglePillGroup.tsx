@@ -29,7 +29,7 @@ export default function TogglePillGroup({
             className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
               isSelected
                 ? 'bg-primary text-white shadow-sm'
-                : 'bg-gray-50 text-gray-700 border border-gray-100 dark:bg-zinc-800 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'
+                : 'bg-gray-50 text-gray-700 border border-gray-100 dark:bg-zinc-800 dark:border-zinc-700 hover:bg-teal-100'
             }`}
           >
             {option.label}
