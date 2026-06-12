@@ -151,6 +151,7 @@ def process_jobs_unified(
             # Filter by scraped_at if since_days is provided
             if since_days:
                 from datetime import datetime, timedelta
+
                 from pytz import timezone
 
                 # Supabase timestamps are UTC; ensure comparison is also UTC

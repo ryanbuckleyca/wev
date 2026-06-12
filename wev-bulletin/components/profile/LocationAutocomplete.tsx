@@ -225,7 +225,7 @@ export default function LocationAutocomplete({
         </PopoverContent>
       </Popover>
 
-      {hint && !displayError && <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
+      {hint && !displayError && <p className="text-xs text-muted-foreground">{hint}</p>}
       {displayError && (
         <p role="alert" className="text-xs text-red-600 dark:text-red-400">
           {displayError}
