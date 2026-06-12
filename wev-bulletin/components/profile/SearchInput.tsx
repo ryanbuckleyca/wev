@@ -37,7 +37,7 @@ export default function SearchInput({
         aria-controls={listboxId}
         aria-autocomplete="list"
         aria-describedby={ariaDescribedBy}
-        className="min-w-0 flex-1 bg-transparent text-[13px] font-medium text-foreground outline-none placeholder:text-muted-foreground"
+        className="min-w-0 flex-1 bg-transparent text-base sm:text-[13px] font-medium text-foreground outline-none placeholder:text-muted-foreground"
       />
       {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       {query && !isSearching && (

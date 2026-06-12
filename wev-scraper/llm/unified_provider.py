@@ -163,7 +163,7 @@ class UnifiedJobProcessor:
                         {"value": v, "confidence": i + 1} for i, v in enumerate(values)
                     ]
                 # Process language
-                if isinstance(item, dict) and "language" in item:
+                if "language" in item:
                     lang = item["language"].lower()
                     if lang in ["en", "fr", "bilingual"]:
                         item["language"] = lang

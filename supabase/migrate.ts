@@ -72,7 +72,7 @@ function runMigration(target: string, dryRun: boolean) {
     console.log("ℹ️  No remote-only migrations found or fetch failed.");
   }
 
-  let dbPushCmd = "supabase db push --yes --include-all";
+  let dbPushCmd = "supabase db push --yes";
   if (dryRun) dbPushCmd += " --dry-run";
   // SUPABASE_DB_PASSWORD is passed via the environment (already loaded from
   // .env.production above) — the Supabase CLI reads it automatically.

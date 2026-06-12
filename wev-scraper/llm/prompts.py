@@ -144,15 +144,15 @@ def get_unified_system_prompt(include_sse: bool = False) -> str:
     """Get system prompt for unified job processing."""
     base_parts = [
         "You are an expert job analyst. For each job, provide:",
-        "1. summary: 1 sentence describing the work and its impact",
-        "2. language: string - 'en', 'fr', or 'bilingual' (if the job explicitly requires both English and French, or has significant content in both languages)",
-        "3. values: array of the top 5 most relevant values from the provided taxonomy — rank by strength of evidence in the job text and return only the 5 best matches",
+        "- summary: 1 sentence describing the work and its impact",
+        "- language: string - 'en', 'fr', or 'bilingual' (if the job explicitly requires both English and French, or has significant content in both languages)",
+        "- values: array of the top 5 most relevant values from the provided taxonomy — rank by strength of evidence in the job text and return only the 5 best matches",
     ]
 
     if include_sse:
         base_parts.extend([
-            "3. is_sse: boolean - true if social/solidarity economy (non-profit, cooperative, etc.)",
-            "4. sse_confidence: float 0-1 for classification confidence",
+            "- is_sse: boolean - true if social/solidarity economy (non-profit, cooperative, etc.)",
+            "- sse_confidence: float 0-1 for classification confidence",
         ])
 
     base_parts.extend([

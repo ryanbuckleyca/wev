@@ -40,7 +40,7 @@ export default function WorkSettingSection({
       {/* Work Type Preference */}
       <div className="space-y-2">
         <FormLabel>{t('profile.workType')}</FormLabel>
-        <p className="text-xs text-muted-foreground">{t('profile.workTypeHint')}</p>
+        <p className="helper-text">{t('profile.workTypeHint')}</p>
         <TogglePillGroup
           options={WORK_TYPES.map((workType) => ({
             value: workType,
@@ -54,7 +54,7 @@ export default function WorkSettingSection({
       {/* Location autocomplete */}
       <div className="mt-6 space-y-2">
         <FormLabel htmlFor="location-autocomplete">{t('profile.location')}</FormLabel>
-        <p className="text-xs text-muted-foreground">{t('profile.locationHint')}</p>
+        <p className="helper-text">{t('profile.locationHint')}</p>
         <LocationAutocomplete
           inputId="location-autocomplete"
           value={
