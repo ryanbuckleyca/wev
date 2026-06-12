@@ -24,8 +24,8 @@ export default function SearchInput({
   id,
 }: SearchInputProps) {
   return (
-    <div className="flex flex-1 items-center gap-2 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 transition-all focus-within:border-gray-200 focus-within:ring-2 focus-within:ring-gray-100/50 dark:bg-zinc-900/50 dark:border-zinc-800 dark:focus-within:border-zinc-700 dark:focus-within:ring-zinc-800/50">
-      <Search className="h-4 w-4 shrink-0 text-gray-400" />
+    <div className="flex flex-1 items-center gap-2 rounded-wev-btn bg-background border border-border px-3 py-2 transition-all focus-within:ring-2 focus-within:ring-ring dark:focus-within:border-border">
+      <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
       <input
         ref={inputRef}
         id={id}
@@ -37,14 +37,14 @@ export default function SearchInput({
         aria-controls={listboxId}
         aria-autocomplete="list"
         aria-describedby={ariaDescribedBy}
-        className="min-w-0 flex-1 bg-transparent text-base sm:text-[13px] font-medium text-foreground outline-none placeholder:text-gray-400"
+        className="min-w-0 flex-1 bg-transparent text-[13px] font-medium text-foreground outline-none placeholder:text-muted-foreground"
       />
-      {isSearching && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+      {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       {query && !isSearching && (
         <button
           type="button"
           onClick={onClear}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          className="text-muted-foreground hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>

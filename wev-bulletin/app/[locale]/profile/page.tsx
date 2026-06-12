@@ -90,9 +90,9 @@ export default function ProfilePage() {
             />
 
             {/* Language Preference */}
-            <div>
+            <div className="space-y-2">
               <FormLabel>{t('profile.languagePreference')}</FormLabel>
-              <p className="text-xs text-muted-foreground mb-2">
+              <p className="text-xs text-muted-foreground">
                 {t('profile.languagePreferenceHint')}
               </p>
               <TogglePillGroup
@@ -106,20 +106,23 @@ export default function ProfilePage() {
             </div>
 
             {/* Bio */}
-            <div>
-              <FormTextarea
-                htmlFor="bio"
-                label={t('profile.bio')}
-                value={formData.bio}
-                onChange={(value) => setFormData({ ...formData, bio: value })}
-                placeholder={t('profile.bioPlaceholder')}
-                rows={4}
-                showCount={false}
-              />
-            </div>
+            <FormTextarea
+              htmlFor="bio"
+              label={t('profile.bio')}
+              value={formData.bio}
+              onChange={(value) => setFormData({ ...formData, bio: value })}
+              placeholder={t('profile.bioPlaceholder')}
+              rows={4}
+              showCount={false}
+            />
 
-            {/* Skills */}
-            <div className="space-y-6">
+            {/* Competencies — groups CV import, Skills, and Work Values */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <FormLabel>{t('profile.competencies')}</FormLabel>
+                <p className="text-xs text-muted-foreground">{t('profile.competenciesHint')}</p>
+              </div>
+
               <CVImportButton
                 locale={locale}
                 cvImport={formData.cv_import ?? null}
@@ -127,60 +130,63 @@ export default function ProfilePage() {
                 onConfirmImport={handleApplyCvImport}
               />
 
-              <div className="flex items-center gap-2 mb-2">
-                <h2 className="text-sm font-semibold leading-none text-foreground">
-                  {t('profile.skills')}
-                </h2>
-                <CountBadge count={selectedSkills.length} max={MAX_PROFILE_SKILLS} />
+              {/* Skills */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {t('profile.skills')}
+                  </p>
+                  <CountBadge count={selectedSkills.length} max={MAX_PROFILE_SKILLS} />
+                </div>
+
+                {selectedSkills.length > MAX_PROFILE_SKILLS && (
+                  <Alert variant="warning">
+                    {t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
+                  </Alert>
+                )}
+
+                <SkillsSelector
+                  selectedSkills={selectedSkills}
+                  skillCutoff={skillCutoff}
+                  onToggle={handleSkillToggle}
+                  onReorder={handleSkillReorder}
+                  onRemove={handleSkillRemove}
+                  locale={locale}
+                />
               </div>
 
-              {selectedSkills.length > MAX_PROFILE_SKILLS && (
-                <Alert variant="warning" className="mb-2">
-                  {t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
-                </Alert>
-              )}
+              {/* Work Values */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {t('profile.workValues')}
+                  </p>
+                  <CountBadge count={selectedValues.length} max={MAX_PROFILE_VALUES} />
+                </div>
 
-              <SkillsSelector
-                selectedSkills={selectedSkills}
-                skillCutoff={skillCutoff}
-                onToggle={handleSkillToggle}
-                onReorder={handleSkillReorder}
-                onRemove={handleSkillRemove}
-                locale={locale}
-              />
-            </div>
+                {selectedValues.length > MAX_PROFILE_VALUES && (
+                  <Alert variant="warning">
+                    {t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
+                  </Alert>
+                )}
 
-            {/* Work Values */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <h2 className="text-sm font-semibold leading-none text-foreground">
-                  {t('profile.workValues')}
-                </h2>
-                <CountBadge count={selectedValues.length} max={MAX_PROFILE_VALUES} />
+                <ValuesSelector
+                  values={workValues}
+                  selectedValues={selectedValues}
+                  valueCutoff={valueCutoff}
+                  onToggle={handleValueToggle}
+                  onReorder={handleValueReorder}
+                  onRemove={handleValueRemove}
+                  locale={locale}
+                />
               </div>
-
-              {selectedValues.length > MAX_PROFILE_VALUES && (
-                <Alert variant="warning" className="mb-2">
-                  {t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
-                </Alert>
-              )}
-
-              <ValuesSelector
-                values={workValues}
-                selectedValues={selectedValues}
-                valueCutoff={valueCutoff}
-                onToggle={handleValueToggle}
-                onReorder={handleValueReorder}
-                onRemove={handleValueRemove}
-                locale={locale}
-              />
             </div>
           </div>
 
           {/* Actions */}
-          <div className="pt-6 border-t border-gray-100 dark:border-zinc-800">
+          <div className="pt-6 border-t border-border">
             <div className="flex justify-between gap-3">
-              <LinkButton href="/" variant="outline">
+              <LinkButton href="/" variant="secondary">
                 {t('profile.backToJobs')}
               </LinkButton>
               <Button type="submit" disabled={isSaving} loading={isSaving}>

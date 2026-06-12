@@ -295,6 +295,8 @@
     "workEnvironmentHint": "Jusqu'à {max} caractères (environ 250 mots). Ce champ est privé et sert uniquement à personnaliser votre recherche.",
     "workEnvironmentCount": "{current}/{max} caractères",
     "workEnvironmentMaxExceeded": "Veuillez limiter votre description de l'environnement de travail à moins de {max} caractères.",
+    "competencies": "Compétences",
+    "competenciesHint": "Importez votre CV pour remplir automatiquement, ou ajoutez vos compétences et valeurs manuellement.",
     "skills": "Compétences",
     "skillsPlaceholder": "Rechercher des compétences à ajouter",
     "skillsPlaceholderShort": "Rechercher des compétences à ajouter",

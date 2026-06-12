@@ -8,7 +8,7 @@ interface FormLabelProps {
 
 export default function FormLabel({ children, htmlFor, required = false }: FormLabelProps) {
   return (
-    <Label htmlFor={htmlFor} className="block mb-2">
+    <Label htmlFor={htmlFor} className="block">
       {children}
       {required && <span className="text-destructive-foreground ml-1">*</span>}
     </Label>
