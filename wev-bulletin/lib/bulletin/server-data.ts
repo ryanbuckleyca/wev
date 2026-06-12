@@ -111,7 +111,6 @@ async function fetchBulletinFacets(
 
   query = applySearchFilter(query, vectorColumn, input.searchQuery);
   query = applyAgeFilter(query, input.postedWithin);
-  query = applyNonFacetFilters(query, input);
 
   // Limit the impact of unbounded facet queries while keeping them relatively accurate
   const { data, error } = await query.limit(5000);

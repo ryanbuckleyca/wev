@@ -97,30 +97,10 @@ export function toggleMunicipalitySelection(
 
 export function getVisibleMunicipalitiesByProvince({
   municipalitiesByProvince,
-  selectedProvinces,
-  selectedMunicipalities,
 }: {
   municipalitiesByProvince: MunicipalitiesByProvince;
-  selectedProvinces: string[];
-  selectedMunicipalities: string[];
 }): MunicipalitiesByProvince {
-  const visible: MunicipalitiesByProvince = {};
-
-  Object.entries(municipalitiesByProvince).forEach(([province, municipalities]) => {
-    const hasSelectedMunicipality = municipalities.some((municipality) =>
-      selectedMunicipalities.includes(municipality),
-    );
-    const shouldShow =
-      selectedProvinces.length === 0 ||
-      selectedProvinces.includes(province) ||
-      hasSelectedMunicipality;
-
-    if (shouldShow) {
-      visible[province] = municipalities;
-    }
-  });
-
-  return visible;
+  return municipalitiesByProvince;
 }
 
 export function getAllMunicipalities(municipalitiesByProvince: MunicipalitiesByProvince): string[] {
