@@ -7,7 +7,6 @@ import {
   buildFilterOptions,
   getAllMunicipalities,
   getIndeterminateProvinces,
-  getVisibleMunicipalitiesByProvince,
   toggleMunicipalitySelection,
   toggleProvinceSelection,
   toggleSelection,
@@ -405,15 +404,7 @@ export function useJobFiltersModel({
     [onLanguagesChange, selectedLanguages],
   );
 
-  const visibleMunicipalitiesByProvince = useMemo(
-    () =>
-      getVisibleMunicipalitiesByProvince({
-        municipalitiesByProvince,
-        selectedProvinces,
-        selectedMunicipalities,
-      }),
-    [municipalitiesByProvince, selectedMunicipalities, selectedProvinces],
-  );
+  const visibleMunicipalitiesByProvince = municipalitiesByProvince;
 
   const allMunicipalities = useMemo(
     () => getAllMunicipalities(municipalitiesByProvince),

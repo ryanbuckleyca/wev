@@ -14,9 +14,12 @@ if (!fs.existsSync(typesPath)) {
 const text = fs.readFileSync(typesPath, "utf8");
 
 function parseInsertKeys(table: string) {
-  // Regex to find the `Insert` block for a table like `bookmarks: { ... Insert: { ... } ... }`
+  // Regex to find the `Insert` block for a table in the generated types file.
+  // We anchor on a word boundary (\b) so that e.g. "jobs" doesn't match inside
+  // "job_skills", and we escape the table name to handle any special characters.
+  const escapedTable = table.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const re = new RegExp(
-    `${table}\\s*:\\s*{[\\s\\S]*?Insert\\s*:\\s*{([\\s\\S]*?)}`,
+    `\\b${escapedTable}\\s*:\\s*\\{[\\s\\S]*?Insert\\s*:\\s*\\{([\\s\\S]*?)\\}`,
     "m",
   );
   const m = text.match(re);
@@ -58,9 +61,10 @@ for (const file of backupFiles) {
 
   const insertKeys = parseInsertKeys(table);
   if (!insertKeys) {
-    console.warn(
-      `Could not find table ${table} in database.types.ts; skipping file ${file}`,
+    console.error(
+      `Could not find Insert type for table "${table}" in database.types.ts — run \`npm run types:supabase\` to regenerate, or add "${table}" to the skip list if intentional.`,
     );
+    failed = true;
     continue;
   }
 

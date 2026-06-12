@@ -4,7 +4,6 @@ import {
   buildFilterOptions,
   getAllMunicipalities,
   getIndeterminateProvinces,
-  getVisibleMunicipalitiesByProvince,
   toggleMunicipalitySelection,
   toggleProvinceSelection,
 } from './filter-options';
@@ -78,19 +77,11 @@ describe('bulletin filter option helpers', () => {
     });
   });
 
-  it('derives visible municipalities, all municipalities, and indeterminate provinces', () => {
+  it('derives all municipalities and indeterminate provinces', () => {
     const municipalitiesByProvince = {
       Ontario: ['Ottawa', 'Toronto'],
       Quebec: ['Montreal'],
     };
-
-    expect(
-      getVisibleMunicipalitiesByProvince({
-        municipalitiesByProvince,
-        selectedProvinces: ['Ontario'],
-        selectedMunicipalities: ['Montreal'],
-      }),
-    ).toEqual(municipalitiesByProvince);
 
     expect(getAllMunicipalities(municipalitiesByProvince)).toEqual([
       'Montreal',

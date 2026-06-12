@@ -8,8 +8,10 @@ function execVerbose(command: string) {
     process.cwd(),
     "node_modules/.bin/supabase",
   );
-  const finalCommand = command.startsWith("supabase")
-    ? command.replace("supabase", localSupabaseCli)
+  // Replace the leading "supabase " token precisely — avoids corrupting commands
+  // where "supabase" appears elsewhere (e.g. as a flag value or workdir path).
+  const finalCommand = command.startsWith("supabase ")
+    ? `${localSupabaseCli} ${command.slice("supabase ".length)}`
     : command;
   const result = spawnSync(finalCommand, {
     shell: true,
@@ -72,12 +74,16 @@ function runMigration(target: string, dryRun: boolean) {
 
   let dbPushCmd = "supabase db push --yes --include-all";
   if (dryRun) dbPushCmd += " --dry-run";
-  if (process.env.SUPABASE_DB_PASSWORD) {
-    dbPushCmd += ` -p "${process.env.SUPABASE_DB_PASSWORD}"`;
-  }
+  // SUPABASE_DB_PASSWORD is passed via the environment (already loaded from
+  // .env.production above) — the Supabase CLI reads it automatically.
+  // Never interpolate credentials into shell command strings.
 
   console.log(`▶ Pushing local migrations...`);
-  const pushRes = spawnSync(dbPushCmd, { shell: true, stdio: "inherit" });
+  const pushRes = spawnSync(dbPushCmd, {
+    shell: true,
+    stdio: "inherit",
+    env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
+  });
   if (pushRes.status !== 0) {
     console.error(
       "❌ Push failed. If you see hash mismatches, you may need to 'git pull' first.",

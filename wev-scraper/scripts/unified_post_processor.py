@@ -18,9 +18,11 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Literal
 
+from pytz import timezone
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 # Load env before any DB import. We can't rely on dotenv-cli at the npm layer
@@ -79,6 +81,60 @@ from llm.factory import get_unified_processor  # noqa: E402
 from utils.db import supabase  # noqa: E402
 from utils.log import scraper_log  # noqa: E402
 
+VALID_LANGUAGES = frozenset({"en", "fr", "bilingual"})
+
+
+def _fetch_jobs(
+    job_ids: List[str] | None,
+    since_days: int | None,
+    limit: int,
+) -> List[Dict[str, Any]]:
+    """Fetch jobs from the database.
+
+    When job_ids are provided, fetches exactly those jobs (limit ignored).
+    Otherwise fetches the most-recently-scraped jobs, optionally filtered by
+    scraped_at age, up to `limit` rows.
+    """
+    query = supabase.table("jobs").select(
+        "id, description, summary, values, is_sse, sse_details, language, scraped_at"
+    )
+
+    if job_ids:
+        query = query.in_("id", job_ids)
+    else:
+        if since_days:
+            utc = timezone("UTC")
+            cutoff = datetime.now(utc) - timedelta(days=since_days)
+            query = query.gte("scraped_at", cutoff.isoformat())
+
+        query = query.order("scraped_at", desc=True)
+
+        if limit > 0:
+            query = query.limit(limit)
+
+    return query.execute().data
+
+
+def _needs_processing(job: Dict[str, Any], task: str, force_language_reprocess: bool) -> bool:
+    """Return True if a job requires processing for the given task."""
+    if task == "all":
+        return (
+            not (job.get("summary") or "").strip()
+            or not job.get("values")
+            or job.get("is_sse") is None
+            or not (job.get("sse_details") or "").strip()
+            or job.get("language") not in VALID_LANGUAGES
+        )
+    if task == "sse":
+        return job.get("is_sse") is None
+    if task == "values":
+        return not job.get("values")
+    if task == "summary":
+        return not job.get("summary")
+    if task == "language":
+        return force_language_reprocess or job.get("language") not in VALID_LANGUAGES
+    return False
+
 
 def process_jobs_unified(
         task: str = "all",
@@ -92,8 +148,9 @@ def process_jobs_unified(
     """Process jobs using unified LLM approach.
 
     Args:
-        task: What to process - "sse", "values", "skills", or "all"
-        limit: Maximum jobs to process
+        task: What to process — "sse", "values", "skills", "summary", "language", or "all"
+        limit: Maximum number of rows to fetch from the DB (ignored when job_ids are given).
+               Note: post-filter skips may mean fewer than `limit` jobs are actually processed.
         job_ids: Specific job IDs to process
         dry_run: Don't save to database
         verbose: Detailed logging
@@ -116,7 +173,6 @@ def process_jobs_unified(
     print(f"Dry run: {dry_run}")
     print("=" * 70)
 
-    # Show what tasks will be performed
     task_descriptions = {
         "summary": "Job summarization (1 sentence)",
         "values": "Values tagging (from taxonomy)",
@@ -132,7 +188,6 @@ def process_jobs_unified(
         print(f"✓ Task to perform: {task_descriptions.get(task, task)}")
     print()
 
-    # Initialize unified processor
     try:
         processor = get_unified_processor()
         print("✓ Unified processor initialized")
@@ -141,99 +196,34 @@ def process_jobs_unified(
         counts["errors"] += 1
         return counts
 
-    # Fetch jobs
+    # Fetch and filter jobs
     try:
-        query = supabase.table("jobs").select("id, description, summary, values, is_sse, sse_details, language, scraped_at")
-
-        if job_ids:
-            query = query.in_("id", job_ids)
-        else:
-            # Filter by scraped_at if since_days is provided
-            if since_days:
-                from datetime import datetime, timedelta
-
-                from pytz import timezone
-
-                # Supabase timestamps are UTC; ensure comparison is also UTC
-                utc = timezone("UTC")
-                date_n_days_ago = datetime.now(utc) - timedelta(days=since_days)
-                query = query.gte("scraped_at", date_n_days_ago.isoformat())
-
-            # Order by scraped_at desc to get most recent jobs for limiting
-            query = query.order("scraped_at", desc=True)
-
-            # Apply limit if not processing specific job IDs
-            if limit > 0:
-                query = query.limit(limit)
-
-        jobs = query.execute().data
+        jobs = _fetch_jobs(job_ids, since_days, limit)
         print(f"✓ Fetched {len(jobs)} jobs")
     except Exception as e:
         scraper_log(f"✗ Failed to fetch jobs: {e}")
         counts["errors"] += 1
         return counts
 
-    # Process in smaller batches to avoid LLM token limits
-    batch_size = 10
-    all_filtered_jobs = []
-
-    for i in range(0, len(jobs), batch_size):
-        batch_jobs = jobs[i:i + batch_size]
-        print(f"  Processing batch {i//batch_size + 1}/{(len(jobs) + batch_size - 1)//batch_size} ({len(batch_jobs)} jobs)")
-
-        # Filter jobs in this batch based on task
-        filtered_batch = []
-        for job in batch_jobs:
-            should_process = False
-
-            if task == "all":
-                summary = job.get("summary", "")
-                values = job.get("values", [])
-                is_sse = job.get("is_sse")
-                sse_details = job.get("sse_details", "")
-                language = job.get("language")
-
-                should_process = (
-                    not summary or not summary.strip() or
-                    not values or len(values) == 0 or
-                    is_sse is None or
-                    not sse_details or not sse_details.strip() or
-                    not language or language not in ["en", "fr", "bilingual"]
-                )
-            elif task == "sse":
-                should_process = job.get("is_sse") is None
-            elif task == "values":
-                should_process = not job.get("values")
-            elif task == "summary":
-                should_process = not job.get("summary")
-            elif task == "language":
-                should_process = force_language_reprocess or (not job.get("language") or job.get("language") not in ["en", "fr", "bilingual"])
-
-            if should_process:
-                filtered_batch.append(job)
-
-        all_filtered_jobs.extend(filtered_batch)
-        print(f"    ✓ Batch {i//batch_size + 1}: {len(filtered_batch)} eligible jobs")
-
-    filtered_jobs = all_filtered_jobs
-    print(f"✓ Filtered to {len(filtered_jobs)} eligible jobs total")
-
-    if limit > 0:
-        filtered_jobs = filtered_jobs[:limit]
-        print(f"✓ Applied --limit: processing up to {len(filtered_jobs)} job(s)")
+    filtered_jobs = [
+        job for job in jobs
+        if _needs_processing(job, task, force_language_reprocess)
+    ]
+    print(f"✓ Filtered to {len(filtered_jobs)} eligible jobs")
 
     if not filtered_jobs:
         print("No eligible jobs to process.")
         return counts
 
-    # Process in smaller batches using unified processor
+    # Process in batches
+    batch_size = 10
     try:
-        # Process filtered jobs in smaller batches
         processed_count = 0
         result: dict = {}
         for i in range(0, len(filtered_jobs), batch_size):
             batch = filtered_jobs[i:i + batch_size]
-            print(f"  Processing batch {i//batch_size + 1}/{(len(filtered_jobs) + batch_size - 1)//batch_size} ({len(batch)} jobs)")
+            total_batches = (len(filtered_jobs) + batch_size - 1) // batch_size
+            print(f"  Processing batch {i//batch_size + 1}/{total_batches} ({len(batch)} jobs)")
 
             result = processor.process_jobs(batch)
 
@@ -247,7 +237,6 @@ def process_jobs_unified(
                 counts["errors"] += len(batch)
                 continue
 
-            # Update database based on task for this batch
             for job, job_result in zip(batch, result.get("results", []), strict=False):
                 if not isinstance(job_result, dict) or not job_result:
                     scraper_log(f"✗ Invalid or empty result for job {job['id']}")
@@ -256,7 +245,6 @@ def process_jobs_unified(
 
                 if not dry_run:
                     update_data = _build_update_data(task, job_result)
-
                     if update_data:
                         try:
                             _try_db_write(job, update_data, supabase)
@@ -276,7 +264,7 @@ def process_jobs_unified(
                     processed_count += 1
 
                 if verbose:
-                    actions = [k for k in ("summary", "values") if k in job_result]
+                    actions = [k for k in ("summary", "values", "language") if k in job_result]
                     if "is_sse" in job_result:
                         actions.append("SSE")
                     print(f"  ✓ Processed job {job['id'][:8]}... ({', '.join(actions) or 'no actions'})")
