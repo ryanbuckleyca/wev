@@ -90,7 +90,7 @@ export default function Header({
             <div className="hidden sm:block">
               <LocaleSwitcher />
             </div>
-            <div className="hidden md:block">
+            <div className="hidden sm:block">
               <ThemeToggle initialTheme={initialTheme} />
             </div>
           </div>
