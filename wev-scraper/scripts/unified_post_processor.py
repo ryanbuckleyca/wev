@@ -81,12 +81,14 @@ from utils.log import scraper_log  # noqa: E402
 
 
 def process_jobs_unified(
-    task: str = "all",
-    limit: int = 100,
-    job_ids: List[str] | None = None,
-    dry_run: bool = False,
-    verbose: bool = False,
-) -> Dict[str, Any]:
+        task: str = "all",
+        limit: int = 100,
+        job_ids: List[str] | None = None,
+        dry_run: bool = False,
+        verbose: bool = False,
+        since_days: int | None = None,
+        force_language_reprocess: bool = False,
+    ) -> Dict[str, Any]:
     """Process jobs using unified LLM approach.
 
     Args:
@@ -101,7 +103,7 @@ def process_jobs_unified(
     """
     counts = {
         "processed": 0,
-        "updated": {"sse": 0, "values": 0, "skills": 0, "summary": 0},
+        "updated": {"sse": 0, "values": 0, "skills": 0, "summary": 0, "language": 0},
         "skipped": 0,
         "errors": 0,
         "provider_used": None
@@ -119,11 +121,12 @@ def process_jobs_unified(
         "summary": "Job summarization (1 sentence)",
         "values": "Values tagging (from taxonomy)",
         "sse": "SSE classification (no Google Search unless FORCE_GROUNDING=1)",
+        "language": "Language tagging (en, fr, or bilingual)",
     }
 
     if task == "all":
         print("✓ Tasks to perform:")
-        for t in ["summary", "values", "sse"]:
+        for t in ["summary", "values", "sse", "language"]:
             print(f"  - {task_descriptions[t]}")
     else:
         print(f"✓ Task to perform: {task_descriptions.get(task, task)}")
@@ -140,18 +143,29 @@ def process_jobs_unified(
 
     # Fetch jobs
     try:
+        query = supabase.table("jobs").select("id, description, summary, values, is_sse, sse_details, language, scraped_at")
+
         if job_ids:
-            jobs = supabase.table("jobs").select("*").in_("id", job_ids).execute().data
+            query = query.in_("id", job_ids)
         else:
-            # Use the working query approach from our test
-            print("  Query: SELECT * FROM jobs with high limit")
+            # Filter by scraped_at if since_days is provided
+            if since_days:
+                from datetime import datetime, timedelta
+                from pytz import timezone
 
-            # Test count first
-            count_result = supabase.table("jobs").select("id", count="exact").execute()
-            print(f"  Count check: {count_result.count}")
+                # Supabase timestamps are UTC; ensure comparison is also UTC
+                utc = timezone("UTC")
+                date_n_days_ago = datetime.now(utc) - timedelta(days=since_days)
+                query = query.gte("scraped_at", date_n_days_ago.isoformat())
 
-            jobs = supabase.table("jobs").select("*").limit(1000).execute().data
+            # Order by scraped_at desc to get most recent jobs for limiting
+            query = query.order("scraped_at", desc=True)
 
+            # Apply limit if not processing specific job IDs
+            if limit > 0:
+                query = query.limit(limit)
+
+        jobs = query.execute().data
         print(f"✓ Fetched {len(jobs)} jobs")
     except Exception as e:
         scraper_log(f"✗ Failed to fetch jobs: {e}")
@@ -176,12 +190,14 @@ def process_jobs_unified(
                 values = job.get("values", [])
                 is_sse = job.get("is_sse")
                 sse_details = job.get("sse_details", "")
+                language = job.get("language")
 
                 should_process = (
                     not summary or not summary.strip() or
                     not values or len(values) == 0 or
                     is_sse is None or
-                    not sse_details or not sse_details.strip()
+                    not sse_details or not sse_details.strip() or
+                    not language or language not in ["en", "fr", "bilingual"]
                 )
             elif task == "sse":
                 should_process = job.get("is_sse") is None
@@ -189,6 +205,8 @@ def process_jobs_unified(
                 should_process = not job.get("values")
             elif task == "summary":
                 should_process = not job.get("summary")
+            elif task == "language":
+                should_process = force_language_reprocess or (not job.get("language") or job.get("language") not in ["en", "fr", "bilingual"])
 
             if should_process:
                 filtered_batch.append(job)
@@ -247,6 +265,8 @@ def process_jobs_unified(
                                 counts["updated"]["values"] += 1
                             if "is_sse" in update_data:
                                 counts["updated"]["sse"] += 1
+                            if "language" in update_data:
+                                counts["updated"]["language"] += 1
                             processed_count += 1
                         except Exception as e:
                             scraper_log(f"✗ DB write permanently failed for job {job['id']}: {e}")
@@ -297,6 +317,10 @@ def _build_update_data(task: TaskType, job_result: dict) -> dict:
                 "reasoning": job_result.get("sse_details", "Generated by unified processor")
             })
 
+    # Language is always processed if available
+    if job_result.get("language"):
+        update_data["language"] = job_result["language"]
+
     return update_data
 
 
@@ -336,8 +360,11 @@ def _try_db_write(job: dict, update_data: dict, db_client) -> None:
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Unified post-processor for jobs")
-    parser.add_argument("--task", choices=["sse", "values", "summary", "all"],
+    parser.add_argument("--task", choices=["sse", "values", "summary", "language", "all"],
                        default="all", help="What to process")
+    parser.add_argument("--since-days", type=int, help="Process jobs created since N days ago")
+    parser.add_argument("--force-language-reprocess", action="store_true",
+                        help="Force re-processing of language tags even if already present and valid.")
     parser.add_argument("--limit", type=int, default=100, help="Maximum jobs to process")
     parser.add_argument("--job-id", nargs="+", help="Specific job IDs to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't save to database")
@@ -378,7 +405,9 @@ def main():
         limit=args.limit,
         job_ids=args.job_id,
         dry_run=args.dry_run,
-        verbose=args.verbose
+        verbose=args.verbose,
+        since_days=args.since_days,
+        force_language_reprocess=args.force_language_reprocess
     )
 
     # Print summary

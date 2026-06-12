@@ -108,7 +108,7 @@ class UnifiedJobProcessor:
                 f"Description:\n{description}"
             )
 
-        fields = "index, summary, values, is_sse, sse_confidence" if include_sse else "index, summary, values"
+        fields = "index, summary, language, values, is_sse, sse_confidence" if include_sse else "index, summary, language, values"
         prompt_parts.append(f"\n\nOutput JSON array with objects containing: {fields}")
 
         return "".join(prompt_parts)
@@ -162,6 +162,14 @@ class UnifiedJobProcessor:
                     item["values_rated"] = [
                         {"value": v, "confidence": i + 1} for i, v in enumerate(values)
                     ]
+                # Process language
+                if isinstance(item, dict) and "language" in item:
+                    lang = item["language"].lower()
+                    if lang in ["en", "fr", "bilingual"]:
+                        item["language"] = lang
+                    else:
+                        item["language"] = "en" # Default to English if invalid or not provided
+
             return items
 
         # 1. Try raw response first

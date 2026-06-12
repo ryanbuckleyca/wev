@@ -4,7 +4,13 @@ import path from "node:path";
 import { config as loadEnv } from "dotenv";
 
 function execVerbose(command: string) {
-  const result = spawnSync(command, { shell: true, stdio: "inherit" });
+  const localSupabaseCli = path.resolve(process.cwd(), "node_modules/.bin/supabase");
+  const finalCommand = command.startsWith("supabase") ? command.replace("supabase", localSupabaseCli) : command;
+  const result = spawnSync(finalCommand, {
+    shell: true,
+    stdio: "inherit",
+    env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
+  });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
@@ -59,7 +65,7 @@ function runMigration(target: string, dryRun: boolean) {
     console.log("ℹ️  No remote-only migrations found or fetch failed.");
   }
 
-  let dbPushCmd = "supabase db push --yes";
+  let dbPushCmd = "supabase db push --yes --include-all";
   if (dryRun) dbPushCmd += " --dry-run";
   if (process.env.SUPABASE_DB_PASSWORD) {
     dbPushCmd += ` -p "${process.env.SUPABASE_DB_PASSWORD}"`;
