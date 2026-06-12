@@ -26,10 +26,10 @@ export default function TogglePillGroup({
             type="button"
             aria-pressed={isSelected}
             onClick={() => onToggle(option.value)}
-            className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               isSelected
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-gray-50 text-gray-700 border border-gray-100 dark:bg-zinc-800 dark:border-zinc-700 hover:bg-teal-100'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-background text-foreground border border-border hover:bg-wev-primary-tint active:bg-wev-primary-tint'
             }`}
           >
             {option.label}
