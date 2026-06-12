@@ -213,9 +213,7 @@ export default function LocationAutocomplete({
                 }}
                 onMouseEnter={() => setActiveIndex(i)}
                 className={`cursor-pointer px-3 py-2 text-sm ${
-                  i === activeIndex
-                    ? 'bg-wev-primary-tint text-foreground'
-                    : 'hover:bg-muted'
+                  i === activeIndex ? 'bg-wev-primary-tint text-foreground' : 'hover:bg-muted'
                 }`}
               >
                 {result.display_name}

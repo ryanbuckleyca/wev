@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { cookies, headers } from 'next/headers';
+import Script from 'next/script';
 import { getSiteBaseUrl } from '@/lib/site-url';
 import { routing } from '@/i18n/routing';
 import { Lexend_Deca } from 'next/font/google';
@@ -11,6 +12,8 @@ const lexend = Lexend_Deca({
   weight: ['400', '500', '600', '700'],
   variable: '--font-lexend',
 });
+
+const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 export const metadata: Metadata = {
   title: 'wev Bulletin - Job Postings',
@@ -43,6 +46,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
+        {GA_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${GA_ID}');
+              `}
+            </Script>
+          </>
+        )}
       </body>
     </html>
   );
