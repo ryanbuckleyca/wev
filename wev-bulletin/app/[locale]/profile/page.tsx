@@ -91,9 +91,7 @@ export default function ProfilePage() {
             {/* Language Preference */}
             <div className="space-y-2">
               <FormLabel>{t('profile.languagePreference')}</FormLabel>
-              <p className="helper-text">
-                {t('profile.languagePreferenceHint')}
-              </p>
+              <p className="helper-text">{t('profile.languagePreferenceHint')}</p>
               <TogglePillGroup
                 options={SUPPORTED_LANGUAGES.map((lang) => ({
                   value: lang,
