@@ -9,18 +9,23 @@ create table if not exists public.request_logs (
   event_name text not null,
   created_at timestamptz not null default now()
 );
+
 -- Optimized composite index for rate limit checks
 create index if not exists request_logs_user_event_created_idx
 on public.request_logs (user_id, event_name, created_at);
+
 -- RLS for request_logs: Only service_role can access it directly by default,
 -- but we allow users to view their own logs for transparency and testing.
 alter table public.request_logs enable row level security;
+
 create policy "Users can view their own request logs"
   on public.request_logs for select
   using (auth.uid() = user_id);
+
 -- 2. Maintenance: Scheduled purge for old logs (retention: 7 days)
 -- We use pg_cron if available, otherwise logs are pruned during verification failures.
 create extension if not exists pg_cron with schema extensions;
+
 -- Create a purge function that can be called manually or by cron
 create or replace function public.purge_request_logs()
 returns void
@@ -32,12 +37,14 @@ begin
   where created_at < now() - interval '7 days';
 end;
 $$;
+
 -- Schedule the purge to run daily at midnight
 select cron.schedule(
   'purge-request-logs',
   '0 0 * * *',
   'select public.purge_request_logs()'
 );
+
 -- 3. Update verify_user_password RPC
 create or replace function public.verify_user_password(password text)
 returns text
@@ -107,7 +114,9 @@ begin
   return v_result;
 end;
 $$;
+
 -- Ensure only authenticated users can call this
 revoke all on function public.verify_user_password(text) from public;
 grant execute on function public.verify_user_password(text) to authenticated;
+
 comment on function public.verify_user_password(text) is 'Verifies a user password with atomic rate limiting (max 5 failures/min) and failed request logging.';

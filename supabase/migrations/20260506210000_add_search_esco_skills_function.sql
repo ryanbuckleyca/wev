@@ -5,6 +5,7 @@
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS unaccent;
+
 -- Helper: strip accents for locale-neutral matching
 CREATE OR REPLACE FUNCTION f_unaccent(text)
 RETURNS text
@@ -12,7 +13,7 @@ LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
   SELECT unaccent('unaccent', $1);
 $$;
-DROP FUNCTION IF EXISTS search_esco_skills(text, int, text);
+
 CREATE OR REPLACE FUNCTION search_esco_skills(
     p_query   text,
     p_limit   int DEFAULT 20,

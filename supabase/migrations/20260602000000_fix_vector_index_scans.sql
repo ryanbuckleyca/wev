@@ -13,6 +13,7 @@
 -- 1. Undo any previous role-level timeout settings
 ALTER ROLE authenticated RESET statement_timeout;
 ALTER ROLE authenticator RESET statement_timeout;
+
 -- 2. Replace the HNSW index with a partial index to support the NOT NULL filter
 DROP INDEX IF EXISTS esco_skills_embedding_hnsw;
 CREATE INDEX esco_skills_embedding_hnsw
@@ -20,6 +21,7 @@ CREATE INDEX esco_skills_embedding_hnsw
     USING hnsw (embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64)
     WHERE embedding IS NOT NULL;
+
 -- 3. Update the batch overload with an optimized LATERAL join and NOT NULL filter.
 --
 -- The LATERAL join with an OFFSET 0 fence guarantees an index scan for each
@@ -62,6 +64,7 @@ AS $func$
         LIMIT match_count
     ) e;
 $func$;
+
 -- 4. Update the single vector overload with the same filter and timeout.
 CREATE OR REPLACE FUNCTION match_skills_by_embedding(
     query_embedding vector(1024),
