@@ -95,14 +95,6 @@ export function toggleMunicipalitySelection(
   return toggleSelection(selectedMunicipalities, municipality);
 }
 
-export function getVisibleMunicipalitiesByProvince({
-  municipalitiesByProvince,
-}: {
-  municipalitiesByProvince: MunicipalitiesByProvince;
-}): MunicipalitiesByProvince {
-  return municipalitiesByProvince;
-}
-
 export function getAllMunicipalities(municipalitiesByProvince: MunicipalitiesByProvince): string[] {
   return Object.values(municipalitiesByProvince).flat().sort();
 }

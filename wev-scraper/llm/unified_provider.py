@@ -168,7 +168,10 @@ class UnifiedJobProcessor:
                     if lang in ["en", "fr", "bilingual"]:
                         item["language"] = lang
                     else:
-                        item["language"] = "en" # Default to English if invalid or not provided
+                        logger.warning(
+                            "Unexpected language value from LLM: %r — defaulting to 'en'", lang
+                        )
+                        item["language"] = "en"
 
             return items
 
