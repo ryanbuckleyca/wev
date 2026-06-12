@@ -6,18 +6,17 @@ import { useProfileForm, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES } from '@/lib/ho
 import SkillsSelector from '@/components/profile/skills/SkillsSelector';
 import ValuesSelector from '@/components/profile/values/ValuesSelector';
 import WorkSettingSection from '@/components/profile/WorkSettingSection';
+import CompetencySection from '@/components/profile/CompetencySection';
 import LoadingState from '@/components/LoadingState';
 import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
 import FormTextarea from '@/components/FormTextarea';
-import CountBadge from '@/components/CountBadge';
 import ErrorBox from '@/components/ErrorBox';
 import PageLayout from '@/components/PageLayout';
 import CardLayout from '@/components/CardLayout';
 import Heading from '@/components/Heading';
 import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
-import Alert from '@/components/ui/Alert';
 import CVImportButton from '@/components/profile/cv/CVImportButton';
 import FormLabel from '@/components/FormLabel';
 import { SUPPORTED_LANGUAGES } from '@/lib/languages';
@@ -92,7 +91,7 @@ export default function ProfilePage() {
             {/* Language Preference */}
             <div className="space-y-2">
               <FormLabel>{t('profile.languagePreference')}</FormLabel>
-              <p className="text-xs text-muted-foreground">
+              <p className="helper-text">
                 {t('profile.languagePreferenceHint')}
               </p>
               <TogglePillGroup
@@ -120,7 +119,7 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <FormLabel>{t('profile.competencies')}</FormLabel>
-                <p className="text-xs text-muted-foreground">{t('profile.competenciesHint')}</p>
+                <p className="helper-text">{t('profile.competenciesHint')}</p>
               </div>
 
               <CVImportButton
@@ -131,20 +130,12 @@ export default function ProfilePage() {
               />
 
               {/* Skills */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    {t('profile.skills')}
-                  </p>
-                  <CountBadge count={selectedSkills.length} max={MAX_PROFILE_SKILLS} />
-                </div>
-
-                {selectedSkills.length > MAX_PROFILE_SKILLS && (
-                  <Alert variant="warning">
-                    {t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
-                  </Alert>
-                )}
-
+              <CompetencySection
+                label={t('profile.skills')}
+                count={selectedSkills.length}
+                max={MAX_PROFILE_SKILLS}
+                overLimitWarning={t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
+              >
                 <SkillsSelector
                   selectedSkills={selectedSkills}
                   skillCutoff={skillCutoff}
@@ -153,23 +144,15 @@ export default function ProfilePage() {
                   onRemove={handleSkillRemove}
                   locale={locale}
                 />
-              </div>
+              </CompetencySection>
 
               {/* Work Values */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    {t('profile.workValues')}
-                  </p>
-                  <CountBadge count={selectedValues.length} max={MAX_PROFILE_VALUES} />
-                </div>
-
-                {selectedValues.length > MAX_PROFILE_VALUES && (
-                  <Alert variant="warning">
-                    {t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
-                  </Alert>
-                )}
-
+              <CompetencySection
+                label={t('profile.workValues')}
+                count={selectedValues.length}
+                max={MAX_PROFILE_VALUES}
+                overLimitWarning={t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
+              >
                 <ValuesSelector
                   values={workValues}
                   selectedValues={selectedValues}
@@ -179,7 +162,7 @@ export default function ProfilePage() {
                   onRemove={handleValueRemove}
                   locale={locale}
                 />
-              </div>
+              </CompetencySection>
             </div>
           </div>
 

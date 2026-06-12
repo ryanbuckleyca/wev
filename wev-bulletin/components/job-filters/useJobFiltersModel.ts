@@ -404,6 +404,10 @@ export function useJobFiltersModel({
     [onLanguagesChange, selectedLanguages],
   );
 
+  // Always show all municipalities regardless of province selection.
+  // Hiding municipalities when their province isn't selected made multi-select
+  // feel broken — selecting a province would remove already-selected cities
+  // from other provinces from view.
   const visibleMunicipalitiesByProvince = municipalitiesByProvince;
 
   const allMunicipalities = useMemo(

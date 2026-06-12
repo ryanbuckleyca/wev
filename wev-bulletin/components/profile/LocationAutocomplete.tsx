@@ -227,7 +227,7 @@ export default function LocationAutocomplete({
 
       {hint && !displayError && <p className="text-xs text-muted-foreground">{hint}</p>}
       {displayError && (
-        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+        <p role="alert" className="text-xs text-destructive">
           {displayError}
         </p>
       )}

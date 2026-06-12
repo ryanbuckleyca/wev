@@ -83,6 +83,8 @@ describe('bulletin filter option helpers', () => {
       Quebec: ['Montreal'],
     };
 
+    // All municipalities are always visible regardless of selected provinces —
+    // hiding them on province filter would break multi-select UX.
     expect(getAllMunicipalities(municipalitiesByProvince)).toEqual([
       'Montreal',
       'Ottawa',
