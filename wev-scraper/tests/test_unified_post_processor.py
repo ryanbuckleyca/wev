@@ -61,13 +61,19 @@ def test_try_db_write_success(mock_supabase):
 def test_process_jobs_unified_success(mock_supabase, mock_get_processor):
     mock_processor = mock_get_processor.return_value
     mock_processor.process_jobs.return_value = {
-        "results": [{"summary": "S1", "values": ["V1"], "is_sse": True}],
+        "results": [{"summary": "S1", "values": ["V1"], "is_sse": True, "language": "en"}],
         "provider": "groq"
     }
 
-    mock_jobs = [{"id": "j1", "summary": None, "values": None, "is_sse": None}]
-    mock_supabase.table.return_value.select.return_value.limit.return_value.execute.return_value.data = mock_jobs
-    mock_supabase.table.return_value.select.return_value.execute.return_value.count = 1
+    mock_jobs = [{"id": "j1", "summary": None, "values": None, "is_sse": None,
+                  "sse_details": None, "language": None, "scraped_at": "2026-01-01T00:00:00"}]
+
+    # _fetch_jobs without job_ids: .select().order().limit().execute()
+    (mock_supabase.table.return_value
+     .select.return_value
+     .order.return_value
+     .limit.return_value
+     .execute.return_value.data) = mock_jobs
 
     res = process_jobs_unified(task="all", limit=1)
 
@@ -75,25 +81,32 @@ def test_process_jobs_unified_success(mock_supabase, mock_get_processor):
     assert res["updated"]["summary"] == 1
     assert res["provider_used"] == "groq"
 
+
 @patch("scripts.unified_post_processor.get_unified_processor")
 @patch("scripts.unified_post_processor.supabase")
 def test_process_jobs_unified_skips_already_processed(mock_supabase, mock_get_processor):
-    # Job already has everything
-    mock_jobs = [{"id": "j1", "summary": "Done", "values": ["V1"], "is_sse": True, "sse_details": "Done"}]
-    mock_supabase.table.return_value.select.return_value.limit.return_value.execute.return_value.data = mock_jobs
-    mock_supabase.table.return_value.select.return_value.execute.return_value.count = 1
+    # Job already has all required fields filled
+    mock_jobs = [{"id": "j1", "summary": "Done", "values": ["V1"], "is_sse": True,
+                  "sse_details": "Done", "language": "en",
+                  "scraped_at": "2026-01-01T00:00:00"}]
+
+    (mock_supabase.table.return_value
+     .select.return_value
+     .order.return_value
+     .limit.return_value
+     .execute.return_value.data) = mock_jobs
 
     res = process_jobs_unified(task="all")
-    assert res["processed"] == 0 # No jobs filtered for processing
+    assert res["processed"] == 0  # No jobs filtered for processing
+
 
 @patch("scripts.unified_post_processor.process_jobs_unified")
 def test_main_cli(mock_process):
-    # Mock return value to satisfy the summary printing logic
     mock_process.return_value = {
         "processed": 5,
         "skipped": 0,
         "provider_used": "groq",
-        "updated": {"summary": 0, "values": 0, "sse": 0},
+        "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0},
         "errors": 0
     }
     with patch("sys.argv", ["unified_post_processor.py", "--task", "sse", "--limit", "5"]):
@@ -106,9 +119,17 @@ def test_main_cli(mock_process):
             args.prod = False
             args.publish = False
             args.verbose = False
+            args.since_days = None
+            args.force_language_reprocess = False
             mock_args.return_value = args
 
             main()
             mock_process.assert_called_with(
-                task="sse", limit=5, job_ids=None, dry_run=False, verbose=False
+                task="sse",
+                limit=5,
+                job_ids=None,
+                dry_run=False,
+                verbose=False,
+                since_days=None,
+                force_language_reprocess=False,
             )

@@ -18,11 +18,10 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Literal
 
-from pytz import timezone
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 # Load env before any DB import. We can't rely on dotenv-cli at the npm layer
@@ -103,8 +102,7 @@ def _fetch_jobs(
         query = query.in_("id", job_ids)
     else:
         if since_days:
-            utc = timezone("UTC")
-            cutoff = datetime.now(utc) - timedelta(days=since_days)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=since_days)
             query = query.gte("scraped_at", cutoff.isoformat())
 
         query = query.order("scraped_at", desc=True)
