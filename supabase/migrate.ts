@@ -4,8 +4,13 @@ import path from "node:path";
 import { config as loadEnv } from "dotenv";
 
 function execVerbose(command: string) {
-  const localSupabaseCli = path.resolve(process.cwd(), "node_modules/.bin/supabase");
-  const finalCommand = command.startsWith("supabase") ? command.replace("supabase", localSupabaseCli) : command;
+  const localSupabaseCli = path.resolve(
+    process.cwd(),
+    "node_modules/.bin/supabase",
+  );
+  const finalCommand = command.startsWith("supabase")
+    ? command.replace("supabase", localSupabaseCli)
+    : command;
   const result = spawnSync(finalCommand, {
     shell: true,
     stdio: "inherit",
