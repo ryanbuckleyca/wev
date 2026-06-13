@@ -3,15 +3,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { config as loadEnv } from "dotenv";
 
+const LOCAL_SUPABASE_CLI = path.resolve(
+  process.cwd(),
+  "node_modules/.bin/supabase",
+);
+
 function execVerbose(command: string) {
-  const localSupabaseCli = path.resolve(
-    process.cwd(),
-    "node_modules/.bin/supabase",
-  );
   // Replace the leading "supabase " token precisely — avoids corrupting commands
   // where "supabase" appears elsewhere (e.g. as a flag value or workdir path).
   const finalCommand = command.startsWith("supabase ")
-    ? `${localSupabaseCli} ${command.slice("supabase ".length)}`
+    ? `${LOCAL_SUPABASE_CLI} ${command.slice("supabase ".length)}`
     : command;
   const result = spawnSync(finalCommand, {
     shell: true,
@@ -67,12 +68,15 @@ function runMigration(target: string, dryRun: boolean) {
     `▶ Syncing migration history (fetching any missing files from remote)...`,
   );
   try {
-    execSync("supabase migration fetch --linked", { stdio: "pipe" });
+    execSync(`${LOCAL_SUPABASE_CLI} migration fetch --linked`, {
+      stdio: "pipe",
+      env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
+    });
   } catch (e) {
     console.log("ℹ️  No remote-only migrations found or fetch failed.");
   }
 
-  let dbPushCmd = "supabase db push --yes";
+  let dbPushCmd = `${LOCAL_SUPABASE_CLI} db push --yes`;
   if (dryRun) dbPushCmd += " --dry-run";
   // SUPABASE_DB_PASSWORD is passed via the environment (already loaded from
   // .env.production above) — the Supabase CLI reads it automatically.

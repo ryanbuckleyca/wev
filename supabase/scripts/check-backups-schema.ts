@@ -124,10 +124,21 @@ for (const file of backupFiles) {
   );
   if (!Array.isArray(data) || data.length === 0) continue;
 
+  // Collect all keys seen across all rows for the extra-column check (file-level).
   const keysInBackup = new Set<string>();
-  for (const row of data) {
-    if (row && typeof row === "object") {
-      Object.keys(row).forEach((k) => keysInBackup.add(k));
+  for (const [rowIndex, row] of data.entries()) {
+    if (!row || typeof row !== "object") continue;
+
+    const perRowKeys = new Set(Object.keys(row));
+    perRowKeys.forEach((k) => keysInBackup.add(k));
+
+    // Per-row: check that every required column is present in this specific row.
+    const missingRequired = required.filter((k) => !perRowKeys.has(k));
+    if (missingRequired.length > 0) {
+      console.error(
+        `${file}: row ${rowIndex} missing required insert columns: ${missingRequired.join(", ")}`,
+      );
+      failed = true;
     }
   }
 
@@ -137,14 +148,6 @@ for (const file of backupFiles) {
   if (extra.length > 0) {
     console.error(
       `${file}: contains non-insertable columns: ${extra.join(", ")}`,
-    );
-    failed = true;
-  }
-
-  const missing = required.filter((k) => !keysInBackup.has(k));
-  if (missing.length > 0) {
-    console.error(
-      `${file}: missing required insert columns: ${missing.join(", ")}`,
     );
     failed = true;
   }

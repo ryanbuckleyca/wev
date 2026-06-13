@@ -312,7 +312,7 @@
     "skillsSearching": "Recherche de compétences...",
     "skillsMaxReached": "Maximum de {max} compétences sélectionnées. Retirez-en une pour en ajouter une autre.",
     "skillsHardMaxReached": "Maximum de {max} compétences atteint. Retirez-en une pour en ajouter une autre.",
-    "skillsSoftLimitWarning": "Vous avez sélectionné {count} compétences. Nous recommandons de limiter à 15 pour de meilleurs résultats de correspondance.",
+    "skillsSoftLimitWarning": "Vous avez sélectionné plus de {max} compétences. Nous recommandons de limiter à 15 pour de meilleurs résultats de correspondance.",
     "skillsMaxExceeded": "Veuillez retirer {current, number} {current, plural, one {compétence} other {compétences}} pour respecter le maximum de {max}.",
     "skillsMatchedAlias": "Correspondance :",
     "skillsDone": "Terminé",

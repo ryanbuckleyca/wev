@@ -10,6 +10,7 @@ interface SearchInputProps {
   listboxId?: string;
   ariaDescribedBy?: string;
   id?: string;
+  clearLabel?: string;
 }
 
 export default function SearchInput({
@@ -22,6 +23,7 @@ export default function SearchInput({
   listboxId,
   ariaDescribedBy,
   id,
+  clearLabel = 'Clear search',
 }: SearchInputProps) {
   return (
     <div className="flex flex-1 items-center gap-2 rounded-wev-btn bg-background border border-border px-3 py-2 transition-all focus-within:ring-2 focus-within:ring-ring dark:focus-within:border-border">
@@ -44,6 +46,7 @@ export default function SearchInput({
         <button
           type="button"
           onClick={onClear}
+          aria-label={clearLabel}
           className="text-muted-foreground hover:text-foreground"
         >
           <X className="h-4 w-4" />
