@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from scripts.unified_post_processor import (
+    ProcessingOptions,
     _build_update_data,
     _try_db_write,
     is_transient_db_error,
@@ -75,7 +76,7 @@ def test_process_jobs_unified_success(mock_supabase, mock_get_processor):
      .limit.return_value
      .execute.return_value.data) = mock_jobs
 
-    res = process_jobs_unified(task="all", limit=1)
+    res = process_jobs_unified(ProcessingOptions(task="all", limit=1))
 
     assert res["processed"] == 1
     assert res["updated"]["summary"] == 1
@@ -96,7 +97,7 @@ def test_process_jobs_unified_skips_already_processed(mock_supabase, mock_get_pr
      .limit.return_value
      .execute.return_value.data) = mock_jobs
 
-    res = process_jobs_unified(task="all")
+    res = process_jobs_unified(ProcessingOptions(task="all"))
     assert res["processed"] == 0  # No jobs filtered for processing
 
 
@@ -125,11 +126,13 @@ def test_main_cli(mock_process):
 
             main()
             mock_process.assert_called_with(
-                task="sse",
-                limit=5,
-                job_ids=None,
-                dry_run=False,
-                verbose=False,
-                since_days=None,
-                force_language_reprocess=False,
+                ProcessingOptions(
+                    task="sse",
+                    limit=5,
+                    job_ids=[],
+                    dry_run=False,
+                    verbose=False,
+                    since_days=None,
+                    force_language_reprocess=False,
+                )
             )
