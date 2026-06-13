@@ -25,8 +25,15 @@ grant select on public.scrape_runs       to anon, authenticated;
 -- ── Views ─────────────────────────────────────────────────────────────────────
 --
 -- Views require explicit GRANTs independently of the underlying tables.
+-- matched_jobs uses security_invoker=true, so the calling role also needs
+-- SELECT on all underlying tables (jobs, sources, job_matches).
 
 grant select on public.matched_jobs      to anon, authenticated, service_role;
+
+-- ── Other shared tables ───────────────────────────────────────────────────────
+
+-- cities: read-only lookup table for location autocomplete
+grant select on public.cities            to anon, authenticated, service_role;
 
 -- ── User-owned tables ────────────────────────────────────────────────────────
 
@@ -34,7 +41,8 @@ grant select on public.matched_jobs      to anon, authenticated, service_role;
 grant select, insert, update, delete on public.profiles     to authenticated;
 
 -- job_matches: written by server-side functions, read by owner
-grant select on public.job_matches to authenticated;
+-- anon needs SELECT so the security_invoker matched_jobs view can LEFT JOIN job_matches
+grant select on public.job_matches to anon, authenticated;
 
 -- bookmarks: full ownership
 grant select, insert, update, delete on public.bookmarks    to authenticated;
