@@ -165,7 +165,7 @@ class UnifiedJobProcessor:
                 # Process language
                 if "language" in item:
                     raw_lang = item.get("language")
-                    if not isinstance(item, dict) or not isinstance(raw_lang, str):
+                    if not isinstance(raw_lang, str):
                         logger.warning(
                             "Unexpected language value from LLM (not a string): %r — defaulting to 'en'",
                             raw_lang,
