@@ -63,6 +63,7 @@ grant select, insert, update, delete on public.scrape_runs  to service_role;
 grant select, insert, update, delete on public.profiles     to service_role;
 grant select, insert, update, delete on public.user_roles   to service_role;
 grant select, insert, update, delete on public.job_matches  to service_role;
+grant select, insert, update, delete on public.job_skills   to service_role;
 grant select, insert, update, delete on public.bookmarks    to service_role;
 grant select, insert, update, delete on public.esco_skills  to service_role;
 grant select, insert, update, delete on public.request_logs to service_role;
