@@ -90,16 +90,20 @@ export default function ProfilePage() {
 
             {/* Language Preference */}
             <div className="space-y-2">
-              <FormLabel>{t('profile.languagePreference')}</FormLabel>
-              <p className="helper-text">{t('profile.languagePreferenceHint')}</p>
-              <TogglePillGroup
-                options={SUPPORTED_LANGUAGES.map((lang) => ({
-                  value: lang,
-                  label: t(`filters.language.${lang}`),
-                }))}
-                selectedValues={formData.preferred_languages}
-                onToggle={handleLanguageToggle}
-              />
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  {t('profile.languagePreference')}
+                </legend>
+                <p className="helper-text">{t('profile.languagePreferenceHint')}</p>
+                <TogglePillGroup
+                  options={SUPPORTED_LANGUAGES.map((lang) => ({
+                    value: lang,
+                    label: t(`filters.language.${lang}`),
+                  }))}
+                  selectedValues={formData.preferred_languages}
+                  onToggle={handleLanguageToggle}
+                />
+              </fieldset>
             </div>
 
             {/* Bio */}

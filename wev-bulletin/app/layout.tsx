@@ -14,6 +14,7 @@ const lexend = Lexend_Deca({
 });
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const isProduction = process.env.NODE_ENV === 'production';
 
 export const metadata: Metadata = {
   title: 'wev Bulletin - Job Postings',
@@ -46,7 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
-        {GA_ID && (
+        {GA_ID && isProduction && (
           <>
             <Script
               src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
