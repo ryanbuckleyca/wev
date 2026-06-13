@@ -22,6 +22,12 @@ grant select on public.organizations     to anon, authenticated;
 grant select on public.esco_skills       to anon, authenticated;
 grant select on public.scrape_runs       to anon, authenticated;
 
+-- ── Views ─────────────────────────────────────────────────────────────────────
+--
+-- Views require explicit GRANTs independently of the underlying tables.
+
+grant select on public.matched_jobs      to anon, authenticated, service_role;
+
 -- ── User-owned tables ────────────────────────────────────────────────────────
 
 -- profiles: users manage their own row; RLS restricts to owner
