@@ -19,7 +19,7 @@
   --text-tertiary: #7a7a7a;
 
   --primary: #5b8c8a;
-  --primary-tint: #d6eaea;
+  --primary-tint: #e0f0f0;
   --primary-text: #5b8c8a;
   --primary-foreground: #ffffff;
 
@@ -80,7 +80,7 @@
 
   /* Primary: keep for buttons (white text). Primary-text: lighter teal for text on dark so it passes a11y. */
   --primary: #5b8c8a;
-  --primary-tint: #254340;
+  --primary-tint: #305a5a;
   --primary-text: #7ec5b3;
 
   --brand-accent: #c08da0;
@@ -179,6 +179,10 @@ html.theme-switching *::after {
 
   .job-link {
     @apply text-wev-brand-accent hover:text-wev-primary-text hover:underline;
+  }
+
+  .helper-text {
+    @apply text-xs text-muted-foreground;
   }
 
   .wev-icon-btn {

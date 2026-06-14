@@ -3,8 +3,22 @@ import fs from "node:fs";
 import path from "node:path";
 import { config as loadEnv } from "dotenv";
 
+const LOCAL_SUPABASE_CLI = path.resolve(
+  process.cwd(),
+  "node_modules/.bin/supabase",
+);
+
 function execVerbose(command: string) {
-  const result = spawnSync(command, { shell: true, stdio: "inherit" });
+  // Replace the leading "supabase " token precisely — avoids corrupting commands
+  // where "supabase" appears elsewhere (e.g. as a flag value or workdir path).
+  const finalCommand = command.startsWith("supabase ")
+    ? `${LOCAL_SUPABASE_CLI} ${command.slice("supabase ".length)}`
+    : command;
+  const result = spawnSync(finalCommand, {
+    shell: true,
+    stdio: "inherit",
+    env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
+  });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
@@ -54,19 +68,26 @@ function runMigration(target: string, dryRun: boolean) {
     `▶ Syncing migration history (fetching any missing files from remote)...`,
   );
   try {
-    execSync("supabase migration fetch --linked", { stdio: "pipe" });
+    execSync(`${LOCAL_SUPABASE_CLI} migration fetch --linked`, {
+      stdio: "pipe",
+      env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
+    });
   } catch (e) {
     console.log("ℹ️  No remote-only migrations found or fetch failed.");
   }
 
-  let dbPushCmd = "supabase db push --yes";
+  let dbPushCmd = `${LOCAL_SUPABASE_CLI} db push --yes`;
   if (dryRun) dbPushCmd += " --dry-run";
-  if (process.env.SUPABASE_DB_PASSWORD) {
-    dbPushCmd += ` -p "${process.env.SUPABASE_DB_PASSWORD}"`;
-  }
+  // SUPABASE_DB_PASSWORD is passed via the environment (already loaded from
+  // .env.production above) — the Supabase CLI reads it automatically.
+  // Never interpolate credentials into shell command strings.
 
   console.log(`▶ Pushing local migrations...`);
-  const pushRes = spawnSync(dbPushCmd, { shell: true, stdio: "inherit" });
+  const pushRes = spawnSync(dbPushCmd, {
+    shell: true,
+    stdio: "inherit",
+    env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
+  });
   if (pushRes.status !== 0) {
     console.error(
       "❌ Push failed. If you see hash mismatches, you may need to 'git pull' first.",

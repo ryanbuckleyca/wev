@@ -108,7 +108,7 @@ class UnifiedJobProcessor:
                 f"Description:\n{description}"
             )
 
-        fields = "index, summary, values, is_sse, sse_confidence" if include_sse else "index, summary, values"
+        fields = "index, summary, language, values, is_sse, sse_confidence" if include_sse else "index, summary, language, values"
         prompt_parts.append(f"\n\nOutput JSON array with objects containing: {fields}")
 
         return "".join(prompt_parts)
@@ -162,6 +162,25 @@ class UnifiedJobProcessor:
                     item["values_rated"] = [
                         {"value": v, "confidence": i + 1} for i, v in enumerate(values)
                     ]
+                # Process language
+                if "language" in item:
+                    raw_lang = item.get("language")
+                    if not isinstance(raw_lang, str):
+                        logger.warning(
+                            "Unexpected language value from LLM (not a string): %r — defaulting to 'en'",
+                            raw_lang,
+                        )
+                        item["language"] = "en"
+                    else:
+                        lang = raw_lang.lower()
+                        if lang in ["en", "fr", "bilingual"]:
+                            item["language"] = lang
+                        else:
+                            logger.warning(
+                                "Unexpected language value from LLM: %r — defaulting to 'en'", lang
+                            )
+                            item["language"] = "en"
+
             return items
 
         # 1. Try raw response first

@@ -6,18 +6,17 @@ import { useProfileForm, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES } from '@/lib/ho
 import SkillsSelector from '@/components/profile/skills/SkillsSelector';
 import ValuesSelector from '@/components/profile/values/ValuesSelector';
 import WorkSettingSection from '@/components/profile/WorkSettingSection';
+import CompetencySection from '@/components/profile/CompetencySection';
 import LoadingState from '@/components/LoadingState';
 import FormContainer from '@/components/FormContainer';
 import FormField from '@/components/FormField';
 import FormTextarea from '@/components/FormTextarea';
-import CountBadge from '@/components/CountBadge';
 import ErrorBox from '@/components/ErrorBox';
 import PageLayout from '@/components/PageLayout';
 import CardLayout from '@/components/CardLayout';
 import Heading from '@/components/Heading';
 import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
-import Alert from '@/components/ui/Alert';
 import CVImportButton from '@/components/profile/cv/CVImportButton';
 import FormLabel from '@/components/FormLabel';
 import { SUPPORTED_LANGUAGES } from '@/lib/languages';
@@ -90,36 +89,41 @@ export default function ProfilePage() {
             />
 
             {/* Language Preference */}
-            <div>
-              <FormLabel>{t('profile.languagePreference')}</FormLabel>
-              <p className="text-xs text-muted-foreground mb-2">
-                {t('profile.languagePreferenceHint')}
-              </p>
-              <TogglePillGroup
-                options={SUPPORTED_LANGUAGES.map((lang) => ({
-                  value: lang,
-                  label: t(`filters.language.${lang}`),
-                }))}
-                selectedValues={formData.preferred_languages}
-                onToggle={handleLanguageToggle}
-              />
+            <div className="space-y-2">
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  {t('profile.languagePreference')}
+                </legend>
+                <p className="helper-text">{t('profile.languagePreferenceHint')}</p>
+                <TogglePillGroup
+                  options={SUPPORTED_LANGUAGES.map((lang) => ({
+                    value: lang,
+                    label: t(`filters.language.${lang}`),
+                  }))}
+                  selectedValues={formData.preferred_languages}
+                  onToggle={handleLanguageToggle}
+                />
+              </fieldset>
             </div>
 
             {/* Bio */}
-            <div>
-              <FormTextarea
-                htmlFor="bio"
-                label={t('profile.bio')}
-                value={formData.bio}
-                onChange={(value) => setFormData({ ...formData, bio: value })}
-                placeholder={t('profile.bioPlaceholder')}
-                rows={4}
-                showCount={false}
-              />
-            </div>
+            <FormTextarea
+              htmlFor="bio"
+              label={t('profile.bio')}
+              value={formData.bio}
+              onChange={(value) => setFormData({ ...formData, bio: value })}
+              placeholder={t('profile.bioPlaceholder')}
+              rows={4}
+              showCount={false}
+            />
 
-            {/* Skills */}
-            <div className="space-y-6">
+            {/* Competencies — groups CV import, Skills, and Work Values */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <FormLabel>{t('profile.competencies')}</FormLabel>
+                <p className="helper-text">{t('profile.competenciesHint')}</p>
+              </div>
+
               <CVImportButton
                 locale={locale}
                 cvImport={formData.cv_import ?? null}
@@ -127,60 +131,47 @@ export default function ProfilePage() {
                 onConfirmImport={handleApplyCvImport}
               />
 
-              <div className="flex items-center gap-2 mb-2">
-                <h2 className="text-sm font-semibold leading-none text-foreground">
-                  {t('profile.skills')}
-                </h2>
-                <CountBadge count={selectedSkills.length} max={MAX_PROFILE_SKILLS} />
-              </div>
+              {/* Skills */}
+              <CompetencySection
+                label={t('profile.skills')}
+                count={selectedSkills.length}
+                max={MAX_PROFILE_SKILLS}
+                overLimitWarning={t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
+              >
+                <SkillsSelector
+                  selectedSkills={selectedSkills}
+                  skillCutoff={skillCutoff}
+                  onToggle={handleSkillToggle}
+                  onReorder={handleSkillReorder}
+                  onRemove={handleSkillRemove}
+                  locale={locale}
+                />
+              </CompetencySection>
 
-              {selectedSkills.length > MAX_PROFILE_SKILLS && (
-                <Alert variant="warning" className="mb-2">
-                  {t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
-                </Alert>
-              )}
-
-              <SkillsSelector
-                selectedSkills={selectedSkills}
-                skillCutoff={skillCutoff}
-                onToggle={handleSkillToggle}
-                onReorder={handleSkillReorder}
-                onRemove={handleSkillRemove}
-                locale={locale}
-              />
-            </div>
-
-            {/* Work Values */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <h2 className="text-sm font-semibold leading-none text-foreground">
-                  {t('profile.workValues')}
-                </h2>
-                <CountBadge count={selectedValues.length} max={MAX_PROFILE_VALUES} />
-              </div>
-
-              {selectedValues.length > MAX_PROFILE_VALUES && (
-                <Alert variant="warning" className="mb-2">
-                  {t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
-                </Alert>
-              )}
-
-              <ValuesSelector
-                values={workValues}
-                selectedValues={selectedValues}
-                valueCutoff={valueCutoff}
-                onToggle={handleValueToggle}
-                onReorder={handleValueReorder}
-                onRemove={handleValueRemove}
-                locale={locale}
-              />
+              {/* Work Values */}
+              <CompetencySection
+                label={t('profile.workValues')}
+                count={selectedValues.length}
+                max={MAX_PROFILE_VALUES}
+                overLimitWarning={t('profile.valuesSoftLimitWarning', { max: MAX_PROFILE_VALUES })}
+              >
+                <ValuesSelector
+                  values={workValues}
+                  selectedValues={selectedValues}
+                  valueCutoff={valueCutoff}
+                  onToggle={handleValueToggle}
+                  onReorder={handleValueReorder}
+                  onRemove={handleValueRemove}
+                  locale={locale}
+                />
+              </CompetencySection>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="pt-6 border-t border-gray-100 dark:border-zinc-800">
+          <div className="pt-6 border-t border-border">
             <div className="flex justify-between gap-3">
-              <LinkButton href="/" variant="outline">
+              <LinkButton href="/" variant="secondary">
                 {t('profile.backToJobs')}
               </LinkButton>
               <Button type="submit" disabled={isSaving} loading={isSaving}>

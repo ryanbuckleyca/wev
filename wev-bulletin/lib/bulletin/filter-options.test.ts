@@ -4,7 +4,6 @@ import {
   buildFilterOptions,
   getAllMunicipalities,
   getIndeterminateProvinces,
-  getVisibleMunicipalitiesByProvince,
   toggleMunicipalitySelection,
   toggleProvinceSelection,
 } from './filter-options';
@@ -78,20 +77,14 @@ describe('bulletin filter option helpers', () => {
     });
   });
 
-  it('derives visible municipalities, all municipalities, and indeterminate provinces', () => {
+  it('derives all municipalities and indeterminate provinces', () => {
     const municipalitiesByProvince = {
       Ontario: ['Ottawa', 'Toronto'],
       Quebec: ['Montreal'],
     };
 
-    expect(
-      getVisibleMunicipalitiesByProvince({
-        municipalitiesByProvince,
-        selectedProvinces: ['Ontario'],
-        selectedMunicipalities: ['Montreal'],
-      }),
-    ).toEqual(municipalitiesByProvince);
-
+    // All municipalities are always visible regardless of selected provinces —
+    // hiding them on province filter would break multi-select UX.
     expect(getAllMunicipalities(municipalitiesByProvince)).toEqual([
       'Montreal',
       'Ottawa',

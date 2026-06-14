@@ -213,9 +213,7 @@ export default function LocationAutocomplete({
                 }}
                 onMouseEnter={() => setActiveIndex(i)}
                 className={`cursor-pointer px-3 py-2 text-sm ${
-                  i === activeIndex
-                    ? 'bg-gray-100 dark:bg-zinc-800'
-                    : 'hover:bg-gray-50 dark:hover:bg-zinc-800/50'
+                  i === activeIndex ? 'bg-wev-primary-tint text-foreground' : 'hover:bg-muted'
                 }`}
               >
                 {result.display_name}
@@ -225,9 +223,9 @@ export default function LocationAutocomplete({
         </PopoverContent>
       </Popover>
 
-      {hint && !displayError && <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
+      {hint && !displayError && <p className="text-xs text-muted-foreground">{hint}</p>}
       {displayError && (
-        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+        <p role="alert" className="text-xs text-destructive">
           {displayError}
         </p>
       )}
