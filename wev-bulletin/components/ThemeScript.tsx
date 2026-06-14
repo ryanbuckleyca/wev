@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * A blocking script that applies the theme as early as possible to prevent flashes.
  * Logic:
@@ -7,6 +5,12 @@
  * 2. Shared choice (cookie from wev/bulletin)
  * 3. System setting (matchMedia)
  * 4. Default: dark
+ *
+ * This is intentionally a Server Component — rendering a <script> tag from a
+ * client component triggers a React warning (scripts are never re-executed on
+ * the client during navigation). As a server component the tag is emitted once
+ * into the HTML stream and runs during initial page parse, which is exactly
+ * what a FOUC-prevention script needs.
  */
 export default function ThemeScript() {
   const script = `

@@ -18,6 +18,8 @@ import argparse
 import json
 import os
 import sys
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Literal
 
@@ -79,29 +81,90 @@ from llm.factory import get_unified_processor  # noqa: E402
 from utils.db import supabase  # noqa: E402
 from utils.log import scraper_log  # noqa: E402
 
+VALID_LANGUAGES = frozenset({"en", "fr", "bilingual"})
 
-def process_jobs_unified(
-    task: str = "all",
-    limit: int = 100,
-    job_ids: List[str] | None = None,
-    dry_run: bool = False,
-    verbose: bool = False,
-) -> Dict[str, Any]:
+
+@dataclass
+class ProcessingOptions:
+    """Options that control how process_jobs_unified fetches and filters jobs."""
+    task: str = "all"
+    limit: int | None = 100
+    job_ids: List[str] = field(default_factory=list)
+    dry_run: bool = False
+    verbose: bool = False
+    since_days: int | None = None
+    # Only meaningful when task="language": skips the already-tagged check and
+    # re-processes every fetched job regardless of its current language value.
+    force_language_reprocess: bool = False
+
+
+def _fetch_jobs(
+    job_ids: List[str] | None,
+    since_days: int | None,
+    limit: int | None,
+) -> List[Dict[str, Any]]:
+    """Fetch jobs from the database.
+
+    When job_ids are provided, fetches exactly those jobs (limit ignored).
+    Otherwise fetches the most-recently-scraped jobs, optionally filtered by
+    scraped_at age, up to `limit` rows. Pass limit=None to fetch all rows.
+    """
+    query = supabase.table("jobs").select(
+        "id, description, summary, values, is_sse, sse_details, language, scraped_at, "
+        "organization, job_title, location, employment_type, wage"
+    )
+
+    if job_ids:
+        query = query.in_("id", job_ids)
+    else:
+        if since_days:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=since_days)
+            query = query.gte("scraped_at", cutoff.isoformat())
+
+        query = query.order("scraped_at", desc=True)
+
+        if limit is not None:
+            query = query.limit(limit)
+
+    return query.execute().data
+
+
+def _needs_processing(job: Dict[str, Any], opts: ProcessingOptions) -> bool:
+    """Return True if a job requires processing for the given task."""
+    if opts.task == "all":
+        return (
+            not (job.get("summary") or "").strip()
+            or not job.get("values")
+            or job.get("is_sse") is None
+            or not (job.get("sse_details") or "").strip()
+            or job.get("language") not in VALID_LANGUAGES
+        )
+    if opts.task == "sse":
+        return job.get("is_sse") is None
+    if opts.task == "values":
+        return not job.get("values")
+    if opts.task == "summary":
+        return not job.get("summary")
+    if opts.task == "language":
+        return opts.force_language_reprocess or job.get("language") not in VALID_LANGUAGES
+    raise ValueError(f"Unknown task: {opts.task!r}")
+
+
+def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any]:
     """Process jobs using unified LLM approach.
 
     Args:
-        task: What to process - "sse", "values", "skills", or "all"
-        limit: Maximum jobs to process
-        job_ids: Specific job IDs to process
-        dry_run: Don't save to database
-        verbose: Detailed logging
+        opts: Processing options. Defaults to ProcessingOptions() if not provided.
 
     Returns:
         Processing counts and results
     """
+    if opts is None:
+        opts = ProcessingOptions()
+
     counts = {
         "processed": 0,
-        "updated": {"sse": 0, "values": 0, "skills": 0, "summary": 0},
+        "updated": {"sse": 0, "values": 0, "skills": 0, "summary": 0, "language": 0},
         "skipped": 0,
         "errors": 0,
         "provider_used": None
@@ -109,27 +172,26 @@ def process_jobs_unified(
 
     print("=" * 70)
     print("UNIFIED POST-PROCESSOR")
-    print(f"Task: {task}")
-    print(f"Limit: {limit}")
-    print(f"Dry run: {dry_run}")
+    print(f"Task: {opts.task}")
+    print(f"Limit: {opts.limit if opts.limit is not None else 'all'}")
+    print(f"Dry run: {opts.dry_run}")
     print("=" * 70)
 
-    # Show what tasks will be performed
     task_descriptions = {
         "summary": "Job summarization (1 sentence)",
         "values": "Values tagging (from taxonomy)",
         "sse": "SSE classification (no Google Search unless FORCE_GROUNDING=1)",
+        "language": "Language tagging (en, fr, or bilingual)",
     }
 
-    if task == "all":
+    if opts.task == "all":
         print("✓ Tasks to perform:")
-        for t in ["summary", "values", "sse"]:
+        for t in ["summary", "values", "sse", "language"]:
             print(f"  - {task_descriptions[t]}")
     else:
-        print(f"✓ Task to perform: {task_descriptions.get(task, task)}")
+        print(f"✓ Task to perform: {task_descriptions.get(opts.task, opts.task)}")
     print()
 
-    # Initialize unified processor
     try:
         processor = get_unified_processor()
         print("✓ Unified processor initialized")
@@ -138,83 +200,31 @@ def process_jobs_unified(
         counts["errors"] += 1
         return counts
 
-    # Fetch jobs
+    # Fetch and filter jobs
     try:
-        if job_ids:
-            jobs = supabase.table("jobs").select("*").in_("id", job_ids).execute().data
-        else:
-            # Use the working query approach from our test
-            print("  Query: SELECT * FROM jobs with high limit")
-
-            # Test count first
-            count_result = supabase.table("jobs").select("id", count="exact").execute()
-            print(f"  Count check: {count_result.count}")
-
-            jobs = supabase.table("jobs").select("*").limit(1000).execute().data
-
+        jobs = _fetch_jobs(opts.job_ids or None, opts.since_days, opts.limit)
         print(f"✓ Fetched {len(jobs)} jobs")
     except Exception as e:
         scraper_log(f"✗ Failed to fetch jobs: {e}")
         counts["errors"] += 1
         return counts
 
-    # Process in smaller batches to avoid LLM token limits
-    batch_size = 10
-    all_filtered_jobs = []
-
-    for i in range(0, len(jobs), batch_size):
-        batch_jobs = jobs[i:i + batch_size]
-        print(f"  Processing batch {i//batch_size + 1}/{(len(jobs) + batch_size - 1)//batch_size} ({len(batch_jobs)} jobs)")
-
-        # Filter jobs in this batch based on task
-        filtered_batch = []
-        for job in batch_jobs:
-            should_process = False
-
-            if task == "all":
-                summary = job.get("summary", "")
-                values = job.get("values", [])
-                is_sse = job.get("is_sse")
-                sse_details = job.get("sse_details", "")
-
-                should_process = (
-                    not summary or not summary.strip() or
-                    not values or len(values) == 0 or
-                    is_sse is None or
-                    not sse_details or not sse_details.strip()
-                )
-            elif task == "sse":
-                should_process = job.get("is_sse") is None
-            elif task == "values":
-                should_process = not job.get("values")
-            elif task == "summary":
-                should_process = not job.get("summary")
-
-            if should_process:
-                filtered_batch.append(job)
-
-        all_filtered_jobs.extend(filtered_batch)
-        print(f"    ✓ Batch {i//batch_size + 1}: {len(filtered_batch)} eligible jobs")
-
-    filtered_jobs = all_filtered_jobs
-    print(f"✓ Filtered to {len(filtered_jobs)} eligible jobs total")
-
-    if limit > 0:
-        filtered_jobs = filtered_jobs[:limit]
-        print(f"✓ Applied --limit: processing up to {len(filtered_jobs)} job(s)")
+    filtered_jobs = [job for job in jobs if _needs_processing(job, opts)]
+    print(f"✓ Filtered to {len(filtered_jobs)} eligible jobs")
 
     if not filtered_jobs:
         print("No eligible jobs to process.")
         return counts
 
-    # Process in smaller batches using unified processor
+    # Process in batches
+    batch_size = 10
     try:
-        # Process filtered jobs in smaller batches
         processed_count = 0
         result: dict = {}
         for i in range(0, len(filtered_jobs), batch_size):
             batch = filtered_jobs[i:i + batch_size]
-            print(f"  Processing batch {i//batch_size + 1}/{(len(filtered_jobs) + batch_size - 1)//batch_size} ({len(batch)} jobs)")
+            total_batches = (len(filtered_jobs) + batch_size - 1) // batch_size
+            print(f"  Processing batch {i//batch_size + 1}/{total_batches} ({len(batch)} jobs)")
 
             result = processor.process_jobs(batch)
 
@@ -228,16 +238,14 @@ def process_jobs_unified(
                 counts["errors"] += len(batch)
                 continue
 
-            # Update database based on task for this batch
             for job, job_result in zip(batch, result.get("results", []), strict=False):
                 if not isinstance(job_result, dict) or not job_result:
                     scraper_log(f"✗ Invalid or empty result for job {job['id']}")
                     counts["errors"] += 1
                     continue
 
-                if not dry_run:
-                    update_data = _build_update_data(task, job_result)
-
+                if not opts.dry_run:
+                    update_data = _build_update_data(opts.task, job_result, job)
                     if update_data:
                         try:
                             _try_db_write(job, update_data, supabase)
@@ -247,6 +255,8 @@ def process_jobs_unified(
                                 counts["updated"]["values"] += 1
                             if "is_sse" in update_data:
                                 counts["updated"]["sse"] += 1
+                            if "language" in update_data:
+                                counts["updated"]["language"] += 1
                             processed_count += 1
                         except Exception as e:
                             scraper_log(f"✗ DB write permanently failed for job {job['id']}: {e}")
@@ -254,8 +264,8 @@ def process_jobs_unified(
                 else:
                     processed_count += 1
 
-                if verbose:
-                    actions = [k for k in ("summary", "values") if k in job_result]
+                if opts.verbose:
+                    actions = [k for k in ("summary", "values", "language") if k in job_result]
                     if "is_sse" in job_result:
                         actions.append("SSE")
                     print(f"  ✓ Processed job {job['id'][:8]}... ({', '.join(actions) or 'no actions'})")
@@ -274,11 +284,17 @@ def process_jobs_unified(
     return counts
 
 
-TaskType = Literal["all", "summary", "values", "sse"]
+TaskType = Literal["all", "summary", "values", "sse", "language"]
 
 
-def _build_update_data(task: TaskType, job_result: dict) -> dict:
-    """Build the DB update payload from a single job's LLM result."""
+def _build_update_data(task: TaskType, job_result: dict, job: dict | None = None) -> dict:
+    """Build the DB update payload from a single job's LLM result.
+
+    ``job`` is the current persisted job record. When ``task`` is ``"all"``,
+    the language field is only written when the stored value is missing or
+    differs from the LLM result, preventing accidental overwrites of a
+    previously validated tag.
+    """
     update_data: dict = {}
 
     if task in ["all", "summary"] and job_result.get("summary"):
@@ -296,6 +312,21 @@ def _build_update_data(task: TaskType, job_result: dict) -> dict:
                 "confidence": job_result.get("sse_confidence", 0.0),
                 "reasoning": job_result.get("sse_details", "Generated by unified processor")
             })
+
+    new_language = job_result.get("language")
+    if new_language:
+        if task == "language":
+            # Explicit language run: always write.
+            update_data["language"] = new_language
+        elif task == "all":
+            # Only write when there is no stored value or it differs from the
+            # LLM result, so a previously validated tag is not clobbered.
+            stored_language = (job or {}).get("language")
+            if not stored_language or stored_language != new_language:
+                update_data["language"] = new_language
+        # For single-field tasks (summary, values, sse) the LLM still returns a
+        # language field, but we intentionally don't write it — those runs are
+        # scoped and should not mutate fields they weren't asked to update.
 
     return update_data
 
@@ -336,9 +367,14 @@ def _try_db_write(job: dict, update_data: dict, db_client) -> None:
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Unified post-processor for jobs")
-    parser.add_argument("--task", choices=["sse", "values", "summary", "all"],
+    parser.add_argument("--task", choices=["sse", "values", "summary", "language", "all"],
                        default="all", help="What to process")
-    parser.add_argument("--limit", type=int, default=100, help="Maximum jobs to process")
+    parser.add_argument("--since-days", type=int, help="Process jobs created since N days ago")
+    parser.add_argument("--force-language-reprocess", action="store_true",
+                        help="Force re-processing of language tags even if already present and valid.")
+    parser.add_argument("--limit", type=int, default=100,
+                        help="Maximum rows to fetch from the DB (default: 100). "
+                             "Note: post-filter skips may process fewer jobs.")
     parser.add_argument("--job-id", nargs="+", help="Specific job IDs to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't save to database")
     group = parser.add_mutually_exclusive_group()
@@ -373,13 +409,15 @@ def main():
                 sys.exit(1)
 
     # Process jobs
-    result = process_jobs_unified(
+    result = process_jobs_unified(ProcessingOptions(
         task=args.task,
         limit=args.limit,
-        job_ids=args.job_id,
+        job_ids=args.job_id or [],
         dry_run=args.dry_run,
-        verbose=args.verbose
-    )
+        verbose=args.verbose,
+        since_days=args.since_days,
+        force_language_reprocess=args.force_language_reprocess,
+    ))
 
     # Print summary
     print("\n" + "=" * 70)

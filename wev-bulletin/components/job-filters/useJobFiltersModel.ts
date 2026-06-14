@@ -7,7 +7,6 @@ import {
   buildFilterOptions,
   getAllMunicipalities,
   getIndeterminateProvinces,
-  getVisibleMunicipalitiesByProvince,
   toggleMunicipalitySelection,
   toggleProvinceSelection,
   toggleSelection,
@@ -240,15 +239,14 @@ export function useJobFiltersModel({
       });
     }
 
-    if (selectedWorkTypes.length > 0) {
-      const label = selectedWorkTypes.map((wt) => getWorkTypeLabel(wt)).join(', ');
-      chips.push({
-        id: 'work-types',
-        label: truncateMiddle(label, MAX_TAG_LENGTH),
-        title: label,
-        onRemove: () => onWorkTypesChange([]),
-      });
-    }
+    chips.push(
+      ...buildSelectionChips(
+        'work-type',
+        selectedWorkTypes,
+        (workType) => getWorkTypeLabel(workType),
+        (workType) => onWorkTypesChange(selectedWorkTypes.filter((item) => item !== workType)),
+      ),
+    );
 
     chips.push(
       ...buildSelectionChips(
@@ -406,15 +404,11 @@ export function useJobFiltersModel({
     [onLanguagesChange, selectedLanguages],
   );
 
-  const visibleMunicipalitiesByProvince = useMemo(
-    () =>
-      getVisibleMunicipalitiesByProvince({
-        municipalitiesByProvince,
-        selectedProvinces,
-        selectedMunicipalities,
-      }),
-    [municipalitiesByProvince, selectedMunicipalities, selectedProvinces],
-  );
+  // Always show all municipalities regardless of province selection.
+  // Hiding municipalities when their province isn't selected made multi-select
+  // feel broken — selecting a province would remove already-selected cities
+  // from other provinces from view.
+  const visibleMunicipalitiesByProvince = municipalitiesByProvince;
 
   const allMunicipalities = useMemo(
     () => getAllMunicipalities(municipalitiesByProvince),

@@ -121,8 +121,8 @@ export default function JobFilters(props: JobFiltersProps) {
             onSelect={(value) => model.handleWorkTypeToggle(value as WorkType)}
             helper={
               model.hasProfileWorkTypes ? (
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="helper-text">
                     {isUsingProfileWorkTypes
                       ? t('filters.workType.profileDefault', {
                           types: model.profileWorkTypeLabel,
@@ -157,8 +157,8 @@ export default function JobFilters(props: JobFiltersProps) {
             onSelect={(value) => model.handleLanguageToggle(value)}
             helper={
               model.hasProfileLanguages ? (
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="helper-text">
                     {isUsingProfileLanguages
                       ? t('filters.language.profileDefault', {
                           languages: model.profileLanguageLabel,
@@ -234,7 +234,7 @@ export default function JobFilters(props: JobFiltersProps) {
             />
             {profileMunicipality && (
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span>
+                <span className="text-muted-foreground">
                   {isUsingProfileLocation
                     ? t('filters.municipality.profileDefault', { city: profileMunicipality })
                     : t('filters.municipality.profileOverride', { city: profileMunicipality })}

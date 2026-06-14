@@ -111,8 +111,13 @@ async function fetchBulletinFacets(
 
   query = applySearchFilter(query, vectorColumn, input.searchQuery);
   query = applyAgeFilter(query, input.postedWithin);
-  query = applyNonFacetFilters(query, input);
 
+  // Facets intentionally do NOT apply non-facet filters (work type, language,
+  // SSE, salary). Facets represent the full universe of options available for
+  // the current search/age window so the user can see and combine them freely.
+  // Applying those filters here would hide options as soon as one is selected,
+  // making multi-select feel broken (e.g. selecting "remote" would remove
+  // "hybrid" from the list).
   // Limit the impact of unbounded facet queries while keeping them relatively accurate
   const { data, error } = await query.limit(5000);
   if (error) throw new Error(error.message);
