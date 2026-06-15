@@ -146,7 +146,7 @@ export default function BulletinPageSkeleton() {
 
         {/* Job Cards Skeleton */}
         <div className="space-y-6">
-          {Array.from({ length: 3 }).map((_, index) => (
+          {Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
             <article
               key={index}
               className="bg-card border border-border rounded-wev-card overflow-hidden"
@@ -165,40 +165,16 @@ export default function BulletinPageSkeleton() {
 
               {/* Details – matches JobCardDetails: Who / What / Where / Why / When / How Much */}
               <div className="job-details py-4 px-5 space-y-3 leading-relaxed">
-                {/* Who: */}
-                <div className="flex items-center gap-2">
-                  <Shimmer className="w-10" />
-                  <Shimmer className="w-32" />
-                </div>
-                {/* What: */}
-                <div className="flex items-center gap-2">
-                  <Shimmer className="w-12" />
-                  <Shimmer className="w-52" />
-                </div>
-                {/* Where: */}
-                <div className="flex items-center gap-2">
-                  <Shimmer className="w-14" />
-                  <Shimmer className="w-28" />
-                </div>
-                {/* Why: (multi-line summary) */}
+                <SkeletonRow iconW="w-10" textW="w-32" />
+                <SkeletonRow iconW="w-12" textW="w-52" />
+                <SkeletonRow iconW="w-14" textW="w-28" />
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2">
-                    <Shimmer className="w-10" />
-                    <Shimmer className="w-[75%]" />
-                  </div>
-                  <Shimmer className="w-[65%] ml-12" />
-                  <Shimmer className="w-[70%] ml-12" />
+                  <SkeletonRow iconW="w-10" textW="w-[75%]" />
+                  <SkeletonRow textW="w-[65%]" ml={true} />
+                  <SkeletonRow textW="w-[70%]" ml={true} />
                 </div>
-                {/* When: */}
-                <div className="flex items-center gap-2">
-                  <Shimmer className="w-12" />
-                  <Shimmer className="w-36" />
-                </div>
-                {/* How Much: */}
-                <div className="flex items-center gap-2">
-                  <Shimmer className="w-[4.5rem]" />
-                  <Shimmer className="w-40" />
-                </div>
+                <SkeletonRow iconW="w-12" textW="w-36" />
+                <SkeletonRow iconW="w-[4.5rem]" textW="w-40" />
               </div>
 
               {/* Footer – matches JobCardFooter: donut + pills */}

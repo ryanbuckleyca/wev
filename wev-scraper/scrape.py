@@ -22,6 +22,9 @@ from utils.env import is_truthy_env
 from utils.log import scraper_log as _log
 from utils.url import add_url_dedup_variants, normalize_listing_url
 
+def strip_accents(s: str) -> str:
+    return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('utf-8').lower()
+
 os.environ['PLAYWRIGHT_SYNC_MODE'] = '1'
 
 # Constants for reporting
@@ -71,8 +74,13 @@ class ScraperOrchestrator:
             self.existing_urls = self._fetch_existing_job_urls()
 
             # 2. Main Loop
-            for source in sources:
-                self._process_single_source(source)
+            queue = sources.copy()
+            while queue:
+                source = queue.pop(0)
+                retry_requested = self._process_single_source(source)
+                if retry_requested:
+                    queue.append(source)
+                    _log(f"🔄 Re-queued {source.get('name')} to the end.")
 
             # 3. Post-Processing
             if self.results.all_job_ids:
@@ -111,9 +119,6 @@ class ScraperOrchestrator:
             raise RuntimeError(f"Could not fetch sources: {response}")
         sources = response.data
         if self.source_filter:
-            def strip_accents(s: str) -> str:
-                return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('utf-8').lower()
-            
             filter_norm = strip_accents(self.source_filter)
             sources = [s for s in sources if filter_norm in strip_accents(s.get("name", ""))]
             if not sources:
@@ -156,46 +161,45 @@ class ScraperOrchestrator:
             return False
         return any(signal in msg for signal in cls._TRANSIENT_ERROR_SIGNALS)
 
-    def _process_single_source(self, source: Dict[str, Any], max_source_retries: int = 2):
+    def _process_single_source(self, source: Dict[str, Any], max_source_retries: int = 2) -> bool:
         source_name = source.get("name", "Unknown Source")
         scraper_class = get_scraper_class(source["id"], source_name=source_name)
 
         if not scraper_class:
             _log(f"Skipping {source_name}: No scraper implementation registered.")
-            return
+            return False
 
-        _log(f"\n{'#' * 30}\n# {source_name}\n{'#' * 30}")
+        attempt = source.get("_attempts", 0) + 1
+        source["_attempts"] = attempt
 
-        for attempt in range(1, max_source_retries + 2):  # +2 = initial + retries
-            scraper = None
-            try:
-                scraper = scraper_class(source)
-                scraper.existing_urls = self.existing_urls
+        _log(f"\n{'#' * 30}\n# {source_name} (Attempt {attempt}/{max_source_retries + 1})\n{'#' * 30}")
 
-                jobs = scraper.fetch_jobs()
-                _log(f"Found {len(jobs)} jobs.")
+        scraper = None
+        try:
+            scraper = scraper_class(source)
+            scraper.existing_urls = self.existing_urls
 
-                source_summary = self._save_or_compare_jobs(jobs, source)
-                self.results.summary.append(source_summary)
+            jobs = scraper.fetch_jobs()
+            _log(f"Found {len(jobs)} jobs.")
 
-                if "job_ids" in source_summary:
-                    self.results.all_job_ids.extend(source_summary["job_ids"])
+            source_summary = self._save_or_compare_jobs(jobs, source)
+            self.results.summary.append(source_summary)
 
-                return  # success — exit retry loop
+            if "job_ids" in source_summary:
+                self.results.all_job_ids.extend(source_summary["job_ids"])
 
-            except Exception as e:
-                self._cleanup_scraper(scraper)
-                scraper = None
+            return False  # success — no retry needed
 
-                is_last_attempt = attempt > max_source_retries
-                if not is_last_attempt and self._is_transient_error(e):
-                    retry_delay = 30 * attempt
-                    _log(f"⚠️  Transient error on {source_name} (attempt {attempt}/{max_source_retries + 1}): {e}")
-                    _log(f"🔄 Retrying {source_name} in {retry_delay}s...")
-                    time.sleep(retry_delay)
-                else:
-                    self._handle_source_error(e, None, source_name)
-                    return
+        except Exception as e:
+            self._cleanup_scraper(scraper)
+            
+            is_last_attempt = attempt > max_source_retries
+            if not is_last_attempt and self._is_transient_error(e):
+                _log(f"⚠️  Transient error on {source_name}: {e}")
+                return True  # request re-queue
+            else:
+                self._handle_source_error(e, None, source_name)
+                return False
 
     def _save_or_compare_jobs(self, jobs: List[Dict[str, Any]], source: Dict[str, Any]) -> Dict[str, Any]:
         if self.dry_run:
