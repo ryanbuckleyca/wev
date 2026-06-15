@@ -12,8 +12,7 @@ import { useState, useEffect } from 'react';
 
 export const dynamic = 'force-dynamic';
 
-const LOGO_LOGOTYPE =
-  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';
+const LOGOTYPE_URL = '/wev-logotype.svg';
 const LOGO_MARK =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logo.png';
 
@@ -144,10 +143,11 @@ export default function StyleGuidePage() {
         <div className="design-hero-content">
           <div className="logo-display">
             <Image
-              src={LOGO_LOGOTYPE}
+              src={LOGOTYPE_URL}
               alt="wev logo"
               width={160}
               height={64}
+              unoptimized
               className="wev-logotype"
             />
           </div>
@@ -679,10 +679,11 @@ export default function StyleGuidePage() {
             <div className="design-logo-showcase design-logo-bg-light">
               <div className="design-logo-placeholder">
                 <Image
-                  src={LOGO_LOGOTYPE}
+                  src={LOGOTYPE_URL}
                   alt="wev logo"
                   width={200}
                   height={80}
+                  unoptimized
                   className="wev-logotype"
                 />
               </div>

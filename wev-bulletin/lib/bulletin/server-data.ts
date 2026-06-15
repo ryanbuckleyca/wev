@@ -219,6 +219,7 @@ export async function fetchCachedBulletinQueryPayload(
 
 /**
  * Fetches and returns the last scrape time.
+ * Returns null gracefully if the table is inaccessible (e.g. missing RLS grant in local dev).
  */
 export async function fetchLastScrapeTime(): Promise<string | null> {
   const { data, error } = await supabaseServer
@@ -228,7 +229,11 @@ export async function fetchLastScrapeTime(): Promise<string | null> {
     .limit(1)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Non-fatal — missing scrape time shouldn't break the page
+    console.warn('[fetchLastScrapeTime]', error.message);
+    return null;
+  }
   return data?.run_at ?? null;
 }
 
