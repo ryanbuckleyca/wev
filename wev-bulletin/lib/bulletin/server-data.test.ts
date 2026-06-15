@@ -162,11 +162,12 @@ describe('server-data', () => {
       expect(result).toBe('2024-01-01');
     });
 
-    it('throws error on failure', async () => {
+    it('returns null on failure', async () => {
       mockQuery.then.mockImplementation((onFulfilled: any) => {
         return Promise.resolve({ data: null, error: { message: 'Error' } }).then(onFulfilled);
       });
-      await expect(fetchLastScrapeTime()).rejects.toThrow('Error');
+      const result = await fetchLastScrapeTime();
+      expect(result).toBeNull();
     });
   });
 
