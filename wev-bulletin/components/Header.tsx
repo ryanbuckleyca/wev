@@ -9,8 +9,7 @@ import ThemeToggle from './ThemeToggle';
 import LocaleSwitcher from './LocaleSwitcher';
 import { zIndex } from '@/lib/design-tokens';
 
-const HEADER_LOGOTYPE_URL =
-  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';
+const HEADER_LOGOTYPE_URL = '/wev-logotype.svg';
 
 export default function Header({
   hasBanner,
@@ -81,6 +80,8 @@ export default function Header({
               alt=""
               width={60}
               height={24}
+              priority
+              unoptimized
               className="wev-logotype w-[60px] h-auto cursor-pointer"
             />
           </Link>

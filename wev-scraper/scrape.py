@@ -1,6 +1,7 @@
 import os
 import sys
 import traceback
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Set
@@ -51,10 +52,11 @@ class ScraperResults:
 class ScraperOrchestrator:
     """Manages the lifecycle of a scraping session."""
 
-    def __init__(self, use_prod: bool = False, dry_run: bool = False, compare_only: bool = False):
+    def __init__(self, use_prod: bool = False, dry_run: bool = False, compare_only: bool = False, source_filter: str | None = None):
         self.use_prod = use_prod
         self.dry_run = dry_run
         self.compare_only = compare_only
+        self.source_filter = source_filter.strip().lower() if source_filter else None
         self.results = ScraperResults(is_dry_run=dry_run, is_compare_only=compare_only)
         self.existing_urls: Set[str] = set()
 
@@ -106,8 +108,17 @@ class ScraperOrchestrator:
         response = supabase.table("sources").select("*").execute()
         if not response.data:
             raise RuntimeError(f"Could not fetch sources: {response}")
-        _log(f"Found {len(response.data)} source(s).")
-        return response.data
+        sources = response.data
+        if self.source_filter:
+            def strip_accents(s: str) -> str:
+                return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('utf-8').lower()
+            
+            filter_norm = strip_accents(self.source_filter)
+            sources = [s for s in sources if filter_norm in strip_accents(s.get("name", ""))]
+            if not sources:
+                raise RuntimeError(f"No source found matching '{self.source_filter}'")
+        _log(f"Found {len(sources)} source(s).")
+        return sources
 
     def _fetch_existing_job_urls(self) -> Set[str]:
         _log("Fetching existing jobs for duplicate checking...")
@@ -121,7 +132,30 @@ class ScraperOrchestrator:
             _log(f"Warning: Error fetching existing jobs: {e}")
         return urls
 
-    def _process_single_source(self, source: Dict[str, Any]):
+    _TRANSIENT_ERROR_SIGNALS = (
+        "err_connection_closed",
+        "err_timed_out",
+        "err_connection_reset",
+        "err_connection_refused",
+        "err_name_not_resolved",
+        "net::err_",
+        "timeout",
+        "connection reset",
+        "connection closed",
+        "read timeout",
+        "ssl",
+        "eof occurred",
+    )
+
+    @classmethod
+    def _is_transient_error(cls, e: Exception) -> bool:
+        msg = str(e).lower()
+        # Never retry explicit blocks — they'll just fail again
+        if "403" in msg or "forbidden" in msg or "ip blocked" in msg:
+            return False
+        return any(signal in msg for signal in cls._TRANSIENT_ERROR_SIGNALS)
+
+    def _process_single_source(self, source: Dict[str, Any], max_source_retries: int = 2):
         source_name = source.get("name", "Unknown Source")
         scraper_class = get_scraper_class(source["id"], source_name=source_name)
 
@@ -131,24 +165,36 @@ class ScraperOrchestrator:
 
         _log(f"\n{'#' * 30}\n# {source_name}\n{'#' * 30}")
 
-        scraper = None
-        try:
-            scraper = scraper_class(source)
-            scraper.existing_urls = self.existing_urls
+        for attempt in range(1, max_source_retries + 2):  # +2 = initial + retries
+            scraper = None
+            try:
+                scraper = scraper_class(source)
+                scraper.existing_urls = self.existing_urls
 
-            jobs = scraper.fetch_jobs()
-            _log(f"Found {len(jobs)} jobs.")
+                jobs = scraper.fetch_jobs()
+                _log(f"Found {len(jobs)} jobs.")
 
-            source_summary = self._save_or_compare_jobs(jobs, source)
-            self.results.summary.append(source_summary)
+                source_summary = self._save_or_compare_jobs(jobs, source)
+                self.results.summary.append(source_summary)
 
-            if "job_ids" in source_summary:
-                self.results.all_job_ids.extend(source_summary["job_ids"])
+                if "job_ids" in source_summary:
+                    self.results.all_job_ids.extend(source_summary["job_ids"])
 
-        except Exception as e:
-            self._handle_source_error(e, scraper, source_name)
-        finally:
-            self._cleanup_scraper(scraper)
+                return  # success — exit retry loop
+
+            except Exception as e:
+                self._cleanup_scraper(scraper)
+                scraper = None
+
+                is_last_attempt = attempt > max_source_retries
+                if not is_last_attempt and self._is_transient_error(e):
+                    retry_delay = 30 * attempt
+                    _log(f"⚠️  Transient error on {source_name} (attempt {attempt}/{max_source_retries + 1}): {e}")
+                    _log(f"🔄 Retrying {source_name} in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                else:
+                    self._handle_source_error(e, None, source_name)
+                    return
 
     def _save_or_compare_jobs(self, jobs: List[Dict[str, Any]], source: Dict[str, Any]) -> Dict[str, Any]:
         if self.dry_run:
@@ -318,6 +364,8 @@ def parse_args():
     parser.add_argument("--max-jobs", type=int, help="Limit jobs per source")
     parser.add_argument("--headed", action="store_true", help="Show browser window (for debugging)")
     parser.add_argument("--vpn", action="store_true", help="Enable VPN-specific scraper behavior")
+    parser.add_argument("--source", help="Only run the scraper for this source (by name, case-insensitive)")
+    parser.add_argument("--list-sources", action="store_true", help="List all available sources and exit")
     return parser.parse_args()
 
 
@@ -390,6 +438,17 @@ def main():
         print("Error: --prod and --publish are mutually exclusive.", file=sys.stderr)
         sys.exit(2)
 
+    if args.list_sources:
+        initialize_runtime_env(args)
+        response = supabase.table("sources").select("name").order("name").execute()
+        if not response.data:
+            print("No sources found.")
+        else:
+            print("Available sources:")
+            for s in response.data:
+                print(f"  - {s['name']}")
+        sys.exit(0)
+
     if args.prod or args.publish:
         os.environ["USE_PROD_DB"] = "1"
         # Guard against accidental prod runs when invoked directly (bypassing run.ts).
@@ -413,7 +472,8 @@ def main():
     orchestrator = ScraperOrchestrator(
         use_prod=args.prod or args.publish,
         dry_run=args.dry_run or args.compare,
-        compare_only=args.compare
+        compare_only=args.compare,
+        source_filter=args.source,
     )
     orchestrator.run()
 
