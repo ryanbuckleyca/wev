@@ -15,12 +15,7 @@ import { Search1Outlined } from '@lineiconshq/free-icons';
  * automatically respects the active theme and any token changes.
  */
 function Shimmer({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={`skeleton-shimmer ${className ?? ''}`}
-    />
-  );
+  return <span aria-hidden className={`skeleton-shimmer ${className ?? ''}`} />;
 }
 
 export default function BulletinPageSkeleton() {
@@ -93,9 +88,7 @@ export default function BulletinPageSkeleton() {
                 className="h-10 px-3 border border-border rounded-wev-btn bg-card text-sm text-muted-foreground hover:border-primary transition-colors flex items-center justify-center gap-2 whitespace-nowrap opacity-50 cursor-not-allowed"
               >
                 <FilterIcon className="w-4 h-4" aria-hidden />
-                <span className="max-[519px]:hidden">
-                  {t('filters.showFilters')}
-                </span>
+                <span className="max-[519px]:hidden">{t('filters.showFilters')}</span>
                 <span className="inline-flex min-w-[1.25rem] h-5 px-1.5 items-center justify-center rounded-full bg-primary text-white text-xs font-semibold">
                   0
                 </span>
@@ -119,9 +112,7 @@ export default function BulletinPageSkeleton() {
         {/* "Last updated" / sort bar */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
           <div className="text-sm text-center sm:text-left text-xs text-muted-foreground flex items-center">
-            <span className="font-semibold text-wev-brand-accent">
-              {t('home.lastUpdated')}{' '}
-            </span>
+            <span className="font-semibold text-wev-brand-accent">{t('home.lastUpdated')} </span>
             <Shimmer className="inline-block w-40 ml-2" />
           </div>
 
