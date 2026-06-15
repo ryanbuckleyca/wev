@@ -18,6 +18,15 @@ function Shimmer({ className }: { className?: string }) {
   return <span aria-hidden className={`skeleton-shimmer ${className ?? ''}`} />;
 }
 
+const SKELETON_CARD_COUNT = 3;
+
+const SkeletonRow = ({ iconW, textW, ml }: { iconW?: string; textW: string; ml?: boolean }) => (
+  <div className={`flex items-center gap-2 ${ml ? 'ml-12' : ''}`}>
+    {iconW && <Shimmer className={iconW} />}
+    <Shimmer className={textW} />
+  </div>
+);
+
 export default function BulletinPageSkeleton() {
   const t = useTranslations();
 

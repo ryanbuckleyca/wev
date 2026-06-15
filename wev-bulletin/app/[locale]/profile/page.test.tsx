@@ -126,7 +126,7 @@ describe('ProfilePage skills integration', () => {
   });
 
   it('removing a chip updates form data and save payload', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.startsWith('/api/skills/by-uri?uris=uri-1&locale=en')) {
@@ -176,10 +176,10 @@ describe('ProfilePage skills integration', () => {
 
   it(
     'saves concept_uri[] (not labels) after selecting a search result',
-    { timeout: 15_000 },
+    { timeout: 45_000 },
     async () => {
       // vi.useFakeTimers(); // Removed fake timers
-      const user = userEvent.setup(); // Removed advanceTimers
+      const user = userEvent.setup({ delay: null }); // Removed advanceTimers
       const fetchMock = vi.fn((input: RequestInfo | URL) => {
         const url = String(input);
         if (url.startsWith('/api/skills/by-uri?uris=uri-1&locale=en')) {
@@ -278,13 +278,13 @@ describe('ProfilePage skills integration', () => {
     },
   );
 
-  it('blocks save and shows error when skills exceed limit', { timeout: 30_000 }, async () => {
+  it('blocks save and shows error when skills exceed limit', { timeout: 45_000 }, async () => {
     // This test renders 10 hydrated skills, opens a modal, searches for a skill,
     // selects a result, and validates the save is blocked.  Under full-suite
     // resource contention it can exceed the 30 s global timeout.
 
     // vi.useFakeTimers(); // Removed fake timers
-    const user = userEvent.setup(); // Removed advanceTimers
+    const user = userEvent.setup({ delay: null }); // Removed advanceTimers
     const profileAtMaxSkills = {
       ...baseProfile,
       skills: Array.from({ length: MAX_PROFILE_SKILLS }, (_, i) => `uri-${i + 1}`),

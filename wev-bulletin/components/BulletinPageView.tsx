@@ -54,7 +54,6 @@ export default function BulletinPageView({
               height={40}
               unoptimized
               className="main-logo wev-logotype w-[100px] h-auto mb-2"
-              style={{ height: 'auto' }}
               priority
             />
             <h1 className="text-xl font-medium text-primary">{t('home.heading')}</h1>

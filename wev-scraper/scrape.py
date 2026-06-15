@@ -1,6 +1,5 @@
 import os
 import sys
-import time
 import traceback
 import unicodedata
 from dataclasses import dataclass, field
@@ -21,6 +20,7 @@ from utils.db import fetch_all_rows, get_supabase_url, log_scrape_run, save_job,
 from utils.env import is_truthy_env
 from utils.log import scraper_log as _log
 from utils.url import add_url_dedup_variants, normalize_listing_url
+
 
 def strip_accents(s: str) -> str:
     return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('utf-8').lower()
