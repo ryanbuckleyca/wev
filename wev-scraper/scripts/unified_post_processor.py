@@ -16,7 +16,6 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -34,7 +33,7 @@ from settings import (  # noqa: E402
 )
 
 ensure_env_loaded()
-from utils.prod_env import bootstrap_prod_from_argv  # noqa: E402
+from utils.prod_env import bootstrap_prod_from_argv, confirm_prod_run  # noqa: E402
 
 bootstrap_prod_from_argv(sys.argv, Path(__file__))
 
@@ -48,11 +47,13 @@ from utils.log import scraper_log  # noqa: E402
 
 VALID_LANGUAGES = frozenset({"en", "fr", "bilingual"})
 
+TaskType = Literal["all", "summary", "values", "sse", "language"]
+
 
 @dataclass
 class ProcessingOptions:
     """Options that control how process_jobs_unified fetches and filters jobs."""
-    task: str = "all"
+    task: TaskType = "all"
     limit: int | None = 100
     job_ids: List[str] = field(default_factory=list)
     dry_run: bool = False
@@ -128,7 +129,7 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
 
     counts = {
         "processed": 0,
-        "updated": {"sse": 0, "values": 0, "skills": 0, "summary": 0, "language": 0},
+        "updated": {"sse": 0, "values": 0, "summary": 0, "language": 0},
         "skipped": 0,
         "errors": 0,
         "provider_used": None
@@ -183,73 +184,78 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
 
     # Process in batches
     batch_size = 10
-    try:
-        processed_count = 0
-        result: dict = {}
-        for i in range(0, len(filtered_jobs), batch_size):
-            batch = filtered_jobs[i:i + batch_size]
-            total_batches = (len(filtered_jobs) + batch_size - 1) // batch_size
-            print(f"  Processing batch {i//batch_size + 1}/{total_batches} ({len(batch)} jobs)")
+    processed_count = 0
+    result: dict = {}
+    for i in range(0, len(filtered_jobs), batch_size):
+        batch = filtered_jobs[i:i + batch_size]
+        total_batches = (len(filtered_jobs) + batch_size - 1) // batch_size
+        print(f"  Processing batch {i//batch_size + 1}/{total_batches} ({len(batch)} jobs)")
 
+        try:
             result = processor.process_jobs(batch)
+        except Exception as e:
+            scraper_log(f"✗ Batch processing failed: {e}")
+            counts["errors"] += len(batch)
+            continue
 
-            if result is None:
-                scraper_log("✗ Processing failed: processor returned None")
-                counts["errors"] += len(batch)
+        if result is None:
+            scraper_log("✗ Processing failed: processor returned None")
+            counts["errors"] += len(batch)
+            continue
+
+        if result.get("error"):
+            scraper_log(f"✗ Processing failed: {result['error']}")
+            counts["errors"] += len(batch)
+            continue
+
+        results_list = result.get("results", [])
+        if len(results_list) != len(batch):
+            scraper_log(
+                f"✗ Result count mismatch: expected {len(batch)}, got {len(results_list)}"
+            )
+            counts["errors"] += len(batch)
+            continue
+
+        for job, job_result in zip(batch, results_list, strict=True):
+            if not isinstance(job_result, dict) or not job_result:
+                scraper_log(f"✗ Invalid or empty result for job {job['id']}")
+                counts["errors"] += 1
                 continue
 
-            if result.get("error"):
-                scraper_log(f"✗ Processing failed: {result['error']}")
-                counts["errors"] += len(batch)
-                continue
+            if not opts.dry_run:
+                update_data = _build_update_data(opts.task, job_result, job)
+                if update_data:
+                    try:
+                        _try_db_write(job, update_data, supabase)
+                        if "summary" in update_data:
+                            counts["updated"]["summary"] += 1
+                        if "values" in update_data:
+                            counts["updated"]["values"] += 1
+                        if "is_sse" in update_data:
+                            counts["updated"]["sse"] += 1
+                        if "language" in update_data:
+                            counts["updated"]["language"] += 1
+                        processed_count += 1
+                    except Exception as e:
+                        scraper_log(f"✗ DB write permanently failed for job {job['id']}: {e}")
+                        counts["errors"] += 1
+            else:
+                processed_count += 1
 
-            for job, job_result in zip(batch, result.get("results", []), strict=True):
-                if not isinstance(job_result, dict) or not job_result:
-                    scraper_log(f"✗ Invalid or empty result for job {job['id']}")
-                    counts["errors"] += 1
-                    continue
+            if opts.verbose:
+                actions = [k for k in ("summary", "values", "language") if k in job_result]
+                if "is_sse" in job_result:
+                    actions.append("SSE")
+                print(f"  ✓ Processed job {job['id'][:8]}... ({', '.join(actions) or 'no actions'})")
 
-                if not opts.dry_run:
-                    update_data = _build_update_data(opts.task, job_result, job)
-                    if update_data:
-                        try:
-                            _try_db_write(job, update_data, supabase)
-                            if "summary" in update_data:
-                                counts["updated"]["summary"] += 1
-                            if "values" in update_data:
-                                counts["updated"]["values"] += 1
-                            if "is_sse" in update_data:
-                                counts["updated"]["sse"] += 1
-                            if "language" in update_data:
-                                counts["updated"]["language"] += 1
-                            processed_count += 1
-                        except Exception as e:
-                            scraper_log(f"✗ DB write permanently failed for job {job['id']}: {e}")
-                            counts["errors"] += 1
-                else:
-                    processed_count += 1
-
-                if opts.verbose:
-                    actions = [k for k in ("summary", "values", "language") if k in job_result]
-                    if "is_sse" in job_result:
-                        actions.append("SSE")
-                    print(f"  ✓ Processed job {job['id'][:8]}... ({', '.join(actions) or 'no actions'})")
-
-        counts["processed"] = processed_count
-        if result:
-            counts["provider_used"] = result.get("provider")
-            print(f"✓ Processing complete using {result.get('provider')}")
-        else:
-            print("✓ Processing complete (no provider results)")
-
-    except Exception as e:
-        scraper_log(f"✗ Processing failed: {e}")
-        counts["errors"] += len(filtered_jobs)
+    counts["processed"] = processed_count
+    if result:
+        counts["provider_used"] = result.get("provider")
+        print(f"✓ Processing complete using {result.get('provider')}")
+    else:
+        print("✓ Processing complete (no provider results)")
 
     return counts
-
-
-TaskType = Literal["all", "summary", "values", "sse", "language"]
 
 
 def _build_update_data(task: TaskType, job_result: dict, job: dict | None = None) -> dict:
@@ -361,19 +367,7 @@ def main():
 
     # Confirmation (run.ts sets PROD_CONFIRMED=1 after its prompt; CI may use CONFIRM_PROD_RUN=YES)
     if args.prod or args.publish:
-        if sys.stdin.isatty() and os.environ.get("PROD_CONFIRMED") != "1":
-            mode = "PRODUCTION (full)" if args.prod else "PRODUCTION DB (publish — local LLMs)"
-            confirm = input(f"⚠️  RUNNING AGAINST {mode}. Type 'YES' to continue: ")
-            if confirm != "YES":
-                sys.exit(0)
-        elif not sys.stdin.isatty() and os.environ.get("PROD_CONFIRMED") != "1":
-            if os.environ.get("CONFIRM_PROD_RUN") != "YES":
-                print(
-                    "Refusing production run in non-interactive mode. "
-                    "Set CONFIRM_PROD_RUN=YES (or run via npm run process:prod / process:publish).",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+        confirm_prod_run(full_prod=args.prod)
 
     # Process jobs
     result = process_jobs_unified(ProcessingOptions(
@@ -400,6 +394,8 @@ def main():
         print(f"Values updated: {result['updated']['values']}")
     if result['updated']['sse'] > 0:
         print(f"SSE classifications updated: {result['updated']['sse']}")
+    if result['updated']['language'] > 0:
+        print(f"Language tags updated: {result['updated']['language']}")
 
     print(f"Errors: {result['errors']}")
 

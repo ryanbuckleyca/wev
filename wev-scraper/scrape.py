@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Set
 
 from settings import ensure_env_loaded, load_env_file
-from utils.prod_env import apply_prod_overrides, resolve_prod_env_path
+from utils.prod_env import apply_prod_overrides, confirm_prod_run, resolve_prod_env_path
 
 # Ensure CI sees output immediately
 if hasattr(sys.stdout, "reconfigure"):
@@ -36,15 +36,6 @@ CHECKED_FIELDS = [
 COMPARE_FIELDS = ["job_title", "organization", "location", "wage", "employment_type", "date_posted"]
 
 
-def _has_prod_confirmation() -> bool:
-    return os.environ.get("PROD_CONFIRMED") == "1" or os.environ.get("CONFIRM_PROD_RUN") == "YES"
-
-
-def _mark_prod_confirmed() -> None:
-    os.environ["PROD_CONFIRMED"] = "1"
-    os.environ["CONFIRM_PROD_RUN"] = "YES"
-
-
 @dataclass
 class ScraperResults:
     """Aggregated results of a scraping session."""
@@ -57,14 +48,14 @@ class ScraperResults:
 class ScraperOrchestrator:
     """Manages the lifecycle of a scraping session."""
 
-    def __init__(self, use_prod: bool = False, dry_run: bool = False, compare_only: bool = False, source_filter: str | None = None):
-        self.use_prod = use_prod
+    def __init__(self, dry_run: bool = False, compare_only: bool = False, source_filter: str | None = None):
         self.dry_run = dry_run
         self.compare_only = compare_only
         self.source_filter = source_filter.strip().lower() if source_filter else None
         self.results = ScraperResults(is_dry_run=dry_run, is_compare_only=compare_only)
         self.existing_urls: Set[str] = set()
         self.source_attempts: Dict[str, int] = {}
+        self.post_scrape_errors = 0
 
     def run(self):
         """Execute the full scraping lifecycle."""
@@ -307,9 +298,16 @@ class ScraperOrchestrator:
         if any(is_truthy_env(f) for f in ["SHOULD_CLASSIFY", "SHOULD_TAG_VALUES", "SHOULD_SUMMARIZE"]):
             try:
                 from scripts.unified_post_processor import ProcessingOptions, process_jobs_unified
-                process_jobs_unified(ProcessingOptions(job_ids=self.results.all_job_ids))
+                result = process_jobs_unified(ProcessingOptions(job_ids=self.results.all_job_ids))
+                self.post_scrape_errors = result.get("errors", 0)
+                if self.post_scrape_errors:
+                    _log(
+                        f"❌ Unified post-processing finished with "
+                        f"{self.post_scrape_errors} error(s)"
+                    )
             except Exception as e:
-                _log(f"Error in unified post-processing: {e}")
+                _log(f"❌ Error in unified post-processing: {e}")
+                self.post_scrape_errors = len(self.results.all_job_ids)
 
         # ESCO Skill Tagging
         if is_truthy_env("SHOULD_TAG_SKILLS"):
@@ -455,31 +453,18 @@ def main():
 
     if args.prod or args.publish:
         os.environ["USE_PROD_DB"] = "1"
-        # Guard against accidental prod runs when invoked directly (bypassing run.ts).
-        # run.ts handles the prompt and sets PROD_CONFIRMED=1 before spawning this script.
-        if _has_prod_confirmation():
-            _mark_prod_confirmed()
-        elif sys.stdin.isatty():
-            mode = "PRODUCTION (full)" if args.prod else "PRODUCTION DB (publish — local LLMs)"
-            confirm = input(f"⚠️  RUNNING AGAINST {mode}. Type 'YES' to continue: ")
-            if confirm != "YES":
-                sys.exit(0)
-            _mark_prod_confirmed()
-        else:
-            print(
-                "Refusing production run in non-interactive mode. Set CONFIRM_PROD_RUN=YES to override.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+        confirm_prod_run(full_prod=args.prod)
 
     # 3. Orchestrate
     orchestrator = ScraperOrchestrator(
-        use_prod=args.prod or args.publish,
         dry_run=args.dry_run or args.compare,
         compare_only=args.compare,
         source_filter=args.source,
     )
     orchestrator.run()
+
+    if orchestrator.post_scrape_errors:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -96,7 +96,6 @@ function applyBulletinFilters(query: any, input: BulletinQueryInput) {
   if (input.munis.length) query = query.in('municipality', input.munis);
   if (input.emps.length) query = query.in('employment_type', input.emps);
   if (input.srcs.length) query = query.in('source', input.srcs);
-  if (input.langs.length) query = query.in('language', input.langs);
   return applyNonFacetFilters(query, input);
 }
 
@@ -107,7 +106,7 @@ async function fetchBulletinFacets(
 ): Promise<BulletinFilterOptions> {
   let query = supabase
     .from('matched_jobs')
-    .select('organization, province, municipality, employment_type, source');
+    .select('organization, province, municipality, employment_type, source, language');
 
   query = applySearchFilter(query, vectorColumn, input.searchQuery);
   query = applyAgeFilter(query, input.postedWithin);
