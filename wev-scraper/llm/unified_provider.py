@@ -167,19 +167,19 @@ class UnifiedJobProcessor:
                     raw_lang = item.get("language")
                     if not isinstance(raw_lang, str):
                         logger.warning(
-                            "Unexpected language value from LLM (not a string): %r — defaulting to 'en'",
+                            "Unexpected language value from LLM (not a string): %r — omitting",
                             raw_lang,
                         )
-                        item["language"] = "en"
+                        item.pop("language", None)
                     else:
                         lang = raw_lang.lower()
                         if lang in ["en", "fr", "bilingual"]:
                             item["language"] = lang
                         else:
                             logger.warning(
-                                "Unexpected language value from LLM: %r — defaulting to 'en'", lang
+                                "Unexpected language value from LLM: %r — omitting", lang
                             )
-                            item["language"] = "en"
+                            item.pop("language", None)
 
             return items
 

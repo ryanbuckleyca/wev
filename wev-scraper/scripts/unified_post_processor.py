@@ -31,47 +31,12 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 # ENV_MODE=prod (anything but local disables local-first LLMs); --publish sets local.
 from settings import (  # noqa: E402
     ensure_env_loaded,
-    load_db_credentials_only,
-    load_env_file,
 )
 
 ensure_env_loaded()
-_has_prod = "--prod" in sys.argv
-_has_publish = "--publish" in sys.argv
-if _has_prod and _has_publish:
-    print("Error: --prod and --publish are mutually exclusive.", file=sys.stderr)
-    sys.exit(2)
-if _has_prod or _has_publish:
-    _root = Path(__file__).resolve().parent.parent.parent
-    _scraper = Path(__file__).resolve().parent.parent
-    _prod_env = (
-        _root / ".env.production"
-        if (_root / ".env.production").exists()
-        else _scraper / ".env.production"
-    )
-    if not _prod_env.exists():
-        print(
-            f"❌ {_prod_env} not found — required for --prod / --publish.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    if _has_prod:
-        print(f"▶ Loading production overrides from {_prod_env.name}")
-        load_env_file(_prod_env)
-        # Full prod: .env.production may omit ENV_MODE; base .env often has ENV_MODE=local.
-        # is_local_env() is True only for ENV_MODE=local — use ``prod`` so Gemini/Groq from prod file win.
-        os.environ["ENV_MODE"] = "prod"
-        print("▶ LLM routing: ENV_MODE=prod (not local — use keys from .env.production)", flush=True)
-    else:
-        applied = load_db_credentials_only(_prod_env)
-        print(
-            f"▶ Publish mode: loaded {len(applied)} DB credential(s) from "
-            f"{_prod_env.name} ({', '.join(applied)}); LLM/feature config kept from .env"
-        )
-        # Publish: prod DB keys from .env.production, machine-local LLM stack (Ollama, local Jina).
-        os.environ["ENV_MODE"] = "local"
-        print("▶ LLM routing: ENV_MODE=local (--publish → local LLMs / embeddings)", flush=True)
-    os.environ["USE_PROD_DB"] = "1"
+from utils.prod_env import bootstrap_prod_from_argv  # noqa: E402
+
+bootstrap_prod_from_argv(sys.argv, Path(__file__))
 
 # Deferred imports: `utils.db`, `llm.factory`, and `utils.log` transitively load clients
 # that read `os.environ` (Supabase URL/keys, LLM provider config). Import them only after
@@ -136,7 +101,6 @@ def _needs_processing(job: Dict[str, Any], opts: ProcessingOptions) -> bool:
             not (job.get("summary") or "").strip()
             or not job.get("values")
             or job.get("is_sse") is None
-            or not (job.get("sse_details") or "").strip()
             or job.get("language") not in VALID_LANGUAGES
         )
     if opts.task == "sse":
@@ -210,7 +174,8 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
         return counts
 
     filtered_jobs = [job for job in jobs if _needs_processing(job, opts)]
-    print(f"✓ Filtered to {len(filtered_jobs)} eligible jobs")
+    counts["skipped"] = len(jobs) - len(filtered_jobs)
+    print(f"✓ Filtered to {len(filtered_jobs)} eligible jobs ({counts['skipped']} skipped)")
 
     if not filtered_jobs:
         print("No eligible jobs to process.")
@@ -238,7 +203,7 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
                 counts["errors"] += len(batch)
                 continue
 
-            for job, job_result in zip(batch, result.get("results", []), strict=False):
+            for job, job_result in zip(batch, result.get("results", []), strict=True):
                 if not isinstance(job_result, dict) or not job_result:
                     scraper_log(f"✗ Invalid or empty result for job {job['id']}")
                     counts["errors"] += 1
@@ -336,8 +301,10 @@ def is_transient_db_error(e: Exception) -> bool:
     code = getattr(e, "code", None)
     if code:
         code_str = str(code)
-        # Postgres transient codes (53xxx, 08xxx) or PostgREST 5xx HTTP codes
-        if code_str.startswith("53") or code_str.startswith("08") or code_str.startswith("50"):
+        # Postgres transient codes (53xxx, 08xxx) or specific PostgREST gateway errors
+        if code_str.startswith("53") or code_str.startswith("08"):
+            return True
+        if code_str in ("502", "503", "504"):
             return True
 
     err_name = type(e).__name__

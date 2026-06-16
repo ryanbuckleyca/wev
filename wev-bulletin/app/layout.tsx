@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { cookies, headers } from 'next/headers';
 import Script from 'next/script';
 import { getSiteBaseUrl } from '@/lib/site-url';
+import { resolveThemeFromCookie } from '@/lib/theme';
 import { routing } from '@/i18n/routing';
 import { Lexend_Deca } from 'next/font/google';
 import './globals.css';
@@ -13,8 +14,9 @@ const lexend = Lexend_Deca({
   variable: '--font-lexend',
 });
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
 const isProduction = process.env.NODE_ENV === 'production';
+const enableAnalytics = Boolean(GA_ID && isProduction);
 
 export const metadata: Metadata = {
   title: 'wev Bulletin - Job Postings',
@@ -33,21 +35,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const rawLocale = headerStore.get('x-next-intl-locale');
   const validLocales = routing.locales as readonly string[];
   const locale = rawLocale && validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale;
-  const theme = cookieStore.get('theme')?.value === 'dark' ? 'dark' : 'light';
+  const theme = resolveThemeFromCookie(cookieStore.get('theme')?.value);
 
   return (
     <html lang={locale} data-theme={theme} className={lexend.variable} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t)}}catch(e){/* ignore theme errors */}})()`,
-          }}
-        />
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
-        {GA_ID && isProduction && (
+        {enableAnalytics && (
           <>
             <Script
               src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}

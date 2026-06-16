@@ -91,9 +91,7 @@ export default function ProfilePage() {
             {/* Language Preference */}
             <div className="space-y-2">
               <fieldset className="space-y-2">
-                <legend className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  {t('profile.languagePreference')}
-                </legend>
+                <FormLabel as="legend">{t('profile.languagePreference')}</FormLabel>
                 <p className="helper-text">{t('profile.languagePreferenceHint')}</p>
                 <TogglePillGroup
                   options={SUPPORTED_LANGUAGES.map((lang) => ({

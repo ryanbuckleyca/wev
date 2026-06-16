@@ -24,6 +24,30 @@ def test_fetch_sources(mock_supabase):
     assert len(sources) == 1
     assert sources[0]["id"] == "s1"
 
+
+@patch("scrape.supabase")
+def test_fetch_sources_exact_name_match(mock_supabase):
+    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
+        [
+            {"id": "s1", "name": "GoodWork"},
+            {"id": "s2", "name": "GoodWork Canada"},
+        ]
+    )
+    orchestrator = ScraperOrchestrator(source_filter="goodwork")
+    sources = orchestrator._fetch_sources()
+    assert len(sources) == 1
+    assert sources[0]["id"] == "s1"
+
+
+@patch("scrape.supabase")
+def test_fetch_sources_no_partial_match(mock_supabase):
+    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
+        [{"id": "s2", "name": "GoodWork Canada"}]
+    )
+    orchestrator = ScraperOrchestrator(source_filter="goodwork")
+    with pytest.raises(RuntimeError, match="No source found matching"):
+        orchestrator._fetch_sources()
+
 @patch("scrape.supabase")
 def test_fetch_sources_empty(mock_supabase):
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse([])
@@ -83,16 +107,17 @@ def test_compare_fields():
 
 @patch("scrape.is_truthy_env", return_value=True)
 def test_run_post_scrape_tasks(mock_env):
+    from scripts.unified_post_processor import ProcessingOptions
+
     orchestrator = ScraperOrchestrator()
     orchestrator.results.all_job_ids = ["j1", "j2"]
 
-    # Create a mock for the processor
-    mock_processor = MagicMock()
-
-    # We mock the import by putting our mock in sys.modules
-    with patch.dict("sys.modules", {"scripts.unified_post_processor": mock_processor}):
+    with patch("scripts.unified_post_processor.process_jobs_unified") as mock_process:
         orchestrator._run_post_scrape_tasks()
-        mock_processor.process_jobs_unified.assert_called_with(job_ids=["j1", "j2"])
+        mock_process.assert_called_once()
+        opts = mock_process.call_args[0][0]
+        assert isinstance(opts, ProcessingOptions)
+        assert opts.job_ids == ["j1", "j2"]
 
 @patch("scrape.ensure_env_loaded")
 @patch("scrape.Path.exists", return_value=True)

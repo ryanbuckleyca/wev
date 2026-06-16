@@ -6,24 +6,21 @@ import { SITE_CONFIG } from '@/lib/site-config';
 import Button from '@/components/Button';
 import Chevron from '@/components/Chevron';
 import FilterIcon from '@/components/FilterIcon';
+import WatercolorBackground from '@/components/WatercolorBackground';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { Search1Outlined } from '@lineiconshq/free-icons';
 
-/**
- * Pure-CSS shimmer skeleton block.
- * Uses a moving linear-gradient over --muted / --muted-foreground so it
- * automatically respects the active theme and any token changes.
- */
-function Shimmer({ className }: { className?: string }) {
-  return <span aria-hidden className={`skeleton-shimmer ${className ?? ''}`} />;
+/** Pure-CSS pulse skeleton block using design tokens via var(--muted-foreground). */
+function SkeletonPulse({ className }: { className?: string }) {
+  return <span aria-hidden className={`skeleton-pulse ${className ?? ''}`} />;
 }
 
 const SKELETON_CARD_COUNT = 3;
 
 const SkeletonRow = ({ iconW, textW, ml }: { iconW?: string; textW: string; ml?: boolean }) => (
   <div className={`flex items-center gap-2 ${ml ? 'ml-12' : ''}`}>
-    {iconW && <Shimmer className={iconW} />}
-    <Shimmer className={textW} />
+    {iconW && <SkeletonPulse className={iconW} />}
+    <SkeletonPulse className={textW} />
   </div>
 );
 
@@ -38,20 +35,7 @@ export default function BulletinPageSkeleton() {
       }}
     >
       <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <div
-          className="absolute -top-36 -left-28 h-[38rem] w-[38rem] rounded-full blur-[90px]"
-          style={{
-            background: 'var(--watercolor-lavender)',
-            opacity: 'var(--lavender-opacity, 0.24)',
-          }}
-        />
-        <div
-          className="absolute -top-8 right-[-12rem] h-[32rem] w-[32rem] rounded-full blur-[90px]"
-          style={{
-            background: 'var(--watercolor-blue)',
-            opacity: 'var(--blue-opacity, 0.2)',
-          }}
-        />
+        <WatercolorBackground />
       </div>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
         <header className="mb-8">
@@ -108,12 +92,12 @@ export default function BulletinPageSkeleton() {
           {/* Filter summary area */}
           <div className="px-3 sm:px-4 py-2.5 bg-muted border-t border-border flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Shimmer className="w-24" />
-              <Shimmer className="pill w-16" />
-              <Shimmer className="pill w-12" />
+              <SkeletonPulse className="w-24" />
+              <SkeletonPulse className="pill w-16" />
+              <SkeletonPulse className="pill w-12" />
             </div>
             <div className="flex items-center gap-3 text-sm">
-              <Shimmer className="w-24" />
+              <SkeletonPulse className="w-24" />
             </div>
           </div>
         </div>
@@ -122,7 +106,7 @@ export default function BulletinPageSkeleton() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
           <div className="text-sm text-center sm:text-left text-xs text-muted-foreground flex items-center">
             <span className="font-semibold text-wev-brand-accent">{t('home.lastUpdated')} </span>
-            <Shimmer className="inline-block w-40 ml-2" />
+            <SkeletonPulse className="inline-block w-40 ml-2" />
           </div>
 
           <div className="flex items-center gap-2 mt-2 sm:mt-0 sm:justify-end">
@@ -163,12 +147,12 @@ export default function BulletinPageSkeleton() {
               {/* Header */}
               <div className="flex items-center justify-between px-3 py-2 border-b border-border text-sm">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <Shimmer className="icon shrink-0" />
-                  <Shimmer className="w-[60%]" />
+                  <SkeletonPulse className="icon shrink-0" />
+                  <SkeletonPulse className="w-[60%]" />
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <Shimmer className="icon" />
-                  <Shimmer className="icon" />
+                  <SkeletonPulse className="icon" />
+                  <SkeletonPulse className="icon" />
                 </div>
               </div>
 
@@ -190,13 +174,13 @@ export default function BulletinPageSkeleton() {
               <div className="px-4 py-3 bg-muted border-t border-border text-sm">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 pr-4 border-r border-border">
-                    <Shimmer className="h-8 w-8 rounded-full" />
-                    <Shimmer className="w-8" />
+                    <SkeletonPulse className="h-8 w-8 rounded-full" />
+                    <SkeletonPulse className="w-8" />
                   </div>
                   <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                    <Shimmer className="pill w-20" />
-                    <Shimmer className="pill w-24" />
-                    <Shimmer className="pill w-16" />
+                    <SkeletonPulse className="pill w-20" />
+                    <SkeletonPulse className="pill w-24" />
+                    <SkeletonPulse className="pill w-16" />
                   </div>
                 </div>
               </div>

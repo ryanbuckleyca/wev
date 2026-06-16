@@ -226,7 +226,7 @@ export default function JobFilters(props: JobFiltersProps) {
               selectedMunicipalities={selectedMunicipalities}
               totalMunicipalities={model.allMunicipalities.length}
               selectedProvinces={selectedProvinces}
-              visibleMunicipalitiesByProvince={model.visibleMunicipalitiesByProvince}
+              municipalitiesByProvince={model.municipalitiesByProvince}
               onToggleMunicipality={model.handleMunicipalityToggle}
               noDataMessage={t('filters.municipality.noData')}
               selectProvinceMessage={t('filters.municipality.selectProvince')}
