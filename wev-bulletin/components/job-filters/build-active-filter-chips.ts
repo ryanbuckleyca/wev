@@ -1,14 +1,14 @@
 import type { ActiveFilterChip } from '@/components/JobSearch';
 import { getJobLanguageLabel, getWorkTypeLabel } from '@/lib/bulletin/filter-labels';
 import { truncateMiddle } from '@/lib/string-utils';
-import { postedWithinChipOptions, type PostedWithinOption } from './posted-within-options';
+import { postedWithinChipOptions, type PostedWithinValue } from './posted-within-options';
 
 const MAX_TAG_LENGTH = 20;
 
 type TranslateFn = (key: string, values?: Record<string, string | number>) => string;
 
 export type ActiveFilterChipInputs = {
-  postedWithin: PostedWithinOption;
+  postedWithin: PostedWithinValue;
   showOnlySse: boolean;
   showJobsWithoutSalary: boolean;
   searchQuery: string;
@@ -19,7 +19,7 @@ export type ActiveFilterChipInputs = {
   selectedEmploymentTypes: string[];
   selectedSources: string[];
   selectedLanguages: string[];
-  onPostedWithinChange: (value: '1-week' | '2-weeks' | '3-weeks' | '1-month' | 'any') => void;
+  onPostedWithinChange: (value: PostedWithinValue) => void;
   onShowOnlySseChange: (value: boolean) => void;
   onShowJobsWithoutSalaryChange: (value: boolean) => void;
   onSearchChange: (value: string) => void;
