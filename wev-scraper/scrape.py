@@ -444,7 +444,6 @@ def main():
         sys.exit(2)
 
     if args.list_sources:
-        initialize_runtime_env(args)
         response = supabase.table("sources").select("name").order("name").execute()
         if not response.data:
             print("No sources found.")

@@ -76,6 +76,16 @@ describe('buildActiveFilterChips', () => {
     expect(input.onWorkTypesChange).toHaveBeenCalledWith([]);
   });
 
+  it('uses full search query in chip title when label is truncated', () => {
+    const longQuery = 'a'.repeat(30);
+    const input = createInput({ searchQuery: longQuery });
+    const chips = buildActiveFilterChips(input, t);
+    const searchChip = chips.find((chip) => chip.id === 'search');
+
+    expect(searchChip?.label).toContain('…');
+    expect(searchChip?.title).toContain(longQuery);
+  });
+
   it('uses employment type labels verbatim', () => {
     const input = createInput({
       selectedEmploymentTypes: ['Contract'],
