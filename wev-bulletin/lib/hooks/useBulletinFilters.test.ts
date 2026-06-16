@@ -6,7 +6,6 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { useSearchParams } from 'next/navigation';
 import { useQueryState } from 'nuqs';
 import { useState } from 'react';
-import { useProfileSync } from './useProfileSync';
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(),
@@ -30,10 +29,6 @@ vi.mock('nuqs', () => ({
   parseAsBoolean: { withDefault: (v: boolean) => ({ defaultValue: v }) },
   parseAsInteger: { withDefault: (v: number) => ({ defaultValue: v }) },
   parseAsStringLiteral: () => ({ withDefault: (v: string) => ({ defaultValue: v }) }),
-}));
-
-vi.mock('./useProfileSync', () => ({
-  useProfileSync: vi.fn(),
 }));
 
 describe('useBulletinFilters', () => {
@@ -200,37 +195,36 @@ describe('useBulletinFilters', () => {
       expect(result.current.selectedLanguages).toEqual(['en']);
     });
 
-    it('calls useProfileSync with lang query param key for language sync', () => {
+    it('seeds profile languages into the filter state on first load', () => {
       vi.mocked(useProfile).mockReturnValue({
-        profile: { preferred_languages: ['en'] },
+        profile: { preferred_languages: ['en', 'fr'] },
         loading: false,
       } as any);
       vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1' }, loading: false } as any);
 
-      renderHook(() => useBulletinFilters());
+      const { result } = renderHook(() => useBulletinFilters());
 
-      const syncCalls = vi.mocked(useProfileSync).mock.calls;
-      const langSyncCall = syncCalls.find((call) => call[2] === 'lang');
-      expect(langSyncCall).toBeDefined();
+      expect(result.current.selectedLanguages).toEqual(['en', 'fr']);
     });
 
-    it('useProfileSync shouldSync returns false when lang query param present', () => {
+    it('does not restore profile languages after the user clears them', async () => {
       vi.mocked(useProfile).mockReturnValue({
-        profile: { preferred_languages: ['en'] },
+        profile: { preferred_languages: ['en', 'fr'] },
         loading: false,
       } as any);
       vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1' }, loading: false } as any);
 
-      renderHook(() => useBulletinFilters());
+      const { result } = renderHook(() => useBulletinFilters());
 
-      const syncCalls = vi.mocked(useProfileSync).mock.calls;
-      const langSyncCall = syncCalls.find((call) => call[2] === 'lang');
-      const { shouldSync } = langSyncCall![3] as { shouldSync: (p: string[], s: string[], q: boolean) => boolean };
+      // Seeded from profile on first load.
+      expect(result.current.selectedLanguages).toEqual(['en', 'fr']);
 
-      expect(shouldSync(['en'], [], true)).toBe(false);  // query param present
-      expect(shouldSync(['en'], ['fr'], false)).toBe(false); // already has selection
-      expect(shouldSync([], [], false)).toBe(false);  // no profile value
-      expect(shouldSync(['en'], [], false)).toBe(true);  // should sync
+      await act(async () => {
+        result.current.setSelectedLanguages([]);
+      });
+
+      // Cleared selection stays cleared — profile defaults are never re-applied.
+      expect(result.current.selectedLanguages).toEqual([]);
     });
   });
 });

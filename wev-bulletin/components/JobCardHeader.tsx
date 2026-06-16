@@ -23,6 +23,8 @@ interface JobCardHeaderProps {
   isExpanded: boolean;
   onExpandToggle: () => void;
   summary: string;
+  /** Whether the card renders a footer below; drives the header's bottom divider. */
+  hasFooter: boolean;
   t: (key: string, values?: Record<string, string | number>) => string;
 }
 
@@ -38,10 +40,9 @@ export default function JobCardHeader({
   isExpanded,
   onExpandToggle,
   summary,
+  hasFooter,
   t,
 }: JobCardHeaderProps) {
-  const hasFooter = (job.values && job.values.length > 0) || (job.skills && job.skills.length > 0);
-
   return (
     <div
       className={`flex items-center justify-between px-3 py-2 rounded-t-wev-card transition-all duration-300 bg-card ${

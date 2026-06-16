@@ -15,7 +15,7 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import { normalizeLanguages } from '@/lib/languages';
 import type { Profile } from '@/lib/supabase/profiles';
-import { useProfileSync } from './useProfileSync';
+import { useProfileFilterDefaults } from './useProfileFilterDefaults';
 import {
   JOB_SORT_OPTIONS,
   POSTED_WITHIN_FILTER_OPTIONS,
@@ -71,6 +71,12 @@ export interface BulletinFilterControls {
   hasAnyFilters: boolean;
   clearAllFilters: () => void;
   applySuggestedDefaults: () => void;
+  /**
+   * True once the initial filter state is final: either the URL as provided, or
+   * profile defaults have been seeded into the URL. Gate the first data fetch on
+   * this so the page never fetches/renders the unseeded filter set.
+   */
+  filtersReady: boolean;
 }
 
 function hasSameSelections(left: string[], right: string[]) {
@@ -96,15 +102,6 @@ export function useBulletinFilters(
   const effectiveProfileLoading = userId ? profileLoading && !initialProfile : false;
   const searchParams = useSearchParams();
 
-  const initialProfileWorkTypes = useMemo(
-    () => (initialUserId ? normalizeWorkTypes(initialProfile?.work_types) : []),
-    [initialProfile?.work_types, initialUserId],
-  );
-  const initialProfileProvince =
-    initialUserId && initialProfile?.province ? [initialProfile.province] : [];
-  const initialProfileMunicipality =
-    initialUserId && initialProfile?.municipality ? [initialProfile.municipality] : [];
-
   const [searchQuery, setSearchQuery] = useQueryState('q', parseAsString.withDefault(''));
   const [selectedOrganizations, setSelectedOrganizations] = useQueryState(
     'org',
@@ -112,11 +109,11 @@ export function useBulletinFilters(
   );
   const [selectedProvinces, setSelectedProvinces] = useQueryState(
     'province',
-    parseAsArrayOf(parseAsString).withDefault(initialProfileProvince),
+    parseAsArrayOf(parseAsString).withDefault([]),
   );
   const [selectedMunicipalities, setSelectedMunicipalities] = useQueryState(
     'municipality',
-    parseAsArrayOf(parseAsString).withDefault(initialProfileMunicipality),
+    parseAsArrayOf(parseAsString).withDefault([]),
   );
   const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useQueryState(
     'employment',
@@ -128,7 +125,7 @@ export function useBulletinFilters(
   );
   const [selectedWorkTypes, setSelectedWorkTypes] = useQueryState(
     'workType',
-    parseAsArrayOf(parseAsString).withDefault(initialProfileWorkTypes),
+    parseAsArrayOf(parseAsString).withDefault([]),
   );
   const [langQuery, setLangQuery] = useQueryState(
     'lang',
@@ -184,46 +181,46 @@ export function useBulletinFilters(
     [effectiveProfile?.preferred_languages],
   );
 
-  // Sync work types from profile on first load
-  useProfileSync(userId, effectiveProfileLoading, 'workType', {
-    profileValue: profileWorkTypes,
-    selectedValue: normalizedSelectedWorkTypes,
-    setter: setSelectedWorkTypes,
-    shouldSync: (profileValue, selectedValue, hasQueryParam) => {
-      if (!profileValue || profileValue.length === 0) return false;
-      if (hasQueryParam || selectedValue.length > 0) return false;
-      return true;
-    },
-  });
+  // Seed profile-based default filters into the URL exactly once per visit, then
+  // never again. After seeding, the URL is the sole source of truth, so clearing
+  // a filter stays cleared. `filtersReady` latches true once the initial filter
+  // state is final (URL as-is, or seeded defaults landed).
+  const profileSeed = useMemo(
+    () => ({
+      workTypes: profileWorkTypes,
+      province: profileProvince,
+      municipality: profileMunicipality,
+      languages: profileLanguages,
+    }),
+    [profileWorkTypes, profileProvince, profileMunicipality, profileLanguages],
+  );
 
-  // Sync location from profile on first load / when profile location changes
-  useProfileSync(userId, effectiveProfileLoading, 'municipality', {
-    profileValue:
-      profileMunicipality && profileProvince ? [profileProvince, profileMunicipality] : null,
-    selectedValue: [...selectedProvinces, ...selectedMunicipalities],
-    setter: ([province, municipality]) => {
-      void setSelectedProvinces([province]);
-      void setSelectedMunicipalities([municipality]);
-    },
-    hasExplicitUrlState: () =>
-      (searchParams?.has('municipality') ?? false) || (searchParams?.has('province') ?? false),
-    shouldSync: (profileValue, selectedValue, hasQueryParam) => {
-      if (!profileValue) return false;
-      if (hasQueryParam || selectedValue.length > 0) return false;
-      return true;
-    },
-  });
+  const currentSeedState = useMemo(
+    () => ({
+      workTypes: normalizedSelectedWorkTypes,
+      provinces: selectedProvinces,
+      municipalities: selectedMunicipalities,
+      languages: selectedLanguages,
+    }),
+    [normalizedSelectedWorkTypes, selectedProvinces, selectedMunicipalities, selectedLanguages],
+  );
 
-  // Sync language preference from profile on first load
-  useProfileSync(userId, effectiveProfileLoading, 'lang', {
-    profileValue: profileLanguages,
-    selectedValue: selectedLanguages,
-    shouldSync: (profileValue, selectedValue, hasQueryParam) => {
-      if (!profileValue || profileValue.length === 0) return false;
-      if (hasQueryParam || selectedValue.length > 0) return false;
-      return true;
-    },
-    setter: setSelectedLanguages,
+  const seedSetters = useMemo(
+    () => ({
+      setWorkTypes: (value: string[]) => void setSelectedWorkTypes(value),
+      setProvinces: (value: string[]) => void setSelectedProvinces(value),
+      setMunicipalities: (value: string[]) => void setSelectedMunicipalities(value),
+      setLanguages: (value: string[]) => setSelectedLanguages(value),
+    }),
+    [setSelectedWorkTypes, setSelectedProvinces, setSelectedMunicipalities, setSelectedLanguages],
+  );
+
+  const filtersReady = useProfileFilterDefaults({
+    enabled: !!userId,
+    resolved: !effectiveProfileLoading,
+    seed: profileSeed,
+    current: currentSeedState,
+    setters: seedSetters,
   });
 
   const handleResetToProfileWorkTypes = useCallback(() => {
@@ -402,5 +399,6 @@ export function useBulletinFilters(
     hasAnyFilters,
     clearAllFilters,
     applySuggestedDefaults,
+    filtersReady,
   };
 }

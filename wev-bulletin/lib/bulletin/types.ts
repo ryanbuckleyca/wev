@@ -46,4 +46,9 @@ export interface UseBulletinDataOptions {
   sortBy: JobSortOption;
   currentPage: number;
   setCurrentPage: (page: number) => Promise<unknown> | void;
+  /**
+   * True once the initial filter state is final (URL settled / profile defaults
+   * seeded). The first fetch is gated on this so the unseeded set is never shown.
+   */
+  filtersReady: boolean;
 }
