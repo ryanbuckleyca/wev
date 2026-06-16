@@ -19,6 +19,7 @@ import Button from '@/components/Button';
 import LinkButton from '@/components/LinkButton';
 import CVImportButton from '@/components/profile/cv/CVImportButton';
 import FormLabel from '@/components/FormLabel';
+import { getJobLanguageLabel } from '@/lib/bulletin/filter-labels';
 import { SUPPORTED_LANGUAGES } from '@/lib/languages';
 import TogglePillGroup from '@/components/profile/TogglePillGroup';
 
@@ -96,7 +97,7 @@ export default function ProfilePage() {
                 <TogglePillGroup
                   options={SUPPORTED_LANGUAGES.map((lang) => ({
                     value: lang,
-                    label: t(`filters.language.${lang}`),
+                    label: getJobLanguageLabel(lang, t),
                   }))}
                   selectedValues={formData.preferred_languages}
                   onToggle={handleLanguageToggle}

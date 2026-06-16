@@ -1,10 +1,7 @@
 import type { ActiveFilterChip } from '@/components/JobSearch';
 import { getJobLanguageLabel, getWorkTypeLabel } from '@/lib/bulletin/filter-labels';
 import { truncateMiddle } from '@/lib/string-utils';
-import {
-  postedWithinChipOptions,
-  type PostedWithinOption,
-} from './posted-within-options';
+import { postedWithinChipOptions, type PostedWithinOption } from './posted-within-options';
 
 const MAX_TAG_LENGTH = 20;
 
@@ -175,8 +172,7 @@ export function buildActiveFilterChips(
       'language',
       input.selectedLanguages,
       (lang) => getJobLanguageLabel(lang, t),
-      (lang) =>
-        input.onLanguagesChange(input.selectedLanguages.filter((item) => item !== lang)),
+      (lang) => input.onLanguagesChange(input.selectedLanguages.filter((item) => item !== lang)),
     ),
   );
 
