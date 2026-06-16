@@ -132,7 +132,9 @@ describe('server-data', () => {
       mockQuery.then.mockImplementation((onFulfilled: any) => {
         // Inspect query to target filter options fetch
         const isFilterQuery = mockQuery.select.mock.calls.some((call: any) =>
-          call[0]?.includes('organization, province, municipality, employment_type, source'),
+          call[0]?.includes(
+            'organization, province, municipality, employment_type, source, language',
+          ),
         );
 
         if (isFilterQuery) {

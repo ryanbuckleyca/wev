@@ -16,17 +16,12 @@ import { WORK_TYPES, normalizeWorkTypes, type WorkType } from '@/lib/work-types'
 import type { JobFiltersProps } from './types';
 import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
 import { buildActiveFilterChips } from './build-active-filter-chips';
+import {
+  postedWithinButtonValues,
+  postedWithinChipOptions,
+  type PostedWithinOption,
+} from './posted-within-options';
 
-type PostedWithinOption = '1-week' | '2-weeks' | '3-weeks' | '1-month';
-
-const postedWithinChipOptions: Record<PostedWithinOption, { fullKey: string }> = {
-  '1-week': { fullKey: 'filters.postedWithin.options.1Week' },
-  '2-weeks': { fullKey: 'filters.postedWithin.options.2Weeks' },
-  '3-weeks': { fullKey: 'filters.postedWithin.options.3Weeks' },
-  '1-month': { fullKey: 'filters.postedWithin.options.1Month' },
-};
-
-const postedWithinButtonValues = ['1-week', '2-weeks', '3-weeks', '1-month', 'any'] as const;
 const EMPTY_WORK_TYPES: WorkType[] = [];
 
 export interface JobFiltersModel {

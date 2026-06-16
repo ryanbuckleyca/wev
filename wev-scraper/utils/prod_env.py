@@ -9,6 +9,40 @@ from pathlib import Path
 from settings import load_db_credentials_only, load_env_file
 
 
+def has_prod_confirmation() -> bool:
+    return os.environ.get("PROD_CONFIRMED") == "1" or os.environ.get("CONFIRM_PROD_RUN") == "YES"
+
+
+def mark_prod_confirmed() -> None:
+    os.environ["PROD_CONFIRMED"] = "1"
+    os.environ["CONFIRM_PROD_RUN"] = "YES"
+
+
+def confirm_prod_run(*, full_prod: bool) -> None:
+    """Prompt or validate before targeting production infrastructure.
+
+    run.ts sets PROD_CONFIRMED=1 after its prompt; CI may use CONFIRM_PROD_RUN=YES.
+    """
+    if has_prod_confirmation():
+        mark_prod_confirmed()
+        return
+
+    mode = "PRODUCTION (full)" if full_prod else "PRODUCTION DB (publish — local LLMs)"
+    if sys.stdin.isatty():
+        confirm = input(f"⚠️  RUNNING AGAINST {mode}. Type 'YES' to continue: ")
+        if confirm != "YES":
+            sys.exit(0)
+        mark_prod_confirmed()
+        return
+
+    print(
+        "Refusing production run in non-interactive mode. "
+        "Set CONFIRM_PROD_RUN=YES (or run via npm run process:prod / process:publish).",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
 def resolve_prod_env_path(script_file: Path) -> Path:
     """Return the path to .env.production (repo root or scraper package)."""
     scraper_dir = script_file.resolve().parent

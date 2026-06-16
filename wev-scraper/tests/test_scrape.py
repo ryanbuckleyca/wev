@@ -106,6 +106,19 @@ def test_compare_fields():
     assert "location" not in diffs
 
 @patch("scrape.is_truthy_env", return_value=True)
+def test_run_post_scrape_tasks_records_errors(mock_env):
+    from scripts.unified_post_processor import ProcessingOptions
+
+    orchestrator = ScraperOrchestrator()
+    orchestrator.results.all_job_ids = ["j1", "j2"]
+
+    with patch("scripts.unified_post_processor.process_jobs_unified") as mock_process:
+        mock_process.return_value = {"errors": 2, "processed": 0, "updated": {}, "skipped": 0}
+        orchestrator._run_post_scrape_tasks()
+        assert orchestrator.post_scrape_errors == 2
+
+
+@patch("scrape.is_truthy_env", return_value=True)
 def test_run_post_scrape_tasks(mock_env):
     from scripts.unified_post_processor import ProcessingOptions
 
@@ -199,6 +212,7 @@ def test_log_tagging_status_disabled(mock_env):
 @patch("scrape.ScraperOrchestrator")
 def test_main_flow(mock_orch_class, mock_init):
     mock_orch = mock_orch_class.return_value
+    mock_orch.post_scrape_errors = 0
     with patch("scrape.parse_args") as mock_args:
         args = MagicMock()
         args.prod = False
@@ -226,6 +240,7 @@ def test_main_flow(mock_orch_class, mock_init):
 def test_main_vpn_does_not_force_headed_mode(mock_orch_class, mock_init, monkeypatch):
     monkeypatch.delenv("SCRAPER_HEADED", raising=False)
     mock_orch = mock_orch_class.return_value
+    mock_orch.post_scrape_errors = 0
     with patch("scrape.parse_args") as mock_args:
         args = MagicMock()
         args.prod = False
@@ -252,6 +267,7 @@ def test_main_prod_confirmation_propagates_to_child_scripts(mock_orch_class, moc
     monkeypatch.setenv("PROD_CONFIRMED", "1")
     monkeypatch.delenv("CONFIRM_PROD_RUN", raising=False)
     mock_orch = mock_orch_class.return_value
+    mock_orch.post_scrape_errors = 0
 
     with patch("scrape.parse_args") as mock_args:
         args = MagicMock()
