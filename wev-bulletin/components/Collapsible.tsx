@@ -11,7 +11,13 @@ interface CollapsibleProps {
 export default function Collapsible({ isOpen, children, className }: CollapsibleProps) {
   const ref = useRef<HTMLDivElement>(null);
   const hasMountedRef = useRef(false);
+  const wasEverOpenRef = useRef(isOpen);
+  if (isOpen) {
+    wasEverOpenRef.current = true;
+  }
+
   const [maxHeight, setMaxHeight] = useState(() => (isOpen ? 'none' : '0px'));
+  const shouldRenderContent = isOpen || wasEverOpenRef.current;
 
   useEffect(() => {
     const el = ref.current;
@@ -19,6 +25,9 @@ export default function Collapsible({ isOpen, children, className }: Collapsible
 
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
+      if (isOpen) {
+        setMaxHeight('none');
+      }
       return;
     }
 
@@ -45,20 +54,23 @@ export default function Collapsible({ isOpen, children, className }: Collapsible
       cancelAnimationFrame(secondFrame);
       window.clearTimeout(resetTimeout);
     };
-  }, [isOpen]);
+  }, [isOpen, shouldRenderContent]);
 
   return (
     <div
+      id="job-filters-content"
       style={{
         overflow: 'hidden',
-        maxHeight,
+        maxHeight: shouldRenderContent ? maxHeight : '0px',
         transition: 'max-height 0.3s ease-in-out',
       }}
       aria-hidden={!isOpen}
     >
-      <div ref={ref} className={className}>
-        {children}
-      </div>
+      {shouldRenderContent ? (
+        <div ref={ref} className={className}>
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -44,13 +44,18 @@ export function useBulletinFetch(
   );
   const [loading, setLoading] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
+  const jobsOnPageRef = useRef(jobsOnPage);
+  jobsOnPageRef.current = jobsOnPage;
 
   const { filters, sortBy, currentPage } = options;
 
   const refresh = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
-    setLoading(true);
+
+    if (jobsOnPageRef.current.length === 0) {
+      setLoading(true);
+    }
     setError(null);
 
     const controller = new AbortController();

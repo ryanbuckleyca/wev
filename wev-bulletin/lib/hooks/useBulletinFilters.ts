@@ -196,7 +196,7 @@ export function useBulletinFilters(
     },
   });
 
-  // Sync location from profile on first load
+  // Sync location from profile on first load / when profile location changes
   useProfileSync(userId, effectiveProfileLoading, 'municipality', {
     profileValue:
       profileMunicipality && profileProvince ? [profileProvince, profileMunicipality] : null,
@@ -205,10 +205,11 @@ export function useBulletinFilters(
       void setSelectedProvinces([province]);
       void setSelectedMunicipalities([municipality]);
     },
+    hasExplicitUrlState: () =>
+      (searchParams?.has('municipality') ?? false) || (searchParams?.has('province') ?? false),
     shouldSync: (profileValue, selectedValue, hasQueryParam) => {
       if (!profileValue) return false;
-      const hasProvinceParam = searchParams?.has('province') ?? false;
-      if (hasQueryParam || hasProvinceParam || selectedValue.length > 0) return false;
+      if (hasQueryParam || selectedValue.length > 0) return false;
       return true;
     },
   });
