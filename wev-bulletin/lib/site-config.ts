@@ -8,5 +8,5 @@ export const SITE_CONFIG = {
    * Public CDN URL for the wev logotype image.
    * Override with NEXT_PUBLIC_LOGOTYPE_URL if the asset moves.
    */
-  logotypeUrl: process.env.NEXT_PUBLIC_LOGOTYPE_URL ?? '/wev-logotype.svg',
+  logotypeUrl: process.env.NEXT_PUBLIC_LOGOTYPE_URL?.trim() || '/wev-logotype.svg',
 } as const;

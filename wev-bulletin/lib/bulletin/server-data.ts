@@ -256,7 +256,7 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
     totalAvailableQuery,
     supabaseServer
       .from('matched_jobs')
-      .select('organization, province, municipality, employment_type, source')
+      .select('organization, province, municipality, employment_type, source, language')
       .gte('date_posted', postedCutoff)
       .is('is_sse', true)
       .limit(5000),

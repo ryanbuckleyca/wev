@@ -8,7 +8,7 @@ const MAX_TAG_LENGTH = 20;
 type TranslateFn = (key: string, values?: Record<string, string | number>) => string;
 
 export type ActiveFilterChipInputs = {
-  postedWithin: string;
+  postedWithin: PostedWithinOption;
   showOnlySse: boolean;
   showJobsWithoutSalary: boolean;
   searchQuery: string;
@@ -62,7 +62,7 @@ export function buildActiveFilterChips(
   const chips: ActiveFilterChip[] = [];
 
   if (input.postedWithin !== 'any') {
-    const option = postedWithinChipOptions[input.postedWithin as PostedWithinOption];
+    const option = postedWithinChipOptions[input.postedWithin];
     const fullLabel = `${t('filters.chips.posted')} ${t(option.fullKey)}`;
     const shortLabel = getTranslationOrFallback(t, option.shortKey, option.fallbackShort);
 
@@ -97,7 +97,7 @@ export function buildActiveFilterChips(
     chips.push({
       id: 'search',
       label: `"${truncated}"`,
-      title: `${t('filters.chips.search')} "${truncated}"`,
+      title: `${t('filters.chips.search')} "${input.searchQuery}"`,
       onRemove: () => input.onSearchChange(''),
     });
   }

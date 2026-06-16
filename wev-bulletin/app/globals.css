@@ -172,6 +172,12 @@ html.theme-switching *::after {
     animation: skeleton-pulse 1.8s ease-in-out infinite;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-pulse {
+      animation: none;
+    }
+  }
+
   /* Pill: matches visual weight of Pill component (approx 24px tall) */
   .skeleton-pulse.pill {
     height: 1.5rem;
