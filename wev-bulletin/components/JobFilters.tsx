@@ -59,6 +59,7 @@ export default function JobFilters(props: JobFiltersProps) {
         activeFilterChips={model.activeFilterChips}
         filteredJobsCount={model.filteredJobsCountResolved}
         totalJobsCount={model.totalJobsCountResolved}
+        loading={props.loading ?? false}
         hasAnyFilters={model.hasAnyFilters}
         isSuggestedDefaults={model.isSuggestedDefaults}
         onClearAllFilters={model.clearAllFilters}

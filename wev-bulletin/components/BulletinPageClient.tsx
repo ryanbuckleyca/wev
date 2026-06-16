@@ -78,6 +78,7 @@ export default function BulletinPageClient({
       sortBy: filters.sortBy,
       currentPage: filters.currentPage,
       setCurrentPage: filters.setCurrentPage,
+      filtersReady: filters.filtersReady,
     },
     {
       jobs: initialJobs,
