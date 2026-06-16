@@ -314,7 +314,7 @@ def _build_update_data(task: TaskType, job_result: dict, job: dict | None = None
             })
 
     new_language = job_result.get("language")
-    if new_language:
+    if new_language in VALID_LANGUAGES:
         if task == "language":
             # Explicit language run: always write.
             update_data["language"] = new_language

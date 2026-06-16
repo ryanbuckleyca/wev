@@ -63,6 +63,7 @@ class ScraperOrchestrator:
         self.source_filter = source_filter.strip().lower() if source_filter else None
         self.results = ScraperResults(is_dry_run=dry_run, is_compare_only=compare_only)
         self.existing_urls: Set[str] = set()
+        self.source_attempts: Dict[str, int] = {}
 
     def run(self):
         """Execute the full scraping lifecycle."""
@@ -169,8 +170,9 @@ class ScraperOrchestrator:
             _log(f"Skipping {source_name}: No scraper implementation registered.")
             return False
 
-        attempt = source.get("_attempts", 0) + 1
-        source["_attempts"] = attempt
+        source_id = source["id"]
+        attempt = self.source_attempts.get(source_id, 0) + 1
+        self.source_attempts[source_id] = attempt
 
         _log(f"\n{'#' * 30}\n# {source_name} (Attempt {attempt}/{max_source_retries + 1})\n{'#' * 30}")
 
@@ -191,8 +193,6 @@ class ScraperOrchestrator:
             return False  # success — no retry needed
 
         except Exception as e:
-            self._cleanup_scraper(scraper)
-            
             is_last_attempt = attempt > max_source_retries
             if not is_last_attempt and self._is_transient_error(e):
                 _log(f"⚠️  Transient error on {source_name}: {e}")
@@ -200,6 +200,8 @@ class ScraperOrchestrator:
             else:
                 self._handle_source_error(e, None, source_name)
                 return False
+        finally:
+            self._cleanup_scraper(scraper)
 
     def _save_or_compare_jobs(self, jobs: List[Dict[str, Any]], source: Dict[str, Any]) -> Dict[str, Any]:
         if self.dry_run:

@@ -37,6 +37,25 @@ def test_build_update_data():
     assert "is_sse" in data
     assert "summary" not in data
 
+    # Task language
+    job_result["language"] = "fr"
+    data = _build_update_data("language", job_result)
+    assert data["language"] == "fr"
+
+    # Task all: Language is added when valid and differing
+    data = _build_update_data("all", job_result, {"language": "en"})
+    assert data["language"] == "fr"
+
+    # Task all: Language clobbering prevention (invalid or None language)
+    job_result["language"] = None
+    data = _build_update_data("all", job_result, {"language": "en"})
+    assert "language" not in data
+
+    # Task all: Invalid language does not overwrite
+    job_result["language"] = "de"
+    data = _build_update_data("all", job_result, {"language": "en"})
+    assert "language" not in data
+
 def test_is_transient_db_error():
     e = Exception("timeout")
     e.code = "53000"
