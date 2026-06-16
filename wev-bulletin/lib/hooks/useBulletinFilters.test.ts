@@ -117,7 +117,10 @@ describe('useBulletinFilters', () => {
 
   describe('language profile preference', () => {
     it('isUsingProfileLanguages is false when no profile languages set', () => {
-      vi.mocked(useProfile).mockReturnValue({ profile: { preferred_languages: [] }, loading: false } as any);
+      vi.mocked(useProfile).mockReturnValue({
+        profile: { preferred_languages: [] },
+        loading: false,
+      } as any);
       vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1' }, loading: false } as any);
 
       const { result } = renderHook(() => useBulletinFilters());

@@ -11,13 +11,16 @@ interface CollapsibleProps {
 export default function Collapsible({ isOpen, children, className }: CollapsibleProps) {
   const ref = useRef<HTMLDivElement>(null);
   const hasMountedRef = useRef(false);
-  const wasEverOpenRef = useRef(isOpen);
-  if (isOpen) {
-    wasEverOpenRef.current = true;
-  }
+  const [wasEverOpen, setWasEverOpen] = useState(isOpen);
 
   const [maxHeight, setMaxHeight] = useState(() => (isOpen ? 'none' : '0px'));
-  const shouldRenderContent = isOpen || wasEverOpenRef.current;
+  const shouldRenderContent = isOpen || wasEverOpen;
+
+  useEffect(() => {
+    if (isOpen) {
+      setWasEverOpen(true);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const el = ref.current;

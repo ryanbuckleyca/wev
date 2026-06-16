@@ -54,7 +54,12 @@ describe('useProfileFilterDefaults', () => {
       useProfileFilterDefaults({
         enabled: false,
         resolved: true,
-        seed: { workTypes: ['remote'], province: 'QC', municipality: 'Montreal', languages: ['en'] },
+        seed: {
+          workTypes: ['remote'],
+          province: 'QC',
+          municipality: 'Montreal',
+          languages: ['en'],
+        },
         current: emptyCurrent,
         setters,
       }),
@@ -172,7 +177,12 @@ describe('useProfileFilterDefaults', () => {
       useProfileFilterDefaults({
         enabled: true,
         resolved: true,
-        seed: { workTypes: ['remote'], province: 'QC', municipality: 'Montreal', languages: ['en'] },
+        seed: {
+          workTypes: ['remote'],
+          province: 'QC',
+          municipality: 'Montreal',
+          languages: ['en'],
+        },
         current: {
           workTypes: ['office'],
           provinces: ['ON'],

@@ -53,9 +53,7 @@ export function useBulletinFetch(
   // Captured once at mount: these decide whether the SSR payload matches the
   // first view we will render.
   const isLoggedInAtMount = useRef(!!initialData?.userId).current;
-  const urlBareAtMount = useRef(
-    !BULLETIN_URL_KEYS.some((key) => searchParams?.has(key)),
-  ).current;
+  const urlBareAtMount = useRef(!BULLETIN_URL_KEYS.some((key) => searchParams?.has(key))).current;
 
   // Hydrate SSR jobs only for an anonymous, unfiltered load — the one case where
   // the server payload equals the first client view. Logged-in users may have

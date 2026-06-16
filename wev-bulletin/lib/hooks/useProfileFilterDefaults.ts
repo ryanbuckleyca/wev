@@ -92,11 +92,7 @@ export function useProfileFilterDefaults({
   // Capture which filter params were present in the URL at mount. Seeding only
   // fills dimensions the user did not already specify, and this snapshot must be
   // stable (seeding itself mutates the live params).
-  const presenceRef = useRef<UrlPresence | null>(null);
-  if (presenceRef.current === null) {
-    presenceRef.current = readPresence(searchParams);
-  }
-  const presence = presenceRef.current;
+  const [presence] = useState(() => readPresence(searchParams));
 
   const phaseRef = useRef<'init' | 'seeding' | 'done'>('init');
   const expectedRef = useRef<ExpectedSeed | null>(null);
