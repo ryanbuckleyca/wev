@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Set
 
-from settings import ensure_env_loaded, load_db_credentials_only, load_env_file
+from settings import ensure_env_loaded, load_env_file
+from utils.prod_env import apply_prod_overrides, resolve_prod_env_path
 
 # Ensure CI sees output immediately
 if hasattr(sys.stdout, "reconfigure"):
@@ -121,9 +122,20 @@ class ScraperOrchestrator:
         sources = response.data
         if self.source_filter:
             filter_norm = strip_accents(self.source_filter)
-            sources = [s for s in sources if filter_norm in strip_accents(s.get("name", ""))]
+            sources = [
+                s for s in sources
+                if strip_accents(s.get("name", "")) == filter_norm
+            ]
             if not sources:
-                raise RuntimeError(f"No source found matching '{self.source_filter}'")
+                raise RuntimeError(
+                    f"No source found matching '{self.source_filter}'. "
+                    "Use --list-sources to see available names."
+                )
+            if len(sources) > 1:
+                names = ", ".join(s.get("name", "?") for s in sources)
+                raise RuntimeError(
+                    f"Multiple sources match '{self.source_filter}': {names}"
+                )
         _log(f"Found {len(sources)} source(s).")
         return sources
 
@@ -197,9 +209,8 @@ class ScraperOrchestrator:
             if not is_last_attempt and self._is_transient_error(e):
                 _log(f"⚠️  Transient error on {source_name}: {e}")
                 return True  # request re-queue
-            else:
-                self._handle_source_error(e, None, source_name)
-                return False
+            self._handle_source_error(e, scraper, source_name)
+            return False
         finally:
             self._cleanup_scraper(scraper)
 
@@ -295,8 +306,8 @@ class ScraperOrchestrator:
         # Unified Post-Processor (Classifier, Values, Summary)
         if any(is_truthy_env(f) for f in ["SHOULD_CLASSIFY", "SHOULD_TAG_VALUES", "SHOULD_SUMMARIZE"]):
             try:
-                from scripts.unified_post_processor import process_jobs_unified
-                process_jobs_unified(job_ids=self.results.all_job_ids)
+                from scripts.unified_post_processor import ProcessingOptions, process_jobs_unified
+                process_jobs_unified(ProcessingOptions(job_ids=self.results.all_job_ids))
             except Exception as e:
                 _log(f"Error in unified post-processing: {e}")
 
@@ -398,25 +409,11 @@ def initialize_runtime_env(args):
 
     # 3. Apply Production Overrides if requested
     if args.prod or args.publish:
-        prod_env = root_dir / ".env.production" if (root_dir / ".env.production").exists() else script_dir / ".env.production"
+        prod_env = resolve_prod_env_path(script_dir / "scrape.py")
         if not prod_env.exists():
-            _log(f"❌ {prod_env.name} not found — required for --prod / --publish.")
+            _log(f"❌ {prod_env} not found — required for --prod / --publish.")
             sys.exit(1)
-        if args.prod:
-            # Full prod: override everything in .env.production (DB + LLM + flags)
-            _log(f"▶ Loading Production Overrides from {prod_env.name}")
-            load_env_file(prod_env)
-            os.environ["ENV_MODE"] = "prod"
-            _log("▶ LLM routing: ENV_MODE=prod (--prod — not local-first LLMs)")
-        else:
-            # Publish: only swap DB credentials, leave other .env keys for feature flags
-            applied = load_db_credentials_only(prod_env)
-            _log(
-                f"▶ Publish mode: loaded {len(applied)} DB credential(s) from "
-                f"{prod_env.name} ({', '.join(applied)}); LLM/feature config kept from .env"
-            )
-            os.environ["ENV_MODE"] = "local"
-            _log("▶ LLM routing: ENV_MODE=local (--publish → local LLMs / embeddings)")
+        apply_prod_overrides(prod_env, full_prod=args.prod)
 
 
 def main():

@@ -163,8 +163,8 @@ html.theme-switching *::after {
 }
 
 @layer components {
-  /* Base skeleton (Text) – inherits font-size → 1em tall, no border-radius */
-  .skeleton-shimmer {
+  /* Base skeleton (text) – inherits font-size → 1em tall, no border-radius */
+  .skeleton-pulse {
     display: inline-block;
     height: 1em;
     border-radius: 0;
@@ -173,13 +173,13 @@ html.theme-switching *::after {
   }
 
   /* Pill: matches visual weight of Pill component (approx 24px tall) */
-  .skeleton-shimmer.pill {
+  .skeleton-pulse.pill {
     height: 1.5rem;
     border-radius: 9999px;
   }
 
   /* Icon: matches wev-icon-btn (16px icon + p-1 padding = 24px) */
-  .skeleton-shimmer.icon {
+  .skeleton-pulse.icon {
     height: 1.5rem;
     width: 1.5rem;
     border-radius: 0.5rem; /* matches rounded-lg */

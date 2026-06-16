@@ -10,7 +10,7 @@ interface MunicipalityFilterSectionProps {
   selectedMunicipalities: string[];
   totalMunicipalities: number;
   selectedProvinces: string[];
-  visibleMunicipalitiesByProvince: MunicipalitiesByProvince;
+  municipalitiesByProvince: MunicipalitiesByProvince;
   onToggleMunicipality: (municipality: string) => void;
   className?: string;
   noDataMessage: string;
@@ -23,7 +23,7 @@ export default function MunicipalityFilterSection({
   selectedMunicipalities,
   totalMunicipalities,
   selectedProvinces,
-  visibleMunicipalitiesByProvince,
+  municipalitiesByProvince,
   onToggleMunicipality,
   className,
   noDataMessage,
@@ -43,10 +43,10 @@ export default function MunicipalityFilterSection({
       <div className="h-48 overflow-y-auto border border-border rounded-wev-btn p-2 bg-background">
         {totalMunicipalities === 0 ? (
           <p className="text-sm text-muted-foreground italic px-2 py-2">{noDataMessage}</p>
-        ) : Object.keys(visibleMunicipalitiesByProvince).length === 0 ? (
+        ) : Object.keys(municipalitiesByProvince).length === 0 ? (
           <p className="text-sm text-muted-foreground italic px-2 py-2">{selectProvinceMessage}</p>
         ) : (
-          Object.entries(visibleMunicipalitiesByProvince).map(([province, municipalities]) => {
+          Object.entries(municipalitiesByProvince).map(([province, municipalities]) => {
             const isProvinceSelected = selectedProvinces.includes(province);
 
             return (

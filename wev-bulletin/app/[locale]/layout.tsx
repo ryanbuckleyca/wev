@@ -9,6 +9,7 @@ import ThemeScript from '@/components/ThemeScript';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { routing } from '@/i18n/routing';
+import { resolveThemeFromCookie } from '@/lib/theme';
 
 export default async function LocaleLayout({
   children,
@@ -28,8 +29,7 @@ export default async function LocaleLayout({
     ...localeMessages,
   };
   const cookieStore = await cookies();
-  // Default to dark mode if no cookie is set, matching ThemeScript fallback
-  const theme = cookieStore.get('theme')?.value === 'light' ? 'light' : 'dark';
+  const theme = resolveThemeFromCookie(cookieStore.get('theme')?.value);
 
   return (
     <NuqsAdapter>
