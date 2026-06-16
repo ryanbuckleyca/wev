@@ -58,10 +58,9 @@ export async function POST(request: Request) {
   const groqKey = process.env.GROQ_API_KEY;
   const jinaKey = process.env.JINA_API_KEY;
 
-  const missingKeys = [
-    !groqKey && 'GROQ_API_KEY',
-    !jinaKey && 'JINA_API_KEY',
-  ].filter((key): key is string => Boolean(key));
+  const missingKeys = [!groqKey && 'GROQ_API_KEY', !jinaKey && 'JINA_API_KEY'].filter(
+    (key): key is string => Boolean(key),
+  );
 
   if (missingKeys.length > 0) {
     logger.error({ missing: missingKeys }, 'Missing API keys for CV extraction');
