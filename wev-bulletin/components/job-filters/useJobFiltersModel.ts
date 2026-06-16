@@ -11,7 +11,11 @@ import {
   toggleProvinceSelection,
   toggleSelection,
 } from '@/lib/bulletin/filter-options';
-import { getJobLanguageLabel, getWorkTypeLabel } from '@/lib/bulletin/filter-labels';
+import {
+  buildJobLanguageOptions,
+  getJobLanguageLabel,
+  getWorkTypeLabel,
+} from '@/lib/bulletin/filter-labels';
 import { WORK_TYPES, normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import type { JobFiltersProps } from './types';
 import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
@@ -184,7 +188,14 @@ export function useJobFiltersModel({
     ],
   );
 
-  const { organizations, provinces, municipalitiesByProvince, employmentTypes, sources } = useMemo(
+  const {
+    organizations,
+    provinces,
+    municipalitiesByProvince,
+    employmentTypes,
+    sources,
+    languages,
+  } = useMemo(
     () => externalFilterOptions ?? buildFilterOptions(jobs),
     [externalFilterOptions, jobs],
   );
@@ -272,14 +283,7 @@ export function useJobFiltersModel({
     [t],
   );
 
-  const languageOptions = useMemo(
-    () => [
-      { value: 'en', label: getJobLanguageLabel('en', t) },
-      { value: 'fr', label: getJobLanguageLabel('fr', t) },
-      { value: 'bilingual', label: getJobLanguageLabel('bilingual', t) },
-    ],
-    [t],
-  );
+  const languageOptions = useMemo(() => buildJobLanguageOptions(languages, t), [languages, t]);
 
   const postedWithinOptions = useMemo(
     () =>

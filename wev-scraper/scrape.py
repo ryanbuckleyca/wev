@@ -29,10 +29,6 @@ def strip_accents(s: str) -> str:
 os.environ['PLAYWRIGHT_SYNC_MODE'] = '1'
 
 # Constants for reporting
-CHECKED_FIELDS = [
-    "job_title", "organization", "location", "date_posted",
-    "wage", "description", "employment_type", "listing_url",
-]
 COMPARE_FIELDS = ["job_title", "organization", "location", "wage", "employment_type", "date_posted"]
 
 
@@ -56,6 +52,12 @@ class ScraperOrchestrator:
         self.existing_urls: Set[str] = set()
         self.source_attempts: Dict[str, int] = {}
         self.post_scrape_errors = 0
+
+    def had_failures(self) -> bool:
+        """True when any source scrape or post-scrape step failed."""
+        if self.post_scrape_errors > 0:
+            return True
+        return any("error" in entry for entry in self.results.summary)
 
     def run(self):
         """Execute the full scraping lifecycle."""
@@ -307,7 +309,7 @@ class ScraperOrchestrator:
                     )
             except Exception as e:
                 _log(f"❌ Error in unified post-processing: {e}")
-                self.post_scrape_errors = len(self.results.all_job_ids)
+                self.post_scrape_errors += 1
 
         # ESCO Skill Tagging
         if is_truthy_env("SHOULD_TAG_SKILLS"):
@@ -315,7 +317,8 @@ class ScraperOrchestrator:
                 from scripts.tag_esco_skills_vector import tag_esco_skills_vector
                 tag_esco_skills_vector(job_ids=self.results.all_job_ids)
             except Exception as e:
-                _log(f"Error in ESCO tagging: {e}")
+                _log(f"❌ Error in ESCO tagging: {e}")
+                self.post_scrape_errors += 1
 
     def _print_final_summary(self):
         _log("\n" + "="*40)
@@ -463,7 +466,7 @@ def main():
     )
     orchestrator.run()
 
-    if orchestrator.post_scrape_errors:
+    if orchestrator.had_failures():
         sys.exit(1)
 
 

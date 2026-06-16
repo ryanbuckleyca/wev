@@ -107,7 +107,6 @@ def test_compare_fields():
 
 @patch("scrape.is_truthy_env", return_value=True)
 def test_run_post_scrape_tasks_records_errors(mock_env):
-    from scripts.unified_post_processor import ProcessingOptions
 
     orchestrator = ScraperOrchestrator()
     orchestrator.results.all_job_ids = ["j1", "j2"]
@@ -191,6 +190,13 @@ def test_handle_source_error():
     with patch("scrape._log") as mock_log:
         orchestrator._handle_source_error(Exception("Source Error"), mock_scraper, "S1")
         mock_log.assert_any_call("❌ Error scraping S1: Source Error")
+    assert orchestrator.had_failures()
+
+
+def test_had_failures_false_when_no_errors():
+    orchestrator = ScraperOrchestrator()
+    orchestrator.results.summary.append({"source": "S1", "jobs_found": 1, "jobs_added": 1})
+    assert not orchestrator.had_failures()
 
 def test_cleanup_scraper():
     orchestrator = ScraperOrchestrator()
@@ -213,6 +219,7 @@ def test_log_tagging_status_disabled(mock_env):
 def test_main_flow(mock_orch_class, mock_init):
     mock_orch = mock_orch_class.return_value
     mock_orch.post_scrape_errors = 0
+    mock_orch.had_failures.return_value = False
     with patch("scrape.parse_args") as mock_args:
         args = MagicMock()
         args.prod = False
@@ -241,6 +248,7 @@ def test_main_vpn_does_not_force_headed_mode(mock_orch_class, mock_init, monkeyp
     monkeypatch.delenv("SCRAPER_HEADED", raising=False)
     mock_orch = mock_orch_class.return_value
     mock_orch.post_scrape_errors = 0
+    mock_orch.had_failures.return_value = False
     with patch("scrape.parse_args") as mock_args:
         args = MagicMock()
         args.prod = False
@@ -268,6 +276,7 @@ def test_main_prod_confirmation_propagates_to_child_scripts(mock_orch_class, moc
     monkeypatch.delenv("CONFIRM_PROD_RUN", raising=False)
     mock_orch = mock_orch_class.return_value
     mock_orch.post_scrape_errors = 0
+    mock_orch.had_failures.return_value = False
 
     with patch("scrape.parse_args") as mock_args:
         args = MagicMock()

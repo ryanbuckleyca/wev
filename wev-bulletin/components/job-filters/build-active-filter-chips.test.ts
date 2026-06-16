@@ -2,9 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import enMessages from '@/messages/en.json';
 import { buildActiveFilterChips, type ActiveFilterChipInputs } from './build-active-filter-chips';
 
-function createInput(
-  overrides: Partial<ActiveFilterChipInputs> = {},
-): ActiveFilterChipInputs {
+function createInput(overrides: Partial<ActiveFilterChipInputs> = {}): ActiveFilterChipInputs {
   return {
     postedWithin: 'any',
     showOnlySse: false,
