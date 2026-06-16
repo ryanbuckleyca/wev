@@ -8,7 +8,7 @@ import JobCard from './JobCard';
 import Button from './Button';
 import LinkButton from './LinkButton';
 import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
-import LoadingIndicator from './LoadingIndicator';
+import JobListingsSkeleton from './JobListingsSkeleton';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 interface JobListingsProps {
@@ -82,7 +82,7 @@ export default function JobListings({
   }
 
   if (loading && jobs.length === 0) {
-    return <LoadingIndicator fullScreen={false} message={t('jobListings.loading')} />;
+    return <JobListingsSkeleton />;
   }
 
   if (!loading && jobs.length === 0) {
@@ -124,12 +124,6 @@ export default function JobListings({
 
   return (
     <div className="space-y-4">
-      {loading && jobs.length > 0 && (
-        <div className="flex items-center justify-center py-4">
-          <LoadingIndicator fullScreen={false} message={t('jobListings.loading')} />
-        </div>
-      )}
-
       <div className="space-y-6">
         {jobs.map((job) => (
           <JobCard

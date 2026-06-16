@@ -95,28 +95,68 @@ describe('useProfileSync', () => {
     expect(setter).not.toHaveBeenCalled();
   });
 
-  it('only syncs once per user', () => {
+  it('does not re-sync when selection no longer matches profile defaults', () => {
     const setter = vi.fn();
-    const shouldSync = vi.fn(() => true);
+    const shouldSync = vi.fn(
+      (_profileValue: string[] | null, selectedValue: string[]) =>
+        !!_profileValue && _profileValue.length > 0 && selectedValue.length === 0,
+    );
 
     const { rerender } = renderHook(
-      ({ userId }) =>
-        useProfileSync(userId, false, 'test', {
-          profileValue: 'profile-value',
-          selectedValue: 'selected-value',
+      ({ profileValue, selectedValue }) =>
+        useProfileSync('user-123', false, 'workType', {
+          profileValue,
+          selectedValue,
           setter,
           shouldSync,
         }),
-      { initialProps: { userId: 'user-123' } },
+      {
+        initialProps: {
+          profileValue: ['remote'] as string[] | null,
+          selectedValue: [] as string[],
+        },
+      },
     );
 
-    expect(setter).toHaveBeenCalledTimes(1);
+    expect(setter).toHaveBeenCalledWith(['remote']);
 
-    // Rerender with same user
-    rerender({ userId: 'user-123' });
+    rerender({ profileValue: ['hybrid', 'office'], selectedValue: ['office'] });
 
-    // Should not sync again
     expect(setter).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-syncs when profile changes and selection still matches last synced profile value', () => {
+    const setter = vi.fn();
+    const shouldSync = vi.fn(
+      (profileValue: string[] | null, selectedValue: string[], hasQueryParam: boolean) => {
+        if (!profileValue || profileValue.length === 0) return false;
+        if (hasQueryParam || selectedValue.length > 0) return false;
+        return true;
+      },
+    );
+
+    const { rerender } = renderHook(
+      ({ profileValue, selectedValue }) =>
+        useProfileSync('user-123', false, 'workType', {
+          profileValue,
+          selectedValue,
+          setter,
+          shouldSync,
+        }),
+      {
+        initialProps: {
+          profileValue: ['remote'] as string[] | null,
+          selectedValue: [] as string[],
+        },
+      },
+    );
+
+    expect(setter).toHaveBeenCalledWith(['remote']);
+
+    rerender({ profileValue: ['hybrid', 'office'], selectedValue: ['remote'] });
+
+    expect(setter).toHaveBeenCalledTimes(2);
+    expect(setter).toHaveBeenLastCalledWith(['hybrid', 'office']);
   });
 
   it('syncs again when user changes', () => {
@@ -136,10 +176,8 @@ describe('useProfileSync', () => {
 
     expect(setter).toHaveBeenCalledTimes(1);
 
-    // Change user
     rerender({ userId: 'user-456' });
 
-    // Should sync again for new user
     expect(setter).toHaveBeenCalledTimes(2);
   });
 
@@ -160,13 +198,9 @@ describe('useProfileSync', () => {
 
     expect(setter).toHaveBeenCalledTimes(1);
 
-    // User logs out
     rerender({ userId: null });
-
-    // User logs back in
     rerender({ userId: 'user-123' });
 
-    // Should sync again after logout/login
     expect(setter).toHaveBeenCalledTimes(2);
   });
 });

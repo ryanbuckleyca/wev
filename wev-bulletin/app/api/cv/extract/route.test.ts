@@ -37,6 +37,18 @@ describe('POST /api/cv/extract', () => {
     else process.env.JINA_API_KEY = originalJinaKey;
   });
 
+  it('returns 503 when API keys are missing', async () => {
+    delete process.env.GROQ_API_KEY;
+    vi.mocked(getRequestUser).mockResolvedValue({ ok: true, user: { id: 'user-1' } } as any);
+
+    const request = new Request('http://localhost/api/cv/extract', { method: 'POST' });
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(data).toMatchObject({ error: 'provider_unavailable', missing: ['GROQ_API_KEY'] });
+  });
+
   it('returns 401 if not authenticated', async () => {
     vi.mocked(getRequestUser).mockResolvedValue({ ok: false } as any);
     const request = new Request('http://localhost/api/cv/extract', { method: 'POST' });

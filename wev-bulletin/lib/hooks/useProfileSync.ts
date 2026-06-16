@@ -6,16 +6,31 @@ interface ProfileSyncOptions<T> {
   selectedValue: T;
   setter: (value: T) => void;
   shouldSync: (profileValue: T | null, selectedValue: T, hasQueryParam: boolean) => boolean;
+  /** When set, overrides the default `searchParams.has(queryParamName)` URL check. */
+  hasExplicitUrlState?: () => boolean;
+}
+
+function isEmptyValue(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length === 0;
+  return value == null;
+}
+
+function valuesEqual<T>(left: T, right: T): boolean {
+  if (Array.isArray(left) && Array.isArray(right)) {
+    if (left.length !== right.length) return false;
+    const rightSet = new Set(right);
+    return left.every((item) => rightSet.has(item));
+  }
+  return left === right;
 }
 
 /**
- * Synchronizes profile values with selected values on first load.
- * Prevents overwriting user selections if they've already made changes.
+ * Synchronizes profile values with bulletin filter state.
  *
- * @param userId - Current user ID (null if not logged in)
- * @param profileLoading - Whether profile is still loading
- * @param queryParamName - Name of the query parameter to check
- * @param options - Configuration for sync behavior
+ * - On first load: applies profile defaults when `shouldSync` returns true.
+ * - On profile update: re-applies when the user is still on the last synced profile
+ *   defaults (selection matches what we previously synced from profile).
+ * - Never overwrites explicit URL params or manual filter overrides.
  */
 export function useProfileSync<T>(
   userId: string | null,
@@ -23,40 +38,58 @@ export function useProfileSync<T>(
   queryParamName: string,
   options: ProfileSyncOptions<T>,
 ): void {
-  const appliedUserIdRef = useRef<string | null>(null);
+  const lastSyncedRef = useRef<{ userId: string | null; profileValue: T | null }>({
+    userId: null,
+    profileValue: null,
+  });
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Reset when user logs out
     if (!userId) {
-      appliedUserIdRef.current = null;
+      lastSyncedRef.current = { userId: null, profileValue: null };
       return;
     }
 
-    // Already applied for this user
-    if (appliedUserIdRef.current === userId) {
-      return;
-    }
-
-    // Wait for profile to load
     if (profileLoading) {
       return;
     }
 
-    const hasQueryParam = searchParams?.has(queryParamName) ?? false;
+    const hasQueryParam =
+      options.hasExplicitUrlState?.() ?? (searchParams?.has(queryParamName) ?? false);
 
-    // Check if we should sync
-    if (!options.shouldSync(options.profileValue, options.selectedValue, hasQueryParam)) {
-      appliedUserIdRef.current = userId;
+    const { profileValue, selectedValue, setter, shouldSync } = options;
+    const lastSynced = lastSyncedRef.current;
+
+    const matchesLastSynced =
+      lastSynced.userId === userId &&
+      lastSynced.profileValue !== null &&
+      valuesEqual(selectedValue, lastSynced.profileValue);
+
+    const profileChanged =
+      lastSynced.userId !== userId || !valuesEqual(lastSynced.profileValue, profileValue);
+
+    const shouldInitialSync = shouldSync(profileValue, selectedValue, hasQueryParam);
+
+    const emptySelected = (Array.isArray(selectedValue) ? [] : selectedValue) as T;
+    const profileIsApplicable = shouldSync(profileValue, emptySelected, false);
+
+    const shouldUpdateFromProfile =
+      profileChanged &&
+      !hasQueryParam &&
+      profileValue !== null &&
+      profileIsApplicable &&
+      !valuesEqual(selectedValue, profileValue) &&
+      (isEmptyValue(selectedValue) || matchesLastSynced);
+
+    if ((shouldInitialSync || shouldUpdateFromProfile) && profileValue !== null) {
+      setter(profileValue);
+      lastSyncedRef.current = { userId, profileValue };
       return;
     }
 
-    // Apply profile value
-    if (options.profileValue !== null) {
-      options.setter(options.profileValue);
+    if (lastSynced.userId !== userId) {
+      lastSyncedRef.current = { userId, profileValue: null };
     }
-
-    appliedUserIdRef.current = userId;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     userId,
@@ -65,6 +98,6 @@ export function useProfileSync<T>(
     searchParams,
     options.profileValue,
     options.selectedValue,
-    // options.shouldSync and options.setter are stable callbacks
+    // options.shouldSync, options.setter, options.hasExplicitUrlState are stable
   ]);
 }
