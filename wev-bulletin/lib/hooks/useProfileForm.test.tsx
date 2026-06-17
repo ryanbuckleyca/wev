@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useProfile } from '@/contexts/ProfileContext';
 import { fetchSkillsByUri } from '@/lib/skills/client';
 import notify from '@/lib/toast';
+import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -22,6 +23,10 @@ vi.mock('@/lib/toast', () => ({
     success: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+vi.mock('@/lib/hooks/useUnsavedChangesWarning', () => ({
+  useUnsavedChangesWarning: vi.fn(),
 }));
 
 describe('useProfileForm', () => {
@@ -157,6 +162,63 @@ describe('useProfileForm', () => {
 
     expect(mockUpdateProfile).toHaveBeenCalled();
     expect(notify.success).toHaveBeenCalledWith('updateSuccess');
+  });
+
+  it('marks the form dirty after editing and clean after save', async () => {
+    let profileState = {
+      id: 'u1',
+      full_name: 'John Doe',
+      bio: 'Developer',
+      updated_at: '2024-01-01',
+      skills: [],
+      values: ['Ambition'],
+      work_types: [],
+      preferred_languages: [],
+    };
+    const rerenderRef: { current?: () => void } = {};
+
+    vi.mocked(useProfile).mockImplementation(
+      () =>
+        ({
+          profile: profileState,
+          loading: false,
+          error: null,
+          updateProfile: mockUpdateProfile,
+        }) as never,
+    );
+
+    mockUpdateProfile.mockImplementation(async (data) => {
+      profileState = {
+        ...profileState,
+        full_name: data.full_name ?? profileState.full_name,
+        updated_at: '2024-01-02',
+      };
+      rerenderRef.current?.();
+      return profileState;
+    });
+
+    const { result, rerender } = renderHook(() => useProfileForm('en'));
+    rerenderRef.current = rerender;
+
+    await waitFor(() => {
+      expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(false, 'unsavedChangesWarning');
+    });
+
+    act(() => {
+      result.current.setFormData((prev) => ({ ...prev, full_name: 'Jane Doe' }));
+    });
+
+    await waitFor(() => {
+      expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(true, 'unsavedChangesWarning');
+    });
+
+    await act(async () => {
+      await result.current.handleSaveProfile();
+    });
+
+    await waitFor(() => {
+      expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(false, 'unsavedChangesWarning');
+    });
   });
 
   it('handles CV import', () => {
