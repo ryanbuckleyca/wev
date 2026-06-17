@@ -47,59 +47,44 @@ The Makefile auto-detects a torch-compatible Python (`python3.11` → `python3.1
 - `npm run migrate -- --prod` — push migrations to production.
 - `npm run restore` — restore backup JSON into local Supabase.
 - `npm run restore -- --staging` — restore backups into staging.
-- `npm run seed` — seed local DB (without full migrate reset).
-- `npm run seed -- --staging` — seed staging.
+- `npm run seed` / `seed:local` — seed local DB (without full migrate reset).
+- `npm run seed:staging` — seed staging (`npm run seed -- --env staging`).
 - `npx supabase status` — check local Supabase services.
 
 ### Script naming
 
 | Pattern | When to use | Examples |
 |---------|-------------|----------|
-| `command` + `npm run cmd -- --flag` | One tool, options vary (env, limits, slugs) | `scrape`, `process`, `migrate`, `restore`, `seed` |
-| `family:member` (colon) | **Different tasks** under one namespace | `skills:index`, `skills:embeddings`, `test:bulletin`, `test:e2e` |
-| `family:member:mode` (colon) | Sub-variant of a **different task** (not an env flag) | `test:e2e:debug`, `coverage:guidelines:strict` |
-| Hyphen **inside** a segment | Multi-word name for one script | `test:mutation-smoke`, `apply-migrations` |
+| `family:target` | **Named env/target** — thin alias → `npm run family -- --env target` | `scrape:staging` → `npm run scrape -- --env staging` |
+| `command` + `--` flags | Extra options on top of a named script | `npm run scrape:prod -- --source mac` |
+| `family:member` (colon) | **Different tasks** (not env variants) | `skills:index`, `test:e2e` |
 
-**Colons** = npm's namespace separator (`family:thing`). **Hyphens** = word breaks within a name (`mutation-smoke`). Don't use colons for env targeting — use `--staging` / `--prod` after `--`.
+Run `npm run help` for a cheat sheet. `npm run` alone lists script names but not flags.
 
-`skills:embeddings` vs `skills:index` are separate scripts (index builds JSON, embeddings writes vectors) — colon grouping is right. `test:*` scripts are separate suites — keep colons, don't fold into `npm run test -- bulletin`.
+### Scrape
 
-**Examples:**
+**Named targets** (visible in `npm run`):
+
+| Script | Target |
+|--------|--------|
+| `scrape:local` | Local DB |
+| `scrape:staging` | Staging |
+| `scrape:publish` | Prod DB, local LLMs (YES prompt) |
+| `scrape:prod` | Full prod (YES prompt) |
+| `scrape:list-sources` | List slugs (fast) |
+
+Add options after `--`: `npm run scrape:prod -- --source mac`
+
+Same via flags on `scrape`: `npm run scrape -- --env staging --source cent`
 
 ```bash
-npm run scrape:list-sources            # fast: Supabase JS, no Python bootstrap
+npm run scrape:list-sources
+npm run scrape:local
+npm run scrape:prod -- --source mac
 ```
 
-Each command has one npm entry point. Pass **flags after `--`** to choose the DB target, source, and other options.
-
-**DB targets** (mutually exclusive):
-
-| Flag | Database | LLM / embeddings |
-|------|----------|------------------|
-| *(none)* | Local (`.env`) | From `.env` |
-| `--staging` | Staging (`.env.staging`) | From `.env` + staging overrides |
-| `--prod` | Production (`.env.production`) | From `.env.production` (`ENV_MODE=prod`) |
-| `--publish` | Production (`.env.production`) | From `.env` (`ENV_MODE=local`) — see below |
-
-`--publish` is **not** an environment like staging. It's a hybrid workflow for **scrape only**: write to the **production database**, but run LLMs and embeddings **on your machine** (Ollama, local Jina). `npm run process` is **local/staging only** — it does not accept `--prod` or `--publish`.
-
-| Command | Prod DB writes? |
-|---------|-----------------|
-| `npm run scrape -- --publish` | Yes (with YES prompt) |
-| `npm run scrape -- --prod` | Yes (with YES prompt) |
-| `npm run process` | No — local or `--staging` only |
-
-**Examples:**
-
-```bash
-npm run scrape:list-sources            # list source slugs (fast)
-npm run scrape                              # local, all sources
-npm run scrape -- --source mac              # local, one source (--slug also works)
-npm run scrape -- --staging --source cent
-npm run scrape -- --publish --source goodwork # prod DB, local LLMs
-npm run scrape -- --prod                    # full prod
-
-npm run process -- --staging --limit 50
+npm run process:staging -- --limit 50
+# or: npm run process -- --env staging --limit 50
 
 npm run skills:index                        # ESCO API → JSON file only
 npm run skills:index -- --upsert-db         # upsert skills to local DB

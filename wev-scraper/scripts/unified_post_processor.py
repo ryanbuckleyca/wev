@@ -357,9 +357,15 @@ def main():
     parser.add_argument("--job-id", nargs="+", help="Specific job IDs to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't save to database")
     parser.add_argument(
+        "--env",
+        choices=["local", "staging"],
+        default="local",
+        help="Target environment (default: local)",
+    )
+    parser.add_argument(
         "--staging",
         action="store_true",
-        help="Use staging (.env.staging) environment",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument("--verbose", action="store_true", help="Detailed logging")
 
