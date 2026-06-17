@@ -54,7 +54,6 @@
     "scrape:local": "npm run scrape -- --env local",
     "scrape:staging": "npm run scrape -- --env staging",
     "scrape:prod": "npm run scrape -- --env prod",
-    "scrape:publish": "npm run scrape -- --env publish",
     "seed": "npx tsx supabase/seed.ts",
     "seed:local": "npm run seed -- --env local",
     "seed:staging": "npm run seed -- --env staging",
