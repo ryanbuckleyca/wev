@@ -133,13 +133,8 @@ def test_run_post_scrape_tasks(mock_env):
 
 @patch("scrape.Path.exists", return_value=True)
 def test_initialize_runtime_env_staging(mock_exists):
-    args = MagicMock()
-    args.staging = True
-    args.prod = False
-    args.publish = False
-
     with patch("scrape.load_env_file") as mock_load_file:
-        initialize_runtime_env(args)
+        initialize_runtime_env("staging")
         assert mock_load_file.called
 
 @patch("scrape.supabase")
@@ -223,6 +218,8 @@ def test_main_flow(mock_orch_class, mock_init):
         args = MagicMock()
         args.prod = False
         args.publish = False
+        args.staging = False
+        args.env = "local"
         args.dry_run = True
         args.compare = False
         args.provider = "groq"
@@ -252,6 +249,8 @@ def test_main_vpn_does_not_force_headed_mode(mock_orch_class, mock_init, monkeyp
         args = MagicMock()
         args.prod = False
         args.publish = False
+        args.staging = False
+        args.env = "local"
         args.dry_run = True
         args.compare = False
         args.provider = None
@@ -281,6 +280,8 @@ def test_main_prod_confirmation_propagates_to_child_scripts(mock_orch_class, moc
         args = MagicMock()
         args.prod = True
         args.publish = False
+        args.staging = False
+        args.env = "local"
         args.dry_run = False
         args.compare = False
         args.provider = None
@@ -308,6 +309,8 @@ def test_main_prod_noninteractive_requires_confirmation(mock_orch_class, mock_in
         args = MagicMock()
         args.prod = True
         args.publish = False
+        args.staging = False
+        args.env = "local"
         args.dry_run = False
         args.compare = False
         args.provider = None

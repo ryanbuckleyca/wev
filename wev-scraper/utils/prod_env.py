@@ -92,11 +92,21 @@ def resolve_staging_env_path(script_file: Path) -> Path:
     return root_dir / ".env.staging"
 
 
+def _argv_env_value(argv: list[str]) -> str | None:
+    if "--env" not in argv:
+        return None
+    index = argv.index("--env")
+    if index + 1 >= len(argv):
+        return None
+    return argv[index + 1]
+
+
 def bootstrap_staging_from_argv(argv: list[str], script_file: Path) -> None:
-    """Apply --staging overrides before DB/LLM imports."""
-    if "--staging" not in argv:
+    """Apply --staging / --env staging overrides before DB/LLM imports."""
+    env = _argv_env_value(argv)
+    if "--staging" not in argv and env != "staging":
         return
-    if "--prod" in argv or "--publish" in argv:
+    if "--prod" in argv or "--publish" in argv or env in ("prod", "publish"):
         print(
             "Error: --staging cannot be combined with --prod or --publish.",
             file=sys.stderr,
@@ -115,12 +125,10 @@ def bootstrap_staging_from_argv(argv: list[str], script_file: Path) -> None:
 
 
 def bootstrap_prod_from_argv(argv: list[str], script_file: Path) -> None:
-    """Apply --prod / --publish overrides before DB/LLM imports.
-
-    Exits the process when flags are invalid or .env.production is missing.
-    """
-    has_prod = "--prod" in argv
-    has_publish = "--publish" in argv
+    """Apply --prod / --publish / --env prod|publish overrides before DB/LLM imports."""
+    env = _argv_env_value(argv)
+    has_prod = "--prod" in argv or env == "prod"
+    has_publish = "--publish" in argv or env == "publish"
     if not has_prod and not has_publish:
         return
     if has_prod and has_publish:

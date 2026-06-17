@@ -1,36 +1,29 @@
 import fs from "node:fs";
 import path from "node:path";
-import { config as loadEnv } from "dotenv";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseScriptConfig } from "./src/script-config";
-
-function loadRestoreEnv(argv: string[]) {
-  const root = process.cwd();
-  loadEnv({ path: path.join(root, ".env") });
-  if (argv.includes("--staging")) {
-    loadEnv({ path: path.join(root, ".env.staging"), override: true });
-  }
-}
+import {
+  envHelpLines,
+  loadEnvFiles,
+  parseEnvFlag,
+  type TargetEnv,
+} from "../scripts/parse-env";
 
 function parseRestoreArgs(argv: string[]) {
   const args = argv.filter((a) => a !== "--");
   if (args.includes("--help") || args.includes("-h")) {
-    console.error(
-      "Usage: npm run restore [-- --staging]\n\n" +
-        "  (no flags)  Restore backups to local Supabase\n" +
-        "  --staging   Restore backups to staging",
-    );
+    console.error(envHelpLines("restore", ["local", "staging"]));
     process.exit(0);
   }
-
-  const unknown = args.filter((a) => a !== "--staging");
-  if (unknown.length > 0) {
-    console.error(`✗ Unknown argument(s): ${unknown.join(", ")}`);
-    console.error("Usage: npm run restore [-- --staging]");
+  const env = parseEnvFlag(args, {
+    allow: ["local", "staging"],
+    defaultEnv: "local",
+  }) as TargetEnv;
+  if (env === "prod") {
+    console.error("Error: restore does not support --env prod");
     process.exit(1);
   }
-
-  return { staging: args.includes("--staging") };
+  return env;
 }
 
 async function clearTable(supabase: SupabaseClient, table: string) {
@@ -126,15 +119,15 @@ async function restoreTable(
 
 async function main() {
   const argv = process.argv.slice(2);
-  const { staging } = parseRestoreArgs(argv);
-  loadRestoreEnv(argv);
+  const env = parseRestoreArgs(argv);
+  loadEnvFiles(env);
 
   const { url: supabaseUrl, serviceRoleKey } = getSupabaseScriptConfig(
     "restore.ts",
     {
       urlEnv: "SUPABASE_URL",
       keyEnvNames: ["SUPABASE_SERVICE_ROLE_KEY"],
-      keyDescription: staging ? "staging service role key" : "local service role key",
+      keyDescription: `${env} service role key`,
     },
   );
 
@@ -153,7 +146,7 @@ async function main() {
     .filter((f) => f.startsWith("backup_") && f.endsWith(".json"));
 
   console.log(
-    `Found ${backupFiles.length} backup files to restore to ${staging ? "staging" : "local"}...`,
+    `Found ${backupFiles.length} backup files to restore to ${env}...`,
   );
 
   const restoreOrder = [

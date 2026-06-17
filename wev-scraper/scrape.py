@@ -371,20 +371,52 @@ class ScraperOrchestrator:
         sys.exit(1)
 
 
+def resolve_scrape_env(args) -> str:
+    """Resolve target env from --env or legacy flags."""
+    legacy: list[str] = []
+    if args.staging:
+        legacy.append("staging")
+    if args.prod:
+        legacy.append("prod")
+    if args.publish:
+        legacy.append("publish")
+    if len(legacy) > 1:
+        print("Error: only one of --staging, --prod, --publish may be set.", file=sys.stderr)
+        sys.exit(2)
+    if legacy:
+        return legacy[0]
+    return args.env
+
+
 def parse_args():
     import argparse
-    parser = argparse.ArgumentParser(description="WEV Scraper Orchestrator")
+    parser = argparse.ArgumentParser(
+        description="WEV Scraper Orchestrator",
+        epilog=(
+            "npm aliases: scrape:local, scrape:staging, scrape:prod, scrape:publish\n"
+            "(each runs: npm run scrape -- --env <name>)\n"
+            "List slugs:  npm run scrape:list-sources\n"
+            "One source:  npm run scrape:prod -- --source mac"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--env",
+        choices=["local", "staging", "prod", "publish"],
+        default="local",
+        help="Target environment (default: local)",
+    )
     parser.add_argument(
         "--prod",
         action="store_true",
-        help="Full prod: load .env.production (DB + LLM keys + flags), set ENV_MODE=prod, target prod DB",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--publish",
         action="store_true",
-        help="Prod DB: Supabase keys from .env.production; set ENV_MODE=local (local LLMs/embeddings + rest of .env)",
+        help=argparse.SUPPRESS,
     )
-    parser.add_argument("--staging", action="store_true", help="Use staging (.env.staging) environment")
+    parser.add_argument("--staging", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--dry-run", "--dry", action="store_true", help="Skip database writes")
     parser.add_argument("--compare", action="store_true", help="Dry run + compare with DB")
     parser.add_argument("--provider", help="Force specific LLM provider")
@@ -406,40 +438,36 @@ def parse_args():
     return parser.parse_args()
 
 
-def initialize_runtime_env(args):
-    """Predictable environment initialization based on CLI flags."""
+def initialize_runtime_env(env: str):
+    """Predictable environment initialization based on --env target."""
     script_dir = Path(__file__).resolve().parent
     root_dir = script_dir.parent
 
-    # 1. Load Baseline (.env) from root or local
-    # This provides shared keys (Gemini, Geocodio, etc.)
     base_env = root_dir / ".env" if (root_dir / ".env").exists() else script_dir / ".env"
     if base_env.exists():
         load_env_file(base_env)
 
-    # 2. Apply Staging Overrides if requested
-    if args.staging:
+    if env == "staging":
         staging_env = root_dir / ".env.staging" if (root_dir / ".env.staging").exists() else script_dir / ".env.staging"
         if staging_env.exists():
             _log(f"▶ Loading Staging Overrides from {staging_env.name}")
             load_env_file(staging_env)
         else:
-            _log(f"⚠️ Warning: --staging flag used but {staging_env} not found.")
+            _log(f"⚠️ Warning: --env staging but {staging_env} not found.")
 
-    # 3. Apply Production Overrides if requested
-    if args.prod or args.publish:
+    if env in ("prod", "publish"):
         prod_env = resolve_prod_env_path(script_dir / "scrape.py")
         if not prod_env.exists():
-            _log(f"❌ {prod_env} not found — required for --prod / --publish.")
+            _log(f"❌ {prod_env} not found — required for --env prod / publish.")
             sys.exit(1)
-        apply_prod_overrides(prod_env, full_prod=args.prod)
+        apply_prod_overrides(prod_env, full_prod=(env == "prod"))
 
 
 def main():
     args = parse_args()
+    env = resolve_scrape_env(args)
 
-    # 1. Initialize Environment
-    initialize_runtime_env(args)
+    initialize_runtime_env(env)
 
     # 2. Environment Overrides from CLI
     if args.provider:
@@ -457,17 +485,13 @@ def main():
             if os.environ.get(flag) is None:
                 os.environ[flag] = "0"
 
-    if args.prod and args.publish:
-        print("Error: --prod and --publish are mutually exclusive.", file=sys.stderr)
-        sys.exit(2)
-
     if args.list_sources:
         list_sources()
         sys.exit(0)
 
-    if args.prod or args.publish:
+    if env in ("prod", "publish"):
         os.environ["USE_PROD_DB"] = "1"
-        confirm_prod_run(full_prod=args.prod)
+        confirm_prod_run(full_prod=(env == "prod"))
 
     # 3. Orchestrate
     orchestrator = ScraperOrchestrator(

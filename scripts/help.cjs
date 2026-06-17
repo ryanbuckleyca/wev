@@ -1,73 +1,68 @@
 #!/usr/bin/env node
 /**
- * Cheat sheet for repo scripts. npm run only lists script names — flags are
- * handled by each underlying CLI. Pass them after `--`.
+ * Cheat sheet for repo scripts.
  *
- * Per-command help:
- *   npm run migrate -- --help
- *   npm run restore -- --help
- *   npm run seed -- --help
- *   npm run scrape -- --help
- *   npm run process -- --help
+ * Named env scripts are thin aliases: npm run scrape:staging → npm run scrape -- --env staging
+ * Extra options after --: npm run scrape:prod -- --source mac
+ *
+ * `npm run help` — this file. Per-command: npm run scrape -- --help
  */
 
 const sections = [
   {
     title: "Database",
     lines: [
-      "npm run migrate                  local reset + seed + typegen",
-      "npm run migrate -- --staging     push migrations to staging",
-      "npm run migrate -- --prod        push migrations to production",
-      "npm run restore                  restore backups → local",
-      "npm run restore -- --staging     restore backups → staging",
-      "npm run seed                     seed local (no full reset)",
-      "npm run seed -- --staging        seed staging",
+      "npm run migrate                  default: local reset + seed + typegen",
+      "npm run migrate:local / migrate:staging / migrate:prod",
+      "npm run migrate -- --env staging   same as migrate:staging",
+      "npm run restore:local / restore:staging",
+      "npm run seed:local / seed:staging",
     ],
   },
   {
-    title: "Scrape (flags: --staging, --prod, --publish, --source <slug>)",
+    title: "Scrape — named targets (show up in `npm run`)",
     lines: [
-      "npm run scrape:list-sources      fast — Supabase JS, skips Python/venv",
-      "npm run scrape:list-sources -- --staging",
-      "npm run scrape                   local, all sources",
-      "npm run scrape -- --source mac   one source (alias: --slug)",
-      "npm run scrape -- --staging --source cent",
-      "npm run scrape -- --publish      prod DB, local LLMs (YES prompt)",
-      "npm run scrape -- --prod         full prod (YES prompt)",
+      "npm run scrape:list-sources      list slugs (fast, local DB)",
+      "npm run scrape:list-sources:staging / :prod",
+      "npm run scrape:local             local DB, all sources",
+      "npm run scrape:staging           staging DB",
+      "npm run scrape:publish           prod DB + local LLMs (YES prompt)",
+      "npm run scrape:prod              full prod (YES prompt)",
+      "npm run scrape:prod -- --source mac   one source on prod",
+      "npm run scrape -- --env prod --source mac   same via flags",
     ],
   },
   {
-    title: "Process (local/staging only — no --prod or --publish)",
+    title: "Process (local/staging only)",
     lines: [
-      "npm run process                  post-process jobs locally",
-      "npm run process -- --staging --limit 50",
+      "npm run process:local / process:staging",
+      "npm run process -- --env staging --limit 50",
     ],
   },
   {
     title: "Skills",
     lines: [
-      "npm run skills:index             ESCO API → JSON file",
-      "npm run skills:index -- --upsert-db",
-      "npm run skills:index -- --upsert-db --staging",
-      "npm run skills:embeddings        embed skills locally",
-      "npm run skills:embeddings -- --staging",
-      "npm run skills:embeddings -- --prod",
+      "npm run skills:index",
+      "npm run skills:index -- --upsert-db [--staging]",
+      "npm run skills:embeddings [-- --staging | --prod]",
     ],
   },
   {
-    title: "Test suites (separate tasks — use colon names, not flags)",
+    title: "Test",
     lines: [
-      "npm run test                     bulletin + scraper unit tests",
-      "npm run test:bulletin",
-      "npm run test:scraper",
-      "npm run test:e2e",
-      "npm run test:db                  Supabase pgTAP",
-      "npm run verify                   lint + tsc + test",
+      "npm run test / test:bulletin / test:scraper / test:e2e / test:db",
+      "npm run verify",
     ],
   },
 ];
 
-console.log("Wev npm scripts — pass flags after `--`\n");
+console.log("Wev npm scripts\n");
+console.log(
+  "Pattern:  scrape:staging  →  npm run scrape -- --env staging  (aliases for discoverability)",
+);
+console.log(
+  "Options:  npm run scrape:prod -- --source mac  (extra flags after --)\n",
+);
 for (const { title, lines } of sections) {
   console.log(title);
   for (const line of lines) {

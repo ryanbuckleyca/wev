@@ -1,40 +1,27 @@
-import path from "node:path";
-import { config as loadEnv } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
+import {
+  envHelpLines,
+  loadEnvFiles,
+  parseEnvFlag,
+  type ScrapeEnv,
+} from "./parse-env";
 
-function parseArgs(argv: string[]) {
-  const args = argv.filter((a) => a !== "--");
+async function main() {
+  const argv = process.argv.slice(2);
 
-  if (args.includes("--help") || args.includes("-h")) {
+  if (argv.includes("--help") || argv.includes("-h")) {
     console.error(
-      "Usage: npm run scrape:list-sources [-- --staging]\n\n" +
-        "  (no flags)  List sources from .env Supabase project\n" +
-        "  --staging   Use .env.staging overrides",
+      envHelpLines("scrape:list-sources", ["local", "staging", "prod"]),
     );
     process.exit(0);
   }
 
-  const unknown = args.filter((a) => a !== "--staging");
-  if (unknown.length > 0) {
-    console.error(`Unknown argument(s): ${unknown.join(", ")}`);
-    console.error("Usage: npm run scrape:list-sources [-- --staging]");
-    process.exit(1);
-  }
+  const env = parseEnvFlag(argv, {
+    allow: ["local", "staging", "prod"],
+    defaultEnv: "local",
+  }) as ScrapeEnv;
 
-  return { staging: args.includes("--staging") };
-}
-
-function loadTargetEnv(staging: boolean) {
-  const root = process.cwd();
-  loadEnv({ path: path.join(root, ".env") });
-  if (staging) {
-    loadEnv({ path: path.join(root, ".env.staging"), override: true });
-  }
-}
-
-async function main() {
-  const { staging } = parseArgs(process.argv.slice(2));
-  loadTargetEnv(staging);
+  loadEnvFiles(env);
 
   const url = process.env.SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();

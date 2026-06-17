@@ -80,12 +80,18 @@ async function main() {
     execVerbose(interpreter, ["-m", "venv", "venv"]);
   }
 
-  // Pass-through arguments
   const args = process.argv.slice(2);
   const task = args[0];
-  const isProd = args.includes("--prod");
+  const scriptArgs = args.slice(1).filter((a) => a !== "--");
+  const envIndex = scriptArgs.indexOf("--env");
+  const scriptEnv =
+    envIndex >= 0 && scriptArgs[envIndex + 1]
+      ? scriptArgs[envIndex + 1]
+      : null;
+  const isProd = scriptArgs.includes("--prod") || scriptEnv === "prod";
   const isPublish =
-    args.includes("--publish") && task !== "unified-post";
+    (scriptArgs.includes("--publish") || scriptEnv === "publish") &&
+    task !== "unified-post";
 
   // Prompt before any output is piped — readline uses stderr so it's visible
   // even when stdout is piped (e.g. `npm run scrape -- --prod 2>&1 | head`).
@@ -119,26 +125,28 @@ async function main() {
   const scriptPath = taskMap[task];
 
   if (scriptPath) {
-    const scriptArgs = args.slice(1).filter((a) => a !== "--");
-    const isListSourcesOnly =
+    const isLightweightScrape =
       task === "scrape" &&
-      scriptArgs.includes("--list-sources") &&
-      !scriptArgs.some((flag) =>
-        ["--staging", "--prod", "--publish"].includes(flag),
-      );
+      (scriptArgs.includes("--help") ||
+        scriptArgs.includes("-h") ||
+        (scriptArgs.includes("--list-sources") &&
+          !scriptArgs.some((flag) =>
+            ["--staging", "--prod", "--publish"].includes(flag),
+          ) &&
+          !["staging", "prod", "publish"].includes(scriptEnv ?? "local")));
 
     // Ensure dependencies are synced if we're running a main task
     if (
       ["scrape", "skills:index", "skills:embeddings", "unified-post"].includes(
         task,
       ) &&
-      !isListSourcesOnly
+      !isLightweightScrape
     ) {
       console.log("▶ Syncing Python Dependencies...");
       execVerbose(venvPipCmd, ["install", "--quiet", "-r", "requirements.txt"]);
       execVerbose(venvPipCmd, ["install", "--quiet", "-e", "."]);
 
-      if (task === "scrape" && !isListSourcesOnly) {
+      if (task === "scrape" && !isLightweightScrape) {
         execVerbose(venvPlaywrightCmd, ["install", "--with-deps", "chromium"]);
       }
     }
