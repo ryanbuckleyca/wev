@@ -15,7 +15,7 @@ if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(line_buffering=True)
 
 # Note: Import database and scraper classes AFTER environment might have been modified by CLI args
-from scrapers.registry import get_scraper_class
+from scrapers.registry import get_scraper_class, source_matches_slug
 from utils.db import fetch_all_rows, get_supabase_url, log_scrape_run, save_job, supabase
 from utils.env import is_truthy_env
 from utils.log import scraper_log as _log
@@ -126,7 +126,9 @@ class ScraperOrchestrator:
             raise RuntimeError(f"Could not fetch sources: {response}")
         sources = response.data
         if self.source_slug:
-            sources = [s for s in sources if s.get("slug") == self.source_slug]
+            sources = [
+                s for s in sources if source_matches_slug(s, self.source_slug)
+            ]
             if not sources:
                 raise RuntimeError(
                     f"No source found with slug '{self.source_slug}'. "

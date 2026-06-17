@@ -28,27 +28,36 @@ LEGACY_SLUG_ALIASES: Dict[str, str] = {
 }
 
 # Production source UUIDs — stable until prod has slug column populated.
+PROD_SOURCE_CANONICAL_SLUG: Dict[str, str] = {
+    "eb5a9e52-b626-4539-8539-981240f2dbee": "ecocan",
+    "d644049f-7186-4b7e-8860-adf69a4bd927": "goodwork",
+    "4bbc9bac-76ae-4b2e-bd4e-ac67f739ac2a": "coco",
+    "a7154a94-7c95-442f-811a-12f9a62e5332": "csi",
+    "c068cbc6-90a5-45cb-95a1-a7281dd76198": "cent",
+    "01a58f5e-f47c-4310-a2d1-6627a57e2071": "mac",
+    "394fd635-bf74-463a-9e74-b17405a8b688": "macb",
+}
+
 PROD_SOURCE_ID_MAP: Dict[str, Type] = {
-    "eb5a9e52-b626-4539-8539-981240f2dbee": EcoCanadaScraper,
-    "d644049f-7186-4b7e-8860-adf69a4bd927": GoodWorkScraper,
-    "4bbc9bac-76ae-4b2e-bd4e-ac67f739ac2a": CocoScraper,
-    "a7154a94-7c95-442f-811a-12f9a62e5332": CSIScraper,
-    "c068cbc6-90a5-45cb-95a1-a7281dd76198": CentraideScraper,
-    "01a58f5e-f47c-4310-a2d1-6627a57e2071": MaCommunauteScraper,
-    "394fd635-bf74-463a-9e74-b17405a8b688": MaCommunauteScraper,
+    source_id: SCRAPER_MAP[slug]
+    for source_id, slug in PROD_SOURCE_CANONICAL_SLUG.items()
 }
 
 # Name fallback for local seeds (different UUIDs, varying display names).
+SOURCE_NAME_TO_SLUG: Dict[str, str] = {
+    "eco canada": "ecocan",
+    "goodwork": "goodwork",
+    "coco": "coco",
+    "centre for social innovation": "csi",
+    "centraide": "cent",
+    "ma communauté emplois": "mac",
+    "ma communauté bénévolat": "macb",
+    "ma communauté (emplois)": "mac",
+    "ma communauté (bénévolat)": "macb",
+}
+
 SCRAPER_NAME_MAP: Dict[str, Type] = {
-    "eco canada": EcoCanadaScraper,
-    "goodwork": GoodWorkScraper,
-    "coco": CocoScraper,
-    "centre for social innovation": CSIScraper,
-    "centraide": CentraideScraper,
-    "ma communauté emplois": MaCommunauteScraper,
-    "ma communauté bénévolat": MaCommunauteScraper,
-    "ma communauté (emplois)": MaCommunauteScraper,
-    "ma communauté (bénévolat)": MaCommunauteScraper,
+    name: SCRAPER_MAP[slug] for name, slug in SOURCE_NAME_TO_SLUG.items()
 }
 
 
@@ -56,9 +65,43 @@ def _normalize_name(name: str) -> str:
     return re.sub(r"\s+", " ", name.strip().lower())
 
 
+def canonical_slug(slug: str) -> str:
+    return LEGACY_SLUG_ALIASES.get(slug, slug)
+
+
 def _scraper_for_slug(slug: str) -> Type | None:
-    canonical = LEGACY_SLUG_ALIASES.get(slug, slug)
-    return SCRAPER_MAP.get(canonical)
+    return SCRAPER_MAP.get(canonical_slug(slug))
+
+
+def source_canonical_slug(source: dict) -> str | None:
+    """Resolve a source row to its canonical slug, if known."""
+    slug = source.get("slug")
+    if slug:
+        canon = canonical_slug(slug)
+        if canon in SCRAPER_MAP:
+            return canon
+
+    source_id = source.get("id")
+    if source_id:
+        canon = PROD_SOURCE_CANONICAL_SLUG.get(source_id)
+        if canon:
+            return canon
+
+    name = source.get("name")
+    if name:
+        return SOURCE_NAME_TO_SLUG.get(_normalize_name(name))
+
+    return None
+
+
+def source_matches_slug(source: dict, requested: str) -> bool:
+    """True when a source row matches a --source/--slug filter."""
+    requested_canon = canonical_slug(requested)
+    if requested_canon not in SCRAPER_MAP:
+        return source.get("slug") == requested
+
+    source_canon = source_canonical_slug(source)
+    return source_canon == requested_canon
 
 
 def get_scraper_class(source: dict) -> Type | None:
