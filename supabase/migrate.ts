@@ -103,15 +103,40 @@ function runMigration(target: string, dryRun: boolean) {
   }
 }
 
+function parseTarget(argv: string[]): "local" | "staging" | "prod" {
+  const hasStaging = argv.includes("--staging");
+  const hasProd = argv.includes("--prod");
+  if (hasStaging && hasProd) {
+    console.error("Error: --staging and --prod are mutually exclusive.");
+    process.exit(1);
+  }
+  if (hasStaging) return "staging";
+  if (hasProd) return "prod";
+  return "local";
+}
+
 function main() {
   const envPath = fs.existsSync(".env") ? ".env" : path.join("..", ".env");
   loadEnv({ path: envPath });
 
-  const target = process.argv[2];
+  const args = process.argv.slice(2).filter((a) => a !== "--");
+  const target = parseTarget(args);
   const dryRun = process.env.MIGRATE_DRY_RUN === "1";
 
-  if (!target) {
-    console.error("Usage: tsx supabase/migrate.ts <local|staging|prod>");
+  if (args.includes("--help") || args.includes("-h")) {
+    console.error(
+      "Usage: npm run migrate [-- --staging | --prod]\n\n" +
+        "  (no flags)  Reset, seed, and typegen for local Supabase\n" +
+        "  --staging   Push migrations to staging\n" +
+        "  --prod      Push migrations to production",
+    );
+    process.exit(0);
+  }
+
+  const unknown = args.filter((a) => !["--staging", "--prod"].includes(a));
+  if (unknown.length > 0) {
+    console.error(`✗ Unknown argument(s): ${unknown.join(", ")}`);
+    console.error("Usage: npm run migrate [-- --staging | --prod]");
     process.exit(1);
   }
 
