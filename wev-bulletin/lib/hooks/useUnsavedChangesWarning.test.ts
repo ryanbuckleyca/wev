@@ -45,7 +45,7 @@ describe('useUnsavedChangesWarning', () => {
     const preventDefault = vi.spyOn(clickEvent, 'preventDefault');
     const stopPropagation = vi.spyOn(clickEvent, 'stopPropagation');
 
-    document.dispatchEvent(clickEvent);
+    anchor.dispatchEvent(clickEvent);
 
     expect(window.confirm).toHaveBeenCalledWith(message);
     expect(preventDefault).toHaveBeenCalled();

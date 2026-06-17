@@ -59,7 +59,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
   const { profile, loading: profileLoading, error: profileError, updateProfile } = useProfile();
 
   const [isSaving, setIsSaving] = useState(false);
-  const [skillsHydrating, setSkillsHydrating] = useState(false);
+  const [hydrationComplete, setHydrationComplete] = useState(false);
   const [baselineSnapshot, setBaselineSnapshot] = useState<string | null>(null);
   const baselineKeyRef = useRef<string | null>(null);
   const [formData, setFormData] = useState({
@@ -99,6 +99,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     const hydrateKey = `${profile.id}:${profile.updated_at}:${locale}`;
     if (hydratedKeyRef.current === hydrateKey) return;
     hydratedKeyRef.current = hydrateKey;
+    setHydrationComplete(false);
 
     setFormData({
       full_name: profile.full_name || '',
@@ -135,11 +136,10 @@ export function useProfileForm(locale: 'en' | 'fr') {
     if (profileSkills.length === 0) {
       skills.setItems([]);
       skills.setCutoff(0);
-      setSkillsHydrating(false);
+      setHydrationComplete(true);
       return;
     }
 
-    setSkillsHydrating(true);
     void fetchSkillsByUri(profileSkills, locale)
       .then((fetched) => {
         const psr = profile.skills_rated;
@@ -157,12 +157,12 @@ export function useProfileForm(locale: 'en' | 'fr') {
         skills.setCutoff(0);
       })
       .finally(() => {
-        setSkillsHydrating(false);
+        setHydrationComplete(true);
       });
   }, [profile, locale, values, skills]);
 
   const currentSnapshot = useMemo(() => {
-    if (!profile || profileLoading || skillsHydrating) return null;
+    if (!profile || profileLoading || !hydrationComplete) return null;
     return serializeProfileFormState({
       formData,
       valueItems: values.items,
@@ -173,7 +173,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
   }, [
     profile,
     profileLoading,
-    skillsHydrating,
+    hydrationComplete,
     formData,
     values.items,
     values.cutoff,
@@ -182,16 +182,17 @@ export function useProfileForm(locale: 'en' | 'fr') {
   ]);
 
   useEffect(() => {
-    if (!profile || skillsHydrating || currentSnapshot === null) return;
+    if (!profile || !hydrationComplete || currentSnapshot === null) return;
 
     const hydrationKey = `${profile.id}:${profile.updated_at}:${locale}`;
     if (baselineKeyRef.current === hydrationKey) return;
 
     baselineKeyRef.current = hydrationKey;
     setBaselineSnapshot(currentSnapshot);
-  }, [profile, locale, skillsHydrating, currentSnapshot]);
+  }, [profile, locale, hydrationComplete, currentSnapshot]);
 
   const isDirty =
+    hydrationComplete &&
     currentSnapshot !== null &&
     baselineSnapshot !== null &&
     currentSnapshot !== baselineSnapshot;
@@ -235,7 +236,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
         i < skills.cutoff ? { skill: s.uri, rank: i + 1 } : { skill: s.uri },
       );
 
-      await updateProfile({
+      const updated = await updateProfile({
         full_name: formData.full_name || null,
         bio: formData.bio || null,
         values: values.items.slice(0, MAX_PROFILE_VALUES),
@@ -252,6 +253,15 @@ export function useProfileForm(locale: 'en' | 'fr') {
         preferred_languages:
           formData.preferred_languages.length > 0 ? formData.preferred_languages : null,
       });
+      const savedSnapshot = serializeProfileFormState({
+        formData,
+        valueItems: values.items,
+        valueCutoff: values.cutoff,
+        skillItems: skills.items,
+        skillCutoff: skills.cutoff,
+      });
+      baselineKeyRef.current = `${updated.id}:${updated.updated_at}:${locale}`;
+      setBaselineSnapshot(savedSnapshot);
       notify.success(t('updateSuccess'));
       void fetch('/api/matches/recalculate-mine', { method: 'POST' });
     } catch (err) {
@@ -259,7 +269,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     } finally {
       setIsSaving(false);
     }
-  }, [formData, values, skills, updateProfile, t]);
+  }, [formData, values, skills, updateProfile, t, locale]);
 
   const handleApplyCvImport = useCallback(
     ({
