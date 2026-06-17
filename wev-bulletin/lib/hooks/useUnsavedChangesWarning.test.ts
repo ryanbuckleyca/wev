@@ -33,6 +33,25 @@ describe('useUnsavedChangesWarning', () => {
     expect(window.history.pushState).toHaveBeenCalled();
   });
 
+  it('ignores links with invalid href schemes', () => {
+    renderHook(() => useUnsavedChangesWarning(true, message));
+
+    const anchor = document.createElement('a');
+    anchor.href = 'javascript:void(0)';
+    anchor.textContent = 'Bad link';
+    document.body.appendChild(anchor);
+
+    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+    const preventDefault = vi.spyOn(clickEvent, 'preventDefault');
+
+    anchor.dispatchEvent(clickEvent);
+
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(preventDefault).not.toHaveBeenCalled();
+
+    anchor.remove();
+  });
+
   it('prevents navigation when a same-origin link click is cancelled', () => {
     renderHook(() => useUnsavedChangesWarning(true, message));
 

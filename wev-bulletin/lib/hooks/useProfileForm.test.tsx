@@ -175,6 +175,8 @@ describe('useProfileForm', () => {
       work_types: [],
       preferred_languages: [],
     };
+    let rerenderHook: (() => void) | undefined;
+
     vi.mocked(useProfile).mockImplementation(
       () =>
         ({
@@ -185,7 +187,18 @@ describe('useProfileForm', () => {
         }) as never,
     );
 
+    mockUpdateProfile.mockImplementation(async (data) => {
+      profileState = {
+        ...profileState,
+        full_name: data.full_name ?? profileState.full_name,
+        updated_at: '2024-01-02',
+      };
+      rerenderHook?.();
+      return profileState;
+    });
+
     const { result, rerender } = renderHook(() => useProfileForm('en'));
+    rerenderHook = rerender;
 
     await waitFor(() => {
       expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(false, 'unsavedChangesWarning');
@@ -199,19 +212,9 @@ describe('useProfileForm', () => {
       expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(true, 'unsavedChangesWarning');
     });
 
-    mockUpdateProfile.mockImplementation(async (data) => {
-      profileState = {
-        ...profileState,
-        full_name: data.full_name ?? profileState.full_name,
-        updated_at: '2024-01-02',
-      };
-      return profileState;
-    });
-
     await act(async () => {
       await result.current.handleSaveProfile();
     });
-    rerender();
 
     await waitFor(() => {
       expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(false, 'unsavedChangesWarning');
