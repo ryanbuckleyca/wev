@@ -1,0 +1,7 @@
+[github_app]
+# Don't auto-run any tools when a PR is opened/updated.
+pr_commands = []
+# Don't react to PR events at all (open, reopen, push, etc.).
+handle_pr_actions = []
+# Don't run anything on new pushes to an open PR.
+push_commands = []
