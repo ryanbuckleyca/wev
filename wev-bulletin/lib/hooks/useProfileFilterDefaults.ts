@@ -57,8 +57,9 @@ interface ExpectedSeed {
 
 function sameSet(left: string[], right: string[]): boolean {
   if (left.length !== right.length) return false;
-  const rightSet = new Set(right);
-  return left.every((value) => rightSet.has(value));
+  const sortedLeft = [...left].sort();
+  const sortedRight = [...right].sort();
+  return sortedLeft.every((value, index) => value === sortedRight[index]);
 }
 
 function readPresence(searchParams: URLSearchParams | null): UrlPresence {
