@@ -62,8 +62,10 @@ function dbLanguage(lang: JobLang): "en" | "fr" | "bilingual" {
 // Centralises title formatting used in both fixtures and expectations.
 function buildJobTitle(lang: JobLang, index: number): string {
   if (lang === "fr") return `Bâtisseur·se de communauté ${index + 1}`;
-  if (lang === "bilingual-fr") return `Coordonnateur·trice communautaire ${index + 1} / Community Coordinator`;
-  if (lang === "bilingual-en") return `Community Coordinator ${index + 1} / Coordonnateur·trice communautaire`;
+  if (lang === "bilingual-fr")
+    return `Coordonnateur·trice communautaire ${index + 1} / Community Coordinator`;
+  if (lang === "bilingual-en")
+    return `Community Coordinator ${index + 1} / Coordonnateur·trice communautaire`;
   return `Community Builder ${index + 1}`;
 }
 
@@ -94,6 +96,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 30)),
       id: buildUuid(1),
       name: "Centre for Social Innovation",
+      slug: "csi",
       url: "https://socialinnovation.org",
     },
     {
@@ -101,6 +104,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 29)),
       id: buildUuid(2),
       name: "GoodWork",
+      slug: "goodwork",
       url: "https://goodwork.ca",
     },
     {
@@ -108,6 +112,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 28)),
       id: buildUuid(3),
       name: "ECO Canada",
+      slug: "ecocanada",
       url: "https://eco.ca/jobs",
     },
     {
@@ -115,6 +120,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 27)),
       id: buildUuid(4),
       name: "Centraide",
+      slug: "centraide",
       url: "https://centraide.ca",
     },
     {
@@ -122,6 +128,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 26)),
       id: buildUuid(5),
       name: "COCO",
+      slug: "coco",
       url: "https://coco-net.org/job-postings/",
     },
     {
@@ -129,6 +136,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 25)),
       id: buildUuid(6),
       name: "Ma Communauté Emplois",
+      slug: "ma_communaute",
       url: "https://macommunaute.ca/emplois",
     },
     {
@@ -136,6 +144,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 24)),
       id: buildUuid(7),
       name: "Ma Communauté Bénévolat",
+      slug: "ma_communaute_b",
       url: "https://macommunaute.ca/benevolat",
     },
   ];

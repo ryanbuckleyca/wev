@@ -26,26 +26,26 @@ def test_fetch_sources(mock_supabase):
 
 
 @patch("scrape.supabase")
-def test_fetch_sources_exact_name_match(mock_supabase):
+def test_fetch_sources_exact_slug_match(mock_supabase):
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
         [
-            {"id": "s1", "name": "GoodWork"},
-            {"id": "s2", "name": "GoodWork Canada"},
+            {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
+            {"id": "s2", "name": "GoodWork Canada", "slug": "goodwork_canada"},
         ]
     )
-    orchestrator = ScraperOrchestrator(source_filter="goodwork")
+    orchestrator = ScraperOrchestrator(source_slug="goodwork")
     sources = orchestrator._fetch_sources()
     assert len(sources) == 1
     assert sources[0]["id"] == "s1"
 
 
 @patch("scrape.supabase")
-def test_fetch_sources_no_partial_match(mock_supabase):
+def test_fetch_sources_no_partial_slug_match(mock_supabase):
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
-        [{"id": "s2", "name": "GoodWork Canada"}]
+        [{"id": "s2", "name": "GoodWork Canada", "slug": "goodwork_canada"}]
     )
-    orchestrator = ScraperOrchestrator(source_filter="goodwork")
-    with pytest.raises(RuntimeError, match="No source found matching"):
+    orchestrator = ScraperOrchestrator(source_slug="goodwork")
+    with pytest.raises(RuntimeError, match="No source found with slug"):
         orchestrator._fetch_sources()
 
 @patch("scrape.supabase")

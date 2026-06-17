@@ -7,50 +7,23 @@ from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
 from scrapers.macommunaute import MaCommunauteScraper
 
-# Mapping of Supabase Source IDs to Scraper Classes
+# Mapping of stable source slugs to scraper classes.
 SCRAPER_MAP: Dict[str, Type] = {
-    "eb5a9e52-b626-4539-8539-981240f2dbee": EcoCanadaScraper,
-    "d644049f-7186-4b7e-8860-adf69a4bd927": GoodWorkScraper,
-    "4bbc9bac-76ae-4b2e-bd4e-ac67f739ac2a": CocoScraper,
-    "a7154a94-7c95-442f-811a-12f9a62e5332": CSIScraper,
-    "c068cbc6-90a5-45cb-95a1-a7281dd76198": CentraideScraper,
-    "01a58f5e-f47c-4310-a2d1-6627a57e2071": MaCommunauteScraper,
-    "394fd635-bf74-463a-9e74-b17405a8b688": MaCommunauteScraper,
+    "ecocanada": EcoCanadaScraper,
+    "goodwork": GoodWorkScraper,
+    "coco": CocoScraper,
+    "csi": CSIScraper,
+    "centraide": CentraideScraper,
+    "ma_communaute": MaCommunauteScraper,
+    "ma_communaute_b": MaCommunauteScraper,
 }
 
-# Fallback: map source names → scraper classes so local dev seeds
-# (which generate different deterministic UUIDs) still resolve correctly.
-SCRAPER_NAME_MAP: Dict[str, Type] = {
-    "ECO Canada": EcoCanadaScraper,
-    "GoodWork": GoodWorkScraper,
-    "COCO": CocoScraper,
-    "Centre for Social Innovation": CSIScraper,
-    "Centraide": CentraideScraper,
-    "Ma Communauté Emplois": MaCommunauteScraper,
-    "Ma Communauté Bénévolat": MaCommunauteScraper,
-}
 
-def _normalize_name(name: str) -> str:
-    """Normalize source name for robust fallback lookup."""
-    import re
-    return re.sub(r"\s+", " ", name.strip().lower())
+def get_scraper_class(source: dict) -> Type | None:
+    """Return the scraper class for a source row using its stable slug."""
+    return SCRAPER_MAP.get(source.get("slug", ""))
 
-# Build a normalized map for efficient lookup
-_NORMALIZED_SCRAPER_NAME_MAP = {
-    _normalize_name(name): cls for name, cls in SCRAPER_NAME_MAP.items()
-}
 
-def get_scraper_class(source_id: str, source_name: str | None = None) -> Type | None:
-    """Return the scraper class for a given Supabase source ID.
-
-    Falls back to a name-based lookup when the ID isn't in the production map
-    (e.g. local dev seeds use deterministic UUIDs that differ from prod).
-    """
-    cls = SCRAPER_MAP.get(source_id)
-    if cls is None and source_name:
-        cls = _NORMALIZED_SCRAPER_NAME_MAP.get(_normalize_name(source_name))
-    return cls
-
-def get_all_registered_source_ids() -> list[str]:
-    """Return a list of all source IDs that have a registered scraper."""
+def get_all_registered_source_slugs() -> list[str]:
+    """Return a list of all source slugs that have a registered scraper."""
     return list(SCRAPER_MAP.keys())
