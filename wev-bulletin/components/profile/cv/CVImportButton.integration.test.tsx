@@ -237,18 +237,21 @@ describe('CVImportButton', () => {
   // CV_PARSING_TIMEOUT_MS = 60_000; each stage duration = max(60000 - atMs, 1000)
   const TIMEOUT_MS = 60_000;
   const STAGE_DURATIONS = {
-    0: TIMEOUT_MS,        // atMs=0  → 60000
-    8000: 52_000,         // atMs=8000  → 52000
-    18000: 42_000,        // atMs=18000 → 42000
-    30000: 30_000,        // atMs=30000 → 30000
-    45000: 15_000,        // atMs=45000 → 15000
+    0: TIMEOUT_MS, // atMs=0  → 60000
+    8000: 52_000, // atMs=8000  → 52000
+    18000: 42_000, // atMs=18000 → 42000
+    30000: 30_000, // atMs=30000 → 30000
+    45000: 15_000, // atMs=45000 → 15000
   };
 
   it('each toast stage uses a finite countdown duration (regression: must not be Infinity)', async () => {
     vi.useFakeTimers();
     let resolveFetch: ((value: any) => void) | undefined;
     globalFetchMock.mockImplementationOnce(
-      () => new Promise((resolve) => { resolveFetch = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
     );
 
     renderWithIntl(
@@ -256,7 +259,9 @@ describe('CVImportButton', () => {
     );
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(input, { target: { files: [new File(['x'], 'cv.pdf', { type: 'application/pdf' })] } });
+    fireEvent.change(input, {
+      target: { files: [new File(['x'], 'cv.pdf', { type: 'application/pdf' })] },
+    });
 
     // First stage fires immediately
     expect(notify.info).toHaveBeenCalledWith('Uploading your CV...', {
@@ -269,7 +274,9 @@ describe('CVImportButton', () => {
     );
 
     // Advance past the last stage
-    await act(async () => { vi.advanceTimersByTime(50_000); });
+    await act(async () => {
+      vi.advanceTimersByTime(50_000);
+    });
 
     // All 5 stage calls must have a finite duration
     const infoCalls = (notify.info as ReturnType<typeof vi.fn>).mock.calls;
@@ -277,7 +284,20 @@ describe('CVImportButton', () => {
       expect(Number.isFinite((opts as { duration: number }).duration)).toBe(true);
     }
 
-    resolveFetch?.({ ok: true, json: async () => ({ skills: [], values: [], warnings: [], metadata: { filename: 'cv.pdf', imported_at: '2023-10-01T12:00:00Z', source: 'cv_upload', locale: 'en' } }) });
+    resolveFetch?.({
+      ok: true,
+      json: async () => ({
+        skills: [],
+        values: [],
+        warnings: [],
+        metadata: {
+          filename: 'cv.pdf',
+          imported_at: '2023-10-01T12:00:00Z',
+          source: 'cv_upload',
+          locale: 'en',
+        },
+      }),
+    });
     vi.useRealTimers();
   });
 
@@ -307,21 +327,19 @@ describe('CVImportButton', () => {
 
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(notify.info).toHaveBeenNthCalledWith(
-      1,
-      'Uploading your CV...',
-      { id: 'cv-import-progress', duration: STAGE_DURATIONS[0] },
-    );
+    expect(notify.info).toHaveBeenNthCalledWith(1, 'Uploading your CV...', {
+      id: 'cv-import-progress',
+      duration: STAGE_DURATIONS[0],
+    });
 
     await act(async () => {
       vi.advanceTimersByTime(15000);
     });
 
-    expect(notify.info).toHaveBeenNthCalledWith(
-      2,
-      'Parsing your CV, please wait...',
-      { id: 'cv-import-progress', duration: STAGE_DURATIONS[8000] },
-    );
+    expect(notify.info).toHaveBeenNthCalledWith(2, 'Parsing your CV, please wait...', {
+      id: 'cv-import-progress',
+      duration: STAGE_DURATIONS[8000],
+    });
 
     await act(async () => {
       vi.advanceTimersByTime(30000);
@@ -356,5 +374,4 @@ describe('CVImportButton', () => {
     expect(notify.dismiss).toHaveBeenCalled();
     vi.useRealTimers();
   });
-
 });
