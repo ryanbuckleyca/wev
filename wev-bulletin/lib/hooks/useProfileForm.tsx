@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useRankedList } from '@/lib/hooks/useRankedList';
@@ -19,6 +19,8 @@ import {
   validateProfileLimits,
 } from '@/lib/profile/profileMapping';
 import notify from '@/lib/toast';
+import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
+import { serializeProfileFormState } from '@/lib/profile/profileFormSnapshot';
 
 export type LocationState = {
   lat: number;
@@ -57,6 +59,9 @@ export function useProfileForm(locale: 'en' | 'fr') {
   const { profile, loading: profileLoading, error: profileError, updateProfile } = useProfile();
 
   const [isSaving, setIsSaving] = useState(false);
+  const [skillsHydrating, setSkillsHydrating] = useState(false);
+  const [baselineSnapshot, setBaselineSnapshot] = useState<string | null>(null);
+  const baselineKeyRef = useRef<string | null>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     bio: '',
@@ -130,9 +135,11 @@ export function useProfileForm(locale: 'en' | 'fr') {
     if (profileSkills.length === 0) {
       skills.setItems([]);
       skills.setCutoff(0);
+      setSkillsHydrating(false);
       return;
     }
 
+    setSkillsHydrating(true);
     void fetchSkillsByUri(profileSkills, locale)
       .then((fetched) => {
         const psr = profile.skills_rated;
@@ -148,8 +155,48 @@ export function useProfileForm(locale: 'en' | 'fr') {
       .catch(() => {
         skills.setItems([]);
         skills.setCutoff(0);
+      })
+      .finally(() => {
+        setSkillsHydrating(false);
       });
   }, [profile, locale, values, skills]);
+
+  const currentSnapshot = useMemo(() => {
+    if (!profile || profileLoading || skillsHydrating) return null;
+    return serializeProfileFormState({
+      formData,
+      valueItems: values.items,
+      valueCutoff: values.cutoff,
+      skillItems: skills.items,
+      skillCutoff: skills.cutoff,
+    });
+  }, [
+    profile,
+    profileLoading,
+    skillsHydrating,
+    formData,
+    values.items,
+    values.cutoff,
+    skills.items,
+    skills.cutoff,
+  ]);
+
+  useEffect(() => {
+    if (!profile || skillsHydrating || currentSnapshot === null) return;
+
+    const hydrationKey = `${profile.id}:${profile.updated_at}:${locale}`;
+    if (baselineKeyRef.current === hydrationKey) return;
+
+    baselineKeyRef.current = hydrationKey;
+    setBaselineSnapshot(currentSnapshot);
+  }, [profile, locale, skillsHydrating, currentSnapshot]);
+
+  const isDirty =
+    currentSnapshot !== null &&
+    baselineSnapshot !== null &&
+    currentSnapshot !== baselineSnapshot;
+
+  useUnsavedChangesWarning(isDirty, t('unsavedChangesWarning'));
 
   // ─── Actions ──────────────────────────────────────────────────────────
 
