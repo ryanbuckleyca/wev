@@ -121,6 +121,22 @@ describe('server-data', () => {
       expect(mockQuery.order).toHaveBeenCalled();
     });
 
+    it('throws migration guidance when locale FTS columns are missing during search', async () => {
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({
+          data: null,
+          error: { code: '42703', message: 'column fts_en does not exist' },
+        }).then(onFulfilled);
+      });
+
+      await expect(
+        fetchCachedBulletinQueryPayload({
+          ...defaultInput,
+          searchQuery: 'engineer',
+        }),
+      ).rejects.toThrow('20260419160000_add_locale_aware_job_fts.sql');
+    });
+
     it('throws error if jobs fetch fails', async () => {
       mockQuery.then.mockImplementation((onFulfilled: any) => {
         return Promise.resolve({ data: null, error: { message: 'Jobs Error' } }).then(onFulfilled);

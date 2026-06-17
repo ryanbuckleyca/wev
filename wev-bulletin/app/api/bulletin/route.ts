@@ -8,6 +8,7 @@ import { parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
 import { createClient } from '@/lib/supabase/server';
 import { buildFilterOptions } from '@/lib/bulletin/filter-options';
+import { throwBulletinQueryError } from '@/lib/bulletin/fts-errors';
 import { formatSearchQuery } from '@/lib/bulletin/search-utils';
 
 export { BULLETIN_CACHE_TAG };
@@ -178,7 +179,12 @@ async function fetchBulletinFacets(
   if (input.langs.length) query = query.in('language', input.langs);
 
   const { data, error } = await query.limit(5000);
-  if (error) throw new Error(error.message);
+  if (error) {
+    throwBulletinQueryError(error, {
+      searchQuery: input.searchQuery,
+      searchColumn: vectorColumn,
+    });
+  }
 
   return data ?? [];
 }
@@ -209,7 +215,12 @@ async function fetchBulletinApiPayload(
     totalAvailableQuery,
   ]);
 
-  if (jobsResult.error) throw new Error(jobsResult.error.message);
+  if (jobsResult.error) {
+    throwBulletinQueryError(jobsResult.error, {
+      searchQuery: input.searchQuery,
+      searchColumn,
+    });
+  }
   if (totalAvailableResult.error) {
     console.error('Error fetching total available jobs:', totalAvailableResult.error.message);
   }

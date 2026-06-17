@@ -8,6 +8,7 @@ import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 
 import { buildFilterOptions, type BulletinFilterOptions } from './filter-options';
+import { throwBulletinQueryError } from './fts-errors';
 import { formatSearchQuery } from './search-utils';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
@@ -42,10 +43,6 @@ type BulletinQueryResult = {
   skillLabels: Record<string, SkillLabel>;
   filterOptions: BulletinFilterOptions;
 };
-
-function isUndefinedColumnError(error: { code?: string } | null): boolean {
-  return error?.code === '42703';
-}
 
 function postedWithinToDays(postedWithin: string): number | null {
   if (postedWithin === '1-week') return 7;
@@ -119,7 +116,12 @@ async function fetchBulletinFacets(
   // "hybrid" from the list).
   // Limit the impact of unbounded facet queries while keeping them relatively accurate
   const { data, error } = await query.limit(5000);
-  if (error) throw new Error(error.message);
+  if (error) {
+    throwBulletinQueryError(error, {
+      searchQuery: input.searchQuery,
+      searchColumn: vectorColumn,
+    });
+  }
 
   return buildFilterOptions((data ?? []) as any[]);
 }
@@ -172,30 +174,19 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     .select('id', { count: 'exact', head: true })
     .gte('date_posted', getBulletinMaxAgeCutoff());
 
-  const [initialJobsResult, filterOptions, scrapeTime, totalAvailableResult] = await Promise.all([
+  const [jobsResult, finalFilterOptions, scrapeTime, totalAvailableResult] = await Promise.all([
     buildJobsQuery(searchColumn).range(start, end),
     fetchBulletinFacets(supabase, searchColumn, input),
     fetchLastScrapeTime(),
     totalAvailableQuery,
   ]);
 
-  let jobsResult = initialJobsResult;
-  let finalFilterOptions = filterOptions;
-
-  if (
-    jobsResult.error &&
-    input.searchQuery.length > 0 &&
-    isUndefinedColumnError(jobsResult.error)
-  ) {
-    const [retryJobs, retryFacets] = await Promise.all([
-      buildJobsQuery('fts').range(start, end),
-      fetchBulletinFacets(supabase, 'fts', input),
-    ]);
-    jobsResult = retryJobs;
-    finalFilterOptions = retryFacets;
+  if (jobsResult.error) {
+    throwBulletinQueryError(jobsResult.error, {
+      searchQuery: input.searchQuery,
+      searchColumn,
+    });
   }
-
-  if (jobsResult.error) throw new Error(jobsResult.error.message);
 
   const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
   const labelMap = await resolveSkillLabels(supabase, jobs, input.locale);

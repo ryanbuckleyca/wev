@@ -168,6 +168,22 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(mockFilter).not.toHaveBeenCalled();
   });
 
+  it('returns 500 with migration guidance when locale FTS columns are missing', async () => {
+    mockRange.mockResolvedValue({
+      data: null,
+      count: null,
+      error: { code: '42703', message: 'column fts_en does not exist' },
+    });
+
+    const response = await GET(new Request('http://localhost/api/bulletin?locale=en&q=engineer'));
+    expect(response.status).toBe(500);
+
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toContain('locale-aware FTS columns');
+    expect(body.error).toContain('20260419160000_add_locale_aware_job_fts.sql');
+    expect(mockTextSearch).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(Object));
+  });
+
   it('translates sort and filters into query-chain calls', async () => {
     await GET(
       new Request(
