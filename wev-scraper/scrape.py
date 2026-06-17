@@ -27,6 +27,23 @@ os.environ['PLAYWRIGHT_SYNC_MODE'] = '1'
 COMPARE_FIELDS = ["job_title", "organization", "location", "wage", "employment_type", "date_posted"]
 
 
+def list_sources() -> None:
+    """List sources from the active Supabase project (respects --staging / --prod / --publish)."""
+    _log(f"Listing sources from {get_supabase_url()}")
+    response = supabase.table("sources").select("name,slug").order("slug").execute()
+    if not response.data:
+        print("No sources found.")
+        return
+    print("Available source slugs:")
+    for s in response.data:
+        slug = s.get("slug")
+        name = s.get("name", "Unknown Source")
+        if slug:
+            print(f"  - {slug} ({name})")
+        else:
+            print(f"  - <missing slug> ({name})")
+
+
 @dataclass
 class ScraperResults:
     """Aggregated results of a scraping session."""
@@ -113,7 +130,7 @@ class ScraperOrchestrator:
             if not sources:
                 raise RuntimeError(
                     f"No source found with slug '{self.source_slug}'. "
-                    "Use --list-sources to see available slugs."
+                    "Use npm run scrape:list-sources to see available slugs."
                 )
             if len(sources) > 1:
                 slugs = ", ".join(s.get("slug", "?") for s in sources)
@@ -374,8 +391,18 @@ def parse_args():
     parser.add_argument("--max-jobs", type=int, help="Limit jobs per source")
     parser.add_argument("--headed", action="store_true", help="Show browser window (for debugging)")
     parser.add_argument("--vpn", action="store_true", help="Enable VPN-specific scraper behavior")
-    parser.add_argument("--slug", help="Only run the scraper for this source slug")
-    parser.add_argument("--list-sources", action="store_true", help="List all available source slugs and exit")
+    parser.add_argument(
+        "--slug",
+        "--source",
+        dest="slug",
+        metavar="SLUG",
+        help="Only run the scraper for this source slug (e.g. mac, goodwork)",
+    )
+    parser.add_argument(
+        "--list-sources",
+        action="store_true",
+        help="List source slugs via Supabase (slow — prefer: npm run scrape:list-sources)",
+    )
     return parser.parse_args()
 
 
@@ -388,7 +415,7 @@ def initialize_runtime_env(args):
     # This provides shared keys (Gemini, Geocodio, etc.)
     base_env = root_dir / ".env" if (root_dir / ".env").exists() else script_dir / ".env"
     if base_env.exists():
-        ensure_env_loaded()
+        load_env_file(base_env)
 
     # 2. Apply Staging Overrides if requested
     if args.staging:
@@ -435,18 +462,7 @@ def main():
         sys.exit(2)
 
     if args.list_sources:
-        response = supabase.table("sources").select("name,slug").order("slug").execute()
-        if not response.data:
-            print("No sources found.")
-        else:
-            print("Available source slugs:")
-            for s in response.data:
-                slug = s.get("slug")
-                name = s.get("name", "Unknown Source")
-                if slug:
-                    print(f"  - {slug} ({name})")
-                else:
-                    print(f"  - <missing slug> ({name})")
+        list_sources()
         sys.exit(0)
 
     if args.prod or args.publish:

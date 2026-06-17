@@ -14,7 +14,7 @@ The repository root contains a centralized Supabase configuration. To initialize
 
 ```bash
 # From the repository root
-npm run migrate:local
+npm run migrate
 ```
 
 This command automatically:

@@ -131,9 +131,8 @@ def test_run_post_scrape_tasks(mock_env):
         assert isinstance(opts, ProcessingOptions)
         assert opts.job_ids == ["j1", "j2"]
 
-@patch("scrape.ensure_env_loaded")
 @patch("scrape.Path.exists", return_value=True)
-def test_initialize_runtime_env_staging(mock_exists, mock_load):
+def test_initialize_runtime_env_staging(mock_exists):
     args = MagicMock()
     args.staging = True
     args.prod = False

@@ -9,13 +9,13 @@ from scrapers.macommunaute import MaCommunauteScraper
 
 # Mapping of stable source slugs to scraper classes.
 SCRAPER_MAP: Dict[str, Type] = {
-    "ecocanada": EcoCanadaScraper,
+    "ecocan": EcoCanadaScraper,
     "goodwork": GoodWorkScraper,
     "coco": CocoScraper,
     "csi": CSIScraper,
-    "centraide": CentraideScraper,
-    "ma_communaute": MaCommunauteScraper,
-    "ma_communaute_b": MaCommunauteScraper,
+    "cent": CentraideScraper,
+    "mac": MaCommunauteScraper,
+    "macb": MaCommunauteScraper,
 }
 
 

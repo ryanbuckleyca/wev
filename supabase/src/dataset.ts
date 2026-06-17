@@ -112,7 +112,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 28)),
       id: buildUuid(3),
       name: "ECO Canada",
-      slug: "ecocanada",
+      slug: "ecocan",
       url: "https://eco.ca/jobs",
     },
     {
@@ -120,7 +120,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 27)),
       id: buildUuid(4),
       name: "Centraide",
-      slug: "centraide",
+      slug: "cent",
       url: "https://centraide.ca",
     },
     {
@@ -136,7 +136,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 25)),
       id: buildUuid(6),
       name: "Ma Communauté Emplois",
-      slug: "ma_communaute",
+      slug: "mac",
       url: "https://macommunaute.ca/emplois",
     },
     {
@@ -144,7 +144,7 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       created_at: toIsoTimestamp(daysAgo(now, 24)),
       id: buildUuid(7),
       name: "Ma Communauté Bénévolat",
-      slug: "ma_communaute_b",
+      slug: "macb",
       url: "https://macommunaute.ca/benevolat",
     },
   ];
