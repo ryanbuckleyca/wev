@@ -60,6 +60,16 @@ describe('JobListings empty state', () => {
     totalJobsCount: 0,
   };
 
+  it('shows skeleton cards while loading with no jobs', () => {
+    const { container } = renderWithFilters(
+      { ...defaultProps, loading: true, totalJobsCount: 10 },
+      createMockFilters(),
+    );
+
+    expect(container.querySelectorAll('article').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+  });
+
   it('does not show clear button when there are no filters applied', () => {
     const filters = createMockFilters({ hasAnyFilters: false });
     renderWithFilters({ ...defaultProps, totalJobsCount: 10 }, filters);

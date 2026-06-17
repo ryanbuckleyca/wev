@@ -8,12 +8,11 @@ import StyledLink from '@/components/StyledLink';
 import ButtonLink from '@/components/ButtonLink';
 import BannerMessage from '@/components/BannerMessage';
 import notify from '@/lib/toast';
+import { SITE_CONFIG } from '@/lib/site-config';
 import { useState, useEffect } from 'react';
 
 export const dynamic = 'force-dynamic';
 
-const LOGO_LOGOTYPE =
-  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';
 const LOGO_MARK =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logo.png';
 
@@ -144,10 +143,11 @@ export default function StyleGuidePage() {
         <div className="design-hero-content">
           <div className="logo-display">
             <Image
-              src={LOGO_LOGOTYPE}
+              src={SITE_CONFIG.logotypeUrl}
               alt="wev logo"
               width={160}
               height={64}
+              unoptimized
               className="wev-logotype"
             />
           </div>
@@ -679,10 +679,11 @@ export default function StyleGuidePage() {
             <div className="design-logo-showcase design-logo-bg-light">
               <div className="design-logo-placeholder">
                 <Image
-                  src={LOGO_LOGOTYPE}
+                  src={SITE_CONFIG.logotypeUrl}
                   alt="wev logo"
                   width={200}
                   height={80}
+                  unoptimized
                   className="wev-logotype"
                 />
               </div>

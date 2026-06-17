@@ -24,6 +24,30 @@ def test_fetch_sources(mock_supabase):
     assert len(sources) == 1
     assert sources[0]["id"] == "s1"
 
+
+@patch("scrape.supabase")
+def test_fetch_sources_exact_name_match(mock_supabase):
+    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
+        [
+            {"id": "s1", "name": "GoodWork"},
+            {"id": "s2", "name": "GoodWork Canada"},
+        ]
+    )
+    orchestrator = ScraperOrchestrator(source_filter="goodwork")
+    sources = orchestrator._fetch_sources()
+    assert len(sources) == 1
+    assert sources[0]["id"] == "s1"
+
+
+@patch("scrape.supabase")
+def test_fetch_sources_no_partial_match(mock_supabase):
+    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
+        [{"id": "s2", "name": "GoodWork Canada"}]
+    )
+    orchestrator = ScraperOrchestrator(source_filter="goodwork")
+    with pytest.raises(RuntimeError, match="No source found matching"):
+        orchestrator._fetch_sources()
+
 @patch("scrape.supabase")
 def test_fetch_sources_empty(mock_supabase):
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse([])
@@ -82,17 +106,30 @@ def test_compare_fields():
     assert "location" not in diffs
 
 @patch("scrape.is_truthy_env", return_value=True)
-def test_run_post_scrape_tasks(mock_env):
+def test_run_post_scrape_tasks_records_errors(mock_env):
+
     orchestrator = ScraperOrchestrator()
     orchestrator.results.all_job_ids = ["j1", "j2"]
 
-    # Create a mock for the processor
-    mock_processor = MagicMock()
-
-    # We mock the import by putting our mock in sys.modules
-    with patch.dict("sys.modules", {"scripts.unified_post_processor": mock_processor}):
+    with patch("scripts.unified_post_processor.process_jobs_unified") as mock_process:
+        mock_process.return_value = {"errors": 2, "processed": 0, "updated": {}, "skipped": 0}
         orchestrator._run_post_scrape_tasks()
-        mock_processor.process_jobs_unified.assert_called_with(job_ids=["j1", "j2"])
+        assert orchestrator.post_scrape_errors == 2
+
+
+@patch("scrape.is_truthy_env", return_value=True)
+def test_run_post_scrape_tasks(mock_env):
+    from scripts.unified_post_processor import ProcessingOptions
+
+    orchestrator = ScraperOrchestrator()
+    orchestrator.results.all_job_ids = ["j1", "j2"]
+
+    with patch("scripts.unified_post_processor.process_jobs_unified") as mock_process:
+        orchestrator._run_post_scrape_tasks()
+        mock_process.assert_called_once()
+        opts = mock_process.call_args[0][0]
+        assert isinstance(opts, ProcessingOptions)
+        assert opts.job_ids == ["j1", "j2"]
 
 @patch("scrape.ensure_env_loaded")
 @patch("scrape.Path.exists", return_value=True)
@@ -153,6 +190,13 @@ def test_handle_source_error():
     with patch("scrape._log") as mock_log:
         orchestrator._handle_source_error(Exception("Source Error"), mock_scraper, "S1")
         mock_log.assert_any_call("❌ Error scraping S1: Source Error")
+    assert orchestrator.had_failures()
+
+
+def test_had_failures_false_when_no_errors():
+    orchestrator = ScraperOrchestrator()
+    orchestrator.results.summary.append({"source": "S1", "jobs_found": 1, "jobs_added": 1})
+    assert not orchestrator.had_failures()
 
 def test_cleanup_scraper():
     orchestrator = ScraperOrchestrator()
@@ -174,6 +218,8 @@ def test_log_tagging_status_disabled(mock_env):
 @patch("scrape.ScraperOrchestrator")
 def test_main_flow(mock_orch_class, mock_init):
     mock_orch = mock_orch_class.return_value
+    mock_orch.post_scrape_errors = 0
+    mock_orch.had_failures.return_value = False
     with patch("scrape.parse_args") as mock_args:
         args = MagicMock()
         args.prod = False
@@ -184,6 +230,7 @@ def test_main_flow(mock_orch_class, mock_init):
         args.max_jobs = 5
         args.headed = True
         args.vpn = True
+        args.list_sources = False
         mock_args.return_value = args
 
         main()
@@ -200,6 +247,8 @@ def test_main_flow(mock_orch_class, mock_init):
 def test_main_vpn_does_not_force_headed_mode(mock_orch_class, mock_init, monkeypatch):
     monkeypatch.delenv("SCRAPER_HEADED", raising=False)
     mock_orch = mock_orch_class.return_value
+    mock_orch.post_scrape_errors = 0
+    mock_orch.had_failures.return_value = False
     with patch("scrape.parse_args") as mock_args:
         args = MagicMock()
         args.prod = False
@@ -210,6 +259,7 @@ def test_main_vpn_does_not_force_headed_mode(mock_orch_class, mock_init, monkeyp
         args.max_jobs = None
         args.headed = False
         args.vpn = True
+        args.list_sources = False
         mock_args.return_value = args
 
         main()
@@ -225,6 +275,8 @@ def test_main_prod_confirmation_propagates_to_child_scripts(mock_orch_class, moc
     monkeypatch.setenv("PROD_CONFIRMED", "1")
     monkeypatch.delenv("CONFIRM_PROD_RUN", raising=False)
     mock_orch = mock_orch_class.return_value
+    mock_orch.post_scrape_errors = 0
+    mock_orch.had_failures.return_value = False
 
     with patch("scrape.parse_args") as mock_args:
         args = MagicMock()
@@ -236,6 +288,7 @@ def test_main_prod_confirmation_propagates_to_child_scripts(mock_orch_class, moc
         args.max_jobs = None
         args.headed = False
         args.vpn = False
+        args.list_sources = False
         mock_args.return_value = args
 
         main()
@@ -262,6 +315,7 @@ def test_main_prod_noninteractive_requires_confirmation(mock_orch_class, mock_in
         args.max_jobs = None
         args.headed = False
         args.vpn = False
+        args.list_sources = False
         mock_args.return_value = args
 
         with pytest.raises(SystemExit) as exc:

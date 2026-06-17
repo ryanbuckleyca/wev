@@ -132,7 +132,9 @@ describe('server-data', () => {
       mockQuery.then.mockImplementation((onFulfilled: any) => {
         // Inspect query to target filter options fetch
         const isFilterQuery = mockQuery.select.mock.calls.some((call: any) =>
-          call[0]?.includes('organization, province, municipality, employment_type, source'),
+          call[0]?.includes(
+            'organization, province, municipality, employment_type, source, language',
+          ),
         );
 
         if (isFilterQuery) {
@@ -162,11 +164,12 @@ describe('server-data', () => {
       expect(result).toBe('2024-01-01');
     });
 
-    it('throws error on failure', async () => {
+    it('returns null on failure', async () => {
       mockQuery.then.mockImplementation((onFulfilled: any) => {
         return Promise.resolve({ data: null, error: { message: 'Error' } }).then(onFulfilled);
       });
-      await expect(fetchLastScrapeTime()).rejects.toThrow('Error');
+      const result = await fetchLastScrapeTime();
+      expect(result).toBeNull();
     });
   });
 

@@ -151,6 +151,47 @@ html.theme-switching *::after {
   animation: fade-in 0.2s ease-in-out forwards;
 }
 
+/* Skeleton pulse – uses design tokens directly via CSS var() */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
+@layer components {
+  /* Base skeleton (text) – inherits font-size → 1em tall, no border-radius */
+  .skeleton-pulse {
+    display: inline-block;
+    height: 1em;
+    border-radius: 0;
+    background-color: var(--muted-foreground);
+    animation: skeleton-pulse 1.8s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-pulse {
+      animation: none;
+    }
+  }
+
+  /* Pill: matches visual weight of Pill component (approx 24px tall) */
+  .skeleton-pulse.pill {
+    height: 1.5rem;
+    border-radius: 9999px;
+  }
+
+  /* Icon: matches wev-icon-btn (16px icon + p-1 padding = 24px) */
+  .skeleton-pulse.icon {
+    height: 1.5rem;
+    width: 1.5rem;
+    border-radius: 0.5rem; /* matches rounded-lg */
+  }
+}
+
 .shadow-top {
   box-shadow: rgba(0, 0, 0, 0.05) 0px -1px 6px -1px;
 }
