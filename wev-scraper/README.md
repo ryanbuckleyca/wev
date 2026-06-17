@@ -59,7 +59,7 @@ Proxies are automatically disabled when running locally (not in GitHub Actions) 
 
 > **All migrations live in `supabase/migrations/` at the repository root.**
 
-To create a new migration, add a `.sql` file to `supabase/migrations/` and apply it to the local environment with `npm run migrate:local` (run from the repository root).
+To create a new migration, add a `.sql` file to `supabase/migrations/` and apply it to the local environment with `npm run migrate` (run from the repository root).
 
 Batch maintenance scripts (values tagging, geocoding, legacy match helpers, env flags) are listed in **`scripts/README.md`**.
 

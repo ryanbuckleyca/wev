@@ -26,26 +26,26 @@ def test_fetch_sources(mock_supabase):
 
 
 @patch("scrape.supabase")
-def test_fetch_sources_exact_name_match(mock_supabase):
+def test_fetch_sources_exact_slug_match(mock_supabase):
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
         [
-            {"id": "s1", "name": "GoodWork"},
-            {"id": "s2", "name": "GoodWork Canada"},
+            {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
+            {"id": "s2", "name": "GoodWork Canada", "slug": "goodwork_canada"},
         ]
     )
-    orchestrator = ScraperOrchestrator(source_filter="goodwork")
+    orchestrator = ScraperOrchestrator(source_slug="goodwork")
     sources = orchestrator._fetch_sources()
     assert len(sources) == 1
     assert sources[0]["id"] == "s1"
 
 
 @patch("scrape.supabase")
-def test_fetch_sources_no_partial_match(mock_supabase):
+def test_fetch_sources_no_partial_slug_match(mock_supabase):
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
-        [{"id": "s2", "name": "GoodWork Canada"}]
+        [{"id": "s2", "name": "GoodWork Canada", "slug": "goodwork_canada"}]
     )
-    orchestrator = ScraperOrchestrator(source_filter="goodwork")
-    with pytest.raises(RuntimeError, match="No source found matching"):
+    orchestrator = ScraperOrchestrator(source_slug="goodwork")
+    with pytest.raises(RuntimeError, match="No source found with slug"):
         orchestrator._fetch_sources()
 
 @patch("scrape.supabase")
@@ -131,16 +131,10 @@ def test_run_post_scrape_tasks(mock_env):
         assert isinstance(opts, ProcessingOptions)
         assert opts.job_ids == ["j1", "j2"]
 
-@patch("scrape.ensure_env_loaded")
 @patch("scrape.Path.exists", return_value=True)
-def test_initialize_runtime_env_staging(mock_exists, mock_load):
-    args = MagicMock()
-    args.staging = True
-    args.prod = False
-    args.publish = False
-
+def test_initialize_runtime_env_staging(mock_exists):
     with patch("scrape.load_env_file") as mock_load_file:
-        initialize_runtime_env(args)
+        initialize_runtime_env("staging")
         assert mock_load_file.called
 
 @patch("scrape.supabase")
@@ -224,6 +218,8 @@ def test_main_flow(mock_orch_class, mock_init):
         args = MagicMock()
         args.prod = False
         args.publish = False
+        args.staging = False
+        args.env = "local"
         args.dry_run = True
         args.compare = False
         args.provider = "groq"
@@ -253,6 +249,8 @@ def test_main_vpn_does_not_force_headed_mode(mock_orch_class, mock_init, monkeyp
         args = MagicMock()
         args.prod = False
         args.publish = False
+        args.staging = False
+        args.env = "local"
         args.dry_run = True
         args.compare = False
         args.provider = None
@@ -282,6 +280,8 @@ def test_main_prod_confirmation_propagates_to_child_scripts(mock_orch_class, moc
         args = MagicMock()
         args.prod = True
         args.publish = False
+        args.staging = False
+        args.env = "local"
         args.dry_run = False
         args.compare = False
         args.provider = None
@@ -309,6 +309,8 @@ def test_main_prod_noninteractive_requires_confirmation(mock_orch_class, mock_in
         args = MagicMock()
         args.prod = True
         args.publish = False
+        args.staging = False
+        args.env = "local"
         args.dry_run = False
         args.compare = False
         args.provider = None
