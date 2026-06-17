@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
@@ -9,6 +9,7 @@ import ThemeToggle from './ThemeToggle';
 import LocaleSwitcher from './LocaleSwitcher';
 import { zIndex } from '@/lib/design-tokens';
 import { SITE_CONFIG } from '@/lib/site-config';
+import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 
 export default function Header({
   hasBanner,
@@ -17,6 +18,7 @@ export default function Header({
   const [shouldShowHeader, setShouldShowHeader] = useState(false);
   const pathname = usePathname();
   const t = useTranslations('home');
+  const { confirmIfUnsaved } = useUnsavedChanges();
   const isHomePage = pathname === '/' || pathname === '/jobs';
 
   useEffect(() => {
@@ -62,6 +64,12 @@ export default function Header({
   // Offset header if any banner is present
   const topOffset = hasBanner ? 'top-[22px]' : 'top-0';
 
+  const handleLogoClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!confirmIfUnsaved(event.nativeEvent)) {
+      event.preventDefault();
+    }
+  };
+
   return (
     <header
       className={`fixed ${topOffset} right-0 left-0 transition-all duration-200 ${
@@ -73,7 +81,7 @@ export default function Header({
         <div
           className={`transition-opacity duration-200 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
-          <Link href="/" prefetch={false} aria-label={t('heading')} title={t('heading')}>
+          <Link href="/" prefetch={false} aria-label={t('heading')} title={t('heading')} onClick={handleLogoClick}>
             <Image
               src={SITE_CONFIG.logotypeUrl}
               alt=""

@@ -147,6 +147,40 @@ describe('useProfileForm', () => {
     expect(result.current.formData.work_types).toEqual([]);
   });
 
+  it('tracks dirty state and clears it after a successful save', async () => {
+    const profile = {
+      id: 'u1',
+      full_name: 'John Doe',
+      bio: 'Developer',
+      updated_at: '2024-01-01',
+      skills: [],
+      values: [],
+    };
+    vi.mocked(useProfile).mockReturnValue({
+      profile,
+      loading: false,
+      error: null,
+      updateProfile: mockUpdateProfile,
+    } as any);
+    mockUpdateProfile.mockResolvedValue({ ok: true });
+
+    const { result } = renderHook(() => useProfileForm('en'));
+
+    await waitFor(() => {
+      expect(result.current.isDirty).toBe(false);
+    });
+
+    act(() => {
+      result.current.setFormData({ ...result.current.formData, full_name: 'Jane Doe' });
+    });
+    expect(result.current.isDirty).toBe(true);
+
+    await act(async () => {
+      await result.current.handleSaveProfile();
+    });
+    expect(result.current.isDirty).toBe(false);
+  });
+
   it('saves profile successfully', async () => {
     const { result } = renderHook(() => useProfileForm('en'));
     mockUpdateProfile.mockResolvedValue({ ok: true });

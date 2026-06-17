@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/Dialog';
+import Button from '@/components/Button';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -44,12 +45,12 @@ export default function ConfirmDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <button type="button" onClick={onCancel} className="wev-btn wev-btn-secondary">
+          <Button type="button" onClick={onCancel} variant="secondary">
             {cancelLabel}
-          </button>
-          <button type="button" onClick={onConfirm} className="wev-btn wev-btn-primary">
+          </Button>
+          <Button type="button" onClick={onConfirm}>
             {confirmLabel}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

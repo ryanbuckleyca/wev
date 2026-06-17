@@ -6,6 +6,8 @@ import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfile } from '@/contexts/ProfileContext';
 import { MAX_PROFILE_SKILLS } from '@/lib/hooks/useProfileForm';
 import notify from '@/lib/toast';
+import { UnsavedChangesProvider } from '@/contexts/UnsavedChangesContext';
+import Header from '@/components/Header';
 import ProfilePage from './page';
 
 /** Matches `messages/en.json` `profile.skillsPlaceholderShort` (modal search; Unicode ellipsis). */
@@ -37,7 +39,13 @@ vi.mock('@/i18n/navigation', () => ({
       </a>
     );
   },
+  usePathname: vi.fn(() => '/profile'),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
+
+vi.mock('@/components/UserProfile', () => ({ default: () => <div data-testid="user-profile" /> }));
+vi.mock('@/components/ThemeToggle', () => ({ default: () => <div data-testid="theme-toggle" /> }));
+vi.mock('@/components/LocaleSwitcher', () => ({ default: () => <div data-testid="locale-switcher" /> }));
 
 vi.mock('@/lib/toast', () => ({
   default: {
@@ -87,6 +95,29 @@ describe('ProfilePage skills integration', () => {
     } as never);
     mockUpdateProfile.mockResolvedValue(baseProfile);
   });
+
+  function stubProfileSkillsFetch() {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/skills/by-uri?uris=uri-1&locale=en')) {
+        return jsonResponse({
+          skills: [
+            {
+              concept_uri: 'uri-1',
+              term: 'Data analysis',
+              definition: 'Analyze structured datasets.',
+              scope_note: null,
+              skill_type: 'knowledge',
+              reuse_level: 'cross-sector',
+            },
+          ],
+        });
+      }
+      return Promise.reject(new Error(`Unexpected URL: ${url}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
 
   afterEach(() => {
     vi.useRealTimers();
@@ -172,6 +203,122 @@ describe('ProfilePage skills integration', () => {
         skills: [],
       }),
     );
+  });
+
+  it('prompts before browser unload when the profile form has unsaved changes', async () => {
+    const user = userEvent.setup({ delay: null });
+    stubProfileSkillsFetch();
+
+    render(
+      <UnsavedChangesProvider>
+        <ProfilePage />
+      </UnsavedChangesProvider>,
+    );
+
+    await screen.findByText('Data analysis');
+
+    const cleanUnloadEvent = new Event('beforeunload', { cancelable: true });
+    expect(window.dispatchEvent(cleanUnloadEvent)).toBe(true);
+
+    const fullNameInput = screen.getByLabelText(/full name/i);
+    await user.clear(fullNameInput);
+    await user.type(fullNameInput, 'Changed User');
+
+    await waitFor(() => {
+      const dirtyUnloadEvent = new Event('beforeunload', { cancelable: true });
+      expect(window.dispatchEvent(dirtyUnloadEvent)).toBe(false);
+    });
+  });
+
+  it('blocks in-app link navigation when the profile form has unsaved changes', async () => {
+    const user = userEvent.setup({ delay: null });
+    const confirmMock = vi.fn(() => false);
+    vi.stubGlobal('confirm', confirmMock);
+    stubProfileSkillsFetch();
+
+    render(
+      <UnsavedChangesProvider>
+        <ProfilePage />
+      </UnsavedChangesProvider>,
+    );
+    window.history.pushState(null, '', '/en/profile');
+
+    await screen.findByText('Data analysis');
+
+    const fullNameInput = screen.getByLabelText(/full name/i);
+    await user.clear(fullNameInput);
+    await user.type(fullNameInput, 'Changed User');
+
+    await waitFor(() => {
+      const backToJobsLink = screen.getByRole('link', { name: /back to jobs/i });
+      const clickEvent = new MouseEvent('click', {
+        bubbles: true,
+        button: 0,
+        cancelable: true,
+      });
+
+      expect(backToJobsLink.dispatchEvent(clickEvent)).toBe(false);
+    });
+    expect(confirmMock).toHaveBeenCalledWith(
+      'You have unsaved profile changes. Leave without saving?',
+    );
+  });
+
+  it('blocks header logo navigation immediately after editing the profile form', async () => {
+    const user = userEvent.setup({ delay: null });
+    const confirmMock = vi.fn(() => false);
+    vi.stubGlobal('confirm', confirmMock);
+    stubProfileSkillsFetch();
+
+    render(
+      <UnsavedChangesProvider>
+        <Header />
+        <ProfilePage />
+      </UnsavedChangesProvider>,
+    );
+    window.history.pushState(null, '', '/en/profile');
+
+    await screen.findByText('Data analysis');
+
+    const fullNameInput = screen.getByLabelText(/full name/i);
+    await user.clear(fullNameInput);
+    await user.type(fullNameInput, 'Changed User');
+
+    const logoLink = screen.getByRole('link', { name: /bulletin/i });
+    const clickEvent = new MouseEvent('click', { bubbles: true, button: 0, cancelable: true });
+
+    expect(logoLink.dispatchEvent(clickEvent)).toBe(false);
+    expect(confirmMock).toHaveBeenCalledTimes(1);
+    expect(confirmMock).toHaveBeenCalledWith(
+      'You have unsaved profile changes. Leave without saving?',
+    );
+  });
+
+  it('prompts only once when confirming header logo navigation', async () => {
+    const user = userEvent.setup({ delay: null });
+    const confirmMock = vi.fn(() => true);
+    vi.stubGlobal('confirm', confirmMock);
+    stubProfileSkillsFetch();
+
+    render(
+      <UnsavedChangesProvider>
+        <Header />
+        <ProfilePage />
+      </UnsavedChangesProvider>,
+    );
+    window.history.pushState(null, '', '/en/profile');
+
+    await screen.findByText('Data analysis');
+
+    const fullNameInput = screen.getByLabelText(/full name/i);
+    await user.clear(fullNameInput);
+    await user.type(fullNameInput, 'Changed User');
+
+    const logoLink = screen.getByRole('link', { name: /bulletin/i });
+    const clickEvent = new MouseEvent('click', { bubbles: true, button: 0, cancelable: true });
+
+    expect(logoLink.dispatchEvent(clickEvent)).toBe(true);
+    expect(confirmMock).toHaveBeenCalledTimes(1);
   });
 
   it(

@@ -8,6 +8,7 @@ import HtmlLangSync from '@/components/HtmlLangSync';
 import ThemeScript from '@/components/ThemeScript';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
+import { UnsavedChangesProvider } from '@/contexts/UnsavedChangesContext';
 import { routing } from '@/i18n/routing';
 import { resolveThemeFromCookie } from '@/lib/theme';
 
@@ -38,9 +39,11 @@ export default async function LocaleLayout({
         <HtmlLangSync lang={locale} />
         <AuthProvider>
           <ProfileProvider>
-            <Header initialTheme={theme} />
-            {children}
-            <Toaster />
+            <UnsavedChangesProvider>
+              <Header initialTheme={theme} />
+              {children}
+              <Toaster />
+            </UnsavedChangesProvider>
           </ProfileProvider>
         </AuthProvider>
       </NextIntlClientProvider>

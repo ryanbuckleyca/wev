@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { useEffect } from 'react';
 import Header from './Header';
 import { NextIntlClientProvider } from 'next-intl';
 import { usePathname } from '@/i18n/navigation';
+import { UnsavedChangesProvider, useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 
-// Mock next-intl hooks
 vi.mock('next-intl', async () => {
   const actual = await vi.importActual('next-intl');
   return {
@@ -14,7 +15,6 @@ vi.mock('next-intl', async () => {
   };
 });
 
-// Mock i18n navigation
 vi.mock('@/i18n/navigation', () => ({
   Link: ({
     children,
@@ -36,7 +36,6 @@ vi.mock('@/i18n/navigation', () => ({
   }),
 }));
 
-// Mock other components
 vi.mock('./UserProfile', () => ({ default: () => <div data-testid="user-profile" /> }));
 vi.mock('./ThemeToggle', () => ({ default: () => <div data-testid="theme-toggle" /> }));
 vi.mock('./LocaleSwitcher', () => ({ default: () => <div data-testid="locale-switcher" /> }));
@@ -50,6 +49,7 @@ describe('Header', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   const renderHeader = (props = {}) => {
@@ -61,7 +61,6 @@ describe('Header', () => {
   };
 
   it('is initially hidden on home page', () => {
-    // Mock pathname as home page
     vi.mocked(usePathname).mockReturnValue('/');
 
     renderHeader();
@@ -71,7 +70,6 @@ describe('Header', () => {
   });
 
   it('is visible on non-home pages', () => {
-    // Mock pathname as non-home page
     vi.mocked(usePathname).mockReturnValue('/profile');
 
     renderHeader();
@@ -83,13 +81,10 @@ describe('Header', () => {
   it('becomes visible when scrolling past the main logo', async () => {
     vi.mocked(usePathname).mockReturnValue('/');
 
-    // Create a mock main-logo element
     const mainLogo = document.createElement('div');
     mainLogo.className = 'main-logo';
     document.body.appendChild(mainLogo);
 
-    // Mock getBoundingClientRect for the logo
-    // Initially visible (bottom > 0)
     mainLogo.getBoundingClientRect = vi.fn(
       () =>
         ({
@@ -102,7 +97,6 @@ describe('Header', () => {
     const logoContainer = screen.getByLabelText('heading').parentElement;
     expect(logoContainer).toHaveClass('opacity-0');
 
-    // Scroll down so logo is past (bottom < 0)
     mainLogo.getBoundingClientRect = vi.fn(
       () =>
         ({
@@ -110,10 +104,8 @@ describe('Header', () => {
         }) as DOMRect,
     );
 
-    // Trigger scroll
     fireEvent.scroll(window);
 
-    // Header should be visible now
     expect(logoContainer).toHaveClass('opacity-100');
 
     document.body.removeChild(mainLogo);
@@ -122,7 +114,6 @@ describe('Header', () => {
   it('becomes visible when scrolling down even if the main logo is not found', async () => {
     vi.mocked(usePathname).mockReturnValue('/');
 
-    // Ensure no main-logo is in the document
     const mainLogo = document.querySelector('.main-logo');
     if (mainLogo) mainLogo.remove();
 
@@ -131,16 +122,43 @@ describe('Header', () => {
     const logoContainer = screen.getByLabelText('heading').parentElement;
     expect(logoContainer).toHaveClass('opacity-0');
 
-    // Mock window.scrollY
     Object.defineProperty(window, 'scrollY', { value: 150, writable: true });
 
-    // Trigger scroll
     fireEvent.scroll(window);
 
-    // Fallback logic should show header
     expect(logoContainer).toHaveClass('opacity-100');
 
-    // Reset scrollY
     Object.defineProperty(window, 'scrollY', { value: 0, writable: true });
+  });
+
+  it('blocks logo navigation when there are unsaved changes', async () => {
+    vi.mocked(usePathname).mockReturnValue('/profile');
+    const confirmMock = vi.fn(() => false);
+    vi.stubGlobal('confirm', confirmMock);
+
+    function MarkDirty() {
+      const { setHasUnsavedChanges } = useUnsavedChanges();
+      useEffect(() => {
+        setHasUnsavedChanges(true);
+      }, [setHasUnsavedChanges]);
+      return null;
+    }
+
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <UnsavedChangesProvider>
+          <MarkDirty />
+          <Header />
+        </UnsavedChangesProvider>
+      </NextIntlClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('heading').parentElement).toHaveClass('opacity-100');
+    });
+
+    const clickEvent = new MouseEvent('click', { bubbles: true, button: 0, cancelable: true });
+    expect(screen.getByLabelText('heading').dispatchEvent(clickEvent)).toBe(false);
+    expect(confirmMock).toHaveBeenCalledWith('profile.unsavedChangesPrompt');
   });
 });

@@ -35,6 +35,73 @@ export type CvImportStateUpdate<T> = {
   cutoff: number;
 };
 
+type ProfileFormData = {
+  full_name: string;
+  bio: string;
+  work_types: WorkType[];
+  preferred_languages: string[];
+  location: LocationState | null;
+  cv_import: CvImportMetadata | null;
+};
+
+function stableStringify(value: unknown): string {
+  if (typeof value === 'undefined') return 'undefined';
+  if (value === null || typeof value !== 'object') {
+    const serialized = JSON.stringify(value);
+    return serialized ?? String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  }
+
+  const record = value as Record<string, unknown>;
+  const entries = Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`);
+
+  return `{${entries.join(',')}}`;
+}
+
+function normalizeLocationForSnapshot(location: LocationState | null) {
+  if (!location) return null;
+
+  return {
+    display_name: location.display_name,
+    lat: location.lat,
+    lng: location.lng,
+    name: location.name,
+    province: location.province,
+  };
+}
+
+function createProfileFormSnapshot({
+  formData,
+  skillCutoff,
+  skillUris,
+  valueCutoff,
+  valueItems,
+}: {
+  formData: ProfileFormData;
+  skillCutoff: number;
+  skillUris: string[];
+  valueCutoff: number;
+  valueItems: string[];
+}) {
+  return stableStringify({
+    bio: formData.bio,
+    cv_import: formData.cv_import,
+    full_name: formData.full_name,
+    location: normalizeLocationForSnapshot(formData.location),
+    preferred_languages: [...normalizeLanguages(formData.preferred_languages)].sort(),
+    skillCutoff,
+    skillUris,
+    valueCutoff,
+    valueItems,
+    work_types: [...normalizeWorkTypes(formData.work_types)].sort(),
+  });
+}
+
 /**
  * Resolves the next state for a ranked list (skills or values) after a CV import.
  * If the imported list is empty, we keep the current items and cutoff.
@@ -57,6 +124,8 @@ export function useProfileForm(locale: 'en' | 'fr') {
   const { profile, loading: profileLoading, error: profileError, updateProfile } = useProfile();
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isHydratingProfile, setIsHydratingProfile] = useState(true);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     bio: '',
@@ -68,6 +137,10 @@ export function useProfileForm(locale: 'en' | 'fr') {
 
   const skills = useRankedList<EscoSkill>((s) => s.uri);
   const values = useRankedList<string>((v) => v);
+  const setSkillItems = skills.setItems;
+  const setSkillCutoff = skills.setCutoff;
+  const setValueItems = values.setItems;
+  const setValueCutoff = values.setCutoff;
 
   // Track the last profile snapshot we hydrated from
   const hydratedKeyRef = useRef<string | null>(null);
@@ -89,13 +162,18 @@ export function useProfileForm(locale: 'en' | 'fr') {
   // ─── Hydrate from profile ─────────────────────────────────────────────
 
   useEffect(() => {
-    if (!profile) return;
+    if (!profile) {
+      setLastSavedSnapshot(null);
+      setIsHydratingProfile(false);
+      return;
+    }
 
     const hydrateKey = `${profile.id}:${profile.updated_at}:${locale}`;
     if (hydratedKeyRef.current === hydrateKey) return;
     hydratedKeyRef.current = hydrateKey;
+    setIsHydratingProfile(true);
 
-    setFormData({
+    const nextFormData = {
       full_name: profile.full_name || '',
       bio: profile.bio || '',
       work_types: normalizeWorkTypes(profile.work_types),
@@ -111,45 +189,100 @@ export function useProfileForm(locale: 'en' | 'fr') {
             }
           : null,
       cv_import: profile.cv_import ?? null,
-    });
+    };
+    setFormData(nextFormData);
 
     // Hydrate Values
     const pvr = profile.values_rated;
+    let nextValueItems: string[];
+    let nextValueCutoff: number;
     if (pvr && pvr.length > 0) {
       const ranked = [...pvr].filter((rv) => rv.rank != null).sort((a, b) => a.rank! - b.rank!);
       const unranked = pvr.filter((rv) => rv.rank == null);
-      values.setItems([...ranked.map((rv) => rv.value), ...unranked.map((rv) => rv.value)]);
-      values.setCutoff(ranked.length);
+      nextValueItems = [...ranked.map((rv) => rv.value), ...unranked.map((rv) => rv.value)];
+      nextValueCutoff = ranked.length;
     } else {
-      values.setItems(profile.values || []);
-      values.setCutoff(0);
+      nextValueItems = profile.values || [];
+      nextValueCutoff = 0;
     }
+    setValueItems(nextValueItems);
+    setValueCutoff(nextValueCutoff);
 
     // Hydrate Skills
     const profileSkills = Array.from(new Set(profile.skills || [])).slice(0, MAX_PROFILE_SKILLS);
+    let cancelled = false;
+
+    const saveHydratedSnapshot = (skillUris: string[], skillCutoff: number) => {
+      setLastSavedSnapshot(
+        createProfileFormSnapshot({
+          formData: nextFormData,
+          skillCutoff,
+          skillUris,
+          valueCutoff: nextValueCutoff,
+          valueItems: nextValueItems,
+        }),
+      );
+      setIsHydratingProfile(false);
+    };
+
     if (profileSkills.length === 0) {
-      skills.setItems([]);
-      skills.setCutoff(0);
-      return;
+      setSkillItems([]);
+      setSkillCutoff(0);
+      saveHydratedSnapshot([], 0);
+      return () => {
+        cancelled = true;
+      };
     }
 
     void fetchSkillsByUri(profileSkills, locale)
       .then((fetched) => {
+        if (cancelled) return;
+
         const psr = profile.skills_rated;
+        let nextSkillItems: EscoSkill[];
+        let nextSkillCutoff: number;
         if (psr && psr.length > 0) {
           const { sorted, cutoff } = partitionByRating(fetched, psr);
-          skills.setItems(sorted);
-          skills.setCutoff(cutoff);
+          nextSkillItems = sorted;
+          nextSkillCutoff = cutoff;
         } else {
-          skills.setItems(fetched);
-          skills.setCutoff(0);
+          nextSkillItems = fetched;
+          nextSkillCutoff = 0;
         }
+
+        setSkillItems(nextSkillItems);
+        setSkillCutoff(nextSkillCutoff);
+        saveHydratedSnapshot(
+          nextSkillItems.map((skill) => skill.uri),
+          nextSkillCutoff,
+        );
       })
       .catch(() => {
-        skills.setItems([]);
-        skills.setCutoff(0);
+        if (cancelled) return;
+        setSkillItems([]);
+        setSkillCutoff(0);
+        saveHydratedSnapshot([], 0);
       });
-  }, [profile, locale, values, skills]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile, locale, setSkillCutoff, setSkillItems, setValueCutoff, setValueItems]);
+
+  const currentSnapshot = useMemo(
+    () =>
+      createProfileFormSnapshot({
+        formData,
+        skillCutoff: skills.cutoff,
+        skillUris: skills.items.map((skill) => skill.uri),
+        valueCutoff: values.cutoff,
+        valueItems: values.items,
+      }),
+    [formData, skills.cutoff, skills.items, values.cutoff, values.items],
+  );
+
+  const isDirty =
+    !isHydratingProfile && lastSavedSnapshot !== null && currentSnapshot !== lastSavedSnapshot;
 
   // ─── Actions ──────────────────────────────────────────────────────────
 
@@ -179,6 +312,8 @@ export function useProfileForm(locale: 'en' | 'fr') {
       return;
     }
 
+    const savedSnapshot = currentSnapshot;
+
     setIsSaving(true);
     try {
       const valuesRated: RatedValue[] = values.items.map((v, i) =>
@@ -207,12 +342,13 @@ export function useProfileForm(locale: 'en' | 'fr') {
       });
       notify.success(t('updateSuccess'));
       void fetch('/api/matches/recalculate-mine', { method: 'POST' });
+      setLastSavedSnapshot(savedSnapshot);
     } catch (err) {
       notify.error(err instanceof Error ? err.message : t('updateFailed'));
     } finally {
       setIsSaving(false);
     }
-  }, [formData, values, skills, updateProfile, t]);
+  }, [currentSnapshot, formData, values, skills, updateProfile, t]);
 
   const handleApplyCvImport = useCallback(
     ({
@@ -229,12 +365,12 @@ export function useProfileForm(locale: 'en' | 'fr') {
       // Keep in-progress manual selections when the CV returns an empty list
       // for a category, while still replacing that category on non-empty imports.
       const nextSkillsState = resolveCvImportState(skills.items, skills.cutoff, nextSkills);
-      skills.setItems(nextSkillsState.items);
-      skills.setCutoff(nextSkillsState.cutoff);
+      setSkillItems(nextSkillsState.items);
+      setSkillCutoff(nextSkillsState.cutoff);
 
       const nextValuesState = resolveCvImportState(values.items, values.cutoff, nextValues);
-      values.setItems(nextValuesState.items);
-      values.setCutoff(nextValuesState.cutoff);
+      setValueItems(nextValuesState.items);
+      setValueCutoff(nextValuesState.cutoff);
 
       setFormData((prev) => ({ ...prev, cv_import: cvImport }));
 
@@ -265,5 +401,6 @@ export function useProfileForm(locale: 'en' | 'fr') {
     handleApplyCvImport,
     handleWorkTypeToggle,
     handleLanguageToggle,
+    isDirty,
   };
 }

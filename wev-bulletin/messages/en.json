@@ -370,6 +370,7 @@
     "saving": "Saving...",
     "updateSuccess": "Profile updated successfully!",
     "updateFailed": "Failed to update profile",
+    "unsavedChangesPrompt": "You have unsaved profile changes. Leave without saving?",
     "photoUploadSuccess": "Photo uploaded successfully!",
     "photoUploadFailed": "Failed to upload photo",
     "location": "Current City / Region",

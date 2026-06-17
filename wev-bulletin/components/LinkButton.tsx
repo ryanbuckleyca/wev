@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps, MouseEventHandler, ReactNode } from 'react';
 import { Link } from '@/i18n/navigation';
 import { buttonVariants } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -11,7 +11,7 @@ interface LinkButtonProps {
   fullWidth?: boolean;
   className?: string;
   prefetch?: ComponentProps<typeof Link>['prefetch'];
-  onClick?: () => void;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
 }
 
 const variantMap = {

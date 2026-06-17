@@ -1,8 +1,10 @@
 'use client';
 
+import { useCallback, useEffect, type MouseEvent } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfileForm, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES } from '@/lib/hooks/useProfileForm';
+import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 import SkillsSelector from '@/components/profile/skills/SkillsSelector';
 import ValuesSelector from '@/components/profile/values/ValuesSelector';
 import WorkSettingSection from '@/components/profile/WorkSettingSection';
@@ -27,6 +29,7 @@ export default function ProfilePage() {
   const t = useTranslations();
   const locale = useLocale() as 'en' | 'fr';
   const { user, loading } = useRequireAuth();
+  const { confirmIfUnsaved, markUnsavedChanges, setHasUnsavedChanges } = useUnsavedChanges();
 
   const {
     profileLoading,
@@ -49,9 +52,104 @@ export default function ProfilePage() {
     handleApplyCvImport,
     handleWorkTypeToggle,
     handleLanguageToggle,
+    isDirty,
   } = useProfileForm(locale);
 
   const hasLocationValue = selectedValues.includes('Location');
+
+  useEffect(() => {
+    setHasUnsavedChanges(isDirty);
+    return () => setHasUnsavedChanges(false);
+  }, [isDirty, setHasUnsavedChanges]);
+
+  const updateFormData = useCallback(
+    (nextFormData: typeof formData) => {
+      markUnsavedChanges();
+      setFormData(nextFormData);
+    },
+    [formData, markUnsavedChanges, setFormData],
+  );
+
+  const handleDirtyWorkTypeToggle = useCallback(
+    (...args: Parameters<typeof handleWorkTypeToggle>) => {
+      markUnsavedChanges();
+      handleWorkTypeToggle(...args);
+    },
+    [handleWorkTypeToggle, markUnsavedChanges],
+  );
+
+  const handleDirtyLanguageToggle = useCallback(
+    (...args: Parameters<typeof handleLanguageToggle>) => {
+      markUnsavedChanges();
+      handleLanguageToggle(...args);
+    },
+    [handleLanguageToggle, markUnsavedChanges],
+  );
+
+  const handleDirtySkillToggle = useCallback(
+    (...args: Parameters<typeof handleSkillToggle>) => {
+      markUnsavedChanges();
+      handleSkillToggle(...args);
+    },
+    [handleSkillToggle, markUnsavedChanges],
+  );
+
+  const handleDirtySkillReorder = useCallback(
+    (...args: Parameters<typeof handleSkillReorder>) => {
+      markUnsavedChanges();
+      handleSkillReorder(...args);
+    },
+    [handleSkillReorder, markUnsavedChanges],
+  );
+
+  const handleDirtySkillRemove = useCallback(
+    (...args: Parameters<typeof handleSkillRemove>) => {
+      markUnsavedChanges();
+      handleSkillRemove(...args);
+    },
+    [handleSkillRemove, markUnsavedChanges],
+  );
+
+  const handleDirtyValueToggle = useCallback(
+    (...args: Parameters<typeof handleValueToggle>) => {
+      markUnsavedChanges();
+      handleValueToggle(...args);
+    },
+    [handleValueToggle, markUnsavedChanges],
+  );
+
+  const handleDirtyValueReorder = useCallback(
+    (...args: Parameters<typeof handleValueReorder>) => {
+      markUnsavedChanges();
+      handleValueReorder(...args);
+    },
+    [handleValueReorder, markUnsavedChanges],
+  );
+
+  const handleDirtyValueRemove = useCallback(
+    (...args: Parameters<typeof handleValueRemove>) => {
+      markUnsavedChanges();
+      handleValueRemove(...args);
+    },
+    [handleValueRemove, markUnsavedChanges],
+  );
+
+  const handleDirtyApplyCvImport = useCallback(
+    (...args: Parameters<typeof handleApplyCvImport>) => {
+      markUnsavedChanges();
+      handleApplyCvImport(...args);
+    },
+    [handleApplyCvImport, markUnsavedChanges],
+  );
+
+  const handleGuardedBackToJobsClick = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      if (!confirmIfUnsaved(event.nativeEvent)) {
+        event.preventDefault();
+      }
+    },
+    [confirmIfUnsaved],
+  );
 
   if (loading || profileLoading) {
     return <LoadingState message={t('common.loading')} />;
@@ -75,7 +173,7 @@ export default function ProfilePage() {
               label={t('profile.fullName')}
               type="text"
               value={formData.full_name}
-              onChange={(value) => setFormData({ ...formData, full_name: value })}
+              onChange={(value) => updateFormData({ ...formData, full_name: value })}
               placeholder={t('profile.fullNamePlaceholder')}
               fullWidth
               htmlFor="full-name"
@@ -84,8 +182,8 @@ export default function ProfilePage() {
             <WorkSettingSection
               workTypes={formData.work_types}
               location={formData.location}
-              onWorkTypeToggle={handleWorkTypeToggle}
-              onLocationChange={(val) => setFormData({ ...formData, location: val })}
+              onWorkTypeToggle={handleDirtyWorkTypeToggle}
+              onLocationChange={(val) => updateFormData({ ...formData, location: val })}
               hasLocationValue={hasLocationValue}
             />
 
@@ -100,7 +198,7 @@ export default function ProfilePage() {
                     label: getJobLanguageLabel(lang, t),
                   }))}
                   selectedValues={formData.preferred_languages}
-                  onToggle={handleLanguageToggle}
+                  onToggle={handleDirtyLanguageToggle}
                 />
               </fieldset>
             </div>
@@ -110,7 +208,7 @@ export default function ProfilePage() {
               htmlFor="bio"
               label={t('profile.bio')}
               value={formData.bio}
-              onChange={(value) => setFormData({ ...formData, bio: value })}
+              onChange={(value) => updateFormData({ ...formData, bio: value })}
               placeholder={t('profile.bioPlaceholder')}
               rows={4}
               showCount={false}
@@ -127,7 +225,7 @@ export default function ProfilePage() {
                 locale={locale}
                 cvImport={formData.cv_import ?? null}
                 isSaving={isSaving}
-                onConfirmImport={handleApplyCvImport}
+                onConfirmImport={handleDirtyApplyCvImport}
               />
 
               {/* Skills */}
@@ -140,9 +238,9 @@ export default function ProfilePage() {
                 <SkillsSelector
                   selectedSkills={selectedSkills}
                   skillCutoff={skillCutoff}
-                  onToggle={handleSkillToggle}
-                  onReorder={handleSkillReorder}
-                  onRemove={handleSkillRemove}
+                  onToggle={handleDirtySkillToggle}
+                  onReorder={handleDirtySkillReorder}
+                  onRemove={handleDirtySkillRemove}
                   locale={locale}
                 />
               </CompetencySection>
@@ -158,9 +256,9 @@ export default function ProfilePage() {
                   values={workValues}
                   selectedValues={selectedValues}
                   valueCutoff={valueCutoff}
-                  onToggle={handleValueToggle}
-                  onReorder={handleValueReorder}
-                  onRemove={handleValueRemove}
+                  onToggle={handleDirtyValueToggle}
+                  onReorder={handleDirtyValueReorder}
+                  onRemove={handleDirtyValueRemove}
                   locale={locale}
                 />
               </CompetencySection>
@@ -170,7 +268,7 @@ export default function ProfilePage() {
           {/* Actions */}
           <div className="pt-6 border-t border-border">
             <div className="flex justify-between gap-3">
-              <LinkButton href="/" variant="secondary">
+              <LinkButton href="/" variant="secondary" onClick={handleGuardedBackToJobsClick}>
                 {t('profile.backToJobs')}
               </LinkButton>
               <Button type="submit" disabled={isSaving} loading={isSaving}>
