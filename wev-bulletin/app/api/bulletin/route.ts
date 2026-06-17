@@ -36,10 +36,6 @@ type BulletinApiQueryInput = {
   noSalary: boolean;
 };
 
-function isUndefinedColumnError(error: { code?: string } | null): boolean {
-  return error?.code === '42703';
-}
-
 function parseBoundedInteger(
   rawValue: string | null,
   fallback: number,
@@ -206,29 +202,12 @@ async function fetchBulletinApiPayload(
     .gte('date_posted', maxAgeCutoff)
     .limit(0);
 
-  const [initialJobsResult, initialFilterOptionsData, scrapeTime, totalAvailableResult] =
-    await Promise.all([
-      buildQuery(searchColumn).range(start, end),
-      fetchBulletinFacets(supabase, searchColumn, input),
-      fetchLastScrapeTime(),
-      totalAvailableQuery,
-    ]);
-
-  let jobsResult = initialJobsResult;
-  let filterOptionsData = initialFilterOptionsData;
-
-  if (
-    jobsResult.error &&
-    input.searchQuery.length > 0 &&
-    isUndefinedColumnError(jobsResult.error)
-  ) {
-    const [retryJobs, retryFacets] = await Promise.all([
-      buildQuery('fts').range(start, end),
-      fetchBulletinFacets(supabase, 'fts', input),
-    ]);
-    jobsResult = retryJobs;
-    filterOptionsData = retryFacets;
-  }
+  const [jobsResult, filterOptionsData, scrapeTime, totalAvailableResult] = await Promise.all([
+    buildQuery(searchColumn).range(start, end),
+    fetchBulletinFacets(supabase, searchColumn, input),
+    fetchLastScrapeTime(),
+    totalAvailableQuery,
+  ]);
 
   if (jobsResult.error) throw new Error(jobsResult.error.message);
   if (totalAvailableResult.error) {
