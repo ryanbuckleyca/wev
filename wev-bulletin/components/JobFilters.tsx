@@ -66,7 +66,7 @@ export default function JobFilters(props: JobFiltersProps) {
         onApplySuggestedDefaults={model.applySuggestedDefaults}
       />
 
-      <Collapsible isOpen={filtersExpanded} className="p-6">
+      <Collapsible id="job-filters-content" isOpen={filtersExpanded} className="p-6">
         <div data-testid={JOB_BOARD_TEST_IDS.sseToggle}>
           <BooleanFilterRow
             checked={showOnlySse}

@@ -6,9 +6,11 @@ interface CollapsibleProps {
   isOpen: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Optional DOM id (e.g. for an `aria-controls` reference). Must be unique per use. */
+  id?: string;
 }
 
-export default function Collapsible({ isOpen, children, className }: CollapsibleProps) {
+export default function Collapsible({ isOpen, children, className, id }: CollapsibleProps) {
   const ref = useRef<HTMLDivElement>(null);
   const hasMountedRef = useRef(false);
   const [wasEverOpen, setWasEverOpen] = useState(isOpen);
@@ -61,13 +63,16 @@ export default function Collapsible({ isOpen, children, className }: Collapsible
 
   return (
     <div
-      id="job-filters-content"
+      id={id}
       style={{
         overflow: 'hidden',
         maxHeight: shouldRenderContent ? maxHeight : '0px',
         transition: 'max-height 0.3s ease-in-out',
       }}
       aria-hidden={!isOpen}
+      // Closed content stays in the DOM (for animation) but must not be
+      // reachable by keyboard or assistive tech.
+      inert={!isOpen || undefined}
     >
       {shouldRenderContent ? (
         <div ref={ref} className={className}>

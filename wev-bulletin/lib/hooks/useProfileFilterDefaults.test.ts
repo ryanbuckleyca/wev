@@ -122,6 +122,34 @@ describe('useProfileFilterDefaults', () => {
     expect(result.current).toBe(true);
   });
 
+  it('stays not-ready when current contains duplicates that do not match the seed set', () => {
+    const setters = makeSetters();
+    const seed: ProfileFilterSeed = {
+      workTypes: [],
+      province: null,
+      municipality: null,
+      languages: ['en', 'fr'],
+    };
+
+    const { result, rerender } = renderHook(
+      ({ current }: { current: ProfileFilterCurrent }) =>
+        useProfileFilterDefaults({ enabled: true, resolved: true, seed, current, setters }),
+      { initialProps: { current: emptyCurrent } },
+    );
+
+    expect(setters.setLanguages).toHaveBeenCalledWith(['en', 'fr']);
+    expect(result.current).toBe(false);
+
+    // Same length as the seed, but a duplicate (['en', 'en']) rather than the
+    // seeded set (['en', 'fr']) — must not be mistaken for the seed landing.
+    rerender({ current: { ...emptyCurrent, languages: ['en', 'en'] } });
+    expect(result.current).toBe(false);
+
+    // The real seed lands → ready.
+    rerender({ current: { ...emptyCurrent, languages: ['en', 'fr'] } });
+    expect(result.current).toBe(true);
+  });
+
   it('does not re-seed after the user clears a seeded filter', () => {
     const setters = makeSetters();
     const seed: ProfileFilterSeed = {
