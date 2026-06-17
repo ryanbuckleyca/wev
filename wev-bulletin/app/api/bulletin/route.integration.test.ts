@@ -144,11 +144,7 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(mockTextSearch).toHaveBeenCalledWith('fts_fr', 'economie sociale', {
       type: 'websearch',
     });
-    expect(mockTextSearch).not.toHaveBeenCalledWith(
-      'fts',
-      expect.any(String),
-      expect.any(Object),
-    );
+    expect(mockTextSearch).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(Object));
     expect(mockFilter).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(String));
 
     vi.clearAllMocks();
@@ -159,11 +155,7 @@ describe('GET /api/bulletin (handler contract)', () => {
     // English locale uses fts_en with prefix matching for single-word queries
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=part'));
     expect(mockFilter).toHaveBeenCalledWith('fts_en', 'fts', 'part:*');
-    expect(mockTextSearch).not.toHaveBeenCalledWith(
-      'fts',
-      expect.any(String),
-      expect.any(Object),
-    );
+    expect(mockTextSearch).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(Object));
     expect(mockFilter).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(String));
 
     vi.clearAllMocks();
