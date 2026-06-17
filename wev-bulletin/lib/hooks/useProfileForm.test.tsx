@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useProfile } from '@/contexts/ProfileContext';
 import { fetchSkillsByUri } from '@/lib/skills/client';
 import notify from '@/lib/toast';
+import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -22,6 +23,10 @@ vi.mock('@/lib/toast', () => ({
     success: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+vi.mock('@/lib/hooks/useUnsavedChangesWarning', () => ({
+  useUnsavedChangesWarning: vi.fn(),
 }));
 
 describe('useProfileForm', () => {
@@ -157,6 +162,53 @@ describe('useProfileForm', () => {
 
     expect(mockUpdateProfile).toHaveBeenCalled();
     expect(notify.success).toHaveBeenCalledWith('updateSuccess');
+  });
+
+  it('marks the form dirty after editing and clean after save', async () => {
+    const profile = {
+      id: 'u1',
+      full_name: 'John Doe',
+      bio: 'Developer',
+      updated_at: '2024-01-01',
+      skills: [],
+      values: ['Ambition'],
+      work_types: [],
+      preferred_languages: [],
+    };
+    vi.mocked(useProfile).mockReturnValue({
+      profile,
+      loading: false,
+      error: null,
+      updateProfile: mockUpdateProfile,
+    } as any);
+
+    const { result } = renderHook(() => useProfileForm('en'));
+
+    await waitFor(() => {
+      expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(false, 'unsavedChangesWarning');
+    });
+
+    act(() => {
+      result.current.setFormData((prev) => ({ ...prev, full_name: 'Jane Doe' }));
+    });
+
+    await waitFor(() => {
+      expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(true, 'unsavedChangesWarning');
+    });
+
+    mockUpdateProfile.mockResolvedValue({
+      ...profile,
+      full_name: 'Jane Doe',
+      updated_at: '2024-01-02',
+    });
+
+    await act(async () => {
+      await result.current.handleSaveProfile();
+    });
+
+    await waitFor(() => {
+      expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(false, 'unsavedChangesWarning');
+    });
   });
 
   it('handles CV import', () => {
