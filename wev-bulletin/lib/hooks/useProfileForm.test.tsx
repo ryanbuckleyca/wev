@@ -165,7 +165,7 @@ describe('useProfileForm', () => {
   });
 
   it('marks the form dirty after editing and clean after save', async () => {
-    const profile = {
+    let profileState = {
       id: 'u1',
       full_name: 'John Doe',
       bio: 'Developer',
@@ -175,14 +175,17 @@ describe('useProfileForm', () => {
       work_types: [],
       preferred_languages: [],
     };
-    vi.mocked(useProfile).mockReturnValue({
-      profile,
-      loading: false,
-      error: null,
-      updateProfile: mockUpdateProfile,
-    } as any);
+    vi.mocked(useProfile).mockImplementation(
+      () =>
+        ({
+          profile: profileState,
+          loading: false,
+          error: null,
+          updateProfile: mockUpdateProfile,
+        }) as never,
+    );
 
-    const { result } = renderHook(() => useProfileForm('en'));
+    const { result, rerender } = renderHook(() => useProfileForm('en'));
 
     await waitFor(() => {
       expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(false, 'unsavedChangesWarning');
@@ -196,15 +199,19 @@ describe('useProfileForm', () => {
       expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(true, 'unsavedChangesWarning');
     });
 
-    mockUpdateProfile.mockResolvedValue({
-      ...profile,
-      full_name: 'Jane Doe',
-      updated_at: '2024-01-02',
+    mockUpdateProfile.mockImplementation(async (data) => {
+      profileState = {
+        ...profileState,
+        full_name: data.full_name ?? profileState.full_name,
+        updated_at: '2024-01-02',
+      };
+      return profileState;
     });
 
     await act(async () => {
       await result.current.handleSaveProfile();
     });
+    rerender();
 
     await waitFor(() => {
       expect(useUnsavedChangesWarning).toHaveBeenLastCalledWith(false, 'unsavedChangesWarning');
