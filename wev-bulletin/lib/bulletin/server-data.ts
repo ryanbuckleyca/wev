@@ -96,7 +96,6 @@ function applyBulletinFilters(query: any, input: BulletinQueryInput) {
   if (input.munis.length) query = query.in('municipality', input.munis);
   if (input.emps.length) query = query.in('employment_type', input.emps);
   if (input.srcs.length) query = query.in('source', input.srcs);
-  if (input.langs.length) query = query.in('language', input.langs);
   return applyNonFacetFilters(query, input);
 }
 
@@ -107,7 +106,7 @@ async function fetchBulletinFacets(
 ): Promise<BulletinFilterOptions> {
   let query = supabase
     .from('matched_jobs')
-    .select('organization, province, municipality, employment_type, source');
+    .select('organization, province, municipality, employment_type, source, language');
 
   query = applySearchFilter(query, vectorColumn, input.searchQuery);
   query = applyAgeFilter(query, input.postedWithin);
@@ -219,6 +218,7 @@ export async function fetchCachedBulletinQueryPayload(
 
 /**
  * Fetches and returns the last scrape time.
+ * Returns null gracefully if the table is inaccessible (e.g. missing RLS grant in local dev).
  */
 export async function fetchLastScrapeTime(): Promise<string | null> {
   const { data, error } = await supabaseServer
@@ -228,7 +228,11 @@ export async function fetchLastScrapeTime(): Promise<string | null> {
     .limit(1)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Non-fatal — missing scrape time shouldn't break the page
+    console.warn('[fetchLastScrapeTime]', error.message);
+    return null;
+  }
   return data?.run_at ?? null;
 }
 
@@ -252,7 +256,7 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
     totalAvailableQuery,
     supabaseServer
       .from('matched_jobs')
-      .select('organization, province, municipality, employment_type, source')
+      .select('organization, province, municipality, employment_type, source, language')
       .gte('date_posted', postedCutoff)
       .is('is_sse', true)
       .limit(5000),

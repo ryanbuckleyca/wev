@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from scripts.unified_post_processor import (
     ProcessingOptions,
     _build_update_data,
+    _needs_processing,
     _try_db_write,
     is_transient_db_error,
     main,
@@ -37,6 +38,25 @@ def test_build_update_data():
     assert "is_sse" in data
     assert "summary" not in data
 
+    # Task language
+    job_result["language"] = "fr"
+    data = _build_update_data("language", job_result)
+    assert data["language"] == "fr"
+
+    # Task all: Language is added when valid and differing
+    data = _build_update_data("all", job_result, {"language": "en"})
+    assert data["language"] == "fr"
+
+    # Task all: Language clobbering prevention (invalid or None language)
+    job_result["language"] = None
+    data = _build_update_data("all", job_result, {"language": "en"})
+    assert "language" not in data
+
+    # Task all: Invalid language does not overwrite
+    job_result["language"] = "de"
+    data = _build_update_data("all", job_result, {"language": "en"})
+    assert "language" not in data
+
 def test_is_transient_db_error():
     e = Exception("timeout")
     e.code = "53000"
@@ -45,10 +65,37 @@ def test_is_transient_db_error():
     e.code = "08001"
     assert is_transient_db_error(e) is True
 
+    e.code = "503"
+    assert is_transient_db_error(e) is True
+
+    e.code = "500"
+    assert is_transient_db_error(e) is False
+
     e.code = "42703" # Not transient
     assert is_transient_db_error(e) is False
 
     assert is_transient_db_error(TimeoutError()) is True
+
+
+def test_needs_processing_all_skips_complete_sse_false():
+    job = {
+        "summary": "Done",
+        "values": ["V1"],
+        "is_sse": False,
+        "sse_details": "",
+        "language": "en",
+    }
+    assert _needs_processing(job, ProcessingOptions(task="all")) is False
+
+
+def test_needs_processing_all_requires_language():
+    job = {
+        "summary": "Done",
+        "values": ["V1"],
+        "is_sse": False,
+        "language": "de",
+    }
+    assert _needs_processing(job, ProcessingOptions(task="all")) is True
 
 @patch("scripts.unified_post_processor.supabase")
 def test_try_db_write_success(mock_supabase):
@@ -99,6 +146,35 @@ def test_process_jobs_unified_skips_already_processed(mock_supabase, mock_get_pr
 
     res = process_jobs_unified(ProcessingOptions(task="all"))
     assert res["processed"] == 0  # No jobs filtered for processing
+    assert res["skipped"] == 1
+
+
+@patch("scripts.unified_post_processor.get_unified_processor")
+@patch("scripts.unified_post_processor.supabase")
+def test_process_jobs_unified_batch_result_mismatch(mock_supabase, mock_get_processor):
+    mock_processor = mock_get_processor.return_value
+    mock_processor.process_jobs.return_value = {
+        "results": [{"summary": "Only one"}],
+        "provider": "groq",
+    }
+
+    mock_jobs = [
+        {"id": "j1", "summary": None, "values": None, "is_sse": None, "language": None,
+         "scraped_at": "2026-01-01T00:00:00"},
+        {"id": "j2", "summary": None, "values": None, "is_sse": None, "language": None,
+         "scraped_at": "2026-01-01T00:00:00"},
+    ]
+
+    (mock_supabase.table.return_value
+     .select.return_value
+     .order.return_value
+     .limit.return_value
+     .execute.return_value.data) = mock_jobs
+
+    res = process_jobs_unified(ProcessingOptions(task="all", limit=2))
+
+    assert res["processed"] == 0
+    assert res["errors"] == 2
 
 
 @patch("scripts.unified_post_processor.process_jobs_unified")

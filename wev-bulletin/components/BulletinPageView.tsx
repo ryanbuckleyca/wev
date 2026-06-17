@@ -52,6 +52,7 @@ export default function BulletinPageView({
               alt={t('home.heading')}
               width={100}
               height={40}
+              unoptimized
               className="main-logo wev-logotype w-[100px] h-auto mb-2"
               priority
             />
@@ -73,6 +74,7 @@ export default function BulletinPageView({
             filterOptions={data.filterOptions}
             filteredJobsCount={data.totalMatchingJobs}
             totalJobsCount={data.availableJobsCount}
+            loading={data.loading}
           />
 
           {data.jobsOnPage.length > 0 && (

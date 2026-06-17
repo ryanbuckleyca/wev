@@ -70,7 +70,11 @@ async function executeCvImportPipeline(
   });
 
   if (!extractRes.ok) {
-    const body = (await extractRes.json().catch(() => ({}))) as { error?: string; detail?: string };
+    const body = (await extractRes.json().catch(() => ({}))) as {
+      error?: string;
+      detail?: string;
+      missing?: string[];
+    };
     console.error('[cv-import] API error:', extractRes.status, body);
     throw new Error(body.error ?? 'extraction_failed');
   }

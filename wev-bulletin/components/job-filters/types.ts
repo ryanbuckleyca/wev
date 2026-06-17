@@ -6,4 +6,6 @@ export interface JobFiltersProps {
   filterOptions?: BulletinFilterOptions;
   filteredJobsCount?: number;
   totalJobsCount?: number;
+  /** True while the first results for the current filters are still loading. */
+  loading?: boolean;
 }

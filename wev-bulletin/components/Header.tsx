@@ -8,9 +8,7 @@ import UserProfile from './UserProfile';
 import ThemeToggle from './ThemeToggle';
 import LocaleSwitcher from './LocaleSwitcher';
 import { zIndex } from '@/lib/design-tokens';
-
-const HEADER_LOGOTYPE_URL =
-  'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logotype.png';
+import { SITE_CONFIG } from '@/lib/site-config';
 
 export default function Header({
   hasBanner,
@@ -77,10 +75,12 @@ export default function Header({
         >
           <Link href="/" prefetch={false} aria-label={t('heading')} title={t('heading')}>
             <Image
-              src={HEADER_LOGOTYPE_URL}
+              src={SITE_CONFIG.logotypeUrl}
               alt=""
               width={60}
               height={24}
+              priority
+              unoptimized
               className="wev-logotype w-[60px] h-auto cursor-pointer"
             />
           </Link>
