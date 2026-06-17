@@ -99,6 +99,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     const hydrateKey = `${profile.id}:${profile.updated_at}:${locale}`;
     if (hydratedKeyRef.current === hydrateKey) return;
     hydratedKeyRef.current = hydrateKey;
+    baselineKeyRef.current = null;
     setHydrationComplete(false);
 
     setFormData({
@@ -236,13 +237,13 @@ export function useProfileForm(locale: 'en' | 'fr') {
         i < skills.cutoff ? { skill: s.uri, rank: i + 1 } : { skill: s.uri },
       );
 
-      const updated = await updateProfile({
+      await updateProfile({
         full_name: formData.full_name || null,
         bio: formData.bio || null,
         values: values.items.slice(0, MAX_PROFILE_VALUES),
-        values_rated: valuesRated,
+        values_rated: valuesRated.slice(0, MAX_PROFILE_VALUES),
         skills: skills.items.map((s) => s.uri).slice(0, MAX_PROFILE_SKILLS),
-        skills_rated: skillsRated,
+        skills_rated: skillsRated.slice(0, MAX_PROFILE_SKILLS),
         work_types: normalizeWorkTypes(formData.work_types),
         lat: formData.location?.lat ?? null,
         lng: formData.location?.lng ?? null,
@@ -253,15 +254,6 @@ export function useProfileForm(locale: 'en' | 'fr') {
         preferred_languages:
           formData.preferred_languages.length > 0 ? formData.preferred_languages : null,
       });
-      const savedSnapshot = serializeProfileFormState({
-        formData,
-        valueItems: values.items,
-        valueCutoff: values.cutoff,
-        skillItems: skills.items,
-        skillCutoff: skills.cutoff,
-      });
-      baselineKeyRef.current = `${updated.id}:${updated.updated_at}:${locale}`;
-      setBaselineSnapshot(savedSnapshot);
       notify.success(t('updateSuccess'));
       void fetch('/api/matches/recalculate-mine', { method: 'POST' });
     } catch (err) {
@@ -269,7 +261,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
     } finally {
       setIsSaving(false);
     }
-  }, [formData, values, skills, updateProfile, t, locale]);
+  }, [formData, values, skills, updateProfile, t]);
 
   const handleApplyCvImport = useCallback(
     ({

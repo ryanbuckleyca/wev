@@ -13,12 +13,15 @@ function shouldInterceptLinkClick(event: MouseEvent, anchor: HTMLAnchorElement):
     return false;
   }
 
-  const url = new URL(anchor.href, window.location.href);
+  let url: URL;
+  try {
+    url = new URL(anchor.href, window.location.href);
+  } catch {
+    return false;
+  }
   if (url.origin !== window.location.origin) return false;
 
-  return (
-    url.pathname !== window.location.pathname || url.search !== window.location.search
-  );
+  return url.pathname !== window.location.pathname || url.search !== window.location.search;
 }
 
 /**
