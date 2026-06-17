@@ -28,6 +28,9 @@ from urllib.request import Request, urlopen
 
 from dotenv import find_dotenv, load_dotenv
 
+from settings import ensure_env_loaded
+from utils.prod_env import bootstrap_staging_from_argv
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent.parent
 load_dotenv(find_dotenv())
@@ -623,6 +626,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Upsert normalized records into Supabase public.esco_skills.",
     )
     parser.add_argument(
+        "--staging",
+        action="store_true",
+        help="Use staging (.env.staging) Supabase credentials for --upsert-db.",
+    )
+    parser.add_argument(
         "--supabase-url",
         default=os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL") or "",
         help="Supabase project URL (default from env SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL).",
@@ -642,6 +650,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 
 def main(argv: list[str]) -> int:
+    if "--staging" in argv:
+        ensure_env_loaded()
+        bootstrap_staging_from_argv(argv, Path(__file__))
+
     args = parse_args(argv)
     if args.input_json:
         with args.input_json.open("r", encoding="utf-8") as f:

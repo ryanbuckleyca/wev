@@ -2,6 +2,11 @@ import { execSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { config as loadEnv } from "dotenv";
+import {
+  envHelpLines,
+  parseEnvFlag,
+  type TargetEnv,
+} from "../scripts/parse-env";
 
 const LOCAL_SUPABASE_CLI = path.resolve(
   process.cwd(),
@@ -103,17 +108,23 @@ function runMigration(target: string, dryRun: boolean) {
   }
 }
 
+function parseTarget(argv: string[]): TargetEnv {
+  return parseEnvFlag(argv) as TargetEnv;
+}
+
 function main() {
   const envPath = fs.existsSync(".env") ? ".env" : path.join("..", ".env");
   loadEnv({ path: envPath });
 
-  const target = process.argv[2];
+  const args = process.argv.slice(2);
   const dryRun = process.env.MIGRATE_DRY_RUN === "1";
 
-  if (!target) {
-    console.error("Usage: tsx supabase/migrate.ts <local|staging|prod>");
-    process.exit(1);
+  if (args.includes("--help") || args.includes("-h")) {
+    console.error(envHelpLines("migrate"));
+    process.exit(0);
   }
+
+  const target = parseTarget(args);
 
   if (target === "local") {
     console.log("▶ Resetting local database...");

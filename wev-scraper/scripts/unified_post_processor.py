@@ -6,12 +6,10 @@ with a single unified processor that extracts all data in one LLM call.
 
 Usage:
     python unified_post_processor.py [--task sse|values|summary|all] [--limit N]
-        [--prod | --publish] [--job-id ID ...] [--dry-run] [--verbose]
+        [--staging] [--job-id ID ...] [--dry-run] [--verbose]
 
-    --prod     Load all of .env.production (full prod overrides); force ENV_MODE=prod
-               so local-first routing is off (is_local_env() is only True for ENV_MODE=local).
-    --publish  Prod DB credentials from .env.production; force ENV_MODE=local so local
-               LLMs and on-device embeddings are used.
+    Targets local DB by default. Use --staging for .env.staging.
+    Does not support --prod or --publish (no production writes from this tool).
 """
 
 import argparse
@@ -26,20 +24,28 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 
 # Load env before any DB import. We can't rely on dotenv-cli at the npm layer
 # because it is first-wins (won't override .env values from .env.production).
-# Mirror scrape.py: always load .env; --prod loads all of .env.production then sets
-# ENV_MODE=prod (anything but local disables local-first LLMs); --publish sets local.
+# Mirror scrape.py: always load .env; --staging loads .env.staging overrides.
 from settings import (  # noqa: E402
     ensure_env_loaded,
 )
 
 ensure_env_loaded()
-from utils.prod_env import bootstrap_prod_from_argv, confirm_prod_run  # noqa: E402
+from utils.prod_env import bootstrap_staging_from_argv  # noqa: E402
 
-bootstrap_prod_from_argv(sys.argv, Path(__file__))
+if "--prod" in sys.argv or "--publish" in sys.argv:
+    print(
+        "Error: process does not support --prod or --publish. "
+        "Use local (default) or --staging. Production post-processing "
+        "should run in a controlled environment, not from npm run process.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
+bootstrap_staging_from_argv(sys.argv, Path(__file__))
 
 # Deferred imports: `utils.db`, `llm.factory`, and `utils.log` transitively load clients
 # that read `os.environ` (Supabase URL/keys, LLM provider config). Import them only after
-# the `--prod` / `--publish` bootstrap above so the right DB target and keys are set.
+# the `--staging` bootstrap above so the right DB target and keys are set.
 # noqa: E402 — imports intentionally follow executable env setup; silences ruff/flake8.
 from llm.factory import get_unified_processor  # noqa: E402
 from utils.db import supabase  # noqa: E402
@@ -350,24 +356,20 @@ def main():
                              "Note: post-filter skips may process fewer jobs.")
     parser.add_argument("--job-id", nargs="+", help="Specific job IDs to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't save to database")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "--prod",
-        action="store_true",
-        help="Full prod: .env.production over .env; ENV_MODE=prod (non-local LLM routing)",
+    parser.add_argument(
+        "--env",
+        choices=["local", "staging"],
+        default="local",
+        help="Target environment (default: local)",
     )
-    group.add_argument(
-        "--publish",
+    parser.add_argument(
+        "--staging",
         action="store_true",
-        help="Prod DB creds from .env.production; ENV_MODE=local (Ollama / local Jina)",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument("--verbose", action="store_true", help="Detailed logging")
 
     args = parser.parse_args()
-
-    # Confirmation (run.ts sets PROD_CONFIRMED=1 after its prompt; CI may use CONFIRM_PROD_RUN=YES)
-    if args.prod or args.publish:
-        confirm_prod_run(full_prod=args.prod)
 
     # Process jobs
     result = process_jobs_unified(ProcessingOptions(

@@ -1,20 +1,32 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseScriptConfig } from "./src/script-config";
+import {
+  envHelpLines,
+  loadEnvFiles,
+  parseEnvFlag,
+  type TargetEnv,
+} from "../scripts/parse-env";
 
-const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } =
-  getSupabaseScriptConfig("restore.ts", {
-    urlEnv: "SUPABASE_URL",
-    keyEnvNames: ["SUPABASE_SERVICE_ROLE_KEY"],
-    keyDescription: "local service role key",
-  });
+function parseRestoreArgs(argv: string[]) {
+  const args = argv.filter((a) => a !== "--");
+  if (args.includes("--help") || args.includes("-h")) {
+    console.error(envHelpLines("restore", ["local", "staging"]));
+    process.exit(0);
+  }
+  const env = parseEnvFlag(args, {
+    allow: ["local", "staging"],
+    defaultEnv: "local",
+  }) as TargetEnv;
+  if (env === "prod") {
+    console.error("Error: restore does not support --env prod");
+    process.exit(1);
+  }
+  return env;
+}
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false },
-});
-
-async function clearTable(table: string) {
+async function clearTable(supabase: SupabaseClient, table: string) {
   try {
     const { error } = await supabase
       .from(table)
@@ -26,13 +38,18 @@ async function clearTable(table: string) {
     }
     console.log(`✅ Cleared ${table}`);
     return true;
-  } catch (e: any) {
-    console.log(`Warning: Could not clear ${table}: ${e.message}`);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.log(`Warning: Could not clear ${table}: ${message}`);
     return false;
   }
 }
 
-async function restoreTable(table: string, schema: string = "public") {
+async function restoreTable(
+  supabase: SupabaseClient,
+  table: string,
+  schema: string = "public",
+) {
   const backupFile = path.resolve(
     __dirname,
     "backups",
@@ -51,13 +68,13 @@ async function restoreTable(table: string, schema: string = "public") {
     return;
   }
 
-  const cleared = await clearTable(table);
+  const cleared = await clearTable(supabase, table);
   if (!cleared) {
     console.log(`⚠️  Could not clear ${table}, attempting to insert anyway...`);
   }
 
   const droppedColumns = ["ideal_work_environment"];
-  const sanitizedData = backupData.map((row: any) => {
+  const sanitizedData = backupData.map((row: Record<string, unknown>) => {
     const clean = { ...row };
     for (const col of droppedColumns) delete clean[col];
     return clean;
@@ -100,7 +117,24 @@ async function restoreTable(table: string, schema: string = "public") {
   );
 }
 
-(async () => {
+async function main() {
+  const argv = process.argv.slice(2);
+  const env = parseRestoreArgs(argv);
+  loadEnvFiles(env);
+
+  const { url: supabaseUrl, serviceRoleKey } = getSupabaseScriptConfig(
+    "restore.ts",
+    {
+      urlEnv: "SUPABASE_URL",
+      keyEnvNames: ["SUPABASE_SERVICE_ROLE_KEY"],
+      keyDescription: `${env} service role key`,
+    },
+  );
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+
   const backupDir = path.resolve(__dirname, "backups");
   if (!fs.existsSync(backupDir)) {
     console.error("Backups directory not found.");
@@ -111,7 +145,9 @@ async function restoreTable(table: string, schema: string = "public") {
     .readdirSync(backupDir)
     .filter((f) => f.startsWith("backup_") && f.endsWith(".json"));
 
-  console.log(`Found ${backupFiles.length} backup files to restore...`);
+  console.log(
+    `Found ${backupFiles.length} backup files to restore to ${env}...`,
+  );
 
   const restoreOrder = [
     "organizations",
@@ -125,9 +161,14 @@ async function restoreTable(table: string, schema: string = "public") {
   for (const table of restoreOrder) {
     const backupFile = `backup_public_${table}.json`;
     if (backupFiles.includes(backupFile)) {
-      await restoreTable(table, "public");
+      await restoreTable(supabase, table, "public");
     }
   }
 
   console.log("Restore complete.");
-})();
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
