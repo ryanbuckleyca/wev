@@ -156,6 +156,71 @@ export default function StyleGuidePage() {
         </div>
       </div>
 
+      {/* Logo */}
+      <section id="logo" className="design-section">
+        <div className="design-container">
+          <h2>Logo Usage</h2>
+          <p className="design-section-intro">
+            Our logo represents clarity and connection. Always maintain proper spacing and never
+            distort or alter the colors.
+          </p>
+
+          <div className="design-logo-grid">
+            <div className="design-logo-showcase design-logo-bg-light">
+              <div className="design-logo-placeholder">
+                <Image
+                  src={SITE_CONFIG.logotypeUrl}
+                  alt="wev logo"
+                  width={200}
+                  height={80}
+                  unoptimized
+                  className="wev-logotype"
+                />
+              </div>
+              <div className="design-logo-title">Primary Logotype</div>
+              <p className="design-logo-description">
+                Full logo with brand name for primary applications
+              </p>
+            </div>
+
+            <div className="design-logo-showcase design-logo-bg-light">
+              <div className="design-logo-placeholder">
+                <Image src={LOGO_MARK} alt="wev logo mark" width={120} height={120} />
+              </div>
+              <div className="design-logo-title">Logo Mark</div>
+              <p className="design-logo-description">
+                Standalone icon for compact use (favicon, app icons)
+              </p>
+            </div>
+          </div>
+
+          <h3>Logo Guidelines</h3>
+          <div className="mt-8">
+            <h4>Clear Space</h4>
+            <p className="text-muted-foreground mb-8">
+              Maintain clear space around the logo equal to the height of the 'w'. This ensures
+              visual distinction.
+            </p>
+
+            <h4>Minimum Size</h4>
+            <p className="text-muted-foreground mb-4">
+              <strong>Digital:</strong> 32px height minimum for logo mark, 120px width for logotype
+              <br />
+              <strong>Print:</strong> 0.5 inches height minimum for logo mark, 1.5 inches for
+              logotype
+            </p>
+
+            <h4 className="mt-8">Don'ts</h4>
+            <ul className="text-muted-foreground leading-relaxed ml-6 list-disc space-y-1">
+              <li>Do not alter logo colors outside approved palette</li>
+              <li>Do not distort, rotate, or skew the logo</li>
+              <li>Do not add effects (shadows, outlines, gradients)</li>
+              <li>Do not place on busy backgrounds without sufficient contrast</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       {/* Typography */}
       <section id="typography" className="design-section">
         <div className="design-container">
@@ -662,71 +727,6 @@ export default function StyleGuidePage() {
                 Learn more →
               </a>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Logo */}
-      <section id="logo" className="design-section">
-        <div className="design-container">
-          <h2>Logo Usage</h2>
-          <p className="design-section-intro">
-            Our logo represents clarity and connection. Always maintain proper spacing and never
-            distort or alter the colors.
-          </p>
-
-          <div className="design-logo-grid">
-            <div className="design-logo-showcase design-logo-bg-light">
-              <div className="design-logo-placeholder">
-                <Image
-                  src={SITE_CONFIG.logotypeUrl}
-                  alt="wev logo"
-                  width={200}
-                  height={80}
-                  unoptimized
-                  className="wev-logotype"
-                />
-              </div>
-              <div className="design-logo-title">Primary Logotype</div>
-              <p className="design-logo-description">
-                Full logo with brand name for primary applications
-              </p>
-            </div>
-
-            <div className="design-logo-showcase design-logo-bg-light">
-              <div className="design-logo-placeholder">
-                <Image src={LOGO_MARK} alt="wev logo mark" width={120} height={120} />
-              </div>
-              <div className="design-logo-title">Logo Mark</div>
-              <p className="design-logo-description">
-                Standalone icon for compact use (favicon, app icons)
-              </p>
-            </div>
-          </div>
-
-          <h3>Logo Guidelines</h3>
-          <div className="mt-8">
-            <h4>Clear Space</h4>
-            <p className="text-muted-foreground mb-8">
-              Maintain clear space around the logo equal to the height of the 'w'. This ensures
-              visual distinction.
-            </p>
-
-            <h4>Minimum Size</h4>
-            <p className="text-muted-foreground mb-4">
-              <strong>Digital:</strong> 32px height minimum for logo mark, 120px width for logotype
-              <br />
-              <strong>Print:</strong> 0.5 inches height minimum for logo mark, 1.5 inches for
-              logotype
-            </p>
-
-            <h4 className="mt-8">Don'ts</h4>
-            <ul className="text-muted-foreground leading-relaxed ml-6 list-disc space-y-1">
-              <li>Do not alter logo colors outside approved palette</li>
-              <li>Do not distort, rotate, or skew the logo</li>
-              <li>Do not add effects (shadows, outlines, gradients)</li>
-              <li>Do not place on busy backgrounds without sufficient contrast</li>
-            </ul>
           </div>
         </div>
       </section>
