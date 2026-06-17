@@ -1,7 +1,6 @@
 import os
 import sys
 import traceback
-import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Set
@@ -22,10 +21,6 @@ from utils.env import is_truthy_env
 from utils.log import scraper_log as _log
 from utils.url import add_url_dedup_variants, normalize_listing_url
 
-
-def strip_accents(s: str) -> str:
-    return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('utf-8').lower()
-
 os.environ['PLAYWRIGHT_SYNC_MODE'] = '1'
 
 # Constants for reporting
@@ -44,10 +39,10 @@ class ScraperResults:
 class ScraperOrchestrator:
     """Manages the lifecycle of a scraping session."""
 
-    def __init__(self, dry_run: bool = False, compare_only: bool = False, source_filter: str | None = None):
+    def __init__(self, dry_run: bool = False, compare_only: bool = False, source_slug: str | None = None):
         self.dry_run = dry_run
         self.compare_only = compare_only
-        self.source_filter = source_filter.strip().lower() if source_filter else None
+        self.source_slug = source_slug.strip() if source_slug else None
         self.results = ScraperResults(is_dry_run=dry_run, is_compare_only=compare_only)
         self.existing_urls: Set[str] = set()
         self.source_attempts: Dict[str, int] = {}
@@ -113,21 +108,17 @@ class ScraperOrchestrator:
         if not response.data:
             raise RuntimeError(f"Could not fetch sources: {response}")
         sources = response.data
-        if self.source_filter:
-            filter_norm = strip_accents(self.source_filter)
-            sources = [
-                s for s in sources
-                if strip_accents(s.get("name", "")) == filter_norm
-            ]
+        if self.source_slug:
+            sources = [s for s in sources if s.get("slug") == self.source_slug]
             if not sources:
                 raise RuntimeError(
-                    f"No source found matching '{self.source_filter}'. "
-                    "Use --list-sources to see available names."
+                    f"No source found with slug '{self.source_slug}'. "
+                    "Use --list-sources to see available slugs."
                 )
             if len(sources) > 1:
-                names = ", ".join(s.get("name", "?") for s in sources)
+                slugs = ", ".join(s.get("slug", "?") for s in sources)
                 raise RuntimeError(
-                    f"Multiple sources match '{self.source_filter}': {names}"
+                    f"Multiple sources match slug '{self.source_slug}': {slugs}"
                 )
         _log(f"Found {len(sources)} source(s).")
         return sources
@@ -169,7 +160,7 @@ class ScraperOrchestrator:
 
     def _process_single_source(self, source: Dict[str, Any], max_source_retries: int = 2) -> bool:
         source_name = source.get("name", "Unknown Source")
-        scraper_class = get_scraper_class(source["id"], source_name=source_name)
+        scraper_class = get_scraper_class(source)
 
         if not scraper_class:
             _log(f"Skipping {source_name}: No scraper implementation registered.")
@@ -383,8 +374,8 @@ def parse_args():
     parser.add_argument("--max-jobs", type=int, help="Limit jobs per source")
     parser.add_argument("--headed", action="store_true", help="Show browser window (for debugging)")
     parser.add_argument("--vpn", action="store_true", help="Enable VPN-specific scraper behavior")
-    parser.add_argument("--source", help="Only run the scraper for this source (by name, case-insensitive)")
-    parser.add_argument("--list-sources", action="store_true", help="List all available sources and exit")
+    parser.add_argument("--slug", help="Only run the scraper for this source slug")
+    parser.add_argument("--list-sources", action="store_true", help="List all available source slugs and exit")
     return parser.parse_args()
 
 
@@ -444,13 +435,18 @@ def main():
         sys.exit(2)
 
     if args.list_sources:
-        response = supabase.table("sources").select("name").order("name").execute()
+        response = supabase.table("sources").select("name,slug").order("slug").execute()
         if not response.data:
             print("No sources found.")
         else:
-            print("Available sources:")
+            print("Available source slugs:")
             for s in response.data:
-                print(f"  - {s['name']}")
+                slug = s.get("slug")
+                name = s.get("name", "Unknown Source")
+                if slug:
+                    print(f"  - {slug} ({name})")
+                else:
+                    print(f"  - <missing slug> ({name})")
         sys.exit(0)
 
     if args.prod or args.publish:
@@ -461,7 +457,7 @@ def main():
     orchestrator = ScraperOrchestrator(
         dry_run=args.dry_run or args.compare,
         compare_only=args.compare,
-        source_filter=args.source,
+        source_slug=args.slug,
     )
     orchestrator.run()
 
