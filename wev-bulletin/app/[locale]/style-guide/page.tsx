@@ -16,24 +16,12 @@ export const dynamic = 'force-dynamic';
 const LOGO_MARK =
   'https://teuvfoftdjfsnkkbnzps.supabase.co/storage/v1/object/public/bulletin/wev-logo.png';
 
-// Helper function to convert hex to RGB
+// Convert a #rrggbb hex string to a "r, g, b" string. Returns '' for non-hex input.
 const hexToRgb = (hex: string) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
     : '';
-};
-
-// Helper function to format CSS variable name to readable name
-const formatVarName = (cssVar: string) => {
-  // Extract variable name (remove "var(" and ")" and trim)
-  const varName = cssVar.replace('var(', '').replace(')', '').trim();
-
-  // Remove dashes and convert to Title Case
-  return varName
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join('');
 };
 
 interface Token {
@@ -44,23 +32,10 @@ interface Token {
 }
 
 export default function StyleGuidePage() {
-  const [groupedColors, setGroupedColors] = useState<
-    Record<string, Array<{ name: string; value: string; prefix: string }>>
-  >({});
   const [allTokens, setAllTokens] = useState<Token[]>([]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    // 1. Unified Utility Functions
-    const getCommonPrefix = (varName: string) => {
-      const parts = varName.split('-');
-      if (parts.length <= 2) return 'Other';
-      return parts
-        .slice(1, 3)
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join('');
-    };
 
     const formatTokenName = (cssVar: string) =>
       cssVar
@@ -69,9 +44,7 @@ export default function StyleGuidePage() {
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join('');
 
-    // 2. Single-pass Computed Style extraction
     const style = getComputedStyle(document.documentElement);
-    const colorVars: Array<{ name: string; value: string; prefix: string }> = [];
     const tokens: Token[] = [];
 
     const colorFilterKeywords = [
@@ -100,15 +73,12 @@ export default function StyleGuidePage() {
       const value = style.getPropertyValue(prop).trim();
       if (!value || value === 'initial' || value === 'inherit') continue;
 
-      const prefix = getCommonPrefix(prop);
-
       // Check for colors (hex, rgb, hsl) or matching keywords
       const isColorValue =
         value.startsWith('#') || value.startsWith('rgb') || value.startsWith('hsl');
       const matchesKeyword = colorFilterKeywords.some((kw) => prop.includes(kw));
 
       if (isColorValue || matchesKeyword) {
-        colorVars.push({ name: prop, value, prefix });
         tokens.push({
           name: formatTokenName(prop),
           value: `var(${prop})`,
@@ -118,20 +88,9 @@ export default function StyleGuidePage() {
       }
     }
 
-    // 3. Grouping and Async State Update
-    const groups = colorVars.reduce(
-      (acc, cv) => {
-        if (!acc[cv.prefix]) acc[cv.prefix] = [];
-        acc[cv.prefix].push(cv);
-        return acc;
-      },
-      {} as Record<string, typeof colorVars>,
-    );
-
     // Use requestAnimationFrame to decouple state update from the effect block,
     // avoiding synchronous cascading renders and satisfying the linter.
     requestAnimationFrame(() => {
-      setGroupedColors(groups);
       setAllTokens(tokens);
     });
   }, []);
@@ -152,9 +111,74 @@ export default function StyleGuidePage() {
             />
           </div>
           <p className="design-subtitle">Style Guide</p>
-          <p className="design-version">Version 1.0 • February 2026</p>
+          <p className="design-version">Version 1.2 • June 2026</p>
         </div>
       </div>
+
+      {/* Logo */}
+      <section id="logo" className="design-section">
+        <div className="design-container">
+          <h2>Logo Usage</h2>
+          <p className="design-section-intro">
+            Our logo represents clarity and connection. Always maintain proper spacing and never
+            distort or alter the colors.
+          </p>
+
+          <div className="design-logo-grid">
+            <div className="design-logo-showcase design-logo-bg-light">
+              <div className="design-logo-placeholder">
+                <Image
+                  src={SITE_CONFIG.logotypeUrl}
+                  alt="wev logo"
+                  width={200}
+                  height={80}
+                  unoptimized
+                  className="wev-logotype"
+                />
+              </div>
+              <div className="design-logo-title">Primary Logotype</div>
+              <p className="design-logo-description">
+                Full logo with brand name for primary applications
+              </p>
+            </div>
+
+            <div className="design-logo-showcase design-logo-bg-light">
+              <div className="design-logo-placeholder">
+                <Image src={LOGO_MARK} alt="wev logo mark" width={120} height={120} />
+              </div>
+              <div className="design-logo-title">Logo Mark</div>
+              <p className="design-logo-description">
+                Standalone icon for compact use (favicon, app icons)
+              </p>
+            </div>
+          </div>
+
+          <h3>Logo Guidelines</h3>
+          <div className="mt-8">
+            <h4>Clear Space</h4>
+            <p className="text-muted-foreground mb-8">
+              Maintain clear space around the logo equal to the height of the 'w'. This ensures
+              visual distinction.
+            </p>
+
+            <h4>Minimum Size</h4>
+            <p className="text-muted-foreground mb-4">
+              <strong>Digital:</strong> 32px height minimum for logo mark, 120px width for logotype
+              <br />
+              <strong>Print:</strong> 0.5 inches height minimum for logo mark, 1.5 inches for
+              logotype
+            </p>
+
+            <h4 className="mt-8">Don'ts</h4>
+            <ul className="text-muted-foreground leading-relaxed ml-6 list-disc space-y-1">
+              <li>Do not alter logo colors outside approved palette</li>
+              <li>Do not distort, rotate, or skew the logo</li>
+              <li>Do not add effects (shadows, outlines, gradients)</li>
+              <li>Do not place on busy backgrounds without sufficient contrast</li>
+            </ul>
+          </div>
+        </div>
+      </section>
 
       {/* Typography */}
       <section id="typography" className="design-section">
@@ -164,6 +188,57 @@ export default function StyleGuidePage() {
             Lexend Deca is our primary typeface. Designed specifically for readability and
             accessibility, it ensures our content is clear and approachable across all platforms.
           </p>
+
+          <h3>Font Family</h3>
+          <div className="design-font-specimen">
+            <div className="design-font-name">Lexend Deca</div>
+            <div className="design-font-meta">
+              Sans-serif • Available on{' '}
+              <a
+                href="https://fonts.google.com/specimen/Lexend+Deca"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="design-accent-link"
+              >
+                Google Fonts
+              </a>
+            </div>
+            <div className="design-font-charset">
+              ABCDEFGHIJKLMNOPQRSTUVWXYZ
+              <br />
+              abcdefghijklmnopqrstuvwxyz
+              <br />
+              0123456789 !@#$%&amp;*()
+            </div>
+          </div>
+
+          <h3>Weights</h3>
+          <div className="design-weight-grid">
+            <div className="design-weight-example">
+              <div className="design-weight-label">Regular / 400</div>
+              <div className="design-weight-sample" style={{ fontWeight: 400 }}>
+                The quick brown fox jumps over the lazy dog
+              </div>
+            </div>
+            <div className="design-weight-example">
+              <div className="design-weight-label">Medium / 500</div>
+              <div className="design-weight-sample" style={{ fontWeight: 500 }}>
+                The quick brown fox jumps over the lazy dog
+              </div>
+            </div>
+            <div className="design-weight-example">
+              <div className="design-weight-label">Semi-Bold / 600</div>
+              <div className="design-weight-sample" style={{ fontWeight: 600 }}>
+                The quick brown fox jumps over the lazy dog
+              </div>
+            </div>
+            <div className="design-weight-example">
+              <div className="design-weight-label">Bold / 700</div>
+              <div className="design-weight-sample" style={{ fontWeight: 700 }}>
+                The quick brown fox jumps over the lazy dog
+              </div>
+            </div>
+          </div>
 
           <h3>Type Scale</h3>
           <div className="design-type-scale">
@@ -209,27 +284,153 @@ export default function StyleGuidePage() {
         </div>
       </section>
 
-      {/* Color Palette */}
-      <section id="colors" className="design-section">
+      {/* Design Tokens / Color Palette */}
+      <section id="tokens" className="design-section">
         <div className="design-container">
-          <h2>Color Palette</h2>
+          <h2>Color Tokens</h2>
           <p className="design-section-intro">
-            Our color system balances warmth and professionalism. All colors are tested for WCAG 2.1
-            AA compliance to ensure accessibility across all use cases.
+            Our color system balances warmth and professionalism, and every value is exposed as a
+            design token for consistent implementation across platforms and frameworks. All colors
+            are tested for WCAG 2.1 AA compliance.
           </p>
 
-          {Object.entries(groupedColors)
-            .sort(([a], [b]) => a.localeCompare(b)) // Sort alphabetically
-            .map(([prefix, colors]) => (
-              <div key={prefix}>
-                <h3>{prefix} Colors</h3>
-                <div className="design-color-grid">
-                  {colors.map((colorVar: { name: string; value: string }) => (
-                    <ColorCard key={colorVar.name} swatch={`var(${colorVar.name})`} tag={prefix} />
-                  ))}
-                </div>
-              </div>
-            ))}
+          <p className="design-token-hint">Click any value to copy it to your clipboard.</p>
+          <ColorTokenSheet tokens={allTokens} />
+        </div>
+      </section>
+
+      {/* Accessibility */}
+      <section id="accessibility" className="design-section">
+        <div className="design-container">
+          <h2>Accessibility</h2>
+          <p className="design-section-intro">
+            All color combinations meet WCAG 2.1 Level AA standards. We prioritize inclusive design
+            to ensure our products are accessible to everyone.
+          </p>
+
+          <h3>Contrast Test Results</h3>
+          <div className="design-contrast-grid">
+            <ContrastCard
+              bg="#FEFBF7"
+              color="#875C74"
+              text="Dusty Lavender on Porcelain"
+              ratio="5.8:1"
+              badge="✓ AA Pass"
+            />
+            <ContrastCard
+              bg="#5B8C8A"
+              color="#ffffff"
+              text="White on Muted Teal"
+              ratio="5.1:1"
+              badge="✓ AA Pass"
+            />
+            <ContrastCard
+              bg="#FEFBF7"
+              color="#2a2a2a"
+              text="Charcoal on Porcelain"
+              ratio="13.5:1"
+              badge="✓ AAA Pass"
+            />
+            <ContrastCard
+              bg="#C5EBC3"
+              color="#2a2a2a"
+              text="Text on Tea Green"
+              ratio="8.2:1"
+              badge="✓ AAA Pass"
+            />
+            <ContrastCard
+              bg="#F5DEB3"
+              color="#2a2a2a"
+              text="Text on Warning Tint"
+              ratio="6.4:1"
+              badge="✓ AA Pass"
+            />
+            <ContrastCard
+              bg="#F2D0CC"
+              color="#2a2a2a"
+              text="Text on Alert Tint"
+              ratio="5.9:1"
+              badge="✓ AA Pass"
+            />
+          </div>
+
+          <h3 className="mt-16">Dark Mode Contrast Tests</h3>
+          <div className="design-contrast-grid">
+            <ContrastCard
+              bg="#1E1E1E"
+              color="#B07D96"
+              text="Dusty Lavender Light on Dark"
+              ratio="7.2:1"
+              badge="✓ AAA Pass"
+            />
+            <ContrastCard
+              bg="#1E1E1E"
+              color="#5B8C8A"
+              text="Muted Teal on Dark"
+              ratio="6.8:1"
+              badge="✓ AA Pass"
+            />
+            <ContrastCard
+              bg="#1E1E1E"
+              color="#E8E6E2"
+              text="White on Charcoal Deep"
+              ratio="16.1:1"
+              badge="✓ AAA Pass"
+            />
+            <ContrastCard
+              bg="#5B8C8A"
+              color="#1E1E1E"
+              text="Dark on Muted Teal (CTA)"
+              ratio="5.9:1"
+              badge="✓ AA Pass"
+            />
+            <ContrastCard
+              bg="#1A3320"
+              color="#6FD68A"
+              text="Success Text on Tint"
+              ratio="7.8:1"
+              badge="✓ AAA Pass"
+            />
+            <ContrastCard
+              bg="#3D1F1C"
+              color="#E8857A"
+              text="Alert Text on Tint"
+              ratio="6.9:1"
+              badge="✓ AA Pass"
+            />
+            <ContrastCard
+              bg="#3A2E0A"
+              color="#E8B53A"
+              text="Warning Text on Tint"
+              ratio="8.2:1"
+              badge="✓ AAA Pass"
+            />
+            <ContrastCard
+              bg="#1C2E3D"
+              color="#7AB4D9"
+              text="Info Text on Tint"
+              ratio="7.5:1"
+              badge="✓ AAA Pass"
+            />
+            <ContrastCard
+              bg="#1E1E1E"
+              color="#A8A5A0"
+              text="Secondary Text on Dark"
+              ratio="9.8:1"
+              badge="✓ AAA Pass"
+            />
+          </div>
+
+          <h3>Best Practices</h3>
+          <ul className="mt-8 ml-6 list-disc flex flex-col gap-4 text-muted-foreground leading-relaxed">
+            <li>Test all color combinations with contrast checking tools before implementation</li>
+            <li>Never rely on color alone to convey information—use icons, labels, or patterns</li>
+            <li>Ensure interactive elements have minimum target size of 44×44px</li>
+            <li>Maintain visible focus indicators on all interactive elements</li>
+            <li>Use Lexend Deca font for improved readability for users with dyslexia</li>
+            <li>Provide alternative text for all images and icons</li>
+            <li>Ensure sufficient line height (1.5× minimum) for readability</li>
+          </ul>
         </div>
       </section>
 
@@ -626,325 +827,11 @@ export default function StyleGuidePage() {
         </div>
       </section>
 
-      {/* Brand Accent */}
-      <section id="accent" className="design-section">
-        <div className="design-container">
-          <h2>Brand Accent — Dusty Lavender</h2>
-          <p className="design-section-intro">
-            Our signature Dusty Lavender color draws attention to key moments and new features. Use
-            it sparingly for maximum impact.
-          </p>
-
-          <div className="design-accent-grid">
-            <div className="design-accent-card">
-              <div className="design-accent-badge">New Feature</div>
-              <h5>Enhanced Analytics</h5>
-              <p>Get deeper insights into your data with our new analytics dashboard.</p>
-              <a href="#" className="design-accent-link">
-                View Details →
-              </a>
-            </div>
-
-            <div className="design-accent-card">
-              <div className="design-accent-badge">Popular</div>
-              <h5>Team Collaboration</h5>
-              <p>Work together seamlessly with real-time collaboration tools.</p>
-              <a href="#" className="design-accent-link">
-                Read more →
-              </a>
-            </div>
-
-            <div className="design-accent-card">
-              <div className="design-accent-badge">Featured</div>
-              <h5>API Integration</h5>
-              <p>Connect your favorite tools with our powerful API.</p>
-              <a href="#" className="design-accent-link">
-                Learn more →
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Logo */}
-      <section id="logo" className="design-section">
-        <div className="design-container">
-          <h2>Logo Usage</h2>
-          <p className="design-section-intro">
-            Our logo represents clarity and connection. Always maintain proper spacing and never
-            distort or alter the colors.
-          </p>
-
-          <div className="design-logo-grid">
-            <div className="design-logo-showcase design-logo-bg-light">
-              <div className="design-logo-placeholder">
-                <Image
-                  src={SITE_CONFIG.logotypeUrl}
-                  alt="wev logo"
-                  width={200}
-                  height={80}
-                  unoptimized
-                  className="wev-logotype"
-                />
-              </div>
-              <div className="design-logo-title">Primary Logotype</div>
-              <p className="design-logo-description">
-                Full logo with brand name for primary applications
-              </p>
-            </div>
-
-            <div className="design-logo-showcase design-logo-bg-light">
-              <div className="design-logo-placeholder">
-                <Image src={LOGO_MARK} alt="wev logo mark" width={120} height={120} />
-              </div>
-              <div className="design-logo-title">Logo Mark</div>
-              <p className="design-logo-description">
-                Standalone icon for compact use (favicon, app icons)
-              </p>
-            </div>
-          </div>
-
-          <h3>Logo Guidelines</h3>
-          <div className="mt-8">
-            <h4>Clear Space</h4>
-            <p className="text-muted-foreground mb-8">
-              Maintain clear space around the logo equal to the height of the 'w'. This ensures
-              visual distinction.
-            </p>
-
-            <h4>Minimum Size</h4>
-            <p className="text-muted-foreground mb-4">
-              <strong>Digital:</strong> 32px height minimum for logo mark, 120px width for logotype
-              <br />
-              <strong>Print:</strong> 0.5 inches height minimum for logo mark, 1.5 inches for
-              logotype
-            </p>
-
-            <h4 className="mt-8">Don'ts</h4>
-            <ul className="text-muted-foreground leading-relaxed ml-6 list-disc space-y-1">
-              <li>Do not alter logo colors outside approved palette</li>
-              <li>Do not distort, rotate, or skew the logo</li>
-              <li>Do not add effects (shadows, outlines, gradients)</li>
-              <li>Do not place on busy backgrounds without sufficient contrast</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* Dark Mode colors */}
-      <section id="dark-mode" className="design-section">
-        <div className="design-container">
-          <h2>Dark Mode</h2>
-          <p className="design-section-intro">
-            Our dark mode palette maintains brand identity while optimizing for low-light
-            environments. All colors meet WCAG 2.1 Level AA contrast requirements for accessibility.
-          </p>
-        </div>
-      </section>
-
-      {/* Accessibility */}
-      <section id="accessibility" className="design-section">
-        <div className="design-container">
-          <h2>Accessibility</h2>
-          <p className="design-section-intro">
-            All color combinations meet WCAG 2.1 Level AA standards. We prioritize inclusive design
-            to ensure our products are accessible to everyone.
-          </p>
-
-          <h3>Contrast Test Results</h3>
-          <div className="design-contrast-grid">
-            <ContrastCard
-              bg="#FEFBF7"
-              color="#875C74"
-              text="Dusty Lavender on Porcelain"
-              ratio="5.8:1"
-              badge="✓ AA Pass"
-            />
-            <ContrastCard
-              bg="#5B8C8A"
-              color="#ffffff"
-              text="White on Muted Teal"
-              ratio="5.1:1"
-              badge="✓ AA Pass"
-            />
-            <ContrastCard
-              bg="#FEFBF7"
-              color="#2a2a2a"
-              text="Charcoal on Porcelain"
-              ratio="13.5:1"
-              badge="✓ AAA Pass"
-            />
-            <ContrastCard
-              bg="#C5EBC3"
-              color="#2a2a2a"
-              text="Text on Tea Green"
-              ratio="8.2:1"
-              badge="✓ AAA Pass"
-            />
-            <ContrastCard
-              bg="#F5DEB3"
-              color="#2a2a2a"
-              text="Text on Warning Tint"
-              ratio="6.4:1"
-              badge="✓ AA Pass"
-            />
-            <ContrastCard
-              bg="#F2D0CC"
-              color="#2a2a2a"
-              text="Text on Alert Tint"
-              ratio="5.9:1"
-              badge="✓ AA Pass"
-            />
-          </div>
-
-          <h3 className="mt-16">Dark Mode Contrast Tests</h3>
-          <div className="design-contrast-grid">
-            <ContrastCard
-              bg="#1E1E1E"
-              color="#B07D96"
-              text="Dusty Lavender Light on Dark"
-              ratio="7.2:1"
-              badge="✓ AAA Pass"
-            />
-            <ContrastCard
-              bg="#1E1E1E"
-              color="#5B8C8A"
-              text="Muted Teal on Dark"
-              ratio="6.8:1"
-              badge="✓ AA Pass"
-            />
-            <ContrastCard
-              bg="#1E1E1E"
-              color="#E8E6E2"
-              text="White on Charcoal Deep"
-              ratio="16.1:1"
-              badge="✓ AAA Pass"
-            />
-            <ContrastCard
-              bg="#5B8C8A"
-              color="#1E1E1E"
-              text="Dark on Muted Teal (CTA)"
-              ratio="5.9:1"
-              badge="✓ AA Pass"
-            />
-            <ContrastCard
-              bg="#1A3320"
-              color="#6FD68A"
-              text="Success Text on Tint"
-              ratio="7.8:1"
-              badge="✓ AAA Pass"
-            />
-            <ContrastCard
-              bg="#3D1F1C"
-              color="#E8857A"
-              text="Alert Text on Tint"
-              ratio="6.9:1"
-              badge="✓ AA Pass"
-            />
-            <ContrastCard
-              bg="#3A2E0A"
-              color="#E8B53A"
-              text="Warning Text on Tint"
-              ratio="8.2:1"
-              badge="✓ AAA Pass"
-            />
-            <ContrastCard
-              bg="#1C2E3D"
-              color="#7AB4D9"
-              text="Info Text on Tint"
-              ratio="7.5:1"
-              badge="✓ AAA Pass"
-            />
-            <ContrastCard
-              bg="#1E1E1E"
-              color="#A8A5A0"
-              text="Secondary Text on Dark"
-              ratio="9.8:1"
-              badge="✓ AAA Pass"
-            />
-          </div>
-
-          <h3>Best Practices</h3>
-          <ul className="mt-8 ml-6 list-disc flex flex-col gap-4 text-muted-foreground leading-relaxed">
-            <li>Test all color combinations with contrast checking tools before implementation</li>
-            <li>Never rely on color alone to convey information—use icons, labels, or patterns</li>
-            <li>Ensure interactive elements have minimum target size of 44×44px</li>
-            <li>Maintain visible focus indicators on all interactive elements</li>
-            <li>Use Lexend Deca font for improved readability for users with dyslexia</li>
-            <li>Provide alternative text for all images and icons</li>
-            <li>Ensure sufficient line height (1.5× minimum) for readability</li>
-          </ul>
-        </div>
-      </section>
-
-      {/* Design Tokens */}
-      <section id="tokens" className="design-section">
-        <div className="design-container">
-          <h2>Design Tokens</h2>
-          <p className="design-section-intro">
-            Use these tokens for consistent implementation across all platforms and frameworks.
-          </p>
-
-          <div className="design-token-sheet">
-            {(() => {
-              // Group tokens by category for better organization
-              const tokenCategories = allTokens.reduce(
-                (categories: Record<string, Token[]>, token: Token) => {
-                  let category = 'Other';
-                  if (
-                    token.name.includes('Bg') ||
-                    token.name.includes('Surface') ||
-                    token.name.includes('Border')
-                  ) {
-                    category = 'Background & Surface';
-                  } else if (token.name.includes('Text')) {
-                    category = 'Text Colors';
-                  } else if (token.name.includes('Primary') || token.name.includes('Accent')) {
-                    category = 'Brand Colors';
-                  } else if (
-                    token.name.includes('Success') ||
-                    token.name.includes('Alert') ||
-                    token.name.includes('Warn') ||
-                    token.name.includes('Info')
-                  ) {
-                    category = 'Semantic Colors';
-                  }
-
-                  if (!categories[category]) {
-                    categories[category] = [];
-                  }
-                  categories[category].push(token);
-                  return categories;
-                },
-                {} as Record<string, Token[]>,
-              );
-
-              return Object.entries(tokenCategories)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([category, tokens]) => (
-                  <div key={category} className="design-token-category">
-                    <div className="design-token-category-title">{category}</div>
-                    {tokens.map((token) => (
-                      <TokenRow
-                        key={token.name}
-                        name={token.name}
-                        value={token.value}
-                        swatch={token.swatch}
-                        border={token.border}
-                      />
-                    ))}
-                  </div>
-                ));
-            })()}
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
       <section id="footer" className="design-footer design-section">
         <div className="design-container">
-          <p>wev Style Guide • Version 1.0 • February 2026</p>
-          <p>For questions about brand implementation, contact the design team</p>
+          <p>wev Style Guide • Version 1.2 • June 2026</p>
+          <p>For questions about brand implementation, contact design@wevchange.org</p>
           <p className="mt-4">
             <Link
               href="/"
@@ -957,51 +844,6 @@ export default function StyleGuidePage() {
         </div>
       </section>
     </>
-  );
-}
-
-function ColorCard({ swatch, tag }: { swatch: string; tag: string }) {
-  const [colorData, setColorData] = useState({
-    hex: '',
-    rgb: '',
-  });
-
-  useEffect(() => {
-    // Extract CSS variable name from swatch string
-    const cssVarName = swatch.replace('var(', '').replace(')', '').trim();
-
-    // Get actual CSS variable value
-    const value = getComputedStyle(document.documentElement).getPropertyValue(cssVarName).trim();
-
-    setTimeout(
-      () =>
-        setColorData({
-          hex: value,
-          rgb: hexToRgb(value),
-        }),
-      0,
-    );
-  }, [swatch]);
-
-  // Auto-generate name from CSS variable
-  const name = formatVarName(swatch);
-
-  return (
-    <div className="design-color-card">
-      <div className="design-color-swatch" style={{ background: swatch }} />
-      <div className="design-color-info">
-        <div className="design-color-name">{name}</div>
-        <div className="design-color-values">
-          <div className="design-color-value">
-            <span>HEX</span> <strong>{colorData.hex}</strong>
-          </div>
-          <div className="design-color-value">
-            <span>RGB</span> <strong>{colorData.rgb}</strong>
-          </div>
-        </div>
-        <div className="design-usage-tag">{tag}</div>
-      </div>
-    </div>
   );
 }
 
@@ -1031,6 +873,90 @@ function ContrastCard({
   );
 }
 
+function ColorTokenSheet({ tokens }: { tokens: Token[] }) {
+  const [showAll, setShowAll] = useState(false);
+
+  const tokenCategories = tokens.reduce(
+    (categories: Record<string, Token[]>, token: Token) => {
+      let category = 'Other';
+      if (
+        token.name.includes('Bg') ||
+        token.name.includes('Surface') ||
+        token.name.includes('Border')
+      ) {
+        category = 'Background & Surface';
+      } else if (token.name.includes('Text')) {
+        category = 'Text Colors';
+      } else if (token.name.includes('Primary') || token.name.includes('Accent')) {
+        category = 'Brand Colors';
+      } else if (
+        token.name.includes('Success') ||
+        token.name.includes('Alert') ||
+        token.name.includes('Warn') ||
+        token.name.includes('Info')
+      ) {
+        category = 'Semantic Colors';
+      }
+
+      if (!categories[category]) {
+        categories[category] = [];
+      }
+      categories[category].push(token);
+      return categories;
+    },
+    {} as Record<string, Token[]>,
+  );
+
+  const renderCategory = (category: string, categoryTokens: Token[]) => (
+    <div key={category} className="design-token-category">
+      <div className="design-token-category-title">{category}</div>
+      <div className="design-token-row design-token-head">
+        <span>Preview</span>
+        <span>Token</span>
+        <span>HEX</span>
+        <span>RGB</span>
+        <span>Variable</span>
+      </div>
+      {categoryTokens.map((token) => (
+        <TokenRow
+          key={token.name}
+          name={token.name}
+          value={token.value}
+          swatch={token.swatch}
+          border={token.border}
+        />
+      ))}
+    </div>
+  );
+
+  const brandColors = tokenCategories['Brand Colors'];
+  const otherCategories = Object.entries(tokenCategories)
+    .filter(([category]) => category !== 'Brand Colors')
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  return (
+    <>
+      <div className="design-token-sheet">
+        {brandColors && renderCategory('Brand Colors', brandColors)}
+        {showAll &&
+          otherCategories.map(([category, categoryTokens]) =>
+            renderCategory(category, categoryTokens),
+          )}
+      </div>
+      {otherCategories.length > 0 && (
+        <button
+          type="button"
+          className="design-token-toggle"
+          onClick={() => setShowAll((prev) => !prev)}
+          aria-expanded={showAll}
+        >
+          {showAll ? 'Show less' : 'Show all color tokens'}
+        </button>
+      )}
+    </>
+  );
+}
+
 function TokenRow({
   name,
   value,
@@ -1042,10 +968,28 @@ function TokenRow({
   swatch: string;
   border?: boolean;
 }) {
+  const [hex, setHex] = useState('');
+  const [rgb, setRgb] = useState('');
+
+  useEffect(() => {
+    const cssVarName = value.replace('var(', '').replace(')', '').trim();
+    const resolved = getComputedStyle(document.documentElement).getPropertyValue(cssVarName).trim();
+    setHex(resolved);
+    setRgb(resolved.startsWith('#') ? hexToRgb(resolved) : '');
+  }, [value]);
+
+  const copy = (text: string, label: string) => {
+    if (!text || !navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(
+      () => notify.success(`Copied ${label}: ${text}`),
+      () => notify.error('Failed to copy to clipboard'),
+    );
+  };
+
+  const rgbValue = rgb ? `rgb(${rgb})` : '';
+
   return (
     <div className="design-token-row">
-      <div className="design-token-name">{name}</div>
-      <div className="design-token-value">{value}</div>
       <div
         className="design-token-swatch"
         style={{
@@ -1053,6 +997,26 @@ function TokenRow({
           ...(border ? { border: '2px solid #c8c5bf' } : {}),
         }}
       />
+      <div className="design-token-name">{name}</div>
+      <button
+        type="button"
+        className="design-token-copy"
+        onClick={() => copy(hex, 'HEX')}
+        disabled={!hex}
+      >
+        {hex || '—'}
+      </button>
+      <button
+        type="button"
+        className="design-token-copy"
+        onClick={() => copy(rgbValue, 'RGB')}
+        disabled={!rgbValue}
+      >
+        {rgbValue || '—'}
+      </button>
+      <button type="button" className="design-token-copy" onClick={() => copy(value, 'token')}>
+        {value}
+      </button>
     </div>
   );
 }
