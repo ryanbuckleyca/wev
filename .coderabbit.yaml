@@ -1,5 +1,8 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 reviews:
+  # Don't review PRs automatically; trigger manually with "@coderabbitai review".
+  auto_review:
+    enabled: false
   tools:
     eslint:
       # ESLint runs via Trunk (.trunk/trunk.yaml) using wev-bulletin/eslint.config.mjs.
