@@ -138,16 +138,25 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(mockRange).toHaveBeenCalledWith(49_950, 49_999);
   });
 
-  it('uses locale-aware websearch FTS and skips empty search text', async () => {
-    // Multi-word query uses websearch
+  it('uses locale-specific FTS columns and never legacy fts', async () => {
+    // French locale uses fts_fr with websearch for multi-word queries
     await GET(new Request('http://localhost/api/bulletin?locale=fr&q=  economie sociale  '));
     expect(mockTextSearch).toHaveBeenCalledWith('fts_fr', 'economie sociale', {
       type: 'websearch',
     });
+    expect(mockTextSearch).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(Object));
+    expect(mockFilter).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(String));
 
-    // Single word query uses prefix matching (fts operator via .filter)
+    vi.clearAllMocks();
+    mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
+    mockResolveSkillLabels.mockResolvedValue(new Map());
+    mockRange.mockResolvedValue({ data: [], count: 0, error: null });
+
+    // English locale uses fts_en with prefix matching for single-word queries
     await GET(new Request('http://localhost/api/bulletin?locale=en&q=part'));
     expect(mockFilter).toHaveBeenCalledWith('fts_en', 'fts', 'part:*');
+    expect(mockTextSearch).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(Object));
+    expect(mockFilter).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(String));
 
     vi.clearAllMocks();
     mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
@@ -159,24 +168,20 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(mockFilter).not.toHaveBeenCalled();
   });
 
-  it('falls back to legacy fts column when locale-aware FTS columns are unavailable', async () => {
-    mockRange
-      .mockResolvedValueOnce({
-        data: null,
-        count: null,
-        error: { code: '42703', message: 'undefined column' },
-      })
-      .mockResolvedValueOnce({ data: [], count: 0, error: null });
-
-    await GET(new Request('http://localhost/api/bulletin?locale=en&q=Community Builder 25'));
-
-    // Called for both jobs query and filter options query
-    expect(mockTextSearch).toHaveBeenCalledWith('fts_en', 'Community Builder 25', {
-      type: 'websearch',
+  it('returns 500 with migration guidance when locale FTS columns are missing', async () => {
+    mockRange.mockResolvedValue({
+      data: null,
+      count: null,
+      error: { code: '42703', message: 'column fts_en does not exist' },
     });
-    expect(mockTextSearch).toHaveBeenCalledWith('fts', 'Community Builder 25', {
-      type: 'websearch',
-    });
+
+    const response = await GET(new Request('http://localhost/api/bulletin?locale=en&q=engineer'));
+    expect(response.status).toBe(500);
+
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toContain('locale-aware FTS columns');
+    expect(body.error).toContain('20260419160000_add_locale_aware_job_fts.sql');
+    expect(mockTextSearch).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(Object));
   });
 
   it('translates sort and filters into query-chain calls', async () => {
