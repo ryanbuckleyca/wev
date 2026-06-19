@@ -41,7 +41,7 @@ describe('VALUES_LIST', () => {
 describe('getValueDefinition', () => {
   it('returns the correct definition for a known value', () => {
     const def = getValueDefinition('Community');
-    expect(def.description).toContain('neighbors');
+    expect(def.description).toContain('impact');
   });
 
   it('returns a default definition for an unknown value', () => {
@@ -93,8 +93,8 @@ describe('VALUES_LIST spot-checks', () => {
 });
 
 describe('VALUES_DICTIONARY spot-checks', () => {
-  it('Advancement description contains "get ahead rapidly"', () => {
-    expect(VALUES_DICTIONARY['Advancement'].description).toContain('get ahead rapidly');
+  it('Advancement description contains "Growth"', () => {
+    expect(VALUES_DICTIONARY['Advancement'].description).toContain('Growth');
   });
 
   it('Adventure exists (new value)', () => {
