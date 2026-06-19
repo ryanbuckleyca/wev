@@ -31,7 +31,7 @@
     "cleanup:duplicates": "npx tsx supabase/cleanup-duplicates.ts",
     "coverage:guidelines": "npm run test:coverage:bulletin && node scripts/generate-scraper-coverage.cjs && node scripts/check-testing-guidelines-coverage.cjs",
     "coverage:guidelines:strict": "npm run test:coverage:bulletin && node scripts/generate-scraper-coverage.cjs && node scripts/check-testing-guidelines-coverage.cjs --strict",
-    "dev": "dotenv -e .env -- npm run build -w wev-bulletin",
+    "dev": "npm run dev -w wev-bulletin",
     "help": "node scripts/help.cjs",
     "lint": "trunk check",
     "lint:fix": "trunk fmt && trunk check --fix",
