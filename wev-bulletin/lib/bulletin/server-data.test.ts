@@ -121,6 +121,22 @@ describe('server-data', () => {
       expect(mockQuery.order).toHaveBeenCalled();
     });
 
+    it('throws migration guidance when locale FTS columns are missing during search', async () => {
+      mockQuery.then.mockImplementation((onFulfilled: any) => {
+        return Promise.resolve({
+          data: null,
+          error: { code: '42703', message: 'column fts_en does not exist' },
+        }).then(onFulfilled);
+      });
+
+      await expect(
+        fetchCachedBulletinQueryPayload({
+          ...defaultInput,
+          searchQuery: 'engineer',
+        }),
+      ).rejects.toThrow('20260419160000_add_locale_aware_job_fts.sql');
+    });
+
     it('throws error if jobs fetch fails', async () => {
       mockQuery.then.mockImplementation((onFulfilled: any) => {
         return Promise.resolve({ data: null, error: { message: 'Jobs Error' } }).then(onFulfilled);
@@ -132,7 +148,9 @@ describe('server-data', () => {
       mockQuery.then.mockImplementation((onFulfilled: any) => {
         // Inspect query to target filter options fetch
         const isFilterQuery = mockQuery.select.mock.calls.some((call: any) =>
-          call[0]?.includes('organization, province, municipality, employment_type, source'),
+          call[0]?.includes(
+            'organization, province, municipality, employment_type, source, language',
+          ),
         );
 
         if (isFilterQuery) {
@@ -162,11 +180,12 @@ describe('server-data', () => {
       expect(result).toBe('2024-01-01');
     });
 
-    it('throws error on failure', async () => {
+    it('returns null on failure', async () => {
       mockQuery.then.mockImplementation((onFulfilled: any) => {
         return Promise.resolve({ data: null, error: { message: 'Error' } }).then(onFulfilled);
       });
-      await expect(fetchLastScrapeTime()).rejects.toThrow('Error');
+      const result = await fetchLastScrapeTime();
+      expect(result).toBeNull();
     });
   });
 

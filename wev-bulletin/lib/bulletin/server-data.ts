@@ -8,6 +8,7 @@ import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 
 import { buildFilterOptions, type BulletinFilterOptions } from './filter-options';
+import { throwBulletinQueryError } from './fts-errors';
 import { formatSearchQuery } from './search-utils';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
@@ -42,10 +43,6 @@ type BulletinQueryResult = {
   skillLabels: Record<string, SkillLabel>;
   filterOptions: BulletinFilterOptions;
 };
-
-function isUndefinedColumnError(error: { code?: string } | null): boolean {
-  return error?.code === '42703';
-}
 
 function postedWithinToDays(postedWithin: string): number | null {
   if (postedWithin === '1-week') return 7;
@@ -96,7 +93,6 @@ function applyBulletinFilters(query: any, input: BulletinQueryInput) {
   if (input.munis.length) query = query.in('municipality', input.munis);
   if (input.emps.length) query = query.in('employment_type', input.emps);
   if (input.srcs.length) query = query.in('source', input.srcs);
-  if (input.langs.length) query = query.in('language', input.langs);
   return applyNonFacetFilters(query, input);
 }
 
@@ -107,15 +103,25 @@ async function fetchBulletinFacets(
 ): Promise<BulletinFilterOptions> {
   let query = supabase
     .from('matched_jobs')
-    .select('organization, province, municipality, employment_type, source');
+    .select('organization, province, municipality, employment_type, source, language');
 
   query = applySearchFilter(query, vectorColumn, input.searchQuery);
   query = applyAgeFilter(query, input.postedWithin);
-  query = applyNonFacetFilters(query, input);
 
+  // Facets intentionally do NOT apply non-facet filters (work type, language,
+  // SSE, salary). Facets represent the full universe of options available for
+  // the current search/age window so the user can see and combine them freely.
+  // Applying those filters here would hide options as soon as one is selected,
+  // making multi-select feel broken (e.g. selecting "remote" would remove
+  // "hybrid" from the list).
   // Limit the impact of unbounded facet queries while keeping them relatively accurate
   const { data, error } = await query.limit(5000);
-  if (error) throw new Error(error.message);
+  if (error) {
+    throwBulletinQueryError(error, {
+      searchQuery: input.searchQuery,
+      searchColumn: vectorColumn,
+    });
+  }
 
   return buildFilterOptions((data ?? []) as any[]);
 }
@@ -168,30 +174,19 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     .select('id', { count: 'exact', head: true })
     .gte('date_posted', getBulletinMaxAgeCutoff());
 
-  const [initialJobsResult, filterOptions, scrapeTime, totalAvailableResult] = await Promise.all([
+  const [jobsResult, finalFilterOptions, scrapeTime, totalAvailableResult] = await Promise.all([
     buildJobsQuery(searchColumn).range(start, end),
     fetchBulletinFacets(supabase, searchColumn, input),
     fetchLastScrapeTime(),
     totalAvailableQuery,
   ]);
 
-  let jobsResult = initialJobsResult;
-  let finalFilterOptions = filterOptions;
-
-  if (
-    jobsResult.error &&
-    input.searchQuery.length > 0 &&
-    isUndefinedColumnError(jobsResult.error)
-  ) {
-    const [retryJobs, retryFacets] = await Promise.all([
-      buildJobsQuery('fts').range(start, end),
-      fetchBulletinFacets(supabase, 'fts', input),
-    ]);
-    jobsResult = retryJobs;
-    finalFilterOptions = retryFacets;
+  if (jobsResult.error) {
+    throwBulletinQueryError(jobsResult.error, {
+      searchQuery: input.searchQuery,
+      searchColumn,
+    });
   }
-
-  if (jobsResult.error) throw new Error(jobsResult.error.message);
 
   const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
   const labelMap = await resolveSkillLabels(supabase, jobs, input.locale);
@@ -214,6 +209,7 @@ export async function fetchCachedBulletinQueryPayload(
 
 /**
  * Fetches and returns the last scrape time.
+ * Returns null gracefully if the table is inaccessible (e.g. missing RLS grant in local dev).
  */
 export async function fetchLastScrapeTime(): Promise<string | null> {
   const { data, error } = await supabaseServer
@@ -223,7 +219,11 @@ export async function fetchLastScrapeTime(): Promise<string | null> {
     .limit(1)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Non-fatal — missing scrape time shouldn't break the page
+    console.warn('[fetchLastScrapeTime]', error.message);
+    return null;
+  }
   return data?.run_at ?? null;
 }
 
@@ -247,7 +247,7 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
     totalAvailableQuery,
     supabaseServer
       .from('matched_jobs')
-      .select('organization, province, municipality, employment_type, source')
+      .select('organization, province, municipality, employment_type, source, language')
       .gte('date_posted', postedCutoff)
       .is('is_sse', true)
       .limit(5000),

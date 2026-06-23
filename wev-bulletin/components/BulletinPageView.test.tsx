@@ -166,6 +166,7 @@ function createFilters(): BulletinFilterControls {
     hasAnyFilters: false,
     clearAllFilters: vi.fn(),
     applySuggestedDefaults: vi.fn(),
+    filtersReady: true,
   };
 }
 

@@ -8,7 +8,7 @@ describe('MunicipalityFilterSection', () => {
     selectedMunicipalities: [],
     totalMunicipalities: 2,
     selectedProvinces: [],
-    visibleMunicipalitiesByProvince: {
+    municipalitiesByProvince: {
       Ontario: ['Toronto', 'Ottawa'],
     },
     onToggleMunicipality: vi.fn(),

@@ -38,24 +38,23 @@ export default function WorkSettingSection({
   return (
     <div>
       {/* Work Type Preference */}
-      <div>
+      <div className="space-y-2">
         <FormLabel>{t('profile.workType')}</FormLabel>
-        <p className="text-xs text-muted-foreground mb-2">{t('profile.workTypeHint')}</p>
-        <div className="flex gap-2 flex-wrap">
-          <TogglePillGroup
-            options={WORK_TYPES.map((workType) => ({
-              value: workType,
-              label: workTypeLabels[workType],
-            }))}
-            selectedValues={workTypes}
-            onToggle={(value) => onWorkTypeToggle(value as WorkType)}
-          />
-        </div>
+        <p className="helper-text">{t('profile.workTypeHint')}</p>
+        <TogglePillGroup
+          options={WORK_TYPES.map((workType) => ({
+            value: workType,
+            label: workTypeLabels[workType],
+          }))}
+          selectedValues={workTypes}
+          onToggle={(value) => onWorkTypeToggle(value as WorkType)}
+        />
       </div>
 
       {/* Location autocomplete */}
-      <div className="mt-4">
+      <div className="mt-6 space-y-2">
         <FormLabel htmlFor="location-autocomplete">{t('profile.location')}</FormLabel>
+        <p className="helper-text">{t('profile.locationHint')}</p>
         <LocationAutocomplete
           inputId="location-autocomplete"
           value={
@@ -68,7 +67,6 @@ export default function WorkSettingSection({
               : null
           }
           onChange={onLocationChange}
-          hint={t('profile.locationHint')}
         />
       </div>
 

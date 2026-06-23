@@ -122,7 +122,7 @@ describe('useJobFiltersModel', () => {
       'sse',
       'salary',
       'search',
-      'work-types',
+      'work-type-remote',
       'province-Ontario',
       'municipality-Toronto',
       'organization-Org One',

@@ -215,6 +215,7 @@ export interface Database {
           created_at: string;
           id: string;
           name: string;
+          slug: string | null;
           url: string;
         };
         Insert: {
@@ -222,6 +223,7 @@ export interface Database {
           created_at?: string;
           id: string;
           name: string;
+          slug?: string | null;
           url: string;
         };
         Update: Partial<Database["public"]["Tables"]["sources"]["Insert"]>;

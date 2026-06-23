@@ -6,12 +6,23 @@ interface CollapsibleProps {
   isOpen: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Optional DOM id (e.g. for an `aria-controls` reference). Must be unique per use. */
+  id?: string;
 }
 
-export default function Collapsible({ isOpen, children, className }: CollapsibleProps) {
+export default function Collapsible({ isOpen, children, className, id }: CollapsibleProps) {
   const ref = useRef<HTMLDivElement>(null);
   const hasMountedRef = useRef(false);
+  const [wasEverOpen, setWasEverOpen] = useState(isOpen);
+
   const [maxHeight, setMaxHeight] = useState(() => (isOpen ? 'none' : '0px'));
+  const shouldRenderContent = isOpen || wasEverOpen;
+
+  useEffect(() => {
+    if (isOpen) {
+      setWasEverOpen(true);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const el = ref.current;
@@ -19,6 +30,9 @@ export default function Collapsible({ isOpen, children, className }: Collapsible
 
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
+      if (isOpen) {
+        setMaxHeight('none');
+      }
       return;
     }
 
@@ -45,20 +59,26 @@ export default function Collapsible({ isOpen, children, className }: Collapsible
       cancelAnimationFrame(secondFrame);
       window.clearTimeout(resetTimeout);
     };
-  }, [isOpen]);
+  }, [isOpen, shouldRenderContent]);
 
   return (
     <div
+      id={id}
       style={{
         overflow: 'hidden',
-        maxHeight,
+        maxHeight: shouldRenderContent ? maxHeight : '0px',
         transition: 'max-height 0.3s ease-in-out',
       }}
       aria-hidden={!isOpen}
+      // Closed content stays in the DOM (for animation) but must not be
+      // reachable by keyboard or assistive tech.
+      inert={!isOpen || undefined}
     >
-      <div ref={ref} className={className}>
-        {children}
-      </div>
+      {shouldRenderContent ? (
+        <div ref={ref} className={className}>
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }

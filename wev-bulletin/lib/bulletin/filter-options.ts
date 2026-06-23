@@ -95,34 +95,6 @@ export function toggleMunicipalitySelection(
   return toggleSelection(selectedMunicipalities, municipality);
 }
 
-export function getVisibleMunicipalitiesByProvince({
-  municipalitiesByProvince,
-  selectedProvinces,
-  selectedMunicipalities,
-}: {
-  municipalitiesByProvince: MunicipalitiesByProvince;
-  selectedProvinces: string[];
-  selectedMunicipalities: string[];
-}): MunicipalitiesByProvince {
-  const visible: MunicipalitiesByProvince = {};
-
-  Object.entries(municipalitiesByProvince).forEach(([province, municipalities]) => {
-    const hasSelectedMunicipality = municipalities.some((municipality) =>
-      selectedMunicipalities.includes(municipality),
-    );
-    const shouldShow =
-      selectedProvinces.length === 0 ||
-      selectedProvinces.includes(province) ||
-      hasSelectedMunicipality;
-
-    if (shouldShow) {
-      visible[province] = municipalities;
-    }
-  });
-
-  return visible;
-}
-
 export function getAllMunicipalities(municipalitiesByProvince: MunicipalitiesByProvince): string[] {
   return Object.values(municipalitiesByProvince).flat().sort();
 }

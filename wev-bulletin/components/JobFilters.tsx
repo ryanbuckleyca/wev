@@ -59,13 +59,14 @@ export default function JobFilters(props: JobFiltersProps) {
         activeFilterChips={model.activeFilterChips}
         filteredJobsCount={model.filteredJobsCountResolved}
         totalJobsCount={model.totalJobsCountResolved}
+        loading={props.loading ?? false}
         hasAnyFilters={model.hasAnyFilters}
         isSuggestedDefaults={model.isSuggestedDefaults}
         onClearAllFilters={model.clearAllFilters}
         onApplySuggestedDefaults={model.applySuggestedDefaults}
       />
 
-      <Collapsible isOpen={filtersExpanded} className="p-6">
+      <Collapsible id="job-filters-content" isOpen={filtersExpanded} className="p-6">
         <div data-testid={JOB_BOARD_TEST_IDS.sseToggle}>
           <BooleanFilterRow
             checked={showOnlySse}
@@ -121,8 +122,8 @@ export default function JobFilters(props: JobFiltersProps) {
             onSelect={(value) => model.handleWorkTypeToggle(value as WorkType)}
             helper={
               model.hasProfileWorkTypes ? (
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="helper-text">
                     {isUsingProfileWorkTypes
                       ? t('filters.workType.profileDefault', {
                           types: model.profileWorkTypeLabel,
@@ -157,8 +158,8 @@ export default function JobFilters(props: JobFiltersProps) {
             onSelect={(value) => model.handleLanguageToggle(value)}
             helper={
               model.hasProfileLanguages ? (
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="helper-text">
                     {isUsingProfileLanguages
                       ? t('filters.language.profileDefault', {
                           languages: model.profileLanguageLabel,
@@ -226,7 +227,7 @@ export default function JobFilters(props: JobFiltersProps) {
               selectedMunicipalities={selectedMunicipalities}
               totalMunicipalities={model.allMunicipalities.length}
               selectedProvinces={selectedProvinces}
-              visibleMunicipalitiesByProvince={model.visibleMunicipalitiesByProvince}
+              municipalitiesByProvince={model.municipalitiesByProvince}
               onToggleMunicipality={model.handleMunicipalityToggle}
               noDataMessage={t('filters.municipality.noData')}
               selectProvinceMessage={t('filters.municipality.selectProvince')}
@@ -234,7 +235,7 @@ export default function JobFilters(props: JobFiltersProps) {
             />
             {profileMunicipality && (
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span>
+                <span className="text-muted-foreground">
                   {isUsingProfileLocation
                     ? t('filters.municipality.profileDefault', { city: profileMunicipality })
                     : t('filters.municipality.profileOverride', { city: profileMunicipality })}

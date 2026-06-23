@@ -176,6 +176,7 @@ export default function JobCard({
         isExpanded={isExpanded}
         onExpandToggle={() => setIsExpanded(!isExpanded)}
         summary={getCardSummary()}
+        hasFooter={hasFooter}
         t={t}
       />
 
