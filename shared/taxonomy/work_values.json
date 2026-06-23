@@ -2,6 +2,7 @@
   {
     "label": "Advancement",
     "definition": "Growth into higher responsibility/authority.",
+    "category": "growth",
     "signals": [
       "career path",
       "promotion",
@@ -10,11 +11,13 @@
       "advance your career",
       "progression"
     ],
-    "example": "Example: opportunities to move from specialist to manager over time."
+    "example": "Example: opportunities to move from specialist to manager over time.",
+    "negative_constraint": "the posting explicitly mentions career growth, promotion paths, or progression opportunities"
   },
   {
     "label": "Adventure",
     "definition": "Frequent risk-taking and bold decisions.",
+    "category": "workstyle",
     "signals": [
       "uncharted territory",
       "bold",
@@ -24,11 +27,13 @@
       "risk-taking",
       "daring"
     ],
-    "example": "Example: roles that regularly involve bold decisions or physical risk."
+    "example": "Example: roles that regularly involve bold decisions or physical risk.",
+    "negative_constraint": "the role explicitly involves physical risk, bold decisions, or unconventional environments"
   },
   {
     "label": "Aesthetic",
     "definition": "Beauty, design, and form in work output.",
+    "category": "creativity",
     "signals": [
       "beautiful",
       "polished",
@@ -39,11 +44,13 @@
       "curated",
       "refined design"
     ],
-    "example": "Example: creating polished visual work and improving how things look and feel."
+    "example": "Example: creating polished visual work and improving how things look and feel.",
+    "negative_constraint": "the role explicitly involves beauty, design, visual form, or artistic output (e.g. graphic design, UX, photography)"
   },
   {
     "label": "Affiliation",
     "definition": "Belonging and acceptance in a work group.",
+    "category": "social",
     "signals": [
       "part of something bigger",
       "proud to work at",
@@ -58,6 +65,7 @@
   {
     "label": "Artistic Creativity",
     "definition": "Original artistic work and style.",
+    "category": "creativity",
     "signals": [
       "original artwork",
       "creative direction",
@@ -72,6 +80,7 @@
   {
     "label": "Challenge",
     "definition": "Difficult goals and hard problems.",
+    "category": "growth",
     "signals": [
       "challenging",
       "complex",
@@ -81,11 +90,13 @@
       "push boundaries",
       "stretch goals"
     ],
-    "example": "Example: solving complex problems with no obvious solution path."
+    "example": "Example: solving complex problems with no obvious solution path.",
+    "negative_constraint": "the posting contains at least one of these exact words verbatim: 'challenging', 'challenge', 'complex', 'demanding', 'difficult'. If none appear, do not assign Challenge even if the work sounds hard"
   },
   {
     "label": "Change and Variety",
     "definition": "Frequent task/context variety.",
+    "category": "workstyle",
     "signals": [
       "no two days alike",
       "diverse projects",
@@ -99,6 +110,7 @@
   {
     "label": "Community",
     "definition": "Connection to and impact on community.",
+    "category": "social",
     "signals": [
       "community impact",
       "neighbourhood",
@@ -107,11 +119,13 @@
       "community-driven",
       "grassroots"
     ],
-    "example": "Example: work that builds stronger neighborhoods or community programs."
+    "example": "Example: work that builds stronger neighborhoods or community programs.",
+    "negative_constraint": "the posting explicitly frames community connection, belonging, or local impact as a core feature of the work. Do not use as a default for any role that involves working with people"
   },
   {
     "label": "Competition",
     "definition": "Performance against others and winning.",
+    "category": "rewards",
     "signals": [
       "leaderboard",
       "top performer",
@@ -126,6 +140,7 @@
   {
     "label": "Competence",
     "definition": "Mastery and high-quality execution.",
+    "category": "growth",
     "signals": [
       "leverage your expertise",
       "demonstrate proficiency",
@@ -135,11 +150,13 @@
       "hone your craft",
       "deep skill"
     ],
-    "example": "Example: being known as reliable and technically strong in core tasks."
+    "example": "Example: being known as reliable and technically strong in core tasks.",
+    "negative_constraint": "mastery or high-craft execution is explicitly emphasised"
   },
   {
     "label": "Creative Expression",
     "definition": "Expressing personal voice/ideas in work.",
+    "category": "creativity",
     "signals": [
       "your voice",
       "creative freedom",
@@ -154,6 +171,7 @@
   {
     "label": "Creativity",
     "definition": "Generating novel, useful ideas.",
+    "category": "creativity",
     "signals": [
       "innovative",
       "from scratch",
@@ -170,6 +188,7 @@
   {
     "label": "Decision Making",
     "definition": "Authority to make consequential decisions.",
+    "category": "growth",
     "signals": [
       "own the decision",
       "make the call",
@@ -184,6 +203,7 @@
   {
     "label": "Diversity",
     "definition": "Working with people of diverse backgrounds.",
+    "category": "social",
     "signals": [
       "diverse team",
       "inclusion",
@@ -194,11 +214,13 @@
       "DEI",
       "equal opportunity"
     ],
-    "example": "Example: a team that actively values and reflects diverse perspectives."
+    "example": "Example: a team that actively values and reflects diverse perspectives.",
+    "negative_constraint": "the posting explicitly mentions diverse backgrounds, inclusion, or equity as a feature of the team or organisation"
   },
   {
     "label": "Environment",
     "definition": "Positive effect on the natural environment.",
+    "category": "social",
     "signals": [
       "sustainability",
       "green",
@@ -209,11 +231,13 @@
       "eco-friendly",
       "clean energy"
     ],
-    "example": "Example: projects focused on sustainability or reducing environmental impact."
+    "example": "Example: projects focused on sustainability or reducing environmental impact.",
+    "negative_constraint": "the role explicitly involves sustainability, conservation, or reducing environmental impact"
   },
   {
     "label": "Excitement",
     "definition": "High stimulation and energetic work.",
+    "category": "workstyle",
     "signals": [
       "fast-moving",
       "high-energy",
@@ -228,6 +252,7 @@
   {
     "label": "Family",
     "definition": "Work hours and type fit family responsibilities.",
+    "category": "workstyle",
     "signals": [
       "family-friendly",
       "parental leave",
@@ -236,11 +261,13 @@
       "family first",
       "caregiver support"
     ],
-    "example": "Example: flexible scheduling that accommodates school pickups or family care."
+    "example": "Example: flexible scheduling that accommodates school pickups or family care.",
+    "negative_constraint": "the posting explicitly mentions flexible hours, family-friendly scheduling, or work-life accommodation"
   },
   {
     "label": "Fast Pace",
     "definition": "Rapid cadence and tight timelines.",
+    "category": "workstyle",
     "signals": [
       "fast-paced",
       "tight deadlines",
@@ -255,6 +282,7 @@
   {
     "label": "Financial Gain",
     "definition": "Income upside from performance/growth.",
+    "category": "rewards",
     "signals": [
       "equity",
       "stock options",
@@ -271,6 +299,7 @@
   {
     "label": "Friendship",
     "definition": "Warm personal relationships at work.",
+    "category": "social",
     "signals": [
       "close-knit",
       "social events",
@@ -285,6 +314,7 @@
   {
     "label": "Fun and Humor",
     "definition": "A workplace culture with levity and laughter.",
+    "category": "workstyle",
     "signals": [
       "fun culture",
       "playful",
@@ -294,11 +324,13 @@
       "quirky",
       "humor"
     ],
-    "example": "Example: a team culture that balances hard work with levity and laughter."
+    "example": "Example: a team culture that balances hard work with levity and laughter.",
+    "negative_constraint": "the posting explicitly describes a playful, light-hearted, or humorous team culture"
   },
   {
     "label": "Group & Team",
     "definition": "Collaborative work toward shared team results.",
+    "category": "social",
     "signals": [
       "shared accountability",
       "team-based outcomes",
@@ -308,11 +340,13 @@
       "joint responsibility",
       "team deliverables"
     ],
-    "example": "Example: collaborative sprints where success is shared across the team."
+    "example": "Example: collaborative sprints where success is shared across the team.",
+    "negative_constraint": "team-based outcomes and shared accountability are explicitly emphasised over individual contribution. Do not use as a default for any collaborative role"
   },
   {
     "label": "Help Others",
     "definition": "Directly helping individuals.",
+    "category": "social",
     "signals": [
       "make a difference",
       "support clients",
@@ -328,6 +362,7 @@
   {
     "label": "Help Society",
     "definition": "Broader social/public good impact.",
+    "category": "social",
     "signals": [
       "social impact",
       "mission-driven",
@@ -342,6 +377,7 @@
   {
     "label": "High Earnings",
     "definition": "Top-end salary potential.",
+    "category": "rewards",
     "signals": [
       "competitive salary",
       "top-of-market pay",
@@ -355,6 +391,7 @@
   {
     "label": "Honesty and Integrity",
     "definition": "Transparency and ethical behaviour are valued.",
+    "category": "workstyle",
     "signals": [
       "transparency",
       "ethical",
@@ -365,11 +402,13 @@
       "accountable",
       "honest feedback"
     ],
-    "example": "Example: an organization that rewards transparency and ethical behavior."
+    "example": "Example: an organization that rewards transparency and ethical behavior.",
+    "negative_constraint": "the posting explicitly names ethics, transparency, or integrity as organisational values"
   },
   {
     "label": "Independence",
     "definition": "Work without close supervision or strict rules.",
+    "category": "workstyle",
     "signals": [
       "self-directed",
       "autonomous",
@@ -378,11 +417,13 @@
       "no micromanagement",
       "self-starter"
     ],
-    "example": "Example: setting your own priorities and working without close supervision."
+    "example": "Example: setting your own priorities and working without close supervision.",
+    "negative_constraint": "the posting explicitly describes autonomous work, self-direction, or minimal supervision"
   },
   {
     "label": "Influence People",
     "definition": "Persuasion and shaping decisions/behavior.",
+    "category": "social",
     "signals": [
       "stakeholder management",
       "persuade",
@@ -398,6 +439,7 @@
   {
     "label": "Intellectual Status",
     "definition": "Respect for expertise and insight.",
+    "category": "rewards",
     "signals": [
       "subject matter expert",
       "thought leader",
@@ -411,6 +453,7 @@
   {
     "label": "Job Tranquility",
     "definition": "Low stress and calm work conditions.",
+    "category": "workstyle",
     "signals": [
       "low-pressure",
       "calm environment",
@@ -424,6 +467,7 @@
   {
     "label": "Knowledge",
     "definition": "Continuous learning and deep understanding.",
+    "category": "growth",
     "signals": [
       "learning culture",
       "professional development",
@@ -438,6 +482,7 @@
   {
     "label": "Location",
     "definition": "Preferred geography or work setting.",
+    "category": "workstyle",
     "signals": [
       "remote-friendly",
       "on-site in",
@@ -447,11 +492,13 @@
       "hybrid",
       "specific city/region"
     ],
-    "example": "Example: staying in a specific city, region, or remote setup."
+    "example": "Example: staying in a specific city, region, or remote setup.",
+    "negative_constraint": "geography or work setting is a prominent, stated feature of the role (e.g. field work, required relocation, unique site)"
   },
   {
     "label": "Moral Fulfillment",
     "definition": "Alignment with ethics and integrity.",
+    "category": "workstyle",
     "signals": [
       "purpose-driven",
       "aligned with your values",
@@ -461,11 +508,13 @@
       "conscience",
       "deeply fulfilling"
     ],
-    "example": "Example: choosing projects that match your values and integrity standards."
+    "example": "Example: choosing projects that match your values and integrity standards.",
+    "negative_constraint": "the posting explicitly uses language about ethics, integrity, or values alignment as a draw"
   },
   {
     "label": "Personal Safety",
     "definition": "High probability of being safe and healthy at work.",
+    "category": "stability",
     "signals": [
       "safety protocols",
       "PPE",
@@ -475,11 +524,13 @@
       "safe working conditions",
       "wellness program"
     ],
-    "example": "Example: roles with strong safety protocols and low physical risk."
+    "example": "Example: roles with strong safety protocols and low physical risk.",
+    "negative_constraint": "the role explicitly involves safety protocols, physical risk management, or health and safety as a feature"
   },
   {
     "label": "Physical Challenge",
     "definition": "Meaningful physical demands.",
+    "category": "workstyle",
     "signals": [
       "physically active",
       "hands-on",
@@ -494,6 +545,7 @@
   {
     "label": "Power and Authority",
     "definition": "Control over the work or destinies of others.",
+    "category": "growth",
     "signals": [
       "executive authority",
       "budget ownership",
@@ -503,11 +555,13 @@
       "run the division",
       "command"
     ],
-    "example": "Example: leading a team or division with real decision-making authority."
+    "example": "Example: leading a team or division with real decision-making authority.",
+    "negative_constraint": "the role explicitly grants control over others' work, budgets, or strategic direction"
   },
   {
     "label": "Practicality",
     "definition": "Work that yields a tangible, useful, real-world result.",
+    "category": "growth",
     "signals": [
       "real-world impact",
       "tangible outcomes",
@@ -521,6 +575,7 @@
   {
     "label": "Precision Work",
     "definition": "Accuracy and detail-oriented work.",
+    "category": "creativity",
     "signals": [
       "attention to detail",
       "zero-defect",
@@ -535,6 +590,7 @@
   {
     "label": "Public Contact",
     "definition": "Frequent interaction with the public.",
+    "category": "social",
     "signals": [
       "client-facing",
       "customer interaction",
@@ -548,6 +604,7 @@
   {
     "label": "Recognition",
     "definition": "Visible credit and acknowledgment.",
+    "category": "rewards",
     "signals": [
       "employee of the month",
       "spotlight",
@@ -562,6 +619,7 @@
   {
     "label": "Research and Development",
     "definition": "Investigation, experiments, innovation.",
+    "category": "growth",
     "signals": [
       "R&D",
       "prototyping",
@@ -577,6 +635,7 @@
   {
     "label": "Security",
     "definition": "Job stability and dependable income.",
+    "category": "stability",
     "signals": [
       "permanent position",
       "job security",
@@ -592,6 +651,7 @@
   {
     "label": "Spirituality",
     "definition": "Work setting supportive of spiritual beliefs.",
+    "category": "workstyle",
     "signals": [
       "faith-based",
       "ministry",
@@ -601,11 +661,13 @@
       "prayer",
       "congregation"
     ],
-    "example": "Example: an organization whose culture respects and accommodates spiritual practice."
+    "example": "Example: an organization whose culture respects and accommodates spiritual practice.",
+    "negative_constraint": "the posting explicitly references spiritual practice, faith-based mission, or religious community"
   },
   {
     "label": "Stability",
     "definition": "Predictable routines and structure.",
+    "category": "stability",
     "signals": [
       "predictable schedule",
       "consistent hours",
@@ -620,6 +682,7 @@
   {
     "label": "Status",
     "definition": "Prestige and standing of role.",
+    "category": "rewards",
     "signals": [
       "prestigious",
       "renowned",
@@ -635,6 +698,7 @@
   {
     "label": "Steep Learning Curve",
     "definition": "New, difficult tasks to be rapidly mastered.",
+    "category": "growth",
     "signals": [
       "ramp up quickly",
       "learn fast",
@@ -643,11 +707,13 @@
       "rapid onboarding",
       "hit the ground running"
     ],
-    "example": "Example: onboarding into a complex domain and rapidly gaining expertise."
+    "example": "Example: onboarding into a complex domain and rapidly gaining expertise.",
+    "negative_constraint": "the posting explicitly frames rapid skill acquisition or mastery of new domains as a core feature"
   },
   {
     "label": "Structure and Predictability",
     "definition": "High structure and consistent expectations.",
+    "category": "stability",
     "signals": [
       "well-defined processes",
       "clear expectations",
@@ -656,11 +722,13 @@
       "standardized",
       "playbook"
     ],
-    "example": "Example: well-defined processes and consistent expectations day to day."
+    "example": "Example: well-defined processes and consistent expectations day to day.",
+    "negative_constraint": "the posting explicitly describes well-defined processes, clear expectations, or stable routines"
   },
   {
     "label": "Supervision",
     "definition": "Leading and managing others.",
+    "category": "workstyle",
     "signals": [
       "manage a team",
       "direct reports",
@@ -675,6 +743,7 @@
   {
     "label": "Time Freedom",
     "definition": "Control over schedule and hours.",
+    "category": "workstyle",
     "signals": [
       "flexible hours",
       "async-first",
@@ -689,6 +758,7 @@
   {
     "label": "Tradition",
     "definition": "Work consistent with established customs or heritage.",
+    "category": "workstyle",
     "signals": [
       "heritage",
       "long-standing",
@@ -698,11 +768,13 @@
       "established since",
       "tradition of excellence"
     ],
-    "example": "Example: roles that honor established customs or community heritage."
+    "example": "Example: roles that honor established customs or community heritage.",
+    "negative_constraint": "the posting explicitly references heritage, established customs, or long-standing organisational practices"
   },
   {
     "label": "Work Alone",
     "definition": "Independent, autonomous work.",
+    "category": "workstyle",
     "signals": [
       "solo contributor",
       "work independently",
@@ -717,6 +789,7 @@
   {
     "label": "Work Under Pressure",
     "definition": "Effectiveness in urgent/high-stakes situations.",
+    "category": "workstyle",
     "signals": [
       "high-pressure",
       "urgent",
@@ -731,6 +804,7 @@
   {
     "label": "Work with Others",
     "definition": "Close ongoing collaboration.",
+    "category": "social",
     "signals": [
       "collaborate daily",
       "pair programming",
@@ -745,6 +819,7 @@
   {
     "label": "Work-Life Balance",
     "definition": "Adequate time for family, hobbies, and social life.",
+    "category": "workstyle",
     "signals": [
       "work-life balance",
       "reasonable hours",
@@ -755,6 +830,7 @@
       "mental health days",
       "boundaries"
     ],
-    "example": "Example: a role with reasonable hours and respect for personal time."
+    "example": "Example: a role with reasonable hours and respect for personal time.",
+    "negative_constraint": "the posting explicitly mentions balance, reasonable hours, or respect for personal time"
   }
 ]

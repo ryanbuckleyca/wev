@@ -372,26 +372,16 @@ class GroqProvider(BaseLLMProvider):
         if not jobs:
             return []
 
-        # Import the values taxonomy
-        from utils.job_values_prompts import _get_formatted_taxonomy, get_work_values_set
+        from utils.job_values_prompts import (
+            _get_formatted_taxonomy,
+            format_job_chunks,
+            get_work_values_set,
+        )
 
         # Express length as words — models handle word counts far better than char counts.
         max_words = max(10, max_chars // 6)
 
-        # Build job chunks for batch processing
-        job_chunks: list[str] = []
-        for idx, job in enumerate(jobs, 1):
-            description = (job.get("description") or "")[:4000]
-            job_chunks.append(
-                (
-                    f"JOB {idx}:\n"
-                    f"Organization: {job.get('organization', 'Unknown')}\n"
-                    f"Title: {job.get('job_title', 'Unknown')}\n"
-                    f"Location: {job.get('location', 'Unknown')}\n"
-                    f"Employment Type: {job.get('employment_type', 'Unknown')}\n"
-                    f"Description:\n{description}"
-                )
-            )
+        job_chunks = format_job_chunks(jobs, max_desc_chars=4000, include_wage=False)
 
         # Create batch prompt
         prompt = (
@@ -539,7 +529,6 @@ class GroqProvider(BaseLLMProvider):
         print("[DEBUG] Raw LLM Response:", result.strip())
 
         # Try to extract JSON from the response
-        import re
 
         # Look for a simpler pattern - extract each field separately
         summary_match = re.search(r'summary:\s*([^\n\}]+)', result.strip(), re.IGNORECASE)
