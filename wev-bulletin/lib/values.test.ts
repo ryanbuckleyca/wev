@@ -6,6 +6,7 @@ import {
   VALUE_TO_CATEGORY,
   buildWorkValues,
   getValueDefinition,
+  type Value,
 } from './values';
 
 describe('VALUES_DICTIONARY', () => {
@@ -71,7 +72,7 @@ describe('buildWorkValues (P4)', () => {
     // Validates: Requirements 4.1, 4.2
     const result = buildWorkValues(mockT, mockT);
     for (const item of result) {
-      const catKey = VALUE_TO_CATEGORY[item.id];
+      const catKey = VALUE_TO_CATEGORY[item.id as Value];
       expect(catKey).toBeDefined();
       const expectedCategory = VALUE_CATEGORIES[catKey];
       expect(expectedCategory).toBeDefined();
