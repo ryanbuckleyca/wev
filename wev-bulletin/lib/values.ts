@@ -35,7 +35,7 @@ export const VALUE_CATEGORIES: Record<string, { en: string; fr: string }> = {
 };
 
 /** Maps each value key to its category key */
-export const VALUE_TO_CATEGORY: Record<string, string> = {
+export const VALUE_TO_CATEGORY = {
   Advancement: 'growth',
   Challenge: 'growth',
   Competence: 'growth',
@@ -90,21 +90,21 @@ export const VALUE_TO_CATEGORY: Record<string, string> = {
   Security: 'stability',
   Stability: 'stability',
   'Structure and Predictability': 'stability',
-};
+} as const satisfies Record<string, string>;
 
-export const VALUES_DICTIONARY: Record<string, ValueDefinition> = sharedValues.reduce(
+export type Value = keyof typeof VALUE_TO_CATEGORY;
+
+export const VALUES_DICTIONARY: Record<Value, ValueDefinition> = sharedValues.reduce(
   (acc, val) => {
-    acc[val.label] = {
+    acc[val.label as Value] = {
       description: val.definition,
       example: val.example,
       signals: val.signals,
     };
     return acc;
   },
-  {} as Record<string, ValueDefinition>,
+  {} as Record<Value, ValueDefinition>,
 );
-
-export type Value = keyof typeof VALUES_DICTIONARY;
 
 export const VALUES_LIST = Object.keys(VALUES_DICTIONARY) as Value[];
 

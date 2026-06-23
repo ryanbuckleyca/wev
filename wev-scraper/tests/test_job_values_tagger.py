@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from utils.job_values_prompts import WORK_VALUES_SET
+from utils.job_values_prompts import get_work_values_set
 from utils.job_values_tagger import JobRatedValue, JobValuesTagger
 
 # ---------------------------------------------------------------------------
@@ -77,7 +77,7 @@ def _make_tagger() -> JobValuesTagger:
 
 
 # Pick 5 canonical values from the taxonomy for use in tests
-_CANONICAL = list(WORK_VALUES_SET)[:5]
+_CANONICAL = list(get_work_values_set())[:5]
 
 
 # ---------------------------------------------------------------------------

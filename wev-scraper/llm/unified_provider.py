@@ -124,7 +124,7 @@ class UnifiedJobProcessor:
         import json
         import re
 
-        from utils.job_values_prompts import WORK_VALUES_SET
+        from utils.job_values_prompts import get_work_values_set
 
         def try_parse(text: str):
             text = text.strip()
@@ -154,7 +154,7 @@ class UnifiedJobProcessor:
                     deduped: list = []
                     for raw in item["values"]:
                         v = str(raw).strip()
-                        if v in WORK_VALUES_SET and v not in seen:
+                        if v in get_work_values_set() and v not in seen:
                             seen.add(v)
                             deduped.append(v)
                     values = deduped[:max_values]
