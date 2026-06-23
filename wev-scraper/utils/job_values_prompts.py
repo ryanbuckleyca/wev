@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Final
-
 import json
 import os
 from dataclasses import dataclass
+from typing import Final
+
 
 @dataclass
 class WorkValue:
