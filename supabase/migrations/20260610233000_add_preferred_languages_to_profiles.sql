@@ -3,6 +3,7 @@
 -- Valid values are: 'en', 'fr', 'bilingual'.
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS preferred_languages text[];
+
 ALTER TABLE public.profiles
   ADD CONSTRAINT preferred_languages_valid CHECK (
     preferred_languages IS NULL OR
