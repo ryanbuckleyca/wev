@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import { getJobLanguageLabel, getWorkTypeLabel } from '@/lib/bulletin/filter-labels';
 import InfoPopover from './InfoPopover';
 import ProgressDonut from './ProgressDonut';
 import ExpandablePills, { ExpandablePillGroup } from './ExpandablePills';
@@ -122,12 +123,7 @@ export default function JobCardFooter({
     if (!workType) return undefined;
 
     const isMatched = selectedWorkTypes.includes(workType);
-    const label =
-      workType === 'remote'
-        ? t('filters.workType.remote')
-        : workType === 'hybrid'
-          ? t('filters.workType.hybrid')
-          : t('filters.workType.office');
+    const label = getWorkTypeLabel(workType, t);
     const tooltip = isMatched
       ? `${label} matches your current work-style filter.`
       : `Does not match filter preferences for location.`;
@@ -144,14 +140,7 @@ export default function JobCardFooter({
   const buildLanguagePill = (): ScrollablePillsItem | undefined => {
     if (!language) return undefined;
 
-    const langLabel =
-      language === 'en'
-        ? t('filters.language.en')
-        : language === 'fr'
-          ? t('filters.language.fr')
-          : language === 'bilingual'
-            ? t('filters.language.bilingual')
-            : language;
+    const langLabel = getJobLanguageLabel(language, t);
 
     // Only mark the pill as matched when a language filter is active and it matches.
     // If no language filter is selected, the pill is not active but we still

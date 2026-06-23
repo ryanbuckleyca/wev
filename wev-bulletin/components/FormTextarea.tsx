@@ -43,7 +43,7 @@ export default function FormTextarea({
     : null;
 
   return (
-    <div className="space-y-0">
+    <div className="space-y-2">
       {label && (
         <FormLabel htmlFor={htmlFor} required={required}>
           {label}
@@ -59,8 +59,7 @@ export default function FormTextarea({
         disabled={disabled}
         aria-invalid={isOverLimit}
         className={cn(
-          'px-4 py-3 text-[13px] font-medium border border-gray-100 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-200 focus:ring-2 focus:ring-gray-100/50 transition-all',
-          'dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-800/50',
+          'px-4 py-3 text-[13px] font-medium border border-border rounded-wev-btn bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all',
           fullWidth ? 'w-full' : 'w-auto',
           className,
         )}

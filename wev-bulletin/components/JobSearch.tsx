@@ -25,6 +25,7 @@ interface JobSearchProps {
   activeFilterChips: ActiveFilterChip[];
   filteredJobsCount: number;
   totalJobsCount: number;
+  loading?: boolean;
   hasAnyFilters: boolean;
   isSuggestedDefaults: boolean;
   onClearAllFilters: () => void;
@@ -39,6 +40,7 @@ export default function JobSearch({
   activeFilterChips,
   filteredJobsCount,
   totalJobsCount,
+  loading = false,
   hasAnyFilters,
   isSuggestedDefaults,
   onClearAllFilters,
@@ -123,11 +125,19 @@ export default function JobSearch({
 
       <div className="px-3 sm:px-4 py-2.5 bg-muted border-t border-border flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">
-            <strong className="font-semibold text-foreground">{filteredJobsCount}</strong>{' '}
-            {t('pagination.of')} {totalJobsCount}{' '}
-            {totalJobsCount === 1 ? t('pagination.job') : t('pagination.jobs')}
-          </span>
+          {loading ? (
+            <span
+              className="skeleton-pulse w-28 rounded"
+              role="status"
+              aria-label={t('jobListings.loading')}
+            />
+          ) : (
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
+              <strong className="font-semibold text-foreground">{filteredJobsCount}</strong>{' '}
+              {t('pagination.of')} {totalJobsCount}{' '}
+              {totalJobsCount === 1 ? t('pagination.job') : t('pagination.jobs')}
+            </span>
+          )}
           <div className="flex flex-wrap items-center gap-1.5">
             {activeFilterChips.map((chip) => (
               <Pill

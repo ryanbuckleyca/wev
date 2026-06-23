@@ -2,9 +2,28 @@ import { execSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { config as loadEnv } from "dotenv";
+import {
+  envHelpLines,
+  parseEnvFlag,
+  type TargetEnv,
+} from "../scripts/parse-env";
+
+const LOCAL_SUPABASE_CLI = path.resolve(
+  process.cwd(),
+  "node_modules/.bin/supabase",
+);
 
 function execVerbose(command: string) {
-  const result = spawnSync(command, { shell: true, stdio: "inherit" });
+  // Replace the leading "supabase " token precisely — avoids corrupting commands
+  // where "supabase" appears elsewhere (e.g. as a flag value or workdir path).
+  const finalCommand = command.startsWith("supabase ")
+    ? `${LOCAL_SUPABASE_CLI} ${command.slice("supabase ".length)}`
+    : command;
+  const result = spawnSync(finalCommand, {
+    shell: true,
+    stdio: "inherit",
+    env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
+  });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
@@ -54,19 +73,26 @@ function runMigration(target: string, dryRun: boolean) {
     `▶ Syncing migration history (fetching any missing files from remote)...`,
   );
   try {
-    execSync("supabase migration fetch --linked", { stdio: "pipe" });
+    execSync(`${LOCAL_SUPABASE_CLI} migration fetch --linked`, {
+      stdio: "pipe",
+      env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
+    });
   } catch (e) {
     console.log("ℹ️  No remote-only migrations found or fetch failed.");
   }
 
-  let dbPushCmd = "supabase db push --yes";
+  let dbPushCmd = `${LOCAL_SUPABASE_CLI} db push --yes`;
   if (dryRun) dbPushCmd += " --dry-run";
-  if (process.env.SUPABASE_DB_PASSWORD) {
-    dbPushCmd += ` -p "${process.env.SUPABASE_DB_PASSWORD}"`;
-  }
+  // SUPABASE_DB_PASSWORD is passed via the environment (already loaded from
+  // .env.production above) — the Supabase CLI reads it automatically.
+  // Never interpolate credentials into shell command strings.
 
   console.log(`▶ Pushing local migrations...`);
-  const pushRes = spawnSync(dbPushCmd, { shell: true, stdio: "inherit" });
+  const pushRes = spawnSync(dbPushCmd, {
+    shell: true,
+    stdio: "inherit",
+    env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
+  });
   if (pushRes.status !== 0) {
     console.error(
       "❌ Push failed. If you see hash mismatches, you may need to 'git pull' first.",
@@ -82,17 +108,23 @@ function runMigration(target: string, dryRun: boolean) {
   }
 }
 
+function parseTarget(argv: string[]): TargetEnv {
+  return parseEnvFlag(argv) as TargetEnv;
+}
+
 function main() {
   const envPath = fs.existsSync(".env") ? ".env" : path.join("..", ".env");
   loadEnv({ path: envPath });
 
-  const target = process.argv[2];
+  const args = process.argv.slice(2);
   const dryRun = process.env.MIGRATE_DRY_RUN === "1";
 
-  if (!target) {
-    console.error("Usage: tsx supabase/migrate.ts <local|staging|prod>");
-    process.exit(1);
+  if (args.includes("--help") || args.includes("-h")) {
+    console.error(envHelpLines("migrate"));
+    process.exit(0);
   }
+
+  const target = parseTarget(args);
 
   if (target === "local") {
     console.log("▶ Resetting local database...");

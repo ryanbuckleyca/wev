@@ -1,5 +1,7 @@
 'use client';
 
+import { cn } from '@/lib/utils';
+
 export interface TogglePillOption {
   value: string;
   label: string;
@@ -26,11 +28,13 @@ export default function TogglePillGroup({
             type="button"
             aria-pressed={isSelected}
             onClick={() => onToggle(option.value)}
-            className={`px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors ${
+            className={cn(
+              'px-4 py-2 rounded-wev-btn text-sm font-medium transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               isSelected
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-gray-50 text-gray-700 border border-gray-100 dark:bg-zinc-800 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'
-            }`}
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-background text-foreground border border-border hover:bg-wev-primary-tint active:bg-wev-primary-tint',
+            )}
           >
             {option.label}
           </button>

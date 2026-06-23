@@ -160,7 +160,7 @@ class BaseScraper:
 
     6. Register in scrape.py:
        - Import the class
-       - Add to SCRAPER_MAP: {"<source_uuid>": YourScraper}
+       - Add to SCRAPER_MAP: {"<slug>": YourScraper}
 
     MINIMAL EXAMPLE (WordPress job board — zero methods needed):
 

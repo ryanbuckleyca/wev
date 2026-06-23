@@ -15,8 +15,15 @@ import argparse
 import os
 import sys
 import time
+from pathlib import Path
 
 # Ensure wev-scraper root is on sys.path when run directly
+
+from settings import ensure_env_loaded  # noqa: E402
+from utils.prod_env import bootstrap_staging_from_argv  # noqa: E402
+
+ensure_env_loaded()
+bootstrap_staging_from_argv(sys.argv, Path(__file__))
 
 # --prod confirmation — must happen before utils.db is imported (which reads USE_PROD_DB)
 if "--prod" in sys.argv[1:] and os.environ.get("CONFIRM_PROD_RUN") == "YES":
@@ -240,6 +247,11 @@ def main() -> None:
     )
     parser.add_argument("--dry-run", action="store_true", help="Fetch and batch but skip API calls and DB writes")
     parser.add_argument("--prod", action="store_true", help="Target production DB (handled at module load)")
+    parser.add_argument(
+        "--staging",
+        action="store_true",
+        help="Use staging (.env.staging) environment (handled at module load)",
+    )
     parser.add_argument("--retag", action="store_true", help="Re-embed skills even if embedding IS NOT NULL")
     parser.add_argument("--limit", type=int, default=None, help="Cap number of skills processed")
     args = parser.parse_args()

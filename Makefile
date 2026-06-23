@@ -32,7 +32,7 @@ setup: setup-node setup-py-dev setup-env
 	@echo "✓ Setup complete. Next steps (manual):"
 	@echo "    1. Edit .env with your secrets"
 	@echo "    2. Start Docker Desktop"
-	@echo "    3. npm run migrate:local"
+	@echo "    3. npm run migrate"
 	@echo "    4. npm run skills:index -- --upsert-db && npm run skills:embeddings"
 	@echo "    5. npm run dev"
 

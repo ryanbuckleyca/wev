@@ -5,7 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Set
 
-from settings import ensure_env_loaded, load_db_credentials_only, load_env_file
+from settings import ensure_env_loaded, load_env_file
+from utils.prod_env import apply_prod_overrides, confirm_prod_run, resolve_prod_env_path
 
 # Ensure CI sees output immediately
 if hasattr(sys.stdout, "reconfigure"):
@@ -14,7 +15,7 @@ if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(line_buffering=True)
 
 # Note: Import database and scraper classes AFTER environment might have been modified by CLI args
-from scrapers.registry import get_scraper_class
+from scrapers.registry import get_scraper_class, source_matches_slug
 from utils.db import fetch_all_rows, get_supabase_url, log_scrape_run, save_job, supabase
 from utils.env import is_truthy_env
 from utils.log import scraper_log as _log
@@ -23,20 +24,24 @@ from utils.url import add_url_dedup_variants, normalize_listing_url
 os.environ['PLAYWRIGHT_SYNC_MODE'] = '1'
 
 # Constants for reporting
-CHECKED_FIELDS = [
-    "job_title", "organization", "location", "date_posted",
-    "wage", "description", "employment_type", "listing_url",
-]
 COMPARE_FIELDS = ["job_title", "organization", "location", "wage", "employment_type", "date_posted"]
 
 
-def _has_prod_confirmation() -> bool:
-    return os.environ.get("PROD_CONFIRMED") == "1" or os.environ.get("CONFIRM_PROD_RUN") == "YES"
-
-
-def _mark_prod_confirmed() -> None:
-    os.environ["PROD_CONFIRMED"] = "1"
-    os.environ["CONFIRM_PROD_RUN"] = "YES"
+def list_sources() -> None:
+    """List sources from the active Supabase project (respects --staging / --prod / --publish)."""
+    _log(f"Listing sources from {get_supabase_url()}")
+    response = supabase.table("sources").select("name,slug").order("slug").execute()
+    if not response.data:
+        print("No sources found.")
+        return
+    print("Available source slugs:")
+    for s in response.data:
+        slug = s.get("slug")
+        name = s.get("name", "Unknown Source")
+        if slug:
+            print(f"  - {slug} ({name})")
+        else:
+            print(f"  - <missing slug> ({name})")
 
 
 @dataclass
@@ -51,12 +56,20 @@ class ScraperResults:
 class ScraperOrchestrator:
     """Manages the lifecycle of a scraping session."""
 
-    def __init__(self, use_prod: bool = False, dry_run: bool = False, compare_only: bool = False):
-        self.use_prod = use_prod
+    def __init__(self, dry_run: bool = False, compare_only: bool = False, source_slug: str | None = None):
         self.dry_run = dry_run
         self.compare_only = compare_only
+        self.source_slug = source_slug.strip() if source_slug else None
         self.results = ScraperResults(is_dry_run=dry_run, is_compare_only=compare_only)
         self.existing_urls: Set[str] = set()
+        self.source_attempts: Dict[str, int] = {}
+        self.post_scrape_errors = 0
+
+    def had_failures(self) -> bool:
+        """True when any source scrape or post-scrape step failed."""
+        if self.post_scrape_errors > 0:
+            return True
+        return any("error" in entry for entry in self.results.summary)
 
     def run(self):
         """Execute the full scraping lifecycle."""
@@ -68,8 +81,13 @@ class ScraperOrchestrator:
             self.existing_urls = self._fetch_existing_job_urls()
 
             # 2. Main Loop
-            for source in sources:
-                self._process_single_source(source)
+            queue = sources.copy()
+            while queue:
+                source = queue.pop(0)
+                retry_requested = self._process_single_source(source)
+                if retry_requested:
+                    queue.append(source)
+                    _log(f"🔄 Re-queued {source.get('name')} to the end.")
 
             # 3. Post-Processing
             if self.results.all_job_ids:
@@ -106,8 +124,23 @@ class ScraperOrchestrator:
         response = supabase.table("sources").select("*").execute()
         if not response.data:
             raise RuntimeError(f"Could not fetch sources: {response}")
-        _log(f"Found {len(response.data)} source(s).")
-        return response.data
+        sources = response.data
+        if self.source_slug:
+            sources = [
+                s for s in sources if source_matches_slug(s, self.source_slug)
+            ]
+            if not sources:
+                raise RuntimeError(
+                    f"No source found with slug '{self.source_slug}'. "
+                    "Use npm run scrape:list-sources to see available slugs."
+                )
+            if len(sources) > 1:
+                slugs = ", ".join(s.get("slug", "?") for s in sources)
+                raise RuntimeError(
+                    f"Multiple sources match slug '{self.source_slug}': {slugs}"
+                )
+        _log(f"Found {len(sources)} source(s).")
+        return sources
 
     def _fetch_existing_job_urls(self) -> Set[str]:
         _log("Fetching existing jobs for duplicate checking...")
@@ -121,15 +154,42 @@ class ScraperOrchestrator:
             _log(f"Warning: Error fetching existing jobs: {e}")
         return urls
 
-    def _process_single_source(self, source: Dict[str, Any]):
+    _TRANSIENT_ERROR_SIGNALS = (
+        "err_connection_closed",
+        "err_timed_out",
+        "err_connection_reset",
+        "err_connection_refused",
+        "err_name_not_resolved",
+        "net::err_",
+        "timeout",
+        "connection reset",
+        "connection closed",
+        "read timeout",
+        "ssl",
+        "eof occurred",
+    )
+
+    @classmethod
+    def _is_transient_error(cls, e: Exception) -> bool:
+        msg = str(e).lower()
+        # Never retry explicit blocks — they'll just fail again
+        if "403" in msg or "forbidden" in msg or "ip blocked" in msg:
+            return False
+        return any(signal in msg for signal in cls._TRANSIENT_ERROR_SIGNALS)
+
+    def _process_single_source(self, source: Dict[str, Any], max_source_retries: int = 2) -> bool:
         source_name = source.get("name", "Unknown Source")
-        scraper_class = get_scraper_class(source["id"], source_name=source_name)
+        scraper_class = get_scraper_class(source)
 
         if not scraper_class:
             _log(f"Skipping {source_name}: No scraper implementation registered.")
-            return
+            return False
 
-        _log(f"\n{'#' * 30}\n# {source_name}\n{'#' * 30}")
+        source_id = source["id"]
+        attempt = self.source_attempts.get(source_id, 0) + 1
+        self.source_attempts[source_id] = attempt
+
+        _log(f"\n{'#' * 30}\n# {source_name} (Attempt {attempt}/{max_source_retries + 1})\n{'#' * 30}")
 
         scraper = None
         try:
@@ -145,8 +205,15 @@ class ScraperOrchestrator:
             if "job_ids" in source_summary:
                 self.results.all_job_ids.extend(source_summary["job_ids"])
 
+            return False  # success — no retry needed
+
         except Exception as e:
+            is_last_attempt = attempt > max_source_retries
+            if not is_last_attempt and self._is_transient_error(e):
+                _log(f"⚠️  Transient error on {source_name}: {e}")
+                return True  # request re-queue
             self._handle_source_error(e, scraper, source_name)
+            return False
         finally:
             self._cleanup_scraper(scraper)
 
@@ -242,10 +309,17 @@ class ScraperOrchestrator:
         # Unified Post-Processor (Classifier, Values, Summary)
         if any(is_truthy_env(f) for f in ["SHOULD_CLASSIFY", "SHOULD_TAG_VALUES", "SHOULD_SUMMARIZE"]):
             try:
-                from scripts.unified_post_processor import process_jobs_unified
-                process_jobs_unified(job_ids=self.results.all_job_ids)
+                from scripts.unified_post_processor import ProcessingOptions, process_jobs_unified
+                result = process_jobs_unified(ProcessingOptions(job_ids=self.results.all_job_ids))
+                self.post_scrape_errors = result.get("errors", 0)
+                if self.post_scrape_errors:
+                    _log(
+                        f"❌ Unified post-processing finished with "
+                        f"{self.post_scrape_errors} error(s)"
+                    )
             except Exception as e:
-                _log(f"Error in unified post-processing: {e}")
+                _log(f"❌ Error in unified post-processing: {e}")
+                self.post_scrape_errors += 1
 
         # ESCO Skill Tagging
         if is_truthy_env("SHOULD_TAG_SKILLS"):
@@ -253,7 +327,8 @@ class ScraperOrchestrator:
                 from scripts.tag_esco_skills_vector import tag_esco_skills_vector
                 tag_esco_skills_vector(job_ids=self.results.all_job_ids)
             except Exception as e:
-                _log(f"Error in ESCO tagging: {e}")
+                _log(f"❌ Error in ESCO tagging: {e}")
+                self.post_scrape_errors += 1
 
     def _print_final_summary(self):
         _log("\n" + "="*40)
@@ -298,77 +373,103 @@ class ScraperOrchestrator:
         sys.exit(1)
 
 
+def resolve_scrape_env(args) -> str:
+    """Resolve target env from --env or legacy flags."""
+    legacy: list[str] = []
+    if args.staging:
+        legacy.append("staging")
+    if args.prod:
+        legacy.append("prod")
+    if args.publish:
+        legacy.append("publish")
+    if len(legacy) > 1:
+        print("Error: only one of --staging, --prod, --publish may be set.", file=sys.stderr)
+        sys.exit(2)
+    if legacy:
+        return legacy[0]
+    return args.env
+
+
 def parse_args():
     import argparse
-    parser = argparse.ArgumentParser(description="WEV Scraper Orchestrator")
+    parser = argparse.ArgumentParser(
+        description="WEV Scraper Orchestrator",
+        epilog=(
+            "npm aliases: scrape:local, scrape:staging, scrape:prod, scrape:publish\n"
+            "(each runs: npm run scrape -- --env <name>)\n"
+            "List slugs:  npm run scrape:list-sources\n"
+            "One source:  npm run scrape:prod -- --source mac"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--env",
+        choices=["local", "staging", "prod", "publish"],
+        default="local",
+        help="Target environment (default: local)",
+    )
     parser.add_argument(
         "--prod",
         action="store_true",
-        help="Full prod: load .env.production (DB + LLM keys + flags), set ENV_MODE=prod, target prod DB",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--publish",
         action="store_true",
-        help="Prod DB: Supabase keys from .env.production; set ENV_MODE=local (local LLMs/embeddings + rest of .env)",
+        help=argparse.SUPPRESS,
     )
-    parser.add_argument("--staging", action="store_true", help="Use staging (.env.staging) environment")
+    parser.add_argument("--staging", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--dry-run", "--dry", action="store_true", help="Skip database writes")
     parser.add_argument("--compare", action="store_true", help="Dry run + compare with DB")
     parser.add_argument("--provider", help="Force specific LLM provider")
     parser.add_argument("--max-jobs", type=int, help="Limit jobs per source")
     parser.add_argument("--headed", action="store_true", help="Show browser window (for debugging)")
     parser.add_argument("--vpn", action="store_true", help="Enable VPN-specific scraper behavior")
+    parser.add_argument(
+        "--slug",
+        "--source",
+        dest="slug",
+        metavar="SLUG",
+        help="Only run the scraper for this source slug (e.g. mac, goodwork)",
+    )
+    parser.add_argument(
+        "--list-sources",
+        action="store_true",
+        help="List source slugs via Supabase (slow — prefer: npm run scrape:list-sources)",
+    )
     return parser.parse_args()
 
 
-def initialize_runtime_env(args):
-    """Predictable environment initialization based on CLI flags."""
+def initialize_runtime_env(env: str):
+    """Predictable environment initialization based on --env target."""
     script_dir = Path(__file__).resolve().parent
     root_dir = script_dir.parent
 
-    # 1. Load Baseline (.env) from root or local
-    # This provides shared keys (Gemini, Geocodio, etc.)
     base_env = root_dir / ".env" if (root_dir / ".env").exists() else script_dir / ".env"
     if base_env.exists():
-        ensure_env_loaded()
+        load_env_file(base_env)
 
-    # 2. Apply Staging Overrides if requested
-    if args.staging:
+    if env == "staging":
         staging_env = root_dir / ".env.staging" if (root_dir / ".env.staging").exists() else script_dir / ".env.staging"
         if staging_env.exists():
             _log(f"▶ Loading Staging Overrides from {staging_env.name}")
             load_env_file(staging_env)
         else:
-            _log(f"⚠️ Warning: --staging flag used but {staging_env} not found.")
+            _log(f"⚠️ Warning: --env staging but {staging_env} not found.")
 
-    # 3. Apply Production Overrides if requested
-    if args.prod or args.publish:
-        prod_env = root_dir / ".env.production" if (root_dir / ".env.production").exists() else script_dir / ".env.production"
+    if env in ("prod", "publish"):
+        prod_env = resolve_prod_env_path(script_dir / "scrape.py")
         if not prod_env.exists():
-            _log(f"❌ {prod_env.name} not found — required for --prod / --publish.")
+            _log(f"❌ {prod_env} not found — required for --env prod / publish.")
             sys.exit(1)
-        if args.prod:
-            # Full prod: override everything in .env.production (DB + LLM + flags)
-            _log(f"▶ Loading Production Overrides from {prod_env.name}")
-            load_env_file(prod_env)
-            os.environ["ENV_MODE"] = "prod"
-            _log("▶ LLM routing: ENV_MODE=prod (--prod — not local-first LLMs)")
-        else:
-            # Publish: only swap DB credentials, leave other .env keys for feature flags
-            applied = load_db_credentials_only(prod_env)
-            _log(
-                f"▶ Publish mode: loaded {len(applied)} DB credential(s) from "
-                f"{prod_env.name} ({', '.join(applied)}); LLM/feature config kept from .env"
-            )
-            os.environ["ENV_MODE"] = "local"
-            _log("▶ LLM routing: ENV_MODE=local (--publish → local LLMs / embeddings)")
+        apply_prod_overrides(prod_env, full_prod=(env == "prod"))
 
 
 def main():
     args = parse_args()
+    env = resolve_scrape_env(args)
 
-    # 1. Initialize Environment
-    initialize_runtime_env(args)
+    initialize_runtime_env(env)
 
     # 2. Environment Overrides from CLI
     if args.provider:
@@ -386,36 +487,24 @@ def main():
             if os.environ.get(flag) is None:
                 os.environ[flag] = "0"
 
-    if args.prod and args.publish:
-        print("Error: --prod and --publish are mutually exclusive.", file=sys.stderr)
-        sys.exit(2)
+    if args.list_sources:
+        list_sources()
+        sys.exit(0)
 
-    if args.prod or args.publish:
+    if env in ("prod", "publish"):
         os.environ["USE_PROD_DB"] = "1"
-        # Guard against accidental prod runs when invoked directly (bypassing run.ts).
-        # run.ts handles the prompt and sets PROD_CONFIRMED=1 before spawning this script.
-        if _has_prod_confirmation():
-            _mark_prod_confirmed()
-        elif sys.stdin.isatty():
-            mode = "PRODUCTION (full)" if args.prod else "PRODUCTION DB (publish — local LLMs)"
-            confirm = input(f"⚠️  RUNNING AGAINST {mode}. Type 'YES' to continue: ")
-            if confirm != "YES":
-                sys.exit(0)
-            _mark_prod_confirmed()
-        else:
-            print(
-                "Refusing production run in non-interactive mode. Set CONFIRM_PROD_RUN=YES to override.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+        confirm_prod_run(full_prod=(env == "prod"))
 
     # 3. Orchestrate
     orchestrator = ScraperOrchestrator(
-        use_prod=args.prod or args.publish,
         dry_run=args.dry_run or args.compare,
-        compare_only=args.compare
+        compare_only=args.compare,
+        source_slug=args.slug,
     )
     orchestrator.run()
+
+    if orchestrator.had_failures():
+        sys.exit(1)
 
 
 if __name__ == "__main__":

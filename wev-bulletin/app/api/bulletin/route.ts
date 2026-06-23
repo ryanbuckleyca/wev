@@ -8,6 +8,7 @@ import { parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
 import { createClient } from '@/lib/supabase/server';
 import { buildFilterOptions } from '@/lib/bulletin/filter-options';
+import { throwBulletinQueryError } from '@/lib/bulletin/fts-errors';
 import { formatSearchQuery } from '@/lib/bulletin/search-utils';
 
 export { BULLETIN_CACHE_TAG };
@@ -35,10 +36,6 @@ type BulletinApiQueryInput = {
   onlySse: boolean;
   noSalary: boolean;
 };
-
-function isUndefinedColumnError(error: { code?: string } | null): boolean {
-  return error?.code === '42703';
-}
 
 function parseBoundedInteger(
   rawValue: string | null,
@@ -182,7 +179,12 @@ async function fetchBulletinFacets(
   if (input.langs.length) query = query.in('language', input.langs);
 
   const { data, error } = await query.limit(5000);
-  if (error) throw new Error(error.message);
+  if (error) {
+    throwBulletinQueryError(error, {
+      searchQuery: input.searchQuery,
+      searchColumn: vectorColumn,
+    });
+  }
 
   return data ?? [];
 }
@@ -206,31 +208,19 @@ async function fetchBulletinApiPayload(
     .gte('date_posted', maxAgeCutoff)
     .limit(0);
 
-  const [initialJobsResult, initialFilterOptionsData, scrapeTime, totalAvailableResult] =
-    await Promise.all([
-      buildQuery(searchColumn).range(start, end),
-      fetchBulletinFacets(supabase, searchColumn, input),
-      fetchLastScrapeTime(),
-      totalAvailableQuery,
-    ]);
+  const [jobsResult, filterOptionsData, scrapeTime, totalAvailableResult] = await Promise.all([
+    buildQuery(searchColumn).range(start, end),
+    fetchBulletinFacets(supabase, searchColumn, input),
+    fetchLastScrapeTime(),
+    totalAvailableQuery,
+  ]);
 
-  let jobsResult = initialJobsResult;
-  let filterOptionsData = initialFilterOptionsData;
-
-  if (
-    jobsResult.error &&
-    input.searchQuery.length > 0 &&
-    isUndefinedColumnError(jobsResult.error)
-  ) {
-    const [retryJobs, retryFacets] = await Promise.all([
-      buildQuery('fts').range(start, end),
-      fetchBulletinFacets(supabase, 'fts', input),
-    ]);
-    jobsResult = retryJobs;
-    filterOptionsData = retryFacets;
+  if (jobsResult.error) {
+    throwBulletinQueryError(jobsResult.error, {
+      searchQuery: input.searchQuery,
+      searchColumn,
+    });
   }
-
-  if (jobsResult.error) throw new Error(jobsResult.error.message);
   if (totalAvailableResult.error) {
     console.error('Error fetching total available jobs:', totalAvailableResult.error.message);
   }

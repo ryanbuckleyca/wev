@@ -22,10 +22,11 @@ const CV_PARSING_TOAST_STAGES = [
 function showCvImportProgressToast(
   t: ReturnType<typeof useTranslations<'profile'>>,
   key: (typeof CV_PARSING_TOAST_STAGES)[number]['key'],
+  atMs: number,
 ) {
   notify.info(t(key), {
     id: CV_IMPORT_TOAST_ID,
-    duration: Infinity,
+    duration: Math.max(CV_PARSING_TIMEOUT_MS - atMs, 1000),
   });
 }
 
@@ -70,7 +71,11 @@ async function executeCvImportPipeline(
   });
 
   if (!extractRes.ok) {
-    const body = (await extractRes.json().catch(() => ({}))) as { error?: string; detail?: string };
+    const body = (await extractRes.json().catch(() => ({}))) as {
+      error?: string;
+      detail?: string;
+      missing?: string[];
+    };
     console.error('[cv-import] API error:', extractRes.status, body);
     throw new Error(body.error ?? 'extraction_failed');
   }
@@ -128,10 +133,10 @@ export function useCvImport({ locale, onConfirmImport }: UseCvImportOptions) {
 
     setIsParsing(true);
     const [firstStage, ...remainingStages] = CV_PARSING_TOAST_STAGES;
-    showCvImportProgressToast(t, firstStage.key);
+    showCvImportProgressToast(t, firstStage.key, firstStage.atMs);
     const progressToastTimers = remainingStages.map(({ atMs, key }) =>
       window.setTimeout(() => {
-        showCvImportProgressToast(t, key);
+        showCvImportProgressToast(t, key, atMs);
       }, atMs),
     );
 
