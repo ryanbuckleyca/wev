@@ -114,3 +114,32 @@ describe('VALUES_DICTIONARY spot-checks', () => {
     expect(Object.prototype.hasOwnProperty.call(VALUES_DICTIONARY, 'Organization')).toBe(false);
   });
 });
+
+// Drift detection: VALUE_TO_CATEGORY must stay in sync with shared JSON categories
+import sharedValues from '@shared/taxonomy/work_values.json';
+
+describe('VALUE_TO_CATEGORY ↔ shared JSON sync', () => {
+  it('every JSON label has a matching entry in VALUE_TO_CATEGORY', () => {
+    const missing = sharedValues
+      .map((v) => v.label)
+      .filter((label) => !(label in VALUE_TO_CATEGORY));
+    expect(missing).toEqual([]);
+  });
+
+  it('every VALUE_TO_CATEGORY key exists in JSON', () => {
+    const jsonLabels = new Set(sharedValues.map((v) => v.label));
+    const extra = Object.keys(VALUE_TO_CATEGORY).filter((k) => !jsonLabels.has(k));
+    expect(extra).toEqual([]);
+  });
+
+  it('category values match between VALUE_TO_CATEGORY and JSON', () => {
+    const mismatches: string[] = [];
+    for (const entry of sharedValues) {
+      const tsCategory = VALUE_TO_CATEGORY[entry.label as Value];
+      if (tsCategory !== entry.category) {
+        mismatches.push(`${entry.label}: TS="${tsCategory}" JSON="${entry.category}"`);
+      }
+    }
+    expect(mismatches).toEqual([]);
+  });
+});
