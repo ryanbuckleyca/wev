@@ -85,7 +85,7 @@ class UnifiedJobProcessor:
 
     def _build_unified_prompt(self, jobs: List[Dict], include_sse: bool = False) -> str:
         """Build comprehensive prompt for unified processing."""
-        from utils.job_values_prompts import _format_taxonomy
+        from utils.job_values_prompts import _get_formatted_taxonomy, format_job_chunks
 
         prompt_parts = [
             get_unified_prompt_instructions(include_sse),
@@ -93,20 +93,12 @@ class UnifiedJobProcessor:
             "If the posting is in French, write your sentence in French. If in English, write in English. "
             "If the posting is written in both English and French, or explicitly requires both languages, "
             "you may write the summary in either language.",
-            f"\n\nWORK VALUES TAXONOMY:\n{_format_taxonomy()}\n",
+            f"\n\nWORK VALUES TAXONOMY:\n{_get_formatted_taxonomy()}\n",
         ]
 
-        for idx, job in enumerate(jobs, 1):
-            description = (job.get("description") or "")[:4000]
-            prompt_parts.append(
-                f"\nJOB {idx}:\n"
-                f"Organization: {job.get('organization', 'Unknown')}\n"
-                f"Title: {job.get('job_title', 'Unknown')}\n"
-                f"Location: {job.get('location', 'Unknown')}\n"
-                f"Employment Type: {job.get('employment_type', 'Unknown')}\n"
-                f"Wage: {job.get('wage', 'Not specified')}\n"
-                f"Description:\n{description}"
-            )
+        job_chunks = format_job_chunks(jobs, max_desc_chars=4000)
+        for chunk in job_chunks:
+            prompt_parts.append(f"\n{chunk}")
 
         fields = "index, summary, language, values, is_sse, sse_confidence" if include_sse else "index, summary, language, values"
         prompt_parts.append(f"\n\nOutput JSON array with objects containing: {fields}")
@@ -124,7 +116,7 @@ class UnifiedJobProcessor:
         import json
         import re
 
-        from utils.job_values_prompts import WORK_VALUES_SET
+        from utils.job_values_prompts import get_work_values_set
 
         def try_parse(text: str):
             text = text.strip()
@@ -154,7 +146,7 @@ class UnifiedJobProcessor:
                     deduped: list = []
                     for raw in item["values"]:
                         v = str(raw).strip()
-                        if v in WORK_VALUES_SET and v not in seen:
+                        if v in get_work_values_set() and v not in seen:
                             seen.add(v)
                             deduped.append(v)
                     values = deduped[:max_values]

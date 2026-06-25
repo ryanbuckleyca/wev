@@ -96,7 +96,8 @@ def test_summarize_and_tag_values():
         "values: [Ambition, Integrity]\n"
     )
     # We also need to mock the taxonomy for values check
-    with patch("utils.job_values_prompts.WORK_VALUES_TAXONOMY", [("Ambition", "desc"), ("Integrity", "desc")]):
+    with patch("utils.job_values_prompts.get_work_values_set", return_value={"Ambition", "Integrity"}), \
+         patch("utils.job_values_prompts._get_formatted_taxonomy", return_value="mock"):
         with patch.object(provider, "complete", return_value=mock_response):
             res = provider.summarize_and_tag_values("job text", org_name="Test Org")
             assert res["summary"] == "This is a summary."
@@ -111,7 +112,8 @@ def test_summarize_and_tag_values_batch():
     ]
     mock_response = f"Here is JSON: {json.dumps(batch_data)}"
 
-    with patch("utils.job_values_prompts.WORK_VALUES_TAXONOMY", [("Ambition", "desc"), ("Integrity", "desc")]):
+    with patch("utils.job_values_prompts.get_work_values_set", return_value={"Ambition", "Integrity"}), \
+         patch("utils.job_values_prompts._get_formatted_taxonomy", return_value="mock"):
         with patch.object(provider, "complete", return_value=mock_response):
             jobs = [{"job_title": "J1"}, {"job_title": "J2"}]
             res = provider.summarize_and_tag_values_batch(jobs)
