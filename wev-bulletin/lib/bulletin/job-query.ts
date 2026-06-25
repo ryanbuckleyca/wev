@@ -59,10 +59,8 @@ function getAnnualSortValue(job: JobPosting, missingValue: number): number {
   return missingValue;
 }
 
-function matchesSearch(job: JobPosting, searchQuery: string): boolean {
-  if (!searchQuery) return true;
-
-  const query = searchQuery.toLowerCase();
+function matchesSearch(job: JobPosting, query: string): boolean {
+  if (!query) return true;
   return Boolean(
     job.job_title.toLowerCase().includes(query) ||
     (job.summary && job.summary.toLowerCase().includes(query)) ||
@@ -73,9 +71,9 @@ function matchesSearch(job: JobPosting, searchQuery: string): boolean {
   );
 }
 
-function matchesNullableSelection(
-  value: string | null | undefined,
-  selectedValues: string[],
+function matchesSelection<T>(
+  value: T | null | undefined,
+  selectedValues: T[],
 ): boolean {
   if (selectedValues.length === 0) return true;
   if (!value) return false;
@@ -83,73 +81,35 @@ function matchesNullableSelection(
 }
 
 export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPosting[] {
+  const query = filters.searchQuery ? filters.searchQuery.toLowerCase() : '';
+  const cutoffMs =
+    filters.postedWithin !== 'any'
+      ? (filters.now ?? Date.now()) - POSTED_WITHIN_DAYS[filters.postedWithin] * 24 * 60 * 60 * 1000
+      : 0;
+  
+  const explicitlySeekingRemote = filters.selectedWorkTypes.includes('remote');
+
   return jobs.filter((job) => {
-    if (!matchesSearch(job, filters.searchQuery)) return false;
+    if (!matchesSearch(job, query)) return false;
 
-    if (
-      filters.selectedOrganizations.length > 0 &&
-      !filters.selectedOrganizations.includes(job.organization)
-    ) {
-      return false;
-    }
+    if (!matchesSelection(job.organization, filters.selectedOrganizations)) return false;
+    if (!matchesSelection(job.work_type, filters.selectedWorkTypes)) return false;
+    if (!matchesSelection(job.language, filters.selectedLanguages)) return false;
+    if (!matchesSelection(job.employment_type, filters.selectedEmploymentTypes)) return false;
+    if (!matchesSelection(job.source, filters.selectedSources)) return false;
 
-    if (
-      filters.selectedWorkTypes.length > 0 &&
-      !filters.selectedWorkTypes.includes(job.work_type)
-    ) {
-      return false;
-    }
-
-    if (
-      filters.selectedLanguages.length > 0 &&
-      (!job.language || !filters.selectedLanguages.includes(job.language))
-    ) {
-      return false;
-    }
-
-    if (filters.showOnlySse && !job.is_sse) {
-      return false;
-    }
-
-    if (!filters.showJobsWithoutSalary && !job.wage?.trim() && job.min_value == null) {
-      return false;
-    }
+    if (filters.showOnlySse && !job.is_sse) return false;
+    if (!filters.showJobsWithoutSalary && !job.wage?.trim() && job.min_value == null) return false;
 
     if (filters.postedWithin !== 'any') {
-      const cutoffMs =
-        (filters.now ?? Date.now()) -
-        POSTED_WITHIN_DAYS[filters.postedWithin] * 24 * 60 * 60 * 1000;
       const postedMs = normalizePostedTimestamp(job.date_posted);
-      if (Number.isNaN(postedMs) || postedMs < cutoffMs) {
-        return false;
-      }
+      if (Number.isNaN(postedMs) || postedMs < cutoffMs) return false;
     }
 
-    const isRemote = job.work_type === 'remote';
+    const bypassLocation = explicitlySeekingRemote && job.work_type === 'remote';
 
-    if (!isRemote && !matchesNullableSelection(job.province, filters.selectedProvinces)) {
-      return false;
-    }
-
-    if (!isRemote && !matchesNullableSelection(job.municipality, filters.selectedMunicipalities)) {
-      return false;
-    }
-
-    if (filters.selectedEmploymentTypes.length > 0) {
-      if (!job.employment_type || !filters.selectedEmploymentTypes.includes(job.employment_type)) {
-        return false;
-      }
-    }
-
-    if (filters.selectedSources.length > 0) {
-      if (!job.source || !filters.selectedSources.includes(job.source)) {
-        return false;
-      }
-    }
-
-    if (!matchesNullableSelection(job.language, filters.selectedLanguages)) {
-      return false;
-    }
+    if (!bypassLocation && !matchesSelection(job.province, filters.selectedProvinces)) return false;
+    if (!bypassLocation && !matchesSelection(job.municipality, filters.selectedMunicipalities)) return false;
 
     return true;
   });
@@ -160,29 +120,39 @@ export function sortJobs(
   sortBy: JobSortOption,
   matchData: Map<string, JobMatchData>,
 ): JobPosting[] {
-  return [...jobs].sort((a, b) => {
+  if (jobs.length === 0) return jobs;
+
+  // Pre-compute sort keys for O(N) operations rather than parsing BigInts in O(N log N) comparisons
+  const sortKeys = jobs.map((job) => ({
+    job,
+    postedMs: parseDateMs(job.date_posted),
+    annualSortValueDesc: getAnnualSortValue(job, -1),
+    annualSortValueAsc: getAnnualSortValue(job, Number.POSITIVE_INFINITY),
+    match: matchData.get(job.id),
+  }));
+
+  sortKeys.sort((a, b) => {
     switch (sortBy) {
       case 'date-desc':
-        return parseDateMs(b.date_posted) - parseDateMs(a.date_posted);
+        return b.postedMs - a.postedMs;
       case 'date-asc':
-        return parseDateMs(a.date_posted) - parseDateMs(b.date_posted);
+        return a.postedMs - b.postedMs;
       case 'match-desc':
-        return (matchData.get(b.id)?.score ?? 0) - (matchData.get(a.id)?.score ?? 0);
+        return (b.match?.score ?? 0) - (a.match?.score ?? 0);
       case 'value-match-desc':
-        return (matchData.get(b.id)?.value_score ?? 0) - (matchData.get(a.id)?.value_score ?? 0);
+        return (b.match?.value_score ?? 0) - (a.match?.value_score ?? 0);
       case 'skill-match-desc':
-        return (matchData.get(b.id)?.skill_score ?? 0) - (matchData.get(a.id)?.skill_score ?? 0);
+        return (b.match?.skill_score ?? 0) - (a.match?.skill_score ?? 0);
       case 'salary-desc':
-        return getAnnualSortValue(b, -1) - getAnnualSortValue(a, -1);
+        return b.annualSortValueDesc - a.annualSortValueDesc;
       case 'salary-asc':
-        return (
-          getAnnualSortValue(a, Number.POSITIVE_INFINITY) -
-          getAnnualSortValue(b, Number.POSITIVE_INFINITY)
-        );
+        return a.annualSortValueAsc - b.annualSortValueAsc;
       case 'org-asc':
-        return a.organization.localeCompare(b.organization);
+        return a.job.organization.localeCompare(b.job.organization);
       default:
         return 0;
     }
   });
+
+  return sortKeys.map((k) => k.job);
 }
