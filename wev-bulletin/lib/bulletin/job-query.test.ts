@@ -91,19 +91,25 @@ describe('job-query', () => {
       expect(filterJobs(mockJobs, { ...defaultFilters, postedWithin: '1-month' })).toHaveLength(2);
     });
 
-    it('filters by province and municipality', () => {
+    it('filters by province and municipality strictly by default', () => {
       expect(
         filterJobs(mockJobs, { ...defaultFilters, selectedProvinces: ['Île-de-France'] }),
-      ).toHaveLength(1); // Job 1 is in Île-de-France (and remote). Job 2 is excluded.
+      ).toHaveLength(1); // Job 1 is in Île-de-France
+      
       expect(
         filterJobs(mockJobs, { ...defaultFilters, selectedMunicipalities: ['Lyon'] }),
-      ).toHaveLength(2); // Job 2 is in Lyon. Job 1 is remote so it bypasses the municipality filter.
+      ).toHaveLength(1); // Job 2 is in Lyon. Job 1 is remote but work_type 'remote' is not explicitly selected, so it does not bypass.
     });
 
-    it('allows remote jobs to bypass geographic filters', () => {
+    it('allows remote jobs to bypass geographic filters ONLY if explicitly requested', () => {
+      // With 'remote' checked, searching for 'Auvergne-Rhône-Alpes' returns Job 2 (local) AND Job 1 (remote elsewhere)
       expect(
-        filterJobs(mockJobs, { ...defaultFilters, selectedProvinces: ['Auvergne-Rhône-Alpes'] }),
-      ).toHaveLength(2); // Job 2 matches province. Job 1 is remote so it bypasses province filter.
+        filterJobs(mockJobs, { 
+          ...defaultFilters, 
+          selectedProvinces: ['Auvergne-Rhône-Alpes'],
+          selectedWorkTypes: ['remote', 'office'] // We must explicitly select remote to trigger bypass for Job 1, and office to include Job 2
+        }),
+      ).toHaveLength(2);
     });
 
     it('filters by employment type and source', () => {
