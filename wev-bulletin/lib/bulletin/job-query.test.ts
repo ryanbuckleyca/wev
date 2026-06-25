@@ -95,21 +95,81 @@ describe('job-query', () => {
       expect(
         filterJobs(mockJobs, { ...defaultFilters, selectedProvinces: ['Île-de-France'] }),
       ).toHaveLength(1); // Job 1 is in Île-de-France
-      
+
       expect(
         filterJobs(mockJobs, { ...defaultFilters, selectedMunicipalities: ['Lyon'] }),
       ).toHaveLength(1); // Job 2 is in Lyon. Job 1 is remote but work_type 'remote' is not explicitly selected, so it does not bypass.
     });
 
-    it('allows remote jobs to bypass geographic filters ONLY if explicitly requested', () => {
-      // With 'remote' checked, searching for 'Auvergne-Rhône-Alpes' returns Job 2 (local) AND Job 1 (remote elsewhere)
-      expect(
-        filterJobs(mockJobs, { 
-          ...defaultFilters, 
-          selectedProvinces: ['Auvergne-Rhône-Alpes'],
-          selectedWorkTypes: ['remote', 'office'] // We must explicitly select remote to trigger bypass for Job 1, and office to include Job 2
-        }),
-      ).toHaveLength(2);
+    it('allows remote jobs to bypass province filter when remote is explicitly selected', () => {
+      const result = filterJobs(mockJobs, {
+        ...defaultFilters,
+        selectedProvinces: ['Auvergne-Rhône-Alpes'],
+        selectedWorkTypes: ['remote', 'office'],
+      });
+      expect(result.map((j) => j.id)).toEqual(expect.arrayContaining(['1', '2']));
+      expect(result).toHaveLength(2);
+    });
+
+    it('allows remote jobs to bypass municipality filter when remote is explicitly selected', () => {
+      const result = filterJobs(mockJobs, {
+        ...defaultFilters,
+        selectedMunicipalities: ['Lyon'],
+        selectedWorkTypes: ['remote', 'office'],
+      });
+      expect(result.map((j) => j.id)).toEqual(expect.arrayContaining(['1', '2']));
+      expect(result).toHaveLength(2);
+    });
+
+    it('does not bypass geographic filters when only non-remote work types are selected', () => {
+      const result = filterJobs(mockJobs, {
+        ...defaultFilters,
+        selectedProvinces: ['Auvergne-Rhône-Alpes'],
+        selectedWorkTypes: ['office'],
+      });
+      expect(result.map((j) => j.id)).toEqual(['2']);
+    });
+
+    it('does not bypass geographic filters for hybrid jobs even when remote is selected', () => {
+      const hybridJob = {
+        ...mockJobs[0],
+        id: '3',
+        work_type: 'hybrid' as const,
+        province: 'Normandie',
+        municipality: 'Rouen',
+      };
+      const result = filterJobs([...mockJobs, hybridJob] as any, {
+        ...defaultFilters,
+        selectedProvinces: ['Auvergne-Rhône-Alpes'],
+        selectedWorkTypes: ['remote', 'hybrid', 'office'],
+      });
+      // Job 1 (remote) bypasses, Job 2 (office, matching province) passes, Job 3 (hybrid, wrong province) excluded
+      expect(result.map((j) => j.id)).toEqual(expect.arrayContaining(['1', '2']));
+      expect(result).toHaveLength(2);
+    });
+
+    it('bypass is a no-op when no geographic filters are active', () => {
+      const result = filterJobs(mockJobs, {
+        ...defaultFilters,
+        selectedWorkTypes: ['remote'],
+      });
+      expect(result.map((j) => j.id)).toEqual(['1']);
+    });
+
+    it('remote job with null province still bypasses when remote is selected', () => {
+      const remoteNoProvince = {
+        ...mockJobs[0],
+        id: '4',
+        province: null,
+        municipality: null,
+      };
+      const result = filterJobs([mockJobs[1], remoteNoProvince] as any, {
+        ...defaultFilters,
+        selectedProvinces: ['Auvergne-Rhône-Alpes'],
+        selectedWorkTypes: ['remote', 'office'],
+      });
+      expect(result.map((j) => j.id)).toEqual(expect.arrayContaining(['2', '4']));
+      expect(result).toHaveLength(2);
     });
 
     it('filters by employment type and source', () => {
@@ -152,6 +212,10 @@ describe('job-query', () => {
 
     it('handles default case', () => {
       expect(sortJobs(mockJobs, 'invalid' as any, matchData)).toHaveLength(2);
+    });
+
+    it('returns empty array as-is', () => {
+      expect(sortJobs([], 'date-desc', matchData)).toEqual([]);
     });
   });
 });
