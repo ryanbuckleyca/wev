@@ -6,6 +6,7 @@ import {
   VALUE_TO_CATEGORY,
   buildWorkValues,
   getValueDefinition,
+  type Value,
 } from './values';
 
 describe('VALUES_DICTIONARY', () => {
@@ -41,7 +42,7 @@ describe('VALUES_LIST', () => {
 describe('getValueDefinition', () => {
   it('returns the correct definition for a known value', () => {
     const def = getValueDefinition('Community');
-    expect(def.description).toContain('neighbors');
+    expect(def.description).toContain('impact');
   });
 
   it('returns a default definition for an unknown value', () => {
@@ -71,7 +72,7 @@ describe('buildWorkValues (P4)', () => {
     // Validates: Requirements 4.1, 4.2
     const result = buildWorkValues(mockT, mockT);
     for (const item of result) {
-      const catKey = VALUE_TO_CATEGORY[item.id];
+      const catKey = VALUE_TO_CATEGORY[item.id as Value];
       expect(catKey).toBeDefined();
       const expectedCategory = VALUE_CATEGORIES[catKey];
       expect(expectedCategory).toBeDefined();
@@ -93,8 +94,8 @@ describe('VALUES_LIST spot-checks', () => {
 });
 
 describe('VALUES_DICTIONARY spot-checks', () => {
-  it('Advancement description contains "get ahead rapidly"', () => {
-    expect(VALUES_DICTIONARY['Advancement'].description).toContain('get ahead rapidly');
+  it('Advancement description contains "Growth"', () => {
+    expect(VALUES_DICTIONARY['Advancement'].description).toContain('Growth');
   });
 
   it('Adventure exists (new value)', () => {
@@ -111,5 +112,34 @@ describe('VALUES_DICTIONARY spot-checks', () => {
 
   it('does not contain Organization', () => {
     expect(Object.prototype.hasOwnProperty.call(VALUES_DICTIONARY, 'Organization')).toBe(false);
+  });
+});
+
+// Drift detection: VALUE_TO_CATEGORY must stay in sync with shared JSON categories
+import sharedValues from '@shared/taxonomy/work_values.json';
+
+describe('VALUE_TO_CATEGORY ↔ shared JSON sync', () => {
+  it('every JSON label has a matching entry in VALUE_TO_CATEGORY', () => {
+    const missing = sharedValues
+      .map((v) => v.label)
+      .filter((label) => !(label in VALUE_TO_CATEGORY));
+    expect(missing).toEqual([]);
+  });
+
+  it('every VALUE_TO_CATEGORY key exists in JSON', () => {
+    const jsonLabels = new Set(sharedValues.map((v) => v.label));
+    const extra = Object.keys(VALUE_TO_CATEGORY).filter((k) => !jsonLabels.has(k));
+    expect(extra).toEqual([]);
+  });
+
+  it('category values match between VALUE_TO_CATEGORY and JSON', () => {
+    const mismatches: string[] = [];
+    for (const entry of sharedValues) {
+      const tsCategory = VALUE_TO_CATEGORY[entry.label as Value];
+      if (tsCategory !== entry.category) {
+        mismatches.push(`${entry.label}: TS="${tsCategory}" JSON="${entry.category}"`);
+      }
+    }
+    expect(mismatches).toEqual([]);
   });
 });

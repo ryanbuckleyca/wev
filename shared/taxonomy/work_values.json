@@ -1,0 +1,836 @@
+[
+  {
+    "label": "Advancement",
+    "definition": "Growth into higher responsibility/authority.",
+    "category": "growth",
+    "signals": [
+      "career path",
+      "promotion",
+      "growth opportunity",
+      "leadership pipeline",
+      "advance your career",
+      "progression"
+    ],
+    "example": "Example: opportunities to move from specialist to manager over time.",
+    "negative_constraint": "the posting explicitly mentions career growth, promotion paths, or progression opportunities"
+  },
+  {
+    "label": "Adventure",
+    "definition": "Frequent risk-taking and bold decisions.",
+    "category": "workstyle",
+    "signals": [
+      "uncharted territory",
+      "bold",
+      "pioneering",
+      "venture into",
+      "high-stakes",
+      "risk-taking",
+      "daring"
+    ],
+    "example": "Example: roles that regularly involve bold decisions or physical risk.",
+    "negative_constraint": "the role explicitly involves physical risk, bold decisions, or unconventional environments"
+  },
+  {
+    "label": "Aesthetic",
+    "definition": "Beauty, design, and form in work output.",
+    "category": "creativity",
+    "signals": [
+      "beautiful",
+      "polished",
+      "visual excellence",
+      "brand aesthetic",
+      "look and feel",
+      "tasteful",
+      "curated",
+      "refined design"
+    ],
+    "example": "Example: creating polished visual work and improving how things look and feel.",
+    "negative_constraint": "the role explicitly involves beauty, design, visual form, or artistic output (e.g. graphic design, UX, photography)"
+  },
+  {
+    "label": "Affiliation",
+    "definition": "Belonging and acceptance in a work group.",
+    "category": "social",
+    "signals": [
+      "part of something bigger",
+      "proud to work at",
+      "strong identity",
+      "our people",
+      "belong",
+      "valued member",
+      "our culture"
+    ],
+    "example": "Example: being part of a close, collaborative team culture."
+  },
+  {
+    "label": "Artistic Creativity",
+    "definition": "Original artistic work and style.",
+    "category": "creativity",
+    "signals": [
+      "original artwork",
+      "creative direction",
+      "artistic vision",
+      "illustration",
+      "visual storytelling",
+      "compose",
+      "design portfolio"
+    ],
+    "example": "Example: creating unique illustrations, writing, music, or multimedia work."
+  },
+  {
+    "label": "Challenge",
+    "definition": "Difficult goals and hard problems.",
+    "category": "growth",
+    "signals": [
+      "challenging",
+      "complex",
+      "demanding",
+      "difficult",
+      "hard problems",
+      "push boundaries",
+      "stretch goals"
+    ],
+    "example": "Example: solving complex problems with no obvious solution path.",
+    "negative_constraint": "the posting contains at least one of these exact words verbatim: 'challenging', 'challenge', 'complex', 'demanding', 'difficult'. If none appear, do not assign Challenge even if the work sounds hard"
+  },
+  {
+    "label": "Change and Variety",
+    "definition": "Frequent task/context variety.",
+    "category": "workstyle",
+    "signals": [
+      "no two days alike",
+      "diverse projects",
+      "wear many hats",
+      "varied responsibilities",
+      "cross-functional",
+      "dynamic role"
+    ],
+    "example": "Example: shifting between projects and learning new tools often."
+  },
+  {
+    "label": "Community",
+    "definition": "Connection to and impact on community.",
+    "category": "social",
+    "signals": [
+      "community impact",
+      "neighbourhood",
+      "civic engagement",
+      "local partnerships",
+      "community-driven",
+      "grassroots"
+    ],
+    "example": "Example: work that builds stronger neighborhoods or community programs.",
+    "negative_constraint": "the posting explicitly frames community connection, belonging, or local impact as a core feature of the work. Do not use as a default for any role that involves working with people"
+  },
+  {
+    "label": "Competition",
+    "definition": "Performance against others and winning.",
+    "category": "rewards",
+    "signals": [
+      "leaderboard",
+      "top performer",
+      "competitive",
+      "rank",
+      "outperform",
+      "sales targets",
+      "win"
+    ],
+    "example": "Example: sales targets, rankings, or performance leaderboards."
+  },
+  {
+    "label": "Competence",
+    "definition": "Mastery and high-quality execution.",
+    "category": "growth",
+    "signals": [
+      "leverage your expertise",
+      "demonstrate proficiency",
+      "high standards",
+      "mastery",
+      "best-in-class",
+      "hone your craft",
+      "deep skill"
+    ],
+    "example": "Example: being known as reliable and technically strong in core tasks.",
+    "negative_constraint": "mastery or high-craft execution is explicitly emphasised"
+  },
+  {
+    "label": "Creative Expression",
+    "definition": "Expressing personal voice/ideas in work.",
+    "category": "creativity",
+    "signals": [
+      "your voice",
+      "creative freedom",
+      "express yourself",
+      "leave your mark",
+      "make it your own",
+      "personal style",
+      "autonomy to experiment"
+    ],
+    "example": "Example: shaping content, messaging, or design in your own style."
+  },
+  {
+    "label": "Creativity",
+    "definition": "Generating novel, useful ideas.",
+    "category": "creativity",
+    "signals": [
+      "innovative",
+      "from scratch",
+      "greenfield",
+      "invent",
+      "ideation",
+      "brainstorm",
+      "novel solutions",
+      "think outside the box",
+      "reimagine"
+    ],
+    "example": "Example: inventing new approaches that improve outcomes."
+  },
+  {
+    "label": "Decision Making",
+    "definition": "Authority to make consequential decisions.",
+    "category": "growth",
+    "signals": [
+      "own the decision",
+      "make the call",
+      "determine direction",
+      "judgement",
+      "weigh trade-offs",
+      "shape the roadmap",
+      "your call"
+    ],
+    "example": "Example: owning project direction, priorities, or resource tradeoffs."
+  },
+  {
+    "label": "Diversity",
+    "definition": "Working with people of diverse backgrounds.",
+    "category": "social",
+    "signals": [
+      "diverse team",
+      "inclusion",
+      "equity",
+      "belonging",
+      "multicultural",
+      "underrepresented",
+      "DEI",
+      "equal opportunity"
+    ],
+    "example": "Example: a team that actively values and reflects diverse perspectives.",
+    "negative_constraint": "the posting explicitly mentions diverse backgrounds, inclusion, or equity as a feature of the team or organisation"
+  },
+  {
+    "label": "Environment",
+    "definition": "Positive effect on the natural environment.",
+    "category": "social",
+    "signals": [
+      "sustainability",
+      "green",
+      "carbon neutral",
+      "climate",
+      "conservation",
+      "environmental impact",
+      "eco-friendly",
+      "clean energy"
+    ],
+    "example": "Example: projects focused on sustainability or reducing environmental impact.",
+    "negative_constraint": "the role explicitly involves sustainability, conservation, or reducing environmental impact"
+  },
+  {
+    "label": "Excitement",
+    "definition": "High stimulation and energetic work.",
+    "category": "workstyle",
+    "signals": [
+      "fast-moving",
+      "high-energy",
+      "thrilling",
+      "buzzing",
+      "electrifying",
+      "momentum",
+      "adrenaline"
+    ],
+    "example": "Example: high-engagement work with visible momentum and action."
+  },
+  {
+    "label": "Family",
+    "definition": "Work hours and type fit family responsibilities.",
+    "category": "workstyle",
+    "signals": [
+      "family-friendly",
+      "parental leave",
+      "childcare",
+      "school hours",
+      "family first",
+      "caregiver support"
+    ],
+    "example": "Example: flexible scheduling that accommodates school pickups or family care.",
+    "negative_constraint": "the posting explicitly mentions flexible hours, family-friendly scheduling, or work-life accommodation"
+  },
+  {
+    "label": "Fast Pace",
+    "definition": "Rapid cadence and tight timelines.",
+    "category": "workstyle",
+    "signals": [
+      "fast-paced",
+      "tight deadlines",
+      "rapid iteration",
+      "ship quickly",
+      "move fast",
+      "high velocity",
+      "sprint-based"
+    ],
+    "example": "Example: handling frequent deliverables in a high-tempo environment."
+  },
+  {
+    "label": "Financial Gain",
+    "definition": "Income upside from performance/growth.",
+    "category": "rewards",
+    "signals": [
+      "equity",
+      "stock options",
+      "profit sharing",
+      "commission",
+      "bonus structure",
+      "OTE",
+      "uncapped earnings",
+      "vesting",
+      "ownership stake"
+    ],
+    "example": "Example: bonus structures, commissions, equity, or profit sharing."
+  },
+  {
+    "label": "Friendship",
+    "definition": "Warm personal relationships at work.",
+    "category": "social",
+    "signals": [
+      "close-knit",
+      "social events",
+      "team outings",
+      "we hang out",
+      "genuine relationships",
+      "camaraderie",
+      "like a family"
+    ],
+    "example": "Example: enjoying genuine day-to-day friendships on the team."
+  },
+  {
+    "label": "Fun and Humor",
+    "definition": "A workplace culture with levity and laughter.",
+    "category": "workstyle",
+    "signals": [
+      "fun culture",
+      "playful",
+      "we don't take ourselves too seriously",
+      "game nights",
+      "lighthearted",
+      "quirky",
+      "humor"
+    ],
+    "example": "Example: a team culture that balances hard work with levity and laughter.",
+    "negative_constraint": "the posting explicitly describes a playful, light-hearted, or humorous team culture"
+  },
+  {
+    "label": "Group & Team",
+    "definition": "Collaborative work toward shared team results.",
+    "category": "social",
+    "signals": [
+      "shared accountability",
+      "team-based outcomes",
+      "collective ownership",
+      "squad",
+      "we win together",
+      "joint responsibility",
+      "team deliverables"
+    ],
+    "example": "Example: collaborative sprints where success is shared across the team.",
+    "negative_constraint": "team-based outcomes and shared accountability are explicitly emphasised over individual contribution. Do not use as a default for any collaborative role"
+  },
+  {
+    "label": "Help Others",
+    "definition": "Directly helping individuals.",
+    "category": "social",
+    "signals": [
+      "make a difference",
+      "support clients",
+      "one-on-one",
+      "coaching",
+      "mentoring",
+      "empower individuals",
+      "advocate for",
+      "direct service"
+    ],
+    "example": "Example: coaching, mentoring, advising, or solving client problems."
+  },
+  {
+    "label": "Help Society",
+    "definition": "Broader social/public good impact.",
+    "category": "social",
+    "signals": [
+      "social impact",
+      "mission-driven",
+      "public good",
+      "non-profit",
+      "change the world",
+      "social enterprise",
+      "humanitarian"
+    ],
+    "example": "Example: work that advances health, equity, education, or sustainability."
+  },
+  {
+    "label": "High Earnings",
+    "definition": "Top-end salary potential.",
+    "category": "rewards",
+    "signals": [
+      "competitive salary",
+      "top-of-market pay",
+      "above-market compensation",
+      "lucrative",
+      "generous total compensation",
+      "premium pay"
+    ],
+    "example": "Example: choosing roles known for strong compensation ceilings."
+  },
+  {
+    "label": "Honesty and Integrity",
+    "definition": "Transparency and ethical behaviour are valued.",
+    "category": "workstyle",
+    "signals": [
+      "transparency",
+      "ethical",
+      "integrity",
+      "trust",
+      "do the right thing",
+      "values-driven",
+      "accountable",
+      "honest feedback"
+    ],
+    "example": "Example: an organization that rewards transparency and ethical behavior.",
+    "negative_constraint": "the posting explicitly names ethics, transparency, or integrity as organisational values"
+  },
+  {
+    "label": "Independence",
+    "definition": "Work without close supervision or strict rules.",
+    "category": "workstyle",
+    "signals": [
+      "self-directed",
+      "autonomous",
+      "minimal oversight",
+      "own your workflow",
+      "no micromanagement",
+      "self-starter"
+    ],
+    "example": "Example: setting your own priorities and working without close supervision.",
+    "negative_constraint": "the posting explicitly describes autonomous work, self-direction, or minimal supervision"
+  },
+  {
+    "label": "Influence People",
+    "definition": "Persuasion and shaping decisions/behavior.",
+    "category": "social",
+    "signals": [
+      "stakeholder management",
+      "persuade",
+      "shape opinions",
+      "change minds",
+      "advise executives",
+      "drive alignment",
+      "evangelize",
+      "advocate"
+    ],
+    "example": "Example: guiding stakeholders to align on a proposed direction."
+  },
+  {
+    "label": "Intellectual Status",
+    "definition": "Respect for expertise and insight.",
+    "category": "rewards",
+    "signals": [
+      "subject matter expert",
+      "thought leader",
+      "recognized authority",
+      "go-to person",
+      "deep expertise",
+      "respected voice"
+    ],
+    "example": "Example: recognition as a thought partner in complex domains."
+  },
+  {
+    "label": "Job Tranquility",
+    "definition": "Low stress and calm work conditions.",
+    "category": "workstyle",
+    "signals": [
+      "low-pressure",
+      "calm environment",
+      "sustainable pace",
+      "no crunch",
+      "predictable workload",
+      "stress-free"
+    ],
+    "example": "Example: steady workloads with limited urgency and crisis response."
+  },
+  {
+    "label": "Knowledge",
+    "definition": "Continuous learning and deep understanding.",
+    "category": "growth",
+    "signals": [
+      "learning culture",
+      "professional development",
+      "conferences",
+      "training budget",
+      "continuous learning",
+      "upskill",
+      "L&D"
+    ],
+    "example": "Example: roles that reward study, analysis, and deep domain learning."
+  },
+  {
+    "label": "Location",
+    "definition": "Preferred geography or work setting.",
+    "category": "workstyle",
+    "signals": [
+      "remote-friendly",
+      "on-site in",
+      "relocation package",
+      "field work",
+      "work from anywhere",
+      "hybrid",
+      "specific city/region"
+    ],
+    "example": "Example: staying in a specific city, region, or remote setup.",
+    "negative_constraint": "geography or work setting is a prominent, stated feature of the role (e.g. field work, required relocation, unique site)"
+  },
+  {
+    "label": "Moral Fulfillment",
+    "definition": "Alignment with ethics and integrity.",
+    "category": "workstyle",
+    "signals": [
+      "purpose-driven",
+      "aligned with your values",
+      "ethical mission",
+      "meaningful work",
+      "work that matters",
+      "conscience",
+      "deeply fulfilling"
+    ],
+    "example": "Example: choosing projects that match your values and integrity standards.",
+    "negative_constraint": "the posting explicitly uses language about ethics, integrity, or values alignment as a draw"
+  },
+  {
+    "label": "Personal Safety",
+    "definition": "High probability of being safe and healthy at work.",
+    "category": "stability",
+    "signals": [
+      "safety protocols",
+      "PPE",
+      "health and safety",
+      "zero-harm",
+      "OSHA",
+      "safe working conditions",
+      "wellness program"
+    ],
+    "example": "Example: roles with strong safety protocols and low physical risk.",
+    "negative_constraint": "the role explicitly involves safety protocols, physical risk management, or health and safety as a feature"
+  },
+  {
+    "label": "Physical Challenge",
+    "definition": "Meaningful physical demands.",
+    "category": "workstyle",
+    "signals": [
+      "physically active",
+      "hands-on",
+      "fieldwork",
+      "lifting required",
+      "outdoor work",
+      "labour-intensive",
+      "on your feet"
+    ],
+    "example": "Example: active work with meaningful physical demands."
+  },
+  {
+    "label": "Power and Authority",
+    "definition": "Control over the work or destinies of others.",
+    "category": "growth",
+    "signals": [
+      "executive authority",
+      "budget ownership",
+      "P&L responsibility",
+      "org-level decisions",
+      "strategic control",
+      "run the division",
+      "command"
+    ],
+    "example": "Example: leading a team or division with real decision-making authority.",
+    "negative_constraint": "the role explicitly grants control over others' work, budgets, or strategic direction"
+  },
+  {
+    "label": "Practicality",
+    "definition": "Work that yields a tangible, useful, real-world result.",
+    "category": "growth",
+    "signals": [
+      "real-world impact",
+      "tangible outcomes",
+      "practical applications",
+      "ship product",
+      "hands-on results",
+      "solve real problems"
+    ],
+    "example": "Example: building tangible products or solving concrete real-world problems."
+  },
+  {
+    "label": "Precision Work",
+    "definition": "Accuracy and detail-oriented work.",
+    "category": "creativity",
+    "signals": [
+      "attention to detail",
+      "zero-defect",
+      "meticulous",
+      "quality assurance",
+      "exacting standards",
+      "rigorous",
+      "thorough"
+    ],
+    "example": "Example: tasks where quality depends on careful, exact execution."
+  },
+  {
+    "label": "Public Contact",
+    "definition": "Frequent interaction with the public.",
+    "category": "social",
+    "signals": [
+      "client-facing",
+      "customer interaction",
+      "public-facing",
+      "front of house",
+      "community outreach",
+      "external stakeholders"
+    ],
+    "example": "Example: front-facing roles with regular external communication."
+  },
+  {
+    "label": "Recognition",
+    "definition": "Visible credit and acknowledgment.",
+    "category": "rewards",
+    "signals": [
+      "employee of the month",
+      "spotlight",
+      "shout-outs",
+      "public praise",
+      "awards",
+      "celebrate wins",
+      "credit where due"
+    ],
+    "example": "Example: public praise, awards, or clear attribution for contributions."
+  },
+  {
+    "label": "Research and Development",
+    "definition": "Investigation, experiments, innovation.",
+    "category": "growth",
+    "signals": [
+      "R&D",
+      "prototyping",
+      "proof of concept",
+      "experimentation",
+      "research",
+      "lab",
+      "white-paper",
+      "pilot program"
+    ],
+    "example": "Example: experimentation and prototyping to develop future solutions."
+  },
+  {
+    "label": "Security",
+    "definition": "Job stability and dependable income.",
+    "category": "stability",
+    "signals": [
+      "permanent position",
+      "job security",
+      "stable employer",
+      "long-term role",
+      "pension",
+      "benefits package",
+      "recession-proof",
+      "steady demand"
+    ],
+    "example": "Example: stable organizations with low perceived layoff risk."
+  },
+  {
+    "label": "Spirituality",
+    "definition": "Work setting supportive of spiritual beliefs.",
+    "category": "workstyle",
+    "signals": [
+      "faith-based",
+      "ministry",
+      "spiritual mission",
+      "chaplaincy",
+      "religious organization",
+      "prayer",
+      "congregation"
+    ],
+    "example": "Example: an organization whose culture respects and accommodates spiritual practice.",
+    "negative_constraint": "the posting explicitly references spiritual practice, faith-based mission, or religious community"
+  },
+  {
+    "label": "Stability",
+    "definition": "Predictable routines and structure.",
+    "category": "stability",
+    "signals": [
+      "predictable schedule",
+      "consistent hours",
+      "established company",
+      "steady workload",
+      "low turnover",
+      "long-standing",
+      "minimal change"
+    ],
+    "example": "Example: predictable schedules and clearly defined processes."
+  },
+  {
+    "label": "Status",
+    "definition": "Prestige and standing of role.",
+    "category": "rewards",
+    "signals": [
+      "prestigious",
+      "renowned",
+      "elite",
+      "top-tier firm",
+      "Fortune 500",
+      "brand-name employer",
+      "high-profile",
+      "C-suite"
+    ],
+    "example": "Example: title, role visibility, and perceived importance in an organization."
+  },
+  {
+    "label": "Steep Learning Curve",
+    "definition": "New, difficult tasks to be rapidly mastered.",
+    "category": "growth",
+    "signals": [
+      "ramp up quickly",
+      "learn fast",
+      "sink or swim",
+      "steep growth",
+      "rapid onboarding",
+      "hit the ground running"
+    ],
+    "example": "Example: onboarding into a complex domain and rapidly gaining expertise.",
+    "negative_constraint": "the posting explicitly frames rapid skill acquisition or mastery of new domains as a core feature"
+  },
+  {
+    "label": "Structure and Predictability",
+    "definition": "High structure and consistent expectations.",
+    "category": "stability",
+    "signals": [
+      "well-defined processes",
+      "clear expectations",
+      "documented workflows",
+      "SOPs",
+      "standardized",
+      "playbook"
+    ],
+    "example": "Example: well-defined processes and consistent expectations day to day.",
+    "negative_constraint": "the posting explicitly describes well-defined processes, clear expectations, or stable routines"
+  },
+  {
+    "label": "Supervision",
+    "definition": "Leading and managing others.",
+    "category": "workstyle",
+    "signals": [
+      "manage a team",
+      "direct reports",
+      "people management",
+      "team lead",
+      "oversee staff",
+      "supervisory",
+      "coaching reports"
+    ],
+    "example": "Example: managing a team and being accountable for team outcomes."
+  },
+  {
+    "label": "Time Freedom",
+    "definition": "Control over schedule and hours.",
+    "category": "workstyle",
+    "signals": [
+      "flexible hours",
+      "async-first",
+      "results-oriented",
+      "no fixed schedule",
+      "flextime",
+      "work when you want",
+      "core hours optional"
+    ],
+    "example": "Example: setting your own hours or adjusting work around life demands."
+  },
+  {
+    "label": "Tradition",
+    "definition": "Work consistent with established customs or heritage.",
+    "category": "workstyle",
+    "signals": [
+      "heritage",
+      "long-standing",
+      "legacy",
+      "time-honoured",
+      "family business",
+      "established since",
+      "tradition of excellence"
+    ],
+    "example": "Example: roles that honor established customs or community heritage.",
+    "negative_constraint": "the posting explicitly references heritage, established customs, or long-standing organisational practices"
+  },
+  {
+    "label": "Work Alone",
+    "definition": "Independent, autonomous work.",
+    "category": "workstyle",
+    "signals": [
+      "solo contributor",
+      "work independently",
+      "minimal interaction",
+      "heads-down",
+      "individual contributor",
+      "self-contained tasks",
+      "focused solitary work"
+    ],
+    "example": "Example: long stretches of autonomous work and individual ownership."
+  },
+  {
+    "label": "Work Under Pressure",
+    "definition": "Effectiveness in urgent/high-stakes situations.",
+    "category": "workstyle",
+    "signals": [
+      "high-pressure",
+      "urgent",
+      "deadline-driven",
+      "crisis management",
+      "time-critical",
+      "mission-critical",
+      "on-call"
+    ],
+    "example": "Example: staying effective during peak load and time-critical decisions."
+  },
+  {
+    "label": "Work with Others",
+    "definition": "Close ongoing collaboration.",
+    "category": "social",
+    "signals": [
+      "collaborate daily",
+      "pair programming",
+      "team-oriented",
+      "work closely with",
+      "close working relationships",
+      "regular interaction",
+      "partner with"
+    ],
+    "example": "Example: planning and executing work through shared responsibility."
+  },
+  {
+    "label": "Work-Life Balance",
+    "definition": "Adequate time for family, hobbies, and social life.",
+    "category": "workstyle",
+    "signals": [
+      "work-life balance",
+      "reasonable hours",
+      "no overtime",
+      "wellness",
+      "recharge",
+      "personal time",
+      "mental health days",
+      "boundaries"
+    ],
+    "example": "Example: a role with reasonable hours and respect for personal time.",
+    "negative_constraint": "the posting explicitly mentions balance, reasonable hours, or respect for personal time"
+  }
+]

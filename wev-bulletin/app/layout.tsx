@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { cookies, headers } from 'next/headers';
 import Script from 'next/script';
 import { getSiteBaseUrl } from '@/lib/site-url';
@@ -28,6 +28,11 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const headerStore = await headers();
   const cookieStore = await cookies();
@@ -39,9 +44,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale} data-theme={theme} className={lexend.variable} suppressHydrationWarning>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
         {enableAnalytics && (
