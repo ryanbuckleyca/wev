@@ -47,10 +47,6 @@ const POSTED_WITHIN_DAYS: Record<Exclude<PostedWithinSelection, 'any'>, number> 
   '1-month': 30,
 };
 
-function normalizePostedTimestamp(raw: string): number {
-  return parseDateMs(raw);
-}
-
 function getAnnualSortValue(job: JobPosting, missingValue: number): number {
   if (job.min_value != null && job.unit_text != null) {
     const annual = toAnnual(BigInt(job.min_value), job.unit_text, job.hours_per_week);
@@ -59,15 +55,16 @@ function getAnnualSortValue(job: JobPosting, missingValue: number): number {
   return missingValue;
 }
 
-function matchesSearch(job: JobPosting, query: string): boolean {
-  if (!query) return true;
+/** @param lowerQuery – must already be lowercased by the caller. */
+function matchesSearch(job: JobPosting, lowerQuery: string): boolean {
+  if (!lowerQuery) return true;
   return Boolean(
-    job.job_title.toLowerCase().includes(query) ||
-    (job.summary && job.summary.toLowerCase().includes(query)) ||
-    job.organization.toLowerCase().includes(query) ||
-    (job.location && job.location.toLowerCase().includes(query)) ||
-    (job.municipality && job.municipality.toLowerCase().includes(query)) ||
-    (job.province && job.province.toLowerCase().includes(query)),
+    job.job_title.toLowerCase().includes(lowerQuery) ||
+    (job.summary && job.summary.toLowerCase().includes(lowerQuery)) ||
+    job.organization.toLowerCase().includes(lowerQuery) ||
+    (job.location && job.location.toLowerCase().includes(lowerQuery)) ||
+    (job.municipality && job.municipality.toLowerCase().includes(lowerQuery)) ||
+    (job.province && job.province.toLowerCase().includes(lowerQuery)),
   );
 }
 
@@ -76,21 +73,21 @@ function matchesSelection<T>(
   selectedValues: T[],
 ): boolean {
   if (selectedValues.length === 0) return true;
-  if (!value) return false;
+  if (value == null) return false;
   return selectedValues.includes(value);
 }
 
 export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPosting[] {
-  const query = filters.searchQuery ? filters.searchQuery.toLowerCase() : '';
+  const lowerQuery = filters.searchQuery ? filters.searchQuery.toLowerCase() : '';
   const cutoffMs =
     filters.postedWithin !== 'any'
-      ? (filters.now ?? Date.now()) - POSTED_WITHIN_DAYS[filters.postedWithin] * 24 * 60 * 60 * 1000
-      : 0;
-  
+      ? (filters.now ?? Date.now()) - POSTED_WITHIN_DAYS[filters.postedWithin] * 86_400_000
+      : null;
+
   const explicitlySeekingRemote = filters.selectedWorkTypes.includes('remote');
 
   return jobs.filter((job) => {
-    if (!matchesSearch(job, query)) return false;
+    if (!matchesSearch(job, lowerQuery)) return false;
 
     if (!matchesSelection(job.organization, filters.selectedOrganizations)) return false;
     if (!matchesSelection(job.work_type, filters.selectedWorkTypes)) return false;
@@ -101,8 +98,8 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
     if (filters.showOnlySse && !job.is_sse) return false;
     if (!filters.showJobsWithoutSalary && !job.wage?.trim() && job.min_value == null) return false;
 
-    if (filters.postedWithin !== 'any') {
-      const postedMs = normalizePostedTimestamp(job.date_posted);
+    if (cutoffMs != null) {
+      const postedMs = parseDateMs(job.date_posted);
       if (Number.isNaN(postedMs) || postedMs < cutoffMs) return false;
     }
 
@@ -122,12 +119,16 @@ export function sortJobs(
 ): JobPosting[] {
   if (jobs.length === 0) return jobs;
 
-  // Pre-compute sort keys for O(N) operations rather than parsing BigInts in O(N log N) comparisons
+  const needsDate = sortBy === 'date-desc' || sortBy === 'date-asc';
+  const needsSalary = sortBy === 'salary-desc' || sortBy === 'salary-asc';
+  const salaryFallback = sortBy === 'salary-asc' ? Number.POSITIVE_INFINITY : -1;
+
+  // Pre-compute sort keys so expensive work (BigInt, Map lookup, date parsing)
+  // happens in O(N) rather than O(N log N) comparisons.
   const sortKeys = jobs.map((job) => ({
     job,
-    postedMs: parseDateMs(job.date_posted),
-    annualSortValueDesc: getAnnualSortValue(job, -1),
-    annualSortValueAsc: getAnnualSortValue(job, Number.POSITIVE_INFINITY),
+    postedMs: needsDate ? parseDateMs(job.date_posted) : 0,
+    annualSortValue: needsSalary ? getAnnualSortValue(job, salaryFallback) : 0,
     match: matchData.get(job.id),
   }));
 
@@ -144,9 +145,9 @@ export function sortJobs(
       case 'skill-match-desc':
         return (b.match?.skill_score ?? 0) - (a.match?.skill_score ?? 0);
       case 'salary-desc':
-        return b.annualSortValueDesc - a.annualSortValueDesc;
+        return b.annualSortValue - a.annualSortValue;
       case 'salary-asc':
-        return a.annualSortValueAsc - b.annualSortValueAsc;
+        return a.annualSortValue - b.annualSortValue;
       case 'org-asc':
         return a.job.organization.localeCompare(b.job.organization);
       default:
