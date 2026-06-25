@@ -68,10 +68,7 @@ function matchesSearch(job: JobPosting, lowerQuery: string): boolean {
   );
 }
 
-function matchesSelection<T>(
-  value: T | null | undefined,
-  selectedValues: T[],
-): boolean {
+function matchesSelection<T>(value: T | null | undefined, selectedValues: T[]): boolean {
   if (selectedValues.length === 0) return true;
   if (value == null) return false;
   return selectedValues.includes(value);
@@ -106,7 +103,8 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
     const bypassLocation = explicitlySeekingRemote && job.work_type === 'remote';
 
     if (!bypassLocation && !matchesSelection(job.province, filters.selectedProvinces)) return false;
-    if (!bypassLocation && !matchesSelection(job.municipality, filters.selectedMunicipalities)) return false;
+    if (!bypassLocation && !matchesSelection(job.municipality, filters.selectedMunicipalities))
+      return false;
 
     return true;
   });
