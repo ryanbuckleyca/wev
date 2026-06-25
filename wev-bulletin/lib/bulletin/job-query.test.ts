@@ -62,6 +62,8 @@ describe('job-query', () => {
       expect(filterJobs(mockJobs, { ...defaultFilters, searchQuery: 'Software' })).toHaveLength(1);
       expect(filterJobs(mockJobs, { ...defaultFilters, searchQuery: 'Paris' })).toHaveLength(1);
       expect(filterJobs(mockJobs, { ...defaultFilters, searchQuery: 'Lyon' })).toHaveLength(1);
+      expect(filterJobs(mockJobs, { ...defaultFilters, searchQuery: ' Paris ' })).toHaveLength(1);
+      expect(filterJobs(mockJobs, { ...defaultFilters, searchQuery: '   ' })).toHaveLength(2);
     });
 
     it('filters by organization', () => {

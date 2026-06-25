@@ -75,7 +75,7 @@ function matchesSelection<T>(value: T | null | undefined, selectedValues: T[]): 
 }
 
 export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPosting[] {
-  const lowerQuery = filters.searchQuery ? filters.searchQuery.toLowerCase() : '';
+  const lowerQuery = filters.searchQuery ? filters.searchQuery.trim().toLowerCase() : '';
   const cutoffMs =
     filters.postedWithin !== 'any'
       ? (filters.now ?? Date.now()) - POSTED_WITHIN_DAYS[filters.postedWithin] * 86_400_000
