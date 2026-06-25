@@ -125,11 +125,13 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
       }
     }
 
-    if (!matchesNullableSelection(job.province, filters.selectedProvinces)) {
+    const isRemote = job.work_type === 'remote';
+
+    if (!isRemote && !matchesNullableSelection(job.province, filters.selectedProvinces)) {
       return false;
     }
 
-    if (!matchesNullableSelection(job.municipality, filters.selectedMunicipalities)) {
+    if (!isRemote && !matchesNullableSelection(job.municipality, filters.selectedMunicipalities)) {
       return false;
     }
 

@@ -94,10 +94,16 @@ describe('job-query', () => {
     it('filters by province and municipality', () => {
       expect(
         filterJobs(mockJobs, { ...defaultFilters, selectedProvinces: ['Île-de-France'] }),
-      ).toHaveLength(1);
+      ).toHaveLength(1); // Job 1 is in Île-de-France (and remote). Job 2 is excluded.
       expect(
         filterJobs(mockJobs, { ...defaultFilters, selectedMunicipalities: ['Lyon'] }),
-      ).toHaveLength(1);
+      ).toHaveLength(2); // Job 2 is in Lyon. Job 1 is remote so it bypasses the municipality filter.
+    });
+
+    it('allows remote jobs to bypass geographic filters', () => {
+      expect(
+        filterJobs(mockJobs, { ...defaultFilters, selectedProvinces: ['Auvergne-Rhône-Alpes'] }),
+      ).toHaveLength(2); // Job 2 matches province. Job 1 is remote so it bypasses province filter.
     });
 
     it('filters by employment type and source', () => {
