@@ -1,4 +1,4 @@
-import pytest
+
 from scrapers.charityvillage import CharityVillageScraper
 
 

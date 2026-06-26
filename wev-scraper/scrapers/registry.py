@@ -2,12 +2,12 @@ import re
 from typing import Dict, Type
 
 from scrapers.centraide import CentraideScraper
+from scrapers.charityvillage import CharityVillageScraper
 from scrapers.coco import CocoScraper
 from scrapers.csi import CSIScraper
 from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
 from scrapers.macommunaute import MaCommunauteScraper
-from scrapers.charityvillage import CharityVillageScraper
 
 # Canonical slug → scraper class.
 SCRAPER_MAP: Dict[str, Type] = {

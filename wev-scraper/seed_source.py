@@ -4,12 +4,12 @@ import argparse
 import sys
 from pathlib import Path
 
-from settings import ensure_env_loaded, load_env_file
+from settings import ensure_env_loaded
 
 
 def seed_source(slug: str, name: str, url: str, prod: bool = False):
     if prod:
-        from utils.prod_env import resolve_prod_env_path, apply_prod_overrides, confirm_prod_run
+        from utils.prod_env import apply_prod_overrides, confirm_prod_run, resolve_prod_env_path
         script_dir = Path(__file__).resolve().parent
         prod_env = resolve_prod_env_path(script_dir / "scrape.py")
         if not prod_env.exists():
@@ -38,7 +38,7 @@ def seed_source(slug: str, name: str, url: str, prod: bool = False):
         row = insert_resp.data[0]
         print(f"✅ Inserted! ID: {row['id']}")
         if prod:
-            print(f"\nAdd this to PROD_SOURCE_CANONICAL_SLUG in registry.py:")
+            print("\nAdd this to PROD_SOURCE_CANONICAL_SLUG in registry.py:")
             print(f'    "{row["id"]}": "{slug}",')
     else:
         print("❌ Insert failed:", insert_resp)
