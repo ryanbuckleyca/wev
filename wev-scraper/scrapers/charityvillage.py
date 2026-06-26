@@ -32,6 +32,10 @@ class CharityVillageScraper(BaseScraper):
     listing_selector = "div[data-testid='jcl-job-teaser-wrapper']"
     job_wait_selector = "div[data-testid='job-detail-wrapper']"
 
+    def __init__(self, source):
+        super().__init__(source)
+        self.current_page_number = 1
+
     def get_listings_url(self, filter_value=None):
         return _LISTING_URLS.get(filter_value, "https://www.charityvillage.com/jobs")
 
@@ -59,12 +63,14 @@ class CharityVillageScraper(BaseScraper):
             try:
                 with page.expect_navigation():
                     next_el.click()
+                page.wait_for_timeout(3000)
                 return
             except Exception as e:
                 scraper_log(f"\tCharityVillage: error clicking next: {e}")
         next_url = self._build_page_url(page)
         try:
-            page.goto(next_url, wait_until="domcontentloaded")
+            self._goto_with_networkidle(page, next_url)
+            page.wait_for_timeout(3000)
         except Exception as e:
             scraper_log(f"\tCharityVillage: error going to page {self.current_page_number}: {e}")
             self.should_quit_list = True
@@ -91,7 +97,7 @@ class CharityVillageScraper(BaseScraper):
         sep = "&" if "?" in base else "?"
         return f"{base}{sep}page={self.current_page_number}"
 
-    def extract_job_title(self, page, listing_data) -> str | None:
+    def extract_job_title(self, page, listing_data) -> str:
         return self._extract_text(page, "[data-testid='title']") or listing_data.get("job_title", "Unknown")
 
     def extract_organization(self, page, listing_data) -> str | None:
@@ -125,7 +131,7 @@ class CharityVillageScraper(BaseScraper):
                     return part
         return None
 
-    def get_listing_data(self, item):
+    def get_listing_data(self, item) -> dict:
         data = {}
         try:
             loc = item.locator("[data-testid='jcl-job-teaser-location']")
