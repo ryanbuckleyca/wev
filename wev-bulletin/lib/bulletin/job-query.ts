@@ -37,6 +37,9 @@ export type BulletinFilters = {
   showOnlySse: boolean;
   showJobsWithoutSalary: boolean;
   postedWithin: PostedWithinSelection;
+  distanceKm?: number | null;
+  userLat?: number | null;
+  userLng?: number | null;
   now?: number;
 };
 

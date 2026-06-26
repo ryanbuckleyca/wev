@@ -35,6 +35,9 @@ type BulletinApiQueryInput = {
   langs: string[];
   onlySse: boolean;
   noSalary: boolean;
+  distanceKm: number | null;
+  userLat: number | null;
+  userLng: number | null;
 };
 
 function parseBoundedInteger(
@@ -54,9 +57,18 @@ function parseBoundedInteger(
 function createBuildQueryFn(
   supabase: Awaited<ReturnType<typeof createClient>>,
   input: BulletinApiQueryInput,
+  distanceJobIds: string[] | null,
 ) {
   return (vectorColumn: string) => {
     let query = supabase.from('matched_jobs').select(BULLETIN_JOB_SELECT, { count: 'exact' });
+
+    if (distanceJobIds != null) {
+      if (distanceJobIds.length === 0) {
+        query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+      } else {
+        query = query.in('id', distanceJobIds);
+      }
+    }
 
     // 1. Text Search (FTS)
     if (input.searchQuery.length > 0) {
@@ -141,7 +153,21 @@ async function fetchBulletinFacets(
 ): Promise<any[]> {
   let query = supabase
     .from('matched_jobs')
-    .select('organization, province, municipality, employment_type, source');
+    .select('organization, province, municipality, employment_type, source, language');
+
+  if (input.distanceKm != null && input.userLat != null && input.userLng != null) {
+    const { data: jobIds } = await supabase.rpc('get_job_ids_within_distance', {
+      user_lat: input.userLat,
+      user_lng: input.userLng,
+      distance_km: input.distanceKm,
+    });
+
+    if (!jobIds || jobIds.length === 0) {
+      return [];
+    }
+
+    query = query.in('id', jobIds.map((row: any) => row.id));
+  }
 
   // 1. Text Search (FTS)
   if (input.searchQuery.length > 0) {
@@ -196,7 +222,18 @@ async function fetchBulletinApiPayload(
   const start = (input.page - 1) * input.limit;
   const end = start + input.limit - 1;
   const searchColumn = input.locale === 'fr' ? 'fts_fr' : 'fts_en';
-  const buildQuery = createBuildQueryFn(supabase, input);
+
+  let distanceJobIds: string[] | null = null;
+  if (input.distanceKm != null && input.userLat != null && input.userLng != null) {
+    const { data: jobIds } = await supabase.rpc('get_job_ids_within_distance', {
+      user_lat: input.userLat,
+      user_lng: input.userLng,
+      distance_km: input.distanceKm,
+    });
+    distanceJobIds = jobIds ? jobIds.map((row: any) => row.id) : [];
+  }
+
+  const buildQuery = createBuildQueryFn(supabase, input, distanceJobIds);
 
   // Get total available jobs (<= 4 weeks old, no other filters)
   const maxAgeCutoff = new Date(
@@ -208,8 +245,10 @@ async function fetchBulletinApiPayload(
     .gte('date_posted', maxAgeCutoff)
     .limit(0);
 
+  const jobsQueryBuilder = buildQuery(searchColumn);
+
   const [jobsResult, filterOptionsData, scrapeTime, totalAvailableResult] = await Promise.all([
-    buildQuery(searchColumn).range(start, end),
+    jobsQueryBuilder.range(start, end),
     fetchBulletinFacets(supabase, searchColumn, input),
     fetchLastScrapeTime(),
     totalAvailableQuery,
@@ -264,6 +303,10 @@ export async function GET(request: Request) {
     const onlySse = searchParams.get('sse') === 'true';
     const noSalary = searchParams.get('nosal') === 'true';
 
+    const distanceKm = searchParams.has('distance') ? parseBoundedInteger(searchParams.get('distance'), 0, 1, 1000) : null;
+    const userLat = searchParams.has('lat') ? parseFloat(searchParams.get('lat')!) : null;
+    const userLng = searchParams.has('lng') ? parseFloat(searchParams.get('lng')!) : null;
+
     // Create supabase client
     const supabase = await createClient();
 
@@ -283,6 +326,9 @@ export async function GET(request: Request) {
       langs,
       onlySse,
       noSalary,
+      distanceKm: distanceKm && userLat && userLng ? distanceKm : null,
+      userLat: distanceKm && userLat && userLng ? userLat : null,
+      userLng: distanceKm && userLat && userLng ? userLng : null,
     };
 
     const payload = await fetchBulletinApiPayload(input, supabase);

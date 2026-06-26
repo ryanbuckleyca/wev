@@ -45,6 +45,20 @@
         "1Month": "1 mo"
       }
     },
+    "distance": {
+      "label": "Distance",
+      "options": {
+        "5": "5 km",
+        "10": "10 km",
+        "25": "25 km",
+        "50": "50 km",
+        "100": "100 km",
+        "any": "Anywhere"
+      },
+      "profileDefault": "Using your profile location.",
+      "fallbackPrompt": "Set your location to filter by distance",
+      "useBrowserLocation": "Use current location"
+    },
     "workType": {
       "label": "Work Type",
       "remote": "Remote",

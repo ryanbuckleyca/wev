@@ -16,6 +16,7 @@ import MunicipalityFilterSection from './job-filters/MunicipalityFilterSection';
 import type { JobFiltersProps } from './job-filters/types';
 import { useJobFiltersModel } from './job-filters/useJobFiltersModel';
 import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 export default function JobFilters(props: JobFiltersProps) {
@@ -45,7 +46,16 @@ export default function JobFilters(props: JobFiltersProps) {
     handleResetToProfileLocation: onResetToProfileLocation,
     isUsingProfileLanguages = false,
     handleResetToProfileLanguages: onResetToProfileLanguages,
+    distanceKm,
+    setDistanceKm: onDistanceKmChange,
+    userLat,
+    setUserLat,
+    userLng,
+    setUserLng,
   } = controls;
+  const { profile } = useProfile();
+  const profileLat = profile?.lat ?? null;
+  const profileLng = profile?.lng ?? null;
   const t = useTranslations();
   const model = useJobFiltersModel(props);
 
@@ -111,6 +121,58 @@ export default function JobFilters(props: JobFiltersProps) {
             options={model.postedWithinOptions}
             isSelected={(value) => postedWithin === value}
             onSelect={(value) => onPostedWithinChange(value as PostedWithinSelection)}
+          />
+        </div>
+
+        <div data-testid="distance-filter-group">
+          <FilterButtonGroup
+            label={t('filters.distance.label')}
+            options={model.distanceOptions}
+            isSelected={(value) => (value === 'any' && distanceKm == null) || (distanceKm != null && value === String(distanceKm))}
+            onSelect={(value) => {
+              if (value === 'any') {
+                onDistanceKmChange(null);
+                setUserLat(null);
+                setUserLng(null);
+              } else {
+                // If profile location is available, use it.
+                if (profileLat != null && profileLng != null) {
+                  onDistanceKmChange(Number(value));
+                  setUserLat(profileLat);
+                  setUserLng(profileLng);
+                } else if ('geolocation' in navigator) {
+                  // Fallback to browser location
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      onDistanceKmChange(Number(value));
+                      setUserLat(position.coords.latitude);
+                      setUserLng(position.coords.longitude);
+                    },
+                    (error) => {
+                      console.error('Error getting location', error);
+                      // Fallback failed. Could show toast.
+                      onDistanceKmChange(null);
+                    }
+                  );
+                }
+              }
+            }}
+            helper={
+              distanceKm != null ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="helper-text">
+                    {userLat === profileLat && userLng === profileLng
+                      ? t('filters.distance.profileDefault')
+                      : t('filters.distance.useBrowserLocation')}
+                  </span>
+                  {!profileLat && (
+                    <StyledLink href="/profile" variant="text" size="sm" className="p-0">
+                      {t('filters.distance.fallbackPrompt')}
+                    </StyledLink>
+                  )}
+                </div>
+              ) : null
+            }
           />
         </div>
 

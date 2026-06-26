@@ -41,6 +41,7 @@ export interface JobFiltersModel {
   workTypeOptions: { value: string; label: string }[];
   languageOptions: { value: string; label: string }[];
   postedWithinOptions: { value: string; label: string }[];
+  distanceOptions: { value: string; label: string }[];
   organizations: string[];
   provinces: string[];
   employmentTypes: string[];
@@ -89,6 +90,8 @@ export function useJobFiltersModel({
     setShowJobsWithoutSalary: onShowJobsWithoutSalaryChange,
     postedWithin,
     setPostedWithin: onPostedWithinChange,
+    distanceKm,
+    setDistanceKm: onDistanceKmChange,
     profileWorkTypes = [],
     profileLanguages = [],
     hasAnyFilters,
@@ -139,6 +142,7 @@ export function useJobFiltersModel({
           postedWithin,
           showOnlySse,
           showJobsWithoutSalary,
+          distanceKm,
           searchQuery,
           selectedWorkTypes,
           selectedProvinces,
@@ -150,6 +154,7 @@ export function useJobFiltersModel({
           onPostedWithinChange,
           onShowOnlySseChange,
           onShowJobsWithoutSalaryChange,
+          onDistanceKmChange,
           onSearchChange,
           onWorkTypesChange,
           onProvincesChange,
@@ -167,6 +172,7 @@ export function useJobFiltersModel({
       onMunicipalitiesChange,
       onOrganizationsChange,
       onPostedWithinChange,
+      onDistanceKmChange,
       onProvincesChange,
       onSearchChange,
       onShowJobsWithoutSalaryChange,
@@ -182,6 +188,7 @@ export function useJobFiltersModel({
       selectedProvinces,
       selectedSources,
       selectedWorkTypes,
+      distanceKm,
       showJobsWithoutSalary,
       showOnlySse,
       t,
@@ -297,6 +304,18 @@ export function useJobFiltersModel({
     [t],
   );
 
+  const distanceOptions = useMemo(
+    () => [
+      { value: '5', label: t('filters.distance.options.5') },
+      { value: '10', label: t('filters.distance.options.10') },
+      { value: '25', label: t('filters.distance.options.25') },
+      { value: '50', label: t('filters.distance.options.50') },
+      { value: '100', label: t('filters.distance.options.100') },
+      { value: 'any', label: t('filters.distance.options.any') },
+    ],
+    [t]
+  );
+
   return {
     activeFilterChips,
     filteredJobsCountResolved,
@@ -310,6 +329,7 @@ export function useJobFiltersModel({
     workTypeOptions,
     languageOptions,
     postedWithinOptions,
+    distanceOptions,
     organizations,
     provinces,
     employmentTypes,

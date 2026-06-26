@@ -45,6 +45,20 @@
         "1Month": "1 mois"
       }
     },
+    "distance": {
+      "label": "Distance",
+      "options": {
+        "5": "5 km",
+        "10": "10 km",
+        "25": "25 km",
+        "50": "50 km",
+        "100": "100 km",
+        "any": "Partout"
+      },
+      "profileDefault": "Utilisation de votre position.",
+      "fallbackPrompt": "Définissez votre position pour filtrer par distance",
+      "useBrowserLocation": "Utiliser la position actuelle"
+    },
     "workType": {
       "label": "Type de travail",
       "remote": "Télétravail",

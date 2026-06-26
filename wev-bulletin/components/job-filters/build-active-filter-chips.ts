@@ -11,6 +11,7 @@ export type ActiveFilterChipInputs = {
   postedWithin: PostedWithinValue;
   showOnlySse: boolean;
   showJobsWithoutSalary: boolean;
+  distanceKm?: number | null;
   searchQuery: string;
   selectedWorkTypes: string[];
   selectedProvinces: string[];
@@ -22,6 +23,7 @@ export type ActiveFilterChipInputs = {
   onPostedWithinChange: (value: PostedWithinValue) => void;
   onShowOnlySseChange: (value: boolean) => void;
   onShowJobsWithoutSalaryChange: (value: boolean) => void;
+  onDistanceKmChange?: (value: number | null) => void;
   onSearchChange: (value: string) => void;
   onWorkTypesChange: (value: string[]) => void;
   onProvincesChange: (value: string[]) => void;
@@ -71,6 +73,15 @@ export function buildActiveFilterChips(
       label: shortLabel,
       title: fullLabel,
       onRemove: () => input.onPostedWithinChange('any'),
+    });
+  }
+
+  if (input.distanceKm != null && input.onDistanceKmChange) {
+    chips.push({
+      id: 'distance',
+      label: `< ${input.distanceKm}km`,
+      title: `${t('filters.distance.label')}: < ${input.distanceKm}km`,
+      onRemove: () => input.onDistanceKmChange!(null),
     });
   }
 

@@ -27,6 +27,9 @@ const BULLETIN_URL_KEYS = [
   'posted',
   'sort',
   'page',
+  'distance',
+  'lat',
+  'lng',
 ] as const;
 
 function buildFetchKey(
@@ -125,6 +128,12 @@ export function useBulletinFetch(
       if (filters.searchQuery) params.set('q', filters.searchQuery);
       if (filters.showOnlySse) params.set('sse', 'true');
       if (filters.showJobsWithoutSalary) params.set('nosal', 'true');
+      
+      if (filters.distanceKm != null && filters.userLat != null && filters.userLng != null) {
+        params.set('distance', String(filters.distanceKm));
+        params.set('lat', String(filters.userLat));
+        params.set('lng', String(filters.userLng));
+      }
 
       filters.selectedOrganizations.forEach((o) => params.append('orgs', o));
       filters.selectedProvinces.forEach((p) => params.append('provs', p));

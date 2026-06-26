@@ -50,6 +50,12 @@ export interface BulletinFilterControls {
   setShowJobsWithoutSalary: QueryStateSetter<boolean>;
   postedWithin: PostedWithinSelection;
   setPostedWithin: QueryStateSetter<PostedWithinSelection>;
+  distanceKm: number | null;
+  setDistanceKm: QueryStateSetter<number | null>;
+  userLat: number | null;
+  setUserLat: QueryStateSetter<number | null>;
+  userLng: number | null;
+  setUserLng: QueryStateSetter<number | null>;
   filtersExpanded: boolean;
   setFiltersExpanded: (expanded: boolean) => void;
   currentPage: number;
@@ -156,6 +162,15 @@ export function useBulletinFilters(
     'posted',
     parseAsStringLiteral(POSTED_WITHIN_FILTER_OPTIONS).withDefault('2-weeks'),
   );
+  const [distanceKm, setDistanceKm] = useQueryState('distance', parseAsInteger);
+  const [userLat, setUserLat] = useQueryState('lat', {
+    parse: (v) => parseFloat(v),
+    serialize: (v) => v.toString(),
+  });
+  const [userLng, setUserLng] = useQueryState('lng', {
+    parse: (v) => parseFloat(v),
+    serialize: (v) => v.toString(),
+  });
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
   const [allJobsExpanded, setAllJobsExpanded] = useState(true);
@@ -268,6 +283,9 @@ export function useBulletinFilters(
       showOnlySse,
       showJobsWithoutSalary,
       postedWithin,
+      distanceKm,
+      userLat,
+      userLng,
     }),
     [
       searchQuery,
@@ -281,6 +299,9 @@ export function useBulletinFilters(
       showOnlySse,
       showJobsWithoutSalary,
       postedWithin,
+      distanceKm,
+      userLat,
+      userLng,
     ],
   );
 
@@ -302,7 +323,8 @@ export function useBulletinFilters(
     selectedLanguages.length > 0 ||
     showOnlySse ||
     !showJobsWithoutSalary ||
-    postedWithin !== 'any';
+    postedWithin !== 'any' ||
+    distanceKm != null;
 
   // Shared reset: clears every filter field back to its blank/empty value.
   // clearAllFilters and applySuggestedDefaults both call this, then override
@@ -331,12 +353,18 @@ export function useBulletinFilters(
     void setShowOnlySse(false);
     void setShowJobsWithoutSalary(true);
     void setPostedWithin('any');
+    void setDistanceKm(null);
+    void setUserLat(null);
+    void setUserLng(null);
   }, [
     resetCommonFilters,
     setSelectedWorkTypes,
     setShowOnlySse,
     setShowJobsWithoutSalary,
     setPostedWithin,
+    setDistanceKm,
+    setUserLat,
+    setUserLng,
   ]);
 
   const applySuggestedDefaults = useCallback(() => {
@@ -345,6 +373,9 @@ export function useBulletinFilters(
     void setShowOnlySse(true);
     void setShowJobsWithoutSalary(true);
     void setPostedWithin('2-weeks');
+    void setDistanceKm(null);
+    void setUserLat(null);
+    void setUserLng(null);
   }, [
     resetCommonFilters,
     profileWorkTypes,
@@ -352,6 +383,9 @@ export function useBulletinFilters(
     setShowOnlySse,
     setShowJobsWithoutSalary,
     setPostedWithin,
+    setDistanceKm,
+    setUserLat,
+    setUserLng,
   ]);
 
   return {
@@ -378,6 +412,12 @@ export function useBulletinFilters(
     setShowJobsWithoutSalary,
     postedWithin,
     setPostedWithin,
+    distanceKm,
+    setDistanceKm,
+    userLat,
+    setUserLat,
+    userLng,
+    setUserLng,
     filtersExpanded,
     setFiltersExpanded,
     currentPage,

@@ -31,6 +31,9 @@ export type BulletinQueryInput = {
   langs: string[];
   onlySse: boolean;
   noSalary: boolean;
+  distanceKm?: number | null;
+  userLat?: number | null;
+  userLng?: number | null;
   // Included for cache key partitioning to prevent cross-user match-sort leakage.
   userCacheKey: string;
 };
@@ -105,6 +108,21 @@ async function fetchBulletinFacets(
     .from('matched_jobs')
     .select('organization, province, municipality, employment_type, source, language');
 
+  if (input.distanceKm != null && input.userLat != null && input.userLng != null) {
+    const { data: jobIds } = await supabase.rpc('get_job_ids_within_distance', {
+      user_lat: input.userLat,
+      user_lng: input.userLng,
+      distance_km: input.distanceKm,
+    });
+    
+    // If no jobs match the distance, return empty options immediately
+    if (!jobIds || jobIds.length === 0) {
+      return buildFilterOptions([]);
+    }
+    
+    query = query.in('id', jobIds.map((row: any) => row.id));
+  }
+
   query = applySearchFilter(query, vectorColumn, input.searchQuery);
   query = applyAgeFilter(query, input.postedWithin);
 
@@ -132,8 +150,27 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
   const end = start + input.limit - 1;
   const searchColumn = input.locale === 'fr' ? 'fts_fr' : 'fts_en';
 
+  let distanceJobIds: string[] | null = null;
+  if (input.distanceKm != null && input.userLat != null && input.userLng != null) {
+    const { data: jobIds } = await supabase.rpc('get_job_ids_within_distance', {
+      user_lat: input.userLat,
+      user_lng: input.userLng,
+      distance_km: input.distanceKm,
+    });
+    distanceJobIds = jobIds ? jobIds.map((row: any) => row.id) : [];
+  }
+
   const buildJobsQuery = (vectorColumn: string) => {
     let query = supabase.from('matched_jobs').select(BULLETIN_JOB_SELECT, { count: 'exact' });
+    
+    if (distanceJobIds != null) {
+      if (distanceJobIds.length === 0) {
+        query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+      } else {
+        query = query.in('id', distanceJobIds);
+      }
+    }
+
     query = applySearchFilter(query, vectorColumn, input.searchQuery);
     query = applyBulletinFilters(query, input);
     query = applyAgeFilter(query, input.postedWithin);
@@ -174,8 +211,10 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     .select('id', { count: 'exact', head: true })
     .gte('date_posted', getBulletinMaxAgeCutoff());
 
+  const jobsQueryBuilder = buildJobsQuery(searchColumn);
+
   const [jobsResult, finalFilterOptions, scrapeTime, totalAvailableResult] = await Promise.all([
-    buildJobsQuery(searchColumn).range(start, end),
+    jobsQueryBuilder.range(start, end),
     fetchBulletinFacets(supabase, searchColumn, input),
     fetchLastScrapeTime(),
     totalAvailableQuery,
