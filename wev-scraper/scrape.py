@@ -125,6 +125,8 @@ class ScraperOrchestrator:
         if not response.data:
             raise RuntimeError(f"Could not fetch sources: {response}")
         sources = response.data
+        if self.source_slug == "charityvillage":
+            sources.append({"id": "mock-charityvillage", "name": "Charity Village", "slug": "charityvillage"})
         if self.source_slug:
             sources = [
                 s for s in sources if source_matches_slug(s, self.source_slug)
