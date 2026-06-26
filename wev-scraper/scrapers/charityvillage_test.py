@@ -96,9 +96,9 @@ def test_extract_employment_type_single_value(page):
 
 def test_extract_employment_type_case_insensitive(page):
     scraper = CharityVillageScraper(make_source())
-    page.set_content('<div data-testid="fields-values">Full-Time | Contract</div>')
+    page.set_content('<div data-testid="fields-values">FULL-TIME | CONTRACT</div>')
     emp = scraper.extract_employment_type(page, {})
-    assert emp == "Full-Time"
+    assert emp == "FULL-TIME"
 
 
 def test_extract_employment_type_returns_none_when_no_match(page):
