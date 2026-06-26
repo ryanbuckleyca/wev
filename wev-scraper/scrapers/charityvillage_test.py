@@ -1,4 +1,3 @@
-
 from scrapers.charityvillage import CharityVillageScraper
 
 
@@ -95,6 +94,13 @@ def test_extract_employment_type_single_value(page):
     assert emp == "Volunteer"
 
 
+def test_extract_employment_type_case_insensitive(page):
+    scraper = CharityVillageScraper(make_source())
+    page.set_content('<div data-testid="fields-values">Full-Time | Contract</div>')
+    emp = scraper.extract_employment_type(page, {})
+    assert emp == "Full-Time"
+
+
 def test_extract_employment_type_returns_none_when_no_match(page):
     scraper = CharityVillageScraper(make_source())
     page.set_content('<div data-testid="fields-values">Fundraising | Category</div>')
@@ -145,6 +151,18 @@ def test_get_listing_data_with_remote_status(page):
     item = page.locator("[data-testid='jcl-job-teaser-wrapper']")
     data = scraper.get_listing_data(item)
     assert data.get("remote_status") == "Fully Remote"
+
+
+def test_get_listing_data_with_hybrid_remote_status(page):
+    scraper = CharityVillageScraper(make_source())
+    page.set_content("""
+        <div data-testid="jcl-job-teaser-wrapper">
+            Hybrid - 3 days in office
+        </div>
+    """)
+    item = page.locator("[data-testid='jcl-job-teaser-wrapper']")
+    data = scraper.get_listing_data(item)
+    assert data.get("remote_status") == "Hybrid"
 
 
 def test_get_listing_data_with_dates(page):
