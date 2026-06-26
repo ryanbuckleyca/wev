@@ -17,6 +17,8 @@ _LISTING_URLS = {
     ),
 }
 
+_NEXT_PAGE_PATTERN = re.compile(r"next", re.IGNORECASE)
+
 _EMPLOYMENT_TYPE_KEYWORDS = [
     "full-time", "full time", "part-time", "part time",
     "contract", "temporary", "volunteer", "internship",
@@ -69,10 +71,10 @@ class CharityVillageScraper(BaseScraper):
 
     def _find_next_element(self, page):
         try:
-            btn = page.get_by_role("button", name=re.compile(r"next", re.IGNORECASE))
+            btn = page.get_by_role("button", name=_NEXT_PAGE_PATTERN)
             if btn.count() > 0 and not btn.first.is_disabled():
                 return btn.first
-            link = page.get_by_role("link", name=re.compile(r"next", re.IGNORECASE))
+            link = page.get_by_role("link", name=_NEXT_PAGE_PATTERN)
             if link.count() > 0:
                 return link.first
             li = page.locator("li.next:not(.disabled), li:has-text('Next'):not(.disabled)")
