@@ -2,8 +2,8 @@
 
 from unittest.mock import patch
 
+from conftest import mock_requests_response
 from scrapers.cwc import CWCScraper
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -37,11 +37,6 @@ CWCF_RSS = """<?xml version="1.0" encoding="UTF-8"?>
     </item>
 </channel>
 </rss>"""
-
-
-from conftest import mock_requests_response
-
-
 def make_source():
     return {
         "id": "cwcf-test",
