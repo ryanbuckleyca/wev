@@ -47,4 +47,8 @@ def mock_requests_response(content: str | bytes, status_code: int = 200):
             if self.status_code >= 400:
                 from requests.exceptions import HTTPError
                 raise HTTPError(f"{self.status_code} Error")
+        def __enter__(self):
+            return self
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
     return MockResponse()

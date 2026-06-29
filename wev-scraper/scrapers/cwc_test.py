@@ -1,8 +1,8 @@
-"""Tests for CWCFScraper — Canadian Worker Co-op Federation RSS feed scraper."""
+"""Tests for CWCScraper — Canadian Worker Co-op Federation RSS feed scraper."""
 
 from unittest.mock import patch
 
-from scrapers.cwcf import CWCFScraper
+from scrapers.cwc import CWCScraper
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ def test_parses_title_with_pipe_separator(monkeypatch):
     """Titles like 'Job | Org' should be split into job_title and organization."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
-    scraper = CWCFScraper(make_source())
+    scraper = CWCScraper(make_source())
 
     with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(CWCF_RSS)):
         jobs = scraper.fetch_jobs()
@@ -74,7 +74,7 @@ def test_title_without_separator_uses_source_name(monkeypatch):
     """Titles without a pipe should use the source name as organization."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
-    scraper = CWCFScraper(make_source())
+    scraper = CWCScraper(make_source())
 
     with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(CWCF_RSS)):
         jobs = scraper.fetch_jobs()
@@ -88,7 +88,7 @@ def test_prefers_content_encoded(monkeypatch):
     """content:encoded should be used for description, not the summary."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
-    scraper = CWCFScraper(make_source())
+    scraper = CWCScraper(make_source())
 
     with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(CWCF_RSS)):
         jobs = scraper.fetch_jobs()
@@ -100,7 +100,7 @@ def test_listing_url_set(monkeypatch):
     """Each job should have a listing_url from the RSS entry link."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
-    scraper = CWCFScraper(make_source())
+    scraper = CWCScraper(make_source())
 
     with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(CWCF_RSS)):
         jobs = scraper.fetch_jobs()
@@ -113,7 +113,7 @@ def test_date_parsed(monkeypatch):
     """Dates from the feed should be parsed into ISO format."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
-    scraper = CWCFScraper(make_source())
+    scraper = CWCScraper(make_source())
 
     with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(CWCF_RSS)):
         jobs = scraper.fetch_jobs()
@@ -125,7 +125,7 @@ def test_date_parsed(monkeypatch):
 
 def test_is_chronological():
     """CWCF scraper should be marked as chronological."""
-    scraper = CWCFScraper(make_source())
+    scraper = CWCScraper(make_source())
     assert scraper.is_chronological is True
 
 
@@ -149,7 +149,7 @@ def test_em_dash_separator(monkeypatch):
     </channel>
     </rss>"""
 
-    scraper = CWCFScraper(make_source())
+    scraper = CWCScraper(make_source())
 
     with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(feed_with_dash)):
         jobs = scraper.fetch_jobs()
