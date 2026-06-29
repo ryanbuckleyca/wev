@@ -10,7 +10,7 @@ from utils.log import scraper_log
 _TITLE_ORG_SEPARATOR = re.compile(r"\s*[|–—]\s*")
 
 
-class CWCFScraper(BaseFeedScraper):
+class CWCScraper(BaseFeedScraper):
     """Canadian Worker Co-op Federation job postings RSS feed.
 
     Feed URL: https://canadianworker.coop/category/news-events/job-postings/feed/

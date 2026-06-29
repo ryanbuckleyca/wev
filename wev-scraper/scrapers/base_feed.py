@@ -104,7 +104,7 @@ class BaseFeedScraper:
 
     # ---- Main flow ----
 
-    def fetch_jobs(self, headless=True) -> list[dict[str, Any]]:
+    def fetch_jobs(self, **kwargs) -> list[dict[str, Any]]:
         """Fetch and parse the RSS/Atom feed. Returns list of job dicts."""
         feed = self._fetch_feed_content()
         scraper_log(f"\tFeed parsed: {len(feed.entries)} entries")
@@ -136,18 +136,20 @@ class BaseFeedScraper:
         feed_url = self.get_feed_url()
         scraper_log(f"\tFetching feed: {feed_url}")
         try:
-            response = requests.get(
+            with requests.get(
                 feed_url,
                 headers=self.get_request_headers(),
                 timeout=self.feed_timeout,
-            )
-            response.raise_for_status()
+            ) as response:
+                response.raise_for_status()
+                content = response.content
         except requests.RequestException as e:
             raise RuntimeError(f"Failed to fetch feed {feed_url}: {e}") from e
 
-        feed = feedparser.parse(response.content)
+        feed = feedparser.parse(content)
         if feed.bozo and not feed.entries:
-            raise RuntimeError(f"Feed parse error for {feed_url}: {feed.bozo_exception}")
+            err = getattr(feed, 'bozo_exception', 'Unknown parse error')
+            raise RuntimeError(f"Feed parse error for {feed_url}: {err}")
         return feed
 
     def _process_single_entry(
