@@ -171,6 +171,11 @@ class BaseFeedScraper:
             self.skipped_duplicates += 1
             return None, False
 
+        compare_only = is_truthy_env("COMPARE_ONLY")
+        if compare_only and norm_url not in self.existing_urls:
+            scraper_log(f"\t\tSkipping entry {index + 1} ({listing_url}): new URL (compare-only mode)")
+            return None, False
+
         if norm_url in self.scraped_urls:
             scraper_log(f"\t\tSkipping entry {index + 1} ({listing_url}): already scraped")
             return None, False

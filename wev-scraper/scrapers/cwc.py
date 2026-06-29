@@ -34,7 +34,6 @@ class CWCScraper(BaseFeedScraper):
             fields["organization"] = parts[1].strip()
         else:
             # Fall back to the feed's dc:creator or default org
-            getattr(entry, "author", None)
             # dc:creator is often the post author, not the hiring org — use
             # the source name as a safer default
             fields["organization"] = (self.source or {}).get(
