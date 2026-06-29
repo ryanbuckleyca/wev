@@ -7,6 +7,8 @@ import pytest
 from conftest import make_source, mock_requests_response
 from scrapers.base_feed import BaseFeedScraper
 
+_RECENT_PATCH = "scrapers.base_feed.is_recent_job"
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -74,7 +76,8 @@ def test_close_browser_is_noop():
     scraper.close_browser()  # should not raise
 
 
-def test_fetch_jobs_parses_rss(monkeypatch):
+@patch(_RECENT_PATCH, return_value=True)
+def test_fetch_jobs_parses_rss(mock_recent, monkeypatch):
     """Standard RSS 2.0 entries are parsed into job dicts."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     scraper = BaseFeedScraper(make_source())
@@ -90,7 +93,8 @@ def test_fetch_jobs_parses_rss(monkeypatch):
     assert jobs[0]["listing_url"] is not None
 
 
-def test_content_encoded_preferred_over_summary(monkeypatch):
+@patch(_RECENT_PATCH, return_value=True)
+def test_content_encoded_preferred_over_summary(mock_recent, monkeypatch):
     """When content:encoded is present, it should be used instead of summary."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     scraper = BaseFeedScraper(make_source())
@@ -126,7 +130,8 @@ def test_skips_outdated_entries(monkeypatch):
     assert len(jobs) == 0
 
 
-def test_chronological_early_exit(monkeypatch):
+@patch(_RECENT_PATCH, side_effect=[True, False])
+def test_chronological_early_exit(mock_recent, monkeypatch):
     """Chronological scrapers stop after first non-recent entry."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
 
@@ -167,7 +172,8 @@ def test_chronological_early_exit(monkeypatch):
     assert jobs[0]["job_title"] == "Recent Job"
 
 
-def test_dedup_existing_urls(monkeypatch):
+@patch(_RECENT_PATCH, return_value=True)
+def test_dedup_existing_urls(mock_recent, monkeypatch):
     """Entries with URLs already in the database should be skipped."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     scraper = BaseFeedScraper(make_source())
@@ -182,7 +188,8 @@ def test_dedup_existing_urls(monkeypatch):
     assert scraper.skipped_duplicates == 1
 
 
-def test_dedup_within_same_run(monkeypatch):
+@patch(_RECENT_PATCH, return_value=True)
+def test_dedup_within_same_run(mock_recent, monkeypatch):
     """Duplicate URLs within a single feed should be deduplicated."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
 
@@ -213,7 +220,8 @@ def test_dedup_within_same_run(monkeypatch):
     assert len(jobs) == 1
 
 
-def test_max_jobs_limit(monkeypatch):
+@patch(_RECENT_PATCH, return_value=True)
+def test_max_jobs_limit(mock_recent, monkeypatch):
     """MAX_JOBS_PER_SOURCE should be respected."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.setenv("MAX_JOBS_PER_SOURCE", "1")
