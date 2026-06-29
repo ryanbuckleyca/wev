@@ -7,3 +7,4 @@ python-dateutil
 geocodio-library-python
 google-genai
 tenacity
+feedparser
