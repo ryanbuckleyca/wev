@@ -3,8 +3,6 @@ import re
 import feedparser
 
 from scrapers.base_feed import BaseFeedScraper
-from utils.log import scraper_log
-
 
 # Pattern: "Job Title | Organization Name" or "Job Title – Organization Name"
 _TITLE_ORG_SEPARATOR = re.compile(r"\s*[|–—]\s*")
@@ -36,7 +34,7 @@ class CWCScraper(BaseFeedScraper):
             fields["organization"] = parts[1].strip()
         else:
             # Fall back to the feed's dc:creator or default org
-            creator = getattr(entry, "author", None)
+            getattr(entry, "author", None)
             # dc:creator is often the post author, not the hiring org — use
             # the source name as a safer default
             fields["organization"] = (self.source or {}).get(

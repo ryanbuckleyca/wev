@@ -1,12 +1,11 @@
 """Tests for BaseFeedScraper — the RSS/Atom feed scraper base class."""
 
-import os
 from unittest.mock import patch
 
 import pytest
 
+from conftest import make_source, mock_requests_response
 from scrapers.base_feed import BaseFeedScraper
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -63,9 +62,6 @@ MALFORMED_RSS = """<?xml version="1.0"?>
 <rss><channel><title>Broken</title>
 <item><title>Oops</link></item>
 </channel></rss>"""
-
-
-from conftest import make_source, mock_requests_response
 
 # ---------------------------------------------------------------------------
 # Tests
