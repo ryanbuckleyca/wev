@@ -65,23 +65,7 @@ MALFORMED_RSS = """<?xml version="1.0"?>
 </channel></rss>"""
 
 
-def make_source(url="https://example.com/feed/", name="Test Source"):
-    return {"id": "test-id", "url": url, "name": name}
-
-
-def _mock_response(content: str | bytes, status_code: int = 200):
-    """Create a mock requests.Response."""
-    class MockResponse:
-        def __init__(self):
-            self.status_code = status_code
-            self.content = content.encode("utf-8") if isinstance(content, str) else content
-            self.text = content if isinstance(content, str) else content.decode("utf-8")
-        def raise_for_status(self):
-            if self.status_code >= 400:
-                from requests.exceptions import HTTPError
-                raise HTTPError(f"{self.status_code} Error")
-    return MockResponse()
-
+from conftest import make_source, mock_requests_response
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -99,7 +83,7 @@ def test_fetch_jobs_parses_rss(monkeypatch):
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     scraper = BaseFeedScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(SAMPLE_RSS)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(SAMPLE_RSS)):
         jobs = scraper.fetch_jobs()
 
     assert len(jobs) == 2
@@ -115,7 +99,7 @@ def test_content_encoded_preferred_over_summary(monkeypatch):
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     scraper = BaseFeedScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(SAMPLE_RSS)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(SAMPLE_RSS)):
         jobs = scraper.fetch_jobs()
 
     # First entry has content:encoded
@@ -129,7 +113,7 @@ def test_skips_entries_without_link(monkeypatch):
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     scraper = BaseFeedScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(SAMPLE_RSS_NO_LINK)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(SAMPLE_RSS_NO_LINK)):
         jobs = scraper.fetch_jobs()
 
     assert len(jobs) == 0
@@ -140,7 +124,7 @@ def test_skips_outdated_entries(monkeypatch):
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     scraper = BaseFeedScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(SAMPLE_RSS_OLD_ENTRY)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(SAMPLE_RSS_OLD_ENTRY)):
         jobs = scraper.fetch_jobs()
 
     assert len(jobs) == 0
@@ -179,7 +163,7 @@ def test_chronological_early_exit(monkeypatch):
     scraper = BaseFeedScraper(make_source())
     scraper.is_chronological = True
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(mixed_feed)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(mixed_feed)):
         jobs = scraper.fetch_jobs()
 
     # Only the recent job should be collected; the old one triggers early exit
@@ -193,7 +177,7 @@ def test_dedup_existing_urls(monkeypatch):
     scraper = BaseFeedScraper(make_source())
     scraper.existing_urls = {"https://example.com/jobs/senior-dev"}
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(SAMPLE_RSS)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(SAMPLE_RSS)):
         jobs = scraper.fetch_jobs()
 
     # Only the second entry should be collected
@@ -227,7 +211,7 @@ def test_dedup_within_same_run(monkeypatch):
 
     scraper = BaseFeedScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(dupe_feed)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(dupe_feed)):
         jobs = scraper.fetch_jobs()
 
     assert len(jobs) == 1
@@ -239,7 +223,7 @@ def test_max_jobs_limit(monkeypatch):
     monkeypatch.setenv("MAX_JOBS_PER_SOURCE", "1")
     scraper = BaseFeedScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(SAMPLE_RSS)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(SAMPLE_RSS)):
         jobs = scraper.fetch_jobs()
 
     assert len(jobs) == 1
@@ -249,7 +233,7 @@ def test_http_error_raises(monkeypatch):
     """HTTP errors should raise RuntimeError."""
     scraper = BaseFeedScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response("Not Found", 404)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response("Not Found", 404)):
         with pytest.raises(RuntimeError, match="Failed to fetch feed"):
             scraper.fetch_jobs()
 
@@ -259,6 +243,6 @@ def test_malformed_feed_with_no_entries_raises(monkeypatch):
     scraper = BaseFeedScraper(make_source())
 
     empty_broken = """This is not XML at all."""
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(empty_broken)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(empty_broken)):
         with pytest.raises(RuntimeError, match="Feed parse error"):
             scraper.fetch_jobs()

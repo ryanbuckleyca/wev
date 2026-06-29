@@ -39,23 +39,15 @@ CWCF_RSS = """<?xml version="1.0" encoding="UTF-8"?>
 </rss>"""
 
 
+from conftest import mock_requests_response
+
+
 def make_source():
     return {
         "id": "cwcf-test",
         "url": "https://canadianworker.coop/category/news-events/job-postings/feed/",
         "name": "Canadian Worker Co-op Federation",
     }
-
-
-def _mock_response(content: str):
-    class MockResponse:
-        def __init__(self):
-            self.status_code = 200
-            self.content = content.encode("utf-8")
-            self.text = content
-        def raise_for_status(self):
-            pass
-    return MockResponse()
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +61,7 @@ def test_parses_title_with_pipe_separator(monkeypatch):
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
     scraper = CWCFScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(CWCF_RSS)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(CWCF_RSS)):
         jobs = scraper.fetch_jobs()
 
     assert len(jobs) == 2
@@ -84,7 +76,7 @@ def test_title_without_separator_uses_source_name(monkeypatch):
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
     scraper = CWCFScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(CWCF_RSS)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(CWCF_RSS)):
         jobs = scraper.fetch_jobs()
 
     # Second entry has no pipe separator
@@ -98,7 +90,7 @@ def test_prefers_content_encoded(monkeypatch):
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
     scraper = CWCFScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(CWCF_RSS)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(CWCF_RSS)):
         jobs = scraper.fetch_jobs()
 
     assert "Full description of the Executive Director" in jobs[0]["description"]
@@ -110,7 +102,7 @@ def test_listing_url_set(monkeypatch):
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
     scraper = CWCFScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(CWCF_RSS)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(CWCF_RSS)):
         jobs = scraper.fetch_jobs()
 
     assert "canadianworker.coop" in jobs[0]["listing_url"]
@@ -123,7 +115,7 @@ def test_date_parsed(monkeypatch):
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
     scraper = CWCFScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(CWCF_RSS)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(CWCF_RSS)):
         jobs = scraper.fetch_jobs()
 
     # date_posted should be normalized to ISO (YYYY-MM-DD)
@@ -159,7 +151,7 @@ def test_em_dash_separator(monkeypatch):
 
     scraper = CWCFScraper(make_source())
 
-    with patch("scrapers.base_feed.requests.get", return_value=_mock_response(feed_with_dash)):
+    with patch("scrapers.base_feed.requests.get", return_value=mock_requests_response(feed_with_dash)):
         jobs = scraper.fetch_jobs()
 
     assert len(jobs) == 1
