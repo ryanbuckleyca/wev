@@ -1,13 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { config as loadEnv } from "dotenv";
+import { loadTargetEnv } from "./lib/env";
 
 function main() {
-  const envPath = fs.existsSync(".env") ? ".env" : path.join("..", ".env");
-  loadEnv({ path: envPath });
-
   const target = process.argv[2] || "local";
+  const { projectRef } = loadTargetEnv(target);
+
   const outputPath = path.join(
     process.cwd(),
     "wev-bulletin",
@@ -21,18 +20,6 @@ function main() {
   if (target === "local") {
     command += " --local";
   } else {
-    // If staging/prod, we need the project ID
-    let projectRef = process.env.SUPABASE_PROJECT_REF;
-
-    if (!projectRef && process.env.SUPABASE_URL) {
-      try {
-        const urlObj = new URL(process.env.SUPABASE_URL);
-        projectRef = urlObj.hostname.split(".")[0];
-      } catch (e) {
-        // ignore
-      }
-    }
-
     if (!projectRef || projectRef === "localhost" || projectRef === "127") {
       console.error(
         "✗ Error: Valid SUPABASE_PROJECT_REF is required to generate remote types.",

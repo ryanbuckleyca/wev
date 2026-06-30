@@ -7,6 +7,7 @@ import {
   parseEnvFlag,
   type TargetEnv,
 } from "../scripts/parse-env";
+import { loadTargetEnv } from "./lib/env";
 
 const LOCAL_SUPABASE_CLI = path.resolve(
   process.cwd(),
@@ -30,27 +31,7 @@ function execVerbose(command: string) {
 }
 
 function loadProjectRef(target: string) {
-  if (target === "prod" && fs.existsSync(".env.production")) {
-    loadEnv({ path: ".env.production", override: true });
-  }
-
-  if (target === "staging" && fs.existsSync(".env.staging")) {
-    loadEnv({ path: ".env.staging", override: true });
-  }
-
-  let projectRef = process.env.SUPABASE_PROJECT_REF;
-
-  if (!projectRef && process.env.SUPABASE_URL) {
-    try {
-      const urlObj = new URL(process.env.SUPABASE_URL);
-      const hostParts = urlObj.hostname.split(".");
-      if (hostParts.length > 0) {
-        projectRef = hostParts[0];
-      }
-    } catch {
-      // ignore
-    }
-  }
+  const { projectRef } = loadTargetEnv(target);
 
   if (!projectRef) {
     console.error(
@@ -61,6 +42,13 @@ function loadProjectRef(target: string) {
 
   console.log(`✓ Using project reference: ${projectRef}`);
   return projectRef;
+}
+
+function regenerateTypes(target: string) {
+  console.log("▶ Regenerating Supabase TypeScript types...");
+  execVerbose("npx tsx supabase/generate-types.ts " + target);
+  console.log("▶ Regenerating Supabase Python types (Pydantic)...");
+  execVerbose("npx tsx supabase/generate-types-python.ts " + target);
 }
 
 function runMigration(target: string, dryRun: boolean) {
@@ -103,8 +91,7 @@ function runMigration(target: string, dryRun: boolean) {
   }
 
   if (!dryRun) {
-    console.log("▶ Regenerating Supabase TypeScript types...");
-    execVerbose("npx tsx supabase/generate-types.ts " + target);
+    regenerateTypes(target);
   }
 }
 
@@ -133,8 +120,7 @@ function main() {
     console.log("▶ Seeding database with E2E dataset...");
     execVerbose("npx tsx supabase/seed-local.ts");
 
-    console.log("▶ Regenerating TypeScript types...");
-    execVerbose("npx tsx supabase/generate-types.ts local");
+    regenerateTypes("local");
 
     console.log("▶ Ensuring ESCO skill embeddings are populated...");
     const backupPath = path.resolve(
