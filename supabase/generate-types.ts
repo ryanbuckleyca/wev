@@ -5,7 +5,8 @@ import { loadTargetEnv } from "./lib/env";
 
 function main() {
   const target = process.argv[2] || "local";
-  const { projectRef } = loadTargetEnv(target);
+  const config = loadTargetEnv(target);
+  if (!config) process.exit(1);
 
   const outputPath = path.join(
     process.cwd(),
@@ -20,6 +21,7 @@ function main() {
   if (target === "local") {
     command += " --local";
   } else {
+    const { projectRef } = config;
     if (!projectRef || projectRef === "localhost" || projectRef === "127") {
       console.error(
         "✗ Error: Valid SUPABASE_PROJECT_REF is required to generate remote types.",
@@ -40,10 +42,16 @@ function main() {
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, typesHeader + output);
     console.log(`✓ Wrote ${outputPath}`);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Failed to generate types.");
-    if (error.stdout) console.error(error.stdout);
-    if (error.stderr) console.error(error.stderr);
+    if (error instanceof Error) {
+      const execErr = error as Error & {
+        stdout?: string | Buffer;
+        stderr?: string | Buffer;
+      };
+      if (execErr.stdout) console.error(String(execErr.stdout));
+      if (execErr.stderr) console.error(String(execErr.stderr));
+    }
     process.exit(1);
   }
 }
