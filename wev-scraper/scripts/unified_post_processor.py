@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """Unified post-processor using the unified LLM approach.
 
 Replaces separate classify_existing_jobs.py, tag_job_values.py, and tag_job_skills.py
@@ -38,7 +39,7 @@ bootstrap_prod_from_argv(sys.argv, Path(__file__))
 # Deferred imports: `utils.db`, `llm.factory`, and `utils.log` transitively load clients
 # that read `os.environ` (Supabase URL/keys, LLM provider config). Import them only after
 # the `--staging` bootstrap above so the right DB target and keys are set.
-# noqa: E402 — imports intentionally follow executable env setup; silences ruff/flake8.
+# noqa: E402 - imports intentionally follow executable env setup; silences ruff/flake8.
 from llm.factory import get_unified_processor  # noqa: E402
 from utils.db import supabase  # noqa: E402
 from utils.log import scraper_log  # noqa: E402
