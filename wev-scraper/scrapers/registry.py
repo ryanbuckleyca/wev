@@ -9,6 +9,7 @@ from scrapers.cwc import CWCScraper
 from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
 from scrapers.macommunaute import MaCommunauteScraper
+from scrapers.workinculture import WorkInCultureScraper
 
 # Canonical slug → scraper class.
 SCRAPER_MAP: Dict[str, Type] = {
@@ -21,6 +22,7 @@ SCRAPER_MAP: Dict[str, Type] = {
     "macb": MaCommunauteScraper,
     "charityvillage": CharityVillageScraper,
     "cwc": CWCScraper,
+    "workinculture": WorkInCultureScraper,
 }
 
 # Pre-migration slug values (local DBs, branches not yet migrated).
@@ -62,6 +64,8 @@ SOURCE_NAME_TO_SLUG: Dict[str, str] = {
     "charityvillage": "charityvillage",
     "canadian worker co-op federation": "cwc",
     "cwc": "cwc",
+    "work in culture": "workinculture",
+    "workinculture": "workinculture",
 }
 
 SCRAPER_NAME_MAP: Dict[str, Type] = {
