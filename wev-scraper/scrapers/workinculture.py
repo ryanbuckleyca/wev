@@ -22,7 +22,7 @@ class WorkInCultureScraper(BaseScraper):
         "wage": ".job-listing-meta .salary",
         "description": "#job-listing-description",
         "date_posted": (".job-listing-meta .date-posted time", ("attr", "datetime")),
-        # Unverified — remove if it produces nulls in production.
+        # Unverified — confirm against live site HTML before relying on this.
         "close_date": ".job-listing-meta .job-deadline",
     }
 
@@ -61,8 +61,8 @@ class WorkInCultureScraper(BaseScraper):
                 btn.click(timeout=5000)
                 page.wait_for_timeout(1000)
                 return
-        except Exception:
-            pass
+        except Exception as e:
+            scraper_log(f"\tInfiniteHits button unavailable or failed: {e}")
         try:
             next_link = page.locator(
                 ".ais-Pagination-item--next:not(.ais-Pagination-item--disabled) a"

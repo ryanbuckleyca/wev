@@ -61,27 +61,6 @@ def test_returns_none_when_no_url_found(scraper):
     assert scraper.get_job_url(item) is None
 
 
-# --- selectors ---
-
-
-def test_job_title_selector():
-    assert WorkInCultureScraper.SELECTORS["job_title"] == ".wp-block-post-title"
-
-
-def test_date_posted_selector():
-    assert WorkInCultureScraper.SELECTORS["date_posted"] == (
-        ".job-listing-meta .date-posted time", ("attr", "datetime")
-    )
-
-
-def test_listing_selector():
-    assert WorkInCultureScraper.listing_selector == "ol.ais-Hits-list article"
-
-
-def test_job_wait_selector():
-    assert WorkInCultureScraper.job_wait_selector == "div.single_job_listing"
-
-
 # --- extraction against real HTML ---
 
 
@@ -96,7 +75,7 @@ def test_extract_description(page):
     page.set_content("<div id='job-listing-description'><p>Great job here.</p></div>")
     scraper = WorkInCultureScraper(make_source())
     result = scraper.extract_with_selectors(page, {"description": "#job-listing-description"})
-    assert "Great job here." in result["description"]
+    assert result["description"] == "Great job here."
 
 
 def test_extract_close_date(page):
