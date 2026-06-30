@@ -3,12 +3,23 @@ import path from "node:path";
 import { config as loadEnv } from "dotenv";
 import { loadEnvFiles } from "../../scripts/parse-env";
 
-export type TargetEnv = "local" | "staging" | "prod";
+export type { TargetEnv } from "../../scripts/parse-env";
 
 export interface SupabaseConfig {
   supabaseUrl: string;
   anonKey: string;
   projectRef?: string;
+}
+
+export function printExecError(error: unknown, prefix = "❌"): void {
+  if (!(error instanceof Error)) return;
+  console.error(`${prefix} ${error.message}`);
+  const e = error as Error & {
+    stdout?: string | Buffer;
+    stderr?: string | Buffer;
+  };
+  if (e.stdout) console.error(String(e.stdout));
+  if (e.stderr) console.error(String(e.stderr));
 }
 
 const VALID_TARGETS: readonly string[] = ["local", "staging", "prod"];
