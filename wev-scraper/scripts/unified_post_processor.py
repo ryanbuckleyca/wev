@@ -148,6 +148,10 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
 
     print("=" * 70)
     print("UNIFIED POST-PROCESSOR")
+    if opts.task == "all":
+        print("Task: all (summary + values + sse + language)")
+    else:
+        print(f"Task: {opts.task}")
     print(f"Dry run: {opts.dry_run}")
     print("=" * 70)
 
