@@ -74,12 +74,14 @@ def _fetch_jobs(
     job_ids: List[str] | None,
     since_days: int | None,
     limit: int | None,
+    before_scraped_at: str | None = None,
 ) -> List[Dict[str, Any]]:
     """Fetch jobs from the database.
 
     When job_ids are provided, fetches exactly those jobs (limit ignored).
     Otherwise fetches the most-recently-scraped jobs, optionally filtered by
-    scraped_at age, up to `limit` rows. Pass limit=None to fetch all rows.
+    scraped_at age, up to `limit` rows per page. Pass limit=None to fetch all
+    rows in a single page. Uses cursor-based pagination via before_scraped_at.
     """
     query = supabase.table("jobs").select(
         "id, description, summary, values, is_sse, sse_details, language, scraped_at, "
@@ -92,6 +94,9 @@ def _fetch_jobs(
         if since_days:
             cutoff = datetime.now(timezone.utc) - timedelta(days=since_days)
             query = query.gte("scraped_at", cutoff.isoformat())
+
+        if before_scraped_at:
+            query = query.lt("scraped_at", before_scraped_at)
 
         query = query.order("scraped_at", desc=True)
 
@@ -143,8 +148,10 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
 
     print("=" * 70)
     print("UNIFIED POST-PROCESSOR")
-    print(f"Task: {opts.task}")
-    print(f"Limit: {opts.limit if opts.limit is not None else 'all'}")
+    if opts.task == "all":
+        print("Task: all (summary + values + sse + language)")
+    else:
+        print(f"Task: {opts.task}")
     print(f"Dry run: {opts.dry_run}")
     print("=" * 70)
 
@@ -171,30 +178,53 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
         counts["errors"] += 1
         return counts
 
-    # Fetch and filter jobs
-    try:
-        jobs = _fetch_jobs(opts.job_ids or None, opts.since_days, opts.limit)
-        print(f"✓ Fetched {len(jobs)} jobs")
-    except Exception as e:
-        scraper_log(f"✗ Failed to fetch jobs: {e}")
-        counts["errors"] += 1
-        return counts
+    # Fetch and filter jobs (paginated)
+    cursor: str | None = None
+    page = 0
+    all_eligible: list = []
 
-    filtered_jobs = [job for job in jobs if _needs_processing(job, opts)]
-    counts["skipped"] = len(jobs) - len(filtered_jobs)
-    print(f"✓ Filtered to {len(filtered_jobs)} eligible jobs ({counts['skipped']} skipped)")
+    while True:
+        page += 1
+        try:
+            jobs = _fetch_jobs(
+                opts.job_ids or None, opts.since_days, opts.limit, before_scraped_at=cursor
+            )
+        except Exception as e:
+            scraper_log(f"✗ Failed to fetch jobs: {e}")
+            counts["errors"] += 1
+            return counts
 
-    if not filtered_jobs:
+        if not jobs:
+            if page == 1:
+                print("✓ No jobs found.")
+            break
+
+        eligible = [job for job in jobs if _needs_processing(job, opts)]
+        counts["skipped"] += len(jobs) - len(eligible)
+        all_eligible.extend(eligible)
+        print(f"✓ Fetched {len(jobs)} jobs (page {page}), {len(eligible)} eligible")
+
+        if opts.limit and len(jobs) == opts.limit:
+            cursor = jobs[-1]["scraped_at"]
+        else:
+            break
+
+        if opts.job_ids:
+            break
+
+    if not all_eligible:
         print("No eligible jobs to process.")
         return counts
+
+    print(f"✓ Total: {len(all_eligible)} eligible across {page} page(s)")
 
     # Process in batches
     batch_size = 10
     processed_count = 0
     result: dict = {}
-    for i in range(0, len(filtered_jobs), batch_size):
-        batch = filtered_jobs[i:i + batch_size]
-        total_batches = (len(filtered_jobs) + batch_size - 1) // batch_size
+    for i in range(0, len(all_eligible), batch_size):
+        batch = all_eligible[i:i + batch_size]
+        total_batches = (len(all_eligible) + batch_size - 1) // batch_size
         print(f"  Processing batch {i//batch_size + 1}/{total_batches} ({len(batch)} jobs)")
 
         try:
@@ -352,8 +382,8 @@ def main():
     parser.add_argument("--force-language-reprocess", action="store_true",
                         help="Force re-processing of language tags even if already present and valid.")
     parser.add_argument("--limit", type=int, default=100,
-                        help="Maximum rows to fetch from the DB (default: 100). "
-                             "Note: post-filter skips may process fewer jobs.")
+                        help="Rows per page (default: 100). Paginates automatically "
+                             "to process all eligible jobs.")
     parser.add_argument("--job-id", nargs="+", help="Specific job IDs to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't save to database")
     parser.add_argument(
