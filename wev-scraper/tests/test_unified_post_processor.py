@@ -198,6 +198,7 @@ def test_main_cli(mock_process):
             args.verbose = False
             args.since_days = None
             args.force_language_reprocess = False
+            args.force_sse = False
             mock_args.return_value = args
 
             main()
@@ -210,5 +211,6 @@ def test_main_cli(mock_process):
                     verbose=False,
                     since_days=None,
                     force_language_reprocess=False,
+                    force_sse=False,
                 )
             )
