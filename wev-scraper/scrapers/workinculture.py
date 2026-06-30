@@ -23,7 +23,7 @@ class WorkInCultureScraper(BaseScraper):
         "description": "#job-listing-description",
         "date_posted": (".job-listing-meta .date-posted time", ("attr", "datetime")),
         # Unverified — confirm against live site HTML before relying on this.
-        "close_date": ".job-listing-meta .job-deadline",
+        "close_date": (".job-listing-meta .job-deadline", "text", "Deadline: "),
     }
 
     def get_job_url(self, item):
