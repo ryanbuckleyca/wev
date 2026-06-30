@@ -1,12 +1,7 @@
 import { execSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { config as loadEnv } from "dotenv";
-import {
-  envHelpLines,
-  parseEnvFlag,
-  type TargetEnv,
-} from "../scripts/parse-env";
+import { envHelpLines, parseEnvFlag } from "../scripts/parse-env";
 import { loadTargetEnv } from "./lib/env";
 
 const LOCAL_SUPABASE_CLI = path.resolve(
@@ -30,20 +25,6 @@ function execVerbose(command: string) {
   }
 }
 
-function loadProjectRef(target: string) {
-  const { projectRef } = loadTargetEnv(target);
-
-  if (!projectRef) {
-    console.error(
-      `✗ Error: SUPABASE_PROJECT_REF not set for ${target}, and it could not be derived from SUPABASE_URL`,
-    );
-    process.exit(1);
-  }
-
-  console.log(`✓ Using project reference: ${projectRef}`);
-  return projectRef;
-}
-
 function regenerateTypes(target: string) {
   console.log("▶ Regenerating Supabase TypeScript types...");
   execVerbose("npx tsx supabase/generate-types.ts " + target);
@@ -52,8 +33,16 @@ function regenerateTypes(target: string) {
 }
 
 function runMigration(target: string, dryRun: boolean) {
-  const projectRef = loadProjectRef(target);
+  const config = loadTargetEnv(target);
+  if (!config || !config.projectRef) {
+    console.error(
+      `✗ Error: SUPABASE_PROJECT_REF not set for ${target}, and it could not be derived from SUPABASE_URL`,
+    );
+    process.exit(1);
+  }
+  const projectRef = config.projectRef;
 
+  console.log(`✓ Using project reference: ${projectRef}`);
   console.log(`▶ Linking to project: ${projectRef}`);
   execVerbose(`supabase link --project-ref "${projectRef}"`);
 
@@ -65,7 +54,7 @@ function runMigration(target: string, dryRun: boolean) {
       stdio: "pipe",
       env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
     });
-  } catch (e) {
+  } catch {
     console.log("ℹ️  No remote-only migrations found or fetch failed.");
   }
 
@@ -95,14 +84,7 @@ function runMigration(target: string, dryRun: boolean) {
   }
 }
 
-function parseTarget(argv: string[]): TargetEnv {
-  return parseEnvFlag(argv) as TargetEnv;
-}
-
 function main() {
-  const envPath = fs.existsSync(".env") ? ".env" : path.join("..", ".env");
-  loadEnv({ path: envPath });
-
   const args = process.argv.slice(2);
   const dryRun = process.env.MIGRATE_DRY_RUN === "1";
 
@@ -111,7 +93,7 @@ function main() {
     process.exit(0);
   }
 
-  const target = parseTarget(args);
+  const target = parseEnvFlag(args);
 
   if (target === "local") {
     console.log("▶ Resetting local database...");

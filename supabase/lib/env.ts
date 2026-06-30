@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { config as loadEnv } from "dotenv";
+import { loadEnvFiles } from "../../scripts/parse-env";
 
 export type TargetEnv = "local" | "staging" | "prod";
 
@@ -10,31 +11,26 @@ export interface SupabaseConfig {
   projectRef?: string;
 }
 
-function loadEnvFile(filePath: string, override = false) {
-  if (fs.existsSync(filePath)) {
-    loadEnv({ path: filePath, override });
-  }
-}
+const VALID_TARGETS: readonly string[] = ["local", "staging", "prod"];
 
 export function loadTargetEnv(
   target: string,
   root: string = process.cwd(),
-): SupabaseConfig {
-  const validTargets = ["local", "staging", "prod"];
-  if (!validTargets.includes(target)) {
-    console.error(`✗ Error: Invalid target "${target}". Must be one of: ${validTargets.join(", ")}`);
-    process.exit(1);
+): SupabaseConfig | null {
+  if (!VALID_TARGETS.includes(target)) {
+    console.error(
+      `✗ Error: Invalid target "${target}". Must be one of: ${VALID_TARGETS.join(", ")}`,
+    );
+    return null;
   }
 
-  const envPath = fs.existsSync(path.join(root, ".env"))
-    ? path.join(root, ".env")
-    : path.join(root, "..", ".env");
-  loadEnv({ path: envPath });
+  loadEnvFiles(target, root);
 
-  if (target === "prod") {
-    loadEnvFile(path.join(root, ".env.production"), true);
-  } else if (target === "staging") {
-    loadEnvFile(path.join(root, ".env.staging"), true);
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.SUPABASE_URL) {
+    const parentEnv = path.join(root, "..", ".env");
+    if (fs.existsSync(parentEnv)) {
+      loadEnv({ path: parentEnv });
+    }
   }
 
   const supabaseUrl =
@@ -47,7 +43,7 @@ export function loadTargetEnv(
     console.error(
       "✗ Error: Missing SUPABASE_URL or ANON_KEY environment variables.",
     );
-    process.exit(1);
+    return null;
   }
 
   let projectRef = process.env.SUPABASE_PROJECT_REF;
@@ -56,7 +52,7 @@ export function loadTargetEnv(
       const urlObj = new URL(supabaseUrl);
       projectRef = urlObj.hostname.split(".")[0];
     } catch {
-      // ignore
+      // invalid URL — leave undefined
     }
   }
 
