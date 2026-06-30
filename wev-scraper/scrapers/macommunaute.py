@@ -177,7 +177,7 @@ class MaCommunauteScraper(BaseScraper):
 
     def extract_wage(self, page, listing_data):
         try:
-            text = page.locator(".post-content, .entry-content, article").first.inner_text()
+            text = page.locator(".post-content, .entry-content, .single-content").first.inner_text()
             return extract_salary_from_text(text)
         except Exception:
             pass

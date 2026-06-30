@@ -46,8 +46,13 @@ def confirm_prod_run(*, full_prod: bool) -> None:
 def resolve_prod_env_path(script_file: Path) -> Path:
     """Return the path to .env.production (repo root or scraper package)."""
     scraper_dir = script_file.resolve().parent
-    root_dir = scraper_dir.parent
-    for candidate in (root_dir / ".env.production", scraper_dir / ".env.production"):
+    if scraper_dir.name == "scripts":
+        root_dir = scraper_dir.parent.parent
+        scraper_pkg = scraper_dir.parent
+    else:
+        root_dir = scraper_dir.parent
+        scraper_pkg = scraper_dir
+    for candidate in (root_dir / ".env.production", scraper_pkg / ".env.production"):
         if candidate.exists():
             return candidate
     return root_dir / ".env.production"

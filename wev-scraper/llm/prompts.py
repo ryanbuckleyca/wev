@@ -157,6 +157,7 @@ def get_unified_system_prompt(include_sse: bool = False) -> str:
             EVALUATION_CRITERIA,
             "- is_sse: boolean - true if the organization and role align with the Solidarity Economy principles above",
             "- sse_confidence: float 0-1 for classification confidence",
+            "- sse_reasoning: string - brief explanation referencing relevant SSE principle(s)",
         ])
 
     base_parts.extend([

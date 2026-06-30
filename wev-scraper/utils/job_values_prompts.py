@@ -71,7 +71,7 @@ def format_job_chunks(
             f"Employment Type: {job.get('employment_type', 'Unknown')}",
         ]
         if include_wage:
-            parts.append(f"Wage: {job.get('wage', 'Not specified')}")
+            parts.append(f"Wage: {job.get('wage') or 'Not specified'}")
         if include_summary:
             summary = (job.get("summary") or "")[:400]
             parts.append(f"Summary: {summary}")

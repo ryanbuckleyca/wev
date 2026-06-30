@@ -100,7 +100,7 @@ class UnifiedJobProcessor:
         for chunk in job_chunks:
             prompt_parts.append(f"\n{chunk}")
 
-        fields = "index, summary, language, values, is_sse, sse_confidence" if include_sse else "index, summary, language, values"
+        fields = "index, summary, language, values, is_sse, sse_confidence, sse_reasoning" if include_sse else "index, summary, language, values"
         prompt_parts.append(f"\n\nOutput JSON array with objects containing: {fields}")
 
         return "".join(prompt_parts)
