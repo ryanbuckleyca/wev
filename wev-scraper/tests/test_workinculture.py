@@ -61,6 +61,21 @@ def test_returns_none_when_no_url_found(scraper):
     assert scraper.get_job_url(item) is None
 
 
+def test_falls_back_when_data_ref_raises(scraper):
+    item = MagicMock()
+
+    def get_attr(attr):
+        if attr == "data-ref":
+            raise Exception("boom")
+        return None
+
+    item.get_attribute.side_effect = get_attr
+    anchor = MagicMock()
+    anchor.get_attribute.return_value = "https://workinculture.ca/jobs/999"
+    item.locator.return_value.first = anchor
+    assert scraper.get_job_url(item) == "https://workinculture.ca/jobs/999"
+
+
 # --- extraction against real HTML ---
 
 
@@ -98,6 +113,11 @@ class StubAlgoliaPage:
     def __init__(self, infinite_enabled=False, pagination_next=False):
         self._infinite_enabled = infinite_enabled
         self._pagination_next = pagination_next
+        self._selectors = {}
+        if infinite_enabled:
+            self._selectors[".ais-InfiniteHits-loadMore"] = True
+        if pagination_next:
+            self._selectors[".ais-Pagination-item--next:not(.ais-Pagination-item--disabled)"] = True
 
     def locator(self, selector):
         class StubLocator:
@@ -110,11 +130,7 @@ class StubAlgoliaPage:
                 return self
 
             def count(self):
-                if "InfiniteHits" in self._selector:
-                    return 1 if self._parent._infinite_enabled else 0
-                if "Pagination" in self._selector:
-                    return 1 if self._parent._pagination_next else 0
-                return 0
+                return 1 if self._selector in self._parent._selectors else 0
 
             def is_enabled(self, **kwargs):
                 return self._parent._infinite_enabled
