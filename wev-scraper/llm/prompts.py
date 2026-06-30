@@ -150,8 +150,12 @@ def get_unified_system_prompt(include_sse: bool = False) -> str:
     ]
 
     if include_sse:
+        from utils.sse_prompts import EVALUATION_CRITERIA, SSE_PRINCIPLES
+
         base_parts.extend([
-            "- is_sse: boolean - true if social/solidarity economy (non-profit, cooperative, etc.)",
+            SSE_PRINCIPLES,
+            EVALUATION_CRITERIA,
+            "- is_sse: boolean - true if the organization and role align with the Solidarity Economy principles above",
             "- sse_confidence: float 0-1 for classification confidence",
         ])
 
