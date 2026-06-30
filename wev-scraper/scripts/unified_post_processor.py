@@ -175,6 +175,9 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
     try:
         jobs = _fetch_jobs(opts.job_ids or None, opts.since_days, opts.limit)
         print(f"✓ Fetched {len(jobs)} jobs")
+        if opts.limit and len(jobs) == opts.limit:
+            print(f"  ⚠ Hit the {opts.limit}-row limit — there may be additional jobs not processed. "
+                  f"Increase --limit or remove it to process all.")
     except Exception as e:
         scraper_log(f"✗ Failed to fetch jobs: {e}")
         counts["errors"] += 1
