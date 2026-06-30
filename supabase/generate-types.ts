@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { loadTargetEnv } from "./lib/env";
+import { loadTargetEnv, printExecError } from "./lib/env";
 
 function main() {
   const target = process.argv[2] || "local";
@@ -43,15 +43,7 @@ function main() {
     fs.writeFileSync(outputPath, typesHeader + output);
     console.log(`✓ Wrote ${outputPath}`);
   } catch (error: unknown) {
-    console.error("❌ Failed to generate types.");
-    if (error instanceof Error) {
-      const execErr = error as Error & {
-        stdout?: string | Buffer;
-        stderr?: string | Buffer;
-      };
-      if (execErr.stdout) console.error(String(execErr.stdout));
-      if (execErr.stderr) console.error(String(execErr.stderr));
-    }
+    printExecError(error, "❌ Failed to generate types.");
     process.exit(1);
   }
 }
