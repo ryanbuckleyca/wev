@@ -34,9 +34,10 @@ def test_uses_data_ref_when_present(scraper):
     assert scraper.get_job_url(item) == "https://workinculture.ca/jobs/123"
 
 
-def test_builds_full_url_from_relative_data_ref(scraper):
+def test_builds_full_url_from_relative_data_ref():
+    scraper = WorkInCultureScraper(make_source(url="https://workinculture.ca/job-search/"))
     item = make_item(data_ref="/jobs/123")
-    assert scraper.get_job_url(item) == "https://example.com/jobs/123"
+    assert scraper.get_job_url(item) == "https://workinculture.ca/jobs/123"
 
 
 def test_falls_back_to_item_href_when_no_data_ref(scraper):
@@ -96,3 +97,62 @@ def test_extract_description(page):
     scraper = WorkInCultureScraper(make_source())
     result = scraper.extract_with_selectors(page, {"description": "#job-listing-description"})
     assert "Great job here." in result["description"]
+
+
+def test_extract_close_date(page):
+    page.set_content(
+        '<div class="job-listing-meta">'
+        '<span class="job-deadline">2026-07-15</span>'
+        "</div>"
+    )
+    scraper = WorkInCultureScraper(make_source())
+    result = scraper.extract_with_selectors(page, {"close_date": ".job-listing-meta .job-deadline"})
+    assert result["close_date"] == "2026-07-15"
+
+
+# --- pagination ---
+
+
+class StubAlgoliaPage:
+    """Minimal page stub for has_next_page tests (no real Playwright)."""
+
+    def __init__(self, infinite_enabled=False, pagination_next=False):
+        self._infinite_enabled = infinite_enabled
+        self._pagination_next = pagination_next
+
+    def locator(self, selector):
+        class StubLocator:
+            def __init__(self, parent, selector):
+                self._parent = parent
+                self._selector = selector
+
+            @property
+            def first(self):
+                return self
+
+            def count(self):
+                if "InfiniteHits" in self._selector:
+                    return 1 if self._parent._infinite_enabled else 0
+                if "Pagination" in self._selector:
+                    return 1 if self._parent._pagination_next else 0
+                return 0
+
+            def is_enabled(self, **kwargs):
+                return self._parent._infinite_enabled
+
+        return StubLocator(self, selector)
+
+
+def test_has_next_page_with_infinite_hits(scraper):
+    page = StubAlgoliaPage(infinite_enabled=True)
+    assert scraper.has_next_page(page) is True
+
+
+def test_has_next_page_with_pagination(scraper):
+    page = StubAlgoliaPage(pagination_next=True)
+    assert scraper.has_next_page(page) is True
+
+
+def test_has_next_page_returns_false_when_no_more(scraper):
+    page = StubAlgoliaPage()
+    assert scraper.has_next_page(page) is False

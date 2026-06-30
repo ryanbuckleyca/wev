@@ -1,4 +1,5 @@
 from scrapers.base import BaseScraper
+from utils.log import scraper_log
 
 
 class WorkInCultureScraper(BaseScraper):
@@ -33,3 +34,41 @@ class WorkInCultureScraper(BaseScraper):
         if href:
             return href if href.startswith("http") else self.build_full_url(href)
         return super().get_job_url(item)
+
+    def has_next_page(self, page):
+        try:
+            btn = page.locator(".ais-InfiniteHits-loadMore")
+            if btn.count() > 0 and btn.first.is_enabled(timeout=2000):
+                return True
+        except Exception:
+            pass
+        try:
+            next_item = page.locator(
+                ".ais-Pagination-item--next:not(.ais-Pagination-item--disabled)"
+            )
+            if next_item.count() > 0:
+                return True
+        except Exception:
+            pass
+        return False
+
+    def go_next_page(self, page):
+        try:
+            btn = page.locator(".ais-InfiniteHits-loadMore").first
+            if btn.count() > 0 and btn.is_enabled(timeout=2000):
+                scraper_log("\tClicking Algolia 'Load More' button…")
+                btn.scroll_into_view_if_needed()
+                btn.click(timeout=5000)
+                page.wait_for_timeout(1000)
+                return
+        except Exception:
+            pass
+        try:
+            next_link = page.locator(
+                ".ais-Pagination-item--next:not(.ais-Pagination-item--disabled) a"
+            ).first
+            scraper_log("\tClicking Algolia pagination next link…")
+            next_link.click(timeout=5000)
+            page.wait_for_timeout(1000)
+        except Exception as e:
+            scraper_log(f"\tPagination failed: {e}")
