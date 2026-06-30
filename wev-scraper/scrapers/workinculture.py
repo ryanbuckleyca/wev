@@ -32,7 +32,11 @@ class WorkInCultureScraper(BaseScraper):
         except Exception:
             href = None
         if href:
-            return href if href.startswith("http") else self.build_full_url(href)
+            full_url = href if href.startswith("http") else self.build_full_url(href)
+            source_url = (self.source or {}).get("url", "")
+            if source_url and full_url.rstrip("/") == source_url.rstrip("/"):
+                return None
+            return full_url
         return super().get_job_url(item)
 
     def has_next_page(self, page):

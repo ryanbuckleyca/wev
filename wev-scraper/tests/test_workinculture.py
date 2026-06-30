@@ -82,14 +82,14 @@ def test_falls_back_when_data_ref_raises(scraper):
 def test_extract_job_title(page):
     page.set_content("<h1 class='wp-block-post-title'>Software Developer</h1>")
     scraper = WorkInCultureScraper(make_source())
-    result = scraper.extract_with_selectors(page, {"job_title": ".wp-block-post-title"})
+    result = scraper.extract_with_selectors(page, {"job_title": scraper.SELECTORS["job_title"]})
     assert result["job_title"] == "Software Developer"
 
 
 def test_extract_description(page):
     page.set_content("<div id='job-listing-description'><p>Great job here.</p></div>")
     scraper = WorkInCultureScraper(make_source())
-    result = scraper.extract_with_selectors(page, {"description": "#job-listing-description"})
+    result = scraper.extract_with_selectors(page, {"description": scraper.SELECTORS["description"]})
     assert result["description"] == "Great job here."
 
 
@@ -100,7 +100,7 @@ def test_extract_close_date(page):
         "</div>"
     )
     scraper = WorkInCultureScraper(make_source())
-    result = scraper.extract_with_selectors(page, {"close_date": ".job-listing-meta .job-deadline"})
+    result = scraper.extract_with_selectors(page, {"close_date": scraper.SELECTORS["close_date"]})
     assert result["close_date"] == "2026-07-15"
 
 
