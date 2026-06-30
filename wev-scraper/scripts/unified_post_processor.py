@@ -149,7 +149,6 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
     print("=" * 70)
     print("UNIFIED POST-PROCESSOR")
     print(f"Task: {opts.task}")
-    print(f"Limit: {opts.limit if opts.limit is not None else 'all'}")
     print(f"Dry run: {opts.dry_run}")
     print("=" * 70)
 
