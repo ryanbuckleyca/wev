@@ -67,7 +67,12 @@ class ProcessingOptions:
     since_days: int | None = None
     # Only meaningful when task="language": skips the already-tagged check and
     # re-processes every fetched job regardless of its current language value.
+    # Only meaningful when task="language": skips the already-tagged check and
+    # re-processes every fetched job regardless of its current language value.
     force_language_reprocess: bool = False
+    # Only meaningful when task="sse": skips the already-tagged check and
+    # re-processes every fetched job regardless of its current SSE value.
+    force_sse: bool = False
 
 
 def _fetch_jobs(
@@ -116,6 +121,8 @@ def _needs_processing(job: Dict[str, Any], opts: ProcessingOptions) -> bool:
             or job.get("language") not in VALID_LANGUAGES
         )
     if opts.task == "sse":
+        if opts.force_sse:
+            return True
         return job.get("is_sse") is None
     if opts.task == "values":
         return not job.get("values")
@@ -381,6 +388,8 @@ def main():
     parser.add_argument("--since-days", type=int, help="Process jobs created since N days ago")
     parser.add_argument("--force-language-reprocess", action="store_true",
                         help="Force re-processing of language tags even if already present and valid.")
+    parser.add_argument("--force-sse", action="store_true",
+                        help="Force re-processing of SSE classification even if already present.")
     parser.add_argument("--limit", type=int, default=100,
                         help="Rows per page (default: 100). Paginates automatically "
                              "to process all eligible jobs.")
@@ -410,6 +419,7 @@ def main():
         verbose=args.verbose,
         since_days=args.since_days,
         force_language_reprocess=args.force_language_reprocess,
+        force_sse=args.force_sse,
     ))
 
     # Print summary
