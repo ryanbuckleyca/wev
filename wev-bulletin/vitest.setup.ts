@@ -5,6 +5,15 @@ configure({ asyncUtilTimeout: 5000 });
 import { act } from 'react';
 import { beforeAll, afterAll, afterEach, vi } from 'vitest';
 
+beforeAll(() => {
+  vi.useRealTimers();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  cleanup();
+});
+
 // `server-only` throws when imported outside Next server; Vitest runs in Node.
 vi.mock('server-only', () => ({}));
 
