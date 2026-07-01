@@ -278,7 +278,7 @@ describe('ProfilePage skills integration', () => {
     },
   );
 
-  it('blocks save and shows error when skills exceed limit', { timeout: 45_000 }, async () => {
+  it('blocks save and shows error when skills exceed limit', async () => {
     // This test renders 10 hydrated skills, opens a modal, searches for a skill,
     // selects a result, and validates the save is blocked.  Under full-suite
     // resource contention it can exceed the 30 s global timeout.
@@ -370,7 +370,13 @@ describe('ProfilePage skills integration', () => {
       );
     });
     await user.click(await screen.findByRole('option', { name: /Extra skill/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Extra skill')).toBeInTheDocument();
+    });
     await user.click(screen.getByRole('button', { name: /done/i }));
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText(SKILLS_SEARCH_PLACEHOLDER)).not.toBeInTheDocument();
+    });
     await user.click(screen.getByRole('button', { name: /save profile/i }));
 
     await waitFor(() => {
