@@ -1,6 +1,7 @@
+import traceback
+
 from scrapers.base import BaseScraper
 from utils.log import scraper_log
-import traceback
 
 
 class WorkInCultureScraper(BaseScraper):
