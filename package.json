@@ -73,6 +73,7 @@
     "test:scraper": "cd wev-scraper && (./venv/bin/pytest -p no:asyncio tests scrapers || python3 -m pytest -p no:asyncio tests scrapers)",
     "tsc": "npm run tsc -w wev-bulletin",
     "types:supabase": "npx tsx supabase/generate-types.ts",
+    "types:python": "npx tsx supabase/generate-types-python.ts",
     "verify": "npm run lint && npm run tsc && npm run test",
     "verify:fix": "npm run lint:fix && npm run tsc && npm run test"
   }

@@ -1,12 +1,8 @@
 import { execSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { config as loadEnv } from "dotenv";
-import {
-  envHelpLines,
-  parseEnvFlag,
-  type TargetEnv,
-} from "../scripts/parse-env";
+import { envHelpLines, parseEnvFlag } from "../scripts/parse-env";
+import { loadTargetEnv } from "./lib/env";
 
 const LOCAL_SUPABASE_CLI = path.resolve(
   process.cwd(),
@@ -29,43 +25,70 @@ function execVerbose(command: string) {
   }
 }
 
-function loadProjectRef(target: string) {
-  if (target === "prod" && fs.existsSync(".env.production")) {
-    loadEnv({ path: ".env.production", override: true });
+function tryExecVerbose(command: string): boolean {
+  const finalCommand = command.startsWith("supabase ")
+    ? `${LOCAL_SUPABASE_CLI} ${command.slice("supabase ".length)}`
+    : command;
+  const result = spawnSync(finalCommand, {
+    shell: true,
+    stdio: "inherit",
+    env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
+  });
+  return result.status === 0;
+}
+
+function regenerateTypes(target: string) {
+  console.log("▶ Regenerating Supabase TypeScript types...");
+  if (!tryExecVerbose("npx tsx supabase/generate-types.ts " + target)) {
+    console.warn("  ⚠️  TypeScript type generation failed — continuing.");
   }
-
-  if (target === "staging" && fs.existsSync(".env.staging")) {
-    loadEnv({ path: ".env.staging", override: true });
+  console.log("▶ Regenerating Supabase Python types (Pydantic)...");
+  if (!tryExecVerbose("npx tsx supabase/generate-types-python.ts " + target)) {
+    console.warn("  ⚠️  Python type generation failed — continuing.");
   }
+}
 
-  let projectRef = process.env.SUPABASE_PROJECT_REF;
-
-  if (!projectRef && process.env.SUPABASE_URL) {
-    try {
-      const urlObj = new URL(process.env.SUPABASE_URL);
-      const hostParts = urlObj.hostname.split(".");
-      if (hostParts.length > 0) {
-        projectRef = hostParts[0];
-      }
-    } catch {
-      // ignore
-    }
+function tryPopulateEmbeddings() {
+  const backupPath = path.resolve(
+    process.cwd(),
+    "supabase/backups/backup_public_esco_skills.json",
+  );
+  if (fs.existsSync(backupPath)) {
+    console.log("  ✓ Backup found. Verifying embeddings...");
+    execVerbose("npm run skills:embeddings -- --limit 1");
+    return;
   }
+  const hasJinaKey = !!process.env.JINA_API_KEY;
+  const isLocalEnv = process.env.ENV_MODE === "local";
+  if (!hasJinaKey && !isLocalEnv) {
+    console.log(
+      "  ⚠️  No backup found and JINA_API_KEY is not set — skipping embedding step.",
+    );
+    console.log(
+      "  ℹ️  To populate embeddings, either restore from backup or set JINA_API_KEY.",
+    );
+    return;
+  }
+  console.log(
+    "  ⚠️  No backup found at supabase/backups/backup_public_esco_skills.json",
+  );
+  console.log(
+    "  ▶ Running FULL Jina embedding (this will take several minutes)...",
+  );
+  execVerbose("npm run skills:embeddings");
+}
 
-  if (!projectRef) {
+function runMigration(target: string, dryRun: boolean) {
+  const config = loadTargetEnv(target);
+  if (!config || !config.projectRef) {
     console.error(
       `✗ Error: SUPABASE_PROJECT_REF not set for ${target}, and it could not be derived from SUPABASE_URL`,
     );
     process.exit(1);
   }
+  const projectRef = config.projectRef;
 
   console.log(`✓ Using project reference: ${projectRef}`);
-  return projectRef;
-}
-
-function runMigration(target: string, dryRun: boolean) {
-  const projectRef = loadProjectRef(target);
-
   console.log(`▶ Linking to project: ${projectRef}`);
   execVerbose(`supabase link --project-ref "${projectRef}"`);
 
@@ -77,7 +100,7 @@ function runMigration(target: string, dryRun: boolean) {
       stdio: "pipe",
       env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
     });
-  } catch (e) {
+  } catch {
     console.log("ℹ️  No remote-only migrations found or fetch failed.");
   }
 
@@ -103,19 +126,11 @@ function runMigration(target: string, dryRun: boolean) {
   }
 
   if (!dryRun) {
-    console.log("▶ Regenerating Supabase TypeScript types...");
-    execVerbose("npx tsx supabase/generate-types.ts " + target);
+    regenerateTypes(target);
   }
 }
 
-function parseTarget(argv: string[]): TargetEnv {
-  return parseEnvFlag(argv) as TargetEnv;
-}
-
 function main() {
-  const envPath = fs.existsSync(".env") ? ".env" : path.join("..", ".env");
-  loadEnv({ path: envPath });
-
   const args = process.argv.slice(2);
   const dryRun = process.env.MIGRATE_DRY_RUN === "1";
 
@@ -124,7 +139,7 @@ function main() {
     process.exit(0);
   }
 
-  const target = parseTarget(args);
+  const target = parseEnvFlag(args);
 
   if (target === "local") {
     console.log("▶ Resetting local database...");
@@ -133,38 +148,10 @@ function main() {
     console.log("▶ Seeding database with E2E dataset...");
     execVerbose("npx tsx supabase/seed-local.ts");
 
-    console.log("▶ Regenerating TypeScript types...");
-    execVerbose("npx tsx supabase/generate-types.ts local");
+    regenerateTypes("local");
 
     console.log("▶ Ensuring ESCO skill embeddings are populated...");
-    const backupPath = path.resolve(
-      process.cwd(),
-      "supabase/backups/backup_public_esco_skills.json",
-    );
-    if (fs.existsSync(backupPath)) {
-      console.log("  ✓ Backup found. Verifying embeddings...");
-      // If the backup was restored by the seeder, this will find 0 missing and exit instantly.
-      execVerbose("npm run skills:embeddings -- --limit 1");
-    } else {
-      const hasJinaKey = !!process.env.JINA_API_KEY;
-      const isLocalEnv = process.env.ENV_MODE === "local";
-      if (!hasJinaKey && !isLocalEnv) {
-        console.log(
-          "  ⚠️  No backup found and JINA_API_KEY is not set — skipping embedding step.",
-        );
-        console.log(
-          "  ℹ️  To populate embeddings, either restore from backup or set JINA_API_KEY.",
-        );
-      } else {
-        console.log(
-          "  ⚠️  No backup found at supabase/backups/backup_public_esco_skills.json",
-        );
-        console.log(
-          "  ▶ Running FULL Jina embedding (this will take several minutes)...",
-        );
-        execVerbose("npm run skills:embeddings");
-      }
-    }
+    tryPopulateEmbeddings();
 
     console.log("✨ Done.");
   } else if (target === "staging" || target === "prod") {
