@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { render, screen, waitFor } from '@/test-utils';
+import { render, screen, waitFor, within } from '@/test-utils';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
 import { useProfile } from '@/contexts/ProfileContext';
 import { MAX_PROFILE_SKILLS } from '@/lib/hooks/useProfileForm';
@@ -371,7 +371,9 @@ describe('ProfilePage skills integration', () => {
     });
     await user.click(await screen.findByRole('option', { name: /Extra skill/i }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /remove Extra skill/i })).toBeInTheDocument();
+      const skillChip = screen.getByText('Extra skill', { selector: 'span' });
+      expect(skillChip).toBeInTheDocument();
+      expect(within(skillChip).getByRole('button', { name: /remove Extra skill/i })).toBeInTheDocument();
     });
     await user.click(screen.getByRole('button', { name: /done/i }));
     await waitFor(() => {
