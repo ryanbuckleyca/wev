@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { loadTargetEnv, printExecError } from "./lib/env";
+import { loadTargetEnv } from "./lib/env";
+import { printExecError } from "./lib/error";
 
 function main() {
   const target = process.argv[2] || "local";

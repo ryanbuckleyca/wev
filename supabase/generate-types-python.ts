@@ -1,14 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { loadTargetEnv, printExecError } from "./lib/env";
+import { loadTargetEnv } from "./lib/env";
+import { printExecError } from "./lib/error";
 
 const FETCH_TIMEOUT_MS = 15_000;
 
 async function fetchOpenApiSpec(
   baseUrl: string,
   anonKey: string,
-): Promise<string> {
+): Promise<Record<string, unknown>> {
   const openApiUrl = `${baseUrl.replace(/\/+$/, "")}/rest/v1/`;
   console.log(`▶ Fetching OpenAPI spec from ${openApiUrl}...`);
 
@@ -29,15 +30,14 @@ async function fetchOpenApiSpec(
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    return response.text();
+    return response.json() as Promise<Record<string, unknown>>;
   } finally {
     clearTimeout(timeout);
   }
 }
 
-function extractDefinitionsSchema(specJson: string): string {
-  const spec = JSON.parse(specJson);
-  const definitions: Record<string, unknown> = spec.definitions ?? {};
+function extractDefinitionsSchema(spec: Record<string, unknown>): string {
+  const definitions: Record<string, unknown> = (spec.definitions ?? {}) as Record<string, unknown>;
   const defNames = Object.keys(definitions);
 
   if (defNames.length === 0) {
@@ -60,7 +60,7 @@ function extractDefinitionsSchema(specJson: string): string {
   return JSON.stringify(schema, null, 2);
 }
 
-function findDatamodelCodegen(): string {
+function findDatamodelCodegen(): string | null {
   const venvPath = path.join(
     process.cwd(),
     "wev-scraper",
@@ -73,17 +73,19 @@ function findDatamodelCodegen(): string {
   }
   try {
     execSync("which datamodel-codegen", { stdio: "ignore" });
+    return "datamodel-codegen";
   } catch {
-    console.error(
-      "❌ datamodel-codegen not found. Install it with: pip install datamodel-code-generator",
-    );
-    process.exit(1);
+    return null;
   }
-  return "datamodel-codegen";
 }
 
 function generatePydanticModels(schemaPath: string, outputPath: string): void {
   const codegen = findDatamodelCodegen();
+  if (!codegen) {
+    throw new Error(
+      "datamodel-codegen not found. Install it with: pip install datamodel-code-generator",
+    );
+  }
   const command = `"${codegen}" --input "${schemaPath}" --output "${outputPath}" --output-model-type pydantic_v2.BaseModel --input-file-type jsonschema`;
 
   execSync(command, { encoding: "utf-8", stdio: "inherit" });
@@ -113,13 +115,13 @@ async function main() {
   );
 
   try {
-    const specJson = await fetchOpenApiSpec(config.supabaseUrl, config.anonKey);
+    const spec = await fetchOpenApiSpec(config.supabaseUrl, config.anonKey);
 
     fs.mkdirSync(tempDir, { recursive: true });
-    fs.writeFileSync(tempSpecPath, specJson);
+    fs.writeFileSync(tempSpecPath, JSON.stringify(spec, null, 2));
     console.log(`✓ Saved OpenAPI spec to ${tempSpecPath}`);
 
-    const schemaJson = extractDefinitionsSchema(specJson);
+    const schemaJson = extractDefinitionsSchema(spec);
     fs.writeFileSync(tempSchemaPath, schemaJson);
 
     generatePydanticModels(tempSchemaPath, outputPath);
