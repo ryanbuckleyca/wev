@@ -371,7 +371,7 @@ describe('ProfilePage skills integration', () => {
     });
     await user.click(await screen.findByRole('option', { name: /Extra skill/i }));
     await waitFor(() => {
-      expect(screen.getByText('Extra skill')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /remove Extra skill/i })).toBeInTheDocument();
     });
     await user.click(screen.getByRole('button', { name: /done/i }));
     await waitFor(() => {
