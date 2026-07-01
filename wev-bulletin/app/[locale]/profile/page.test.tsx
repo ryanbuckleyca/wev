@@ -176,7 +176,6 @@ describe('ProfilePage skills integration', () => {
 
   it(
     'saves concept_uri[] (not labels) after selecting a search result',
-    { timeout: 45_000 },
     async () => {
       // vi.useFakeTimers(); // Removed fake timers
       const user = userEvent.setup({ delay: null }); // Removed advanceTimers
@@ -373,7 +372,9 @@ describe('ProfilePage skills integration', () => {
     await waitFor(() => {
       const skillChip = screen.getByText('Extra skill', { selector: 'span' });
       expect(skillChip).toBeInTheDocument();
-      expect(within(skillChip).getByRole('button', { name: /remove Extra skill/i })).toBeInTheDocument();
+      expect(
+        within(skillChip).getByRole('button', { name: /remove Extra skill/i }),
+      ).toBeInTheDocument();
     });
     await user.click(screen.getByRole('button', { name: /done/i }));
     await waitFor(() => {
