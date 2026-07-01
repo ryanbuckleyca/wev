@@ -32,7 +32,7 @@ function regenerateTypes(target: string) {
   execVerbose("npx tsx supabase/generate-types-python.ts " + target);
 }
 
-function ensureSkillEmbeddings() {
+function tryPopulateEmbeddings() {
   const backupPath = path.resolve(
     process.cwd(),
     "supabase/backups/backup_public_esco_skills.json",
@@ -135,7 +135,7 @@ function main() {
     regenerateTypes("local");
 
     console.log("▶ Ensuring ESCO skill embeddings are populated...");
-    ensureSkillEmbeddings();
+    tryPopulateEmbeddings();
 
     console.log("✨ Done.");
   } else if (target === "staging" || target === "prod") {

@@ -11,17 +11,6 @@ export interface SupabaseConfig {
   projectRef?: string;
 }
 
-export function printExecError(error: unknown, prefix = "❌"): void {
-  if (!(error instanceof Error)) return;
-  console.error(`${prefix} ${error.message}`);
-  const e = error as Error & {
-    stdout?: string | Buffer;
-    stderr?: string | Buffer;
-  };
-  if (e.stdout) console.error(String(e.stdout));
-  if (e.stderr) console.error(String(e.stderr));
-}
-
 const VALID_TARGETS: readonly string[] = ["local", "staging", "prod"];
 
 export function loadTargetEnv(
