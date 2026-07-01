@@ -25,11 +25,27 @@ function execVerbose(command: string) {
   }
 }
 
+function tryExecVerbose(command: string): boolean {
+  const finalCommand = command.startsWith("supabase ")
+    ? `${LOCAL_SUPABASE_CLI} ${command.slice("supabase ".length)}`
+    : command;
+  const result = spawnSync(finalCommand, {
+    shell: true,
+    stdio: "inherit",
+    env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
+  });
+  return result.status === 0;
+}
+
 function regenerateTypes(target: string) {
   console.log("▶ Regenerating Supabase TypeScript types...");
-  execVerbose("npx tsx supabase/generate-types.ts " + target);
+  if (!tryExecVerbose("npx tsx supabase/generate-types.ts " + target)) {
+    console.warn("  ⚠️  TypeScript type generation failed — continuing.");
+  }
   console.log("▶ Regenerating Supabase Python types (Pydantic)...");
-  execVerbose("npx tsx supabase/generate-types-python.ts " + target);
+  if (!tryExecVerbose("npx tsx supabase/generate-types-python.ts " + target)) {
+    console.warn("  ⚠️  Python type generation failed — continuing.");
+  }
 }
 
 function tryPopulateEmbeddings() {
