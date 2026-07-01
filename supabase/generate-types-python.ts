@@ -17,14 +17,24 @@ async function fetchOpenApiSpec(
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(openApiUrl, {
-      signal: controller.signal,
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-        Accept: "application/openapi+json",
-      },
-    });
+    let response: Response;
+    try {
+      response = await fetch(openApiUrl, {
+        signal: controller.signal,
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+          Accept: "application/openapi+json",
+        },
+      });
+    } catch (fetchError: unknown) {
+      if (fetchError instanceof Error && fetchError.name === "AbortError") {
+        throw new Error(
+          `Request timed out after ${FETCH_TIMEOUT_MS / 1000}s — check your network or SUPABASE_URL`,
+        );
+      }
+      throw fetchError;
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -37,7 +47,11 @@ async function fetchOpenApiSpec(
 }
 
 function extractDefinitionsSchema(spec: Record<string, unknown>): string {
-  const definitions: Record<string, unknown> = (spec.definitions ?? {}) as Record<string, unknown>;
+  const raw = spec.definitions;
+  const definitions: Record<string, unknown> =
+    typeof raw === "object" && raw !== null
+      ? (raw as Record<string, unknown>)
+      : {};
   const defNames = Object.keys(definitions);
 
   if (defNames.length === 0) {
