@@ -120,6 +120,7 @@ class TestPhase1Backfill:
         summary = backfill_env.run_backfill(batch_size=50)
 
         assert summary["errors"] == 1
+        assert summary["orgs_resolved"] == 2
         assert summary["phase1_processed"] == 2
 
     def test_batch_delay_called_between_batches_not_after_last(self, backfill_env):

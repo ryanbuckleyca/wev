@@ -75,7 +75,7 @@ END $$;
 DO $$ BEGIN
   ALTER TABLE public.organizations
     ADD CONSTRAINT organizations_slug_key UNIQUE (slug);
-EXCEPTION WHEN duplicate_table THEN NULL;
+EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 -- Case-insensitive normalized identity index — treats null/empty location as ''

@@ -150,7 +150,7 @@ class OrganizationResolver:
 
         suggested_slug = result.get("slug") or ""
         slug_base = suggested_slug if suggested_slug else generate_slug(canonical_name)
-        slug = self._find_available_slug(slug_base)
+        slug = self._find_available_slug(slug_base, ctx.job_id)
 
         row = {
             "name": canonical_name,
@@ -165,7 +165,7 @@ class OrganizationResolver:
 
     def _resolve_minimal(self, ctx: JobContext, cache_key: str) -> int | None:
         canonical_loc = canonical_location(ctx.municipality, ctx.province, None)
-        slug = self._find_available_slug(generate_slug(ctx.raw_name))
+        slug = self._find_available_slug(generate_slug(ctx.raw_name), ctx.job_id)
 
         row = {
             "name": ctx.raw_name,
@@ -180,9 +180,9 @@ class OrganizationResolver:
         )
         return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
 
-    def _find_available_slug(self, base: str) -> str:
+    def _find_available_slug(self, base: str, seed: str = "") -> str:
         if not base:
-            digest = hashlib.sha256(b"unnamed").hexdigest()[:8]
+            digest = hashlib.sha256(f"unnamed-{seed}".encode()).hexdigest()[:8]
             base = f"unnamed-{digest}"
 
         if not self._repo.slug_exists(base):
