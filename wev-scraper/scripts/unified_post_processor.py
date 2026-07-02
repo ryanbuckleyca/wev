@@ -381,9 +381,9 @@ def main():
     parser.add_argument("--since-days", type=int, help="Process jobs created since N days ago")
     parser.add_argument("--force-language-reprocess", action="store_true",
                         help="Force re-processing of language tags even if already present and valid.")
-    parser.add_argument("--page-limit", type=int, default=100,
-                        help="Rows per page (default: 100). Paginates automatically "
-                             "to process all eligible jobs.")
+    parser.add_argument("--page-limit", "--limit", dest="page_limit", type=int, default=100,
+                        help="Rows per page (default: 100). Supports legacy --limit. "
+                             "Paginates automatically to process all eligible jobs.")
     parser.add_argument("--job-id", nargs="+", help="Specific job IDs to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't save to database")
     parser.add_argument(
