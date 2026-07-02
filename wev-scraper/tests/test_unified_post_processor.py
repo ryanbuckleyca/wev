@@ -212,3 +212,29 @@ def test_main_cli(mock_process):
                     force_language_reprocess=False,
                 )
             )
+
+
+@patch("scripts.unified_post_processor.process_jobs_unified")
+def test_main_cli_accepts_limit_alias(mock_process):
+    mock_process.return_value = {
+        "processed": 0,
+        "skipped": 0,
+        "provider_used": "groq",
+        "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0},
+        "errors": 0,
+    }
+
+    with patch("sys.argv", ["unified_post_processor.py", "--task", "sse", "--limit", "5"]):
+        main()
+
+    mock_process.assert_called_once_with(
+        ProcessingOptions(
+            task="sse",
+            page_limit=5,
+            job_ids=[],
+            dry_run=False,
+            verbose=False,
+            since_days=None,
+            force_language_reprocess=False,
+        )
+    )
