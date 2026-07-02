@@ -6,6 +6,7 @@ Provides URL-safe kebab-case slug generation with uniqueness enforcement.
 from __future__ import annotations
 
 import hashlib
+import re
 import unicodedata
 from collections.abc import Callable
 
@@ -36,11 +37,7 @@ def generate_slug(name: str) -> str:
     lowered = ascii_str.lower()
     # Keep a-z, 0-9, and spaces; discard everything else
     cleaned = "".join(c if c.isascii() and (c.isalnum() or c == " ") else "" for c in lowered)
-    hyphenated = cleaned.replace(" ", "-")
-    # Collapse consecutive hyphens
-    while "--" in hyphenated:
-        hyphenated = hyphenated.replace("--", "-")
-    slug = hyphenated.strip("-")
+    slug = re.sub(r"-+", "-", cleaned.replace(" ", "-")).strip("-")
     return slug
 
 

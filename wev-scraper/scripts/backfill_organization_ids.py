@@ -34,8 +34,7 @@ load_dotenv(find_dotenv())
 
 # load_dotenv() must run before importing utils.db (reads env vars at load time)
 from utils.db import supabase  # noqa: E402
-from utils.organization_cache import OrganizationCache  # noqa: E402
-from utils.organization_resolver import OrganizationResolver  # noqa: E402
+from utils.organization_resolver import build_resolver  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -46,32 +45,6 @@ logging.basicConfig(
 
 DEFAULT_BATCH_SIZE = 50
 DEFAULT_BATCH_DELAY = 2.0
-
-
-def _build_resolver() -> OrganizationResolver:
-    """Instantiate the resolver for the backfill run.
-
-    Identifier is optional — if get_sse_provider() raises, we fall back to the
-    minimal org record path and log a warning.
-    """
-    from utils.organization_identifier import OrganizationIdentifier
-
-    cache = OrganizationCache()
-
-    identifier = None
-    try:
-        identifier = OrganizationIdentifier()
-    except Exception as exc:
-        logger.warning(
-            "OrganizationIdentifier unavailable (%s) — resolver will use minimal fallback",
-            exc,
-        )
-
-    return OrganizationResolver(
-        supabase_client=supabase,
-        cache=cache,
-        identifier=identifier,
-    )
 
 
 def run_backfill(
@@ -98,19 +71,14 @@ def run_backfill(
         dry_run,
     )
 
-    resolver = _build_resolver()
+    resolver = build_resolver()
 
     total_processed = 0
-    orgs_created = 0  # tracked via resolver state (approximate via new IDs)
-    orgs_matched = 0
     errors = 0
     offset = 0
 
     # ── Phase 1: Org Resolution Backfill ─────────────────────────────────────
     logger.info("Phase 1: Resolving organization_id for unlinked jobs…")
-
-    # Track IDs seen before resolution to distinguish "created" vs "matched"
-    seen_org_ids: set[int] = set()
 
     while True:
         # Idempotency: only jobs with organization_id IS NULL and org text non-empty
@@ -147,13 +115,6 @@ def run_backfill(
                 )
 
                 if org_id is not None:
-                    if org_id in seen_org_ids:
-                        orgs_matched += 1
-                    else:
-                        # Could be newly created or first time we see it this run
-                        seen_org_ids.add(org_id)
-                        orgs_matched += 1  # conservative — all counted as matched
-
                     logger.info("job_id=%s → organization_id=%s", job_id, org_id)
 
                     if not dry_run:
@@ -193,7 +154,7 @@ def run_backfill(
 
     summary = {
         "phase1_processed": total_processed,
-        "orgs_matched": orgs_matched,
+        "orgs_resolved": total_processed - errors,
         "errors": errors,
         "dry_run": dry_run,
     }
@@ -235,7 +196,6 @@ def main() -> None:
         sys.exit(1)
 
     if args.env == "staging":
-        import os
         from pathlib import Path
         from dotenv import load_dotenv as _load_dotenv
 

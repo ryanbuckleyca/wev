@@ -80,7 +80,8 @@ class ScraperOrchestrator:
             # 1. Setup
             sources = self._fetch_sources()
             self.existing_urls = self._fetch_existing_job_urls()
-            self.resolver = self._init_resolver()
+            from utils.organization_resolver import build_resolver
+            self.resolver = build_resolver()
 
             # 2. Main Loop
             queue = sources.copy()
@@ -109,31 +110,6 @@ class ScraperOrchestrator:
         if self.dry_run:
             mode = " (COMPARE ONLY)" if self.compare_only else ""
             _log(f"MODE: DRY RUN{mode}")
-
-    def _init_resolver(self):
-        """Build a per-run OrganizationResolver to link jobs to existing org records.
-
-        Falls back to a minimal path (no AI-based identifier) when
-        OrganizationIdentifier's provider fails to initialize.
-        """
-        # Late imports avoid circular dependencies with the organization modules.
-        from utils.organization_cache import OrganizationCache
-        from utils.organization_identifier import OrganizationIdentifier
-        from utils.organization_resolver import OrganizationResolver
-
-        cache = OrganizationCache()
-
-        identifier = None
-        try:
-            identifier = OrganizationIdentifier()
-        except Exception as exc:
-            _log(f"⚠️  OrganizationIdentifier unavailable (provider init failed): {exc} — resolver will use minimal fallback path")
-
-        return OrganizationResolver(
-            supabase_client=supabase,
-            cache=cache,
-            identifier=identifier,
-        )
 
     def _log_feature_status(self, env_var: str, label: str):
         status = "enabled" if is_truthy_env(env_var) else "disabled"
