@@ -1,12 +1,8 @@
-"""Backfill script for organization_id resolution and SSE classification.
+"""Backfill script for organization_id resolution.
 
-Phase 1: Resolves organization_id for all jobs where it is currently NULL and
-         the organization text field is non-empty. Uses OrganizationResolver
-         (cache → DB lookup → LLM → minimal fallback).
-
-Phase 2: Classifies all organizations where sse_rating IS NULL.
-         Placeholder — will be implemented in PR 2 after OrganizationSSEClassifier
-         is merged.
+Resolves organization_id for all jobs where it is currently NULL and
+the organization text field is non-empty. Uses OrganizationResolver
+(cache → DB lookup → LLM → minimal fallback).
 
 Usage:
     python scripts/backfill_organization_ids.py [options]
@@ -45,6 +41,7 @@ logging.basicConfig(
 
 DEFAULT_BATCH_SIZE = 50
 DEFAULT_BATCH_DELAY = 2.0
+MAX_BATCH_SIZE = 500  # Supabase range() limit is 1000; 500 is a safe ceiling
 
 
 def run_backfill(
@@ -52,7 +49,7 @@ def run_backfill(
     batch_delay_seconds: float = DEFAULT_BATCH_DELAY,
     dry_run: bool = False,
 ) -> dict:
-    """Run Phase 1 (org resolution) and Phase 2 stub.
+    """Run org resolution backfill.
 
     Args:
         batch_size: Number of jobs to fetch per DB query.
@@ -77,8 +74,7 @@ def run_backfill(
     errors = 0
     offset = 0
 
-    # ── Phase 1: Org Resolution Backfill ─────────────────────────────────────
-    logger.info("Phase 1: Resolving organization_id for unlinked jobs…")
+    logger.info("Resolving organization_id for unlinked jobs…")
 
     while True:
         # Idempotency: only jobs with organization_id IS NULL and org text non-empty
@@ -146,12 +142,6 @@ def run_backfill(
         if batch_delay_seconds > 0:
             time.sleep(batch_delay_seconds)
 
-    # ── Phase 2: Org SSE Backfill (stub) ─────────────────────────────────────
-    # Requirements: 5.6
-    logger.info(
-        "Phase 2: SSE backfill not yet implemented — run after PR 2 is merged."
-    )
-
     summary = {
         "phase1_processed": total_processed,
         "orgs_resolved": total_processed - errors,
@@ -191,18 +181,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.batch_size < 1 or args.batch_size > 500:
-        print("--batch-size must be between 1 and 500", file=sys.stderr)
+    if not (1 <= args.batch_size <= MAX_BATCH_SIZE):
+        print(f"--batch-size must be between 1 and {MAX_BATCH_SIZE}", file=sys.stderr)
         sys.exit(1)
 
     if args.env == "staging":
         from pathlib import Path
-        from dotenv import load_dotenv as _load_dotenv
 
         staging_env = Path(__file__).resolve().parent.parent.parent / ".env.staging"
         if staging_env.exists():
             logger.info("Loading staging overrides from %s", staging_env)
-            _load_dotenv(staging_env, override=True)
+            load_dotenv(staging_env, override=True)
         else:
             logger.warning("--env staging but %s not found", staging_env)
 

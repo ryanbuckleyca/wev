@@ -36,6 +36,12 @@ UPDATE public.organizations
 -- ── 3. Backfill slug for all existing rows ───────────────────────────────────
 -- Uses raw SQL regex (not Python generate_slug() NFKD logic).
 -- The || '-' || id::text suffix guarantees uniqueness regardless of name.
+--
+-- KNOWN ISSUE: regexp_replace treats accented characters (é, è, ê, ç, etc.)
+-- as non-matching and replaces them with '-', producing incorrect slugs like
+-- "centraide-montr-al-42" instead of "centraide-montreal-42". The -id suffix
+-- guarantees uniqueness, but slugs are semantically wrong for French names.
+-- Post-migration, run a Python script using generate_slug() to fix affected slugs.
 
 UPDATE public.organizations
   SET slug = lower(regexp_replace(name, '[^a-zA-Z0-9]+', '-', 'g')) || '-' || id::text

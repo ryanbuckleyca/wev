@@ -35,8 +35,7 @@ def generate_slug(name: str) -> str:
     ascii_bytes = normalized.encode("ascii", errors="ignore")
     ascii_str = ascii_bytes.decode("ascii")
     lowered = ascii_str.lower()
-    # Keep a-z, 0-9, and spaces; discard everything else
-    cleaned = "".join(c if c.isascii() and (c.isalnum() or c == " ") else "" for c in lowered)
+    cleaned = "".join(c if c.isalnum() or c == " " else "" for c in lowered)
     slug = re.sub(r"-+", "-", cleaned.replace(" ", "-")).strip("-")
     return slug
 
@@ -56,17 +55,17 @@ def generate_unique_slug(
     """
     base = generate_slug(name)
 
-    # Attempt base slug first
+    if not base:
+        digest = hashlib.sha256(name.encode("utf-8")).hexdigest()[:8]
+        base = f"unnamed-{digest}"
+
     if not exists_fn(base):
         return base
 
-    # Try -2, -3, … up to max_attempts
     for i in range(2, max_attempts + 1):
         candidate = f"{base}-{i}"
         if not exists_fn(candidate):
             return candidate
 
-    # max_attempts exceeded — deterministic hash fallback
     digest = hashlib.sha256(name.encode("utf-8")).hexdigest()[:8]
-    fallback = f"{base}-{digest}" if base else digest
-    return fallback
+    return f"{base}-{digest}"
