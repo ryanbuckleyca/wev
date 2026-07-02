@@ -64,6 +64,7 @@ class ScraperOrchestrator:
         self.existing_urls: Set[str] = set()
         self.source_attempts: Dict[str, int] = {}
         self.post_scrape_errors = 0
+        self.resolver = None  # Initialized in run() to ensure env is loaded first
 
     def had_failures(self) -> bool:
         """True when any source scrape or post-scrape step failed."""
@@ -79,6 +80,7 @@ class ScraperOrchestrator:
             # 1. Setup
             sources = self._fetch_sources()
             self.existing_urls = self._fetch_existing_job_urls()
+            self.resolver = self._init_resolver()
 
             # 2. Main Loop
             queue = sources.copy()
@@ -107,6 +109,31 @@ class ScraperOrchestrator:
         if self.dry_run:
             mode = " (COMPARE ONLY)" if self.compare_only else ""
             _log(f"MODE: DRY RUN{mode}")
+
+    def _init_resolver(self):
+        """Build a per-run OrganizationResolver to link jobs to existing org records.
+
+        Falls back to a minimal path (no AI-based identifier) when
+        OrganizationIdentifier's provider fails to initialize.
+        """
+        # Late imports avoid circular dependencies with the organization modules.
+        from utils.organization_cache import OrganizationCache
+        from utils.organization_identifier import OrganizationIdentifier
+        from utils.organization_resolver import OrganizationResolver
+
+        cache = OrganizationCache()
+
+        identifier = None
+        try:
+            identifier = OrganizationIdentifier()
+        except Exception as exc:
+            _log(f"⚠️  OrganizationIdentifier unavailable (provider init failed): {exc} — resolver will use minimal fallback path")
+
+        return OrganizationResolver(
+            supabase_client=supabase,
+            cache=cache,
+            identifier=identifier,
+        )
 
     def _log_feature_status(self, env_var: str, label: str):
         status = "enabled" if is_truthy_env(env_var) else "disabled"
@@ -227,7 +254,7 @@ class ScraperOrchestrator:
         job_ids = []
         for job in jobs:
             try:
-                result, job_id = save_job(job, source["id"])
+                result, job_id = save_job(job, source["id"], resolver=self.resolver)
                 results.append(result)
                 if result not in ["skipped", "error"]:
                     add_url_dedup_variants(job.get("listing_url"), self.existing_urls)

@@ -98,7 +98,7 @@ def test_job_ids_collected_from_save_job(mock_save, mock_log, mock_dedup):
     from scrape import ScraperOrchestrator
     orchestrator = ScraperOrchestrator(dry_run=False)
     orchestrator.existing_urls = existing_urls
-    
+
     result = orchestrator._save_or_compare_jobs(jobs, source)
 
     assert result["job_ids"] == ["id-001", "id-002"]
@@ -170,3 +170,78 @@ def test_save_job_returns_error_when_constraint_error_but_no_recovery_row(mock_s
     status, job_id = save_job(_make_job(), "source-id")
     assert status == "error"
     assert job_id is None
+
+
+# ── organization_id integration ───────────────────────────────────────────────
+
+
+def _make_job_with_all_fields():
+    return {
+        "job_title": "Test Job",
+        "organization": "Test Org",
+        "listing_url": "https://example.com/jobs/test-job",
+        "description": "A job description.",
+        "date_posted": "2026-03-01",
+        "close_date": None,
+        "location": "Montreal, QC",
+        "employment_type": "full-time",
+        "wage": None,
+    }
+
+
+@patch("utils.db.is_truthy_env", return_value=False)
+@patch("utils.db._find_existing_job", return_value=None)
+@patch("utils.db.supabase")
+def test_save_job_includes_organization_id_when_resolver_returns_id(mock_sb, mock_find, mock_env):
+    """When resolver returns an org ID, the insert payload must contain it."""
+    mock_sb.table.return_value.insert.return_value.execute.return_value = MagicMock(
+        data=[{"id": "new-uuid"}]
+    )
+
+    resolver = MagicMock()
+    resolver.resolve.return_value = 77
+
+    from utils.db import save_job
+    status, job_id = save_job(_make_job_with_all_fields(), "source-id", resolver=resolver)
+
+    assert status == "added"
+    resolver.resolve.assert_called_once()
+    insert_data = mock_sb.table.return_value.insert.call_args[0][0]
+    assert insert_data.get("organization_id") == 77
+
+
+@patch("utils.db.is_truthy_env", return_value=False)
+@patch("utils.db._find_existing_job", return_value=None)
+@patch("utils.db.supabase")
+def test_save_job_organization_id_is_none_when_resolver_returns_none(mock_sb, mock_find, mock_env):
+    """When resolver returns None, the insert payload must have organization_id=None."""
+    mock_sb.table.return_value.insert.return_value.execute.return_value = MagicMock(
+        data=[{"id": "new-uuid"}]
+    )
+
+    resolver = MagicMock()
+    resolver.resolve.return_value = None
+
+    from utils.db import save_job
+    status, job_id = save_job(_make_job_with_all_fields(), "source-id", resolver=resolver)
+
+    assert status == "added"
+    resolver.resolve.assert_called_once()
+    insert_data = mock_sb.table.return_value.insert.call_args[0][0]
+    assert insert_data.get("organization_id") is None
+
+
+@patch("utils.db.is_truthy_env", return_value=False)
+@patch("utils.db._find_existing_job", return_value=None)
+@patch("utils.db.supabase")
+def test_save_job_without_resolver_still_works(mock_sb, mock_find, mock_env):
+    """Calling save_job without resolver= keyword works unchanged (backward compatibility)."""
+    mock_sb.table.return_value.insert.return_value.execute.return_value = MagicMock(
+        data=[{"id": "new-uuid-456"}]
+    )
+    from utils.db import save_job
+    status, job_id = save_job(_make_job_with_all_fields(), "source-id")
+    assert status == "added"
+    assert job_id == "new-uuid-456"
+    insert_data = mock_sb.table.return_value.insert.call_args[0][0]
+    assert insert_data.get("organization_id") is None
