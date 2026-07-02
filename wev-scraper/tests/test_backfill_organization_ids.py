@@ -70,7 +70,7 @@ def _make_mock_supabase(batches):
 def backfill_env():
     resolver = MagicMock()
     with patch("scripts.backfill_organization_ids.supabase") as mock_sb:
-        with patch("scripts.backfill_organization_ids.build_resolver", return_value=resolver):
+        with patch("scripts.backfill_organization_ids.create_resolver", return_value=resolver):
             from scripts.backfill_organization_ids import run_backfill
             yield _BackfillEnv(mock_sb=mock_sb, resolver=resolver, run_backfill=run_backfill)
 
@@ -199,7 +199,7 @@ def test_script_processes_only_unresolved_jobs(unresolved_jobs):
     resolver.resolve.return_value = 1
 
     with patch("scripts.backfill_organization_ids.supabase", mock_sb):
-        with patch("scripts.backfill_organization_ids.build_resolver", return_value=resolver):
+        with patch("scripts.backfill_organization_ids.create_resolver", return_value=resolver):
             from scripts.backfill_organization_ids import run_backfill
             summary = run_backfill(batch_size=100)
 

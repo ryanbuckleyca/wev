@@ -150,6 +150,9 @@ class OrganizationIdentifier:
         text = response_text.strip()
         # Strip markdown fences if present — unanchored so preamble/postamble
         # before/after the code block is discarded (common with LLM output).
+        # NOTE: re.search finds only the FIRST code block. If the LLM returns
+        # multiple blocks (e.g. chain-of-thought + final answer), extras are
+        # silently ignored.
         match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
         if match:
             text = match.group(1).strip()
@@ -174,7 +177,7 @@ class OrganizationIdentifier:
             return None
 
         canonical_name = data.get("canonical_name")
-        if not canonical_name or not str(canonical_name).strip():
+        if not isinstance(canonical_name, str) or not canonical_name.strip():
             logger.warning(
                 "OrganizationIdentifier: empty canonical_name for %r — data: %r",
                 raw_name,

@@ -56,6 +56,8 @@ class OrganizationRepository:
             if location is not None and location.strip():
                 query = query.ilike("location", _escape_like(location.strip()))
             else:
+                # Both NULL and '' need to match because the unique identity index
+                # treats them identically: coalesce(nullif(lower(btrim(location)), ''), '')
                 query = query.or_("location.is.null,location.eq.")
             resp = query.execute()
             candidates = resp.data or []

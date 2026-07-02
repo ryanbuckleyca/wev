@@ -41,30 +41,50 @@ def generate_slug(name: str) -> str:
 
 
 def generate_unique_slug(
-    name: str,
-    exists_fn: Callable[[str], bool],
+    name: str = "",
+    exists_fn: Callable[[str], bool] | None = None,
     max_attempts: int = 10,
+    *,
+    base: str | None = None,
+    seed: str = "",
+    batch_exists_fn: Callable[[list[str]], set[str]] | None = None,
 ) -> str:
-    """Generate a unique slug, appending -2, -3, … until exists_fn returns False.
+    """Generate a unique slug, appending -2, -3, … until the slug is available.
 
-    If max_attempts is exceeded, falls back to a guaranteed-unique slug by
-    appending a short deterministic hash suffix derived from the name.
-    Does NOT fall back to the unsuffixed base slug.
+    Accepts either a ``name`` (run through ``generate_slug`` first) or a
+    pre-computed ``base``.  When ``base`` is empty/absent the unnamed-<hash>
+    fallback is used.  If ``batch_exists_fn`` is provided suffix candidates
+    are checked in a single DB round-trip; otherwise ``exists_fn`` is called
+    sequentially.
 
     Requirements: 10.2, 4.3
     """
-    base = generate_slug(name)
-    digest = hashlib.sha256(name.encode("utf-8")).hexdigest()[:8]
+    if exists_fn is None and batch_exists_fn is None:
+        raise ValueError("At least one of exists_fn or batch_exists_fn is required")
+
+    if base is None:
+        base = generate_slug(name)
 
     if not base:
+        source = f"unnamed-{seed}" if seed else name
+        digest = hashlib.sha256(source.encode("utf-8")).hexdigest()[:8]
         base = f"unnamed-{digest}"
 
-    if not exists_fn(base):
+    if exists_fn is not None and not exists_fn(base):
         return base
 
-    for i in range(2, max_attempts + 1):
-        candidate = f"{base}-{i}"
-        if not exists_fn(candidate):
-            return candidate
+    candidates = [f"{base}-{i}" for i in range(2, max_attempts + 1)]
 
+    if batch_exists_fn is not None:
+        existing = batch_exists_fn(candidates)
+        for slug in candidates:
+            if slug not in existing:
+                return slug
+    else:
+        for i in range(2, max_attempts + 1):
+            candidate = f"{base}-{i}"
+            if not exists_fn(candidate):
+                return candidate
+
+    digest = hashlib.sha256(base.encode("utf-8")).hexdigest()[:8]
     return f"{base}-{digest}"

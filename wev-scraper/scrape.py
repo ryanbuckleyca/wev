@@ -80,8 +80,8 @@ class ScraperOrchestrator:
             # 1. Setup
             sources = self._fetch_sources()
             self.existing_urls = self._fetch_existing_job_urls()
-            from utils.organization_resolver import build_resolver
-            self.resolver = build_resolver()
+            from utils.organization_resolver import create_resolver
+            self.resolver = create_resolver()
 
             # 2. Main Loop
             queue = sources.copy()

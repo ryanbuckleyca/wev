@@ -30,7 +30,7 @@ load_dotenv(find_dotenv())
 
 # load_dotenv() must run before importing utils.db (reads env vars at load time)
 from utils.db import supabase  # noqa: E402
-from utils.organization_resolver import build_resolver  # noqa: E402
+from utils.organization_resolver import create_resolver  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -45,6 +45,7 @@ MAX_BATCH_SIZE = 500  # Supabase range() limit is 1000; 500 is a safe ceiling
 
 
 def run_backfill(
+    *,
     batch_size: int = DEFAULT_BATCH_SIZE,
     batch_delay_seconds: float = DEFAULT_BATCH_DELAY,
     dry_run: bool = False,
@@ -68,7 +69,7 @@ def run_backfill(
         dry_run,
     )
 
-    resolver = build_resolver()
+    resolver = create_resolver()
 
     total_processed = 0
     errors = 0
