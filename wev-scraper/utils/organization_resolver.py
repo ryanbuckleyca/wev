@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import hashlib
 import logging
 from dataclasses import dataclass
 
 from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
 from utils.organization_identifier import OrganizationIdentifier
 from utils.organization_repository import OrganizationRepository
-from utils.slug import generate_slug
+from utils.slug import generate_slug, generate_unique_slug
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ def _location_is_compatible(
     candidate_location: str | None,
     municipality: str | None,
     province: str | None,
-    location: str | None,
+    location: str | None = None,
 ) -> bool:
     job_canonical = canonical_location(municipality, province, location).strip().lower()
     cand = (candidate_location or "").strip().lower()
@@ -39,7 +38,7 @@ def _location_is_compatible(
     return cand in job_canonical or job_canonical in cand
 
 
-def build_resolver(supabase_client=None) -> OrganizationResolver:
+def create_resolver(supabase_client=None) -> OrganizationResolver:
     cache = OrganizationCache()
 
     identifier = None
@@ -69,6 +68,11 @@ class OrganizationResolver:
         self._repo = repo
         self._cache = cache
         self._identifier = identifier
+
+    @staticmethod
+    def _is_identity_conflict(exc: Exception) -> bool:
+        err_str = str(exc).lower()
+        return any(kw in err_str for kw in ("unique", "duplicate", "constraint"))
 
     def resolve(
         self,
@@ -128,7 +132,7 @@ class OrganizationResolver:
 
         compatible = [
             c for c in candidates
-            if _location_is_compatible(c.get("location"), ctx.municipality, ctx.province, None)
+            if _location_is_compatible(c.get("location"), ctx.municipality, ctx.province)
         ]
 
         if len(compatible) != 1:
@@ -181,22 +185,14 @@ class OrganizationResolver:
         return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
 
     def _find_available_slug(self, base: str, seed: str = "") -> str:
-        if not base:
-            digest = hashlib.sha256(f"unnamed-{seed}".encode()).hexdigest()[:8]
-            base = f"unnamed-{digest}"
-
-        if not self._repo.slug_exists(base):
-            return base
-
-        candidates = [f"{base}-{i}" for i in range(2, _MAX_SLUG_ATTEMPTS + 1)]
-        existing = self._repo.find_existing_slugs(candidates)
-
-        for slug in candidates:
-            if slug not in existing:
-                return slug
-
-        digest = hashlib.sha256(base.encode("utf-8")).hexdigest()[:8]
-        return f"{base}-{digest}"
+        return generate_unique_slug(
+            name="",
+            max_attempts=_MAX_SLUG_ATTEMPTS,
+            base=base,
+            seed=seed,
+            exists_fn=self._repo.slug_exists,
+            batch_exists_fn=self._repo.find_existing_slugs,
+        )
 
     def _insert_or_resolve_conflict(
         self, row: dict, cache_key: str, job_id: str | None = None,
@@ -209,13 +205,7 @@ class OrganizationResolver:
                 return org_id
             return None
         except Exception as exc:
-            err_str = str(exc).lower()
-            is_identity_conflict = (
-                "unique" in err_str
-                or "duplicate" in err_str
-                or "constraint" in err_str
-            )
-            if not is_identity_conflict:
+            if not self._is_identity_conflict(exc):
                 logger.error(
                     "OrganizationResolver: non-constraint insert error for raw_name=%r job_id=%s: %s",
                     row.get("name"),
