@@ -70,8 +70,13 @@ def generate_unique_slug(
         digest = hashlib.sha256(source.encode("utf-8")).hexdigest()[:8]
         base = f"unnamed-{digest}"
 
-    if exists_fn is not None and not exists_fn(base):
-        return base
+    if exists_fn is not None:
+        if not exists_fn(base):
+            return base
+    elif batch_exists_fn is not None:
+        # Guard: only batch function provided — check base via batch too
+        if base not in batch_exists_fn([base]):
+            return base
 
     candidates = [f"{base}-{i}" for i in range(2, max_attempts + 1)]
 
