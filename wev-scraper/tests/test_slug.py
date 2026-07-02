@@ -129,6 +129,13 @@ class TestGenerateUniqueSlugExamples:
         slug = generate_unique_slug("", exists_fn=lambda s: True, max_attempts=2)
         # Should not raise; returns some non-empty fallback
         assert isinstance(slug, str)
+        assert slug
+
+    def test_empty_name_not_taken_also_produces_non_empty(self):
+        """When base is empty and not taken, still never returns empty string."""
+        slug = generate_unique_slug("!@#$", exists_fn=lambda s: False)
+        assert isinstance(slug, str)
+        assert slug
 
 
 # ── Property-based tests ──────────────────────────────────────────────────────

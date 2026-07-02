@@ -1,12 +1,27 @@
 from __future__ import annotations
 
+import hashlib
 import logging
+from dataclasses import dataclass, field
 
 from utils.organization_cache import OrganizationCache, _canonical_location, make_cache_key
 from utils.organization_identifier import OrganizationIdentifier
-from utils.slug import generate_unique_slug
+from utils.organization_repository import OrganizationRepository
+from utils.slug import generate_slug
 
 logger = logging.getLogger(__name__)
+
+_MAX_SLUG_ATTEMPTS = 10
+
+
+@dataclass
+class JobContext:
+    raw_name: str
+    municipality: str | None = None
+    province: str | None = None
+    job_title: str = ""
+    description: str = ""
+    job_id: str | None = None
 
 
 def _location_is_compatible(
@@ -24,7 +39,7 @@ def _location_is_compatible(
     return cand in job_canonical or job_canonical in cand
 
 
-def build_resolver() -> OrganizationResolver:
+def build_resolver(supabase_client=None) -> OrganizationResolver:
     cache = OrganizationCache()
 
     identifier = None
@@ -36,30 +51,30 @@ def build_resolver() -> OrganizationResolver:
             exc,
         )
 
-    import utils.db as db_module
-    return OrganizationResolver(
-        supabase_client=db_module.supabase,
-        cache=cache,
-        identifier=identifier,
-    )
+    if supabase_client is None:
+        import utils.db as db_module
+        supabase_client = db_module.supabase
+
+    repo = OrganizationRepository(supabase_client)
+    return OrganizationResolver(repo=repo, cache=cache, identifier=identifier)
 
 
 class OrganizationResolver:
     def __init__(
         self,
-        supabase_client,
+        repo: OrganizationRepository,
         cache: OrganizationCache,
         identifier: OrganizationIdentifier | None,
     ) -> None:
-        self._supabase = supabase_client
+        self._repo = repo
         self._cache = cache
         self._identifier = identifier
 
     def resolve(
         self,
         raw_name: str,
-        municipality: str | None,
-        province: str | None,
+        municipality: str | None = None,
+        province: str | None = None,
         job_title: str = "",
         description: str = "",
         job_id: str | None = None,
@@ -67,103 +82,75 @@ class OrganizationResolver:
         if not raw_name or not raw_name.strip():
             return None
 
+        ctx = JobContext(
+            raw_name=raw_name.strip(),
+            municipality=municipality,
+            province=province,
+            job_title=job_title,
+            description=description,
+            job_id=job_id,
+        )
+
         try:
-            return self._resolve_inner(
-                raw_name.strip(), municipality, province, job_title, description, job_id
-            )
+            return self._resolve_inner(ctx)
         except Exception as exc:
             logger.error(
                 "OrganizationResolver: unexpected error for job_id=%s raw_name=%r: %s",
-                job_id,
-                raw_name,
+                ctx.job_id,
+                ctx.raw_name,
                 exc,
                 exc_info=True,
             )
             return None
 
-    def _resolve_inner(
-        self,
-        raw_name: str,
-        municipality: str | None,
-        province: str | None,
-        job_title: str,
-        description: str,
-        job_id: str | None,
-    ) -> int | None:
-        cache_key = make_cache_key(raw_name, municipality, province, None)
+    def _resolve_inner(self, ctx: JobContext) -> int | None:
+        cache_key = make_cache_key(ctx.raw_name, ctx.municipality, ctx.province, None)
 
         cached_id = self._cache.get(cache_key)
         if cached_id is not None:
             return cached_id
 
-        db_id = self._db_lookup(raw_name, municipality, province, cache_key)
+        db_id = self._db_lookup(ctx, cache_key)
         if db_id is not None:
             return db_id
 
         if self._identifier is not None:
-            llm_id = self._llm_resolve(
-                raw_name, municipality, province, job_title, description,
-                cache_key, job_id,
-            )
+            llm_id = self._llm_resolve(ctx, cache_key)
             if llm_id is not None:
                 return llm_id
 
-        return self._minimal_insert(raw_name, municipality, province, cache_key, job_id)
+        return self._minimal_fallback(ctx, cache_key)
 
-    def _db_lookup(
-        self,
-        raw_name: str,
-        municipality: str | None,
-        province: str | None,
-        cache_key: str,
-    ) -> int | None:
-        try:
-            resp = (
-                self._supabase.table("organizations")
-                .select("id, name, location")
-                .ilike("name", raw_name)
-                .execute()
-            )
-            candidates = resp.data or []
-        except Exception as exc:
-            logger.warning("OrganizationResolver: DB lookup failed for %r: %s", raw_name, exc)
-            return None
-
+    def _db_lookup(self, ctx: JobContext, cache_key: str) -> int | None:
+        candidates = self._repo.find_by_name(ctx.raw_name)
         if not candidates:
             return None
 
         compatible = [
             c for c in candidates
-            if _location_is_compatible(c.get("location"), municipality, province, None)
+            if _location_is_compatible(c.get("location"), ctx.municipality, ctx.province, None)
         ]
 
-        if len(compatible) == 1:
-            org_id = compatible[0]["id"]
-            self._cache.set(cache_key, org_id)
-            return org_id
+        if len(compatible) != 1:
+            return None
 
-        return None
+        org_id = compatible[0]["id"]
+        self._cache.set(cache_key, org_id)
+        return org_id
 
-    def _llm_resolve(
-        self,
-        raw_name: str,
-        municipality: str | None,
-        province: str | None,
-        job_title: str,
-        description: str,
-        cache_key: str,
-        job_id: str | None,
-    ) -> int | None:
-        result = self._identifier.identify(raw_name, municipality, province, job_title, description)
+    def _llm_resolve(self, ctx: JobContext, cache_key: str) -> int | None:
+        result = self._identifier.identify(
+            ctx.raw_name, ctx.municipality, ctx.province, ctx.job_title, ctx.description,
+        )
         if result is None:
             return None
 
         canonical_name = result["canonical_name"]
-        canonical_loc = _canonical_location(municipality, province, None)
+        canonical_loc = _canonical_location(ctx.municipality, ctx.province, None)
 
         suggested_slug = result.get("slug") or ""
-        slug_base = suggested_slug if suggested_slug else canonical_name
-        slug = generate_unique_slug(slug_base, self._slug_exists)
+        slug_base = suggested_slug if suggested_slug else generate_slug(canonical_name)
+        slug = self._find_available_slug(slug_base)
 
         row = {
             "name": canonical_name,
@@ -174,49 +161,53 @@ class OrganizationResolver:
             "type": result.get("type"),
         }
 
-        return self._insert_or_reuse(row, cache_key, job_id)
+        return self._insert_with_conflict_recovery(row, cache_key, ctx.job_id)
 
-    def _minimal_insert(
-        self,
-        raw_name: str,
-        municipality: str | None,
-        province: str | None,
-        cache_key: str,
-        job_id: str | None,
-    ) -> int | None:
-        canonical_loc = _canonical_location(municipality, province, None)
-        slug = generate_unique_slug(raw_name, self._slug_exists)
+    def _minimal_fallback(self, ctx: JobContext, cache_key: str) -> int | None:
+        canonical_loc = _canonical_location(ctx.municipality, ctx.province, None)
+        slug = self._find_available_slug(generate_slug(ctx.raw_name))
 
         row = {
-            "name": raw_name,
+            "name": ctx.raw_name,
             "slug": slug,
             "location": canonical_loc or None,
         }
 
         logger.warning(
             "OrganizationResolver: using minimal fallback for raw_name=%r job_id=%s",
-            raw_name,
-            job_id,
+            ctx.raw_name,
+            ctx.job_id,
         )
-        return self._insert_or_reuse(row, cache_key, job_id)
+        return self._insert_with_conflict_recovery(row, cache_key, ctx.job_id)
 
-    def _slug_exists(self, slug: str) -> bool:
-        r = self._supabase.table("organizations").select("id").eq("slug", slug).execute()
-        return bool(r.data)
+    def _find_available_slug(self, base: str) -> str:
+        if not base:
+            digest = hashlib.sha256(b"unnamed").hexdigest()[:8]
+            base = f"unnamed-{digest}"
 
-    def _insert_or_reuse(
-        self,
-        row: dict,
-        cache_key: str,
-        job_id: str | None,
+        if not self._repo.slug_exists(base):
+            return base
+
+        candidates = [f"{base}-{i}" for i in range(2, _MAX_SLUG_ATTEMPTS + 1)]
+        existing = self._repo.find_existing_slugs(candidates)
+
+        for slug in candidates:
+            if slug not in existing:
+                return slug
+
+        digest = hashlib.sha256(base.encode("utf-8")).hexdigest()[:8]
+        return f"{base}-{digest}"
+
+    def _insert_with_conflict_recovery(
+        self, row: dict, cache_key: str, job_id: str | None = None,
     ) -> int | None:
         try:
-            resp = self._supabase.table("organizations").insert(row).execute()
-            data = (resp.data or [{}])[0] if resp.data else {}
-            org_id = data.get("id")
-            if org_id:
+            data = self._repo.insert(row)
+            if data:
+                org_id = data["id"]
                 self._cache.set(cache_key, org_id)
-            return org_id
+                return org_id
+            return None
         except Exception as exc:
             err_str = str(exc).lower()
             is_identity_conflict = (
@@ -233,7 +224,7 @@ class OrganizationResolver:
                 )
                 return None
 
-            existing_id = self._reselect_by_identity(row.get("name", ""))
+            existing_id = self._repo.find_by_exact_name(row.get("name", ""))
             if existing_id:
                 self._cache.set(cache_key, existing_id)
                 return existing_id
@@ -242,21 +233,5 @@ class OrganizationResolver:
                 "OrganizationResolver: insert conflict but re-select found nothing for %r job_id=%s",
                 row.get("name"),
                 job_id,
-            )
-            return None
-
-    def _reselect_by_identity(self, name: str) -> int | None:
-        try:
-            resp = (
-                self._supabase.table("organizations")
-                .select("id")
-                .ilike("name", name.strip())
-                .execute()
-            )
-            candidates = resp.data or []
-            return candidates[0]["id"] if candidates else None
-        except Exception as exc:
-            logger.warning(
-                "OrganizationResolver: re-select failed for %r: %s", name, exc
             )
             return None
