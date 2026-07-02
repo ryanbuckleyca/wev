@@ -1,6 +1,6 @@
 """Tests for WorkInCultureScraper."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
