@@ -1,2 +1,0 @@
-
-print("Playwright imported successfully!")
