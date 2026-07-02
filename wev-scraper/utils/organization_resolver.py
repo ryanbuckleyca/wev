@@ -1,51 +1,12 @@
-"""Organization resolution pipeline.
-
-For each scraped job, OrganizationResolver looks up or creates the matching
-organization record and returns its ID. Resolution order:
-
-  1. Cache lookup (normalized key).
-  2. DB candidate lookup — case-insensitive name match, location disambiguation.
-  3. LLM identification via OrganizationIdentifier (if available).
-  4. INSERT new org row; on normalized identity conflict, re-select and reuse.
-  5. Minimal record fallback using raw name + canonicalized job location.
-  6. On unexpected exception, log ERROR and return None.
-
-Never raises. Never blocks job insertion.
-
-Requirements: 2.1–2.12
-"""
-
 from __future__ import annotations
 
 import logging
 
-from utils.organization_cache import OrganizationCache, make_cache_key
+from utils.organization_cache import OrganizationCache, _canonical_location, make_cache_key
 from utils.organization_identifier import OrganizationIdentifier
 from utils.slug import generate_unique_slug
 
 logger = logging.getLogger(__name__)
-
-
-def _canonical_location(
-    municipality: str | None,
-    province: str | None,
-    location: str | None,
-) -> str:
-    """Derive the canonical location string from available job location evidence.
-
-    Priority: municipality + province > municipality > province > raw location > ''.
-    This is the authoritative canonical location used for cache keys, stored
-    organization.location, matching, and uniqueness checks.
-    """
-    if municipality and province:
-        return f"{municipality} {province}"
-    if municipality:
-        return municipality
-    if province:
-        return province
-    if location:
-        return location
-    return ""
 
 
 def _location_is_compatible(
@@ -54,31 +15,36 @@ def _location_is_compatible(
     province: str | None,
     location: str | None,
 ) -> bool:
-    """Return True when a candidate org's stored location is compatible with the job's evidence.
-
-    Compatibility rules:
-    - If either side has no location evidence, we cannot confirm compatibility → False.
-    - If the candidate's location (lowercased) contains the municipality or province → True.
-    - Otherwise → False (conflict / distinct location).
-    """
     job_canonical = _canonical_location(municipality, province, location).strip().lower()
     cand = (candidate_location or "").strip().lower()
 
     if not job_canonical or not cand:
         return False
 
-    # Simple substring check: both sides must share some location string
     return cand in job_canonical or job_canonical in cand
 
 
+def build_resolver() -> OrganizationResolver:
+    cache = OrganizationCache()
+
+    identifier = None
+    try:
+        identifier = OrganizationIdentifier()
+    except Exception as exc:
+        logger.warning(
+            "OrganizationIdentifier unavailable (%s) — resolver will use minimal fallback",
+            exc,
+        )
+
+    import utils.db as db_module
+    return OrganizationResolver(
+        supabase_client=db_module.supabase,
+        cache=cache,
+        identifier=identifier,
+    )
+
+
 class OrganizationResolver:
-    """Resolves or creates organization records for scraped jobs.
-
-    Inject dependencies explicitly for testability — no module-level singletons.
-
-    Requirements: 2.1
-    """
-
     def __init__(
         self,
         supabase_client,
@@ -87,9 +53,7 @@ class OrganizationResolver:
     ) -> None:
         self._supabase = supabase_client
         self._cache = cache
-        self._identifier = identifier  # May be None if provider init failed
-
-    # ── Public API ────────────────────────────────────────────────────────────
+        self._identifier = identifier
 
     def resolve(
         self,
@@ -100,10 +64,6 @@ class OrganizationResolver:
         description: str = "",
         job_id: str | None = None,
     ) -> int | None:
-        """Return the organization_id for this job or None on complete failure.
-
-        Requirements: 2.2–2.12
-        """
         if not raw_name or not raw_name.strip():
             return None
 
@@ -121,8 +81,6 @@ class OrganizationResolver:
             )
             return None
 
-    # ── Resolution pipeline ───────────────────────────────────────────────────
-
     def _resolve_inner(
         self,
         raw_name: str,
@@ -134,17 +92,14 @@ class OrganizationResolver:
     ) -> int | None:
         cache_key = make_cache_key(raw_name, municipality, province, None)
 
-        # Step 1: Cache lookup
         cached_id = self._cache.get(cache_key)
         if cached_id is not None:
             return cached_id
 
-        # Step 2: DB candidate lookup
         db_id = self._db_lookup(raw_name, municipality, province, cache_key)
         if db_id is not None:
             return db_id
 
-        # Step 3 + 4: LLM identification + INSERT
         if self._identifier is not None:
             llm_id = self._llm_resolve(
                 raw_name, municipality, province, job_title, description,
@@ -153,7 +108,6 @@ class OrganizationResolver:
             if llm_id is not None:
                 return llm_id
 
-        # Step 5: Minimal fallback
         return self._minimal_insert(raw_name, municipality, province, cache_key, job_id)
 
     def _db_lookup(
@@ -163,14 +117,6 @@ class OrganizationResolver:
         province: str | None,
         cache_key: str,
     ) -> int | None:
-        """Query DB for a case-insensitive name match, returning ID only when unambiguous.
-
-        Returns None when zero candidates are found, when location evidence is
-        insufficient to disambiguate, or when more than one candidate remains
-        plausible — all of these fall through to the LLM step.
-
-        Requirements: 2.3
-        """
         try:
             resp = (
                 self._supabase.table("organizations")
@@ -186,7 +132,6 @@ class OrganizationResolver:
         if not candidates:
             return None
 
-        # Filter to candidates whose location is compatible with the job's evidence
         compatible = [
             c for c in candidates
             if _location_is_compatible(c.get("location"), municipality, province, None)
@@ -197,7 +142,6 @@ class OrganizationResolver:
             self._cache.set(cache_key, org_id)
             return org_id
 
-        # Ambiguous (0 compatible with non-empty evidence, or >1) → fall to LLM
         return None
 
     def _llm_resolve(
@@ -210,28 +154,16 @@ class OrganizationResolver:
         cache_key: str,
         job_id: str | None,
     ) -> int | None:
-        """Call LLM identifier and INSERT the new org row.
-
-        On normalized identity conflict (race / re-run), re-selects the existing
-        org and returns its ID instead of treating the job as unresolved.
-
-        Requirements: 2.4–2.8
-        """
         result = self._identifier.identify(raw_name, municipality, province, job_title, description)
         if result is None:
-            return None  # Fall through to minimal fallback
+            return None
 
         canonical_name = result["canonical_name"]
         canonical_loc = _canonical_location(municipality, province, None)
 
-        def slug_exists(s: str) -> bool:
-            r = self._supabase.table("organizations").select("id").eq("slug", s).execute()
-            return bool(r.data)
-
-        # Use LLM-suggested slug as base if it looks reasonable, otherwise derive from name
         suggested_slug = result.get("slug") or ""
         slug_base = suggested_slug if suggested_slug else canonical_name
-        slug = generate_unique_slug(slug_base, slug_exists)
+        slug = generate_unique_slug(slug_base, self._slug_exists)
 
         row = {
             "name": canonical_name,
@@ -242,8 +174,7 @@ class OrganizationResolver:
             "type": result.get("type"),
         }
 
-        org_id = self._insert_or_reuse(row, cache_key, job_id)
-        return org_id
+        return self._insert_or_reuse(row, cache_key, job_id)
 
     def _minimal_insert(
         self,
@@ -253,20 +184,8 @@ class OrganizationResolver:
         cache_key: str,
         job_id: str | None,
     ) -> int | None:
-        """Insert a minimal org record using the raw name and canonicalized location.
-
-        This is the last-resort fallback when LLM is unavailable or returns None.
-        Uses generate_unique_slug to avoid constraint races.
-
-        Requirements: 2.7
-        """
         canonical_loc = _canonical_location(municipality, province, None)
-
-        def slug_exists(s: str) -> bool:
-            r = self._supabase.table("organizations").select("id").eq("slug", s).execute()
-            return bool(r.data)
-
-        slug = generate_unique_slug(raw_name, slug_exists)
+        slug = generate_unique_slug(raw_name, self._slug_exists)
 
         row = {
             "name": raw_name,
@@ -281,7 +200,9 @@ class OrganizationResolver:
         )
         return self._insert_or_reuse(row, cache_key, job_id)
 
-    # ── DB helpers ────────────────────────────────────────────────────────────
+    def _slug_exists(self, slug: str) -> bool:
+        r = self._supabase.table("organizations").select("id").eq("slug", slug).execute()
+        return bool(r.data)
 
     def _insert_or_reuse(
         self,
@@ -289,10 +210,6 @@ class OrganizationResolver:
         cache_key: str,
         job_id: str | None,
     ) -> int | None:
-        """INSERT the org row; on normalized identity conflict, re-select and reuse.
-
-        Requirements: 2.8
-        """
         try:
             resp = self._supabase.table("organizations").insert(row).execute()
             data = (resp.data or [{}])[0] if resp.data else {}
@@ -316,8 +233,7 @@ class OrganizationResolver:
                 )
                 return None
 
-            # Re-select the conflicting org using normalized identity rules
-            existing_id = self._reselect_by_identity(row.get("name", ""), row.get("location"))
+            existing_id = self._reselect_by_identity(row.get("name", ""))
             if existing_id:
                 self._cache.set(cache_key, existing_id)
                 return existing_id
@@ -329,15 +245,8 @@ class OrganizationResolver:
             )
             return None
 
-    def _reselect_by_identity(
-        self, name: str, location: str | None
-    ) -> int | None:
-        """Re-query an org using the same normalized identity rules as the DB unique index.
-
-        Requirements: 2.8
-        """
+    def _reselect_by_identity(self, name: str) -> int | None:
         try:
-            # Match on lower(btrim(name)) — use ilike with exact name
             resp = (
                 self._supabase.table("organizations")
                 .select("id")
@@ -345,23 +254,7 @@ class OrganizationResolver:
                 .execute()
             )
             candidates = resp.data or []
-            if not candidates:
-                return None
-
-            # Filter by location match (or no-location match)
-            canonical_loc = (location or "").strip().lower()
-            for c in candidates:
-                cand_loc = (c.get("location") or "").strip().lower()
-                # Match when both are empty, or when they share content
-                if (not canonical_loc and not cand_loc) or (
-                    canonical_loc and cand_loc and (
-                        canonical_loc in cand_loc or cand_loc in canonical_loc
-                    )
-                ):
-                    return c["id"]
-
-            # If no location match found, return the first candidate (name-only match)
-            return candidates[0]["id"]
+            return candidates[0]["id"] if candidates else None
         except Exception as exc:
             logger.warning(
                 "OrganizationResolver: re-select failed for %r: %s", name, exc

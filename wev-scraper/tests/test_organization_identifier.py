@@ -43,6 +43,21 @@ def _make_identifier(response_text: str) -> OrganizationIdentifier:
     return identifier
 
 
+# ── Constructor tests ─────────────────────────────────────────────────────────
+
+
+class TestConstructor:
+    @patch("utils.organization_identifier.get_sse_provider", return_value=None)
+    def test_raises_when_provider_unavailable(self, mock_provider):
+        with pytest.raises(RuntimeError, match="SSE provider not available"):
+            OrganizationIdentifier()
+
+    @patch("utils.organization_identifier.get_sse_provider", side_effect=RuntimeError("provider init failed"))
+    def test_lets_provider_init_failure_propagate(self, mock_provider):
+        with pytest.raises(RuntimeError, match="provider init failed"):
+            OrganizationIdentifier()
+
+
 # ── Parse response (validation) tests ────────────────────────────────────────
 
 
