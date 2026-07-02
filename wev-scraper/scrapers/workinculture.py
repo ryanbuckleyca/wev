@@ -1,3 +1,5 @@
+import traceback
+
 from scrapers.base import BaseScraper
 from utils.log import scraper_log
 
@@ -11,7 +13,13 @@ class WorkInCultureScraper(BaseScraper):
     """
     # Confirmed newest-first via inspection on 2026-06-29.
     is_chronological = True
-    listing_selector = "ol.ais-Hits-list article"
+
+    # Class-level constants for selectors
+    LISTING_ARTICLE_SELECTOR = "ol.ais-Hits-list article"
+    INFINITE_HITS_LOAD_MORE_BUTTON = ".ais-InfiniteHits-loadMore"
+    PAGINATION_NEXT_ITEM = ".ais-Pagination-item--next:not(.ais-Pagination-item--disabled)"
+
+    listing_selector = LISTING_ARTICLE_SELECTOR
     job_wait_selector = "div.single_job_listing"
 
     SELECTORS = {
@@ -39,40 +47,43 @@ class WorkInCultureScraper(BaseScraper):
             return full_url
         return super().get_job_url(item)
 
+    def _has_enabled_load_more_button(self, page) -> bool:
+        btn = page.locator(self.INFINITE_HITS_LOAD_MORE_BUTTON)
+        return btn.count() > 0 and btn.first.is_enabled(timeout=2000)
+
     def has_next_page(self, page):
         try:
-            btn = page.locator(".ais-InfiniteHits-loadMore")
-            if btn.count() > 0 and btn.first.is_enabled(timeout=2000):
+            if self._has_enabled_load_more_button(page):
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            scraper_log(f"\tLoad-more detection failed: {e}\n{traceback.format_exc()}")
         try:
-            next_item = page.locator(
-                ".ais-Pagination-item--next:not(.ais-Pagination-item--disabled)"
-            )
+            next_item = page.locator(self.PAGINATION_NEXT_ITEM)
             if next_item.count() > 0:
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            scraper_log(f"\tPagination next-item detection failed: {e}\n{traceback.format_exc()}")
         return False
 
     def go_next_page(self, page):
         try:
-            btn = page.locator(".ais-InfiniteHits-loadMore").first
-            if btn.count() > 0 and btn.is_enabled(timeout=2000):
+            if self._has_enabled_load_more_button(page):
+                btn = page.locator(self.INFINITE_HITS_LOAD_MORE_BUTTON).first
                 scraper_log("\tClicking Algolia 'Load More' button…")
                 btn.scroll_into_view_if_needed()
                 btn.click(timeout=5000)
                 page.wait_for_timeout(1000)
                 return
         except Exception as e:
-            scraper_log(f"\tInfiniteHits button unavailable or failed: {e}")
+            scraper_log(f"\tInfiniteHits button unavailable or failed: {e}\n{traceback.format_exc()}")
         try:
             next_link = page.locator(
-                ".ais-Pagination-item--next:not(.ais-Pagination-item--disabled) a"
+                f"{self.PAGINATION_NEXT_ITEM} a"
             ).first
+            if next_link.count() == 0:
+                return
             scraper_log("\tClicking Algolia pagination next link…")
             next_link.click(timeout=5000)
             page.wait_for_timeout(1000)
         except Exception as e:
-            scraper_log(f"\tPagination failed: {e}")
+            scraper_log(f"\tPagination failed: {e}\n{traceback.format_exc()}")
