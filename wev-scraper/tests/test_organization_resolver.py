@@ -10,7 +10,6 @@ import pytest
 from utils.organization_cache import OrganizationCache
 from utils.organization_repository import OrganizationRepository
 from utils.organization_resolver import OrganizationResolver
-from utils.organization_cache import canonical_location
 
 
 def _make_repo(**kwargs) -> MagicMock:
@@ -39,26 +38,6 @@ def _make_identifier(return_value):
     identifier = MagicMock()
     identifier.identify.return_value = return_value
     return identifier
-
-
-# ── canonical_location helper ─────────────────────────────────────────────────
-
-
-class TestCanonicalLocation:
-    def test_municipality_and_province(self):
-        assert canonical_location("Montreal", "QC", None) == "Montreal QC"
-
-    def test_municipality_only(self):
-        assert canonical_location("Montreal", None, None) == "Montreal"
-
-    def test_province_only(self):
-        assert canonical_location(None, "QC", None) == "QC"
-
-    def test_location_fallback(self):
-        assert canonical_location(None, None, "Toronto, ON") == "Toronto, ON"
-
-    def test_empty_when_nothing(self):
-        assert canonical_location(None, None, None) == ""
 
 
 # ── Cache hit path ────────────────────────────────────────────────────────────

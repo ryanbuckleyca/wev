@@ -11,6 +11,16 @@ import unicodedata
 from collections.abc import Callable
 
 
+def nfkd_to_ascii(s: str) -> str:
+    """NFKD-normalize then strip non-ASCII characters.
+
+    Shared between slug generation and cache key normalization so the two
+    code paths produce identical ASCII output for any input.
+    """
+    normalized = unicodedata.normalize("NFKD", s)
+    return normalized.encode("ascii", errors="ignore").decode("ascii")
+
+
 def generate_slug(name: str) -> str:
     """Convert an organization name to a URL-safe kebab-case slug.
 
@@ -31,9 +41,7 @@ def generate_slug(name: str) -> str:
     """
     if not name:
         return ""
-    normalized = unicodedata.normalize("NFKD", name)
-    ascii_bytes = normalized.encode("ascii", errors="ignore")
-    ascii_str = ascii_bytes.decode("ascii")
+    ascii_str = nfkd_to_ascii(name)
     lowered = ascii_str.lower()
     cleaned = "".join(c if c.isalnum() or c == " " else "" for c in lowered)
     slug = re.sub(r"-+", "-", cleaned.replace(" ", "-")).strip("-")

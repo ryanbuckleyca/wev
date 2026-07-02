@@ -244,11 +244,13 @@ def save_job(job, source_id, *, resolver=None):
         scraper_log(f"Error checking for existing job: {e}")
         return "skipped", None
 
-    if existing_data and not is_truthy_env("SHOULD_OVERRIDE_EXISTING"):
-        scraper_log(f"Job already exists, skipping (SHOULD_OVERRIDE_EXISTING=0): {job['listing_url']}")
-        return "skipped", None
+    if existing_data:
+        override_mode = is_truthy_env("SHOULD_OVERRIDE_EXISTING")
+        if not override_mode:
+            scraper_log(f"Job already exists, skipping (SHOULD_OVERRIDE_EXISTING=0): {job['listing_url']}")
+            return "skipped", None
 
-    # Resolve organization now — we know we're about to write
+    # Resolve organization — we're about to write (insert or update)
     organization_id = None
     if resolver is not None:
         organization_id = resolver.resolve(

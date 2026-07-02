@@ -12,6 +12,26 @@ from hypothesis import strategies as st
 
 from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
 
+# ── canonical_location ──────────────────────────────────────────────────────────
+
+
+class TestCanonicalLocation:
+    def test_municipality_and_province(self):
+        assert canonical_location("Montreal", "QC", None) == "Montreal QC"
+
+    def test_municipality_only(self):
+        assert canonical_location("Montreal", None, None) == "Montreal"
+
+    def test_province_only(self):
+        assert canonical_location(None, "QC", None) == "QC"
+
+    def test_location_fallback(self):
+        assert canonical_location(None, None, "Toronto, ON") == "Toronto, ON"
+
+    def test_empty_when_nothing(self):
+        assert canonical_location(None, None, None) == ""
+
+
 # ── Example-based tests ───────────────────────────────────────────────────────
 
 
@@ -90,6 +110,11 @@ class TestMakeCacheKey:
     def test_same_org_different_case(self):
         k1 = make_cache_key("My Org", "city", "qc")
         k2 = make_cache_key("MY ORG", "CITY", "QC")
+        assert k1 == k2
+
+    def test_accented_and_unaccented_produce_same_key(self):
+        k1 = make_cache_key("Centraide Montréal", "Montreal", "QC")
+        k2 = make_cache_key("Centraide Montreal", "Montreal", "QC")
         assert k1 == k2
 
     def test_pipe_separator(self):

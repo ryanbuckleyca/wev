@@ -30,8 +30,9 @@ ORG_TYPE_VALUES = (
 
 # Max characters of job description sent to the LLM prompt.
 # NOTE: the stored description field in organizations is capped at 300 chars
-# (enforced in the resolver before INSERT). This 1000-char limit is only for
-# the prompt INPUT — do not conflate the two.
+# (enforced in _parse_response below). This 1000-char limit is only for the
+# prompt INPUT — do not conflate the two. If you change 300, also update
+# _parse_response's inline [:300] slice.
 _PROMPT_DESC_MAX_CHARS = 1000
 
 _ORG_IDENTIFICATION_PROMPT = """\
@@ -192,6 +193,7 @@ class OrganizationIdentifier:
             org_type = None
 
         # Cap description at 300 chars (stored field limit)
+        # Must stay in sync with _PROMPT_DESC_MAX_CHARS above
         raw_description = data.get("description")
         description = str(raw_description)[:300] if raw_description else None
 

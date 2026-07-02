@@ -28,10 +28,6 @@ from dotenv import find_dotenv, load_dotenv
 
 load_dotenv(find_dotenv())
 
-# load_dotenv() must run before importing utils.db (reads env vars at load time)
-from utils.db import supabase  # noqa: E402
-from utils.organization_resolver import create_resolver  # noqa: E402
-
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
@@ -62,6 +58,9 @@ def run_backfill(
 
     Requirements: 6.1–6.8
     """
+    from utils.db import supabase
+    from utils.organization_resolver import create_resolver
+
     logger.info(
         "Starting org backfill — batch_size=%d, batch_delay=%.1fs, dry_run=%s",
         batch_size,
@@ -74,6 +73,7 @@ def run_backfill(
     total_processed = 0
     errors = 0
     resolved = 0
+    unresolved = 0
     offset = 0
 
     logger.info("Resolving organization_id for unlinked jobs…")
@@ -121,6 +121,7 @@ def run_backfill(
                             {"organization_id": org_id}
                         ).eq("id", job_id).execute()
                 else:
+                    unresolved += 1
                     logger.warning(
                         "Phase 1: Could not resolve organization for job_id=%s org=%r",
                         job_id,
@@ -148,6 +149,7 @@ def run_backfill(
     summary = {
         "phase1_processed": total_processed,
         "orgs_resolved": resolved,
+        "unresolved": unresolved,
         "errors": errors,
         "dry_run": dry_run,
     }
