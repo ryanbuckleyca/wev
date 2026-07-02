@@ -54,9 +54,9 @@ def generate_unique_slug(
     Requirements: 10.2, 4.3
     """
     base = generate_slug(name)
+    digest = hashlib.sha256(name.encode("utf-8")).hexdigest()[:8]
 
     if not base:
-        digest = hashlib.sha256(name.encode("utf-8")).hexdigest()[:8]
         base = f"unnamed-{digest}"
 
     if not exists_fn(base):
@@ -67,5 +67,4 @@ def generate_unique_slug(
         if not exists_fn(candidate):
             return candidate
 
-    digest = hashlib.sha256(name.encode("utf-8")).hexdigest()[:8]
     return f"{base}-{digest}"

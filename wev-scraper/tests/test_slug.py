@@ -15,14 +15,11 @@ from utils.slug import generate_slug, generate_unique_slug
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9\-]*[a-z0-9]$|^[a-z0-9]$|^$")
 VALID_CHARS = re.compile(r"^[a-z0-9\-]*$")
 
 
 def _is_valid_slug(s: str) -> bool:
-    """Return True when s satisfies all slug invariants (or is empty string)."""
-    if not s:
-        return True  # empty string is acceptable (degenerate input)
+    """Return True when s satisfies all slug invariants."""
     return (
         VALID_CHARS.match(s) is not None
         and not s.startswith("-")
@@ -182,5 +179,5 @@ def test_generate_unique_slug_invariants(name: str, n_taken: int):
             taken.add(f"{base}-{i}")
 
     slug = generate_unique_slug(name, exists_fn=lambda s: s in taken)
-    assert _is_valid_slug(slug) or not slug, f"Invalid slug {slug!r}"
+    assert _is_valid_slug(slug), f"Invalid slug {slug!r}"
     assert slug not in taken, f"Returned a taken slug {slug!r}"

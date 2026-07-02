@@ -9,7 +9,8 @@ import pytest
 
 from utils.organization_cache import OrganizationCache
 from utils.organization_repository import OrganizationRepository
-from utils.organization_resolver import OrganizationResolver, _canonical_location
+from utils.organization_resolver import OrganizationResolver
+from utils.organization_cache import canonical_location
 
 
 def _make_repo(**kwargs) -> MagicMock:
@@ -22,7 +23,7 @@ def _make_repo(**kwargs) -> MagicMock:
         repo.insert.side_effect = insert_val
     else:
         repo.insert.return_value = insert_val
-    repo.find_by_exact_name.return_value = kwargs.get("find_by_exact_name")
+    repo.find_by_name_and_location.return_value = kwargs.get("find_by_name_and_location")
     return repo
 
 
@@ -40,24 +41,24 @@ def _make_identifier(return_value):
     return identifier
 
 
-# ── _canonical_location helper ────────────────────────────────────────────────
+# ── canonical_location helper ─────────────────────────────────────────────────
 
 
 class TestCanonicalLocation:
     def test_municipality_and_province(self):
-        assert _canonical_location("Montreal", "QC", None) == "Montreal QC"
+        assert canonical_location("Montreal", "QC", None) == "Montreal QC"
 
     def test_municipality_only(self):
-        assert _canonical_location("Montreal", None, None) == "Montreal"
+        assert canonical_location("Montreal", None, None) == "Montreal"
 
     def test_province_only(self):
-        assert _canonical_location(None, "QC", None) == "QC"
+        assert canonical_location(None, "QC", None) == "QC"
 
     def test_location_fallback(self):
-        assert _canonical_location(None, None, "Toronto, ON") == "Toronto, ON"
+        assert canonical_location(None, None, "Toronto, ON") == "Toronto, ON"
 
     def test_empty_when_nothing(self):
-        assert _canonical_location(None, None, None) == ""
+        assert canonical_location(None, None, None) == ""
 
 
 # ── Cache hit path ────────────────────────────────────────────────────────────
@@ -176,14 +177,14 @@ class TestIdentityConflictPath:
         repo = _make_repo(
             find_by_name=[],
             insert=Exception("duplicate key value violates unique constraint"),
-            find_by_exact_name=55,
+            find_by_name_and_location=55,
         )
         resolver = _make_resolver(repo=repo, identifier=None)
 
         result = resolver.resolve("Existing Org", "Montreal", "QC")
 
         assert result == 55
-        repo.find_by_exact_name.assert_called_once_with("Existing Org")
+        repo.find_by_name_and_location.assert_called_once_with("Existing Org", "Montreal QC")
 
     def test_non_duplicate_insert_error_returns_none(self):
         repo = _make_repo(

@@ -98,6 +98,14 @@ class TestParseResponse:
         assert result is not None
         assert result["canonical_name"] == "Test Organization"
 
+    def test_strips_fences_with_preamble(self):
+        """LLM may include explanatory text before/after the code block."""
+        wrapped = "Here is the result:\n```json\n" + _make_valid_response() + "\n```\nHope this helps."
+        identifier = _make_identifier(wrapped)
+        result = identifier._parse_response(wrapped, "raw")
+        assert result is not None
+        assert result["canonical_name"] == "Test Organization"
+
     def test_description_capped_at_300_chars(self):
         long_desc = "x" * 500
         response = _make_valid_response(description=long_desc)

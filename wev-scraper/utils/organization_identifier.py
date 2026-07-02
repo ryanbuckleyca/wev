@@ -148,8 +148,9 @@ class OrganizationIdentifier:
         Requirements: 2.5
         """
         text = response_text.strip()
-        # Strip markdown fences if present
-        match = re.search(r"^```(?:json)?\s*([\s\S]*?)\s*```\s*$", text, re.IGNORECASE)
+        # Strip markdown fences if present — unanchored so preamble/postamble
+        # before/after the code block is discarded (common with LLM output).
+        match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
         if match:
             text = match.group(1).strip()
 

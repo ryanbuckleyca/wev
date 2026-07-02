@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from utils.organization_cache import OrganizationCache, _canonical_location, make_cache_key
+from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
 from utils.organization_identifier import OrganizationIdentifier
 from utils.organization_repository import OrganizationRepository
 from utils.slug import generate_slug
@@ -30,7 +30,7 @@ def _location_is_compatible(
     province: str | None,
     location: str | None,
 ) -> bool:
-    job_canonical = _canonical_location(municipality, province, location).strip().lower()
+    job_canonical = canonical_location(municipality, province, location).strip().lower()
     cand = (candidate_location or "").strip().lower()
 
     if not job_canonical or not cand:
@@ -46,7 +46,7 @@ def build_resolver(supabase_client=None) -> OrganizationResolver:
     try:
         identifier = OrganizationIdentifier()
     except Exception as exc:
-        logger.warning(
+        logger.error(
             "OrganizationIdentifier unavailable (%s) — resolver will use minimal fallback",
             exc,
         )
@@ -104,13 +104,13 @@ class OrganizationResolver:
             return None
 
     def _resolve_inner(self, ctx: JobContext) -> int | None:
-        cache_key = make_cache_key(ctx.raw_name, ctx.municipality, ctx.province, None)
+        cache_key = make_cache_key(ctx.raw_name, ctx.municipality, ctx.province)
 
         cached_id = self._cache.get(cache_key)
         if cached_id is not None:
             return cached_id
 
-        db_id = self._db_lookup(ctx, cache_key)
+        db_id = self._resolve_via_db(ctx, cache_key)
         if db_id is not None:
             return db_id
 
@@ -119,9 +119,9 @@ class OrganizationResolver:
             if llm_id is not None:
                 return llm_id
 
-        return self._minimal_fallback(ctx, cache_key)
+        return self._resolve_minimal(ctx, cache_key)
 
-    def _db_lookup(self, ctx: JobContext, cache_key: str) -> int | None:
+    def _resolve_via_db(self, ctx: JobContext, cache_key: str) -> int | None:
         candidates = self._repo.find_by_name(ctx.raw_name)
         if not candidates:
             return None
@@ -146,7 +146,7 @@ class OrganizationResolver:
             return None
 
         canonical_name = result["canonical_name"]
-        canonical_loc = _canonical_location(ctx.municipality, ctx.province, None)
+        canonical_loc = canonical_location(ctx.municipality, ctx.province, None)
 
         suggested_slug = result.get("slug") or ""
         slug_base = suggested_slug if suggested_slug else generate_slug(canonical_name)
@@ -161,10 +161,10 @@ class OrganizationResolver:
             "type": result.get("type"),
         }
 
-        return self._insert_with_conflict_recovery(row, cache_key, ctx.job_id)
+        return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
 
-    def _minimal_fallback(self, ctx: JobContext, cache_key: str) -> int | None:
-        canonical_loc = _canonical_location(ctx.municipality, ctx.province, None)
+    def _resolve_minimal(self, ctx: JobContext, cache_key: str) -> int | None:
+        canonical_loc = canonical_location(ctx.municipality, ctx.province, None)
         slug = self._find_available_slug(generate_slug(ctx.raw_name))
 
         row = {
@@ -178,7 +178,7 @@ class OrganizationResolver:
             ctx.raw_name,
             ctx.job_id,
         )
-        return self._insert_with_conflict_recovery(row, cache_key, ctx.job_id)
+        return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
 
     def _find_available_slug(self, base: str) -> str:
         if not base:
@@ -198,7 +198,7 @@ class OrganizationResolver:
         digest = hashlib.sha256(base.encode("utf-8")).hexdigest()[:8]
         return f"{base}-{digest}"
 
-    def _insert_with_conflict_recovery(
+    def _insert_or_resolve_conflict(
         self, row: dict, cache_key: str, job_id: str | None = None,
     ) -> int | None:
         try:
@@ -224,7 +224,7 @@ class OrganizationResolver:
                 )
                 return None
 
-            existing_id = self._repo.find_by_exact_name(row.get("name", ""))
+            existing_id = self._repo.find_by_name_and_location(row.get("name", ""), row.get("location"))
             if existing_id:
                 self._cache.set(cache_key, existing_id)
                 return existing_id

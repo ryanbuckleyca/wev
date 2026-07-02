@@ -10,7 +10,7 @@ Validates: Requirements 2.2, 3.1, 3.2, 3.3, 3.4, 3.5, 2.10
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from utils.organization_cache import OrganizationCache, make_cache_key
+from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
 
 # ── Example-based tests ───────────────────────────────────────────────────────
 
@@ -63,36 +63,37 @@ class TestOrganizationCache:
 
 class TestMakeCacheKey:
     def test_municipality_and_province(self):
-        key = make_cache_key("Centraide Montréal", "Montreal", "QC", None)
+        key = make_cache_key("Centraide Montréal", "Montreal", "QC")
         # Lowercased, accents stripped (NFKD not applied here — raw lowercasing)
         # "Centraide Montréal" lowercased → "centraide montréal"
         # Non-ASCII stripped → "centraide montral" or similar depending on encoding
         # The key must be deterministic regardless
-        key2 = make_cache_key("Centraide Montréal", "Montreal", "QC", None)
+        key2 = make_cache_key("Centraide Montréal", "Montreal", "QC")
         assert key == key2
 
-    def test_falls_back_to_location_when_no_municipality(self):
-        key = make_cache_key("My Org", None, None, "Toronto, ON")
-        assert "toronto" in key or "toronto on" in key
+    def test_location_used_as_proxy_when_no_municipality(self):
+        """When municipality is None, province or location feeds the cache key."""
+        loc_part = make_cache_key("My Org", None, "QC").split("|", 1)[1]
+        assert "qc" in loc_part
 
     def test_empty_when_no_location_evidence(self):
-        key = make_cache_key("My Org", None, None, None)
+        key = make_cache_key("My Org", None, None)
         assert key.endswith("|")
 
     def test_only_ascii_alphanumeric_and_spaces_in_parts(self):
-        key = make_cache_key("Org!@#$", "Montréal", None, None)
+        key = make_cache_key("Org!@#$", "Montréal", None)
         # After stripping: name part has only alpha/digit/space
         name_part, loc_part = key.split("|", 1)
         for c in name_part:
             assert c.isascii() and (c.isalpha() or c.isdigit() or c == " "), f"Bad char {c!r}"
 
     def test_same_org_different_case(self):
-        k1 = make_cache_key("My Org", "city", "qc", None)
-        k2 = make_cache_key("MY ORG", "CITY", "QC", None)
+        k1 = make_cache_key("My Org", "city", "qc")
+        k2 = make_cache_key("MY ORG", "CITY", "QC")
         assert k1 == k2
 
     def test_pipe_separator(self):
-        key = make_cache_key("Org", "city", "qc", None)
+        key = make_cache_key("Org", "city", "qc")
         assert "|" in key
 
 
@@ -103,13 +104,12 @@ class TestMakeCacheKey:
     name=st.text(min_size=0, max_size=100),
     municipality=st.one_of(st.none(), st.text(min_size=0, max_size=50)),
     province=st.one_of(st.none(), st.text(min_size=0, max_size=20)),
-    location=st.one_of(st.none(), st.text(min_size=0, max_size=100)),
 )
 @settings(max_examples=300)
-def test_cache_key_is_deterministic(name, municipality, province, location):
+def test_cache_key_is_deterministic(name, municipality, province):
     """Property 2: Same inputs always produce the same key."""
-    k1 = make_cache_key(name, municipality, province, location)
-    k2 = make_cache_key(name, municipality, province, location)
+    k1 = make_cache_key(name, municipality, province)
+    k2 = make_cache_key(name, municipality, province)
     assert k1 == k2
 
 

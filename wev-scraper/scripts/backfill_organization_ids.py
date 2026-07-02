@@ -72,6 +72,7 @@ def run_backfill(
 
     total_processed = 0
     errors = 0
+    resolved = 0
     offset = 0
 
     logger.info("Resolving organization_id for unlinked jobs…")
@@ -112,6 +113,7 @@ def run_backfill(
 
                 if org_id is not None:
                     logger.info("job_id=%s → organization_id=%s", job_id, org_id)
+                    resolved += 1
 
                     if not dry_run:
                         supabase.table("jobs").update(
@@ -144,7 +146,7 @@ def run_backfill(
 
     summary = {
         "phase1_processed": total_processed,
-        "orgs_resolved": total_processed - errors,
+        "orgs_resolved": resolved,
         "errors": errors,
         "dry_run": dry_run,
     }
@@ -185,15 +187,16 @@ def main() -> None:
         print(f"--batch-size must be between 1 and {MAX_BATCH_SIZE}", file=sys.stderr)
         sys.exit(1)
 
-    if args.env == "staging":
+    if args.env in ("staging", "prod"):
         from pathlib import Path
 
-        staging_env = Path(__file__).resolve().parent.parent.parent / ".env.staging"
-        if staging_env.exists():
-            logger.info("Loading staging overrides from %s", staging_env)
-            load_dotenv(staging_env, override=True)
+        env_file_name = f".env.{args.env}"
+        env_path = Path(__file__).resolve().parent.parent.parent / env_file_name
+        if env_path.exists():
+            logger.info("Loading %s overrides from %s", args.env, env_path)
+            load_dotenv(env_path, override=True)
         else:
-            logger.warning("--env staging but %s not found", staging_env)
+            logger.warning("--env %s but %s not found", args.env, env_path)
 
     summary = run_backfill(
         batch_size=args.batch_size,
