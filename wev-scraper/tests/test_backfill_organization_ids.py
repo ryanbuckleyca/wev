@@ -69,8 +69,8 @@ def _make_mock_supabase(batches):
 @pytest.fixture
 def backfill_env():
     resolver = MagicMock()
-    with patch("scripts.backfill_organization_ids.supabase") as mock_sb:
-        with patch("scripts.backfill_organization_ids.create_resolver", return_value=resolver):
+    with patch("utils.db.supabase") as mock_sb:
+        with patch("utils.organization_resolver.create_resolver", return_value=resolver):
             from scripts.backfill_organization_ids import run_backfill
             yield _BackfillEnv(mock_sb=mock_sb, resolver=resolver, run_backfill=run_backfill)
 
@@ -96,6 +96,8 @@ class TestPhase1Backfill:
         summary = backfill_env.run_backfill(batch_size=50)
 
         assert summary["phase1_processed"] == 2
+        assert summary["orgs_resolved"] == 2
+        assert summary["unresolved"] == 0
         assert backfill_env.resolver.resolve.call_count == 2
 
     def test_dry_run_does_not_write_to_db(self, backfill_env):
@@ -109,6 +111,8 @@ class TestPhase1Backfill:
 
         assert summary["dry_run"] is True
         assert summary["phase1_processed"] == 1
+        assert summary["orgs_resolved"] == 1
+        assert summary["unresolved"] == 0
         backfill_env.mock_sb._update_chain.execute.assert_not_called()
 
     def test_per_job_isolation_exception_does_not_abort_batch(self, backfill_env):
@@ -121,6 +125,7 @@ class TestPhase1Backfill:
 
         assert summary["errors"] == 1
         assert summary["orgs_resolved"] == 2
+        assert summary["unresolved"] == 0
         assert summary["phase1_processed"] == 2
 
     def test_batch_delay_called_between_batches_not_after_last(self, backfill_env):
@@ -158,6 +163,8 @@ class TestPhase1Backfill:
             summary = backfill_env.run_backfill(batch_size=3)
 
         assert summary["phase1_processed"] == 5
+        assert summary["orgs_resolved"] == 5
+        assert summary["unresolved"] == 0
         assert backfill_env.resolver.resolve.call_count == 5
 
     def test_exit_code_0_when_no_errors(self, backfill_env):
@@ -168,6 +175,8 @@ class TestPhase1Backfill:
         summary = backfill_env.run_backfill()
 
         assert summary["errors"] == 0
+        assert summary["orgs_resolved"] == 0
+        assert summary["unresolved"] == 0
 
     def test_exit_code_1_when_errors_gt_0(self, backfill_env):
         rows = [_make_job_row("job-bad")]
@@ -178,6 +187,19 @@ class TestPhase1Backfill:
         summary = backfill_env.run_backfill()
 
         assert summary["errors"] == 1
+        assert summary["unresolved"] == 0
+
+    def test_unresolved_counter_incremented_when_resolver_returns_none(self, backfill_env):
+        rows = [_make_job_row("job-1"), _make_job_row("job-2")]
+        sb = _make_mock_supabase([rows, []])
+        backfill_env.mock_sb.table.side_effect = sb.table.side_effect
+        backfill_env.resolver.resolve.return_value = None
+
+        summary = backfill_env.run_backfill()
+
+        assert summary["orgs_resolved"] == 0
+        assert summary["unresolved"] == 2
+        assert summary["phase1_processed"] == 2
 
 
 # ── Property-based tests ──────────────────────────────────────────────────────
@@ -198,10 +220,11 @@ def test_script_processes_only_unresolved_jobs(unresolved_jobs):
     resolver = MagicMock()
     resolver.resolve.return_value = 1
 
-    with patch("scripts.backfill_organization_ids.supabase", mock_sb):
-        with patch("scripts.backfill_organization_ids.create_resolver", return_value=resolver):
+    with patch("utils.db.supabase", mock_sb):
+        with patch("utils.organization_resolver.create_resolver", return_value=resolver):
             from scripts.backfill_organization_ids import run_backfill
             summary = run_backfill(batch_size=100)
 
     assert resolver.resolve.call_count == len(unresolved_jobs)
     assert summary["phase1_processed"] == len(unresolved_jobs)
+    assert summary["unresolved"] == 0

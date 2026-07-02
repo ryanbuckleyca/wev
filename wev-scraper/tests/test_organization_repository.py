@@ -10,17 +10,6 @@ import pytest
 from utils.organization_repository import OrganizationRepository, _escape_like
 
 
-def _make_repo(data=None, insert_result=None):
-    repo = MagicMock()
-    execute_return = MagicMock()
-    execute_return.data = data or []
-    repo.execute.return_value = execute_return
-    insert_mock = MagicMock()
-    insert_mock.execute.return_value = MagicMock(data=insert_result or [])
-    repo.insert.return_value = insert_mock
-    return repo
-
-
 # ── _escape_like ────────────────────────────────────────────────────────────────
 
 
@@ -104,6 +93,22 @@ class TestFindByNameAndLocation:
         sb.table.return_value.select.return_value.ilike.side_effect = Exception("DB down")
         repo = OrganizationRepository(sb)
         assert repo.find_by_name_and_location("Test Org", "QC") is None
+
+    def test_db_error_in_or_path_returns_none(self):
+        sb = MagicMock()
+        select = sb.table.return_value.select.return_value
+        select.ilike.return_value = select
+        select.or_.side_effect = Exception("DB down")
+        repo = OrganizationRepository(sb)
+        assert repo.find_by_name_and_location("Test Org", None) is None
+
+    def test_db_error_in_or_path_empty_location_returns_none(self):
+        sb = MagicMock()
+        select = sb.table.return_value.select.return_value
+        select.ilike.return_value = select
+        select.or_.side_effect = Exception("DB down")
+        repo = OrganizationRepository(sb)
+        assert repo.find_by_name_and_location("Test Org", "") is None
 
 
 # ── find_by_name with special chars ─────────────────────────────────────────────

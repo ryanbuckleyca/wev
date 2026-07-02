@@ -11,7 +11,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from utils.slug import generate_slug, generate_unique_slug
+from utils.slug import generate_slug, generate_unique_slug, nfkd_to_ascii
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -27,6 +27,29 @@ def _is_valid_slug(s: str) -> bool:
         and "--" not in s
         and s == s.lower()
     )
+
+
+# ── nfkd_to_ascii ─────────────────────────────────────────────────────────────
+
+
+class TestNfkdToAscii:
+    def test_plain_ascii_passthrough(self):
+        assert nfkd_to_ascii("hello world") == "hello world"
+
+    def test_french_accent_e_acute(self):
+        assert nfkd_to_ascii("Montréal") == "Montreal"
+
+    def test_cedilla(self):
+        assert nfkd_to_ascii("François") == "Francois"
+
+    def test_spanish_ntilde(self):
+        assert nfkd_to_ascii("Español") == "Espanol"
+
+    def test_cjk_stripped(self):
+        assert nfkd_to_ascii("你好 World") == " World"
+
+    def test_empty_string(self):
+        assert nfkd_to_ascii("") == ""
 
 
 # ── Example-based tests ───────────────────────────────────────────────────────

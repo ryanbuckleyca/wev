@@ -73,8 +73,8 @@ class OrganizationResolver:
 
     @staticmethod
     def _is_identity_conflict(exc: Exception) -> bool:
-        err_str = str(exc).lower()
-        return any(kw in err_str for kw in ("unique", "duplicate", "constraint"))
+        # Only match Postgres unique/PK violations, not CHECK constraints
+        return "duplicate key" in str(exc).lower()
 
     def resolve(
         self,

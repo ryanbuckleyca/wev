@@ -8,8 +8,9 @@ Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
 
 from __future__ import annotations
 
-import unicodedata
 from collections import OrderedDict
+
+from utils.slug import nfkd_to_ascii
 
 
 class OrganizationCache:
@@ -42,8 +43,8 @@ class OrganizationCache:
 
 
 def _normalize(s: str) -> str:
-    normalized = unicodedata.normalize("NFKD", s)
-    lowered = normalized.lower()
+    ascii_str = nfkd_to_ascii(s)
+    lowered = ascii_str.lower()
     return "".join(c for c in lowered if c.isascii() and (c.isalpha() or c.isdigit() or c == " "))
 
 

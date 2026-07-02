@@ -103,4 +103,11 @@ class OrganizationRepository:
     def insert(self, row: dict) -> dict | None:
         resp = self._supabase.table("organizations").insert(row).execute()
         data = (resp.data or [{}])[0] if resp.data else {}
-        return data if data.get("id") else None
+        if data.get("id"):
+            return data
+        logger.warning(
+            "OrganizationRepository: insert returned no id for %r — response data=%r",
+            row.get("name"),
+            resp.data,
+        )
+        return None
