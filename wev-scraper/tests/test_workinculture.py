@@ -1,6 +1,6 @@
 """Tests for WorkInCultureScraper."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -151,3 +151,33 @@ def test_has_next_page_with_pagination(scraper):
 def test_has_next_page_returns_false_when_no_more(scraper):
     page = StubAlgoliaPage()
     assert scraper.has_next_page(page) is False
+
+
+def test_has_next_page_logs_selector_failures(scraper):
+    page = MagicMock()
+    page.locator.side_effect = [Exception("load more failed"), Exception("pagination failed")]
+
+    with patch("scrapers.workinculture.scraper_log") as mock_log:
+        assert scraper.has_next_page(page) is False
+
+    assert mock_log.call_count == 2
+
+
+def test_go_next_page_skips_fallback_when_next_link_missing(scraper):
+    page = MagicMock()
+    load_more_button = MagicMock()
+    load_more_button.count.return_value = 0
+    load_more_button.is_enabled.return_value = False
+
+    next_link = MagicMock()
+    next_link.count.return_value = 0
+
+    page.locator.side_effect = [
+        load_more_button,
+        MagicMock(first=next_link),
+    ]
+
+    scraper.go_next_page(page)
+
+    next_link.click.assert_not_called()
+    page.wait_for_timeout.assert_not_called()

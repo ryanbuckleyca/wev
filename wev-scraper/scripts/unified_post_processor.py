@@ -60,7 +60,7 @@ TaskType = Literal["all", "summary", "values", "sse", "language"]
 class ProcessingOptions:
     """Options that control how process_jobs_unified fetches and filters jobs."""
     task: TaskType = "all"
-    limit: int | None = 100
+    page_limit: int | None = 100
     job_ids: List[str] = field(default_factory=list)
     dry_run: bool = False
     verbose: bool = False
@@ -73,14 +73,14 @@ class ProcessingOptions:
 def _fetch_jobs(
     job_ids: List[str] | None,
     since_days: int | None,
-    limit: int | None,
+    page_limit: int | None,
     before_scraped_at: str | None = None,
 ) -> List[Dict[str, Any]]:
     """Fetch jobs from the database.
 
-    When job_ids are provided, fetches exactly those jobs (limit ignored).
+    When job_ids are provided, fetches exactly those jobs (page_limit ignored).
     Otherwise fetches the most-recently-scraped jobs, optionally filtered by
-    scraped_at age, up to `limit` rows per page. Pass limit=None to fetch all
+    scraped_at age, up to `page_limit` rows per page. Pass page_limit=None to fetch all
     rows in a single page. Uses cursor-based pagination via before_scraped_at.
     """
     query = supabase.table("jobs").select(
@@ -100,8 +100,8 @@ def _fetch_jobs(
 
         query = query.order("scraped_at", desc=True)
 
-        if limit is not None:
-            query = query.limit(limit)
+        if page_limit is not None:
+            query = query.limit(page_limit)
 
     return query.execute().data
 
@@ -187,7 +187,7 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
         page += 1
         try:
             jobs = _fetch_jobs(
-                opts.job_ids or None, opts.since_days, opts.limit, before_scraped_at=cursor
+                opts.job_ids or None, opts.since_days, opts.page_limit, before_scraped_at=cursor
             )
         except Exception as e:
             scraper_log(f"✗ Failed to fetch jobs: {e}")
@@ -204,7 +204,7 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
         all_eligible.extend(eligible)
         print(f"✓ Fetched {len(jobs)} jobs (page {page}), {len(eligible)} eligible")
 
-        if opts.limit and len(jobs) == opts.limit:
+        if opts.page_limit and len(jobs) == opts.page_limit:
             cursor = jobs[-1]["scraped_at"]
         else:
             break
@@ -381,9 +381,9 @@ def main():
     parser.add_argument("--since-days", type=int, help="Process jobs created since N days ago")
     parser.add_argument("--force-language-reprocess", action="store_true",
                         help="Force re-processing of language tags even if already present and valid.")
-    parser.add_argument("--limit", type=int, default=100,
-                        help="Rows per page (default: 100). Paginates automatically "
-                             "to process all eligible jobs.")
+    parser.add_argument("--page-limit", "--limit", dest="page_limit", type=int, default=100,
+                        help="Rows per page (default: 100). Supports legacy --limit. "
+                             "Paginates automatically to process all eligible jobs.")
     parser.add_argument("--job-id", nargs="+", help="Specific job IDs to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't save to database")
     parser.add_argument(
@@ -404,7 +404,7 @@ def main():
     # Process jobs
     result = process_jobs_unified(ProcessingOptions(
         task=args.task,
-        limit=args.limit,
+        page_limit=args.page_limit,
         job_ids=args.job_id or [],
         dry_run=args.dry_run,
         verbose=args.verbose,
