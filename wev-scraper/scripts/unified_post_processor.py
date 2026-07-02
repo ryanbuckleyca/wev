@@ -204,7 +204,7 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
         all_eligible.extend(eligible)
         print(f"✓ Fetched {len(jobs)} jobs (page {page}), {len(eligible)} eligible")
 
-        if opts.limit and len(jobs) == opts.limit:
+        if opts.page_limit and len(jobs) == opts.page_limit:
             cursor = jobs[-1]["scraped_at"]
         else:
             break
