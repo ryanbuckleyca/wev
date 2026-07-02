@@ -8,8 +8,20 @@ no cache management, no logging beyond warning on unexpected DB errors.
 from __future__ import annotations
 
 import logging
+import re
 
 logger = logging.getLogger(__name__)
+
+_LIKE_SPECIAL = re.compile(r"[%_\\]")
+
+
+def _escape_like(s: str) -> str:
+    """Escape % and _ for ILIKE so they're treated literally.
+
+    PostgREST passes ILIKE values through to PostgreSQL, where % and _
+    are LIKE wildcards. Backslash is Postgres's default escape character.
+    """
+    return _LIKE_SPECIAL.sub(lambda m: "\\" + m.group(0), s)
 
 
 class OrganizationRepository:
@@ -21,7 +33,7 @@ class OrganizationRepository:
             resp = (
                 self._supabase.table("organizations")
                 .select("id, name, location")
-                .ilike("name", name)
+                .ilike("name", _escape_like(name.strip()))
                 .execute()
             )
             return resp.data or []
@@ -29,19 +41,28 @@ class OrganizationRepository:
             logger.warning("OrganizationRepository: find_by_name failed for %r: %s", name, exc)
             return []
 
-    def find_by_exact_name(self, name: str) -> int | None:
+    def find_by_name_and_location(self, name: str, location: str | None = None) -> int | None:
+        """Re-fetch an org ID by name + location after an insert conflict.
+
+        Filters by location to match the unique index on (name, location) where
+        both NULL and '' map to ''.
+        """
         try:
-            resp = (
+            query = (
                 self._supabase.table("organizations")
                 .select("id")
-                .ilike("name", name.strip())
-                .execute()
+                .ilike("name", _escape_like(name.strip()))
             )
+            if location is not None and location.strip():
+                query = query.ilike("location", _escape_like(location.strip()))
+            else:
+                query = query.or_("location.is.null,location.eq.")
+            resp = query.execute()
             candidates = resp.data or []
             return candidates[0]["id"] if candidates else None
         except Exception as exc:
             logger.warning(
-                "OrganizationRepository: find_by_exact_name failed for %r: %s", name, exc
+                "OrganizationRepository: find_by_name_and_location failed for %r: %s", name, exc
             )
             return None
 
@@ -78,9 +99,6 @@ class OrganizationRepository:
             return set()
 
     def insert(self, row: dict) -> dict | None:
-        try:
-            resp = self._supabase.table("organizations").insert(row).execute()
-            data = (resp.data or [{}])[0] if resp.data else {}
-            return data if data.get("id") else None
-        except Exception:
-            raise
+        resp = self._supabase.table("organizations").insert(row).execute()
+        data = (resp.data or [{}])[0] if resp.data else {}
+        return data if data.get("id") else None

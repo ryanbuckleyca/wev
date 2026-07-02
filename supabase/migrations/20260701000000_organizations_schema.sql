@@ -41,7 +41,7 @@ UPDATE public.organizations
 -- as non-matching and replaces them with '-', producing incorrect slugs like
 -- "centraide-montr-al-42" instead of "centraide-montreal-42". The -id suffix
 -- guarantees uniqueness, but slugs are semantically wrong for French names.
--- Post-migration, run a Python script using generate_slug() to fix affected slugs.
+-- To fix, run a one-off Python script using generate_slug() on affected rows.
 
 UPDATE public.organizations
   SET slug = lower(regexp_replace(name, '[^a-zA-Z0-9]+', '-', 'g')) || '-' || id::text

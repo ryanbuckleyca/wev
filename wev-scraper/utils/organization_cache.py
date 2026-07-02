@@ -45,7 +45,7 @@ def _normalize(s: str) -> str:
     return "".join(c for c in lowered if c.isascii() and (c.isalpha() or c.isdigit() or c == " "))
 
 
-def _canonical_location(
+def canonical_location(
     municipality: str | None,
     province: str | None,
     location: str | None,
@@ -65,8 +65,7 @@ def make_cache_key(
     name: str,
     municipality: str | None,
     province: str | None,
-    location: str | None,
 ) -> str:
     normalized_name = _normalize(name or "")
-    normalized_location = _normalize(_canonical_location(municipality, province, location))
+    normalized_location = _normalize(canonical_location(municipality, province, None))
     return f"{normalized_name}|{normalized_location}"
