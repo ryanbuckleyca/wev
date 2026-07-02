@@ -35,7 +35,9 @@ def _location_is_compatible(
     if not job_canonical or not cand:
         return False
 
-    return cand in job_canonical or job_canonical in cand
+    cand_words = set(cand.split())
+    job_words = set(job_canonical.split())
+    return bool(cand_words & job_words)
 
 
 def create_resolver(supabase_client=None) -> OrganizationResolver:
@@ -118,12 +120,14 @@ class OrganizationResolver:
         if db_id is not None:
             return db_id
 
+        canonical_loc = canonical_location(ctx.municipality, ctx.province, None)
+
         if self._identifier is not None:
-            llm_id = self._llm_resolve(ctx, cache_key)
+            llm_id = self._llm_resolve(ctx, cache_key, canonical_loc)
             if llm_id is not None:
                 return llm_id
 
-        return self._resolve_minimal(ctx, cache_key)
+        return self._resolve_minimal(ctx, cache_key, canonical_loc)
 
     def _resolve_via_db(self, ctx: JobContext, cache_key: str) -> int | None:
         candidates = self._repo.find_by_name(ctx.raw_name)
@@ -142,7 +146,7 @@ class OrganizationResolver:
         self._cache.set(cache_key, org_id)
         return org_id
 
-    def _llm_resolve(self, ctx: JobContext, cache_key: str) -> int | None:
+    def _llm_resolve(self, ctx: JobContext, cache_key: str, canonical_loc: str) -> int | None:
         result = self._identifier.identify(
             ctx.raw_name, ctx.municipality, ctx.province, ctx.job_title, ctx.description,
         )
@@ -150,8 +154,6 @@ class OrganizationResolver:
             return None
 
         canonical_name = result["canonical_name"]
-        canonical_loc = canonical_location(ctx.municipality, ctx.province, None)
-
         suggested_slug = result.get("slug") or ""
         slug_base = suggested_slug if suggested_slug else generate_slug(canonical_name)
         slug = self._find_available_slug(slug_base, ctx.job_id)
@@ -167,8 +169,7 @@ class OrganizationResolver:
 
         return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
 
-    def _resolve_minimal(self, ctx: JobContext, cache_key: str) -> int | None:
-        canonical_loc = canonical_location(ctx.municipality, ctx.province, None)
+    def _resolve_minimal(self, ctx: JobContext, cache_key: str, canonical_loc: str) -> int | None:
         slug = self._find_available_slug(generate_slug(ctx.raw_name), ctx.job_id)
 
         row = {

@@ -229,10 +229,21 @@ class TestLLMFailurePath:
             repo=repo, cache=OrganizationCache(), identifier=None
         )
 
-        resolver.resolve("Minimal Org", "City", "ON")
+        result = resolver.resolve("Minimal Org", "City", "ON")
 
+        assert result == 700
         repo.slug_exists.assert_called()
         repo.find_existing_slugs.assert_called()
+
+    def test_find_available_slug_empty_base_uses_seed(self):
+        repo = _make_repo(find_by_name=[], slug_exists=False, find_existing_slugs=set(), insert={"id": 800})
+        resolver = OrganizationResolver(
+            repo=repo, cache=OrganizationCache(), identifier=None
+        )
+        result = resolver.resolve("!!!", "Gatineau", "QC", job_id="seed-val")
+        assert result == 800
+        slug_arg = repo.slug_exists.call_args[0][0]
+        assert "unnamed" in slug_arg
 
 
 # ── Unexpected exception path ─────────────────────────────────────────────────
