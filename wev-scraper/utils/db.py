@@ -77,7 +77,7 @@ def fetch_all_rows(
     return all_rows
 
 
-def _job_row(job, source_id):
+def _job_row(job, source_id, *, organization_id=None):
     """Build the dict used for insert/update (shared fields)."""
     # `.get("work_type", "office")` is wrong when the key exists with value None
     # (common after JSON/DB merges) — that passes NULL to NOT NULL work_type.
@@ -114,6 +114,7 @@ def _job_row(job, source_id):
         "values": job.get("values") or [],
         "skills": job.get("skills") or [],
         "language": job.get("language") or "en",
+        "organization_id": organization_id,
     }
 
     # Populate structured compensation fields via LLM extraction
@@ -204,22 +205,29 @@ def _find_existing_job(job):
     return None
 
 
-def _build_update_row(job, source_id, existing_data):
+def _build_update_row(job, source_id, existing_data, *, organization_id=None):
     """Build an update payload that preserves existing fields unless explicitly overridden.
-    
+
     Uses field_management module to determine which fields to preserve based on
     environment variables and processing flags.
     """
-    row = _job_row(job, source_id)
-    
+    row = _job_row(job, source_id, organization_id=organization_id)
+
     # Use field management to preserve appropriate fields
     from utils.field_management import build_update_row_with_field_preservation
     return build_update_row_with_field_preservation(row, source_id, existing_data)
 
 
-def save_job(job, source_id):
+def save_job(job, source_id, *, resolver=None):
     """Insert job if not exists (deduplicate by listing_url). If SHOULD_OVERRIDE_EXISTING is set, update existing row instead of skipping.
-    
+
+    Args:
+        job: Job dict from the scraper.
+        source_id: Source UUID.
+        resolver: Optional OrganizationResolver. When provided, organization_id
+            is resolved and written to the row. Callers that omit resolver
+            continue to work unchanged.
+
     Returns a tuple (status, job_id) where status is "added", "updated", "skipped", or "error",
     and job_id is the DB uuid (or None if skipped/error).
     """
@@ -236,26 +244,36 @@ def save_job(job, source_id):
         scraper_log(f"Error checking for existing job: {e}")
         return "skipped", None
 
+    if existing_data and not is_truthy_env("SHOULD_OVERRIDE_EXISTING"):
+        scraper_log(f"Job already exists, skipping (SHOULD_OVERRIDE_EXISTING=0): {job['listing_url']}")
+        return "skipped", None
+
+    # Resolve organization now — we know we're about to write
+    organization_id = None
+    if resolver is not None:
+        organization_id = resolver.resolve(
+            raw_name=job.get("organization", ""),
+            municipality=job.get("municipality"),
+            province=job.get("province"),
+            job_title=job.get("job_title", ""),
+            description=job.get("description", ""),
+            job_id=job.get("id"),
+        )
+
     if existing_data:
-        override_mode = is_truthy_env("SHOULD_OVERRIDE_EXISTING")
-        
-        if override_mode:
-            scraper_log(f"Job already exists, overwriting (SHOULD_OVERRIDE_EXISTING=1): {job['listing_url']}")
-            try:
-                row = _build_update_row(job, source_id, existing_data)
-                supabase.table("jobs").update(row).eq("id", existing_data["id"]).execute()
-                scraper_log(f"✅ Successfully overwrote existing job: {job['listing_url']}")
-                return "updated", existing_data["id"]
-            except Exception as e:
-                scraper_log(f"❌ Error overwriting job: {e}")
-                return "skipped", None
-        else:
-            scraper_log(f"Job already exists, skipping (SHOULD_OVERRIDE_EXISTING=0): {job['listing_url']}")
+        scraper_log(f"Job already exists, overwriting (SHOULD_OVERRIDE_EXISTING=1): {job['listing_url']}")
+        try:
+            row = _build_update_row(job, source_id, existing_data, organization_id=organization_id)
+            supabase.table("jobs").update(row).eq("id", existing_data["id"]).execute()
+            scraper_log(f"✅ Successfully overwrote existing job: {job['listing_url']}")
+            return "updated", existing_data["id"]
+        except Exception as e:
+            scraper_log(f"❌ Error overwriting job: {e}")
             return "skipped", None
 
     scraper_log(f"Inserting new job: {job['listing_url']}")
     try:
-        resp = supabase.table("jobs").insert(_job_row(job, source_id)).execute()
+        resp = supabase.table("jobs").insert(_job_row(job, source_id, organization_id=organization_id)).execute()
         inserted_id = (resp.data or [{}])[0].get("id") if resp.data else None
         scraper_log(f"Successfully inserted new job: {job['listing_url']}")
         return "added", inserted_id
@@ -267,7 +285,7 @@ def save_job(job, source_id):
             if existing and existing.get("id"):
                 scraper_log(f"Found existing row after failed insert, updating id={existing['id']}")
                 try:
-                    row = _build_update_row(job, source_id, existing)
+                    row = _build_update_row(job, source_id, existing, organization_id=organization_id)
                     supabase.table("jobs").update(row).eq("id", existing["id"]).execute()
                     scraper_log(f"Updated existing job after insert conflict: {job['listing_url']}")
                     return "updated", existing["id"]

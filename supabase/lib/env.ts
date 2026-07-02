@@ -8,6 +8,7 @@ export type { TargetEnv } from "../../scripts/parse-env";
 export interface SupabaseConfig {
   supabaseUrl: string;
   anonKey: string;
+  secretKey?: string;
   projectRef?: string;
 }
 
@@ -39,6 +40,8 @@ export function loadTargetEnv(
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     process.env.SUPABASE_ANON_KEY;
 
+  const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
   if (!supabaseUrl || !anonKey) {
     console.error(
       "✗ Error: Missing SUPABASE_URL or ANON_KEY environment variables.",
@@ -56,5 +59,5 @@ export function loadTargetEnv(
     }
   }
 
-  return { supabaseUrl, anonKey, projectRef };
+  return { supabaseUrl, anonKey, secretKey, projectRef };
 }

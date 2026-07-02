@@ -134,7 +134,8 @@ async function main() {
   );
 
   try {
-    const spec = await fetchOpenApiSpec(config.supabaseUrl, config.anonKey);
+    const apiKey = config.secretKey ?? config.anonKey;
+    const spec = await fetchOpenApiSpec(config.supabaseUrl, apiKey);
 
     fs.mkdirSync(tempDir, { recursive: true });
     fs.writeFileSync(tempSpecPath, JSON.stringify(spec, null, 2));
