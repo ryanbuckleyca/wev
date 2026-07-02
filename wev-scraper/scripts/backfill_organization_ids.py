@@ -165,7 +165,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--env",
-        choices=["local", "staging"],
+        choices=["local", "staging", "prod"],
         default="local",
         help="Target environment (default: local)",
     )
