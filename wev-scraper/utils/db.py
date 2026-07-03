@@ -215,7 +215,13 @@ def _build_update_row(job, source_id, existing_data, *, organization_id=None):
 
     # Use field management to preserve appropriate fields
     from utils.field_management import build_update_row_with_field_preservation
-    return build_update_row_with_field_preservation(row, source_id, existing_data)
+    row = build_update_row_with_field_preservation(row, source_id, existing_data)
+
+    # When resolution returned nothing, drop organization_id so existing
+    # DB value is preserved rather than overwritten with NULL.
+    if organization_id is None:
+        row.pop("organization_id", None)
+    return row
 
 
 def save_job(job, source_id, *, resolver=None):
