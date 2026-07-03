@@ -62,6 +62,15 @@ def create_resolver(supabase_client=None) -> OrganizationResolver:
 
 
 class OrganizationResolver:
+    """Resolves a job to an organization by name + location.
+
+    The unique index on (name, location) means the system creates separate
+    records per (name, location) pair.  It has no mechanism to say "Sobeys is
+    one org across all locations" — two jobs for the same employer in different
+    cities will produce distinct org rows.  This is intentional for now; if we
+    later need national/regional dedup, the design will need to change.
+    """
+
     def __init__(
         self,
         repo: OrganizationRepository,
