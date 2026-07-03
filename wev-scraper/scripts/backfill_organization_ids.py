@@ -117,12 +117,12 @@ def run_backfill(
 
                 if org_id is not None:
                     logger.info("job_id=%s → organization_id=%s", job_id, org_id)
-                    resolved += 1
 
                     if not dry_run:
                         supabase.table("jobs").update(
                             {"organization_id": org_id}
                         ).eq("id", job_id).execute()
+                    resolved += 1
                 else:
                     unresolved += 1
                     logger.warning(
