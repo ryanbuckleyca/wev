@@ -253,6 +253,8 @@ def save_job(job, source_id, *, resolver=None):
     # Resolve organization — we're about to write (insert or update)
     organization_id = None
     if resolver is not None:
+        # Use existing DB id on update path (more useful for logging/slug seed)
+        resolver_job_id = existing_data["id"] if existing_data else job.get("id")
         organization_id = resolver.resolve(
             raw_name=job.get("organization", ""),
             municipality=job.get("municipality"),
@@ -260,7 +262,7 @@ def save_job(job, source_id, *, resolver=None):
             location=job.get("location"),
             job_title=job.get("job_title", ""),
             description=job.get("description", ""),
-            job_id=job.get("id"),
+            job_id=resolver_job_id,
         )
 
     if existing_data:
