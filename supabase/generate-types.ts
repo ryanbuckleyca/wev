@@ -1,13 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { config as loadEnv } from "dotenv";
+import { loadTargetEnv } from "./lib/env";
+import { printExecError } from "./lib/error";
 
 function main() {
-  const envPath = fs.existsSync(".env") ? ".env" : path.join("..", ".env");
-  loadEnv({ path: envPath });
-
   const target = process.argv[2] || "local";
+  const config = loadTargetEnv(target);
+  if (!config) process.exit(1);
+
   const outputPath = path.join(
     process.cwd(),
     "wev-bulletin",
@@ -21,18 +22,7 @@ function main() {
   if (target === "local") {
     command += " --local";
   } else {
-    // If staging/prod, we need the project ID
-    let projectRef = process.env.SUPABASE_PROJECT_REF;
-
-    if (!projectRef && process.env.SUPABASE_URL) {
-      try {
-        const urlObj = new URL(process.env.SUPABASE_URL);
-        projectRef = urlObj.hostname.split(".")[0];
-      } catch (e) {
-        // ignore
-      }
-    }
-
+    const { projectRef } = config;
     if (!projectRef || projectRef === "localhost" || projectRef === "127") {
       console.error(
         "✗ Error: Valid SUPABASE_PROJECT_REF is required to generate remote types.",
@@ -53,10 +43,8 @@ function main() {
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, typesHeader + output);
     console.log(`✓ Wrote ${outputPath}`);
-  } catch (error: any) {
-    console.error("❌ Failed to generate types.");
-    if (error.stdout) console.error(error.stdout);
-    if (error.stderr) console.error(error.stderr);
+  } catch (error: unknown) {
+    printExecError(error, "❌ Failed to generate types.");
     process.exit(1);
   }
 }

@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from utils.constants import BROWSER_USER_AGENT
 from utils.date_utils import _parse_localized_date, is_recent_job
-from utils.env import is_truthy_env
+from utils.env import is_truthy_env, get_int_env
 from utils.log import scraper_log
 from utils.normalize import normalize_job_data
 from utils.url import normalize_listing_url
@@ -216,18 +216,8 @@ class BaseScraper:
         # Standardized job page wait/timeout configuration
         self.job_page_timeout_ms = 10_000
         # Resolve job limits once at construction time so they're stable across pages
-        self._max_jobs = self._parse_int_env("MAX_JOBS_PER_SOURCE")
-        self._max_jobs_per_page = self._parse_int_env("MAX_JOBS_PER_PAGE")
-
-    @staticmethod
-    def _parse_int_env(name: str) -> int | None:
-        val = os.environ.get(name)
-        if not val:
-            return None
-        try:
-            return int(val)
-        except ValueError:
-            return None
+        self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
+        self._max_jobs_per_page = get_int_env("MAX_JOBS_PER_PAGE")
 
     # ---- Subclass hooks ----
     def get_listings_url(self, filter_value=None):
