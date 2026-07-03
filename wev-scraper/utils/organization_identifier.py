@@ -12,6 +12,7 @@ import json
 import logging
 import re
 from typing import TypedDict
+from urllib.parse import urlparse
 
 from llm.factory import get_sse_provider
 from utils.sse_prompts import JSON_INSTRUCTIONS
@@ -197,10 +198,17 @@ class OrganizationIdentifier:
         raw_description = data.get("description")
         description = str(raw_description)[:300] if raw_description else None
 
+        raw_website = data.get("website")
+        website = None
+        if raw_website:
+            parsed = urlparse(str(raw_website).strip())
+            if parsed.scheme in ("http", "https"):
+                website = str(raw_website).strip()
+
         return OrgIdentificationResult(
             canonical_name=str(canonical_name).strip(),
             slug=str(data.get("slug") or "").strip(),
-            website=str(data["website"]).strip() if data.get("website") else None,
+            website=website,
             description=description,
             type=org_type,
         )
