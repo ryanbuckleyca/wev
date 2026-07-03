@@ -74,6 +74,22 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- Dedup pre-flight: remove rows that would violate the upcoming identity index.
+-- The FK to jobs hasn't been added yet (step 7), so there are no references.
+-- Keep the row with the lowest id per normalized identity group.
+DELETE FROM public.organizations
+WHERE id IN (
+  SELECT id FROM (
+    SELECT id,
+      ROW_NUMBER() OVER (
+        PARTITION BY lower(btrim(name)), coalesce(nullif(lower(btrim(location)), ''), '')
+        ORDER BY id
+      ) AS rn
+    FROM public.organizations
+  ) dups
+  WHERE rn > 1
+);
+
 -- Case-insensitive normalized identity index — treats null/empty location as ''
 -- so repeated inserts for the same organization (regardless of location presence)
 -- are rejected.
