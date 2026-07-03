@@ -96,6 +96,11 @@ class TestMakeCacheKey:
         loc_part = make_cache_key("My Org", None, "QC").split("|", 1)[1]
         assert "qc" in loc_part
 
+    def test_location_param_used_when_muni_and_province_are_none(self):
+        """When both municipality and province are None, the location param is used."""
+        key = make_cache_key("My Org", None, None, location="Montreal QC")
+        assert key.endswith("montreal qc")
+
     def test_empty_when_no_location_evidence(self):
         key = make_cache_key("My Org", None, None)
         assert key.endswith("|")

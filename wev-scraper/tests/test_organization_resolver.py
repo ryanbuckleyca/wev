@@ -119,7 +119,7 @@ class TestLLMSuccessPath:
         cache = OrganizationCache()
         resolver = OrganizationResolver(repo=repo, cache=cache, identifier=identifier)
 
-        result = resolver.resolve("Le Depot", "Montreal", "QC", "Food Coordinator", "description here")
+        result = resolver.resolve("Le Depot", "Montreal", "QC", job_title="Food Coordinator", description="description here")
 
         assert result == 201
         assert cache.get("le depot|montreal qc") == 201
@@ -186,7 +186,7 @@ class TestLLMFailurePath:
             repo=repo, cache=OrganizationCache(), identifier=identifier
         )
 
-        result = resolver.resolve("Some Org", "City", "ON", "Title", "desc")
+        result = resolver.resolve("Some Org", "City", "ON", job_title="Title", description="desc")
 
         assert result == 500
 
@@ -268,3 +268,50 @@ class TestSameRunDedup:
         assert id1 == id2
         # Second call hit the cache — find_by_name only called once
         repo.find_by_name.assert_called_once()
+
+
+# ── Location-only path (no municipality/province) ─────────────────────────────
+
+
+class TestLocationOnlyPath:
+    def test_cache_hit_with_location_only(self):
+        cache = OrganizationCache()
+        cache.set("test org|montreal qc", 99)
+        repo = _make_repo()
+        resolver = OrganizationResolver(repo=repo, cache=cache, identifier=None)
+
+        result = resolver.resolve("Test Org", location="Montreal QC")
+
+        assert result == 99
+        repo.find_by_name.assert_not_called()
+
+    def test_db_match_with_location_only(self):
+        org_rows = [{"id": 10, "name": "Test Org", "location": "Montreal QC"}]
+        repo = _make_repo(find_by_name=org_rows)
+        cache = OrganizationCache()
+        resolver = OrganizationResolver(repo=repo, cache=cache, identifier=None)
+
+        result = resolver.resolve("Test Org", location="Montreal QC")
+
+        assert result == 10
+        assert cache.get("test org|montreal qc") == 10
+
+    def test_uses_minimal_when_location_does_not_match(self):
+        org_rows = [{"id": 10, "name": "Test Org", "location": "Vancouver BC"}]
+        repo = _make_repo(find_by_name=org_rows, insert={"id": 77})
+        resolver = _make_resolver(repo=repo, identifier=None)
+
+        result = resolver.resolve("Test Org", location="Montreal QC")
+
+        assert result == 77  # location mismatch → minimal fallback
+
+    def test_location_fallback_in_canonical_location(self):
+        repo = _make_repo(find_by_name=[], insert={"id": 88})
+        resolver = _make_resolver(repo=repo, identifier=None)
+
+        result = resolver.resolve("Org", location="Montreal QC")
+
+        assert result == 88
+        # minimal inserts with canonical_loc="Montreal QC"
+        repo.insert.assert_called_once()
+        assert repo.insert.call_args[0][0]["location"] == "Montreal QC"

@@ -18,6 +18,7 @@ class JobContext:
     raw_name: str
     municipality: str | None = None
     province: str | None = None
+    location: str | None = None
     job_title: str = ""
     description: str = ""
     job_id: str | None = None
@@ -81,6 +82,7 @@ class OrganizationResolver:
         raw_name: str,
         municipality: str | None = None,
         province: str | None = None,
+        location: str | None = None,
         job_title: str = "",
         description: str = "",
         job_id: str | None = None,
@@ -92,6 +94,7 @@ class OrganizationResolver:
             raw_name=raw_name.strip(),
             municipality=municipality,
             province=province,
+            location=location,
             job_title=job_title,
             description=description,
             job_id=job_id,
@@ -110,7 +113,7 @@ class OrganizationResolver:
             return None
 
     def _resolve_inner(self, ctx: JobContext) -> int | None:
-        cache_key = make_cache_key(ctx.raw_name, ctx.municipality, ctx.province)
+        cache_key = make_cache_key(ctx.raw_name, ctx.municipality, ctx.province, ctx.location)
 
         cached_id = self._cache.get(cache_key)
         if cached_id is not None:
@@ -120,7 +123,7 @@ class OrganizationResolver:
         if db_id is not None:
             return db_id
 
-        canonical_loc = canonical_location(ctx.municipality, ctx.province, None)
+        canonical_loc = canonical_location(ctx.municipality, ctx.province, ctx.location)
 
         if self._identifier is not None:
             llm_id = self._llm_resolve(ctx, cache_key, canonical_loc)
@@ -136,7 +139,7 @@ class OrganizationResolver:
 
         compatible = [
             c for c in candidates
-            if _location_is_compatible(c.get("location"), ctx.municipality, ctx.province)
+            if _location_is_compatible(c.get("location"), ctx.municipality, ctx.province, ctx.location)
         ]
 
         if len(compatible) != 1:
