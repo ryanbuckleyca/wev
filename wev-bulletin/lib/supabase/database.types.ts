@@ -257,6 +257,7 @@ export type Database = {
           min_value: number | null;
           municipality: string | null;
           organization: string;
+          organization_id: number | null;
           province: string | null;
           scraped_at: string;
           skills: string[];
@@ -297,6 +298,7 @@ export type Database = {
           min_value?: number | null;
           municipality?: string | null;
           organization: string;
+          organization_id?: number | null;
           province?: string | null;
           scraped_at?: string;
           skills?: string[];
@@ -337,6 +339,7 @@ export type Database = {
           min_value?: number | null;
           municipality?: string | null;
           organization?: string;
+          organization_id?: number | null;
           province?: string | null;
           scraped_at?: string;
           skills?: string[];
@@ -352,6 +355,13 @@ export type Database = {
         };
         Relationships: [
           {
+            foreignKeyName: 'jobs_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
             foreignKeyName: 'jobs_source_id_fkey';
             columns: ['source_id'];
             isOneToOne: false;
@@ -363,24 +373,48 @@ export type Database = {
       organizations: {
         Row: {
           created_at: string;
+          description: string | null;
           id: number;
-          name: string | null;
+          is_sse: boolean | null;
+          location: string | null;
+          logo_url: string | null;
+          name: string;
+          slug: string;
+          sse_details: Json | null;
+          sse_rating: string | null;
           type: string | null;
           values: string | null;
+          website: string | null;
         };
         Insert: {
           created_at?: string;
+          description?: string | null;
           id?: number;
-          name?: string | null;
+          is_sse?: boolean | null;
+          location?: string | null;
+          logo_url?: string | null;
+          name: string;
+          slug: string;
+          sse_details?: Json | null;
+          sse_rating?: string | null;
           type?: string | null;
           values?: string | null;
+          website?: string | null;
         };
         Update: {
           created_at?: string;
+          description?: string | null;
           id?: number;
-          name?: string | null;
+          is_sse?: boolean | null;
+          location?: string | null;
+          logo_url?: string | null;
+          name?: string;
+          slug?: string;
+          sse_details?: Json | null;
+          sse_rating?: string | null;
           type?: string | null;
           values?: string | null;
+          website?: string | null;
         };
         Relationships: [];
       };
@@ -598,6 +632,7 @@ export type Database = {
           min_value: number | null;
           municipality: string | null;
           organization: string | null;
+          organization_id: number | null;
           province: string | null;
           scraped_at: string | null;
           skill_score: number | null;
@@ -615,6 +650,13 @@ export type Database = {
           work_type: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'jobs_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'jobs_source_id_fkey';
             columns: ['source_id'];

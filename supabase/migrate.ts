@@ -1,4 +1,4 @@
-import { execSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { envHelpLines, parseEnvFlag } from "../scripts/parse-env";
@@ -92,17 +92,8 @@ function runMigration(target: string, dryRun: boolean) {
   console.log(`▶ Linking to project: ${projectRef}`);
   execVerbose(`supabase link --project-ref "${projectRef}"`);
 
-  console.log(
-    `▶ Syncing migration history (fetching any missing files from remote)...`,
-  );
-  try {
-    execSync(`${LOCAL_SUPABASE_CLI} migration fetch --linked`, {
-      stdio: "pipe",
-      env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "true" },
-    });
-  } catch {
-    console.log("ℹ️  No remote-only migrations found or fetch failed.");
-  }
+  console.log(`▶ Fetching remote migration state...`);
+  execVerbose(`supabase migration fetch --linked`);
 
   let dbPushCmd = `${LOCAL_SUPABASE_CLI} db push --yes`;
   if (dryRun) dbPushCmd += " --dry-run";

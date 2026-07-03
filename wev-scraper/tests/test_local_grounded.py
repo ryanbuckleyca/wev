@@ -46,30 +46,34 @@ def test_local_grounded_is_not_available_missing_model(provider):
 def test_local_grounded_complete_no_grounding(provider):
     """Standard completion without grounding."""
     with patch.object(provider, "_check_ollama", return_value=True), \
-         patch("ollama.generate") as mock_gen:
+         patch.object(provider, "_get_ollama_client") as mock_get_client:
 
-        mock_gen.return_value = {"response": "2+2=4"}
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_client.generate.return_value = {"response": "2+2=4"}
 
         response = provider.complete("What is 2+2?", task="summarization")
         assert response == "2+2=4"
-        mock_gen.assert_called_once()
+        mock_client.generate.assert_called_once()
         # Verify no grounding block was added
-        assert "Using these search results as context" not in mock_gen.call_args[1]["prompt"]
+        assert "Using these search results as context" not in mock_client.generate.call_args[1]["prompt"]
 
 def test_local_grounded_complete_with_grounding(provider):
     """Completion with grounding for SSE task."""
     with patch.object(provider, "_check_ollama", return_value=True), \
          patch.object(provider, "_check_tavily", return_value=True), \
          patch.object(provider, "_search_context", return_value="Some context"), \
-         patch("ollama.generate") as mock_gen:
+         patch.object(provider, "_get_ollama_client") as mock_get_client:
 
-        mock_gen.return_value = {"response": "SSE confirmed"}
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_client.generate.return_value = {"response": "SSE confirmed"}
 
         response = provider.complete("Is it SSE?", task="sse")
         assert response == "SSE confirmed"
 
         # Verify grounding was used
-        prompt = mock_gen.call_args[1]["prompt"]
+        prompt = mock_client.generate.call_args[1]["prompt"]
         assert "Using these search results as context" in prompt
         assert "Some context" in prompt
         assert "Is it SSE?" in prompt
@@ -79,7 +83,10 @@ def test_local_grounded_search_query_param(provider):
     with patch.object(provider, "_check_ollama", return_value=True), \
          patch.object(provider, "_check_tavily", return_value=True), \
          patch.object(provider, "_search_context") as mock_search, \
-         patch("ollama.generate"):
+         patch.object(provider, "_get_ollama_client") as mock_get_client:
+
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
 
         provider.complete("Long prompt...", task="sse", search_query="Target Org")
         mock_search.assert_called_once_with("Target Org")

@@ -1,0 +1,103 @@
+"""Slug generation utilities for organization names.
+
+Provides URL-safe kebab-case slug generation with uniqueness enforcement.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import re
+import unicodedata
+from collections.abc import Callable
+
+
+def nfkd_to_ascii(s: str) -> str:
+    """NFKD-normalize then strip non-ASCII characters.
+
+    Shared between slug generation and cache key normalization so the two
+    code paths produce identical ASCII output for any input.
+    """
+    normalized = unicodedata.normalize("NFKD", s)
+    return normalized.encode("ascii", errors="ignore").decode("ascii")
+
+
+def generate_slug(name: str) -> str:
+    """Convert an organization name to a URL-safe kebab-case slug.
+
+    Steps:
+      1. NFKD normalize — decomposes accented chars (é → e + combining acute).
+      2. Encode to ASCII bytes ignoring non-ASCII combining characters.
+      3. Decode back to str (pure ASCII at this point).
+      4. Lowercase.
+      5. Remove characters that are not [a-z0-9 ] (spaces preserved for now).
+      6. Replace spaces with hyphens.
+      7. Collapse consecutive hyphens into one.
+      8. Strip leading/trailing hyphens.
+
+    NOTE: Do NOT add a separate French accent map — NFKD normalization handles
+    all French accents automatically. A duplicate map creates dead code.
+
+    Requirements: 10.1, 10.5
+    """
+    if not name:
+        return ""
+    ascii_str = nfkd_to_ascii(name)
+    lowered = ascii_str.lower()
+    cleaned = "".join(c if c.isalnum() or c == " " else "" for c in lowered)
+    slug = re.sub(r"-+", "-", cleaned.replace(" ", "-")).strip("-")
+    return slug
+
+
+def generate_unique_slug(
+    name: str = "",
+    exists_fn: Callable[[str], bool] | None = None,
+    max_attempts: int = 10,
+    *,
+    base: str | None = None,
+    seed: str | None = None,
+    batch_exists_fn: Callable[[list[str]], set[str]] | None = None,
+) -> str:
+    """Generate a unique slug, appending -2, -3, … until the slug is available.
+
+    Accepts either a ``name`` (run through ``generate_slug`` first) or a
+    pre-computed ``base``.  When ``base`` is empty/absent the unnamed-<hash>
+    fallback is used.  If ``batch_exists_fn`` is provided suffix candidates
+    are checked in a single DB round-trip; otherwise ``exists_fn`` is called
+    sequentially.
+
+    Requirements: 10.2, 4.3
+    """
+    if exists_fn is None and batch_exists_fn is None:
+        raise ValueError("At least one of exists_fn or batch_exists_fn is required")
+
+    if base is None:
+        base = generate_slug(name)
+
+    if not base:
+        source = f"unnamed-{seed}" if seed else (name or "unnamed")
+        digest = hashlib.sha256(source.encode("utf-8")).hexdigest()[:8]
+        base = f"unnamed-{digest}"
+
+    if exists_fn is not None:
+        if not exists_fn(base):
+            return base
+    elif batch_exists_fn is not None:
+        # Guard: only batch function provided — check base via batch too
+        if base not in batch_exists_fn([base]):
+            return base
+
+    candidates = [f"{base}-{i}" for i in range(2, max_attempts + 1)]
+
+    if batch_exists_fn is not None:
+        existing = batch_exists_fn(candidates)
+        for slug in candidates:
+            if slug not in existing:
+                return slug
+    else:
+        for i in range(2, max_attempts + 1):
+            candidate = f"{base}-{i}"
+            if not exists_fn(candidate):
+                return candidate
+
+    digest = hashlib.sha256(base.encode("utf-8")).hexdigest()[:8]
+    return f"{base}-{digest}"

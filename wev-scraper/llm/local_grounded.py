@@ -33,6 +33,15 @@ class LocalGroundedProvider(BaseLLMProvider):
         self.model: str = os.getenv("LOCAL_LLM_MODEL", "mistral")
         self._ollama_available = None
         self._tavily_available = None
+        try:
+            self._call_timeout_sec = int(os.getenv("LOCAL_LLM_CALL_TIMEOUT_SEC", "120"))
+        except (TypeError, ValueError):
+            self._call_timeout_sec = 120
+            logger.warning(
+                "LOCAL_LLM_CALL_TIMEOUT_SEC is not a valid integer, falling back to %s",
+                self._call_timeout_sec,
+            )
+        self._ollama_client = None
 
     def _init_tavily(self):
         """Initialize Tavily client if not already done."""
@@ -123,13 +132,20 @@ class LocalGroundedProvider(BaseLLMProvider):
         except Exception as e:
             raise LLMProviderError(f"Tavily search failed: {e}") from e
 
+    def _get_ollama_client(self):
+        """Return a cached Ollama client with configured timeout."""
+        if self._ollama_client is None:
+            import ollama
+            self._ollama_client = ollama.Client(timeout=self._call_timeout_sec)
+        return self._ollama_client
+
     def _generate_with_ollama(self, prompt: str, json_mode: bool = False) -> str:
         """Generate response using local Ollama model."""
         if not self._check_ollama():
             raise LLMProviderError(f"Ollama not available or model '{self.model}' not found")
 
         try:
-            import ollama
+            client = self._get_ollama_client()
 
             options = {
                 "num_predict": 2000,
@@ -167,7 +183,7 @@ class LocalGroundedProvider(BaseLLMProvider):
 
             t0 = time.perf_counter()
             try:
-                response = ollama.generate(
+                response = client.generate(
                     model=self.model,
                     prompt=prompt,
                     options=options,
