@@ -7,7 +7,6 @@ Validates: Requirements 10.1, 10.2, 10.4, 10.5, 4.3
 
 import re
 
-import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -171,7 +170,7 @@ class TestGenerateUniqueSlugExamples:
 ))
 @settings(max_examples=500)
 def test_generate_slug_invariants(name: str):
-    """Property 11: For any org name string, generate_slug produces a valid slug.
+    r"""Property 11: For any org name string, generate_slug produces a valid slug.
 
     Asserts:
       a) all-lowercase

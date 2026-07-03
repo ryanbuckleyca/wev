@@ -14,9 +14,9 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from utils.organization_identifier import (
+    _PROMPT_DESC_MAX_CHARS,
     ORG_TYPE_VALUES,
     OrganizationIdentifier,
-    _PROMPT_DESC_MAX_CHARS,
 )
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

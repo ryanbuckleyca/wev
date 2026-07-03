@@ -5,10 +5,7 @@ Validates: Requirements 2.5, 2.7
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from utils.organization_repository import OrganizationRepository, _escape_like
-
 
 # ── _escape_like ────────────────────────────────────────────────────────────────
 
