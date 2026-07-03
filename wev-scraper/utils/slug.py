@@ -54,7 +54,7 @@ def generate_unique_slug(
     max_attempts: int = 10,
     *,
     base: str | None = None,
-    seed: str = "",
+    seed: str | None = None,
     batch_exists_fn: Callable[[list[str]], set[str]] | None = None,
 ) -> str:
     """Generate a unique slug, appending -2, -3, … until the slug is available.
@@ -74,7 +74,7 @@ def generate_unique_slug(
         base = generate_slug(name)
 
     if not base:
-        source = f"unnamed-{seed}" if seed else name
+        source = f"unnamed-{seed}" if seed else (name or "unnamed")
         digest = hashlib.sha256(source.encode("utf-8")).hexdigest()[:8]
         base = f"unnamed-{digest}"
 
