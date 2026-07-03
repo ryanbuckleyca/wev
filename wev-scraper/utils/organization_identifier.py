@@ -193,8 +193,6 @@ class OrganizationIdentifier:
         if org_type not in ORG_TYPE_VALUES:
             org_type = None
 
-        # Cap description at 300 chars (stored field limit)
-        # Must stay in sync with _PROMPT_DESC_MAX_CHARS above
         raw_description = data.get("description")
         description = str(raw_description)[:300] if raw_description else None
 

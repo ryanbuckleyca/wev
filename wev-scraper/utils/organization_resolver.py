@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
 from utils.organization_identifier import OrganizationIdentifier
 from utils.organization_repository import OrganizationRepository
-from utils.slug import generate_slug, generate_unique_slug
+from utils.slug import generate_slug, generate_unique_slug, nfkd_to_ascii
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +34,8 @@ def _location_is_compatible(
     province: str | None,
     location: str | None = None,
 ) -> bool:
-    job_canonical = canonical_location(municipality, province, location).strip().lower()
-    cand = (candidate_location or "").strip().lower()
+    job_canonical = nfkd_to_ascii(canonical_location(municipality, province, location)).strip().lower()
+    cand = nfkd_to_ascii(candidate_location or "").strip().lower()
 
     if not job_canonical or not cand:
         return False
@@ -47,7 +47,7 @@ def _location_is_compatible(
     # "Montréal QC" share only "qc").  When the job has a known municipality,
     # require the municipality words to appear in the candidate location.
     if municipality:
-        muni_words = set(municipality.strip().lower().translate(_REMOVE_PUNCTUATION).split())
+        muni_words = set(nfkd_to_ascii(municipality).strip().lower().translate(_REMOVE_PUNCTUATION).split())
         if not (muni_words <= cand_words):
             return False
 
@@ -95,9 +95,14 @@ class OrganizationResolver:
         self._identifier = identifier
 
     @staticmethod
-    def _is_identity_conflict(exc: Exception) -> bool:
-        # Only match Postgres unique/PK violations, not CHECK constraints
-        return "duplicate key" in str(exc).lower()
+    def _classify_conflict(exc: Exception) -> str | None:
+        """Return 'slug', 'identity', or None for non-constraint errors."""
+        exc_str = str(exc).lower()
+        if "duplicate key" not in exc_str:
+            return None
+        if "slug_key" in exc_str:
+            return "slug"
+        return "identity"
 
     def resolve(
         self,
@@ -223,31 +228,47 @@ class OrganizationResolver:
     def _insert_or_resolve_conflict(
         self, row: dict, cache_key: str, job_id: str | None = None,
     ) -> int | None:
-        try:
-            data = self._repo.insert(row)
-            if data:
-                org_id = data["id"]
-                self._cache.set(cache_key, org_id)
-                return org_id
-            return None
-        except Exception as exc:
-            if not self._is_identity_conflict(exc):
+        for _attempt in range(3):
+            try:
+                data = self._repo.insert(row)
+                if data:
+                    org_id = data["id"]
+                    self._cache.set(cache_key, org_id)
+                    return org_id
+                return None
+            except Exception as exc:
+                kind = self._classify_conflict(exc)
+                if kind is None:
+                    logger.error(
+                        "OrganizationResolver: non-constraint insert error for raw_name=%r job_id=%s: %s",
+                        row.get("name"),
+                        job_id,
+                        exc,
+                    )
+                    return None
+                if kind == "slug":
+                    # TOCTOU race: slug was available at check time but taken
+                    # before insert completed.  Retry with a fresh slug.
+                    row["slug"] = self._find_available_slug(row.get("slug", ""), seed=job_id)
+                    continue
+
+                # Identity conflict (name+location) — re-select existing row.
+                existing_id = self._repo.find_by_name_and_location(
+                    row.get("name", ""), row.get("location"),
+                )
+                if existing_id:
+                    self._cache.set(cache_key, existing_id)
+                    return existing_id
+
                 logger.error(
-                    "OrganizationResolver: non-constraint insert error for raw_name=%r job_id=%s: %s",
+                    "OrganizationResolver: identity conflict but re-select found nothing for %r job_id=%s",
                     row.get("name"),
                     job_id,
-                    exc,
                 )
                 return None
 
-            existing_id = self._repo.find_by_name_and_location(row.get("name", ""), row.get("location"))
-            if existing_id:
-                self._cache.set(cache_key, existing_id)
-                return existing_id
-
-            logger.error(
-                "OrganizationResolver: insert conflict but re-select found nothing for %r job_id=%s",
-                row.get("name"),
-                job_id,
-            )
-            return None
+        logger.error(
+            "OrganizationResolver: exceeded slug conflict retry limit for job_id=%s",
+            job_id,
+        )
+        return None

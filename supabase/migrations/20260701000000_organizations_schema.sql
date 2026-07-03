@@ -12,8 +12,9 @@
 --   5. Add CHECK constraints
 --   6. Add uniqueness indexes
 --   7. Add organization_id FK to jobs
---   8. Create index on jobs(organization_id)
---   9. Recreate matched_jobs view and re-grant SELECT
+--   8. Recreate matched_jobs view and re-grant SELECT
+-- (jobs(organization_id) index is built CONCURRENTLY in
+--  20260701000001_add_jobs_organization_id_idx_concurrently.sql)
 
 -- ── 1. Add new nullable columns ─────────────────────────────────────────────
 
