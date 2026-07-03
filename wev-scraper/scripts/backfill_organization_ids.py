@@ -9,7 +9,7 @@ Usage:
 
 Options:
     --dry-run                 Log what would happen without writing to DB
-    --env local|staging       Target environment (default: local)
+    --env local|staging|prod  Target environment (default: local)
     --batch-size N            Jobs per batch (default: 50)
     --batch-delay-seconds N   Seconds between batches (default: 2)
 
