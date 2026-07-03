@@ -38,6 +38,15 @@ def _location_is_compatible(
 
     cand_words = set(cand.split())
     job_words = set(job_canonical.split())
+
+    # Province-only word overlap is ambiguous (e.g. "Trois-Rivières QC" vs
+    # "Montréal QC" share only "qc").  When the job has a known municipality,
+    # require the municipality words to appear in the candidate location.
+    if municipality:
+        muni_words = set(municipality.strip().lower().split())
+        if not (muni_words <= cand_words):
+            return False
+
     return bool(cand_words & job_words)
 
 
