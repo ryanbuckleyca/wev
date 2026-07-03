@@ -178,7 +178,7 @@ def test_lru_eviction_invariant(entries, max_size):
     if len(entries) > max_size:
         # The earliest entries (LRU) should have been evicted
         evicted_keys = [k for k, _ in entries[:-max_size]]
-        surviving_keys = [k for k, _ in entries[-max_size:]]
+        [k for k, _ in entries[-max_size:]]
 
         for k in evicted_keys:
             assert cache.get(k) is None, f"Evicted key {k!r} still in cache"

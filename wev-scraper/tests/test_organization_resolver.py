@@ -5,8 +5,6 @@ Validates: Requirements 2.2, 2.3, 2.4, 2.6, 2.7, 2.11
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from utils.organization_cache import OrganizationCache
 from utils.organization_repository import OrganizationRepository
 from utils.organization_resolver import OrganizationResolver
