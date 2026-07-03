@@ -34,17 +34,13 @@ UPDATE public.organizations
   WHERE name IS NULL;
 
 -- ── 3. Backfill slug for all existing rows ───────────────────────────────────
--- Uses raw SQL regex (not Python generate_slug() NFKD logic).
+-- Applies unaccent() first (extension enabled in 20260406132800) so common
+-- French diacritics (é, è, ê, ç, etc.) are decomposed before stripping, then
+-- regexp_replace handles the NFKD result identically to generate_slug().
 -- The || '-' || id::text suffix guarantees uniqueness regardless of name.
---
--- KNOWN ISSUE: regexp_replace treats accented characters (é, è, ê, ç, etc.)
--- as non-matching and replaces them with '-', producing incorrect slugs like
--- "centraide-montr-al-42" instead of "centraide-montreal-42". The -id suffix
--- guarantees uniqueness, but slugs are semantically wrong for French names.
--- To fix, run a one-off Python script using generate_slug() on affected rows.
 
 UPDATE public.organizations
-  SET slug = lower(regexp_replace(name, '[^a-zA-Z0-9]+', '-', 'g')) || '-' || id::text
+  SET slug = lower(regexp_replace(public.f_unaccent(name), '[^a-zA-Z0-9]+', '-', 'g')) || '-' || id::text
   WHERE slug IS NULL;
 
 -- ── 4. Set NOT NULL ──────────────────────────────────────────────────────────
