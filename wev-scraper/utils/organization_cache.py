@@ -68,7 +68,8 @@ def make_cache_key(
     name: str,
     municipality: str | None,
     province: str | None,
+    location: str | None = None,
 ) -> str:
     normalized_name = _normalize(name or "")
-    normalized_location = _normalize(canonical_location(municipality, province, None))
+    normalized_location = _normalize(canonical_location(municipality, province, location))
     return f"{normalized_name}|{normalized_location}"

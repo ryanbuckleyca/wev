@@ -257,6 +257,7 @@ def save_job(job, source_id, *, resolver=None):
             raw_name=job.get("organization", ""),
             municipality=job.get("municipality"),
             province=job.get("province"),
+            location=job.get("location"),
             job_title=job.get("job_title", ""),
             description=job.get("description", ""),
             job_id=job.get("id"),

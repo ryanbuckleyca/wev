@@ -107,6 +107,7 @@ def run_backfill(
                     raw_name=row.get("organization", ""),
                     municipality=row.get("municipality"),
                     province=row.get("province"),
+                    location=row.get("location"),
                     job_title=row.get("job_title", ""),
                     description=row.get("description", ""),
                     job_id=job_id,
