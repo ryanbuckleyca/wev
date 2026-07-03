@@ -84,10 +84,9 @@ class TestOrganizationCache:
 class TestMakeCacheKey:
     def test_municipality_and_province(self):
         key = make_cache_key("Centraide Montréal", "Montreal", "QC")
-        # Lowercased, accents stripped (NFKD not applied here — raw lowercasing)
-        # "Centraide Montréal" lowercased → "centraide montréal"
-        # Non-ASCII stripped → "centraide montral" or similar depending on encoding
-        # The key must be deterministic regardless
+        # NFKD via nfkd_to_ascii() decomposes é → e, then strips non-ASCII combining chars
+        # "Centraide Montréal" → "Centraide Montreal" → "centraide montreal"
+        # The key must be deterministic regardless of input encoding
         key2 = make_cache_key("Centraide Montréal", "Montreal", "QC")
         assert key == key2
 
