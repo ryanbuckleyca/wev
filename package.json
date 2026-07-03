@@ -31,7 +31,7 @@
     "cleanup:duplicates": "npx tsx supabase/cleanup-duplicates.ts",
     "coverage:guidelines": "npm run test:coverage:bulletin && node scripts/generate-scraper-coverage.cjs && node scripts/check-testing-guidelines-coverage.cjs",
     "coverage:guidelines:strict": "npm run test:coverage:bulletin && node scripts/generate-scraper-coverage.cjs && node scripts/check-testing-guidelines-coverage.cjs --strict",
-    "dev": "dotenv -e .env -- npm run build -w wev-bulletin",
+    "dev": "npm run dev -w wev-bulletin",
     "help": "node scripts/help.cjs",
     "lint": "trunk check",
     "lint:fix": "trunk fmt && trunk check --fix",
@@ -73,6 +73,7 @@
     "test:scraper": "cd wev-scraper && (./venv/bin/pytest -p no:asyncio tests scrapers || python3 -m pytest -p no:asyncio tests scrapers)",
     "tsc": "npm run tsc -w wev-bulletin",
     "types:supabase": "npx tsx supabase/generate-types.ts",
+    "types:python": "npx tsx supabase/generate-types-python.ts",
     "verify": "npm run lint && npm run tsc && npm run test",
     "verify:fix": "npm run lint:fix && npm run tsc && npm run test"
   }

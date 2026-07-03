@@ -64,6 +64,7 @@ class ScraperOrchestrator:
         self.existing_urls: Set[str] = set()
         self.source_attempts: Dict[str, int] = {}
         self.post_scrape_errors = 0
+        self.resolver = None  # Initialized in run() to ensure env is loaded first
 
     def had_failures(self) -> bool:
         """True when any source scrape or post-scrape step failed."""
@@ -79,6 +80,8 @@ class ScraperOrchestrator:
             # 1. Setup
             sources = self._fetch_sources()
             self.existing_urls = self._fetch_existing_job_urls()
+            from utils.organization_resolver import create_resolver
+            self.resolver = create_resolver()
 
             # 2. Main Loop
             queue = sources.copy()
@@ -227,7 +230,7 @@ class ScraperOrchestrator:
         job_ids = []
         for job in jobs:
             try:
-                result, job_id = save_job(job, source["id"])
+                result, job_id = save_job(job, source["id"], resolver=self.resolver)
                 results.append(result)
                 if result not in ["skipped", "error"]:
                     add_url_dedup_variants(job.get("listing_url"), self.existing_urls)

@@ -372,26 +372,16 @@ class GroqProvider(BaseLLMProvider):
         if not jobs:
             return []
 
-        # Import the values taxonomy
-        from utils.job_values_prompts import WORK_VALUES_TAXONOMY, _format_taxonomy
+        from utils.job_values_prompts import (
+            _get_formatted_taxonomy,
+            format_job_chunks,
+            get_work_values_set,
+        )
 
         # Express length as words — models handle word counts far better than char counts.
         max_words = max(10, max_chars // 6)
 
-        # Build job chunks for batch processing
-        job_chunks: list[str] = []
-        for idx, job in enumerate(jobs, 1):
-            description = (job.get("description") or "")[:4000]
-            job_chunks.append(
-                (
-                    f"JOB {idx}:\n"
-                    f"Organization: {job.get('organization', 'Unknown')}\n"
-                    f"Title: {job.get('job_title', 'Unknown')}\n"
-                    f"Location: {job.get('location', 'Unknown')}\n"
-                    f"Employment Type: {job.get('employment_type', 'Unknown')}\n"
-                    f"Description:\n{description}"
-                )
-            )
+        job_chunks = format_job_chunks(jobs, max_desc_chars=4000, include_wage=False)
 
         # Create batch prompt
         prompt = (
@@ -400,7 +390,7 @@ class GroqProvider(BaseLLMProvider):
             f"{get_skills_and_values_extraction_rules()}\n\n"
             f"{get_batch_processing_rules(max_values)}"
             f"ALLOWED VALUES (label: meaning):\n"
-            f"{_format_taxonomy()}\n\n"
+            f"{_get_formatted_taxonomy()}\n\n"
             f"JOBS (1-indexed):\n"
             f"{chr(10).join(job_chunks)}\n\n"
             f"OUTPUT FORMAT (JSON array only, same order as jobs):\n"
@@ -435,7 +425,6 @@ class GroqProvider(BaseLLMProvider):
                 return [{"summary": "", "skills": [], "values": []} for _ in jobs]
 
             # Normalize results to match job count
-            WORK_VALUES_SET = {label for label, _ in WORK_VALUES_TAXONOMY}
             results = []
 
             for i, _job in enumerate(jobs):
@@ -464,7 +453,7 @@ class GroqProvider(BaseLLMProvider):
                 raw_values = job_result.get("values", [])
                 if isinstance(raw_values, list):
                     # Filter values to only include allowed ones
-                    values = [str(value).strip() for value in raw_values if str(value).strip() and str(value).strip() in WORK_VALUES_SET]
+                    values = [str(value).strip() for value in raw_values if str(value).strip() and str(value).strip() in get_work_values_set()]
                 else:
                     values = []
 
@@ -500,7 +489,7 @@ class GroqProvider(BaseLLMProvider):
             return {"summary": "", "skills": [], "values": []}
 
         # Import the values taxonomy
-        from utils.job_values_prompts import WORK_VALUES_TAXONOMY, _format_taxonomy
+        from utils.job_values_prompts import _get_formatted_taxonomy, get_work_values_set
 
         # Express length as words — models handle word counts far better than char counts.
         max_words = max(10, max_chars // 6)
@@ -512,7 +501,7 @@ class GroqProvider(BaseLLMProvider):
             f"{get_skills_and_values_extraction_rules()}\n\n"
             f"{get_batch_processing_rules(5)}"
             f"ALLOWED VALUES (label: meaning):\n"
-            f"{_format_taxonomy()}\n\n"
+            f"{_get_formatted_taxonomy()}\n\n"
         )
 
         if job_title:
@@ -540,7 +529,6 @@ class GroqProvider(BaseLLMProvider):
         print("[DEBUG] Raw LLM Response:", result.strip())
 
         # Try to extract JSON from the response
-        import re
 
         # Look for a simpler pattern - extract each field separately
         summary_match = re.search(r'summary:\s*([^\n\}]+)', result.strip(), re.IGNORECASE)
@@ -566,8 +554,7 @@ class GroqProvider(BaseLLMProvider):
             # Split by comma and clean up
             raw_values = [value.strip().strip('"').strip("'") for value in values_text.split(',') if value.strip()]
             # Filter values to only include allowed ones
-            WORK_VALUES_SET = {label for label, _ in WORK_VALUES_TAXONOMY}
-            values = [value for value in raw_values if value in WORK_VALUES_SET]
+            values = [value for value in raw_values if value in get_work_values_set()]
 
         print(f"[DEBUG] Extracted summary: {repr(summary)}")
         print(f"[DEBUG] Extracted skills: {skills}")

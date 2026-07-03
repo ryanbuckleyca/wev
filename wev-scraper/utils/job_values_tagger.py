@@ -7,7 +7,7 @@ import re
 from typing import TypedDict
 
 from llm.factory import DEFAULT_MODEL, get_provider
-from utils.job_values_prompts import VALUES_SYSTEM_MSG, WORK_VALUES_SET, get_values_batch_prompt
+from utils.job_values_prompts import VALUES_SYSTEM_MSG, get_values_batch_prompt, get_work_values_set
 
 # Rough ceiling: leave a comfortable margin below the model's context window.
 # Estimated at 4 chars per token; 80k tokens = 320k chars — fits ~80-100 typical jobs.
@@ -141,7 +141,7 @@ class JobValuesTagger:
         seen: set[str] = set()
         for raw in raw_values:
             value = str(raw).strip()
-            if value in WORK_VALUES_SET and value not in seen:
+            if value in get_work_values_set() and value not in seen:
                 seen.add(value)
                 deduped.append(value)
 

@@ -123,7 +123,7 @@ def test_process_jobs_unified_success(mock_supabase, mock_get_processor):
      .limit.return_value
      .execute.return_value.data) = mock_jobs
 
-    res = process_jobs_unified(ProcessingOptions(task="all", limit=1))
+    res = process_jobs_unified(ProcessingOptions(task="all", page_limit=1))
 
     assert res["processed"] == 1
     assert res["updated"]["summary"] == 1
@@ -171,7 +171,7 @@ def test_process_jobs_unified_batch_result_mismatch(mock_supabase, mock_get_proc
      .limit.return_value
      .execute.return_value.data) = mock_jobs
 
-    res = process_jobs_unified(ProcessingOptions(task="all", limit=2))
+    res = process_jobs_unified(ProcessingOptions(task="all", page_limit=2))
 
     assert res["processed"] == 0
     assert res["errors"] == 2
@@ -186,11 +186,11 @@ def test_main_cli(mock_process):
         "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0},
         "errors": 0
     }
-    with patch("sys.argv", ["unified_post_processor.py", "--task", "sse", "--limit", "5"]):
+    with patch("sys.argv", ["unified_post_processor.py", "--task", "sse", "--page-limit", "5"]):
         with patch("scripts.unified_post_processor.argparse.ArgumentParser.parse_args") as mock_args:
             args = MagicMock()
             args.task = "sse"
-            args.limit = 5
+            args.page_limit = 5
             args.job_id = None
             args.dry_run = False
             args.prod = False
@@ -204,7 +204,7 @@ def test_main_cli(mock_process):
             mock_process.assert_called_with(
                 ProcessingOptions(
                     task="sse",
-                    limit=5,
+                    page_limit=5,
                     job_ids=[],
                     dry_run=False,
                     verbose=False,
@@ -212,3 +212,29 @@ def test_main_cli(mock_process):
                     force_language_reprocess=False,
                 )
             )
+
+
+@patch("scripts.unified_post_processor.process_jobs_unified")
+def test_main_cli_accepts_limit_alias(mock_process):
+    mock_process.return_value = {
+        "processed": 0,
+        "skipped": 0,
+        "provider_used": "groq",
+        "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0},
+        "errors": 0,
+    }
+
+    with patch("sys.argv", ["unified_post_processor.py", "--task", "sse", "--limit", "5"]):
+        main()
+
+    mock_process.assert_called_once_with(
+        ProcessingOptions(
+            task="sse",
+            page_limit=5,
+            job_ids=[],
+            dry_run=False,
+            verbose=False,
+            since_days=None,
+            force_language_reprocess=False,
+        )
+    )
