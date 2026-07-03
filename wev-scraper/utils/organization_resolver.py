@@ -188,7 +188,7 @@ class OrganizationResolver:
         )
         return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
 
-    def _find_available_slug(self, base: str, seed: str = "") -> str:
+    def _find_available_slug(self, base: str, seed: str | None = None) -> str:
         return generate_unique_slug(
             name="",
             max_attempts=_MAX_SLUG_ATTEMPTS,
