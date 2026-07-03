@@ -107,12 +107,7 @@ ALTER TABLE public.jobs
   ADD COLUMN IF NOT EXISTS organization_id bigint
     REFERENCES public.organizations(id) ON DELETE SET NULL;
 
--- ── 8. Index on jobs(organization_id) ────────────────────────────────────────
-
-CREATE INDEX IF NOT EXISTS jobs_organization_id_idx
-  ON public.jobs (organization_id);
-
--- ── 9. Recreate matched_jobs so j.* expands to include organization_id ───────
+-- ── 8. Recreate matched_jobs so j.* expands to include organization_id ───────
 
 DROP VIEW IF EXISTS public.matched_jobs;
 
