@@ -43,7 +43,8 @@ def _make_mock_supabase(batches):
     select_chain.is_.return_value = select_chain
     select_chain.neq.return_value = select_chain
     select_chain.order.return_value = select_chain
-    select_chain.range.return_value = select_chain
+    select_chain.gt.return_value = select_chain
+    select_chain.limit.return_value = select_chain
     select_chain.execute.side_effect = execute_side_effect
 
     update_chain = MagicMock()

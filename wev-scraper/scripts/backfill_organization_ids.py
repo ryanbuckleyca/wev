@@ -74,12 +74,13 @@ def run_backfill(
     errors = 0
     resolved = 0
     unresolved = 0
-    offset = 0
+    last_id = 0
 
     logger.info("Resolving organization_id for unlinked jobs…")
 
     while True:
-        # Idempotency: only jobs with organization_id IS NULL and org text non-empty
+        # Keyset pagination on immutable id — avoids skipping rows when
+        # organization_id updates shift OFFSET-based windows.
         # Requirements: 6.2, 6.6
         resp = (
             supabase.table("jobs")
@@ -87,7 +88,8 @@ def run_backfill(
             .is_("organization_id", "null")
             .neq("organization", "")
             .order("id")
-            .range(offset, offset + batch_size - 1)
+            .gt("id", last_id)
+            .limit(batch_size)
             .execute()
         )
         rows = resp.data or []
@@ -97,7 +99,7 @@ def run_backfill(
             break
 
         logger.info(
-            "Phase 1: Processing batch of %d jobs (offset=%d)", len(rows), offset
+            "Phase 1: Processing batch of %d jobs (starting after id=%s)", len(rows), last_id
         )
 
         for row in rows:
@@ -139,10 +141,10 @@ def run_backfill(
                 )
                 errors += 1
 
+        last_id = rows[-1]["id"]
+
         if len(rows) < batch_size:
             break
-
-        offset += batch_size
 
         if batch_delay_seconds > 0:
             time.sleep(batch_delay_seconds)
