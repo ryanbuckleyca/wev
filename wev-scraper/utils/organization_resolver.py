@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 
 _MAX_SLUG_ATTEMPTS = 10
 
+# Strip common field-delimiter punctuation from token edges so that
+# "Montréal, QC" tokenises to {"montréal", "qc"} instead of {"montréal,", "qc"}.
+_REMOVE_PUNCTUATION = str.maketrans("", "", ",.;:!?")
+
 
 @dataclass
 class JobContext:
@@ -36,14 +40,14 @@ def _location_is_compatible(
     if not job_canonical or not cand:
         return False
 
-    cand_words = set(cand.split())
-    job_words = set(job_canonical.split())
+    cand_words = set(cand.translate(_REMOVE_PUNCTUATION).split())
+    job_words = set(job_canonical.translate(_REMOVE_PUNCTUATION).split())
 
     # Province-only word overlap is ambiguous (e.g. "Trois-Rivières QC" vs
     # "Montréal QC" share only "qc").  When the job has a known municipality,
     # require the municipality words to appear in the candidate location.
     if municipality:
-        muni_words = set(municipality.strip().lower().split())
+        muni_words = set(municipality.strip().lower().translate(_REMOVE_PUNCTUATION).split())
         if not (muni_words <= cand_words):
             return False
 

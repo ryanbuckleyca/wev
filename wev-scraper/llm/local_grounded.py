@@ -33,7 +33,14 @@ class LocalGroundedProvider(BaseLLMProvider):
         self.model: str = os.getenv("LOCAL_LLM_MODEL", "mistral")
         self._ollama_available = None
         self._tavily_available = None
-        self._call_timeout_sec = int(os.getenv("LOCAL_LLM_CALL_TIMEOUT_SEC", "120"))
+        try:
+            self._call_timeout_sec = int(os.getenv("LOCAL_LLM_CALL_TIMEOUT_SEC", "120"))
+        except (TypeError, ValueError):
+            self._call_timeout_sec = 120
+            logger.warning(
+                "LOCAL_LLM_CALL_TIMEOUT_SEC is not a valid integer, falling back to %s",
+                self._call_timeout_sec,
+            )
         self._ollama_client = None
 
     def _init_tavily(self):

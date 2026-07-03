@@ -74,7 +74,7 @@ def run_backfill(
     errors = 0
     resolved = 0
     unresolved = 0
-    last_id = 0
+    last_id = "00000000-0000-0000-0000-000000000000"
 
     logger.info("Resolving organization_id for unlinked jobs…")
 

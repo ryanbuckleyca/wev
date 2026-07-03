@@ -40,7 +40,7 @@ UPDATE public.organizations
 -- The || '-' || id::text suffix guarantees uniqueness regardless of name.
 
 UPDATE public.organizations
-  SET slug = lower(regexp_replace(public.f_unaccent(name), '[^a-zA-Z0-9]+', '-', 'g')) || '-' || id::text
+  SET slug = lower(btrim(regexp_replace(public.f_unaccent(name), '[^a-zA-Z0-9]+', '-', 'g'), '-')) || '-' || id::text
   WHERE slug IS NULL;
 
 -- ── 4. Set NOT NULL ──────────────────────────────────────────────────────────
