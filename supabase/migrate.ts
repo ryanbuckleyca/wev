@@ -92,6 +92,9 @@ function runMigration(target: string, dryRun: boolean) {
   console.log(`▶ Linking to project: ${projectRef}`);
   execVerbose(`supabase link --project-ref "${projectRef}"`);
 
+  console.log(`▶ Fetching remote migration state...`);
+  execVerbose(`supabase migration fetch --linked`);
+
   let dbPushCmd = `${LOCAL_SUPABASE_CLI} db push --yes`;
   if (dryRun) dbPushCmd += " --dry-run";
   // SUPABASE_DB_PASSWORD is passed via the environment (already loaded from
