@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import { WORK_TYPES, type WorkType } from '@/lib/work-types';
 import FormLabel from '@/components/FormLabel';
 import LocationAutocomplete from '@/components/profile/LocationAutocomplete';
-import Alert from '@/components/ui/Alert';
 import TogglePillGroup from '@/components/profile/TogglePillGroup';
 import type { LocationState } from '@/lib/hooks/useProfileForm';
 
@@ -72,9 +71,9 @@ export default function WorkSettingSection({
 
       {/* Contextual callout when Location is a ranked value */}
       {hasLocationValue && (
-        <Alert variant="info" className="mt-3">
+        <p className="helper-text mt-3">
           {t('profile.locationPriorityCallout')}
-        </Alert>
+        </p>
       )}
     </div>
   );
