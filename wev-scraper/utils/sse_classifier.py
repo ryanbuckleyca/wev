@@ -19,9 +19,6 @@ logger = logging.getLogger(__name__)
 SSE_SEARCH_KEYWORDS = '(governance OR bylaws OR "articles of incorporation" OR "annual report" OR "impact report" OR "board of directors")'
 
 
-
-
-
 class SSEDetails(TypedDict, total=False):
     """Structure of sse_details JSONB column in database."""
     confidence: float
@@ -320,16 +317,4 @@ class SSEClassifier(BaseGroundedClassifier):
             })
 
         return results
-
-    def _default_failed_classification(self, job_title: str, org_name: str, reason: str | None = None) -> SSEClassificationResult:
-        return {
-            "rating": "no",
-            "confidence": 0.5,
-            "reasoning": reason or "Unable to classify",
-            "must_haves_met": [],
-            "nice_to_haves_met": [],
-            "flags": ["classification_failed"],
-            "classified_at": datetime.now(timezone.utc).isoformat(),
-            "reviewed": False,
-        }
 

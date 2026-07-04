@@ -212,22 +212,6 @@ class OrganizationSSEClassifier(BaseGroundedClassifier):
             "reviewed": False,
         }
 
-    @staticmethod
-    def _default_failed_classification(
-        org_name: str, reason: str | None = None,
-    ) -> SSEClassificationResult:
-        reasoning = "Unable to classify organization: failed to parse classifier output."
-        return {
-            "rating": "no",
-            "confidence": 0.5,
-            "reasoning": reasoning,
-            "must_haves_met": [],
-            "nice_to_haves_met": [],
-            "flags": ["classification_failed"],
-            "classified_at": datetime.now(timezone.utc).isoformat(),
-            "reviewed": False,
-        }
-
 
 def is_sse_from_rating(rating: str) -> bool:
     """Derive is_sse from sse_rating.

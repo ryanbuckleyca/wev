@@ -247,7 +247,6 @@ class OrganizationResolver:
 
     def _find_available_slug(self, base: str, seed: str | None = None) -> str:
         return generate_unique_slug(
-            name="",
             max_attempts=_MAX_SLUG_ATTEMPTS,
             base=base,
             seed=seed,

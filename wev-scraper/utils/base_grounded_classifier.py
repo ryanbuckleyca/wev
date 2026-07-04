@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-import json
 import logging
 import re
+from datetime import datetime, timezone
 
 from llm.base import LLMProviderError
 
 logger = logging.getLogger(__name__)
 
+
 class SSEClassificationError(Exception):
     """Base error for SSE classification failures."""
     pass
 
+
 class BaseGroundedClassifier:
-    """Base class providing LLM retry, error handling, and JSON parsing for grounded classifiers."""
+    """Base class providing LLM error handling and JSON parsing for grounded classifiers."""
 
     def _call_provider_with_retry(
         self,
@@ -24,7 +26,11 @@ class BaseGroundedClassifier:
         search_query: str | None,
         retries: int = 1,
     ) -> str:
-        """Call the LLM provider, mapping provider exceptions to SSEClassificationError."""
+        """Call the LLM provider, mapping provider exceptions to SSEClassificationError.
+
+        Retries up to `retries` additional times on rate-limit errors (429).
+        Auth errors (403) are re-raised immediately without retry.
+        """
         for attempt in range(retries + 1):
             try:
                 return provider.complete(
@@ -34,40 +40,49 @@ class BaseGroundedClassifier:
                     search_query=search_query,
                 ).strip()
             except LLMProviderError as e:
-                if attempt == retries:
-                    raise SSEClassificationError(f"LLM provider error: {e}") from e
+                raise SSEClassificationError(f"LLM provider error: {e}") from e
             except Exception as e:
                 err_msg_raw = str(e)
                 err_msg = err_msg_raw.lower()
-                if "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg:
-                    if attempt == retries:
-                        raise SSEClassificationError(
-                            f"API rate limit or quota exceeded. Try again later. Raw error: {err_msg_raw}"
-                        ) from e
-                elif "403" in err_msg or "permission" in err_msg:
+
+                if "403" in err_msg or "permission" in err_msg:
                     raise SSEClassificationError(
                         f"API key invalid or permission denied. Raw error: {err_msg_raw}"
                     ) from e
-                else:
-                    if attempt == retries:
-                        raise SSEClassificationError(f"LLM API error: {err_msg_raw}") from e
-                
-                # If we haven't raised, we will retry (e.g. on 429)
-                logger.warning("LLM call failed on attempt %d: %s. Retrying...", attempt + 1, e)
 
-        # Unreachable but keeps type checker happy
+                is_rate_limit = "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg
+                if attempt < retries and is_rate_limit:
+                    logger.warning("LLM rate limit on attempt %d/%d, retrying...", attempt + 1, retries + 1)
+                    continue
+
+                raise SSEClassificationError(f"LLM API error: {err_msg_raw}") from e
+
+        # Unreachable, but satisfies the type checker
         raise SSEClassificationError("Failed to complete LLM call")
 
     def _extract_json_block(self, response_text: str) -> str:
         """Strip markdown code fences from an LLM response to get raw JSON."""
         text = response_text.strip()
+        # Anchored match first (clean response)
         match = re.search(r"^```(?:json)?\s*([\s\S]*?)\s*```\s*$", text, re.IGNORECASE)
         if match:
             return match.group(1).strip()
-        
-        # Also try unanchored match if the LLM added conversational text
-        match_unanchored = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
-        if match_unanchored:
-            return match_unanchored.group(1).strip()
-            
+        # Unanchored fallback if LLM added conversational text around the block
+        match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
         return text
+
+    @staticmethod
+    def _default_failed_classification(reason: str | None = None) -> dict:
+        """Return a safe fallback SSEClassificationResult when parsing fails."""
+        return {
+            "rating": "no",
+            "confidence": 0.5,
+            "reasoning": reason or "Unable to classify: failed to parse classifier output.",
+            "must_haves_met": [],
+            "nice_to_haves_met": [],
+            "flags": ["classification_failed"],
+            "classified_at": datetime.now(timezone.utc).isoformat(),
+            "reviewed": False,
+        }
