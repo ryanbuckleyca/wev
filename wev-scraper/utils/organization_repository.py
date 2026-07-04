@@ -132,7 +132,8 @@ class OrganizationRepository:
         try:
             self._supabase.table("organizations").update(payload).eq("id", org_id).execute()
         except Exception as exc:
-            logger.warning("OrganizationRepository: update_sse failed for org_id=%s: %s", org_id, exc)
+            logger.error("OrganizationRepository: update_sse failed for org_id=%s: %s", org_id, exc)
+            raise
 
     def fetch_unrated_orgs(
         self,

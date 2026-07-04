@@ -63,11 +63,6 @@ class BaseGroundedClassifier:
     def _extract_json_block(self, response_text: str) -> str:
         """Strip markdown code fences from an LLM response to get raw JSON."""
         text = response_text.strip()
-        # Anchored match first (clean response)
-        match = re.search(r"^```(?:json)?\s*([\s\S]*?)\s*```\s*$", text, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-        # Unanchored fallback if LLM added conversational text around the block
         match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
         if match:
             return match.group(1).strip()

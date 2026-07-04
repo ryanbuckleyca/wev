@@ -1,16 +1,18 @@
 import 'server-only';
 
+import { cache } from 'react';
 import { supabaseServer } from '@/lib/supabase-server';
 import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
 import { ORG_JOBS_PER_PAGE } from './constants';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
-export async function fetchOrganizationIndex(locale: 'en' | 'fr'): Promise<OrgIndexEntry[]> {
+export async function fetchOrganizationIndex(): Promise<OrgIndexEntry[]> {
   const minDate = new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
   // Use the RPC to fetch organizations with their active job counts
-  const { data: orgs, error } = await supabaseServer
-    .rpc('get_active_organizations', { min_date: minDate });
+  const { data: orgs, error } = await supabaseServer.rpc('get_active_organizations', {
+    min_date: minDate,
+  });
 
   if (error) {
     console.error('fetchOrganizationIndex error:', error);
@@ -21,7 +23,7 @@ export async function fetchOrganizationIndex(locale: 'en' | 'fr'): Promise<OrgIn
   return (orgs || []) as OrgIndexEntry[];
 }
 
-export async function getOrganizationBySlug(slug: string): Promise<OrgRecord | null> {
+export const getOrganizationBySlug = cache(async (slug: string): Promise<OrgRecord | null> => {
   const { data: org, error } = await supabaseServer
     .from('organizations')
     .select('*')
@@ -32,7 +34,7 @@ export async function getOrganizationBySlug(slug: string): Promise<OrgRecord | n
     return null;
   }
   return org;
-}
+});
 
 export async function getOrganizationJobs(
   orgId: number,
@@ -42,13 +44,17 @@ export async function getOrganizationJobs(
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
 
-  const { data: jobs, error, count } = await supabaseServer
+  const {
+    data: jobs,
+    error,
+    count,
+  } = await supabaseServer
     .from('jobs')
     .select('id, job_title, listing_url, date_posted, employment_type, location, work_type', {
       count: 'exact',
     })
     .eq('organization_id', orgId)
-    .gte('date_posted', minDate)
+    .gte('scraped_at', minDate)
     .order('date_posted', { ascending: false })
     .range(offset, offset + limit - 1);
 

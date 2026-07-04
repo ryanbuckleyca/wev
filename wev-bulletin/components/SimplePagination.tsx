@@ -7,7 +7,11 @@ interface SimplePaginationProps {
   baseUrl: string;
 }
 
-export default function SimplePagination({ currentPage, totalPages, baseUrl }: SimplePaginationProps) {
+export default function SimplePagination({
+  currentPage,
+  totalPages,
+  baseUrl,
+}: SimplePaginationProps) {
   const t = useTranslations('pagination');
 
   if (totalPages <= 1) return null;
@@ -15,8 +19,10 @@ export default function SimplePagination({ currentPage, totalPages, baseUrl }: S
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
-  const linkClass = 'px-4 py-2 text-sm font-medium border border-border rounded-wev-btn bg-background text-foreground hover:bg-muted transition-colors';
-  const disabledClass = 'px-4 py-2 text-sm font-medium border border-border rounded-wev-btn bg-muted text-muted-foreground opacity-50 cursor-not-allowed';
+  const linkClass =
+    'px-4 py-2 text-sm font-medium border border-border rounded-wev-btn bg-background text-foreground hover:bg-muted transition-colors';
+  const disabledClass =
+    'px-4 py-2 text-sm font-medium border border-border rounded-wev-btn bg-muted text-muted-foreground opacity-50 cursor-not-allowed';
 
   return (
     <div className="flex items-center justify-center gap-4 py-6">
