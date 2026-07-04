@@ -30,7 +30,7 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
 
             {org.website && (
               <a
-                href={org.website}
+                href={org.website.startsWith('http') ? org.website : `https://${org.website}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline font-medium"

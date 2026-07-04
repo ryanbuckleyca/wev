@@ -159,7 +159,7 @@ class OrganizationRepository:
             )
             return resp.data or []
         except Exception as exc:
-            logger.warning(
+            logger.error(
                 "OrganizationRepository: fetch_unrated_orgs failed: %s", exc,
             )
-            return []
+            raise
