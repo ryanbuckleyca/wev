@@ -2,52 +2,23 @@ import 'server-only';
 
 import { supabaseServer } from '@/lib/supabase-server';
 import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
+import { ORG_JOBS_PER_PAGE } from './constants';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
 export async function fetchOrganizationIndex(locale: 'en' | 'fr'): Promise<OrgIndexEntry[]> {
   const minDate = new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-  // 1. Fetch all active jobs within age window that have an organization_id
-  const { data: jobs, error: jobsError } = await supabaseServer
-    .from('jobs')
-    .select('organization_id')
-    .not('organization_id', 'is', null)
-    .gte('date_posted', minDate);
+  // Use the RPC to fetch organizations with their active job counts
+  const { data: orgs, error } = await supabaseServer
+    .rpc('get_active_organizations', { min_date: minDate });
 
-  if (jobsError) {
-    console.error('fetchOrganizationIndex jobs error:', jobsError);
-    return [];
+  if (error) {
+    console.error('fetchOrganizationIndex error:', error);
+    throw new Error('Failed to fetch organization index');
   }
 
-  if (!jobs || jobs.length === 0) return [];
-
-  // 2. Aggregate counts by organization_id
-  const orgCounts = new Map<number, number>();
-  for (const job of jobs) {
-    const orgId = job.organization_id;
-    if (orgId) {
-      orgCounts.set(orgId, (orgCounts.get(orgId) || 0) + 1);
-    }
-  }
-
-  // 3. Fetch the referenced organizations
-  const orgIds = Array.from(orgCounts.keys());
-  const { data: orgs, error: orgsError } = await supabaseServer
-    .from('organizations')
-    .select('*')
-    .in('id', orgIds)
-    .order('name', { ascending: true });
-
-  if (orgsError) {
-    console.error('fetchOrganizationIndex orgs error:', orgsError);
-    return [];
-  }
-
-  // 4. Attach counts and return
-  return (orgs || []).map((org: OrgRecord) => ({
-    ...org,
-    active_job_count: orgCounts.get(org.id) || 0,
-  }));
+  // The RPC returns exactly what OrgIndexEntry expects
+  return (orgs || []) as OrgIndexEntry[];
 }
 
 export async function fetchOrganizationDetail(
@@ -56,7 +27,7 @@ export async function fetchOrganizationDetail(
   locale: 'en' | 'fr'
 ): Promise<{ org: OrgRecord; jobs: OrgJobPosting[]; total: number } | null> {
   const minDate = new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const limit = 20;
+  const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
 
   // 1. Fetch org by slug
@@ -83,7 +54,7 @@ export async function fetchOrganizationDetail(
 
   if (jobsError) {
     console.error('fetchOrganizationDetail jobs error:', jobsError);
-    return { org, jobs: [], total: 0 };
+    throw new Error('Failed to fetch jobs for organization detail');
   }
 
   return {

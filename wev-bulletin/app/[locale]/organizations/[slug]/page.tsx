@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { Leaf1Solid } from '@lineiconshq/free-icons';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { fetchOrganizationDetail } from '@/lib/organizations/server-data';
+import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
 import OrganizationJobRow from '@/components/OrganizationJobRow';
 import SimplePagination from '@/components/SimplePagination';
 
@@ -42,7 +43,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
   }
 
   const { org, jobs, total } = data;
-  const totalPages = Math.ceil(total / 20);
+  const totalPages = Math.ceil(total / ORG_JOBS_PER_PAGE);
 
   return (
     <main className="min-h-screen bg-background">
@@ -108,7 +109,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
             </div>
           )}
           
-          {total > 20 && (
+          {total > ORG_JOBS_PER_PAGE && (
             <SimplePagination
               currentPage={page}
               totalPages={totalPages}
