@@ -1,16 +1,31 @@
--- Fix for HNSW index scans in pgvector.
+-- Fix for HNSW index scans in pgvector and scoped statement timeouts.
 --
 -- Postgres query planner will default to a sequential scan for vector ORDER BY 
 -- queries if there's a WHERE clause on the same column (like WHERE embedding IS NOT NULL)
--- unless specific conditions are met. Because the index inherently handles NULLs
--- or ignores them during similarity search, we can safely remove this WHERE clause
--- to enable lightning-fast HNSW index scans and resolve the statement timeouts.
-
--- Update the batch overload (using PL/pgSQL loop to guarantee index scans)
+-- unless specific conditions are met. 
 --
--- By using a PL/pgSQL loop, each vector is treated as an explicit parameter in a
--- scalar query. pgvector handles explicit scalar parameter queries with LIMIT
--- by perfectly utilizing the HNSW index, bypassing the LATERAL join planner quirks.
+-- To resolve this while still filtering out rows without embeddings (which would 
+-- otherwise return NULL similarity and potentially slow down the scan), we 
+-- replace the HNSW index with a partial index that explicitly includes the 
+-- NOT NULL constraint. This allows the planner to use the index even when 
+-- the WHERE clause is present.
+
+-- 1. Undo any previous role-level timeout settings
+ALTER ROLE authenticated RESET statement_timeout;
+ALTER ROLE authenticator RESET statement_timeout;
+
+-- 2. Replace the HNSW index with a partial index to support the NOT NULL filter
+DROP INDEX IF EXISTS esco_skills_embedding_hnsw;
+CREATE INDEX esco_skills_embedding_hnsw
+    ON esco_skills
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64)
+    WHERE embedding IS NOT NULL;
+
+-- 3. Update the batch overload with an optimized LATERAL join and NOT NULL filter.
+--
+-- The LATERAL join with an OFFSET 0 fence guarantees an index scan for each
+-- vector while allowing the query to be parallelized by the Postgres planner.
 CREATE OR REPLACE FUNCTION match_skills_by_embedding(
     query_embeddings vector(1024)[],
     match_count     int DEFAULT 5
@@ -22,30 +37,35 @@ RETURNS TABLE (
     preferred_label_fr text,
     similarity         float
 )
-LANGUAGE plpgsql STABLE
+LANGUAGE sql STABLE
+SET statement_timeout = '60s'
 AS $func$
-DECLARE
-    q_vec vector(1024);
-    i int;
-BEGIN
-    FOR i IN 1..array_length(query_embeddings, 1) LOOP
-        q_vec := query_embeddings[i];
-        
-        RETURN QUERY
+    WITH queries AS (
+        SELECT (i - 1)::int AS query_index, query_embeddings[i] AS q_vec
+        FROM generate_series(1, array_length(query_embeddings, 1)) AS i
+        OFFSET 0 -- optimization fence
+    )
+    SELECT
+        q.query_index,
+        e.concept_uri,
+        e.preferred_label_en,
+        e.preferred_label_fr,
+        1 - (e.embedding <=> q.q_vec) AS similarity
+    FROM queries q
+    CROSS JOIN LATERAL (
         SELECT
-            (i - 1)::int AS query_index,
             e.concept_uri,
             e.preferred_label_en,
             e.preferred_label_fr,
-            1 - (e.embedding <=> q_vec) AS similarity
+            e.embedding
         FROM esco_skills e
-        -- Removed: WHERE embedding IS NOT NULL
-        ORDER BY e.embedding <=> q_vec
-        LIMIT match_count;
-    END LOOP;
-END;
+        WHERE e.embedding IS NOT NULL
+        ORDER BY e.embedding <=> q.q_vec
+        LIMIT match_count
+    ) e;
 $func$;
--- Update the single vector overload
+
+-- 4. Update the single vector overload with the same filter and timeout.
 CREATE OR REPLACE FUNCTION match_skills_by_embedding(
     query_embedding vector(1024),
     match_count     int DEFAULT 80
@@ -57,6 +77,7 @@ RETURNS TABLE (
     similarity         float
 )
 LANGUAGE sql STABLE
+SET statement_timeout = '60s'
 AS $func$
     SELECT
         concept_uri,
@@ -64,7 +85,7 @@ AS $func$
         preferred_label_fr,
         1 - (embedding <=> query_embedding) AS similarity
     FROM esco_skills
-    -- Removed: WHERE embedding IS NOT NULL
+    WHERE embedding IS NOT NULL
     ORDER BY embedding <=> query_embedding
     LIMIT match_count;
 $func$;
