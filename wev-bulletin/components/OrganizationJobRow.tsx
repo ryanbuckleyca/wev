@@ -1,14 +1,15 @@
 import type { OrgJobPosting } from '@/lib/organizations/types';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 export default function OrganizationJobRow({ job }: { job: OrgJobPosting }) {
   const t = useTranslations('bulletin');
+  const locale = useLocale();
   
   // Format the date
   let formattedDate = '';
   if (job.date_posted) {
     try {
-      formattedDate = new Intl.DateTimeFormat(undefined, {
+      formattedDate = new Intl.DateTimeFormat(locale, {
         month: 'short',
         day: 'numeric',
         year: 'numeric'

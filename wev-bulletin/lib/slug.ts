@@ -11,24 +11,11 @@
  * - strip leading/trailing hyphens
  */
 export function generateSlug(name: string): string {
-  let slug = name.normalize('NFKD');
-  
-  // Strip non-ASCII (this removes the combining diacritical marks from NFKD)
-  slug = slug.replace(/[^\x00-\x7F]/g, '');
-  
-  slug = slug.toLowerCase();
-  
-  // Remove anything that isn't a-z, 0-9, or space
-  slug = slug.replace(/[^a-z0-9 ]/g, '');
-  
-  // Replace spaces with hyphens
-  slug = slug.replace(/\s+/g, '-');
-  
-  // Collapse multiple hyphens
-  slug = slug.replace(/-+/g, '-');
-  
-  // Strip leading/trailing hyphens
-  slug = slug.replace(/^-+|-+$/g, '');
-  
-  return slug;
+  return name.normalize('NFKD')
+    .replace(/[^\x00-\x7F]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9 \-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }

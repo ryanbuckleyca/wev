@@ -18,6 +18,11 @@ vi.mock('@lineiconshq/react-lineicons', () => ({
   Lineicons: ({ icon }: { icon: any }) => <span data-testid="lineicon-mock" />,
 }));
 
+// Mock @lineiconshq/free-icons
+vi.mock('@lineiconshq/free-icons', () => ({
+  Leaf1Solid: 'Leaf1Solid',
+}));
+
 describe('OrganizationCard', () => {
   // Feature: organizations, Property 14
   it('Property 14: SSE badge renders iff is_sse is true', () => {
