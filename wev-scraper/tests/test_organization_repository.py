@@ -131,3 +131,57 @@ class TestFindByName:
         result = repo.find_by_name("Test_Name")
         assert len(result) == 1
         assert result[0]["id"] == 20
+
+# ── sse methods ─────────────────────────────────────────────────────────────
+
+class TestSSEMethods:
+    def test_update_sse(self):
+        sb = MagicMock()
+        repo = OrganizationRepository(sb)
+
+        repo.update_sse(
+            org_id=123,
+            sse_rating="strong_yes",
+            is_sse=True,
+            sse_details={"confidence": 0.9}
+        )
+
+        table_mock = sb.table.return_value
+        update_mock = table_mock.update.return_value
+        eq_mock = update_mock.eq.return_value
+
+        sb.table.assert_called_with("organizations")
+        table_mock.update.assert_called_with({
+            "sse_rating": "strong_yes",
+            "is_sse": True,
+            "sse_details": {"confidence": 0.9}
+        })
+        update_mock.eq.assert_called_with("id", 123)
+        eq_mock.execute.assert_called_once()
+
+
+    def test_fetch_unrated_orgs(self):
+        sb = MagicMock()
+        repo = OrganizationRepository(sb)
+        # Mock the chain
+        table_mock = sb.table.return_value
+        select_mock = table_mock.select.return_value
+        is_mock = select_mock.is_.return_value
+        order_mock = is_mock.order.return_value
+        gt_mock = order_mock.gt.return_value
+        limit_mock = gt_mock.limit.return_value
+        execute_mock = limit_mock.execute
+        
+        execute_mock.return_value.data = [{"id": 456, "name": "Test Org"}]
+
+        rows = repo.fetch_unrated_orgs(after_id=400, limit=10)
+
+        assert rows == [{"id": 456, "name": "Test Org"}]
+        
+        sb.table.assert_called_with("organizations")
+        table_mock.select.assert_called_with("id, name, description, type, website, values")
+        select_mock.is_.assert_called_with("sse_rating", "null")
+        is_mock.order.assert_called_with("id")
+        order_mock.gt.assert_called_with("id", 400)
+        gt_mock.limit.assert_called_with(10)
+        execute_mock.assert_called_once()

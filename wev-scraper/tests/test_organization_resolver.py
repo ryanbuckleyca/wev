@@ -315,3 +315,37 @@ class TestLocationOnlyPath:
         # minimal inserts with canonical_loc="Montreal QC"
         repo.insert.assert_called_once()
         assert repo.insert.call_args[0][0]["location"] == "Montreal QC"
+
+
+# ── LLM resolve path ────────────────────────────────────────────────────────────
+
+
+class TestLLMResolvePath:
+    def test_llm_resolve_success(self):
+        repo = _make_repo(find_by_name=[], slug_exists=False, find_existing_slugs=set(), insert={"id": 999})
+        identifier = MagicMock()
+        identifier.identify.return_value = {
+            "canonical_name": "Test Org AI",
+            "slug": "test-org-ai",
+            "website": "https://test.ai",
+            "description": "An AI org.",
+            "type": "nonprofit",
+            "values": "Values.",
+        }
+        
+        resolver = OrganizationResolver(
+            repo=repo, cache=OrganizationCache(), identifier=identifier
+        )
+        
+        result = resolver.resolve("Test Org AI", "City", "ON")
+        
+        assert result == 999
+        identifier.identify.assert_called_once()
+        repo.insert.assert_called_once()
+        
+        call_kwargs = repo.insert.call_args[0][0]
+        assert call_kwargs["name"] == "Test Org AI"
+        assert call_kwargs["slug"] == "test-org-ai"
+        assert call_kwargs["website"] == "https://test.ai"
+        assert call_kwargs["type"] == "nonprofit"
+        assert call_kwargs["values"] == "Values."

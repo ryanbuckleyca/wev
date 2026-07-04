@@ -300,7 +300,6 @@ BEGIN
   END IF;
 END;
 $func$;
-
 -- And the job version
 CREATE OR REPLACE FUNCTION recalculate_matches_for_job(p_job_id UUID)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $func$
