@@ -111,3 +111,51 @@ class OrganizationRepository:
             resp.data,
         )
         return None
+
+    def update_sse(
+        self,
+        org_id: int,
+        sse_rating: str,
+        is_sse: bool,
+        sse_details: dict | None = None,
+    ) -> None:
+        """Write SSE classification results back to an organization row.
+
+        Requirements: 5.1, 5.2
+        """
+        payload: dict = {
+            "sse_rating": sse_rating,
+            "is_sse": is_sse,
+        }
+        if sse_details is not None:
+            payload["sse_details"] = sse_details
+        self._supabase.table("organizations").update(payload).eq("id", org_id).execute()
+
+    def fetch_unrated_orgs(
+        self,
+        *,
+        after_id: int = 0,
+        limit: int = 50,
+    ) -> list[dict]:
+        """Fetch organizations with null sse_rating for Phase 2 backfill.
+
+        Uses keyset pagination on id for consistency with Phase 1.
+
+        Requirements: 5.5
+        """
+        try:
+            resp = (
+                self._supabase.table("organizations")
+                .select("id, name, description, type, website, values")
+                .is_("sse_rating", "null")
+                .order("id")
+                .gt("id", after_id)
+                .limit(limit)
+                .execute()
+            )
+            return resp.data or []
+        except Exception as exc:
+            logger.warning(
+                "OrganizationRepository: fetch_unrated_orgs failed: %s", exc,
+            )
+            return []

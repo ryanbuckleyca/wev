@@ -228,3 +228,126 @@ def test_script_processes_only_unresolved_jobs(unresolved_jobs):
     assert resolver.resolve.call_count == len(unresolved_jobs)
     assert summary["phase1_processed"] == len(unresolved_jobs)
     assert summary["unresolved"] == 0
+
+
+# ── Phase 2 SSE Backfill Tests ────────────────────────────────────────────────
+
+
+def _make_unrated_org(org_id=1, name="Test Org"):
+    return {
+        "id": org_id,
+        "name": name,
+        "description": "desc",
+        "type": "nonprofit",
+        "website": None,
+        "values": None,
+    }
+
+class TestPhase2SSEBackfill:
+    def test_processes_unrated_orgs(self):
+        repo_mock = MagicMock()
+        repo_mock.fetch_unrated_orgs.side_effect = [
+            [_make_unrated_org(1), _make_unrated_org(2)],
+            [],
+        ]
+        classifier_mock = MagicMock()
+        classifier_mock.classify.return_value = {
+            "rating": "strong_yes",
+            "confidence": 0.9,
+            "reasoning": "Ok",
+            "must_haves_met": [],
+            "nice_to_haves_met": [],
+            "flags": [],
+            "classified_at": "2026-01-01",
+            "reviewed": False,
+        }
+
+        with patch("utils.organization_repository.OrganizationRepository", return_value=repo_mock), \
+             patch("utils.organization_sse_classifier.OrganizationSSEClassifier", return_value=classifier_mock):
+            from scripts.backfill_organization_ids import run_sse_backfill
+            summary = run_sse_backfill(batch_size=50)
+
+        assert summary["phase2_classified"] == 2
+        assert summary["phase2_errors"] == 0
+        assert classifier_mock.classify.call_count == 2
+        assert repo_mock.update_sse.call_count == 2
+
+    def test_dry_run_does_not_update_db(self):
+        repo_mock = MagicMock()
+        repo_mock.fetch_unrated_orgs.side_effect = [[_make_unrated_org(1)], []]
+        classifier_mock = MagicMock()
+        classifier_mock.classify.return_value = {
+            "rating": "no",
+            "confidence": 0.5,
+            "reasoning": "No",
+            "must_haves_met": [],
+            "nice_to_haves_met": [],
+            "flags": [],
+            "classified_at": "2026",
+            "reviewed": False,
+        }
+
+        with patch("utils.organization_repository.OrganizationRepository", return_value=repo_mock), \
+             patch("utils.organization_sse_classifier.OrganizationSSEClassifier", return_value=classifier_mock):
+            from scripts.backfill_organization_ids import run_sse_backfill
+            summary = run_sse_backfill(batch_size=50, dry_run=True)
+
+        assert summary["phase2_classified"] == 1
+        assert summary["dry_run"] is True
+        repo_mock.update_sse.assert_not_called()
+
+    def test_per_org_isolation_exception_does_not_abort_batch(self):
+        repo_mock = MagicMock()
+        repo_mock.fetch_unrated_orgs.side_effect = [
+            [_make_unrated_org(1), _make_unrated_org(2), _make_unrated_org(3)],
+            [],
+        ]
+        classifier_mock = MagicMock()
+        classifier_mock.classify.side_effect = [
+            Exception("boom"),
+            {"rating": "no", "confidence": 0.5, "reasoning": "", "must_haves_met": [], "nice_to_haves_met": [], "flags": [], "classified_at": "2026", "reviewed": False},
+            Exception("boom2"),
+        ]
+
+        with patch("utils.organization_repository.OrganizationRepository", return_value=repo_mock), \
+             patch("utils.organization_sse_classifier.OrganizationSSEClassifier", return_value=classifier_mock):
+            from scripts.backfill_organization_ids import run_sse_backfill
+            summary = run_sse_backfill(batch_size=50)
+
+        assert summary["phase2_errors"] == 2
+        assert summary["phase2_classified"] == 1
+        assert repo_mock.update_sse.call_count == 1
+
+
+@given(
+    unrated_orgs=st.lists(
+        st.integers(min_value=1, max_value=1000).map(lambda oid: _make_unrated_org(oid)),
+        min_size=0,
+        max_size=10,
+    ),
+)
+@settings(max_examples=100, deadline=None)
+def test_script_processes_only_unrated_orgs(unrated_orgs):
+    """Property 8: SSE backfill idempotency.
+    The classifier is called exactly once per org returned by fetch_unrated_orgs,
+    proving that if fetch_unrated_orgs only yields null-rated orgs, already-rated
+    orgs are never classified.
+    """
+    repo_mock = MagicMock()
+    repo_mock.fetch_unrated_orgs.side_effect = [unrated_orgs, []]
+    
+    classifier_mock = MagicMock()
+    classifier_mock.classify.return_value = {
+        "rating": "no", "confidence": 0.5, "reasoning": "", 
+        "must_haves_met": [], "nice_to_haves_met": [], "flags": [],
+        "classified_at": "2026", "reviewed": False,
+    }
+
+    with patch("utils.organization_repository.OrganizationRepository", return_value=repo_mock), \
+         patch("utils.organization_sse_classifier.OrganizationSSEClassifier", return_value=classifier_mock):
+        from scripts.backfill_organization_ids import run_sse_backfill
+        summary = run_sse_backfill(batch_size=100)
+
+    assert classifier_mock.classify.call_count == len(unrated_orgs)
+    assert summary["phase2_classified"] == len(unrated_orgs)
+    assert summary["phase2_errors"] == 0

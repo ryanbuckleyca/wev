@@ -90,9 +90,9 @@ class Jobs(BaseModel):
     sse_details: Optional[Any] = None
     is_sse: Optional[bool] = False
     work_type: str = Field(..., description='remote | hybrid | office')
-    values: Optional[List[str]] = None
-    skills: Optional[List[str]] = Field(
-        None, description='ESCO skill concept URIs tagged to this job (max 10).'
+    values: List[str]
+    skills: List[str] = Field(
+        ..., description='ESCO skill concept URIs tagged to this job (max 10).'
     )
     language: str
     values_rated: Optional[Any] = None

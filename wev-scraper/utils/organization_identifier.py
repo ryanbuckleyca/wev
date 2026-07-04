@@ -55,7 +55,8 @@ Return a JSON object with exactly these fields:
   "slug": "url-safe-kebab-case (string, required)",
   "website": "https://... or null",
   "description": "Brief organization description, max 300 characters, or null",
-  "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null"
+  "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null",
+  "values": "Organization values and principles if found on their website, max 1000 characters, or null"
 }}
 
 {json_instructions}
@@ -74,6 +75,7 @@ class OrgIdentificationResult(TypedDict):
     website: str | None
     description: str | None  # max 300 chars — stored in organizations.description
     type: str | None  # "nonprofit"|"cooperative"|"social enterprise"|"government"|"union"|"other"
+    values: str | None  # max 1000 chars — stored in organizations.values
 
 
 class OrganizationIdentifier:
@@ -193,20 +195,29 @@ class OrganizationIdentifier:
         if org_type not in ORG_TYPE_VALUES:
             org_type = None
 
-        raw_description = data.get("description")
-        description = str(raw_description)[:300] if raw_description else None
+        desc = data.get("description")
+        vals = data.get("values")
+        slug = str(data.get("slug") or "").strip()
+        canonical_name = canonical_name.strip()
 
         raw_website = data.get("website")
-        website = None
+        web = None
         if raw_website:
             parsed = urlparse(str(raw_website).strip())
             if parsed.scheme in ("http", "https"):
-                website = str(raw_website).strip()
+                web = str(raw_website).strip()
+
+        # Enforce length limits (matching DB or reasonable bounds)
+        if desc:
+            desc = str(desc)[:300].strip()
+        if vals:
+            vals = str(vals)[:1000].strip()
 
         return OrgIdentificationResult(
-            canonical_name=str(canonical_name).strip(),
-            slug=str(data.get("slug") or "").strip(),
-            website=website,
-            description=description,
+            canonical_name=canonical_name,
+            slug=slug,
+            website=web,
+            description=desc or None,
             type=org_type,
+            values=vals or None,
         )

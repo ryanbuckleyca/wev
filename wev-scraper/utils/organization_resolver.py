@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
 from utils.organization_identifier import OrganizationIdentifier
 from utils.organization_repository import OrganizationRepository
 from utils.slug import generate_slug, generate_unique_slug, nfkd_to_ascii
+
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +73,9 @@ def create_resolver(supabase_client=None) -> OrganizationResolver:
         supabase_client = db_module.supabase
 
     repo = OrganizationRepository(supabase_client)
-    return OrganizationResolver(repo=repo, cache=cache, identifier=identifier)
+    return OrganizationResolver(
+        repo=repo, cache=cache, identifier=identifier,
+    )
 
 
 class OrganizationResolver:
@@ -88,7 +92,7 @@ class OrganizationResolver:
         self,
         repo: OrganizationRepository,
         cache: OrganizationCache,
-        identifier: OrganizationIdentifier | None,
+        identifier: OrganizationIdentifier | None = None,
     ) -> None:
         self._repo = repo
         self._cache = cache
@@ -195,6 +199,7 @@ class OrganizationResolver:
             "website": result.get("website"),
             "description": result.get("description"),
             "type": result.get("type"),
+            "values": result.get("values"),
         }
 
         return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
@@ -253,6 +258,8 @@ class OrganizationResolver:
                     continue
 
                 # Identity conflict (name+location) — re-select existing row.
+                # Do NOT classify here — the org already exists and was
+                # classified at creation time.
                 existing_id = self._repo.find_by_name_and_location(
                     row.get("name", ""), row.get("location"),
                 )

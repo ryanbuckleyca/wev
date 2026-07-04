@@ -156,7 +156,126 @@ def run_backfill(
         "errors": errors,
         "dry_run": dry_run,
     }
-    logger.info("Backfill summary: %s", json.dumps(summary))
+    logger.info("Phase 1 summary: %s", json.dumps(summary))
+    return summary
+
+
+def run_sse_backfill(
+    *,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    batch_delay_seconds: float = DEFAULT_BATCH_DELAY,
+    dry_run: bool = False,
+) -> dict:
+    """Run Phase 2: SSE classification for unrated organizations.
+
+    Fetches all organizations WHERE sse_rating IS NULL and classifies
+    each against SSE criteria. Idempotent: orgs with existing sse_rating
+    are never re-classified.
+
+    Args:
+        batch_size: Number of orgs to fetch per DB query.
+        batch_delay_seconds: Seconds to sleep between batches.
+        dry_run: If True, log actions without writing to DB.
+
+    Returns:
+        Summary dict with Phase 2 counts.
+
+    Requirements: 5.5, 5.6
+    """
+    from utils.organization_repository import OrganizationRepository
+    from utils.organization_sse_classifier import (
+        OrganizationSSEClassifier,
+        is_sse_from_rating,
+    )
+    from utils.db import supabase
+
+    logger.info(
+        "Starting Phase 2 (SSE backfill) — batch_size=%d, batch_delay=%.1fs, dry_run=%s",
+        batch_size,
+        batch_delay_seconds,
+        dry_run,
+    )
+
+    try:
+        classifier = OrganizationSSEClassifier()
+    except Exception as exc:
+        logger.error("Phase 2: OrganizationSSEClassifier unavailable: %s", exc)
+        return {
+            "phase2_classified": 0,
+            "phase2_errors": 0,
+            "phase2_skipped_no_classifier": True,
+            "dry_run": dry_run,
+        }
+
+    repo = OrganizationRepository(supabase)
+
+    total_classified = 0
+    errors = 0
+    last_id = 0
+
+    while True:
+        rows = repo.fetch_unrated_orgs(after_id=last_id, limit=batch_size)
+
+        if not rows:
+            logger.info("Phase 2: No more unrated orgs. Done.")
+            break
+
+        logger.info(
+            "Phase 2: Processing batch of %d orgs (starting after id=%s)", len(rows), last_id,
+        )
+
+        for org_row in rows:
+            org_id = org_row["id"]
+            try:
+                result = classifier.classify(org_row)
+                rating = result["rating"]
+                org_is_sse = is_sse_from_rating(rating)
+
+                logger.info(
+                    "Phase 2: org_id=%s (%s) → sse_rating=%s, is_sse=%s",
+                    org_id, org_row.get("name", "?"), rating, org_is_sse,
+                )
+
+                if not dry_run:
+                    sse_details = {
+                        "confidence": result["confidence"],
+                        "reasoning": result["reasoning"],
+                        "must_haves_met": result["must_haves_met"],
+                        "nice_to_haves_met": result["nice_to_haves_met"],
+                        "flags": result["flags"],
+                        "classified_at": result["classified_at"],
+                        "reviewed": result["reviewed"],
+                    }
+                    repo.update_sse(
+                        org_id=org_id,
+                        sse_rating=rating,
+                        is_sse=org_is_sse,
+                        sse_details=sse_details,
+                    )
+
+                total_classified += 1
+
+            except Exception as exc:
+                # Per-org isolation: one failure does not abort the batch
+                logger.error(
+                    "Phase 2: Error classifying org_id=%s: %s", org_id, exc, exc_info=True,
+                )
+                errors += 1
+
+        last_id = rows[-1]["id"]
+
+        if len(rows) < batch_size:
+            break
+
+        if batch_delay_seconds > 0:
+            time.sleep(batch_delay_seconds)
+
+    summary = {
+        "phase2_classified": total_classified,
+        "phase2_errors": errors,
+        "dry_run": dry_run,
+    }
+    logger.info("Phase 2 summary: %s", json.dumps(summary))
     return summary
 
 
@@ -204,14 +323,26 @@ def main() -> None:
         else:
             logger.warning("--env %s but %s not found", args.env, env_path)
 
-    summary = run_backfill(
+    phase1_summary = run_backfill(
         batch_size=args.batch_size,
         batch_delay_seconds=args.batch_delay_seconds,
         dry_run=args.dry_run,
     )
-    print(json.dumps(summary, indent=2))
 
-    if summary["errors"] > 0:
+    # Phase 2 runs only after Phase 1 fully completes (sequential)
+    # Requirements: 5.6
+    phase2_summary = run_sse_backfill(
+        batch_size=args.batch_size,
+        batch_delay_seconds=args.batch_delay_seconds,
+        dry_run=args.dry_run,
+    )
+
+    combined = {**phase1_summary, **phase2_summary}
+    print(json.dumps(combined, indent=2))
+
+    total_errors = phase1_summary.get("errors", 0) + phase2_summary.get("phase2_errors", 0)
+    skipped_classifier = phase2_summary.get("phase2_skipped_no_classifier", False)
+    if total_errors > 0 or skipped_classifier:
         sys.exit(1)
 
 
