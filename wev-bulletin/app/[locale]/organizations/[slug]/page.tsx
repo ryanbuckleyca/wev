@@ -28,10 +28,9 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
   const resolvedSearchParams = await searchParams;
   const t = await getTranslations({ locale, namespace: 'organizations' });
 
-  const page =
-    typeof resolvedSearchParams.page === 'string'
-      ? parseInt(resolvedSearchParams.page, 10)
-      : 1;
+  const parsedPage =
+    typeof resolvedSearchParams.page === 'string' ? parseInt(resolvedSearchParams.page, 10) : 1;
+  const page = isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
 
   const org = await getOrganizationBySlug(slug);
 
@@ -45,16 +44,13 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
-        
         {/* Header Section */}
         <OrganizationProfileHeader org={org} t={t} />
 
         {/* Jobs Section */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-foreground mb-6">
-            {t('jobs', { count: total })}
-          </h2>
-          
+          <h2 className="text-2xl font-bold text-foreground mb-6">{t('jobs', { count: total })}</h2>
+
           {jobs.length === 0 ? (
             <div className="bg-muted p-8 rounded-wev-card text-center text-muted-foreground">
               {t('noJobsForOrg')}
@@ -66,7 +62,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
               ))}
             </div>
           )}
-          
+
           {total > ORG_JOBS_PER_PAGE && (
             <SimplePagination
               currentPage={page}
@@ -75,7 +71,6 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
             />
           )}
         </div>
-        
       </div>
     </main>
   );

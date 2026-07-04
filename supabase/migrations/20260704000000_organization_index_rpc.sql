@@ -40,7 +40,7 @@ BEGIN
     JOIN 
         jobs j ON o.id = j.organization_id
     WHERE 
-        j.date_posted >= min_date
+        j.scraped_at >= min_date
     GROUP BY 
         o.id
     ORDER BY

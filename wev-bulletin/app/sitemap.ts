@@ -40,14 +40,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const orgs = await fetchOrganizationIndex('en');
-    
+
     orgs.forEach((org) => {
       if (!org.slug) return;
-      
+
       const slugLocaleEntries = Object.fromEntries(
-        routing.locales.map((locale) => [locale, `${siteBaseUrl}/${locale}/organizations/${org.slug}`]),
+        routing.locales.map((locale) => [
+          locale,
+          `${siteBaseUrl}/${locale}/organizations/${org.slug}`,
+        ]),
       );
-      
+
       routing.locales.forEach((locale) => {
         sitemapEntries.push({
           url: `${siteBaseUrl}/${locale}/organizations/${org.slug}`,

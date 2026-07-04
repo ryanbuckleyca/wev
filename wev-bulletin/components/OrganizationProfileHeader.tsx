@@ -8,7 +8,6 @@ interface Props {
 }
 
 export default function OrganizationProfileHeader({ org, t }: Props) {
-
   return (
     <div className="bg-card border border-border rounded-wev-card p-6 sm:p-8 mb-8 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
@@ -21,14 +20,14 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
               </span>
             )}
           </div>
-          
+
           <div className="flex flex-col sm:flex-row sm:items-center gap-x-6 gap-y-2 text-muted-foreground mt-4">
             {org.location && (
               <div className="flex items-center gap-1.5">
                 <span className="font-medium text-foreground">{t('location')}:</span> {org.location}
               </div>
             )}
-            
+
             {org.website && (
               <a
                 href={org.website}
@@ -42,7 +41,7 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
           </div>
         </div>
       </div>
-      
+
       {org.description && (
         <div className="mt-8 pt-8 border-t border-border">
           <h2 className="text-lg font-semibold text-foreground mb-3">{t('description')}</h2>

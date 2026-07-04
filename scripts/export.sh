@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="${1:-$ROOT/../wev-export.tar.gz}"
+OUT="${1:-${ROOT}/../wev-export.tar.gz}"
 
-tar -czf "$OUT" \
+tar -czf "${OUT}" \
   --exclude='node_modules' \
   --exclude='.venv' --exclude='venv' --exclude='ENV' --exclude='env' \
   --exclude='__pycache__' --exclude='*.pyc' --exclude='*.pyo' \
@@ -25,6 +25,6 @@ tar -czf "$OUT" \
   --exclude='trunk_report.txt' --exclude='trunk_results.txt' \
   --exclude='rclone-log.txt' \
   --exclude='.git' \
-  -C "$ROOT" .
+  -C "${ROOT}" .
 
-echo "→ Exported to $OUT ($(du -sh "$OUT" | cut -f1))"
+echo "→ Exported t${ $O}UT ($(du -sh${"$O}UT" | cut -f1))"

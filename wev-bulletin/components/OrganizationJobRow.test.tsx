@@ -28,14 +28,14 @@ describe('OrganizationJobRow', () => {
         };
 
         const { unmount } = render(<OrganizationJobRow job={job} />);
-        
+
         const link = screen.getByRole('link');
         expect(link.getAttribute('href')).toBe(url);
         expect(link.getAttribute('target')).toBe('_blank');
         expect(link.getAttribute('rel')).toBe('noopener noreferrer');
-        
+
         unmount();
-      })
+      }),
     );
   });
 });

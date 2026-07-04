@@ -69,7 +69,7 @@ Description:
 {description[:5000]}
 
 Values/Mission:
-{values[:3000] if isinstance(values, str) else values}
+{str(values)[:3000]}
 
 OUTPUT FORMAT (valid JSON only):
 {_ORG_JSON_SPEC}

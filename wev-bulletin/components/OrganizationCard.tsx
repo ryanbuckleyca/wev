@@ -27,11 +27,9 @@ export default function OrganizationCard({ org }: { org: OrgIndexEntry }) {
             </span>
           )}
         </div>
-        
+
         {org.location && (
-          <div className="text-muted-foreground text-sm truncate">
-            {org.location}
-          </div>
+          <div className="text-muted-foreground text-sm truncate">{org.location}</div>
         )}
       </div>
 

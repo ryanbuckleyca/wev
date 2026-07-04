@@ -8,22 +8,22 @@ describe('generateSlug', () => {
     fc.assert(
       fc.property(fc.string(), (name) => {
         const slug = generateSlug(name);
-        
+
         if (slug === '') return true;
 
         // All lowercase
         expect(slug).toBe(slug.toLowerCase());
-        
+
         // Only a-z, 0-9, and hyphen
         expect(slug).toMatch(/^[a-z0-9-]+$/);
-        
+
         // No leading or trailing hyphens
         expect(slug.startsWith('-')).toBe(false);
         expect(slug.endsWith('-')).toBe(false);
-        
+
         // No consecutive hyphens
         expect(slug).not.toMatch(/--/);
-      })
+      }),
     );
   });
 
@@ -34,7 +34,7 @@ describe('generateSlug', () => {
     expect(generateSlug('Hôpital Général')).toBe('hopital-general');
     // Note: NFKD drops the 'œ' ligature entirely when stripped of non-ASCII,
     // which mirrors the Python implementation exactly.
-    expect(generateSlug('À l\'œuvre')).toBe('a-luvre');
+    expect(generateSlug("À l'œuvre")).toBe('a-luvre');
   });
 
   it('handles already clean ASCII', () => {

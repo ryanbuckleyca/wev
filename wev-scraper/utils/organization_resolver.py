@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
 from utils.organization_identifier import OrganizationIdentifier
 from utils.organization_repository import OrganizationRepository
 from utils.slug import generate_slug, generate_unique_slug, nfkd_to_ascii
-
 
 logger = logging.getLogger(__name__)
 

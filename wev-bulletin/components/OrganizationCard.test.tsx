@@ -47,21 +47,21 @@ describe('OrganizationCard', () => {
         };
 
         const { unmount } = render(<OrganizationCard org={org} />);
-        
+
         const badge = screen.queryByTestId('lineicon-mock');
         if (is_sse) {
           expect(badge).toBeInTheDocument();
         } else {
           expect(badge).not.toBeInTheDocument();
         }
-        
+
         unmount();
-      })
+      }),
     );
   });
 
   // Feature: organizations, Property 15
-  it('Property 15: Index entry links use the org\'s slug', () => {
+  it("Property 15: Index entry links use the org's slug", () => {
     fc.assert(
       fc.property(fc.string({ minLength: 1 }), (slug) => {
         const cleanSlug = encodeURIComponent(slug); // to avoid invalid hrefs in test
@@ -83,12 +83,12 @@ describe('OrganizationCard', () => {
         };
 
         const { unmount } = render(<OrganizationCard org={org} />);
-        
+
         const link = screen.getByRole('link', { name: 'Test Org' });
         expect(link.getAttribute('href')).toBe(`/en/organizations/${cleanSlug}`);
-        
+
         unmount();
-      })
+      }),
     );
   });
 });

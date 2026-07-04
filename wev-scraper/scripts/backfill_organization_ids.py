@@ -186,12 +186,12 @@ def run_sse_backfill(
 
     Requirements: 5.5, 5.6
     """
+    from utils.db import supabase
     from utils.organization_repository import OrganizationRepository
     from utils.organization_sse_classifier import (
         OrganizationSSEClassifier,
         is_sse_from_rating,
     )
-    from utils.db import supabase
 
     logger.info(
         "Starting Phase 2 (SSE backfill) — batch_size=%d, batch_delay=%.1fs, dry_run=%s",
