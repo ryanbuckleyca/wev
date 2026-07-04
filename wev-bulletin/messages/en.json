@@ -163,7 +163,8 @@
     "job": "job",
     "jobs": "jobs",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "pageOf": "Page {current} of {total}"
   },
   "jobListings": {
     "loading": "Loading jobs...",
