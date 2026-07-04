@@ -1,0 +1,25 @@
+import { getTranslations } from 'next-intl/server';
+import OrganizationCard from './OrganizationCard';
+import type { OrgIndexEntry } from '@/lib/organizations/types';
+
+export default async function OrganizationIndexView({ orgs }: { orgs: OrgIndexEntry[] }) {
+  const t = await getTranslations('organizations');
+
+  if (!orgs || orgs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+        <div className="bg-muted p-8 rounded-wev-card max-w-md">
+          <p className="text-muted-foreground">{t('noActiveListings')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {orgs.map((org) => (
+        <OrganizationCard key={org.id} org={org} />
+      ))}
+    </div>
+  );
+}

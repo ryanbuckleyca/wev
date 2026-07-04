@@ -1,4 +1,15 @@
 {
+  "organizations": {
+    "title": "Profil de l'organisation",
+    "indexTitle": "Organisations",
+    "noActiveListings": "Aucune organisation n'a d'offres d'emploi actives en ce moment.",
+    "noJobsForOrg": "Cette organisation n'a aucune offre d'emploi active en ce moment.",
+    "jobs": "{count, plural, =1 {1 emploi} other {# emplois}}",
+    "visitWebsite": "Visiter le site web",
+    "sseBadgeLabel": "Organisation d'économie sociale",
+    "location": "Emplacement",
+    "description": "À propos"
+  },
   "home": {
     "heading": "Bulletin – Offres d'emploi",
     "lastUpdated": "Dernière mise à jour :",
