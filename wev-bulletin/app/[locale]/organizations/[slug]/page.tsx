@@ -27,7 +27,6 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
   const { locale, slug } = await params;
   const resolvedSearchParams = await searchParams;
   const t = await getTranslations({ locale, namespace: 'organizations' });
-  const typedLocale = locale === 'fr' ? 'fr' : 'en';
 
   const page =
     typeof resolvedSearchParams.page === 'string'
