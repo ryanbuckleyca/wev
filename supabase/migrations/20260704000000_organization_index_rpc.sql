@@ -37,7 +37,7 @@ BEGIN
         oc.location,
         oc.is_sse,
         oc.active_job_count,
-        (SELECT COUNT(*) FROM org_counts)::BIGINT AS total_count
+        COUNT(*) OVER() AS total_count
     FROM
         org_counts oc
     ORDER BY
