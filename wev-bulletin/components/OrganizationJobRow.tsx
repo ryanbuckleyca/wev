@@ -1,8 +1,14 @@
+import { useLocale, useTranslations } from 'next-intl';
+import { getWorkTypeLabel } from '@/lib/bulletin/filter-labels';
 import type { OrgJobPosting } from '@/lib/organizations/types';
-import { useTranslations, useLocale } from 'next-intl';
+
+function formatEmploymentTypeLabel(employmentType: string): string {
+  const normalized = employmentType.replace(/_/g, ' ').trim();
+  return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : employmentType;
+}
 
 export default function OrganizationJobRow({ job }: { job: OrgJobPosting }) {
-  const t = useTranslations('bulletin');
+  const t = useTranslations();
   const locale = useLocale();
 
   // Format the date
@@ -41,15 +47,13 @@ export default function OrganizationJobRow({ job }: { job: OrgJobPosting }) {
 
           {job.work_type && (
             <div className="flex items-center gap-1.5">
-              <span>{t(`workTypes.${job.work_type}`, { fallback: job.work_type })}</span>
+              <span>{getWorkTypeLabel(job.work_type, t)}</span>
             </div>
           )}
 
           {job.employment_type && (
             <div className="flex items-center gap-1.5">
-              <span>
-                {t(`employmentTypes.${job.employment_type}`, { fallback: job.employment_type })}
-              </span>
+              <span>{formatEmploymentTypeLabel(job.employment_type)}</span>
             </div>
           )}
 

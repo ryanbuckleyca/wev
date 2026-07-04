@@ -144,6 +144,9 @@ async function seedTables(
   await insertRows("sources", tables.sources, async (batch) =>
     client.from("sources").insert(batch),
   );
+  await insertRows("organizations", tables.organizations, async (batch) =>
+    client.from("organizations").insert(batch),
+  );
   await insertRows("jobs", tables.jobs, async (batch) =>
     client.from("jobs").insert(batch),
   );
@@ -162,11 +165,6 @@ async function seedTables(
   await insertRows("bookmarks", tables.bookmarks, async (batch) =>
     client.from("bookmarks").insert(batch),
   );
-  if (tables.organizations) {
-    await insertRows("organizations", tables.organizations, async (batch) =>
-      client.from("organizations").insert(batch),
-    );
-  }
 }
 
 function findEscoSkillsIndexPath(): string {
