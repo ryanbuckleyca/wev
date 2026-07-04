@@ -134,6 +134,8 @@ class OrganizationResolver:
         try:
             return self._resolve_inner(ctx)
         except Exception as exc:
+            if isinstance(exc, (TypeError, ValueError, SyntaxError)):
+                raise
             logger.error(
                 "OrganizationResolver: unexpected error for job_id=%s raw_name=%r: %s",
                 ctx.job_id,

@@ -9,6 +9,7 @@ vi.mock('next-intl', () => ({
   useTranslations: () => (key: string, options?: any) => {
     return options?.fallback || key;
   },
+  useLocale: () => 'en',
 }));
 
 describe('OrganizationJobRow', () => {

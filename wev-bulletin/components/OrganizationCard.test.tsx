@@ -21,6 +21,7 @@ vi.mock('@lineiconshq/react-lineicons', () => ({
 // Mock @lineiconshq/free-icons
 vi.mock('@lineiconshq/free-icons', () => ({
   Leaf1Solid: 'Leaf1Solid',
+  Lineicons: ({ icon }: { icon: any }) => <span data-testid="lineicon-mock" />,
 }));
 
 describe('OrganizationCard', () => {
