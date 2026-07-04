@@ -129,7 +129,10 @@ class OrganizationRepository:
         }
         if sse_details is not None:
             payload["sse_details"] = sse_details
-        self._supabase.table("organizations").update(payload).eq("id", org_id).execute()
+        try:
+            self._supabase.table("organizations").update(payload).eq("id", org_id).execute()
+        except Exception as exc:
+            logger.warning("OrganizationRepository: update_sse failed for org_id=%s: %s", org_id, exc)
 
     def fetch_unrated_orgs(
         self,

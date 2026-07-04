@@ -119,6 +119,10 @@ def run_backfill(
                     logger.info("job_id=%s → organization_id=%s", job_id, org_id)
 
                     if not dry_run:
+                        # NOTE: This performs N+1 sequential updates. While a bulk update
+                        # would be faster, Supabase `upsert` requires all NOT NULL columns 
+                        # to be present, and writing a custom RPC for a one-off backfill 
+                        # script is overkill. Sequential updates are fine for this context.
                         supabase.table("jobs").update(
                             {"organization_id": org_id}
                         ).eq("id", job_id).execute()
