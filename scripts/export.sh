@@ -27,4 +27,4 @@ tar -czf "${OUT}" \
   --exclude='.git' \
   -C "${ROOT}" .
 
-echo "→ Exported t${ $O}UT ($(du -sh${"$O}UT" | cut -f1))"
+echo "→ Exported ${OUT} ($(du -sh "${OUT}" | cut -f1))"

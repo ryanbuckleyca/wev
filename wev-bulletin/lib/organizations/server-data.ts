@@ -6,31 +6,60 @@ import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
 import { ORG_JOBS_PER_PAGE } from './constants';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
+function getMinDateIso(): string {
+  return new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+}
+
 export async function fetchOrganizationIndex(
   page: number = 1,
 ): Promise<{ orgs: OrgIndexEntry[]; total: number }> {
-  const minDate = new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const minDate = getMinDateIso();
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
 
-  // Use the RPC to fetch organizations with their active job counts
-  const { data: orgs, error } = await supabaseServer.rpc('get_active_organizations', {
-    min_date: minDate,
-    p_limit: limit,
-    p_offset: offset,
-  });
+  const { data: activeJobs, error } = await supabaseServer
+    .from('jobs')
+    .select('organization_id')
+    .not('organization_id', 'is', null)
+    .gte('date_posted', minDate);
 
   if (error) {
     console.error('fetchOrganizationIndex error:', error);
     throw new Error('Failed to fetch organization index');
   }
 
-  const total = orgs && orgs.length > 0 ? Number(orgs[0].total_count) : 0;
+  const countsByOrgId = new Map<number, number>();
+  for (const row of activeJobs || []) {
+    if (typeof row.organization_id !== 'number') continue;
+    countsByOrgId.set(row.organization_id, (countsByOrgId.get(row.organization_id) || 0) + 1);
+  }
 
-  // The RPC returns exactly what OrgIndexEntry expects
+  if (countsByOrgId.size === 0) {
+    return { orgs: [], total: 0 };
+  }
+
+  const orgIds = [...countsByOrgId.keys()];
+  const { data: organizations, error: organizationsError } = await supabaseServer
+    .from('organizations')
+    .select('*')
+    .in('id', orgIds);
+
+  if (organizationsError) {
+    console.error('fetchOrganizationIndex error:', organizationsError);
+    throw new Error('Failed to fetch organization index');
+  }
+
+  const sortedOrgs = (organizations || [])
+    .map((org) => ({
+      ...org,
+      active_job_count: countsByOrgId.get(org.id) || 0,
+    }))
+    .filter((org) => org.active_job_count > 0)
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
   return {
-    orgs: (orgs || []) as OrgIndexEntry[],
-    total,
+    orgs: sortedOrgs.slice(offset, offset + limit) as OrgIndexEntry[],
+    total: sortedOrgs.length,
   };
 }
 
@@ -51,7 +80,7 @@ export async function getOrganizationJobs(
   orgId: number,
   page: number,
 ): Promise<{ jobs: OrgJobPosting[]; total: number }> {
-  const minDate = new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const minDate = getMinDateIso();
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
 
@@ -65,7 +94,7 @@ export async function getOrganizationJobs(
       count: 'exact',
     })
     .eq('organization_id', orgId)
-    .gte('scraped_at', minDate)
+    .gte('date_posted', minDate)
     .order('date_posted', { ascending: false })
     .range(offset, offset + limit - 1);
 

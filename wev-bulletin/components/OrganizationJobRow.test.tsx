@@ -6,9 +6,7 @@ import type { OrgJobPosting } from '@/lib/organizations/types';
 
 // Mock next-intl
 vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string, options?: any) => {
-    return options?.fallback || key;
-  },
+  useTranslations: () => (key: string) => key,
   useLocale: () => 'en',
 }));
 
@@ -37,5 +35,22 @@ describe('OrganizationJobRow', () => {
         unmount();
       }),
     );
+  });
+
+  it('renders existing work type translations instead of missing message keys', () => {
+    const job: OrgJobPosting = {
+      id: '123',
+      job_title: 'Software Engineer',
+      listing_url: 'https://example.com/job',
+      date_posted: null,
+      employment_type: 'full-time',
+      location: 'Remote',
+      work_type: 'hybrid',
+    };
+
+    render(<OrganizationJobRow job={job} />);
+
+    expect(screen.getByText('filters.workType.hybrid')).toBeInTheDocument();
+    expect(screen.getByText('Full-time')).toBeInTheDocument();
   });
 });
