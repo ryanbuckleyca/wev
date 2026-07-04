@@ -47,7 +47,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
       <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
         
         {/* Header Section */}
-        <OrganizationProfileHeader org={org} />
+        <OrganizationProfileHeader org={org} t={t} />
 
         {/* Jobs Section */}
         <div className="space-y-4">

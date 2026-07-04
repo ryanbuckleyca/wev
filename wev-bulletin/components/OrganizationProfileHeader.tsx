@@ -1,10 +1,13 @@
-import { useTranslations } from 'next-intl';
 import { Leaf1Solid } from '@lineiconshq/free-icons';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import type { OrgRecord } from '@/lib/organizations/types';
 
-export default function OrganizationProfileHeader({ org }: { org: OrgRecord }) {
-  const t = useTranslations('organizations');
+interface Props {
+  org: OrgRecord;
+  t: (key: string) => string;
+}
+
+export default function OrganizationProfileHeader({ org, t }: Props) {
 
   return (
     <div className="bg-card border border-border rounded-wev-card p-6 sm:p-8 mb-8 shadow-sm">
