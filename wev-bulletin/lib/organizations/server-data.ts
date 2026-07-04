@@ -6,12 +6,18 @@ import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
 import { ORG_JOBS_PER_PAGE } from './constants';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
-export async function fetchOrganizationIndex(): Promise<OrgIndexEntry[]> {
+export async function fetchOrganizationIndex(
+  page: number = 1,
+): Promise<{ orgs: OrgIndexEntry[]; total: number }> {
   const minDate = new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const limit = ORG_JOBS_PER_PAGE;
+  const offset = (page - 1) * limit;
 
   // Use the RPC to fetch organizations with their active job counts
   const { data: orgs, error } = await supabaseServer.rpc('get_active_organizations', {
     min_date: minDate,
+    p_limit: limit,
+    p_offset: offset,
   });
 
   if (error) {
@@ -19,8 +25,13 @@ export async function fetchOrganizationIndex(): Promise<OrgIndexEntry[]> {
     throw new Error('Failed to fetch organization index');
   }
 
+  const total = orgs && orgs.length > 0 ? Number(orgs[0].total_count) : 0;
+
   // The RPC returns exactly what OrgIndexEntry expects
-  return (orgs || []) as OrgIndexEntry[];
+  return {
+    orgs: (orgs || []) as OrgIndexEntry[],
+    total,
+  };
 }
 
 export const getOrganizationBySlug = cache(async (slug: string): Promise<OrgRecord | null> => {
