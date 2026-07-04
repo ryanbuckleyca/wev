@@ -14,6 +14,7 @@ export type SeedTables = {
   bookmarks: BookmarkInsert[];
   jobMatches: JobMatchInsert[];
   jobs: JobInsert[];
+  organizations: TableInsert<"organizations">[];
   profiles: ProfileInsert[];
   scrapeRuns: ScrapeRunInsert[];
   sources: SourceInsert[];
@@ -289,8 +290,9 @@ function createJobFixture(
   // en:           Fully English posting, English only.
   const jobTitle = buildJobTitle(language, index);
 
-  // Use a single canonical organization label in seed data; localize at render time.
-  const organization = `WEV Partner ${((index % 4) + 1).toString()}`;
+  const partnerIndex = (index % 4) + 1;
+  const organization = `WEV Partner ${partnerIndex}`;
+  const organizationId = partnerIndex;
 
   const summary =
     language === "fr"
@@ -325,6 +327,7 @@ function createJobFixture(
     min_value: salary.min_value,
     municipality: location.municipality,
     organization,
+    organization_id: organizationId,
     province: location.province,
     scraped_at: toIsoTimestamp(scrapedAt),
     source_id: sourceId,
@@ -379,11 +382,61 @@ function emptySeedTables(): SeedTables {
     bookmarks: [],
     jobMatches: [],
     jobs: [],
+    organizations: [],
     profiles: [],
     scrapeRuns: [],
     sources: [],
     userRoles: [],
   };
+}
+
+function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
+  return [
+    {
+      id: 1,
+      name: "WEV Partner 1",
+      slug: "wev-partner-1",
+      description: "Partner 1 description",
+      website: "https://wev-partner-1.example.com",
+      location: "Montreal, QC",
+      type: "non-profit",
+      is_sse: true,
+      created_at: toIsoTimestamp(daysAgo(now, 30)),
+    },
+    {
+      id: 2,
+      name: "WEV Partner 2",
+      slug: "wev-partner-2",
+      description: "Partner 2 description",
+      website: "https://wev-partner-2.example.com",
+      location: "Ottawa, ON",
+      type: "cooperative",
+      is_sse: true,
+      created_at: toIsoTimestamp(daysAgo(now, 30)),
+    },
+    {
+      id: 3,
+      name: "WEV Partner 3",
+      slug: "wev-partner-3",
+      description: "Partner 3 description",
+      website: "https://wev-partner-3.example.com",
+      location: "Toronto, ON",
+      type: "non-profit",
+      is_sse: false,
+      created_at: toIsoTimestamp(daysAgo(now, 30)),
+    },
+    {
+      id: 4,
+      name: "WEV Partner 4",
+      slug: "wev-partner-4",
+      description: "Partner 4 description",
+      website: "https://wev-partner-4.example.com",
+      location: "Quebec City, QC",
+      type: "private",
+      is_sse: false,
+      created_at: toIsoTimestamp(daysAgo(now, 30)),
+    },
+  ];
 }
 
 export function createSeedDataset(
@@ -392,12 +445,14 @@ export function createSeedDataset(
 ): SeedDataset {
   const sources = sourceOverrides || createSourceFixtures(now);
   const sourceIds = sources.map((s) => s.id);
+  const organizations = createOrganizationFixtures(now);
   const jobs = createJobFixtures(TOTAL_SEEDED_JOB_COUNT, now, sourceIds);
 
   return {
     tables: {
       ...emptySeedTables(),
       jobs,
+      organizations,
       scrapeRuns: createScrapeRunFixture(now, sourceIds[0], jobs.length),
       sources,
     },

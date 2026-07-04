@@ -1,4 +1,15 @@
 {
+  "organizations": {
+    "title": "Organization Profile",
+    "indexTitle": "Organizations",
+    "noActiveListings": "No organizations currently have active job listings.",
+    "noJobsForOrg": "This organization has no active job listings at the moment.",
+    "jobs": "{count, plural, =1 {1 job} other {# jobs}}",
+    "visitWebsite": "Visit website",
+    "sseBadgeLabel": "Solidarity Economy Organization",
+    "location": "Location",
+    "description": "About"
+  },
   "home": {
     "heading": "Bulletin – Job Postings",
     "lastUpdated": "Last updated:",

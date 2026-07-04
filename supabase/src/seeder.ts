@@ -20,6 +20,7 @@ type ClearTable = {
     | "bookmarks"
     | "job_matches"
     | "jobs"
+    | "organizations"
     | "profiles"
     | "scrape_runs"
     | "sources"
@@ -30,6 +31,7 @@ const CLEAR_TABLES: ClearTable[] = [
   { name: "bookmarks", column: "job_id" },
   { name: "job_matches", column: "job_id" },
   { name: "jobs", column: "id" },
+  { name: "organizations", column: "id" },
   { name: "profiles", column: "id" },
   { name: "scrape_runs", column: "id" },
   { name: "sources", column: "id" },
@@ -160,6 +162,11 @@ async function seedTables(
   await insertRows("bookmarks", tables.bookmarks, async (batch) =>
     client.from("bookmarks").insert(batch),
   );
+  if (tables.organizations) {
+    await insertRows("organizations", tables.organizations, async (batch) =>
+      client.from("organizations").insert(batch),
+    );
+  }
 }
 
 function findEscoSkillsIndexPath(): string {
