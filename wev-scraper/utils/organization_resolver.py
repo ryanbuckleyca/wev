@@ -192,35 +192,58 @@ class OrganizationResolver:
         canonical_name = result["canonical_name"]
         suggested_slug = result.get("slug") or ""
         slug_base = suggested_slug if suggested_slug else generate_slug(canonical_name)
-        slug = self._find_available_slug(slug_base, ctx.job_id)
 
-        row = {
-            "name": canonical_name,
-            "slug": slug,
-            "location": canonical_loc or None,
-            "website": result.get("website"),
-            "description": result.get("description"),
-            "type": result.get("type"),
-            "values": result.get("values"),
-        }
-
-        return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
+        return self._build_and_insert_org(
+            canonical_name=canonical_name,
+            canonical_loc=canonical_loc,
+            slug_base=slug_base,
+            cache_key=cache_key,
+            job_id=ctx.job_id,
+            website=result.get("website"),
+            description=result.get("description"),
+            org_type=result.get("type"),
+            values=result.get("values"),
+        )
 
     def _resolve_minimal(self, ctx: JobContext, cache_key: str, canonical_loc: str) -> int | None:
-        slug = self._find_available_slug(generate_slug(ctx.raw_name), ctx.job_id)
-
-        row = {
-            "name": ctx.raw_name,
-            "slug": slug,
-            "location": canonical_loc or None,
-        }
-
         logger.warning(
             "OrganizationResolver: using minimal fallback for raw_name=%r job_id=%s",
             ctx.raw_name,
             ctx.job_id,
         )
-        return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
+        return self._build_and_insert_org(
+            canonical_name=ctx.raw_name,
+            canonical_loc=canonical_loc,
+            slug_base=generate_slug(ctx.raw_name),
+            cache_key=cache_key,
+            job_id=ctx.job_id,
+        )
+
+    def _build_and_insert_org(
+        self,
+        canonical_name: str,
+        canonical_loc: str,
+        slug_base: str,
+        cache_key: str,
+        job_id: str | None,
+        website: str | None = None,
+        description: str | None = None,
+        org_type: str | None = None,
+        values: str | None = None,
+    ) -> int | None:
+        slug = self._find_available_slug(slug_base, job_id)
+
+        row = {
+            "name": canonical_name,
+            "slug": slug,
+            "location": canonical_loc or None,
+            "website": website,
+            "description": description,
+            "type": org_type,
+            "values": values,
+        }
+
+        return self._insert_or_resolve_conflict(row, cache_key, job_id)
 
     def _find_available_slug(self, base: str, seed: str | None = None) -> str:
         return generate_unique_slug(

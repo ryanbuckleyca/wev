@@ -4,12 +4,6 @@ Evaluates an organization entity against the same SSE principles used for
 job classification, but with a prompt tailored to assess the organization
 itself (governance model, mission, values) rather than a specific job posting.
 
-# TODO: consolidate with SSEClassifier — the JSON parsing, retry logic, and
-# error handling are shared. A future refactor could extract a base class or
-# parameterized helper. Kept separate for now because SSEClassifier has
-# job-specific batch mode, required-description checks, and prompt fields
-# that would make parameterization awkward without a larger refactor.
-
 Requirements: 5.1, 5.2, 5.3
 """
 
@@ -17,12 +11,11 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from datetime import datetime, timezone
 
-from llm.base import LLMProviderError
 from llm.factory import get_sse_provider
-from utils.sse_classifier import SSEClassificationError, SSEClassificationResult
+from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
+from utils.sse_classifier import SSEClassificationResult
 from utils.sse_prompts import EVALUATION_CRITERIA, SSE_PRINCIPLES
 
 logger = logging.getLogger(__name__)
@@ -87,7 +80,7 @@ OUTPUT FORMAT (valid JSON only):
 """
 
 
-class OrganizationSSEClassifier:
+class OrganizationSSEClassifier(BaseGroundedClassifier):
     """Classifies organizations as SSE-aligned or not using grounded LLM.
 
     Uses the same provider pipeline as SSEClassifier (Gemini with web search
@@ -145,27 +138,14 @@ class OrganizationSSEClassifier:
 
         last_error_message = ""
         for attempt in range(2):
-            try:
-                response_text = self.provider.complete(
-                    prompt,
-                    system="You are an expert at analyzing organizations for Solidarity Economy alignment.",
-                    task="sse",
-                    search_query=search_query,
-                ).strip()
-            except LLMProviderError as e:
-                raise SSEClassificationError(f"LLM provider error: {e}") from e
-            except Exception as e:
-                err_msg_raw = str(e)
-                err_msg = err_msg_raw.lower()
-                if "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg:
-                    raise SSEClassificationError(
-                        f"API rate limit or quota exceeded. Try again later. Raw error: {err_msg_raw}"
-                    ) from e
-                if "403" in err_msg or "permission" in err_msg:
-                    raise SSEClassificationError(
-                        f"API key invalid or permission denied. Raw error: {err_msg_raw}"
-                    ) from e
-                raise SSEClassificationError(f"LLM API error: {err_msg_raw}") from e
+            response_text = self._call_provider_with_retry(
+                provider=self.provider,
+                prompt=prompt,
+                system="You are an expert at analyzing organizations for Solidarity Economy alignment.",
+                task="sse",
+                search_query=search_query,
+                retries=0, # Outer loop handles parse retries
+            )
 
             parsed_result, parse_error = self._safe_parse_response(response_text, org_name)
             if parsed_result is not None:
@@ -194,10 +174,7 @@ class OrganizationSSEClassifier:
 
         Reuses the same validation logic as SSEClassifier._parse_sse_response.
         """
-        text = response_text.strip()
-        match = re.search(r"^```(?:json)?\s*([\s\S]*?)\s*```\s*$", text, re.IGNORECASE)
-        if match:
-            text = match.group(1).strip()
+        text = self._extract_json_block(response_text)
 
         data = json.loads(text)
 

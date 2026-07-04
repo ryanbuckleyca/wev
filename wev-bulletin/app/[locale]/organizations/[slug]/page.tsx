@@ -1,10 +1,9 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { Leaf1Solid } from '@lineiconshq/free-icons';
-import { Lineicons } from '@lineiconshq/react-lineicons';
-import { fetchOrganizationDetail } from '@/lib/organizations/server-data';
+import { getOrganizationBySlug, getOrganizationJobs } from '@/lib/organizations/server-data';
 import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
 import OrganizationJobRow from '@/components/OrganizationJobRow';
+import OrganizationProfileHeader from '@/components/OrganizationProfileHeader';
 import SimplePagination from '@/components/SimplePagination';
 
 interface PageProps {
@@ -13,15 +12,14 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const { locale, slug } = await params;
-  const typedLocale = locale === 'fr' ? 'fr' : 'en';
-  const data = await fetchOrganizationDetail(slug, 1, typedLocale);
+  const { slug } = await params;
+  const org = await getOrganizationBySlug(slug);
 
-  if (!data) return {};
+  if (!org) return {};
 
   return {
-    title: data.org.name,
-    description: data.org.description || undefined,
+    title: org.name,
+    description: org.description || undefined,
   };
 }
 
@@ -36,13 +34,13 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
       ? parseInt(resolvedSearchParams.page, 10)
       : 1;
 
-  const data = await fetchOrganizationDetail(slug, page, typedLocale);
+  const org = await getOrganizationBySlug(slug);
 
-  if (!data) {
+  if (!org) {
     notFound();
   }
 
-  const { org, jobs, total } = data;
+  const { jobs, total } = await getOrganizationJobs(org.id, page);
   const totalPages = Math.ceil(total / ORG_JOBS_PER_PAGE);
 
   return (
@@ -50,46 +48,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
       <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
         
         {/* Header Section */}
-        <div className="bg-card border border-border rounded-wev-card p-6 sm:p-8 mb-8 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-foreground">{org.name}</h1>
-                {org.is_sse && (
-                  <span className="flex-shrink-0" role="img" aria-label={t('sseBadgeLabel')}>
-                    <Lineicons icon={Leaf1Solid} size={24} className="text-wev-success" />
-                  </span>
-                )}
-              </div>
-              
-              <div className="flex flex-col sm:flex-row sm:items-center gap-x-6 gap-y-2 text-muted-foreground mt-4">
-                {org.location && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-medium text-foreground">{t('location')}:</span> {org.location}
-                  </div>
-                )}
-                
-                {org.website && (
-                  <a
-                    href={org.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline font-medium"
-                  >
-                    {t('visitWebsite')}
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {org.description && (
-            <div className="mt-8 pt-8 border-t border-border">
-              <h2 className="text-lg font-semibold text-foreground mb-3">{t('description')}</h2>
-              <p className="text-foreground whitespace-pre-wrap leading-relaxed">{org.description}</p>
-            </div>
-          )}
-        </div>
+        <OrganizationProfileHeader org={org} />
 
         {/* Jobs Section */}
         <div className="space-y-4">
