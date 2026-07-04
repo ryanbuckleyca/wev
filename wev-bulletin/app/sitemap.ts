@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { routing } from '@/i18n/routing';
 import { getSiteBaseUrl } from '@/lib/site-url';
-import { fetchOrganizationIndex } from '@/lib/organizations/server-data';
+import { supabaseServer } from '@/lib/supabase-server';
 
 const siteBaseUrl = getSiteBaseUrl() || 'https://bulletin.wevchange.org';
 
@@ -39,29 +39,33 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   try {
-    const orgs = await fetchOrganizationIndex('en');
+    const { data: orgs, error } = await supabaseServer.from('organizations').select('slug');
 
-    orgs.forEach((org) => {
-      if (!org.slug) return;
+    if (error) {
+      console.error('Error fetching organizations for sitemap:', error);
+    } else if (orgs) {
+      orgs.forEach((org) => {
+        if (!org.slug) return;
 
-      const slugLocaleEntries = Object.fromEntries(
-        routing.locales.map((locale) => [
-          locale,
-          `${siteBaseUrl}/${locale}/organizations/${org.slug}`,
-        ]),
-      );
+        const slugLocaleEntries = Object.fromEntries(
+          routing.locales.map((locale) => [
+            locale,
+            `${siteBaseUrl}/${locale}/organizations/${org.slug}`,
+          ]),
+        );
 
-      routing.locales.forEach((locale) => {
-        sitemapEntries.push({
-          url: `${siteBaseUrl}/${locale}/organizations/${org.slug}`,
-          changeFrequency: 'daily' as const,
-          priority: 0.7,
-          alternates: {
-            languages: slugLocaleEntries,
-          },
+        routing.locales.forEach((locale) => {
+          sitemapEntries.push({
+            url: `${siteBaseUrl}/${locale}/organizations/${org.slug}`,
+            changeFrequency: 'daily' as const,
+            priority: 0.7,
+            alternates: {
+              languages: slugLocaleEntries,
+            },
+          });
         });
       });
-    });
+    }
   } catch (error) {
     console.error('Error fetching organizations for sitemap:', error);
   }
