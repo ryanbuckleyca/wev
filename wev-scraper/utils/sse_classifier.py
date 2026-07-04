@@ -2,12 +2,11 @@
 
 import json
 import logging
-import re
 from datetime import datetime, timezone
 from typing import TypedDict
 
-from llm.base import LLMProviderError
 from llm.factory import get_sse_provider
+from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.sse_prompts import (
     get_sse_batch_classification_prompt,
     get_sse_classification_prompt,
@@ -20,9 +19,7 @@ logger = logging.getLogger(__name__)
 SSE_SEARCH_KEYWORDS = '(governance OR bylaws OR "articles of incorporation" OR "annual report" OR "impact report" OR "board of directors")'
 
 
-class SSEClassificationError(Exception):
-    """Raised when SSE classification fails."""
-    pass
+
 
 
 class SSEDetails(TypedDict, total=False):
@@ -48,7 +45,7 @@ class SSEClassificationResult(TypedDict):
     reviewed: bool
 
 
-class SSEClassifier:
+class SSEClassifier(BaseGroundedClassifier):
     """Classifies jobs as Corporate vs SSE-aligned using Gemini.
 
     Example:
@@ -120,27 +117,14 @@ class SSEClassifier:
 
         last_error_message = ""
         for attempt in range(2):
-            try:
-                response_text = self.provider.complete(
-                    prompt,
-                    system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
-                    task="sse",
-                    search_query=search_query,
-                ).strip()
-            except LLMProviderError as e:
-                raise SSEClassificationError(f"LLM provider error: {e}") from e
-            except Exception as e:
-                err_msg_raw = str(e)
-                err_msg = err_msg_raw.lower()
-                if "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg:
-                    raise SSEClassificationError(
-                        f"API rate limit or quota exceeded. Try again later. Raw error: {err_msg_raw}"
-                    ) from e
-                if "403" in err_msg or "permission" in err_msg:
-                    raise SSEClassificationError(
-                        f"API key invalid or permission denied. Check API keys (GEMINI_API_KEY, GROQ_API_KEY). Raw error: {err_msg_raw}"
-                    ) from e
-                raise SSEClassificationError(f"LLM API error: {err_msg_raw}") from e
+            response_text = self._call_provider_with_retry(
+                provider=self.provider,
+                prompt=prompt,
+                system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
+                task="sse",
+                search_query=search_query,
+                retries=0, # The outer loop handles the parsing retries
+            )
 
             parsed_result, parse_error = self._safe_parse_sse_response(response_text, job_title, org_name)
             if parsed_result is not None:
@@ -194,38 +178,24 @@ class SSEClassifier:
 
         prompt = get_sse_batch_classification_prompt(normalized_jobs)
 
-        try:
-            org_search_terms = []
-            for j in normalized_jobs:
-                if j["org_name"] and j["org_name"] != "Unknown":
-                    term = f'"{j["org_name"]}"'
-                    if j.get("location") and j["location"] != "Unknown":
-                        term += f' "{j["location"]}"'
-                    org_search_terms.append(term)
+        org_search_terms = []
+        for j in normalized_jobs:
+            if j["org_name"] and j["org_name"] != "Unknown":
+                term = f'"{j["org_name"]}"'
+                if j.get("location") and j["location"] != "Unknown":
+                    term += f' "{j["location"]}"'
+                org_search_terms.append(term)
 
-            search_query = " OR ".join(org_search_terms) + f" {SSE_SEARCH_KEYWORDS}" if org_search_terms else None
+        search_query = " OR ".join(org_search_terms) + f" {SSE_SEARCH_KEYWORDS}" if org_search_terms else None
 
-            response_text = self.provider.complete(
-                prompt,
-                system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
-                task="sse",
-                search_query=search_query,
-            ).strip()
-
-        except LLMProviderError as e:
-            raise SSEClassificationError(f"LLM provider error: {e}") from e
-        except Exception as e:
-            err_msg_raw = str(e)
-            err_msg = err_msg_raw.lower()
-            if "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg:
-                raise SSEClassificationError(
-                    f"API rate limit or quota exceeded. Try again later. Raw error: {err_msg_raw}"
-                ) from e
-            if "403" in err_msg or "permission" in err_msg:
-                raise SSEClassificationError(
-                    f"API key invalid or permission denied. Check API keys (GEMINI_API_KEY, GROQ_API_KEY). Raw error: {err_msg_raw}"
-                ) from e
-            raise SSEClassificationError(f"LLM API error: {err_msg_raw}") from e
+        response_text = self._call_provider_with_retry(
+            provider=self.provider,
+            prompt=prompt,
+            system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
+            task="sse",
+            search_query=search_query,
+            retries=0, # No parsing retries for batch mode currently
+        )
 
         parse_result, parse_error = self._safe_parse_batch_response(response_text, len(jobs))
         if parse_result is not None:
@@ -253,10 +223,7 @@ class SSEClassifier:
 
     def _parse_sse_response(self, response_text: str, job_title: str, org_name: str) -> SSEClassificationResult:
         """Parse and validate a single-job JSON response."""
-        text = response_text.strip()
-        match = re.search(r"^```(?:json)?\s*([\s\S]*?)\s*```\s*$", text, re.IGNORECASE)
-        if match:
-            text = match.group(1).strip()
+        text = self._extract_json_block(response_text)
 
         data = json.loads(text)
 
@@ -303,10 +270,7 @@ class SSEClassifier:
 
     def _parse_batch_sse_response(self, response_text: str, num_jobs: int) -> list[SSEClassificationResult]:
         """Parse and validate a batch JSON array response."""
-        text = response_text.strip()
-        match = re.search(r"^```(?:json)?\s*([\s\S]*?)\s*```\s*$", text, re.IGNORECASE)
-        if match:
-            text = match.group(1).strip()
+        text = self._extract_json_block(response_text)
 
         data_array = json.loads(text)
 

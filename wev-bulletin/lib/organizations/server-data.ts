@@ -21,44 +21,43 @@ export async function fetchOrganizationIndex(locale: 'en' | 'fr'): Promise<OrgIn
   return (orgs || []) as OrgIndexEntry[];
 }
 
-export async function fetchOrganizationDetail(
-  slug: string,
-  page: number,
-  locale: 'en' | 'fr'
-): Promise<{ org: OrgRecord; jobs: OrgJobPosting[]; total: number } | null> {
-  const minDate = new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const limit = ORG_JOBS_PER_PAGE;
-  const offset = (page - 1) * limit;
-
-  // 1. Fetch org by slug
-  const { data: org, error: orgError } = await supabaseServer
+export async function getOrganizationBySlug(slug: string): Promise<OrgRecord | null> {
+  const { data: org, error } = await supabaseServer
     .from('organizations')
     .select('*')
     .eq('slug', slug)
     .single();
 
-  if (orgError || !org) {
-    return null; // Org not found or db error
+  if (error || !org) {
+    return null;
   }
+  return org;
+}
 
-  // 2. Fetch paginated active jobs for this org
-  const { data: jobs, error: jobsError, count } = await supabaseServer
+export async function getOrganizationJobs(
+  orgId: number,
+  page: number,
+): Promise<{ jobs: OrgJobPosting[]; total: number }> {
+  const minDate = new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const limit = ORG_JOBS_PER_PAGE;
+  const offset = (page - 1) * limit;
+
+  const { data: jobs, error, count } = await supabaseServer
     .from('jobs')
     .select('id, job_title, listing_url, date_posted, employment_type, location, work_type', {
       count: 'exact',
     })
-    .eq('organization_id', org.id)
+    .eq('organization_id', orgId)
     .gte('date_posted', minDate)
     .order('date_posted', { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (jobsError) {
-    console.error('fetchOrganizationDetail jobs error:', jobsError);
-    throw new Error('Failed to fetch jobs for organization detail');
+  if (error) {
+    console.error('getOrganizationJobs error:', error);
+    throw new Error('Failed to fetch jobs for organization');
   }
 
   return {
-    org,
     jobs: jobs || [],
     total: count || 0,
   };
