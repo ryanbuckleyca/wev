@@ -15,6 +15,7 @@ vi.mock('next-intl', () => ({
 
 // Mock @lineiconshq/react-lineicons to render a span with data-testid
 vi.mock('@lineiconshq/react-lineicons', () => ({
+  Leaf1Solid: 'Leaf1Solid',
   Lineicons: ({ icon }: { icon: any }) => <span data-testid="lineicon-mock" />,
 }));
 
