@@ -233,7 +233,7 @@ class TestClassifyFailure:
             provider_side_effect=Exception("resource_exhausted: quota exceeded"),
         )
 
-        with pytest.raises(SSEClassificationError, match="rate limit"):
+        with pytest.raises(SSEClassificationError, match="LLM API error"):
             classifier.classify(_make_org())
 
     def test_provider_permission_error_raises_sse_error(self):
