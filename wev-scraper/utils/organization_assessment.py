@@ -13,12 +13,12 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from datetime import datetime, timezone
 from typing import Any, List, TypedDict
 from urllib.parse import urlparse
 
 from llm.factory import get_sse_provider
+from utils.base_grounded_classifier import BaseGroundedClassifier
 from utils.job_values_prompts import get_work_values_set, get_taxonomy
 from utils.sse_prompts import SSE_PRINCIPLES, EVALUATION_CRITERIA, JSON_INSTRUCTIONS
 
@@ -34,6 +34,23 @@ ORG_TYPE_VALUES = (
 )
 
 _PROMPT_DESC_MAX_CHARS = 1000
+
+_JSON_FIELDS = """{
+  "canonical_name": "Official organization name (string, required, non-empty)",
+  "slug": "url-safe-kebab-case (string, required)",
+  "website": "https://... or null",
+  "description": "Brief organization description, max 300 characters, or null",
+  "mission_statement": "Organization mission/purpose statement, max 500 characters, or null",
+  "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null",
+  "values_raw": "Organization values and principles if found on their website, max 1000 characters, or null",
+  "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
+  "sse_rating": "strong_yes or weak_yes or no",
+  "sse_confidence": "0.0 to 1.0",
+  "sse_reasoning": "Brief explanation of SSE rating citing specific evidence, max 200 chars",
+  "must_haves_met": ["list of criteria met"],
+  "nice_to_haves_met": ["list of criteria met"],
+  "flags": ["any concerns", "ambiguities", "missing info"]
+}"""
 
 _combined_prompt = """You are evaluating an organization from scraped job data.
 Your goal is to identify the organization, extract its values and mission,
@@ -52,22 +69,7 @@ ORGANIZATION DATA:
 {description}
 
 Return a JSON object with exactly these fields:
-{{
-  "canonical_name": "Official organization name (string, required, non-empty)",
-  "slug": "url-safe-kebab-case (string, required)",
-  "website": "https://... or null",
-  "description": "Brief organization description, max 300 characters, or null",
-  "mission_statement": "Organization mission/purpose statement, max 500 characters, or null",
-  "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null",
-  "values_raw": "Organization values and principles if found on their website, max 1000 characters, or null",
-  "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
-  "sse_rating": "strong_yes or weak_yes or no",
-  "sse_confidence": "0.0 to 1.0",
-  "sse_reasoning": "Brief explanation of SSE rating citing specific evidence, max 200 chars",
-  "must_haves_met": ["list of criteria met"],
-  "nice_to_haves_met": ["list of criteria met"],
-  "flags": ["any concerns", "ambiguities", "missing info"]
-}}
+{json_fields}
 
 ALLOWED VALUES for the "values" field (use ONLY labels from this list):
 {taxonomy_formatted}
@@ -125,14 +127,10 @@ def _build_assessment_prompt(
         province=province or "",
         job_title=job_title,
         description=description[:_PROMPT_DESC_MAX_CHARS],
+        json_fields=_JSON_FIELDS,
         taxonomy_formatted=_format_taxonomy(),
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
     )
-
-
-def _strip_fences(text: str) -> str:
-    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
-    return match.group(1).strip() if match else text.strip()
 
 
 def _normalize_type(raw: Any) -> str | None:
@@ -181,7 +179,7 @@ def _ensure_str_list(raw: Any) -> list[str]:
 
 
 def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | None:
-    text = _strip_fences(response_text)
+    text = BaseGroundedClassifier._extract_json_block(response_text)
 
     try:
         data = json.loads(text)
@@ -225,29 +223,14 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     )
 
 
-def _build_sse_details(result: AssessedOrgResult) -> dict[str, Any]:
-    return {
-        "confidence": result["sse_confidence"],
-        "reasoning": result["sse_reasoning"],
-        "must_haves_met": result["must_haves_met"],
-        "nice_to_haves_met": result["nice_to_haves_met"],
-        "flags": result["flags"],
-        "classified_at": datetime.now(timezone.utc).isoformat(),
-        "reviewed": False,
-    }
-
-
-def _build_values_rated(values: list[str]) -> list[dict[str, Any]]:
-    return [{"value": v, "confidence": i + 1} for i, v in enumerate(values)]
-
-
-class OrganizationAssessor:
+class OrganizationAssessor(BaseGroundedClassifier):
     """Single grounded LLM call: identifies org, maps values, produces SSE rating."""
 
     def __init__(self) -> None:
         self.provider = get_sse_provider()
         if not self.provider:
-            raise RuntimeError(
+            from utils.base_grounded_classifier import SSEClassificationError
+            raise SSEClassificationError(
                 "SSE provider not available for OrganizationAssessor. "
                 "Check API keys (GEMINI_API_KEY, GROQ_API_KEY, TAVILY_API_KEY)."
             )
@@ -292,10 +275,18 @@ class OrganizationAssessor:
             "type": result["type"],
             "values": result["values_raw"],
             "values_list": result["values"],
-            "values_rated": _build_values_rated(result["values"]) if result["values"] else None,
+            "values_rated": [{"value": v, "confidence": i + 1} for i, v in enumerate(result["values"])] if result["values"] else None,
             "sse_rating": result["sse_rating"],
             "is_sse": result["sse_rating"] in ("strong_yes", "weak_yes"),
-            "sse_details": _build_sse_details(result),
+            "sse_details": {
+                "confidence": result["sse_confidence"],
+                "reasoning": result["sse_reasoning"],
+                "must_haves_met": result["must_haves_met"],
+                "nice_to_haves_met": result["nice_to_haves_met"],
+                "flags": result["flags"],
+                "classified_at": datetime.now(timezone.utc).isoformat(),
+                "reviewed": False,
+            },
         }
 
     def assess_and_build_row(
@@ -332,7 +323,12 @@ class OrganizationAssessor:
         Used by the backfill script for orgs created before the combined
         assessor existed (null sse_rating).
         """
-        name = org.get("name", "Unknown")
+        name = org.get("name")
+        if not name:
+            logger.warning(
+                "assess_and_build_update: org_id=%s has no name, skipping", org.get("id"),
+            )
+            return None
         result = self.assess(
             raw_name=name,
             municipality=None,

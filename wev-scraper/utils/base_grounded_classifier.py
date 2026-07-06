@@ -14,6 +14,11 @@ class SSEClassificationError(Exception):
     pass
 
 
+def _is_rate_limit(err: str) -> bool:
+    lower = err.lower()
+    return "429" in err or "resource_exhausted" in lower or "quota" in lower
+
+
 class BaseGroundedClassifier:
     """Base class providing LLM error handling and JSON parsing for grounded classifiers."""
 
@@ -40,33 +45,23 @@ class BaseGroundedClassifier:
                     search_query=search_query,
                 ).strip()
             except LLMProviderError as e:
-                err_msg_raw = str(e)
-                err_msg = err_msg_raw.lower()
-                is_rate_limit = "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg
-                if attempt < retries and is_rate_limit:
+                if _is_rate_limit(str(e)) and attempt < retries:
                     logger.warning("LLM rate limit on attempt %d/%d, retrying...", attempt + 1, retries + 1)
                     continue
                 raise SSEClassificationError(f"LLM provider error: {e}") from e
             except Exception as e:
-                err_msg_raw = str(e)
-                err_msg = err_msg_raw.lower()
-
-                if "403" in err_msg or "permission" in err_msg:
+                err = str(e)
+                if "403" in err or "permission" in err.lower():
                     raise SSEClassificationError(
-                        f"API key invalid or permission denied. Raw error: {err_msg_raw}"
+                        f"API key invalid or permission denied. Raw error: {err}"
                     ) from e
-
-                is_rate_limit = "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg
-                if attempt < retries and is_rate_limit:
+                if _is_rate_limit(err) and attempt < retries:
                     logger.warning("LLM rate limit on attempt %d/%d, retrying...", attempt + 1, retries + 1)
                     continue
+                raise SSEClassificationError(f"LLM API error: {err}") from e
 
-                raise SSEClassificationError(f"LLM API error: {err_msg_raw}") from e
-
-        # Unreachable, but satisfies the type checker
-        raise SSEClassificationError("Failed to complete LLM call")
-
-    def _extract_json_block(self, response_text: str) -> str:
+    @staticmethod
+    def _extract_json_block(response_text: str) -> str:
         """Strip markdown code fences from an LLM response to get raw JSON."""
         text = response_text.strip()
         match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)

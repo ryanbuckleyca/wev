@@ -8,7 +8,10 @@
     "visitWebsite": "Visit website",
     "sseBadgeLabel": "Solidarity Economy Organization",
     "location": "Location",
-    "description": "About"
+    "description": "About",
+    "orgType": "Type",
+    "missionStatement": "Mission",
+    "values": "Values"
   },
   "home": {
     "heading": "Bulletin – Job Postings",

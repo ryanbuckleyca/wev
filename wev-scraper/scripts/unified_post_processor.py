@@ -39,9 +39,24 @@ from utils.prod_env import (  # noqa: E402
 bootstrap_staging_from_argv(sys.argv, Path(__file__))
 bootstrap_prod_from_argv(sys.argv, Path(__file__))
 
-if "--prod" in sys.argv or "--publish" in sys.argv or "--env" in sys.argv and any(
-    arg in {"prod", "publish"} for arg in sys.argv[sys.argv.index("--env") + 1 : sys.argv.index("--env") + 2]
-):
+
+def _has_prod_target(argv: list[str]) -> bool:
+    if "--prod" in argv or "--publish" in argv:
+        return True
+    if "--env" not in argv:
+        return False
+
+    try:
+        env_index = argv.index("--env")
+    except ValueError:
+        return False
+
+    if env_index + 1 >= len(argv):
+        return False
+    return argv[env_index + 1] in {"prod", "publish"}
+
+
+if _has_prod_target(sys.argv):
     confirm_prod_run(full_prod="--prod" in sys.argv or any(arg == "prod" for arg in sys.argv))
 
 # Deferred imports: `utils.db`, `llm.factory`, and `utils.log` transitively load clients
