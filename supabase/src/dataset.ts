@@ -164,7 +164,7 @@ function createJobValues(index: number): string[] {
 
 function createRatedValues(values: string[]): Json {
   return values.map((value, index) => ({
-    confidence: index + 1,
+    rank: index + 1,
     value,
   }));
 }
@@ -405,9 +405,9 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
         "Empowering local communities through sustainable initiatives",
       values_list: ["Community", "Help Society", "Economic Security"],
       values_rated: [
-        { value: "Community", confidence: 3 },
-        { value: "Help Society", confidence: 2 },
-        { value: "Economic Security", confidence: 1 },
+        { value: "Community", rank: 3 },
+        { value: "Help Society", rank: 2 },
+        { value: "Economic Security", rank: 1 },
       ],
       created_at: toIsoTimestamp(daysAgo(now, 30)),
     },
@@ -424,9 +424,9 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
         "Building worker-owned enterprises for shared prosperity",
       values_list: ["Cooperation", "Community", "Economic Security"],
       values_rated: [
-        { value: "Cooperation", confidence: 3 },
-        { value: "Community", confidence: 2 },
-        { value: "Economic Security", confidence: 1 },
+        { value: "Cooperation", rank: 3 },
+        { value: "Community", rank: 2 },
+        { value: "Economic Security", rank: 1 },
       ],
       created_at: toIsoTimestamp(daysAgo(now, 30)),
     },

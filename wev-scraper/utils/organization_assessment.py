@@ -275,7 +275,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
             "type": result["type"],
             "values": result["values_raw"],
             "values_list": result["values"],
-            "values_rated": [{"value": v, "confidence": i + 1} for i, v in enumerate(result["values"])] if result["values"] else None,
+            "values_rated": [{"value": v, "rank": i + 1} for i, v in enumerate(result["values"])] if result["values"] else None,
             "sse_rating": result["sse_rating"],
             "is_sse": result["sse_rating"] in ("strong_yes", "weak_yes"),
             "sse_details": {

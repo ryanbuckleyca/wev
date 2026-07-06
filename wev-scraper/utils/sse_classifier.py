@@ -111,14 +111,19 @@ class SSEClassifier(BaseGroundedClassifier):
 
         last_error_message = ""
         for attempt in range(2):
-            response_text = self._call_provider_with_retry(
-                provider=self.provider,
-                prompt=prompt,
-                system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
-                task="sse",
-                search_query=search_query,
-                retries=0, # The outer loop handles the parsing retries
-            )
+            try:
+                response_text = self._call_provider_with_retry(
+                    provider=self.provider,
+                    prompt=prompt,
+                    system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
+                    task="sse",
+                    search_query=search_query,
+                    retries=0,  # The outer loop handles provider and parse retries
+                )
+            except SSEClassificationError as e:
+                last_error_message = str(e)
+                logger.warning(f"SSE provider error (attempt {attempt + 1}/2): {last_error_message}")
+                continue
 
             parsed_result, parse_error = self._safe_parse_sse_response(response_text, job_title, org_name)
             if parsed_result is not None:

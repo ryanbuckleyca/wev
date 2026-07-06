@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-${ROOT}/../wev-export.tar.gz}"
 
 tar -czf "${OUT}" \
+	--exclude="$(basename "${OUT}")" \
 	--exclude='node_modules' \
 	--exclude='.venv' --exclude='venv' --exclude='ENV' --exclude='env' \
 	--exclude='__pycache__' --exclude='*.pyc' --exclude='*.pyo' \
