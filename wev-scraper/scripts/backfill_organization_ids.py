@@ -187,23 +187,20 @@ def run_sse_backfill(
     Requirements: 5.5, 5.6
     """
     from utils.db import supabase
+    from utils.organization_assessment import OrganizationAssessor
     from utils.organization_repository import OrganizationRepository
-    from utils.organization_sse_classifier import (
-        OrganizationSSEClassifier,
-        is_sse_from_rating,
-    )
 
     logger.info(
-        "Starting Phase 2 (SSE backfill) — batch_size=%d, batch_delay=%.1fs, dry_run=%s",
+        "Starting Phase 2 (org assessment backfill) — batch_size=%d, batch_delay=%.1fs, dry_run=%s",
         batch_size,
         batch_delay_seconds,
         dry_run,
     )
 
     try:
-        classifier = OrganizationSSEClassifier()
+        assessor = OrganizationAssessor()
     except Exception as exc:
-        logger.error("Phase 2: OrganizationSSEClassifier unavailable: %s", exc)
+        logger.error("Phase 2: OrganizationAssessor unavailable: %s", exc)
         return {
             "phase2_classified": 0,
             "phase2_errors": 0,
@@ -231,31 +228,21 @@ def run_sse_backfill(
         for org_row in rows:
             org_id = org_row["id"]
             try:
-                result = classifier.classify(org_row)
-                rating = result["rating"]
-                org_is_sse = is_sse_from_rating(rating)
+                update = assessor.assess_and_build_update(org_row)
+                if update is None:
+                    logger.warning(
+                        "Phase 2: assess_and_build_update returned None for org_id=%s (%s)",
+                        org_id, org_row.get("name", "?"),
+                    )
+                    continue
 
                 logger.info(
-                    "Phase 2: org_id=%s (%s) → sse_rating=%s, is_sse=%s",
-                    org_id, org_row.get("name", "?"), rating, org_is_sse,
+                    "Phase 2: org_id=%s (%s) → sse_rating=%s",
+                    org_id, org_row.get("name", "?"), update.get("sse_rating"),
                 )
 
                 if not dry_run:
-                    sse_details = {
-                        "confidence": result["confidence"],
-                        "reasoning": result["reasoning"],
-                        "must_haves_met": result["must_haves_met"],
-                        "nice_to_haves_met": result["nice_to_haves_met"],
-                        "flags": result["flags"],
-                        "classified_at": result["classified_at"],
-                        "reviewed": result["reviewed"],
-                    }
-                    repo.update_sse(
-                        org_id=org_id,
-                        sse_rating=rating,
-                        is_sse=org_is_sse,
-                        sse_details=sse_details,
-                    )
+                    repo.update_org(org_id, **update)
 
                 total_classified += 1
 

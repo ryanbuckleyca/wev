@@ -75,8 +75,12 @@ export const getOrganizationBySlug = cache(async (slug: string): Promise<OrgReco
     .eq('slug', slug)
     .single();
 
-  if (error || !org) {
-    return null;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null;
+    }
+    console.error('getOrganizationBySlug error:', error);
+    throw new Error(`Failed to fetch organization: ${error.message}`);
   }
   return org;
 });

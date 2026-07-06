@@ -158,7 +158,7 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
     task_descriptions = {
         "summary": "Job summarization (1 sentence)",
         "values": "Values tagging (from taxonomy)",
-        "sse": "SSE classification (no Google Search unless FORCE_GROUNDING=1)",
+        "sse": "SSE classification (with Google Search)",
         "language": "Language tagging (en, fr, or bilingual)",
     }
 

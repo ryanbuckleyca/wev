@@ -40,6 +40,12 @@ class BaseGroundedClassifier:
                     search_query=search_query,
                 ).strip()
             except LLMProviderError as e:
+                err_msg_raw = str(e)
+                err_msg = err_msg_raw.lower()
+                is_rate_limit = "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg
+                if attempt < retries and is_rate_limit:
+                    logger.warning("LLM rate limit on attempt %d/%d, retrying...", attempt + 1, retries + 1)
+                    continue
                 raise SSEClassificationError(f"LLM provider error: {e}") from e
             except Exception as e:
                 err_msg_raw = str(e)

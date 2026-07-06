@@ -401,6 +401,13 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       location: "Montreal, QC",
       type: "non-profit",
       is_sse: true,
+      mission_statement: "Empowering local communities through sustainable initiatives",
+      values_list: ["Community", "Help Society", "Economic Security"],
+      values_rated: [
+        { value: "Community", confidence: 3 },
+        { value: "Help Society", confidence: 2 },
+        { value: "Economic Security", confidence: 1 },
+      ],
       created_at: toIsoTimestamp(daysAgo(now, 30)),
     },
     {
@@ -412,6 +419,13 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       location: "Ottawa, ON",
       type: "cooperative",
       is_sse: true,
+      mission_statement: "Building worker-owned enterprises for shared prosperity",
+      values_list: ["Cooperation", "Community", "Economic Security"],
+      values_rated: [
+        { value: "Cooperation", confidence: 3 },
+        { value: "Community", confidence: 2 },
+        { value: "Economic Security", confidence: 1 },
+      ],
       created_at: toIsoTimestamp(daysAgo(now, 30)),
     },
     {
