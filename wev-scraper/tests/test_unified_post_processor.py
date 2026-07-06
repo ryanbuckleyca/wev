@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from scripts.unified_post_processor import (
@@ -9,6 +10,16 @@ from scripts.unified_post_processor import (
     main,
     process_jobs_unified,
 )
+from utils.prod_env import resolve_prod_env_path
+
+
+def test_resolve_prod_env_path_finds_repo_root_env(tmp_path: Path):
+    repo_root = tmp_path / "repo"
+    script_path = repo_root / "wev-scraper" / "scripts" / "unified_post_processor.py"
+    script_path.parent.mkdir(parents=True, exist_ok=True)
+    (repo_root / ".env.production").write_text("ENV=prod\n")
+
+    assert resolve_prod_env_path(script_path) == repo_root / ".env.production"
 
 
 def test_build_update_data():

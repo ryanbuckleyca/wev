@@ -45,12 +45,21 @@ def confirm_prod_run(*, full_prod: bool) -> None:
 
 def resolve_prod_env_path(script_file: Path) -> Path:
     """Return the path to .env.production (repo root or scraper package)."""
-    scraper_dir = script_file.resolve().parent
-    root_dir = scraper_dir.parent
-    for candidate in (root_dir / ".env.production", scraper_dir / ".env.production"):
+    script_path = script_file.resolve()
+    candidates: list[Path] = []
+
+    current = script_path.parent
+    while True:
+        candidates.append(current / ".env.production")
+        if current.parent == current:
+            break
+        current = current.parent
+
+    for candidate in candidates:
         if candidate.exists():
             return candidate
-    return root_dir / ".env.production"
+
+    return candidates[0]
 
 
 def apply_prod_overrides(prod_env: Path, *, full_prod: bool) -> None:

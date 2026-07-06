@@ -8,7 +8,10 @@
     "visitWebsite": "Visiter le site web",
     "sseBadgeLabel": "Organisation d'économie sociale",
     "location": "Emplacement",
-    "description": "À propos"
+    "description": "À propos",
+    "orgType": "Type",
+    "missionStatement": "Mission",
+    "values": "Valeurs"
   },
   "home": {
     "heading": "Bulletin – Offres d'emploi",

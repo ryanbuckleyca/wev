@@ -10,6 +10,11 @@ function getMinDateIso(): string {
   return new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
 }
 
+// NOTE: uses two round-trips (jobs + orgs) instead of a single LEFT JOIN / RPC.
+// This is fine at current scale; if the org index becomes slow, consolidate into
+// a single supabase.rpc() call.
+// TODO: select only needed columns (name, slug, location, is_sse) once the index
+// view no longer extends OrgRecord (which requires all columns).
 export async function fetchOrganizationIndex(
   page: number = 1,
 ): Promise<{ orgs: OrgIndexEntry[]; total: number }> {
@@ -54,7 +59,7 @@ export async function fetchOrganizationIndex(
     throw new Error('Failed to fetch organization index');
   }
 
-  const sortedOrgs = (organizations || [])
+  const sortedOrgs: OrgIndexEntry[] = (organizations || [])
     .map((org) => ({
       ...org,
       active_job_count: countsByOrgId.get(org.id) || 0,
@@ -63,7 +68,7 @@ export async function fetchOrganizationIndex(
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
   return {
-    orgs: sortedOrgs.slice(offset, offset + limit) as OrgIndexEntry[],
+    orgs: sortedOrgs.slice(offset, offset + limit),
     total: sortedOrgs.length,
   };
 }
