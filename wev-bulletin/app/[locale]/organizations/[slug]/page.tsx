@@ -41,6 +41,10 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
   const { jobs, total } = await getOrganizationJobs(org.id, page);
   const totalPages = Math.ceil(total / ORG_JOBS_PER_PAGE);
 
+  if (page > totalPages && totalPages > 0) {
+    notFound();
+  }
+
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">

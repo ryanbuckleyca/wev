@@ -39,7 +39,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   try {
-    const { data: orgs, error } = await supabaseServer.from('organizations').select('slug');
+    const { data: orgs, error } = await supabaseServer
+      .from('organizations')
+      .select('slug')
+      .limit(50000);
 
     if (error) {
       console.error('Error fetching organizations for sitemap:', error);
