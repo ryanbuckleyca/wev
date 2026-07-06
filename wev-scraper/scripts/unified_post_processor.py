@@ -6,10 +6,10 @@ with a single unified processor that extracts all data in one LLM call.
 
 Usage:
     python unified_post_processor.py [--task sse|values|summary|all] [--limit N]
-        [--staging] [--job-id ID ...] [--dry-run] [--verbose]
+        [--staging] [--prod|--publish] [--job-id ID ...] [--dry-run] [--verbose]
 
-    Targets local DB by default. Use --staging for .env.staging.
-    Does not support --prod or --publish (no production writes from this tool).
+    Targets local DB by default. Use --staging for .env.staging or --prod/--publish
+    for the production database.
 """
 
 import argparse
@@ -30,18 +30,19 @@ from settings import (  # noqa: E402
 )
 
 ensure_env_loaded()
-from utils.prod_env import bootstrap_staging_from_argv  # noqa: E402
-
-if "--prod" in sys.argv or "--publish" in sys.argv:
-    print(
-        "Error: process does not support --prod or --publish. "
-        "Use local (default) or --staging. Production post-processing "
-        "should run in a controlled environment, not from npm run process.",
-        file=sys.stderr,
-    )
-    sys.exit(2)
+from utils.prod_env import (  # noqa: E402
+    bootstrap_prod_from_argv,
+    bootstrap_staging_from_argv,
+    confirm_prod_run,
+)
 
 bootstrap_staging_from_argv(sys.argv, Path(__file__))
+bootstrap_prod_from_argv(sys.argv, Path(__file__))
+
+if "--prod" in sys.argv or "--publish" in sys.argv or "--env" in sys.argv and any(
+    arg in {"prod", "publish"} for arg in sys.argv[sys.argv.index("--env") + 1 : sys.argv.index("--env") + 2]
+):
+    confirm_prod_run(full_prod="--prod" in sys.argv or any(arg == "prod" for arg in sys.argv))
 
 # Deferred imports: `utils.db`, `llm.factory`, and `utils.log` transitively load clients
 # that read `os.environ` (Supabase URL/keys, LLM provider config). Import them only after
@@ -388,7 +389,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Don't save to database")
     parser.add_argument(
         "--env",
-        choices=["local", "staging"],
+        choices=["local", "staging", "prod", "publish"],
         default="local",
         help="Target environment (default: local)",
     )
@@ -396,6 +397,16 @@ def main():
         "--staging",
         action="store_true",
         help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--prod",
+        action="store_true",
+        help="Target the production database (requires confirmation)",
+    )
+    parser.add_argument(
+        "--publish",
+        action="store_true",
+        help="Target the production database using local LLMs/embeddings",
     )
     parser.add_argument("--verbose", action="store_true", help="Detailed logging")
 

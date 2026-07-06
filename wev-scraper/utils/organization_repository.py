@@ -112,34 +112,6 @@ class OrganizationRepository:
         )
         return None
 
-    def update_sse(
-        self,
-        org_id: int,
-        sse_rating: str,
-        is_sse: bool,
-        sse_details: dict | None = None,
-    ) -> None:
-        """Write SSE classification results back to an organization row.
-
-        Requirements: 5.1, 5.2
-        """
-        payload: dict = {
-            "sse_rating": sse_rating,
-            "is_sse": is_sse,
-        }
-        if sse_details is not None:
-            payload["sse_details"] = sse_details
-        try:
-            resp = self._supabase.table("organizations").update(payload).eq("id", org_id).execute()
-            if not resp.data:
-                logger.warning(
-                    "OrganizationRepository: update_sse matched no rows for org_id=%s — payload=%s",
-                    org_id, payload,
-                )
-        except Exception as exc:
-            logger.error("OrganizationRepository: update_sse failed for org_id=%s: %s", org_id, exc)
-            raise
-
     def update_org(
         self,
         org_id: int,

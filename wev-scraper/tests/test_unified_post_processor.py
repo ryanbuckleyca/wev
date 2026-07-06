@@ -238,3 +238,19 @@ def test_main_cli_accepts_limit_alias(mock_process):
             force_language_reprocess=False,
         )
     )
+
+
+@patch("scripts.unified_post_processor.process_jobs_unified")
+def test_main_cli_accepts_prod_flag(mock_process):
+    mock_process.return_value = {
+        "processed": 0,
+        "skipped": 0,
+        "provider_used": "groq",
+        "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0},
+        "errors": 0,
+    }
+
+    with patch("sys.argv", ["unified_post_processor.py", "--task", "sse", "--prod", "--dry-run"]):
+        main()
+
+    mock_process.assert_called_once()

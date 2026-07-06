@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 
 from llm.factory import get_sse_provider
 from utils.job_values_prompts import get_work_values_set, get_taxonomy
-from utils.sse_prompts import SSE_PRINCIPLES, EVALUATION_CRITERIA, SSE_SEARCH_KEYWORDS, JSON_INSTRUCTIONS
+from utils.sse_prompts import SSE_PRINCIPLES, EVALUATION_CRITERIA, JSON_INSTRUCTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -130,11 +130,58 @@ def _build_assessment_prompt(
     )
 
 
-def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | None:
-    text = response_text.strip()
+def _strip_fences(text: str) -> str:
     match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
-    if match:
-        text = match.group(1).strip()
+    return match.group(1).strip() if match else text.strip()
+
+
+def _normalize_type(raw: Any) -> str | None:
+    org_type = str(raw).strip().lower() if raw else None
+    return org_type if org_type in ORG_TYPE_VALUES else None
+
+
+def _normalize_values(raw_values: Any, valid_set: set[str]) -> list[str]:
+    if not isinstance(raw_values, list):
+        return []
+    seen: set[str] = set()
+    values: list[str] = []
+    for v in raw_values:
+        label = str(v).strip() if v else ""
+        if label in valid_set and label not in seen:
+            seen.add(label)
+            values.append(label)
+    return values[:5]
+
+
+def _validate_sse_rating(raw: Any) -> str:
+    rating = str(raw or "").lower().strip()
+    return rating if rating in ("strong_yes", "weak_yes", "no") else "no"
+
+
+def _parse_text_field(data: dict, key: str, max_len: int | None = None) -> str | None:
+    val = data.get(key)
+    if val:
+        trimmed = str(val).strip()
+        if max_len is not None:
+            trimmed = trimmed[:max_len]
+        return trimmed
+    return None
+
+
+def _parse_website(raw: Any) -> str | None:
+    if raw:
+        parsed = urlparse(str(raw).strip())
+        if parsed.scheme in ("http", "https"):
+            return str(raw).strip()
+    return None
+
+
+def _ensure_str_list(raw: Any) -> list[str]:
+    return [str(item) for item in (raw if isinstance(raw, list) else [])]
+
+
+def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | None:
+    text = _strip_fences(response_text)
 
     try:
         data = json.loads(text)
@@ -160,76 +207,21 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         )
         return None
 
-    raw_type = data.get("type")
-    org_type = str(raw_type).strip().lower() if raw_type else None
-    if org_type not in ORG_TYPE_VALUES:
-        org_type = None
-
-    slug = str(data.get("slug") or "").strip()
-    canonical_name = canonical_name.strip()
-
-    raw_website = data.get("website")
-    web = None
-    if raw_website:
-        parsed = urlparse(str(raw_website).strip())
-        if parsed.scheme in ("http", "https"):
-            web = str(raw_website).strip()
-
-    desc = data.get("description")
-    if desc:
-        desc = str(desc)[:300].strip()
-
-    mission = data.get("mission_statement")
-    if mission:
-        mission = str(mission)[:500].strip()
-
-    values_raw = data.get("values_raw")
-    if values_raw:
-        values_raw = str(values_raw)[:1000].strip()
-
-    valid_set = get_work_values_set()
-    raw_values = data.get("values", [])
-    if not isinstance(raw_values, list):
-        raw_values = []
-    values: list[str] = []
-    seen: set[str] = set()
-    for v in raw_values:
-        label = str(v).strip() if v else ""
-        if label in valid_set and label not in seen:
-            seen.add(label)
-            values.append(label)
-    values = values[:5]
-
-    rating = str(data.get("sse_rating") or "").lower().strip()
-    if rating not in ("strong_yes", "weak_yes", "no"):
-        logger.warning(
-            "OrganizationAssessor: invalid sse_rating %r for %r, defaulting to 'no'",
-            rating, raw_name,
-        )
-        rating = "no"
-
-    confidence = max(0.0, min(1.0, float(data.get("sse_confidence", 0.5))))
-    reasoning = str(data.get("sse_reasoning") or "No reasoning provided")[:200]
-
-    must_haves = data.get("must_haves_met", [])
-    nice_to_haves = data.get("nice_to_haves_met", [])
-    flags = data.get("flags", [])
-
     return AssessedOrgResult(
-        canonical_name=canonical_name,
-        slug=slug,
-        website=web,
-        description=desc or None,
-        mission_statement=mission or None,
-        type=org_type,
-        values_raw=values_raw or None,
-        values=values,
-        sse_rating=rating,
-        sse_confidence=confidence,
-        sse_reasoning=reasoning,
-        must_haves_met=[str(m) for m in (must_haves if isinstance(must_haves, list) else [])],
-        nice_to_haves_met=[str(n) for n in (nice_to_haves if isinstance(nice_to_haves, list) else [])],
-        flags=[str(f) for f in (flags if isinstance(flags, list) else [])],
+        canonical_name=canonical_name.strip(),
+        slug=_parse_text_field(data, "slug") or "",
+        website=_parse_website(data.get("website")),
+        description=_parse_text_field(data, "description", 300),
+        mission_statement=_parse_text_field(data, "mission_statement", 500),
+        type=_normalize_type(data.get("type")),
+        values_raw=_parse_text_field(data, "values_raw", 1000),
+        values=_normalize_values(data.get("values", []), get_work_values_set()),
+        sse_rating=_validate_sse_rating(data.get("sse_rating")),
+        sse_confidence=max(0.0, min(1.0, float(data.get("sse_confidence", 0.5)))),
+        sse_reasoning=_parse_text_field(data, "sse_reasoning", 200) or "No reasoning provided",
+        must_haves_met=_ensure_str_list(data.get("must_haves_met")),
+        nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
+        flags=_ensure_str_list(data.get("flags")),
     )
 
 
@@ -292,6 +284,20 @@ class OrganizationAssessor:
 
         return _parse_response(response_text, raw_name)
 
+    @staticmethod
+    def _result_to_db_fields(result: AssessedOrgResult) -> dict:
+        return {
+            "description": result["description"],
+            "mission_statement": result["mission_statement"],
+            "type": result["type"],
+            "values": result["values_raw"],
+            "values_list": result["values"],
+            "values_rated": _build_values_rated(result["values"]) if result["values"] else None,
+            "sse_rating": result["sse_rating"],
+            "is_sse": result["sse_rating"] in ("strong_yes", "weak_yes"),
+            "sse_details": _build_sse_details(result),
+        }
+
     def assess_and_build_row(
         self,
         raw_name: str,
@@ -314,15 +320,7 @@ class OrganizationAssessor:
             "slug": result["slug"],
             "location": canonical_loc or None,
             "website": result["website"],
-            "description": result["description"],
-            "mission_statement": result["mission_statement"],
-            "type": result["type"],
-            "values": result["values_raw"],
-            "values_list": result["values"],
-            "values_rated": _build_values_rated(result["values"]) if result["values"] else None,
-            "sse_rating": result["sse_rating"],
-            "is_sse": result["sse_rating"] in ("strong_yes", "weak_yes"),
-            "sse_details": _build_sse_details(result),
+            **self._result_to_db_fields(result),
         }
 
     def assess_and_build_update(
@@ -345,14 +343,4 @@ class OrganizationAssessor:
         if result is None:
             return None
 
-        return {
-            "description": result["description"],
-            "mission_statement": result["mission_statement"],
-            "type": result["type"],
-            "values": result["values_raw"],
-            "values_list": result["values"],
-            "values_rated": _build_values_rated(result["values"]) if result["values"] else None,
-            "sse_rating": result["sse_rating"],
-            "is_sse": result["sse_rating"] in ("strong_yes", "weak_yes"),
-            "sse_details": _build_sse_details(result),
-        }
+        return self._result_to_db_fields(result)

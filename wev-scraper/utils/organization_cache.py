@@ -12,6 +12,10 @@ from collections import OrderedDict
 
 from utils.slug import nfkd_to_ascii
 
+# Strip common field-delimiter punctuation from token edges so that
+# "Montréal, QC" tokenises to {"montréal", "qc"} instead of {"montréal,", "qc"}.
+_REMOVE_PUNCTUATION = str.maketrans("", "", ",.;:!?")
+
 
 class OrganizationCache:
     """In-process LRU cache mapping normalized org keys to organization IDs.
@@ -62,6 +66,29 @@ def canonical_location(
     if location:
         return location
     return ""
+
+
+def location_is_compatible(
+    candidate_location: str | None,
+    municipality: str | None,
+    province: str | None,
+    location: str | None = None,
+) -> bool:
+    job_canonical = nfkd_to_ascii(canonical_location(municipality, province, location)).strip().lower()
+    cand = nfkd_to_ascii(candidate_location or "").strip().lower()
+
+    if not job_canonical or not cand:
+        return False
+
+    cand_words = set(cand.translate(_REMOVE_PUNCTUATION).split())
+    job_words = set(job_canonical.translate(_REMOVE_PUNCTUATION).split())
+
+    if municipality:
+        muni_words = set(nfkd_to_ascii(municipality).strip().lower().translate(_REMOVE_PUNCTUATION).split())
+        if not (muni_words <= cand_words):
+            return False
+
+    return bool(cand_words & job_words)
 
 
 def make_cache_key(

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Repo-root launcher for the unified post-processor script.
 
 This wrapper makes the command
@@ -8,44 +8,41 @@ and the correct working directory.
 """
 
 import os
-import shutil
 import subprocess
 import sys
-from pathlib import Path
+from distutils.spawn import find_executable
 
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-SCRAPER_ROOT = REPO_ROOT / "wev-scraper"
-TARGET = SCRAPER_ROOT / "scripts" / "unified_post_processor.py"
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+SCRAPER_ROOT = os.path.join(REPO_ROOT, "wev-scraper")
+TARGET = os.path.join(SCRAPER_ROOT, "scripts", "unified_post_processor.py")
 
 
-def _find_python3() -> str:
-    candidates = []
-    venv_python = SCRAPER_ROOT / ".venv" / "bin" / "python"
-    if venv_python.exists():
-        return str(venv_python)
+def _find_python3():
+    venv_python = os.path.join(SCRAPER_ROOT, ".venv", "bin", "python")
+    if os.path.exists(venv_python):
+        return venv_python
 
     env_python = os.environ.get("PYTHON3")
     if env_python:
-        candidates.append(env_python)
+        return env_python
 
-    candidates.extend(["python3", "python3.12", "python3.11", "python3.10"])
-    for candidate in candidates:
-        if shutil.which(candidate):
+    for candidate in ("python3", "python3.12", "python3.11", "python3.10"):
+        if find_executable(candidate):
             return candidate
+
     return sys.executable
 
 
-def main() -> int:
+def main():
     python_exe = _find_python3()
-    cmd = [python_exe, str(TARGET), *sys.argv[1:]]
+    cmd = [python_exe, TARGET] + sys.argv[1:]
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(
-        part for part in [str(SCRAPER_ROOT), env.get("PYTHONPATH", "")] if part
+        part for part in [SCRAPER_ROOT, env.get("PYTHONPATH", "")] if part
     )
-    completed = subprocess.run(cmd, cwd=SCRAPER_ROOT, env=env)
-    return completed.returncode
+    return subprocess.call(cmd, cwd=SCRAPER_ROOT, env=env)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

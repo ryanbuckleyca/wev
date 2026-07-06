@@ -2,16 +2,15 @@ import { useLocale, useTranslations } from 'next-intl';
 import { getWorkTypeLabel } from '@/lib/bulletin/filter-labels';
 import type { OrgJobPosting } from '@/lib/organizations/types';
 
-function formatEmploymentTypeLabel(employmentType: string): string {
-  const normalized = employmentType.replace(/_/g, ' ').trim();
-  return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : employmentType;
+function labelize(label: string) {
+  const s = label.replace(/_/g, ' ').trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : label;
 }
 
 export default function OrganizationJobRow({ job }: { job: OrgJobPosting }) {
   const t = useTranslations();
   const locale = useLocale();
 
-  // Format the date
   let formattedDate = '';
   if (job.date_posted) {
     const date = new Date(job.date_posted);
@@ -53,7 +52,7 @@ export default function OrganizationJobRow({ job }: { job: OrgJobPosting }) {
 
           {job.employment_type && (
             <div className="flex items-center gap-1.5">
-              <span>{formatEmploymentTypeLabel(job.employment_type)}</span>
+              <span>{labelize(job.employment_type)}</span>
             </div>
           )}
 
