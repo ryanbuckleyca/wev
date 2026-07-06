@@ -3,9 +3,14 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from utils.organization_cache import OrganizationCache, canonical_location, location_is_compatible, make_cache_key
 from utils.base_grounded_classifier import SSEClassificationError
 from utils.organization_assessment import OrganizationAssessor
+from utils.organization_cache import (
+    OrganizationCache,
+    canonical_location,
+    location_is_compatible,
+    make_cache_key,
+)
 from utils.organization_repository import OrganizationRepository
 from utils.slug import generate_slug, generate_unique_slug
 
