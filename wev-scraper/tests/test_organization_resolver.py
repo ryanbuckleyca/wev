@@ -343,7 +343,7 @@ class TestLLMResolvePath:
         "type": "nonprofit",
         "values": "Values.",
         "values_list": ["Creativity"],
-        "values_rated": [{"value": "Creativity", "confidence": 1}],
+        "values_rated": [{"value": "Creativity", "rank": 1}],
         "sse_rating": "no",
         "is_sse": False,
         "sse_details": None,
@@ -371,4 +371,4 @@ class TestLLMResolvePath:
         assert call_kwargs["type"] == "nonprofit"
         assert call_kwargs["values"] == "Values."
         assert call_kwargs["values_list"] == ["Creativity"]
-        assert call_kwargs["values_rated"] == [{"value": "Creativity", "confidence": 1}]
+        assert call_kwargs["values_rated"] == [{"value": "Creativity", "rank": 1}]

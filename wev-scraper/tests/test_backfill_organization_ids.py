@@ -250,7 +250,7 @@ class TestPhase2SSEBackfill:
         "type": "nonprofit",
         "values": "values",
         "values_list": ["Advancement"],
-        "values_rated": [{"value": "Advancement", "confidence": 1}],
+        "values_rated": [{"value": "Advancement", "rank": 1}],
         "sse_rating": "strong_yes",
         "is_sse": True,
         "sse_details": {"confidence": 0.9, "reasoning": "Ok"},
