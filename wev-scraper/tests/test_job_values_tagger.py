@@ -81,12 +81,12 @@ _CANONICAL = list(get_work_values_set())[:5]
 
 
 # ---------------------------------------------------------------------------
-# Unit tests for confidence assignment
+# Unit tests for rank assignment
 # **Validates: Requirements 1.2, 1.5**
 # ---------------------------------------------------------------------------
 
-def test_normalize_item_five_values_confidences():
-    """5 values → values_rated has confidences [1, 2, 3, 4, 5].
+def test_normalize_item_five_values_ranks():
+    """5 values → values_rated has ranks [1, 2, 3, 4, 5].
 
     **Validates: Requirements 1.2**
     """
@@ -97,12 +97,12 @@ def test_normalize_item_five_values_confidences():
     result = tagger._normalize_item(item, max_values=5)
 
     assert len(result["values_rated"]) == 5
-    assert [r["confidence"] for r in result["values_rated"]] == [1, 2, 3, 4, 5]
+    assert [r["rank"] for r in result["values_rated"]] == [1, 2, 3, 4, 5]
     assert [r["value"] for r in result["values_rated"]] == five_values
 
 
 def test_normalize_item_two_values_no_padding():
-    """2 values → values_rated has confidences [1, 2] with no padding.
+    """2 values → values_rated has ranks [1, 2] with no padding.
 
     **Validates: Requirements 1.2, 1.5**
     """
@@ -113,7 +113,7 @@ def test_normalize_item_two_values_no_padding():
     result = tagger._normalize_item(item, max_values=5)
 
     assert len(result["values_rated"]) == 2
-    assert [r["confidence"] for r in result["values_rated"]] == [1, 2]
+    assert [r["rank"] for r in result["values_rated"]] == [1, 2]
     assert [r["value"] for r in result["values_rated"]] == two_values
 
 

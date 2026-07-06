@@ -154,7 +154,7 @@ class UnifiedJobProcessor:
                     values = deduped[:max_values]
                     item["values"] = values
                     item["values_rated"] = [
-                        {"value": v, "confidence": i + 1} for i, v in enumerate(values)
+                        {"value": v, "rank": i + 1} for i, v in enumerate(values)
                     ]
                 if isinstance(item, dict) and "language" in item:
                     raw_lang = item.get("language")
