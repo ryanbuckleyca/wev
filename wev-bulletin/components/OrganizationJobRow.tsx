@@ -2,6 +2,16 @@ import { useLocale, useTranslations } from 'next-intl';
 import { getWorkTypeLabel } from '@/lib/bulletin/filter-labels';
 import type { OrgJobPosting } from '@/lib/organizations/types';
 
+function safeUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 function labelize(label: string) {
   const s = label.replace(/_/g, ' ').trim();
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : label;
@@ -25,12 +35,13 @@ export default function OrganizationJobRow({ job }: { job: OrgJobPosting }) {
     }
   }
 
+  const url = safeUrl(job.listing_url);
+
   return (
     <a
-      href={job.listing_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block group border border-border rounded-wev-card p-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+      href={url ?? undefined}
+      {...(url ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      className={`block group border border-border rounded-wev-card p-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2${url ? '' : ' pointer-events-none opacity-70'}`}
     >
       <div className="flex flex-col gap-2">
         <h3 className="font-semibold text-lg text-primary-text group-hover:underline">
