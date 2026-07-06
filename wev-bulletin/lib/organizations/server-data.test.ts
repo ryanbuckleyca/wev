@@ -17,8 +17,9 @@ const { jobsQuery, organizationsQuery, mockFrom } = vi.hoisted(() => {
       order: vi.fn(() => query),
       range: vi.fn(() => query),
       select: vi.fn(() => query),
-      then: vi.fn((onFulfilled: (value: QueryResult) => unknown, onRejected?: (reason: unknown) => unknown) =>
-        Promise.resolve(result).then(onFulfilled, onRejected),
+      then: vi.fn(
+        (onFulfilled: (value: QueryResult) => unknown, onRejected?: (reason: unknown) => unknown) =>
+          Promise.resolve(result).then(onFulfilled, onRejected),
       ),
       setResult(nextResult: QueryResult) {
         result = nextResult;

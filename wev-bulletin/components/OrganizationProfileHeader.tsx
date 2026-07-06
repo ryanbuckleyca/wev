@@ -25,7 +25,11 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
 
             {org.website && (
               <a
-                href={org.website.startsWith('https://') || org.website.startsWith('http://') ? org.website : `https://${org.website}`}
+                href={
+                  org.website.startsWith('https://') || org.website.startsWith('http://')
+                    ? org.website
+                    : `https://${org.website}`
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline font-medium"
@@ -53,7 +57,9 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
       {org.mission_statement && (
         <div className="mt-8 pt-8 border-t border-border">
           <h2 className="text-lg font-semibold text-foreground mb-3">{t('missionStatement')}</h2>
-          <p className="text-foreground whitespace-pre-wrap leading-relaxed">{org.mission_statement}</p>
+          <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+            {org.mission_statement}
+          </p>
         </div>
       )}
 
@@ -62,7 +68,10 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
           <h2 className="text-lg font-semibold text-foreground mb-3">{t('values')}</h2>
           <div className="flex flex-wrap gap-2">
             {org.values_list.map((value) => (
-              <span key={value} className="bg-primary-tint text-primary-text px-3 py-1 rounded-wev-pill text-sm font-medium">
+              <span
+                key={value}
+                className="bg-primary-tint text-primary-text px-3 py-1 rounded-wev-pill text-sm font-medium"
+              >
                 {value}
               </span>
             ))}

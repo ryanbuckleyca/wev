@@ -73,9 +73,7 @@ export default function WorkSettingSection({
       {/* Contextual callout when Location is a ranked value */}
       {hasLocationValue && (
         <div className="mt-3">
-          <Alert variant="info">
-            {t('profile.locationPriorityCallout')}
-          </Alert>
+          <Alert variant="info">{t('profile.locationPriorityCallout')}</Alert>
         </div>
       )}
     </div>

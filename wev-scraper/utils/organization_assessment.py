@@ -19,8 +19,8 @@ from urllib.parse import urlparse
 
 from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier
-from utils.job_values_prompts import get_work_values_set, get_taxonomy
-from utils.sse_prompts import SSE_PRINCIPLES, EVALUATION_CRITERIA, JSON_INSTRUCTIONS
+from utils.job_values_prompts import get_taxonomy, get_work_values_set
+from utils.sse_prompts import EVALUATION_CRITERIA, JSON_INSTRUCTIONS, SSE_PRINCIPLES
 
 logger = logging.getLogger(__name__)
 

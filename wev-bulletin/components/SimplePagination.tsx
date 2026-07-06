@@ -25,7 +25,10 @@ export default function SimplePagination({
     'px-4 py-2 text-sm font-medium border border-border rounded-wev-btn bg-muted text-muted-foreground opacity-50 cursor-not-allowed';
 
   return (
-    <nav aria-label={t('paginationLabel') || 'Pagination'} className="flex items-center justify-center gap-4 py-6">
+    <nav
+      aria-label={t('paginationLabel') || 'Pagination'}
+      className="flex items-center justify-center gap-4 py-6"
+    >
       {hasPrev ? (
         <Link href={`${baseUrl}?page=${currentPage - 1}`} className={linkClass}>
           {t('previous')}
