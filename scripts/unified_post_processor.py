@@ -8,9 +8,9 @@ and the correct working directory.
 """
 
 import os
-import subprocess
+import subprocess  # nosec B404  # legitimate launcher script
 import sys
-from distutils.spawn import find_executable
+from shutil import which
 
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -28,7 +28,7 @@ def _find_python3():
         return env_python
 
     for candidate in ("python3", "python3.12", "python3.11", "python3.10"):
-        if find_executable(candidate):
+        if which(candidate):
             return candidate
 
     return sys.executable
@@ -41,7 +41,7 @@ def main():
     env["PYTHONPATH"] = os.pathsep.join(
         part for part in [SCRAPER_ROOT, env.get("PYTHONPATH", "")] if part
     )
-    return subprocess.call(cmd, cwd=SCRAPER_ROOT, env=env)
+    return subprocess.call(cmd, cwd=SCRAPER_ROOT, env=env)  # nosec B603  # cmd is a list (no shell injection), argv forwarded to target script
 
 
 if __name__ == "__main__":
