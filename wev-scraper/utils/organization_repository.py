@@ -140,6 +140,28 @@ class OrganizationRepository:
             logger.error("OrganizationRepository: update_sse failed for org_id=%s: %s", org_id, exc)
             raise
 
+    def update_org(
+        self,
+        org_id: int,
+        **updates,
+    ) -> None:
+        """Write arbitrary fields back to an organization row.
+
+        Used by backfill Phase 2 to write values + SSE fields.
+        """
+        if not updates:
+            return
+        try:
+            resp = self._supabase.table("organizations").update(dict(updates)).eq("id", org_id).execute()
+            if not resp.data:
+                logger.warning(
+                    "OrganizationRepository: update_org matched no rows for org_id=%s — updates=%s",
+                    org_id, updates,
+                )
+        except Exception as exc:
+            logger.error("OrganizationRepository: update_org failed for org_id=%s: %s", org_id, exc)
+            raise
+
     def fetch_unrated_orgs(
         self,
         *,

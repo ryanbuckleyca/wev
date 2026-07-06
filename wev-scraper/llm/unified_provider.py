@@ -118,6 +118,8 @@ class UnifiedJobProcessor:
 
         from utils.job_values_prompts import get_work_values_set
 
+        VALID_LANGUAGES = frozenset({"en", "fr", "bilingual"})
+
         def try_parse(text: str):
             text = text.strip()
             # Direct parse
@@ -154,8 +156,7 @@ class UnifiedJobProcessor:
                     item["values_rated"] = [
                         {"value": v, "confidence": i + 1} for i, v in enumerate(values)
                     ]
-                # Process language
-                if "language" in item:
+                if isinstance(item, dict) and "language" in item:
                     raw_lang = item.get("language")
                     if not isinstance(raw_lang, str):
                         logger.warning(
@@ -165,14 +166,13 @@ class UnifiedJobProcessor:
                         item.pop("language", None)
                     else:
                         lang = raw_lang.lower()
-                        if lang in ["en", "fr", "bilingual"]:
+                        if lang in VALID_LANGUAGES:
                             item["language"] = lang
                         else:
                             logger.warning(
                                 "Unexpected language value from LLM: %r — omitting", lang
                             )
                             item.pop("language", None)
-
             return items
 
         # 1. Try raw response first

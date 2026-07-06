@@ -226,7 +226,7 @@ class SSEClassifier(BaseGroundedClassifier):
             if field not in data:
                 raise ValueError(f"Missing required field: {field}")
 
-        rating = data.get("rating", "").lower().strip()
+        rating = str(data.get("rating") or "").lower().strip()
         if rating not in ("strong_yes", "weak_yes", "no"):
             raise ValueError(f"Invalid rating: {rating} (must be strong_yes, weak_yes, or no)")
 
@@ -259,7 +259,7 @@ class SSEClassifier(BaseGroundedClassifier):
         """Return (results, error_message)."""
         try:
             return self._parse_batch_sse_response(response_text, num_jobs), None
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
             return None, str(e)
 
     def _parse_batch_sse_response(self, response_text: str, num_jobs: int) -> list[SSEClassificationResult]:
@@ -284,7 +284,7 @@ class SSEClassifier(BaseGroundedClassifier):
                 if field not in item:
                     raise ValueError(f"Missing required field: {field}")
 
-            rating = str(item.get("rating", "")).lower().strip()
+            rating = str(item.get("rating") or "").lower().strip()
             if rating not in ("strong_yes", "weak_yes", "no"):
                 raise ValueError(f"Invalid rating: {rating} (must be strong_yes, weak_yes, or no)")
 

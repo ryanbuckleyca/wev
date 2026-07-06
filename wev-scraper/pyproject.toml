@@ -7,7 +7,7 @@ name = "wev-scraper"
 version = "0.1.0"
 description = "Job scraper and processing engine for the WEV project"
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10,<3.13"
 dependencies = [
   "python-dotenv",
   "supabase",

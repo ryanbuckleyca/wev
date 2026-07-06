@@ -244,57 +244,51 @@ def _make_unrated_org(org_id=1, name="Test Org"):
     }
 
 class TestPhase2SSEBackfill:
+    _ASSESS_RETURN = {
+        "description": "desc",
+        "mission_statement": None,
+        "type": "nonprofit",
+        "values": "values",
+        "values_list": ["Advancement"],
+        "values_rated": [{"value": "Advancement", "confidence": 1}],
+        "sse_rating": "strong_yes",
+        "is_sse": True,
+        "sse_details": {"confidence": 0.9, "reasoning": "Ok"},
+    }
+
     def test_processes_unrated_orgs(self):
         repo_mock = MagicMock()
         repo_mock.fetch_unrated_orgs.side_effect = [
             [_make_unrated_org(1), _make_unrated_org(2)],
             [],
         ]
-        classifier_mock = MagicMock()
-        classifier_mock.classify.return_value = {
-            "rating": "strong_yes",
-            "confidence": 0.9,
-            "reasoning": "Ok",
-            "must_haves_met": [],
-            "nice_to_haves_met": [],
-            "flags": [],
-            "classified_at": "2026-01-01",
-            "reviewed": False,
-        }
+        assessor_mock = MagicMock()
+        assessor_mock.assess_and_build_update.return_value = self._ASSESS_RETURN
 
         with patch("utils.organization_repository.OrganizationRepository", return_value=repo_mock), \
-             patch("utils.organization_sse_classifier.OrganizationSSEClassifier", return_value=classifier_mock):
+             patch("utils.organization_assessment.OrganizationAssessor", return_value=assessor_mock):
             from scripts.backfill_organization_ids import run_sse_backfill
             summary = run_sse_backfill(batch_size=50)
 
         assert summary["phase2_classified"] == 2
         assert summary["phase2_errors"] == 0
-        assert classifier_mock.classify.call_count == 2
-        assert repo_mock.update_sse.call_count == 2
+        assert assessor_mock.assess_and_build_update.call_count == 2
+        assert repo_mock.update_org.call_count == 2
 
     def test_dry_run_does_not_update_db(self):
         repo_mock = MagicMock()
         repo_mock.fetch_unrated_orgs.side_effect = [[_make_unrated_org(1)], []]
-        classifier_mock = MagicMock()
-        classifier_mock.classify.return_value = {
-            "rating": "no",
-            "confidence": 0.5,
-            "reasoning": "No",
-            "must_haves_met": [],
-            "nice_to_haves_met": [],
-            "flags": [],
-            "classified_at": "2026",
-            "reviewed": False,
-        }
+        assessor_mock = MagicMock()
+        assessor_mock.assess_and_build_update.return_value = self._ASSESS_RETURN
 
         with patch("utils.organization_repository.OrganizationRepository", return_value=repo_mock), \
-             patch("utils.organization_sse_classifier.OrganizationSSEClassifier", return_value=classifier_mock):
+             patch("utils.organization_assessment.OrganizationAssessor", return_value=assessor_mock):
             from scripts.backfill_organization_ids import run_sse_backfill
             summary = run_sse_backfill(batch_size=50, dry_run=True)
 
         assert summary["phase2_classified"] == 1
         assert summary["dry_run"] is True
-        repo_mock.update_sse.assert_not_called()
+        repo_mock.update_org.assert_not_called()
 
     def test_per_org_isolation_exception_does_not_abort_batch(self):
         repo_mock = MagicMock()
@@ -302,21 +296,21 @@ class TestPhase2SSEBackfill:
             [_make_unrated_org(1), _make_unrated_org(2), _make_unrated_org(3)],
             [],
         ]
-        classifier_mock = MagicMock()
-        classifier_mock.classify.side_effect = [
+        assessor_mock = MagicMock()
+        assessor_mock.assess_and_build_update.side_effect = [
             Exception("boom"),
-            {"rating": "no", "confidence": 0.5, "reasoning": "", "must_haves_met": [], "nice_to_haves_met": [], "flags": [], "classified_at": "2026", "reviewed": False},
+            self._ASSESS_RETURN,
             Exception("boom2"),
         ]
 
         with patch("utils.organization_repository.OrganizationRepository", return_value=repo_mock), \
-             patch("utils.organization_sse_classifier.OrganizationSSEClassifier", return_value=classifier_mock):
+             patch("utils.organization_assessment.OrganizationAssessor", return_value=assessor_mock):
             from scripts.backfill_organization_ids import run_sse_backfill
             summary = run_sse_backfill(batch_size=50)
 
         assert summary["phase2_errors"] == 2
         assert summary["phase2_classified"] == 1
-        assert repo_mock.update_sse.call_count == 1
+        assert repo_mock.update_org.call_count == 1
 
 
 @given(
@@ -336,18 +330,16 @@ def test_script_processes_only_unrated_orgs(unrated_orgs):
     repo_mock = MagicMock()
     repo_mock.fetch_unrated_orgs.side_effect = [unrated_orgs, []]
     
-    classifier_mock = MagicMock()
-    classifier_mock.classify.return_value = {
-        "rating": "no", "confidence": 0.5, "reasoning": "", 
-        "must_haves_met": [], "nice_to_haves_met": [], "flags": [],
-        "classified_at": "2026", "reviewed": False,
+    assessor_mock = MagicMock()
+    assessor_mock.assess_and_build_update.return_value = {
+        "sse_rating": "no", "is_sse": False, "sse_details": {"confidence": 0.5},
     }
 
     with patch("utils.organization_repository.OrganizationRepository", return_value=repo_mock), \
-         patch("utils.organization_sse_classifier.OrganizationSSEClassifier", return_value=classifier_mock):
+         patch("utils.organization_assessment.OrganizationAssessor", return_value=assessor_mock):
         from scripts.backfill_organization_ids import run_sse_backfill
         summary = run_sse_backfill(batch_size=100)
 
-    assert classifier_mock.classify.call_count == len(unrated_orgs)
+    assert assessor_mock.assess_and_build_update.call_count == len(unrated_orgs)
     assert summary["phase2_classified"] == len(unrated_orgs)
     assert summary["phase2_errors"] == 0

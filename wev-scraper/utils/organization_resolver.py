@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 
 from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
-from utils.organization_identifier import OrganizationIdentifier
+from utils.organization_assessment import OrganizationAssessor
 from utils.organization_repository import OrganizationRepository
 from utils.slug import generate_slug, generate_unique_slug, nfkd_to_ascii
 
@@ -57,12 +57,12 @@ def _location_is_compatible(
 def create_resolver(supabase_client=None) -> OrganizationResolver:
     cache = OrganizationCache()
 
-    identifier = None
+    assessor = None
     try:
-        identifier = OrganizationIdentifier()
+        assessor = OrganizationAssessor()
     except Exception as exc:
         logger.error(
-            "OrganizationIdentifier unavailable (%s) — resolver will use minimal fallback",
+            "OrganizationAssessor unavailable (%s) — resolver will use minimal fallback",
             exc,
         )
 
@@ -72,7 +72,7 @@ def create_resolver(supabase_client=None) -> OrganizationResolver:
 
     repo = OrganizationRepository(supabase_client)
     return OrganizationResolver(
-        repo=repo, cache=cache, identifier=identifier,
+        repo=repo, cache=cache, assessor=assessor,
     )
 
 
@@ -90,11 +90,11 @@ class OrganizationResolver:
         self,
         repo: OrganizationRepository,
         cache: OrganizationCache,
-        identifier: OrganizationIdentifier | None = None,
+        assessor: OrganizationAssessor | None = None,
     ) -> None:
         self._repo = repo
         self._cache = cache
-        self._identifier = identifier
+        self._assessor = assessor
 
     @staticmethod
     def _classify_conflict(exc: Exception) -> str | None:
@@ -154,7 +154,7 @@ class OrganizationResolver:
 
         canonical_loc = canonical_location(ctx.municipality, ctx.province, ctx.location)
 
-        if self._identifier is not None:
+        if self._assessor is not None:
             llm_id = self._llm_resolve(ctx, cache_key, canonical_loc)
             if llm_id is not None:
                 return llm_id
@@ -179,27 +179,21 @@ class OrganizationResolver:
         return org_id
 
     def _llm_resolve(self, ctx: JobContext, cache_key: str, canonical_loc: str) -> int | None:
-        result = self._identifier.identify(
-            ctx.raw_name, ctx.municipality, ctx.province, ctx.job_title, ctx.description,
+        row = self._assessor.assess_and_build_row(
+            raw_name=ctx.raw_name,
+            municipality=ctx.municipality,
+            province=ctx.province,
+            job_title=ctx.job_title,
+            description=ctx.description,
+            canonical_loc=canonical_loc,
         )
-        if result is None:
+        if row is None:
             return None
 
-        canonical_name = result["canonical_name"]
-        suggested_slug = result.get("slug") or ""
-        slug_base = suggested_slug if suggested_slug else generate_slug(canonical_name)
+        slug_base = row["slug"] or generate_slug(row["name"])
+        row["slug"] = self._find_available_slug(slug_base, ctx.job_id)
 
-        return self._build_and_insert_org(
-            canonical_name=canonical_name,
-            canonical_loc=canonical_loc,
-            slug_base=slug_base,
-            cache_key=cache_key,
-            job_id=ctx.job_id,
-            website=result.get("website"),
-            description=result.get("description"),
-            org_type=result.get("type"),
-            values=result.get("values"),
-        )
+        return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
 
     def _resolve_minimal(self, ctx: JobContext, cache_key: str, canonical_loc: str) -> int | None:
         logger.warning(

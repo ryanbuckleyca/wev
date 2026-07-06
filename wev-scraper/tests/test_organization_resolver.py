@@ -24,18 +24,18 @@ def _make_repo(**kwargs) -> MagicMock:
     return repo
 
 
-def _make_resolver(repo=None, cache=None, identifier=None):
+def _make_resolver(repo=None, cache=None, assessor=None):
     if repo is None:
         repo = _make_repo()
     if cache is None:
         cache = OrganizationCache()
-    return OrganizationResolver(repo=repo, cache=cache, identifier=identifier)
+    return OrganizationResolver(repo=repo, cache=cache, assessor=assessor)
 
 
-def _make_identifier(return_value):
-    identifier = MagicMock()
-    identifier.identify.return_value = return_value
-    return identifier
+def _make_assessor(return_value):
+    assessor = MagicMock()
+    assessor.assess_and_build_row.return_value = return_value
+    return assessor
 
 
 # ── Cache hit path ────────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ class TestCacheHitPath:
         cache.set("test org|montreal qc", 99)
 
         repo = _make_repo()
-        resolver = OrganizationResolver(repo=repo, cache=cache, identifier=None)
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
 
         result = resolver.resolve("Test Org", "Montreal", "QC")
 
@@ -63,7 +63,7 @@ class TestDBMatchPath:
         org_rows = [{"id": 10, "name": "Test Org", "location": "Montreal QC"}]
         repo = _make_repo(find_by_name=org_rows)
         cache = OrganizationCache()
-        resolver = OrganizationResolver(repo=repo, cache=cache, identifier=None)
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
 
         result = resolver.resolve("Test Org", "Montreal", "QC")
 
@@ -76,7 +76,7 @@ class TestDBMatchPath:
             {"id": 11, "name": "Test Org", "location": "Montreal QC"},
         ]
         repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
-        resolver = _make_resolver(repo=repo, identifier=None)
+        resolver = _make_resolver(repo=repo, assessor=None)
 
         result = resolver.resolve("Test Org", "Montreal", "QC")
 
@@ -84,7 +84,7 @@ class TestDBMatchPath:
 
     def test_no_candidates_falls_to_minimal(self):
         repo = _make_repo(find_by_name=[], insert={"id": 55})
-        resolver = _make_resolver(repo=repo, identifier=None)
+        resolver = _make_resolver(repo=repo, assessor=None)
 
         result = resolver.resolve("Unknown Org", "City", "ON")
 
@@ -93,7 +93,7 @@ class TestDBMatchPath:
     def test_incompatible_location_falls_to_minimal(self):
         org_rows = [{"id": 10, "name": "Test Org", "location": "Vancouver BC"}]
         repo = _make_repo(find_by_name=org_rows, insert={"id": 77})
-        resolver = _make_resolver(repo=repo, identifier=None)
+        resolver = _make_resolver(repo=repo, assessor=None)
 
         result = resolver.resolve("Test Org", "Montreal", "QC")
 
@@ -105,39 +105,51 @@ class TestDBMatchPath:
 
 class TestLLMSuccessPath:
     def test_llm_success_inserts_new_org_and_caches(self):
-        from utils.organization_identifier import OrgIdentificationResult
-
-        llm_result = OrgIdentificationResult(
-            canonical_name="Le Depot Community",
-            slug="le-depot-community",
-            website="https://depot.ca",
-            description="A community food centre",
-            type="nonprofit",
-        )
-        identifier = _make_identifier(llm_result)
+        assessor_result = {
+            "name": "Le Depot Community",
+            "slug": "le-depot-community",
+            "location": "Montreal QC",
+            "website": "https://depot.ca",
+            "description": "A community food centre",
+            "mission_statement": None,
+            "type": "nonprofit",
+            "values": None,
+            "values_list": [],
+            "values_rated": None,
+            "sse_rating": "no",
+            "is_sse": False,
+            "sse_details": None,
+        }
+        assessor = _make_assessor(assessor_result)
         repo = _make_repo(find_by_name=[], insert={"id": 201})
         cache = OrganizationCache()
-        resolver = OrganizationResolver(repo=repo, cache=cache, identifier=identifier)
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=assessor)
 
         result = resolver.resolve("Le Depot", "Montreal", "QC", job_title="Food Coordinator", description="description here")
 
         assert result == 201
         assert cache.get("le depot|montreal qc") == 201
-        identifier.identify.assert_called_once()
+        assessor.assess_and_build_row.assert_called_once()
 
     def test_llm_slug_empty_uses_canonical_name(self):
-        from utils.organization_identifier import OrgIdentificationResult
-
-        llm_result = OrgIdentificationResult(
-            canonical_name="My New Org",
-            slug="",
-            website=None,
-            description=None,
-            type=None,
-        )
-        identifier = _make_identifier(llm_result)
+        assessor_result = {
+            "name": "My New Org",
+            "slug": "",
+            "location": "City QC",
+            "website": None,
+            "description": None,
+            "mission_statement": None,
+            "type": None,
+            "values": None,
+            "values_list": [],
+            "values_rated": None,
+            "sse_rating": "no",
+            "is_sse": False,
+            "sse_details": None,
+        }
+        assessor = _make_assessor(assessor_result)
         repo = _make_repo(find_by_name=[], slug_exists=False, insert={"id": 300})
-        resolver = OrganizationResolver(repo=repo, cache=OrganizationCache(), identifier=identifier)
+        resolver = OrganizationResolver(repo=repo, cache=OrganizationCache(), assessor=assessor)
 
         result = resolver.resolve("My New Org", "City", "QC")
 
@@ -156,7 +168,7 @@ class TestIdentityConflictPath:
             insert=Exception("duplicate key value violates unique constraint"),
             find_by_name_and_location=55,
         )
-        resolver = _make_resolver(repo=repo, identifier=None)
+        resolver = _make_resolver(repo=repo, assessor=None)
 
         result = resolver.resolve("Existing Org", "Montreal", "QC")
 
@@ -168,7 +180,7 @@ class TestIdentityConflictPath:
             find_by_name=[],
             insert=Exception("connection timeout"),
         )
-        resolver = _make_resolver(repo=repo, identifier=None)
+        resolver = _make_resolver(repo=repo, assessor=None)
 
         result = resolver.resolve("Some Org", "City", "ON")
 
@@ -180,20 +192,20 @@ class TestIdentityConflictPath:
 
 class TestLLMFailurePath:
     def test_llm_none_result_uses_minimal_fallback(self):
-        identifier = _make_identifier(None)
+        assessor = _make_assessor(None)
         repo = _make_repo(find_by_name=[], insert={"id": 500})
         resolver = OrganizationResolver(
-            repo=repo, cache=OrganizationCache(), identifier=identifier
+            repo=repo, cache=OrganizationCache(), assessor=assessor
         )
 
         result = resolver.resolve("Some Org", "City", "ON", job_title="Title", description="desc")
 
         assert result == 500
 
-    def test_identifier_none_skips_llm_goes_to_minimal(self):
+    def test_assessor_none_skips_llm_goes_to_minimal(self):
         repo = _make_repo(find_by_name=[], insert={"id": 600})
         resolver = OrganizationResolver(
-            repo=repo, cache=OrganizationCache(), identifier=None
+            repo=repo, cache=OrganizationCache(), assessor=None
         )
 
         result = resolver.resolve("Some Org", "City", "ON")
@@ -203,7 +215,7 @@ class TestLLMFailurePath:
     def test_minimal_uses_repo_slug_exists(self):
         repo = _make_repo(find_by_name=[], slug_exists=True, find_existing_slugs={"minimal-org-2"}, insert={"id": 700})
         resolver = OrganizationResolver(
-            repo=repo, cache=OrganizationCache(), identifier=None
+            repo=repo, cache=OrganizationCache(), assessor=None
         )
 
         result = resolver.resolve("Minimal Org", "City", "ON")
@@ -215,7 +227,7 @@ class TestLLMFailurePath:
     def test_find_available_slug_empty_base_uses_seed(self):
         repo = _make_repo(find_by_name=[], slug_exists=False, find_existing_slugs=set(), insert={"id": 800})
         resolver = OrganizationResolver(
-            repo=repo, cache=OrganizationCache(), identifier=None
+            repo=repo, cache=OrganizationCache(), assessor=None
         )
         result = resolver.resolve("!!!", "Gatineau", "QC", job_id="seed-val")
         assert result == 800
@@ -233,7 +245,7 @@ class TestUnexpectedExceptionPath:
         repo = _make_repo()
         repo.find_by_name.side_effect = RuntimeError("something exploded")
         resolver = OrganizationResolver(
-            repo=repo, cache=OrganizationCache(), identifier=None
+            repo=repo, cache=OrganizationCache(), assessor=None
         )
 
         with caplog.at_level(logging.ERROR):
@@ -246,7 +258,7 @@ class TestUnexpectedExceptionPath:
         repo = _make_repo()
         repo.find_by_name.side_effect = RuntimeError("kaboom")
         resolver = OrganizationResolver(
-            repo=repo, cache=OrganizationCache(), identifier=None
+            repo=repo, cache=OrganizationCache(), assessor=None
         )
 
         result = resolver.resolve("Org", "City", "ON")
@@ -260,7 +272,7 @@ class TestSameRunDedup:
     def test_same_normalized_key_second_call_uses_cache(self):
         repo = _make_repo(find_by_name=[{"id": 77, "name": "Centraide", "location": "Montreal QC"}])
         cache = OrganizationCache()
-        resolver = OrganizationResolver(repo=repo, cache=cache, identifier=None)
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
 
         id1 = resolver.resolve("Centraide", "Montreal", "QC")
         id2 = resolver.resolve("Centraide", "Montreal", "QC")
@@ -278,7 +290,7 @@ class TestLocationOnlyPath:
         cache = OrganizationCache()
         cache.set("test org|montreal qc", 99)
         repo = _make_repo()
-        resolver = OrganizationResolver(repo=repo, cache=cache, identifier=None)
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
 
         result = resolver.resolve("Test Org", location="Montreal QC")
 
@@ -289,7 +301,7 @@ class TestLocationOnlyPath:
         org_rows = [{"id": 10, "name": "Test Org", "location": "Montreal QC"}]
         repo = _make_repo(find_by_name=org_rows)
         cache = OrganizationCache()
-        resolver = OrganizationResolver(repo=repo, cache=cache, identifier=None)
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
 
         result = resolver.resolve("Test Org", location="Montreal QC")
 
@@ -299,7 +311,7 @@ class TestLocationOnlyPath:
     def test_uses_minimal_when_location_does_not_match(self):
         org_rows = [{"id": 10, "name": "Test Org", "location": "Vancouver BC"}]
         repo = _make_repo(find_by_name=org_rows, insert={"id": 77})
-        resolver = _make_resolver(repo=repo, identifier=None)
+        resolver = _make_resolver(repo=repo, assessor=None)
 
         result = resolver.resolve("Test Org", location="Montreal QC")
 
@@ -307,7 +319,7 @@ class TestLocationOnlyPath:
 
     def test_location_fallback_in_canonical_location(self):
         repo = _make_repo(find_by_name=[], insert={"id": 88})
-        resolver = _make_resolver(repo=repo, identifier=None)
+        resolver = _make_resolver(repo=repo, assessor=None)
 
         result = resolver.resolve("Org", location="Montreal QC")
 
@@ -321,31 +333,42 @@ class TestLocationOnlyPath:
 
 
 class TestLLMResolvePath:
+    _ASSESS_RESULT = {
+        "name": "Test Org AI",
+        "slug": "test-org-ai",
+        "location": "City ON",
+        "website": "https://test.ai",
+        "description": "An AI org.",
+        "mission_statement": None,
+        "type": "nonprofit",
+        "values": "Values.",
+        "values_list": ["Creativity"],
+        "values_rated": [{"value": "Creativity", "confidence": 1}],
+        "sse_rating": "no",
+        "is_sse": False,
+        "sse_details": None,
+    }
+
     def test_llm_resolve_success(self):
         repo = _make_repo(find_by_name=[], slug_exists=False, find_existing_slugs=set(), insert={"id": 999})
-        identifier = MagicMock()
-        identifier.identify.return_value = {
-            "canonical_name": "Test Org AI",
-            "slug": "test-org-ai",
-            "website": "https://test.ai",
-            "description": "An AI org.",
-            "type": "nonprofit",
-            "values": "Values.",
-        }
-        
+        assessor = MagicMock()
+        assessor.assess_and_build_row.return_value = self._ASSESS_RESULT
+
         resolver = OrganizationResolver(
-            repo=repo, cache=OrganizationCache(), identifier=identifier
+            repo=repo, cache=OrganizationCache(), assessor=assessor
         )
-        
+
         result = resolver.resolve("Test Org AI", "City", "ON")
-        
+
         assert result == 999
-        identifier.identify.assert_called_once()
+        assessor.assess_and_build_row.assert_called_once()
         repo.insert.assert_called_once()
-        
+
         call_kwargs = repo.insert.call_args[0][0]
         assert call_kwargs["name"] == "Test Org AI"
         assert call_kwargs["slug"] == "test-org-ai"
         assert call_kwargs["website"] == "https://test.ai"
         assert call_kwargs["type"] == "nonprofit"
         assert call_kwargs["values"] == "Values."
+        assert call_kwargs["values_list"] == ["Creativity"]
+        assert call_kwargs["values_rated"] == [{"value": "Creativity", "confidence": 1}]
