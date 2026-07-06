@@ -3,18 +3,14 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
+from utils.organization_cache import OrganizationCache, canonical_location, location_is_compatible, make_cache_key
 from utils.organization_assessment import OrganizationAssessor
 from utils.organization_repository import OrganizationRepository
-from utils.slug import generate_slug, generate_unique_slug, nfkd_to_ascii
+from utils.slug import generate_slug, generate_unique_slug
 
 logger = logging.getLogger(__name__)
 
 _MAX_SLUG_ATTEMPTS = 10
-
-# Strip common field-delimiter punctuation from token edges so that
-# "Montréal, QC" tokenises to {"montréal", "qc"} instead of {"montréal,", "qc"}.
-_REMOVE_PUNCTUATION = str.maketrans("", "", ",.;:!?")
 
 
 @dataclass
@@ -26,32 +22,6 @@ class JobContext:
     job_title: str = ""
     description: str = ""
     job_id: str | None = None
-
-
-def _location_is_compatible(
-    candidate_location: str | None,
-    municipality: str | None,
-    province: str | None,
-    location: str | None = None,
-) -> bool:
-    job_canonical = nfkd_to_ascii(canonical_location(municipality, province, location)).strip().lower()
-    cand = nfkd_to_ascii(candidate_location or "").strip().lower()
-
-    if not job_canonical or not cand:
-        return False
-
-    cand_words = set(cand.translate(_REMOVE_PUNCTUATION).split())
-    job_words = set(job_canonical.translate(_REMOVE_PUNCTUATION).split())
-
-    # Province-only word overlap is ambiguous (e.g. "Trois-Rivières QC" vs
-    # "Montréal QC" share only "qc").  When the job has a known municipality,
-    # require the municipality words to appear in the candidate location.
-    if municipality:
-        muni_words = set(nfkd_to_ascii(municipality).strip().lower().translate(_REMOVE_PUNCTUATION).split())
-        if not (muni_words <= cand_words):
-            return False
-
-    return bool(cand_words & job_words)
 
 
 def create_resolver(supabase_client=None) -> OrganizationResolver:
@@ -168,7 +138,7 @@ class OrganizationResolver:
 
         compatible = [
             c for c in candidates
-            if _location_is_compatible(c.get("location"), ctx.municipality, ctx.province, ctx.location)
+            if location_is_compatible(c.get("location"), ctx.municipality, ctx.province, ctx.location)
         ]
 
         if len(compatible) != 1:
