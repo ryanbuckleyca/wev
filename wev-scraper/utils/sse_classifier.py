@@ -8,15 +8,12 @@ from typing import TypedDict
 from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.sse_prompts import (
+    SSE_SEARCH_KEYWORDS,
     get_sse_batch_classification_prompt,
     get_sse_classification_prompt,
 )
 
 logger = logging.getLogger(__name__)
-
-# Keywords added to organization searches to find mission/values/governance info
-# Focused on "information containers" that describe structure (bylaws, reports, etc.)
-SSE_SEARCH_KEYWORDS = '(governance OR bylaws OR "articles of incorporation" OR "annual report" OR "impact report" OR "board of directors")'
 
 
 class SSEDetails(TypedDict, total=False):
@@ -191,7 +188,7 @@ class SSEClassifier(BaseGroundedClassifier):
             system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
             task="sse",
             search_query=search_query,
-            retries=0, # No parsing retries for batch mode currently
+            retries=1,
         )
 
         parse_result, parse_error = self._safe_parse_batch_response(response_text, len(jobs))

@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { fetchOrganizationIndex } from '@/lib/organizations/server-data';
 import OrganizationIndexView from '@/components/OrganizationIndexView';
@@ -29,6 +30,10 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
 
   const { orgs, total } = await fetchOrganizationIndex(page);
   const totalPages = Math.ceil(total / ORG_JOBS_PER_PAGE);
+
+  if (page > totalPages && totalPages > 0) {
+    redirect(`/${locale}/organizations?page=${totalPages}`);
+  }
 
   return (
     <main className="min-h-screen bg-background">

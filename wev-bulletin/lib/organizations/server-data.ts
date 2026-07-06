@@ -13,6 +13,7 @@ function getMinDateIso(): string {
 export async function fetchOrganizationIndex(
   page: number = 1,
 ): Promise<{ orgs: OrgIndexEntry[]; total: number }> {
+  if (page < 1) page = 1;
   const minDate = getMinDateIso();
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
@@ -30,8 +31,12 @@ export async function fetchOrganizationIndex(
 
   const countsByOrgId = new Map<number, number>();
   for (const row of activeJobs || []) {
-    if (typeof row.organization_id !== 'number') continue;
-    countsByOrgId.set(row.organization_id, (countsByOrgId.get(row.organization_id) || 0) + 1);
+    const orgId = row.organization_id;
+    if (typeof orgId !== 'number') {
+      console.warn('fetchOrganizationIndex: unexpected organization_id type', typeof orgId, orgId);
+      continue;
+    }
+    countsByOrgId.set(orgId, (countsByOrgId.get(orgId) || 0) + 1);
   }
 
   if (countsByOrgId.size === 0) {
@@ -80,6 +85,7 @@ export async function getOrganizationJobs(
   orgId: number,
   page: number,
 ): Promise<{ jobs: OrgJobPosting[]; total: number }> {
+  if (page < 1) page = 1;
   const minDate = getMinDateIso();
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;

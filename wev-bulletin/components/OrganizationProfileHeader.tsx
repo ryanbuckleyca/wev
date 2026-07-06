@@ -1,6 +1,5 @@
-import { Leaf1Solid } from '@lineiconshq/free-icons';
-import { Lineicons } from '@lineiconshq/react-lineicons';
 import type { OrgRecord } from '@/lib/organizations/types';
+import SseBadge from './SseBadge';
 
 interface Props {
   org: OrgRecord;
@@ -14,11 +13,7 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-3xl font-bold text-foreground">{org.name}</h1>
-            {org.is_sse && (
-              <span className="flex-shrink-0" role="img" aria-label={t('sseBadgeLabel')}>
-                <Lineicons icon={Leaf1Solid} size={24} className="text-wev-success" />
-              </span>
-            )}
+            {org.is_sse && <SseBadge label={t('sseBadgeLabel')} size={24} />}
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-x-6 gap-y-2 text-muted-foreground mt-4">
@@ -30,7 +25,7 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
 
             {org.website && (
               <a
-                href={org.website.startsWith('http') ? org.website : `https://${org.website}`}
+                href={org.website.startsWith('https://') || org.website.startsWith('http://') ? org.website : `https://${org.website}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline font-medium"

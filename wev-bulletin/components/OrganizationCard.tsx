@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Leaf1Solid } from '@lineiconshq/free-icons';
-import { Lineicons } from '@lineiconshq/react-lineicons';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 import { useLocale } from 'next-intl';
+import SseBadge from './SseBadge';
 
 export default function OrganizationCard({ org }: { org: OrgIndexEntry }) {
   const t = useTranslations('organizations');
@@ -21,11 +20,7 @@ export default function OrganizationCard({ org }: { org: OrgIndexEntry }) {
           >
             {org.name}
           </Link>
-          {org.is_sse && (
-            <span className="flex-shrink-0" role="img" aria-label={t('sseBadgeLabel')}>
-              <Lineicons icon={Leaf1Solid} size={18} className="text-wev-success" />
-            </span>
-          )}
+          {org.is_sse && <SseBadge label={t('sseBadgeLabel')} />}
         </div>
 
         {org.location && (

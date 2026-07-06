@@ -6,6 +6,7 @@ import { WORK_TYPES, type WorkType } from '@/lib/work-types';
 import FormLabel from '@/components/FormLabel';
 import LocationAutocomplete from '@/components/profile/LocationAutocomplete';
 import TogglePillGroup from '@/components/profile/TogglePillGroup';
+import Alert from '@/components/ui/Alert';
 import type { LocationState } from '@/lib/hooks/useProfileForm';
 
 interface WorkSettingSectionProps {
@@ -71,9 +72,11 @@ export default function WorkSettingSection({
 
       {/* Contextual callout when Location is a ranked value */}
       {hasLocationValue && (
-        <p className="helper-text mt-3">
-          {t('profile.locationPriorityCallout')}
-        </p>
+        <div className="mt-3">
+          <Alert variant="info">
+            {t('profile.locationPriorityCallout')}
+          </Alert>
+        </div>
       )}
     </div>
   );

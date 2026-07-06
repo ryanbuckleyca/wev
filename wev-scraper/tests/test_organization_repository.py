@@ -159,6 +159,35 @@ class TestSSEMethods:
         update_mock.eq.assert_called_with("id", 123)
         eq_mock.execute.assert_called_once()
 
+    def test_update_sse_without_details(self):
+        sb = MagicMock()
+        repo = OrganizationRepository(sb)
+
+        repo.update_sse(
+            org_id=456,
+            sse_rating="no",
+            is_sse=False,
+        )
+
+        table_mock = sb.table.return_value
+        update_mock = table_mock.update.return_value
+
+        table_mock.update.assert_called_with({
+            "sse_rating": "no",
+            "is_sse": False,
+        })
+
+    def test_update_sse_logs_warning_on_no_rows(self):
+        sb = MagicMock()
+        repo = OrganizationRepository(sb)
+        table_mock = sb.table.return_value
+        update_mock = table_mock.update.return_value
+        eq_mock = update_mock.eq.return_value
+        eq_mock.execute.return_value.data = []
+
+        repo.update_sse(org_id=789, sse_rating="weak_yes", is_sse=True)
+
+        eq_mock.execute.assert_called_once()
 
     def test_fetch_unrated_orgs(self):
         sb = MagicMock()

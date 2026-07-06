@@ -16,12 +16,9 @@ from datetime import datetime, timezone
 from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.sse_classifier import SSEClassificationResult
-from utils.sse_prompts import EVALUATION_CRITERIA, SSE_PRINCIPLES
+from utils.sse_prompts import EVALUATION_CRITERIA, SSE_PRINCIPLES, SSE_SEARCH_KEYWORDS
 
 logger = logging.getLogger(__name__)
-
-# Same keywords used by SSEClassifier for grounded web search
-SSE_SEARCH_KEYWORDS = '(governance OR bylaws OR "articles of incorporation" OR "annual report" OR "impact report" OR "board of directors")'
 
 # Rating guidelines tailored to organizations (not job postings)
 _ORG_RATING_GUIDELINES = """Be strict:
@@ -166,7 +163,7 @@ class OrganizationSSEClassifier(BaseGroundedClassifier):
         """Return (result, error_message)."""
         try:
             return self._parse_response(response_text, org_name), None
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
             return None, str(e)
 
     def _parse_response(self, response_text: str, org_name: str) -> SSEClassificationResult:

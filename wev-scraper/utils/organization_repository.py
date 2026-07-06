@@ -130,7 +130,12 @@ class OrganizationRepository:
         if sse_details is not None:
             payload["sse_details"] = sse_details
         try:
-            self._supabase.table("organizations").update(payload).eq("id", org_id).execute()
+            resp = self._supabase.table("organizations").update(payload).eq("id", org_id).execute()
+            if not resp.data:
+                logger.warning(
+                    "OrganizationRepository: update_sse matched no rows for org_id=%s — payload=%s",
+                    org_id, payload,
+                )
         except Exception as exc:
             logger.error("OrganizationRepository: update_sse failed for org_id=%s: %s", org_id, exc)
             raise
