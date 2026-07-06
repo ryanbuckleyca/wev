@@ -19,7 +19,7 @@ from utils.job_values_tagger import JobRatedValue, JobValuesTagger
 
 def _make_values_rated(value_names: list[str]) -> list[JobRatedValue]:
     """Build a `values_rated` array from a list of value name strings."""
-    return [{"value": v, "confidence": i + 1} for i, v in enumerate(value_names)]
+    return [{"value": v, "rank": i + 1} for i, v in enumerate(value_names)]
 
 
 def _round_trip(values_rated: list[JobRatedValue]) -> list[JobRatedValue]:
@@ -58,12 +58,12 @@ def test_values_rated_round_trip(value_names: list[str]):
     for orig, rest in zip(original, restored, strict=True):
         # Same value string
         assert rest["value"] == orig["value"]
-        # Same confidence score
-        assert rest["confidence"] == orig["confidence"]
+        # Same rank value
+        assert rest["rank"] == orig["rank"]
 
-    # Confidence scores are 1-based positions (1..N) with no gaps
+    # Ranks are 1-based positions (1..N) with no gaps
     for idx, item in enumerate(restored):
-        assert item["confidence"] == idx + 1
+        assert item["rank"] == idx + 1
 
 
 # ---------------------------------------------------------------------------
