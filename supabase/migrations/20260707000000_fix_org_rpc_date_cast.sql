@@ -55,7 +55,13 @@ begin
       count(j.id) as active_job_count
     from organizations o
     join jobs j on o.id = j.organization_id
-    where (j.date_posted)::timestamp with time zone >= min_date
+    where
+      case
+        when j.date_posted ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}' then
+          (j.date_posted)::timestamp with time zone >= min_date
+        else
+          false
+      end
     group by o.id
   )
   select
