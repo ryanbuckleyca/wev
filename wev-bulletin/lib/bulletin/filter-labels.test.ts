@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import enMessages from '@/messages/en.json';
-import { buildJobLanguageOptions, getJobLanguageLabel } from './filter-labels';
+import { buildJobLanguageOptions, getJobLanguageLabel, labelize } from './filter-labels';
 
 const t = (key: string) => {
   const parts = key.split('.');
@@ -36,5 +36,27 @@ describe('filter-labels', () => {
       'en',
       'fr',
     ]);
+  });
+
+  describe('labelize', () => {
+    it('capitalizes and replaces underscores with spaces', () => {
+      expect(labelize('full_time')).toBe('Full time');
+    });
+
+    it('handles single word', () => {
+      expect(labelize('fulltime')).toBe('Fulltime');
+    });
+
+    it('handles empty string', () => {
+      expect(labelize('')).toBe('');
+    });
+
+    it('handles underscores only', () => {
+      expect(labelize('___')).toBe('___');
+    });
+
+    it('handles already capitalized', () => {
+      expect(labelize('Full_Time')).toBe('Full Time');
+    });
   });
 });

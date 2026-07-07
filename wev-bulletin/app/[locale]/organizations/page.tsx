@@ -40,7 +40,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
       <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
         <h1 className="text-3xl font-bold text-foreground mb-8">{t('indexTitle')}</h1>
 
-        <OrganizationIndexView orgs={orgs} />
+        <OrganizationIndexView orgs={orgs} locale={locale} />
 
         {total > ORG_JOBS_PER_PAGE && (
           <SimplePagination

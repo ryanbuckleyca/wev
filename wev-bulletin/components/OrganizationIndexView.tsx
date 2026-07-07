@@ -2,7 +2,12 @@ import { getTranslations } from 'next-intl/server';
 import OrganizationCard from './OrganizationCard';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 
-export default async function OrganizationIndexView({ orgs }: { orgs: OrgIndexEntry[] }) {
+interface Props {
+  orgs: OrgIndexEntry[];
+  locale: string;
+}
+
+export default async function OrganizationIndexView({ orgs, locale }: Props) {
   const t = await getTranslations('organizations');
 
   if (orgs.length === 0) {
@@ -15,10 +20,18 @@ export default async function OrganizationIndexView({ orgs }: { orgs: OrgIndexEn
     );
   }
 
+  const sseBadgeLabel = t('sseBadgeLabel');
+
   return (
     <div className="flex flex-col gap-4">
       {orgs.map((org) => (
-        <OrganizationCard key={org.id} org={org} />
+        <OrganizationCard
+          key={org.id}
+          org={org}
+          locale={locale}
+          sseBadgeLabel={sseBadgeLabel}
+          jobCountLabel={t('jobs', { count: org.active_job_count })}
+        />
       ))}
     </div>
   );
