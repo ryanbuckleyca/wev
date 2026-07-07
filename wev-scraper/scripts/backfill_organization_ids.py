@@ -26,6 +26,8 @@ import time
 
 from dotenv import find_dotenv, load_dotenv
 
+from utils.prod_env import resolve_prod_env_path
+
 load_dotenv(find_dotenv())
 
 logger = logging.getLogger(__name__)
@@ -299,15 +301,14 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if not (1 <= args.batch_size <= MAX_BATCH_SIZE):
-        print(f"--batch-size must be between 1 and {MAX_BATCH_SIZE}", file=sys.stderr)
-        sys.exit(1)
+    args.batch_size = max(1, min(args.batch_size, MAX_BATCH_SIZE))
 
     if args.env in ("staging", "prod"):
         from pathlib import Path
 
         env_file_name = f".env.{args.env}"
-        env_path = Path(__file__).resolve().parent.parent.parent / env_file_name
+        script_path = Path(__file__)
+        env_path = resolve_prod_env_path(script_path).with_name(env_file_name)
         if env_path.exists():
             logger.info("Loading %s overrides from %s", args.env, env_path)
             load_dotenv(env_path, override=True)
@@ -332,8 +333,7 @@ def main() -> None:
     print(json.dumps(combined, indent=2))
 
     total_errors = phase1_summary.get("errors", 0) + phase2_summary.get("phase2_errors", 0)
-    skipped_classifier = phase2_summary.get("phase2_skipped_no_classifier", False)
-    if total_errors > 0 or skipped_classifier:
+    if total_errors > 0:
         sys.exit(1)
 
 

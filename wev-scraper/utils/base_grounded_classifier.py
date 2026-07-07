@@ -70,9 +70,8 @@ class BaseGroundedClassifier:
         return text
 
     @staticmethod
-    def _default_failed_classification(*args) -> dict:
+    def _default_failed_classification(reason: str | None = None) -> dict:
         """Return a safe fallback SSEClassificationResult when parsing fails."""
-        reason = args[-1] if args else None
         return {
             "rating": "no",
             "confidence": 0.5,

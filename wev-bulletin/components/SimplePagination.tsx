@@ -8,9 +8,9 @@ interface SimplePaginationProps {
 }
 
 function pageHref(baseUrl: string, page: number): string {
-  const url = new URL(baseUrl, 'http://localhost');
-  url.searchParams.set('page', String(page));
-  return url.pathname + url.search;
+  const params = new URLSearchParams();
+  params.set('page', String(page));
+  return `${baseUrl}?${params}`;
 }
 
 export default function SimplePagination({

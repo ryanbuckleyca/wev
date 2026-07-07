@@ -102,7 +102,7 @@ class SSEClassifier(BaseGroundedClassifier):
 
         prompt_len = len(prompt)
         approx_tokens = max(1, prompt_len // 4)
-        logger.debug(f"SSE prompt length: {prompt_len} chars (≈{approx_tokens} tokens); description length: {len(description)} chars")
+        logger.debug("SSE prompt length: %d chars (≈%d tokens); description length: %d chars", prompt_len, approx_tokens, len(description))
 
         search_terms = f'"{org_name}"'
         if location and location != "Unknown":
@@ -122,16 +122,16 @@ class SSEClassifier(BaseGroundedClassifier):
                 )
             except SSEClassificationError as e:
                 last_error_message = str(e)
-                logger.warning(f"SSE provider error (attempt {attempt + 1}/2): {last_error_message}")
+                logger.warning("SSE provider error (attempt %d/2): %s", attempt + 1, last_error_message)
                 continue
 
             parsed_result, parse_error = self._safe_parse_sse_response(response_text, job_title, org_name)
             if parsed_result is not None:
                 return parsed_result
             last_error_message = parse_error or "Unknown SSE parse error"
-            logger.warning(f"SSE parse error (attempt {attempt + 1}/2): {last_error_message}")
+            logger.warning("SSE parse error (attempt %d/2): %s", attempt + 1, last_error_message)
 
-        return self._default_failed_classification(job_title, org_name, last_error_message)
+        return self._default_failed_classification(reason=last_error_message)
 
     def classify_jobs_batch(self, jobs: list[dict]) -> list[SSEClassificationResult]:
         """Classify multiple jobs in a single API call to minimize quota usage.
@@ -200,13 +200,11 @@ class SSEClassifier(BaseGroundedClassifier):
         if parse_result is not None:
             return parse_result
 
-        logger.warning(f"SSE batch parse error: {parse_error}")
-        logger.debug(f"Response (last 200 chars): {repr(response_text[-200:])}")
+        logger.warning("SSE batch parse error: %s", parse_error)
+        logger.debug("Response (last 200 chars): %r", response_text[-200:])
         return [
             self._default_failed_classification(
-                job.get("job_title", "Unknown"),
-                job.get("organization", "Unknown"),
-                parse_error or "Batch parse error",
+                reason=parse_error or "Batch parse error",
             )
             for job in jobs
         ]
