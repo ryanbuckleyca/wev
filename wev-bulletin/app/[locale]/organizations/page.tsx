@@ -1,9 +1,11 @@
+import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { fetchOrganizationIndex } from '@/lib/organizations/server-data';
 import OrganizationIndexView from '@/components/OrganizationIndexView';
 import SimplePagination from '@/components/SimplePagination';
 import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
+import { SITE_CONFIG } from '@/lib/site-config';
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -38,7 +40,18 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
-        <h1 className="text-3xl font-bold text-foreground mb-8">{t('indexTitle')}</h1>
+        <header className="mb-8">
+          <Image
+            src={SITE_CONFIG.logotypeUrl}
+            alt={t('indexTitle')}
+            width={100}
+            height={40}
+            unoptimized
+            className="main-logo wev-logotype w-[100px] h-auto mb-2"
+            priority
+          />
+          <h1 className="text-3xl font-bold text-foreground">{t('indexTitle')}</h1>
+        </header>
 
         <OrganizationIndexView orgs={orgs} locale={locale} />
 

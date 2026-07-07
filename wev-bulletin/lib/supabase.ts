@@ -26,6 +26,8 @@ export interface JobPosting {
   summary?: string | null;
   is_sse?: boolean;
   source?: string | null;
+  organization_id?: number | null;
+  organization_slug?: string | null;
   values?: string[];
   skills?: string[];
   /** Pre-resolved skill labels keyed by concept URI, injected by /api/bulletin */

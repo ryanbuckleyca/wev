@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { Link, usePathname } from '@/i18n/navigation';
+import { Link } from '@/i18n/navigation';
 import UserProfile from './UserProfile';
 import ThemeToggle from './ThemeToggle';
 import LocaleSwitcher from './LocaleSwitcher';
@@ -15,23 +15,16 @@ export default function Header({
   initialTheme = 'light',
 }: { hasBanner?: boolean; initialTheme?: 'light' | 'dark' } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false);
-  const pathname = usePathname();
   const t = useTranslations('home');
-  const isHomePage = pathname === '/' || pathname === '/jobs';
+  const tnav = useTranslations('navigation');
 
   useEffect(() => {
-    if (!isHomePage) {
-      return;
-    }
-
     let cancelled = false;
-    const waitRaf = 0;
 
     const update = () => {
       if (cancelled) return;
       const mainLogo = document.querySelector('.main-logo');
       if (!(mainLogo instanceof HTMLElement)) {
-        // Fallback: if logo not found, check scroll position
         setShouldShowHeader(window.scrollY > 100);
         return;
       }
@@ -41,9 +34,6 @@ export default function Header({
 
     const onScrollOrResize = () => update();
 
-    // Initial check and add listeners immediately.
-    // We don't wait for the logo, as the fallback logic (scrollY > 100)
-    // needs to work even if the logo is missing.
     update();
     window.addEventListener('scroll', onScrollOrResize, { passive: true });
     window.addEventListener('resize', onScrollOrResize, { passive: true });
@@ -53,11 +43,9 @@ export default function Header({
       window.removeEventListener('scroll', onScrollOrResize);
       window.removeEventListener('resize', onScrollOrResize);
     };
-  }, [isHomePage]);
+  }, []);
 
-  // On non-home pages, show header by default
-  // On home page, show based on scroll position
-  const showHeader = !isHomePage || shouldShowHeader;
+  const showHeader = shouldShowHeader;
 
   // Offset header if any banner is present
   const topOffset = hasBanner ? 'top-[22px]' : 'top-0';
@@ -70,6 +58,7 @@ export default function Header({
       style={{ zIndex: zIndex.header }}
     >
       <div className="flex items-center justify-between px-4 py-4">
+        {/* Logo — left */}
         <div
           className={`transition-opacity duration-200 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
@@ -85,25 +74,56 @@ export default function Header({
             />
           </Link>
         </div>
-        <div className="flex items-center gap-4">
+
+        {/* Right side: nav links + settings + user */}
+        <div className="flex items-center gap-6">
+          <nav className="hidden sm:flex items-center gap-6">
+            <Link
+              href="/"
+              className="text-sm font-normal text-muted-foreground hover:text-foreground transition-colors py-[0.4rem]"
+            >
+              {tnav('jobs')}
+            </Link>
+            <Link
+              href="/organizations"
+              className="text-sm font-normal text-muted-foreground hover:text-foreground transition-colors py-[0.4rem]"
+            >
+              {tnav('companies')}
+            </Link>
+          </nav>
           <div className="flex items-stretch gap-4">
-            <div className="hidden sm:block">
+            <div className="hidden lg:block">
               <LocaleSwitcher />
             </div>
-            <div className="hidden sm:block">
+            <div className="hidden lg:block">
               <ThemeToggle initialTheme={initialTheme} />
             </div>
           </div>
-          {/* Mobile menu - show theme/locale when hidden from header */}
-          <div className="sm:hidden">
+          {/* Menu — buttons in hamburger below lg, settings below md, nav below sm */}
+          <div className="lg:hidden">
             <UserProfile
               showThemeInMenu={true}
               showLocaleInMenu={true}
               initialTheme={initialTheme}
-            />
+            >
+              <div className="sm:hidden">
+                <Link
+                  href="/"
+                  className="block px-4 py-2 text-sm text-foreground hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
+                >
+                  {tnav('jobs')}
+                </Link>
+                <Link
+                  href="/organizations"
+                  className="block px-4 py-2 text-sm text-foreground hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
+                >
+                  {tnav('companies')}
+                </Link>
+              </div>
+            </UserProfile>
           </div>
-          {/* Desktop menu - don't show theme/locale */}
-          <div className="hidden sm:block">
+          {/* Desktop menu — everything inline */}
+          <div className="hidden lg:block">
             <UserProfile
               showThemeInMenu={false}
               showLocaleInMenu={false}

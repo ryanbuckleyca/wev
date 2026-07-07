@@ -1,13 +1,7 @@
--- Migration: Create get_active_organizations RPC
--- Description: Returns organizations with active job counts within the bulletin
--- age window, sorted alphabetically with pagination. Replaces the previous
--- two-round-trip approach (fetch jobs → count in app → fetch orgs → sort in
--- app → slice) with a single database query.
---
--- The function is marked STABLE (not VOLATILE) so the planner can optimize
--- repeated calls within the same transaction if needed.
-
-drop function if exists public.get_active_organizations(timestamp with time zone);
+-- Migration: Fix date comparison in get_active_organizations RPC
+-- Description: Cast j.date_posted from text to timestamptz so it can be
+-- compared with the min_date parameter. The column was originally stored as
+-- text but all values are ISO-8601 timestamptz-compatible strings.
 
 create or replace function public.get_active_organizations(
   min_date timestamp with time zone,
