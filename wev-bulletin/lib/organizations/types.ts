@@ -6,8 +6,10 @@ export interface OrgIndexEntry extends OrgRecord {
   active_job_count: number;
 }
 
+type JobRow = Database['public']['Tables']['jobs']['Row'];
+
 export interface OrgJobPosting {
-  id: string;
+  id: JobRow['id']; // string (UUID) — mirrors jobs.id in database.types.ts
   job_title: string;
   listing_url: string | null;
   date_posted: string | null;

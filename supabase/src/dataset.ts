@@ -163,8 +163,11 @@ function createJobValues(index: number): string[] {
 }
 
 function createRatedValues(values: string[]): Json {
+  // jobs.values_rated uses the 'confidence' key (1-based position from LLM output).
+  // SQL matching functions read elem->>'confidence' — do NOT change this key to 'rank'.
+  // ('rank' is the correct key for user/org values_rated, which is a different column.)
   return values.map((value, index) => ({
-    rank: index + 1,
+    confidence: index + 1,
     value,
   }));
 }
