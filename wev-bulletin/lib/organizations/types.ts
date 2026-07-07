@@ -9,7 +9,7 @@ export interface OrgIndexEntry extends OrgRecord {
 export interface OrgJobPosting {
   id: string;
   job_title: string;
-  listing_url: string;
+  listing_url: string | null;
   date_posted: string | null;
   employment_type: string | null;
   location: string | null;

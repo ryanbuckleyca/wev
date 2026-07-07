@@ -7,7 +7,7 @@ interface Props {
   t: (key: string, values?: Record<string, string | number | Date>) => string;
 }
 
-export default async function OrganizationIndexView({ orgs, locale, t }: Props) {
+export default function OrganizationIndexView({ orgs, locale, t }: Props) {
 
   if (orgs.length === 0) {
     return (

@@ -18,8 +18,6 @@ export default function OrganizationJobRow({ job }: { job: OrgJobPosting }) {
         day: 'numeric',
         year: 'numeric',
       }).format(date);
-    } else {
-      formattedDate = job.date_posted;
     }
   }
 
