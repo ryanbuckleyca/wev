@@ -1,16 +1,7 @@
 import { useLocale, useTranslations } from 'next-intl';
 import { getWorkTypeLabel } from '@/lib/bulletin/filter-labels';
+import { safeUrl } from '@/lib/url';
 import type { OrgJobPosting } from '@/lib/organizations/types';
-
-function safeUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? url : null;
-  } catch {
-    return null;
-  }
-}
 
 function labelize(label: string) {
   const s = label.replace(/_/g, ' ').trim();

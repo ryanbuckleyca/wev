@@ -205,9 +205,17 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         )
         return None
 
+    slug = _parse_text_field(data, "slug") or ""
+    if not slug:
+        logger.warning(
+            "OrganizationAssessor: empty slug for canonical_name=%r raw_name=%r",
+            canonical_name, raw_name,
+        )
+        return None
+
     return AssessedOrgResult(
         canonical_name=canonical_name.strip(),
-        slug=_parse_text_field(data, "slug") or "",
+        slug=slug,
         website=_parse_website(data.get("website")),
         description=_parse_text_field(data, "description", 300),
         mission_statement=_parse_text_field(data, "mission_statement", 500),

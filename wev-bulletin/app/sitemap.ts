@@ -2,8 +2,12 @@ import type { MetadataRoute } from 'next';
 import { routing } from '@/i18n/routing';
 import { getSiteBaseUrl } from '@/lib/site-url';
 import { supabaseServer } from '@/lib/supabase-server';
+import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
+
+export const revalidate = 3600;
 
 const siteBaseUrl = getSiteBaseUrl() || 'https://bulletin.wevchange.org';
+const MAX_ORG_SLUGS = 1000;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sitemapEntries: MetadataRoute.Sitemap = [];
@@ -39,16 +43,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   try {
+    const minDate = new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
     const { data: orgs, error } = await supabaseServer
-      .from('organizations')
-      .select('slug')
-      .limit(50000);
+      .rpc('get_active_organizations', {
+        min_date: minDate,
+        p_limit: MAX_ORG_SLUGS,
+        p_offset: 0,
+      });
 
     if (error) {
       console.error('Error fetching organizations for sitemap:', error);
     } else if (orgs) {
-      orgs.forEach((org) => {
-        if (!org.slug) return;
+      for (const org of orgs) {
+        if (!org.slug) continue;
 
         const slugLocaleEntries = Object.fromEntries(
           routing.locales.map((locale) => [
@@ -67,7 +75,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             },
           });
         });
-      });
+      }
     }
   } catch (error) {
     console.error('Error fetching organizations for sitemap:', error);

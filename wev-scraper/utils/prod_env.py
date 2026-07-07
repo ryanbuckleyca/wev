@@ -59,7 +59,7 @@ def resolve_prod_env_path(script_file: Path) -> Path:
         if candidate.exists():
             return candidate
 
-    return candidates[0]
+    return script_path.parent / ".env.production"
 
 
 def apply_prod_overrides(prod_env: Path, *, full_prod: bool) -> None:

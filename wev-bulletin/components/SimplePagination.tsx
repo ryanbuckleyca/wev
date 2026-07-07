@@ -7,6 +7,12 @@ interface SimplePaginationProps {
   baseUrl: string;
 }
 
+function pageHref(baseUrl: string, page: number): string {
+  const url = new URL(baseUrl, 'http://localhost');
+  url.searchParams.set('page', String(page));
+  return url.pathname + url.search;
+}
+
 export default function SimplePagination({
   currentPage,
   totalPages,
@@ -27,7 +33,7 @@ export default function SimplePagination({
   return (
     <nav aria-label={t('paginationLabel')} className="flex items-center justify-center gap-4 py-6">
       {hasPrev ? (
-        <Link href={`${baseUrl}?page=${currentPage - 1}`} className={linkClass}>
+        <Link href={pageHref(baseUrl, currentPage - 1)} className={linkClass}>
           {t('previous')}
         </Link>
       ) : (
@@ -41,7 +47,7 @@ export default function SimplePagination({
       </span>
 
       {hasNext ? (
-        <Link href={`${baseUrl}?page=${currentPage + 1}`} className={linkClass}>
+        <Link href={pageHref(baseUrl, currentPage + 1)} className={linkClass}>
           {t('next')}
         </Link>
       ) : (
