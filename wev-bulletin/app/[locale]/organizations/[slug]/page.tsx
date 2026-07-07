@@ -41,7 +41,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
   const { jobs, total } = await getOrganizationJobs(org.id, page);
   const totalPages = Math.ceil(total / ORG_JOBS_PER_PAGE);
 
-  if (page > totalPages && totalPages > 0) {
+  if (page > totalPages && page > 1) {
     notFound();
   }
 

@@ -37,7 +37,6 @@ from utils.prod_env import (  # noqa: E402
 )
 
 bootstrap_staging_from_argv(sys.argv, Path(__file__))
-bootstrap_prod_from_argv(sys.argv, Path(__file__))
 
 
 def _has_prod_target(argv: list[str]) -> bool:
@@ -58,6 +57,7 @@ def _has_prod_target(argv: list[str]) -> bool:
 
 if _has_prod_target(sys.argv):
     confirm_prod_run(full_prod="--prod" in sys.argv or any(arg == "prod" for arg in sys.argv))
+    bootstrap_prod_from_argv(sys.argv, Path(__file__))
 
 # Deferred imports: `utils.db`, `llm.factory`, and `utils.log` transitively load clients
 # that read `os.environ` (Supabase URL/keys, LLM provider config). Import them only after
