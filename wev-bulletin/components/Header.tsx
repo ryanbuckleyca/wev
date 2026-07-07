@@ -101,11 +101,7 @@ export default function Header({
           </div>
           {/* Menu — buttons in hamburger below lg, settings below md, nav below sm */}
           <div className="lg:hidden">
-            <UserProfile
-              showThemeInMenu={true}
-              showLocaleInMenu={true}
-              initialTheme={initialTheme}
-            >
+            <UserProfile showThemeInMenu={true} showLocaleInMenu={true} initialTheme={initialTheme}>
               <div className="sm:hidden">
                 <Link
                   href="/"

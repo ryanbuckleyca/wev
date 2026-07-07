@@ -1,3 +1,5 @@
+'use client';
+
 import { useLocale, useTranslations } from 'next-intl';
 import { getWorkTypeLabel, labelize } from '@/lib/bulletin/filter-labels';
 import { safeUrl } from '@/lib/url';

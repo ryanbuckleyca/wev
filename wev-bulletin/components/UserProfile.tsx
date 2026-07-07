@@ -134,9 +134,7 @@ export default function UserProfile({
                   </Link>
                 </div>
                 {children && (
-                  <nav className="border-t border-border pt-3 space-y-1">
-                    {children}
-                  </nav>
+                  <nav className="border-t border-border pt-3 space-y-1">{children}</nav>
                 )}
                 {(showThemeInMenu || showLocaleInMenu) && (
                   <>
@@ -224,11 +222,7 @@ export default function UserProfile({
               </Link>
             </nav>
 
-            {children && (
-              <nav className="border-t border-border p-3 space-y-1">
-                {children}
-              </nav>
-            )}
+            {children && <nav className="border-t border-border p-3 space-y-1">{children}</nav>}
 
             {(showThemeInMenu || showLocaleInMenu) && (
               <div className="p-3 border-t border-border space-y-3 transition-colors duration-700 ease-in-out">

@@ -2,7 +2,7 @@ import 'server-only';
 
 import { supabaseServer } from '@/lib/supabase-server';
 import { createClient } from '@/lib/supabase/server';
-import { BULLETIN_MAX_AGE_DAYS } from './constants';
+import { bulletinAgeCutoffIso } from './constants';
 import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
@@ -52,9 +52,7 @@ function postedWithinToDays(postedWithin: string): number | null {
   return null;
 }
 
-function getBulletinMaxAgeCutoff(): string {
-  return new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
-}
+const getBulletinMaxAgeCutoff = bulletinAgeCutoffIso;
 
 function applySearchFilter(query: any, vectorColumn: string, searchQuery: string) {
   if (searchQuery.length > 0) {
@@ -126,17 +124,13 @@ async function fetchBulletinFacets(
   return buildFilterOptions((data ?? []) as any[]);
 }
 
-async function resolveOrgSlugs(
-  supabase: any,
-  jobs: JobPosting[],
-): Promise<void> {
-  const orgIds = [...new Set(jobs.map((j) => j.organization_id).filter((id): id is number => id != null))];
+async function resolveOrgSlugs(supabase: any, jobs: JobPosting[]): Promise<void> {
+  const orgIds = [
+    ...new Set(jobs.map((j) => j.organization_id).filter((id): id is number => id != null)),
+  ];
   if (orgIds.length === 0) return;
 
-  const { data } = await supabase
-    .from('organizations')
-    .select('id, slug')
-    .in('id', orgIds);
+  const { data } = await supabase.from('organizations').select('id, slug').in('id', orgIds);
 
   const slugMap = new Map<number, string>();
   for (const row of data ?? []) {

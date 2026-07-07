@@ -49,7 +49,8 @@ def resolve_prod_env_path(script_file: Path) -> Path:
     candidates: list[Path] = []
 
     current = script_path.parent
-    while True:
+    max_depth = 20
+    for _ in range(max_depth):
         candidates.append(current / ".env.production")
         if current.parent == current:
             break

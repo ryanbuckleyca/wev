@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { routing } from '@/i18n/routing';
 import { getSiteBaseUrl } from '@/lib/site-url';
 import { supabaseServer } from '@/lib/supabase-server';
-import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
+import { bulletinAgeCutoffIso } from '@/lib/bulletin/constants';
 
 export const revalidate = 3600;
 
@@ -43,17 +43,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   try {
-    const minDate = new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const minDate = bulletinAgeCutoffIso();
     const seenSlugs = new Set<string>();
 
     let page = 0;
     while (true) {
-      const { data: orgs, error } = await supabaseServer
-        .rpc('get_active_organizations', {
-          min_date: minDate,
-          p_limit: MAX_ORG_SLUGS,
-          p_offset: page * MAX_ORG_SLUGS,
-        });
+      const { data: orgs, error } = await supabaseServer.rpc('get_active_organizations', {
+        min_date: minDate,
+        p_limit: MAX_ORG_SLUGS,
+        p_offset: page * MAX_ORG_SLUGS,
+      });
 
       if (error) {
         console.error('Error fetching organizations for sitemap:', error);
