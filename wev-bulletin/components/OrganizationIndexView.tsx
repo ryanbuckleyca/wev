@@ -8,6 +8,8 @@ interface Props {
 }
 
 export default async function OrganizationIndexView({ orgs, locale }: Props) {
+  // locale is forwarded to OrganizationCard for link hrefs; translations
+  // are resolved here via getTranslations using the request context.
   const t = await getTranslations('organizations');
 
   if (orgs.length === 0) {

@@ -439,6 +439,8 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       location: "Toronto, ON",
       type: "non-profit",
       is_sse: false,
+      values_list: null,
+      values_rated: null,
       created_at: toIsoTimestamp(daysAgo(now, 30)),
     },
     {
@@ -450,6 +452,8 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       location: "Quebec City, QC",
       type: "private",
       is_sse: false,
+      values_list: null,
+      values_rated: null,
       created_at: toIsoTimestamp(daysAgo(now, 30)),
     },
   ];

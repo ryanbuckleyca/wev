@@ -2,28 +2,23 @@ import 'server-only';
 
 import { cache } from 'react';
 import { supabaseServer } from '@/lib/supabase-server';
-import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
+import { bulletinAgeCutoffIso } from '@/lib/bulletin/constants';
 import { ORG_JOBS_PER_PAGE } from './constants';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
-
-function getMinDateIso(): string {
-  return new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
-}
 
 export async function fetchOrganizationIndex(
   page: number = 1,
 ): Promise<{ orgs: OrgIndexEntry[]; total: number }> {
   if (page < 1) page = 1;
-  const minDate = getMinDateIso();
+  const minDate = bulletinAgeCutoffIso();
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
 
-  const { data: orgs, error } = await supabaseServer
-    .rpc('get_active_organizations', {
-      min_date: minDate,
-      p_limit: limit,
-      p_offset: offset,
-    });
+  const { data: orgs, error } = await supabaseServer.rpc('get_active_organizations', {
+    min_date: minDate,
+    p_limit: limit,
+    p_offset: offset,
+  });
 
   if (error) {
     console.error('fetchOrganizationIndex error:', error);
@@ -32,7 +27,7 @@ export async function fetchOrganizationIndex(
 
   const total = orgs && orgs.length > 0 ? Number(orgs[0].total_count) : 0;
 
-  if (orgs && orgs.length > 0 && orgs[0].active_job_count === undefined) {
+  if (orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
     throw new Error('fetchOrganizationIndex: RPC response missing active_job_count');
   }
 
@@ -64,7 +59,7 @@ export async function getOrganizationJobs(
   page: number,
 ): Promise<{ jobs: OrgJobPosting[]; total: number }> {
   if (page < 1) page = 1;
-  const minDate = getMinDateIso();
+  const minDate = bulletinAgeCutoffIso();
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
 
