@@ -21,15 +21,13 @@ export async function fetchOrganizationIndex(
   });
 
   if (error) {
-    console.error('fetchOrganizationIndex error:', error);
-    return { orgs: [], total: 0 };
+    throw new Error(`fetchOrganizationIndex RPC error: ${error.message}`);
   }
 
   const total = orgs && orgs.length > 0 ? Number(orgs[0].total_count) : 0;
 
   if (orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
-    console.error('fetchOrganizationIndex: RPC response missing active_job_count');
-    return { orgs: [], total: 0 };
+    throw new Error('fetchOrganizationIndex: RPC response missing active_job_count');
   }
 
   return {
@@ -79,8 +77,7 @@ export async function getOrganizationJobs(
     .range(offset, offset + limit - 1);
 
   if (error) {
-    console.error('getOrganizationJobs error:', error);
-    return { jobs: [], total: 0 };
+    throw new Error(`getOrganizationJobs query error: ${error.message}`);
   }
 
   return {

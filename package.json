@@ -32,7 +32,6 @@
     "coverage:guidelines": "npm run test:coverage:bulletin && node scripts/generate-scraper-coverage.cjs && node scripts/check-testing-guidelines-coverage.cjs",
     "coverage:guidelines:strict": "npm run test:coverage:bulletin && node scripts/generate-scraper-coverage.cjs && node scripts/check-testing-guidelines-coverage.cjs --strict",
     "dev": "npm run dev -w wev-bulletin",
-    "export": "./scripts/export.sh",
     "help": "node scripts/help.cjs",
     "lint": "trunk check",
     "lint:fix": "trunk fmt && trunk check --fix",

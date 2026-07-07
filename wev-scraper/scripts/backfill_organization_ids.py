@@ -306,9 +306,20 @@ def main() -> None:
     if args.env in ("staging", "prod"):
         from pathlib import Path
 
-        env_file_name = f".env.{args.env}"
-        script_path = Path(__file__)
-        env_path = resolve_prod_env_path(script_path).with_name(env_file_name)
+        if args.env == "prod":
+            env_path = resolve_prod_env_path(Path(__file__))
+        else:
+            current = Path(__file__).resolve().parent
+            env_path = current / ".env.staging"
+            for _ in range(4):
+                candidate = current / ".env.staging"
+                if candidate.exists():
+                    env_path = candidate
+                    break
+                if current.parent == current:
+                    break
+                current = current.parent
+
         if env_path.exists():
             logger.info("Loading %s overrides from %s", args.env, env_path)
             load_dotenv(env_path, override=True)
@@ -332,7 +343,11 @@ def main() -> None:
     combined = {**phase1_summary, **phase2_summary}
     print(json.dumps(combined, indent=2))
 
-    total_errors = phase1_summary.get("errors", 0) + phase2_summary.get("phase2_errors", 0)
+    total_errors = (
+        phase1_summary.get("errors", 0) + phase2_summary.get("phase2_errors", 0)
+    )
+    if phase2_summary.get("phase2_skipped_no_classifier"):
+        total_errors += 1
     if total_errors > 0:
         sys.exit(1)
 
