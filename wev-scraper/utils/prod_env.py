@@ -44,13 +44,21 @@ def confirm_prod_run(*, full_prod: bool) -> None:
 
 
 def resolve_prod_env_path(script_file: Path) -> Path:
-    """Return the path to .env.production (repo root or scraper package)."""
-    scraper_dir = script_file.resolve().parent
-    root_dir = scraper_dir.parent if scraper_dir.name == "scripts" else scraper_dir.parent.parent
-    for candidate in (root_dir / ".env.production", scraper_dir / ".env.production"):
+    """Return the path to .env.production (repo root or scraper package).
+
+    Walks up from the script's directory (up to 4 levels) to find .env.production
+    at any ancestor.  This covers the repo root, the wev-scraper package root,
+    and the scripts/ directory.
+    """
+    current = script_file.resolve().parent
+    for _ in range(4):
+        candidate = current / ".env.production"
         if candidate.exists():
             return candidate
-    return root_dir / ".env.production"
+        if current.parent == current:
+            break
+        current = current.parent
+    return script_file.resolve().parent / ".env.production"
 
 
 def apply_prod_overrides(prod_env: Path, *, full_prod: bool) -> None:
