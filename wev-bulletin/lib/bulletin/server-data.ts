@@ -130,7 +130,11 @@ async function resolveOrgSlugs(supabase: any, jobs: JobPosting[]): Promise<void>
   ];
   if (orgIds.length === 0) return;
 
-  const { data } = await supabase.from('organizations').select('id, slug').in('id', orgIds);
+  const { data, error } = await supabase.from('organizations').select('id, slug').in('id', orgIds);
+  if (error) {
+    console.error('[resolveOrgSlugs] Failed to fetch organization slugs:', error);
+    return;
+  }
 
   const slugMap = new Map<number, string>();
   for (const row of data ?? []) {
