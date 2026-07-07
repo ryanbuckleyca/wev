@@ -23,7 +23,7 @@ returns table (
   location text,
   is_sse boolean,
   type text,
-  values text,
+  "values" text,
   logo_url text,
   created_at timestamp with time zone,
   sse_rating text,
