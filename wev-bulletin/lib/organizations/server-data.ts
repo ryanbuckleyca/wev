@@ -32,6 +32,10 @@ export async function fetchOrganizationIndex(
 
   const total = orgs && orgs.length > 0 ? Number(orgs[0].total_count) : 0;
 
+  if (orgs && orgs.length > 0 && orgs[0].active_job_count === undefined) {
+    throw new Error('fetchOrganizationIndex: RPC response missing active_job_count');
+  }
+
   return {
     orgs: (orgs || []) as OrgIndexEntry[],
     total,

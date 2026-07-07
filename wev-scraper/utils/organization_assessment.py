@@ -17,8 +17,9 @@ from datetime import datetime, timezone
 from typing import Any, List, TypedDict
 from urllib.parse import urlparse
 
+from llm.base import LLMProviderError
 from llm.factory import get_sse_provider
-from utils.base_grounded_classifier import BaseGroundedClassifier
+from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.sse_prompts import EVALUATION_CRITERIA, JSON_INSTRUCTIONS, SSE_PRINCIPLES
 
@@ -231,6 +232,28 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     )
 
 
+def _result_to_db_fields(result: AssessedOrgResult) -> dict:
+    return {
+        "description": result["description"],
+        "mission_statement": result["mission_statement"],
+        "type": result["type"],
+        "values": result["values_raw"],
+        "values_list": result["values"],
+        "values_rated": [{"value": v, "rank": i + 1} for i, v in enumerate(result["values"])] if result["values"] else None,
+        "sse_rating": result["sse_rating"],
+        "is_sse": result["sse_rating"] in ("strong_yes", "weak_yes"),
+        "sse_details": {
+            "confidence": result["sse_confidence"],
+            "reasoning": result["sse_reasoning"],
+            "must_haves_met": result["must_haves_met"],
+            "nice_to_haves_met": result["nice_to_haves_met"],
+            "flags": result["flags"],
+            "classified_at": datetime.now(timezone.utc).isoformat(),
+            "reviewed": False,
+        },
+    }
+
+
 class OrganizationAssessor(BaseGroundedClassifier):
     """Single grounded LLM call: identifies org, maps values, produces SSE rating."""
 
@@ -260,13 +283,15 @@ class OrganizationAssessor(BaseGroundedClassifier):
             search_query += f" {province}"
 
         try:
-            response_text = self.provider.complete(
-                prompt,
+            response_text = self._call_provider_with_retry(
+                provider=self.provider,
+                prompt=prompt,
                 system="You are an expert at identifying organizations, mapping work values, and evaluating Solidarity Economy alignment.",
                 task="sse",
                 search_query=search_query,
-            ).strip()
-        except Exception as exc:
+                retries=1,
+            )
+        except (SSEClassificationError, LLMProviderError) as exc:
             logger.warning(
                 "OrganizationAssessor LLM call failed for %r: %s",
                 raw_name, exc,
@@ -274,28 +299,6 @@ class OrganizationAssessor(BaseGroundedClassifier):
             return None
 
         return _parse_response(response_text, raw_name)
-
-    @staticmethod
-    def _result_to_db_fields(result: AssessedOrgResult) -> dict:
-        return {
-            "description": result["description"],
-            "mission_statement": result["mission_statement"],
-            "type": result["type"],
-            "values": result["values_raw"],
-            "values_list": result["values"],
-            "values_rated": [{"value": v, "rank": i + 1} for i, v in enumerate(result["values"])] if result["values"] else None,
-            "sse_rating": result["sse_rating"],
-            "is_sse": result["sse_rating"] in ("strong_yes", "weak_yes"),
-            "sse_details": {
-                "confidence": result["sse_confidence"],
-                "reasoning": result["sse_reasoning"],
-                "must_haves_met": result["must_haves_met"],
-                "nice_to_haves_met": result["nice_to_haves_met"],
-                "flags": result["flags"],
-                "classified_at": datetime.now(timezone.utc).isoformat(),
-                "reviewed": False,
-            },
-        }
 
     def assess_and_build_row(
         self,
@@ -319,7 +322,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
             "slug": result["slug"],
             "location": canonical_loc or None,
             "website": result["website"],
-            **self._result_to_db_fields(result),
+            **_result_to_db_fields(result),
         }
 
     def assess_and_build_update(
@@ -347,4 +350,4 @@ class OrganizationAssessor(BaseGroundedClassifier):
         if result is None:
             return None
 
-        return self._result_to_db_fields(result)
+        return _result_to_db_fields(result)

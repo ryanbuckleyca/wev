@@ -8,6 +8,8 @@ interface Props {
 }
 
 export default function OrganizationProfileHeader({ org, t }: Props) {
+  const websiteUrl = safeUrl(org.website);
+
   return (
     <div className="bg-card border border-border rounded-wev-card p-6 sm:p-8 mb-8 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
@@ -24,19 +26,16 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
               </div>
             )}
 
-            {(() => {
-              const url = safeUrl(org.website);
-              return url ? (
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline font-medium"
-                >
-                  {t('visitWebsite')}
-                </a>
-              ) : null;
-            })()}
+            {websiteUrl && (
+              <a
+                href={websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-medium"
+              >
+                {t('visitWebsite')}
+              </a>
+            )}
 
             {org.type && (
               <div className="flex items-center gap-1.5">
