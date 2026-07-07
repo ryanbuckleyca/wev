@@ -274,6 +274,8 @@ class TestPhase2SSEBackfill:
         assert summary["phase2_errors"] == 0
         assert assessor_mock.assess_and_build_update.call_count == 2
         assert repo_mock.update_org.call_count == 2
+        repo_mock.update_org.assert_any_call(1, **self._ASSESS_RETURN)
+        repo_mock.update_org.assert_any_call(2, **self._ASSESS_RETURN)
 
     def test_dry_run_does_not_update_db(self):
         repo_mock = MagicMock()
@@ -311,6 +313,24 @@ class TestPhase2SSEBackfill:
         assert summary["phase2_errors"] == 2
         assert summary["phase2_classified"] == 1
         assert repo_mock.update_org.call_count == 1
+
+    def test_none_return_skips_org(self):
+        repo_mock = MagicMock()
+        repo_mock.fetch_unrated_orgs.side_effect = [
+            [_make_unrated_org(1), _make_unrated_org(2)],
+            [],
+        ]
+        assessor_mock = MagicMock()
+        assessor_mock.assess_and_build_update.return_value = None
+
+        with patch("utils.organization_repository.OrganizationRepository", return_value=repo_mock), \
+             patch("utils.organization_assessment.OrganizationAssessor", return_value=assessor_mock):
+            from scripts.backfill_organization_ids import run_sse_backfill
+            summary = run_sse_backfill(batch_size=50)
+
+        assert summary["phase2_classified"] == 0
+        assert summary["phase2_errors"] == 0
+        assert repo_mock.update_org.call_count == 0
 
 
 @given(

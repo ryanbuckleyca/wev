@@ -1,16 +1,13 @@
-import { getTranslations } from 'next-intl/server';
 import OrganizationCard from './OrganizationCard';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 
 interface Props {
   orgs: OrgIndexEntry[];
   locale: string;
+  t: (key: string, values?: Record<string, string | number | Date>) => string;
 }
 
-export default async function OrganizationIndexView({ orgs, locale }: Props) {
-  // locale is forwarded to OrganizationCard for link hrefs; translations
-  // are resolved here via getTranslations using the request context.
-  const t = await getTranslations('organizations');
+export default async function OrganizationIndexView({ orgs, locale, t }: Props) {
 
   if (orgs.length === 0) {
     return (

@@ -179,6 +179,15 @@ def _ensure_str_list(raw: Any) -> list[str]:
     return [str(item) for item in (raw if isinstance(raw, list) else [])]
 
 
+def _clamp_confidence(raw: Any) -> float:
+    if raw is None:
+        return 0.5
+    try:
+        return max(0.0, min(1.0, float(raw)))
+    except (TypeError, ValueError):
+        return 0.5
+
+
 def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | None:
     text = BaseGroundedClassifier._extract_json_block(response_text)
 
@@ -224,7 +233,7 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         values_raw=_parse_text_field(data, "values_raw", 1000),
         values=_normalize_values(data.get("values", []), get_work_values_set()),
         sse_rating=_validate_sse_rating(data.get("sse_rating")),
-        sse_confidence=max(0.0, min(1.0, float(data.get("sse_confidence", 0.5)))),
+        sse_confidence=_clamp_confidence(data.get("sse_confidence")),
         sse_reasoning=_parse_text_field(data, "sse_reasoning", 200) or "No reasoning provided",
         must_haves_met=_ensure_str_list(data.get("must_haves_met")),
         nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),

@@ -53,7 +53,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
           <h1 className="text-3xl font-bold text-foreground">{t('indexTitle')}</h1>
         </header>
 
-        <OrganizationIndexView orgs={orgs} locale={locale} />
+        <OrganizationIndexView orgs={orgs} locale={locale} t={t} />
 
         {total > ORG_JOBS_PER_PAGE && (
           <SimplePagination
