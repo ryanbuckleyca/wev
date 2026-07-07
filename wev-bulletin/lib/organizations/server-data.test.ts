@@ -6,7 +6,7 @@ type QueryResult = {
   error: any;
 };
 
-const { jobsQuery, organizationsQuery, mockFrom } = vi.hoisted(() => {
+const { jobsQuery, organizationsQuery, mockFrom, mockRpc } = vi.hoisted(() => {
   const createQuery = () => {
     let result: QueryResult = { data: null, error: null, count: null };
     const query: any = {
@@ -36,16 +36,20 @@ const { jobsQuery, organizationsQuery, mockFrom } = vi.hoisted(() => {
     throw new Error(`Unexpected table: ${table}`);
   });
 
+  const rpc = vi.fn();
+
   return {
     jobsQuery: jobs,
     organizationsQuery: organizations,
     mockFrom: from,
+    mockRpc: rpc,
   };
 });
 
 vi.mock('@/lib/supabase-server', () => ({
   supabaseServer: {
     from: mockFrom,
+    rpc: mockRpc,
   },
 }));
 
@@ -63,7 +67,7 @@ function resetQuery(query: any) {
   query.setResult({ data: null, error: null, count: null });
 }
 
-function makeOrg(id: number, name: string) {
+function makeRpcOrg(id: number, name: string, active_job_count: number) {
   return {
     id,
     created_at: '2026-06-01T00:00:00.000Z',
@@ -78,6 +82,11 @@ function makeOrg(id: number, name: string) {
     sse_details: null,
     is_sse: false,
     logo_url: null,
+    mission_statement: null,
+    values_list: null,
+    values_rated: null,
+    active_job_count,
+    total_count: 3,
   };
 }
 
@@ -88,35 +97,27 @@ describe('organizations/server-data', () => {
     vi.clearAllMocks();
     resetQuery(jobsQuery);
     resetQuery(organizationsQuery);
+    mockRpc.mockReset();
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('filters active organizations by date_posted, ignores null organization ids, and sorts alphabetically', async () => {
-    jobsQuery.setResult({
-      data: [
-        { organization_id: 2 },
-        { organization_id: 1 },
-        { organization_id: 1 },
-        { organization_id: null },
-      ],
-      error: null,
-    });
-    organizationsQuery.setResult({
-      data: [makeOrg(1, 'Zeta Org'), makeOrg(2, 'Alpha Org')],
+  it('uses the RPC to fetch organizations sorted with active job counts and pagination total', async () => {
+    mockRpc.mockResolvedValue({
+      data: [makeRpcOrg(2, 'Alpha Org', 1), makeRpcOrg(1, 'Zeta Org', 2)],
       error: null,
     });
 
     const result = await fetchOrganizationIndex(1);
 
-    expect(mockFrom).toHaveBeenCalledWith('jobs');
-    expect(jobsQuery.not).toHaveBeenCalledWith('organization_id', 'is', null);
-    expect(jobsQuery.gte).toHaveBeenCalledWith('date_posted', '2026-05-16T00:00:00.000Z');
-    expect(mockFrom).toHaveBeenCalledWith('organizations');
-    expect(organizationsQuery.in).toHaveBeenCalledWith('id', [2, 1]);
-    expect(result.total).toBe(2);
+    expect(mockRpc).toHaveBeenCalledWith('get_active_organizations', {
+      min_date: '2026-05-16T00:00:00.000Z',
+      p_limit: 20,
+      p_offset: 0,
+    });
+    expect(result.total).toBe(3);
     expect(result.orgs.map((org) => org.name)).toEqual(['Alpha Org', 'Zeta Org']);
     expect(result.orgs.map((org) => org.active_job_count)).toEqual([1, 2]);
   });

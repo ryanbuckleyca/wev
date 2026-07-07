@@ -64,12 +64,11 @@ describe('OrganizationCard', () => {
   // Feature: organizations, Property 15
   it("Property 15: Index entry links use the org's slug", () => {
     fc.assert(
-      fc.property(fc.string({ minLength: 1 }), (slug) => {
-        const cleanSlug = encodeURIComponent(slug); // to avoid invalid hrefs in test
+      fc.property(fc.stringMatching(/^[a-z0-9][a-z0-9-]*$/), (slug) => {
         const org: OrgIndexEntry = {
           id: 1,
           name: 'Test Org',
-          slug: cleanSlug,
+          slug,
           description: null,
           website: null,
           location: 'City',
@@ -86,7 +85,7 @@ describe('OrganizationCard', () => {
         const { unmount } = render(<OrganizationCard org={org} />);
 
         const link = screen.getByRole('link', { name: 'Test Org' });
-        expect(link.getAttribute('href')).toBe(`/en/organizations/${cleanSlug}`);
+        expect(link.getAttribute('href')).toBe(`/en/organizations/${slug}`);
 
         unmount();
       }),

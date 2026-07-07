@@ -1,3 +1,4 @@
+import { safeUrl } from '@/lib/url';
 import type { OrgRecord } from '@/lib/organizations/types';
 import SseBadge from './SseBadge';
 
@@ -23,20 +24,19 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
               </div>
             )}
 
-            {org.website && (
-              <a
-                href={
-                  org.website.startsWith('https://') || org.website.startsWith('http://')
-                    ? org.website
-                    : `https://${org.website}`
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline font-medium"
-              >
-                {t('visitWebsite')}
-              </a>
-            )}
+            {(() => {
+              const url = safeUrl(org.website);
+              return url ? (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-medium"
+                >
+                  {t('visitWebsite')}
+                </a>
+              ) : null;
+            })()}
 
             {org.type && (
               <div className="flex items-center gap-1.5">
