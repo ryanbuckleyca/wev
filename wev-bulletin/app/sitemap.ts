@@ -45,9 +45,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const minDate = bulletinAgeCutoffIso();
     const seenSlugs = new Set<string>();
+    const MAX_ORG_PAGES = 10;
 
-    let page = 0;
-    while (true) {
+    for (let page = 0; page < MAX_ORG_PAGES; page++) {
       const { data: orgs, error } = await supabaseServer.rpc('get_active_organizations', {
         min_date: minDate,
         p_limit: MAX_ORG_SLUGS,
@@ -85,7 +85,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
 
       if (orgs.length < MAX_ORG_SLUGS) break;
-      page++;
     }
   } catch (error) {
     console.error('Error fetching organizations for sitemap:', error);

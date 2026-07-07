@@ -8,9 +8,8 @@ and the correct working directory.
 """
 
 import os
-import subprocess  # nosec B404  # legitimate launcher script
+import subprocess  # trunk-ignore(bandit/B404)
 import sys
-from shutil import which
 
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -28,8 +27,10 @@ def _find_python3():
         return env_python
 
     for candidate in ("python3", "python3.12", "python3.11", "python3.10"):
-        if which(candidate):
-            return candidate
+        for path_dir in os.environ.get("PATH", "").split(os.pathsep):
+            candidate_path = os.path.join(path_dir, candidate)
+            if os.path.isfile(candidate_path) and os.access(candidate_path, os.X_OK):
+                return candidate_path
 
     return sys.executable
 
@@ -41,7 +42,8 @@ def main():
     env["PYTHONPATH"] = os.pathsep.join(
         part for part in [SCRAPER_ROOT, env.get("PYTHONPATH", "")] if part
     )
-    return subprocess.call(cmd, cwd=SCRAPER_ROOT, env=env)  # nosec B603  # cmd is a list (no shell injection), argv forwarded to target script
+    # trunk-ignore(bandit/B603)
+    return subprocess.call(cmd, cwd=SCRAPER_ROOT, env=env)
 
 
 if __name__ == "__main__":

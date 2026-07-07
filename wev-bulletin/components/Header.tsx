@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
+import { Link, usePathname } from '@/i18n/navigation';
 import UserProfile from './UserProfile';
 import ThemeToggle from './ThemeToggle';
 import LocaleSwitcher from './LocaleSwitcher';
@@ -15,8 +15,10 @@ export default function Header({
   initialTheme = 'light',
 }: { hasBanner?: boolean; initialTheme?: 'light' | 'dark' } = {}) {
   const [shouldShowHeader, setShouldShowHeader] = useState(false);
+  const pathname = usePathname();
   const t = useTranslations('home');
   const tnav = useTranslations('navigation');
+  const isHomePage = pathname === '/' || pathname === '/jobs';
 
   useEffect(() => {
     let cancelled = false;
@@ -43,9 +45,9 @@ export default function Header({
       window.removeEventListener('scroll', onScrollOrResize);
       window.removeEventListener('resize', onScrollOrResize);
     };
-  }, []);
+  }, [isHomePage]);
 
-  const showHeader = shouldShowHeader;
+  const showHeader = !isHomePage || shouldShowHeader;
 
   // Offset header if any banner is present
   const topOffset = hasBanner ? 'top-[22px]' : 'top-0';

@@ -8,7 +8,6 @@ interface Props {
 }
 
 export default function OrganizationIndexView({ orgs, locale, t }: Props) {
-
   if (orgs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
