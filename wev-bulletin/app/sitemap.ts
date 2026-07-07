@@ -44,19 +44,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const minDate = new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const seenSlugs = new Set<string>();
 
-    const { data: orgs, error } = await supabaseServer
-      .rpc('get_active_organizations', {
-        min_date: minDate,
-        p_limit: MAX_ORG_SLUGS,
-        p_offset: 0,
-      });
+    let page = 0;
+    while (true) {
+      const { data: orgs, error } = await supabaseServer
+        .rpc('get_active_organizations', {
+          min_date: minDate,
+          p_limit: MAX_ORG_SLUGS,
+          p_offset: page * MAX_ORG_SLUGS,
+        });
 
-    if (error) {
-      console.error('Error fetching organizations for sitemap:', error);
-    } else if (orgs) {
+      if (error) {
+        console.error('Error fetching organizations for sitemap:', error);
+        break;
+      }
+
+      if (!orgs || orgs.length === 0) break;
+
       for (const org of orgs) {
-        if (!org.slug) continue;
+        if (!org.slug || seenSlugs.has(org.slug)) continue;
+        seenSlugs.add(org.slug);
 
         const slugLocaleEntries = Object.fromEntries(
           routing.locales.map((locale) => [
@@ -76,6 +84,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           });
         });
       }
+
+      if (orgs.length < MAX_ORG_SLUGS) break;
+      page++;
     }
   } catch (error) {
     console.error('Error fetching organizations for sitemap:', error);

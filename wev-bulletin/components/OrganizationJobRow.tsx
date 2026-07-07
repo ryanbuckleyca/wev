@@ -1,12 +1,7 @@
 import { useLocale, useTranslations } from 'next-intl';
-import { getWorkTypeLabel } from '@/lib/bulletin/filter-labels';
+import { getWorkTypeLabel, labelize } from '@/lib/bulletin/filter-labels';
 import { safeUrl } from '@/lib/url';
 import type { OrgJobPosting } from '@/lib/organizations/types';
-
-function labelize(label: string) {
-  const s = label.replace(/_/g, ' ').trim();
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : label;
-}
 
 export default function OrganizationJobRow({ job }: { job: OrgJobPosting }) {
   const t = useTranslations();

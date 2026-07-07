@@ -4,15 +4,6 @@ import fc from 'fast-check';
 import OrganizationCard from './OrganizationCard';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 
-// Mock next-intl
-vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string, values?: any) => {
-    if (key === 'jobs' && values) return `${values.count} jobs`;
-    return key;
-  },
-  useLocale: () => 'en',
-}));
-
 // Mock @lineiconshq/react-lineicons to render a span with data-testid
 vi.mock('@lineiconshq/react-lineicons', () => ({
   Leaf1Solid: 'Leaf1Solid',
@@ -24,6 +15,12 @@ vi.mock('@lineiconshq/free-icons', () => ({
   Leaf1Solid: 'Leaf1Solid',
   Lineicons: ({ icon }: { icon: any }) => <span data-testid="lineicon-mock" />,
 }));
+
+const baseProps = {
+  locale: 'en',
+  sseBadgeLabel: 'SSE',
+  jobCountLabel: '5 jobs',
+};
 
 describe('OrganizationCard', () => {
   // Feature: organizations, Property 14
@@ -42,12 +39,15 @@ describe('OrganizationCard', () => {
           is_sse,
           type: null,
           values: null,
+          values_list: null,
+          values_rated: null,
+          mission_statement: null,
           logo_url: null,
           created_at: new Date().toISOString(),
           active_job_count: 5,
         };
 
-        const { unmount } = render(<OrganizationCard org={org} />);
+        const { unmount } = render(<OrganizationCard {...baseProps} org={org} />);
 
         const badge = screen.queryByTestId('lineicon-mock');
         if (is_sse) {
@@ -77,12 +77,15 @@ describe('OrganizationCard', () => {
           is_sse: false,
           type: null,
           values: null,
+          values_list: null,
+          values_rated: null,
+          mission_statement: null,
           logo_url: null,
           created_at: new Date().toISOString(),
           active_job_count: 5,
         };
 
-        const { unmount } = render(<OrganizationCard org={org} />);
+        const { unmount } = render(<OrganizationCard {...baseProps} org={org} />);
 
         const link = screen.getByRole('link', { name: 'Test Org' });
         expect(link.getAttribute('href')).toBe(`/en/organizations/${slug}`);
