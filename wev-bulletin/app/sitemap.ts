@@ -55,7 +55,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
 
       if (error) {
-        console.error('Error fetching organizations for sitemap:', error);
+        console.error('Error fetching organizations for sitemap (page %d):', page, error);
         break;
       }
 

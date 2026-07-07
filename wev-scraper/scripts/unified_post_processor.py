@@ -55,9 +55,14 @@ def _has_prod_target(argv: list[str]) -> bool:
     return argv[env_index + 1] in {"prod", "publish"}
 
 
-if _has_prod_target(sys.argv):
-    confirm_prod_run(full_prod="--prod" in sys.argv or any(arg == "prod" for arg in sys.argv))
-    bootstrap_prod_from_argv(sys.argv, Path(__file__))
+def _bootstrap_prod_mode(argv: list[str] | None = None) -> None:
+    if argv is None:
+        argv = sys.argv
+    if _has_prod_target(argv):
+        confirm_prod_run(full_prod="--prod" in argv or any(arg == "prod" for arg in argv))
+        bootstrap_prod_from_argv(argv, Path(__file__))
+
+_bootstrap_prod_mode(sys.argv)
 
 # Deferred imports: `utils.db`, `llm.factory`, and `utils.log` transitively load clients
 # that read `os.environ` (Supabase URL/keys, LLM provider config). Import them only after

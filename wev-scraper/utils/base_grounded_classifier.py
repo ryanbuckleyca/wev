@@ -3,8 +3,12 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from llm.base import LLMProviderError
+
+if TYPE_CHECKING:
+    from utils.sse_classifier import SSEClassificationResult
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +74,7 @@ class BaseGroundedClassifier:
         return text
 
     @staticmethod
-    def _default_failed_classification(reason: str | None = None) -> dict:
+    def _default_failed_classification(reason: str | None = None) -> SSEClassificationResult:
         """Return a safe fallback SSEClassificationResult when parsing fails."""
         return {
             "rating": "no",
