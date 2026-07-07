@@ -22,13 +22,14 @@ export async function fetchOrganizationIndex(
 
   if (error) {
     console.error('fetchOrganizationIndex error:', error);
-    throw new Error('Failed to fetch organization index');
+    return { orgs: [], total: 0 };
   }
 
   const total = orgs && orgs.length > 0 ? Number(orgs[0].total_count) : 0;
 
   if (orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
-    throw new Error('fetchOrganizationIndex: RPC response missing active_job_count');
+    console.error('fetchOrganizationIndex: RPC response missing active_job_count');
+    return { orgs: [], total: 0 };
   }
 
   return {
@@ -49,7 +50,7 @@ export const getOrganizationBySlug = cache(async (slug: string): Promise<OrgReco
       return null;
     }
     console.error('getOrganizationBySlug error:', error);
-    throw new Error(`Failed to fetch organization: ${error.message}`);
+    return null;
   }
   return org;
 });
@@ -79,7 +80,7 @@ export async function getOrganizationJobs(
 
   if (error) {
     console.error('getOrganizationJobs error:', error);
-    throw new Error('Failed to fetch jobs for organization');
+    return { jobs: [], total: 0 };
   }
 
   return {

@@ -21,6 +21,7 @@ from llm.base import LLMProviderError
 from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
+from utils.slug import generate_slug
 from utils.sse_prompts import EVALUATION_CRITERIA, JSON_INSTRUCTIONS, SSE_PRINCIPLES
 
 logger = logging.getLogger(__name__)
@@ -223,11 +224,11 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
 
     slug = _parse_text_field(data, "slug") or ""
     if not slug:
+        slug = generate_slug(canonical_name)
         logger.warning(
-            "OrganizationAssessor: empty slug for canonical_name=%r raw_name=%r",
-            canonical_name, raw_name,
+            "OrganizationAssessor: LLM returned no slug for canonical_name=%r raw_name=%r — generated slug=%r",
+            canonical_name, raw_name, slug,
         )
-        return None
 
     return AssessedOrgResult(
         canonical_name=canonical_name.strip(),

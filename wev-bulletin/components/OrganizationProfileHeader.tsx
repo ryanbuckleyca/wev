@@ -98,9 +98,9 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
         <div className="mt-8 pt-8 border-t border-border">
           <h2 className="text-lg font-semibold text-foreground mb-3">{t('values')}</h2>
           <div className="flex flex-wrap gap-2">
-            {org.values_list.map((value, index) => (
+            {org.values_list.map((value) => (
               <span
-                key={`${value}-${index}`}
+                key={value}
                 className="bg-primary-tint text-primary-text px-3 py-1 rounded-wev-pill text-sm font-medium"
               >
                 {value}
