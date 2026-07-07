@@ -53,7 +53,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
         <header className="mb-8">
           <Image
             src={SITE_CONFIG.logotypeUrl}
-            alt={org.name}
+            alt="WEV logotype"
             width={100}
             height={40}
             unoptimized
