@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -51,6 +52,7 @@ class BaseGroundedClassifier:
             except LLMProviderError as e:
                 if _is_rate_limit(str(e)) and attempt < retries:
                     logger.warning("LLM rate limit on attempt %d/%d, retrying...", attempt + 1, retries + 1)
+                    time.sleep(2 ** attempt)
                     continue
                 raise SSEClassificationError(f"LLM provider error: {e}") from e
             except Exception as e:
@@ -61,6 +63,7 @@ class BaseGroundedClassifier:
                     ) from e
                 if _is_rate_limit(err) and attempt < retries:
                     logger.warning("LLM rate limit on attempt %d/%d, retrying...", attempt + 1, retries + 1)
+                    time.sleep(2 ** attempt)
                     continue
                 raise SSEClassificationError(f"LLM API error: {err}") from e
 

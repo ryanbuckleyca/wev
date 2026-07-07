@@ -66,7 +66,7 @@ ORGANIZATION DATA:
   Municipality: {municipality}
   Province:     {province}
   Job title:   {job_title}
-  Job description (truncated):
+  Description (truncated):
 {description}
 
 Return a JSON object with exactly these fields:
@@ -106,11 +106,17 @@ class AssessedOrgResult(TypedDict):
     flags: List[str]
 
 
+_TAXONOMY_STR: str | None = None
+
+
 def _format_taxonomy() -> str:
-    lines: list[str] = []
-    for v in get_taxonomy():
-        lines.append(f'{v.label}: {v.definition}')
-    return "\n".join(lines)
+    global _TAXONOMY_STR
+    if _TAXONOMY_STR is None:
+        lines: list[str] = []
+        for v in get_taxonomy():
+            lines.append(f'{v.label}: {v.definition}')
+        _TAXONOMY_STR = "\n".join(lines)
+    return _TAXONOMY_STR
 
 
 def _build_assessment_prompt(

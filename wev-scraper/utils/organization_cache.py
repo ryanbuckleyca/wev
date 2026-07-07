@@ -78,7 +78,7 @@ def location_is_compatible(
     cand = nfkd_to_ascii(candidate_location or "").strip().lower()
 
     if not job_canonical or not cand:
-        return False
+        return bool(not job_canonical and not cand)
 
     cand_words = set(cand.translate(_REMOVE_PUNCTUATION).split())
     job_words = set(job_canonical.translate(_REMOVE_PUNCTUATION).split())
