@@ -275,7 +275,6 @@ class OrganizationAssessor(BaseGroundedClassifier):
     def __init__(self) -> None:
         self.provider = get_sse_provider()
         if not self.provider:
-            from utils.base_grounded_classifier import SSEClassificationError
             raise SSEClassificationError(
                 "SSE provider not available for OrganizationAssessor. "
                 "Check API keys (GEMINI_API_KEY, GROQ_API_KEY, TAVILY_API_KEY)."
