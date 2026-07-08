@@ -113,6 +113,10 @@ export default function BulletinPageView({
           />
 
           <Pagination
+            currentPage={filters.currentPage}
+            onPageChange={(page) => {
+              void filters.setCurrentPage(page);
+            }}
             totalPages={data.totalPages}
             totalItems={data.totalMatchingJobs}
             itemsPerPage={data.itemsPerPage}

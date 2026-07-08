@@ -20,7 +20,7 @@ const enableAnalytics = Boolean(GA_ID && isProduction);
 
 export const metadata: Metadata = {
   title: 'wev Bulletin - Job Postings',
-  description: 'View and manage job postings from wev scraper',
+  description: 'View and manage job postings from wev Bulletin',
   metadataBase: new URL(siteBaseUrl),
   icons: {
     icon: '/favicon.ico',

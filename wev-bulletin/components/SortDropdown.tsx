@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useContext } from 'react';
 import { useTranslations } from 'next-intl';
 import Button from '@/components/Button';
 import Chevron from './Chevron';
@@ -13,20 +13,40 @@ type SortOption =
   | 'skill-match-desc'
   | 'salary-desc'
   | 'salary-asc'
-  | 'org-asc';
+  | 'org-asc'
+  | 'org-desc';
 
-import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
+import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
+
+export interface SortOptionDef {
+  value: string;
+  label: string;
+  group?: string;
+}
 
 interface SortDropdownProps {
   /** When false, hide the 'Best match' option (requires being logged in) */
   showMatchOption?: boolean;
+  sortBy?: string;
+  onChange?: (value: string) => void;
+  options?: SortOptionDef[];
+  optionValues?: SortOption[];
 }
 
-export default function SortDropdown({ showMatchOption }: SortDropdownProps) {
-  const { sortBy, setSortBy: onChange } = useBulletinFilterContext();
+export default function SortDropdown({
+  showMatchOption,
+  sortBy: propsSortBy,
+  onChange: propsOnChange,
+  options: propsOptions,
+  optionValues,
+}: SortDropdownProps) {
+  // Use context only as fallback when props aren't provided — don't throw if missing
+  const context = useContext(BulletinFilterContext);
+  const sortBy = propsSortBy ?? context?.sortBy;
+  const onChange = propsOnChange ?? context?.setSortBy;
   const t = useTranslations();
 
-  const OPTIONS: { value: SortOption; label: string; group?: string }[] = [
+  const OPTIONS: SortOptionDef[] = propsOptions ?? [
     { value: 'date-desc', label: t('sort.newestFirst'), group: 'date' },
     { value: 'date-asc', label: t('sort.oldestFirst'), group: 'date' },
     { value: 'match-desc', label: t('sort.bestMatch'), group: 'match' },
@@ -35,6 +55,7 @@ export default function SortDropdown({ showMatchOption }: SortDropdownProps) {
     { value: 'salary-desc', label: t('sort.salaryHighToLow'), group: 'salary' },
     { value: 'salary-asc', label: t('sort.salaryLowToHigh'), group: 'salary' },
     { value: 'org-asc', label: t('sort.orgAZ'), group: 'org' },
+    { value: 'org-desc', label: t('sort.orgZA'), group: 'org' },
   ];
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -50,8 +71,11 @@ export default function SortDropdown({ showMatchOption }: SortDropdownProps) {
   }, [open]);
 
   const label = OPTIONS.find((o) => o.value === sortBy)?.label ?? t('sort.newestFirst');
-  const optionsToShow =
-    showMatchOption === false ? OPTIONS.filter((o) => !o.group || o.group !== 'match') : OPTIONS;
+  const valueSet = optionValues ? new Set(optionValues) : null;
+  const optionsToShow = OPTIONS.filter((option) => {
+    if (valueSet && !valueSet.has(option.value as SortOption)) return false;
+    return showMatchOption !== false || !option.group || option.group !== 'match';
+  });
 
   return (
     <div ref={rootRef} className="sort-dropdown relative z-50">
@@ -91,7 +115,7 @@ export default function SortDropdown({ showMatchOption }: SortDropdownProps) {
             key={opt.value}
             className="px-3 py-2 rounded-md cursor-pointer transition-colors text-xs p-2 rounded-lg"
             onClick={() => {
-              onChange(opt.value);
+              onChange?.(opt.value as any);
               setOpen(false);
             }}
           >

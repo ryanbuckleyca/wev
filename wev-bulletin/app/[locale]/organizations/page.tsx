@@ -1,11 +1,11 @@
-import Image from 'next/image';
-import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { fetchOrganizationIndex } from '@/lib/organizations/server-data';
-import OrganizationIndexView from '@/components/OrganizationIndexView';
-import SimplePagination from '@/components/SimplePagination';
-import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
-import { SITE_CONFIG } from '@/lib/site-config';
+import {
+  fetchOrganizationIndex,
+  fetchOrganizationFilterOptions,
+} from '@/lib/organizations/server-data';
+import { createClient as createServerClient } from '@/lib/supabase/server';
+import OrganizationIndexClient from '@/components/OrganizationIndexClient';
+import PageLayout from '@/components/PageLayout';
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -21,48 +21,55 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
+function getStringParam(value: string | string[] | undefined, fallback = '') {
+  if (Array.isArray(value)) return value[0] ?? fallback;
+  return value ?? fallback;
+}
+
+function getArrayParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
+}
+
 export default async function OrganizationsIndexPage({ params, searchParams }: PageProps) {
   const { locale } = await params;
-  const resolvedSearchParams = await searchParams;
+  const rawSearchParams = await searchParams;
   const t = await getTranslations({ locale, namespace: 'organizations' });
+  const supabaseAuth = await createServerClient();
+  const {
+    data: { user },
+  } = await supabaseAuth.auth.getUser();
 
-  const parsedPage =
-    typeof resolvedSearchParams.page === 'string' ? parseInt(resolvedSearchParams.page, 10) : 1;
-  const page = isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
+  const page = Math.max(1, parseInt(getStringParam(rawSearchParams.page, '1'), 10) || 1);
+  const sortBy = getStringParam(rawSearchParams.sortBy, user ? 'value-match-desc' : 'org-asc');
 
-  const { orgs, total } = await fetchOrganizationIndex(page);
-  const totalPages = Math.ceil(total / ORG_JOBS_PER_PAGE);
-
-  if (page > totalPages && totalPages > 0) {
-    redirect(`/${locale}/organizations?page=${totalPages}`);
-  }
+  // Fetch initial page (SSE-only default) and filter options in parallel
+  const [initialData, filterOptions] = await Promise.all([
+    fetchOrganizationIndex(
+      page,
+      getStringParam(rawSearchParams.q),
+      getStringParam(rawSearchParams.sse, 'true') === 'true',
+      getArrayParam(rawSearchParams.province),
+      getArrayParam(rawSearchParams.municipality),
+      getArrayParam(rawSearchParams.type),
+      user?.id ?? null,
+      user || !sortBy.includes('match') ? sortBy : 'org-asc',
+    ),
+    fetchOrganizationFilterOptions(),
+  ]);
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
-        <header className="mb-8">
-          <Image
-            src={SITE_CONFIG.logotypeUrl}
-            alt={t('indexTitle')}
-            width={100}
-            height={40}
-            unoptimized
-            className="main-logo wev-logotype w-[100px] h-auto mb-2"
-            priority
-          />
-          <h1 className="text-3xl font-bold text-foreground">{t('indexTitle')}</h1>
-        </header>
+    <PageLayout maxWidth="lg">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground">{t('indexTitle')}</h1>
+      </header>
 
-        <OrganizationIndexView orgs={orgs} locale={locale} t={t} />
-
-        {total > ORG_JOBS_PER_PAGE && (
-          <SimplePagination
-            currentPage={page}
-            totalPages={totalPages}
-            baseUrl={`/${locale}/organizations`}
-          />
-        )}
-      </div>
-    </main>
+      <OrganizationIndexClient
+        initialData={initialData}
+        filterOptions={filterOptions}
+        locale={locale}
+        initialHasMatchScores={Boolean(user)}
+      />
+    </PageLayout>
   );
 }

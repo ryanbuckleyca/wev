@@ -116,6 +116,13 @@ describe('organizations/server-data', () => {
       min_date: '2026-05-16T00:00:00.000Z',
       p_limit: 20,
       p_offset: 0,
+      p_search: null,
+      p_sse_only: true,
+      p_provinces: null,
+      p_municipalities: null,
+      p_org_types: null,
+      p_user_id: null,
+      p_sort: 'org-asc',
     });
     expect(result.total).toBe(3);
     expect(result.orgs.map((org) => org.name)).toEqual(['Alpha Org', 'Zeta Org']);

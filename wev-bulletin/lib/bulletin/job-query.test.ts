@@ -210,6 +210,7 @@ describe('job-query', () => {
 
     it('sorts by organization', () => {
       expect(sortJobs(mockJobs, 'org-asc', matchData)[0].organization).toBe('Product Inc');
+      expect(sortJobs(mockJobs, 'org-desc', matchData)[0].organization).toBe('Tech Corp');
     });
 
     it('handles default case', () => {

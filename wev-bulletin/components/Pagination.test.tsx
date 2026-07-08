@@ -50,97 +50,81 @@ vi.mock('react-responsive-pagination', () => ({
   ),
 }));
 
-let mockCurrentPage = 1;
-let mockSetCurrentPage = vi.fn();
-
-vi.mock('@/contexts/BulletinFilterContext', () => ({
-  useBulletinFilterContext: () => ({
-    currentPage: mockCurrentPage,
-    setCurrentPage: mockSetCurrentPage,
-  }),
-}));
-
-const defaultProps = {
-  totalPages: 5,
-  totalItems: 50,
-  itemsPerPage: 10,
-};
+function makeProps(overrides: Partial<Parameters<typeof Pagination>[0]> = {}) {
+  return {
+    currentPage: 1,
+    onPageChange: vi.fn(),
+    totalPages: 5,
+    totalItems: 50,
+    itemsPerPage: 10,
+    ...overrides,
+  };
+}
 
 describe('Pagination', () => {
-  beforeEach(() => {
-    mockCurrentPage = 1;
-    mockSetCurrentPage = vi.fn();
-  });
-
   it('shows item range text', () => {
-    render(<Pagination {...defaultProps} />);
+    render(<Pagination {...makeProps()} />);
     expect(screen.getByText(/Showing 1-10 of 50 jobs/)).toBeVisible();
   });
 
   it('shows singular "job" when totalItems is 1 and totalPages <= 1', () => {
-    mockCurrentPage = 1;
-    render(<Pagination totalPages={1} totalItems={1} itemsPerPage={10} />);
+    render(<Pagination {...makeProps({ totalPages: 1, totalItems: 1 })} />);
     expect(screen.getByText(/1 job\b/)).toBeVisible();
   });
 
   it('renders no navigation when totalPages <= 1', () => {
-    mockCurrentPage = 1;
-    render(<Pagination totalPages={1} totalItems={5} itemsPerPage={10} />);
+    render(<Pagination {...makeProps({ totalPages: 1, totalItems: 5 })} />);
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
 
   it('disables Previous on first page', () => {
-    mockCurrentPage = 1;
-    render(<Pagination {...defaultProps} />);
+    render(<Pagination {...makeProps({ currentPage: 1 })} />);
     expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled();
   });
 
   it('disables Next on last page', () => {
-    mockCurrentPage = 5;
-    render(<Pagination {...defaultProps} />);
+    render(<Pagination {...makeProps({ currentPage: 5 })} />);
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
   });
 
   it('calls onPageChange with next page when Next is clicked', async () => {
     const user = userEvent.setup();
-    mockCurrentPage = 2;
-    render(<Pagination {...defaultProps} />);
+    const onPageChange = vi.fn();
+    render(<Pagination {...makeProps({ currentPage: 2, onPageChange })} />);
     await user.click(screen.getByRole('button', { name: 'Next' }));
-    expect(mockSetCurrentPage).toHaveBeenCalledWith(3);
+    expect(onPageChange).toHaveBeenCalledWith(3);
   });
 
   it('calls onPageChange with previous page when Previous is clicked', async () => {
     const user = userEvent.setup();
-    mockCurrentPage = 3;
-    render(<Pagination {...defaultProps} />);
+    const onPageChange = vi.fn();
+    render(<Pagination {...makeProps({ currentPage: 3, onPageChange })} />);
     await user.click(screen.getByRole('button', { name: 'Previous' }));
-    expect(mockSetCurrentPage).toHaveBeenCalledWith(2);
+    expect(onPageChange).toHaveBeenCalledWith(2);
   });
 
   it('calls onPageChange when a page number is clicked', async () => {
     const user = userEvent.setup();
-    mockCurrentPage = 1;
-    render(<Pagination {...defaultProps} />);
+    const onPageChange = vi.fn();
+    render(<Pagination {...makeProps({ currentPage: 1, onPageChange })} />);
     await user.click(screen.getByRole('button', { name: '3' }));
-    expect(mockSetCurrentPage).toHaveBeenCalledWith(3);
+    expect(onPageChange).toHaveBeenCalledWith(3);
   });
 
   it('renders page number buttons', () => {
-    render(<Pagination {...defaultProps} />);
+    render(<Pagination {...makeProps()} />);
     [1, 2, 3, 4, 5].forEach((n) =>
       expect(screen.getByRole('button', { name: String(n) })).toBeVisible(),
     );
   });
 
   it('marks the current page with aria-current', () => {
-    mockCurrentPage = 3;
-    render(<Pagination {...defaultProps} />);
+    render(<Pagination {...makeProps({ currentPage: 3 })} />);
     expect(screen.getByRole('button', { name: '3' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('highlights the current page with active class', () => {
-    mockCurrentPage = 3;
-    render(<Pagination {...defaultProps} />);
+    render(<Pagination {...makeProps({ currentPage: 3 })} />);
     expect(screen.getByRole('button', { name: '3' })).toHaveClass('bg-primary');
   });
 });
