@@ -1,15 +1,11 @@
-'use client';
-
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
-import type { OrgIndexEntry } from '@/lib/organizations/types';
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import SseBadge from './SseBadge';
 import JobCardFooter from './JobCardFooter';
 import MatchDetailsTooltip from './MatchDetailsTooltip';
-import { useAuth } from '@/contexts/AuthContext';
 import Collapsible from './Collapsible';
+import type { OrgIndexEntry } from '@/lib/organizations/types';
 
 const DESCRIPTION_PREVIEW_LENGTH = 150;
 
@@ -18,6 +14,13 @@ interface Props {
   locale: string;
   sseBadgeLabel: string;
   jobCountLabel: string;
+  noDescriptionLabel: string;
+  websiteLabel: string;
+  viewProfileLabel: string;
+  showMoreLabel: string;
+  showLessLabel: string;
+  isLoggedIn: boolean;
+  translateTooltip: (key: string, values?: Record<string, unknown>) => string;
 }
 
 // ---------------------------------------------------------------------------
@@ -29,9 +32,13 @@ interface CardHeaderProps {
   locale: string;
   sseBadgeLabel: string;
   jobCountLabel: string;
+  noDescriptionLabel: string;
+  showMoreLabel: string;
+  showLessLabel: string;
   hasFooter: boolean;
   isExpanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
+  getTypeLabel: (type: string | null) => string;
 }
 
 function OrganizationCardHeader({
@@ -39,15 +46,16 @@ function OrganizationCardHeader({
   locale,
   sseBadgeLabel,
   jobCountLabel,
+  noDescriptionLabel,
+  showMoreLabel,
+  showLessLabel,
   hasFooter,
   isExpanded,
   onExpandedChange,
+  getTypeLabel,
 }: CardHeaderProps) {
-  const t = useTranslations('organizations');
-  const tCommon = useTranslations('common');
-
-  const description = org.description || org.mission_statement || t('noDescription');
-  const typeLabel = getOrganizationTypeLabel(org.type, t);
+  const description = org.description || org.mission_statement || noDescriptionLabel;
+  const typeLabel = getTypeLabel(org.type);
   const metadata = [org.location, typeLabel].filter(Boolean).join(' • ');
 
   const shouldTruncate = description.length > DESCRIPTION_PREVIEW_LENGTH;
