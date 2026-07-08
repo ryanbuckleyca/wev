@@ -1,6 +1,16 @@
--- Migration: Fix ambiguous values_rated column reference in get_active_organizations RPC
+-- Migration: Add value-match scoring and p_user_id to get_active_organizations RPC.
+-- Consolidates _000001 (org_matches) + _000002 (fix ambiguous values_rated reference)
+-- into a single clean migration.
 
+-- Drop old 8-argument signature created by 20260708000000
 DROP FUNCTION IF EXISTS public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[]);
+
+-- NOTE: The ILIKE search on o.name / o.description benefits from a pg_trgm GIN index:
+--   CREATE INDEX CONCURRENTLY IF NOT EXISTS orgs_name_trgm_idx
+--     ON organizations USING gin (name gin_trgm_ops);
+--   CREATE INDEX CONCURRENTLY IF NOT EXISTS orgs_description_trgm_idx
+--     ON organizations USING gin (description gin_trgm_ops);
+-- Add these in a follow-up migration once pg_trgm is confirmed enabled on the instance.
 
 CREATE OR REPLACE FUNCTION public.get_active_organizations(
   min_date timestamp with time zone,
@@ -53,6 +63,7 @@ BEGIN
     WHERE p.id = p_user_id
   ),
   user_items AS (
+    -- Qualify user_data.values_rated to avoid ambiguity with the RETURNS TABLE column
     SELECT elem->>'value' AS val, (elem->>'rank')::int AS rnk
     FROM user_data, jsonb_array_elements(user_data.values_rated) AS elem
     WHERE (elem->>'value') IS NOT NULL
@@ -161,7 +172,7 @@ BEGIN
     cm.shared_values
   FROM org_counts oc
   LEFT JOIN computed_matches cm ON cm.org_id = oc.id
-  ORDER BY 
+  ORDER BY
     CASE WHEN p_sort = 'value-match-desc' OR p_sort = 'match-desc' THEN cm.value_score END DESC NULLS LAST,
     CASE WHEN p_sort = 'org-desc' THEN oc.name END DESC,
     oc.name ASC
@@ -170,4 +181,8 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text)
+  TO anon, authenticated, service_role;
+
+COMMENT ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text) IS
+  'Returns organizations with active job counts, optional value-match scoring, filtering, and pagination.';
