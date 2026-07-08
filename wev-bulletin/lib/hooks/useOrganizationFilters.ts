@@ -112,8 +112,10 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     [setSearchQuery, setShowNonSse, setSelectedProvinces, setSelectedMunicipalities, setSelectedTypes, setCurrentPage],
   );
 
+  // clearAllFilters: resets everything, SSE filter goes back to SSE-only (default view).
+  // applySuggestedDefaults: same as clear — SSE-only is the suggested default for orgs.
   const clearAllFilters = useCallback(() => resetFilters(false), [resetFilters]);
-  const applySuggestedDefaults = useCallback(() => resetFilters(false), [resetFilters]);
+  const applySuggestedDefaults = clearAllFilters;
 
   return {
     filters,

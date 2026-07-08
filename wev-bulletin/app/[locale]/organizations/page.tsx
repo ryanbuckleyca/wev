@@ -4,7 +4,7 @@ import {
   fetchOrganizationFilterOptions,
 } from '@/lib/organizations/server-data';
 import { createClient as createServerClient } from '@/lib/supabase/server';
-import { resolveOrgSortBy } from '@/lib/organizations/utils';
+import { parseOrgIndexSearchParams } from '@/lib/organizations/params';
 import OrganizationIndexClient from '@/components/OrganizationIndexClient';
 import PageLayout from '@/components/PageLayout';
 
@@ -16,46 +16,44 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'organizations' });
-
-  return {
-    title: t('indexTitle'),
-  };
-}
-
-function getStringParam(value: string | string[] | undefined, fallback = '') {
-  if (Array.isArray(value)) return value[0] ?? fallback;
-  return value ?? fallback;
-}
-
-function getArrayParam(value: string | string[] | undefined) {
-  if (Array.isArray(value)) return value;
-  return value ? [value] : [];
+  return { title: t('indexTitle') };
 }
 
 export default async function OrganizationsIndexPage({ params, searchParams }: PageProps) {
   const { locale } = await params;
   const rawSearchParams = await searchParams;
   const t = await getTranslations({ locale, namespace: 'organizations' });
+
   const supabaseAuth = await createServerClient();
   const {
     data: { user },
   } = await supabaseAuth.auth.getUser();
 
-  const page = Math.max(1, parseInt(getStringParam(rawSearchParams.page, '1'), 10) || 1);
-  const sortBy = getStringParam(rawSearchParams.sortBy, user ? 'value-match-desc' : 'org-asc');
+  // Normalise the Next.js searchParams shape (string | string[] | undefined) into
+  // a URLSearchParams so we can reuse the shared parser.
+  const urlSearchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(rawSearchParams)) {
+    if (Array.isArray(value)) {
+      value.forEach((v) => urlSearchParams.append(key, v));
+    } else if (value !== undefined) {
+      urlSearchParams.set(key, value);
+    }
+  }
 
-  // Fetch initial page (SSE-only default) and filter options in parallel.
-  // nonSse=true means "include non-SSE orgs"; absence means SSE-only.
+  const { page, searchQuery, sseOnly, provinces, municipalities, orgTypes, sortBy } =
+    parseOrgIndexSearchParams(urlSearchParams, Boolean(user));
+
+  // Fetch initial page and filter options in parallel.
   const [initialData, filterOptions] = await Promise.all([
     fetchOrganizationIndex({
       page,
-      searchQuery: getStringParam(rawSearchParams.q),
-      sseOnly: getStringParam(rawSearchParams.nonSse) !== 'true',
-      provinces: getArrayParam(rawSearchParams.province),
-      municipalities: getArrayParam(rawSearchParams.municipality),
-      orgTypes: getArrayParam(rawSearchParams.type),
+      searchQuery,
+      sseOnly,
+      provinces,
+      municipalities,
+      orgTypes,
       userId: user?.id ?? null,
-      sortBy: resolveOrgSortBy(sortBy, Boolean(user)),
+      sortBy,
     }),
     fetchOrganizationFilterOptions(),
   ]);

@@ -8,6 +8,15 @@ interface Props {
   values: string[];
 }
 
+/** Escapes the minimal set of HTML entities that could break or inject into innerHTML. */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export default function OrganizationValuesPills({ values }: Props) {
   const tValues = useTranslations('values');
 
@@ -16,9 +25,10 @@ export default function OrganizationValuesPills({ values }: Props) {
   const valueItems = values.map((value) => {
     const { label, description, example } = getValueTranslationsHelper(value, tValues);
     // tooltip is rendered via dangerouslySetInnerHTML in InfoPopover.
-    // Content comes exclusively from translation files (developer-controlled),
-    // so HTML injection here is intentional and safe.
-    const tooltip = `${description}<br/><br/><em>${example}</em>`;
+    // Content comes from translation files (developer-controlled), but we still
+    // escape before interpolation so translator-supplied HTML characters don't
+    // break the markup or create unexpected rendering.
+    const tooltip = `${escapeHtml(description)}<br/><br/><em>${escapeHtml(example)}</em>`;
     return {
       label,
       tooltip,

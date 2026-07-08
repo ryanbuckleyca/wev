@@ -1,12 +1,17 @@
 import { Leaf1Solid, Leaf1Outlined } from '@lineiconshq/free-icons';
 import { Lineicons } from '@lineiconshq/react-lineicons';
+import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
 import type { OrgRecord } from '@/lib/organizations/types';
 import OrganizationValuesPills from './OrganizationValuesPills';
 
 interface Props {
   org: OrgRecord;
-  t: (key: string) => string;
+  /**
+   * next-intl translation function scoped to the **'organizations'** namespace.
+   * Must be created with `getTranslations({ locale, namespace: 'organizations' })`.
+   */
+  t: ReturnType<typeof useTranslations<'organizations'>>;
 }
 
 export default function OrganizationProfileHeader({ org, t }: Props) {

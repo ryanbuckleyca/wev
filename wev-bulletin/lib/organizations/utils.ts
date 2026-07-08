@@ -20,10 +20,10 @@ export function resolveOrgSortBy(sortBy: string, hasMatchScores: boolean): strin
  */
 export function getOrganizationTypeLabel(
   type: string | null | undefined,
-  t: { (key: string): string; has?: (key: string) => boolean },
+  t: { (key: string): string; has: (key: string) => boolean },
 ): string | null {
   if (!type) return null;
   const normalized = type.toLowerCase().replace(/[\s_-]+/g, '');
-  if (t.has?.(normalized)) return t(normalized);
+  if (t.has(normalized)) return t(normalized);
   return type;
 }

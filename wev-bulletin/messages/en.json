@@ -12,6 +12,7 @@
     "of": "of",
     "organization": "organization",
     "organizations": "organizations",
+    "organizationCount": "{count, plural, =0 {No organizations} one {1 organization} other {# organizations}}",
     "organizationType": "Organization Type",
     "nonprofit": "Nonprofit",
     "cooperative": "Cooperative",
@@ -512,7 +513,9 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "expand": "expand",
-    "collapse": "collapse"
+    "collapse": "collapse",
+    "showMore": "Show more",
+    "showLess": "Show less"
   },
   "ariaLabels": {
     "themeToggle": {

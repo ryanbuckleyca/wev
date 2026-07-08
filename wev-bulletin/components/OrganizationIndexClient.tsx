@@ -92,7 +92,7 @@ export default function OrganizationIndexClient({
           <>
             <div className="flex justify-between items-center px-2">
               <div className="text-sm text-muted-foreground" aria-live="polite">
-                {total} {total === 1 ? t('organization') : t('organizations')}
+                {t('organizationCount', { count: total })}
               </div>
               <SortDropdown
                 sortBy={effectiveSortBy}

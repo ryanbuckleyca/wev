@@ -41,59 +41,68 @@ export async function fetchOrganizationIndex(
   const offset = (page - 1) * limit;
   const effectiveSortBy = sortBy ?? (userId ? 'value-match-desc' : 'org-asc');
 
-  const hasNonSseFilters =
+  const hasFilters =
     Boolean(searchQuery) ||
+    sseOnly ||
     provinces.length > 0 ||
     municipalities.length > 0 ||
     orgTypes.length > 0;
 
-  // We need a denominator for the "X of Y" count whenever SSE filter is active
-  // or other filters narrow the results. When sseOnly=true, denominator shows total
-  // unfiltered so the user sees "5 SSE orgs of 30 total orgs".
-  const needsDenominator = sseOnly || hasNonSseFilters;
+  // Run main query and unfiltered denominator count in parallel.
+  // The denominator call uses p_limit:1 to return exactly one row carrying the
+  // total_count scalar subquery result, with minimal data transfer.
+  const denominatorParams = {
+    min_date: minDate,
+    p_search: null,
+    p_sse_only: false,
+    p_provinces: null,
+    p_municipalities: null,
+    p_org_types: null,
+    p_limit: 1,
+    p_offset: 0,
+    p_user_id: null,
+    p_sort: 'org-asc' as const,
+  };
 
-  const rpcParams = {
+  const mainParams = {
     min_date: minDate,
     p_search: searchQuery || null,
     p_sse_only: sseOnly,
     p_provinces: provinces.length > 0 ? provinces : null,
     p_municipalities: municipalities.length > 0 ? municipalities : null,
     p_org_types: orgTypes.length > 0 ? orgTypes : null,
-  };
-
-  const { data: orgs, error } = await supabaseServer.rpc('get_active_organizations', {
-    ...rpcParams,
     p_limit: limit,
     p_offset: offset,
     p_user_id: userId,
     p_sort: effectiveSortBy,
-  });
+  };
 
-  if (error) {
-    throw new Error(`fetchOrganizationIndex RPC error: ${error.message}`);
+  const [mainResult, denominatorResult] = await Promise.all([
+    supabaseServer.rpc('get_active_organizations', mainParams),
+    hasFilters
+      ? supabaseServer.rpc('get_active_organizations', denominatorParams)
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
+  if (mainResult.error) {
+    throw new Error(`fetchOrganizationIndex RPC error: ${mainResult.error.message}`);
   }
-
-  // Fetch the unfiltered denominator count when needed (p_limit:1 to minimise data transfer).
-  const { data: availableOrgs, error: availableError } = needsDenominator
-    ? await supabaseServer.rpc('get_active_organizations', {
-        ...rpcParams,
-        p_limit: 1,
-        p_offset: 0,
-        p_sse_only: false,
-        p_user_id: null,
-        p_sort: 'org-asc',
-      })
-    : { data: orgs, error: null };
-
-  if (availableError) {
+  if (denominatorResult.error) {
     throw new Error(
-      `fetchOrganizationIndex totalAvailable RPC error: ${availableError.message}`,
+      `fetchOrganizationIndex totalAvailable RPC error: ${denominatorResult.error.message}`,
     );
   }
 
+  const orgs = mainResult.data;
   const total = orgs && orgs.length > 0 ? Number(orgs[0].total_count) : 0;
-  const totalAvailable =
-    availableOrgs && availableOrgs.length > 0 ? Number(availableOrgs[0].total_count) : total;
+
+  // When filters are active the denominator query gives the unfiltered org count.
+  // When no filters, total IS the unfiltered count.
+  const totalAvailable = hasFilters
+    ? (denominatorResult.data && denominatorResult.data.length > 0
+        ? Number(denominatorResult.data[0].total_count)
+        : total)
+    : total;
 
   if (orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
     throw new Error('fetchOrganizationIndex: RPC response missing active_job_count');
@@ -105,6 +114,10 @@ export async function fetchOrganizationIndex(
     totalAvailable,
   };
 }
+
+// ---------------------------------------------------------------------------
+// getOrganizationBySlug
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // getOrganizationBySlug
@@ -201,13 +214,18 @@ export interface OrganizationFilterOptions {
 
 export const fetchOrganizationFilterOptions = cache(
   async (): Promise<OrganizationFilterOptions> => {
+    // Only surface filter values for organizations that currently have active jobs,
+    // so users don't see provinces/types that would produce zero results.
+    const minDate = bulletinAgeCutoffIso();
     const { data, error } = await supabaseServer
       .from('organizations')
-      .select('type, province, municipality');
+      .select('type, province, municipality, jobs!inner(date_posted)')
+      .gte('jobs.date_posted', minDate);
 
     if (error) {
-      console.error('fetchOrganizationFilterOptions error:', error);
-      return { types: [], provinces: [], municipalitiesByProvince: {} };
+      // Re-throw so the caller (page render) can surface the error rather than
+      // silently showing blank filter options that look like a bug.
+      throw new Error(`fetchOrganizationFilterOptions error: ${error.message}`);
     }
 
     const types = new Set<string>();

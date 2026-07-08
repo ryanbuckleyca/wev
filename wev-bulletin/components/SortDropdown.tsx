@@ -27,15 +27,28 @@ export interface SortOptionDef {
 interface SortDropdownProps {
   /** When false, hide the 'Best match' option (requires being logged in) */
   showMatchOption?: boolean;
-  /** Controlled sort value. When omitted the BulletinFilterContext is used. */
-  sortBy?: string;
-  /** Controlled change handler. When omitted the BulletinFilterContext is used. */
-  onChange?: (value: string) => void;
   /** Override the full list of sort options. */
   options?: SortOptionDef[];
   /** Restrict visible options to this subset (matched by value). */
   optionValues?: SortOption[];
 }
+
+/** Controlled mode — caller manages sort state explicitly (e.g. org index). */
+interface ControlledProps extends SortDropdownProps {
+  sortBy: string;
+  onChange: (value: string) => void;
+}
+
+/**
+ * Context-driven mode — reads from/writes to BulletinFilterContext.
+ * Must be rendered inside a BulletinFilterProvider.
+ */
+interface ContextDrivenProps extends SortDropdownProps {
+  sortBy?: never;
+  onChange?: never;
+}
+
+type Props = ControlledProps | ContextDrivenProps;
 
 /**
  * Sort dropdown.
@@ -51,7 +64,7 @@ export default function SortDropdown({
   onChange: propsOnChange,
   options: propsOptions,
   optionValues,
-}: SortDropdownProps) {
+}: Props) {
   // Context is optional — controlled callers (e.g. org index) pass sortBy+onChange directly.
   // Context-driven callers (e.g. BulletinPageView inside BulletinFilterProvider) omit them.
   const context = useContext(BulletinFilterContext);
