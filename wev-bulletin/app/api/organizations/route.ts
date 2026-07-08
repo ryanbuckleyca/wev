@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { fetchOrganizationIndex } from '@/lib/organizations/server-data';
+import { resolveOrgSortBy } from '@/lib/organizations/utils';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
   const searchQuery = searchParams.get('q') || '';
   const sseOnly = searchParams.get('sse') === 'true';
   const requestedSortBy = searchParams.get('sortBy') || (user ? 'value-match-desc' : 'org-asc');
-  const sortBy = user || !requestedSortBy.includes('match') ? requestedSortBy : 'org-asc';
+  const sortBy = resolveOrgSortBy(requestedSortBy, Boolean(user));
 
   // Param names match the URL keys used by useOrganizationFilters (province/municipality/type)
   const provinces = searchParams.getAll('province');

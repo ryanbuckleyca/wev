@@ -6,8 +6,7 @@ import ButtonLink from './ButtonLink';
 import FilterToggleButton from './FilterToggleButton';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { Search1Outlined, XmarkOutlined } from '@lineiconshq/free-icons';
-import { useState, useEffect, useRef } from 'react';
-import { useDebounce } from '@/lib/hooks/useDebounce';
+import { useDebouncedInput } from '@/lib/hooks/useDebouncedInput';
 
 export interface ActiveFilterChip {
   id: string;
@@ -48,26 +47,11 @@ export default function JobSearch({
   const t = useTranslations();
   const placeholder = t('search.placeholder');
 
-  const [localQuery, setLocalQuery] = useState(searchQuery);
-  const debouncedQuery = useDebounce(localQuery, 300);
-  const lastPropQuery = useRef(searchQuery);
-
-  // Sync external changes (like clear all filters) to local state
-  useEffect(() => {
-    if (searchQuery !== lastPropQuery.current) {
-      setLocalQuery(searchQuery);
-      lastPropQuery.current = searchQuery;
-    }
-  }, [searchQuery]);
-
-  // Sync local changes to external state after debounce
-  useEffect(() => {
-    // Only call onSearchChange if the debounced value actually differs from the last prop we saw
-    if (debouncedQuery !== lastPropQuery.current) {
-      lastPropQuery.current = debouncedQuery;
-      onSearchChange(debouncedQuery);
-    }
-  }, [debouncedQuery, onSearchChange]);
+  const { localValue: localQuery, setLocalValue: setLocalQuery } = useDebouncedInput(
+    searchQuery,
+    300,
+    onSearchChange,
+  );
 
   return (
     <>

@@ -33,6 +33,8 @@ export default function OrganizationFilters({
   setFiltersExpanded,
 }: OrganizationFiltersProps) {
   const t = useTranslations('organizations');
+  // tJobs reuses the jobs `filters` namespace for province/municipality/chip labels.
+  // If those keys are restructured, this component will need to be updated too.
   const tJobs = useTranslations('filters');
 
   const {

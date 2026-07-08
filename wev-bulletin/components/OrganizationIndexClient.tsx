@@ -9,6 +9,7 @@ import type { OrganizationFilterOptions } from '@/lib/organizations/server-data'
 import { useOrganizationFilters } from '@/lib/hooks/useOrganizationFilters';
 import { useOrganizationData } from '@/lib/hooks/useOrganizationData';
 import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
+import { resolveOrgSortBy } from '@/lib/organizations/utils';
 import { useTranslations } from 'next-intl';
 import SortDropdown from './SortDropdown';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,8 +34,7 @@ export default function OrganizationIndexClient({
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const controls = useOrganizationFilters();
   const hasMatchScores = authLoading ? initialHasMatchScores : Boolean(user);
-  const effectiveSortBy =
-    hasMatchScores || !controls.sortBy.includes('match') ? controls.sortBy : 'org-asc';
+  const effectiveSortBy = resolveOrgSortBy(controls.sortBy, hasMatchScores);
 
   const { orgs, total, totalAvailable, loading, error } = useOrganizationData(
     locale,

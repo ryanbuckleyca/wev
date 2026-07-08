@@ -17,6 +17,14 @@ export interface OrganizationFilters {
   selectedTypes: string[];
 }
 
+/**
+ * Complete controls object returned by useOrganizationFilters.
+ *
+ * Convention:
+ * - `filters` — the compiled snapshot used by data hooks (pass this to useOrganizationData).
+ * - Individual fields (searchQuery, showOnlySse, …) — raw values + setters for UI controls.
+ *   They mirror `filters.*` exactly; use whichever reads more clearly at the call site.
+ */
 export interface OrganizationFilterControls {
   filters: OrganizationFilters;
   searchQuery: string;
