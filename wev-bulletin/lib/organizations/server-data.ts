@@ -48,7 +48,7 @@ export const getOrganizationBySlug = cache(async (slug: string): Promise<OrgReco
       return null;
     }
     console.error('getOrganizationBySlug error:', error);
-    return null;
+    throw new Error(`getOrganizationBySlug query error: ${error.message}`);
   }
   return org;
 });
