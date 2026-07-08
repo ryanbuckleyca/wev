@@ -48,11 +48,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const MAX_ORG_PAGES = 10;
 
     for (let page = 0; page < MAX_ORG_PAGES; page++) {
-      const { data: orgs, error } = await supabaseServer.rpc('get_active_organizations', {
-        min_date: minDate,
-        p_limit: MAX_ORG_SLUGS,
-        p_offset: page * MAX_ORG_SLUGS,
-      });
+      const { data: orgs, error } = await supabaseServer
+        .rpc('get_active_organizations', {
+          min_date: minDate,
+          p_limit: MAX_ORG_SLUGS,
+          p_offset: page * MAX_ORG_SLUGS,
+        })
+        .select('slug');
 
       if (error) {
         console.error('Error fetching organizations for sitemap (page %d):', page, error);
