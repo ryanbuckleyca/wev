@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { fetchOrganizationIndex } from '@/lib/organizations/server-data';
-import { resolveOrgSortBy } from '@/lib/organizations/utils';
+import { parseOrgIndexSearchParams } from '@/lib/organizations/params';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,17 +11,8 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabaseAuth.auth.getUser();
 
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const searchQuery = searchParams.get('q') || '';
-  // nonSse=true means "include non-SSE orgs"; absence means SSE-only (the default view)
-  const sseOnly = searchParams.get('nonSse') !== 'true';
-  const requestedSortBy = searchParams.get('sortBy') || (user ? 'value-match-desc' : 'org-asc');
-  const sortBy = resolveOrgSortBy(requestedSortBy, Boolean(user));
-
-  // Param names match the URL keys used by useOrganizationFilters (province/municipality/type)
-  const provinces = searchParams.getAll('province');
-  const municipalities = searchParams.getAll('municipality');
-  const orgTypes = searchParams.getAll('type');
+  const { page, searchQuery, sseOnly, provinces, municipalities, orgTypes, sortBy } =
+    parseOrgIndexSearchParams(searchParams, Boolean(user));
 
   try {
     const result = await fetchOrganizationIndex({

@@ -84,29 +84,16 @@ function OrganizationCardHeader({
 
       <p className="text-sm text-foreground leading-6">
         {isExpanded || !shouldTruncate ? description : preview}
-        {shouldTruncate && !isExpanded ? (
+        {shouldTruncate ? (
           <>
-            ...
+            {!isExpanded ? '...' : ' '}
             <button
               type="button"
-              onClick={() => onExpandedChange(true)}
-              className="text-primary hover:underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
-              aria-expanded={false}
+              onClick={() => onExpandedChange(!isExpanded)}
+              className="ml-1 text-primary hover:underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+              aria-expanded={isExpanded}
             >
-              ({tCommon('expand')})
-            </button>
-          </>
-        ) : null}
-        {shouldTruncate && isExpanded ? (
-          <>
-            {' '}
-            <button
-              type="button"
-              onClick={() => onExpandedChange(false)}
-              className="text-primary hover:underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
-              aria-expanded={true}
-            >
-              ({tCommon('collapse')})
+              {isExpanded ? tCommon('showLess') : tCommon('showMore')}
             </button>
           </>
         ) : null}

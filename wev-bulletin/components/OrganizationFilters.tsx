@@ -8,10 +8,13 @@ import BooleanFilterRow from './job-filters/BooleanFilterRow';
 import CheckboxFilterSection from './job-filters/CheckboxFilterSection';
 import MunicipalityFilterSection from './job-filters/MunicipalityFilterSection';
 import OrganizationSearch from './OrganizationSearch';
+import {
+  buildOrgActiveFilterChips,
+  toggleArrayItem,
+} from './job-filters/build-org-active-filter-chips';
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import type { OrganizationFilterControls } from '@/lib/hooks/useOrganizationFilters';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
-import type { ActiveFilterChip } from './JobSearch';
 
 interface OrganizationFiltersProps {
   controls: OrganizationFilterControls;
@@ -55,44 +58,22 @@ export default function OrganizationFilters({
     applySuggestedDefaults,
   } = controls;
 
-  const toggleArrayItem = (item: string, current: string[], setter: (val: string[]) => void) => {
-    if (current.includes(item)) {
-      setter(current.filter((i) => i !== item));
-    } else {
-      setter([...current, item]);
-    }
-  };
+  const activeFilterChips = buildOrgActiveFilterChips({
+    filters,
+    onRemoveNonSse: () => setShowNonSse(false),
+    onRemoveSearch: () => setSearchQuery(''),
+    onRemoveProvince: (p) => setSelectedProvinces(toggleArrayItem(p, selectedProvinces)),
+    onRemoveMunicipality: (m) =>
+      setSelectedMunicipalities(toggleArrayItem(m, selectedMunicipalities)),
+    onRemoveType: (type) => setSelectedTypes(toggleArrayItem(type, selectedTypes)),
+    tOrgs: t,
+    tFilters: tJobs,
+  });
 
-  const activeFilterChips: ActiveFilterChip[] = [
-    ...(filters.showNonSse
-      ? [
-          {
-            id: 'nonSse',
-            label: tJobs('chips.allOrgs'),
-            title: tJobs('chips.allOrgs'),
-            onRemove: () => setShowNonSse(false),
-          },
-        ]
-      : []),
-    ...(filters.searchQuery
-      ? [{ id: 'q', label: `"${filters.searchQuery}"`, onRemove: () => setSearchQuery('') }]
-      : []),
-    ...filters.selectedProvinces.map((p) => ({
-      id: `p-${p}`,
-      label: p,
-      onRemove: () => toggleArrayItem(p, selectedProvinces, setSelectedProvinces),
-    })),
-    ...filters.selectedMunicipalities.map((m) => ({
-      id: `m-${m}`,
-      label: m,
-      onRemove: () => toggleArrayItem(m, selectedMunicipalities, setSelectedMunicipalities),
-    })),
-    ...filters.selectedTypes.map((type) => ({
-      id: `type-${type}`,
-      label: getOrganizationTypeLabel(type, t) ?? type,
-      onRemove: () => toggleArrayItem(type, selectedTypes, setSelectedTypes),
-    })),
-  ];
+  const totalMunicipalities = Object.values(filterOptions.municipalitiesByProvince).reduce(
+    (acc, curr) => acc + curr.length,
+    0,
+  );
 
   return (
     <div className="bg-card border border-border rounded-wev-card mb-4 overflow-hidden">
@@ -136,7 +117,9 @@ export default function OrganizationFilters({
               totalCount={filterOptions.provinces.length}
               options={filterOptions.provinces}
               selectedValues={selectedProvinces}
-              onToggle={(val) => toggleArrayItem(val, selectedProvinces, setSelectedProvinces)}
+              onToggle={(val) =>
+                setSelectedProvinces(toggleArrayItem(val, selectedProvinces))
+              }
               emptyMessage={tJobs('province.noData')}
             />
           </div>
@@ -145,14 +128,11 @@ export default function OrganizationFilters({
             <MunicipalityFilterSection
               label={tJobs('municipality.label')}
               selectedMunicipalities={selectedMunicipalities}
-              totalMunicipalities={Object.values(filterOptions.municipalitiesByProvince).reduce(
-                (acc, curr) => acc + curr.length,
-                0,
-              )}
+              totalMunicipalities={totalMunicipalities}
               selectedProvinces={selectedProvinces}
               municipalitiesByProvince={filterOptions.municipalitiesByProvince}
               onToggleMunicipality={(val) =>
-                toggleArrayItem(val, selectedMunicipalities, setSelectedMunicipalities)
+                setSelectedMunicipalities(toggleArrayItem(val, selectedMunicipalities))
               }
               noDataMessage={tJobs('municipality.noData')}
               selectProvinceMessage={tJobs('municipality.selectProvince')}
@@ -167,7 +147,7 @@ export default function OrganizationFilters({
               totalCount={filterOptions.types.length}
               options={filterOptions.types}
               selectedValues={selectedTypes}
-              onToggle={(val) => toggleArrayItem(val, selectedTypes, setSelectedTypes)}
+              onToggle={(val) => setSelectedTypes(toggleArrayItem(val, selectedTypes))}
               emptyMessage={t('noOrganizationTypes')}
               renderLabel={(type) => getOrganizationTypeLabel(type, t)}
             />

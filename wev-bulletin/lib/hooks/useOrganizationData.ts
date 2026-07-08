@@ -80,6 +80,7 @@ export function useOrganizationData(
     lastFetchKey.current = fetchKey;
 
     const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000);
 
     async function fetchData() {
       setError(null);
@@ -103,12 +104,16 @@ export function useOrganizationData(
         if ((err as Error).name === 'AbortError') return;
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
+        clearTimeout(timeoutId);
         if (!controller.signal.aborted) setLoading(false);
       }
     }
 
     void fetchData();
-    return () => controller.abort();
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [fetchKey]);
 
   return { orgs, total, totalAvailable, loading, error };

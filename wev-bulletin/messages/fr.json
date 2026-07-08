@@ -12,6 +12,7 @@
     "of": "sur",
     "organization": "organisation",
     "organizations": "organisations",
+    "organizationCount": "{count, plural, =0 {Aucune organisation} one {1 organisation} other {# organisations}}",
     "organizationType": "Type d'organisation",
     "nonprofit": "À but non lucratif",
     "cooperative": "Coopérative",
@@ -512,7 +513,9 @@
     "cancel": "Annuler",
     "confirm": "Confirmer",
     "expand": "développer",
-    "collapse": "réduire"
+    "collapse": "réduire",
+    "showMore": "Afficher plus",
+    "showLess": "Afficher moins"
   },
   "passwordStrength": {
     "strength": "Force :",
