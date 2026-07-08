@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getOrganizationBySlug, getOrganizationJobs } from '@/lib/organizations/server-data';
@@ -6,7 +5,7 @@ import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
 import OrganizationJobRow from '@/components/OrganizationJobRow';
 import OrganizationProfileHeader from '@/components/OrganizationProfileHeader';
 import SimplePagination from '@/components/SimplePagination';
-import { SITE_CONFIG } from '@/lib/site-config';
+import PageLayout from '@/components/PageLayout';
 
 interface PageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -48,47 +47,33 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
-        <header className="mb-8">
-          <Image
-            src={SITE_CONFIG.logotypeUrl}
-            alt="WEV logotype"
-            width={100}
-            height={40}
-            unoptimized
-            className="main-logo wev-logotype w-[100px] h-auto mb-2"
-            priority
+    <PageLayout maxWidth="lg">
+      <OrganizationProfileHeader org={org} t={t} />
+
+      {/* Jobs Section */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-foreground mb-6">{t('jobs', { count: total })}</h2>
+
+        {jobs.length === 0 ? (
+          <div className="bg-muted p-8 rounded-wev-card text-center text-muted-foreground">
+            {t('noJobsForOrg')}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {jobs.map((job) => (
+              <OrganizationJobRow key={job.id} job={job} />
+            ))}
+          </div>
+        )}
+
+        {total > ORG_JOBS_PER_PAGE && (
+          <SimplePagination
+            currentPage={page}
+            totalPages={totalPages}
+            baseUrl={`/${locale}/organizations/${slug}`}
           />
-        </header>
-
-        <OrganizationProfileHeader org={org} t={t} />
-
-        {/* Jobs Section */}
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-foreground mb-6">{t('jobs', { count: total })}</h2>
-
-          {jobs.length === 0 ? (
-            <div className="bg-muted p-8 rounded-wev-card text-center text-muted-foreground">
-              {t('noJobsForOrg')}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {jobs.map((job) => (
-                <OrganizationJobRow key={job.id} job={job} />
-              ))}
-            </div>
-          )}
-
-          {total > ORG_JOBS_PER_PAGE && (
-            <SimplePagination
-              currentPage={page}
-              totalPages={totalPages}
-              baseUrl={`/${locale}/organizations/${slug}`}
-            />
-          )}
-        </div>
+        )}
       </div>
-    </main>
+    </PageLayout>
   );
 }
