@@ -370,8 +370,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
             return None
         result = self.assess(
             raw_name=name,
-            municipality=None,
-            province=None,
+            municipality=org.get("municipality"),
+            province=org.get("province"),
             job_title="",
             description=org.get("description") or "",
         )
