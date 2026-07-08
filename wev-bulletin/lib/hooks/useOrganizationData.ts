@@ -61,6 +61,10 @@ export function useOrganizationData(
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
 
+  // Ref to track whether we have any data loaded — used to decide whether to
+  // show the full skeleton spinner. Avoids stale-closure reads of `orgs`.
+  const hasDataRef = useRef(Boolean(initialData?.orgs?.length));
+
   const fetchKey = useMemo(
     () => buildFetchKey(locale, currentPage, sortBy, filters),
     [locale, currentPage, sortBy, filters],
@@ -78,8 +82,8 @@ export function useOrganizationData(
 
     async function fetchData() {
       setError(null);
-      // Only show the full-page spinner when there are no orgs loaded yet.
-      setLoading((prev) => (orgs.length === 0 ? true : prev));
+      // Only show the full-page skeleton when no data is loaded yet.
+      if (!hasDataRef.current) setLoading(true);
 
       try {
         const params = buildSearchParams(locale, currentPage, sortBy, filters);
@@ -93,6 +97,7 @@ export function useOrganizationData(
         setOrgs(data.orgs);
         setTotal(data.total);
         setTotalAvailable(data.totalAvailable ?? data.total);
+        hasDataRef.current = true;
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -103,8 +108,6 @@ export function useOrganizationData(
 
     void fetchData();
     return () => controller.abort();
-    // orgs.length intentionally excluded — used only as a display hint, not a trigger
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchKey]);
 
   return { orgs, total, totalAvailable, loading, error };

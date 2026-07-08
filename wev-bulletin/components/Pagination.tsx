@@ -26,10 +26,6 @@ export default function Pagination({
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
-  function handlePageChange(page: number) {
-    onPageChange(page);
-  }
-
   if (totalPages <= 1) {
     return (
       <div className="text-sm text-foreground text-center py-4">
@@ -55,7 +51,7 @@ export default function Pagination({
         <ResponsivePagination
           current={currentPage}
           total={totalPages}
-          onPageChange={handlePageChange}
+          onPageChange={onPageChange}
           previousLabel="&lsaquo;"
           nextLabel="&rsaquo;"
           ariaPreviousLabel={t('pagination.previous')}

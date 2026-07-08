@@ -4,6 +4,7 @@ import {
   fetchOrganizationFilterOptions,
 } from '@/lib/organizations/server-data';
 import { createClient as createServerClient } from '@/lib/supabase/server';
+import { resolveOrgSortBy } from '@/lib/organizations/utils';
 import OrganizationIndexClient from '@/components/OrganizationIndexClient';
 import PageLayout from '@/components/PageLayout';
 
@@ -53,7 +54,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
       municipalities: getArrayParam(rawSearchParams.municipality),
       orgTypes: getArrayParam(rawSearchParams.type),
       userId: user?.id ?? null,
-      sortBy: user || !sortBy.includes('match') ? sortBy : 'org-asc',
+      sortBy: resolveOrgSortBy(sortBy, Boolean(user)),
     }),
     fetchOrganizationFilterOptions(),
   ]);

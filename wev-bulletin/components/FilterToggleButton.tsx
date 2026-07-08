@@ -32,7 +32,7 @@ export default function FilterToggleButton({
     <button
       type="button"
       onClick={onToggle}
-      {...(withTestId ? { 'data-testid': JOB_BOARD_TEST_IDS.filtersToggle } : {})}
+      data-testid={withTestId ? JOB_BOARD_TEST_IDS.filtersToggle : undefined}
       className="h-10 px-3 border border-border rounded-wev-btn bg-card text-sm text-muted-foreground hover:border-primary transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
       aria-expanded={filtersExpanded}
       aria-controls={controlsId}

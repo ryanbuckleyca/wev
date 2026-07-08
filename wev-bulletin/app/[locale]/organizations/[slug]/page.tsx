@@ -45,8 +45,8 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
     notFound();
   }
 
-  const { jobs, total, totalAvailable } = await getOrganizationJobs({ orgId: org.id, page, sseOnly });
-  const totalPages = Math.ceil(total / ORG_JOBS_PER_PAGE);
+  const { jobs, total: totalFilteredJobs, totalAvailable: totalAllJobs } = await getOrganizationJobs({ orgId: org.id, page, sseOnly });
+  const totalPages = Math.ceil(totalFilteredJobs / ORG_JOBS_PER_PAGE);
 
   if (page > totalPages && page > 1) {
     notFound();
@@ -59,11 +59,12 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
   // Toggle href: flipping SSE always resets to page 1
   const sseToggleHref = sseOnly ? baseUrl : `${baseUrl}?sse=true`;
 
-  // Heading: show "X / Y active jobs" when SSE filter is active, otherwise plain count
+  // Show "X / Y active jobs" when the SSE filter is hiding some results.
+  // When all jobs are SSE (or filter is off), show the plain count.
   const jobsHeading =
-    sseOnly && totalAvailable !== total
-      ? t('jobsFiltered', { filtered: total, total: totalAvailable })
-      : t('jobs', { count: totalAvailable });
+    sseOnly && totalAllJobs !== totalFilteredJobs
+      ? t('jobsFiltered', { filtered: totalFilteredJobs, total: totalAllJobs })
+      : t('jobs', { count: totalAllJobs });
 
   return (
     <PageLayout maxWidth="lg">
@@ -77,7 +78,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
 
           <Link
             href={sseToggleHref}
-            aria-pressed={sseOnly}
+            aria-current={sseOnly ? 'true' : undefined}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${
               sseOnly
                 ? 'bg-wev-success/10 border-wev-success text-wev-success hover:bg-wev-success/20'
@@ -106,7 +107,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
           </div>
         )}
 
-        {total > ORG_JOBS_PER_PAGE && (
+        {totalFilteredJobs > ORG_JOBS_PER_PAGE && (
           <SimplePagination
             currentPage={page}
             totalPages={totalPages}
