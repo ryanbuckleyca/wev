@@ -2,7 +2,7 @@ import 'server-only';
 
 import { supabaseServer } from '@/lib/supabase-server';
 import { createClient } from '@/lib/supabase/server';
-import { BULLETIN_MAX_AGE_DAYS } from './constants';
+import { bulletinAgeCutoffIso } from './constants';
 import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
@@ -13,7 +13,7 @@ import { formatSearchQuery } from './search-utils';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
 export const BULLETIN_JOB_SELECT =
-  'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week, language';
+  'id, job_title, organization, organization_id, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week, language';
 
 export type BulletinQueryInput = {
   locale: 'en' | 'fr';
@@ -52,9 +52,7 @@ function postedWithinToDays(postedWithin: string): number | null {
   return null;
 }
 
-function getBulletinMaxAgeCutoff(): string {
-  return new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
-}
+const getBulletinMaxAgeCutoff = bulletinAgeCutoffIso;
 
 function applySearchFilter(query: any, vectorColumn: string, searchQuery: string) {
   if (searchQuery.length > 0) {
@@ -126,6 +124,29 @@ async function fetchBulletinFacets(
   return buildFilterOptions((data ?? []) as any[]);
 }
 
+async function resolveOrgSlugs(supabase: any, jobs: JobPosting[]): Promise<void> {
+  const orgIds = [
+    ...new Set(jobs.map((j) => j.organization_id).filter((id): id is number => id != null)),
+  ];
+  if (orgIds.length === 0) return;
+
+  const { data, error } = await supabase.from('organizations').select('id, slug').in('id', orgIds);
+  if (error) {
+    console.error('[resolveOrgSlugs] Failed to fetch organization slugs:', error);
+    return;
+  }
+
+  const slugMap = new Map<number, string>();
+  for (const row of data ?? []) {
+    slugMap.set(row.id, row.slug);
+  }
+  for (const job of jobs) {
+    if (job.organization_id != null) {
+      job.organization_slug = slugMap.get(job.organization_id) ?? null;
+    }
+  }
+}
+
 async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQueryResult> {
   const supabase = await createClient();
   const start = (input.page - 1) * input.limit;
@@ -190,6 +211,7 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
 
   const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
   const labelMap = await resolveSkillLabels(supabase, jobs, input.locale);
+  await resolveOrgSlugs(supabase, jobs);
 
   return {
     jobs,
@@ -258,6 +280,7 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
 
   const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
   const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
+  await resolveOrgSlugs(supabaseServer, jobs);
 
   return {
     jobs,

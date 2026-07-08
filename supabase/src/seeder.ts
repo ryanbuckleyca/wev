@@ -20,6 +20,7 @@ type ClearTable = {
     | "bookmarks"
     | "job_matches"
     | "jobs"
+    | "organizations"
     | "profiles"
     | "scrape_runs"
     | "sources"
@@ -30,6 +31,7 @@ const CLEAR_TABLES: ClearTable[] = [
   { name: "bookmarks", column: "job_id" },
   { name: "job_matches", column: "job_id" },
   { name: "jobs", column: "id" },
+  { name: "organizations", column: "id" },
   { name: "profiles", column: "id" },
   { name: "scrape_runs", column: "id" },
   { name: "sources", column: "id" },
@@ -141,6 +143,9 @@ async function seedTables(
 ): Promise<void> {
   await insertRows("sources", tables.sources, async (batch) =>
     client.from("sources").insert(batch),
+  );
+  await insertRows("organizations", tables.organizations, async (batch) =>
+    client.from("organizations").insert(batch),
   );
   await insertRows("jobs", tables.jobs, async (batch) =>
     client.from("jobs").insert(batch),

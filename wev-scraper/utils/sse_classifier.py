@@ -2,27 +2,18 @@
 
 import json
 import logging
-import re
 from datetime import datetime, timezone
 from typing import TypedDict
 
-from llm.base import LLMProviderError
 from llm.factory import get_sse_provider
+from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.sse_prompts import (
+    SSE_SEARCH_KEYWORDS,
     get_sse_batch_classification_prompt,
     get_sse_classification_prompt,
 )
 
 logger = logging.getLogger(__name__)
-
-# Keywords added to organization searches to find mission/values/governance info
-# Focused on "information containers" that describe structure (bylaws, reports, etc.)
-SSE_SEARCH_KEYWORDS = '(governance OR bylaws OR "articles of incorporation" OR "annual report" OR "impact report" OR "board of directors")'
-
-
-class SSEClassificationError(Exception):
-    """Raised when SSE classification fails."""
-    pass
 
 
 class SSEDetails(TypedDict, total=False):
@@ -48,7 +39,7 @@ class SSEClassificationResult(TypedDict):
     reviewed: bool
 
 
-class SSEClassifier:
+class SSEClassifier(BaseGroundedClassifier):
     """Classifies jobs as Corporate vs SSE-aligned using Gemini.
 
     Example:
@@ -111,7 +102,7 @@ class SSEClassifier:
 
         prompt_len = len(prompt)
         approx_tokens = max(1, prompt_len // 4)
-        logger.debug(f"SSE prompt length: {prompt_len} chars (≈{approx_tokens} tokens); description length: {len(description)} chars")
+        logger.debug("SSE prompt length: %d chars (≈%d tokens); description length: %d chars", prompt_len, approx_tokens, len(description))
 
         search_terms = f'"{org_name}"'
         if location and location != "Unknown":
@@ -121,34 +112,26 @@ class SSEClassifier:
         last_error_message = ""
         for attempt in range(2):
             try:
-                response_text = self.provider.complete(
-                    prompt,
+                response_text = self._call_provider_with_retry(
+                    provider=self.provider,
+                    prompt=prompt,
                     system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
                     task="sse",
                     search_query=search_query,
-                ).strip()
-            except LLMProviderError as e:
-                raise SSEClassificationError(f"LLM provider error: {e}") from e
-            except Exception as e:
-                err_msg_raw = str(e)
-                err_msg = err_msg_raw.lower()
-                if "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg:
-                    raise SSEClassificationError(
-                        f"API rate limit or quota exceeded. Try again later. Raw error: {err_msg_raw}"
-                    ) from e
-                if "403" in err_msg or "permission" in err_msg:
-                    raise SSEClassificationError(
-                        f"API key invalid or permission denied. Check API keys (GEMINI_API_KEY, GROQ_API_KEY). Raw error: {err_msg_raw}"
-                    ) from e
-                raise SSEClassificationError(f"LLM API error: {err_msg_raw}") from e
+                    retries=0,  # The outer loop handles provider and parse retries
+                )
+            except SSEClassificationError as e:
+                last_error_message = str(e)
+                logger.warning("SSE provider error (attempt %d/2): %s", attempt + 1, last_error_message)
+                continue
 
             parsed_result, parse_error = self._safe_parse_sse_response(response_text, job_title, org_name)
             if parsed_result is not None:
                 return parsed_result
             last_error_message = parse_error or "Unknown SSE parse error"
-            logger.warning(f"SSE parse error (attempt {attempt + 1}/2): {last_error_message}")
+            logger.warning("SSE parse error (attempt %d/2): %s", attempt + 1, last_error_message)
 
-        return self._default_failed_classification(job_title, org_name, last_error_message)
+        return self._default_failed_classification(reason=last_error_message)
 
     def classify_jobs_batch(self, jobs: list[dict]) -> list[SSEClassificationResult]:
         """Classify multiple jobs in a single API call to minimize quota usage.
@@ -194,50 +177,34 @@ class SSEClassifier:
 
         prompt = get_sse_batch_classification_prompt(normalized_jobs)
 
-        try:
-            org_search_terms = []
-            for j in normalized_jobs:
-                if j["org_name"] and j["org_name"] != "Unknown":
-                    term = f'"{j["org_name"]}"'
-                    if j.get("location") and j["location"] != "Unknown":
-                        term += f' "{j["location"]}"'
-                    org_search_terms.append(term)
+        org_search_terms = []
+        for j in normalized_jobs:
+            if j["org_name"] and j["org_name"] != "Unknown":
+                term = f'"{j["org_name"]}"'
+                if j.get("location") and j["location"] != "Unknown":
+                    term += f' "{j["location"]}"'
+                org_search_terms.append(term)
 
-            search_query = " OR ".join(org_search_terms) + f" {SSE_SEARCH_KEYWORDS}" if org_search_terms else None
+        search_query = " OR ".join(org_search_terms) + f" {SSE_SEARCH_KEYWORDS}" if org_search_terms else None
 
-            response_text = self.provider.complete(
-                prompt,
-                system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
-                task="sse",
-                search_query=search_query,
-            ).strip()
-
-        except LLMProviderError as e:
-            raise SSEClassificationError(f"LLM provider error: {e}") from e
-        except Exception as e:
-            err_msg_raw = str(e)
-            err_msg = err_msg_raw.lower()
-            if "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg:
-                raise SSEClassificationError(
-                    f"API rate limit or quota exceeded. Try again later. Raw error: {err_msg_raw}"
-                ) from e
-            if "403" in err_msg or "permission" in err_msg:
-                raise SSEClassificationError(
-                    f"API key invalid or permission denied. Check API keys (GEMINI_API_KEY, GROQ_API_KEY). Raw error: {err_msg_raw}"
-                ) from e
-            raise SSEClassificationError(f"LLM API error: {err_msg_raw}") from e
+        response_text = self._call_provider_with_retry(
+            provider=self.provider,
+            prompt=prompt,
+            system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
+            task="sse",
+            search_query=search_query,
+            retries=1,
+        )
 
         parse_result, parse_error = self._safe_parse_batch_response(response_text, len(jobs))
         if parse_result is not None:
             return parse_result
 
-        logger.warning(f"SSE batch parse error: {parse_error}")
-        logger.debug(f"Response (last 200 chars): {repr(response_text[-200:])}")
+        logger.warning("SSE batch parse error: %s", parse_error)
+        logger.debug("Response (last 200 chars): %r", response_text[-200:])
         return [
             self._default_failed_classification(
-                job.get("job_title", "Unknown"),
-                job.get("organization", "Unknown"),
-                parse_error or "Batch parse error",
+                reason=parse_error or "Batch parse error",
             )
             for job in jobs
         ]
@@ -253,10 +220,7 @@ class SSEClassifier:
 
     def _parse_sse_response(self, response_text: str, job_title: str, org_name: str) -> SSEClassificationResult:
         """Parse and validate a single-job JSON response."""
-        text = response_text.strip()
-        match = re.search(r"^```(?:json)?\s*([\s\S]*?)\s*```\s*$", text, re.IGNORECASE)
-        if match:
-            text = match.group(1).strip()
+        text = self._extract_json_block(response_text)
 
         data = json.loads(text)
 
@@ -265,7 +229,7 @@ class SSEClassifier:
             if field not in data:
                 raise ValueError(f"Missing required field: {field}")
 
-        rating = data.get("rating", "").lower().strip()
+        rating = str(data.get("rating") or "").lower().strip()
         if rating not in ("strong_yes", "weak_yes", "no"):
             raise ValueError(f"Invalid rating: {rating} (must be strong_yes, weak_yes, or no)")
 
@@ -298,15 +262,12 @@ class SSEClassifier:
         """Return (results, error_message)."""
         try:
             return self._parse_batch_sse_response(response_text, num_jobs), None
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
             return None, str(e)
 
     def _parse_batch_sse_response(self, response_text: str, num_jobs: int) -> list[SSEClassificationResult]:
         """Parse and validate a batch JSON array response."""
-        text = response_text.strip()
-        match = re.search(r"^```(?:json)?\s*([\s\S]*?)\s*```\s*$", text, re.IGNORECASE)
-        if match:
-            text = match.group(1).strip()
+        text = self._extract_json_block(response_text)
 
         data_array = json.loads(text)
 
@@ -326,7 +287,7 @@ class SSEClassifier:
                 if field not in item:
                     raise ValueError(f"Missing required field: {field}")
 
-            rating = str(item.get("rating", "")).lower().strip()
+            rating = str(item.get("rating") or "").lower().strip()
             if rating not in ("strong_yes", "weak_yes", "no"):
                 raise ValueError(f"Invalid rating: {rating} (must be strong_yes, weak_yes, or no)")
 
@@ -356,16 +317,4 @@ class SSEClassifier:
             })
 
         return results
-
-    def _default_failed_classification(self, job_title: str, org_name: str, reason: str | None = None) -> SSEClassificationResult:
-        return {
-            "rating": "no",
-            "confidence": 0.5,
-            "reasoning": reason or "Unable to classify",
-            "must_haves_met": [],
-            "nice_to_haves_met": [],
-            "flags": ["classification_failed"],
-            "classified_at": datetime.now(timezone.utc).isoformat(),
-            "reviewed": False,
-        }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import NextLink from 'next/link';
 import { type JobPosting } from '@/lib/supabase';
 import { formatCompensation } from '@/lib/compensation/helpers';
 
@@ -15,7 +16,13 @@ export default function JobCardDetails({ job, locale, t, formatDate }: JobCardDe
     <div className="job-details py-4 px-5 bg-card">
       <div className="job-detail-line">
         <span className="job-label">{t('jobCard.who')} </span>
-        <span className="job-value">{job.organization}</span>
+        {job.organization_slug ? (
+          <NextLink href={`/${locale}/organizations/${job.organization_slug}`} className="job-link">
+            {job.organization}
+          </NextLink>
+        ) : (
+          <span className="job-value">{job.organization}</span>
+        )}
         <br />
       </div>
       <div className="job-detail-line">
