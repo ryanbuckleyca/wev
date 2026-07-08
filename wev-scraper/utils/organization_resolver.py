@@ -3,18 +3,20 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
-from utils.organization_identifier import OrganizationIdentifier
+from utils.base_grounded_classifier import SSEClassificationError
+from utils.organization_assessment import OrganizationAssessor
+from utils.organization_cache import (
+    OrganizationCache,
+    canonical_location,
+    location_is_compatible,
+    make_cache_key,
+)
 from utils.organization_repository import OrganizationRepository
-from utils.slug import generate_slug, generate_unique_slug, nfkd_to_ascii
+from utils.slug import generate_slug, generate_unique_slug
 
 logger = logging.getLogger(__name__)
 
 _MAX_SLUG_ATTEMPTS = 10
-
-# Strip common field-delimiter punctuation from token edges so that
-# "Montréal, QC" tokenises to {"montréal", "qc"} instead of {"montréal,", "qc"}.
-_REMOVE_PUNCTUATION = str.maketrans("", "", ",.;:!?")
 
 
 @dataclass
@@ -28,41 +30,15 @@ class JobContext:
     job_id: str | None = None
 
 
-def _location_is_compatible(
-    candidate_location: str | None,
-    municipality: str | None,
-    province: str | None,
-    location: str | None = None,
-) -> bool:
-    job_canonical = nfkd_to_ascii(canonical_location(municipality, province, location)).strip().lower()
-    cand = nfkd_to_ascii(candidate_location or "").strip().lower()
-
-    if not job_canonical or not cand:
-        return False
-
-    cand_words = set(cand.translate(_REMOVE_PUNCTUATION).split())
-    job_words = set(job_canonical.translate(_REMOVE_PUNCTUATION).split())
-
-    # Province-only word overlap is ambiguous (e.g. "Trois-Rivières QC" vs
-    # "Montréal QC" share only "qc").  When the job has a known municipality,
-    # require the municipality words to appear in the candidate location.
-    if municipality:
-        muni_words = set(nfkd_to_ascii(municipality).strip().lower().translate(_REMOVE_PUNCTUATION).split())
-        if not (muni_words <= cand_words):
-            return False
-
-    return bool(cand_words & job_words)
-
-
 def create_resolver(supabase_client=None) -> OrganizationResolver:
     cache = OrganizationCache()
 
-    identifier = None
+    assessor = None
     try:
-        identifier = OrganizationIdentifier()
-    except Exception as exc:
+        assessor = OrganizationAssessor()
+    except SSEClassificationError as exc:
         logger.error(
-            "OrganizationIdentifier unavailable (%s) — resolver will use minimal fallback",
+            "OrganizationAssessor unavailable (%s) — resolver will use minimal fallback",
             exc,
         )
 
@@ -71,7 +47,9 @@ def create_resolver(supabase_client=None) -> OrganizationResolver:
         supabase_client = db_module.supabase
 
     repo = OrganizationRepository(supabase_client)
-    return OrganizationResolver(repo=repo, cache=cache, identifier=identifier)
+    return OrganizationResolver(
+        repo=repo, cache=cache, assessor=assessor,
+    )
 
 
 class OrganizationResolver:
@@ -88,11 +66,11 @@ class OrganizationResolver:
         self,
         repo: OrganizationRepository,
         cache: OrganizationCache,
-        identifier: OrganizationIdentifier | None,
+        assessor: OrganizationAssessor | None = None,
     ) -> None:
         self._repo = repo
         self._cache = cache
-        self._identifier = identifier
+        self._assessor = assessor
 
     @staticmethod
     def _classify_conflict(exc: Exception) -> str | None:
@@ -152,7 +130,7 @@ class OrganizationResolver:
 
         canonical_loc = canonical_location(ctx.municipality, ctx.province, ctx.location)
 
-        if self._identifier is not None:
+        if self._assessor is not None:
             llm_id = self._llm_resolve(ctx, cache_key, canonical_loc)
             if llm_id is not None:
                 return llm_id
@@ -166,7 +144,7 @@ class OrganizationResolver:
 
         compatible = [
             c for c in candidates
-            if _location_is_compatible(c.get("location"), ctx.municipality, ctx.province, ctx.location)
+            if location_is_compatible(c.get("location"), ctx.municipality, ctx.province, ctx.location)
         ]
 
         if len(compatible) != 1:
@@ -177,47 +155,64 @@ class OrganizationResolver:
         return org_id
 
     def _llm_resolve(self, ctx: JobContext, cache_key: str, canonical_loc: str) -> int | None:
-        result = self._identifier.identify(
-            ctx.raw_name, ctx.municipality, ctx.province, ctx.job_title, ctx.description,
+        row = self._assessor.assess_and_build_row(
+            raw_name=ctx.raw_name,
+            municipality=ctx.municipality,
+            province=ctx.province,
+            job_title=ctx.job_title,
+            description=ctx.description,
+            canonical_loc=canonical_loc,
         )
-        if result is None:
+        if row is None:
             return None
 
-        canonical_name = result["canonical_name"]
-        suggested_slug = result.get("slug") or ""
-        slug_base = suggested_slug if suggested_slug else generate_slug(canonical_name)
-        slug = self._find_available_slug(slug_base, ctx.job_id)
-
-        row = {
-            "name": canonical_name,
-            "slug": slug,
-            "location": canonical_loc or None,
-            "website": result.get("website"),
-            "description": result.get("description"),
-            "type": result.get("type"),
-        }
+        slug_base = row["slug"] or generate_slug(row["name"])
+        row["slug"] = self._find_available_slug(slug_base, ctx.job_id)
 
         return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
 
     def _resolve_minimal(self, ctx: JobContext, cache_key: str, canonical_loc: str) -> int | None:
-        slug = self._find_available_slug(generate_slug(ctx.raw_name), ctx.job_id)
-
-        row = {
-            "name": ctx.raw_name,
-            "slug": slug,
-            "location": canonical_loc or None,
-        }
-
         logger.warning(
             "OrganizationResolver: using minimal fallback for raw_name=%r job_id=%s",
             ctx.raw_name,
             ctx.job_id,
         )
-        return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
+        return self._build_and_insert_org(
+            canonical_name=ctx.raw_name,
+            canonical_loc=canonical_loc,
+            slug_base=generate_slug(ctx.raw_name),
+            cache_key=cache_key,
+            job_id=ctx.job_id,
+        )
+
+    def _build_and_insert_org(
+        self,
+        canonical_name: str,
+        canonical_loc: str,
+        slug_base: str,
+        cache_key: str,
+        job_id: str | None,
+        website: str | None = None,
+        description: str | None = None,
+        org_type: str | None = None,
+        values: str | None = None,
+    ) -> int | None:
+        slug = self._find_available_slug(slug_base, job_id)
+
+        row = {
+            "name": canonical_name,
+            "slug": slug,
+            "location": canonical_loc or None,
+            "website": website,
+            "description": description,
+            "type": org_type,
+            "values": values,
+        }
+
+        return self._insert_or_resolve_conflict(row, cache_key, job_id)
 
     def _find_available_slug(self, base: str, seed: str | None = None) -> str:
         return generate_unique_slug(
-            name="",
             max_attempts=_MAX_SLUG_ATTEMPTS,
             base=base,
             seed=seed,
@@ -253,6 +248,8 @@ class OrganizationResolver:
                     continue
 
                 # Identity conflict (name+location) — re-select existing row.
+                # Do NOT classify here — the org already exists and was
+                # classified at creation time.
                 existing_id = self._repo.find_by_name_and_location(
                     row.get("name", ""), row.get("location"),
                 )

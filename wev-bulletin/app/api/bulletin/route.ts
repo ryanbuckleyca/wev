@@ -5,7 +5,7 @@ import {
   fetchLastScrapeTime,
 } from '@/lib/bulletin/server-data';
 import { parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
-import { BULLETIN_MAX_AGE_DAYS } from '@/lib/bulletin/constants';
+import { bulletinAgeCutoffIso } from '@/lib/bulletin/constants';
 import { createClient } from '@/lib/supabase/server';
 import { buildFilterOptions } from '@/lib/bulletin/filter-options';
 import { throwBulletinQueryError } from '@/lib/bulletin/fts-errors';
@@ -77,10 +77,7 @@ function createBuildQueryFn(
     if (input.langs.length) query = query.in('language', input.langs);
 
     // 3. Date Filters
-    const maxAgeCutoff = new Date(
-      Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
-    ).toISOString();
-    query = query.gte('date_posted', maxAgeCutoff);
+    query = query.gte('date_posted', bulletinAgeCutoffIso());
 
     if (input.postedWithin !== 'any') {
       const days =
@@ -154,10 +151,7 @@ async function fetchBulletinFacets(
   }
 
   // 2. Date Filters (Global for search query + current date range selection)
-  const maxAgeCutoff = new Date(
-    Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
-  ).toISOString();
-  query = query.gte('date_posted', maxAgeCutoff);
+  query = query.gte('date_posted', bulletinAgeCutoffIso());
 
   if (input.postedWithin !== 'any') {
     const days =
@@ -199,13 +193,10 @@ async function fetchBulletinApiPayload(
   const buildQuery = createBuildQueryFn(supabase, input);
 
   // Get total available jobs (<= 4 weeks old, no other filters)
-  const maxAgeCutoff = new Date(
-    Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
-  ).toISOString();
   const totalAvailableQuery = supabase
     .from('matched_jobs')
     .select('id', { count: 'exact' })
-    .gte('date_posted', maxAgeCutoff)
+    .gte('date_posted', bulletinAgeCutoffIso())
     .limit(0);
 
   const [jobsResult, filterOptionsData, scrapeTime, totalAvailableResult] = await Promise.all([

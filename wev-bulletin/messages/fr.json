@@ -1,4 +1,21 @@
 {
+  "organizations": {
+    "title": "Profil de l'organisation",
+    "indexTitle": "Organisations",
+    "noActiveListings": "Aucune organisation n'a d'offres d'emploi actives en ce moment.",
+    "noJobsForOrg": "Cette organisation n'a aucune offre d'emploi active en ce moment.",
+    "jobs": "{count, plural, =1 {1 emploi} other {# emplois}}",
+    "visitWebsite": "Visiter le site web",
+    "sseBadgeLabel": "Organisation d'économie sociale",
+    "sseYes": "Il s'agit d'une organisation d'économie sociale.",
+    "sseNo": "Cette organisation n'est pas identifiée comme organisation d'économie sociale.",
+    "sseLearnMore": "En savoir plus sur l'ESS",
+    "location": "Emplacement",
+    "description": "À propos",
+    "orgType": "Type",
+    "missionStatement": "Mission",
+    "values": "Valeurs"
+  },
   "home": {
     "heading": "Bulletin – Offres d'emploi",
     "lastUpdated": "Dernière mise à jour :",
@@ -151,8 +168,10 @@
     "of": "de",
     "job": "emploi",
     "jobs": "emplois",
+    "paginationLabel": "Pagination",
     "previous": "Précédent",
-    "next": "Suivant"
+    "next": "Suivant",
+    "pageOf": "Page {current} sur {total}"
   },
   "jobListings": {
     "loading": "Chargement des emplois...",
@@ -374,8 +393,8 @@
     "photoUploadSuccess": "Photo téléversée avec succès !",
     "photoUploadFailed": "Échec du téléchargement de la photo",
     "location": "Ville / Région actuelle",
-    "locationHint": "Indiquez votre lieu préféré pour activer la correspondance basée sur la distance. Si vous avez classé Lieu comme valeur, cela a plus de poids dans vos correspondances.",
-    "locationPriorityCallout": "Vous avez priorisé Lieu — ces préférences ont plus de poids dans vos correspondances.",
+    "locationHint": "Indiquez votre lieu préféré pour activer la correspondance basée sur la distance.",
+    "locationPriorityCallout": "Si vous avez classé Lieu comme valeur, cela a plus de poids dans vos correspondances.",
     "locationSearchError": "Impossible de charger les résultats de localisation. Veuillez réessayer.",
     "locationSuggestionsLabel": "Suggestions de localisation"
   },
@@ -450,6 +469,7 @@
     "home": "Accueil",
     "jobs": "Emplois",
     "companies": "Entreprises",
+    "organizations": "Organismes",
     "about": "À propos",
     "contact": "Contact"
   },

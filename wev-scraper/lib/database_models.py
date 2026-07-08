@@ -287,6 +287,9 @@ class Organizations(BaseModel):
     sse_details: Optional[Any] = None
     is_sse: Optional[bool] = False
     logo_url: Optional[str] = None
+    mission_statement: Optional[str] = None
+    values_list: Optional[List[str]] = None
+    values_rated: Optional[Any] = None
 
 
 class Sources(BaseModel):

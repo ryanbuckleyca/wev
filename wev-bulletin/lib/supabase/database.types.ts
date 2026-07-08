@@ -378,12 +378,15 @@ export type Database = {
           is_sse: boolean | null;
           location: string | null;
           logo_url: string | null;
+          mission_statement: string | null;
           name: string;
           slug: string;
           sse_details: Json | null;
           sse_rating: string | null;
           type: string | null;
           values: string | null;
+          values_list: string[] | null;
+          values_rated: Json | null;
           website: string | null;
         };
         Insert: {
@@ -393,12 +396,15 @@ export type Database = {
           is_sse?: boolean | null;
           location?: string | null;
           logo_url?: string | null;
+          mission_statement?: string | null;
           name: string;
           slug: string;
           sse_details?: Json | null;
           sse_rating?: string | null;
           type?: string | null;
           values?: string | null;
+          values_list?: string[] | null;
+          values_rated?: Json | null;
           website?: string | null;
         };
         Update: {
@@ -408,12 +414,15 @@ export type Database = {
           is_sse?: boolean | null;
           location?: string | null;
           logo_url?: string | null;
+          mission_statement?: string | null;
           name?: string;
           slug?: string;
           sse_details?: Json | null;
           sse_rating?: string | null;
           type?: string | null;
           values?: string | null;
+          values_list?: string[] | null;
+          values_rated?: Json | null;
           website?: string | null;
         };
         Relationships: [];

@@ -1,4 +1,21 @@
 {
+  "organizations": {
+    "title": "Organization Profile",
+    "indexTitle": "Organizations",
+    "noActiveListings": "No organizations currently have active job listings.",
+    "noJobsForOrg": "This organization has no active job listings at the moment.",
+    "jobs": "{count, plural, =1 {1 job} other {# jobs}}",
+    "visitWebsite": "Visit website",
+    "sseBadgeLabel": "Solidarity Economy Organization",
+    "sseYes": "This is a Solidarity Economy Organization.",
+    "sseNo": "This organization is not tagged as a Solidarity Economy Organization.",
+    "sseLearnMore": "Learn more about SSE",
+    "location": "Location",
+    "description": "About",
+    "orgType": "Type",
+    "missionStatement": "Mission",
+    "values": "Values"
+  },
   "home": {
     "heading": "Bulletin – Job Postings",
     "lastUpdated": "Last updated:",
@@ -151,8 +168,10 @@
     "of": "of",
     "job": "job",
     "jobs": "jobs",
+    "paginationLabel": "Pagination",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "pageOf": "Page {current} of {total}"
   },
   "jobListings": {
     "loading": "Loading jobs...",
@@ -374,8 +393,8 @@
     "photoUploadSuccess": "Photo uploaded successfully!",
     "photoUploadFailed": "Failed to upload photo",
     "location": "Current City / Region",
-    "locationHint": "Set your preferred location to activate distance-based matching. If you've ranked Location as a value, it carries more weight in your matches.",
-    "locationPriorityCallout": "You've prioritized Location — these preferences carry extra weight in your matches.",
+    "locationHint": "Set your preferred location to activate distance-based matching.",
+    "locationPriorityCallout": "If you've ranked Location as a value, it carries more weight in your matches.",
     "locationSearchError": "Could not load location results. Please try again.",
     "locationSuggestionsLabel": "Location suggestions"
   },
@@ -450,6 +469,7 @@
     "home": "Home",
     "jobs": "Jobs",
     "companies": "Companies",
+    "organizations": "Organizations",
     "about": "About",
     "contact": "Contact"
   },

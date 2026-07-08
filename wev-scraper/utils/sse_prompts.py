@@ -1,5 +1,9 @@
 """SSE Classification prompt templates for Gemini."""
 
+# Keywords added to organization searches to find mission/values/governance info
+# Focused on "information containers" that describe structure (bylaws, reports, etc.)
+SSE_SEARCH_KEYWORDS = '(governance OR bylaws OR "articles of incorporation" OR "annual report" OR "impact report" OR "board of directors")'
+
 SSE_JSON_FIELDS = """  "rating": "strong_yes",
   "confidence": 0.85,
   "reasoning": "Brief explanation of rating explaining which criteria are met/not met (max 200 chars). Volunteer/internship positions are acceptable if mission is clear and disclosed upfront and volunteering or internship role is clearly stated.",
