@@ -11,7 +11,8 @@ import {
 
 export interface OrganizationFilters {
   searchQuery: string;
-  showOnlySse: boolean;
+  /** When true, non-SSE orgs are included. Default is false (SSE-only view). */
+  showNonSse: boolean;
   selectedProvinces: string[];
   selectedMunicipalities: string[];
   selectedTypes: string[];
@@ -22,15 +23,15 @@ export interface OrganizationFilters {
  *
  * Convention:
  * - `filters` — the compiled snapshot used by data hooks (pass this to useOrganizationData).
- * - Individual fields (searchQuery, showOnlySse, …) — raw values + setters for UI controls.
+ * - Individual fields (searchQuery, showNonSse, …) — raw values + setters for UI controls.
  *   They mirror `filters.*` exactly; use whichever reads more clearly at the call site.
  */
 export interface OrganizationFilterControls {
   filters: OrganizationFilters;
   searchQuery: string;
   setSearchQuery: (value: string | null) => Promise<unknown> | void;
-  showOnlySse: boolean;
-  setShowOnlySse: (value: boolean | null) => Promise<unknown> | void;
+  showNonSse: boolean;
+  setShowNonSse: (value: boolean | null) => Promise<unknown> | void;
   selectedProvinces: string[];
   setSelectedProvinces: (value: string[] | null) => Promise<unknown> | void;
   selectedMunicipalities: string[];
@@ -49,7 +50,8 @@ export interface OrganizationFilterControls {
 
 export function useOrganizationFilters(): OrganizationFilterControls {
   const [searchQuery, setSearchQuery] = useQueryState('q', parseAsString.withDefault(''));
-  const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true));
+  // showNonSse defaults to false → SSE-only view by default, without an active filter
+  const [showNonSse, setShowNonSse] = useQueryState('nonSse', parseAsBoolean.withDefault(false));
   const [selectedProvinces, setSelectedProvinces] = useQueryState(
     'province',
     parseAsArrayOf(parseAsString).withDefault([]),
@@ -68,73 +70,57 @@ export function useOrganizationFilters(): OrganizationFilterControls {
   const filters = useMemo<OrganizationFilters>(
     () => ({
       searchQuery,
-      showOnlySse,
+      showNonSse,
       selectedProvinces,
       selectedMunicipalities,
       selectedTypes,
     }),
-    [searchQuery, showOnlySse, selectedProvinces, selectedMunicipalities, selectedTypes],
+    [searchQuery, showNonSse, selectedProvinces, selectedMunicipalities, selectedTypes],
   );
 
+  // hasAnyFilters is false at the default state (showNonSse=false, nothing else set)
   const hasAnyFilters = useMemo(
     () =>
       !!searchQuery ||
-      showOnlySse ||
+      showNonSse ||
       selectedProvinces.length > 0 ||
       selectedMunicipalities.length > 0 ||
       selectedTypes.length > 0,
-    [searchQuery, showOnlySse, selectedProvinces, selectedMunicipalities, selectedTypes],
+    [searchQuery, showNonSse, selectedProvinces, selectedMunicipalities, selectedTypes],
   );
 
-  // Suggested defaults: SSE toggle on, nothing else active
+  // Suggested defaults: showNonSse off (SSE-only), nothing else active
   const isSuggestedDefaults = useMemo(
     () =>
       !searchQuery &&
-      showOnlySse &&
+      !showNonSse &&
       selectedProvinces.length === 0 &&
       selectedMunicipalities.length === 0 &&
       selectedTypes.length === 0,
-    [searchQuery, showOnlySse, selectedProvinces, selectedMunicipalities, selectedTypes],
+    [searchQuery, showNonSse, selectedProvinces, selectedMunicipalities, selectedTypes],
   );
 
-  const clearAllFilters = useCallback(() => {
-    void setSearchQuery('');
-    void setShowOnlySse(false);
-    void setSelectedProvinces([]);
-    void setSelectedMunicipalities([]);
-    void setSelectedTypes([]);
-    void setCurrentPage(1);
-  }, [
-    setSearchQuery,
-    setShowOnlySse,
-    setSelectedProvinces,
-    setSelectedMunicipalities,
-    setSelectedTypes,
-    setCurrentPage,
-  ]);
+  const resetFilters = useCallback(
+    (nonSseDefault: boolean) => {
+      void setSearchQuery('');
+      void setShowNonSse(nonSseDefault);
+      void setSelectedProvinces([]);
+      void setSelectedMunicipalities([]);
+      void setSelectedTypes([]);
+      void setCurrentPage(1);
+    },
+    [setSearchQuery, setShowNonSse, setSelectedProvinces, setSelectedMunicipalities, setSelectedTypes, setCurrentPage],
+  );
 
-  const applySuggestedDefaults = useCallback(() => {
-    void setSearchQuery('');
-    void setShowOnlySse(true);
-    void setSelectedProvinces([]);
-    void setSelectedMunicipalities([]);
-    void setSelectedTypes([]);
-    void setCurrentPage(1);
-  }, [
-    setSearchQuery,
-    setShowOnlySse,
-    setSelectedProvinces,
-    setSelectedMunicipalities,
-    setSelectedTypes,
-    setCurrentPage,
-  ]);
+  const clearAllFilters = useCallback(() => resetFilters(false), [resetFilters]);
+  const applySuggestedDefaults = useCallback(() => resetFilters(false), [resetFilters]);
 
   return {
     filters,
     searchQuery,
     setSearchQuery,
-    showOnlySse,
-    setShowOnlySse,
+    showNonSse,
+    setShowNonSse,
     selectedProvinces,
     setSelectedProvinces,
     selectedMunicipalities,

@@ -123,18 +123,17 @@ interface CardDetailsProps {
 function OrganizationCardDetails({ org, locale }: CardDetailsProps) {
   const t = useTranslations('organizations');
   return (
-    <div className="job-details py-4 px-5 bg-card">
+    <div className="py-4 px-5 bg-card flex flex-col gap-2">
       {org.website ? (
-        <div className="job-detail-line">
-          <span className="job-label">{t('website')} </span>
-          <a href={org.website} target="_blank" rel="noopener noreferrer" className="job-link">
+        <div className="flex gap-1.5 text-sm">
+          <span className="text-muted-foreground">{t('website')}</span>
+          <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
             {org.website}
           </a>
-          <br />
         </div>
       ) : null}
-      <div className="job-detail-line">
-        <Link href={`/${locale}/organizations/${org.slug}`} className="job-link">
+      <div className="text-sm">
+        <Link href={`/${locale}/organizations/${org.slug}`} className="text-primary hover:underline">
           {t('viewProfile')}
         </Link>
       </div>

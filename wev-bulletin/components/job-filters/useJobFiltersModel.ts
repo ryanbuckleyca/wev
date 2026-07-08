@@ -83,8 +83,8 @@ export function useJobFiltersModel({
     setSelectedWorkTypes: onWorkTypesChange,
     selectedLanguages = [],
     setSelectedLanguages: onLanguagesChange,
-    showOnlySse,
-    setShowOnlySse: onShowOnlySseChange,
+    showNonSse,
+    setShowNonSse: onShowNonSseChange,
     showJobsWithoutSalary,
     setShowJobsWithoutSalary: onShowJobsWithoutSalaryChange,
     postedWithin,
@@ -125,7 +125,7 @@ export function useJobFiltersModel({
     selectedSources.length === 0 &&
     selectedLanguages.length === 0 &&
     isWorkTypesDefault &&
-    showOnlySse &&
+    !showNonSse &&
     showJobsWithoutSalary &&
     postedWithin === '2-weeks';
 
@@ -137,7 +137,7 @@ export function useJobFiltersModel({
       buildActiveFilterChips(
         {
           postedWithin,
-          showOnlySse,
+          showNonSse,
           showJobsWithoutSalary,
           searchQuery,
           selectedWorkTypes,
@@ -148,7 +148,7 @@ export function useJobFiltersModel({
           selectedSources,
           selectedLanguages,
           onPostedWithinChange,
-          onShowOnlySseChange,
+          onShowNonSseChange,
           onShowJobsWithoutSalaryChange,
           onSearchChange,
           onWorkTypesChange,
@@ -170,7 +170,7 @@ export function useJobFiltersModel({
       onProvincesChange,
       onSearchChange,
       onShowJobsWithoutSalaryChange,
-      onShowOnlySseChange,
+      onShowNonSseChange,
       onSourcesChange,
       onWorkTypesChange,
       postedWithin,
@@ -183,7 +183,7 @@ export function useJobFiltersModel({
       selectedSources,
       selectedWorkTypes,
       showJobsWithoutSalary,
-      showOnlySse,
+      showNonSse,
       t,
     ],
   );

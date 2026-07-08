@@ -47,9 +47,9 @@ export async function fetchOrganizationIndex(
     municipalities.length > 0 ||
     orgTypes.length > 0;
 
-  // We need a denominator for the "X of Y" count whenever anything is filtered.
-  // The denominator call uses p_sse_only: false so the user sees
-  // "5 SSE orgs of 30 total orgs" when only the SSE toggle is active.
+  // We need a denominator for the "X of Y" count whenever SSE filter is active
+  // or other filters narrow the results. When sseOnly=true, denominator shows total
+  // unfiltered so the user sees "5 SSE orgs of 30 total orgs".
   const needsDenominator = sseOnly || hasNonSseFilters;
 
   const rpcParams = {

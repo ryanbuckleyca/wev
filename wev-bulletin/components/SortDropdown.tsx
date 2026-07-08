@@ -55,6 +55,15 @@ export default function SortDropdown({
   // Context is optional — controlled callers (e.g. org index) pass sortBy+onChange directly.
   // Context-driven callers (e.g. BulletinPageView inside BulletinFilterProvider) omit them.
   const context = useContext(BulletinFilterContext);
+
+  const isControlled = propsSortBy !== undefined || propsOnChange !== undefined;
+
+  if (process.env.NODE_ENV !== 'production' && !isControlled && !context) {
+    throw new Error(
+      'SortDropdown: must be rendered inside a BulletinFilterProvider when sortBy/onChange are not provided.',
+    );
+  }
+
   const sortBy = propsSortBy ?? context?.sortBy ?? '';
   const onChange: (value: string) => void =
     propsOnChange ?? (context ? (v) => void context.setSortBy(v as JobSortOption) : () => {});

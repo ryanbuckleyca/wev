@@ -63,7 +63,7 @@ export default function OrganizationIndexClient({
       <div className="flex flex-col gap-6" aria-live="polite">
         {error ? (
           <div className="p-4 rounded bg-destructive/10 text-destructive border border-destructive/20">
-            Failed to load organizations. Please try again.
+            {t('loadFailed')}
           </div>
         ) : loading && orgs.length === 0 ? (
           <div className="flex flex-col gap-4">

@@ -13,7 +13,8 @@ export async function GET(request: Request) {
 
   const page = parseInt(searchParams.get('page') || '1', 10);
   const searchQuery = searchParams.get('q') || '';
-  const sseOnly = searchParams.get('sse') === 'true';
+  // nonSse=true means "include non-SSE orgs"; absence means SSE-only (the default view)
+  const sseOnly = searchParams.get('nonSse') !== 'true';
   const requestedSortBy = searchParams.get('sortBy') || (user ? 'value-match-desc' : 'org-asc');
   const sortBy = resolveOrgSortBy(requestedSortBy, Boolean(user));
 

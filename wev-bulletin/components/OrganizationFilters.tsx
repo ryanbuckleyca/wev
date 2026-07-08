@@ -41,8 +41,8 @@ export default function OrganizationFilters({
     filters,
     searchQuery,
     setSearchQuery,
-    showOnlySse,
-    setShowOnlySse,
+    showNonSse,
+    setShowNonSse,
     selectedProvinces,
     setSelectedProvinces,
     selectedMunicipalities,
@@ -64,13 +64,13 @@ export default function OrganizationFilters({
   };
 
   const activeFilterChips: ActiveFilterChip[] = [
-    ...(filters.showOnlySse
+    ...(filters.showNonSse
       ? [
           {
-            id: 'sse',
-            label: tJobs('chips.sseShort'),
-            title: tJobs('chips.sseOnly'),
-            onRemove: () => setShowOnlySse(false),
+            id: 'nonSse',
+            label: tJobs('chips.allOrgs'),
+            title: tJobs('chips.allOrgs'),
+            onRemove: () => setShowNonSse(false),
           },
         ]
       : []),
@@ -114,12 +114,12 @@ export default function OrganizationFilters({
       <Collapsible id="org-filters-content" isOpen={filtersExpanded} className="p-6">
         <div className="mb-4">
           <BooleanFilterRow
-            checked={showOnlySse}
-            onCheckedChange={(val) => setShowOnlySse(val)}
-            label={t('showOnlySse')}
+            checked={showNonSse}
+            onCheckedChange={(val) => setShowNonSse(val)}
+            label={t('showNonSse')}
             icon={
               <Lineicons
-                icon={showOnlySse ? Leaf1Solid : Leaf1Outlined}
+                icon={showNonSse ? Leaf1Solid : Leaf1Outlined}
                 size={16}
                 className="shrink-0 text-primary"
                 aria-hidden
