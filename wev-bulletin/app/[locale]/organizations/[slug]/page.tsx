@@ -45,7 +45,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
     notFound();
   }
 
-  const { jobs, total, totalAvailable } = await getOrganizationJobs(org.id, page, sseOnly);
+  const { jobs, total, totalAvailable } = await getOrganizationJobs({ orgId: org.id, page, sseOnly });
   const totalPages = Math.ceil(total / ORG_JOBS_PER_PAGE);
 
   if (page > totalPages && page > 1) {

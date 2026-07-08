@@ -49,7 +49,7 @@ export default function OrganizationIndexClient({
   const totalPages = Math.max(1, Math.ceil(total / ORG_JOBS_PER_PAGE));
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col gap-0 w-full">
       <OrganizationFilters
         controls={controls}
         filterOptions={filterOptions}
@@ -120,7 +120,10 @@ export default function OrganizationIndexClient({
               <div className="mt-8 flex justify-center">
                 <Pagination
                   currentPage={controls.currentPage}
-                  onPageChange={(p) => void controls.setCurrentPage(p)}
+                  onPageChange={(p) => {
+                    void controls.setCurrentPage(p);
+                    window.scrollTo({ top: 0, behavior: 'instant' });
+                  }}
                   totalPages={totalPages}
                   totalItems={total}
                   itemsPerPage={ORG_JOBS_PER_PAGE}

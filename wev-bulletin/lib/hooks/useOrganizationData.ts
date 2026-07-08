@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 import type { OrganizationFilters } from './useOrganizationFilters';
 
@@ -8,6 +8,42 @@ interface UseOrganizationDataOptions {
   filters: OrganizationFilters;
   currentPage: number;
   sortBy: string;
+}
+
+/**
+ * Builds a deterministic string key from the current fetch parameters.
+ * Used to detect when a new request is needed and to deduplicate in-flight requests.
+ */
+function buildFetchKey(locale: string, currentPage: number, sortBy: string, filters: OrganizationFilters): string {
+  return [
+    locale,
+    currentPage,
+    sortBy,
+    filters.searchQuery,
+    filters.showOnlySse,
+    filters.selectedProvinces.join(','),
+    filters.selectedMunicipalities.join(','),
+    filters.selectedTypes.join(','),
+  ].join('|');
+}
+
+/** Builds the URLSearchParams for the /api/organizations request. */
+function buildSearchParams(
+  locale: string,
+  currentPage: number,
+  sortBy: string,
+  filters: OrganizationFilters,
+): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set('page', String(currentPage));
+  params.set('sortBy', sortBy);
+  if (filters.searchQuery) params.set('q', filters.searchQuery);
+  if (filters.showOnlySse) params.set('sse', 'true');
+  // Param names must match useOrganizationFilters URL keys and the API route's getAll() keys
+  filters.selectedProvinces.forEach((p) => params.append('province', p));
+  filters.selectedMunicipalities.forEach((m) => params.append('municipality', m));
+  filters.selectedTypes.forEach((t) => params.append('type', t));
+  return params;
 }
 
 export function useOrganizationData(
@@ -25,69 +61,51 @@ export function useOrganizationData(
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
 
-  const requestIdRef = useRef(0);
-  const isMounted = useRef(false);
+  const fetchKey = useMemo(
+    () => buildFetchKey(locale, currentPage, sortBy, filters),
+    [locale, currentPage, sortBy, filters],
+  );
 
-  const fetchKey = useMemo(() => {
-    return [
-      locale,
-      currentPage,
-      filters.searchQuery,
-      filters.showOnlySse,
-      filters.selectedProvinces.join(','),
-      filters.selectedMunicipalities.join(','),
-      filters.selectedTypes.join(','),
-      sortBy
-    ].join('|');
-  }, [locale, currentPage, filters, sortBy]);
-
+  // Track which fetchKey was last dispatched so we can skip the initial render
+  // when initialData already matches the current key.
   const lastFetchKey = useRef<string>(initialData ? fetchKey : '');
 
-  const fetchData = useCallback(async () => {
-    if (fetchKey === lastFetchKey.current && isMounted.current) return;
+  useEffect(() => {
+    if (fetchKey === lastFetchKey.current) return;
     lastFetchKey.current = fetchKey;
 
-    const reqId = ++requestIdRef.current;
-    
-    if (orgs.length === 0) setLoading(true);
-    setError(null);
+    const controller = new AbortController();
 
-    try {
-      const params = new URLSearchParams();
-      params.set('page', String(currentPage));
-      params.set('sortBy', sortBy);
-      if (filters.searchQuery) params.set('q', filters.searchQuery);
-      if (filters.showOnlySse) params.set('sse', 'true');
-      filters.selectedProvinces.forEach((p) => params.append('provs', p));
-      filters.selectedMunicipalities.forEach((m) => params.append('munis', m));
-      filters.selectedTypes.forEach((t) => params.append('types', t));
+    async function fetchData() {
+      setError(null);
+      // Only show the full-page spinner when there are no orgs loaded yet.
+      setLoading((prev) => (orgs.length === 0 ? true : prev));
 
-      const res = await fetch(`/api/organizations?${params.toString()}`);
-      if (!res.ok) {
-        throw new Error('Failed to fetch organizations');
-      }
+      try {
+        const params = buildSearchParams(locale, currentPage, sortBy, filters);
+        const res = await fetch(`/api/organizations?${params.toString()}`, {
+          signal: controller.signal,
+        });
 
-      const data = await res.json();
-      if (reqId === requestIdRef.current) {
+        if (!res.ok) throw new Error('Failed to fetch organizations');
+
+        const data = await res.json();
         setOrgs(data.orgs);
         setTotal(data.total);
         setTotalAvailable(data.totalAvailable ?? data.total);
-        setLoading(false);
-      }
-    } catch (err) {
-      if (reqId === requestIdRef.current) {
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return;
         setError(err instanceof Error ? err.message : 'Unknown error');
-        setLoading(false);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
-  }, [fetchKey, currentPage, filters, sortBy, orgs.length]);
 
-  useEffect(() => {
-    isMounted.current = true;
-    if (fetchKey !== lastFetchKey.current || !initialData) {
-      void fetchData();
-    }
-  }, [fetchData, fetchKey, initialData]);
+    void fetchData();
+    return () => controller.abort();
+    // orgs.length intentionally excluded — used only as a display hint, not a trigger
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchKey]);
 
   return { orgs, total, totalAvailable, loading, error };
 }

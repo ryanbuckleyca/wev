@@ -45,16 +45,16 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
 
   // Fetch initial page (SSE-only default) and filter options in parallel
   const [initialData, filterOptions] = await Promise.all([
-    fetchOrganizationIndex(
+    fetchOrganizationIndex({
       page,
-      getStringParam(rawSearchParams.q),
-      getStringParam(rawSearchParams.sse, 'true') === 'true',
-      getArrayParam(rawSearchParams.province),
-      getArrayParam(rawSearchParams.municipality),
-      getArrayParam(rawSearchParams.type),
-      user?.id ?? null,
-      user || !sortBy.includes('match') ? sortBy : 'org-asc',
-    ),
+      searchQuery: getStringParam(rawSearchParams.q),
+      sseOnly: getStringParam(rawSearchParams.sse, 'true') === 'true',
+      provinces: getArrayParam(rawSearchParams.province),
+      municipalities: getArrayParam(rawSearchParams.municipality),
+      orgTypes: getArrayParam(rawSearchParams.type),
+      userId: user?.id ?? null,
+      sortBy: user || !sortBy.includes('match') ? sortBy : 'org-asc',
+    }),
     fetchOrganizationFilterOptions(),
   ]);
 
