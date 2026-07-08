@@ -3,10 +3,9 @@
 import { useTranslations } from 'next-intl';
 import Pill from './Pill';
 import ButtonLink from './ButtonLink';
-import FilterIcon from './FilterIcon';
+import FilterToggleButton from './FilterToggleButton';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { Search1Outlined, XmarkOutlined } from '@lineiconshq/free-icons';
-import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 import { useState, useEffect, useRef } from 'react';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 
@@ -104,22 +103,13 @@ export default function JobSearch({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => onFiltersExpandedChange(!filtersExpanded)}
-            data-testid={JOB_BOARD_TEST_IDS.filtersToggle}
-            className="h-10 px-3 border border-border rounded-wev-btn bg-card text-sm text-muted-foreground hover:border-primary transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
-            aria-expanded={filtersExpanded}
-            aria-controls="job-filters-content"
-          >
-            <FilterIcon className="w-4 h-4" aria-hidden />
-            <span className="max-[519px]:hidden">
-              {filtersExpanded ? t('filters.hideFilters') : t('filters.showFilters')}
-            </span>
-            <span className="inline-flex min-w-[1.25rem] h-5 px-1.5 items-center justify-center rounded-full bg-primary text-white text-xs font-semibold">
-              {activeFilterChips.length}
-            </span>
-          </button>
+          <FilterToggleButton
+            filtersExpanded={filtersExpanded}
+            onToggle={() => onFiltersExpandedChange(!filtersExpanded)}
+            activeCount={activeFilterChips.length}
+            controlsId="job-filters-content"
+            withTestId
+          />
         </div>
       </div>
 
