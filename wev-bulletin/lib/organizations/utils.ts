@@ -15,18 +15,15 @@ export function resolveOrgSortBy(sortBy: string, hasMatchScores: boolean): strin
  * Maps a raw org type string to a translated display label.
  * Returns the raw value unchanged for unrecognised types, null for empty.
  *
- * The `t` function must resolve keys relative to the `organizations` namespace:
- *   t('nonprofit')  →  "Nonprofit"
- *   t('other')      →  "Other"
+ * The `t` function must resolve keys relative to the `organizations` namespace
+ * and expose a `has(key)` method (the next-intl translation function satisfies this).
  */
 export function getOrganizationTypeLabel(
   type: string | null | undefined,
-  t: (key: string) => string,
+  t: { (key: string): string; has?: (key: string) => boolean },
 ): string | null {
   if (!type) return null;
   const normalized = type.toLowerCase().replace(/[\s_-]+/g, '');
-  // Keys that exist in the organizations i18n namespace
-  const knownKeys = ['nonprofit', 'cooperative', 'socialenterprise', 'government', 'union', 'other'];
-  if (knownKeys.includes(normalized)) return t(normalized);
+  if (t.has?.(normalized)) return t(normalized);
   return type;
 }

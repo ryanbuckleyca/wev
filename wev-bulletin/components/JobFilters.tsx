@@ -30,8 +30,8 @@ export default function JobFilters(props: JobFiltersProps) {
     selectedSources,
     selectedWorkTypes,
     selectedLanguages,
-    showOnlySse,
-    setShowOnlySse: onShowOnlySseChange,
+    showNonSse,
+    setShowNonSse: onShowNonSseChange,
     showJobsWithoutSalary,
     setShowJobsWithoutSalary: onShowJobsWithoutSalaryChange,
     postedWithin,
@@ -69,12 +69,12 @@ export default function JobFilters(props: JobFiltersProps) {
       <Collapsible id="job-filters-content" isOpen={filtersExpanded} className="p-6">
         <div data-testid={JOB_BOARD_TEST_IDS.sseToggle}>
           <BooleanFilterRow
-            checked={showOnlySse}
-            onCheckedChange={onShowOnlySseChange}
-            label={t('filters.sse.label')}
+            checked={showNonSse}
+            onCheckedChange={onShowNonSseChange}
+            label={t('filters.showNonSse')}
             icon={
               <Lineicons
-                icon={showOnlySse ? Leaf1Solid : Leaf1Outlined}
+                icon={showNonSse ? Leaf1Solid : Leaf1Outlined}
                 size={16}
                 className="shrink-0 text-primary"
                 aria-hidden

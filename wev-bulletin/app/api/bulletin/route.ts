@@ -255,7 +255,8 @@ export async function GET(request: Request) {
     const srcs = searchParams.getAll('srcs');
     const works = searchParams.getAll('works');
     const langs = searchParams.getAll('langs');
-    const onlySse = searchParams.get('sse') === 'true';
+    // nonSse=true means "include non-SSE jobs"; absence means SSE-only (the default)
+    const onlySse = searchParams.get('nonSse') !== 'true';
     const noSalary = searchParams.get('nosal') === 'true';
 
     // Create supabase client

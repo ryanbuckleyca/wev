@@ -44,12 +44,13 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
   const page = Math.max(1, parseInt(getStringParam(rawSearchParams.page, '1'), 10) || 1);
   const sortBy = getStringParam(rawSearchParams.sortBy, user ? 'value-match-desc' : 'org-asc');
 
-  // Fetch initial page (SSE-only default) and filter options in parallel
+  // Fetch initial page (SSE-only default) and filter options in parallel.
+  // nonSse=true means "include non-SSE orgs"; absence means SSE-only.
   const [initialData, filterOptions] = await Promise.all([
     fetchOrganizationIndex({
       page,
       searchQuery: getStringParam(rawSearchParams.q),
-      sseOnly: getStringParam(rawSearchParams.sse, 'true') === 'true',
+      sseOnly: getStringParam(rawSearchParams.nonSse) !== 'true',
       provinces: getArrayParam(rawSearchParams.province),
       municipalities: getArrayParam(rawSearchParams.municipality),
       orgTypes: getArrayParam(rawSearchParams.type),

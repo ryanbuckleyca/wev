@@ -20,7 +20,7 @@ function buildFetchKey(locale: string, currentPage: number, sortBy: string, filt
     currentPage,
     sortBy,
     filters.searchQuery,
-    filters.showOnlySse,
+    filters.showNonSse,
     filters.selectedProvinces.join(','),
     filters.selectedMunicipalities.join(','),
     filters.selectedTypes.join(','),
@@ -38,7 +38,8 @@ function buildSearchParams(
   params.set('page', String(currentPage));
   params.set('sortBy', sortBy);
   if (filters.searchQuery) params.set('q', filters.searchQuery);
-  if (filters.showOnlySse) params.set('sse', 'true');
+  // nonSse=true means "show non-SSE orgs" — server interprets absence as SSE-only
+  if (filters.showNonSse) params.set('nonSse', 'true');
   // Param names must match useOrganizationFilters URL keys and the API route's getAll() keys
   filters.selectedProvinces.forEach((p) => params.append('province', p));
   filters.selectedMunicipalities.forEach((m) => params.append('municipality', m));
