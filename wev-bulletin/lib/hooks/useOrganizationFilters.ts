@@ -34,7 +34,9 @@ export interface OrganizationFilterControls {
   sortBy: string;
   setSortBy: (value: string | null) => Promise<unknown> | void;
   hasAnyFilters: boolean;
+  isSuggestedDefaults: boolean;
   clearAllFilters: () => void;
+  applySuggestedDefaults: () => void;
 }
 
 export function useOrganizationFilters(): OrganizationFilterControls {
@@ -76,9 +78,36 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     [searchQuery, showOnlySse, selectedProvinces, selectedMunicipalities, selectedTypes],
   );
 
+  // Suggested defaults: SSE toggle on, nothing else active
+  const isSuggestedDefaults = useMemo(
+    () =>
+      !searchQuery &&
+      showOnlySse &&
+      selectedProvinces.length === 0 &&
+      selectedMunicipalities.length === 0 &&
+      selectedTypes.length === 0,
+    [searchQuery, showOnlySse, selectedProvinces, selectedMunicipalities, selectedTypes],
+  );
+
   const clearAllFilters = useCallback(() => {
     void setSearchQuery('');
     void setShowOnlySse(false);
+    void setSelectedProvinces([]);
+    void setSelectedMunicipalities([]);
+    void setSelectedTypes([]);
+    void setCurrentPage(1);
+  }, [
+    setSearchQuery,
+    setShowOnlySse,
+    setSelectedProvinces,
+    setSelectedMunicipalities,
+    setSelectedTypes,
+    setCurrentPage,
+  ]);
+
+  const applySuggestedDefaults = useCallback(() => {
+    void setSearchQuery('');
+    void setShowOnlySse(true);
     void setSelectedProvinces([]);
     void setSelectedMunicipalities([]);
     void setSelectedTypes([]);
@@ -109,6 +138,8 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     sortBy,
     setSortBy,
     hasAnyFilters,
+    isSuggestedDefaults,
     clearAllFilters,
+    applySuggestedDefaults,
   };
 }

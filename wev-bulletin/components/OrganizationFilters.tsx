@@ -48,7 +48,9 @@ export default function OrganizationFilters({
     selectedTypes,
     setSelectedTypes,
     hasAnyFilters,
+    isSuggestedDefaults,
     clearAllFilters,
+    applySuggestedDefaults,
   } = controls;
 
   const toggleArrayItem = (item: string, current: string[], setter: (val: string[]) => void) => {
@@ -102,7 +104,9 @@ export default function OrganizationFilters({
         totalCount={totalCount}
         loading={loading}
         hasAnyFilters={hasAnyFilters}
+        isSuggestedDefaults={isSuggestedDefaults}
         onClearAllFilters={clearAllFilters}
+        onApplySuggestedDefaults={applySuggestedDefaults}
       />
 
       <Collapsible id="org-filters-content" isOpen={filtersExpanded} className="p-6">
