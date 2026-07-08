@@ -66,12 +66,15 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     [searchQuery, showOnlySse, selectedProvinces, selectedMunicipalities, selectedTypes],
   );
 
-  const hasAnyFilters =
-    !!searchQuery ||
-    showOnlySse ||
-    selectedProvinces.length > 0 ||
-    selectedMunicipalities.length > 0 ||
-    selectedTypes.length > 0;
+  const hasAnyFilters = useMemo(
+    () =>
+      !!searchQuery ||
+      showOnlySse ||
+      selectedProvinces.length > 0 ||
+      selectedMunicipalities.length > 0 ||
+      selectedTypes.length > 0,
+    [searchQuery, showOnlySse, selectedProvinces, selectedMunicipalities, selectedTypes],
+  );
 
   const clearAllFilters = useCallback(() => {
     void setSearchQuery('');

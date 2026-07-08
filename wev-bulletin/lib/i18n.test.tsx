@@ -21,6 +21,8 @@ vi.mock('@/contexts/BulletinFilterContext', () => ({
  */
 
 const paginationProps = {
+  currentPage: 1,
+  onPageChange: () => {},
   totalPages: 5,
   totalItems: 50,
   itemsPerPage: 10,

@@ -11,26 +11,27 @@ export async function GET(request: Request) {
   } = await supabaseAuth.auth.getUser();
 
   const page = parseInt(searchParams.get('page') || '1', 10);
-  const q = searchParams.get('q') || '';
-  const sse = searchParams.get('sse') === 'true';
+  const searchQuery = searchParams.get('q') || '';
+  const sseOnly = searchParams.get('sse') === 'true';
   const requestedSortBy = searchParams.get('sortBy') || (user ? 'value-match-desc' : 'org-asc');
   const sortBy = user || !requestedSortBy.includes('match') ? requestedSortBy : 'org-asc';
 
-  const provinces = searchParams.getAll('provs');
-  const municipalities = searchParams.getAll('munis');
-  const types = searchParams.getAll('types');
+  // Param names match the URL keys used by useOrganizationFilters (province/municipality/type)
+  const provinces = searchParams.getAll('province');
+  const municipalities = searchParams.getAll('municipality');
+  const orgTypes = searchParams.getAll('type');
 
   try {
-    const result = await fetchOrganizationIndex(
+    const result = await fetchOrganizationIndex({
       page,
-      q,
-      sse,
+      searchQuery,
+      sseOnly,
       provinces,
       municipalities,
-      types,
-      user?.id ?? null,
+      orgTypes,
+      userId: user?.id ?? null,
       sortBy,
-    );
+    });
 
     return NextResponse.json({
       orgs: result.orgs,

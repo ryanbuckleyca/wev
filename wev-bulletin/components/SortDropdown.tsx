@@ -4,8 +4,10 @@ import Button from '@/components/Button';
 import Chevron from './Chevron';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { CheckOutlined } from '@lineiconshq/free-icons';
+import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
+import type { JobSortOption } from '@/lib/bulletin/job-query';
 
-type SortOption =
+export type SortOption =
   | 'date-desc'
   | 'date-asc'
   | 'match-desc'
@@ -16,10 +18,8 @@ type SortOption =
   | 'org-asc'
   | 'org-desc';
 
-import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
-
 export interface SortOptionDef {
-  value: string;
+  value: SortOption | string;
   label: string;
   group?: string;
 }
@@ -27,12 +27,24 @@ export interface SortOptionDef {
 interface SortDropdownProps {
   /** When false, hide the 'Best match' option (requires being logged in) */
   showMatchOption?: boolean;
+  /** Controlled sort value. When omitted the BulletinFilterContext is used. */
   sortBy?: string;
+  /** Controlled change handler. When omitted the BulletinFilterContext is used. */
   onChange?: (value: string) => void;
+  /** Override the full list of sort options. */
   options?: SortOptionDef[];
+  /** Restrict visible options to this subset (matched by value). */
   optionValues?: SortOption[];
 }
 
+/**
+ * Sort dropdown.
+ *
+ * Two usage modes:
+ * 1. **Controlled** — pass `sortBy` + `onChange` explicitly (e.g. org index page).
+ * 2. **Context-driven** — omit both; reads from/writes to BulletinFilterContext.
+ *    Requires this component to be rendered inside a BulletinFilterProvider.
+ */
 export default function SortDropdown({
   showMatchOption,
   sortBy: propsSortBy,
@@ -40,10 +52,13 @@ export default function SortDropdown({
   options: propsOptions,
   optionValues,
 }: SortDropdownProps) {
-  // Use context only as fallback when props aren't provided — don't throw if missing
+  // Context is optional — controlled callers (e.g. org index) pass sortBy+onChange directly.
+  // Context-driven callers (e.g. BulletinPageView inside BulletinFilterProvider) omit them.
   const context = useContext(BulletinFilterContext);
-  const sortBy = propsSortBy ?? context?.sortBy;
-  const onChange = propsOnChange ?? context?.setSortBy;
+  const sortBy = propsSortBy ?? context?.sortBy ?? '';
+  const onChange: (value: string) => void =
+    propsOnChange ?? (context ? (v) => void context.setSortBy(v as JobSortOption) : () => {});
+
   const t = useTranslations();
 
   const OPTIONS: SortOptionDef[] = propsOptions ?? [
@@ -57,6 +72,7 @@ export default function SortDropdown({
     { value: 'org-asc', label: t('sort.orgAZ'), group: 'org' },
     { value: 'org-desc', label: t('sort.orgZA'), group: 'org' },
   ];
+
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -71,10 +87,11 @@ export default function SortDropdown({
   }, [open]);
 
   const label = OPTIONS.find((o) => o.value === sortBy)?.label ?? t('sort.newestFirst');
-  const valueSet = optionValues ? new Set(optionValues) : null;
+
+  const valueSet = optionValues ? new Set<string>(optionValues) : null;
   const optionsToShow = OPTIONS.filter((option) => {
-    if (valueSet && !valueSet.has(option.value as SortOption)) return false;
-    return showMatchOption !== false || !option.group || option.group !== 'match';
+    if (valueSet && !valueSet.has(option.value)) return false;
+    return showMatchOption !== false || option.group !== 'match';
   });
 
   return (
@@ -115,7 +132,7 @@ export default function SortDropdown({
             key={opt.value}
             className="px-3 py-2 rounded-md cursor-pointer transition-colors text-xs p-2 rounded-lg"
             onClick={() => {
-              onChange?.(opt.value as any);
+              onChange(opt.value);
               setOpen(false);
             }}
           >

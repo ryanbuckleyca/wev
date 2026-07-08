@@ -8,16 +8,10 @@ import BooleanFilterRow from './job-filters/BooleanFilterRow';
 import CheckboxFilterSection from './job-filters/CheckboxFilterSection';
 import MunicipalityFilterSection from './job-filters/MunicipalityFilterSection';
 import OrganizationSearch from './OrganizationSearch';
+import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import type { OrganizationFilterControls } from '@/lib/hooks/useOrganizationFilters';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
-import type { ActiveFilterChip } from './JobSearch'; // Reuse the interface
-
-function getOrganizationTypeLabel(type: string, t: (key: string) => string) {
-  const normalized = type.toLowerCase().replace(/[\s_-]+/g, '');
-  if (normalized === 'nonprofit') return t('nonprofit');
-  if (normalized === 'other') return t('other');
-  return type;
-}
+import type { ActiveFilterChip } from './JobSearch';
 
 interface OrganizationFiltersProps {
   controls: OrganizationFilterControls;
@@ -91,7 +85,7 @@ export default function OrganizationFilters({
     })),
     ...filters.selectedTypes.map((type) => ({
       id: `type-${type}`,
-      label: getOrganizationTypeLabel(type, t),
+      label: getOrganizationTypeLabel(type, t) ?? type,
       onRemove: () => toggleArrayItem(type, selectedTypes, setSelectedTypes),
     })),
   ];

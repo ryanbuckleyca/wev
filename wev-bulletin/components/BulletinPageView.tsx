@@ -116,6 +116,7 @@ export default function BulletinPageView({
             currentPage={filters.currentPage}
             onPageChange={(page) => {
               void filters.setCurrentPage(page);
+              window.scrollTo({ top: 0, behavior: 'instant' });
             }}
             totalPages={data.totalPages}
             totalItems={data.totalMatchingJobs}

@@ -24,8 +24,6 @@
     "website": "Website",
     "viewProfile": "View organization profile",
     "noDescription": "No description available.",
-    "expand": "expand",
-    "collapse": "collapse",
     "visitWebsite": "Visit website",
     "sseBadgeLabel": "Solidarity Economy Organization",
     "sseYes": "This is a Solidarity Economy Organization.",
@@ -504,7 +502,9 @@
     "loading": "Loading...",
     "close": "Close",
     "cancel": "Cancel",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "expand": "expand",
+    "collapse": "collapse"
   },
   "ariaLabels": {
     "themeToggle": {

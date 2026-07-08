@@ -24,8 +24,6 @@
     "website": "Site web",
     "viewProfile": "Voir le profil de l'organisation",
     "noDescription": "Aucune description disponible.",
-    "expand": "développer",
-    "collapse": "réduire",
     "visitWebsite": "Visiter le site web",
     "sseBadgeLabel": "Organisation d'économie sociale",
     "sseYes": "Il s'agit d'une organisation d'économie sociale.",
@@ -504,7 +502,9 @@
     "loading": "Chargement...",
     "close": "Fermer",
     "cancel": "Annuler",
-    "confirm": "Confirmer"
+    "confirm": "Confirmer",
+    "expand": "développer",
+    "collapse": "réduire"
   },
   "passwordStrength": {
     "strength": "Force :",

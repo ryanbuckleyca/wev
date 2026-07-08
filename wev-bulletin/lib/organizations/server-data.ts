@@ -6,21 +6,41 @@ import { bulletinAgeCutoffIso } from '@/lib/bulletin/constants';
 import { ORG_JOBS_PER_PAGE } from './constants';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
+// ---------------------------------------------------------------------------
+// fetchOrganizationIndex
+// ---------------------------------------------------------------------------
+
+export interface FetchOrganizationIndexOptions {
+  page?: number;
+  searchQuery?: string;
+  sseOnly?: boolean;
+  provinces?: string[];
+  municipalities?: string[];
+  orgTypes?: string[];
+  userId?: string | null;
+  sortBy?: string | null;
+}
+
 export async function fetchOrganizationIndex(
-  page: number = 1,
-  searchQuery: string = '',
-  sseOnly: boolean = true,
-  provinces: string[] = [],
-  municipalities: string[] = [],
-  orgTypes: string[] = [],
-  userId: string | null = null,
-  sortBy: string | null = null,
+  options: FetchOrganizationIndexOptions = {},
 ): Promise<{ orgs: OrgIndexEntry[]; total: number; totalAvailable: number }> {
-  if (page < 1) page = 1;
+  const {
+    page: rawPage = 1,
+    searchQuery = '',
+    sseOnly = true,
+    provinces = [],
+    municipalities = [],
+    orgTypes = [],
+    userId = null,
+    sortBy = null,
+  } = options;
+
+  const page = Math.max(1, rawPage);
   const minDate = bulletinAgeCutoffIso();
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
   const effectiveSortBy = sortBy ?? (userId ? 'value-match-desc' : 'org-asc');
+
   const hasNonSseFilters =
     Boolean(searchQuery) ||
     provinces.length > 0 ||
@@ -28,43 +48,47 @@ export async function fetchOrganizationIndex(
     orgTypes.length > 0;
 
   // We need a denominator for the "X of Y" count whenever anything is filtered.
-  // The denominator is always fetched with p_sse_only: false so the user sees
+  // The denominator call uses p_sse_only: false so the user sees
   // "5 SSE orgs of 30 total orgs" when only the SSE toggle is active.
   const needsDenominator = sseOnly || hasNonSseFilters;
 
-  const { data: orgs, error } = await supabaseServer.rpc('get_active_organizations', {
+  const rpcParams = {
     min_date: minDate,
-    p_limit: limit,
-    p_offset: offset,
     p_search: searchQuery || null,
     p_sse_only: sseOnly,
     p_provinces: provinces.length > 0 ? provinces : null,
     p_municipalities: municipalities.length > 0 ? municipalities : null,
     p_org_types: orgTypes.length > 0 ? orgTypes : null,
+  };
+
+  const { data: orgs, error } = await supabaseServer.rpc('get_active_organizations', {
+    ...rpcParams,
+    p_limit: limit,
+    p_offset: offset,
     p_user_id: userId,
     p_sort: effectiveSortBy,
   });
 
+  if (error) {
+    throw new Error(`fetchOrganizationIndex RPC error: ${error.message}`);
+  }
+
+  // Fetch the unfiltered denominator count when needed (p_limit:1 to minimise data transfer).
   const { data: availableOrgs, error: availableError } = needsDenominator
     ? await supabaseServer.rpc('get_active_organizations', {
-        min_date: minDate,
+        ...rpcParams,
         p_limit: 1,
         p_offset: 0,
-        p_search: searchQuery || null,
         p_sse_only: false,
-        p_provinces: provinces.length > 0 ? provinces : null,
-        p_municipalities: municipalities.length > 0 ? municipalities : null,
-        p_org_types: orgTypes.length > 0 ? orgTypes : null,
         p_user_id: null,
         p_sort: 'org-asc',
       })
     : { data: orgs, error: null };
 
-  if (error) {
-    throw new Error(`fetchOrganizationIndex RPC error: ${error.message}`);
-  }
   if (availableError) {
-    throw new Error(`fetchOrganizationIndex totalAvailable RPC error: ${availableError.message}`);
+    throw new Error(
+      `fetchOrganizationIndex totalAvailable RPC error: ${availableError.message}`,
+    );
   }
 
   const total = orgs && orgs.length > 0 ? Number(orgs[0].total_count) : 0;
@@ -81,6 +105,10 @@ export async function fetchOrganizationIndex(
     totalAvailable,
   };
 }
+
+// ---------------------------------------------------------------------------
+// getOrganizationBySlug
+// ---------------------------------------------------------------------------
 
 export const getOrganizationBySlug = cache(async (slug: string): Promise<OrgRecord | null> => {
   const { data: org, error } = await supabaseServer
@@ -99,12 +127,22 @@ export const getOrganizationBySlug = cache(async (slug: string): Promise<OrgReco
   return org;
 });
 
-export async function getOrganizationJobs(
-  orgId: number,
-  page: number,
-  sseOnly: boolean = false,
-): Promise<{ jobs: OrgJobPosting[]; total: number; totalAvailable: number }> {
-  if (page < 1) page = 1;
+// ---------------------------------------------------------------------------
+// getOrganizationJobs
+// ---------------------------------------------------------------------------
+
+export interface GetOrganizationJobsOptions {
+  orgId: number;
+  page: number;
+  sseOnly?: boolean;
+}
+
+export async function getOrganizationJobs({
+  orgId,
+  page: rawPage,
+  sseOnly = false,
+}: GetOrganizationJobsOptions): Promise<{ jobs: OrgJobPosting[]; total: number; totalAvailable: number }> {
+  const page = Math.max(1, rawPage);
   const minDate = bulletinAgeCutoffIso();
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
@@ -129,8 +167,8 @@ export async function getOrganizationJobs(
     throw new Error(`getOrganizationJobs query error: ${error.message}`);
   }
 
-  // Fetch unfiltered total (all active jobs for this org) when SSE filter is active,
-  // so we can show "5 / 30 jobs" instead of "5 / 5 jobs".
+  // Fetch the unfiltered total when SSE filter is active,
+  // so we can display "5 / 30 jobs" instead of "5 / 5 jobs".
   let totalAvailable = count ?? 0;
   if (sseOnly) {
     const { count: allCount, error: allError } = await supabaseServer
@@ -151,6 +189,10 @@ export async function getOrganizationJobs(
   };
 }
 
+// ---------------------------------------------------------------------------
+// fetchOrganizationFilterOptions
+// ---------------------------------------------------------------------------
+
 export interface OrganizationFilterOptions {
   types: string[];
   provinces: string[];
@@ -159,9 +201,6 @@ export interface OrganizationFilterOptions {
 
 export const fetchOrganizationFilterOptions = cache(
   async (): Promise<OrganizationFilterOptions> => {
-    // We only care about active organizations, but for simplicity of building filter options,
-    // we can just query all organizations that have jobs.
-    // However, picking all non-null provinces/municipalities/types from organizations is cheap.
     const { data, error } = await supabaseServer
       .from('organizations')
       .select('type, province, municipality');
@@ -175,19 +214,21 @@ export const fetchOrganizationFilterOptions = cache(
     const provinces = new Set<string>();
     const municipalitiesByProv: Record<string, Set<string>> = {};
 
-    data.forEach((org) => {
+    for (const org of data) {
       if (org.type) types.add(org.type);
-      if (org.province) provinces.add(org.province);
-      if (org.province && org.municipality) {
-        if (!municipalitiesByProv[org.province]) {
-          municipalitiesByProv[org.province] = new Set<string>();
+      if (org.province) {
+        provinces.add(org.province);
+        if (org.municipality) {
+          if (!municipalitiesByProv[org.province]) {
+            municipalitiesByProv[org.province] = new Set<string>();
+          }
+          municipalitiesByProv[org.province].add(org.municipality);
         }
-        municipalitiesByProv[org.province].add(org.municipality);
       }
-    });
+    }
 
     const municipalitiesByProvince: Record<string, string[]> = {};
-    for (const prov in municipalitiesByProv) {
+    for (const prov of Object.keys(municipalitiesByProv)) {
       municipalitiesByProvince[prov] = Array.from(municipalitiesByProv[prov]).sort();
     }
 

@@ -28,7 +28,6 @@ export default function Pagination({
 
   function handlePageChange(page: number) {
     onPageChange(page);
-    window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   if (totalPages <= 1) {
