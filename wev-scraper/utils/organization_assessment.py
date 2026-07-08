@@ -336,9 +336,9 @@ class OrganizationAssessor(BaseGroundedClassifier):
             return None
 
         loc_str = canonical_loc or None
-        geo_data = parse_address_with_geocodio(loc_str) if loc_str else {
-            "municipality": None, "province": None, "lat": None, "lng": None, "geocode_accuracy_type": None
-        }
+        # parse_address_with_geocodio always returns a complete dict (municipality, province,
+        # lat, lng, geocode_accuracy_type); it handles None/empty internally.
+        geo_data = parse_address_with_geocodio(loc_str)
 
         return {
             "name": result["canonical_name"],
