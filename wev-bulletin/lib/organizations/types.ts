@@ -4,6 +4,9 @@ export type OrgRecord = Database['public']['Tables']['organizations']['Row'];
 
 export interface OrgIndexEntry extends OrgRecord {
   active_job_count: number;
+  total_count: number;
+  value_score: number | null;
+  shared_values: string[] | null;
 }
 
 type JobRow = Database['public']['Tables']['jobs']['Row'];

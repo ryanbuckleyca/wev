@@ -1,5 +1,8 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
+import { Leaf1Solid } from '@lineiconshq/free-icons';
+import { Lineicons } from '@lineiconshq/react-lineicons';
 import { getOrganizationBySlug, getOrganizationJobs } from '@/lib/organizations/server-data';
 import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
 import OrganizationJobRow from '@/components/OrganizationJobRow';
@@ -33,18 +36,34 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
     typeof resolvedSearchParams.page === 'string' ? parseInt(resolvedSearchParams.page, 10) : 1;
   const page = isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
 
+  // SSE filter — default false on detail page (show all jobs, let user opt in)
+  const sseOnly = resolvedSearchParams.sse === 'true';
+
   const org = await getOrganizationBySlug(slug);
 
   if (!org) {
     notFound();
   }
 
-  const { jobs, total } = await getOrganizationJobs(org.id, page);
+  const { jobs, total, totalAvailable } = await getOrganizationJobs(org.id, page, sseOnly);
   const totalPages = Math.ceil(total / ORG_JOBS_PER_PAGE);
 
   if (page > totalPages && page > 1) {
     notFound();
   }
+
+  const baseUrl = `/${locale}/organizations/${slug}`;
+  // Extra params forwarded to pagination links so SSE filter survives page nav
+  const paginationParams: Record<string, string> = sseOnly ? { sse: 'true' } : {};
+
+  // Toggle href: flipping SSE always resets to page 1
+  const sseToggleHref = sseOnly ? baseUrl : `${baseUrl}?sse=true`;
+
+  // Heading: show "X / Y active jobs" when SSE filter is active, otherwise plain count
+  const jobsHeading =
+    sseOnly && totalAvailable !== total
+      ? t('jobsFiltered', { filtered: total, total: totalAvailable })
+      : t('jobs', { count: totalAvailable });
 
   return (
     <PageLayout maxWidth="lg">
@@ -52,7 +71,28 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
 
       {/* Jobs Section */}
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground mb-6">{t('jobs', { count: total })}</h2>
+        {/* Header row: count + SSE toggle */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h2 className="text-2xl font-bold text-foreground">{jobsHeading}</h2>
+
+          <Link
+            href={sseToggleHref}
+            aria-pressed={sseOnly}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${
+              sseOnly
+                ? 'bg-wev-success/10 border-wev-success text-wev-success hover:bg-wev-success/20'
+                : 'border-border text-muted-foreground hover:border-primary hover:text-foreground'
+            }`}
+          >
+            <Lineicons
+              icon={Leaf1Solid}
+              size={14}
+              className={sseOnly ? 'text-wev-success' : 'text-muted-foreground'}
+              aria-hidden
+            />
+            {t('showOnlySseJobs')}
+          </Link>
+        </div>
 
         {jobs.length === 0 ? (
           <div className="bg-muted p-8 rounded-wev-card text-center text-muted-foreground">
@@ -70,7 +110,8 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
           <SimplePagination
             currentPage={page}
             totalPages={totalPages}
-            baseUrl={`/${locale}/organizations/${slug}`}
+            baseUrl={baseUrl}
+            extraParams={paginationParams}
           />
         )}
       </div>

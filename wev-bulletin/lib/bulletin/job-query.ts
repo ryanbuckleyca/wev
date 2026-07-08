@@ -21,6 +21,7 @@ export const JOB_SORT_OPTIONS = [
   'salary-desc',
   'salary-asc',
   'org-asc',
+  'org-desc',
 ] as const;
 
 export type JobSortOption = (typeof JOB_SORT_OPTIONS)[number];
@@ -148,6 +149,8 @@ export function sortJobs(
         return a.annualSortValue - b.annualSortValue;
       case 'org-asc':
         return a.job.organization.localeCompare(b.job.organization);
+      case 'org-desc':
+        return b.job.organization.localeCompare(a.job.organization);
       default:
         return 0;
     }

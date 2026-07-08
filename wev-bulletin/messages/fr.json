@@ -2,9 +2,30 @@
   "organizations": {
     "title": "Profil de l'organisation",
     "indexTitle": "Organisations",
-    "noActiveListings": "Aucune organisation n'a d'offres d'emploi actives en ce moment.",
+    "noActiveListings": "Aucune organisation n'a actuellement d'offres d'emploi actives.",
+    "searchPlaceholder": "Rechercher des organisations par nom ou description...",
+    "searchLabel": "Rechercher des organisations",
+    "clearSearch": "Effacer la recherche",
+    "hideFilters": "Masquer les filtres",
+    "showFilters": "Afficher les filtres",
+    "of": "sur",
+    "organization": "organisation",
+    "organizations": "organisations",
+    "organizationType": "Type d'organisation",
+    "nonprofit": "À but non lucratif",
+    "other": "Autre",
+    "noOrganizationTypes": "Aucun type d'organisation disponible",
+    "clearAllFilters": "Effacer tous les filtres",
+    "showOnlySse": "Afficher uniquement les organisations de l'Économie Sociale et Solidaire (ÉSS)",
     "noJobsForOrg": "Cette organisation n'a aucune offre d'emploi active en ce moment.",
-    "jobs": "{count, plural, =1 {1 emploi} other {# emplois}}",
+    "jobs": "{count, plural, =0 {Aucun emploi actif} one {1 emploi actif} other {# emplois actifs}}",
+    "jobsFiltered": "{filtered} / {total} {total, plural, one {emploi actif} other {emplois actifs}}",
+    "showOnlySseJobs": "Emplois ÉSS seulement",
+    "website": "Site web",
+    "viewProfile": "Voir le profil de l'organisation",
+    "noDescription": "Aucune description disponible.",
+    "expand": "développer",
+    "collapse": "réduire",
     "visitWebsite": "Visiter le site web",
     "sseBadgeLabel": "Organisation d'économie sociale",
     "sseYes": "Il s'agit d'une organisation d'économie sociale.",
@@ -74,12 +95,12 @@
     },
     "province": {
       "label": "Province",
-      "noData": "Aucune donnée de province disponible. Exécutez le scraper pour remplir les données de localisation."
+      "noData": "Aucune donnée de province disponible pour le moment."
     },
     "municipality": {
       "label": "Municipalité",
       "showingFromSelected": "(affichage des municipalités des provinces sélectionnées)",
-      "noData": "Aucune donnée de municipalité disponible. Exécutez le scraper pour remplir les données de localisation.",
+      "noData": "Aucune donnée de municipalité disponible pour le moment.",
       "selectProvince": "Sélectionnez une province pour voir les municipalités",
       "profileDefault": "Lieu du profil utilisé : {city}.",
       "profileOverride": "Lieu du profil : {city}. Vous pouvez remplacer ce filtre ici.",
@@ -144,7 +165,8 @@
     "skillMatch": "Compétences",
     "salaryHighToLow": "Salaire desc",
     "salaryLowToHigh": "Salaire asc",
-    "orgAZ": "Org A ↔ Z"
+    "orgAZ": "Org A-Z",
+    "orgZA": "Org Z-A"
   },
   "matchDetails": {
     "totalMatch": "Correspondance totale",

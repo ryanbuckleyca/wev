@@ -121,6 +121,9 @@ function createBuildQueryFn(
       case 'org-asc':
         query = query.order('organization', { ascending: true });
         break;
+      case 'org-desc':
+        query = query.order('organization', { ascending: false });
+        break;
       case 'date-desc':
       default:
         query = query.order('date_posted', { ascending: false });

@@ -7,7 +7,7 @@ import InfoPopover from './InfoPopover';
 import ProgressDonut from './ProgressDonut';
 import ExpandablePills, { ExpandablePillGroup } from './ExpandablePills';
 import { ScrollablePillsItem } from '@/components/ui/ScrollablePills';
-import { getValueDefinition } from '@/lib/values';
+import { getValueDefinition, getValueTranslationsHelper } from '@/lib/values';
 
 interface JobCardFooterProps {
   values: string[];
@@ -47,33 +47,7 @@ export default function JobCardFooter({
   const t = useTranslations();
   const tValues = useTranslations('values');
 
-  const formatValueLabel = (value: string) => {
-    return value
-      .replace(/_/g, ' ')
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .toLowerCase();
-  };
-
-  const getValueTranslations = (value: string) => {
-    const fallbackDefinition = getValueDefinition(value);
-    const fallbackName = formatValueLabel(value);
-
-    const nameKey = `${value}.name`;
-    const descriptionKey = `${value}.description`;
-    const exampleKey = `${value}.example`;
-
-    const name = tValues.has(nameKey) ? tValues(nameKey) : fallbackName;
-    const description = tValues.has(descriptionKey)
-      ? tValues(descriptionKey)
-      : fallbackDefinition.description;
-    const example = tValues.has(exampleKey) ? tValues(exampleKey) : fallbackDefinition.example;
-
-    return {
-      label: name.toLowerCase(),
-      description,
-      example,
-    };
-  };
+  const getValueTranslations = (value: string) => getValueTranslationsHelper(value, tValues);
 
   const formatSkillLabel = (skill: string) => {
     if (skillTerms[skill]) return skillTerms[skill];

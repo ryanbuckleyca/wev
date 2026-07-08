@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
-from typing import Any, List, TypedDict
+from dataclasses import dataclass
+from typing import Any, List, TypedDict, Optional
 from urllib.parse import urlparse
 
 from llm.base import LLMProviderError
@@ -22,6 +24,7 @@ from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.slug import generate_slug
+from utils.location_parser import parse_address_with_geocodio
 from utils.sse_prompts import EVALUATION_CRITERIA, JSON_INSTRUCTIONS, SSE_PRINCIPLES
 
 logger = logging.getLogger(__name__)
@@ -332,11 +335,21 @@ class OrganizationAssessor(BaseGroundedClassifier):
         if result is None:
             return None
 
+        loc_str = canonical_loc or None
+        geo_data = parse_address_with_geocodio(loc_str) if loc_str else {
+            "municipality": None, "province": None, "lat": None, "lng": None, "geocode_accuracy_type": None
+        }
+
         return {
             "name": result["canonical_name"],
             "slug": result["slug"],
-            "location": canonical_loc or None,
+            "location": loc_str,
             "website": result["website"],
+            "municipality": geo_data.get("municipality"),
+            "province": geo_data.get("province"),
+            "lat": geo_data.get("lat"),
+            "lng": geo_data.get("lng"),
+            "geocode_accuracy_type": geo_data.get("geocode_accuracy_type"),
             **_result_to_db_fields(result),
         }
 
