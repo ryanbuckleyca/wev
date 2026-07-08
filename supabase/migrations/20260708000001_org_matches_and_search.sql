@@ -173,8 +173,11 @@ BEGIN
   FROM org_counts oc
   LEFT JOIN computed_matches cm ON cm.org_id = oc.id
   ORDER BY
+    -- Match sort: value-score descending, NULLs last (orgs without values sink to bottom)
     CASE WHEN p_sort = 'value-match-desc' OR p_sort = 'match-desc' THEN cm.value_score END DESC NULLS LAST,
-    CASE WHEN p_sort = 'org-desc' THEN oc.name END DESC,
+    -- Explicit name-descending when requested; ignored otherwise (evaluates to NULL → no effect)
+    CASE WHEN p_sort = 'org-desc' THEN oc.name END DESC NULLS LAST,
+    -- Tiebreaker / default: name ascending always applies last
     oc.name ASC
   LIMIT p_limit
   OFFSET p_offset;
