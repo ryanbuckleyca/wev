@@ -48,7 +48,14 @@ LANGUAGE plpgsql
 STABLE
 SET search_path = public
 AS $$
+DECLARE
+  v_limit integer;
+  v_offset integer;
 BEGIN
+  -- Clamp pagination parameters to prevent unbounded queries
+  v_limit := LEAST(COALESCE(p_limit, 20), 100);
+  v_offset := GREATEST(COALESCE(p_offset, 0), 0);
+
   RETURN QUERY
   WITH org_counts AS (
     SELECT
@@ -76,7 +83,7 @@ BEGIN
       count(j.id) AS active_job_count
     FROM organizations o
     JOIN jobs j ON o.id = j.organization_id
-    WHERE j.date_posted::timestamp with time zone >= min_date
+    WHERE j.date_posted >= min_date
       AND (p_search IS NULL OR o.name ILIKE '%' || p_search || '%' OR o.description ILIKE '%' || p_search || '%')
       AND (p_sse_only IS FALSE OR o.is_sse = true)
       AND (p_provinces IS NULL OR cardinality(p_provinces) = 0 OR o.province = ANY(p_provinces))
@@ -110,8 +117,8 @@ BEGIN
     (SELECT count(*) FROM org_counts)::bigint AS total_count
   FROM org_counts oc
   ORDER BY oc.name ASC
-  LIMIT p_limit
-  OFFSET p_offset;
+  LIMIT v_limit
+  OFFSET v_offset;
 END;
 $$;
 
