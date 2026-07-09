@@ -1,13 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { Leaf1Solid } from '@lineiconshq/free-icons';
-import { Lineicons } from '@lineiconshq/react-lineicons';
 import { getOrganizationBySlug, getOrganizationJobs } from '@/lib/organizations/server-data';
 import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
 import OrganizationJobRow from '@/components/OrganizationJobRow';
 import OrganizationProfileHeader from '@/components/OrganizationProfileHeader';
 import SimplePagination from '@/components/SimplePagination';
+import SseToggleLink from '@/components/SseToggleLink';
 import PageLayout from '@/components/PageLayout';
 
 interface PageProps {
@@ -76,23 +75,11 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
         <div className="flex items-center justify-between gap-4 mb-6">
           <h2 className="text-2xl font-bold text-foreground">{jobsHeading}</h2>
 
-          <Link
+          <SseToggleLink
             href={sseToggleHref}
-            aria-current={sseOnly ? 'true' : undefined}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${
-              sseOnly
-                ? 'bg-wev-success/10 border-wev-success text-wev-success hover:bg-wev-success/20'
-                : 'border-border text-muted-foreground hover:border-primary hover:text-foreground'
-            }`}
-          >
-            <Lineicons
-              icon={Leaf1Solid}
-              size={14}
-              className={sseOnly ? 'text-wev-success' : 'text-muted-foreground'}
-              aria-hidden
-            />
-            {t('showOnlySseJobs')}
-          </Link>
+            isActive={sseOnly}
+            label={t('showOnlySseJobs')}
+          />
         </div>
 
         {jobs.length === 0 ? (
