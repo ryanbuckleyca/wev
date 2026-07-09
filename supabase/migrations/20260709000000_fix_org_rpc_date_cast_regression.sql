@@ -7,9 +7,12 @@
 --
 -- jobs.date_posted:
 --   Stored as text (legacy schema). Scraper values are ISO-8601 strings such as
---   2026-06-01 or 2026-06-01T12:00:00+00:00. Rows that are null, empty, or not
---   ISO-shaped are excluded from active-job counts (intentional: unparseable
---   dates cannot be compared to min_date).
+--   2026-06-01 or 2026-06-01T12:00:00+00:00. try_parse_job_date_posted() returns
+--   NULL for null/empty/unparseable values so one bad row cannot fail the query.
+--
+-- try_parse_job_date_posted:
+--   Internal helper; not granted to anon. get_active_organizations is SECURITY
+--   DEFINER so it can call the helper on behalf of public callers.
 --
 -- p_user_id:
 --   Kept in the signature for API compatibility with existing callers. Ignored at
@@ -20,6 +23,66 @@
 --   the profile CTE chain is empty and value_score/shared_values are always NULL.
 
 DROP FUNCTION IF EXISTS public.try_parse_job_date_posted(text);
+
+CREATE OR REPLACE FUNCTION public.try_parse_job_date_posted(p_date text)
+RETURNS timestamp with time zone
+LANGUAGE plpgsql
+STABLE
+SET search_path = public
+AS $$
+DECLARE
+  v_year int;
+  v_month int;
+  v_day int;
+  v_normalized text;
+BEGIN
+  IF p_date IS NULL OR btrim(p_date) = '' THEN
+    RETURN NULL;
+  END IF;
+
+  -- Date-only strings (seeders): validate calendar components before casting.
+  IF p_date ~ '^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$' THEN
+    v_year := substring(p_date from 1 for 4)::int;
+    v_month := substring(p_date from 6 for 2)::int;
+    v_day := substring(p_date from 9 for 2)::int;
+    BEGIN
+      RETURN make_timestamptz(make_date(v_year, v_month, v_day), time '00:00:00', 'UTC');
+    EXCEPTION
+      WHEN OTHERS THEN
+        RETURN NULL;
+    END;
+  END IF;
+
+  -- Datetime strings: require ISO-shaped components, then cast inside exception guard.
+  IF p_date ~ '^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d+)?(Z|[+-]\d{2}(:\d{2})?)$' THEN
+    BEGIN
+      RETURN p_date::timestamp with time zone;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RETURN NULL;
+    END;
+  END IF;
+
+  -- Datetime without timezone suffix (rare): normalize to UTC before casting.
+  IF p_date ~ '^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d+)?$' THEN
+    v_normalized := p_date || 'Z';
+    BEGIN
+      RETURN v_normalized::timestamp with time zone;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RETURN NULL;
+    END;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.try_parse_job_date_posted(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.try_parse_job_date_posted(text) TO service_role;
+
+COMMENT ON FUNCTION public.try_parse_job_date_posted(text) IS
+  'Safely parse jobs.date_posted text to timestamptz. Returns NULL for empty or unparseable values.';
 
 CREATE OR REPLACE FUNCTION public.get_active_organizations(
   min_date timestamp with time zone,
@@ -62,6 +125,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 STABLE
+SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
@@ -126,11 +190,7 @@ BEGIN
       count(j.id) AS active_job_count
     FROM organizations o
     JOIN jobs j ON o.id = j.organization_id
-    WHERE j.date_posted IS NOT NULL
-      AND btrim(j.date_posted) <> ''
-      -- Match ISO date-only or ISO-8601 datetime strings produced by scrapers/seeders.
-      AND j.date_posted ~ '^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}(:\d{2})?)?)?$'
-      AND j.date_posted::timestamp with time zone >= min_date
+    WHERE try_parse_job_date_posted(j.date_posted) >= min_date
       AND (p_search IS NULL OR o.name ILIKE '%' || p_search || '%' OR o.description ILIKE '%' || p_search || '%')
       AND (p_sse_only IS FALSE OR o.is_sse = true)
       AND (p_provinces IS NULL OR cardinality(p_provinces) = 0 OR o.province = ANY(p_provinces))
@@ -215,7 +275,7 @@ GRANT EXECUTE ON FUNCTION public.get_active_organizations(timestamp with time zo
 
 COMMENT ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text) IS
   'Returns organizations with active job counts, optional value-match scoring, filtering, and pagination. '
-  'Date filter: only ISO-shaped jobs.date_posted values are compared to min_date; null/empty/non-ISO rows are excluded. '
+  'Date filter: jobs.date_posted is parsed via try_parse_job_date_posted(); unparseable rows are excluded. '
   'Anonymous access: EXECUTE is granted to anon for the public org index; when auth.uid() IS NULL, '
   'profile data is not read and value_score/shared_values are NULL. '
   'Compatibility: p_user_id is retained in the signature for existing RPC callers but ignored; auth.uid() is used for profile access.';
