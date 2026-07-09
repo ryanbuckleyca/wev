@@ -1,7 +1,5 @@
 -- Add a batch (array) overload of match_skills_by_embedding.
--- The existing scalar signature (vector, int) is preserved for the Python scraper
--- (wev-scraper/scripts/tag_esco_skills_vector.py calls it with query_embedding + match_count).
--- This migration only adds the new array overload; it does not touch the scalar one.
+-- The existing scalar signature (vector, int) is preserved for the Python scraper.
 
 -- NOTE: This function relies on a vector index (ivfflat or hnsw) on
 -- esco_skills.embedding. Without it, the LATERAL ORDER BY <=> degrades to a
@@ -9,6 +7,8 @@
 -- deploying to production:
 --   SELECT indexname FROM pg_indexes WHERE tablename = 'esco_skills';
 
+-- Drop the old scalar overload — it is superseded by the array version below.
+DROP FUNCTION IF EXISTS match_skills_by_embedding(vector, int);
 CREATE OR REPLACE FUNCTION match_skills_by_embedding(
     query_embeddings vector(1024)[],
     match_count     int DEFAULT 5

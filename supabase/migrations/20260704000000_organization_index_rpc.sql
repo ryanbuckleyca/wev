@@ -8,7 +8,6 @@
 -- repeated calls within the same transaction if needed.
 
 drop function if exists public.get_active_organizations(timestamp with time zone);
-
 create or replace function public.get_active_organizations(
   min_date timestamp with time zone,
   p_limit integer default 20,
@@ -90,8 +89,6 @@ begin
   offset p_offset;
 end;
 $$;
-
 grant execute on function public.get_active_organizations(timestamp with time zone, integer, integer) to anon, authenticated, service_role;
-
 comment on function public.get_active_organizations(timestamp with time zone, integer, integer) is
   'Returns organizations with active job counts within the given age window, sorted alphabetically, paginated.';

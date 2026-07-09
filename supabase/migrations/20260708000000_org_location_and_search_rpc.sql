@@ -6,9 +6,7 @@ ALTER TABLE public.organizations
   ADD COLUMN IF NOT EXISTS lat float8,
   ADD COLUMN IF NOT EXISTS lng float8,
   ADD COLUMN IF NOT EXISTS geocode_accuracy_type text;
-
 DROP FUNCTION IF EXISTS public.get_active_organizations(timestamp with time zone, integer, integer);
-
 CREATE OR REPLACE FUNCTION public.get_active_organizations(
   min_date timestamp with time zone,
   p_limit integer default 20,
@@ -121,8 +119,6 @@ BEGIN
   OFFSET v_offset;
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[]) TO anon, authenticated, service_role;
-
 COMMENT ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[]) IS
   'Returns organizations with active job counts within the given age window, filtered and paginated.';

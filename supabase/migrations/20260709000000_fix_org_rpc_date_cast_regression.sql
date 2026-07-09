@@ -1,10 +1,25 @@
--- Migration: Add value-match scoring and p_user_id to get_active_organizations RPC.
--- Consolidates _000001 (org_matches) + _000002 (fix ambiguous values_rated reference)
--- into a single clean migration.
+-- Migration: Restore timestamptz cast in get_active_organizations RPC
+--
+-- Background:
+--   Migrations 20260708000000 and 20260708000001 recreated this RPC without
+--   casting jobs.date_posted (text) before comparing to min_date (timestamptz),
+--   causing: operator does not exist: text >= timestamp with time zone
+--
+-- jobs.date_posted:
+--   Stored as text (legacy schema). Scraper values are ISO-8601 strings such as
+--   2026-06-01 or 2026-06-01T12:00:00+00:00. Rows that are null, empty, or not
+--   ISO-shaped are excluded from active-job counts (intentional: unparseable
+--   dates cannot be compared to min_date).
+--
+-- p_user_id:
+--   Kept in the signature for API compatibility with existing callers. Ignored at
+--   runtime; auth.uid() is used instead to prevent unauthorized profile access.
+--
+-- anon EXECUTE grant:
+--   Intentional for the public /organizations index. When auth.uid() IS NULL,
+--   the profile CTE chain is empty and value_score/shared_values are always NULL.
 
--- Drop old 8-argument signature created by 20260708000000
-DROP FUNCTION IF EXISTS public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[]);
--- Trigram indexes for ILIKE search added in migration 20260708000002_org_search_indexes.sql
+DROP FUNCTION IF EXISTS public.try_parse_job_date_posted(text);
 
 CREATE OR REPLACE FUNCTION public.get_active_organizations(
   min_date timestamp with time zone,
@@ -54,7 +69,7 @@ DECLARE
   v_limit integer;
   v_offset integer;
 BEGIN
-  -- Use auth.uid() instead of trusting p_user_id parameter to prevent unauthorized profile access
+  -- Use auth.uid() instead of trusting p_user_id parameter to prevent unauthorized profile access.
   authenticated_user_id := auth.uid();
 
   -- Clamp pagination parameters to prevent unbounded queries
@@ -65,7 +80,8 @@ BEGIN
   WITH user_data AS (
     SELECT p.values_rated, p.values
     FROM profiles p
-    WHERE p.id = authenticated_user_id
+    WHERE authenticated_user_id IS NOT NULL
+      AND p.id = authenticated_user_id
   ),
   user_items AS (
     -- Qualify user_data.values_rated to avoid ambiguity with the RETURNS TABLE column.
@@ -110,7 +126,11 @@ BEGIN
       count(j.id) AS active_job_count
     FROM organizations o
     JOIN jobs j ON o.id = j.organization_id
-    WHERE j.date_posted >= min_date
+    WHERE j.date_posted IS NOT NULL
+      AND btrim(j.date_posted) <> ''
+      -- Match ISO date-only or ISO-8601 datetime strings produced by scrapers/seeders.
+      AND j.date_posted ~ '^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}(:\d{2})?)?)?$'
+      AND j.date_posted::timestamp with time zone >= min_date
       AND (p_search IS NULL OR o.name ILIKE '%' || p_search || '%' OR o.description ILIKE '%' || p_search || '%')
       AND (p_sse_only IS FALSE OR o.is_sse = true)
       AND (p_provinces IS NULL OR cardinality(p_provinces) = 0 OR o.province = ANY(p_provinces))
@@ -127,7 +147,7 @@ BEGIN
       FROM jsonb_array_elements(COALESCE(oc.values_rated, '[]'::jsonb)) AS elem
       WHERE (elem->>'value') IS NOT NULL
     ) x
-    WHERE authenticated_user_id IS NOT NULL AND oc.values_rated IS NOT NULL AND jsonb_array_length(oc.values_rated) > 0
+    WHERE oc.values_rated IS NOT NULL AND jsonb_array_length(oc.values_rated) > 0
     GROUP BY oc.id, x.val
   ),
   weighted_value_base AS (
@@ -189,7 +209,13 @@ BEGIN
   OFFSET v_offset;
 END;
 $$;
+
 GRANT EXECUTE ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text)
   TO anon, authenticated, service_role;
+
 COMMENT ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text) IS
-  'Returns organizations with active job counts, optional value-match scoring, filtering, and pagination. Security: Uses auth.uid() internally; p_user_id parameter is ignored to prevent unauthorized profile access.';
+  'Returns organizations with active job counts, optional value-match scoring, filtering, and pagination. '
+  'Date filter: only ISO-shaped jobs.date_posted values are compared to min_date; null/empty/non-ISO rows are excluded. '
+  'Anonymous access: EXECUTE is granted to anon for the public org index; when auth.uid() IS NULL, '
+  'profile data is not read and value_score/shared_values are NULL. '
+  'Compatibility: p_user_id is retained in the signature for existing RPC callers but ignored; auth.uid() is used for profile access.';
