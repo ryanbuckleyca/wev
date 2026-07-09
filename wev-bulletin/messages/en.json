@@ -857,14 +857,6 @@
         "selectType": "Select a type...",
         "values": "Search and select work values"
       },
-      "types": {
-        "nonprofit": "Nonprofit",
-        "cooperative": "Cooperative",
-        "socialenterprise": "Social Enterprise",
-        "government": "Government",
-        "union": "Union",
-        "other": "Other"
-      },
       "columns": {
         "name": "Name",
         "slug": "Slug",

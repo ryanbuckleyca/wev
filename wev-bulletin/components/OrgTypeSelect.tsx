@@ -3,7 +3,6 @@
 import FormLabel from './FormLabel';
 import ErrorMessage from './ErrorMessage';
 import { ORG_TYPES } from '@/lib/organizations/constants';
-import { orgTypeI18nKey } from '@/lib/organizations/org-type';
 import { cn } from '@/lib/utils';
 
 interface OrgTypeSelectProps {
@@ -41,7 +40,7 @@ export default function OrgTypeSelect({
         <option value="">{placeholder}</option>
         {ORG_TYPES.map((orgType) => (
           <option key={orgType} value={orgType}>
-            {typeLabel(orgTypeI18nKey(orgType))}
+            {typeLabel(orgType)}
           </option>
         ))}
       </select>
