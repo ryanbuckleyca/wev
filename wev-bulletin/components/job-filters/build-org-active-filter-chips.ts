@@ -16,7 +16,7 @@ interface BuildOrgFilterChipsInput {
   onRemoveMunicipality: (municipality: string) => void;
   onRemoveType: (type: string) => void;
   /** next-intl t function scoped to the 'organizations' namespace */
-  tOrgs: { (key: string): string; has?: (key: string) => boolean };
+  tOrgs: { (key: string): string; has: (key: string) => boolean };
   /** next-intl t function scoped to the 'filters' namespace */
   tFilters: (key: string) => string;
 }

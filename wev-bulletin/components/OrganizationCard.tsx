@@ -101,7 +101,7 @@ function OrganizationCardHeader({
               className="ml-1 text-primary hover:underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
               aria-expanded={isExpanded}
             >
-              {isExpanded ? tCommon('showLess') : tCommon('showMore')}
+              {isExpanded ? showLessLabel : showMoreLabel}
             </button>
           </>
         ) : null}
@@ -113,15 +113,16 @@ function OrganizationCardHeader({
 interface CardDetailsProps {
   org: OrgIndexEntry;
   locale: string;
+  websiteLabel: string;
+  viewProfileLabel: string;
 }
 
-function OrganizationCardDetails({ org, locale }: CardDetailsProps) {
-  const t = useTranslations('organizations');
+function OrganizationCardDetails({ org, locale, websiteLabel, viewProfileLabel }: CardDetailsProps) {
   return (
     <div className="py-4 px-5 bg-card flex flex-col gap-2">
       {org.website ? (
         <div className="flex gap-1.5 text-sm">
-          <span className="text-muted-foreground">{t('website')}</span>
+          <span className="text-muted-foreground">{websiteLabel}</span>
           <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
             {org.website}
           </a>
@@ -129,7 +130,7 @@ function OrganizationCardDetails({ org, locale }: CardDetailsProps) {
       ) : null}
       <div className="text-sm">
         <Link href={`/${locale}/organizations/${org.slug}`} className="text-primary hover:underline">
-          {t('viewProfile')}
+          {viewProfileLabel}
         </Link>
       </div>
     </div>
@@ -140,10 +141,27 @@ function OrganizationCardDetails({ org, locale }: CardDetailsProps) {
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function OrganizationCard({ org, locale, sseBadgeLabel, jobCountLabel }: Props) {
-  const t = useTranslations();
-  const { user } = useAuth();
+export default function OrganizationCard({
+  org,
+  locale,
+  sseBadgeLabel,
+  jobCountLabel,
+  noDescriptionLabel,
+  websiteLabel,
+  viewProfileLabel,
+  showMoreLabel,
+  showLessLabel,
+  isLoggedIn,
+  translateTooltip,
+}: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const getTypeLabel = (type: string | null) => {
+    if (!type) return '';
+    const key = `type.${type}` as const;
+    const translation = translateTooltip(key);
+    return translation === key ? type : translation;
+  };
 
   const scoreData = useMemo(() => {
     if (org.value_score == null) return null;
@@ -152,7 +170,7 @@ export default function OrganizationCard({ org, locale, sseBadgeLabel, jobCountL
 
   // Only build the tooltip when the user is logged in and there's a score to show.
   const matchTooltipContent = useMemo(() => {
-    if (!user || !scoreData) return null;
+    if (!isLoggedIn || !scoreData) return null;
     return (
       <MatchDetailsTooltip
         totalMatchPercentage={scoreData.values}
@@ -169,10 +187,10 @@ export default function OrganizationCard({ org, locale, sseBadgeLabel, jobCountL
         sharedValues={org.shared_values || []}
         sharedSkills={[]}
         skillTerms={{}}
-        translate={(key, values) => t(key, values)}
+        translate={(key, values) => translateTooltip(key, values)}
       />
     );
-  }, [user, scoreData, org.values_list, org.shared_values, t]);
+  }, [isLoggedIn, scoreData, org.values_list, org.shared_values, translateTooltip]);
 
   const hasFooter = Boolean(org.values_list?.length);
 
@@ -183,13 +201,22 @@ export default function OrganizationCard({ org, locale, sseBadgeLabel, jobCountL
         locale={locale}
         sseBadgeLabel={sseBadgeLabel}
         jobCountLabel={jobCountLabel}
+        noDescriptionLabel={noDescriptionLabel}
+        showMoreLabel={showMoreLabel}
+        showLessLabel={showLessLabel}
         hasFooter={hasFooter}
         isExpanded={isExpanded}
         onExpandedChange={setIsExpanded}
+        getTypeLabel={getTypeLabel}
       />
 
       <Collapsible isOpen={isExpanded}>
-        <OrganizationCardDetails org={org} locale={locale} />
+        <OrganizationCardDetails
+          org={org}
+          locale={locale}
+          websiteLabel={websiteLabel}
+          viewProfileLabel={viewProfileLabel}
+        />
       </Collapsible>
 
       {hasFooter && (

@@ -65,7 +65,8 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     parseAsArrayOf(parseAsString).withDefault([]),
   );
   const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
-  const [sortBy, setSortBy] = useQueryState('sortBy', parseAsString.withDefault('value-match-desc'));
+  // Default to empty string - let the consuming component resolve the actual default based on auth state
+  const [sortBy, setSortBy] = useQueryState('sortBy', parseAsString.withDefault(''));
 
   const filters = useMemo<OrganizationFilters>(
     () => ({

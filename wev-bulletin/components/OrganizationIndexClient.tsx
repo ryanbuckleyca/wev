@@ -29,6 +29,7 @@ export default function OrganizationIndexClient({
   initialHasMatchScores = false,
 }: OrganizationIndexClientProps) {
   const t = useTranslations('organizations');
+  const tCommon = useTranslations('common');
   const { user, loading: authLoading } = useAuth();
 
   const [filtersExpanded, setFiltersExpanded] = useState(false);
@@ -112,6 +113,13 @@ export default function OrganizationIndexClient({
                   locale={locale}
                   sseBadgeLabel={t('sseBadgeLabel')}
                   jobCountLabel={t('jobs', { count: org.active_job_count })}
+                  noDescriptionLabel={t('noDescription')}
+                  websiteLabel={t('website')}
+                  viewProfileLabel={t('viewProfile')}
+                  showMoreLabel={tCommon('showMore')}
+                  showLessLabel={tCommon('showLess')}
+                  isLoggedIn={Boolean(user)}
+                  translateTooltip={(key, values) => t(key, values as Record<string, string | number>)}
                 />
               ))}
             </div>

@@ -114,7 +114,7 @@ export function useOrganizationData(
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [fetchKey]);
+  }, [fetchKey, locale, currentPage, sortBy, filters]);
 
   return { orgs, total, totalAvailable, loading, error };
 }
