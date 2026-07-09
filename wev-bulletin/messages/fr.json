@@ -2,9 +2,42 @@
   "organizations": {
     "title": "Profil de l'organisation",
     "indexTitle": "Organisations",
-    "noActiveListings": "Aucune organisation n'a d'offres d'emploi actives en ce moment.",
+    "noActiveListings": "Aucune organisation n'a actuellement d'offres d'emploi actives.",
+    "loadFailed": "Échec du chargement des organisations. Veuillez réessayer.",
+    "searchPlaceholder": "Rechercher des organisations par nom ou description...",
+    "searchLabel": "Rechercher des organisations",
+    "clearSearch": "Effacer la recherche",
+    "hideFilters": "Masquer les filtres",
+    "showFilters": "Afficher les filtres",
+    "of": "sur",
+    "organization": "organisation",
+    "organizations": "organisations",
+    "organizationCount": "{count, plural, =0 {Aucune organisation} one {1 organisation} other {# organisations}}",
+    "organizationType": "Type d'organisation",
+    "type": {
+      "nonprofit": "À but non lucratif",
+      "cooperative": "Coopérative",
+      "socialenterprise": "Entreprise sociale",
+      "government": "Gouvernement",
+      "union": "Syndicat",
+      "other": "Autre"
+    },
+    "nonprofit": "À but non lucratif",
+    "cooperative": "Coopérative",
+    "socialenterprise": "Entreprise sociale",
+    "government": "Gouvernement",
+    "union": "Syndicat",
+    "other": "Autre",
+    "noOrganizationTypes": "Aucun type d'organisation disponible",
+    "clearAllFilters": "Effacer tous les filtres",
+    "showNonSse": "Afficher les organisations non-ÉSS",
     "noJobsForOrg": "Cette organisation n'a aucune offre d'emploi active en ce moment.",
-    "jobs": "{count, plural, =1 {1 emploi} other {# emplois}}",
+    "jobs": "{count, plural, =0 {Aucun emploi actif} one {1 emploi actif} other {# emplois actifs}}",
+    "jobsFiltered": "{filtered} / {total} {total, plural, one {emploi actif} other {emplois actifs}}",
+    "showOnlySseJobs": "Emplois ÉSS seulement",
+    "website": "Site web",
+    "viewProfile": "Voir le profil de l'organisation",
+    "noDescription": "Aucune description disponible.",
     "visitWebsite": "Visiter le site web",
     "sseBadgeLabel": "Organisation d'économie sociale",
     "sseYes": "Il s'agit d'une organisation d'économie sociale.",
@@ -37,6 +70,7 @@
     "showFilters": "Filtres",
     "clearAllFilters": "Effacer tous les filtres",
     "useSuggestedFilters": "Utiliser les filtres suggérés",
+    "showNonSse": "Afficher les emplois non-ÉSS",
     "sse": {
       "label": "Afficher uniquement les emplois SSE",
       "description": "SSE = Économie solidaire. Nous étiquetons les emplois SSE en fonction des principes publiés.",
@@ -74,12 +108,12 @@
     },
     "province": {
       "label": "Province",
-      "noData": "Aucune donnée de province disponible. Exécutez le scraper pour remplir les données de localisation."
+      "noData": "Aucune donnée de province disponible pour le moment."
     },
     "municipality": {
       "label": "Municipalité",
       "showingFromSelected": "(affichage des municipalités des provinces sélectionnées)",
-      "noData": "Aucune donnée de municipalité disponible. Exécutez le scraper pour remplir les données de localisation.",
+      "noData": "Aucune donnée de municipalité disponible pour le moment.",
       "selectProvince": "Sélectionnez une province pour voir les municipalités",
       "profileDefault": "Lieu du profil utilisé : {city}.",
       "profileOverride": "Lieu du profil : {city}. Vous pouvez remplacer ce filtre ici.",
@@ -117,6 +151,8 @@
       "posted": "Publié :",
       "sseShort": "SSE",
       "sseOnly": "SSE : uniquement",
+      "allOrgs": "Tous les org.",
+      "allJobs": "Tous les emplois",
       "salaryListedOnly": "Salaire : uniquement listé",
       "search": "Recherche :",
       "work": "Travail :",
@@ -144,7 +180,8 @@
     "skillMatch": "Compétences",
     "salaryHighToLow": "Salaire desc",
     "salaryLowToHigh": "Salaire asc",
-    "orgAZ": "Org A ↔ Z"
+    "orgAZ": "Org A-Z",
+    "orgZA": "Org Z-A"
   },
   "matchDetails": {
     "totalMatch": "Correspondance totale",
@@ -482,7 +519,11 @@
     "loading": "Chargement...",
     "close": "Fermer",
     "cancel": "Annuler",
-    "confirm": "Confirmer"
+    "confirm": "Confirmer",
+    "expand": "développer",
+    "collapse": "réduire",
+    "showMore": "Afficher plus",
+    "showLess": "Afficher moins"
   },
   "passwordStrength": {
     "strength": "Force :",

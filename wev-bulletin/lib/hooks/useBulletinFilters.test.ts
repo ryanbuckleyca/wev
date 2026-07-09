@@ -42,14 +42,14 @@ describe('useBulletinFilters', () => {
   it('initializes with default values', () => {
     const { result } = renderHook(() => useBulletinFilters());
     expect(result.current.searchQuery).toBe('');
-    expect(result.current.showOnlySse).toBe(true);
+    expect(result.current.showNonSse).toBe(false);
     expect(result.current.postedWithin).toBe('2-weeks');
     expect(result.current.selectedOrganizations).toEqual([]);
   });
 
   it('identifies if any filters are active', () => {
     const { result } = renderHook(() => useBulletinFilters());
-    // Default showOnlySse is true, which counts as a filter
+    // Default state: postedWithin='2-weeks' is an active filter
     expect(result.current.hasAnyFilters).toBe(true);
   });
 
@@ -61,7 +61,7 @@ describe('useBulletinFilters', () => {
     });
 
     expect(result.current.searchQuery).toBe('');
-    expect(result.current.showOnlySse).toBe(false);
+    expect(result.current.showNonSse).toBe(false);
     expect(result.current.postedWithin).toBe('any');
   });
 
@@ -72,7 +72,7 @@ describe('useBulletinFilters', () => {
       result.current.applySuggestedDefaults();
     });
 
-    expect(result.current.showOnlySse).toBe(true);
+    expect(result.current.showNonSse).toBe(false);
     expect(result.current.postedWithin).toBe('2-weeks');
   });
 

@@ -5,7 +5,7 @@ import { buildActiveFilterChips, type ActiveFilterChipInputs } from './build-act
 function createInput(overrides: Partial<ActiveFilterChipInputs> = {}): ActiveFilterChipInputs {
   return {
     postedWithin: 'any',
-    showOnlySse: false,
+    showNonSse: false,
     showJobsWithoutSalary: true,
     searchQuery: '',
     selectedWorkTypes: [],
@@ -16,7 +16,7 @@ function createInput(overrides: Partial<ActiveFilterChipInputs> = {}): ActiveFil
     selectedSources: [],
     selectedLanguages: [],
     onPostedWithinChange: vi.fn(),
-    onShowOnlySseChange: vi.fn(),
+    onShowNonSseChange: vi.fn(),
     onShowJobsWithoutSalaryChange: vi.fn(),
     onSearchChange: vi.fn(),
     onWorkTypesChange: vi.fn(),
@@ -47,7 +47,7 @@ describe('buildActiveFilterChips', () => {
   it('builds chips in stable order with remove handlers', () => {
     const input = createInput({
       postedWithin: '1-week',
-      showOnlySse: true,
+      showNonSse: true,
       showJobsWithoutSalary: false,
       searchQuery: 'climate policy',
       selectedWorkTypes: ['remote'],
@@ -60,7 +60,7 @@ describe('buildActiveFilterChips', () => {
 
     expect(chips.map((chip) => chip.id)).toEqual([
       'posted-within',
-      'sse',
+      'nonSse',
       'salary',
       'search',
       'work-type-remote',

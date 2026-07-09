@@ -5,17 +5,23 @@ import ResponsivePagination from 'react-responsive-pagination';
 import { twMerge } from 'tailwind-merge';
 import { dropEllipsis } from 'react-responsive-pagination/narrowBehaviour';
 
-import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 interface PaginationProps {
+  currentPage: number;
+  onPageChange: (page: number) => void;
   totalPages: number;
   totalItems: number;
   itemsPerPage: number;
 }
 
-export default function Pagination({ totalPages, totalItems, itemsPerPage }: PaginationProps) {
-  const { currentPage, setCurrentPage: onPageChange } = useBulletinFilterContext();
+export default function Pagination({
+  currentPage,
+  onPageChange,
+  totalPages,
+  totalItems,
+  itemsPerPage,
+}: PaginationProps) {
   const t = useTranslations();
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);

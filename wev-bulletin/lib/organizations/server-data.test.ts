@@ -110,14 +110,30 @@ describe('organizations/server-data', () => {
       error: null,
     });
 
-    const result = await fetchOrganizationIndex(1);
+    const result = await fetchOrganizationIndex({ page: 1 });
 
-    expect(mockRpc).toHaveBeenCalledWith('get_active_organizations', {
+    // First call: the actual filtered page
+    expect(mockRpc).toHaveBeenNthCalledWith(1, 'get_active_organizations', {
       min_date: '2026-05-16T00:00:00.000Z',
       p_limit: 20,
       p_offset: 0,
+      p_search: null,
+      p_sse_only: true,
+      p_provinces: null,
+      p_municipalities: null,
+      p_org_types: null,
+      p_user_id: null,
+      p_sort: 'org-asc',
     });
+    // Second call: denominator (p_sse_only: false, p_limit: 1)
+    expect(mockRpc).toHaveBeenNthCalledWith(2, 'get_active_organizations', expect.objectContaining({
+      p_sse_only: false,
+      p_limit: 1,
+      p_offset: 0,
+    }));
+    expect(mockRpc).toHaveBeenCalledTimes(2);
     expect(result.total).toBe(3);
+    expect(result.totalAvailable).toBe(3);
     expect(result.orgs.map((org) => org.name)).toEqual(['Alpha Org', 'Zeta Org']);
     expect(result.orgs.map((org) => org.active_job_count)).toEqual([1, 2]);
   });
@@ -139,7 +155,7 @@ describe('organizations/server-data', () => {
       count: 1,
     });
 
-    const result = await getOrganizationJobs(42, 2);
+    const result = await getOrganizationJobs({ orgId: 42, page: 2 });
 
     expect(mockFrom).toHaveBeenCalledWith('jobs');
     expect(jobsQuery.eq).toHaveBeenCalledWith('organization_id', 42);
