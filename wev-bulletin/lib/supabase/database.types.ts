@@ -376,9 +376,12 @@ export type Database = {
           description: string | null;
           id: number;
           is_sse: boolean | null;
+          lat: number | null;
+          lng: number | null;
           location: string | null;
           logo_url: string | null;
           mission_statement: string | null;
+          municipality: string | null;
           name: string;
           slug: string;
           sse_details: Json | null;
@@ -388,15 +391,20 @@ export type Database = {
           values_list: string[] | null;
           values_rated: Json | null;
           website: string | null;
+          province: string | null;
+          geocode_accuracy_type: string | null;
         };
         Insert: {
           created_at?: string;
           description?: string | null;
           id?: number;
           is_sse?: boolean | null;
+          lat?: number | null;
+          lng?: number | null;
           location?: string | null;
           logo_url?: string | null;
           mission_statement?: string | null;
+          municipality?: string | null;
           name: string;
           slug: string;
           sse_details?: Json | null;
@@ -406,15 +414,20 @@ export type Database = {
           values_list?: string[] | null;
           values_rated?: Json | null;
           website?: string | null;
+          province?: string | null;
+          geocode_accuracy_type?: string | null;
         };
         Update: {
           created_at?: string;
           description?: string | null;
           id?: number;
           is_sse?: boolean | null;
+          lat?: number | null;
+          lng?: number | null;
           location?: string | null;
           logo_url?: string | null;
           mission_statement?: string | null;
+          municipality?: string | null;
           name?: string;
           slug?: string;
           sse_details?: Json | null;
@@ -424,6 +437,8 @@ export type Database = {
           values_list?: string[] | null;
           values_rated?: Json | null;
           website?: string | null;
+          province?: string | null;
+          geocode_accuracy_type?: string | null;
         };
         Relationships: [];
       };

@@ -1,22 +1,16 @@
 'use client';
 
 import SearchBar from './SearchBar';
+import type { ActiveFilterChip } from './JobSearch';
 
-export interface ActiveFilterChip {
-  id: string;
-  label: string;
-  onRemove?: () => void;
-  title?: string;
-}
-
-interface JobSearchProps {
+interface OrganizationSearchProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   filtersExpanded: boolean;
   onFiltersExpandedChange: (expanded: boolean) => void;
   activeFilterChips: ActiveFilterChip[];
-  filteredJobsCount: number;
-  totalJobsCount: number;
+  filteredCount: number;
+  totalCount: number;
   loading?: boolean;
   hasAnyFilters: boolean;
   isSuggestedDefaults: boolean;
@@ -24,45 +18,43 @@ interface JobSearchProps {
   onApplySuggestedDefaults: () => void;
 }
 
-export default function JobSearch({
+export default function OrganizationSearch({
   searchQuery,
   onSearchChange,
   filtersExpanded,
   onFiltersExpandedChange,
   activeFilterChips,
-  filteredJobsCount,
-  totalJobsCount,
+  filteredCount,
+  totalCount,
   loading = false,
   hasAnyFilters,
   isSuggestedDefaults,
   onClearAllFilters,
   onApplySuggestedDefaults,
-}: JobSearchProps) {
+}: OrganizationSearchProps) {
   return (
     <SearchBar
       searchQuery={searchQuery}
       onSearchChange={onSearchChange}
-      labelKey="search.label"
-      placeholderKey="search.placeholder"
-      inputId="search"
+      labelKey="organizations.searchLabel"
+      placeholderKey="organizations.searchPlaceholder"
+      inputId="org-search"
       filtersExpanded={filtersExpanded}
       onFiltersExpandedChange={onFiltersExpandedChange}
-      filterControlsId="job-filters-content"
+      filterControlsId="org-filters-content"
       activeFilterChips={activeFilterChips}
       countConfig={{
-        filtered: filteredJobsCount,
-        total: totalJobsCount,
-        ofKey: 'pagination.of',
-        singularKey: 'pagination.job',
-        pluralKey: 'pagination.jobs',
+        filtered: filteredCount,
+        total: totalCount,
+        ofKey: 'organizations.of',
+        singularKey: 'organizations.organization',
+        pluralKey: 'organizations.organizations',
       }}
       loading={loading}
       hasAnyFilters={hasAnyFilters}
       isSuggestedDefaults={isSuggestedDefaults}
       onClearAllFilters={onClearAllFilters}
       onApplySuggestedDefaults={onApplySuggestedDefaults}
-      filterToggleWithTestId
     />
   );
 }
-

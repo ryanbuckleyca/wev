@@ -1,11 +1,17 @@
 import { Leaf1Solid, Leaf1Outlined } from '@lineiconshq/free-icons';
 import { Lineicons } from '@lineiconshq/react-lineicons';
+import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
 import type { OrgRecord } from '@/lib/organizations/types';
+import OrganizationValuesPills from './OrganizationValuesPills';
 
 interface Props {
   org: OrgRecord;
-  t: (key: string) => string;
+  /**
+   * next-intl translation function scoped to the **'organizations'** namespace.
+   * Must be created with `getTranslations({ locale, namespace: 'organizations' })`.
+   */
+  t: ReturnType<typeof useTranslations<'organizations'>>;
 }
 
 export default function OrganizationProfileHeader({ org, t }: Props) {
@@ -97,15 +103,8 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
       {org.values_list && org.values_list.length > 0 && (
         <div className="mt-8 pt-8 border-t border-border">
           <h2 className="text-lg font-semibold text-foreground mb-3">{t('values')}</h2>
-          <div className="flex flex-wrap gap-2">
-            {org.values_list.map((value) => (
-              <span
-                key={value}
-                className="bg-primary-tint text-primary-text px-3 py-1 rounded-wev-pill text-sm font-medium"
-              >
-                {value}
-              </span>
-            ))}
+          <div className="flex flex-wrap gap-2 -ml-1">
+            <OrganizationValuesPills values={org.values_list} />
           </div>
         </div>
       )}

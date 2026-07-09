@@ -3,8 +3,41 @@
     "title": "Organization Profile",
     "indexTitle": "Organizations",
     "noActiveListings": "No organizations currently have active job listings.",
+    "loadFailed": "Failed to load organizations. Please try again.",
+    "searchPlaceholder": "Search organizations by name or description...",
+    "searchLabel": "Search organizations",
+    "clearSearch": "Clear search",
+    "hideFilters": "Hide filters",
+    "showFilters": "Show filters",
+    "of": "of",
+    "organization": "organization",
+    "organizations": "organizations",
+    "organizationCount": "{count, plural, =0 {No organizations} one {1 organization} other {# organizations}}",
+    "organizationType": "Organization Type",
+    "type": {
+      "nonprofit": "Nonprofit",
+      "cooperative": "Cooperative",
+      "socialenterprise": "Social Enterprise",
+      "government": "Government",
+      "union": "Union",
+      "other": "Other"
+    },
+    "nonprofit": "Nonprofit",
+    "cooperative": "Cooperative",
+    "socialenterprise": "Social Enterprise",
+    "government": "Government",
+    "union": "Union",
+    "other": "Other",
+    "noOrganizationTypes": "No organization types available",
+    "clearAllFilters": "Clear all filters",
+    "showNonSse": "Show non-SSE organizations",
     "noJobsForOrg": "This organization has no active job listings at the moment.",
-    "jobs": "{count, plural, =1 {1 job} other {# jobs}}",
+    "jobs": "{count, plural, =0 {No active jobs} one {1 active job} other {# active jobs}}",
+    "jobsFiltered": "{filtered} / {total} active {total, plural, one {job} other {jobs}}",
+    "showOnlySseJobs": "SSE jobs only",
+    "website": "Website",
+    "viewProfile": "View organization profile",
+    "noDescription": "No description available.",
     "visitWebsite": "Visit website",
     "sseBadgeLabel": "Solidarity Economy Organization",
     "sseYes": "This is a Solidarity Economy Organization.",
@@ -37,6 +70,7 @@
     "showFilters": "Filters",
     "clearAllFilters": "Clear all filters",
     "useSuggestedFilters": "Use suggested filters",
+    "showNonSse": "Show non-SSE jobs",
     "sse": {
       "label": "Show only SSE jobs",
       "description": "SSE = Solidarity Economy. We tag SSE jobs based on published principles.",
@@ -74,12 +108,12 @@
     },
     "province": {
       "label": "Province",
-      "noData": "No province data available. Run the scraper to populate location data."
+      "noData": "No province data available yet."
     },
     "municipality": {
       "label": "Municipality",
       "showingFromSelected": "(showing municipalities from selected provinces)",
-      "noData": "No municipality data available. Run the scraper to populate location data.",
+      "noData": "No municipality data available yet.",
       "selectProvince": "Select a province to see municipalities",
       "profileDefault": "Using your profile location: {city}.",
       "profileOverride": "Profile location: {city}. You can override this filter here.",
@@ -117,6 +151,8 @@
       "posted": "Posted:",
       "sseShort": "SSE",
       "sseOnly": "SSE: only",
+      "allOrgs": "All orgs",
+      "allJobs": "All jobs",
       "salaryListedOnly": "Salary: listed only",
       "search": "Search:",
       "work": "Work:",
@@ -144,7 +180,8 @@
     "skillMatch": "Skills",
     "salaryHighToLow": "Salary desc",
     "salaryLowToHigh": "Salary asc",
-    "orgAZ": "Org A ↔ Z"
+    "orgAZ": "Org A-Z",
+    "orgZA": "Org Z-A"
   },
   "matchDetails": {
     "totalMatch": "Total Match",
@@ -482,7 +519,11 @@
     "loading": "Loading...",
     "close": "Close",
     "cancel": "Cancel",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "expand": "expand",
+    "collapse": "collapse",
+    "showMore": "Show more",
+    "showLess": "Show less"
   },
   "ariaLabels": {
     "themeToggle": {

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getOrganizationBySlug, getOrganizationJobs } from '@/lib/organizations/server-data';
@@ -5,6 +6,7 @@ import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
 import OrganizationJobRow from '@/components/OrganizationJobRow';
 import OrganizationProfileHeader from '@/components/OrganizationProfileHeader';
 import SimplePagination from '@/components/SimplePagination';
+import SseToggleLink from '@/components/SseToggleLink';
 import PageLayout from '@/components/PageLayout';
 
 interface PageProps {
@@ -33,18 +35,35 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
     typeof resolvedSearchParams.page === 'string' ? parseInt(resolvedSearchParams.page, 10) : 1;
   const page = isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
 
+  // SSE filter — default false on detail page (show all jobs, let user opt in)
+  const sseOnly = resolvedSearchParams.sse === 'true';
+
   const org = await getOrganizationBySlug(slug);
 
   if (!org) {
     notFound();
   }
 
-  const { jobs, total } = await getOrganizationJobs(org.id, page);
-  const totalPages = Math.ceil(total / ORG_JOBS_PER_PAGE);
+  const { jobs, total: totalFilteredJobs, totalAvailable: totalAllJobs } = await getOrganizationJobs({ orgId: org.id, page, sseOnly });
+  const totalPages = Math.ceil(totalFilteredJobs / ORG_JOBS_PER_PAGE);
 
   if (page > totalPages && page > 1) {
     notFound();
   }
+
+  const baseUrl = `/${locale}/organizations/${slug}`;
+  // Extra params forwarded to pagination links so SSE filter survives page nav
+  const paginationParams: Record<string, string> = sseOnly ? { sse: 'true' } : {};
+
+  // Toggle href: flipping SSE always resets to page 1
+  const sseToggleHref = sseOnly ? baseUrl : `${baseUrl}?sse=true`;
+
+  // Show "X / Y active jobs" when the SSE filter is hiding some results.
+  // When all jobs are SSE (or filter is off), show the plain count.
+  const jobsHeading =
+    sseOnly && totalAllJobs !== totalFilteredJobs
+      ? t('jobsFiltered', { filtered: totalFilteredJobs, total: totalAllJobs })
+      : t('jobs', { count: totalAllJobs });
 
   return (
     <PageLayout maxWidth="lg">
@@ -52,7 +71,16 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
 
       {/* Jobs Section */}
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground mb-6">{t('jobs', { count: total })}</h2>
+        {/* Header row: count + SSE toggle */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h2 className="text-2xl font-bold text-foreground">{jobsHeading}</h2>
+
+          <SseToggleLink
+            href={sseToggleHref}
+            isActive={sseOnly}
+            label={t('showOnlySseJobs')}
+          />
+        </div>
 
         {jobs.length === 0 ? (
           <div className="bg-muted p-8 rounded-wev-card text-center text-muted-foreground">
@@ -66,11 +94,12 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
           </div>
         )}
 
-        {total > ORG_JOBS_PER_PAGE && (
+        {totalFilteredJobs > ORG_JOBS_PER_PAGE && (
           <SimplePagination
             currentPage={page}
             totalPages={totalPages}
-            baseUrl={`/${locale}/organizations/${slug}`}
+            baseUrl={baseUrl}
+            extraParams={paginationParams}
           />
         )}
       </div>

@@ -26,8 +26,8 @@ const mockControls = {
   setSelectedWorkTypes: vi.fn(),
   selectedLanguages: [] as string[],
   setSelectedLanguages: vi.fn(),
-  showOnlySse: true,
-  setShowOnlySse: vi.fn(),
+  showNonSse: true,
+  setShowNonSse: vi.fn(),
   showJobsWithoutSalary: false,
   setShowJobsWithoutSalary: vi.fn(),
   postedWithin: '1-week',
@@ -119,7 +119,7 @@ describe('useJobFiltersModel', () => {
     expect(result.current.totalJobsCountResolved).toBe(2);
     expect(result.current.activeFilterChips.map((chip) => chip.id)).toEqual([
       'posted-within',
-      'sse',
+      'nonSse',
       'salary',
       'search',
       'work-type-remote',

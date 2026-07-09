@@ -9,7 +9,7 @@ type TranslateFn = (key: string, values?: Record<string, string | number>) => st
 
 export type ActiveFilterChipInputs = {
   postedWithin: PostedWithinValue;
-  showOnlySse: boolean;
+  showNonSse: boolean;
   showJobsWithoutSalary: boolean;
   searchQuery: string;
   selectedWorkTypes: string[];
@@ -20,7 +20,7 @@ export type ActiveFilterChipInputs = {
   selectedSources: string[];
   selectedLanguages: string[];
   onPostedWithinChange: (value: PostedWithinValue) => void;
-  onShowOnlySseChange: (value: boolean) => void;
+  onShowNonSseChange: (value: boolean) => void;
   onShowJobsWithoutSalaryChange: (value: boolean) => void;
   onSearchChange: (value: string) => void;
   onWorkTypesChange: (value: string[]) => void;
@@ -74,12 +74,13 @@ export function buildActiveFilterChips(
     });
   }
 
-  if (input.showOnlySse) {
+  // showNonSse=true means user opted into seeing non-SSE jobs — show a chip so they can remove it
+  if (input.showNonSse) {
     chips.push({
-      id: 'sse',
-      label: getTranslationOrFallback(t, 'filters.chips.sseShort', 'SSE'),
-      title: t('filters.chips.sseOnly'),
-      onRemove: () => input.onShowOnlySseChange(false),
+      id: 'nonSse',
+      label: getTranslationOrFallback(t, 'filters.chips.allJobs', 'All jobs'),
+      title: t('filters.chips.allJobs'),
+      onRemove: () => input.onShowNonSseChange(false),
     });
   }
 

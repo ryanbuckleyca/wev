@@ -300,7 +300,9 @@ test.describe("Job board", () => {
   }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
-    await jobBoardPage.setBooleanFilter("sse", false);
+    // Note: The filter semantics changed from "SSE only" to "Show non-SSE"
+    // Setting to true now means "show non-SSE jobs" (reveals them)
+    await jobBoardPage.setBooleanFilter("sse", true);
     await jobBoardPage.waitForResultsToUpdate();
     await expectVisibleResults(
       jobBoardPage,

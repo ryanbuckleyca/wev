@@ -44,8 +44,8 @@ export interface BulletinFilterControls {
   setSelectedWorkTypes: QueryStateSetter<string[]>;
   selectedLanguages: string[];
   setSelectedLanguages: QueryStateSetter<string[]>;
-  showOnlySse: boolean;
-  setShowOnlySse: QueryStateSetter<boolean>;
+  showNonSse: boolean;
+  setShowNonSse: QueryStateSetter<boolean>;
   showJobsWithoutSalary: boolean;
   setShowJobsWithoutSalary: QueryStateSetter<boolean>;
   postedWithin: PostedWithinSelection;
@@ -147,7 +147,8 @@ export function useBulletinFilters(
     },
     [setLangQuery],
   );
-  const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true));
+  // showNonSse defaults to false → SSE-only view by default, without an active filter
+  const [showNonSse, setShowNonSse] = useQueryState('nonSse', parseAsBoolean.withDefault(false));
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState(
     'salary',
     parseAsBoolean.withDefault(true),
@@ -265,7 +266,7 @@ export function useBulletinFilters(
       selectedSources,
       selectedWorkTypes,
       selectedLanguages,
-      showOnlySse,
+      showNonSse,
       showJobsWithoutSalary,
       postedWithin,
     }),
@@ -278,7 +279,7 @@ export function useBulletinFilters(
       selectedSources,
       selectedWorkTypes,
       selectedLanguages,
-      showOnlySse,
+      showNonSse,
       showJobsWithoutSalary,
       postedWithin,
     ],
@@ -300,7 +301,7 @@ export function useBulletinFilters(
     selectedSources.length > 0 ||
     selectedWorkTypes.length > 0 ||
     selectedLanguages.length > 0 ||
-    showOnlySse ||
+    showNonSse ||
     !showJobsWithoutSalary ||
     postedWithin !== 'any';
 
@@ -328,13 +329,13 @@ export function useBulletinFilters(
   const clearAllFilters = useCallback(() => {
     resetCommonFilters();
     void setSelectedWorkTypes([]);
-    void setShowOnlySse(false);
+    void setShowNonSse(false);
     void setShowJobsWithoutSalary(true);
     void setPostedWithin('any');
   }, [
     resetCommonFilters,
     setSelectedWorkTypes,
-    setShowOnlySse,
+    setShowNonSse,
     setShowJobsWithoutSalary,
     setPostedWithin,
   ]);
@@ -342,14 +343,14 @@ export function useBulletinFilters(
   const applySuggestedDefaults = useCallback(() => {
     resetCommonFilters();
     void setSelectedWorkTypes(profileWorkTypes);
-    void setShowOnlySse(true);
+    void setShowNonSse(false);
     void setShowJobsWithoutSalary(true);
     void setPostedWithin('2-weeks');
   }, [
     resetCommonFilters,
     profileWorkTypes,
     setSelectedWorkTypes,
-    setShowOnlySse,
+    setShowNonSse,
     setShowJobsWithoutSalary,
     setPostedWithin,
   ]);
@@ -372,8 +373,8 @@ export function useBulletinFilters(
     setSelectedWorkTypes,
     selectedLanguages,
     setSelectedLanguages,
-    showOnlySse,
-    setShowOnlySse,
+    showNonSse,
+    setShowNonSse,
     showJobsWithoutSalary,
     setShowJobsWithoutSalary,
     postedWithin,

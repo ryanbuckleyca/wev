@@ -77,6 +77,7 @@ describe('OrganizationDetailPage', () => {
     mockGetOrganizationJobs.mockResolvedValue({
       jobs: [],
       total: 0,
+      totalAvailable: 0,
     });
 
     const output = await OrganizationDetailPage({
