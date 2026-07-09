@@ -14,6 +14,14 @@
     "organizations": "organisations",
     "organizationCount": "{count, plural, =0 {Aucune organisation} one {1 organisation} other {# organisations}}",
     "organizationType": "Type d'organisation",
+    "type": {
+      "nonprofit": "À but non lucratif",
+      "cooperative": "Coopérative",
+      "socialenterprise": "Entreprise sociale",
+      "government": "Gouvernement",
+      "union": "Syndicat",
+      "other": "Autre"
+    },
     "nonprofit": "À but non lucratif",
     "cooperative": "Coopérative",
     "socialenterprise": "Entreprise sociale",
