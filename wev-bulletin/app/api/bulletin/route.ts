@@ -271,8 +271,8 @@ export async function GET(request: Request) {
       // Old API: sse present, use it (sse=true → onlySse=true)
       onlySse = sseParam === 'true';
     } else {
-      // Neither present: default to SSE-only
-      onlySse = true;
+      // Neither present: default to false (show all) for backward compatibility with old API
+      onlySse = false;
     }
 
     const noSalary = searchParams.get('nosal') === 'true';
