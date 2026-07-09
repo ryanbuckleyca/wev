@@ -130,7 +130,7 @@ export default function OrganizationIndexClient({
                   currentPage={controls.currentPage}
                   onPageChange={(p) => {
                     void controls.setCurrentPage(p);
-                    window.scrollTo({ top: 0, behavior: 'instant' });
+                    window.scrollTo({ top: 0, behavior: 'auto' });
                   }}
                   totalPages={totalPages}
                   totalItems={total}
