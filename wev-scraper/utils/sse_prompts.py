@@ -111,6 +111,42 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
 - Vague or missing compensation AND no volunteer/internship disclosure (if salary is "Volunteer" or role is internship, treat as disclosed)
 - Hidden unpaid work (e.g., "unpaid trial" rather than transparent volunteer role)"""
 
+ORG_EVALUATION_CRITERIA = """ORGANIZATION EVALUATION CRITERIA (evaluate the employer organization, NOT the job posting):
+
+MUST-HAVES (required for strong_yes or weak_yes):
+1. Clear purpose beyond profit - mission prioritizes people, community, or planet
+2. Impact described intentionally on the organization's website or public materials
+3. Governance model identifiable - nonprofit, cooperative, mutual, social enterprise, government, union, etc.
+
+NICE-TO-HAVES (strengthen toward strong_yes):
+4. Solidarity-driven culture - cooperation, mutual support, community language
+5. Participatory governance - workers/members have voice in decisions
+6. Mission reinvestment - surplus supports mission, not extractive shareholders
+7. Transparent public information about programs, governance, or annual impact
+
+AUTOMATIC NO SIGNALS (sse_rating should be "no"):
+- Pure profit-maximization with no visible social/community/environmental mission
+- Mission-neutral corporate language with only generic CSR
+- Cannot identify any social purpose from available public information
+
+IMPORTANT:
+- Use web search on the ORGANIZATION NAME and location. Do not refuse because the scraped job text is narrow.
+- The job title/description below are optional context only. Missing or specialist job text is NOT a reason to skip assessment.
+- If public information is limited, still return valid JSON with sse_rating "no", values [], and explain uncertainty in flags."""
+
+ORG_RATING_GUIDELINES = """Organization SSE rating guidelines:
+- "strong_yes": nonprofit, cooperative, community-based, or similar with clear SSE-aligned mission and values
+- "weak_yes": mission-driven organization with partial SSE alignment or mixed structure
+- "no": profit-focused, no discernible social mission, or insufficient public evidence of SSE alignment
+- Never refuse to answer. Always return JSON even when evidence is thin."""
+
+ORG_ASSESSMENT_JSON_INSTRUCTIONS = """IMPORTANT OUTPUT RULES:
+- Return ONLY one JSON object. No markdown fences, preamble, apologies, or requests for more input.
+- Never ask the user for a website URL or more information.
+- If information is limited, return JSON anyway: use sse_rating "no", values [], nullable text fields as null, and note gaps in flags.
+- Escape any double quotes inside string values.
+- Do not include trailing commas or text outside the JSON."""
+
 RATING_GUIDELINES = """Be strict: 
 - "strong_yes" requires organizational commitment to SSE (nonprofit, coop, community-based) with clear stated values. Volunteer/internship roles can be strong_yes when mission + organization alignment are clear.
 - "weak_yes" for: mission-driven roles in traditional corps, environmental/social roles, for-profits with transparent SSE alignment, OR volunteer/internship roles with partial SSE alignment.

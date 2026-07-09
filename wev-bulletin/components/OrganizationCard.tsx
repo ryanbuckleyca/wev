@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import { safeUrl } from '@/lib/url';
 import SseBadge from './SseBadge';
@@ -165,13 +166,10 @@ export default function OrganizationCard({
   translateTooltip,
 }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const tOrgs = useTranslations('organizations');
 
-  const getTypeLabel = (type: string | null) => {
-    if (!type) return '';
-    const key = `type.${type}` as const;
-    const translation = translateTooltip(key);
-    return translation === key ? type : translation;
-  };
+  const getTypeLabel = (orgType: string | null) =>
+    getOrganizationTypeLabel(orgType, tOrgs) ?? '';
 
   const scoreData = useMemo(() => {
     if (org.value_score == null) return null;

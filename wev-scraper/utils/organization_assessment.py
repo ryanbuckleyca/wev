@@ -13,10 +13,8 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from datetime import datetime, timezone
-from dataclasses import dataclass
-from typing import Any, List, TypedDict, Optional
+from typing import Any, List, TypedDict
 from urllib.parse import urlparse
 
 from llm.base import LLMProviderError
@@ -25,7 +23,12 @@ from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassifica
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.slug import generate_slug
 from utils.location_parser import parse_address_with_geocodio
-from utils.sse_prompts import EVALUATION_CRITERIA, JSON_INSTRUCTIONS, SSE_PRINCIPLES
+from utils.sse_prompts import (
+    ORG_ASSESSMENT_JSON_INSTRUCTIONS,
+    ORG_EVALUATION_CRITERIA,
+    ORG_RATING_GUIDELINES,
+    SSE_PRINCIPLES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,7 @@ _JSON_FIELDS = """{
   "website": "https://... or null",
   "description": "Brief organization description, max 300 characters, or null",
   "mission_statement": "Organization mission/purpose statement, max 500 characters, or null",
-  "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null",
+  "type": "One of: nonprofit, cooperative, social enterprise, government, union, other - or null",
   "values_raw": "Organization values and principles if found on their website, max 1000 characters, or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
   "sse_rating": "strong_yes or weak_yes or no",
@@ -57,19 +60,30 @@ _JSON_FIELDS = """{
   "flags": ["any concerns", "ambiguities", "missing info"]
 }"""
 
-_combined_prompt = """You are evaluating an organization from scraped job data.
-Your goal is to identify the organization, extract its values and mission,
- and assess its Solidarity Economy (SSE) alignment.
+_JSON_RETRY_SUFFIX = """
+Your previous response was not valid JSON.
+Return ONLY a single JSON object matching the schema above.
+Do not apologize, ask questions, or request more input.
+If evidence is limited, return JSON with sse_rating "no", values [], and explain in flags.
+"""
+
+_combined_prompt = """You are evaluating an EMPLOYER ORGANIZATION (not an individual job posting).
+Your goal is to identify the organization, extract its values and mission from public sources,
+and assess its Solidarity Economy (SSE) alignment.
 
 {SSE_PRINCIPLES}
 
-{EVALUATION_CRITERIA}
+{ORG_EVALUATION_CRITERIA}
+
+{ORG_RATING_GUIDELINES}
 
 ORGANIZATION DATA:
-  Raw name:    {raw_name}
+  Raw name:     {raw_name}
   Municipality: {municipality}
   Province:     {province}
-  Job title:   {job_title}
+
+OPTIONAL JOB CONTEXT (do not treat missing/narrow job text as a reason to refuse):
+  Job title:    {job_title}
   Description (truncated):
 {description}
 
@@ -82,14 +96,13 @@ ALLOWED VALUES for the "values" field (use ONLY labels from this list):
 RULES for the "values" field:
 - Values must exactly match labels from the ALLOWED VALUES list above (case-sensitive).
 - Choose 3 to 5 values that best describe the organization based on its mission,
-  description, website content, and overall purpose.
+  public materials, and overall purpose.
 - Do NOT include labels not in the ALLOWED VALUES list.
 - Do NOT include duplicates.
-- "Help Society" and "Community" are distinct — use both if evidence supports both.
-- Be honest: if you can't determine values from the available information,
-  return an empty array.
+- "Help Society" and "Community" are distinct - use both if evidence supports both.
+- If you cannot determine values, return an empty array.
 
-{JSON_INSTRUCTIONS}
+{ORG_ASSESSMENT_JSON_INSTRUCTIONS}
 """
 
 
@@ -129,19 +142,25 @@ def _build_assessment_prompt(
     province: str | None,
     job_title: str,
     description: str,
+    *,
+    retry: bool = False,
 ) -> str:
-    return _combined_prompt.format(
+    prompt = _combined_prompt.format(
         SSE_PRINCIPLES=SSE_PRINCIPLES,
-        EVALUATION_CRITERIA=EVALUATION_CRITERIA,
+        ORG_EVALUATION_CRITERIA=ORG_EVALUATION_CRITERIA,
+        ORG_RATING_GUIDELINES=ORG_RATING_GUIDELINES,
         raw_name=raw_name,
         municipality=municipality or "",
         province=province or "",
-        job_title=job_title,
-        description=description[:_PROMPT_DESC_MAX_CHARS],
+        job_title=job_title or "(not provided)",
+        description=description[:_PROMPT_DESC_MAX_CHARS] or "(not provided)",
         json_fields=_JSON_FIELDS,
         taxonomy_formatted=_format_taxonomy(),
-        JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
+        ORG_ASSESSMENT_JSON_INSTRUCTIONS=ORG_ASSESSMENT_JSON_INSTRUCTIONS,
     )
+    if retry:
+        prompt += _JSON_RETRY_SUFFIX
+    return prompt
 
 
 def _normalize_type(raw: Any) -> str | None:
@@ -205,7 +224,7 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         data = json.loads(text)
     except json.JSONDecodeError as exc:
         logger.warning(
-            "OrganizationAssessor: failed to parse JSON for %r: %s — response: %r",
+            "OrganizationAssessor: failed to parse JSON for %r: %s - response: %r",
             raw_name, exc, response_text[:200],
         )
         return None
@@ -229,7 +248,7 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     if not slug:
         slug = generate_slug(canonical_name)
         logger.warning(
-            "OrganizationAssessor: LLM returned no slug for canonical_name=%r raw_name=%r — generated slug=%r",
+            "OrganizationAssessor: LLM returned no slug for canonical_name=%r raw_name=%r - generated slug=%r",
             canonical_name, raw_name, slug,
         )
 
@@ -273,6 +292,27 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
     }
 
 
+def _build_assessment_fallback(raw_name: str, reason: str) -> AssessedOrgResult:
+    """Deterministic fallback when the LLM returns no usable JSON."""
+    clean_name = raw_name.strip()
+    return AssessedOrgResult(
+        canonical_name=clean_name,
+        slug=generate_slug(clean_name),
+        website=None,
+        description=None,
+        mission_statement=None,
+        type=None,
+        values_raw=None,
+        values=[],
+        sse_rating="no",
+        sse_confidence=0.1,
+        sse_reasoning="LLM returned no usable assessment",
+        must_haves_met=[],
+        nice_to_haves_met=[],
+        flags=[reason],
+    )
+
+
 class OrganizationAssessor(BaseGroundedClassifier):
     """Single grounded LLM call: identifies org, maps values, produces SSE rating."""
 
@@ -284,16 +324,19 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 "Check API keys (GEMINI_API_KEY, GROQ_API_KEY, TAVILY_API_KEY)."
             )
 
-    def assess(
+    def _call_assessor(
         self,
+        *,
         raw_name: str,
-        municipality: str | None = None,
-        province: str | None = None,
-        job_title: str = "",
-        description: str = "",
-    ) -> AssessedOrgResult | None:
-        prompt = _build_assessment_prompt(raw_name, municipality, province, job_title, description)
-
+        municipality: str | None,
+        province: str | None,
+        job_title: str,
+        description: str,
+        retry: bool,
+    ) -> str | None:
+        prompt = _build_assessment_prompt(
+            raw_name, municipality, province, job_title, description, retry=retry,
+        )
         search_query = f'"{raw_name}"'
         if municipality:
             search_query += f" {municipality}"
@@ -301,10 +344,13 @@ class OrganizationAssessor(BaseGroundedClassifier):
             search_query += f" {province}"
 
         try:
-            response_text = self._call_provider_with_retry(
+            return self._call_provider_with_retry(
                 provider=self.provider,
                 prompt=prompt,
-                system="You are an expert at identifying organizations, mapping work values, and evaluating Solidarity Economy alignment.",
+                system=(
+                    "You are an expert at identifying organizations, mapping work values, "
+                    "and evaluating Solidarity Economy alignment. You always return valid JSON."
+                ),
                 task="sse",
                 search_query=search_query,
                 retries=1,
@@ -316,7 +362,53 @@ class OrganizationAssessor(BaseGroundedClassifier):
             )
             return None
 
-        return _parse_response(response_text, raw_name)
+    def assess(
+        self,
+        raw_name: str,
+        municipality: str | None = None,
+        province: str | None = None,
+        job_title: str = "",
+        description: str = "",
+    ) -> AssessedOrgResult | None:
+        response_text = self._call_assessor(
+            raw_name=raw_name,
+            municipality=municipality,
+            province=province,
+            job_title=job_title,
+            description=description,
+            retry=False,
+        )
+        if response_text is None:
+            return _build_assessment_fallback(raw_name, "llm_call_failed")
+
+        result = _parse_response(response_text, raw_name)
+        if result is not None:
+            return result
+
+        logger.info(
+            "OrganizationAssessor: retrying with JSON-only prompt for %r",
+            raw_name,
+        )
+        retry_text = self._call_assessor(
+            raw_name=raw_name,
+            municipality=municipality,
+            province=province,
+            job_title=job_title,
+            description=description,
+            retry=True,
+        )
+        if retry_text is None:
+            return _build_assessment_fallback(raw_name, "llm_call_failed")
+
+        result = _parse_response(retry_text, raw_name)
+        if result is not None:
+            return result
+
+        logger.warning(
+            "OrganizationAssessor: using deterministic fallback for %r after empty/invalid LLM output",
+            raw_name,
+        )
+        return _build_assessment_fallback(raw_name, "llm_empty_or_invalid_json")
 
     def assess_and_build_row(
         self,
@@ -336,8 +428,6 @@ class OrganizationAssessor(BaseGroundedClassifier):
             return None
 
         loc_str = canonical_loc or None
-        # parse_address_with_geocodio always returns a complete dict (municipality, province,
-        # lat, lng, geocode_accuracy_type); it handles None/empty internally.
         geo_data = parse_address_with_geocodio(loc_str)
 
         return {

@@ -1,19 +1,24 @@
+#!/usr/bin/env python3
 """Backfill script for organization_id resolution.
 
 Resolves organization_id for all jobs where it is currently NULL and
 the organization text field is non-empty. Uses OrganizationResolver
-(cache → DB lookup → LLM → minimal fallback).
+(cache -> DB lookup -> LLM -> minimal fallback).
 
 Usage:
-    python scripts/backfill_organization_ids.py [options]
+    python -m scripts.backfill_organization_ids [options]
+
+    Run from the wev-scraper directory with the project venv active, e.g.:
+    .venv/bin/python -m scripts.backfill_organization_ids --env prod --dry-run
 
 Options:
     --dry-run                 Log what would happen without writing to DB
     --env local|staging|prod  Target environment (default: local)
     --batch-size N            Jobs per batch (default: 50)
     --batch-delay-seconds N   Seconds between batches (default: 2)
+    --phase2-only             Re-enrich orgs with null sse_rating (skip job linking)
 
-Requirements: 6.1–6.8, 5.6
+Requirements: 6.1-6.8, 5.6
 """
 
 from __future__ import annotations
@@ -58,13 +63,13 @@ def run_backfill(
     Returns:
         Summary dict with counts.
 
-    Requirements: 6.1–6.8
+    Requirements: 6.1-6.8
     """
     from utils.db import supabase
     from utils.organization_resolver import create_resolver
 
     logger.info(
-        "Starting org backfill — batch_size=%d, batch_delay=%.1fs, dry_run=%s",
+        "Starting org backfill - batch_size=%d, batch_delay=%.1fs, dry_run=%s",
         batch_size,
         batch_delay_seconds,
         dry_run,
@@ -78,10 +83,10 @@ def run_backfill(
     unresolved = 0
     last_id = "00000000-0000-0000-0000-000000000000"
 
-    logger.info("Resolving organization_id for unlinked jobs…")
+    logger.info("Resolving organization_id for unlinked jobs...")
 
     while True:
-        # Keyset pagination on immutable id — avoids skipping rows when
+        # Keyset pagination on immutable id - avoids skipping rows when
         # organization_id updates shift OFFSET-based windows.
         # Requirements: 6.2, 6.6
         resp = (
@@ -118,7 +123,7 @@ def run_backfill(
                 )
 
                 if org_id is not None:
-                    logger.info("job_id=%s → organization_id=%s", job_id, org_id)
+                    logger.info("job_id=%s -> organization_id=%s", job_id, org_id)
 
                     if not dry_run:
                         # NOTE: This performs N+1 sequential updates. While a bulk update
@@ -193,7 +198,7 @@ def run_sse_backfill(
     from utils.organization_repository import OrganizationRepository
 
     logger.info(
-        "Starting Phase 2 (org assessment backfill) — batch_size=%d, batch_delay=%.1fs, dry_run=%s",
+        "Starting Phase 2 (org assessment backfill) - batch_size=%d, batch_delay=%.1fs, dry_run=%s",
         batch_size,
         batch_delay_seconds,
         dry_run,
@@ -239,7 +244,7 @@ def run_sse_backfill(
                     continue
 
                 logger.info(
-                    "Phase 2: org_id=%s (%s) → sse_rating=%s",
+                    "Phase 2: org_id=%s (%s) -> sse_rating=%s",
                     org_id, org_row.get("name", "?"), update.get("sse_rating"),
                 )
 
@@ -299,6 +304,11 @@ def main() -> None:
         default=DEFAULT_BATCH_DELAY,
         help=f"Seconds between batches (default: {DEFAULT_BATCH_DELAY})",
     )
+    parser.add_argument(
+        "--phase2-only",
+        action="store_true",
+        help="Skip Phase 1 (job linking) and only enrich orgs with null sse_rating",
+    )
     args = parser.parse_args()
 
     args.batch_size = max(1, min(args.batch_size, MAX_BATCH_SIZE))
@@ -326,11 +336,13 @@ def main() -> None:
         else:
             logger.warning("--env %s but %s not found", args.env, env_path)
 
-    phase1_summary = run_backfill(
-        batch_size=args.batch_size,
-        batch_delay_seconds=args.batch_delay_seconds,
-        dry_run=args.dry_run,
-    )
+    phase1_summary = {"phase1_skipped": True}
+    if not args.phase2_only:
+        phase1_summary = run_backfill(
+            batch_size=args.batch_size,
+            batch_delay_seconds=args.batch_delay_seconds,
+            dry_run=args.dry_run,
+        )
 
     # Phase 2 runs only after Phase 1 fully completes (sequential)
     # Requirements: 5.6
@@ -343,9 +355,7 @@ def main() -> None:
     combined = {**phase1_summary, **phase2_summary}
     print(json.dumps(combined, indent=2))
 
-    total_errors = (
-        phase1_summary.get("errors", 0) + phase2_summary.get("phase2_errors", 0)
-    )
+    total_errors = phase1_summary.get("errors", 0) + phase2_summary.get("phase2_errors", 0)
     if phase2_summary.get("phase2_skipped_no_classifier"):
         total_errors += 1
     if total_errors > 0:

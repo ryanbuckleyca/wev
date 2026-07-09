@@ -1,12 +1,19 @@
-import { redirect, notFound } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { requireAdminSession } from '@/lib/auth/require-admin';
+import { requireAdminPage } from '@/lib/auth/require-admin-page';
 import { supabaseServer } from '@/lib/supabase-server';
+import { ORG_ADMIN_FORM_COLUMNS } from '@/lib/organizations/constants';
 import PageLayout from '@/components/PageLayout';
 import OrgAdminForm from '@/components/OrgAdminForm';
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
+}
+
+function parseOrgId(raw: string): number | null {
+  if (!/^\d+$/.test(raw)) return null;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -19,17 +26,17 @@ export default async function EditOrganizationPage({ params }: PageProps) {
   const { locale, id } = await params;
   const t = await getTranslations({ locale, namespace: 'admin.organizations' });
 
-  // Enforce admin authorization
-  const authResult = await requireAdminSession();
-  if (!authResult.ok) {
-    return redirect(`/${locale}/login`);
+  await requireAdminPage(locale);
+
+  const orgId = parseOrgId(id);
+  if (!orgId) {
+    notFound();
   }
 
-  // Fetch organization by id
   const { data: org, error } = await supabaseServer
     .from('organizations')
-    .select('*')
-    .eq('id', parseInt(id, 10))
+    .select(ORG_ADMIN_FORM_COLUMNS)
+    .eq('id', orgId)
     .single();
 
   if (error || !org) {

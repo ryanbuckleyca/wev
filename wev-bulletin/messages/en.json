@@ -833,6 +833,9 @@
       "noOrganizations": "No organizations yet. Create one to get started.",
       "totalCount": "{count, plural, =0 {No organizations} one {Total: 1 organization} other {Total: # organizations}}",
       "sseBadge": "SSE",
+      "edit": "Edit",
+      "saving": "Saving...",
+      "valuesHint": "Select up to {max} work values. These appear on the public organization profile.",
       "fields": {
         "name": "Organization Name",
         "slug": "URL Slug",
@@ -852,12 +855,12 @@
         "website": "https://example.org",
         "location": "Montreal, QC",
         "selectType": "Select a type...",
-        "values": "Comma-separated values (e.g., cooperative governance, environmental sustainability)"
+        "values": "Search and select work values"
       },
       "types": {
         "nonprofit": "Nonprofit",
         "cooperative": "Cooperative",
-        "social_enterprise": "Social Enterprise",
+        "socialenterprise": "Social Enterprise",
         "government": "Government",
         "union": "Union",
         "other": "Other"
@@ -867,7 +870,8 @@
         "slug": "Slug",
         "type": "Type",
         "location": "Location",
-        "sse": "SSE"
+        "sse": "SSE",
+        "actions": "Actions"
       },
       "actions": {
         "addNew": "Add Organization",
@@ -880,6 +884,11 @@
         "slugRequired": "URL slug is required",
         "slugInvalid": "Slug can only contain lowercase letters, numbers, and hyphens",
         "websiteInvalid": "Website must start with http:// or https://",
+        "descriptionTooLong": "Description is too long (max 500 characters)",
+        "missionTooLong": "Mission statement is too long (max 300 characters)",
+        "invalidType": "Please select a valid organization type",
+        "invalidValues": "One or more selected values are not recognized",
+        "tooManyValues": "You can select at most 5 values",
         "slug_taken": "This slug is already in use",
         "organization_exists": "An organization with this name and location already exists",
         "unauthorized": "You must be logged in as an admin to perform this action",

@@ -124,7 +124,7 @@ async function fetchBulletinFacets(
   return buildFilterOptions((data ?? []) as any[]);
 }
 
-async function resolveOrgSlugs(supabase: any, jobs: JobPosting[]): Promise<void> {
+export async function resolveOrgSlugs(supabase: any, jobs: JobPosting[]): Promise<void> {
   const orgIds = [
     ...new Set(jobs.map((j) => j.organization_id).filter((id): id is number => id != null)),
   ];
