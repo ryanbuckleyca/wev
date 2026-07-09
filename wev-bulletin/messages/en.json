@@ -900,7 +900,11 @@
       },
       "createSuccess": "Organization created successfully",
       "updateSuccess": "Organization updated successfully",
-      "slugPreview": "Slug preview: {slug}"
+      "slugPreview": "Slug preview: {slug}",
+      "paginationLabel": "Organization list pages",
+      "paginationPrevious": "Previous",
+      "paginationNext": "Next",
+      "paginationStatus": "Page {page} of {totalPages}"
     }
   }
 }

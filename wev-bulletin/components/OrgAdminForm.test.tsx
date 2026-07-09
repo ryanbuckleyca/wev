@@ -21,6 +21,8 @@ vi.mock('next-intl', () => ({
     if (key === 'slugPreview') return `Slug preview: ${String(values?.slug ?? '')}`;
     if (namespace === 'profile' && key === 'valuesModalTriggerLabel') return 'Browse values';
     if (namespace === 'profile' && key === 'valuesPlaceholder') return 'Search values';
+    if (key === 'errors.nameRequired') return 'Organization name is required';
+    if (key === 'errors.saveFailed') return 'Failed to save organization';
     return key;
   },
 }));
@@ -76,7 +78,7 @@ describe('OrgAdminForm', () => {
     await waitFor(() => {
       expect(createOrganizationMock).not.toHaveBeenCalled();
     });
-    expect(screen.getByText('errors.nameRequired')).toBeInTheDocument();
+    expect(screen.getByText('Organization name is required')).toBeInTheDocument();
   });
 
   it('calls updateOrganization in edit mode', async () => {

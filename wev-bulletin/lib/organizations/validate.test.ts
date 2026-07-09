@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { normalizeOrgType } from './org-type';
 import {
-  normalizeOrgType,
   normalizeOrgValuesList,
   validateOrgInput,
   buildOrgPayload,
+  buildOrgUpdateFields,
 } from './validate';
 
 describe('normalizeOrgType', () => {
@@ -58,7 +59,7 @@ describe('validateOrgInput', () => {
 });
 
 describe('buildOrgPayload', () => {
-  it('populates values_list and sse_rating from form input', () => {
+  it('populates values_list, sse_rating, and admin sse_details', () => {
     const payload = buildOrgPayload({
       name: 'Co-op Example',
       slug: 'co-op-example',
@@ -73,5 +74,21 @@ describe('buildOrgPayload', () => {
       { value: 'Creativity', rank: 2 },
     ]);
     expect(payload.sse_rating).toBe('weak_yes');
+    expect(payload.sse_details).toMatchObject({
+      reviewed: true,
+      flags: ['admin_override'],
+    });
+  });
+});
+
+describe('buildOrgUpdateFields', () => {
+  it('rewrites sse fields only when is_sse changes', () => {
+    expect(
+      buildOrgUpdateFields({ is_sse: true }, { previousIsSse: true }),
+    ).toEqual({ is_sse: true });
+
+    const changed = buildOrgUpdateFields({ is_sse: false }, { previousIsSse: true });
+    expect(changed.sse_rating).toBe('no');
+    expect(changed.sse_details).toMatchObject({ flags: ['admin_override'] });
   });
 });

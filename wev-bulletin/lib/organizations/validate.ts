@@ -4,10 +4,11 @@ import {
   MAX_ORG_DESCRIPTION_LENGTH,
   MAX_ORG_MISSION_LENGTH,
   MAX_ORG_VALUES,
-  ORG_TYPES,
   SLUG_PATTERN,
   type OrgType,
 } from './constants';
+import { normalizeOrgType } from './org-type';
+import { buildAdminSseFields } from './sse-admin-fields';
 
 export interface OrgFormInput {
   name: string;
@@ -25,21 +26,6 @@ export type OrgValidationError = { field: string; error: string };
 
 const VALID_VALUE_IDS = new Set<string>(VALUES_LIST);
 
-const ORG_TYPE_ALIASES: Record<string, OrgType> = {
-  nonprofit: 'nonprofit',
-  cooperative: 'cooperative',
-  socialenterprise: 'social enterprise',
-  government: 'government',
-  union: 'union',
-  other: 'other',
-};
-
-export function normalizeOrgType(raw: string | null | undefined): OrgType | null {
-  if (!raw?.trim()) return null;
-  const key = raw.toLowerCase().trim().replace(/[\s_-]+/g, '');
-  return ORG_TYPE_ALIASES[key] ?? null;
-}
-
 export function normalizeOrgValuesList(raw: string[] | null | undefined): string[] | null {
   if (!raw?.length) return null;
   const seen = new Set<string>();
@@ -54,6 +40,13 @@ export function normalizeOrgValuesList(raw: string[] | null | undefined): string
   return values.length > 0 ? values : null;
 }
 
+export function buildValuesRated(
+  valuesList: string[] | null,
+): { value: string; rank: number }[] | null {
+  if (!valuesList?.length) return null;
+  return valuesList.map((value, index) => ({ value, rank: index + 1 }));
+}
+
 function isValidWebsite(url: string | null | undefined): boolean {
   if (!url?.trim()) return true;
   return url.startsWith('http://') || url.startsWith('https://');
@@ -65,10 +58,10 @@ export function validateOrgInput(
 ): OrgValidationError | null {
   const { requireName = true, requireSlug = true } = options;
 
-  if (data.name !== undefined && !data.name.trim()) {
+  if (requireName && !data.name?.trim()) {
     return { field: 'name', error: 'name_required' };
   }
-  if (requireName && !data.name?.trim()) {
+  if (data.name !== undefined && !data.name.trim()) {
     return { field: 'name', error: 'name_required' };
   }
 
@@ -124,6 +117,17 @@ export interface NormalizedOrgPayload {
   values_list: string[] | null;
   values_rated: { value: string; rank: number }[] | null;
   sse_rating: 'weak_yes' | 'no';
+  sse_details: ReturnType<typeof buildAdminSseFields>['sse_details'];
+}
+
+function applyValuesFields(
+  valuesList: string[] | null,
+): Pick<NormalizedOrgPayload, 'values' | 'values_list' | 'values_rated'> {
+  return {
+    values_list: valuesList,
+    values: valuesList?.join(', ') ?? null,
+    values_rated: buildValuesRated(valuesList),
+  };
 }
 
 export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
@@ -131,6 +135,7 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
   const slug = data.slug?.trim() || generateSlug(name);
   const valuesList = normalizeOrgValuesList(data.values_list);
   const isSse = data.is_sse ?? false;
+  const sseFields = buildAdminSseFields(isSse);
 
   return {
     name,
@@ -141,17 +146,14 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
     location: data.location?.trim() || null,
     type: normalizeOrgType(data.type),
     is_sse: isSse,
-    values: valuesList?.join(', ') ?? null,
-    values_list: valuesList,
-    values_rated: valuesList
-      ? valuesList.map((value, index) => ({ value, rank: index + 1 }))
-      : null,
-    sse_rating: isSse ? 'weak_yes' : 'no',
+    ...applyValuesFields(valuesList),
+    ...sseFields,
   };
 }
 
 export function buildOrgUpdateFields(
   data: Partial<OrgFormInput>,
+  options: { previousIsSse?: boolean | null } = {},
 ): Partial<NormalizedOrgPayload> {
   const updates: Partial<NormalizedOrgPayload> = {};
 
@@ -164,22 +166,17 @@ export function buildOrgUpdateFields(
   if (data.website !== undefined) updates.website = data.website?.trim() || null;
   if (data.location !== undefined) updates.location = data.location?.trim() || null;
   if (data.type !== undefined) updates.type = normalizeOrgType(data.type);
-  if (data.is_sse !== undefined) {
-    updates.is_sse = data.is_sse;
-    updates.sse_rating = data.is_sse ? 'weak_yes' : 'no';
-  }
   if (data.values_list !== undefined) {
     const valuesList = normalizeOrgValuesList(data.values_list);
-    updates.values_list = valuesList;
-    updates.values = valuesList?.join(', ') ?? null;
-    updates.values_rated = valuesList
-      ? valuesList.map((value, index) => ({ value, rank: index + 1 }))
-      : null;
+    Object.assign(updates, applyValuesFields(valuesList));
+  }
+
+  if (data.is_sse !== undefined) {
+    updates.is_sse = data.is_sse;
+    if (data.is_sse !== options.previousIsSse) {
+      Object.assign(updates, buildAdminSseFields(data.is_sse));
+    }
   }
 
   return updates;
-}
-
-export function isOrgType(value: string): value is OrgType {
-  return (ORG_TYPES as readonly string[]).includes(value);
 }

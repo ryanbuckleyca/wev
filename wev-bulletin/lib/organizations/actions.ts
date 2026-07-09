@@ -72,7 +72,21 @@ export async function updateOrganization(
     return { ok: false, error: validationError.error, field: validationError.field };
   }
 
-  const updates = buildOrgUpdateFields(data);
+  let previousIsSse: boolean | null | undefined;
+  if (data.is_sse !== undefined) {
+    const { data: current, error: fetchError } = await supabaseServer
+      .from('organizations')
+      .select('is_sse')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !current) {
+      return { ok: false, error: 'not_found' };
+    }
+    previousIsSse = current.is_sse;
+  }
+
+  const updates = buildOrgUpdateFields(data, { previousIsSse });
 
   if (Object.keys(updates).length === 0) {
     const { data: org, error } = await supabaseServer

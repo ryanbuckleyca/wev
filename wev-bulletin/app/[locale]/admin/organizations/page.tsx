@@ -2,7 +2,9 @@ import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { requireAdminPage } from '@/lib/auth/require-admin-page';
 import { supabaseServer } from '@/lib/supabase-server';
+import { ADMIN_ORGS_PER_PAGE } from '@/lib/organizations/constants';
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { logger } from '@/lib/logger';
 import PageLayout from '@/components/PageLayout';
 import SseBadge from '@/components/SseBadge';
 import { buttonVariants } from '@/components/ui/Button';
@@ -10,6 +12,12 @@ import { cn } from '@/lib/utils';
 
 interface PageProps {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ page?: string }>;
+}
+
+function parsePage(raw: string | undefined): number {
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -18,23 +26,31 @@ export async function generateMetadata({ params }: PageProps) {
   return { title: t('listTitle') };
 }
 
-export default async function AdminOrganizationsPage({ params }: PageProps) {
+export default async function AdminOrganizationsPage({ params, searchParams }: PageProps) {
   const { locale } = await params;
+  const { page: rawPage } = await searchParams;
   const t = await getTranslations({ locale, namespace: 'admin.organizations' });
   const tOrgs = await getTranslations({ locale, namespace: 'organizations' });
 
   await requireAdminPage(locale);
 
-  const { data: organizations, error } = await supabaseServer
+  const page = parsePage(rawPage);
+  const from = (page - 1) * ADMIN_ORGS_PER_PAGE;
+  const to = from + ADMIN_ORGS_PER_PAGE - 1;
+
+  const { data: organizations, error, count } = await supabaseServer
     .from('organizations')
-    .select('id, name, slug, type, is_sse, location, created_at')
-    .order('name', { ascending: true });
+    .select('id, name, slug, type, is_sse, location, created_at', { count: 'exact' })
+    .order('name', { ascending: true })
+    .range(from, to);
 
   if (error) {
-    console.error('Failed to fetch organizations:', error);
+    logger.error({ err: error }, 'Failed to fetch organizations for admin list');
   }
 
   const orgs = organizations || [];
+  const total = count ?? orgs.length;
+  const totalPages = Math.max(1, Math.ceil(total / ADMIN_ORGS_PER_PAGE));
 
   return (
     <PageLayout maxWidth="lg">
@@ -127,8 +143,35 @@ export default async function AdminOrganizationsPage({ params }: PageProps) {
         </div>
       )}
 
-      <div className="mt-6 text-sm text-muted-foreground">
-        <p>{t('totalCount', { count: orgs.length })}</p>
+      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">{t('totalCount', { count: total })}</p>
+        {totalPages > 1 && (
+          <nav className="flex items-center gap-3 text-sm" aria-label={t('paginationLabel')}>
+            {page > 1 ? (
+              <Link
+                href={`/${locale}/admin/organizations?page=${page - 1}`}
+                className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}
+              >
+                {t('paginationPrevious')}
+              </Link>
+            ) : (
+              <span className="text-muted-foreground">{t('paginationPrevious')}</span>
+            )}
+            <span className="text-muted-foreground">
+              {t('paginationStatus', { page, totalPages })}
+            </span>
+            {page < totalPages ? (
+              <Link
+                href={`/${locale}/admin/organizations?page=${page + 1}`}
+                className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}
+              >
+                {t('paginationNext')}
+              </Link>
+            ) : (
+              <span className="text-muted-foreground">{t('paginationNext')}</span>
+            )}
+          </nav>
+        )}
       </div>
     </PageLayout>
   );

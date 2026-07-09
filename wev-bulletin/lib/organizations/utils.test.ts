@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getOrganizationTypeLabel, normalizeOrgTypeKey } from './utils';
+import { getOrganizationTypeLabel, normalizeOrgTypeKey } from './org-type';
 
 describe('normalizeOrgTypeKey', () => {
   it('strips spaces, hyphens, and underscores', () => {

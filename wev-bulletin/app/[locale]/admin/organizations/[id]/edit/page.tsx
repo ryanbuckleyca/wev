@@ -3,17 +3,12 @@ import { getTranslations } from 'next-intl/server';
 import { requireAdminPage } from '@/lib/auth/require-admin-page';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ORG_ADMIN_FORM_COLUMNS } from '@/lib/organizations/constants';
+import { parseOrgId } from '@/lib/organizations/parse-org-id';
 import PageLayout from '@/components/PageLayout';
 import OrgAdminForm from '@/components/OrgAdminForm';
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
-}
-
-function parseOrgId(raw: string): number | null {
-  if (!/^\d+$/.test(raw)) return null;
-  const parsed = Number(raw);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 export async function generateMetadata({ params }: PageProps) {
