@@ -34,13 +34,23 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
 
   await requireAdminPage(locale);
 
-  const page = parsePage(rawPage);
+  const { count: totalCount, error: countError } = await supabaseServer
+    .from('organizations')
+    .select('id', { count: 'exact', head: true });
+
+  if (countError) {
+    logger.error({ err: countError }, 'Failed to count organizations for admin list');
+  }
+
+  const total = totalCount ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / ADMIN_ORGS_PER_PAGE));
+  const page = Math.min(parsePage(rawPage), totalPages);
   const from = (page - 1) * ADMIN_ORGS_PER_PAGE;
   const to = from + ADMIN_ORGS_PER_PAGE - 1;
 
-  const { data: organizations, error, count } = await supabaseServer
+  const { data: organizations, error } = await supabaseServer
     .from('organizations')
-    .select('id, name, slug, type, is_sse, location, created_at', { count: 'exact' })
+    .select('id, name, slug, type, is_sse, location, created_at')
     .order('name', { ascending: true })
     .range(from, to);
 
@@ -49,8 +59,7 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
   }
 
   const orgs = organizations || [];
-  const total = count ?? orgs.length;
-  const totalPages = Math.max(1, Math.ceil(total / ADMIN_ORGS_PER_PAGE));
+  const loadFailed = Boolean(countError || error);
 
   return (
     <PageLayout maxWidth="lg">
@@ -64,17 +73,17 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
         </Link>
       </div>
 
-      {error && (
+      {loadFailed && (
         <div className="mb-6 p-4 rounded bg-destructive/10 text-destructive border border-destructive/20">
           {t('errors.loadFailed')}
         </div>
       )}
 
-      {orgs.length === 0 ? (
+      {!loadFailed && orgs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p>{t('noOrganizations')}</p>
         </div>
-      ) : (
+      ) : !loadFailed ? (
         <div className="bg-card border border-border rounded-wev-card overflow-hidden">
           <table className="w-full">
             <thead className="bg-muted border-b border-border">
@@ -101,7 +110,10 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
             </thead>
             <tbody>
               {orgs.map((org) => (
-                <tr key={org.id} className="border-b border-border last:border-b-0 hover:bg-muted/50">
+                <tr
+                  key={org.id}
+                  className="border-b border-border last:border-b-0 hover:bg-muted/50"
+                >
                   <td className="px-4 py-3">
                     <Link
                       href={`/${locale}/organizations/${org.slug}`}
@@ -110,15 +122,11 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
                       {org.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground font-mono">
-                    {org.slug}
-                  </td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground font-mono">{org.slug}</td>
                   <td className="px-4 py-3 text-sm">
                     {getOrganizationTypeLabel(org.type, tOrgs) ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {org.location || '—'}
-                  </td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{org.location || '—'}</td>
                   <td className="px-4 py-3 text-center">
                     {org.is_sse ? (
                       <div className="inline-flex">
@@ -141,11 +149,11 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
 
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">{t('totalCount', { count: total })}</p>
-        {totalPages > 1 && (
+        {!loadFailed && totalPages > 1 && (
           <nav className="flex items-center gap-3 text-sm" aria-label={t('paginationLabel')}>
             {page > 1 ? (
               <Link

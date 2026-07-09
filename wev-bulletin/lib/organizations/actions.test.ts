@@ -52,9 +52,9 @@ const validInput = {
 
 describe('organizations/actions', () => {
   const setOrgResult = (result: { data: unknown; error: unknown }) => {
-    (organizationsQuery as { setResult: (next: { data: unknown; error: unknown }) => void }).setResult(
-      result,
-    );
+    (
+      organizationsQuery as { setResult: (next: { data: unknown; error: unknown }) => void }
+    ).setResult(result);
   };
 
   beforeEach(() => {

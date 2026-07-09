@@ -61,7 +61,7 @@ export function validateOrgInput(
   if (requireName && !data.name?.trim()) {
     return { field: 'name', error: 'name_required' };
   }
-  if (data.name !== undefined && !data.name.trim()) {
+  if (!requireName && data.name !== undefined && !data.name.trim()) {
     return { field: 'name', error: 'name_required' };
   }
 

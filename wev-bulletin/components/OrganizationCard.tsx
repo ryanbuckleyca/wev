@@ -121,7 +121,12 @@ interface CardDetailsProps {
   viewProfileLabel: string;
 }
 
-function OrganizationCardDetails({ org, locale, websiteLabel, viewProfileLabel }: CardDetailsProps) {
+function OrganizationCardDetails({
+  org,
+  locale,
+  websiteLabel,
+  viewProfileLabel,
+}: CardDetailsProps) {
   const safeWebsite = safeUrl(org.website);
 
   return (
@@ -140,7 +145,10 @@ function OrganizationCardDetails({ org, locale, websiteLabel, viewProfileLabel }
         </div>
       ) : null}
       <div className="text-sm">
-        <Link href={`/${locale}/organizations/${org.slug}`} className="text-primary hover:underline">
+        <Link
+          href={`/${locale}/organizations/${org.slug}`}
+          className="text-primary hover:underline"
+        >
           {viewProfileLabel}
         </Link>
       </div>
@@ -168,8 +176,7 @@ export default function OrganizationCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const tOrgs = useTranslations('organizations');
 
-  const getTypeLabel = (orgType: string | null) =>
-    getOrganizationTypeLabel(orgType, tOrgs) ?? '';
+  const getTypeLabel = (orgType: string | null) => getOrganizationTypeLabel(orgType, tOrgs) ?? '';
 
   const scoreData = useMemo(() => {
     if (org.value_score == null) return null;

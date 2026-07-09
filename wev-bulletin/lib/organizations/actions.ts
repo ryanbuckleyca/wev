@@ -55,10 +55,7 @@ export async function createOrganization(data: OrgCreateInput): Promise<ActionRe
   return { ok: true, org };
 }
 
-export async function updateOrganization(
-  id: number,
-  data: OrgUpdateInput,
-): Promise<ActionResult> {
+export async function updateOrganization(id: number, data: OrgUpdateInput): Promise<ActionResult> {
   const authResult = await requireAdminSession();
   if (!authResult.ok) {
     return { ok: false, error: 'unauthorized' };

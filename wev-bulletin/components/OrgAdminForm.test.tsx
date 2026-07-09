@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import OrgAdminForm from './OrgAdminForm';
 
-const { pushMock, refreshMock, createOrganizationMock, updateOrganizationMock } = vi.hoisted(() => ({
-  pushMock: vi.fn(),
-  refreshMock: vi.fn(),
-  createOrganizationMock: vi.fn(),
-  updateOrganizationMock: vi.fn(),
-}));
+const { pushMock, refreshMock, createOrganizationMock, updateOrganizationMock } = vi.hoisted(
+  () => ({
+    pushMock: vi.fn(),
+    refreshMock: vi.fn(),
+    createOrganizationMock: vi.fn(),
+    updateOrganizationMock: vi.fn(),
+  }),
+);
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -17,13 +19,17 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('next-intl', () => ({
-  useTranslations: (namespace?: string) => (key: string, values?: Record<string, unknown>) => {
-    if (key === 'slugPreview') return `Slug preview: ${String(values?.slug ?? '')}`;
-    if (namespace === 'profile' && key === 'valuesModalTriggerLabel') return 'Browse values';
-    if (namespace === 'profile' && key === 'valuesPlaceholder') return 'Search values';
-    if (key === 'errors.nameRequired') return 'Organization name is required';
-    if (key === 'errors.saveFailed') return 'Failed to save organization';
-    return key;
+  useTranslations: (namespace?: string) => {
+    const fn = (key: string, values?: Record<string, unknown>) => {
+      if (key === 'slugPreview') return `Slug preview: ${String(values?.slug ?? '')}`;
+      if (namespace === 'profile' && key === 'valuesModalTriggerLabel') return 'Browse values';
+      if (namespace === 'profile' && key === 'valuesPlaceholder') return 'Search values';
+      if (key === 'errors.nameRequired') return 'Organization name is required';
+      if (key === 'errors.saveFailed') return 'Failed to save organization';
+      return key;
+    };
+    fn.has = () => false;
+    return fn;
   },
 }));
 

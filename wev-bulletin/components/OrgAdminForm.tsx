@@ -7,11 +7,16 @@ import FormContainer from './FormContainer';
 import FormField from './FormField';
 import FormTextarea from './FormTextarea';
 import FormLabel from './FormLabel';
+import ErrorMessage from './ErrorMessage';
 import Button from './Button';
 import ValuesSelector from './profile/values/ValuesSelector';
 import OrgSlugField from './OrgSlugField';
 import OrgTypeSelect from './OrgTypeSelect';
-import { createOrganization, updateOrganization } from '@/lib/organizations/actions';
+import {
+  createOrganization,
+  updateOrganization,
+  type ActionResult,
+} from '@/lib/organizations/actions';
 import {
   mapClientValidationError,
   translateOrgActionError,
@@ -21,6 +26,7 @@ import {
   MAX_ORG_MISSION_LENGTH,
   MAX_ORG_VALUES,
 } from '@/lib/organizations/constants';
+import { getOrganizationTypeLabel } from '@/lib/organizations/org-type';
 import { parseOrgId } from '@/lib/organizations/parse-org-id';
 import { useOrgAdminFormState } from '@/lib/organizations/use-org-admin-form-state';
 import { validateOrgInput } from '@/lib/organizations/validate';
@@ -67,13 +73,7 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
   }, [tValues]);
 
   const orgTypeLabel = useCallback(
-    (key: string) => {
-      const nested = `type.${key}`;
-      const nestedLabel = tOrgs(nested);
-      if (nestedLabel !== nested) return nestedLabel;
-      const flatLabel = tOrgs(key);
-      return flatLabel !== key ? flatLabel : key;
-    },
+    (orgType: string) => getOrganizationTypeLabel(orgType, tOrgs) ?? orgType,
     [tOrgs],
   );
 
@@ -102,6 +102,33 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
     });
   };
 
+  const runSubmit = async (submit: () => Promise<ActionResult>, successMessage: string) => {
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      const result = await submit();
+      if (!result.ok) {
+        if (result.error === 'unauthorized') {
+          notify.error(t('errors.unauthorized'));
+          router.push(`/${locale}/login`);
+          return;
+        }
+        setErrors(applyActionError(t, result, t('errors.saveFailed')));
+        return;
+      }
+
+      notify.success(successMessage);
+      router.push(`/${locale}/admin/organizations`);
+      router.refresh();
+    } catch (err) {
+      console.error('Form submission error:', err);
+      setErrors({ general: t('errors.saveFailed') });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -118,59 +145,11 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
         setErrors({ general: t('errors.not_found') });
         return;
       }
-
-      setIsSubmitting(true);
-      setErrors({});
-
-      try {
-        const result = await updateOrganization(orgId, formInput);
-        if (!result.ok) {
-          if (result.error === 'unauthorized') {
-            notify.error(t('errors.unauthorized'));
-            router.push(`/${locale}/login`);
-            return;
-          }
-          setErrors(applyActionError(t, result, t('errors.saveFailed')));
-          return;
-        }
-
-        notify.success(t('updateSuccess'));
-        router.push(`/${locale}/admin/organizations`);
-        router.refresh();
-      } catch (err) {
-        console.error('Form submission error:', err);
-        setErrors({ general: t('errors.saveFailed') });
-      } finally {
-        setIsSubmitting(false);
-      }
+      await runSubmit(() => updateOrganization(orgId, formInput), t('updateSuccess'));
       return;
     }
 
-    setIsSubmitting(true);
-    setErrors({});
-
-    try {
-      const result = await createOrganization(formInput);
-
-      if (!result.ok) {
-        if (result.error === 'unauthorized') {
-          notify.error(t('errors.unauthorized'));
-          router.push(`/${locale}/login`);
-          return;
-        }
-        setErrors(applyActionError(t, result, t('errors.saveFailed')));
-        return;
-      }
-
-      notify.success(t('createSuccess'));
-      router.push(`/${locale}/admin/organizations`);
-      router.refresh();
-    } catch (err) {
-      console.error('Form submission error:', err);
-      setErrors({ general: t('errors.saveFailed') });
-    } finally {
-      setIsSubmitting(false);
-    }
+    await runSubmit(() => createOrganization(formInput), t('createSuccess'));
   };
 
   return (
@@ -200,9 +179,7 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
         label={t('fields.slug')}
         placeholder={t('placeholders.slug')}
         preview={
-          !form.slugManuallyEdited && form.name
-            ? t('slugPreview', { slug: form.slug })
-            : undefined
+          !form.slugManuallyEdited && form.name ? t('slugPreview', { slug: form.slug }) : undefined
         }
         error={errors.slug}
         disabled={isSubmitting}
@@ -277,7 +254,7 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
           onRemove={handleValueRemove}
           locale={appLocale}
         />
-        {errors.values_list && <p className="text-sm text-destructive">{errors.values_list}</p>}
+        {errors.values_list && <ErrorMessage>{errors.values_list}</ErrorMessage>}
       </div>
 
       <div className="flex items-center gap-3">
@@ -296,11 +273,7 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
 
       <div className="flex gap-4 pt-4">
         <Button type="submit" disabled={isSubmitting} variant="primary">
-          {isSubmitting
-            ? t('saving')
-            : form.isEditMode
-              ? t('actions.update')
-              : t('actions.create')}
+          {isSubmitting ? t('saving') : form.isEditMode ? t('actions.update') : t('actions.create')}
         </Button>
         <Button
           type="button"

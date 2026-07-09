@@ -10,9 +10,7 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
   const [name, setName] = useState(initialValues?.name || '');
   const [slug, setSlug] = useState(initialValues?.slug || '');
   const [description, setDescription] = useState(initialValues?.description || '');
-  const [missionStatement, setMissionStatement] = useState(
-    initialValues?.mission_statement || '',
-  );
+  const [missionStatement, setMissionStatement] = useState(initialValues?.mission_statement || '');
   const [website, setWebsite] = useState(initialValues?.website || '');
   const [location, setLocation] = useState(initialValues?.location || '');
   const [type, setType] = useState(() => normalizeOrgType(initialValues?.type) || '');

@@ -843,14 +843,6 @@
         "selectType": "Sélectionnez un type...",
         "values": "Rechercher et sélectionner des valeurs professionnelles"
       },
-      "types": {
-        "nonprofit": "Organisme sans but lucratif",
-        "cooperative": "Coopérative",
-        "socialenterprise": "Entreprise sociale",
-        "government": "Gouvernement",
-        "union": "Syndicat",
-        "other": "Autre"
-      },
       "columns": {
         "name": "Nom",
         "slug": "Identifiant",

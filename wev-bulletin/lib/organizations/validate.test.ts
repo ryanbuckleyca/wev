@@ -46,9 +46,10 @@ describe('validateOrgInput', () => {
   });
 
   it('rejects invalid slug format', () => {
-    expect(
-      validateOrgInput({ name: 'Test Org', slug: 'Bad Slug' }),
-    ).toEqual({ field: 'slug', error: 'slug_invalid' });
+    expect(validateOrgInput({ name: 'Test Org', slug: 'Bad Slug' })).toEqual({
+      field: 'slug',
+      error: 'slug_invalid',
+    });
   });
 
   it('rejects website without scheme', () => {
@@ -83,9 +84,9 @@ describe('buildOrgPayload', () => {
 
 describe('buildOrgUpdateFields', () => {
   it('rewrites sse fields only when is_sse changes', () => {
-    expect(
-      buildOrgUpdateFields({ is_sse: true }, { previousIsSse: true }),
-    ).toEqual({ is_sse: true });
+    expect(buildOrgUpdateFields({ is_sse: true }, { previousIsSse: true })).toEqual({
+      is_sse: true,
+    });
 
     const changed = buildOrgUpdateFields({ is_sse: false }, { previousIsSse: true });
     expect(changed.sse_rating).toBe('no');
