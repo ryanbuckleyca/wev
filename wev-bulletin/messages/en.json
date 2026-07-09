@@ -822,5 +822,76 @@
       "placeholder": "Search for values...",
       "noResults": "No values found"
     }
+  },
+  "admin": {
+    "organizations": {
+      "listTitle": "Manage Organizations",
+      "createTitle": "Create Organization",
+      "editTitle": "Edit Organization",
+      "createDescription": "Add a new organization to the platform. Organizations can be partner employers that haven't been scraped yet.",
+      "editDescription": "Edit details for {name}",
+      "noOrganizations": "No organizations yet. Create one to get started.",
+      "totalCount": "{count, plural, =0 {No organizations} one {Total: 1 organization} other {Total: # organizations}}",
+      "sseBadge": "SSE",
+      "fields": {
+        "name": "Organization Name",
+        "slug": "URL Slug",
+        "description": "Description",
+        "missionStatement": "Mission Statement",
+        "website": "Website URL",
+        "location": "Location",
+        "type": "Organization Type",
+        "isSse": "Solidarity Economy Organization",
+        "values": "Core Values"
+      },
+      "placeholders": {
+        "name": "e.g., Centraide Montreal",
+        "slug": "e.g., centraide-montreal",
+        "description": "Brief description of the organization...",
+        "missionStatement": "The organization's mission...",
+        "website": "https://example.org",
+        "location": "Montreal, QC",
+        "selectType": "Select a type...",
+        "values": "Comma-separated values (e.g., cooperative governance, environmental sustainability)"
+      },
+      "types": {
+        "nonprofit": "Nonprofit",
+        "cooperative": "Cooperative",
+        "social_enterprise": "Social Enterprise",
+        "government": "Government",
+        "union": "Union",
+        "other": "Other"
+      },
+      "columns": {
+        "name": "Name",
+        "slug": "Slug",
+        "type": "Type",
+        "location": "Location",
+        "sse": "SSE"
+      },
+      "actions": {
+        "addNew": "Add Organization",
+        "create": "Create Organization",
+        "update": "Update Organization",
+        "cancel": "Cancel"
+      },
+      "errors": {
+        "nameRequired": "Organization name is required",
+        "slugRequired": "URL slug is required",
+        "slugInvalid": "Slug can only contain lowercase letters, numbers, and hyphens",
+        "websiteInvalid": "Website must start with http:// or https://",
+        "slug_taken": "This slug is already in use",
+        "organization_exists": "An organization with this name and location already exists",
+        "unauthorized": "You must be logged in as an admin to perform this action",
+        "not_found": "Organization not found",
+        "database_error": "A database error occurred. Please try again.",
+        "invalid_slug": "Invalid slug format",
+        "saveFailed": "Failed to save organization. Please try again.",
+        "loadFailed": "Failed to load organizations. Please try again."
+      },
+      "createSuccess": "Organization created successfully",
+      "updateSuccess": "Organization updated successfully",
+      "slugPreview": "Slug preview: {slug}"
+    }
   }
 }
