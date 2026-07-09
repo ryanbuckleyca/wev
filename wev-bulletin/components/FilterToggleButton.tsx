@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * The "Show filters / Hide filters" button used in both JobSearch and OrganizationSearch.
  * Behaviour:

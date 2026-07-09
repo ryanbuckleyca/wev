@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { safeUrl } from '@/lib/url';
 import SseBadge from './SseBadge';
 import JobCardFooter from './JobCardFooter';
 import MatchDetailsTooltip from './MatchDetailsTooltip';
@@ -118,12 +119,19 @@ interface CardDetailsProps {
 }
 
 function OrganizationCardDetails({ org, locale, websiteLabel, viewProfileLabel }: CardDetailsProps) {
+  const safeWebsite = safeUrl(org.website);
+
   return (
     <div className="py-4 px-5 bg-card flex flex-col gap-2">
-      {org.website ? (
+      {safeWebsite ? (
         <div className="flex gap-1.5 text-sm">
           <span className="text-muted-foreground">{websiteLabel}</span>
-          <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+          <a
+            href={safeWebsite}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline truncate"
+          >
             {org.website}
           </a>
         </div>

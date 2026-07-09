@@ -5,12 +5,7 @@
 -- Drop old 8-argument signature created by 20260708000000
 DROP FUNCTION IF EXISTS public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[]);
 
--- NOTE: The ILIKE search on o.name / o.description benefits from a pg_trgm GIN index:
---   CREATE INDEX CONCURRENTLY IF NOT EXISTS orgs_name_trgm_idx
---     ON organizations USING gin (name gin_trgm_ops);
---   CREATE INDEX CONCURRENTLY IF NOT EXISTS orgs_description_trgm_idx
---     ON organizations USING gin (description gin_trgm_ops);
--- Add these in a follow-up migration once pg_trgm is confirmed enabled on the instance.
+-- Trigram indexes for ILIKE search added in migration 20260708000002_org_search_indexes.sql
 
 CREATE OR REPLACE FUNCTION public.get_active_organizations(
   min_date timestamp with time zone,
@@ -21,7 +16,7 @@ CREATE OR REPLACE FUNCTION public.get_active_organizations(
   p_provinces text[] default null,
   p_municipalities text[] default null,
   p_org_types text[] default null,
-  p_user_id uuid default null,
+  p_user_id uuid default null,  -- Ignored; kept for API compatibility. Use auth.uid() instead.
   p_sort text default 'org-asc'
 )
 RETURNS TABLE (
@@ -55,17 +50,23 @@ LANGUAGE plpgsql
 STABLE
 SET search_path = public
 AS $$
+DECLARE
+  authenticated_user_id uuid;
 BEGIN
+  -- Use auth.uid() instead of trusting p_user_id parameter to prevent unauthorized profile access
+  authenticated_user_id := auth.uid();
+
   RETURN QUERY
   WITH user_data AS (
     SELECT p.values_rated, p.values
     FROM profiles p
-    WHERE p.id = p_user_id
+    WHERE p.id = authenticated_user_id
   ),
   user_items AS (
-    -- Qualify user_data.values_rated to avoid ambiguity with the RETURNS TABLE column
+    -- Qualify user_data.values_rated to avoid ambiguity with the RETURNS TABLE column.
+    -- Guard against NULL values_rated: COALESCE ensures we always have a valid jsonb array.
     SELECT elem->>'value' AS val, (elem->>'rank')::int AS rnk
-    FROM user_data, jsonb_array_elements(user_data.values_rated) AS elem
+    FROM user_data, jsonb_array_elements(COALESCE(user_data.values_rated, '[]'::jsonb)) AS elem
     WHERE (elem->>'value') IS NOT NULL
   ),
   total_user_items AS (
@@ -117,11 +118,11 @@ BEGIN
     FROM org_counts oc
     CROSS JOIN LATERAL (
       SELECT elem->>'value' AS val,
-             rank_weight((elem->>'rank')::int, jsonb_array_length(oc.values_rated)) AS org_w
-      FROM jsonb_array_elements(oc.values_rated) AS elem
+             rank_weight((elem->>'rank')::int, jsonb_array_length(COALESCE(oc.values_rated, '[]'::jsonb))) AS org_w
+      FROM jsonb_array_elements(COALESCE(oc.values_rated, '[]'::jsonb)) AS elem
       WHERE (elem->>'value') IS NOT NULL
     ) x
-    WHERE p_user_id IS NOT NULL AND oc.values_rated IS NOT NULL AND jsonb_array_length(oc.values_rated) > 0
+    WHERE authenticated_user_id IS NOT NULL AND oc.values_rated IS NOT NULL AND jsonb_array_length(oc.values_rated) > 0
     GROUP BY oc.id, x.val
   ),
   weighted_value_base AS (
@@ -188,4 +189,5 @@ GRANT EXECUTE ON FUNCTION public.get_active_organizations(timestamp with time zo
   TO anon, authenticated, service_role;
 
 COMMENT ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text) IS
-  'Returns organizations with active job counts, optional value-match scoring, filtering, and pagination.';
+  'Returns organizations with active job counts, optional value-match scoring, filtering, and pagination. Security: Uses auth.uid() internally; p_user_id parameter is ignored to prevent unauthorized profile access.';
+
