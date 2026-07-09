@@ -17,8 +17,10 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string, values?: Record<string, unknown>) => {
+  useTranslations: (namespace?: string) => (key: string, values?: Record<string, unknown>) => {
     if (key === 'slugPreview') return `Slug preview: ${String(values?.slug ?? '')}`;
+    if (namespace === 'profile' && key === 'valuesModalTriggerLabel') return 'Browse values';
+    if (namespace === 'profile' && key === 'valuesPlaceholder') return 'Search values';
     return key;
   },
 }));
@@ -28,11 +30,8 @@ vi.mock('@/lib/organizations/actions', () => ({
   updateOrganization: updateOrganizationMock,
 }));
 
-vi.mock('sonner', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
+vi.mock('./profile/values/ValuesSelector', () => ({
+  default: () => <div data-testid="values-selector" />,
 }));
 
 describe('OrgAdminForm', () => {
@@ -53,6 +52,7 @@ describe('OrgAdminForm', () => {
     expect(screen.getByLabelText(/fields\.location/)).toBeInTheDocument();
     expect(screen.getByLabelText(/fields\.type/)).toBeInTheDocument();
     expect(screen.getByLabelText(/fields\.isSse/)).toBeInTheDocument();
+    expect(screen.getByTestId('values-selector')).toBeInTheDocument();
   });
 
   it('updates slug preview while typing name in create mode', () => {
@@ -74,8 +74,40 @@ describe('OrgAdminForm', () => {
     fireEvent.submit(form!);
 
     await waitFor(() => {
-      expect(screen.getByText('errors.nameRequired')).toBeInTheDocument();
       expect(createOrganizationMock).not.toHaveBeenCalled();
+    });
+    expect(screen.getByText('errors.nameRequired')).toBeInTheDocument();
+  });
+
+  it('calls updateOrganization in edit mode', async () => {
+    updateOrganizationMock.mockResolvedValue({
+      ok: true,
+      org: { id: 42, name: 'Existing Org' },
+    });
+
+    render(
+      <OrgAdminForm
+        locale="en"
+        initialValues={{
+          id: 42,
+          name: 'Existing Org',
+          slug: 'existing-org',
+          values_list: [],
+        }}
+      />,
+    );
+
+    fireEvent.submit(screen.getByRole('button', { name: 'actions.update' }).closest('form')!);
+
+    await waitFor(() => {
+      expect(updateOrganizationMock).toHaveBeenCalledWith(
+        42,
+        expect.objectContaining({
+          name: 'Existing Org',
+          slug: 'existing-org',
+          values_list: [],
+        }),
+      );
     });
   });
 });

@@ -102,17 +102,31 @@ class GeminiProvider(BaseLLMProvider):
         return bool(self._api_key or get_gemini_api_key())
 
     def _extract_text(self, response) -> str:
-        """Extract text content from a Gemini response object safely.
+        """Extract text content from a Gemini response object safely."""
+        chunks: list[str] = []
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) if content else None
+            if not parts:
+                continue
+            for part in parts:
+                part_text = getattr(part, "text", None)
+                if part_text:
+                    chunks.append(str(part_text))
 
-        The SDK's response.text property already aggregates candidates[0].content.parts,
-        but we fall back to reading parts[0].text directly as a defensive measure against
-        known SDK versions where response.text can return an empty string despite content
-        being present in the parts array.
-        """
-        text = getattr(response, "text", "")
-        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-            text = text or getattr(response.candidates[0].content.parts[0], "text", "") or ""
-        return text or ""
+        if chunks:
+            return "\n".join(chunks).strip()
+
+        text = getattr(response, "text", "") or ""
+        if not text.strip() and candidates:
+            finish_reason = getattr(candidates[0], "finish_reason", None)
+            logger.warning(
+                "Gemini returned empty text (finish_reason=%s, candidates=%s)",
+                finish_reason,
+                len(candidates),
+            )
+        return text.strip()
 
     def complete(self, prompt: str, model: str | None = None, system: str | None = None, **kwargs) -> str:
         """Generic text completion via Gemini.
@@ -212,6 +226,37 @@ class GeminiProvider(BaseLLMProvider):
         api_s = time.perf_counter() - t_api
         total_s = time.perf_counter() - t0
         text = self._extract_text(response)
+
+        if use_grounding and not text:
+            logger.warning(
+                "Gemini grounded call returned empty text for task=%s; retrying without grounding",
+                task_type,
+            )
+            print(
+                "  … gemini: grounded response empty, retrying without grounding",
+                flush=True,
+            )
+            fallback_config = (
+                types.GenerateContentConfig(system_instruction=system) if system else None
+            )
+            t_retry = time.perf_counter()
+            try:
+                response = client.models.generate_content(
+                    model=resolved_model,
+                    contents=prompt,
+                    config=fallback_config,
+                )
+            except Exception as e:
+                raise LLMProviderError(f"Gemini ungrounded retry error: {e}") from e
+            retry_s = time.perf_counter() - t_retry
+            text = self._extract_text(response)
+            api_s += retry_s
+            logger.info(
+                "Gemini.complete: ungrounded retry finished in %.2fs response_chars=%s",
+                retry_s,
+                len(text),
+            )
+
         logger.info(
             "Gemini.complete: generate_content finished api=%.2fs total=%.2fs response_chars=%s",
             api_s,

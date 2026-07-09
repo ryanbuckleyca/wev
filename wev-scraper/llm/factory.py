@@ -127,9 +127,16 @@ def get_sse_provider() -> BaseLLMProvider | None:
         except Exception:
             pass
 
-    # Try Gemini first for grounding support
+    # Prefer full Flash for grounded org/SSE assessment; Lite can return empty AFC responses.
     try:
-        provider = get_provider(name="gemini")  # Uses gemini-2.5-flash
+        provider = get_provider(name="gemini", model="gemini-2.5-flash")
+        if provider.is_available():
+            return provider
+    except Exception:
+        pass
+
+    try:
+        provider = get_provider(name="gemini")
         if provider.is_available():
             return provider
     except Exception:

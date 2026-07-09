@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { requireAdminSession } from '@/lib/auth/require-admin';
+import { requireAdminPage } from '@/lib/auth/require-admin-page';
 import PageLayout from '@/components/PageLayout';
 import OrgAdminForm from '@/components/OrgAdminForm';
 
@@ -18,11 +17,7 @@ export default async function NewOrganizationPage({ params }: PageProps) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'admin.organizations' });
 
-  // Enforce admin authorization
-  const authResult = await requireAdminSession();
-  if (!authResult.ok) {
-    return redirect(`/${locale}/login`);
-  }
+  await requireAdminPage(locale);
 
   return (
     <PageLayout maxWidth="md">

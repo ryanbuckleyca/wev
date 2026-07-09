@@ -1,11 +1,12 @@
-import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
-import { requireAdminSession } from '@/lib/auth/require-admin';
+import { requireAdminPage } from '@/lib/auth/require-admin-page';
 import { supabaseServer } from '@/lib/supabase-server';
+import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import PageLayout from '@/components/PageLayout';
-import Button from '@/components/Button';
 import SseBadge from '@/components/SseBadge';
+import { buttonVariants } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -20,15 +21,10 @@ export async function generateMetadata({ params }: PageProps) {
 export default async function AdminOrganizationsPage({ params }: PageProps) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'admin.organizations' });
-  const tCommon = await getTranslations({ locale, namespace: 'common' });
+  const tOrgs = await getTranslations({ locale, namespace: 'organizations' });
 
-  // Enforce admin authorization
-  const authResult = await requireAdminSession();
-  if (!authResult.ok) {
-    return redirect(`/${locale}/login`);
-  }
+  await requireAdminPage(locale);
 
-  // Fetch all organizations
   const { data: organizations, error } = await supabaseServer
     .from('organizations')
     .select('id, name, slug, type, is_sse, location, created_at')
@@ -44,8 +40,11 @@ export default async function AdminOrganizationsPage({ params }: PageProps) {
     <PageLayout maxWidth="lg">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-foreground">{t('listTitle')}</h1>
-        <Link href={`/${locale}/admin/organizations/new`}>
-          <Button variant="primary">{t('actions.addNew')}</Button>
+        <Link
+          href={`/${locale}/admin/organizations/new`}
+          className={cn(buttonVariants({ variant: 'default' }))}
+        >
+          {t('actions.addNew')}
         </Link>
       </div>
 
@@ -80,7 +79,7 @@ export default async function AdminOrganizationsPage({ params }: PageProps) {
                   {t('columns.sse')}
                 </th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">
-                  {tCommon('actions')}
+                  {t('columns.actions')}
                 </th>
               </tr>
             </thead>
@@ -99,11 +98,7 @@ export default async function AdminOrganizationsPage({ params }: PageProps) {
                     {org.slug}
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    {org.type
-                      ? t.has(`types.${org.type}`)
-                        ? t(`types.${org.type}`)
-                        : org.type
-                      : '—'}
+                    {getOrganizationTypeLabel(org.type, tOrgs) ?? '—'}
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     {org.location || '—'}
@@ -118,10 +113,11 @@ export default async function AdminOrganizationsPage({ params }: PageProps) {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/${locale}/admin/organizations/${org.id}/edit`}>
-                      <Button size="sm" variant="secondary">
-                        {tCommon('edit')}
-                      </Button>
+                    <Link
+                      href={`/${locale}/admin/organizations/${org.id}/edit`}
+                      className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}
+                    >
+                      {t('edit')}
                     </Link>
                   </td>
                 </tr>
@@ -132,9 +128,7 @@ export default async function AdminOrganizationsPage({ params }: PageProps) {
       )}
 
       <div className="mt-6 text-sm text-muted-foreground">
-        <p>
-          {t('totalCount', { count: orgs.length })}
-        </p>
+        <p>{t('totalCount', { count: orgs.length })}</p>
       </div>
     </PageLayout>
   );

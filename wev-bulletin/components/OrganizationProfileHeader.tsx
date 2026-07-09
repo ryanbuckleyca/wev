@@ -2,6 +2,7 @@ import { Leaf1Solid, Leaf1Outlined } from '@lineiconshq/free-icons';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
+import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import type { OrgRecord } from '@/lib/organizations/types';
 import OrganizationValuesPills from './OrganizationValuesPills';
 
@@ -51,7 +52,8 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
 
             {org.type && (
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-foreground">{t('orgType')}:</span> {org.type}
+                <span className="font-medium text-foreground">{t('orgType')}:</span>{' '}
+                {getOrganizationTypeLabel(org.type, t)}
               </div>
             )}
           </div>
