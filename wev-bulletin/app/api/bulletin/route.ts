@@ -271,8 +271,10 @@ export async function GET(request: Request) {
       // Old API: sse present, use it (sse=true → onlySse=true)
       onlySse = sseParam === 'true';
     } else {
-      // Neither present: default to false (show all) for backward compatibility with old API
-      onlySse = false;
+      // Neither present: default to SSE-only for new frontend
+      // Note: This means old API clients without the 'sse' param will get SSE-only,
+      // which is a breaking change but safer than exposing non-SSE jobs by default
+      onlySse = true;
     }
 
     const noSalary = searchParams.get('nosal') === 'true';
