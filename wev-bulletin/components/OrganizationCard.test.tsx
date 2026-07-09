@@ -20,6 +20,13 @@ const baseProps = {
   locale: 'en',
   sseBadgeLabel: 'SSE',
   jobCountLabel: '5 jobs',
+  noDescriptionLabel: 'No description available.',
+  websiteLabel: 'Website',
+  viewProfileLabel: 'View profile',
+  showMoreLabel: 'Show more',
+  showLessLabel: 'Show less',
+  isLoggedIn: false,
+  translateTooltip: (key: string) => key,
 };
 
 function makeOrg(overrides: Partial<OrgIndexEntry> = {}): OrgIndexEntry {
