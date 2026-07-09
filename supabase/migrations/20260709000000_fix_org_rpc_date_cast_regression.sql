@@ -13,6 +13,7 @@
 -- try_parse_job_date_posted:
 --   Internal helper; not granted to anon. get_active_organizations is SECURITY
 --   DEFINER so it can call the helper on behalf of public callers.
+--   Marked IMMUTABLE so expression indexes on jobs.date_posted can use it.
 --
 -- p_user_id:
 --   Kept in the signature for API compatibility with existing callers. Ignored at
@@ -27,7 +28,7 @@ DROP FUNCTION IF EXISTS public.try_parse_job_date_posted(text);
 CREATE OR REPLACE FUNCTION public.try_parse_job_date_posted(p_date text)
 RETURNS timestamp with time zone
 LANGUAGE plpgsql
-STABLE
+IMMUTABLE
 SET search_path = public
 AS $$
 DECLARE
@@ -83,6 +84,14 @@ GRANT EXECUTE ON FUNCTION public.try_parse_job_date_posted(text) TO service_role
 
 COMMENT ON FUNCTION public.try_parse_job_date_posted(text) IS
   'Safely parse jobs.date_posted text to timestamptz. Returns NULL for empty or unparseable values.';
+
+CREATE INDEX IF NOT EXISTS jobs_org_id_parsed_date_posted_idx
+  ON public.jobs (organization_id, try_parse_job_date_posted(date_posted))
+  WHERE organization_id IS NOT NULL
+    AND try_parse_job_date_posted(date_posted) IS NOT NULL;
+
+COMMENT ON INDEX jobs_org_id_parsed_date_posted_idx IS
+  'Supports get_active_organizations: JOIN on organization_id + filter by parsed date_posted.';
 
 CREATE OR REPLACE FUNCTION public.get_active_organizations(
   min_date timestamp with time zone,
@@ -153,6 +162,7 @@ BEGIN
     SELECT elem->>'value' AS val, (elem->>'rank')::int AS rnk
     FROM user_data, jsonb_array_elements(COALESCE(user_data.values_rated, '[]'::jsonb)) AS elem
     WHERE (elem->>'value') IS NOT NULL
+      AND (elem->>'rank') ~ '^\d+$'
   ),
   total_user_items AS (
     SELECT COUNT(*)::int AS n FROM user_items
@@ -198,6 +208,9 @@ BEGIN
       AND (p_org_types IS NULL OR cardinality(p_org_types) = 0 OR o.type = ANY(p_org_types))
     GROUP BY o.id
   ),
+  total_orgs AS (
+    SELECT count(*)::bigint AS total_count FROM org_counts
+  ),
   org_value_weights AS (
     SELECT oc.id AS org_id, x.val, MIN(x.org_w) AS org_w
     FROM org_counts oc
@@ -206,6 +219,7 @@ BEGIN
              rank_weight((elem->>'rank')::int, jsonb_array_length(COALESCE(oc.values_rated, '[]'::jsonb))) AS org_w
       FROM jsonb_array_elements(COALESCE(oc.values_rated, '[]'::jsonb)) AS elem
       WHERE (elem->>'value') IS NOT NULL
+        AND (elem->>'rank') ~ '^\d+$'
     ) x
     WHERE oc.values_rated IS NOT NULL AND jsonb_array_length(oc.values_rated) > 0
     GROUP BY oc.id, x.val
@@ -253,10 +267,11 @@ BEGIN
     oc.lng,
     oc.geocode_accuracy_type,
     oc.active_job_count,
-    (SELECT count(*) FROM org_counts)::bigint AS total_count,
+    t.total_count,
     cm.value_score,
     cm.shared_values
   FROM org_counts oc
+  CROSS JOIN total_orgs t
   LEFT JOIN computed_matches cm ON cm.org_id = oc.id
   ORDER BY
     -- Match sort: value-score descending, NULLs last (orgs without values sink to bottom)
