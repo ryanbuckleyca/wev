@@ -809,6 +809,77 @@
       "noResults": "Aucune valeur trouvée"
     }
   },
+  "admin": {
+    "organizations": {
+      "listTitle": "Gérer les organisations",
+      "createTitle": "Créer une organisation",
+      "editTitle": "Modifier l'organisation",
+      "createDescription": "Ajouter une nouvelle organisation à la plateforme. Il peut s'agir d'employeurs partenaires qui n'ont pas encore été extraits.",
+      "editDescription": "Modifier les détails de {name}",
+      "noOrganizations": "Aucune organisation pour le moment. Créez-en une pour commencer.",
+      "totalCount": "{count, plural, =0 {Aucune organisation} one {Total : 1 organisation} other {Total : # organisations}}",
+      "sseBadge": "ÉSS",
+      "fields": {
+        "name": "Nom de l'organisation",
+        "slug": "Identifiant URL",
+        "description": "Description",
+        "missionStatement": "Énoncé de mission",
+        "website": "URL du site web",
+        "location": "Emplacement",
+        "type": "Type d'organisation",
+        "isSse": "Organisation d'économie solidaire",
+        "values": "Valeurs fondamentales"
+      },
+      "placeholders": {
+        "name": "p. ex., Centraide Montréal",
+        "slug": "p. ex., centraide-montreal",
+        "description": "Brève description de l'organisation...",
+        "missionStatement": "La mission de l'organisation...",
+        "website": "https://exemple.org",
+        "location": "Montréal, QC",
+        "selectType": "Sélectionnez un type...",
+        "values": "Valeurs séparées par des virgules (p. ex., gouvernance coopérative, durabilité environnementale)"
+      },
+      "types": {
+        "nonprofit": "Organisme sans but lucratif",
+        "cooperative": "Coopérative",
+        "social_enterprise": "Entreprise sociale",
+        "government": "Gouvernement",
+        "union": "Syndicat",
+        "other": "Autre"
+      },
+      "columns": {
+        "name": "Nom",
+        "slug": "Identifiant",
+        "type": "Type",
+        "location": "Emplacement",
+        "sse": "ÉSS"
+      },
+      "actions": {
+        "addNew": "Ajouter une organisation",
+        "create": "Créer l'organisation",
+        "update": "Mettre à jour l'organisation",
+        "cancel": "Annuler"
+      },
+      "errors": {
+        "nameRequired": "Le nom de l'organisation est requis",
+        "slugRequired": "L'identifiant URL est requis",
+        "slugInvalid": "L'identifiant ne peut contenir que des lettres minuscules, des chiffres et des traits d'union",
+        "websiteInvalid": "Le site web doit commencer par http:// ou https://",
+        "slug_taken": "Cet identifiant est déjà utilisé",
+        "organization_exists": "Une organisation avec ce nom et cet emplacement existe déjà",
+        "unauthorized": "Vous devez être connecté en tant qu'administrateur pour effectuer cette action",
+        "not_found": "Organisation introuvable",
+        "database_error": "Une erreur de base de données s'est produite. Veuillez réessayer.",
+        "invalid_slug": "Format d'identifiant invalide",
+        "saveFailed": "Échec de l'enregistrement de l'organisation. Veuillez réessayer.",
+        "loadFailed": "Échec du chargement des organisations. Veuillez réessayer."
+      },
+      "createSuccess": "Organisation créée avec succès",
+      "updateSuccess": "Organisation mise à jour avec succès",
+      "slugPreview": "Aperçu de l'identifiant : {slug}"
+    }
+  },
   "ariaLabels": {
     "themeToggle": {
       "switchToLight": "Passer en mode clair",

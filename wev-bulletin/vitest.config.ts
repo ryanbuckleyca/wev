@@ -8,7 +8,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: [path.resolve(__dirname, './vitest.setup.ts')],
     include: ['**/*.test.{ts,tsx}'],
     testTimeout: 90000,
     hookTimeout: 90000,
@@ -31,6 +31,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './'),
       '@lineiconshq/react-lineicons': path.resolve(__dirname, 'test-utils/lineicons-mock.ts'),
       '@lineiconshq/free-icons': path.resolve(__dirname, 'test-utils/lineicons-mock.ts'),
+      sonner: path.resolve(__dirname, 'test-utils/sonner-mock.ts'),
     },
   },
 });
