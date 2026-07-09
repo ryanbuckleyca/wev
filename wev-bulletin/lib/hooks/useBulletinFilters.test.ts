@@ -49,8 +49,8 @@ describe('useBulletinFilters', () => {
 
   it('identifies if any filters are active', () => {
     const { result } = renderHook(() => useBulletinFilters());
-    // Default state: showNonSse=false, so no active filters
-    expect(result.current.hasAnyFilters).toBe(false);
+    // Default state: postedWithin='2-weeks' is an active filter
+    expect(result.current.hasAnyFilters).toBe(true);
   });
 
   it('clears all filters', async () => {
