@@ -92,6 +92,7 @@ describe('organizations/actions', () => {
         slug: 'test-org',
         values_list: ['Community'],
         sse_rating: 'no',
+        sse_details: expect.objectContaining({ flags: ['admin_override'] }),
       }),
     );
   });

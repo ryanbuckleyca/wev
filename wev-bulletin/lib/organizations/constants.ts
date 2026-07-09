@@ -1,4 +1,5 @@
 export const ORG_JOBS_PER_PAGE = 20;
+export const ADMIN_ORGS_PER_PAGE = 50;
 
 /** Canonical org type values stored in the database (aligned with scraper). */
 export const ORG_TYPES = [
