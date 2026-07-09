@@ -5,12 +5,12 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Create GIN trigram index on organizations.name for fast ILIKE searches
--- CONCURRENTLY prevents blocking writes during index creation
-CREATE INDEX CONCURRENTLY IF NOT EXISTS orgs_name_trgm_idx
+-- Note: CONCURRENTLY removed because Supabase migrations run in transactions
+CREATE INDEX IF NOT EXISTS orgs_name_trgm_idx
   ON organizations USING gin (name gin_trgm_ops);
 
 -- Create GIN trigram index on organizations.description for fast ILIKE searches
-CREATE INDEX CONCURRENTLY IF NOT EXISTS orgs_description_trgm_idx
+CREATE INDEX IF NOT EXISTS orgs_description_trgm_idx
   ON organizations USING gin (description gin_trgm_ops);
 
 COMMENT ON INDEX orgs_name_trgm_idx IS
