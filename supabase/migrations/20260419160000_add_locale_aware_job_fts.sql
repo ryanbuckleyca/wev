@@ -17,14 +17,11 @@ ADD COLUMN IF NOT EXISTS fts_fr tsvector GENERATED ALWAYS AS (
   setweight(to_tsvector('french', coalesce(province, '')), 'B') ||
   setweight(to_tsvector('french', coalesce(summary, '')), 'C')
 ) STORED;
-
 CREATE INDEX IF NOT EXISTS jobs_fts_en_idx ON jobs USING GIN (fts_en);
 CREATE INDEX IF NOT EXISTS jobs_fts_fr_idx ON jobs USING GIN (fts_fr);
-
 -- Recreate the view so Postgres re-expands j.* and includes newly-added columns.
 -- DROP + CREATE avoids CREATE OR REPLACE column-position restrictions.
 DROP VIEW IF EXISTS matched_jobs;
-
 CREATE VIEW matched_jobs WITH (security_invoker = true) AS
 SELECT
   j.*,
