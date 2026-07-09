@@ -12,8 +12,9 @@
 --   5. Add CHECK constraints
 --   6. Add uniqueness indexes
 --   7. Add organization_id FK to jobs
---   8. Create index on jobs(organization_id)
---   9. Recreate matched_jobs view and re-grant SELECT
+--   8. Recreate matched_jobs view and re-grant SELECT
+-- (jobs(organization_id) index is built CONCURRENTLY in
+--  20260701000001_add_jobs_organization_id_idx_concurrently.sql)
 
 -- ── 1. Add new nullable columns ─────────────────────────────────────────────
 
@@ -26,23 +27,29 @@ ALTER TABLE public.organizations
   ADD COLUMN IF NOT EXISTS sse_details jsonb,
   ADD COLUMN IF NOT EXISTS is_sse      boolean DEFAULT false,
   ADD COLUMN IF NOT EXISTS logo_url    text;
+
 -- ── 2. Backfill name for any existing NULL rows ──────────────────────────────
 
 UPDATE public.organizations
   SET name = 'Unknown Organization ' || id::text
   WHERE name IS NULL;
+
 -- ── 3. Backfill slug for all existing rows ───────────────────────────────────
--- Uses raw SQL regex (not Python generate_slug() NFKD logic).
+-- Applies unaccent() first (extension enabled in 20260406132800) so common
+-- French diacritics (é, è, ê, ç, etc.) are decomposed before stripping, then
+-- regexp_replace handles the NFKD result identically to generate_slug().
 -- The || '-' || id::text suffix guarantees uniqueness regardless of name.
 
 UPDATE public.organizations
-  SET slug = lower(regexp_replace(name, '[^a-zA-Z0-9]+', '-', 'g')) || '-' || id::text
+  SET slug = lower(btrim(regexp_replace(public.f_unaccent(name), '[^a-zA-Z0-9]+', '-', 'g'), '-')) || '-' || id::text
   WHERE slug IS NULL;
+
 -- ── 4. Set NOT NULL ──────────────────────────────────────────────────────────
 
 ALTER TABLE public.organizations
   ALTER COLUMN name SET NOT NULL,
   ALTER COLUMN slug SET NOT NULL;
+
 -- ── 5. Add CHECK constraints ─────────────────────────────────────────────────
 -- PostgreSQL does not support IF NOT EXISTS for ADD CONSTRAINT; use the
 -- exception-based form to make the migration re-runnable.
@@ -52,19 +59,38 @@ DO $$ BEGIN
     ADD CONSTRAINT organizations_slug_nonempty CHECK (slug <> '');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
 DO $$ BEGIN
   ALTER TABLE public.organizations
     ADD CONSTRAINT organizations_sse_rating_check
       CHECK (sse_rating IS NULL OR sse_rating IN ('strong_yes', 'weak_yes', 'no'));
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
 -- ── 6. Add uniqueness constraints / indexes ──────────────────────────────────
 
 DO $$ BEGIN
   ALTER TABLE public.organizations
     ADD CONSTRAINT organizations_slug_key UNIQUE (slug);
-EXCEPTION WHEN duplicate_table THEN NULL;
+EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+-- Dedup pre-flight: remove rows that would violate the upcoming identity index.
+-- The FK to jobs hasn't been added yet (step 7), so there are no references.
+-- Keep the row with the lowest id per normalized identity group.
+DELETE FROM public.organizations
+WHERE id IN (
+  SELECT id FROM (
+    SELECT id,
+      ROW_NUMBER() OVER (
+        PARTITION BY lower(btrim(name)), coalesce(nullif(lower(btrim(location)), ''), '')
+        ORDER BY id
+      ) AS rn
+    FROM public.organizations
+  ) dups
+  WHERE rn > 1
+);
+
 -- Case-insensitive normalized identity index — treats null/empty location as ''
 -- so repeated inserts for the same organization (regardless of location presence)
 -- are rejected.
@@ -73,6 +99,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS organizations_identity_key
     lower(btrim(name)),
     coalesce(nullif(lower(btrim(location)), ''), '')
   );
+
 -- ── 7. Add organization_id FK to jobs ────────────────────────────────────────
 -- organizations.id is bigint; jobs.id is uuid — the FK column type must match
 -- organizations.id (bigint), not jobs.id.
@@ -80,13 +107,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS organizations_identity_key
 ALTER TABLE public.jobs
   ADD COLUMN IF NOT EXISTS organization_id bigint
     REFERENCES public.organizations(id) ON DELETE SET NULL;
--- ── 8. Index on jobs(organization_id) ────────────────────────────────────────
 
-CREATE INDEX IF NOT EXISTS jobs_organization_id_idx
-  ON public.jobs (organization_id);
--- ── 9. Recreate matched_jobs so j.* expands to include organization_id ───────
+-- ── 8. Recreate matched_jobs so j.* expands to include organization_id ───────
 
 DROP VIEW IF EXISTS public.matched_jobs;
+
 CREATE VIEW public.matched_jobs WITH (security_invoker = true) AS
 SELECT
   j.*,
@@ -99,4 +124,5 @@ LEFT JOIN sources s ON j.source_id = s.id
 LEFT JOIN job_matches jm
   ON j.id = jm.job_id
   AND jm.user_id = auth.uid();
+
 GRANT SELECT ON public.matched_jobs TO anon, authenticated, service_role;

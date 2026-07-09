@@ -20,14 +20,18 @@ as $$
     and payload->>'locale' in ('en', 'fr')
   );
 $$;
+
 comment on function public.is_valid_cv_import_metadata(jsonb) is
   'Validates profiles.cv_import metadata shape: required keys, non-empty filename, ISO timestamp, known source, and locale.';
+
 update public.profiles
 set cv_import = null
 where cv_import is not null
   and not public.is_valid_cv_import_metadata(cv_import);
+
 alter table public.profiles
   drop constraint if exists cv_import_shape;
+
 alter table public.profiles
   add constraint cv_import_shape check (
     public.is_valid_cv_import_metadata(cv_import)

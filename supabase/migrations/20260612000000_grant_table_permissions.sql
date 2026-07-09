@@ -21,6 +21,7 @@ grant select on public.sources           to anon, authenticated;
 grant select on public.organizations     to anon, authenticated;
 grant select on public.esco_skills       to anon, authenticated;
 grant select on public.scrape_runs       to anon, authenticated;
+
 -- ── Views ─────────────────────────────────────────────────────────────────────
 --
 -- Views require explicit GRANTs independently of the underlying tables.
@@ -28,21 +29,27 @@ grant select on public.scrape_runs       to anon, authenticated;
 -- SELECT on all underlying tables (jobs, sources, job_matches).
 
 grant select on public.matched_jobs      to anon, authenticated, service_role;
+
 -- ── Other shared tables ───────────────────────────────────────────────────────
 
 -- cities: read-only lookup table for location autocomplete
 grant select on public.cities            to anon, authenticated, service_role;
+
 -- ── User-owned tables ────────────────────────────────────────────────────────
 
 -- profiles: users manage their own row; RLS restricts to owner
 grant select, insert, update, delete on public.profiles     to authenticated;
+
 -- job_matches: written by server-side functions, read by owner
 -- anon needs SELECT so the security_invoker matched_jobs view can LEFT JOIN job_matches
 grant select on public.job_matches to anon, authenticated;
+
 -- bookmarks: full ownership
 grant select, insert, update, delete on public.bookmarks    to authenticated;
+
 -- request_logs: written by verify_user_password (security definer), read by owner
 grant select on public.request_logs to authenticated;
+
 -- ── service_role (seeder / admin operations) ─────────────────────────────────
 --
 -- The E2E seeder and any server-side admin code runs with the service_role key.

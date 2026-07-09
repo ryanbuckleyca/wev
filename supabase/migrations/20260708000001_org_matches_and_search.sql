@@ -4,6 +4,7 @@
 
 -- Drop old 8-argument signature created by 20260708000000
 DROP FUNCTION IF EXISTS public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[]);
+
 -- Trigram indexes for ILIKE search added in migration 20260708000002_org_search_indexes.sql
 
 CREATE OR REPLACE FUNCTION public.get_active_organizations(
@@ -189,7 +190,10 @@ BEGIN
   OFFSET v_offset;
 END;
 $$;
+
 GRANT EXECUTE ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text)
   TO anon, authenticated, service_role;
+
 COMMENT ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text) IS
   'Returns organizations with active job counts, optional value-match scoring, filtering, and pagination. Security: Uses auth.uid() internally; p_user_id parameter is ignored to prevent unauthorized profile access.';
+
