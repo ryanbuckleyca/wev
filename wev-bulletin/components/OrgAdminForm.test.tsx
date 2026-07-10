@@ -9,6 +9,7 @@ const {
   createOrganizationMock,
   updateOrganizationMock,
   deleteOrganizationMock,
+  getOrganizationActiveJobCountMock,
 } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   replaceMock: vi.fn(),
@@ -16,6 +17,7 @@ const {
   createOrganizationMock: vi.fn(),
   updateOrganizationMock: vi.fn(),
   deleteOrganizationMock: vi.fn(),
+  getOrganizationActiveJobCountMock: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -46,6 +48,7 @@ vi.mock('@/lib/organizations/actions', () => ({
   createOrganization: createOrganizationMock,
   updateOrganization: updateOrganizationMock,
   deleteOrganization: deleteOrganizationMock,
+  getOrganizationActiveJobCount: getOrganizationActiveJobCountMock,
 }));
 
 vi.mock('./profile/values/ValuesSelector', () => ({
@@ -93,6 +96,7 @@ describe('OrgAdminForm', () => {
       ok: true,
       org: { id: 1, name: 'Test Org', slug: 'test-org' },
     });
+    getOrganizationActiveJobCountMock.mockResolvedValue(0);
   });
 
   it('renders core admin fields', () => {
@@ -132,9 +136,6 @@ describe('OrgAdminForm', () => {
   });
 
   it('redirects to the public org page after create', async () => {
-    const locationStub = { href: 'http://localhost/en/admin/organizations/new' };
-    vi.stubGlobal('location', locationStub);
-
     render(<OrgAdminForm locale="en" />);
 
     fireEvent.change(screen.getByLabelText(/fields\.name/), {
@@ -144,16 +145,12 @@ describe('OrgAdminForm', () => {
 
     await waitFor(() => {
       expect(createOrganizationMock).toHaveBeenCalled();
-      expect(locationStub.href).toBe('/en/organizations/test-org');
+      expect(pushMock).toHaveBeenCalledWith('/en/organizations/test-org');
+      expect(refreshMock).toHaveBeenCalled();
     });
-
-    vi.unstubAllGlobals();
   });
 
   it('calls updateOrganization in edit mode and redirects to public org page', async () => {
-    const locationStub = { href: 'http://localhost/en/admin/organizations/42/edit' };
-    vi.stubGlobal('location', locationStub);
-
     updateOrganizationMock.mockResolvedValue({
       ok: true,
       org: { id: 42, name: 'Existing Org', slug: 'existing-org' },
@@ -184,18 +181,14 @@ describe('OrgAdminForm', () => {
           values_list: [],
         }),
       );
-      expect(locationStub.href).toBe('/en/organizations/existing-org');
+      expect(pushMock).toHaveBeenCalledWith('/en/organizations/existing-org');
+      expect(refreshMock).toHaveBeenCalled();
     });
-
-    vi.unstubAllGlobals();
   });
 
   it('deletes organization after confirmation', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     deleteOrganizationMock.mockResolvedValue({ ok: true });
-
-    const locationStub = { href: 'http://localhost/en/admin/organizations/42/edit' };
-    vi.stubGlobal('location', locationStub);
 
     render(
       <OrgAdminForm
@@ -212,11 +205,12 @@ describe('OrgAdminForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
 
     await waitFor(() => {
+      expect(getOrganizationActiveJobCountMock).toHaveBeenCalledWith(42);
       expect(deleteOrganizationMock).toHaveBeenCalledWith(42);
-      expect(locationStub.href).toBe('/en/admin/organizations');
+      expect(pushMock).toHaveBeenCalledWith('/en/admin/organizations');
+      expect(refreshMock).toHaveBeenCalled();
     });
 
     confirmSpy.mockRestore();
-    vi.unstubAllGlobals();
   });
 });

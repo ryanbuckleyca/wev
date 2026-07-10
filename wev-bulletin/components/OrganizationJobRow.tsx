@@ -30,8 +30,8 @@ function JobSkillFooter({
   userId: string | null;
 }) {
   const { profile } = useProfile();
-  const skills = job.skills ?? [];
-  const values = job.values ?? [];
+  const skills = useMemo(() => job.skills ?? [], [job.skills]);
+  const values = useMemo(() => job.values ?? [], [job.values]);
 
   const skillLabels = useMemo(
     () => buildSkillLabelMaps(skills, job.skill_labels ?? {}),

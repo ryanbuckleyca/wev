@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from './route';
-import { fetchLastScrapeTime, resolveOrgSlugs } from '@/lib/bulletin/server-data';
+import { fetchLastScrapeTime } from '@/lib/bulletin/server-data';
+import { resolveOrgSlugs } from '@/lib/bulletin/resolve-org-slugs';
 import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
 
 /**
@@ -92,11 +93,14 @@ vi.mock('@/lib/supabase/server', () => {
 // Mock Server Data
 vi.mock('@/lib/bulletin/server-data', () => ({
   fetchLastScrapeTime: vi.fn(),
-  resolveOrgSlugs: vi.fn(),
   BULLETIN_CACHE_TAG: 'bulletin-jobs',
   BULLETIN_CACHE_REVALIDATE_SECONDS: 60,
   BULLETIN_JOB_SELECT:
     'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week, language',
+}));
+
+vi.mock('@/lib/bulletin/resolve-org-slugs', () => ({
+  resolveOrgSlugs: vi.fn(),
 }));
 
 vi.mock('@/lib/resolve-skill-labels', () => ({
