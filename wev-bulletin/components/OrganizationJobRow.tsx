@@ -40,10 +40,7 @@ function JobSkillFooter({
 
   const scoreData = useMemo(() => (match ? buildRoundedMatchScores(match) : null), [match]);
 
-  const profilePreferences = useMemo(
-    () => buildProfileMatchPreferences(profile),
-    [profile],
-  );
+  const profilePreferences = useMemo(() => buildProfileMatchPreferences(profile), [profile]);
 
   const matchTooltipContent = useMemo(() => {
     if (!match || !scoreData) return null;
@@ -61,7 +58,16 @@ function JobSkillFooter({
         })}
       />
     );
-  }, [match, scoreData, job.work_type, job.municipality, values, skills, skillLabels.terms, profilePreferences]);
+  }, [
+    match,
+    scoreData,
+    job.work_type,
+    job.municipality,
+    values,
+    skills,
+    skillLabels.terms,
+    profilePreferences,
+  ]);
 
   const hasFooter = skills.length > 0 || values.length > 0;
   if (!hasFooter) return null;

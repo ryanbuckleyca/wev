@@ -8,19 +8,14 @@ type MutableJobOrgFields = {
 function jobsWithOrgFields(jobs: unknown): MutableJobOrgFields[] {
   if (!Array.isArray(jobs)) return [];
 
-  return jobs.filter(
-    (job): job is MutableJobOrgFields => job != null && typeof job === 'object',
-  );
+  return jobs.filter((job): job is MutableJobOrgFields => job != null && typeof job === 'object');
 }
 
 /**
  * Fetches organization slugs for jobs that have organization_id and mutates each
  * job in place with organization_slug.
  */
-export async function resolveOrgSlugs(
-  supabase: SupabaseClient,
-  jobs: unknown,
-): Promise<void> {
+export async function resolveOrgSlugs(supabase: SupabaseClient, jobs: unknown): Promise<void> {
   const mutableJobs = jobsWithOrgFields(jobs);
   if (mutableJobs.length === 0) return;
 

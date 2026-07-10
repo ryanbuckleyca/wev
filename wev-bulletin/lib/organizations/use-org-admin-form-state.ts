@@ -5,9 +5,10 @@ import type { OrgRecord } from '@/lib/organizations/types';
 import { normalizeOrgType } from '@/lib/organizations/org-type';
 import type { OrgFormInput } from '@/lib/organizations/validate';
 
-function initialLocation(
-  initialValues?: Partial<OrgRecord>,
-): { selection: LocationSelection | null; hasCoords: boolean } {
+function initialLocation(initialValues?: Partial<OrgRecord>): {
+  selection: LocationSelection | null;
+  hasCoords: boolean;
+} {
   if (!initialValues) return { selection: null, hasCoords: false };
 
   const displayName = initialValues.location?.trim() || null;
@@ -51,7 +52,9 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
   const [description, setDescription] = useState(initialValues?.description || '');
   const [missionStatement, setMissionStatement] = useState(initialValues?.mission_statement || '');
   const [website, setWebsite] = useState(initialValues?.website || '');
-  const [location, setLocation] = useState<LocationSelection | null>(initialLocationState.selection);
+  const [location, setLocation] = useState<LocationSelection | null>(
+    initialLocationState.selection,
+  );
   const [locationHasCoords, setLocationHasCoords] = useState(initialLocationState.hasCoords);
   const [type, setType] = useState(() => normalizeOrgType(initialValues?.type) || '');
   const [isSse, setIsSse] = useState(initialValues?.is_sse ?? false);
@@ -69,10 +72,13 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     setValueCutoff(valuesList.length);
   }, [valuesList.length]);
 
-  const setLocationSelection = useCallback((value: LocationSelection | null, hasCoords: boolean) => {
-    setLocation(value);
-    setLocationHasCoords(hasCoords);
-  }, []);
+  const setLocationSelection = useCallback(
+    (value: LocationSelection | null, hasCoords: boolean) => {
+      setLocation(value);
+      setLocationHasCoords(hasCoords);
+    },
+    [],
+  );
 
   const buildFormInput = useCallback((): OrgFormInput => {
     const hasCoords = Boolean(location && locationHasCoords);

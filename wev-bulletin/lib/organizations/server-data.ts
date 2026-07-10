@@ -106,9 +106,9 @@ export async function fetchOrganizationIndex(
   // When filters are active the denominator query gives the unfiltered org count.
   // When no filters, total IS the unfiltered count.
   const totalAvailable = hasFilters
-    ? (denominatorResult.data && denominatorResult.data.length > 0
-        ? Number(denominatorResult.data[0].total_count)
-        : total)
+    ? denominatorResult.data && denominatorResult.data.length > 0
+      ? Number(denominatorResult.data[0].total_count)
+      : total
     : total;
 
   if (orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
@@ -167,7 +167,11 @@ export async function getOrganizationJobs({
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
 
-  const { data: jobs, error, count } = await supabaseServer
+  const {
+    data: jobs,
+    error,
+    count,
+  } = await supabaseServer
     .from('jobs')
     .select(
       'id, job_title, listing_url, date_posted, employment_type, location, municipality, work_type, skills, values',

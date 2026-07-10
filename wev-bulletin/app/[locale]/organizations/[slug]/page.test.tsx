@@ -1,16 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@/test-utils';
 
-const { mockGetOrganizationBySlug, mockGetOrganizationJobs, mockNotFound, mockGetUser } = vi.hoisted(
-  () => ({
+const { mockGetOrganizationBySlug, mockGetOrganizationJobs, mockNotFound, mockGetUser } =
+  vi.hoisted(() => ({
     mockGetOrganizationBySlug: vi.fn(),
     mockGetOrganizationJobs: vi.fn(),
     mockNotFound: vi.fn(() => {
       throw new Error('NEXT_NOT_FOUND');
     }),
     mockGetUser: vi.fn(async () => ({ data: { user: null } })),
-  }),
-);
+  }));
 
 vi.mock('next/navigation', () => ({
   notFound: mockNotFound,
