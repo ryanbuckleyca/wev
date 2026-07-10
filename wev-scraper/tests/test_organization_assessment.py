@@ -47,11 +47,14 @@ def test_parse_response_keeps_long_sse_reasoning():
 
 
 def test_parse_response_caps_sse_reasoning_at_limit():
-    reasoning = "x" * (_SSE_REASONING_MAX_CHARS + 50)
+    reasoning = ("word " * 300).strip()
+    assert len(reasoning) > _SSE_REASONING_MAX_CHARS
+
     result = _parse_response(_assessment_json(sse_reasoning=reasoning), "Nature Visuals")
 
     assert result is not None
-    assert len(result["sse_reasoning"]) == _SSE_REASONING_MAX_CHARS
+    assert len(result["sse_reasoning"]) <= _SSE_REASONING_MAX_CHARS
+    assert not result["sse_reasoning"].endswith("wo")
 
 
 def test_parse_response_allows_description_up_to_admin_limit():
