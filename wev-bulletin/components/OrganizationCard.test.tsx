@@ -26,7 +26,6 @@ const baseProps = {
   showMoreLabel: 'Show more',
   showLessLabel: 'Show less',
   isLoggedIn: false,
-  translateTooltip: (key: string) => key,
 };
 
 function makeOrg(overrides: Partial<OrgIndexEntry> = {}): OrgIndexEntry {

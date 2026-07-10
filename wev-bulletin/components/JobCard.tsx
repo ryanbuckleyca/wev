@@ -125,10 +125,9 @@ export default function JobCard({
         sharedValues={matchProp.shared_values || []}
         sharedSkills={matchProp.shared_skills || []}
         skillTerms={skillLabels.terms}
-        translate={(key, values) => t(key, values)}
       />
     );
-  }, [matchProp, scoreData, job, profilePreferences, skillLabels.terms, t]);
+  }, [matchProp, scoreData, job, profilePreferences, skillLabels.terms]);
 
   const getCardSummary = useCallback(() => {
     const title =

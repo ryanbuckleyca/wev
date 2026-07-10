@@ -1,4 +1,7 @@
+'use client';
+
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import {
   HeartSolid,
@@ -8,8 +11,6 @@ import {
   XmarkOutlined,
 } from '@lineiconshq/free-icons';
 import ProgressDonut from './ProgressDonut';
-
-type TranslateFn = (key: string, values?: Record<string, string | number>) => string;
 
 interface MatchDetailsTooltipProps {
   totalMatchPercentage: number;
@@ -22,7 +23,6 @@ interface MatchDetailsTooltipProps {
   sharedValues: string[];
   sharedSkills: string[];
   skillTerms: Record<string, string>;
-  translate: TranslateFn;
   jobWorkType?: string | null;
   jobMunicipality?: string | null;
   profileWorkTypes?: string[];
@@ -67,12 +67,13 @@ export default function MatchDetailsTooltip({
   sharedValues,
   sharedSkills,
   skillTerms,
-  translate,
   jobWorkType,
   jobMunicipality,
   profileWorkTypes,
   profileHasLocationValue,
 }: MatchDetailsTooltipProps) {
+  const t = useTranslations('matchDetails');
+  const tWorkType = useTranslations('filters.workType');
   const textColor = 'rgb(var(--foreground))';
 
   const formatValueLabel = (value: string) =>
@@ -111,11 +112,11 @@ export default function MatchDetailsTooltip({
 
   const workTypeLabels = useMemo<Record<string, string>>(
     () => ({
-      remote: translate('filters.workType.remote'),
-      hybrid: translate('filters.workType.hybrid'),
-      office: translate('filters.workType.office'),
+      remote: tWorkType('remote'),
+      hybrid: tWorkType('hybrid'),
+      office: tWorkType('office'),
     }),
-    [translate],
+    [tWorkType],
   );
 
   return (
@@ -126,11 +127,9 @@ export default function MatchDetailsTooltip({
           size="xl"
           text={`${totalMatchPercentage}%`}
         />
-        <div className="text-xs opacity-75 lowercase">{translate('matchDetails.totalMatch')}</div>
-        <div className="text-xs opacity-75 lowercase mt-1">
-          {translate('matchDetails.breakdown')}
-        </div>
-        <div className="text-xs opacity-60 lowercase">{translate('matchDetails.weightsNote')}</div>
+        <div className="text-xs opacity-75 lowercase">{t('totalMatch')}</div>
+        <div className="text-xs opacity-75 lowercase mt-1">{t('breakdown')}</div>
+        <div className="text-xs opacity-60 lowercase">{t('weightsNote')}</div>
       </div>
 
       {orderedValues.length > 0 && (
@@ -141,7 +140,7 @@ export default function MatchDetailsTooltip({
           >
             <Lineicons icon={HeartSolid} size={12} className="text-wev-brand-accent" />
             <span>
-              {translate('matchDetails.values')}: {valueMatchPercentage}%
+              {t('values')}: {valueMatchPercentage}%
             </span>
           </div>
           {orderedValues.map((value) => (
@@ -163,7 +162,7 @@ export default function MatchDetailsTooltip({
           >
             <Lineicons icon={Briefcase2Solid} size={12} className="text-primary" />
             <span>
-              {translate('matchDetails.skills')}: {skillMatchPercentage}%
+              {t('skills')}: {skillMatchPercentage}%
             </span>
           </div>
           {orderedSkills.map((skill) => (
@@ -185,7 +184,7 @@ export default function MatchDetailsTooltip({
           >
             <Lineicons icon={LocationArrowRightSolid} size={12} className="text-wev-info" />
             <span>
-              {translate('matchDetails.location')}
+              {t('location')}
               {locationSectionPercentage !== null ? `: ${locationSectionPercentage}%` : ''}
             </span>
           </div>
@@ -211,26 +210,26 @@ export default function MatchDetailsTooltip({
             (locationMatchPercentage === 100 ? (
               <MatchListItem
                 id="location-distance"
-                label={translate('matchDetails.locationNearby')}
+                label={t('locationNearby')}
                 matched={true}
               />
             ) : locationMatchPercentage === 50 ? (
               <MatchListItem
                 id="location-distance"
-                label={translate('matchDetails.locationRegional')}
+                label={t('locationRegional')}
                 matched={true}
               />
             ) : locationMatchPercentage === 0 ? (
               <MatchListItem
                 id="location-distance"
-                label={translate('matchDetails.locationOutOfRange')}
+                label={t('locationOutOfRange')}
                 matched={false}
               />
             ) : null)}
 
           {profileHasLocationValue && (
             <div className="text-xs text-muted-foreground lowercase">
-              {translate('matchDetails.locationPrioritized')}
+              {t('locationPrioritized')}
             </div>
           )}
         </div>

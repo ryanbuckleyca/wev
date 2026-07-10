@@ -37,7 +37,6 @@ export default function OrganizationIndexView({ orgs, locale, t, tCommon, isLogg
           showMoreLabel={tCommon('showMore')}
           showLessLabel={tCommon('showLess')}
           isLoggedIn={isLoggedIn}
-          translateTooltip={(key, values) => t(key, values as Record<string, string | number>)}
         />
       ))}
     </div>

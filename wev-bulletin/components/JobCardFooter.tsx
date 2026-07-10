@@ -45,6 +45,7 @@ export default function JobCardFooter({
   selectedLanguages = [],
 }: JobCardFooterProps) {
   const t = useTranslations();
+  const tMatch = useTranslations('matchDetails');
   const tValues = useTranslations('values');
 
   const getValueTranslations = (value: string) => getValueTranslationsHelper(value, tValues);
@@ -159,8 +160,8 @@ export default function JobCardFooter({
     .map((skill) => formatSkillLabel(skill).toLowerCase())
     .join(', ');
 
-  const valueSummaryLabel = t('matchDetails.values').toLowerCase();
-  const skillSummaryLabel = t('matchDetails.skills').toLowerCase();
+  const valueSummaryLabel = tMatch('values').toLowerCase();
+  const skillSummaryLabel = tMatch('skills').toLowerCase();
 
   const summaryItems = [
     buildSummaryPill(
