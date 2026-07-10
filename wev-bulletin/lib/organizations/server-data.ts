@@ -1,9 +1,11 @@
 import 'server-only';
 
 import { cache } from 'react';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServer } from '@/lib/supabase-server';
 import { bulletinAgeCutoffIso } from '@/lib/bulletin/constants';
-import { ORG_JOBS_PER_PAGE } from './constants';
+import { attachSkillLabels, parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
+import { ORG_INDEX_PAGE_SIZE, ORG_JOBS_PER_PAGE } from './constants';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
 // ---------------------------------------------------------------------------
@@ -23,6 +25,8 @@ export interface FetchOrganizationIndexOptions {
 
 export async function fetchOrganizationIndex(
   options: FetchOrganizationIndexOptions = {},
+  /** User-scoped client so get_active_organizations can read auth.uid() for value scores. */
+  authSupabase?: SupabaseClient,
 ): Promise<{ orgs: OrgIndexEntry[]; total: number; totalAvailable: number }> {
   const {
     page: rawPage = 1,
@@ -37,7 +41,7 @@ export async function fetchOrganizationIndex(
 
   const page = Math.max(1, rawPage);
   const minDate = bulletinAgeCutoffIso();
-  const limit = ORG_JOBS_PER_PAGE;
+  const limit = ORG_INDEX_PAGE_SIZE;
   const offset = (page - 1) * limit;
   const effectiveSortBy = sortBy ?? (userId ? 'value-match-desc' : 'org-asc');
 
@@ -77,8 +81,11 @@ export async function fetchOrganizationIndex(
     p_sort: effectiveSortBy,
   };
 
+  // RPC scores org value overlap via auth.uid(); service-role calls see no user.
+  const mainRpcClient = userId && authSupabase ? authSupabase : supabaseServer;
+
   const [mainResult, denominatorResult] = await Promise.all([
-    supabaseServer.rpc('get_active_organizations', mainParams),
+    mainRpcClient.rpc('get_active_organizations', mainParams),
     hasFilters
       ? supabaseServer.rpc('get_active_organizations', denominatorParams)
       : Promise.resolve({ data: null, error: null }),
@@ -147,58 +154,42 @@ export const getOrganizationBySlug = cache(async (slug: string): Promise<OrgReco
 export interface GetOrganizationJobsOptions {
   orgId: number;
   page: number;
-  sseOnly?: boolean;
+  locale?: string;
 }
 
 export async function getOrganizationJobs({
   orgId,
   page: rawPage,
-  sseOnly = false,
-}: GetOrganizationJobsOptions): Promise<{ jobs: OrgJobPosting[]; total: number; totalAvailable: number }> {
+  locale = 'en',
+}: GetOrganizationJobsOptions): Promise<{ jobs: OrgJobPosting[]; total: number }> {
   const page = Math.max(1, rawPage);
   const minDate = bulletinAgeCutoffIso();
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
 
-  let query = supabaseServer
+  const { data: jobs, error, count } = await supabaseServer
     .from('jobs')
-    .select('id, job_title, listing_url, date_posted, employment_type, location, work_type', {
-      count: 'exact',
-    })
+    .select(
+      'id, job_title, listing_url, date_posted, employment_type, location, municipality, work_type, skills, values',
+      {
+        count: 'exact',
+      },
+    )
     .eq('organization_id', orgId)
     .gte('date_posted', minDate)
     .order('date_posted', { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (sseOnly) {
-    query = query.eq('is_sse', true);
-  }
-
-  const { data: jobs, error, count } = await query;
-
   if (error) {
     throw new Error(`getOrganizationJobs query error: ${error.message}`);
   }
 
-  // Fetch the unfiltered total when SSE filter is active,
-  // so we can display "5 / 30 jobs" instead of "5 / 5 jobs".
-  let totalAvailable = count ?? 0;
-  if (sseOnly) {
-    const { count: allCount, error: allError } = await supabaseServer
-      .from('jobs')
-      .select('id', { count: 'exact', head: true })
-      .eq('organization_id', orgId)
-      .gte('date_posted', minDate);
-    if (allError) {
-      throw new Error(`getOrganizationJobs totalAvailable query error: ${allError.message}`);
-    }
-    totalAvailable = allCount ?? 0;
-  }
+  const rows = jobs || [];
+  const labelMap = await resolveSkillLabels(supabaseServer, rows, parseLocale(locale));
 
   return {
-    jobs: jobs || [],
+    jobs: attachSkillLabels(rows, labelMap) as OrgJobPosting[],
     total: count ?? 0,
-    totalAvailable,
   };
 }
 

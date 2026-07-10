@@ -13,6 +13,10 @@ interface PaginationProps {
   totalPages: number;
   totalItems: number;
   itemsPerPage: number;
+  /** next-intl key for singular item noun, relative to root. Defaults to jobs. */
+  singularKey?: string;
+  /** next-intl key for plural item noun, relative to root. Defaults to jobs. */
+  pluralKey?: string;
 }
 
 export default function Pagination({
@@ -21,17 +25,19 @@ export default function Pagination({
   totalPages,
   totalItems,
   itemsPerPage,
+  singularKey = 'pagination.job',
+  pluralKey = 'pagination.jobs',
 }: PaginationProps) {
   const t = useTranslations();
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+  const itemLabel = totalItems === 1 ? t(singularKey) : t(pluralKey);
 
   if (totalPages <= 1) {
     return (
       <div className="text-sm text-foreground text-center py-4">
         <span data-testid={JOB_BOARD_TEST_IDS.paginationSummary}>
-          {t('pagination.showing')} {totalItems}{' '}
-          {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
+          {t('pagination.showing')} {totalItems} {itemLabel}
         </span>
       </div>
     );
@@ -44,7 +50,7 @@ export default function Pagination({
         data-testid={JOB_BOARD_TEST_IDS.paginationSummary}
       >
         {t('pagination.showing')} {startItem}-{endItem} {t('pagination.of')} {totalItems}{' '}
-        {totalItems === 1 ? t('pagination.job') : t('pagination.jobs')}
+        {itemLabel}
       </div>
 
       <div className="w-full">

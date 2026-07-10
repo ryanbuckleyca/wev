@@ -53,6 +53,14 @@ vi.mock('@/lib/supabase-server', () => ({
   },
 }));
 
+vi.mock('@/lib/resolve-skill-labels', () => ({
+  parseLocale: (value: string | null) => ((value ?? '').toLowerCase() === 'fr' ? 'fr' : 'en'),
+  resolveSkillLabels: vi.fn(async () => new Map()),
+  attachSkillLabels: vi.fn((jobs: unknown[]) =>
+    jobs.map((job) => ({ ...(job as object), skill_labels: {} })),
+  ),
+}));
+
 import { fetchOrganizationIndex, getOrganizationJobs } from './server-data';
 
 function resetQuery(query: any) {

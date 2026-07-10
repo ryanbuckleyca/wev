@@ -17,6 +17,11 @@ export interface OrgFormInput {
   mission_statement?: string | null;
   website?: string | null;
   location?: string | null;
+  municipality?: string | null;
+  province?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  geocode_accuracy_type?: string | null;
   type?: string | null;
   is_sse?: boolean;
   values_list?: string[] | null;
@@ -111,6 +116,11 @@ export interface NormalizedOrgPayload {
   mission_statement: string | null;
   website: string | null;
   location: string | null;
+  municipality: string | null;
+  province: string | null;
+  lat: number | null;
+  lng: number | null;
+  geocode_accuracy_type: string | null;
   type: OrgType | null;
   is_sse: boolean;
   values: string | null;
@@ -130,6 +140,34 @@ function applyValuesFields(
   };
 }
 
+function applyLocationFields(
+  data: Pick<
+    OrgFormInput,
+    'location' | 'municipality' | 'province' | 'lat' | 'lng' | 'geocode_accuracy_type'
+  >,
+): Pick<
+  NormalizedOrgPayload,
+  'location' | 'municipality' | 'province' | 'lat' | 'lng' | 'geocode_accuracy_type'
+> {
+  const location = data.location?.trim() || null;
+  const municipality = data.municipality?.trim() || null;
+  const province = data.province?.trim() || null;
+  const lat = typeof data.lat === 'number' && Number.isFinite(data.lat) ? data.lat : null;
+  const lng = typeof data.lng === 'number' && Number.isFinite(data.lng) ? data.lng : null;
+  const hasCoords = lat != null && lng != null;
+
+  return {
+    location,
+    municipality,
+    province,
+    lat,
+    lng,
+    geocode_accuracy_type: hasCoords
+      ? data.geocode_accuracy_type?.trim() || 'city'
+      : null,
+  };
+}
+
 export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
   const name = data.name.trim();
   const slug = data.slug?.trim() || generateSlug(name);
@@ -143,7 +181,7 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
     description: data.description?.trim() || null,
     mission_statement: data.mission_statement?.trim() || null,
     website: data.website?.trim() || null,
-    location: data.location?.trim() || null,
+    ...applyLocationFields(data),
     type: normalizeOrgType(data.type),
     is_sse: isSse,
     ...applyValuesFields(valuesList),
@@ -164,7 +202,18 @@ export function buildOrgUpdateFields(
     updates.mission_statement = data.mission_statement?.trim() || null;
   }
   if (data.website !== undefined) updates.website = data.website?.trim() || null;
-  if (data.location !== undefined) updates.location = data.location?.trim() || null;
+
+  const locationTouched =
+    data.location !== undefined ||
+    data.municipality !== undefined ||
+    data.province !== undefined ||
+    data.lat !== undefined ||
+    data.lng !== undefined ||
+    data.geocode_accuracy_type !== undefined;
+  if (locationTouched) {
+    Object.assign(updates, applyLocationFields(data));
+  }
+
   if (data.type !== undefined) updates.type = normalizeOrgType(data.type);
   if (data.values_list !== undefined) {
     const valuesList = normalizeOrgValuesList(data.values_list);

@@ -10,11 +10,14 @@ import FormLabel from './FormLabel';
 import ErrorMessage from './ErrorMessage';
 import Button from './Button';
 import ValuesSelector from './profile/values/ValuesSelector';
+import LocationAutocomplete from './profile/LocationAutocomplete';
 import OrgSlugField from './OrgSlugField';
 import OrgTypeSelect from './OrgTypeSelect';
 import {
   createOrganization,
   updateOrganization,
+  deleteOrganization,
+  getOrganizationActiveJobCount,
   type ActionResult,
 } from '@/lib/organizations/actions';
 import {
@@ -65,6 +68,7 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const workValues = useMemo(() => {
     const tEn = (key: string, opts?: { defaultValue: string }) =>
@@ -86,11 +90,7 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
   };
 
   const handleValueRemove = (id: string) => {
-    form.setValuesList((prev) => {
-      const next = prev.filter((value) => value !== id);
-      form.setValueCutoff((cutoff) => Math.min(cutoff, next.length));
-      return next;
-    });
+    form.setValuesList((prev) => prev.filter((value) => value !== id));
   };
 
   const handleValueReorder = (from: number, to: number) => {
@@ -102,7 +102,10 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
     });
   };
 
-  const runSubmit = async (submit: () => Promise<ActionResult>, successMessage: string) => {
+  const runSubmit = async (
+    submit: () => Promise<ActionResult>,
+    successMessage: string,
+  ) => {
     setIsSubmitting(true);
     setErrors({});
 
@@ -119,13 +122,54 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
       }
 
       notify.success(successMessage);
-      router.push(`/${locale}/admin/organizations`);
+      router.push(`/${locale}/organizations/${result.org.slug}`);
       router.refresh();
+      return;
     } catch (err) {
       console.error('Form submission error:', err);
       setErrors({ general: t('errors.saveFailed') });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    const orgId = parseOrgId(initialValues?.id);
+    if (!orgId) {
+      setErrors({ general: t('errors.not_found') });
+      return;
+    }
+
+    const jobCount = await getOrganizationActiveJobCount(orgId);
+    const confirmed = window.confirm(
+      t('deleteConfirm', { name: form.name || t('fields.name'), count: jobCount }),
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    setErrors({});
+
+    try {
+      const result = await deleteOrganization(orgId);
+      if (!result.ok) {
+        if (result.error === 'unauthorized') {
+          notify.error(t('errors.unauthorized'));
+          router.push(`/${locale}/login`);
+          return;
+        }
+        setErrors(applyActionError(t, result, t('errors.deleteFailed')));
+        return;
+      }
+
+      notify.success(t('deleteSuccess'));
+      router.push(`/${locale}/admin/organizations`);
+      router.refresh();
+      return;
+    } catch (err) {
+      console.error('Organization delete error:', err);
+      setErrors({ general: t('errors.deleteFailed') });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -222,15 +266,25 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
         disabled={isSubmitting}
       />
 
-      <FormField
-        label={t('fields.location')}
-        value={form.location}
-        onChange={form.setLocation}
-        placeholder={t('placeholders.location')}
-        htmlFor="org-location"
-        fullWidth
-        disabled={isSubmitting}
-      />
+      <div className="space-y-2">
+        <FormLabel htmlFor="org-location">{t('fields.location')}</FormLabel>
+        <LocationAutocomplete
+          inputId="org-location"
+          value={
+            form.location
+              ? {
+                  lat: form.location.lat,
+                  lng: form.location.lng,
+                  display_name: form.location.display_name,
+                }
+              : null
+          }
+          onChange={(value) => form.setLocationSelection(value, value != null)}
+          placeholder={t('placeholders.location')}
+          hint={t('locationHint')}
+          error={errors.location}
+        />
+      </div>
 
       <OrgTypeSelect
         value={form.type}
@@ -271,18 +325,35 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
         </FormLabel>
       </div>
 
-      <div className="flex gap-4 pt-4">
-        <Button type="submit" disabled={isSubmitting} variant="primary">
-          {isSubmitting ? t('saving') : form.isEditMode ? t('actions.update') : t('actions.create')}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => router.push(`/${locale}/admin/organizations`)}
-          disabled={isSubmitting}
-        >
-          {t('actions.cancel')}
-        </Button>
+      <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-3">
+          <Button type="submit" disabled={isSubmitting || isDeleting} variant="primary">
+            {isSubmitting
+              ? t('saving')
+              : form.isEditMode
+                ? t('actions.update')
+                : t('actions.create')}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => router.push(`/${locale}/admin/organizations`)}
+            disabled={isSubmitting || isDeleting}
+          >
+            {t('actions.cancel')}
+          </Button>
+        </div>
+        {form.isEditMode && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void handleDelete()}
+            disabled={isSubmitting || isDeleting}
+            className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          >
+            {isDeleting ? t('deleting') : t('actions.delete')}
+          </Button>
+        )}
       </div>
     </FormContainer>
   );

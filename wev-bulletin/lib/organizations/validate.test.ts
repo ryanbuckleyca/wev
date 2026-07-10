@@ -80,6 +80,27 @@ describe('buildOrgPayload', () => {
       flags: ['admin_override'],
     });
   });
+
+  it('stores city autocomplete fields with city accuracy', () => {
+    const payload = buildOrgPayload({
+      name: 'Co-op Example',
+      slug: 'co-op-example',
+      location: 'Montreal, QC',
+      municipality: 'Montreal',
+      province: 'QC',
+      lat: 45.5,
+      lng: -73.6,
+    });
+
+    expect(payload).toMatchObject({
+      location: 'Montreal, QC',
+      municipality: 'Montreal',
+      province: 'QC',
+      lat: 45.5,
+      lng: -73.6,
+      geocode_accuracy_type: 'city',
+    });
+  });
 });
 
 describe('buildOrgUpdateFields', () => {
@@ -91,5 +112,24 @@ describe('buildOrgUpdateFields', () => {
     const changed = buildOrgUpdateFields({ is_sse: false }, { previousIsSse: true });
     expect(changed.sse_rating).toBe('no');
     expect(changed.sse_details).toMatchObject({ flags: ['admin_override'] });
+  });
+
+  it('clears geo fields when location is cleared', () => {
+    expect(
+      buildOrgUpdateFields({
+        location: null,
+        municipality: null,
+        province: null,
+        lat: null,
+        lng: null,
+      }),
+    ).toEqual({
+      location: null,
+      municipality: null,
+      province: null,
+      lat: null,
+      lng: null,
+      geocode_accuracy_type: null,
+    });
   });
 });

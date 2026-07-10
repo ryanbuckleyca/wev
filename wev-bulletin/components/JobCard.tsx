@@ -11,6 +11,12 @@ import JobCardFooter from './JobCardFooter';
 import JobCardHeader from './JobCardHeader';
 import JobCardDetails from './JobCardDetails';
 import { useBookmarkAction } from '@/lib/hooks/useBookmarkAction';
+import {
+  buildJobMatchTooltipProps,
+  buildProfileMatchPreferences,
+  buildRoundedMatchScores,
+  buildSkillLabelMaps,
+} from '@/lib/bulletin/job-match-display';
 import type { SkillLabel } from '@/lib/bulletin/types';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
@@ -53,27 +59,10 @@ export default function JobCard({
 
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
 
-  // Derive skill labels/definitions from global map or fallback
-  const skillLabels = useMemo(() => {
-    const source = skillLabelsProp ?? job.skill_labels ?? {};
-    const terms: Record<string, string> = {};
-    const defs: Record<string, string> = {};
-    for (const uri of job.skills || []) {
-      const l = source[uri];
-
-      // Fallback: Use the final portion of the URI path and format it (e.g. "teamwork" from ".../team-work").
-      // Only replace dashes if it looks like a URI slug (has slashes) to avoid mangling simple test strings.
-      const lastPart = uri.includes('/') ? uri.split('/').pop() : uri;
-      const fallbackTerm =
-        lastPart && uri.includes('/') ? lastPart.replace(/-/g, ' ') : (lastPart ?? uri);
-
-      terms[uri] = l?.term ?? fallbackTerm;
-
-      const parts = [l?.definition, l?.scope_note].filter(Boolean);
-      if (parts.length > 0) defs[uri] = parts.join('<br/><br/>');
-    }
-    return { terms, defs };
-  }, [job.skill_labels, job.skills, skillLabelsProp]);
+  const skillLabels = useMemo(
+    () => buildSkillLabelMaps(job.skills || [], skillLabelsProp ?? job.skill_labels ?? {}),
+    [job.skill_labels, job.skills, skillLabelsProp],
+  );
 
   const {
     bookmarked,
@@ -86,45 +75,27 @@ export default function JobCard({
     setIsExpanded(initialExpanded);
   }, [initialExpanded]);
 
-  // Match Scoring Logic
-  const scoreData = useMemo(() => {
-    if (!matchProp) return null;
-    const round = (val: number | null | undefined) => (val != null ? Math.round(val * 100) : 0);
-    return {
-      total: round(matchProp.score),
-      values: round(matchProp.value_score),
-      skills: round(matchProp.skill_score),
-      workType: matchProp.work_type_score != null ? round(matchProp.work_type_score) : undefined,
-      location: matchProp.location_score != null ? round(matchProp.location_score) : undefined,
-    };
-  }, [matchProp]);
+  const scoreData = useMemo(
+    () => (matchProp ? buildRoundedMatchScores(matchProp) : null),
+    [matchProp],
+  );
 
-  const profilePreferences = useMemo(() => {
-    const workTypes = profile?.work_types ?? [];
-    const hasLocationValue =
-      (profile?.values ?? []).some((v) => v.toLowerCase() === 'location') ||
-      (profile?.values_rated ?? []).some((rv) => rv.value.toLowerCase() === 'location');
-    return { workTypes, hasLocationValue };
-  }, [profile]);
+  const profilePreferences = useMemo(() => buildProfileMatchPreferences(profile), [profile]);
 
   const matchTooltipContent = useMemo<ReactNode | null>(() => {
     if (!matchProp || !scoreData) return null;
     return (
       <MatchDetailsTooltip
-        totalMatchPercentage={scoreData.total}
-        valueMatchPercentage={scoreData.values}
-        skillMatchPercentage={scoreData.skills}
-        workTypeMatchPercentage={scoreData.workType}
-        locationMatchPercentage={scoreData.location}
-        jobWorkType={job.work_type}
-        jobMunicipality={job.municipality}
-        profileWorkTypes={profilePreferences.workTypes}
-        profileHasLocationValue={profilePreferences.hasLocationValue}
-        values={job.values || []}
-        skills={job.skills || []}
-        sharedValues={matchProp.shared_values || []}
-        sharedSkills={matchProp.shared_skills || []}
-        skillTerms={skillLabels.terms}
+        {...buildJobMatchTooltipProps({
+          match: matchProp,
+          scoreData,
+          values: job.values || [],
+          skills: job.skills || [],
+          skillTerms: skillLabels.terms,
+          workType: job.work_type,
+          municipality: job.municipality,
+          profilePreferences,
+        })}
       />
     );
   }, [matchProp, scoreData, job, profilePreferences, skillLabels.terms]);

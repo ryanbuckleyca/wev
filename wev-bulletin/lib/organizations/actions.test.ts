@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createOrganization, updateOrganization } from './actions';
+import { createOrganization, updateOrganization, deleteOrganization } from './actions';
 
 const { mockRequireAdminSession, mockFrom, organizationsQuery } = vi.hoisted(() => {
   const createQuery = () => {
@@ -7,9 +7,14 @@ const { mockRequireAdminSession, mockFrom, organizationsQuery } = vi.hoisted(() 
     const query: Record<string, unknown> = {
       insert: vi.fn(() => query),
       update: vi.fn(() => query),
+      delete: vi.fn(() => query),
       select: vi.fn(() => query),
       eq: vi.fn(() => query),
       single: vi.fn(() => Promise.resolve(result)),
+      maybeSingle: vi.fn(() => Promise.resolve(result)),
+      then(onFulfilled: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) {
+        return Promise.resolve(result).then(onFulfilled, onRejected);
+      },
       setResult(next: { data: unknown; error: unknown }) {
         result = next;
       },
@@ -32,6 +37,10 @@ const { mockRequireAdminSession, mockFrom, organizationsQuery } = vi.hoisted(() 
 
 vi.mock('@/lib/auth/require-admin', () => ({
   requireAdminSession: mockRequireAdminSession,
+}));
+
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase-server', () => ({
@@ -122,5 +131,23 @@ describe('organizations/actions', () => {
       expect.objectContaining({ name: 'Updated Org' }),
     );
     expect(organizationsQuery.eq).toHaveBeenCalledWith('id', 5);
+  });
+
+  it('deletes organization when found', async () => {
+    setOrgResult({ data: { id: 9, name: 'Doomed Org', slug: 'doomed-org' }, error: null });
+
+    const result = await deleteOrganization(9);
+
+    expect(result).toEqual({ ok: true });
+    expect(organizationsQuery.delete).toHaveBeenCalled();
+    expect(organizationsQuery.eq).toHaveBeenCalledWith('id', 9);
+  });
+
+  it('returns not_found when deleting a missing organization', async () => {
+    setOrgResult({ data: null, error: null });
+
+    const result = await deleteOrganization(404);
+    expect(result).toEqual({ ok: false, error: 'not_found' });
+    expect(organizationsQuery.delete).not.toHaveBeenCalled();
   });
 });
