@@ -3,9 +3,8 @@ import {
   BULLETIN_CACHE_TAG,
   BULLETIN_JOB_SELECT,
   fetchLastScrapeTime,
-  resolveOrgSlugs,
 } from '@/lib/bulletin/server-data';
-import type { JobPosting } from '@/lib/supabase';
+import { resolveOrgSlugs } from '@/lib/bulletin/resolve-org-slugs';
 import { parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import { bulletinAgeCutoffIso } from '@/lib/bulletin/constants';
 import { createClient } from '@/lib/supabase/server';
@@ -221,7 +220,7 @@ async function fetchBulletinApiPayload(
     console.error('Error fetching total available jobs:', totalAvailableResult.error.message);
   }
 
-  const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
+  const jobs = Array.isArray(jobsResult.data) ? jobsResult.data : [];
   await resolveOrgSlugs(supabase, jobs);
   const labelMap = await resolveSkillLabels(supabase, jobs, input.locale);
 

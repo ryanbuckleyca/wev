@@ -3,9 +3,8 @@ import { getRequestUser } from '@/lib/auth/request-user';
 import { unauthorizedResponse } from '@/lib/http-errors';
 import { supabaseServer } from '@/lib/supabase-server';
 import normalizeJobsWithSource from '@/lib/normalize-job';
-import { resolveOrgSlugs } from '@/lib/bulletin/server-data';
+import { resolveOrgSlugs } from '@/lib/bulletin/resolve-org-slugs';
 import { resolveSkillLabels, attachSkillLabels, parseLocale } from '@/lib/resolve-skill-labels';
-import type { JobPosting } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -63,7 +62,7 @@ export async function GET(req: Request) {
       .map((jobId) => jobsById.get(jobId))
       .filter((job): job is Record<string, unknown> => job != null);
 
-    const jobsWithSource = normalizeJobsWithSource(data) as unknown as JobPosting[];
+    const jobsWithSource = normalizeJobsWithSource(data);
     await resolveOrgSlugs(adminClient, jobsWithSource);
     const labelMap = await resolveSkillLabels(adminClient, jobsWithSource, locale);
     const jobs = attachSkillLabels(jobsWithSource, labelMap);
