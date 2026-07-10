@@ -59,11 +59,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
     ]);
     isAdmin = rolesResult.ok && rolesIncludeAdmin(rolesResult.roles);
     if (profile) {
-      valueMatch = computeOrgValueMatch(
-        profile.values_rated,
-        org.values_list,
-        org.values_rated,
-      );
+      valueMatch = computeOrgValueMatch(profile.values_rated, org.values_list, org.values_rated);
     }
   }
 

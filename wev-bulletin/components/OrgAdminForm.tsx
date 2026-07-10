@@ -102,10 +102,7 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
     });
   };
 
-  const runSubmit = async (
-    submit: () => Promise<ActionResult>,
-    successMessage: string,
-  ) => {
+  const runSubmit = async (submit: () => Promise<ActionResult>, successMessage: string) => {
     setIsSubmitting(true);
     setErrors({});
 

@@ -134,11 +134,15 @@ describe('organizations/server-data', () => {
       p_sort: 'org-asc',
     });
     // Second call: denominator (p_sse_only: false, p_limit: 1)
-    expect(mockRpc).toHaveBeenNthCalledWith(2, 'get_active_organizations', expect.objectContaining({
-      p_sse_only: false,
-      p_limit: 1,
-      p_offset: 0,
-    }));
+    expect(mockRpc).toHaveBeenNthCalledWith(
+      2,
+      'get_active_organizations',
+      expect.objectContaining({
+        p_sse_only: false,
+        p_limit: 1,
+        p_offset: 0,
+      }),
+    );
     expect(mockRpc).toHaveBeenCalledTimes(2);
     expect(result.total).toBe(3);
     expect(result.totalAvailable).toBe(3);

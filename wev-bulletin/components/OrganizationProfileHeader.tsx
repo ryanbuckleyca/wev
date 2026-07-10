@@ -76,7 +76,10 @@ export default function OrganizationProfileHeader({
         </div>
 
         {editHref && editLabel && (
-          <Link href={editHref} className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}>
+          <Link
+            href={editHref}
+            className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}
+          >
             {editLabel}
           </Link>
         )}

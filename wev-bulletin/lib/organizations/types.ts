@@ -41,5 +41,8 @@ export interface OrgJobPosting {
   municipality?: string | null;
   skills?: string[] | null;
   values?: string[] | null;
-  skill_labels?: Record<string, { term: string; definition: string | null; scope_note: string | null }>;
+  skill_labels?: Record<
+    string,
+    { term: string; definition: string | null; scope_note: string | null }
+  >;
 }

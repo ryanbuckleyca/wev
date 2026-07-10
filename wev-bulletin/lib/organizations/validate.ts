@@ -162,9 +162,7 @@ function applyLocationFields(
     province,
     lat,
     lng,
-    geocode_accuracy_type: hasCoords
-      ? data.geocode_accuracy_type?.trim() || 'city'
-      : null,
+    geocode_accuracy_type: hasCoords ? data.geocode_accuracy_type?.trim() || 'city' : null,
   };
 }
 

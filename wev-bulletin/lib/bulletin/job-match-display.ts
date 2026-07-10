@@ -88,8 +88,16 @@ export type JobMatchTooltipProps = {
 };
 
 export function buildJobMatchTooltipProps(input: JobMatchTooltipInput): JobMatchTooltipProps {
-  const { match, scoreData, values, skills, skillTerms, workType, municipality, profilePreferences } =
-    input;
+  const {
+    match,
+    scoreData,
+    values,
+    skills,
+    skillTerms,
+    workType,
+    municipality,
+    profilePreferences,
+  } = input;
   return {
     totalMatchPercentage: scoreData.total,
     valueMatchPercentage: scoreData.values,
