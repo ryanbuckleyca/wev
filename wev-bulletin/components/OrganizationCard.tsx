@@ -24,7 +24,6 @@ interface Props {
   showMoreLabel: string;
   showLessLabel: string;
   isLoggedIn: boolean;
-  translateTooltip: (key: string, values?: Record<string, unknown>) => string;
 }
 
 // ---------------------------------------------------------------------------
@@ -171,7 +170,6 @@ export default function OrganizationCard({
   showMoreLabel,
   showLessLabel,
   isLoggedIn,
-  translateTooltip,
 }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
   const tOrgs = useTranslations('organizations');
@@ -202,10 +200,9 @@ export default function OrganizationCard({
         sharedValues={org.shared_values || []}
         sharedSkills={[]}
         skillTerms={{}}
-        translate={(key, values) => translateTooltip(key, values)}
       />
     );
-  }, [isLoggedIn, scoreData, org.values_list, org.shared_values, translateTooltip]);
+  }, [isLoggedIn, scoreData, org.values_list, org.shared_values]);
 
   const hasFooter = Boolean(org.values_list?.length);
 
