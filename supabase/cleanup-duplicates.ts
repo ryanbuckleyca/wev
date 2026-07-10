@@ -1,6 +1,10 @@
 import readline from "node:readline";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseScriptConfig } from "./src/script-config";
+import { findRepoRoot, loadEnvFiles } from "../scripts/parse-env";
+import {
+  getSupabaseScriptConfig,
+  PROD_SCRIPT_CONFIG,
+} from "./src/script-config";
 
 function parseArgs(argv: string[]) {
   return {
@@ -48,15 +52,15 @@ async function confirmProductionRun() {
 }
 
 function createSupabaseClient({ prod }: { prod: boolean }) {
+  if (prod) {
+    loadEnvFiles("prod", findRepoRoot());
+  }
+
   const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } =
     getSupabaseScriptConfig(
       "cleanup-duplicates.ts",
       prod
-        ? {
-            urlEnv: "SUPABASE_PROD_URL",
-            keyEnvNames: ["SUPABASE_PROD_SERVICE_ROLE_KEY"],
-            keyDescription: "production service role key",
-          }
+        ? PROD_SCRIPT_CONFIG
         : {
             urlEnv: "SUPABASE_URL",
             keyEnvNames: ["SUPABASE_SERVICE_ROLE_KEY"],
