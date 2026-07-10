@@ -66,7 +66,7 @@ describe('buildOrgActiveFilterChips', () => {
     expect(chips).toHaveLength(1);
     expect(chips[0].id).toBe('nonSse');
     expect(chips[0].label).toBe('All organizations');
-    chips[0].onRemove!();
+    chips[0].onRemove();
     expect(onRemove).toHaveBeenCalled();
   });
 
@@ -86,7 +86,7 @@ describe('buildOrgActiveFilterChips', () => {
     expect(chips).toHaveLength(1);
     expect(chips[0].id).toBe('q');
     expect(chips[0].label).toBe('"Test Query"');
-    chips[0].onRemove!();
+    chips[0].onRemove();
     expect(onRemove).toHaveBeenCalled();
   });
 
@@ -109,7 +109,7 @@ describe('buildOrgActiveFilterChips', () => {
     expect(chips[1].id).toBe('p-Quebec');
     expect(chips[1].label).toBe('Quebec');
 
-    chips[0].onRemove!();
+    chips[0].onRemove();
     expect(onRemove).toHaveBeenCalledWith('Ontario');
   });
 
@@ -132,7 +132,7 @@ describe('buildOrgActiveFilterChips', () => {
     expect(chips[1].id).toBe('m-Montreal');
     expect(chips[1].label).toBe('Montreal');
 
-    chips[0].onRemove!();
+    chips[0].onRemove();
     expect(onRemove).toHaveBeenCalledWith('Toronto');
   });
 
@@ -155,7 +155,7 @@ describe('buildOrgActiveFilterChips', () => {
     expect(chips[1].id).toBe('type-government');
     expect(chips[1].label).toBe('Government');
 
-    chips[0].onRemove!();
+    chips[0].onRemove();
     expect(onRemove).toHaveBeenCalledWith('nonprofit');
   });
 
