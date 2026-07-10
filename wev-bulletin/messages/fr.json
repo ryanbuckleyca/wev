@@ -33,8 +33,6 @@
     "showNonSse": "Afficher les organisations non-ÉSS",
     "noJobsForOrg": "Cette organisation n'a aucune offre d'emploi active en ce moment.",
     "jobs": "{count, plural, =0 {Aucun emploi actif} one {1 emploi actif} other {# emplois actifs}}",
-    "jobsFiltered": "{filtered} / {total} {total, plural, one {emploi actif} other {emplois actifs}}",
-    "showOnlySseJobs": "Emplois ÉSS seulement",
     "website": "Site web",
     "viewProfile": "Voir le profil de l'organisation",
     "noDescription": "Aucune description disponible.",
@@ -817,7 +815,6 @@
       "createDescription": "Ajouter une nouvelle organisation à la plateforme. Il peut s'agir d'employeurs partenaires qui n'ont pas encore été extraits.",
       "editDescription": "Modifier les détails de {name}",
       "noOrganizations": "Aucune organisation pour le moment. Créez-en une pour commencer.",
-      "totalCount": "{count, plural, =0 {Aucune organisation} one {Total : 1 organisation} other {Total : # organisations}}",
       "sseBadge": "ÉSS",
       "edit": "Modifier",
       "saving": "Enregistrement...",
@@ -839,10 +836,11 @@
         "description": "Brève description de l'organisation...",
         "missionStatement": "La mission de l'organisation...",
         "website": "https://exemple.org",
-        "location": "Montréal, QC",
+        "location": "Commencez à taper une ville…",
         "selectType": "Sélectionnez un type...",
         "values": "Rechercher et sélectionner des valeurs professionnelles"
       },
+      "locationHint": "Niveau ville seulement — utilisé pour les filtres et le jumelage. Les offres d'emploi portent les lieux de travail précis.",
       "columns": {
         "name": "Nom",
         "slug": "Identifiant",
@@ -853,8 +851,10 @@
       },
       "actions": {
         "addNew": "Ajouter une organisation",
+        "manage": "Gérer les organisations",
         "create": "Créer l'organisation",
         "update": "Mettre à jour l'organisation",
+        "delete": "Supprimer l'organisation",
         "cancel": "Annuler"
       },
       "errors": {
@@ -874,15 +874,15 @@
         "database_error": "Une erreur de base de données s'est produite. Veuillez réessayer.",
         "invalid_slug": "Format d'identifiant invalide",
         "saveFailed": "Échec de l'enregistrement de l'organisation. Veuillez réessayer.",
+        "deleteFailed": "Échec de la suppression de l'organisation. Veuillez réessayer.",
         "loadFailed": "Échec du chargement des organisations. Veuillez réessayer."
       },
       "createSuccess": "Organisation créée avec succès",
       "updateSuccess": "Organisation mise à jour avec succès",
-      "slugPreview": "Aperçu de l'identifiant : {slug}",
-      "paginationLabel": "Pages de la liste des organisations",
-      "paginationPrevious": "Précédent",
-      "paginationNext": "Suivant",
-      "paginationStatus": "Page {page} sur {totalPages}"
+      "deleteSuccess": "Organisation supprimée avec succès",
+      "deleteConfirm": "Supprimer {name} ? {count, plural, =0 {Aucun emploi actif n'est lié.} one {1 emploi actif perdra son lien avec cette organisation.} other {# emplois actifs perdront leur lien avec cette organisation.}} Les annonces restent publiées.",
+      "deleting": "Suppression...",
+      "slugPreview": "Aperçu de l'identifiant : {slug}"
     }
   },
   "ariaLabels": {

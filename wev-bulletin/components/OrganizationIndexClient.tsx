@@ -134,6 +134,8 @@ export default function OrganizationIndexClient({
                   totalPages={totalPages}
                   totalItems={total}
                   itemsPerPage={ORG_JOBS_PER_PAGE}
+                  singularKey="organizations.organization"
+                  pluralKey="organizations.organizations"
                 />
               </div>
             )}

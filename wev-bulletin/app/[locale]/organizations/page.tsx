@@ -54,16 +54,19 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     parseOrgIndexSearchParams(urlSearchParams, Boolean(user));
 
   const [initialData, filterOptions] = await Promise.all([
-    fetchOrganizationIndex({
-      page,
-      searchQuery,
-      sseOnly,
-      provinces,
-      municipalities,
-      orgTypes,
-      userId: user?.id ?? null,
-      sortBy,
-    }),
+    fetchOrganizationIndex(
+      {
+        page,
+        searchQuery,
+        sseOnly,
+        provinces,
+        municipalities,
+        orgTypes,
+        userId: user?.id ?? null,
+        sortBy,
+      },
+      user ? supabaseAuth : undefined,
+    ),
     fetchOrganizationFilterOptions(),
   ]);
 
@@ -72,12 +75,20 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
       <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold text-foreground">{t('indexTitle')}</h1>
         {isAdmin && (
-          <Link
-            href={`/${locale}/admin/organizations/new`}
-            className={cn(buttonVariants({ variant: 'default' }))}
-          >
-            {tAdmin('actions.addNew')}
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href={`/${locale}/admin/organizations`}
+              className={cn(buttonVariants({ variant: 'secondary' }))}
+            >
+              {tAdmin('actions.manage')}
+            </Link>
+            <Link
+              href={`/${locale}/admin/organizations/new`}
+              className={cn(buttonVariants({ variant: 'default' }))}
+            >
+              {tAdmin('actions.addNew')}
+            </Link>
+          </div>
         )}
       </header>
 

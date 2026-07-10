@@ -33,8 +33,6 @@
     "showNonSse": "Show non-SSE organizations",
     "noJobsForOrg": "This organization has no active job listings at the moment.",
     "jobs": "{count, plural, =0 {No active jobs} one {1 active job} other {# active jobs}}",
-    "jobsFiltered": "{filtered} / {total} active {total, plural, one {job} other {jobs}}",
-    "showOnlySseJobs": "SSE jobs only",
     "website": "Website",
     "viewProfile": "View organization profile",
     "noDescription": "No description available.",
@@ -831,7 +829,6 @@
       "createDescription": "Add a new organization to the platform. Organizations can be partner employers that haven't been scraped yet.",
       "editDescription": "Edit details for {name}",
       "noOrganizations": "No organizations yet. Create one to get started.",
-      "totalCount": "{count, plural, =0 {No organizations} one {Total: 1 organization} other {Total: # organizations}}",
       "sseBadge": "SSE",
       "edit": "Edit",
       "saving": "Saving...",
@@ -853,10 +850,11 @@
         "description": "Brief description of the organization...",
         "missionStatement": "The organization's mission...",
         "website": "https://example.org",
-        "location": "Montreal, QC",
+        "location": "Start typing a city…",
         "selectType": "Select a type...",
         "values": "Search and select work values"
       },
+      "locationHint": "City-level only — used for filters and matching. Job postings carry specific work locations.",
       "columns": {
         "name": "Name",
         "slug": "Slug",
@@ -867,8 +865,10 @@
       },
       "actions": {
         "addNew": "Add Organization",
+        "manage": "Manage Organizations",
         "create": "Create Organization",
         "update": "Update Organization",
+        "delete": "Delete Organization",
         "cancel": "Cancel"
       },
       "errors": {
@@ -888,15 +888,15 @@
         "database_error": "A database error occurred. Please try again.",
         "invalid_slug": "Invalid slug format",
         "saveFailed": "Failed to save organization. Please try again.",
+        "deleteFailed": "Failed to delete organization. Please try again.",
         "loadFailed": "Failed to load organizations. Please try again."
       },
       "createSuccess": "Organization created successfully",
       "updateSuccess": "Organization updated successfully",
-      "slugPreview": "Slug preview: {slug}",
-      "paginationLabel": "Organization list pages",
-      "paginationPrevious": "Previous",
-      "paginationNext": "Next",
-      "paginationStatus": "Page {page} of {totalPages}"
+      "deleteSuccess": "Organization deleted successfully",
+      "deleteConfirm": "Delete {name}? {count, plural, =0 {No active jobs are linked.} one {1 active job will lose its organization link.} other {# active jobs will lose their organization links.}} Listings stay published.",
+      "deleting": "Deleting...",
+      "slugPreview": "Slug preview: {slug}"
     }
   }
 }

@@ -7,6 +7,7 @@ import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import { logger } from '@/lib/logger';
 import PageLayout from '@/components/PageLayout';
 import SseBadge from '@/components/SseBadge';
+import UrlSyncedPagination from '@/components/UrlSyncedPagination';
 import { buttonVariants } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
@@ -151,36 +152,18 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
         </div>
       ) : null}
 
-      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">{t('totalCount', { count: total })}</p>
-        {!loadFailed && totalPages > 1 && (
-          <nav className="flex items-center gap-3 text-sm" aria-label={t('paginationLabel')}>
-            {page > 1 ? (
-              <Link
-                href={`/${locale}/admin/organizations?page=${page - 1}`}
-                className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}
-              >
-                {t('paginationPrevious')}
-              </Link>
-            ) : (
-              <span className="text-muted-foreground">{t('paginationPrevious')}</span>
-            )}
-            <span className="text-muted-foreground">
-              {t('paginationStatus', { page, totalPages })}
-            </span>
-            {page < totalPages ? (
-              <Link
-                href={`/${locale}/admin/organizations?page=${page + 1}`}
-                className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}
-              >
-                {t('paginationNext')}
-              </Link>
-            ) : (
-              <span className="text-muted-foreground">{t('paginationNext')}</span>
-            )}
-          </nav>
-        )}
-      </div>
+      {!loadFailed && (
+        <div className="mt-6">
+          <UrlSyncedPagination
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={total}
+            itemsPerPage={ADMIN_ORGS_PER_PAGE}
+            singularKey="organizations.organization"
+            pluralKey="organizations.organizations"
+          />
+        </div>
+      )}
     </PageLayout>
   );
 }

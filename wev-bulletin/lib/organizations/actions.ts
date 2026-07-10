@@ -1,12 +1,42 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
 import { requireAdminSession } from '@/lib/auth/require-admin';
+import { bulletinAgeCutoffIso } from '@/lib/bulletin/constants';
+import { routing } from '@/i18n/routing';
 import { logger } from '@/lib/logger';
 import { mapUniqueViolation } from './action-errors';
 import type { OrgFormInput } from './validate';
 import { buildOrgPayload, buildOrgUpdateFields, validateOrgInput } from './validate';
 import type { OrgRecord } from './types';
+
+function revalidateOrganizationRoutes(slug?: string, previousSlug?: string) {
+  for (const locale of routing.locales) {
+    revalidatePath(`/${locale}/organizations`);
+    revalidatePath(`/${locale}/admin/organizations`);
+    if (slug) revalidatePath(`/${locale}/organizations/${slug}`);
+    if (previousSlug && previousSlug !== slug) {
+      revalidatePath(`/${locale}/organizations/${previousSlug}`);
+    }
+  }
+}
+
+export async function getOrganizationActiveJobCount(orgId: number): Promise<number> {
+  const minDate = bulletinAgeCutoffIso();
+  const { count, error } = await supabaseServer
+    .from('jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .gte('date_posted', minDate);
+
+  if (error) {
+    logger.error({ err: error, orgId }, 'Failed to count active jobs for organization');
+    return 0;
+  }
+
+  return count ?? 0;
+}
 
 export type OrgCreateInput = OrgFormInput;
 export type OrgUpdateInput = Partial<OrgFormInput>;
@@ -14,6 +44,7 @@ export type OrgUpdateInput = Partial<OrgFormInput>;
 export type ActionSuccess = { ok: true; org: OrgRecord };
 export type ActionError = { ok: false; error: string; field?: string };
 export type ActionResult = ActionSuccess | ActionError;
+export type DeleteResult = { ok: true } | ActionError;
 
 export async function createOrganization(data: OrgCreateInput): Promise<ActionResult> {
   const authResult = await requireAdminSession();
@@ -52,6 +83,8 @@ export async function createOrganization(data: OrgCreateInput): Promise<ActionRe
     'Organization created by admin',
   );
 
+  revalidateOrganizationRoutes(org.slug);
+
   return { ok: true, org };
 }
 
@@ -69,18 +102,19 @@ export async function updateOrganization(id: number, data: OrgUpdateInput): Prom
     return { ok: false, error: validationError.error, field: validationError.field };
   }
 
-  let previousIsSse: boolean | null | undefined;
-  if (data.is_sse !== undefined) {
-    const { data: current, error: fetchError } = await supabaseServer
-      .from('organizations')
-      .select('is_sse')
-      .eq('id', id)
-      .single();
+  const { data: existingOrg, error: existingError } = await supabaseServer
+    .from('organizations')
+    .select('slug, is_sse')
+    .eq('id', id)
+    .single();
 
-    if (fetchError || !current) {
-      return { ok: false, error: 'not_found' };
-    }
-    previousIsSse = current.is_sse;
+  if (existingError || !existingOrg) {
+    return { ok: false, error: 'not_found' };
+  }
+
+  let previousIsSse: boolean | null | undefined = existingOrg.is_sse;
+  if (data.is_sse !== undefined) {
+    previousIsSse = existingOrg.is_sse;
   }
 
   const updates = buildOrgUpdateFields(data, { previousIsSse });
@@ -126,5 +160,44 @@ export async function updateOrganization(id: number, data: OrgUpdateInput): Prom
     'Organization updated by admin',
   );
 
+  revalidateOrganizationRoutes(org.slug, existingOrg.slug);
+
   return { ok: true, org };
+}
+
+export async function deleteOrganization(id: number): Promise<DeleteResult> {
+  const authResult = await requireAdminSession();
+  if (!authResult.ok) {
+    return { ok: false, error: 'unauthorized' };
+  }
+
+  const { data: existing, error: fetchError } = await supabaseServer
+    .from('organizations')
+    .select('id, name, slug')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (fetchError) {
+    logger.error({ err: fetchError, orgId: id }, 'Failed to load organization for delete');
+    return { ok: false, error: 'database_error' };
+  }
+  if (!existing) {
+    return { ok: false, error: 'not_found' };
+  }
+
+  const { error } = await supabaseServer.from('organizations').delete().eq('id', id);
+
+  if (error) {
+    logger.error({ err: error, orgId: id }, 'Failed to delete organization');
+    return { ok: false, error: 'database_error' };
+  }
+
+  logger.info(
+    { orgId: id, orgName: existing.name, userId: authResult.user.id },
+    'Organization deleted by admin',
+  );
+
+  revalidateOrganizationRoutes(existing.slug);
+
+  return { ok: true };
 }

@@ -38,4 +38,8 @@ export interface OrgJobPosting {
   employment_type: string | null;
   location: string | null;
   work_type: string | null;
+  municipality?: string | null;
+  skills?: string[] | null;
+  values?: string[] | null;
+  skill_labels?: Record<string, { term: string; definition: string | null; scope_note: string | null }>;
 }

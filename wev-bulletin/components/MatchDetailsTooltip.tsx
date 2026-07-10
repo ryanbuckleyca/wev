@@ -208,17 +208,9 @@ export default function MatchDetailsTooltip({
           {typeof locationMatchPercentage === 'number' &&
             !jobMunicipality &&
             (locationMatchPercentage === 100 ? (
-              <MatchListItem
-                id="location-distance"
-                label={t('locationNearby')}
-                matched={true}
-              />
+              <MatchListItem id="location-distance" label={t('locationNearby')} matched={true} />
             ) : locationMatchPercentage === 50 ? (
-              <MatchListItem
-                id="location-distance"
-                label={t('locationRegional')}
-                matched={true}
-              />
+              <MatchListItem id="location-distance" label={t('locationRegional')} matched={true} />
             ) : locationMatchPercentage === 0 ? (
               <MatchListItem
                 id="location-distance"
