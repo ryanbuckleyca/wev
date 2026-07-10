@@ -92,8 +92,9 @@ function runMigration(target: string, dryRun: boolean) {
   console.log(`▶ Linking to project: ${projectRef}`);
   execVerbose(`supabase link --project-ref "${projectRef}"`);
 
-  console.log(`▶ Fetching remote migration state...`);
-  execVerbose(`supabase migration fetch --linked`);
+  // Do NOT run `supabase migration fetch` here. It prompts to overwrite local
+  // migration SQL with remote copies, which are often truncated placeholders and
+  // will destroy the repo's source-of-truth DDL for fresh environments.
 
   let dbPushCmd = `${LOCAL_SUPABASE_CLI} db push --yes`;
   if (dryRun) dbPushCmd += " --dry-run";
