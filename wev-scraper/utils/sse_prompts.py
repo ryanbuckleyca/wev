@@ -6,10 +6,16 @@ SSE_SEARCH_KEYWORDS = '(governance OR bylaws OR "articles of incorporation" OR "
 
 SSE_JSON_FIELDS = """  "rating": "strong_yes",
   "confidence": 0.85,
-  "reasoning": "Complete explanation of rating citing which criteria are met/not met (full sentences, max 1000 chars). Volunteer/internship positions are acceptable if mission is clear and disclosed upfront and volunteering or internship role is clearly stated.",
+  "reasoning": "SSE rating explanation citing which criteria are met/not met. Must fit within 1000 characters without being cut off — write complete sentences only and shorten if needed rather than truncating. Volunteer/internship positions are acceptable if mission is clear and disclosed upfront and volunteering or internship role is clearly stated.",
   "must_haves_met": ["list", "of", "criteria"],
   "nice_to_haves_met": ["list", "of", "criteria"],
   "flags": ["any concerns", "ambiguities", "missing info"]"""
+
+LENGTH_LIMITED_FIELD_RULES = """LENGTH-LIMITED TEXT FIELDS (description, mission_statement, reasoning, values_raw):
+- Each field has a maximum character count shown in its description.
+- The entire string must fit within that limit — never truncate or cut off mid-word or mid-sentence.
+- Write shorter, complete sentences if needed to stay under the limit.
+- End every string on a complete sentence with proper punctuation."""
 
 JSON_INSTRUCTIONS = """IMPORTANT:
 - Return ONLY the JSON output, no commentary.
@@ -21,6 +27,8 @@ SSE_JSON_OBJECT_SPEC = f"""OUTPUT FORMAT (valid JSON only):
 {{
 {SSE_JSON_FIELDS}
 }}
+
+{LENGTH_LIMITED_FIELD_RULES}
 
 {JSON_INSTRUCTIONS}"""
 
@@ -37,6 +45,8 @@ SSE_JSON_ARRAY_SPEC = f"""OUTPUT FORMAT (valid JSON array only - one object per 
   }},
   ...
 ]
+
+{LENGTH_LIMITED_FIELD_RULES}
 
 {JSON_INSTRUCTIONS}"""
 

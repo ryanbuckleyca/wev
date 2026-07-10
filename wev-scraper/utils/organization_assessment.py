@@ -25,7 +25,12 @@ from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassifica
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.slug import generate_slug
 from utils.location_parser import parse_address_with_geocodio
-from utils.sse_prompts import EVALUATION_CRITERIA, JSON_INSTRUCTIONS, SSE_PRINCIPLES
+from utils.sse_prompts import (
+    EVALUATION_CRITERIA,
+    JSON_INSTRUCTIONS,
+    LENGTH_LIMITED_FIELD_RULES,
+    SSE_PRINCIPLES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +53,14 @@ _JSON_FIELDS = f"""{{
   "canonical_name": "Official organization name (string, required, non-empty)",
   "slug": "url-safe-kebab-case (string, required)",
   "website": "https://... or null",
-  "description": "Brief organization description, max {_ORG_DESCRIPTION_MAX_CHARS} characters, or null",
-  "mission_statement": "Organization mission/purpose statement, max {_ORG_MISSION_MAX_CHARS} characters, or null",
+  "description": "Brief organization description, max {_ORG_DESCRIPTION_MAX_CHARS} characters — must fit without being cut off, or null",
+  "mission_statement": "Organization mission/purpose statement, max {_ORG_MISSION_MAX_CHARS} characters — must fit without being cut off, or null",
   "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null",
-  "values_raw": "Organization values and principles if found on their website, max 1000 characters, or null",
+  "values_raw": "Organization values and principles if found on their website, max 1000 characters — must fit without being cut off, or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
   "sse_rating": "strong_yes or weak_yes or no",
   "sse_confidence": "0.0 to 1.0",
-  "sse_reasoning": "Complete explanation of SSE rating citing specific evidence (full sentences, max {_SSE_REASONING_MAX_CHARS} chars)",
+  "sse_reasoning": "SSE rating explanation citing specific evidence. Must fit within {_SSE_REASONING_MAX_CHARS} characters without being cut off — write complete sentences only and shorten if needed rather than truncating",
   "must_haves_met": ["list of criteria met"],
   "nice_to_haves_met": ["list of criteria met"],
   "flags": ["any concerns", "ambiguities", "missing info"]
@@ -92,6 +97,8 @@ RULES for the "values" field:
 - "Help Society" and "Community" are distinct — use both if evidence supports both.
 - Be honest: if you can't determine values from the available information,
   return an empty array.
+
+{length_limited_field_rules}
 
 {JSON_INSTRUCTIONS}
 """
@@ -145,6 +152,7 @@ def _build_assessment_prompt(
         json_fields=_JSON_FIELDS,
         taxonomy_formatted=_format_taxonomy(),
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
+        length_limited_field_rules=LENGTH_LIMITED_FIELD_RULES,
     )
 
 
@@ -171,12 +179,22 @@ def _validate_sse_rating(raw: Any) -> str:
     return rating if rating in ("strong_yes", "weak_yes", "no") else "no"
 
 
+def _truncate_at_word(text: str, max_len: int) -> str:
+    if len(text) <= max_len:
+        return text
+    sliced = text[:max_len]
+    last_space = sliced.rfind(" ")
+    if last_space > 0:
+        return sliced[:last_space].rstrip()
+    return sliced
+
+
 def _parse_text_field(data: dict, key: str, max_len: int | None = None) -> str | None:
     val = data.get(key)
     if val:
         trimmed = str(val).strip()
         if max_len is not None:
-            trimmed = trimmed[:max_len]
+            trimmed = _truncate_at_word(trimmed, max_len)
         return trimmed
     return None
 
