@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { config as loadEnv } from "dotenv";
 
@@ -12,7 +13,10 @@ type ParseEnvOptions = {
 /** Parse `--env <name>` with legacy `--staging` / `--prod` / `--publish` support. */
 export function parseEnvFlag(
   argv: string[],
-  { allow = ["local", "staging", "prod"], defaultEnv = "local" }: ParseEnvOptions = {},
+  {
+    allow = ["local", "staging", "prod"],
+    defaultEnv = "local",
+  }: ParseEnvOptions = {},
 ): string {
   const args = argv.filter((a) => a !== "--");
 
@@ -39,6 +43,28 @@ export function parseEnvFlag(
   return defaultEnv;
 }
 
+/** Walk up from start until the monorepo root package (`name: wev`) is found. */
+export function findRepoRoot(start: string = process.cwd()): string {
+  let dir = path.resolve(start);
+  for (let i = 0; i < 6; i++) {
+    const pkgPath = path.join(dir, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as {
+          name?: string;
+        };
+        if (pkg.name === "wev") return dir;
+      } catch {
+        // keep walking
+      }
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return path.resolve(start);
+}
+
 /** Load repo `.env`, optionally layered with staging or production files. */
 export function loadEnvFiles(
   target: string,
@@ -57,9 +83,7 @@ export function envHelpLines(
   command: string,
   allow: readonly string[] = ["local", "staging", "prod"],
 ): string {
-  const variants = allow
-    .map((env) => `npm run ${command}:${env}`)
-    .join(", ");
+  const variants = allow.map((env) => `npm run ${command}:${env}`).join(", ");
   return (
     `Usage: npm run ${command} [-- --env <name>]\n\n` +
     `  Aliases: ${variants}\n` +
