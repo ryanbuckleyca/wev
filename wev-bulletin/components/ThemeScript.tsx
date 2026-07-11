@@ -1,5 +1,3 @@
-import Script from 'next/script';
-
 /**
  * Blocking theme bootstrap to prevent FOUC.
  * Logic:
@@ -8,9 +6,10 @@ import Script from 'next/script';
  * 3. System setting (matchMedia)
  * 4. Default: dark
  *
- * Must live in the root layout with strategy="beforeInteractive".
- * A raw <script> inside [locale]/layout remounts on client locale switches
- * and triggers React's "script tag while rendering" warning.
+ * Must live in the root layout (`app/layout.tsx`), not `[locale]/layout`.
+ * Locale soft-navigation remounts the locale layout on the client; a raw
+ * <script> there triggers React's "script tag while rendering" warning.
+ * Root layout persists across locale switches, so this runs only on full loads.
  */
 export default function ThemeScript() {
   const script = `
@@ -40,9 +39,5 @@ export default function ThemeScript() {
     })();
   `;
 
-  return (
-    <Script id="theme-init" strategy="beforeInteractive">
-      {script}
-    </Script>
-  );
+  return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }
