@@ -1,16 +1,16 @@
+import Script from 'next/script';
+
 /**
- * A blocking script that applies the theme as early as possible to prevent flashes.
+ * Blocking theme bootstrap to prevent FOUC.
  * Logic:
  * 1. User choice (localStorage)
  * 2. Shared choice (cookie from wev/bulletin)
  * 3. System setting (matchMedia)
  * 4. Default: dark
  *
- * This is intentionally a Server Component — rendering a <script> tag from a
- * client component triggers a React warning (scripts are never re-executed on
- * the client during navigation). As a server component the tag is emitted once
- * into the HTML stream and runs during initial page parse, which is exactly
- * what a FOUC-prevention script needs.
+ * Must live in the root layout with strategy="beforeInteractive".
+ * A raw <script> inside [locale]/layout remounts on client locale switches
+ * and triggers React's "script tag while rendering" warning.
  */
 export default function ThemeScript() {
   const script = `
@@ -40,5 +40,9 @@ export default function ThemeScript() {
     })();
   `;
 
-  return <script dangerouslySetInnerHTML={{ __html: script }} />;
+  return (
+    <Script id="theme-init" strategy="beforeInteractive">
+      {script}
+    </Script>
+  );
 }

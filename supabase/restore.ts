@@ -5,12 +5,14 @@ import { promisify } from "node:util";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseScriptConfig } from "./src/script-config";
 import {
+  IDENTITY_RESET_SQL,
   RESTORE_CLEAR_ORDER,
   RESTORE_IDENTITY_TABLES,
   RESTORE_INSERT_ORDER,
   sanitizeBackupRow,
   TABLE_CLEAR_COLUMN,
   TABLE_UPSERT_CONFLICT,
+  type RestoreIdentityTable,
 } from "./src/backup-row";
 import {
   envHelpLines,
@@ -49,14 +51,28 @@ function hasBackup(table: string, backupFiles: Set<string>) {
 async function clearTable(supabase: SupabaseClient, table: string) {
   const column = TABLE_CLEAR_COLUMN[table] ?? "id";
   try {
-    const { error } = await supabase
+    // PostgREST requires a filter; clear both non-null and null values so
+    // nullable clear-columns (e.g. bookmarks.job_id) don't leave orphan rows.
+    const { error: nonNullError } = await supabase
       .from(table)
       .delete()
       .not(column, "is", null);
-    if (error) {
-      console.log(`Warning: Could not clear ${table}: ${error.message}`);
+    if (nonNullError) {
+      console.log(`Warning: Could not clear ${table}: ${nonNullError.message}`);
       return false;
     }
+
+    const { error: nullError } = await supabase
+      .from(table)
+      .delete()
+      .is(column, null);
+    if (nullError) {
+      console.log(
+        `Warning: Could not clear null-${column} rows in ${table}: ${nullError.message}`,
+      );
+      return false;
+    }
+
     console.log(`✅ Cleared ${table}`);
     return true;
   } catch (e: unknown) {
@@ -66,30 +82,17 @@ async function clearTable(supabase: SupabaseClient, table: string) {
   }
 }
 
+function isRestoreIdentityTable(table: string): table is RestoreIdentityTable {
+  return (RESTORE_IDENTITY_TABLES as readonly string[]).includes(table);
+}
+
 function buildIdentityResetSql(tables: readonly string[]): string {
   return tables
     .map((table) => {
-      if (!/^[a-z][a-z0-9_]*$/.test(table)) {
-        throw new Error(`Invalid identity table name: ${table}`);
+      if (!isRestoreIdentityTable(table)) {
+        throw new Error(`Identity reset not allowlisted for table: ${table}`);
       }
-      return `
-DO $$
-DECLARE
-  seq text := pg_get_serial_sequence('public.${table}', 'id');
-  max_id bigint;
-BEGIN
-  IF seq IS NULL THEN
-    RAISE NOTICE 'No identity sequence for public.${table}';
-    RETURN;
-  END IF;
-  SELECT MAX(id) INTO max_id FROM public.${table};
-  IF max_id IS NULL THEN
-    PERFORM setval(seq, 1, false);
-  ELSE
-    PERFORM setval(seq, max_id, true);
-  END IF;
-END $$;
-`;
+      return IDENTITY_RESET_SQL[table];
     })
     .join("\n");
 }

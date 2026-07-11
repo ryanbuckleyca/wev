@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies, headers } from 'next/headers';
 import Script from 'next/script';
+import ThemeScript from '@/components/ThemeScript';
 import { getSiteBaseUrl } from '@/lib/site-url';
 import { resolveThemeFromCookie } from '@/lib/theme';
 import { routing } from '@/i18n/routing';
@@ -45,6 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} data-theme={theme} className={lexend.variable} suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
+        <ThemeScript />
         {children}
         {enableAnalytics && (
           <>
