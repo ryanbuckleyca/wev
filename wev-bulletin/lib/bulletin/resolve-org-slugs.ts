@@ -12,8 +12,9 @@ function jobsWithOrgFields(jobs: unknown): MutableJobOrgFields[] {
 }
 
 /**
- * Fetches organization slugs for jobs that have organization_id and mutates each
- * job in place with organization_slug.
+ * Attach organization_slug to each job that has organization_id.
+ *
+ * Uses one batched organizations query (IN over unique ids), not per-job lookups.
  */
 export async function resolveOrgSlugs(supabase: SupabaseClient, jobs: unknown): Promise<void> {
   const mutableJobs = jobsWithOrgFields(jobs);

@@ -47,4 +47,20 @@ describe('resolveOrgSlugs', () => {
     expect(jobs[3]).toEqual({ organization_id: 1, organization_slug: 'org-one' });
     expect(jobs[4]).toEqual({ organization_id: 2, organization_slug: 'org-two' });
   });
+
+  it('fetches all unique org slugs in a single batched query', async () => {
+    const supabase = makeSupabase();
+    const jobs = [
+      { organization_id: 1 },
+      { organization_id: 1 },
+      { organization_id: 2 },
+      { organization_id: 3 },
+    ];
+
+    await resolveOrgSlugs(supabase, jobs);
+
+    expect(supabase.from).toHaveBeenCalledTimes(1);
+    expect(inMock).toHaveBeenCalledTimes(1);
+    expect(inMock).toHaveBeenCalledWith('id', [1, 2, 3]);
+  });
 });
