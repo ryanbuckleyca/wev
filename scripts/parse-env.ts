@@ -13,7 +13,10 @@ type ParseEnvOptions = {
 /** Parse `--env <name>` with legacy `--staging` / `--prod` / `--publish` support. */
 export function parseEnvFlag(
   argv: string[],
-  { allow = ["local", "staging", "prod"], defaultEnv = "local" }: ParseEnvOptions = {},
+  {
+    allow = ["local", "staging", "prod"],
+    defaultEnv = "local",
+  }: ParseEnvOptions = {},
 ): string {
   const args = argv.filter((a) => a !== "--");
 
@@ -63,9 +66,7 @@ export function findRepoRoot(start: string = process.cwd()): string {
 }
 
 /** Load production credentials from `.env.production` only (never from `.env`). */
-export function loadProductionEnvOnly(
-  root: string = process.cwd(),
-): void {
+export function loadProductionEnvOnly(root: string = process.cwd()): void {
   const prodPath = path.join(root, ".env.production");
   if (!fs.existsSync(prodPath)) {
     console.error(
@@ -94,9 +95,7 @@ export function envHelpLines(
   command: string,
   allow: readonly string[] = ["local", "staging", "prod"],
 ): string {
-  const variants = allow
-    .map((env) => `npm run ${command}:${env}`)
-    .join(", ");
+  const variants = allow.map((env) => `npm run ${command}:${env}`).join(", ");
   return (
     `Usage: npm run ${command} [-- --env <name>]\n\n` +
     `  Aliases: ${variants}\n` +
