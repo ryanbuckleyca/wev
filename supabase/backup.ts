@@ -1,14 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
-import { getSupabaseScriptConfig } from "./src/script-config";
+import { findRepoRoot, loadProductionEnvOnly } from "../scripts/parse-env";
+import {
+  getSupabaseScriptConfig,
+  PROD_SCRIPT_CONFIG,
+} from "./src/script-config";
+
+loadProductionEnvOnly(findRepoRoot());
 
 const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } =
-  getSupabaseScriptConfig("backup.ts", {
-    urlEnv: "SUPABASE_PROD_URL",
-    keyEnvNames: ["SUPABASE_PROD_SERVICE_ROLE_KEY"],
-    keyDescription: "production service role key",
-  });
+  getSupabaseScriptConfig("backup.ts", PROD_SCRIPT_CONFIG);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
