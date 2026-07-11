@@ -68,7 +68,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
     page,
     locale,
   });
-  const totalPages = Math.ceil(total / ORG_JOBS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(total / ORG_JOBS_PER_PAGE));
 
   if (page > totalPages && page > 1) {
     notFound();
