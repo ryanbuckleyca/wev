@@ -67,6 +67,17 @@ describe('Pagination', () => {
     expect(screen.getByText(/Showing 1-10 of 50 jobs/)).toBeVisible();
   });
 
+  it('supports custom item noun keys', () => {
+    render(
+      <Pagination
+        {...makeProps()}
+        singularKey="organizations.organization"
+        pluralKey="organizations.organizations"
+      />,
+    );
+    expect(screen.getByText(/Showing 1-10 of 50 organizations/)).toBeVisible();
+  });
+
   it('shows singular "job" when totalItems is 1 and totalPages <= 1', () => {
     render(<Pagination {...makeProps({ totalPages: 1, totalItems: 1 })} />);
     expect(screen.getByText(/1 job\b/)).toBeVisible();

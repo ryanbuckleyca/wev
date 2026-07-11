@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from './route';
 import { fetchLastScrapeTime } from '@/lib/bulletin/server-data';
+import { resolveOrgSlugs } from '@/lib/bulletin/resolve-org-slugs';
 import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
 
 /**
@@ -98,18 +99,24 @@ vi.mock('@/lib/bulletin/server-data', () => ({
     'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week, language',
 }));
 
+vi.mock('@/lib/bulletin/resolve-org-slugs', () => ({
+  resolveOrgSlugs: vi.fn(),
+}));
+
 vi.mock('@/lib/resolve-skill-labels', () => ({
   resolveSkillLabels: vi.fn(),
   parseLocale: vi.fn((val) => (val === 'fr' ? 'fr' : 'en')),
 }));
 
 const mockFetchLastScrapeTime = vi.mocked(fetchLastScrapeTime);
+const mockResolveOrgSlugs = vi.mocked(resolveOrgSlugs);
 const mockResolveSkillLabels = vi.mocked(resolveSkillLabels);
 
 describe('GET /api/bulletin (handler contract)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
+    mockResolveOrgSlugs.mockResolvedValue(undefined);
     mockResolveSkillLabels.mockResolvedValue(new Map());
     mockRange.mockResolvedValue({ data: [], count: 0, error: null });
   });
@@ -223,5 +230,14 @@ describe('GET /api/bulletin (handler contract)', () => {
     // Should have both: total (matching filters) and totalAvailable (all jobs <= 4 weeks)
     expect(body).toHaveProperty('total');
     expect(body).toHaveProperty('totalAvailable');
+  });
+
+  it('resolves organization slugs for client-fetched jobs', async () => {
+    const jobs = [{ id: 'job-1', organization_id: 1 }];
+    mockRange.mockResolvedValue({ data: jobs, count: 1, error: null });
+
+    await GET(new Request('http://localhost/api/bulletin'));
+
+    expect(mockResolveOrgSlugs).toHaveBeenCalledWith(expect.anything(), jobs);
   });
 });

@@ -33,8 +33,6 @@
     "showNonSse": "Show non-SSE organizations",
     "noJobsForOrg": "This organization has no active job listings at the moment.",
     "jobs": "{count, plural, =0 {No active jobs} one {1 active job} other {# active jobs}}",
-    "jobsFiltered": "{filtered} / {total} active {total, plural, one {job} other {jobs}}",
-    "showOnlySseJobs": "SSE jobs only",
     "website": "Website",
     "viewProfile": "View organization profile",
     "noDescription": "No description available.",
@@ -821,6 +819,84 @@
       "selectedLabel": "Selected",
       "placeholder": "Search for values...",
       "noResults": "No values found"
+    }
+  },
+  "admin": {
+    "organizations": {
+      "listTitle": "Manage Organizations",
+      "createTitle": "Create Organization",
+      "editTitle": "Edit Organization",
+      "createDescription": "Add a new organization to the platform. Organizations can be partner employers that haven't been scraped yet.",
+      "editDescription": "Edit details for {name}",
+      "noOrganizations": "No organizations yet. Create one to get started.",
+      "sseBadge": "SSE",
+      "edit": "Edit",
+      "saving": "Saving...",
+      "valuesHint": "Select up to {max} work values. These appear on the public organization profile.",
+      "fields": {
+        "name": "Organization Name",
+        "slug": "URL Slug",
+        "description": "Description",
+        "missionStatement": "Mission Statement",
+        "website": "Website URL",
+        "location": "Location",
+        "type": "Organization Type",
+        "isSse": "Solidarity Economy Organization",
+        "values": "Core Values"
+      },
+      "placeholders": {
+        "name": "e.g., Centraide Montreal",
+        "slug": "e.g., centraide-montreal",
+        "description": "Brief description of the organization...",
+        "missionStatement": "The organization's mission...",
+        "website": "https://example.org",
+        "location": "Start typing a city…",
+        "selectType": "Select a type...",
+        "values": "Search and select work values"
+      },
+      "locationHint": "City-level only — used for filters and matching. Job postings carry specific work locations.",
+      "columns": {
+        "name": "Name",
+        "slug": "Slug",
+        "type": "Type",
+        "location": "Location",
+        "sse": "SSE",
+        "actions": "Actions"
+      },
+      "actions": {
+        "addNew": "Add Organization",
+        "manage": "Manage Organizations",
+        "create": "Create Organization",
+        "update": "Update Organization",
+        "delete": "Delete Organization",
+        "cancel": "Cancel"
+      },
+      "errors": {
+        "nameRequired": "Organization name is required",
+        "slugRequired": "URL slug is required",
+        "slugInvalid": "Slug can only contain lowercase letters, numbers, and hyphens",
+        "websiteInvalid": "Website must start with http:// or https://",
+        "descriptionTooLong": "Description is too long (max 500 characters)",
+        "missionTooLong": "Mission statement is too long (max 300 characters)",
+        "invalidType": "Please select a valid organization type",
+        "invalidValues": "One or more selected values are not recognized",
+        "tooManyValues": "You can select at most 5 values",
+        "slug_taken": "This slug is already in use",
+        "organization_exists": "An organization with this name and location already exists",
+        "unauthorized": "You must be logged in as an admin to perform this action",
+        "not_found": "Organization not found",
+        "database_error": "A database error occurred. Please try again.",
+        "invalid_slug": "Invalid slug format",
+        "saveFailed": "Failed to save organization. Please try again.",
+        "deleteFailed": "Failed to delete organization. Please try again.",
+        "loadFailed": "Failed to load organizations. Please try again."
+      },
+      "createSuccess": "Organization created successfully",
+      "updateSuccess": "Organization updated successfully",
+      "deleteSuccess": "Organization deleted successfully",
+      "deleteConfirm": "Delete {name}? {count, plural, =0 {No active jobs are linked.} one {1 active job will lose its organization link.} other {# active jobs will lose their organization links.}} Listings stay published.",
+      "deleting": "Deleting...",
+      "slugPreview": "Slug preview: {slug}"
     }
   }
 }

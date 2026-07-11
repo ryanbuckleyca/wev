@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import { safeUrl } from '@/lib/url';
 import SseBadge from './SseBadge';
-import JobCardFooter from './JobCardFooter';
-import MatchDetailsTooltip from './MatchDetailsTooltip';
+import OrgValuesMatchFooter from './OrgValuesMatchFooter';
 import Collapsible from './Collapsible';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 
@@ -23,7 +23,6 @@ interface Props {
   showMoreLabel: string;
   showLessLabel: string;
   isLoggedIn: boolean;
-  translateTooltip: (key: string, values?: Record<string, unknown>) => string;
 }
 
 // ---------------------------------------------------------------------------
@@ -120,7 +119,12 @@ interface CardDetailsProps {
   viewProfileLabel: string;
 }
 
-function OrganizationCardDetails({ org, locale, websiteLabel, viewProfileLabel }: CardDetailsProps) {
+function OrganizationCardDetails({
+  org,
+  locale,
+  websiteLabel,
+  viewProfileLabel,
+}: CardDetailsProps) {
   const safeWebsite = safeUrl(org.website);
 
   return (
@@ -139,7 +143,10 @@ function OrganizationCardDetails({ org, locale, websiteLabel, viewProfileLabel }
         </div>
       ) : null}
       <div className="text-sm">
-        <Link href={`/${locale}/organizations/${org.slug}`} className="text-primary hover:underline">
+        <Link
+          href={`/${locale}/organizations/${org.slug}`}
+          className="text-primary hover:underline"
+        >
           {viewProfileLabel}
         </Link>
       </div>
@@ -162,45 +169,11 @@ export default function OrganizationCard({
   showMoreLabel,
   showLessLabel,
   isLoggedIn,
-  translateTooltip,
 }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const tOrgs = useTranslations('organizations');
 
-  const getTypeLabel = (type: string | null) => {
-    if (!type) return '';
-    const key = `type.${type}` as const;
-    const translation = translateTooltip(key);
-    return translation === key ? type : translation;
-  };
-
-  const scoreData = useMemo(() => {
-    if (org.value_score == null) return null;
-    return { values: Math.round(org.value_score * 100) };
-  }, [org.value_score]);
-
-  // Only build the tooltip when the user is logged in and there's a score to show.
-  const matchTooltipContent = useMemo(() => {
-    if (!isLoggedIn || !scoreData) return null;
-    return (
-      <MatchDetailsTooltip
-        totalMatchPercentage={scoreData.values}
-        valueMatchPercentage={scoreData.values}
-        skillMatchPercentage={0}
-        workTypeMatchPercentage={0}
-        locationMatchPercentage={0}
-        jobWorkType={null}
-        jobMunicipality={null}
-        profileWorkTypes={[]}
-        profileHasLocationValue={false}
-        values={org.values_list || []}
-        skills={[]}
-        sharedValues={org.shared_values || []}
-        sharedSkills={[]}
-        skillTerms={{}}
-        translate={(key, values) => translateTooltip(key, values)}
-      />
-    );
-  }, [isLoggedIn, scoreData, org.values_list, org.shared_values, translateTooltip]);
+  const getTypeLabel = (orgType: string | null) => getOrganizationTypeLabel(orgType, tOrgs) ?? '';
 
   const hasFooter = Boolean(org.values_list?.length);
 
@@ -231,17 +204,11 @@ export default function OrganizationCard({
 
       {hasFooter && (
         <div className={`px-4 py-3 bg-muted ${isExpanded ? 'border-t border-border' : ''}`}>
-          <JobCardFooter
+          <OrgValuesMatchFooter
             values={org.values_list || []}
-            skills={[]}
+            valueScore={org.value_score}
             sharedValues={org.shared_values || []}
-            sharedSkills={[]}
-            skillTerms={{}}
-            skillDefinitions={{}}
-            totalMatchPercentage={scoreData?.values ?? 0}
-            matchTooltipContent={matchTooltipContent}
-            showTooltip={Boolean(matchTooltipContent)}
-            showMatchLoading={false}
+            isLoggedIn={isLoggedIn}
             fadeBackground="var(--muted)"
           />
         </div>
