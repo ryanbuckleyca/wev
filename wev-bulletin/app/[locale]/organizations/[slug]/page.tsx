@@ -1,12 +1,15 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getOrganizationBySlug, getOrganizationJobs } from '@/lib/organizations/server-data';
+import { computeOrgValueMatch } from '@/lib/organizations/value-match';
 import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
-import OrganizationJobRow from '@/components/OrganizationJobRow';
+import { createClient as createServerClient } from '@/lib/supabase/server';
+import { rolesIncludeAdmin } from '@/lib/auth';
+import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
+import { fetchServerProfile } from '@/lib/bulletin/server-data';
+import { OrganizationJobsList } from '@/components/OrganizationJobRow';
 import OrganizationProfileHeader from '@/components/OrganizationProfileHeader';
 import SimplePagination from '@/components/SimplePagination';
-import SseToggleLink from '@/components/SseToggleLink';
 import PageLayout from '@/components/PageLayout';
 
 interface PageProps {
@@ -30,13 +33,11 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
   const { locale, slug } = await params;
   const resolvedSearchParams = await searchParams;
   const t = await getTranslations({ locale, namespace: 'organizations' });
+  const tAdmin = await getTranslations({ locale, namespace: 'admin.organizations' });
 
   const parsedPage =
     typeof resolvedSearchParams.page === 'string' ? parseInt(resolvedSearchParams.page, 10) : 1;
   const page = isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
-
-  // SSE filter — default false on detail page (show all jobs, let user opt in)
-  const sseOnly = resolvedSearchParams.sse === 'true';
 
   const org = await getOrganizationBySlug(slug);
 
@@ -44,63 +45,61 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
     notFound();
   }
 
-  const { jobs, total: totalFilteredJobs, totalAvailable: totalAllJobs } = await getOrganizationJobs({ orgId: org.id, page, sseOnly });
-  const totalPages = Math.ceil(totalFilteredJobs / ORG_JOBS_PER_PAGE);
+  const supabaseAuth = await createServerClient();
+  const {
+    data: { user },
+  } = await supabaseAuth.auth.getUser();
+
+  let isAdmin = false;
+  let valueMatch = null;
+  if (user) {
+    const [rolesResult, profile] = await Promise.all([
+      fetchUserRolesFromService(user.id),
+      fetchServerProfile(user.id),
+    ]);
+    isAdmin = rolesResult.ok && rolesIncludeAdmin(rolesResult.roles);
+    if (profile) {
+      valueMatch = computeOrgValueMatch(profile.values_rated, org.values_list, org.values_rated);
+    }
+  }
+
+  const { jobs, total } = await getOrganizationJobs({
+    orgId: org.id,
+    page,
+    locale,
+  });
+  const totalPages = Math.max(1, Math.ceil(total / ORG_JOBS_PER_PAGE));
 
   if (page > totalPages && page > 1) {
     notFound();
   }
 
   const baseUrl = `/${locale}/organizations/${slug}`;
-  // Extra params forwarded to pagination links so SSE filter survives page nav
-  const paginationParams: Record<string, string> = sseOnly ? { sse: 'true' } : {};
-
-  // Toggle href: flipping SSE always resets to page 1
-  const sseToggleHref = sseOnly ? baseUrl : `${baseUrl}?sse=true`;
-
-  // Show "X / Y active jobs" when the SSE filter is hiding some results.
-  // When all jobs are SSE (or filter is off), show the plain count.
-  const jobsHeading =
-    sseOnly && totalAllJobs !== totalFilteredJobs
-      ? t('jobsFiltered', { filtered: totalFilteredJobs, total: totalAllJobs })
-      : t('jobs', { count: totalAllJobs });
 
   return (
     <PageLayout maxWidth="lg">
-      <OrganizationProfileHeader org={org} t={t} />
+      <OrganizationProfileHeader
+        org={org}
+        t={t}
+        editHref={isAdmin ? `/${locale}/admin/organizations/${org.id}/edit` : null}
+        editLabel={isAdmin ? tAdmin('edit') : undefined}
+        valueMatch={valueMatch}
+        isLoggedIn={Boolean(user)}
+      />
 
-      {/* Jobs Section */}
       <div className="space-y-4">
-        {/* Header row: count + SSE toggle */}
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <h2 className="text-2xl font-bold text-foreground">{jobsHeading}</h2>
-
-          <SseToggleLink
-            href={sseToggleHref}
-            isActive={sseOnly}
-            label={t('showOnlySseJobs')}
-          />
-        </div>
+        <h2 className="text-2xl font-bold text-foreground mb-6">{t('jobs', { count: total })}</h2>
 
         {jobs.length === 0 ? (
           <div className="bg-muted p-8 rounded-wev-card text-center text-muted-foreground">
             {t('noJobsForOrg')}
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {jobs.map((job) => (
-              <OrganizationJobRow key={job.id} job={job} />
-            ))}
-          </div>
+          <OrganizationJobsList jobs={jobs} />
         )}
 
-        {totalFilteredJobs > ORG_JOBS_PER_PAGE && (
-          <SimplePagination
-            currentPage={page}
-            totalPages={totalPages}
-            baseUrl={baseUrl}
-            extraParams={paginationParams}
-          />
+        {total > ORG_JOBS_PER_PAGE && (
+          <SimplePagination currentPage={page} totalPages={totalPages} baseUrl={baseUrl} />
         )}
       </div>
     </PageLayout>

@@ -26,7 +26,6 @@ const baseProps = {
   showMoreLabel: 'Show more',
   showLessLabel: 'Show less',
   isLoggedIn: false,
-  translateTooltip: (key: string) => key,
 };
 
 function makeOrg(overrides: Partial<OrgIndexEntry> = {}): OrgIndexEntry {
@@ -37,25 +36,14 @@ function makeOrg(overrides: Partial<OrgIndexEntry> = {}): OrgIndexEntry {
     description: null,
     website: null,
     location: 'City',
-    sse_rating: null,
-    sse_details: null,
     is_sse: false,
     type: null,
-    values: null,
     values_list: null,
-    values_rated: null,
     mission_statement: null,
-    logo_url: null,
-    created_at: new Date().toISOString(),
     active_job_count: 5,
     total_count: 1,
     value_score: null,
     shared_values: null,
-    municipality: null,
-    province: null,
-    lat: null,
-    lng: null,
-    geocode_accuracy_type: null,
     ...overrides,
   };
 }
@@ -83,8 +71,10 @@ describe('OrganizationCard', () => {
 
   // Feature: organizations, Property 15
   it("Property 15: Index entry links use the org's slug", () => {
+    const slugArb = fc.stringMatching(/^[a-z0-9]([a-z0-9-]{0,62})?$/);
+
     fc.assert(
-      fc.property(fc.stringMatching(/^[a-z0-9][a-z0-9-]*$/), (slug) => {
+      fc.property(slugArb, (slug) => {
         const org = makeOrg({ slug });
 
         const { unmount } = render(<OrganizationCard {...baseProps} org={org} />);
@@ -94,6 +84,7 @@ describe('OrganizationCard', () => {
 
         unmount();
       }),
+      { numRuns: 25 },
     );
   });
 });

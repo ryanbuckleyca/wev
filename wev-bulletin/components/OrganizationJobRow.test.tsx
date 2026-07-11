@@ -10,6 +10,14 @@ vi.mock('next-intl', () => ({
   useLocale: () => 'en',
 }));
 
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ user: null }),
+}));
+
+vi.mock('@/contexts/ProfileContext', () => ({
+  useProfile: () => ({ profile: null }),
+}));
+
 describe('OrganizationJobRow', () => {
   // Feature: organizations, Property 16
   it('Property 16: Job links use listing_url', () => {
@@ -52,5 +60,29 @@ describe('OrganizationJobRow', () => {
 
     expect(screen.getByText('filters.workType.hybrid')).toBeInTheDocument();
     expect(screen.getByText('Full-time')).toBeInTheDocument();
+  });
+
+  it('renders skill pills when the job has skills', () => {
+    const job: OrgJobPosting = {
+      id: '123',
+      job_title: 'Coordinator',
+      listing_url: 'https://example.com/job',
+      date_posted: null,
+      employment_type: 'full-time',
+      location: 'Montreal',
+      work_type: 'hybrid',
+      skills: ['http://data.europa.eu/esco/skill/teamwork'],
+      skill_labels: {
+        'http://data.europa.eu/esco/skill/teamwork': {
+          term: 'Teamwork',
+          definition: 'Working with others',
+          scope_note: null,
+        },
+      },
+    };
+
+    render(<OrganizationJobRow job={job} />);
+
+    expect(screen.getByText('0/1 skills')).toBeInTheDocument();
   });
 });

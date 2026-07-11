@@ -9,6 +9,7 @@ import type { Profile } from '@/lib/supabase/profiles';
 
 import { buildFilterOptions, type BulletinFilterOptions } from './filter-options';
 import { throwBulletinQueryError } from './fts-errors';
+import { resolveOrgSlugs } from './resolve-org-slugs';
 import { formatSearchQuery } from './search-utils';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
@@ -124,29 +125,6 @@ async function fetchBulletinFacets(
   return buildFilterOptions((data ?? []) as any[]);
 }
 
-async function resolveOrgSlugs(supabase: any, jobs: JobPosting[]): Promise<void> {
-  const orgIds = [
-    ...new Set(jobs.map((j) => j.organization_id).filter((id): id is number => id != null)),
-  ];
-  if (orgIds.length === 0) return;
-
-  const { data, error } = await supabase.from('organizations').select('id, slug').in('id', orgIds);
-  if (error) {
-    console.error('[resolveOrgSlugs] Failed to fetch organization slugs:', error);
-    return;
-  }
-
-  const slugMap = new Map<number, string>();
-  for (const row of data ?? []) {
-    slugMap.set(row.id, row.slug);
-  }
-  for (const job of jobs) {
-    if (job.organization_id != null) {
-      job.organization_slug = slugMap.get(job.organization_id) ?? null;
-    }
-  }
-}
-
 async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQueryResult> {
   const supabase = await createClient();
   const start = (input.page - 1) * input.limit;
@@ -212,12 +190,12 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     });
   }
 
-  const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
-  const labelMap = await resolveSkillLabels(supabase, jobs, input.locale);
+  const jobs = Array.isArray(jobsResult.data) ? jobsResult.data : [];
   await resolveOrgSlugs(supabase, jobs);
+  const labelMap = await resolveSkillLabels(supabase, jobs, input.locale);
 
   return {
-    jobs,
+    jobs: jobs as JobPosting[],
     total: jobsResult.count ?? 0,
     totalAvailable: totalAvailableResult.count ?? 0,
     lastScrapeTime: scrapeTime,
@@ -281,12 +259,12 @@ const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
   if (jobsResult.error) throw new Error(jobsResult.error.message);
   if (filterOptionsResult.error) throw new Error(filterOptionsResult.error.message);
 
-  const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
-  const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
+  const jobs = Array.isArray(jobsResult.data) ? jobsResult.data : [];
   await resolveOrgSlugs(supabaseServer, jobs);
+  const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
 
   return {
-    jobs,
+    jobs: jobs as JobPosting[],
     total: jobsResult.count ?? 0,
     totalAvailable: totalAvailableResult.count ?? 0,
     lastScrapeTime: scrapeTime,

@@ -119,7 +119,6 @@ export default function OrganizationIndexClient({
                   showMoreLabel={tCommon('showMore')}
                   showLessLabel={tCommon('showLess')}
                   isLoggedIn={Boolean(user)}
-                  translateTooltip={(key, values) => t(key, values as Record<string, string | number>)}
                 />
               ))}
             </div>
@@ -135,6 +134,8 @@ export default function OrganizationIndexClient({
                   totalPages={totalPages}
                   totalItems={total}
                   itemsPerPage={ORG_JOBS_PER_PAGE}
+                  singularKey="organizations.organization"
+                  pluralKey="organizations.organizations"
                 />
               </div>
             )}

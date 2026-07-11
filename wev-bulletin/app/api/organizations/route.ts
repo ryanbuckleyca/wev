@@ -15,16 +15,19 @@ export async function GET(request: Request) {
     parseOrgIndexSearchParams(searchParams, Boolean(user));
 
   try {
-    const result = await fetchOrganizationIndex({
-      page,
-      searchQuery,
-      sseOnly,
-      provinces,
-      municipalities,
-      orgTypes,
-      userId: user?.id ?? null,
-      sortBy,
-    });
+    const result = await fetchOrganizationIndex(
+      {
+        page,
+        searchQuery,
+        sseOnly,
+        provinces,
+        municipalities,
+        orgTypes,
+        userId: user?.id ?? null,
+        sortBy,
+      },
+      user ? supabaseAuth : undefined,
+    );
 
     return NextResponse.json({
       orgs: result.orgs,

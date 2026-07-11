@@ -53,6 +53,14 @@ vi.mock('@/lib/supabase-server', () => ({
   },
 }));
 
+vi.mock('@/lib/resolve-skill-labels', () => ({
+  parseLocale: (value: string | null) => ((value ?? '').toLowerCase() === 'fr' ? 'fr' : 'en'),
+  resolveSkillLabels: vi.fn(async () => new Map()),
+  attachSkillLabels: vi.fn((jobs: unknown[]) =>
+    jobs.map((job) => ({ ...(job as object), skill_labels: {} })),
+  ),
+}));
+
 import { fetchOrganizationIndex, getOrganizationJobs } from './server-data';
 
 function resetQuery(query: any) {
@@ -126,11 +134,15 @@ describe('organizations/server-data', () => {
       p_sort: 'org-asc',
     });
     // Second call: denominator (p_sse_only: false, p_limit: 1)
-    expect(mockRpc).toHaveBeenNthCalledWith(2, 'get_active_organizations', expect.objectContaining({
-      p_sse_only: false,
-      p_limit: 1,
-      p_offset: 0,
-    }));
+    expect(mockRpc).toHaveBeenNthCalledWith(
+      2,
+      'get_active_organizations',
+      expect.objectContaining({
+        p_sse_only: false,
+        p_limit: 1,
+        p_offset: 0,
+      }),
+    );
     expect(mockRpc).toHaveBeenCalledTimes(2);
     expect(result.total).toBe(3);
     expect(result.totalAvailable).toBe(3);

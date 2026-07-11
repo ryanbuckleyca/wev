@@ -1,9 +1,14 @@
 import { Leaf1Solid, Leaf1Outlined } from '@lineiconshq/free-icons';
 import { Lineicons } from '@lineiconshq/react-lineicons';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
+import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import type { OrgRecord } from '@/lib/organizations/types';
-import OrganizationValuesPills from './OrganizationValuesPills';
+import type { OrgValueMatch } from '@/lib/organizations/value-match';
+import OrgValuesMatchFooter from './OrgValuesMatchFooter';
+import { buttonVariants } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 
 interface Props {
   org: OrgRecord;
@@ -12,9 +17,20 @@ interface Props {
    * Must be created with `getTranslations({ locale, namespace: 'organizations' })`.
    */
   t: ReturnType<typeof useTranslations<'organizations'>>;
+  editHref?: string | null;
+  editLabel?: string;
+  valueMatch?: OrgValueMatch | null;
+  isLoggedIn?: boolean;
 }
 
-export default function OrganizationProfileHeader({ org, t }: Props) {
+export default function OrganizationProfileHeader({
+  org,
+  t,
+  editHref,
+  editLabel,
+  valueMatch = null,
+  isLoggedIn = false,
+}: Props) {
   const websiteUrl = safeUrl(org.website);
   const sseDetails =
     org.sse_details && typeof org.sse_details === 'object' && !Array.isArray(org.sse_details)
@@ -22,6 +38,7 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
       : null;
   const sseReasoning =
     sseDetails && typeof sseDetails.reasoning === 'string' ? sseDetails.reasoning : null;
+  const values = org.values_list ?? [];
 
   return (
     <div className="mb-8">
@@ -51,12 +68,32 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
 
             {org.type && (
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-foreground">{t('orgType')}:</span> {org.type}
+                <span className="font-medium text-foreground">{t('orgType')}:</span>{' '}
+                {getOrganizationTypeLabel(org.type, t)}
               </div>
             )}
           </div>
         </div>
+
+        {editHref && editLabel && (
+          <Link
+            href={editHref}
+            className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}
+          >
+            {editLabel}
+          </Link>
+        )}
       </div>
+
+      {values.length > 0 && (
+        <OrgValuesMatchFooter
+          values={values}
+          valueScore={valueMatch?.valueScore ?? null}
+          sharedValues={valueMatch?.sharedValues ?? []}
+          isLoggedIn={isLoggedIn}
+          className="mt-6 rounded-wev-card border border-border bg-muted px-4 py-3"
+        />
+      )}
 
       <div className="mt-4 pt-4 border-t border-border">
         <div className="flex items-center gap-2">
@@ -97,15 +134,6 @@ export default function OrganizationProfileHeader({ org, t }: Props) {
           <p className="text-foreground whitespace-pre-wrap leading-relaxed">
             {org.mission_statement}
           </p>
-        </div>
-      )}
-
-      {org.values_list && org.values_list.length > 0 && (
-        <div className="mt-8 pt-8 border-t border-border">
-          <h2 className="text-lg font-semibold text-foreground mb-3">{t('values')}</h2>
-          <div className="flex flex-wrap gap-2 -ml-1">
-            <OrganizationValuesPills values={org.values_list} />
-          </div>
         </div>
       )}
     </div>
