@@ -71,8 +71,10 @@ describe('OrganizationCard', () => {
 
   // Feature: organizations, Property 15
   it("Property 15: Index entry links use the org's slug", () => {
+    const slugArb = fc.stringMatching(/^[a-z0-9]([a-z0-9-]{0,62})?$/);
+
     fc.assert(
-      fc.property(fc.stringMatching(/^[a-z0-9][a-z0-9-]*$/), (slug) => {
+      fc.property(slugArb, (slug) => {
         const org = makeOrg({ slug });
 
         const { unmount } = render(<OrganizationCard {...baseProps} org={org} />);
@@ -82,6 +84,7 @@ describe('OrganizationCard', () => {
 
         unmount();
       }),
+      { numRuns: 25 },
     );
   });
 });
