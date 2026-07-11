@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { config as loadEnv } from "dotenv";
 
@@ -37,6 +38,42 @@ export function parseEnvFlag(
   if (args.includes("--publish") && allow.includes("publish")) return "publish";
 
   return defaultEnv;
+}
+
+/** Walk up from start until the monorepo root package (`name: wev`) is found. */
+export function findRepoRoot(start: string = process.cwd()): string {
+  let dir = path.resolve(start);
+  for (let i = 0; i < 6; i++) {
+    const pkgPath = path.join(dir, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as {
+          name?: string;
+        };
+        if (pkg.name === "wev") return dir;
+      } catch {
+        // keep walking
+      }
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return path.resolve(start);
+}
+
+/** Load production credentials from `.env.production` only (never from `.env`). */
+export function loadProductionEnvOnly(
+  root: string = process.cwd(),
+): void {
+  const prodPath = path.join(root, ".env.production");
+  if (!fs.existsSync(prodPath)) {
+    console.error(
+      `Missing ${prodPath}. Copy .env.production.example to .env.production and add production Supabase credentials.`,
+    );
+    process.exit(1);
+  }
+  loadEnv({ path: prodPath });
 }
 
 /** Load repo `.env`, optionally layered with staging or production files. */

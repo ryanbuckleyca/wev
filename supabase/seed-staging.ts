@@ -2,7 +2,11 @@ import { resetAndSeedDatabase } from "./src/seeder";
 import path from "node:path";
 import fs from "node:fs";
 import readline from "node:readline";
-import { config as loadEnv } from "dotenv";
+import {
+  findRepoRoot,
+  loadEnvFiles,
+  loadProductionEnvOnly,
+} from "../scripts/parse-env";
 
 /**
  * Standalone script to seed the STAGING database (wev-test).
@@ -27,27 +31,28 @@ function prompt(question: string): Promise<string> {
 async function main() {
   console.log("▶ Loading Staging environment variables...");
 
-  // Explicitly load .env.staging from root
-  const envPath = path.join(process.cwd(), ".env.staging");
+  const root = findRepoRoot();
+  const envPath = path.join(root, ".env.staging");
 
   if (!fs.existsSync(envPath)) {
     console.error(`❌ Error: Staging environment file not found at ${envPath}`);
     process.exit(1);
   }
 
-  loadEnv({ path: envPath });
+  loadEnvFiles("staging", root);
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const projectRef = process.env.SUPABASE_PROJECT_REF;
 
-  // Prod credentials for syncing
-  const prodUrl = process.env.SUPABASE_PROD_URL;
-  const prodKey = process.env.SUPABASE_PROD_SERVICE_ROLE_KEY;
+  // Prod credentials for syncing — loaded from .env.production only.
+  loadProductionEnvOnly(root);
+  const prodUrl = process.env.SUPABASE_URL;
+  const prodKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey || !projectRef || !prodUrl || !prodKey) {
     console.error(
-      "❌ Error: Missing staging or production credentials in .env.staging",
+      "❌ Error: Missing staging credentials in .env.staging or production credentials in .env.production",
     );
     process.exit(1);
   }
@@ -68,7 +73,6 @@ async function main() {
       process.exit(1);
     }
 
-    // Confirm before any async work; rl is created and closed inside prompt()
     const answer = await prompt(
       'This will delete all existing data in STAGING and replace it with a production-mirror.\nType "YES" to confirm: ',
     );
@@ -81,7 +85,6 @@ async function main() {
   try {
     const { createClient } = await import("@supabase/supabase-js");
 
-    // 1. Fetch live sources from Production
     console.log("▶ Fetching authentic sources from Production...");
     const prodClient = createClient(prodUrl, prodKey, {
       auth: { persistSession: false },
@@ -98,7 +101,6 @@ async function main() {
 
     console.log(`✅ Found ${prodSources.length} production sources.`);
 
-    // 2. Seed Staging using production source overrides
     console.log(`▶ Seeding staging project: ${projectRef}`);
     await resetAndSeedDatabase(
       { projectRef, serviceRoleKey, supabaseUrl },
