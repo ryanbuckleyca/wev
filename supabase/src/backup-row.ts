@@ -24,7 +24,7 @@ export function sanitizeBackupRow(
   return clean;
 }
 
-/** Column used with `.not(col, "is", null)` to delete all rows in a table. */
+/** Column used with delete filters to wipe a table (non-null + null passes). */
 export const TABLE_CLEAR_COLUMN: Record<string, string> = {
   bookmarks: "job_id",
   job_matches: "job_id",
@@ -70,5 +70,32 @@ export const RESTORE_INSERT_ORDER = [
 /**
  * Tables restored with explicit integer identity PKs. After upsert, sequences
  * must be advanced to MAX(id) or the next INSERT collides (e.g. admin org create).
+ *
+ * Reset SQL is keyed by table name (no string interpolation) so identifiers
+ * cannot be injected via restore args.
  */
 export const RESTORE_IDENTITY_TABLES = ["organizations"] as const;
+
+export type RestoreIdentityTable = (typeof RESTORE_IDENTITY_TABLES)[number];
+
+/** Fixed SQL per allowlisted identity table — do not build these from user input. */
+export const IDENTITY_RESET_SQL: Record<RestoreIdentityTable, string> = {
+  organizations: `
+DO $$
+DECLARE
+  seq text := pg_get_serial_sequence('public.organizations', 'id');
+  max_id bigint;
+BEGIN
+  IF seq IS NULL THEN
+    RAISE NOTICE 'No identity sequence for public.organizations';
+    RETURN;
+  END IF;
+  SELECT MAX(id) INTO max_id FROM public.organizations;
+  IF max_id IS NULL THEN
+    PERFORM setval(seq, 1, false);
+  ELSE
+    PERFORM setval(seq, max_id, true);
+  END IF;
+END $$;
+`,
+};
