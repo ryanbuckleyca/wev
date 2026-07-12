@@ -285,6 +285,7 @@
       "password": "Password",
       "submit": "Create account",
       "submitting": "Creating account...",
+      "requestError": "Something went wrong. Please try again.",
       "hasAccount": "Already have an account?",
       "logIn": "Log in",
       "passwordWeak": "Password is too weak. Please choose a stronger password.",

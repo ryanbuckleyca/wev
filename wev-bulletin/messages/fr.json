@@ -285,6 +285,7 @@
       "password": "Mot de passe",
       "submit": "Créer un compte",
       "submitting": "Création du compte...",
+      "requestError": "Une erreur s'est produite. Veuillez réessayer.",
       "hasAccount": "Vous avez déjà un compte ?",
       "logIn": "Se connecter",
       "passwordWeak": "Le mot de passe est trop faible. Veuillez choisir un mot de passe plus fort.",

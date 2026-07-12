@@ -49,31 +49,29 @@ export default function SignupPage() {
       return;
     }
 
-    const baseUrl = getSiteBaseUrl();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${baseUrl}/auth/callback`,
-        captchaToken,
-      },
-    });
+    // Server decides whether to send a normal signup confirmation (new account) or
+    // a magic link (existing account). The response is intentionally identical for
+    // both so the client cannot tell whether the email is already registered.
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, captchaToken }),
+      });
 
-    if (error) {
-      const looksLikeExistingAccount = /already registered/i.test(error.message);
-      if (looksLikeExistingAccount) {
+      if (response.ok) {
         setSentEmail(email);
         clearCaptchaToken();
       } else {
-        setError(error.message);
+        setError(t('auth.signup.requestError'));
         recycleTurnstileAfterAuthError();
       }
-    } else {
-      setSentEmail(email);
-      clearCaptchaToken();
+    } catch {
+      setError(t('auth.signup.requestError'));
+      recycleTurnstileAfterAuthError();
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   const handleResend = async () => {
