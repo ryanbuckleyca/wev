@@ -13,14 +13,23 @@ const COOLDOWN_SECONDS = 30;
 
 interface CheckEmailCardProps {
   onPrimaryAction: () => Promise<boolean | void>;
+  /**
+   * `signup` — single heading "Check your email to continue." (no anti-enumeration body).
+   * `default` — "Check your email" + obfuscated "if an account exists…" body (forgot password, etc.).
+   */
+  variant?: 'default' | 'signup';
 }
 
 /** Shared "Check your email" success state for auth flows. */
-export default function CheckEmailCard({ onPrimaryAction }: CheckEmailCardProps) {
+export default function CheckEmailCard({
+  onPrimaryAction,
+  variant = 'default',
+}: CheckEmailCardProps) {
   const t = useTranslations('auth.checkEmail');
   const [loading, setLoading] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(COOLDOWN_SECONDS);
   const [error, setError] = useState<string | null>(null);
+  const isSignup = variant === 'signup';
 
   useEffect(() => {
     if (cooldownRemaining <= 0) return;
@@ -53,12 +62,14 @@ export default function CheckEmailCard({ onPrimaryAction }: CheckEmailCardProps)
   return (
     <PageLayout variant="centered">
       <CardLayout>
-        <Heading level={1} className="text-center mb-3">
-          {t('title')}
+        <Heading level={1} className={`text-center ${isSignup ? 'mb-6' : 'mb-3'}`}>
+          {isSignup ? t('signupContinue') : t('title')}
         </Heading>
-        <p className="text-sm text-center mb-6" style={{ color: 'var(--muted-foreground)' }}>
-          {t('message')}
-        </p>
+        {!isSignup && (
+          <p className="text-sm text-center mb-6" style={{ color: 'var(--muted-foreground)' }}>
+            {t('message')}
+          </p>
+        )}
         <div className="space-y-3">
           <Button
             onClick={handlePrimaryAction}

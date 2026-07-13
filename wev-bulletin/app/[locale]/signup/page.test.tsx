@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { render, screen, waitFor } from '@/test-utils';
+import { act, fireEvent, render, screen, waitFor } from '@/test-utils';
 import SignupPage from './page';
 import { createClient } from '@/lib/supabase/client';
 import { PASSWORD_FIELD_PLACEHOLDER } from '@/lib/auth';
@@ -68,10 +68,12 @@ describe('SignupPage', () => {
       );
     });
 
-    expect(screen.getByRole('heading', { name: /check your email/i })).toBeVisible();
     expect(
-      screen.getByText(/if an account exists for this email, we['’]ll send you a link/i),
+      screen.getByRole('heading', { name: /check your email to continue/i }),
     ).toBeVisible();
+    expect(
+      screen.queryByText(/if an account exists for this email, we['’]ll send you a link/i),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /try again in 30s/i })).toBeVisible();
     expect(screen.getByRole('link', { name: /log in/i })).toBeVisible();
     expect(screen.queryByRole('button', { name: /create account/i })).not.toBeInTheDocument();
@@ -99,5 +101,73 @@ describe('SignupPage', () => {
     });
     expect(screen.queryByRole('heading', { name: /check your email/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
+  });
+
+  it('surfaces a distinct message when the server rate-limits (429)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ ok: false, error: 'rate_limit_exceeded' }),
+    });
+
+    await fillAndSubmit();
+
+    await waitFor(() => {
+      expect(screen.getByText(/too many attempts/i)).toBeVisible();
+    });
+    expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
+  });
+
+  it('resends through the server with the resend flag and a fresh captcha token', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<SignupPage />);
+
+      fireEvent.change(screen.getByPlaceholderText('you@example.com'), {
+        target: { value: 'test@example.com' },
+      });
+      fireEvent.change(screen.getByPlaceholderText(PASSWORD_FIELD_PLACEHOLDER), {
+        target: { value: 'StrongPass123!' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /complete captcha/i }));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+      });
+
+      expect(screen.getByRole('heading', { name: /check your email/i })).toBeVisible();
+
+      // Re-arm the (visually hidden, aria-hidden) Turnstile so resend has a fresh
+      // token, then wait out the 30s resend cooldown enforced by CheckEmailCard.
+      // The cooldown re-schedules a 1s timer each tick, so advance one tick at a
+      // time to let React re-render and re-arm the next timer between advances.
+      fireEvent.click(screen.getByText('Complete CAPTCHA'));
+      for (let i = 0; i < 30; i++) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1_000);
+        });
+      }
+
+      fetchMock.mockClear();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /send another link/i }));
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/auth/signup',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: 'test@example.com',
+            captchaToken: 'turnstile-token',
+            resend: true,
+          }),
+        }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

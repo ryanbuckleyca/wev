@@ -286,6 +286,7 @@
       "submit": "Create account",
       "submitting": "Creating account...",
       "requestError": "Something went wrong. Please try again.",
+      "rateLimited": "Too many attempts. Please wait a few minutes and try again.",
       "hasAccount": "Already have an account?",
       "logIn": "Log in",
       "passwordWeak": "Password is too weak. Please choose a stronger password.",
@@ -295,6 +296,7 @@
     "checkEmail": {
       "title": "Check your email",
       "message": "If an account exists for this email, we'll send you a link. Open it to continue.",
+      "signupContinue": "Check your email to continue.",
       "primary": "Send another link",
       "cooldown": "Try again in {seconds}s",
       "error": "We couldn't send another link. Please try again.",
