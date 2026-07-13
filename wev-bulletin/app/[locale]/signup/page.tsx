@@ -63,7 +63,9 @@ export default function SignupPage() {
         // Spend the token and re-arm Turnstile so a fresh one is ready for resend.
         recycleTurnstileAfterAuthError();
       } else {
-        setError(t(response.status === 429 ? 'auth.signup.rateLimited' : 'auth.signup.requestError'));
+        setError(
+          t(response.status === 429 ? 'auth.signup.rateLimited' : 'auth.signup.requestError'),
+        );
         recycleTurnstileAfterAuthError();
       }
     } catch {

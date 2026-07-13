@@ -56,9 +56,7 @@ describe('CheckEmailCard', () => {
   it('renders signup continue-only copy without anti-enumeration subtext', () => {
     render(<CheckEmailCard variant="signup" onPrimaryAction={vi.fn()} />);
 
-    expect(
-      screen.getByRole('heading', { name: /check your email to continue/i }),
-    ).toBeVisible();
+    expect(screen.getByRole('heading', { name: /check your email to continue/i })).toBeVisible();
     expect(
       screen.queryByText(/if an account exists for this email, we['’]ll send you a link/i),
     ).not.toBeInTheDocument();
