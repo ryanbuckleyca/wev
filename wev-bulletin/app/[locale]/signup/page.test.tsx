@@ -68,9 +68,7 @@ describe('SignupPage', () => {
       );
     });
 
-    expect(
-      screen.getByRole('heading', { name: /check your email to continue/i }),
-    ).toBeVisible();
+    expect(screen.getByRole('heading', { name: /check your email to continue/i })).toBeVisible();
     expect(
       screen.queryByText(/if an account exists for this email, we['’]ll send you a link/i),
     ).not.toBeInTheDocument();
@@ -92,7 +90,10 @@ describe('SignupPage', () => {
   });
 
   it('shows an error and stays on the form when the request fails', async () => {
-    fetchMock.mockResolvedValue({ ok: false, json: async () => ({ ok: false, error: 'signup_failed' }) });
+    fetchMock.mockResolvedValue({
+      ok: false,
+      json: async () => ({ ok: false, error: 'signup_failed' }),
+    });
 
     await fillAndSubmit();
 
