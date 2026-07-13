@@ -128,25 +128,61 @@ describe('POST /api/auth/signup', () => {
     });
   });
 
-  it('treats an "already registered" race on signUp by sending a magic link', async () => {
+  it('fails closed on any signUp error, including an "already registered" race', async () => {
+    // The race branch was removed: recovering via OTP would need a second captcha
+    // we do not have, so we fail closed instead of reusing a spent token.
     mockSignUp.mockResolvedValue({
       data: null,
       error: { message: 'User already registered' },
     });
-    const body = validBody();
 
-    const response = await POST(makeRequest(body));
+    const response = await POST(makeRequest(validBody()));
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ ok: false, error: 'signup_failed' });
+    expect(mockSignInWithOtp).not.toHaveBeenCalled();
+  });
+
+  it('normalizes the email to lowercase for lookup and GoTrue', async () => {
+    mockRpc.mockResolvedValue({ data: 'existing-user-id', error: null });
+
+    const response = await POST(makeRequest(validBody({ email: 'MixedCase@Example.COM' })));
+
+    expect(response.status).toBe(200);
+    expect(mockRpc).toHaveBeenCalledWith('get_auth_user_id_by_email', {
+      input_email: 'mixedcase@example.com',
+    });
+    expect(mockSignInWithOtp).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'mixedcase@example.com' }),
+    );
+  });
+
+  it('resends the existing-account email without a password or a user lookup', async () => {
+    const response = await POST(
+      makeRequest({ email: 'Resend@Example.com', captchaToken: 'turnstile-token', resend: true }),
+    );
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockSignUp).not.toHaveBeenCalled();
     expect(mockSignInWithOtp).toHaveBeenCalledWith({
-      email: body.email,
+      email: 'resend@example.com',
       options: {
         shouldCreateUser: false,
         emailRedirectTo: 'https://example.test/auth/callback',
         captchaToken: 'turnstile-token',
       },
     });
+  });
+
+  it('rejects a weak password before touching the database', async () => {
+    const response = await POST(makeRequest(validBody({ password: 'aaaaaaaa' })));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ ok: false, error: 'invalid_request' });
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockSignUp).not.toHaveBeenCalled();
   });
 
   it('fails closed when the auth user lookup errors', async () => {

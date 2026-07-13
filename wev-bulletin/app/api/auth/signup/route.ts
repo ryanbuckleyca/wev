@@ -1,16 +1,27 @@
 import { NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
+import type { AuthError } from '@supabase/supabase-js';
 import { supabaseServer } from '@/lib/supabase-server';
 import { getSiteBaseUrlFromRequest } from '@/lib/site-url';
+import { isPasswordStrongEnough } from '@/lib/password-strength';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-const SignupSchema = z.object({
-  email: z.string().trim().email().max(320),
-  password: z.string().min(6).max(200),
-  captchaToken: z.string().min(1),
-});
+// `resend: true` re-sends the email for an account that already went through this
+// route once (see CheckEmailCard). It carries no password because the check-email
+// UI has none, so it always follows the existing-account path.
+const SignupSchema = z
+  .object({
+    email: z.string().trim().email().max(320),
+    password: z.string().min(8).max(200).optional(),
+    captchaToken: z.string().min(1),
+    resend: z.boolean().optional(),
+  })
+  .refine((body) => body.resend === true || typeof body.password === 'string', {
+    path: ['password'],
+    message: 'Password is required',
+  });
 
 // Identical success payload for both the existing-account and new-account paths.
 // The client must not be able to tell whether the email is already registered.
@@ -24,14 +35,32 @@ const FAILURE = { ok: false, error: 'signup_failed' } as const;
 const rateLimitMap = new Map<string, { count: number; startTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX = 5;
+// Cap the map so a flood of unique emails can't grow it without bound. When full
+// (after pruning expired entries) we fail closed and rate-limit the new key.
+const RATE_LIMIT_MAX_KEYS = 10_000;
+
+function pruneExpired(now: number): void {
+  for (const [key, usage] of rateLimitMap) {
+    if (now - usage.startTime > RATE_LIMIT_WINDOW_MS) {
+      rateLimitMap.delete(key);
+    }
+  }
+}
 
 function isRateLimited(key: string): boolean {
   const now = Date.now();
   let usage = rateLimitMap.get(key);
   if (usage && now - usage.startTime > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.delete(key);
     usage = undefined;
   }
   if (!usage) {
+    if (rateLimitMap.size >= RATE_LIMIT_MAX_KEYS) {
+      pruneExpired(now);
+      if (rateLimitMap.size >= RATE_LIMIT_MAX_KEYS) {
+        return true;
+      }
+    }
     usage = { count: 0, startTime: now };
     rateLimitMap.set(key, usage);
   }
@@ -39,13 +68,47 @@ function isRateLimited(key: string): boolean {
   return usage.count > RATE_LIMIT_MAX;
 }
 
+/**
+ * Send the existing-account email: a magic link (OTP) for a confirmed user, or a
+ * signup confirmation resend for an account that was never confirmed.
+ *
+ * `captchaToken` is spent by `signInWithOtp`, so it is intentionally NOT passed to
+ * the resend fallback — reusing a spent Turnstile token would fail. The fallback
+ * is a rare edge (unconfirmed existing account) and fails closed if GoTrue rejects
+ * it. Returns an AuthError on failure, or null on success.
+ */
+async function sendExistingAccountEmail(
+  email: string,
+  emailRedirectTo: string,
+  captchaToken: string,
+): Promise<AuthError | null> {
+  const { error: otpError } = await supabaseServer.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false, emailRedirectTo, captchaToken },
+  });
+
+  if (!otpError) return null;
+
+  if (/confirm/i.test(otpError.message)) {
+    const { error: resendError } = await supabaseServer.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo },
+    });
+    return resendError ?? null;
+  }
+
+  return otpError;
+}
+
 export async function POST(request: Request) {
   let email: string;
-  let password: string;
+  let password: string | undefined;
   let captchaToken: string;
+  let resend: boolean;
   try {
     const body = await request.json().catch(() => ({}));
-    ({ email, password, captchaToken } = SignupSchema.parse(body));
+    ({ email, password, captchaToken, resend = false } = SignupSchema.parse(body));
   } catch (error) {
     if (!(error instanceof ZodError)) {
       logger.error({ err: error }, 'Signup: failed to parse request');
@@ -53,6 +116,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'invalid_request' }, { status: 400 });
   }
 
+  // Match the client strength floor so the server never accepts a password the form
+  // would have rejected. Skipped for resend (no password is submitted).
+  if (!resend && !isPasswordStrongEnough(password!)) {
+    return NextResponse.json({ ok: false, error: 'invalid_request' }, { status: 400 });
+  }
+
+  // Normalize once and use everywhere (RPC + GoTrue) so lookup and send agree.
   const normalizedEmail = email.toLowerCase();
 
   if (isRateLimited(normalizedEmail)) {
@@ -62,7 +132,20 @@ export async function POST(request: Request) {
 
   const emailRedirectTo = `${getSiteBaseUrlFromRequest(request)}/auth/callback`;
 
+  // Timing note: the existing-account path (OTP) and the new-account path (bcrypt +
+  // signUp) have different latencies, so response time can weakly hint at existence.
+  // We accept this rather than adding brittle artificial sleeps; the identical
+  // response body plus the shared pre-branch rate limit are the primary defenses.
   try {
+    if (resend) {
+      const error = await sendExistingAccountEmail(normalizedEmail, emailRedirectTo, captchaToken);
+      if (error) {
+        logger.error({ err: error }, 'Signup: resend failed');
+        return NextResponse.json(FAILURE, { status: 500 });
+      }
+      return NextResponse.json(SUCCESS, { status: 200 });
+    }
+
     const { data, error: lookupError } = await supabaseServer.rpc('get_auth_user_id_by_email', {
       input_email: normalizedEmail,
     });
@@ -76,68 +159,24 @@ export async function POST(request: Request) {
     const existingUserId = (data as string | null) ?? null;
 
     if (existingUserId) {
-      // Existing account → send a magic link instead of a silent "already registered".
-      const { error: otpError } = await supabaseServer.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: false, emailRedirectTo, captchaToken },
-      });
-
-      if (otpError) {
-        // Edge case: the account exists but was never confirmed. GoTrue won't
-        // OTP-login an unconfirmed user, so resend the signup confirmation instead.
-        if (/confirm/i.test(otpError.message)) {
-          const { error: resendError } = await supabaseServer.auth.resend({
-            type: 'signup',
-            email,
-            options: { emailRedirectTo },
-          });
-          if (resendError) {
-            logger.error({ err: resendError }, 'Signup: resend confirmation failed');
-            return NextResponse.json(FAILURE, { status: 500 });
-          }
-          return NextResponse.json(SUCCESS, { status: 200 });
-        }
-        // Fail closed: mail send failed, don't report success.
-        logger.error({ err: otpError }, 'Signup: magic link send failed');
+      const error = await sendExistingAccountEmail(normalizedEmail, emailRedirectTo, captchaToken);
+      if (error) {
+        logger.error({ err: error }, 'Signup: existing-account email failed');
         return NextResponse.json(FAILURE, { status: 500 });
       }
-
       return NextResponse.json(SUCCESS, { status: 200 });
     }
 
-    // New account → normal signup confirmation email.
+    // New account → normal signup confirmation email. Any signUp error (including a
+    // rare "already registered" race) fails closed: retrying via the OTP path here
+    // would require a second captcha we don't have, so we don't attempt recovery.
     const { error: signUpError } = await supabaseServer.auth.signUp({
-      email,
-      password,
+      email: normalizedEmail,
+      password: password!,
       options: { emailRedirectTo, captchaToken },
     });
 
     if (signUpError) {
-      // Race: another request created the account between lookup and signUp.
-      // Fall through to the existing-account path so we still send mail.
-      if (/already registered|already been registered/i.test(signUpError.message)) {
-        const { error: otpError } = await supabaseServer.auth.signInWithOtp({
-          email,
-          options: { shouldCreateUser: false, emailRedirectTo, captchaToken },
-        });
-        if (otpError) {
-          if (/confirm/i.test(otpError.message)) {
-            const { error: resendError } = await supabaseServer.auth.resend({
-              type: 'signup',
-              email,
-              options: { emailRedirectTo },
-            });
-            if (resendError) {
-              logger.error({ err: resendError }, 'Signup: race resend confirmation failed');
-              return NextResponse.json(FAILURE, { status: 500 });
-            }
-            return NextResponse.json(SUCCESS, { status: 200 });
-          }
-          logger.error({ err: otpError }, 'Signup: race magic link send failed');
-          return NextResponse.json(FAILURE, { status: 500 });
-        }
-        return NextResponse.json(SUCCESS, { status: 200 });
-      }
       logger.error({ err: signUpError }, 'Signup: sign up failed');
       return NextResponse.json(FAILURE, { status: 500 });
     }

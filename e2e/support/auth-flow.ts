@@ -40,6 +40,36 @@ export async function confirmEmailFromInboxAndExpectHome(
   });
 }
 
+/**
+ * Follow the magic link sent to an existing (confirmed) account when it re-signs up.
+ * The signup route responds to a known email with a magic-link OTP whose template
+ * emits a `/auth/callback?token_hash=...&type=magiclink` URL, so we match on the
+ * `type=magiclink` marker to avoid picking up an earlier signup confirmation link.
+ */
+export async function signInViaMagicLinkFromInboxAndExpectHome(
+  authPage: AuthPage,
+  inbox: InboxRef,
+  locale: AppLocale = "en",
+  timeoutMs?: number,
+): Promise<void> {
+  const page = authPage.page;
+  const effectiveTimeoutMs =
+    timeoutMs ?? (getEmailProvider() === "mailpit" ? 30_000 : 90_000);
+
+  const magicLink = await waitForInboxLink(
+    inbox.id,
+    "type=magiclink",
+    effectiveTimeoutMs,
+  );
+  await page.goto(magicLink);
+  // A valid magic link lands the user authenticated on the localized home page;
+  // a broken/expired one would redirect to /auth/auth-code-error instead.
+  await expect(page).toHaveURL(new RegExp(`/${locale}(\\/)?$`), {
+    timeout: 10_000,
+  });
+  await expect(page).not.toHaveURL(/auth-code-error/);
+}
+
 export async function resetPasswordFromInboxAndExpectHome(
   authPage: AuthPage,
   inbox: InboxRef,

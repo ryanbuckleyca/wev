@@ -220,6 +220,16 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
+# Custom email templates. content_path is resolved relative to the repo root
+# because CI runs the Supabase CLI from the repo root (not from ./supabase).
+# These templates emit a token_hash link so /auth/callback can verifyOtp via
+# query params, instead of the GoTrue default implicit flow (hash tokens).
+[auth.email.template.magic_link]
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.confirmation]
+content_path = "./supabase/templates/confirmation.html"
+
 # Use a production-ready SMTP server
 # [auth.email.smtp]
 # enabled = true
