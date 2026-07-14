@@ -47,6 +47,15 @@ function makeRequest(body: unknown, headers: Record<string, string> = {}) {
   });
 }
 
+// A request with no x-real-ip header at all (e.g. direct/non-proxied traffic).
+function makeRequestWithoutIp(body: unknown) {
+  return new NextRequest('http://localhost:3000/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 function validBody(overrides: Record<string, unknown> = {}) {
   return {
     email: `user-${Math.random().toString(36).slice(2)}@example.com`,
@@ -289,5 +298,55 @@ describe('POST /api/auth/signup', () => {
       makeRequest(validBody(), { 'x-real-ip': ip, 'x-forwarded-for': '10.0.0.254' }),
     );
     expect(limited.status).toBe(429);
+  });
+
+  it('skips the IP bucket when x-real-ip is absent (no shared "unknown" wall)', async () => {
+    // Requests without a determinable IP must only be bounded by the per-email bucket.
+    // Many header-less requests with distinct emails must all pass — they must NOT pile
+    // into a shared ip:unknown bucket that would deny signup once RATE_LIMIT_MAX_IP hit.
+    // 25 > RATE_LIMIT_MAX_IP (20 in route.ts): would trip a shared IP bucket if one existed.
+    for (let i = 0; i < 25; i++) {
+      const ok = await POST(makeRequestWithoutIp(validBody()));
+      expect(ok.status).toBe(200);
+    }
+  });
+
+  it('still applies the email bucket when x-real-ip is absent', async () => {
+    // Skipping the IP bucket must not disable the email bucket: the same email without
+    // a header still trips at RATE_LIMIT_MAX_EMAIL (5).
+    const email = 'no-ip-but-limited@example.com';
+    for (let i = 0; i < 5; i++) {
+      const ok = await POST(makeRequestWithoutIp(validBody({ email })));
+      expect(ok.status).toBe(200);
+    }
+
+    const limited = await POST(makeRequestWithoutIp(validBody({ email })));
+    expect(limited.status).toBe(429);
+    expect(await limited.json()).toEqual({ ok: false, error: 'rate_limit_exceeded' });
+  });
+
+  it('evicts old entries instead of failing closed when the key map is full', async () => {
+    // Fill the map past the cap (RATE_LIMIT_MAX_KEYS = 10_000 in route.ts) with unique,
+    // single-use keys: each request contributes a distinct email + IP → 2 keys. We use
+    // the resend path so it skips the CPU-heavy password-strength check. Once the map is
+    // full, a brand-new key must still be admitted (200) — proving eviction, not lock-out.
+    const RATE_LIMIT_MAX_KEYS = 10_000;
+    const requestsToOverflow = Math.ceil(RATE_LIMIT_MAX_KEYS / 2) + 5;
+    for (let i = 0; i < requestsToOverflow; i++) {
+      await POST(
+        makeRequest(
+          { email: `fill-${i}@example.com`, captchaToken: 'turnstile-token', resend: true },
+          { 'x-real-ip': `fill-${i}` },
+        ),
+      );
+    }
+
+    const fresh = await POST(
+      makeRequest(
+        { email: 'fresh-after-full@example.com', captchaToken: 'turnstile-token', resend: true },
+        { 'x-real-ip': 'fresh-after-full' },
+      ),
+    );
+    expect(fresh.status).toBe(200);
   });
 });
