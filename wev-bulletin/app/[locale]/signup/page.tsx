@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { getSiteBaseUrl } from '@/lib/site-url';
 import { usePasswordStrength } from '@/hooks/usePasswordStrength';
 import TurnstileWidget from '@/components/TurnstileWidget';
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
@@ -26,11 +24,12 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [sentEmail, setSentEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { captchaToken, turnstileProps, recycleTurnstileAfterAuthError, clearCaptchaToken } =
-    useAuthTurnstile(t('auth.signup.captchaError'), setError);
+  const { captchaToken, turnstileProps, recycleTurnstileAfterAuthError } = useAuthTurnstile(
+    t('auth.signup.captchaError'),
+    setError,
+  );
 
   const passwordStrength = usePasswordStrength(password);
-  const supabase = createClient();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,46 +48,64 @@ export default function SignupPage() {
       return;
     }
 
-    const baseUrl = getSiteBaseUrl();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${baseUrl}/auth/callback`,
-        captchaToken,
-      },
-    });
+    // Server decides whether to send a normal signup confirmation (new account) or
+    // a magic link (existing account). The response is intentionally identical for
+    // both so the client cannot tell whether the email is already registered.
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, captchaToken }),
+      });
 
-    if (error) {
-      const looksLikeExistingAccount = /already registered/i.test(error.message);
-      if (looksLikeExistingAccount) {
+      if (response.ok) {
         setSentEmail(email);
-        clearCaptchaToken();
+        // Spend the token and re-arm Turnstile so a fresh one is ready for resend.
+        recycleTurnstileAfterAuthError();
       } else {
-        setError(error.message);
+        setError(
+          t(response.status === 429 ? 'auth.signup.rateLimited' : 'auth.signup.requestError'),
+        );
         recycleTurnstileAfterAuthError();
       }
-    } else {
-      setSentEmail(email);
-      clearCaptchaToken();
+    } catch {
+      setError(t('auth.signup.requestError'));
+      recycleTurnstileAfterAuthError();
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
+  // Resend goes back through the server so it sends the right email for both
+  // confirmed (magic link) and unconfirmed (signup confirmation) accounts. GoTrue
+  // requires a captcha for the OTP path, so we send a fresh Turnstile token and
+  // re-arm the widget for any further resends.
   const handleResend = async () => {
-    if (!sentEmail) return false;
-    const baseUrl = getSiteBaseUrl();
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: sentEmail,
-      options: { emailRedirectTo: `${baseUrl}/auth/callback` },
-    });
-    return !error;
+    if (!sentEmail || !captchaToken) return false;
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sentEmail, captchaToken, resend: true }),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    } finally {
+      recycleTurnstileAfterAuthError();
+    }
   };
 
   if (sentEmail) {
-    return <CheckEmailCard onPrimaryAction={handleResend} />;
+    return (
+      <>
+        <CheckEmailCard variant="signup" onPrimaryAction={handleResend} />
+        {/* Keep Turnstile mounted (visually hidden) so resend has a fresh token. */}
+        <div className="sr-only" aria-hidden>
+          <TurnstileWidget {...turnstileProps} />
+        </div>
+      </>
+    );
   }
 
   return (
