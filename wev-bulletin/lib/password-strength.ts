@@ -53,3 +53,12 @@ export function checkPasswordStrength(
     isAcceptable: result.score >= 2,
   };
 }
+
+/**
+ * Shared strength floor for both the client form and the server signup route,
+ * so the server can't accept a password the client would have rejected.
+ * Mirrors `isAcceptable` above (zxcvbn score ≥ 2 / "Fair").
+ */
+export function isPasswordStrongEnough(password: string): boolean {
+  return checkPasswordStrength(password).isAcceptable;
+}

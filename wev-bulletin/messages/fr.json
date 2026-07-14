@@ -285,6 +285,8 @@
       "password": "Mot de passe",
       "submit": "Créer un compte",
       "submitting": "Création du compte...",
+      "requestError": "Une erreur s'est produite. Veuillez réessayer.",
+      "rateLimited": "Trop de tentatives. Veuillez patienter quelques minutes avant de réessayer.",
       "hasAccount": "Vous avez déjà un compte ?",
       "logIn": "Se connecter",
       "passwordWeak": "Le mot de passe est trop faible. Veuillez choisir un mot de passe plus fort.",
@@ -294,6 +296,7 @@
     "checkEmail": {
       "title": "Vérifiez votre courriel",
       "message": "Si un compte existe pour ce courriel, nous vous enverrons un lien. Ouvrez-le pour continuer.",
+      "signupContinue": "Vérifiez votre courriel pour continuer.",
       "primary": "Envoyer un autre lien",
       "cooldown": "Réessayez dans {seconds}s",
       "error": "Impossible d'envoyer un autre lien. Veuillez réessayer.",
