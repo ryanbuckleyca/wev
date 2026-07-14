@@ -126,7 +126,7 @@ export async function POST(request: Request) {
   const normalizedEmail = email.toLowerCase();
 
   if (isRateLimited(normalizedEmail)) {
-    logger.warn({ email: normalizedEmail }, 'Signup rate limit exceeded');
+    logger.warn('Signup rate limit exceeded');
     return NextResponse.json({ ok: false, error: 'rate_limit_exceeded' }, { status: 429 });
   }
 
