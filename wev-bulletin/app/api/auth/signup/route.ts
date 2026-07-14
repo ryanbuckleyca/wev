@@ -44,7 +44,9 @@ const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX_EMAIL = 5;
 const RATE_LIMIT_MAX_IP = 20;
 // Cap the map so a flood of unique emails/IPs can't grow it without bound. When full
-// (after pruning expired entries) we fail closed and rate-limit the new key.
+// we first prune expired entries, then evict the oldest live entries to make room.
+// We never fail closed on a full map: doing so let an attacker who filled the map
+// deny signup to every new key for the life of the process.
 const RATE_LIMIT_MAX_KEYS = 10_000;
 
 type RateLimitResult = { limited: boolean; retryAfterSeconds: number };
@@ -61,6 +63,24 @@ function pruneExpired(now: number): void {
   }
 }
 
+// Evict lowest-startTime (oldest) entries until the map has room for one more key.
+// Only runs when the map is full of live entries after pruning — a rare path — so a
+// linear scan per eviction is acceptable.
+function evictOldestUntilRoom(): void {
+  while (rateLimitMap.size >= RATE_LIMIT_MAX_KEYS) {
+    let oldestKey: string | undefined;
+    let oldestStart = Infinity;
+    for (const [key, usage] of rateLimitMap) {
+      if (usage.startTime < oldestStart) {
+        oldestStart = usage.startTime;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey === undefined) break;
+    rateLimitMap.delete(oldestKey);
+  }
+}
+
 function checkRateLimit(key: string, max: number): RateLimitResult {
   const now = Date.now();
   let usage = rateLimitMap.get(key);
@@ -71,10 +91,7 @@ function checkRateLimit(key: string, max: number): RateLimitResult {
   if (!usage) {
     if (rateLimitMap.size >= RATE_LIMIT_MAX_KEYS) {
       pruneExpired(now);
-      if (rateLimitMap.size >= RATE_LIMIT_MAX_KEYS) {
-        // Fail closed: no room to track this key, so rate-limit it.
-        return { limited: true, retryAfterSeconds: windowRetryAfterSeconds() };
-      }
+      evictOldestUntilRoom();
     }
     usage = { count: 0, startTime: now };
     rateLimitMap.set(key, usage);
@@ -88,9 +105,12 @@ function checkRateLimit(key: string, max: number): RateLimitResult {
 
 // Trust only x-real-ip (set by our own proxy). X-Forwarded-For is client-spoofable,
 // so we never read it — a spoofed value would let an actor forge distinct IP buckets.
-function clientIp(request: Request): string {
+// Returns null when the header is absent: we then skip the IP bucket entirely rather
+// than lumping every header-less request into one shared "unknown" bucket (which would
+// itself become a denial-of-signup vector).
+function clientIp(request: Request): string | null {
   const realIp = request.headers.get('x-real-ip')?.trim();
-  return realIp && realIp.length > 0 ? realIp : 'unknown';
+  return realIp && realIp.length > 0 ? realIp : null;
 }
 
 /**
@@ -154,10 +174,11 @@ export async function POST(request: Request) {
   // either is exceeded. We deliberately log neither the email nor the IP to avoid
   // recreating PII findings; a constant message is enough for abuse triage.
   const emailLimit = checkRateLimit(`email:${normalizedEmail}`, RATE_LIMIT_MAX_EMAIL);
-  const ipLimit = checkRateLimit(`ip:${clientIp(request)}`, RATE_LIMIT_MAX_IP);
-  if (emailLimit.limited || ipLimit.limited) {
+  const ip = clientIp(request);
+  const ipLimit = ip ? checkRateLimit(`ip:${ip}`, RATE_LIMIT_MAX_IP) : null;
+  if (emailLimit.limited || ipLimit?.limited) {
     logger.warn('Signup rate limit exceeded');
-    const retryAfter = Math.max(emailLimit.retryAfterSeconds, ipLimit.retryAfterSeconds);
+    const retryAfter = Math.max(emailLimit.retryAfterSeconds, ipLimit?.retryAfterSeconds ?? 0);
     return NextResponse.json(
       { ok: false, error: 'rate_limit_exceeded' },
       { status: 429, headers: { 'Retry-After': String(retryAfter) } },
