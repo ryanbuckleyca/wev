@@ -28,16 +28,30 @@ const SignupSchema = z
 const SUCCESS = { ok: true } as const;
 const FAILURE = { ok: false, error: 'signup_failed' } as const;
 
-// In-memory throttle (per isolate), mirroring app/api/cv/extract. Keyed by the
-// normalized email and applied BEFORE the existence branch, so it behaves the same
-// for existing and new accounts and can't be used to enumerate. GoTrue also
-// enforces captcha plus per-IP / per-email rate limits (supabase/config.toml).
+// In-memory throttle (per isolate), mirroring app/api/cv/extract. Applied BEFORE
+// the existence branch, so it behaves the same for existing and new accounts and
+// can't be used to enumerate. GoTrue also enforces captcha plus per-IP / per-email
+// rate limits (supabase/config.toml).
+//
+// Two independent buckets, both of which must pass:
+//   - per-email (tight): stops targeting a single address.
+//   - per-IP (looser): stops one actor spraying many distinct emails. Without it,
+//     the email-only key let a remote actor burn a victim's quota to deny signup,
+//     and let one source hit unbounded distinct emails.
+// Keys are namespaced ("email:" / "ip:") so they can never collide in the shared map.
 const rateLimitMap = new Map<string, { count: number; startTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
-const RATE_LIMIT_MAX = 5;
-// Cap the map so a flood of unique emails can't grow it without bound. When full
+const RATE_LIMIT_MAX_EMAIL = 5;
+const RATE_LIMIT_MAX_IP = 20;
+// Cap the map so a flood of unique emails/IPs can't grow it without bound. When full
 // (after pruning expired entries) we fail closed and rate-limit the new key.
 const RATE_LIMIT_MAX_KEYS = 10_000;
+
+type RateLimitResult = { limited: boolean; retryAfterSeconds: number };
+
+function windowRetryAfterSeconds(elapsedMs = 0): number {
+  return Math.max(1, Math.ceil((RATE_LIMIT_WINDOW_MS - elapsedMs) / 1000));
+}
 
 function pruneExpired(now: number): void {
   for (const [key, usage] of rateLimitMap) {
@@ -47,7 +61,7 @@ function pruneExpired(now: number): void {
   }
 }
 
-function isRateLimited(key: string): boolean {
+function checkRateLimit(key: string, max: number): RateLimitResult {
   const now = Date.now();
   let usage = rateLimitMap.get(key);
   if (usage && now - usage.startTime > RATE_LIMIT_WINDOW_MS) {
@@ -58,14 +72,25 @@ function isRateLimited(key: string): boolean {
     if (rateLimitMap.size >= RATE_LIMIT_MAX_KEYS) {
       pruneExpired(now);
       if (rateLimitMap.size >= RATE_LIMIT_MAX_KEYS) {
-        return true;
+        // Fail closed: no room to track this key, so rate-limit it.
+        return { limited: true, retryAfterSeconds: windowRetryAfterSeconds() };
       }
     }
     usage = { count: 0, startTime: now };
     rateLimitMap.set(key, usage);
   }
   usage.count += 1;
-  return usage.count > RATE_LIMIT_MAX;
+  return {
+    limited: usage.count > max,
+    retryAfterSeconds: windowRetryAfterSeconds(now - usage.startTime),
+  };
+}
+
+// Trust only x-real-ip (set by our own proxy). X-Forwarded-For is client-spoofable,
+// so we never read it — a spoofed value would let an actor forge distinct IP buckets.
+function clientIp(request: Request): string {
+  const realIp = request.headers.get('x-real-ip')?.trim();
+  return realIp && realIp.length > 0 ? realIp : 'unknown';
 }
 
 /**
@@ -125,9 +150,18 @@ export async function POST(request: Request) {
   // Normalize once and use everywhere (RPC + GoTrue) so lookup and send agree.
   const normalizedEmail = email.toLowerCase();
 
-  if (isRateLimited(normalizedEmail)) {
+  // Evaluate both buckets (so each request counts against email AND IP) and block if
+  // either is exceeded. We deliberately log neither the email nor the IP to avoid
+  // recreating PII findings; a constant message is enough for abuse triage.
+  const emailLimit = checkRateLimit(`email:${normalizedEmail}`, RATE_LIMIT_MAX_EMAIL);
+  const ipLimit = checkRateLimit(`ip:${clientIp(request)}`, RATE_LIMIT_MAX_IP);
+  if (emailLimit.limited || ipLimit.limited) {
     logger.warn('Signup rate limit exceeded');
-    return NextResponse.json({ ok: false, error: 'rate_limit_exceeded' }, { status: 429 });
+    const retryAfter = Math.max(emailLimit.retryAfterSeconds, ipLimit.retryAfterSeconds);
+    return NextResponse.json(
+      { ok: false, error: 'rate_limit_exceeded' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    );
   }
 
   const emailRedirectTo = `${getSiteBaseUrlFromRequest(request)}/auth/callback`;

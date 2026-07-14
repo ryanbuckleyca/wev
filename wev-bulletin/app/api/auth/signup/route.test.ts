@@ -32,10 +32,17 @@ vi.mock('@/lib/logger', () => ({
 const TEST_PW_VALID = 'Test_Valid_Pw1!';
 const TEST_PW_WEAK = 'weakweak';
 
-function makeRequest(body: unknown) {
+// The in-memory rate-limit map is module-scoped and persists across tests, so a
+// shared IP would leak counts between cases. Default each request to a unique IP
+// (mirroring the random emails); tests that exercise IP limiting pass a fixed one.
+function randomIp() {
+  return `198.51.100.${Math.floor(Math.random() * 256)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function makeRequest(body: unknown, headers: Record<string, string> = {}) {
   return new NextRequest('http://localhost:3000/api/auth/signup', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-real-ip': randomIp(), ...headers },
     body: JSON.stringify(body),
   });
 }
@@ -236,7 +243,8 @@ describe('POST /api/auth/signup', () => {
 
   it('rate-limits repeated requests for the same email', async () => {
     const email = 'ratelimited@example.com';
-    // RATE_LIMIT_MAX = 5 allowed per window, 6th is blocked.
+    // Each request uses a unique IP (default), so only the per-email bucket applies:
+    // RATE_LIMIT_MAX_EMAIL = 5 allowed per window, 6th is blocked.
     for (let i = 0; i < 5; i++) {
       const ok = await POST(makeRequest(validBody({ email })));
       expect(ok.status).toBe(200);
@@ -245,5 +253,41 @@ describe('POST /api/auth/signup', () => {
     const limited = await POST(makeRequest(validBody({ email })));
     expect(limited.status).toBe(429);
     expect(await limited.json()).toEqual({ ok: false, error: 'rate_limit_exceeded' });
+    expect(Number(limited.headers.get('Retry-After'))).toBeGreaterThan(0);
+  });
+
+  it('rate-limits by IP across many distinct emails', async () => {
+    const ip = '203.0.113.42';
+    // Distinct emails keep the per-email bucket (5) from tripping first, so the
+    // per-IP bucket (RATE_LIMIT_MAX_IP = 20) is what blocks: 20 pass, 21st is 429.
+    for (let i = 0; i < 20; i++) {
+      const ok = await POST(makeRequest(validBody(), { 'x-real-ip': ip }));
+      expect(ok.status).toBe(200);
+    }
+
+    const limited = await POST(makeRequest(validBody(), { 'x-real-ip': ip }));
+    expect(limited.status).toBe(429);
+    expect(await limited.json()).toEqual({ ok: false, error: 'rate_limit_exceeded' });
+    expect(Number(limited.headers.get('Retry-After'))).toBeGreaterThan(0);
+  });
+
+  it('does not trust X-Forwarded-For for the IP bucket', async () => {
+    // A spoofed X-Forwarded-For must not create fresh IP buckets: all these requests
+    // share the same real IP, so the per-IP limit (20) still trips on the 21st.
+    const ip = '203.0.113.99';
+    for (let i = 0; i < 20; i++) {
+      const ok = await POST(
+        makeRequest(validBody(), {
+          'x-real-ip': ip,
+          'x-forwarded-for': `10.0.0.${i}`,
+        }),
+      );
+      expect(ok.status).toBe(200);
+    }
+
+    const limited = await POST(
+      makeRequest(validBody(), { 'x-real-ip': ip, 'x-forwarded-for': '10.0.0.254' }),
+    );
+    expect(limited.status).toBe(429);
   });
 });
