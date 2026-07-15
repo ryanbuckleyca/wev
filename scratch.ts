@@ -1,7 +1,10 @@
 function resolveTest(explicit: string) {
   try {
     const parsedUrl = new URL(explicit);
-    if (parsedUrl.protocol === "postgres:" || parsedUrl.protocol === "postgresql:") {
+    if (
+      parsedUrl.protocol === "postgres:" ||
+      parsedUrl.protocol === "postgresql:"
+    ) {
       if (parsedUrl.password) {
         const password = decodeURIComponent(parsedUrl.password);
         parsedUrl.password = "";
@@ -13,7 +16,10 @@ function resolveTest(explicit: string) {
     // Fall through
   }
 
-  if (explicit.includes("password=") || (explicit.includes(":") && explicit.includes("@"))) {
+  if (
+    explicit.includes("password=") ||
+    (explicit.includes(":") && explicit.includes("@"))
+  ) {
     throw new Error("Contains potential credentials");
   }
   return { url: explicit };
@@ -27,10 +33,10 @@ function resolveTest(explicit: string) {
   "host=localhost user=user password=pass dbname=db",
   "host=localhost user=user dbname=db",
   "localhost",
-].forEach(s => {
+].forEach((s) => {
   try {
     console.log(s, "=>", resolveTest(s));
-  } catch(e: any) {
+  } catch (e: any) {
     console.log(s, "=> ERROR:", e.message);
   }
 });
