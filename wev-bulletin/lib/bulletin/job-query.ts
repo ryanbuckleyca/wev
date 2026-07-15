@@ -1,6 +1,7 @@
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import { toAnnual } from '@/lib/compensation/helpers';
 import { parseDateMs } from '@/lib/date-utils';
+import { POSTED_WITHIN_DAYS } from './constants';
 
 export const POSTED_WITHIN_FILTER_OPTIONS = [
   '1-week',
@@ -40,13 +41,6 @@ export type BulletinFilters = {
   showJobsWithoutSalary: boolean;
   postedWithin: PostedWithinSelection;
   now?: number;
-};
-
-const POSTED_WITHIN_DAYS: Record<Exclude<PostedWithinSelection, 'any'>, number> = {
-  '1-week': 7,
-  '2-weeks': 14,
-  '3-weeks': 21,
-  '1-month': 30,
 };
 
 function getAnnualSortValue(job: JobPosting, missingValue: number): number {

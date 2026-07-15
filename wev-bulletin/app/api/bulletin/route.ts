@@ -77,7 +77,7 @@ export async function GET(request: Request) {
       onlySse = true;
     }
 
-    const noSalary = searchParams.get('nosal') === 'true';
+    const includeUnlistedPay = searchParams.get('nosal') === 'true';
 
     const supabase = await createClient();
 
@@ -96,8 +96,7 @@ export async function GET(request: Request) {
       works,
       langs,
       onlySse,
-      noSalary,
-      userCacheKey: 'api',
+      includeUnlistedPay,
     };
 
     const payload = await fetchBulletinQueryPayload(input, supabase);

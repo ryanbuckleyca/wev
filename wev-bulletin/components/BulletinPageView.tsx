@@ -81,9 +81,7 @@ export default function BulletinPageView({
           {/* Keep toolbar chrome mounted — only the scrape timestamp is async. */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
             <div className="text-sm text-center sm:text-left text-xs text-muted-foreground">
-              <span className="font-semibold text-wev-brand-accent">
-                {t('home.lastUpdated')}{' '}
-              </span>
+              <span className="font-semibold text-wev-brand-accent">{t('home.lastUpdated')} </span>
               {data.loading && !data.lastScrapeTime ? (
                 <TextSkeleton placeholder="March 28, 2026, 9:00 AM EDT" />
               ) : (

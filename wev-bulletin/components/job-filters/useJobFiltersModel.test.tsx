@@ -136,7 +136,7 @@ describe('useJobFiltersModel', () => {
       result.current.activeFilterChips.find((chip) => chip.id === 'province-Ontario')?.onRemove?.();
     });
 
-    expect(mockControls.setPostedWithin).toHaveBeenCalledWith('any');
+    expect(mockControls.setPostedWithin).toHaveBeenCalledWith('2-weeks');
     expect(mockControls.setSearchQuery).toHaveBeenCalledWith('');
     expect(mockControls.setSelectedProvinces).toHaveBeenCalledWith([]);
   });

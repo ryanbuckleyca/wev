@@ -32,6 +32,7 @@ const TOTAL_SSE_JOB_COUNT = 40;
 const SALARYLESS_JOB_INDEXES = new Set([3, 11, 19]);
 /** Ages cycle past the product 2-week default while staying under the 28-day hard ceiling. */
 const JOB_AGE_CYCLE_DAYS = 28;
+// Must match wev-bulletin PRODUCT_DEFAULT_POSTED_WITHIN ('2-weeks') and POSTED_WITHIN_DAYS.
 const PRODUCT_DEFAULT_POSTED_WITHIN_DAYS = 14;
 const ONE_WEEK_POSTED_WITHIN_DAYS = 7;
 
@@ -39,8 +40,17 @@ function jobAgeDays(index: number): number {
   return index % JOB_AGE_CYCLE_DAYS;
 }
 
+/**
+ * Whether a seeded job falls inside a posted-within window, matching the API.
+ *
+ * `date_posted` is stored as a date-only string (`YYYY-MM-DD`) while the API
+ * filters with `gte(date_posted, now - days)` using a full ISO cutoff. A job
+ * posted exactly `days` ago has the same calendar date as the cutoff, and a
+ * date-only string sorts *before* the longer ISO cutoff string, so it is
+ * excluded. The window is therefore exclusive: age must be strictly `< days`.
+ */
 function withinPostedDays(index: number, days: number): boolean {
-  return jobAgeDays(index) <= days;
+  return jobAgeDays(index) < days;
 }
 
 // Language distribution reflecting a Montreal-focused SSE job market.
@@ -501,11 +511,17 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
   const mockNow = new Date(0);
   const sources = createSourceFixtures(mockNow);
   const sourceIds = sources.map((s) => s.id);
-  const jobs = createJobFixtures(TOTAL_SEEDED_JOB_COUNT, mockNow, sourceIds).map((job, index) => ({
+  const jobs = createJobFixtures(
+    TOTAL_SEEDED_JOB_COUNT,
+    mockNow,
+    sourceIds,
+  ).map((job, index) => ({
     job,
     index,
   }));
 
+  // Mirrors the DB `has_compensation` generated column
+  // (nullif(btrim(wage), '') IS NOT NULL OR min_value IS NOT NULL).
   const hasListedPay = (job: (typeof jobs)[number]["job"]) =>
     Boolean(job.wage?.trim()) || job.min_value != null;
 
@@ -514,7 +530,8 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
 
   /** Default landing / count universe. */
   const baselineJobs = jobs.filter(
-    ({ job, index }) => job.is_sse && hasListedPay(job) && inDefaultPostedWindow(index),
+    ({ job, index }) =>
+      job.is_sse && hasListedPay(job) && inDefaultPostedWindow(index),
   );
   /** Show-non-SSE still hides unlisted pay; postedWithin default still applies. */
   const compensatedInWindow = jobs.filter(
