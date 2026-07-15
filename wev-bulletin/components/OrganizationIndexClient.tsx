@@ -11,9 +11,11 @@ import { useOrganizationData } from '@/lib/hooks/useOrganizationData';
 import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
 import { resolveOrgSortBy } from '@/lib/organizations/utils';
 import { useTranslations } from 'next-intl';
-import SortDropdown from './SortDropdown';
+import ListEmptyState from './ListEmptyState';
+import CardListSkeleton from './CardListSkeleton';
+import CountPhraseSkeleton from './CountPhraseSkeleton';
+import OrgListToolbar from './OrgListToolbar';
 import { useAuth } from '@/contexts/AuthContext';
-import ButtonLink from './ButtonLink';
 
 interface OrganizationIndexClientProps {
   initialData: { orgs: OrgIndexEntry[]; total: number; totalAvailable?: number };
@@ -48,6 +50,7 @@ export default function OrganizationIndexClient({
   );
 
   const totalPages = Math.max(1, Math.ceil(total / ORG_JOBS_PER_PAGE));
+  const showCountSkeleton = loading && orgs.length === 0;
 
   return (
     <div className="flex flex-col gap-0 w-full">
@@ -61,50 +64,39 @@ export default function OrganizationIndexClient({
         setFiltersExpanded={setFiltersExpanded}
       />
 
-      <div className="flex flex-col gap-6" aria-live="polite">
+      <div className="flex flex-col gap-4" aria-live="polite">
+        <OrgListToolbar
+          countContent={
+            showCountSkeleton ? (
+              <CountPhraseSkeleton className="w-32" />
+            ) : (
+              t('organizationCount', { count: total })
+            )
+          }
+          sortBy={effectiveSortBy}
+          onSortChange={(val) => {
+            controls.setSortBy(val);
+            controls.setCurrentPage(1);
+          }}
+        />
+
         {error ? (
           <div className="p-4 rounded bg-destructive/10 text-destructive border border-destructive/20">
             {t('loadFailed')}
           </div>
-        ) : loading && orgs.length === 0 ? (
-          <div className="flex flex-col gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className="h-48 bg-muted rounded-wev-card animate-pulse border border-border"
-              />
-            ))}
-          </div>
+        ) : showCountSkeleton ? (
+          <CardListSkeleton count={4} />
         ) : orgs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-lg font-semibold text-foreground mb-2">{t('noActiveListings')}</p>
-            {controls.hasAnyFilters && (
-              <ButtonLink
-                onClick={controls.clearAllFilters}
-                tone="muted"
-                size="sm"
-                className="mt-4 underline"
-              >
-                {t('clearAllFilters')}
-              </ButtonLink>
-            )}
-          </div>
+          <ListEmptyState
+            emptyMessage={t('noOrganizations')}
+            filteredMessage={t('showingFiltered', { total: totalAvailable ?? 0 })}
+            hasFilters={controls.hasAnyFilters}
+            totalAvailable={totalAvailable ?? 0}
+            onClearFilters={controls.clearAllFilters}
+            clearFiltersLabel={t('clearAllFilters')}
+          />
         ) : (
           <>
-            <div className="flex justify-between items-center px-2">
-              <div className="text-sm text-muted-foreground" aria-live="polite">
-                {t('organizationCount', { count: total })}
-              </div>
-              <SortDropdown
-                sortBy={effectiveSortBy}
-                onChange={(val) => {
-                  controls.setSortBy(val);
-                  controls.setCurrentPage(1);
-                }}
-                showMatchOption={hasMatchScores}
-                optionValues={['value-match-desc', 'org-asc', 'org-desc']}
-              />
-            </div>
             <div className="flex flex-col gap-4">
               {orgs.map((org) => (
                 <OrganizationCard

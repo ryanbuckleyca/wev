@@ -14,6 +14,7 @@ import { Lineicons } from '@lineiconshq/react-lineicons';
 import { Search1Outlined, XmarkOutlined } from '@lineiconshq/free-icons';
 import { useDebouncedInput } from '@/lib/hooks/useDebouncedInput';
 import type { ActiveFilterChip } from './JobSearch';
+import CountPhraseSkeleton from './CountPhraseSkeleton';
 
 export interface SearchBarCountConfig {
   /** The filtered/active count */
@@ -128,16 +129,13 @@ export default function SearchBar({
       <div className="px-3 sm:px-4 py-2.5 bg-muted border-t border-border flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {loading ? (
-            <span
-              className="skeleton-pulse w-28 rounded"
-              role="status"
-              aria-label={t('jobListings.loading')}
-            />
+            <span role="status" aria-busy="true" aria-label={t('jobListings.loading')}>
+              <CountPhraseSkeleton className="w-36" />
+            </span>
           ) : (
             <span className="text-sm text-muted-foreground whitespace-nowrap">
-              <strong className="font-semibold text-foreground">{filtered}</strong>{' '}
-              {t(ofKey)} {total}{' '}
-              {total === 1 ? t(singularKey) : t(pluralKey)}
+              <strong className="font-semibold text-foreground">{filtered}</strong> {t(ofKey)}{' '}
+              {total} {total === 1 ? t(singularKey) : t(pluralKey)}
             </span>
           )}
           <div className="flex flex-wrap items-center gap-1.5">

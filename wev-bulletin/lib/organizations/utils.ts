@@ -4,11 +4,24 @@
 
 export { getOrganizationTypeLabel, normalizeOrgTypeKey, orgTypeI18nKey } from './org-type';
 
+/** Sort options offered on the org index (SortDropdown optionValues). */
+export const ORG_INDEX_SORT_OPTIONS = [
+  'date-desc',
+  'value-match-desc',
+  'org-asc',
+  'org-desc',
+] as const;
+
+export type OrgIndexSortOption = (typeof ORG_INDEX_SORT_OPTIONS)[number];
+
+const ORG_SORT_VALUES = new Set<string>(ORG_INDEX_SORT_OPTIONS);
+
 /**
  * Resolves the effective sort value for the org index.
- * Falls back to 'org-asc' if the requested sort requires match scores but the
- * user doesn't have any (i.e., is logged out).
+ * Unknown values fall back to a safe default. Value-match stays selectable when
+ * logged out (scores are null; RPC falls through to name order).
  */
 export function resolveOrgSortBy(sortBy: string, hasMatchScores: boolean): string {
-  return hasMatchScores || !sortBy.includes('match') ? sortBy : 'org-asc';
+  if (ORG_SORT_VALUES.has(sortBy)) return sortBy;
+  return hasMatchScores ? 'value-match-desc' : 'org-asc';
 }
