@@ -18,12 +18,14 @@ interface UserProfileProps {
   showThemeInMenu?: boolean;
   showLocaleInMenu?: boolean;
   initialTheme?: 'light' | 'dark';
+  children?: React.ReactNode;
 }
 
 export default function UserProfile({
   showThemeInMenu = false,
   showLocaleInMenu = false,
   initialTheme = 'light',
+  children,
 }: UserProfileProps) {
   const t = useTranslations();
   const locale = useLocale();
@@ -74,7 +76,7 @@ export default function UserProfile({
         {/* Mobile hamburger menu */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="sm:hidden p-2 rounded-lg transition-colors relative z-50"
+          className="lg:hidden p-2 rounded-lg transition-colors relative z-50"
           aria-label={t('userProfile.openMenu')}
           aria-expanded={isMobileMenuOpen}
           aria-haspopup="menu"
@@ -87,7 +89,7 @@ export default function UserProfile({
         </button>
 
         {/* Desktop login/signup buttons */}
-        <div className="hidden sm:flex sm:flex-row sm:gap-2">
+        <div className="hidden lg:flex lg:flex-row lg:gap-2">
           <Link
             href="/login"
             prefetch={false}
@@ -131,10 +133,13 @@ export default function UserProfile({
                     {t('userProfile.signUp')}
                   </Link>
                 </div>
+                {children && (
+                  <nav className="border-t border-border pt-3 space-y-1">{children}</nav>
+                )}
                 {(showThemeInMenu || showLocaleInMenu) && (
                   <>
                     <div className="border-t border-border"></div>
-                    <div className="space-y-3">
+                    <div className="space-y-3 pt-3">
                       {showThemeInMenu && (
                         <div className="flex items-center gap-3 transition-colors duration-700 ease-in-out">
                           <ThemeToggle initialTheme={initialTheme} />
@@ -216,6 +221,8 @@ export default function UserProfile({
                 {t('userProfile.accountSettings')}
               </Link>
             </nav>
+
+            {children && <nav className="border-t border-border p-3 space-y-1">{children}</nav>}
 
             {(showThemeInMenu || showLocaleInMenu) && (
               <div className="p-3 border-t border-border space-y-3 transition-colors duration-700 ease-in-out">

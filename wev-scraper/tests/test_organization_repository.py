@@ -131,3 +131,25 @@ class TestFindByName:
         result = repo.find_by_name("Test_Name")
         assert len(result) == 1
         assert result[0]["id"] == 20
+
+def _make_repo_sb(data: list | None = None) -> MagicMock:
+    """Build a Supabase mock with a query chain that always returns ``data``."""
+    sb = MagicMock()
+    resp = MagicMock()
+    resp.data = data or []
+    sb.table.return_value.select.return_value.is_.return_value.order.return_value.gt.return_value.limit.return_value.execute.return_value = resp
+    return sb
+
+
+# ── sse methods ─────────────────────────────────────────────────────────────
+
+class TestSSEMethods:
+    def test_fetch_unrated_orgs(self):
+        sb = _make_repo_sb([{"id": 456, "name": "Test Org"}])
+        repo = OrganizationRepository(sb)
+
+        rows = repo.fetch_unrated_orgs(after_id=400, limit=10)
+
+        assert rows == [{"id": 456, "name": "Test Org"}]
+        sb.table.assert_called_with("organizations")
+        sb.table.return_value.select.assert_called_with("id, name, description, type, website, values")

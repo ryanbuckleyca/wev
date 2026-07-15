@@ -14,6 +14,7 @@ describe('job-query', () => {
       province: 'Île-de-France',
       work_type: 'remote',
       is_sse: true,
+      has_compensation: true,
       date_posted: '2024-01-10',
       min_value: 50000,
       unit_text: 'YEAR',
@@ -30,6 +31,7 @@ describe('job-query', () => {
       province: 'Auvergne-Rhône-Alpes',
       work_type: 'office',
       is_sse: false,
+      has_compensation: false,
       date_posted: '2024-01-01',
       min_value: null,
       wage: '',
@@ -47,7 +49,7 @@ describe('job-query', () => {
     selectedSources: [],
     selectedWorkTypes: [],
     selectedLanguages: [],
-    showOnlySse: false,
+    showNonSse: true, // true = show all jobs (for most filter tests we want both jobs visible)
     showJobsWithoutSalary: true,
     postedWithin: 'any',
     now: new Date('2024-01-15').getTime(),
@@ -79,7 +81,9 @@ describe('job-query', () => {
     });
 
     it('filters by SSE', () => {
-      expect(filterJobs(mockJobs, { ...defaultFilters, showOnlySse: true })).toHaveLength(1);
+      // showNonSse=false → SSE-only (the default view); showNonSse=true → show all
+      expect(filterJobs(mockJobs, { ...defaultFilters, showNonSse: false })).toHaveLength(1);
+      expect(filterJobs(mockJobs, { ...defaultFilters, showNonSse: true })).toHaveLength(2);
     });
 
     it('filters by salary presence', () => {
@@ -210,6 +214,7 @@ describe('job-query', () => {
 
     it('sorts by organization', () => {
       expect(sortJobs(mockJobs, 'org-asc', matchData)[0].organization).toBe('Product Inc');
+      expect(sortJobs(mockJobs, 'org-desc', matchData)[0].organization).toBe('Tech Corp');
     });
 
     it('handles default case', () => {

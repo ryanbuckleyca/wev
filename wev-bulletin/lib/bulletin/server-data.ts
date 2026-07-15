@@ -2,19 +2,37 @@ import 'server-only';
 
 import { supabaseServer } from '@/lib/supabase-server';
 import { createClient } from '@/lib/supabase/server';
-import { BULLETIN_MAX_AGE_DAYS } from './constants';
+import { PRODUCT_DEFAULT_POSTED_WITHIN } from './constants';
+import { applyBulletinAgeFilter, applyBulletinAvailabilityFilters } from './age-filter';
 import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 
 import { buildFilterOptions, type BulletinFilterOptions } from './filter-options';
 import { throwBulletinQueryError } from './fts-errors';
+import { resolveOrgSlugs } from './resolve-org-slugs';
 import { formatSearchQuery } from './search-utils';
+
+// Re-exported for callers that historically imported these from server-data.
+export {
+  applyBulletinAgeFilter,
+  applyBulletinAvailabilityFilters,
+  postedWithinToDays,
+} from './age-filter';
 
 export const BULLETIN_CACHE_TAG = 'bulletin-jobs';
 export const BULLETIN_JOB_SELECT =
-  'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week, language';
+  'id, job_title, organization, organization_id, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, has_compensation, source, values, skills, unit_text, min_value, max_value, hours_per_week, language';
 
+/**
+ * Jobs "X of Y" denominator (`totalAvailable`):
+ * matched_jobs in the **current** `postedWithin` window + SSE scope + compensation scope.
+ * Search / geo / source / work / language chips affect `total`, not this denominator.
+ *
+ * Org index "X of Y" (see `lib/organizations/server-data.ts`) is intentionally different:
+ * orgs with ≥1 active job under the **hard 28-day** bulletin ceiling + SSE scope;
+ * it does **not** apply the jobs-board 2-week `postedWithin` product default.
+ */
 export type BulletinQueryInput = {
   locale: 'en' | 'fr';
   page: number;
@@ -30,10 +48,11 @@ export type BulletinQueryInput = {
   works: string[];
   langs: string[];
   onlySse: boolean;
-  noSalary: boolean;
-  // Included for cache key partitioning to prevent cross-user match-sort leakage.
-  userCacheKey: string;
+  /** Opt back into jobs without listed compensation (default hides them). */
+  includeUnlistedPay: boolean;
 };
+
+type BulletinSupabase = Awaited<ReturnType<typeof createClient>>;
 
 type BulletinQueryResult = {
   jobs: JobPosting[];
@@ -43,18 +62,6 @@ type BulletinQueryResult = {
   skillLabels: Record<string, SkillLabel>;
   filterOptions: BulletinFilterOptions;
 };
-
-function postedWithinToDays(postedWithin: string): number | null {
-  if (postedWithin === '1-week') return 7;
-  if (postedWithin === '2-weeks') return 14;
-  if (postedWithin === '3-weeks') return 21;
-  if (postedWithin === '1-month') return 30;
-  return null;
-}
-
-function getBulletinMaxAgeCutoff(): string {
-  return new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
-}
 
 function applySearchFilter(query: any, vectorColumn: string, searchQuery: string) {
   if (searchQuery.length > 0) {
@@ -67,24 +74,41 @@ function applySearchFilter(query: any, vectorColumn: string, searchQuery: string
   return query;
 }
 
-function applyAgeFilter(query: any, postedWithin: string) {
-  const maxAgeCutoff = getBulletinMaxAgeCutoff();
-  query = query.gte('date_posted', maxAgeCutoff);
+/** Columns used to build facet option lists (search + age window only). */
+export const BULLETIN_FACET_SELECT =
+  'organization, province, municipality, employment_type, source, language';
 
-  const postedWithinDays = postedWithinToDays(postedWithin);
-  if (postedWithinDays != null) {
-    const cutoff = new Date(Date.now() - postedWithinDays * 24 * 60 * 60 * 1000).toISOString();
-    query = query.gte('date_posted', cutoff);
+/**
+ * Facet rows for the current search/age window.
+ * Intentionally omits SSE/salary/work/language filters so multi-select options stay visible.
+ */
+export async function fetchBulletinFacetRows(
+  supabase: any,
+  vectorColumn: string,
+  opts: { searchQuery: string; postedWithin: string },
+): Promise<any[]> {
+  let query = supabase.from('matched_jobs').select(BULLETIN_FACET_SELECT);
+  query = applySearchFilter(query, vectorColumn, opts.searchQuery);
+  query = applyBulletinAgeFilter(query, opts.postedWithin);
+
+  const { data, error } = await query.limit(5000);
+  if (error) {
+    throwBulletinQueryError(error, {
+      searchQuery: opts.searchQuery,
+      searchColumn: vectorColumn,
+    });
   }
-  return query;
+
+  return data ?? [];
 }
 
 function applyNonFacetFilters(query: any, input: BulletinQueryInput) {
   if (input.works.length) query = query.in('work_type', input.works);
   if (input.langs.length) query = query.in('language', input.langs);
-  if (input.onlySse) query = query.is('is_sse', true);
-  if (!input.noSalary) query = query.eq('has_compensation', true);
-  return query;
+  return applyBulletinAvailabilityFilters(query, {
+    onlySse: input.onlySse,
+    includeUnlistedPay: input.includeUnlistedPay,
+  });
 }
 
 function applyBulletinFilters(query: any, input: BulletinQueryInput) {
@@ -101,33 +125,22 @@ async function fetchBulletinFacets(
   vectorColumn: string,
   input: BulletinQueryInput,
 ): Promise<BulletinFilterOptions> {
-  let query = supabase
-    .from('matched_jobs')
-    .select('organization, province, municipality, employment_type, source, language');
-
-  query = applySearchFilter(query, vectorColumn, input.searchQuery);
-  query = applyAgeFilter(query, input.postedWithin);
-
-  // Facets intentionally do NOT apply non-facet filters (work type, language,
-  // SSE, salary). Facets represent the full universe of options available for
-  // the current search/age window so the user can see and combine them freely.
-  // Applying those filters here would hide options as soon as one is selected,
-  // making multi-select feel broken (e.g. selecting "remote" would remove
-  // "hybrid" from the list).
-  // Limit the impact of unbounded facet queries while keeping them relatively accurate
-  const { data, error } = await query.limit(5000);
-  if (error) {
-    throwBulletinQueryError(error, {
-      searchQuery: input.searchQuery,
-      searchColumn: vectorColumn,
-    });
-  }
-
-  return buildFilterOptions((data ?? []) as any[]);
+  const rows = await fetchBulletinFacetRows(supabase, vectorColumn, {
+    searchQuery: input.searchQuery,
+    postedWithin: input.postedWithin,
+  });
+  return buildFilterOptions((rows ?? []) as any[]);
 }
 
-async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQueryResult> {
-  const supabase = await createClient();
+/**
+ * Shared bulletin list query used by `/api/bulletin` and unit tests.
+ * Pass `supabaseClient` from the request to keep RLS/cookie auth consistent.
+ */
+export async function fetchBulletinQueryPayload(
+  input: BulletinQueryInput,
+  supabaseClient?: BulletinSupabase,
+): Promise<BulletinQueryResult> {
+  const supabase = supabaseClient ?? (await createClient());
   const start = (input.page - 1) * input.limit;
   const end = start + input.limit - 1;
   const searchColumn = input.locale === 'fr' ? 'fts_fr' : 'fts_en';
@@ -136,7 +149,7 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     let query = supabase.from('matched_jobs').select(BULLETIN_JOB_SELECT, { count: 'exact' });
     query = applySearchFilter(query, vectorColumn, input.searchQuery);
     query = applyBulletinFilters(query, input);
-    query = applyAgeFilter(query, input.postedWithin);
+    query = applyBulletinAgeFilter(query, input.postedWithin);
 
     switch (input.sortBy) {
       case 'date-asc':
@@ -160,6 +173,9 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
       case 'org-asc':
         query = query.order('organization', { ascending: true });
         break;
+      case 'org-desc':
+        query = query.order('organization', { ascending: false });
+        break;
       case 'date-desc':
       default:
         query = query.order('date_posted', { ascending: false });
@@ -169,10 +185,15 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
     return query;
   };
 
-  const totalAvailableQuery = supabase
+  // Universe for empty-state / "X of Y": current posted window + SSE/compensation scope.
+  let totalAvailableQuery = supabase
     .from('matched_jobs')
-    .select('id', { count: 'exact', head: true })
-    .gte('date_posted', getBulletinMaxAgeCutoff());
+    .select('id', { count: 'exact', head: true });
+  totalAvailableQuery = applyBulletinAgeFilter(totalAvailableQuery, input.postedWithin);
+  totalAvailableQuery = applyBulletinAvailabilityFilters(totalAvailableQuery, {
+    onlySse: input.onlySse,
+    includeUnlistedPay: input.includeUnlistedPay,
+  });
 
   const [jobsResult, finalFilterOptions, scrapeTime, totalAvailableResult] = await Promise.all([
     buildJobsQuery(searchColumn).range(start, end),
@@ -187,12 +208,16 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
       searchColumn,
     });
   }
+  if (totalAvailableResult.error) {
+    console.error('Error fetching total available jobs:', totalAvailableResult.error.message);
+  }
 
-  const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
+  const jobs = Array.isArray(jobsResult.data) ? jobsResult.data : [];
+  await resolveOrgSlugs(supabase, jobs);
   const labelMap = await resolveSkillLabels(supabase, jobs, input.locale);
 
   return {
-    jobs,
+    jobs: jobs as JobPosting[],
     total: jobsResult.count ?? 0,
     totalAvailable: totalAvailableResult.count ?? 0,
     lastScrapeTime: scrapeTime,
@@ -201,10 +226,25 @@ async function runBulletinQuery(input: BulletinQueryInput): Promise<BulletinQuer
   };
 }
 
-export async function fetchCachedBulletinQueryPayload(
-  input: BulletinQueryInput,
-): Promise<BulletinQueryResult> {
-  return runBulletinQuery(input);
+/** Product landing baseline (SSE-only, listed pay, default posted window). */
+function productBaselineInput(locale: 'en' | 'fr'): BulletinQueryInput {
+  return {
+    locale,
+    page: 1,
+    limit: 20,
+    searchQuery: '',
+    sortBy: 'date-desc',
+    postedWithin: PRODUCT_DEFAULT_POSTED_WITHIN,
+    orgs: [],
+    provs: [],
+    munis: [],
+    emps: [],
+    srcs: [],
+    works: [],
+    langs: [],
+    onlySse: true,
+    includeUnlistedPay: false,
+  };
 }
 
 /**
@@ -227,53 +267,13 @@ export async function fetchLastScrapeTime(): Promise<string | null> {
   return data?.run_at ?? null;
 }
 
-const fetchServerBulletinJobsImpl = async (locale: 'en' | 'fr') => {
-  const postedCutoff = getBulletinMaxAgeCutoff();
-
-  const totalAvailableQuery = supabaseServer
-    .from('matched_jobs')
-    .select('id', { count: 'exact', head: true })
-    .gte('date_posted', postedCutoff);
-
-  const [scrapeTime, jobsResult, totalAvailableResult, filterOptionsResult] = await Promise.all([
-    fetchLastScrapeTime(),
-    supabaseServer
-      .from('matched_jobs')
-      .select(BULLETIN_JOB_SELECT, { count: 'exact' })
-      .gte('date_posted', postedCutoff)
-      .is('is_sse', true)
-      .order('date_posted', { ascending: false })
-      .range(0, 19),
-    totalAvailableQuery,
-    supabaseServer
-      .from('matched_jobs')
-      .select('organization, province, municipality, employment_type, source, language')
-      .gte('date_posted', postedCutoff)
-      .is('is_sse', true)
-      .limit(5000),
-  ]);
-
-  if (jobsResult.error) throw new Error(jobsResult.error.message);
-  if (filterOptionsResult.error) throw new Error(filterOptionsResult.error.message);
-
-  const jobs = (jobsResult.data ?? []) as unknown as JobPosting[];
-  const labelMap = await resolveSkillLabels(supabaseServer, jobs, locale);
-
-  return {
-    jobs,
-    total: jobsResult.count ?? 0,
-    totalAvailable: totalAvailableResult.count ?? 0,
-    lastScrapeTime: scrapeTime,
-    skillLabels: Object.fromEntries(labelMap),
-    filterOptions: buildFilterOptions((filterOptionsResult.data ?? []) as any[]),
-  };
-};
-
 /**
  * Fetches the initial page of bulletin jobs for SSR.
+ * Uses the same query builder as `/api/bulletin` (service-role client, no user)
+ * so SSR and client fetches can never drift.
  */
 export async function fetchServerBulletinJobs(locale: 'en' | 'fr') {
-  return fetchServerBulletinJobsImpl(locale);
+  return fetchBulletinQueryPayload(productBaselineInput(locale), supabaseServer);
 }
 
 /**

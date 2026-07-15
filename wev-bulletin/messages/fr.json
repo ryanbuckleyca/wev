@@ -1,4 +1,53 @@
 {
+  "organizations": {
+    "title": "Profil de l'organisation",
+    "indexTitle": "Organisations",
+    "noOrganizations": "Aucune organisation trouvée.",
+    "showingFiltered": "Vos filtres masquent les {total} organisations disponibles.",
+    "loadFailed": "Échec du chargement des organisations. Veuillez réessayer.",
+    "searchPlaceholder": "Rechercher des organisations par nom ou description...",
+    "searchLabel": "Rechercher des organisations",
+    "clearSearch": "Effacer la recherche",
+    "hideFilters": "Masquer les filtres",
+    "showFilters": "Afficher les filtres",
+    "of": "sur",
+    "organization": "organisation",
+    "organizations": "organisations",
+    "organizationCount": "{count, plural, =0 {Aucune organisation} one {1 organisation} other {# organisations}}",
+    "organizationType": "Type d'organisation",
+    "type": {
+      "nonprofit": "À but non lucratif",
+      "cooperative": "Coopérative",
+      "socialenterprise": "Entreprise sociale",
+      "government": "Gouvernement",
+      "union": "Syndicat",
+      "other": "Autre"
+    },
+    "nonprofit": "À but non lucratif",
+    "cooperative": "Coopérative",
+    "socialenterprise": "Entreprise sociale",
+    "government": "Gouvernement",
+    "union": "Syndicat",
+    "other": "Autre",
+    "noOrganizationTypes": "Aucun type d'organisation disponible",
+    "clearAllFilters": "Effacer tous les filtres",
+    "showNonSse": "Afficher les organisations non-ÉSS",
+    "noJobsForOrg": "Cette organisation n'a aucune offre d'emploi active en ce moment.",
+    "jobs": "{count, plural, =0 {Aucun emploi actif} one {1 emploi actif} other {# emplois actifs}}",
+    "website": "Site web",
+    "viewProfile": "Voir le profil de l'organisation",
+    "noDescription": "Aucune description disponible.",
+    "visitWebsite": "Visiter le site web",
+    "sseBadgeLabel": "Organisation d'économie sociale",
+    "sseYes": "Il s'agit d'une organisation d'économie sociale.",
+    "sseNo": "Cette organisation n'est pas identifiée comme organisation d'économie sociale.",
+    "sseLearnMore": "En savoir plus sur l'ESS",
+    "location": "Emplacement",
+    "description": "À propos",
+    "orgType": "Type",
+    "missionStatement": "Mission",
+    "values": "Valeurs"
+  },
   "home": {
     "heading": "Bulletin – Offres d'emploi",
     "lastUpdated": "Dernière mise à jour :",
@@ -20,6 +69,7 @@
     "showFilters": "Filtres",
     "clearAllFilters": "Effacer tous les filtres",
     "useSuggestedFilters": "Utiliser les filtres suggérés",
+    "showNonSse": "Afficher les emplois non-ÉSS",
     "sse": {
       "label": "Afficher uniquement les emplois SSE",
       "description": "SSE = Économie solidaire. Nous étiquetons les emplois SSE en fonction des principes publiés.",
@@ -27,7 +77,7 @@
     },
     "salary": {
       "label": "Afficher les emplois sans salaire",
-      "description": "Décochez pour masquer les emplois qui ne listent pas de rémunération"
+      "description": "Lorsque cette option est cochée, les emplois sans rémunération listée sont inclus"
     },
     "postedWithin": {
       "label": "Publié dans",
@@ -42,7 +92,8 @@
         "1Week": "1 sem.",
         "2Weeks": "2 sem.",
         "3Weeks": "3 sem.",
-        "1Month": "1 mois"
+        "1Month": "1 mois",
+        "any": "Tout"
       }
     },
     "workType": {
@@ -57,12 +108,12 @@
     },
     "province": {
       "label": "Province",
-      "noData": "Aucune donnée de province disponible. Exécutez le scraper pour remplir les données de localisation."
+      "noData": "Aucune donnée de province disponible pour le moment."
     },
     "municipality": {
       "label": "Municipalité",
       "showingFromSelected": "(affichage des municipalités des provinces sélectionnées)",
-      "noData": "Aucune donnée de municipalité disponible. Exécutez le scraper pour remplir les données de localisation.",
+      "noData": "Aucune donnée de municipalité disponible pour le moment.",
       "selectProvince": "Sélectionnez une province pour voir les municipalités",
       "profileDefault": "Lieu du profil utilisé : {city}.",
       "profileOverride": "Lieu du profil : {city}. Vous pouvez remplacer ce filtre ici.",
@@ -100,7 +151,9 @@
       "posted": "Publié :",
       "sseShort": "SSE",
       "sseOnly": "SSE : uniquement",
-      "salaryListedOnly": "Salaire : uniquement listé",
+      "allOrgs": "Tous les org.",
+      "allJobs": "Tous les emplois",
+      "includingNoSalary": "Inclut salaire non listé",
       "search": "Recherche :",
       "work": "Travail :",
       "selected": "sélectionné",
@@ -127,7 +180,8 @@
     "skillMatch": "Compétences",
     "salaryHighToLow": "Salaire desc",
     "salaryLowToHigh": "Salaire asc",
-    "orgAZ": "Org A ↔ Z"
+    "orgAZ": "Org A-Z",
+    "orgZA": "Org Z-A"
   },
   "matchDetails": {
     "totalMatch": "Correspondance totale",
@@ -151,8 +205,10 @@
     "of": "de",
     "job": "emploi",
     "jobs": "emplois",
+    "paginationLabel": "Pagination",
     "previous": "Précédent",
-    "next": "Suivant"
+    "next": "Suivant",
+    "pageOf": "Page {current} sur {total}"
   },
   "jobListings": {
     "loading": "Chargement des emplois...",
@@ -231,6 +287,8 @@
       "password": "Mot de passe",
       "submit": "Créer un compte",
       "submitting": "Création du compte...",
+      "requestError": "Une erreur s'est produite. Veuillez réessayer.",
+      "rateLimited": "Trop de tentatives. Veuillez patienter quelques minutes avant de réessayer.",
       "hasAccount": "Vous avez déjà un compte ?",
       "logIn": "Se connecter",
       "passwordWeak": "Le mot de passe est trop faible. Veuillez choisir un mot de passe plus fort.",
@@ -240,6 +298,7 @@
     "checkEmail": {
       "title": "Vérifiez votre courriel",
       "message": "Si un compte existe pour ce courriel, nous vous enverrons un lien. Ouvrez-le pour continuer.",
+      "signupContinue": "Vérifiez votre courriel pour continuer.",
       "primary": "Envoyer un autre lien",
       "cooldown": "Réessayez dans {seconds}s",
       "error": "Impossible d'envoyer un autre lien. Veuillez réessayer.",
@@ -374,8 +433,8 @@
     "photoUploadSuccess": "Photo téléversée avec succès !",
     "photoUploadFailed": "Échec du téléchargement de la photo",
     "location": "Ville / Région actuelle",
-    "locationHint": "Indiquez votre lieu préféré pour activer la correspondance basée sur la distance. Si vous avez classé Lieu comme valeur, cela a plus de poids dans vos correspondances.",
-    "locationPriorityCallout": "Vous avez priorisé Lieu — ces préférences ont plus de poids dans vos correspondances.",
+    "locationHint": "Indiquez votre lieu préféré pour activer la correspondance basée sur la distance.",
+    "locationPriorityCallout": "Si vous avez classé Lieu comme valeur, cela a plus de poids dans vos correspondances.",
     "locationSearchError": "Impossible de charger les résultats de localisation. Veuillez réessayer.",
     "locationSuggestionsLabel": "Suggestions de localisation"
   },
@@ -450,6 +509,7 @@
     "home": "Accueil",
     "jobs": "Emplois",
     "companies": "Entreprises",
+    "organizations": "Organismes",
     "about": "À propos",
     "contact": "Contact"
   },
@@ -462,7 +522,11 @@
     "loading": "Chargement...",
     "close": "Fermer",
     "cancel": "Annuler",
-    "confirm": "Confirmer"
+    "confirm": "Confirmer",
+    "expand": "développer",
+    "collapse": "réduire",
+    "showMore": "Afficher plus",
+    "showLess": "Afficher moins"
   },
   "passwordStrength": {
     "strength": "Force :",
@@ -746,6 +810,84 @@
       "selectedLabel": "Sélectionné",
       "placeholder": "Rechercher des valeurs...",
       "noResults": "Aucune valeur trouvée"
+    }
+  },
+  "admin": {
+    "organizations": {
+      "listTitle": "Gérer les organisations",
+      "createTitle": "Créer une organisation",
+      "editTitle": "Modifier l'organisation",
+      "createDescription": "Ajouter une nouvelle organisation à la plateforme. Il peut s'agir d'employeurs partenaires qui n'ont pas encore été extraits.",
+      "editDescription": "Modifier les détails de {name}",
+      "noOrganizations": "Aucune organisation pour le moment. Créez-en une pour commencer.",
+      "sseBadge": "ÉSS",
+      "edit": "Modifier",
+      "saving": "Enregistrement...",
+      "valuesHint": "Sélectionnez jusqu'à {max} valeurs professionnelles. Elles apparaissent sur le profil public de l'organisation.",
+      "fields": {
+        "name": "Nom de l'organisation",
+        "slug": "Identifiant URL",
+        "description": "Description",
+        "missionStatement": "Énoncé de mission",
+        "website": "URL du site web",
+        "location": "Emplacement",
+        "type": "Type d'organisation",
+        "isSse": "Organisation d'économie solidaire",
+        "values": "Valeurs fondamentales"
+      },
+      "placeholders": {
+        "name": "p. ex., Centraide Montréal",
+        "slug": "p. ex., centraide-montreal",
+        "description": "Brève description de l'organisation...",
+        "missionStatement": "La mission de l'organisation...",
+        "website": "https://exemple.org",
+        "location": "Commencez à taper une ville…",
+        "selectType": "Sélectionnez un type...",
+        "values": "Rechercher et sélectionner des valeurs professionnelles"
+      },
+      "locationHint": "Niveau ville seulement — utilisé pour les filtres et le jumelage. Les offres d'emploi portent les lieux de travail précis.",
+      "columns": {
+        "name": "Nom",
+        "slug": "Identifiant",
+        "type": "Type",
+        "location": "Emplacement",
+        "sse": "ÉSS",
+        "actions": "Actions"
+      },
+      "actions": {
+        "addNew": "Ajouter une organisation",
+        "manage": "Gérer les organisations",
+        "create": "Créer l'organisation",
+        "update": "Mettre à jour l'organisation",
+        "delete": "Supprimer l'organisation",
+        "cancel": "Annuler"
+      },
+      "errors": {
+        "nameRequired": "Le nom de l'organisation est requis",
+        "slugRequired": "L'identifiant URL est requis",
+        "slugInvalid": "L'identifiant ne peut contenir que des lettres minuscules, des chiffres et des traits d'union",
+        "websiteInvalid": "Le site web doit commencer par http:// ou https://",
+        "descriptionTooLong": "La description est trop longue (max. 500 caractères)",
+        "missionTooLong": "L'énoncé de mission est trop long (max. 300 caractères)",
+        "invalidType": "Veuillez sélectionner un type d'organisation valide",
+        "invalidValues": "Une ou plusieurs valeurs sélectionnées ne sont pas reconnues",
+        "tooManyValues": "Vous pouvez sélectionner au maximum 5 valeurs",
+        "slug_taken": "Cet identifiant est déjà utilisé",
+        "organization_exists": "Une organisation avec ce nom et cet emplacement existe déjà",
+        "unauthorized": "Vous devez être connecté en tant qu'administrateur pour effectuer cette action",
+        "not_found": "Organisation introuvable",
+        "database_error": "Une erreur de base de données s'est produite. Veuillez réessayer.",
+        "invalid_slug": "Format d'identifiant invalide",
+        "saveFailed": "Échec de l'enregistrement de l'organisation. Veuillez réessayer.",
+        "deleteFailed": "Échec de la suppression de l'organisation. Veuillez réessayer.",
+        "loadFailed": "Échec du chargement des organisations. Veuillez réessayer."
+      },
+      "createSuccess": "Organisation créée avec succès",
+      "updateSuccess": "Organisation mise à jour avec succès",
+      "deleteSuccess": "Organisation supprimée avec succès",
+      "deleteConfirm": "Supprimer {name} ? {count, plural, =0 {Aucun emploi actif n'est lié.} one {1 emploi actif perdra son lien avec cette organisation.} other {# emplois actifs perdront leur lien avec cette organisation.}} Les annonces restent publiées.",
+      "deleting": "Suppression...",
+      "slugPreview": "Aperçu de l'identifiant : {slug}"
     }
   },
   "ariaLabels": {

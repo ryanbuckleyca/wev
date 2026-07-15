@@ -5,7 +5,6 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import Header from '@/components/Header';
 import Toaster from '@/components/Toaster';
 import HtmlLangSync from '@/components/HtmlLangSync';
-import ThemeScript from '@/components/ThemeScript';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { routing } from '@/i18n/routing';
@@ -34,7 +33,6 @@ export default async function LocaleLayout({
   return (
     <NuqsAdapter>
       <NextIntlClientProvider locale={locale} messages={messages}>
-        <ThemeScript />
         <HtmlLangSync lang={locale} />
         <AuthProvider>
           <ProfileProvider>

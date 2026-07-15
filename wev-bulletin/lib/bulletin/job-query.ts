@@ -1,6 +1,7 @@
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import { toAnnual } from '@/lib/compensation/helpers';
 import { parseDateMs } from '@/lib/date-utils';
+import { POSTED_WITHIN_DAYS } from './constants';
 
 export const POSTED_WITHIN_FILTER_OPTIONS = [
   '1-week',
@@ -21,6 +22,7 @@ export const JOB_SORT_OPTIONS = [
   'salary-desc',
   'salary-asc',
   'org-asc',
+  'org-desc',
 ] as const;
 
 export type JobSortOption = (typeof JOB_SORT_OPTIONS)[number];
@@ -34,17 +36,11 @@ export type BulletinFilters = {
   selectedSources: string[];
   selectedWorkTypes: string[];
   selectedLanguages: string[];
-  showOnlySse: boolean;
+  /** When true, non-SSE jobs are included. Default view shows SSE-only. */
+  showNonSse: boolean;
   showJobsWithoutSalary: boolean;
   postedWithin: PostedWithinSelection;
   now?: number;
-};
-
-const POSTED_WITHIN_DAYS: Record<Exclude<PostedWithinSelection, 'any'>, number> = {
-  '1-week': 7,
-  '2-weeks': 14,
-  '3-weeks': 21,
-  '1-month': 30,
 };
 
 function getAnnualSortValue(job: JobPosting, missingValue: number): number {
@@ -92,8 +88,8 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
     if (!matchesSelection(job.employment_type, filters.selectedEmploymentTypes)) return false;
     if (!matchesSelection(job.source, filters.selectedSources)) return false;
 
-    if (filters.showOnlySse && !job.is_sse) return false;
-    if (!filters.showJobsWithoutSalary && !job.wage?.trim() && job.min_value == null) return false;
+    if (filters.showNonSse === false && !job.is_sse) return false;
+    if (!filters.showJobsWithoutSalary && job.has_compensation !== true) return false;
 
     if (cutoffMs != null) {
       const postedMs = parseDateMs(job.date_posted);
@@ -148,6 +144,8 @@ export function sortJobs(
         return a.annualSortValue - b.annualSortValue;
       case 'org-asc':
         return a.job.organization.localeCompare(b.job.organization);
+      case 'org-desc':
+        return b.job.organization.localeCompare(a.job.organization);
       default:
         return 0;
     }

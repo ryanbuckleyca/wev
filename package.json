@@ -19,14 +19,14 @@
     "@trunkio/launcher": "^1.2.7",
     "@types/node": "^20",
     "dotenv-cli": "^11.0.0",
-    "supabase": "^2.106.0",
+    "supabase": "^2.109.1",
     "tsx": "^4.21.0",
     "typescript": "^5"
   },
   "scripts": {
     "apply-migrations": "npx tsx supabase/apply-migrations.ts",
     "apply-migrations:direct": "wev-scraper/venv/bin/python3 supabase/apply-migrations-direct.py",
-    "backup": "dotenv -e .env -e .env.production -- npx tsx supabase/backup.ts",
+    "backup": "npx tsx supabase/backup.ts",
     "build": "dotenv -e .env -- npm run build -w wev-bulletin",
     "cleanup:duplicates": "npx tsx supabase/cleanup-duplicates.ts",
     "coverage:guidelines": "npm run test:coverage:bulletin && node scripts/generate-scraper-coverage.cjs && node scripts/check-testing-guidelines-coverage.cjs",

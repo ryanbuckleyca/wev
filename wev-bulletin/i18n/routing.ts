@@ -14,6 +14,7 @@ export const pathnames = {
   '/reset-password': '/reset-password',
   '/signup': '/signup',
   '/style-guide': '/style-guide',
+  '/organizations': '/organizations',
 } as const;
 
 export const routing = defineRouting({

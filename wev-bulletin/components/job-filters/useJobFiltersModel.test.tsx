@@ -26,9 +26,9 @@ const mockControls = {
   setSelectedWorkTypes: vi.fn(),
   selectedLanguages: [] as string[],
   setSelectedLanguages: vi.fn(),
-  showOnlySse: true,
-  setShowOnlySse: vi.fn(),
-  showJobsWithoutSalary: false,
+  showNonSse: true,
+  setShowNonSse: vi.fn(),
+  showJobsWithoutSalary: true,
   setShowJobsWithoutSalary: vi.fn(),
   postedWithin: '1-week',
   setPostedWithin: vi.fn(),
@@ -119,7 +119,7 @@ describe('useJobFiltersModel', () => {
     expect(result.current.totalJobsCountResolved).toBe(2);
     expect(result.current.activeFilterChips.map((chip) => chip.id)).toEqual([
       'posted-within',
-      'sse',
+      'nonSse',
       'salary',
       'search',
       'work-type-remote',
@@ -136,7 +136,7 @@ describe('useJobFiltersModel', () => {
       result.current.activeFilterChips.find((chip) => chip.id === 'province-Ontario')?.onRemove?.();
     });
 
-    expect(mockControls.setPostedWithin).toHaveBeenCalledWith('any');
+    expect(mockControls.setPostedWithin).toHaveBeenCalledWith('2-weeks');
     expect(mockControls.setSearchQuery).toHaveBeenCalledWith('');
     expect(mockControls.setSelectedProvinces).toHaveBeenCalledWith([]);
   });

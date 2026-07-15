@@ -1,227 +1,140 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from './route';
-import { fetchLastScrapeTime } from '@/lib/bulletin/server-data';
-import { resolveSkillLabels } from '@/lib/resolve-skill-labels';
+import { fetchBulletinQueryPayload } from '@/lib/bulletin/server-data';
+import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
+import type { BulletinQueryInput } from '@/lib/bulletin/server-data';
 
 /**
- * Route handler contract: locale parsing + param translation + data aggregation.
+ * Route handler contract: the GET handler is a thin adapter. It parses/validates
+ * query params, applies SSE/compensation backward-compat, and delegates to the
+ * shared `fetchBulletinQueryPayload`. SQL translation is covered in
+ * `lib/bulletin/server-data.test.ts`, so here we assert the parsed input.
  */
 
-const {
-  mockFrom,
-  mockSelect,
-  mockTextSearch,
-  mockFilter,
-  mockIn,
-  mockIs,
-  mockEq,
-  mockGte,
-  mockOrder,
-  mockRange,
-  mockLimit,
-} = vi.hoisted(() => {
-  const mockFrom = vi.fn();
-  const mockSelect = vi.fn();
-  const mockTextSearch = vi.fn();
-  const mockFilter = vi.fn();
-  const mockIn = vi.fn();
-  const mockIs = vi.fn();
-  const mockEq = vi.fn();
-  const mockGte = vi.fn();
-  const mockOrder = vi.fn();
-  const mockRange = vi.fn();
-  const mockLimit = vi.fn();
-  return {
-    mockFrom,
-    mockSelect,
-    mockTextSearch,
-    mockFilter,
-    mockIn,
-    mockIs,
-    mockEq,
-    mockGte,
-    mockOrder,
-    mockRange,
-    mockLimit,
-  };
-});
+const SENTINEL_CLIENT = { id: 'supabase-client' };
+const PAYLOAD = {
+  jobs: [] as unknown[],
+  total: 0,
+  totalAvailable: 0,
+  lastScrapeTime: '2020-01-01T00:00:00.000Z',
+  skillLabels: {},
+  filterOptions: {},
+};
 
-vi.mock('next/cache', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('next/cache')>();
-  return {
-    ...actual,
-    unstable_cache: <TArgs extends unknown[], TResult>(fn: (...args: TArgs) => TResult) => fn,
-  };
-});
-
-// Mock Supabase Server Client
-vi.mock('@/lib/supabase/server', () => {
-  const chain: Record<string, any> = {
-    then: (onFullfilled: any) =>
-      Promise.resolve({ data: [], count: 0, error: null }).then(onFullfilled),
-  };
-  mockSelect.mockImplementation(() => chain);
-  mockTextSearch.mockImplementation(() => chain);
-  mockFilter.mockImplementation(() => chain);
-  mockIn.mockImplementation(() => chain);
-  mockIs.mockImplementation(() => chain);
-  mockEq.mockImplementation(() => chain);
-  mockGte.mockImplementation(() => chain);
-  mockOrder.mockImplementation(() => chain);
-  mockRange.mockImplementation(() => Promise.resolve({ data: [], count: 0, error: null }));
-  mockLimit.mockImplementation(() => Promise.resolve({ data: [], count: 0, error: null }));
-
-  chain.select = mockSelect;
-  chain.textSearch = mockTextSearch;
-  chain.filter = mockFilter;
-  chain.in = mockIn;
-  chain.is = mockIs;
-  chain.eq = mockEq;
-  chain.gte = mockGte;
-  chain.order = mockOrder;
-  chain.range = mockRange;
-  chain.limit = mockLimit;
-
-  return {
-    createClient: vi.fn(async () => ({
-      from: mockFrom.mockImplementation(() => chain),
-    })),
-  };
-});
-
-// Mock Server Data
-vi.mock('@/lib/bulletin/server-data', () => ({
-  fetchLastScrapeTime: vi.fn(),
-  BULLETIN_CACHE_TAG: 'bulletin-jobs',
-  BULLETIN_CACHE_REVALIDATE_SECONDS: 60,
-  BULLETIN_JOB_SELECT:
-    'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week, language',
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(async () => SENTINEL_CLIENT),
 }));
 
 vi.mock('@/lib/resolve-skill-labels', () => ({
-  resolveSkillLabels: vi.fn(),
   parseLocale: vi.fn((val) => (val === 'fr' ? 'fr' : 'en')),
 }));
 
-const mockFetchLastScrapeTime = vi.mocked(fetchLastScrapeTime);
-const mockResolveSkillLabels = vi.mocked(resolveSkillLabels);
+vi.mock('@/lib/bulletin/server-data', () => ({
+  BULLETIN_CACHE_TAG: 'bulletin-jobs',
+  fetchBulletinQueryPayload: vi.fn(),
+}));
+
+const mockFetchPayload = vi.mocked(fetchBulletinQueryPayload);
+
+/** Runs GET and returns the input object passed to fetchBulletinQueryPayload. */
+async function capturedInputFor(url: string): Promise<BulletinQueryInput> {
+  await GET(new Request(url));
+  const call = mockFetchPayload.mock.calls.at(-1);
+  if (!call) throw new Error('fetchBulletinQueryPayload was not called');
+  return call[0];
+}
 
 describe('GET /api/bulletin (handler contract)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
-    mockResolveSkillLabels.mockResolvedValue(new Map());
-    mockRange.mockResolvedValue({ data: [], count: 0, error: null });
+    mockFetchPayload.mockResolvedValue(PAYLOAD as never);
   });
 
-  it('returns JSON and Cache-Control with locale from query', async () => {
+  it('returns JSON and no-store Cache-Control, delegating with the request client', async () => {
     const response = await GET(new Request('http://localhost/api/bulletin?locale=fr'));
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Cache-Control')).toBe('no-store, max-age=0');
-    expect(mockFrom).toHaveBeenCalledWith('matched_jobs');
+    expect(await response.json()).toEqual(PAYLOAD);
 
-    const body = (await response.json()) as Record<string, unknown>;
-    expect(body.jobs).toEqual([]);
-    expect(body.lastScrapeTime).toBe('2020-01-01T00:00:00.000Z');
-    expect(body.skillLabels).toEqual({});
+    const [, client] = mockFetchPayload.mock.calls[0]!;
+    expect(client).toBe(SENTINEL_CLIENT);
+  });
+
+  it('parses locale from the query', async () => {
+    expect((await capturedInputFor('http://localhost/api/bulletin?locale=fr')).locale).toBe('fr');
+    expect((await capturedInputFor('http://localhost/api/bulletin')).locale).toBe('en');
   });
 
   it('clamps pagination params to bounded safe values', async () => {
-    await GET(new Request('http://localhost/api/bulletin?page=-20&limit=99999'));
-    expect(mockRange).toHaveBeenCalledWith(0, 99);
+    const over = await capturedInputFor('http://localhost/api/bulletin?page=-20&limit=99999');
+    expect(over.page).toBe(1);
+    expect(over.limit).toBe(100);
 
-    await GET(new Request('http://localhost/api/bulletin?page=not-a-number&limit=also-bad'));
-    expect(mockRange).toHaveBeenCalledWith(0, 19);
+    const nan = await capturedInputFor('http://localhost/api/bulletin?page=x&limit=y');
+    expect(nan.page).toBe(1);
+    expect(nan.limit).toBe(20);
 
-    await GET(new Request('http://localhost/api/bulletin?page=50000&limit=50'));
-    expect(mockRange).toHaveBeenCalledWith(49_950, 49_999);
+    const high = await capturedInputFor('http://localhost/api/bulletin?page=50000&limit=50');
+    expect(high.page).toBe(1000);
+    expect(high.limit).toBe(50);
   });
 
-  it('uses locale-specific FTS columns and never legacy fts', async () => {
-    // French locale uses fts_fr with websearch for multi-word queries
-    await GET(new Request('http://localhost/api/bulletin?locale=fr&q=  economie sociale  '));
-    expect(mockTextSearch).toHaveBeenCalledWith('fts_fr', 'economie sociale', {
-      type: 'websearch',
-    });
-    expect(mockTextSearch).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(Object));
-    expect(mockFilter).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(String));
+  it('defaults sort and posted window, and passes explicit values through', async () => {
+    const defaults = await capturedInputFor('http://localhost/api/bulletin');
+    expect(defaults.sortBy).toBe('date-desc');
+    expect(defaults.postedWithin).toBe(PRODUCT_DEFAULT_POSTED_WITHIN);
 
-    vi.clearAllMocks();
-    mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
-    mockResolveSkillLabels.mockResolvedValue(new Map());
-    mockRange.mockResolvedValue({ data: [], count: 0, error: null });
-
-    // English locale uses fts_en with prefix matching for single-word queries
-    await GET(new Request('http://localhost/api/bulletin?locale=en&q=part'));
-    expect(mockFilter).toHaveBeenCalledWith('fts_en', 'fts', 'part:*');
-    expect(mockTextSearch).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(Object));
-    expect(mockFilter).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(String));
-
-    vi.clearAllMocks();
-    mockFetchLastScrapeTime.mockResolvedValue('2020-01-01T00:00:00.000Z');
-    mockResolveSkillLabels.mockResolvedValue(new Map());
-    mockRange.mockResolvedValue({ data: [], count: 0, error: null });
-
-    await GET(new Request('http://localhost/api/bulletin?locale=en&q=   '));
-    expect(mockTextSearch).not.toHaveBeenCalled();
-    expect(mockFilter).not.toHaveBeenCalled();
-  });
-
-  it('returns 500 with migration guidance when locale FTS columns are missing', async () => {
-    mockRange.mockResolvedValue({
-      data: null,
-      count: null,
-      error: { code: '42703', message: 'column fts_en does not exist' },
-    });
-
-    const response = await GET(new Request('http://localhost/api/bulletin?locale=en&q=engineer'));
-    expect(response.status).toBe(500);
-
-    const body = (await response.json()) as { error: string };
-    expect(body.error).toContain('locale-aware FTS columns');
-    expect(body.error).toContain('20260419160000_add_locale_aware_job_fts.sql');
-    expect(mockTextSearch).not.toHaveBeenCalledWith('fts', expect.any(String), expect.any(Object));
-  });
-
-  it('translates sort and filters into query-chain calls', async () => {
-    await GET(
-      new Request(
-        'http://localhost/api/bulletin?sortBy=salary-desc&sse=true&orgs=Org+A&orgs=Org+B&postedWithin=1-week&langs=en&langs=fr',
-      ),
+    const explicit = await capturedInputFor(
+      'http://localhost/api/bulletin?sortBy=salary-desc&postedWithin=1-week',
     );
-
-    expect(mockIs).toHaveBeenCalledWith('is_sse', true);
-    expect(mockIn).toHaveBeenCalledWith('organization', ['Org A', 'Org B']);
-    expect(mockIn).toHaveBeenCalledWith('language', ['en', 'fr']);
-    expect(mockEq).toHaveBeenCalledWith('has_compensation', true);
-    expect(mockOrder).toHaveBeenCalledWith('min_value', { ascending: false, nullsFirst: false });
-    expect(mockGte).toHaveBeenCalledWith('date_posted', expect.any(String));
+    expect(explicit.sortBy).toBe('salary-desc');
+    expect(explicit.postedWithin).toBe('1-week');
   });
 
-  it('returns 500 when fetch throws', async () => {
-    mockFetchLastScrapeTime.mockRejectedValue(new Error('db unavailable'));
+  it('collects repeated array filters', async () => {
+    const input = await capturedInputFor(
+      'http://localhost/api/bulletin?orgs=Org+A&orgs=Org+B&langs=en&langs=fr',
+    );
+    expect(input.orgs).toEqual(['Org A', 'Org B']);
+    expect(input.langs).toEqual(['en', 'fr']);
+  });
+
+  it('trims and truncates the search query', async () => {
+    const input = await capturedInputFor('http://localhost/api/bulletin?q=  hello world  ');
+    expect(input.searchQuery).toBe('hello world');
+  });
+
+  it('defaults to SSE-only and resolves sse/nonSse backward compatibility', async () => {
+    expect((await capturedInputFor('http://localhost/api/bulletin')).onlySse).toBe(true);
+    expect((await capturedInputFor('http://localhost/api/bulletin?sse=true')).onlySse).toBe(true);
+    expect((await capturedInputFor('http://localhost/api/bulletin?sse=false')).onlySse).toBe(false);
+    expect((await capturedInputFor('http://localhost/api/bulletin?nonSse=true')).onlySse).toBe(
+      false,
+    );
+    expect((await capturedInputFor('http://localhost/api/bulletin?nonSse=false')).onlySse).toBe(
+      true,
+    );
+    // nonSse takes precedence over the legacy sse param.
+    expect(
+      (await capturedInputFor('http://localhost/api/bulletin?sse=true&nonSse=true')).onlySse,
+    ).toBe(false);
+  });
+
+  it('maps the nosal param to includeUnlistedPay (default false)', async () => {
+    expect((await capturedInputFor('http://localhost/api/bulletin')).includeUnlistedPay).toBe(
+      false,
+    );
+    expect(
+      (await capturedInputFor('http://localhost/api/bulletin?nosal=true')).includeUnlistedPay,
+    ).toBe(true);
+  });
+
+  it('returns 500 with the error message when the query fails', async () => {
+    mockFetchPayload.mockRejectedValue(new Error('db unavailable'));
 
     const response = await GET(new Request('http://localhost/api/bulletin'));
     expect(response.status).toBe(500);
-    const body = (await response.json()) as { error: string };
-    expect(body.error).toBe('db unavailable');
-  });
-
-  it('always applies 4-week (28 day) age limit regardless of postedWithin filter', async () => {
-    // Even when postedWithin=any, should still filter to 28 days max
-    await GET(new Request('http://localhost/api/bulletin?postedWithin=any'));
-    expect(mockGte).toHaveBeenCalledWith('date_posted', expect.any(String));
-  });
-
-  it('returns both total (filtered) and totalAvailable (all non-old jobs)', async () => {
-    mockRange.mockResolvedValue({ data: [{ id: 'job-1' }], count: 5, error: null });
-
-    const response = await GET(new Request('http://localhost/api/bulletin'));
-    const body = (await response.json()) as Record<string, unknown>;
-
-    // Should have both: total (matching filters) and totalAvailable (all jobs <= 4 weeks)
-    expect(body).toHaveProperty('total');
-    expect(body).toHaveProperty('totalAvailable');
+    expect(await response.json()).toEqual({ error: 'db unavailable' });
   });
 });

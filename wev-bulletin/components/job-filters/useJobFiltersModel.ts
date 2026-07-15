@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import type { ActiveFilterChip } from '@/components/JobSearch';
+import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
 import {
   buildFilterOptions,
   getAllMunicipalities,
@@ -83,8 +84,8 @@ export function useJobFiltersModel({
     setSelectedWorkTypes: onWorkTypesChange,
     selectedLanguages = [],
     setSelectedLanguages: onLanguagesChange,
-    showOnlySse,
-    setShowOnlySse: onShowOnlySseChange,
+    showNonSse,
+    setShowNonSse: onShowNonSseChange,
     showJobsWithoutSalary,
     setShowJobsWithoutSalary: onShowJobsWithoutSalaryChange,
     postedWithin,
@@ -125,9 +126,9 @@ export function useJobFiltersModel({
     selectedSources.length === 0 &&
     selectedLanguages.length === 0 &&
     isWorkTypesDefault &&
-    showOnlySse &&
-    showJobsWithoutSalary &&
-    postedWithin === '2-weeks';
+    !showNonSse &&
+    !showJobsWithoutSalary &&
+    postedWithin === PRODUCT_DEFAULT_POSTED_WITHIN;
 
   const filteredJobsCountResolved = filteredJobsCount ?? 0;
   const totalJobsCountResolved = totalJobsCount ?? 0;
@@ -137,7 +138,7 @@ export function useJobFiltersModel({
       buildActiveFilterChips(
         {
           postedWithin,
-          showOnlySse,
+          showNonSse,
           showJobsWithoutSalary,
           searchQuery,
           selectedWorkTypes,
@@ -148,7 +149,7 @@ export function useJobFiltersModel({
           selectedSources,
           selectedLanguages,
           onPostedWithinChange,
-          onShowOnlySseChange,
+          onShowNonSseChange,
           onShowJobsWithoutSalaryChange,
           onSearchChange,
           onWorkTypesChange,
@@ -170,7 +171,7 @@ export function useJobFiltersModel({
       onProvincesChange,
       onSearchChange,
       onShowJobsWithoutSalaryChange,
-      onShowOnlySseChange,
+      onShowNonSseChange,
       onSourcesChange,
       onWorkTypesChange,
       postedWithin,
@@ -183,7 +184,7 @@ export function useJobFiltersModel({
       selectedSources,
       selectedWorkTypes,
       showJobsWithoutSalary,
-      showOnlySse,
+      showNonSse,
       t,
     ],
   );

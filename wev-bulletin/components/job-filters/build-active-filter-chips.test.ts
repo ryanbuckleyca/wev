@@ -4,9 +4,9 @@ import { buildActiveFilterChips, type ActiveFilterChipInputs } from './build-act
 
 function createInput(overrides: Partial<ActiveFilterChipInputs> = {}): ActiveFilterChipInputs {
   return {
-    postedWithin: 'any',
-    showOnlySse: false,
-    showJobsWithoutSalary: true,
+    postedWithin: '2-weeks',
+    showNonSse: false,
+    showJobsWithoutSalary: false,
     searchQuery: '',
     selectedWorkTypes: [],
     selectedProvinces: [],
@@ -16,7 +16,7 @@ function createInput(overrides: Partial<ActiveFilterChipInputs> = {}): ActiveFil
     selectedSources: [],
     selectedLanguages: [],
     onPostedWithinChange: vi.fn(),
-    onShowOnlySseChange: vi.fn(),
+    onShowNonSseChange: vi.fn(),
     onShowJobsWithoutSalaryChange: vi.fn(),
     onSearchChange: vi.fn(),
     onWorkTypesChange: vi.fn(),
@@ -47,8 +47,8 @@ describe('buildActiveFilterChips', () => {
   it('builds chips in stable order with remove handlers', () => {
     const input = createInput({
       postedWithin: '1-week',
-      showOnlySse: true,
-      showJobsWithoutSalary: false,
+      showNonSse: true,
+      showJobsWithoutSalary: true,
       searchQuery: 'climate policy',
       selectedWorkTypes: ['remote'],
       selectedProvinces: ['Ontario'],
@@ -60,7 +60,7 @@ describe('buildActiveFilterChips', () => {
 
     expect(chips.map((chip) => chip.id)).toEqual([
       'posted-within',
-      'sse',
+      'nonSse',
       'salary',
       'search',
       'work-type-remote',
@@ -69,11 +69,29 @@ describe('buildActiveFilterChips', () => {
       'language-en',
     ]);
 
+    chips.find((chip) => chip.id === 'posted-within')?.onRemove?.();
+    expect(input.onPostedWithinChange).toHaveBeenCalledWith('2-weeks');
+
     chips.find((chip) => chip.id === 'search')?.onRemove?.();
     expect(input.onSearchChange).toHaveBeenCalledWith('');
 
     chips.find((chip) => chip.id === 'work-type-remote')?.onRemove?.();
     expect(input.onWorkTypesChange).toHaveBeenCalledWith([]);
+  });
+
+  it('does not chip the 2-weeks posted baseline', () => {
+    const chips = buildActiveFilterChips(createInput({ postedWithin: '2-weeks' }), t);
+    expect(chips.find((chip) => chip.id === 'posted-within')).toBeUndefined();
+  });
+
+  it('chips postedWithin=any and removes back to 2-weeks', () => {
+    const input = createInput({ postedWithin: 'any' });
+    const chips = buildActiveFilterChips(input, t);
+    const postedChip = chips.find((chip) => chip.id === 'posted-within');
+
+    expect(postedChip).toBeDefined();
+    postedChip?.onRemove?.();
+    expect(input.onPostedWithinChange).toHaveBeenCalledWith('2-weeks');
   });
 
   it('uses full search query in chip title when label is truncated', () => {
