@@ -116,7 +116,7 @@ function resolveDbUrl(
         parsedUrl.protocol === "postgresql:"
       ) {
         if (parsedUrl.password) {
-          const password = decodeURIComponent(parsedUrl.password);
+          const password = parsedUrl.password;
           parsedUrl.password = "";
           return { url: parsedUrl.toString(), password };
         }
