@@ -19,7 +19,7 @@
     "@trunkio/launcher": "^1.2.7",
     "@types/node": "^20",
     "dotenv-cli": "^11.0.0",
-    "supabase": "^2.106.0",
+    "supabase": "^2.109.1",
     "tsx": "^4.21.0",
     "typescript": "^5"
   },
