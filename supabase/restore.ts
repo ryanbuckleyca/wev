@@ -130,9 +130,12 @@ function resolveDbUrl(
     let password: string | undefined = undefined;
 
     // Try to extract password from DSN-style connection string
-    const dsnPasswordMatch = url.match(/(?:^|\s)password\s*=\s*('([^']*)'|"([^"]*)"|(\S+))/i);
+    const dsnPasswordMatch = url.match(
+      /(?:^|\s)password\s*=\s*('([^']*)'|"([^"]*)"|(\S+))/i,
+    );
     if (dsnPasswordMatch) {
-      password = dsnPasswordMatch[2] ?? dsnPasswordMatch[3] ?? dsnPasswordMatch[4];
+      password =
+        dsnPasswordMatch[2] ?? dsnPasswordMatch[3] ?? dsnPasswordMatch[4];
       url = url.replace(dsnPasswordMatch[0], "").trim();
     }
 
