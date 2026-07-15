@@ -5,10 +5,10 @@ import { useTranslations } from 'next-intl';
 import { JobPosting, JobMatchData } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 import JobCard from './JobCard';
-import Button from './Button';
 import LinkButton from './LinkButton';
+import ListEmptyState from './ListEmptyState';
 import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
-import JobListingsSkeleton from './JobListingsSkeleton';
+import CardListSkeleton from './CardListSkeleton';
 import { JOB_BOARD_TEST_IDS } from '@/lib/testing/job-board-contract';
 
 interface JobListingsProps {
@@ -45,7 +45,6 @@ export default function JobListings({
   const t = useTranslations();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  // Conditionally consume context so we don't break the Bookmarks page which isn't wrapped in it.
   const filterContext = useContext(BulletinFilterContext);
   const allExpanded = filterContext?.allJobsExpanded ?? true;
   const selectedWorkTypes = filterContext?.selectedWorkTypes;
@@ -82,43 +81,27 @@ export default function JobListings({
   }
 
   if (loading && jobs.length === 0) {
-    return <JobListingsSkeleton />;
+    return <CardListSkeleton />;
   }
 
   if (!loading && jobs.length === 0) {
-    const shouldShowFilterClearPrompt = !!filterContext?.hasAnyFilters && totalJobsCount > 0;
-
     return (
-      <div
-        className="bg-card border border-border rounded-wev-card p-12 text-center flex flex-col items-center justify-center gap-4"
-        data-testid={JOB_BOARD_TEST_IDS.emptyState}
-      >
-        {shouldShowFilterClearPrompt ? (
-          <>
-            <p className="text-foreground text-lg">
-              {t('jobListings.showingFiltered', { total: totalJobsCount })}
-            </p>
-            <div className="flex flex-col items-center gap-6 mt-2 max-w-md w-full">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
-                <Button
-                  variant="secondary"
-                  onClick={filterContext?.clearAllFilters}
-                  className="w-full sm:w-auto"
-                >
-                  {t('jobListings.clearFilters')}
-                </Button>
-                {userId && (
-                  <LinkButton href="/profile" variant="primary" className="w-full sm:w-auto">
-                    {t('filters.workType.profileLink')}
-                  </LinkButton>
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          <p className="text-foreground text-lg">{t('jobListings.noJobs')}</p>
-        )}
-      </div>
+      <ListEmptyState
+        emptyMessage={t('jobListings.noJobs')}
+        filteredMessage={t('jobListings.showingFiltered', { total: totalJobsCount })}
+        hasFilters={!!filterContext?.hasAnyFilters}
+        totalAvailable={totalJobsCount}
+        onClearFilters={filterContext?.clearAllFilters}
+        clearFiltersLabel={t('jobListings.clearFilters')}
+        secondaryAction={
+          userId ? (
+            <LinkButton href="/profile" variant="primary" className="w-full sm:w-auto">
+              {t('filters.workType.profileLink')}
+            </LinkButton>
+          ) : undefined
+        }
+        testId={JOB_BOARD_TEST_IDS.emptyState}
+      />
     );
   }
 

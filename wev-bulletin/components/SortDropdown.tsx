@@ -112,7 +112,11 @@ export default function SortDropdown({
 
   const valueSet = optionValues ? new Set<string>(optionValues) : null;
   const optionsToShow = OPTIONS.filter((option) => {
-    if (valueSet && !valueSet.has(option.value)) return false;
+    if (valueSet) {
+      // Caller-provided allowlist is authoritative — do not also hide match
+      // options via showMatchOption (that gate is for the default full job menu).
+      return valueSet.has(option.value);
+    }
     return showMatchOption !== false || option.group !== 'match';
   });
 

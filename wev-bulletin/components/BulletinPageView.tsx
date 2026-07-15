@@ -9,6 +9,7 @@ import ExpandAllToggle from '@/components/ExpandAllToggle';
 import WatercolorBackground from '@/components/WatercolorBackground';
 import CopyPageJobsButton from '@/components/CopyPageJobsButton';
 import Pagination from '@/components/Pagination';
+import TextSkeleton from '@/components/TextSkeleton';
 import { SITE_CONFIG } from '@/lib/site-config';
 import type { BulletinDataState } from '@/lib/bulletin/types';
 import type { BulletinFilterControls } from '@/lib/hooks/useBulletinFilters';
@@ -77,24 +78,25 @@ export default function BulletinPageView({
             loading={data.loading}
           />
 
-          {data.jobsOnPage.length > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
-              <div className="text-sm text-center sm:text-left text-xs text-muted-foreground">
-                <span className="font-semibold text-wev-brand-accent">
-                  {t('home.lastUpdated')}{' '}
-                </span>
+          {/* Keep toolbar chrome mounted — only the scrape timestamp is async. */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pl-2 pr-1 py-1 mb-4 items-center justify-center sm:justify-start p-1 px-0.5">
+            <div className="text-sm text-center sm:text-left text-xs text-muted-foreground">
+              <span className="font-semibold text-wev-brand-accent">{t('home.lastUpdated')} </span>
+              {data.loading && !data.lastScrapeTime ? (
+                <TextSkeleton placeholder="March 28, 2026, 9:00 AM EDT" />
+              ) : (
                 <span>{data.lastScrapeTime || t('home.unknown')}</span>
-              </div>
-
-              <div className="flex items-center gap-2 mt-2 sm:mt-0 sm:justify-end">
-                <SortDropdown showMatchOption={isLoggedIn} />
-
-                <div className="w-0.5 h-3.5 bg-border" />
-
-                <ExpandAllToggle />
-              </div>
+              )}
             </div>
-          )}
+
+            <div className="flex items-center gap-2 mt-2 sm:mt-0 sm:justify-end">
+              <SortDropdown showMatchOption={isLoggedIn} />
+
+              <div className="w-0.5 h-3.5 bg-border" />
+
+              <ExpandAllToggle />
+            </div>
+          </div>
 
           <JobListings
             jobs={data.jobsOnPage}

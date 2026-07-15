@@ -26,12 +26,35 @@ export type SeedDataset = {
 };
 
 const SCRAPE_RUN_ID = buildUuid(9_000);
-const TOTAL_SEEDED_JOB_COUNT = 27;
-const TOTAL_SSE_JOB_COUNT = 25;
+/** Enough rows that SSE ∩ pay ∩ 2-week window still paginates past page 1. */
+const TOTAL_SEEDED_JOB_COUNT = 42;
+const TOTAL_SSE_JOB_COUNT = 40;
 const SALARYLESS_JOB_INDEXES = new Set([3, 11, 19]);
+/** Ages cycle past the product 2-week default while staying under the 28-day hard ceiling. */
+const JOB_AGE_CYCLE_DAYS = 28;
+// Must match wev-bulletin PRODUCT_DEFAULT_POSTED_WITHIN ('2-weeks') and POSTED_WITHIN_DAYS.
+const PRODUCT_DEFAULT_POSTED_WITHIN_DAYS = 14;
+const ONE_WEEK_POSTED_WITHIN_DAYS = 7;
+
+function jobAgeDays(index: number): number {
+  return index % JOB_AGE_CYCLE_DAYS;
+}
+
+/**
+ * Whether a seeded job falls inside a posted-within window, matching the API.
+ *
+ * `date_posted` is stored as a date-only string (`YYYY-MM-DD`) while the API
+ * filters with `gte(date_posted, now - days)` using a full ISO cutoff. A job
+ * posted exactly `days` ago has the same calendar date as the cutoff, and a
+ * date-only string sorts *before* the longer ISO cutoff string, so it is
+ * excluded. The window is therefore exclusive: age must be strictly `< days`.
+ */
+function withinPostedDays(index: number, days: number): boolean {
+  return jobAgeDays(index) < days;
+}
 
 // Language distribution reflecting a Montreal-focused SSE job market.
-// 27 jobs across a repeating 10-item pattern:
+// Jobs across a repeating 10-item pattern:
 //   bilingual-fr (×4), fr (×3), bilingual-en (×2), en (×1)
 // → ~40% bilingual French-primary, ~30% French-only,
 //   ~20% bilingual English-primary, ~10% English-only
@@ -280,7 +303,7 @@ function createJobFixture(
   const workType = (["remote", "hybrid", "office"] as const)[index % 3];
   const sourceId = sourceIds[index % sourceIds.length];
   const values = createJobValues(index);
-  const datePosted = daysAgo(now, index % 12);
+  const datePosted = daysAgo(now, jobAgeDays(index));
   const scrapedAt = hoursAgo(now, index);
   const location = createJobLocation(index, workType);
   const salary = createJobSalary(index);
@@ -317,8 +340,8 @@ function createJobFixture(
     hours_per_week: 35,
     id: buildUuid(1_000 + index),
     is_remote: location.is_remote,
-    // The bulletin defaults to the SSE-only filter, so the first 25 rows shape
-    // the default landing state and the final 2 rows exercise that toggle.
+    // The bulletin defaults to the SSE-only filter, so the first SSE rows shape
+    // the default landing state and the trailing non-SSE rows exercise that toggle.
     is_sse: index < TOTAL_SSE_JOB_COUNT,
     job_title: jobTitle,
     language: dbLanguage(language),
@@ -483,12 +506,37 @@ export function createSeedDataset(
 }
 
 // Compute deterministic test expectations directly across generated values rather than hardcoding.
+// Product default board = SSE ∩ listed pay ∩ 2-week posted window (matches API/SSR baseline).
 export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
   const mockNow = new Date(0);
   const sources = createSourceFixtures(mockNow);
   const sourceIds = sources.map((s) => s.id);
-  const jobs = createJobFixtures(TOTAL_SEEDED_JOB_COUNT, mockNow, sourceIds);
-  const sseJobs = jobs.filter((j) => j.is_sse);
+  const jobs = createJobFixtures(
+    TOTAL_SEEDED_JOB_COUNT,
+    mockNow,
+    sourceIds,
+  ).map((job, index) => ({
+    job,
+    index,
+  }));
+
+  // Mirrors the DB `has_compensation` generated column
+  // (nullif(btrim(wage), '') IS NOT NULL OR min_value IS NOT NULL).
+  const hasListedPay = (job: (typeof jobs)[number]["job"]) =>
+    Boolean(job.wage?.trim()) || job.min_value != null;
+
+  const inDefaultPostedWindow = (index: number) =>
+    withinPostedDays(index, PRODUCT_DEFAULT_POSTED_WITHIN_DAYS);
+
+  /** Default landing / count universe. */
+  const baselineJobs = jobs.filter(
+    ({ job, index }) =>
+      job.is_sse && hasListedPay(job) && inDefaultPostedWindow(index),
+  );
+  /** Show-non-SSE still hides unlisted pay; postedWithin default still applies. */
+  const compensatedInWindow = jobs.filter(
+    ({ job, index }) => hasListedPay(job) && inDefaultPostedWindow(index),
+  );
 
   const employmentTypeCounts = { contract: 0, fullTime: 0 };
   const municipalityCounts = {
@@ -509,8 +557,6 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     ma_communaute_bene: 0,
   };
   const workTypeCounts = { hybrid: 0, office: 0, remote: 0 };
-  const languageCounts = { en: 0, fr: 0, bilingual: 0 };
-  let salaryListedCount = 0;
   let oneWeekCount = 0;
 
   const sourceKeyMap = [
@@ -523,8 +569,7 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     "ma_communaute_bene",
   ] as const;
 
-  for (let index = 0; index < sseJobs.length; index++) {
-    const job = sseJobs[index];
+  for (const { job, index } of baselineJobs) {
     if (job.employment_type === "contract") employmentTypeCounts.contract++;
     if (job.employment_type === "full-time") employmentTypeCounts.fullTime++;
 
@@ -538,8 +583,6 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     if (!job.is_remote && job.province === "ON") provinceCounts.on++;
     if (!job.is_remote && job.province === "QC") provinceCounts.qc++;
 
-    if (job.compensation_meta !== null) salaryListedCount++;
-
     const sourceIndex = sourceIds.indexOf(job.source_id);
     if (sourceIndex >= 0 && sourceIndex < 7) {
       sourceCounts[sourceKeyMap[sourceIndex]]++;
@@ -549,38 +592,33 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     if (job.work_type === "office") workTypeCounts.office++;
     if (job.work_type === "remote") workTypeCounts.remote++;
 
-    if (job.language === "en") languageCounts.en++;
-    if (job.language === "fr") languageCounts.fr++;
-    if (job.language === "bilingual") languageCounts.bilingual++;
-
-    // Calculate dates within a week (exactly matches the database `daysAgo` generator parameter logic)
-    if (index % 12 < 7) {
+    if (withinPostedDays(index, ONE_WEEK_POSTED_WITHIN_DAYS)) {
       oneWeekCount++;
     }
   }
 
-  // sampleJobs: pick specific indexes and derive the expected title from the generator.
-  // index 25 → non-SSE boundary; index 24 → last SSE job; index 3 → salaryless SSE job.
+  // sampleJobs: indices must sit inside the default 2-week window for search e2e.
+  // index 40 → first non-SSE; 39 → late SSE with pay; 3 → salaryless SSE.
   const titleFor = (i: number) => buildJobTitle(jobLanguage(i), i);
 
   return {
     employmentTypeCounts,
-    firstPageCount: Math.min(20, sseJobs.length),
-    jobCount: sseJobs.length,
+    firstPageCount: Math.min(20, baselineJobs.length),
+    jobCount: baselineJobs.length,
     municipalityCounts,
     oneWeekCount,
     organizationCounts,
     provinceCounts,
-    salaryListedCount,
-    languageCounts,
+    /** SSE ∩ listed pay ∩ 2-week window — same as jobCount under product defaults. */
+    salaryListedCount: baselineJobs.length,
     sampleJobs: {
-      nonSseOnly: titleFor(25), // first non-SSE job (index 25)
-      searchMatch: titleFor(24), // last SSE job (index 24)
-      salarylessVisible: titleFor(3), // salaryless SSE job (index 3)
+      nonSseOnly: titleFor(TOTAL_SSE_JOB_COUNT),
+      searchMatch: titleFor(TOTAL_SSE_JOB_COUNT - 1),
+      salarylessVisible: titleFor(3),
     },
-    secondPageCount: Math.max(0, sseJobs.length - 20),
+    secondPageCount: Math.max(0, baselineJobs.length - 20),
     sourceCounts,
-    sseOffCount: jobs.length,
+    sseOffCount: compensatedInWindow.length,
     workTypeCounts,
   };
 })();
