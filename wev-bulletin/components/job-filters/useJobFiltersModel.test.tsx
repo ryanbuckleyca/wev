@@ -28,7 +28,7 @@ const mockControls = {
   setSelectedLanguages: vi.fn(),
   showNonSse: true,
   setShowNonSse: vi.fn(),
-  showJobsWithoutSalary: false,
+  showJobsWithoutSalary: true,
   setShowJobsWithoutSalary: vi.fn(),
   postedWithin: '1-week',
   setPostedWithin: vi.fn(),

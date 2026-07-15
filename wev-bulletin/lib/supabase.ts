@@ -25,6 +25,8 @@ export interface JobPosting {
   employment_type?: string | null;
   summary?: string | null;
   is_sse?: boolean;
+  /** Generated column: true when structured or text compensation is present. */
+  has_compensation?: boolean | null;
   source?: string | null;
   organization_id?: number | null;
   organization_slug?: string | null;

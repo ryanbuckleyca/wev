@@ -1,4 +1,5 @@
 import type { ActiveFilterChip } from '@/components/JobSearch';
+import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
 import { getJobLanguageLabel, getWorkTypeLabel } from '@/lib/bulletin/filter-labels';
 import { truncateMiddle } from '@/lib/string-utils';
 import { postedWithinChipOptions, type PostedWithinValue } from './posted-within-options';
@@ -61,8 +62,16 @@ export function buildActiveFilterChips(
 ): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = [];
 
-  if (input.postedWithin !== 'any') {
-    const option = postedWithinChipOptions[input.postedWithin];
+  // Chip only when the user diverges from the product posted-within baseline.
+  if (input.postedWithin !== PRODUCT_DEFAULT_POSTED_WITHIN) {
+    const option =
+      input.postedWithin === 'any'
+        ? {
+            fullKey: 'filters.postedWithin.options.any',
+            shortKey: 'filters.postedWithin.short.any',
+            fallbackShort: 'Any',
+          }
+        : postedWithinChipOptions[input.postedWithin];
     const fullLabel = `${t('filters.chips.posted')} ${t(option.fullKey)}`;
     const shortLabel = getTranslationOrFallback(t, option.shortKey, option.fallbackShort);
 
@@ -70,7 +79,7 @@ export function buildActiveFilterChips(
       id: 'posted-within',
       label: shortLabel,
       title: fullLabel,
-      onRemove: () => input.onPostedWithinChange('any'),
+      onRemove: () => input.onPostedWithinChange(PRODUCT_DEFAULT_POSTED_WITHIN),
     });
   }
 
@@ -84,11 +93,12 @@ export function buildActiveFilterChips(
     });
   }
 
-  if (!input.showJobsWithoutSalary) {
+  // Opted into showing jobs without listed compensation (default hides them).
+  if (input.showJobsWithoutSalary) {
     chips.push({
       id: 'salary',
-      label: t('filters.chips.salaryListedOnly'),
-      onRemove: () => input.onShowJobsWithoutSalaryChange(true),
+      label: t('filters.chips.includingNoSalary'),
+      onRemove: () => input.onShowJobsWithoutSalaryChange(false),
     });
   }
 

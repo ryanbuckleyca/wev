@@ -93,10 +93,25 @@ vi.mock('@/lib/supabase/server', () => {
 // Mock Server Data
 vi.mock('@/lib/bulletin/server-data', () => ({
   fetchLastScrapeTime: vi.fn(),
+  fetchBulletinFacetRows: vi.fn(async () => []),
+  applyBulletinAgeFilter: (query: { gte: (col: string, val: string) => unknown }, _postedWithin: string) =>
+    query.gte('date_posted', '2020-01-01T00:00:00.000Z') as typeof query,
+  applyBulletinAvailabilityFilters: (
+    query: {
+      is: (col: string, val: unknown) => unknown;
+      eq: (col: string, val: unknown) => unknown;
+    },
+    opts: { onlySse: boolean; noSalary: boolean },
+  ) => {
+    let next = query;
+    if (opts.onlySse) next = next.is('is_sse', true) as typeof query;
+    if (!opts.noSalary) next = next.eq('has_compensation', true) as typeof query;
+    return next;
+  },
   BULLETIN_CACHE_TAG: 'bulletin-jobs',
   BULLETIN_CACHE_REVALIDATE_SECONDS: 60,
   BULLETIN_JOB_SELECT:
-    'id, job_title, organization, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, source, values, skills, unit_text, min_value, max_value, hours_per_week, language',
+    'id, job_title, organization, organization_id, location, municipality, province, work_type, date_posted, close_date, wage, listing_url, employment_type, summary, is_sse, has_compensation, source, values, skills, unit_text, min_value, max_value, hours_per_week, language',
 }));
 
 vi.mock('@/lib/bulletin/resolve-org-slugs', () => ({
@@ -221,15 +236,17 @@ describe('GET /api/bulletin (handler contract)', () => {
     expect(mockGte).toHaveBeenCalledWith('date_posted', expect.any(String));
   });
 
-  it('returns both total (filtered) and totalAvailable (all non-old jobs)', async () => {
+  it('returns both total (filtered) and totalAvailable (product baseline universe)', async () => {
     mockRange.mockResolvedValue({ data: [{ id: 'job-1' }], count: 5, error: null });
 
     const response = await GET(new Request('http://localhost/api/bulletin'));
     const body = (await response.json()) as Record<string, unknown>;
 
-    // Should have both: total (matching filters) and totalAvailable (all jobs <= 4 weeks)
+    // totalAvailable = age + SSE-only + listed compensation (default request scope)
     expect(body).toHaveProperty('total');
     expect(body).toHaveProperty('totalAvailable');
+    expect(mockIs).toHaveBeenCalledWith('is_sse', true);
+    expect(mockEq).toHaveBeenCalledWith('has_compensation', true);
   });
 
   it('resolves organization slugs for client-fetched jobs', async () => {
