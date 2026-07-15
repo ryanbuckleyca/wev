@@ -49,8 +49,8 @@ describe('useBulletinFilters', () => {
 
   it('identifies if any filters are active', () => {
     const { result } = renderHook(() => useBulletinFilters());
-    // Default state: postedWithin='2-weeks' is an active filter
-    expect(result.current.hasAnyFilters).toBe(true);
+    // Default product baseline (2-weeks / SSE-only / listed pay) is not an active filter
+    expect(result.current.hasAnyFilters).toBe(false);
   });
 
   it('clears all filters', async () => {
@@ -62,7 +62,7 @@ describe('useBulletinFilters', () => {
 
     expect(result.current.searchQuery).toBe('');
     expect(result.current.showNonSse).toBe(false);
-    expect(result.current.postedWithin).toBe('any');
+    expect(result.current.postedWithin).toBe('2-weeks');
   });
 
   it('applies suggested defaults', async () => {

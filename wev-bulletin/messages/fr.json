@@ -2,7 +2,8 @@
   "organizations": {
     "title": "Profil de l'organisation",
     "indexTitle": "Organisations",
-    "noActiveListings": "Aucune organisation n'a actuellement d'offres d'emploi actives.",
+    "noOrganizations": "Aucune organisation trouvée.",
+    "showingFiltered": "Vos filtres masquent les {total} organisations disponibles.",
     "loadFailed": "Échec du chargement des organisations. Veuillez réessayer.",
     "searchPlaceholder": "Rechercher des organisations par nom ou description...",
     "searchLabel": "Rechercher des organisations",
@@ -76,7 +77,7 @@
     },
     "salary": {
       "label": "Afficher les emplois sans salaire",
-      "description": "Décochez pour masquer les emplois qui ne listent pas de rémunération"
+      "description": "Lorsque cette option est cochée, les emplois sans rémunération listée sont inclus"
     },
     "postedWithin": {
       "label": "Publié dans",
@@ -91,7 +92,8 @@
         "1Week": "1 sem.",
         "2Weeks": "2 sem.",
         "3Weeks": "3 sem.",
-        "1Month": "1 mois"
+        "1Month": "1 mois",
+        "any": "Tout"
       }
     },
     "workType": {
@@ -151,7 +153,7 @@
       "sseOnly": "SSE : uniquement",
       "allOrgs": "Tous les org.",
       "allJobs": "Tous les emplois",
-      "salaryListedOnly": "Salaire : uniquement listé",
+      "includingNoSalary": "Inclut salaire non listé",
       "search": "Recherche :",
       "work": "Travail :",
       "selected": "sélectionné",

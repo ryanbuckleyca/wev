@@ -97,61 +97,182 @@ function buildIdentityResetSql(tables: readonly string[]): string {
     .join("\n");
 }
 
-async function runSql(sql: string, env: TargetEnv): Promise<void> {
-  const dbUrl =
+/**
+ * Resolve a postgres URL for psql fallback.
+ * Prefer an explicit URL; otherwise build one from project ref + DB password.
+ * Returns the URL (without password) and the password separately to avoid leaking in argv.
+ */
+function resolveDbUrl(
+  allowSynthesized: boolean,
+): { url: string; password?: string } | null {
+  const explicit =
     process.env.SUPABASE_DB_URL?.trim() || process.env.DATABASE_URL?.trim();
+  if (explicit) {
+    try {
+      const parsedUrl = new URL(explicit);
+      // Only process valid postgres URIs to avoid misinterpreting DSNs
+      if (
+        parsedUrl.protocol === "postgres:" ||
+        parsedUrl.protocol === "postgresql:"
+      ) {
+        if (parsedUrl.password) {
+          let password = parsedUrl.password;
+          try {
+            password = decodeURIComponent(password);
+          } catch {
+            // ignore malformed percent encoding
+          }
+          parsedUrl.password = "";
+          return { url: parsedUrl.toString(), password };
+        }
+        return { url: explicit };
+      }
+    } catch {
+      // fallback if URL parsing fails
+    }
 
-  if (dbUrl) {
-    await execFileAsync("psql", [dbUrl, "-v", "ON_ERROR_STOP=1", "-c", sql], {
+    let url = explicit;
+    let password: string | undefined = undefined;
+
+    // Try to extract password from DSN-style connection string
+    const dsnPasswordMatch = url.match(
+      /(?:^|\s)password\s*=\s*('([^']*)'|"([^"]*)"|(\S+))/i,
+    );
+    if (dsnPasswordMatch) {
+      password =
+        dsnPasswordMatch[2] ?? dsnPasswordMatch[3] ?? dsnPasswordMatch[4];
+      url = url.replace(dsnPasswordMatch[0], "").trim();
+    }
+
+    // If it's not a standard postgres URI, we must ensure it doesn't leak credentials.
+    if (
+      url.match(/(?:^|\s)password\s*=/i) ||
+      url.match(/:[^:@]+@/)
+    ) {
+      throw new Error(
+        "Database URL contains potential credentials but could not be safely parsed. " +
+          "Please remove the password from the URL and use PGPASSWORD, or use a standard postgresql:// URI.",
+      );
+    }
+    return { url, password };
+  }
+
+  if (allowSynthesized) {
+    const password = process.env.SUPABASE_DB_PASSWORD?.trim();
+    const projectRef = process.env.SUPABASE_PROJECT_REF?.trim();
+    if (password && projectRef) {
+      return {
+        url: `postgresql://postgres@db.${projectRef}.supabase.co:5432/postgres`,
+        password,
+      };
+    }
+  }
+
+  return null;
+}
+
+async function runSqlViaLocalDocker(sql: string): Promise<void> {
+  await execFileAsync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      "supabase_db_wev",
+      "psql",
+      "-U",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      sql,
+    ],
+    { maxBuffer: 10 * 1024 * 1024 },
+  );
+}
+
+async function runSqlViaPsql(sql: string, env: TargetEnv): Promise<void> {
+  // Local: docker first, then only an *explicit* DB URL — never a synthesized
+  // remote URL from SUPABASE_DB_PASSWORD + SUPABASE_PROJECT_REF.
+  if (env === "local") {
+    try {
+      await runSqlViaLocalDocker(sql);
+      return;
+    } catch {
+      // Fall through to explicit URL only.
+    }
+  }
+
+  const dbConfig = resolveDbUrl(env !== "local");
+  if (dbConfig) {
+    const { url, password } = dbConfig;
+    const execEnv = password
+      ? { ...process.env, PGPASSWORD: password }
+      : process.env;
+    await execFileAsync("psql", [url, "-v", "ON_ERROR_STOP=1", "-c", sql], {
       maxBuffer: 10 * 1024 * 1024,
+      env: execEnv,
     });
     return;
   }
 
   if (env === "local") {
-    await execFileAsync(
-      "docker",
-      [
-        "exec",
-        "-i",
-        "supabase_db_wev",
-        "psql",
-        "-U",
-        "postgres",
-        "-v",
-        "ON_ERROR_STOP=1",
-        "-c",
-        sql,
-      ],
-      { maxBuffer: 10 * 1024 * 1024 },
+    throw new Error(
+      "No local postgres for sequence reset. Start supabase_db_wev or set SUPABASE_DB_URL.",
     );
-    return;
   }
 
   throw new Error(
-    "Set SUPABASE_DB_URL (or DATABASE_URL) to reset identity sequences after restore.",
+    "No postgres access for sequence reset. Set SUPABASE_DB_URL, or SUPABASE_DB_PASSWORD + SUPABASE_PROJECT_REF.",
   );
 }
 
+function sameStringSet(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedB = [...b].sort();
+  return [...a].sort().every((value, index) => value === sortedB[index]);
+}
+
+/**
+ * Advance identity sequences after restoring explicit PKs.
+ * Prefer the service-role RPC (covers RESTORE_IDENTITY_TABLES — keep SQL in sync).
+ * On RPC failure fall back to psql / local docker.
+ */
 async function resetIdentitySequences(
   tables: readonly string[],
   env: TargetEnv,
+  supabase: SupabaseClient,
 ): Promise<void> {
   if (tables.length === 0) return;
 
-  try {
-    await runSql(buildIdentityResetSql(tables), env);
+  if (!sameStringSet(tables, RESTORE_IDENTITY_TABLES)) {
+    throw new Error(
+      `Identity reset asked for [${tables.join(", ")}] but RESTORE_IDENTITY_TABLES is [${RESTORE_IDENTITY_TABLES.join(", ")}]`,
+    );
+  }
+
+  const result = await supabase.rpc("reset_restore_identity_sequences");
+  if (!result.error) {
     console.log(`✅ Reset identity sequences for: ${tables.join(", ")}`);
+    return;
+  }
+  const rpcError = result.error;
+
+  try {
+    await runSqlViaPsql(buildIdentityResetSql(tables), env);
+    console.log(
+      `✅ Reset identity sequences via psql for: ${tables.join(", ")}`,
+    );
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.log(
-      `Warning: Could not reset identity sequences (${tables.join(", ")}): ${message}`,
-    );
-    console.log(
-      "  New inserts may fail with duplicate key until you run e.g.:",
-    );
-    console.log(
-      "  SELECT setval(pg_get_serial_sequence('public.organizations','id'), (SELECT MAX(id) FROM organizations));",
+    const psqlMessage = e instanceof Error ? e.message : String(e);
+    throw new Error(
+      [
+        `Failed to reset identity sequences (${tables.join(", ")}).`,
+        `RPC error: ${rpcError.message}`,
+        `psql error: ${psqlMessage}`,
+        "Fix: apply migration 20260714000000_reset_restore_identity_sequences_rpc.sql,",
+        "or ensure local docker / SUPABASE_DB_URL (or hosted creds for staging) and psql are available.",
+        "When expanding RESTORE_IDENTITY_TABLES, update that migration too.",
+      ].join("\n  "),
     );
   }
 }
@@ -281,7 +402,7 @@ async function main() {
     hasBackup(table, backupFiles),
   );
   if (identityTables.length > 0) {
-    await resetIdentitySequences(identityTables, env);
+    await resetIdentitySequences(identityTables, env, supabase);
   }
 
   if (!hasBackup("esco_skills", backupFiles)) {

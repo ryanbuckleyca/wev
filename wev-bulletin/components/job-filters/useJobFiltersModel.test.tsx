@@ -28,7 +28,7 @@ const mockControls = {
   setSelectedLanguages: vi.fn(),
   showNonSse: true,
   setShowNonSse: vi.fn(),
-  showJobsWithoutSalary: false,
+  showJobsWithoutSalary: true,
   setShowJobsWithoutSalary: vi.fn(),
   postedWithin: '1-week',
   setPostedWithin: vi.fn(),
@@ -136,7 +136,7 @@ describe('useJobFiltersModel', () => {
       result.current.activeFilterChips.find((chip) => chip.id === 'province-Ontario')?.onRemove?.();
     });
 
-    expect(mockControls.setPostedWithin).toHaveBeenCalledWith('any');
+    expect(mockControls.setPostedWithin).toHaveBeenCalledWith('2-weeks');
     expect(mockControls.setSearchQuery).toHaveBeenCalledWith('');
     expect(mockControls.setSelectedProvinces).toHaveBeenCalledWith([]);
   });

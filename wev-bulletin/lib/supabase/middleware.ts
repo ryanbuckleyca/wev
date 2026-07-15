@@ -34,7 +34,13 @@ export async function updateSession(request: NextRequest, initialResponse?: Next
 
   // IMPORTANT: DO NOT REMOVE auth.getUser()
   // Refreshes the auth token and ensures cookies stay in sync.
-  await supabase.auth.getUser();
+  const { error } = await supabase.auth.getUser();
+
+  // After `supabase db reset`, the browser still holds old refresh tokens that
+  // no longer exist. Drop the local session so we stop retrying every request.
+  if (error?.code === 'refresh_token_not_found') {
+    await supabase.auth.signOut({ scope: 'local' });
+  }
 
   return supabaseResponse;
 }

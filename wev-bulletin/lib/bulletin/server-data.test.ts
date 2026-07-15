@@ -4,7 +4,7 @@ import {
   fetchServerMatchData,
   fetchServerBookmarks,
   fetchServerProfile,
-  fetchCachedBulletinQueryPayload,
+  fetchBulletinQueryPayload,
   fetchServerBulletinJobs,
 } from './server-data';
 
@@ -83,7 +83,7 @@ describe('server-data', () => {
     });
   });
 
-  describe('fetchCachedBulletinQueryPayload', () => {
+  describe('fetchBulletinQueryPayload', () => {
     const defaultInput = {
       locale: 'en' as const,
       page: 1,
@@ -99,18 +99,17 @@ describe('server-data', () => {
       works: [],
       langs: [],
       onlySse: false,
-      noSalary: false,
-      userCacheKey: 'test-key',
+      includeUnlistedPay: false,
     };
 
     it('successfully fetches bulletin payload', async () => {
-      const result = await fetchCachedBulletinQueryPayload(defaultInput);
+      const result = await fetchBulletinQueryPayload(defaultInput);
       expect(result).toHaveProperty('jobs');
       expect(result).toHaveProperty('total');
     });
 
     it('applies filters and search', async () => {
-      await fetchCachedBulletinQueryPayload({
+      await fetchBulletinQueryPayload({
         ...defaultInput,
         searchQuery: 'test',
         orgs: ['Org1'],
@@ -130,7 +129,7 @@ describe('server-data', () => {
       });
 
       await expect(
-        fetchCachedBulletinQueryPayload({
+        fetchBulletinQueryPayload({
           ...defaultInput,
           searchQuery: 'engineer',
         }),
@@ -141,7 +140,7 @@ describe('server-data', () => {
       mockQuery.then.mockImplementation((onFulfilled: any) => {
         return Promise.resolve({ data: null, error: { message: 'Jobs Error' } }).then(onFulfilled);
       });
-      await expect(fetchCachedBulletinQueryPayload(defaultInput)).rejects.toThrow('Jobs Error');
+      await expect(fetchBulletinQueryPayload(defaultInput)).rejects.toThrow('Jobs Error');
     });
 
     it('throws error if filter options fetch fails', async () => {
@@ -160,7 +159,7 @@ describe('server-data', () => {
         }
         return Promise.resolve({ data: [], error: null }).then(onFulfilled);
       });
-      await expect(fetchCachedBulletinQueryPayload(defaultInput)).rejects.toThrow('Filter Error');
+      await expect(fetchBulletinQueryPayload(defaultInput)).rejects.toThrow('Filter Error');
     });
   });
 

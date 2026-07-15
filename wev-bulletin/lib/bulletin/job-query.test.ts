@@ -14,6 +14,7 @@ describe('job-query', () => {
       province: 'Île-de-France',
       work_type: 'remote',
       is_sse: true,
+      has_compensation: true,
       date_posted: '2024-01-10',
       min_value: 50000,
       unit_text: 'YEAR',
@@ -30,6 +31,7 @@ describe('job-query', () => {
       province: 'Auvergne-Rhône-Alpes',
       work_type: 'office',
       is_sse: false,
+      has_compensation: false,
       date_posted: '2024-01-01',
       min_value: null,
       wage: '',
@@ -47,7 +49,7 @@ describe('job-query', () => {
     selectedSources: [],
     selectedWorkTypes: [],
     selectedLanguages: [],
-    showNonSse: true,   // true = show all jobs (for most filter tests we want both jobs visible)
+    showNonSse: true, // true = show all jobs (for most filter tests we want both jobs visible)
     showJobsWithoutSalary: true,
     postedWithin: 'any',
     now: new Date('2024-01-15').getTime(),
