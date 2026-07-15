@@ -95,7 +95,7 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
     if (!matchesSelection(job.source, filters.selectedSources)) return false;
 
     if (filters.showNonSse === false && !job.is_sse) return false;
-    if (!filters.showJobsWithoutSalary && !job.wage?.trim() && job.min_value == null) return false;
+    if (!filters.showJobsWithoutSalary && job.has_compensation !== true) return false;
 
     if (cutoffMs != null) {
       const postedMs = parseDateMs(job.date_posted);

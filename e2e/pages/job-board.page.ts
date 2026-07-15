@@ -140,6 +140,10 @@ export class JobBoardPage {
     await this.searchInput.fill(query);
   }
 
+  async clearSearch(): Promise<void> {
+    await this.searchFor('');
+  }
+
   async openFilters(): Promise<void> {
     if ((await this.filtersToggle.getAttribute("aria-expanded")) !== "true") {
       await this.filtersToggle.click();

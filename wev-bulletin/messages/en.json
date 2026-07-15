@@ -2,7 +2,8 @@
   "organizations": {
     "title": "Organization Profile",
     "indexTitle": "Organizations",
-    "noActiveListings": "No organizations currently have active job listings.",
+    "noOrganizations": "No organizations found.",
+    "showingFiltered": "Your filters are hiding all {total} available organizations.",
     "loadFailed": "Failed to load organizations. Please try again.",
     "searchPlaceholder": "Search organizations by name or description...",
     "searchLabel": "Search organizations",
@@ -76,7 +77,7 @@
     },
     "salary": {
       "label": "Show jobs without salary",
-      "description": "Uncheck to hide jobs that don't list pay"
+      "description": "When checked, jobs that don't list pay are included"
     },
     "postedWithin": {
       "label": "Posted within",
@@ -91,7 +92,8 @@
         "1Week": "1 wk",
         "2Weeks": "2 wks",
         "3Weeks": "3 wks",
-        "1Month": "1 mo"
+        "1Month": "1 mo",
+        "any": "Any"
       }
     },
     "workType": {
@@ -151,7 +153,7 @@
       "sseOnly": "SSE: only",
       "allOrgs": "All orgs",
       "allJobs": "All jobs",
-      "salaryListedOnly": "Salary: listed only",
+      "includingNoSalary": "Including unlisted pay",
       "search": "Search:",
       "work": "Work:",
       "selected": "selected",

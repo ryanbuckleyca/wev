@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import type { ActiveFilterChip } from '@/components/JobSearch';
+import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
 import {
   buildFilterOptions,
   getAllMunicipalities,
@@ -126,8 +127,8 @@ export function useJobFiltersModel({
     selectedLanguages.length === 0 &&
     isWorkTypesDefault &&
     !showNonSse &&
-    showJobsWithoutSalary &&
-    postedWithin === '2-weeks';
+    !showJobsWithoutSalary &&
+    postedWithin === PRODUCT_DEFAULT_POSTED_WITHIN;
 
   const filteredJobsCountResolved = filteredJobsCount ?? 0;
   const totalJobsCountResolved = totalJobsCount ?? 0;
