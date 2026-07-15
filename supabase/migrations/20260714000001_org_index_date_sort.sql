@@ -147,10 +147,13 @@ BEGIN
     SELECT wb.org_id,
       CASE
         WHEN wb.values_list IS NULL OR array_length(wb.values_list, 1) IS NULL THEN NULL
-        WHEN tw.total_w = 0 THEN 0.0
+        WHEN tw.total_w = 0 THEN NULL
         ELSE LEAST((wb.overlap_num / tw.total_w) + LEAST(wb.shared_count * 0.1, 0.3), 1.0)
       END AS value_score,
-      COALESCE(wb.shared_vals, '{}'::text[]) AS shared_values
+      CASE 
+        WHEN tw.total_w = 0 THEN NULL
+        ELSE COALESCE(wb.shared_vals, '{}'::text[]) 
+      END AS shared_values
     FROM weighted_value_base wb CROSS JOIN total_weight tw
   )
   SELECT
