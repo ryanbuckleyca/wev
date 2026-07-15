@@ -110,15 +110,43 @@ function resolveDbUrl(
   if (explicit) {
     try {
       const parsedUrl = new URL(explicit);
-      if (parsedUrl.password) {
-        const password = decodeURIComponent(parsedUrl.password);
-        parsedUrl.password = "";
-        return { url: parsedUrl.toString(), password };
+      // Only process valid postgres URIs to avoid misinterpreting DSNs
+      if (
+        parsedUrl.protocol === "postgres:" ||
+        parsedUrl.protocol === "postgresql:"
+      ) {
+        if (parsedUrl.password) {
+          const password = decodeURIComponent(parsedUrl.password);
+          parsedUrl.password = "";
+          return { url: parsedUrl.toString(), password };
+        }
+        return { url: explicit };
       }
     } catch {
       // fallback if URL parsing fails
     }
-    return { url: explicit };
+
+    let url = explicit;
+    let password: string | undefined = undefined;
+
+    // Try to extract password from DSN-style connection string
+    const dsnPasswordMatch = url.match(/(?:^|\s)password\s*=\s*('([^']*)'|"([^"]*)"|(\S+))/i);
+    if (dsnPasswordMatch) {
+      password = dsnPasswordMatch[2] ?? dsnPasswordMatch[3] ?? dsnPasswordMatch[4];
+      url = url.replace(dsnPasswordMatch[0], "").trim();
+    }
+
+    // If it's not a standard postgres URI, we must ensure it doesn't leak credentials.
+    if (
+      url.match(/(?:^|\s)password\s*=/i) ||
+      (url.includes(":") && url.includes("@"))
+    ) {
+      throw new Error(
+        "Database URL contains potential credentials but could not be safely parsed. " +
+          "Please remove the password from the URL and use PGPASSWORD, or use a standard postgresql:// URI.",
+      );
+    }
+    return { url, password };
   }
 
   if (allowSynthesized) {
