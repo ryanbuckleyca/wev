@@ -4,6 +4,12 @@ import { execSync } from "node:child_process";
 import { loadTargetEnv } from "./lib/env";
 import { printExecError } from "./lib/error";
 
+/** Default local Supabase DB URL (config.toml db.port = 54322). */
+const LOCAL_DB_URL =
+  process.env.SUPABASE_DB_URL?.trim() ||
+  process.env.DATABASE_URL?.trim() ||
+  "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+
 function main() {
   const target = process.argv[2] || "local";
   const config = loadTargetEnv(target);
@@ -20,7 +26,9 @@ function main() {
   let command = "supabase gen types typescript --schema public";
 
   if (target === "local") {
-    command += " --local";
+    // --db-url talks to local Postgres directly (no Management API login).
+    // Prefer this over --local so seed/typegen works without supabase login.
+    command += ` --db-url "${LOCAL_DB_URL}"`;
   } else {
     const { projectRef } = config;
     if (!projectRef || projectRef === "localhost" || projectRef === "127") {
