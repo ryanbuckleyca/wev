@@ -16,8 +16,7 @@ export const POSTED_WITHIN_DAYS = {
   '1-month': 28,
 } as const;
 
-export const PRODUCT_DEFAULT_POSTED_WITHIN_DAYS =
-  POSTED_WITHIN_DAYS[PRODUCT_DEFAULT_POSTED_WITHIN];
+export const PRODUCT_DEFAULT_POSTED_WITHIN_DAYS = POSTED_WITHIN_DAYS[PRODUCT_DEFAULT_POSTED_WITHIN];
 
 export function bulletinAgeCutoffIso(): string {
   return new Date(Date.now() - BULLETIN_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();

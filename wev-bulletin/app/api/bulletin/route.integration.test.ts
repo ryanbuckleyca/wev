@@ -122,7 +122,9 @@ describe('GET /api/bulletin (handler contract)', () => {
   });
 
   it('maps the nosal param to includeUnlistedPay (default false)', async () => {
-    expect((await capturedInputFor('http://localhost/api/bulletin')).includeUnlistedPay).toBe(false);
+    expect((await capturedInputFor('http://localhost/api/bulletin')).includeUnlistedPay).toBe(
+      false,
+    );
     expect(
       (await capturedInputFor('http://localhost/api/bulletin?nosal=true')).includeUnlistedPay,
     ).toBe(true);
