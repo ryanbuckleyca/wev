@@ -139,7 +139,9 @@ test.describe("Job board", () => {
     await expect(jobBoardPage.jobCards).toHaveCount(
       expectations.secondPageCount,
     );
-    await expect(jobBoardPage.paginationSummary).toContainText("21-25");
+    await expect(jobBoardPage.paginationSummary).toContainText(
+      `21-${expectations.jobCount}`,
+    );
     await expect(jobBoardPage.paginationSummary).toContainText(
       String(expectations.jobCount),
     );
@@ -271,14 +273,13 @@ test.describe("Job board", () => {
     );
   });
 
-  test("hides salaryless jobs when salary filtering is disabled", async ({
+  test("hides salaryless jobs by default; opt-in reveals them", async ({
     jobBoardPage,
     expectations,
   }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
-    await jobBoardPage.setBooleanFilter("salary", false);
-    await jobBoardPage.waitForResultsToUpdate();
+    // Default product baseline already hides unlisted pay.
     await expectVisibleResults(
       jobBoardPage,
       expectations.salaryListedCount,
@@ -292,6 +293,17 @@ test.describe("Job board", () => {
         hasText: expectations.sampleJobs.salarylessVisible,
       }),
     ).toHaveCount(0);
+
+    await jobBoardPage.clearSearch();
+    await jobBoardPage.setBooleanFilter("salary", true);
+    await jobBoardPage.waitForResultsToUpdate();
+    await jobBoardPage.searchFor(expectations.sampleJobs.salarylessVisible);
+    await jobBoardPage.waitForResultsToUpdate();
+    await expect(
+      jobBoardPage.jobCards.filter({
+        hasText: expectations.sampleJobs.salarylessVisible,
+      }),
+    ).toHaveCount(1);
   });
 
   test("reveals non-SSE jobs when the SSE-only filter is disabled", async ({
@@ -300,7 +312,9 @@ test.describe("Job board", () => {
   }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
-    await jobBoardPage.setBooleanFilter("sse", false);
+    // Note: The filter semantics changed from "SSE only" to "Show non-SSE"
+    // Setting to true now means "show non-SSE jobs" (reveals them)
+    await jobBoardPage.setBooleanFilter("sse", true);
     await jobBoardPage.waitForResultsToUpdate();
     await expectVisibleResults(
       jobBoardPage,

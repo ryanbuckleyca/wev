@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useContext } from 'react';
 import { useTranslations } from 'next-intl';
 import Button from '@/components/Button';
 import Chevron from './Chevron';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { CheckOutlined } from '@lineiconshq/free-icons';
+import { BulletinFilterContext } from '@/contexts/BulletinFilterContext';
+import type { JobSortOption } from '@/lib/bulletin/job-query';
 
-type SortOption =
+export type SortOption =
   | 'date-desc'
   | 'date-asc'
   | 'match-desc'
@@ -13,20 +15,75 @@ type SortOption =
   | 'skill-match-desc'
   | 'salary-desc'
   | 'salary-asc'
-  | 'org-asc';
+  | 'org-asc'
+  | 'org-desc';
 
-import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
+export interface SortOptionDef {
+  value: SortOption | string;
+  label: string;
+  group?: string;
+}
 
 interface SortDropdownProps {
   /** When false, hide the 'Best match' option (requires being logged in) */
   showMatchOption?: boolean;
+  /** Override the full list of sort options. */
+  options?: SortOptionDef[];
+  /** Restrict visible options to this subset (matched by value). */
+  optionValues?: SortOption[];
 }
 
-export default function SortDropdown({ showMatchOption }: SortDropdownProps) {
-  const { sortBy, setSortBy: onChange } = useBulletinFilterContext();
+/** Controlled mode — caller manages sort state explicitly (e.g. org index). */
+interface ControlledProps extends SortDropdownProps {
+  sortBy: string;
+  onChange: (value: string) => void;
+}
+
+/**
+ * Context-driven mode — reads from/writes to BulletinFilterContext.
+ * Must be rendered inside a BulletinFilterProvider.
+ */
+interface ContextDrivenProps extends SortDropdownProps {
+  sortBy?: never;
+  onChange?: never;
+}
+
+type Props = ControlledProps | ContextDrivenProps;
+
+/**
+ * Sort dropdown.
+ *
+ * Two usage modes:
+ * 1. **Controlled** — pass `sortBy` + `onChange` explicitly (e.g. org index page).
+ * 2. **Context-driven** — omit both; reads from/writes to BulletinFilterContext.
+ *    Requires this component to be rendered inside a BulletinFilterProvider.
+ */
+export default function SortDropdown({
+  showMatchOption,
+  sortBy: propsSortBy,
+  onChange: propsOnChange,
+  options: propsOptions,
+  optionValues,
+}: Props) {
+  // Context is optional — controlled callers (e.g. org index) pass sortBy+onChange directly.
+  // Context-driven callers (e.g. BulletinPageView inside BulletinFilterProvider) omit them.
+  const context = useContext(BulletinFilterContext);
+
+  const isControlled = propsSortBy !== undefined || propsOnChange !== undefined;
+
+  if (process.env.NODE_ENV !== 'production' && !isControlled && !context) {
+    throw new Error(
+      'SortDropdown: must be rendered inside a BulletinFilterProvider when sortBy/onChange are not provided.',
+    );
+  }
+
+  const sortBy = propsSortBy ?? context?.sortBy ?? '';
+  const onChange: (value: string) => void =
+    propsOnChange ?? (context ? (v) => void context.setSortBy(v as JobSortOption) : () => {});
+
   const t = useTranslations();
 
-  const OPTIONS: { value: SortOption; label: string; group?: string }[] = [
+  const OPTIONS: SortOptionDef[] = propsOptions ?? [
     { value: 'date-desc', label: t('sort.newestFirst'), group: 'date' },
     { value: 'date-asc', label: t('sort.oldestFirst'), group: 'date' },
     { value: 'match-desc', label: t('sort.bestMatch'), group: 'match' },
@@ -35,7 +92,9 @@ export default function SortDropdown({ showMatchOption }: SortDropdownProps) {
     { value: 'salary-desc', label: t('sort.salaryHighToLow'), group: 'salary' },
     { value: 'salary-asc', label: t('sort.salaryLowToHigh'), group: 'salary' },
     { value: 'org-asc', label: t('sort.orgAZ'), group: 'org' },
+    { value: 'org-desc', label: t('sort.orgZA'), group: 'org' },
   ];
+
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -50,8 +109,16 @@ export default function SortDropdown({ showMatchOption }: SortDropdownProps) {
   }, [open]);
 
   const label = OPTIONS.find((o) => o.value === sortBy)?.label ?? t('sort.newestFirst');
-  const optionsToShow =
-    showMatchOption === false ? OPTIONS.filter((o) => !o.group || o.group !== 'match') : OPTIONS;
+
+  const valueSet = optionValues ? new Set<string>(optionValues) : null;
+  const optionsToShow = OPTIONS.filter((option) => {
+    if (valueSet) {
+      // Caller-provided allowlist is authoritative — do not also hide match
+      // options via showMatchOption (that gate is for the default full job menu).
+      return valueSet.has(option.value);
+    }
+    return showMatchOption !== false || option.group !== 'match';
+  });
 
   return (
     <div ref={rootRef} className="sort-dropdown relative z-50">

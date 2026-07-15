@@ -1,0 +1,10 @@
+<h2>You already have an account</h2>
+
+<p>
+  Someone tried to sign up with this email. Use this link to sign in instead.
+</p>
+<p>
+  <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=magiclink"
+    >Sign in</a
+  >
+</p>

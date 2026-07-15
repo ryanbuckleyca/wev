@@ -75,15 +75,18 @@ function extractDefinitionsSchema(spec: Record<string, unknown>): string {
 }
 
 function findDatamodelCodegen(): string | null {
-  const venvPath = path.join(
-    process.cwd(),
-    "wev-scraper",
-    "venv",
-    "bin",
-    "datamodel-codegen",
-  );
-  if (fs.existsSync(venvPath)) {
-    return venvPath;
+  const candidates = [
+    path.join(
+      process.cwd(),
+      "wev-scraper",
+      ".venv",
+      "bin",
+      "datamodel-codegen",
+    ),
+    path.join(process.cwd(), "wev-scraper", "venv", "bin", "datamodel-codegen"),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
   }
   try {
     execSync("which datamodel-codegen", { stdio: "ignore" });

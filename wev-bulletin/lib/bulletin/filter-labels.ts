@@ -1,5 +1,10 @@
 type TranslateFn = (key: string) => string;
 
+export function labelize(label: string): string {
+  const s = label.replace(/_/g, ' ').trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : label;
+}
+
 export const JOB_LANGUAGE_VALUES = ['en', 'fr', 'bilingual'] as const;
 
 export function getWorkTypeLabel(workType: string, t: TranslateFn): string {

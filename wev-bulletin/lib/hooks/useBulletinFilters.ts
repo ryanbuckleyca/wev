@@ -16,6 +16,7 @@ import { normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import { normalizeLanguages } from '@/lib/languages';
 import type { Profile } from '@/lib/supabase/profiles';
 import { useProfileFilterDefaults } from './useProfileFilterDefaults';
+import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
 import {
   JOB_SORT_OPTIONS,
   POSTED_WITHIN_FILTER_OPTIONS,
@@ -44,8 +45,8 @@ export interface BulletinFilterControls {
   setSelectedWorkTypes: QueryStateSetter<string[]>;
   selectedLanguages: string[];
   setSelectedLanguages: QueryStateSetter<string[]>;
-  showOnlySse: boolean;
-  setShowOnlySse: QueryStateSetter<boolean>;
+  showNonSse: boolean;
+  setShowNonSse: QueryStateSetter<boolean>;
   showJobsWithoutSalary: boolean;
   setShowJobsWithoutSalary: QueryStateSetter<boolean>;
   postedWithin: PostedWithinSelection;
@@ -147,14 +148,15 @@ export function useBulletinFilters(
     },
     [setLangQuery],
   );
-  const [showOnlySse, setShowOnlySse] = useQueryState('sse', parseAsBoolean.withDefault(true));
+  // showNonSse defaults to false → SSE-only view by default, without an active filter
+  const [showNonSse, setShowNonSse] = useQueryState('nonSse', parseAsBoolean.withDefault(false));
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState(
     'salary',
-    parseAsBoolean.withDefault(true),
+    parseAsBoolean.withDefault(false),
   );
   const [postedWithin, setPostedWithin] = useQueryState(
     'posted',
-    parseAsStringLiteral(POSTED_WITHIN_FILTER_OPTIONS).withDefault('2-weeks'),
+    parseAsStringLiteral(POSTED_WITHIN_FILTER_OPTIONS).withDefault(PRODUCT_DEFAULT_POSTED_WITHIN),
   );
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
@@ -265,7 +267,7 @@ export function useBulletinFilters(
       selectedSources,
       selectedWorkTypes,
       selectedLanguages,
-      showOnlySse,
+      showNonSse,
       showJobsWithoutSalary,
       postedWithin,
     }),
@@ -278,7 +280,7 @@ export function useBulletinFilters(
       selectedSources,
       selectedWorkTypes,
       selectedLanguages,
-      showOnlySse,
+      showNonSse,
       showJobsWithoutSalary,
       postedWithin,
     ],
@@ -291,6 +293,8 @@ export function useBulletinFilters(
     return hasSameSelections(profileWorkTypes, normalizedSelectedWorkTypes);
   }, [normalizedSelectedWorkTypes, profileWorkTypes]);
 
+  // Product defaults (SSE-only, hide jobs without salary, 2-week window) are not
+  // "active filters". Deviating from those defaults (including postedWithin=any) is.
   const hasAnyFilters =
     !!searchQuery ||
     selectedOrganizations.length > 0 ||
@@ -300,9 +304,9 @@ export function useBulletinFilters(
     selectedSources.length > 0 ||
     selectedWorkTypes.length > 0 ||
     selectedLanguages.length > 0 ||
-    showOnlySse ||
-    !showJobsWithoutSalary ||
-    postedWithin !== 'any';
+    showNonSse ||
+    showJobsWithoutSalary ||
+    postedWithin !== PRODUCT_DEFAULT_POSTED_WITHIN;
 
   // Shared reset: clears every filter field back to its blank/empty value.
   // clearAllFilters and applySuggestedDefaults both call this, then override
@@ -325,34 +329,25 @@ export function useBulletinFilters(
     setSelectedLanguages,
   ]);
 
+  // Restores the SSE/compensation/posted-within product baseline (the "not a
+  // filter" defaults shared by Clear and Suggested).
+  const applyProductBaseline = useCallback(() => {
+    void setShowNonSse(false);
+    void setShowJobsWithoutSalary(false);
+    void setPostedWithin(PRODUCT_DEFAULT_POSTED_WITHIN);
+  }, [setShowNonSse, setShowJobsWithoutSalary, setPostedWithin]);
+
   const clearAllFilters = useCallback(() => {
     resetCommonFilters();
     void setSelectedWorkTypes([]);
-    void setShowOnlySse(false);
-    void setShowJobsWithoutSalary(true);
-    void setPostedWithin('any');
-  }, [
-    resetCommonFilters,
-    setSelectedWorkTypes,
-    setShowOnlySse,
-    setShowJobsWithoutSalary,
-    setPostedWithin,
-  ]);
+    applyProductBaseline();
+  }, [resetCommonFilters, setSelectedWorkTypes, applyProductBaseline]);
 
   const applySuggestedDefaults = useCallback(() => {
     resetCommonFilters();
     void setSelectedWorkTypes(profileWorkTypes);
-    void setShowOnlySse(true);
-    void setShowJobsWithoutSalary(true);
-    void setPostedWithin('2-weeks');
-  }, [
-    resetCommonFilters,
-    profileWorkTypes,
-    setSelectedWorkTypes,
-    setShowOnlySse,
-    setShowJobsWithoutSalary,
-    setPostedWithin,
-  ]);
+    applyProductBaseline();
+  }, [resetCommonFilters, profileWorkTypes, setSelectedWorkTypes, applyProductBaseline]);
 
   return {
     filters,
@@ -372,8 +367,8 @@ export function useBulletinFilters(
     setSelectedWorkTypes,
     selectedLanguages,
     setSelectedLanguages,
-    showOnlySse,
-    setShowOnlySse,
+    showNonSse,
+    setShowNonSse,
     showJobsWithoutSalary,
     setShowJobsWithoutSalary,
     postedWithin,

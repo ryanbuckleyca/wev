@@ -1,4 +1,53 @@
 {
+  "organizations": {
+    "title": "Organization Profile",
+    "indexTitle": "Organizations",
+    "noOrganizations": "No organizations found.",
+    "showingFiltered": "Your filters are hiding all {total} available organizations.",
+    "loadFailed": "Failed to load organizations. Please try again.",
+    "searchPlaceholder": "Search organizations by name or description...",
+    "searchLabel": "Search organizations",
+    "clearSearch": "Clear search",
+    "hideFilters": "Hide filters",
+    "showFilters": "Show filters",
+    "of": "of",
+    "organization": "organization",
+    "organizations": "organizations",
+    "organizationCount": "{count, plural, =0 {No organizations} one {1 organization} other {# organizations}}",
+    "organizationType": "Organization Type",
+    "type": {
+      "nonprofit": "Nonprofit",
+      "cooperative": "Cooperative",
+      "socialenterprise": "Social Enterprise",
+      "government": "Government",
+      "union": "Union",
+      "other": "Other"
+    },
+    "nonprofit": "Nonprofit",
+    "cooperative": "Cooperative",
+    "socialenterprise": "Social Enterprise",
+    "government": "Government",
+    "union": "Union",
+    "other": "Other",
+    "noOrganizationTypes": "No organization types available",
+    "clearAllFilters": "Clear all filters",
+    "showNonSse": "Show non-SSE organizations",
+    "noJobsForOrg": "This organization has no active job listings at the moment.",
+    "jobs": "{count, plural, =0 {No active jobs} one {1 active job} other {# active jobs}}",
+    "website": "Website",
+    "viewProfile": "View organization profile",
+    "noDescription": "No description available.",
+    "visitWebsite": "Visit website",
+    "sseBadgeLabel": "Solidarity Economy Organization",
+    "sseYes": "This is a Solidarity Economy Organization.",
+    "sseNo": "This organization is not tagged as a Solidarity Economy Organization.",
+    "sseLearnMore": "Learn more about SSE",
+    "location": "Location",
+    "description": "About",
+    "orgType": "Type",
+    "missionStatement": "Mission",
+    "values": "Values"
+  },
   "home": {
     "heading": "Bulletin – Job Postings",
     "lastUpdated": "Last updated:",
@@ -20,6 +69,7 @@
     "showFilters": "Filters",
     "clearAllFilters": "Clear all filters",
     "useSuggestedFilters": "Use suggested filters",
+    "showNonSse": "Show non-SSE jobs",
     "sse": {
       "label": "Show only SSE jobs",
       "description": "SSE = Solidarity Economy. We tag SSE jobs based on published principles.",
@@ -27,7 +77,7 @@
     },
     "salary": {
       "label": "Show jobs without salary",
-      "description": "Uncheck to hide jobs that don't list pay"
+      "description": "When checked, jobs that don't list pay are included"
     },
     "postedWithin": {
       "label": "Posted within",
@@ -42,7 +92,8 @@
         "1Week": "1 wk",
         "2Weeks": "2 wks",
         "3Weeks": "3 wks",
-        "1Month": "1 mo"
+        "1Month": "1 mo",
+        "any": "Any"
       }
     },
     "workType": {
@@ -57,12 +108,12 @@
     },
     "province": {
       "label": "Province",
-      "noData": "No province data available. Run the scraper to populate location data."
+      "noData": "No province data available yet."
     },
     "municipality": {
       "label": "Municipality",
       "showingFromSelected": "(showing municipalities from selected provinces)",
-      "noData": "No municipality data available. Run the scraper to populate location data.",
+      "noData": "No municipality data available yet.",
       "selectProvince": "Select a province to see municipalities",
       "profileDefault": "Using your profile location: {city}.",
       "profileOverride": "Profile location: {city}. You can override this filter here.",
@@ -100,7 +151,9 @@
       "posted": "Posted:",
       "sseShort": "SSE",
       "sseOnly": "SSE: only",
-      "salaryListedOnly": "Salary: listed only",
+      "allOrgs": "All orgs",
+      "allJobs": "All jobs",
+      "includingNoSalary": "Including unlisted pay",
       "search": "Search:",
       "work": "Work:",
       "selected": "selected",
@@ -127,7 +180,8 @@
     "skillMatch": "Skills",
     "salaryHighToLow": "Salary desc",
     "salaryLowToHigh": "Salary asc",
-    "orgAZ": "Org A ↔ Z"
+    "orgAZ": "Org A-Z",
+    "orgZA": "Org Z-A"
   },
   "matchDetails": {
     "totalMatch": "Total Match",
@@ -151,8 +205,10 @@
     "of": "of",
     "job": "job",
     "jobs": "jobs",
+    "paginationLabel": "Pagination",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "pageOf": "Page {current} of {total}"
   },
   "jobListings": {
     "loading": "Loading jobs...",
@@ -231,6 +287,8 @@
       "password": "Password",
       "submit": "Create account",
       "submitting": "Creating account...",
+      "requestError": "Something went wrong. Please try again.",
+      "rateLimited": "Too many attempts. Please wait a few minutes and try again.",
       "hasAccount": "Already have an account?",
       "logIn": "Log in",
       "passwordWeak": "Password is too weak. Please choose a stronger password.",
@@ -240,6 +298,7 @@
     "checkEmail": {
       "title": "Check your email",
       "message": "If an account exists for this email, we'll send you a link. Open it to continue.",
+      "signupContinue": "Check your email to continue.",
       "primary": "Send another link",
       "cooldown": "Try again in {seconds}s",
       "error": "We couldn't send another link. Please try again.",
@@ -374,8 +433,8 @@
     "photoUploadSuccess": "Photo uploaded successfully!",
     "photoUploadFailed": "Failed to upload photo",
     "location": "Current City / Region",
-    "locationHint": "Set your preferred location to activate distance-based matching. If you've ranked Location as a value, it carries more weight in your matches.",
-    "locationPriorityCallout": "You've prioritized Location — these preferences carry extra weight in your matches.",
+    "locationHint": "Set your preferred location to activate distance-based matching.",
+    "locationPriorityCallout": "If you've ranked Location as a value, it carries more weight in your matches.",
     "locationSearchError": "Could not load location results. Please try again.",
     "locationSuggestionsLabel": "Location suggestions"
   },
@@ -450,6 +509,7 @@
     "home": "Home",
     "jobs": "Jobs",
     "companies": "Companies",
+    "organizations": "Organizations",
     "about": "About",
     "contact": "Contact"
   },
@@ -462,7 +522,11 @@
     "loading": "Loading...",
     "close": "Close",
     "cancel": "Cancel",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "expand": "expand",
+    "collapse": "collapse",
+    "showMore": "Show more",
+    "showLess": "Show less"
   },
   "ariaLabels": {
     "themeToggle": {
@@ -760,6 +824,84 @@
       "selectedLabel": "Selected",
       "placeholder": "Search for values...",
       "noResults": "No values found"
+    }
+  },
+  "admin": {
+    "organizations": {
+      "listTitle": "Manage Organizations",
+      "createTitle": "Create Organization",
+      "editTitle": "Edit Organization",
+      "createDescription": "Add a new organization to the platform. Organizations can be partner employers that haven't been scraped yet.",
+      "editDescription": "Edit details for {name}",
+      "noOrganizations": "No organizations yet. Create one to get started.",
+      "sseBadge": "SSE",
+      "edit": "Edit",
+      "saving": "Saving...",
+      "valuesHint": "Select up to {max} work values. These appear on the public organization profile.",
+      "fields": {
+        "name": "Organization Name",
+        "slug": "URL Slug",
+        "description": "Description",
+        "missionStatement": "Mission Statement",
+        "website": "Website URL",
+        "location": "Location",
+        "type": "Organization Type",
+        "isSse": "Solidarity Economy Organization",
+        "values": "Core Values"
+      },
+      "placeholders": {
+        "name": "e.g., Centraide Montreal",
+        "slug": "e.g., centraide-montreal",
+        "description": "Brief description of the organization...",
+        "missionStatement": "The organization's mission...",
+        "website": "https://example.org",
+        "location": "Start typing a city…",
+        "selectType": "Select a type...",
+        "values": "Search and select work values"
+      },
+      "locationHint": "City-level only — used for filters and matching. Job postings carry specific work locations.",
+      "columns": {
+        "name": "Name",
+        "slug": "Slug",
+        "type": "Type",
+        "location": "Location",
+        "sse": "SSE",
+        "actions": "Actions"
+      },
+      "actions": {
+        "addNew": "Add Organization",
+        "manage": "Manage Organizations",
+        "create": "Create Organization",
+        "update": "Update Organization",
+        "delete": "Delete Organization",
+        "cancel": "Cancel"
+      },
+      "errors": {
+        "nameRequired": "Organization name is required",
+        "slugRequired": "URL slug is required",
+        "slugInvalid": "Slug can only contain lowercase letters, numbers, and hyphens",
+        "websiteInvalid": "Website must start with http:// or https://",
+        "descriptionTooLong": "Description is too long (max 500 characters)",
+        "missionTooLong": "Mission statement is too long (max 300 characters)",
+        "invalidType": "Please select a valid organization type",
+        "invalidValues": "One or more selected values are not recognized",
+        "tooManyValues": "You can select at most 5 values",
+        "slug_taken": "This slug is already in use",
+        "organization_exists": "An organization with this name and location already exists",
+        "unauthorized": "You must be logged in as an admin to perform this action",
+        "not_found": "Organization not found",
+        "database_error": "A database error occurred. Please try again.",
+        "invalid_slug": "Invalid slug format",
+        "saveFailed": "Failed to save organization. Please try again.",
+        "deleteFailed": "Failed to delete organization. Please try again.",
+        "loadFailed": "Failed to load organizations. Please try again."
+      },
+      "createSuccess": "Organization created successfully",
+      "updateSuccess": "Organization updated successfully",
+      "deleteSuccess": "Organization deleted successfully",
+      "deleteConfirm": "Delete {name}? {count, plural, =0 {No active jobs are linked.} one {1 active job will lose its organization link.} other {# active jobs will lose their organization links.}} Listings stay published.",
+      "deleting": "Deleting...",
+      "slugPreview": "Slug preview: {slug}"
     }
   }
 }

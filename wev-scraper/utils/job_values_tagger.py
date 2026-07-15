@@ -19,10 +19,10 @@ class JobValuesTaggerError(Exception):
 
 
 class JobRatedValue(TypedDict):
-    """A job value with a confidence score."""
+    """A job value with an ordinal rank."""
 
     value: str
-    confidence: int
+    rank: int
 
 
 class JobValuesResult(TypedDict):
@@ -147,7 +147,7 @@ class JobValuesTagger:
 
         values = deduped[:max_values]
         values_rated: list[JobRatedValue] = [
-            {"value": v, "confidence": i + 1} for i, v in enumerate(values)
+            {"value": v, "rank": i + 1} for i, v in enumerate(values)
         ]
 
         return {

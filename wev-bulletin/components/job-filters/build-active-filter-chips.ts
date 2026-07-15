@@ -1,4 +1,5 @@
 import type { ActiveFilterChip } from '@/components/JobSearch';
+import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
 import { getJobLanguageLabel, getWorkTypeLabel } from '@/lib/bulletin/filter-labels';
 import { truncateMiddle } from '@/lib/string-utils';
 import { postedWithinChipOptions, type PostedWithinValue } from './posted-within-options';
@@ -9,7 +10,7 @@ type TranslateFn = (key: string, values?: Record<string, string | number>) => st
 
 export type ActiveFilterChipInputs = {
   postedWithin: PostedWithinValue;
-  showOnlySse: boolean;
+  showNonSse: boolean;
   showJobsWithoutSalary: boolean;
   searchQuery: string;
   selectedWorkTypes: string[];
@@ -20,7 +21,7 @@ export type ActiveFilterChipInputs = {
   selectedSources: string[];
   selectedLanguages: string[];
   onPostedWithinChange: (value: PostedWithinValue) => void;
-  onShowOnlySseChange: (value: boolean) => void;
+  onShowNonSseChange: (value: boolean) => void;
   onShowJobsWithoutSalaryChange: (value: boolean) => void;
   onSearchChange: (value: string) => void;
   onWorkTypesChange: (value: string[]) => void;
@@ -61,8 +62,16 @@ export function buildActiveFilterChips(
 ): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = [];
 
-  if (input.postedWithin !== 'any') {
-    const option = postedWithinChipOptions[input.postedWithin];
+  // Chip only when the user diverges from the product posted-within baseline.
+  if (input.postedWithin !== PRODUCT_DEFAULT_POSTED_WITHIN) {
+    const option =
+      input.postedWithin === 'any'
+        ? {
+            fullKey: 'filters.postedWithin.options.any',
+            shortKey: 'filters.postedWithin.short.any',
+            fallbackShort: 'Any',
+          }
+        : postedWithinChipOptions[input.postedWithin];
     const fullLabel = `${t('filters.chips.posted')} ${t(option.fullKey)}`;
     const shortLabel = getTranslationOrFallback(t, option.shortKey, option.fallbackShort);
 
@@ -70,24 +79,26 @@ export function buildActiveFilterChips(
       id: 'posted-within',
       label: shortLabel,
       title: fullLabel,
-      onRemove: () => input.onPostedWithinChange('any'),
+      onRemove: () => input.onPostedWithinChange(PRODUCT_DEFAULT_POSTED_WITHIN),
     });
   }
 
-  if (input.showOnlySse) {
+  // showNonSse=true means user opted into seeing non-SSE jobs — show a chip so they can remove it
+  if (input.showNonSse) {
     chips.push({
-      id: 'sse',
-      label: getTranslationOrFallback(t, 'filters.chips.sseShort', 'SSE'),
-      title: t('filters.chips.sseOnly'),
-      onRemove: () => input.onShowOnlySseChange(false),
+      id: 'nonSse',
+      label: getTranslationOrFallback(t, 'filters.chips.allJobs', 'All jobs'),
+      title: t('filters.chips.allJobs'),
+      onRemove: () => input.onShowNonSseChange(false),
     });
   }
 
-  if (!input.showJobsWithoutSalary) {
+  // Opted into showing jobs without listed compensation (default hides them).
+  if (input.showJobsWithoutSalary) {
     chips.push({
       id: 'salary',
-      label: t('filters.chips.salaryListedOnly'),
-      onRemove: () => input.onShowJobsWithoutSalaryChange(true),
+      label: t('filters.chips.includingNoSalary'),
+      onRemove: () => input.onShowJobsWithoutSalaryChange(false),
     });
   }
 
