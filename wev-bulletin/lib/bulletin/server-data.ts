@@ -3,10 +3,7 @@ import 'server-only';
 import { supabaseServer } from '@/lib/supabase-server';
 import { createClient } from '@/lib/supabase/server';
 import { PRODUCT_DEFAULT_POSTED_WITHIN } from './constants';
-import {
-  applyBulletinAgeFilter,
-  applyBulletinAvailabilityFilters,
-} from './age-filter';
+import { applyBulletinAgeFilter, applyBulletinAvailabilityFilters } from './age-filter';
 import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
