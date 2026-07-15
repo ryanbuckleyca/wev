@@ -45,20 +45,24 @@ export async function fetchOrganizationIndex(
   const offset = (page - 1) * limit;
   const effectiveSortBy = sortBy ?? (userId ? 'value-match-desc' : 'org-asc');
 
-  const hasFilters =
+  // Product default is SSE-only; that is the baseline universe, not a "filter".
+  // Denominator matches the current SSE scope with no search/geo/type chips.
+  // Unlike the jobs board, org index uses only the hard 28-day bulletin ceiling
+  // (`bulletinAgeCutoffIso`) — not the jobs-board 2-week `postedWithin` default.
+  // See `lib/bulletin/server-data.ts` for the jobs "X of Y" semantics.
+  const hasUserFilters =
     Boolean(searchQuery) ||
-    sseOnly ||
     provinces.length > 0 ||
     municipalities.length > 0 ||
     orgTypes.length > 0;
 
-  // Run main query and unfiltered denominator count in parallel.
+  // Run main query and baseline denominator count in parallel.
   // The denominator call uses p_limit:1 to return exactly one row carrying the
   // total_count scalar subquery result, with minimal data transfer.
   const denominatorParams = {
     min_date: minDate,
     p_search: null,
-    p_sse_only: false,
+    p_sse_only: sseOnly,
     p_provinces: null,
     p_municipalities: null,
     p_org_types: null,
@@ -86,7 +90,7 @@ export async function fetchOrganizationIndex(
 
   const [mainResult, denominatorResult] = await Promise.all([
     mainRpcClient.rpc('get_active_organizations', mainParams),
-    hasFilters
+    hasUserFilters
       ? supabaseServer.rpc('get_active_organizations', denominatorParams)
       : Promise.resolve({ data: null, error: null }),
   ]);
@@ -103,9 +107,9 @@ export async function fetchOrganizationIndex(
   const orgs = mainResult.data;
   const total = orgs && orgs.length > 0 ? Number(orgs[0].total_count) : 0;
 
-  // When filters are active the denominator query gives the unfiltered org count.
-  // When no filters, total IS the unfiltered count.
-  const totalAvailable = hasFilters
+  // When user filters are active the denominator is the baseline for this SSE scope.
+  // When none are active, total IS that baseline count.
+  const totalAvailable = hasUserFilters
     ? denominatorResult.data && denominatorResult.data.length > 0
       ? Number(denominatorResult.data[0].total_count)
       : total
@@ -121,10 +125,6 @@ export async function fetchOrganizationIndex(
     totalAvailable,
   };
 }
-
-// ---------------------------------------------------------------------------
-// getOrganizationBySlug
-// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // getOrganizationBySlug
