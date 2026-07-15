@@ -98,18 +98,38 @@ function buildIdentityResetSql(tables: readonly string[]): string {
 }
 
 /**
- * Resolve a postgres URL for psql fallback (hosted / explicit only).
+ * Resolve a postgres URL for psql fallback.
  * Prefer an explicit URL; otherwise build one from project ref + DB password.
+ * Returns the URL (without password) and the password separately to avoid leaking in argv.
  */
-function resolveDbUrl(): string | null {
+function resolveDbUrl(
+  allowSynthesized: boolean,
+): { url: string; password?: string } | null {
   const explicit =
     process.env.SUPABASE_DB_URL?.trim() || process.env.DATABASE_URL?.trim();
-  if (explicit) return explicit;
+  if (explicit) {
+    try {
+      const parsedUrl = new URL(explicit);
+      if (parsedUrl.password) {
+        const password = decodeURIComponent(parsedUrl.password);
+        parsedUrl.password = "";
+        return { url: parsedUrl.toString(), password };
+      }
+    } catch {
+      // fallback if URL parsing fails
+    }
+    return { url: explicit };
+  }
 
-  const password = process.env.SUPABASE_DB_PASSWORD?.trim();
-  const projectRef = process.env.SUPABASE_PROJECT_REF?.trim();
-  if (password && projectRef) {
-    return `postgresql://postgres:${encodeURIComponent(password)}@db.${projectRef}.supabase.co:5432/postgres`;
+  if (allowSynthesized) {
+    const password = process.env.SUPABASE_DB_PASSWORD?.trim();
+    const projectRef = process.env.SUPABASE_PROJECT_REF?.trim();
+    if (password && projectRef) {
+      return {
+        url: `postgresql://postgres@db.${projectRef}.supabase.co:5432/postgres`,
+        password,
+      };
+    }
   }
 
   return null;
@@ -144,29 +164,25 @@ async function runSqlViaPsql(sql: string, env: TargetEnv): Promise<void> {
     } catch {
       // Fall through to explicit URL only.
     }
-    const explicit =
-      process.env.SUPABASE_DB_URL?.trim() || process.env.DATABASE_URL?.trim();
-    if (explicit) {
-      await execFileAsync(
-        "psql",
-        [explicit, "-v", "ON_ERROR_STOP=1", "-c", sql],
-        {
-          maxBuffer: 10 * 1024 * 1024,
-        },
-      );
-      return;
-    }
+  }
+
+  const dbConfig = resolveDbUrl(env !== "local");
+  if (dbConfig) {
+    const { url, password } = dbConfig;
+    const execEnv = password
+      ? { ...process.env, PGPASSWORD: password }
+      : process.env;
+    await execFileAsync("psql", [url, "-v", "ON_ERROR_STOP=1", "-c", sql], {
+      maxBuffer: 10 * 1024 * 1024,
+      env: execEnv,
+    });
+    return;
+  }
+
+  if (env === "local") {
     throw new Error(
       "No local postgres for sequence reset. Start supabase_db_wev or set SUPABASE_DB_URL.",
     );
-  }
-
-  const dbUrl = resolveDbUrl();
-  if (dbUrl) {
-    await execFileAsync("psql", [dbUrl, "-v", "ON_ERROR_STOP=1", "-c", sql], {
-      maxBuffer: 10 * 1024 * 1024,
-    });
-    return;
   }
 
   throw new Error(
