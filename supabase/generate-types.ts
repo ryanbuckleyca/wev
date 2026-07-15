@@ -15,7 +15,12 @@ function stripPassword(dbUrl: string): { url: string; password?: string } {
     const parsedUrl = new URL(dbUrl);
     if (parsedUrl.protocol === "postgres:" || parsedUrl.protocol === "postgresql:") {
       if (parsedUrl.password) {
-        const password = parsedUrl.password;
+        let password = parsedUrl.password;
+        try {
+          password = decodeURIComponent(password);
+        } catch {
+          // ignore malformed percent encoding
+        }
         parsedUrl.password = "";
         return { url: parsedUrl.toString(), password };
       }
