@@ -61,7 +61,22 @@ $$;
 COMMENT ON FUNCTION public.try_parse_job_date_posted(text) IS
   'Safely parse jobs.date_posted text to timestamptz. Returns NULL for empty or unparseable values.';
 
--- Expression index stored results of the old (broken) IMMUTABLE function; rebuild.
--- Note: REINDEX takes an ACCESS EXCLUSIVE lock. On large jobs tables, prefer a
--- maintenance window, or run REINDEX INDEX CONCURRENTLY outside this migration.
-REINDEX INDEX public.jobs_org_id_parsed_date_posted_idx;
+-- The partial expression index was populated with the OLD (broken) function,
+-- which returned NULL for every row, so the `... IS NOT NULL` predicate excluded
+-- all rows and the index is effectively empty. Postgres does not recompute
+-- expression indexes when an IMMUTABLE function body changes, so rebuild it.
+--
+-- DROP + CREATE INDEX blocks writes during the rebuild but keeps reads available,
+-- which is strictly less disruptive than REINDEX (ACCESS EXCLUSIVE blocks reads
+-- too). On a very large jobs table, skip this and instead rebuild in a
+-- maintenance window with CREATE INDEX CONCURRENTLY (cannot run inside the
+-- migration transaction).
+DROP INDEX IF EXISTS public.jobs_org_id_parsed_date_posted_idx;
+
+CREATE INDEX IF NOT EXISTS jobs_org_id_parsed_date_posted_idx
+  ON public.jobs (organization_id, try_parse_job_date_posted(date_posted))
+  WHERE organization_id IS NOT NULL
+    AND try_parse_job_date_posted(date_posted) IS NOT NULL;
+
+COMMENT ON INDEX jobs_org_id_parsed_date_posted_idx IS
+  'Supports get_active_organizations: JOIN on organization_id + filter by parsed date_posted.';

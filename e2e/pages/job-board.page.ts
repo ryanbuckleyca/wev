@@ -141,7 +141,7 @@ export class JobBoardPage {
   }
 
   async clearSearch(): Promise<void> {
-    await this.searchFor('');
+    await this.searchFor("");
   }
 
   async openFilters(): Promise<void> {

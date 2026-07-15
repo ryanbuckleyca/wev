@@ -329,34 +329,25 @@ export function useBulletinFilters(
     setSelectedLanguages,
   ]);
 
-  const clearAllFilters = useCallback(() => {
-    resetCommonFilters();
-    void setSelectedWorkTypes([]);
+  // Restores the SSE/compensation/posted-within product baseline (the "not a
+  // filter" defaults shared by Clear and Suggested).
+  const applyProductBaseline = useCallback(() => {
     void setShowNonSse(false);
     void setShowJobsWithoutSalary(false);
     void setPostedWithin(PRODUCT_DEFAULT_POSTED_WITHIN);
-  }, [
-    resetCommonFilters,
-    setSelectedWorkTypes,
-    setShowNonSse,
-    setShowJobsWithoutSalary,
-    setPostedWithin,
-  ]);
+  }, [setShowNonSse, setShowJobsWithoutSalary, setPostedWithin]);
+
+  const clearAllFilters = useCallback(() => {
+    resetCommonFilters();
+    void setSelectedWorkTypes([]);
+    applyProductBaseline();
+  }, [resetCommonFilters, setSelectedWorkTypes, applyProductBaseline]);
 
   const applySuggestedDefaults = useCallback(() => {
     resetCommonFilters();
     void setSelectedWorkTypes(profileWorkTypes);
-    void setShowNonSse(false);
-    void setShowJobsWithoutSalary(false);
-    void setPostedWithin(PRODUCT_DEFAULT_POSTED_WITHIN);
-  }, [
-    resetCommonFilters,
-    profileWorkTypes,
-    setSelectedWorkTypes,
-    setShowNonSse,
-    setShowJobsWithoutSalary,
-    setPostedWithin,
-  ]);
+    applyProductBaseline();
+  }, [resetCommonFilters, profileWorkTypes, setSelectedWorkTypes, applyProductBaseline]);
 
   return {
     filters,
