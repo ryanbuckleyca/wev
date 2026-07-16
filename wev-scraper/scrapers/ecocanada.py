@@ -14,14 +14,14 @@ class EcoCanadaScraper(BaseScraper):
     filter_values = ["Ontario", "Quebec"]
 
     def get_listings_url(self, filter_value=None):
-        return "https://ecoworks.eco.ca/jobs"
+        url = "https://ecoworks.eco.ca/jobs"
+        if filter_value:
+            url += f"?location={filter_value}"
+        return url
 
     def open_listings_page(self, page, filter_value=None):
         """Navigate to the main listings page."""
-        url = self.get_listings_url(filter_value)
-        if filter_value:
-            url += f"?location={filter_value}"
-        page.goto(url)
+        page.goto(self.get_listings_url(filter_value))
         page.wait_for_selector(self.listing_selector, state="attached", timeout=30000)
 
     def has_next_page(self, page):
@@ -48,57 +48,63 @@ class EcoCanadaScraper(BaseScraper):
             )
             self.current_page_number += 1
 
+    @staticmethod
+    def _extract_wage(job_data: dict) -> str | None:
+        min_comp = job_data.get("min_compensation")
+        max_comp = job_data.get("max_compensation")
+        currency = (job_data.get("compensation_currency") or "CAD").upper()
+        time_frame = job_data.get("compensation_time_frame") or ""
+        
+        currency_suffix = f"{currency} {time_frame}".strip()
+
+        if min_comp and max_comp:
+            if min_comp == max_comp:
+                return f"${min_comp} {currency_suffix}".strip()
+            return f"${min_comp} - ${max_comp} {currency_suffix}".strip()
+        elif min_comp:
+            return f"${min_comp} {currency_suffix}".strip()
+        elif max_comp:
+            return f"${max_comp} {currency_suffix}".strip()
+        return None
+
+    @staticmethod
+    def _extract_iso_date(job_data: dict, keys: list) -> str | None:
+        for k in keys:
+            date_str = job_data.get(k)
+            if date_str:
+                return str(date_str).split("T")[0]
+        return None
+
+    @staticmethod
+    def _extract_employment_type(job_data: dict) -> str | None:
+        emp_type = job_data.get("employmentType") or (job_data.get("job_type") or {}).get("title")
+        if emp_type:
+            return str(emp_type).replace("_", " ")
+        return None
+
+    def _parse_job_data(self, job_data: dict, listing_url: str) -> dict:
+        emp = job_data.get("employer") or {}
+        return {
+            "job_url": listing_url,
+            "job_title": job_data.get("title"),
+            "organization": emp.get("name"),
+            "description": job_data.get("description"),
+            "wage": self._extract_wage(job_data),
+            "location": job_data.get("location"),
+            "date_posted": self._extract_iso_date(job_data, ["posted_at", "datePosted"]),
+            "close_date": self._extract_iso_date(job_data, ["validThrough"]),
+            "employment_type": self._extract_employment_type(job_data),
+            "listing_url": listing_url,
+        }
+
     def extract_job_fields(self, page, listing_data, index):
         """Extract job fields directly from the JBoard window.job JSON object."""
         job_data = page.evaluate("window.job")
         if not job_data:
             raise Exception("window.job not found on page")
 
-        job_title = job_data.get("title")
-        description = job_data.get("description")
-        
-        emp = job_data.get("employer", {})
-        organization = emp.get("name")
-        
-        location = job_data.get("location")
-        
-        min_comp = job_data.get("min_compensation")
-        max_comp = job_data.get("max_compensation")
-        currency = (job_data.get("compensation_currency") or "CAD").upper()
-        time_frame = job_data.get("compensation_time_frame") or ""
-        
-        wage = None
-        if min_comp and max_comp:
-            wage = f"${min_comp} - ${max_comp} {currency} {time_frame}".strip()
-        elif min_comp:
-            wage = f"${min_comp} {currency} {time_frame}".strip()
-            
-        emp_type = job_data.get("employmentType") or job_data.get("job_type", {}).get("title")
-        if emp_type:
-            emp_type = emp_type.replace("_", " ")
-        
-        date_str = job_data.get("posted_at") or job_data.get("datePosted")
-        if date_str:
-            date_str = date_str.split("T")[0]
-            
-        close_date = job_data.get("validThrough")
-        if close_date:
-            close_date = close_date.split("T")[0]
-
         job_url = listing_data.get("listing_url") or page.url
-
-        fields = {
-            "job_url": job_url,
-            "job_title": job_title,
-            "organization": organization,
-            "description": description,
-            "wage": wage,
-            "location": location,
-            "date_posted": date_str,
-            "close_date": close_date,
-            "employment_type": emp_type,
-            "listing_url": job_url,
-        }
+        fields = self._parse_job_data(job_data, job_url)
 
         job_dict = self.create_job_dict(language=getattr(self, "language", "en"), **fields)
         self.jobs.append(job_dict)
