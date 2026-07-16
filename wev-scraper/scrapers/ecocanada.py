@@ -79,7 +79,7 @@ class EcoCanadaScraper(BaseScraper):
     def _extract_employment_type(job_data: dict) -> str | None:
         emp_type = job_data.get("employmentType") or (job_data.get("job_type") or {}).get("title")
         if emp_type:
-            return str(emp_type).replace("_", " ")
+            return str(emp_type).lower().replace("_", "-").replace(" ", "-")
         return None
 
     def _parse_job_data(self, job_data: dict, listing_url: str) -> dict:
