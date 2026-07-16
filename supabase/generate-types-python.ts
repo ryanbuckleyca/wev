@@ -117,7 +117,13 @@ function generatePydanticModels(schemaPath: string, outputPath: string): void {
       "--input-file-type",
       "jsonschema",
     ],
-    { encoding: "utf-8", stdio: "inherit" },
+    {
+      encoding: "utf-8",
+      stdio: "inherit",
+      // Suppress noisy "format not understood" warnings from datamodel-code-generator
+      // for Postgres-specific types (timestamptz, tsvector, vector, etc.)
+      env: { ...process.env, PYTHONWARNINGS: "ignore" },
+    },
   );
 
   const modelsHeader =
