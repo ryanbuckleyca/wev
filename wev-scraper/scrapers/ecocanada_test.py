@@ -49,3 +49,54 @@ def test_extract_job_fields(page):
     assert job["date_posted"] == "2026-07-15"
     assert job["close_date"] == "2026-07-29"
     assert job["listing_url"] == "https://ecoworks.eco.ca/jobs/123"
+
+def test_extract_wage():
+    # Test min and max
+    assert EcoCanadaScraper._extract_wage({
+        "min_compensation": "60000",
+        "max_compensation": "80000",
+        "compensation_currency": "cad",
+        "compensation_time_frame": "annually"
+    }) == "$60000 - $80000 CAD annually"
+
+    # Test same min and max
+    assert EcoCanadaScraper._extract_wage({
+        "min_compensation": "60000",
+        "max_compensation": "60000",
+        "compensation_currency": "usd",
+        "compensation_time_frame": ""
+    }) == "$60000 USD"
+
+    # Test only max
+    assert EcoCanadaScraper._extract_wage({
+        "max_compensation": "100",
+        "compensation_currency": "cad",
+        "compensation_time_frame": "hourly"
+    }) == "$100 CAD hourly"
+    
+    # Test defaults
+    assert EcoCanadaScraper._extract_wage({
+        "min_compensation": "50000",
+    }) == "$50000 CAD"
+
+def test_extract_iso_date():
+    assert EcoCanadaScraper._extract_iso_date({
+        "datePosted": "2026-07-15T15:08:23.000000Z"
+    }, ["posted_at", "datePosted"]) == "2026-07-15"
+    
+    assert EcoCanadaScraper._extract_iso_date({
+        "some_other_key": "2026-07-15T15:08:23.000000Z"
+    }, ["posted_at"]) is None
+
+def test_extract_employment_type():
+    assert EcoCanadaScraper._extract_employment_type({
+        "employmentType": "FULL_TIME"
+    }) == "FULL TIME"
+    
+    assert EcoCanadaScraper._extract_employment_type({
+        "job_type": {"title": "PART_TIME"}
+    }) == "PART TIME"
+
+    assert EcoCanadaScraper._extract_employment_type({
+        "job_type": None
+    }) is None
