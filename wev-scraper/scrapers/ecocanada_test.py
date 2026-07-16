@@ -91,11 +91,11 @@ def test_extract_iso_date():
 def test_extract_employment_type():
     assert EcoCanadaScraper._extract_employment_type({
         "employmentType": "FULL_TIME"
-    }) == "FULL TIME"
+    }) == "full-time"
     
     assert EcoCanadaScraper._extract_employment_type({
         "job_type": {"title": "PART_TIME"}
-    }) == "PART TIME"
+    }) == "part-time"
 
     assert EcoCanadaScraper._extract_employment_type({
         "job_type": None
