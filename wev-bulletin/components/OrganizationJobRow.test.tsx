@@ -1,14 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@/test-utils';
 import fc from 'fast-check';
 import OrganizationJobRow from './OrganizationJobRow';
 import type { OrgJobPosting } from '@/lib/organizations/types';
-
-// Mock next-intl
-vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => 'en',
-}));
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ user: null }),
@@ -58,7 +52,7 @@ describe('OrganizationJobRow', () => {
 
     render(<OrganizationJobRow job={job} />);
 
-    expect(screen.getByText('filters.workType.hybrid')).toBeInTheDocument();
+    expect(screen.getByText('Hybrid')).toBeInTheDocument();
     expect(screen.getByText('Full-time')).toBeInTheDocument();
   });
 
@@ -83,6 +77,6 @@ describe('OrganizationJobRow', () => {
 
     render(<OrganizationJobRow job={job} />);
 
-    expect(screen.getByText('0/1 skills')).toBeInTheDocument();
+    expect(screen.getByText('1 skill')).toBeInTheDocument();
   });
 });
