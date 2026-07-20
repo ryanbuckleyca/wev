@@ -104,7 +104,12 @@
       "profileDefault": "Préférence du profil utilisée : {types}.",
       "profileOverride": "Préférence du profil : {types}. Vous pouvez remplacer ce filtre ici.",
       "profileLink": "Modifier le profil",
-      "profileReset": "Revenir au profil"
+      "profileReset": "Revenir au profil",
+      "tooltip": {
+        "remote": "Ce poste est entièrement en télétravail.",
+        "hybrid": "Ce poste requiert un mélange de télétravail et de travail sur place.",
+        "office": "Ce poste requiert un travail sur place."
+      }
     },
     "province": {
       "label": "Province",
@@ -187,6 +192,8 @@
     "totalMatch": "Correspondance totale",
     "values": "Valeurs",
     "skills": "Compétences",
+    "valueNoun": "{count, plural, =1 {valeur} other {valeurs}}",
+    "skillNoun": "{count, plural, =1 {compétence} other {compétences}}",
     "location": "Localisation",
     "breakdown": "Répartition : Valeurs 55% • Compétences 35% • Type de travail 5% • Localisation 5%",
     "weightsNote": "Les pondérations sont ajustées lorsque certaines signaux manquent.",

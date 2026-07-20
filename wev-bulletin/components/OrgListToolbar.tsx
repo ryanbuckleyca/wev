@@ -8,7 +8,7 @@ type OrgListToolbarProps = {
   /** Count label (or a simple skeleton while loading). */
   countContent: ReactNode;
   sortBy: string;
-  onSortChange: (value: string) => void;
+  onSortChange?: (value: string) => void;
   /** When true, sort control is shown but not interactive (route loading shell). */
   sortDisabled?: boolean;
 };
@@ -28,7 +28,7 @@ export default function OrgListToolbar({
       <div className={sortDisabled ? 'pointer-events-none opacity-50' : undefined}>
         <SortDropdown
           sortBy={sortBy}
-          onChange={sortDisabled ? () => {} : onSortChange}
+          onChange={sortDisabled || !onSortChange ? () => {} : onSortChange}
           optionValues={[...ORG_INDEX_SORT_OPTIONS]}
         />
       </div>

@@ -25,6 +25,7 @@ interface JobCardFooterProps {
   selectedWorkTypes?: string[];
   language?: string | null;
   selectedLanguages?: string[];
+  isLoggedIn?: boolean;
 }
 
 export default function JobCardFooter({
@@ -43,6 +44,7 @@ export default function JobCardFooter({
   selectedWorkTypes = [],
   language,
   selectedLanguages = [],
+  isLoggedIn = true,
 }: JobCardFooterProps) {
   const t = useTranslations();
   const tMatch = useTranslations('matchDetails');
@@ -71,22 +73,34 @@ export default function JobCardFooter({
     totalCount: number,
     matchedNames: string,
     unmatchedNames: string,
-    label: string,
+    nounKey: string,
     icon: 'heart' | 'briefcase',
   ): ScrollablePillsItem | null => {
     if (totalCount === 0) return null;
 
-    let tooltip = `${matchedCount} of ${totalCount} ${label} match your profile`;
-    if (matchedNames) {
-      tooltip += `<br/><br/><strong>Matched:</strong> ${matchedNames}`;
+    const noun = tMatch(nounKey, { count: totalCount });
+
+    let tooltip = '';
+
+    if (isLoggedIn) {
+      tooltip = `${matchedCount} of ${totalCount} ${noun} match your profile`;
+      if (matchedNames) {
+        tooltip += `<br/><br/><strong>Matched:</strong> ${matchedNames}`;
+      }
+      if (unmatchedNames) {
+        tooltip += `<br/><br /><strong>Unmatched:</strong> ${unmatchedNames}`;
+      }
+    } else {
+      tooltip = `Includes ${totalCount} ${noun}`;
+      if (unmatchedNames) {
+        tooltip += `<br/><br /><strong>${noun.charAt(0).toUpperCase() + noun.slice(1)}:</strong> ${unmatchedNames}`;
+      }
     }
-    if (unmatchedNames) {
-      tooltip += `<br/><br /><strong>Unmatched:</strong> ${unmatchedNames}`;
-    }
+
     tooltip += `<br/><br/><em>Click > to expand details</em>`;
 
     return {
-      label: `${matchedCount}/${totalCount} ${label}`,
+      label: isLoggedIn ? `${matchedCount}/${totalCount} ${noun}` : `${totalCount} ${noun}`,
       tooltip,
       isMatched: matchedCount > 0,
       icon,
@@ -99,9 +113,7 @@ export default function JobCardFooter({
 
     const isMatched = selectedWorkTypes.includes(workType);
     const label = getWorkTypeLabel(workType, t);
-    const tooltip = isMatched
-      ? `${label} matches your current work-style filter.`
-      : `Does not match filter preferences for location.`;
+    const tooltip = t(`filters.workType.tooltip.${workType}`);
 
     return {
       label,
@@ -160,16 +172,13 @@ export default function JobCardFooter({
     .map((skill) => formatSkillLabel(skill).toLowerCase())
     .join(', ');
 
-  const valueSummaryLabel = tMatch('values').toLowerCase();
-  const skillSummaryLabel = tMatch('skills').toLowerCase();
-
   const summaryItems = [
     buildSummaryPill(
       matchedValueCount,
       totalValueCount,
       matchedValueNames,
       unmatchedValueNames,
-      valueSummaryLabel,
+      'valueNoun',
       'heart',
     ),
     buildSummaryPill(
@@ -177,7 +186,7 @@ export default function JobCardFooter({
       totalSkillCount,
       matchedSkillNames,
       unmatchedSkillNames,
-      skillSummaryLabel,
+      'skillNoun',
       'briefcase',
     ),
   ].filter(Boolean) as ScrollablePillsItem[];
