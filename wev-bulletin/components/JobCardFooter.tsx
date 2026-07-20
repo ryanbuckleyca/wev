@@ -81,7 +81,7 @@ export default function JobCardFooter({
     const noun = tMatch(nounKey, { count: totalCount });
 
     let tooltip = '';
-    
+
     if (isLoggedIn) {
       tooltip = `${matchedCount} of ${totalCount} ${noun} match your profile`;
       if (matchedNames) {
@@ -96,7 +96,7 @@ export default function JobCardFooter({
         tooltip += `<br/><br /><strong>${noun.charAt(0).toUpperCase() + noun.slice(1)}:</strong> ${unmatchedNames}`;
       }
     }
-    
+
     tooltip += `<br/><br/><em>Click > to expand details</em>`;
 
     return {
