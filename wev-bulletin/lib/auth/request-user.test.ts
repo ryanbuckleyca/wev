@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getRequestUser } from './request-user';
 
-const mockGetSession = vi.fn();
+const mockGetUser = vi.fn();
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
     auth: {
-      getSession: mockGetSession,
+      getUser: mockGetUser,
     },
   })),
 }));
@@ -18,8 +18,8 @@ describe('getRequestUser', () => {
 
   it('returns failure when Supabase reports an auth error', async () => {
     const authError = new Error('Not authenticated');
-    mockGetSession.mockResolvedValue({
-      data: { session: null },
+    mockGetUser.mockResolvedValue({
+      data: { user: null },
       error: authError,
     });
 
@@ -30,8 +30,8 @@ describe('getRequestUser', () => {
   });
 
   it('returns failure when no user is present', async () => {
-    mockGetSession.mockResolvedValue({
-      data: { session: null },
+    mockGetUser.mockResolvedValue({
+      data: { user: null },
       error: null,
     });
 
@@ -42,8 +42,8 @@ describe('getRequestUser', () => {
   });
 
   it('returns the authenticated user on success', async () => {
-    mockGetSession.mockResolvedValue({
-      data: { session: { user: { id: 'user-1' } } },
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: 'user-1' } },
       error: null,
     });
 

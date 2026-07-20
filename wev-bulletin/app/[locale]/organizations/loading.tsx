@@ -26,7 +26,6 @@ export default async function OrganizationsLoading() {
         <OrgListToolbar
           countContent={<CountPhraseSkeleton className="w-32" />}
           sortBy="org-asc"
-          onSortChange={() => {}}
           sortDisabled
         />
 
