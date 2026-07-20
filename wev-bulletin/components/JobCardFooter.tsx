@@ -25,6 +25,7 @@ interface JobCardFooterProps {
   selectedWorkTypes?: string[];
   language?: string | null;
   selectedLanguages?: string[];
+  isLoggedIn?: boolean;
 }
 
 export default function JobCardFooter({
@@ -43,6 +44,7 @@ export default function JobCardFooter({
   selectedWorkTypes = [],
   language,
   selectedLanguages = [],
+  isLoggedIn = true,
 }: JobCardFooterProps) {
   const t = useTranslations();
   const tMatch = useTranslations('matchDetails');
@@ -76,17 +78,27 @@ export default function JobCardFooter({
   ): ScrollablePillsItem | null => {
     if (totalCount === 0) return null;
 
-    let tooltip = `${matchedCount} of ${totalCount} ${label} match your profile`;
-    if (matchedNames) {
-      tooltip += `<br/><br/><strong>Matched:</strong> ${matchedNames}`;
+    let tooltip = '';
+    
+    if (isLoggedIn) {
+      tooltip = `${matchedCount} of ${totalCount} ${label} match your profile`;
+      if (matchedNames) {
+        tooltip += `<br/><br/><strong>Matched:</strong> ${matchedNames}`;
+      }
+      if (unmatchedNames) {
+        tooltip += `<br/><br /><strong>Unmatched:</strong> ${unmatchedNames}`;
+      }
+    } else {
+      tooltip = `Includes ${totalCount} ${label}`;
+      if (unmatchedNames) {
+        tooltip += `<br/><br /><strong>${label.charAt(0).toUpperCase() + label.slice(1)}:</strong> ${unmatchedNames}`;
+      }
     }
-    if (unmatchedNames) {
-      tooltip += `<br/><br /><strong>Unmatched:</strong> ${unmatchedNames}`;
-    }
+    
     tooltip += `<br/><br/><em>Click > to expand details</em>`;
 
     return {
-      label: `${matchedCount}/${totalCount} ${label}`,
+      label: isLoggedIn ? `${matchedCount}/${totalCount} ${label}` : `${totalCount} ${label}`,
       tooltip,
       isMatched: matchedCount > 0,
       icon,
