@@ -104,7 +104,12 @@
       "profileDefault": "Using your profile preference: {types}.",
       "profileOverride": "Profile preference: {types}. You can override this filter here.",
       "profileLink": "Edit in profile",
-      "profileReset": "Reset to profile"
+      "profileReset": "Reset to profile",
+      "tooltip": {
+        "remote": "This position is fully remote.",
+        "hybrid": "This position requires a mix of remote and on-site work.",
+        "office": "This position requires working on-site."
+      }
     },
     "province": {
       "label": "Province",
@@ -187,6 +192,8 @@
     "totalMatch": "Total Match",
     "values": "Values",
     "skills": "Skills",
+    "valueNoun": "{count, plural, =1 {value} other {values}}",
+    "skillNoun": "{count, plural, =1 {skill} other {skills}}",
     "location": "Location",
     "breakdown": "Breakdown: Values 55% • Skills 35% • Work type 5% • Location 5%",
     "weightsNote": "Weights are adjusted when some signals are missing.",
