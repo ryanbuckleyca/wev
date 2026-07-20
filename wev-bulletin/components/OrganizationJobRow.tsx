@@ -88,6 +88,7 @@ function JobSkillFooter({
         fadeBackground="var(--card)"
         workType={job.work_type as 'remote' | 'hybrid' | 'office' | undefined}
         selectedWorkTypes={profile?.work_types ?? []}
+        isLoggedIn={!!userId}
       />
     </div>
   );

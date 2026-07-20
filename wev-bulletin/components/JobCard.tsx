@@ -172,6 +172,7 @@ export default function JobCard({
             selectedWorkTypes={selectedWorkTypes || []}
             language={job.language}
             selectedLanguages={selectedLanguages || []}
+            isLoggedIn={!!userId}
           />
         </div>
       )}

@@ -69,6 +69,7 @@ export default function OrgValuesMatchFooter({
       showTooltip={Boolean(matchTooltipContent)}
       showMatchLoading={false}
       fadeBackground={fadeBackground}
+      isLoggedIn={isLoggedIn}
     />
   );
 
