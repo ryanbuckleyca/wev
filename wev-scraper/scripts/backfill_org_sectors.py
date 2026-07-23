@@ -122,6 +122,7 @@ def main():
     processed = 0
     updated = 0
     last_id = 0
+    batch_num = 1
     
     while True:
         query = supabase.table("organizations").select("id, name, website, description, mission_statement").is_("sector_id", "null")
@@ -145,7 +146,8 @@ def main():
             
         for i in range(0, len(orgs), args.batch_size):
             batch = orgs[i:i + args.batch_size]
-            logger.info("Processing batch %d (size %d)...", (processed // args.batch_size) + 1, len(batch))
+            logger.info("Processing batch %d (size %d)...", batch_num, len(batch))
+            batch_num += 1
             
             mapping = assessor.assess_batch(batch)
             
