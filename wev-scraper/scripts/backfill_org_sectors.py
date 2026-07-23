@@ -19,18 +19,20 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # Must import settings before anything that uses env vars
-from settings import ensure_env_loaded
+from settings import ensure_env_loaded  # noqa: E402
+
 ensure_env_loaded()
 
-from utils.prod_env import bootstrap_staging_from_argv
+from utils.prod_env import bootstrap_staging_from_argv  # noqa: E402
+
 bootstrap_staging_from_argv(sys.argv, Path(__file__))
 
 # Deferred imports
-from llm.base import LLMProviderError
-from llm.factory import get_sse_provider
-from utils.base_grounded_classifier import BaseGroundedClassifier
-from utils.db import supabase
-from utils.sector_prompts import (
+from llm.base import LLMProviderError  # noqa: E402
+from llm.factory import get_sse_provider  # noqa: E402
+from utils.base_grounded_classifier import BaseGroundedClassifier  # noqa: E402
+from utils.db import supabase  # noqa: E402
+from utils.sector_prompts import (  # noqa: E402
     SECTOR_BATCH_PROMPT_TEMPLATE,
     format_org_chunks,
     get_formatted_sector_taxonomy,
