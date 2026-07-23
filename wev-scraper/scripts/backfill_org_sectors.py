@@ -5,7 +5,7 @@ Fetches organizations with sector_id IS NULL, batches them, and calls a
 targeted LLM prompt to map them to the shared sector taxonomy.
 
 Usage:
-    python scripts/backfill_org_sectors.py [--limit N] [--batch-size B] [--dry-run]
+    python scripts/backfill_org_sectors.py [--limit N] [--batch-size B] [--dry-run] [--sse-only]
 """
 
 import argparse
@@ -27,7 +27,7 @@ bootstrap_staging_from_argv(sys.argv, Path(__file__))
 
 # Deferred imports
 from llm.base import LLMProviderError
-from llm.factory import get_unified_processor
+from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier
 from utils.db import supabase
 from utils.sector_prompts import (
@@ -41,7 +41,7 @@ from utils.sector_prompts import (
 class SectorBatchAssessor(BaseGroundedClassifier):
     def __init__(self):
         super().__init__()
-        self._provider = get_unified_processor()
+        self._provider = get_sse_provider()
         if not self._provider:
             raise RuntimeError("LLM provider unavailable for SectorBatchAssessor")
 
@@ -56,9 +56,9 @@ class SectorBatchAssessor(BaseGroundedClassifier):
         )
 
         try:
-            response_text = self._provider.generate(
+            response_text = self._provider.complete(
                 prompt,
-                system_message="You output only valid JSON. Do not include any text, explanation, or markdown before or after the JSON.",
+                system= "You output only valid JSON. Do not include any text, explanation, or markdown before or after the JSON.",
                 temperature=0.0,
             )
         except LLMProviderError as exc:
@@ -100,11 +100,11 @@ class SectorBatchAssessor(BaseGroundedClassifier):
 
 
 def main():
-    parser = argparse.add_argument_group("Backfill")
     parser = argparse.ArgumentParser(description="Backfill sector_id for organizations")
     parser.add_argument("--limit", type=int, default=None, metavar="N", help="Process at most N orgs")
     parser.add_argument("--batch-size", type=int, default=10, metavar="B", help="Number of orgs per LLM call")
     parser.add_argument("--dry-run", action="store_true", help="Log output but do not update database")
+    parser.add_argument("--sse-only", action="store_true", help="Only process organizations where is_sse is true")
     parser.add_argument("--staging", action="store_true", help="Use staging environment")
     parser.add_argument("--prod", action="store_true", help="Use production environment")
     args = parser.parse_args()
@@ -118,6 +118,8 @@ def main():
     logger.info("Fetching organizations with missing sector_id...")
     
     query = supabase.table("organizations").select("id, name, website, description, mission_statement").is_("sector_id", "null")
+    if args.sse_only:
+        query = query.eq("is_sse", True)
     if args.limit:
         query = query.limit(args.limit)
     
