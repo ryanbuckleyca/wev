@@ -23,6 +23,7 @@ from llm.base import LLMProviderError
 from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
+from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
 from utils.slug import generate_slug
 from utils.location_parser import parse_address_with_geocodio
 from utils.sse_prompts import (
@@ -56,6 +57,7 @@ _JSON_FIELDS = f"""{{
   "description": "Brief organization description, max {_ORG_DESCRIPTION_MAX_CHARS} characters — must fit without being cut off, or null",
   "mission_statement": "Organization mission/purpose statement, max {_ORG_MISSION_MAX_CHARS} characters — must fit without being cut off, or null",
   "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null",
+  "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
   "values_raw": "Organization values and principles if found on their website, max 1000 characters — must fit without being cut off, or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
   "sse_rating": "strong_yes or weak_yes or no",
@@ -85,6 +87,9 @@ ORGANIZATION DATA:
 Return a JSON object with exactly these fields:
 {json_fields}
 
+ALLOWED SECTORS for the "sector_id" field:
+{sector_taxonomy_formatted}
+
 ALLOWED VALUES for the "values" field (use ONLY labels from this list):
 {taxonomy_formatted}
 
@@ -111,6 +116,7 @@ class AssessedOrgResult(TypedDict):
     description: str | None
     mission_statement: str | None
     type: str | None
+    sector_id: str | None
     values_raw: str | None
     values: List[str]
     sse_rating: str
@@ -150,6 +156,7 @@ def _build_assessment_prompt(
         job_title=job_title,
         description=description[:_PROMPT_DESC_MAX_CHARS],
         json_fields=_JSON_FIELDS,
+        sector_taxonomy_formatted=get_formatted_sector_taxonomy(),
         taxonomy_formatted=_format_taxonomy(),
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
         length_limited_field_rules=LENGTH_LIMITED_FIELD_RULES,
@@ -262,6 +269,7 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         description=_parse_text_field(data, "description", _ORG_DESCRIPTION_MAX_CHARS),
         mission_statement=_parse_text_field(data, "mission_statement", _ORG_MISSION_MAX_CHARS),
         type=_normalize_type(data.get("type")),
+        sector_id=data.get("sector_id") if data.get("sector_id") in get_sector_ids_set() else None,
         values_raw=_parse_text_field(data, "values_raw", 1000),
         values=_normalize_values(data.get("values", []), get_work_values_set()),
         sse_rating=_validate_sse_rating(data.get("sse_rating")),
@@ -281,6 +289,7 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
         "description": result["description"],
         "mission_statement": result["mission_statement"],
         "type": result["type"],
+        "sector_id": result["sector_id"],
         "values": result["values_raw"],
         "values_list": result["values"],
         "values_rated": [{"value": v, "rank": i + 1} for i, v in enumerate(result["values"])] if result["values"] else None,
