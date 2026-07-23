@@ -41,6 +41,7 @@ interface CardHeaderProps {
   isExpanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   getTypeLabel: (type: string | null) => string;
+  getSectorLabel: (sectorId: string | null) => string;
 }
 
 function OrganizationCardHeader({
@@ -55,10 +56,12 @@ function OrganizationCardHeader({
   isExpanded,
   onExpandedChange,
   getTypeLabel,
+  getSectorLabel,
 }: CardHeaderProps) {
   const description = org.description || org.mission_statement || noDescriptionLabel;
   const typeLabel = getTypeLabel(org.type);
-  const metadata = [org.location, typeLabel].filter(Boolean).join(' • ');
+  const sectorLabel = getSectorLabel(org.sector_id);
+  const metadata = [org.location, sectorLabel, typeLabel].filter(Boolean).join(' • ');
 
   const shouldTruncate = description.length > DESCRIPTION_PREVIEW_LENGTH;
   const preview = shouldTruncate
@@ -172,8 +175,11 @@ export default function OrganizationCard({
 }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
   const tOrgs = useTranslations('organizations');
+  const tSectors = useTranslations('taxonomy.sectors');
 
   const getTypeLabel = (orgType: string | null) => getOrganizationTypeLabel(orgType, tOrgs) ?? '';
+  const getSectorLabel = (sectorId: string | null) =>
+    sectorId ? tSectors(`${sectorId}.label`) : '';
 
   const hasFooter = Boolean(org.values_list?.length);
 
@@ -191,6 +197,7 @@ export default function OrganizationCard({
         isExpanded={isExpanded}
         onExpandedChange={setIsExpanded}
         getTypeLabel={getTypeLabel}
+        getSectorLabel={getSectorLabel}
       />
 
       <Collapsible isOpen={isExpanded}>

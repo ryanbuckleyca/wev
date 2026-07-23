@@ -1,4 +1,41 @@
 {
+  "taxonomy": {
+    "sectors": {
+      "agriculture-food-systems": {
+        "label": "Agriculture & Food Systems"
+      },
+      "arts-culture-information": {
+        "label": "Arts, Culture & Information"
+      },
+      "care-health-social-services": {
+        "label": "Care, Health & Social Services"
+      },
+      "education-knowledge": {
+        "label": "Education & Knowledge"
+      },
+      "environment-circular-economy": {
+        "label": "Environment & Circular Economy"
+      },
+      "financial-insurance-services": {
+        "label": "Financial & Insurance Services"
+      },
+      "housing-collective-real-estate": {
+        "label": "Housing & Collective Real Estate"
+      },
+      "manufacturing-production": {
+        "label": "Manufacturing & Production"
+      },
+      "retail-consumer-goods": {
+        "label": "Retail & Consumer Goods"
+      },
+      "technology-digital-infrastructure": {
+        "label": "Technology & Digital Infrastructure"
+      },
+      "community-civic-infrastructure": {
+        "label": "Community & Civic Infrastructure"
+      }
+    }
+  },
   "organizations": {
     "title": "Organization Profile",
     "indexTitle": "Organizations",
@@ -46,7 +83,9 @@
     "description": "About",
     "orgType": "Type",
     "missionStatement": "Mission",
-    "values": "Values"
+    "values": "Values",
+    "sector": "Sector",
+    "noSector": "Sector not specified"
   },
   "home": {
     "heading": "Bulletin – Job Postings",
@@ -853,6 +892,7 @@
         "website": "Website URL",
         "location": "Location",
         "type": "Organization Type",
+        "sector": "Sector",
         "isSse": "Solidarity Economy Organization",
         "values": "Core Values"
       },
@@ -864,6 +904,7 @@
         "website": "https://example.org",
         "location": "Start typing a city…",
         "selectType": "Select a type...",
+        "selectSector": "Select a sector...",
         "values": "Search and select work values"
       },
       "locationHint": "City-level only — used for filters and matching. Job postings carry specific work locations.",
@@ -891,6 +932,7 @@
         "descriptionTooLong": "Description is too long (max 500 characters)",
         "missionTooLong": "Mission statement is too long (max 300 characters)",
         "invalidType": "Please select a valid organization type",
+        "invalidSector": "Please select a valid sector",
         "invalidValues": "One or more selected values are not recognized",
         "tooManyValues": "You can select at most 5 values",
         "slug_taken": "This slug is already in use",

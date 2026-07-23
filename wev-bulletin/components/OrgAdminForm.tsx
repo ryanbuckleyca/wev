@@ -13,6 +13,7 @@ import ValuesSelector from './profile/values/ValuesSelector';
 import LocationAutocomplete from './profile/LocationAutocomplete';
 import OrgSlugField from './OrgSlugField';
 import OrgTypeSelect from './OrgTypeSelect';
+import OrgSectorSelect from './OrgSectorSelect';
 import {
   createOrganization,
   updateOrganization,
@@ -290,6 +291,15 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
         placeholder={t('placeholders.selectType')}
         typeLabel={orgTypeLabel}
         error={errors.type}
+        disabled={isSubmitting}
+      />
+
+      <OrgSectorSelect
+        value={form.sectorId}
+        onChange={form.setSectorId}
+        label={t('fields.sector')}
+        placeholder={t('placeholders.selectSector')}
+        error={errors.sector_id}
         disabled={isSubmitting}
       />
 
