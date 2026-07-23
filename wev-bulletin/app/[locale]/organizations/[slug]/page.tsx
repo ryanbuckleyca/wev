@@ -34,6 +34,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
   const resolvedSearchParams = await searchParams;
   const t = await getTranslations({ locale, namespace: 'organizations' });
   const tAdmin = await getTranslations({ locale, namespace: 'admin.organizations' });
+  const tSectors = await getTranslations({ locale, namespace: 'taxonomy.sectors' });
 
   const parsedPage =
     typeof resolvedSearchParams.page === 'string' ? parseInt(resolvedSearchParams.page, 10) : 1;
@@ -84,6 +85,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
         editHref={isAdmin ? `/${locale}/admin/organizations/${org.id}/edit` : null}
         editLabel={isAdmin ? tAdmin('edit') : undefined}
         valueMatch={valueMatch}
+        sectorLabel={org.sector_id ? tSectors(`${org.sector_id}.label`) : t('noSector')}
         isLoggedIn={Boolean(user)}
       />
 

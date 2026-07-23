@@ -1,4 +1,41 @@
 {
+  "taxonomy": {
+    "sectors": {
+      "agriculture-food-systems": {
+        "label": "Agriculture et systèmes alimentaires"
+      },
+      "arts-culture-information": {
+        "label": "Arts, culture et information"
+      },
+      "care-health-social-services": {
+        "label": "Soins, santé et services sociaux"
+      },
+      "education-knowledge": {
+        "label": "Éducation et savoir"
+      },
+      "environment-circular-economy": {
+        "label": "Environnement et économie circulaire"
+      },
+      "financial-insurance-services": {
+        "label": "Services financiers et d'assurance"
+      },
+      "housing-collective-real-estate": {
+        "label": "Logement et immobilier collectif"
+      },
+      "manufacturing-production": {
+        "label": "Fabrication et production"
+      },
+      "retail-consumer-goods": {
+        "label": "Commerce de détail et biens de consommation"
+      },
+      "technology-digital-infrastructure": {
+        "label": "Technologie et infrastructure numérique"
+      },
+      "community-civic-infrastructure": {
+        "label": "Infrastructure communautaire et civique"
+      }
+    }
+  },
   "organizations": {
     "title": "Profil de l'organisation",
     "indexTitle": "Organisations",
@@ -46,7 +83,8 @@
     "description": "À propos",
     "orgType": "Type",
     "missionStatement": "Mission",
-    "values": "Valeurs"
+    "values": "Valeurs",
+    "noSector": "Secteur non précisé"
   },
   "home": {
     "heading": "Bulletin – Offres d'emploi",
@@ -839,6 +877,7 @@
         "website": "URL du site web",
         "location": "Emplacement",
         "type": "Type d'organisation",
+        "sector": "Secteur",
         "isSse": "Organisation d'économie solidaire",
         "values": "Valeurs fondamentales"
       },
@@ -850,6 +889,7 @@
         "website": "https://exemple.org",
         "location": "Commencez à taper une ville…",
         "selectType": "Sélectionnez un type...",
+        "selectSector": "Sélectionnez un secteur...",
         "values": "Rechercher et sélectionner des valeurs professionnelles"
       },
       "locationHint": "Niveau ville seulement — utilisé pour les filtres et le jumelage. Les offres d'emploi portent les lieux de travail précis.",
