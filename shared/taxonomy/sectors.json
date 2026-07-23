@@ -1,10 +1,7 @@
 {
   "sectors": [
     {
-      "label": "Agriculture & Food Systems",
-      "label_fr": "Agriculture et systèmes alimentaires",
-      "definition_en": "Organizations engaged in growing, processing, distributing, or securing access to food through cooperative, nonprofit, or solidarity-based models.",
-      "definition_fr": "Organismes engagés dans la culture, la transformation, la distribution ou l'accès à l'alimentation selon des modèles coopératifs, sans but lucratif ou d'économie solidaire.",
+      "id": "agriculture-food-systems",
       "signals_en": ["farm", "farming", "agriculture", "food bank", "food security", "community garden", "food co-op", "urban agriculture", "food processing", "agri-food"],
       "signals_fr": ["ferme", "agriculture", "banque alimentaire", "sécurité alimentaire", "jardin communautaire", "coopérative alimentaire", "agriculture urbaine", "transformation alimentaire", "agroalimentaire"],
       "example_en": "Example: a community-supported agriculture (CSA) co-op, an urban farming nonprofit, or a food bank / food security network.",
@@ -14,10 +11,7 @@
       "term_crosswalk": {"cmc": "Agriculture", "chantier": "Agroalimentaire", "ccednet_buy_social": "Food Security & Agriculture", "ripess": "Food Systems"}
     },
     {
-      "label": "Arts, Culture & Information",
-      "label_fr": "Arts, culture et information",
-      "definition_en": "Organizations working in creative production, media, journalism, cultural preservation, or the stewardship of shared cultural and informational commons.",
-      "definition_fr": "Organismes œuvrant en production créative, médias, journalisme, préservation culturelle ou intendance des biens communs culturels et informationnels partagés.",
+      "id": "arts-culture-information",
       "signals_en": ["arts", "culture", "media", "journalism", "archive", "heritage", "theatre", "gallery", "publishing", "community radio"],
       "signals_fr": ["arts", "culture", "médias", "journalisme", "archives", "patrimoine", "théâtre", "galerie", "édition", "radio communautaire"],
       "example_en": "Example: an artist-run centre, a community radio station, an independent news co-op, or a heritage/archive preservation nonprofit.",
@@ -27,10 +21,7 @@
       "term_crosswalk": {"cmc": "(Included in Community)", "chantier": "Arts et culture; Médias et communication", "ccednet_buy_social": "Arts, Culture & Recreation", "ripess": "Media & Digital Commons"}
     },
     {
-      "label": "Care, Health & Social Services",
-      "label_fr": "Soins, santé et services sociaux",
-      "definition_en": "Provision of physical and mental health care, child and elder care, disability support, and mutual-aid or peer-support services.",
-      "definition_fr": "Prestation de soins de santé physique et mentale, de garde d'enfants et de personnes âgées, de soutien aux personnes handicapées et de services d'entraide.",
+      "id": "care-health-social-services",
       "signals_en": ["health", "care", "clinic", "daycare", "childcare", "elder care", "mental health", "disability support", "home care", "peer support"],
       "signals_fr": ["santé", "soins", "clinique", "garderie", "services de garde", "soins aux aînés", "santé mentale", "soutien aux personnes handicapées", "soins à domicile", "entraide"],
       "example_en": "Example: a health care co-op or community clinic, a childcare co-op, a home care worker co-op, or a peer support network.",
@@ -40,10 +31,7 @@
       "term_crosswalk": {"cmc": "Health", "chantier": "Santé & Services aux personnes", "ccednet_buy_social": "Social, Health & Care Services", "ripess": "Care & Healing"}
     },
     {
-      "label": "Education & Knowledge",
-      "label_fr": "Éducation et savoir",
-      "definition_en": "Institutions and collectives dedicated to formal education, skills training, and knowledge sharing.",
-      "definition_fr": "Institutions et collectifs voués à l'éducation formelle, à la formation professionnelle et au partage des connaissances.",
+      "id": "education-knowledge",
       "signals_en": ["education", "training", "school", "learning", "literacy", "popular education", "library", "workshop", "skills development"],
       "signals_fr": ["éducation", "formation", "école", "apprentissage", "alphabétisation", "éducation populaire", "bibliothèque", "atelier", "perfectionnement"],
       "example_en": "Example: a popular education collective, a training co-op, a community library, or a skills-development nonprofit.",
@@ -53,10 +41,7 @@
       "term_crosswalk": {"cmc": "Education", "chantier": "Formation (Services aux entreprises)", "ccednet_buy_social": "(Included in Employment Services)", "ripess": "Education & Knowledge Sharing"}
     },
     {
-      "label": "Environment & Circular Economy",
-      "label_fr": "Environnement et économie circulaire",
-      "definition_en": "Entities focused on ecological conservation, renewable energy, waste reduction, repair and reuse, and sustainable resource management.",
-      "definition_fr": "Entités vouées à la conservation écologique, aux énergies renouvelables, à la réduction des déchets, à la réparation-réemploi et à la gestion durable des ressources.",
+      "id": "environment-circular-economy",
       "signals_en": ["environment", "conservation", "renewable energy", "recycling", "circular economy", "repair café", "sustainability", "climate", "land trust"],
       "signals_fr": ["environnement", "conservation", "énergie renouvelable", "recyclage", "économie circulaire", "café de réparation", "durabilité", "climat", "fiducie foncière"],
       "example_en": "Example: a renewable energy co-op, a land conservation trust, a repair café / reuse network, or a climate action nonprofit.",
@@ -66,10 +51,7 @@
       "term_crosswalk": {"cmc": "Natural Resources", "chantier": "Environnement", "ccednet_buy_social": "Environment & Circular Economy", "ripess": "Ecology & Energy Transition"}
     },
     {
-      "label": "Financial & Insurance Services",
-      "label_fr": "Services financiers et d'assurance",
-      "definition_en": "Co-operative banking, credit unions, mutual insurance, and alternative or solidarity financing networks.",
-      "definition_fr": "Services bancaires coopératifs, caisses populaires, assurances mutuelles et réseaux de financement alternatif ou solidaire.",
+      "id": "financial-insurance-services",
       "signals_en": ["credit union", "caisse populaire", "mutual insurance", "community loan fund", "solidarity finance", "microfinance", "cooperative bank"],
       "signals_fr": ["caisse populaire", "coopérative de crédit", "assurance mutuelle", "fonds de prêt communautaire", "finance solidaire", "microfinance"],
       "example_en": "Example: a credit union / caisse populaire, a mutual insurer, or a community loan fund.",
@@ -79,10 +61,7 @@
       "term_crosswalk": {"cmc": "Financial; Insurance", "chantier": "Financement", "ccednet_buy_social": "(No direct equivalent)", "ripess": "Alternative Finance & Exchange"}
     },
     {
-      "label": "Housing & Collective Real Estate",
-      "label_fr": "Logement et immobilier collectif",
-      "definition_en": "Provision of affordable housing, land trusts, and collective management of real estate assets.",
-      "definition_fr": "Offre de logement abordable, fiducies foncières et gestion collective d'actifs immobiliers.",
+      "id": "housing-collective-real-estate",
       "signals_en": ["housing co-op", "affordable housing", "land trust", "tenant association", "collective housing", "social housing"],
       "signals_fr": ["coopérative d'habitation", "logement abordable", "fiducie foncière", "association de locataires", "logement collectif", "logement social"],
       "example_en": "Example: a housing cooperative, a community land trust, or a tenant-managed housing association.",
@@ -92,10 +71,7 @@
       "term_crosswalk": {"cmc": "Housing", "chantier": "Immobilier collectif", "ccednet_buy_social": "Housing & Shelter", "ripess": "Housing & Land"}
     },
     {
-      "label": "Manufacturing & Production",
-      "label_fr": "Fabrication et production",
-      "definition_en": "Industrial production, fabrication, and the creation of tangible goods within a democratic or cooperative ownership framework.",
-      "definition_fr": "Production industrielle, fabrication et création de biens matériels dans un cadre de propriété démocratique ou coopérative.",
+      "id": "manufacturing-production",
       "signals_en": ["manufacturing", "fabrication", "production", "worker co-op", "factory", "makers", "artisan production"],
       "signals_fr": ["fabrication", "production", "coopérative de travailleurs", "usine", "artisanat", "production équitable"],
       "example_en": "Example: a worker-owned manufacturing co-op, a fair-trade production collective, or an artisan/maker cooperative.",
@@ -105,10 +81,7 @@
       "term_crosswalk": {"cmc": "(Included in Wholesale/Retail)", "chantier": "Manufacturier", "ccednet_buy_social": "(No direct equivalent)", "ripess": "Production & Distribution"}
     },
     {
-      "label": "Retail & Consumer Goods",
-      "label_fr": "Commerce de détail et biens de consommation",
-      "definition_en": "Distribution and sale of goods through consumer co-operatives and solidarity storefronts.",
-      "definition_fr": "Distribution et vente de biens par l'entremise de coopératives de consommateurs et de commerces solidaires.",
+      "id": "retail-consumer-goods",
       "signals_en": ["consumer co-op", "retail", "grocery co-op", "buying club", "community store"],
       "signals_fr": ["coopérative de consommation", "commerce de détail", "coopérative alimentaire de détail", "club d'achat", "magasin communautaire"],
       "example_en": "Example: a consumer or grocery cooperative, a community-owned general store, or a bulk buying club.",
@@ -118,10 +91,7 @@
       "term_crosswalk": {"cmc": "Wholesale and Retail", "chantier": "Commerce de détail", "ccednet_buy_social": "(No direct equivalent)", "ripess": "(Covered under Distribution)"}
     },
     {
-      "label": "Technology & Digital Infrastructure",
-      "label_fr": "Technologie et infrastructure numérique",
-      "definition_en": "Development of digital commons, platform co-operatives, and IT infrastructure serving community or solidarity-economy needs.",
-      "definition_fr": "Développement de biens communs numériques, de coopératives de plateforme et d'infrastructures TI au service de l'économie communautaire ou solidaire.",
+      "id": "technology-digital-infrastructure",
       "signals_en": ["platform co-op", "open source", "digital commons", "IT", "software co-op", "digital inclusion", "tech collective"],
       "signals_fr": ["coopérative de plateforme", "logiciel libre", "biens communs numériques", "TI", "coopérative de logiciel", "inclusion numérique"],
       "example_en": "Example: a platform cooperative (such as a worker-owned ride-share or freelance platform), an open-source/tech worker collective, or a digital-inclusion nonprofit.",
@@ -131,10 +101,7 @@
       "term_crosswalk": {"cmc": "(No direct equivalent)", "chantier": "TIC", "ccednet_buy_social": "(No direct equivalent)", "ripess": "Media & Digital Commons"}
     },
     {
-      "label": "Community & Civic Infrastructure",
-      "label_fr": "Infrastructure communautaire et civique",
-      "definition_en": "Public services, workforce integration, funeral services, and general community development that don't fit a more specific sector.",
-      "definition_fr": "Services publics, intégration en emploi, services funéraires et développement communautaire général qui ne correspondent pas à un secteur plus précis.",
+      "id": "community-civic-infrastructure",
       "signals_en": ["community development", "workforce integration", "employment services", "civic", "funeral co-op", "public services", "community organizing"],
       "signals_fr": ["développement communautaire", "intégration à l'emploi", "services d'employabilité", "civique", "coopérative funéraire", "services publics", "organisation communautaire"],
       "example_en": "Example: an employment/workforce-integration social enterprise, a funeral services cooperative, or a community economic development corporation (CDEC).",

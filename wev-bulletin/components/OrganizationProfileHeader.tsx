@@ -20,6 +20,7 @@ interface Props {
   editHref?: string | null;
   editLabel?: string;
   valueMatch?: OrgValueMatch | null;
+  sectorLabel?: string | null;
   isLoggedIn?: boolean;
 }
 
@@ -29,6 +30,7 @@ export default function OrganizationProfileHeader({
   editHref,
   editLabel,
   valueMatch = null,
+  sectorLabel = null,
   isLoggedIn = false,
 }: Props) {
   const websiteUrl = safeUrl(org.website);
@@ -70,6 +72,13 @@ export default function OrganizationProfileHeader({
               <div className="flex items-center gap-1.5">
                 <span className="font-medium text-foreground">{t('orgType')}:</span>{' '}
                 {getOrganizationTypeLabel(org.type, t)}
+              </div>
+            )}
+
+            {sectorLabel && (
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium text-foreground">{t('sector', { fallback: 'Sector' })}:</span>{' '}
+                {sectorLabel}
               </div>
             )}
           </div>

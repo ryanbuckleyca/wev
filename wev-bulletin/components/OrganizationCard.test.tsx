@@ -38,6 +38,7 @@ function makeOrg(overrides: Partial<OrgIndexEntry> = {}): OrgIndexEntry {
     location: 'City',
     is_sse: false,
     type: null,
+    sector_id: null,
     values_list: null,
     mission_statement: null,
     active_job_count: 5,

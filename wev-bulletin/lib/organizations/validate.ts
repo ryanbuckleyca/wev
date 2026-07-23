@@ -1,4 +1,5 @@
 import { generateSlug } from '@/lib/slug';
+import { isValidSector } from '@/lib/sectors';
 import { VALUES_LIST } from '@/lib/values';
 import {
   MAX_ORG_DESCRIPTION_LENGTH,
@@ -23,6 +24,7 @@ export interface OrgFormInput {
   lng?: number | null;
   geocode_accuracy_type?: string | null;
   type?: string | null;
+  sector_id?: string | null;
   is_sse?: boolean;
   values_list?: string[] | null;
 }
@@ -96,6 +98,10 @@ export function validateOrgInput(
     return { field: 'type', error: 'invalid_type' };
   }
 
+  if (data.sector_id?.trim() && !isValidSector(data.sector_id)) {
+    return { field: 'sector_id', error: 'invalid_sector' };
+  }
+
   if (data.values_list?.length) {
     const normalized = normalizeOrgValuesList(data.values_list);
     if (!normalized || normalized.length !== data.values_list.length) {
@@ -122,6 +128,7 @@ export interface NormalizedOrgPayload {
   lng: number | null;
   geocode_accuracy_type: string | null;
   type: OrgType | null;
+  sector_id: string | null;
   is_sse: boolean;
   values: string | null;
   values_list: string[] | null;
@@ -181,6 +188,7 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
     website: data.website?.trim() || null,
     ...applyLocationFields(data),
     type: normalizeOrgType(data.type),
+    sector_id: isValidSector(data.sector_id) ? (data.sector_id as string) : null,
     is_sse: isSse,
     ...applyValuesFields(valuesList),
     ...sseFields,
@@ -213,6 +221,7 @@ export function buildOrgUpdateFields(
   }
 
   if (data.type !== undefined) updates.type = normalizeOrgType(data.type);
+  if (data.sector_id !== undefined) updates.sector_id = isValidSector(data.sector_id) ? (data.sector_id as string) : null;
   if (data.values_list !== undefined) {
     const valuesList = normalizeOrgValuesList(data.values_list);
     Object.assign(updates, applyValuesFields(valuesList));
