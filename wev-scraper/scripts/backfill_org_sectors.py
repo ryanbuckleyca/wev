@@ -117,47 +117,53 @@ def main():
 
     logger.info("Fetching organizations with missing sector_id...")
     
-    query = supabase.table("organizations").select("id, name, website, description, mission_statement").is_("sector_id", "null")
-    if args.sse_only:
-        query = query.eq("is_sse", True)
-    if args.limit:
-        query = query.limit(args.limit)
-    
-    # Supabase python client doesn't automatically paginate beyond 1000 without loop, but we will fetch whatever we can
-    # If limit is not set, we'll fetch up to 1000 at a time.
-    response = query.limit(args.limit or 1000).execute()
-    
-    orgs = response.data
-    if not orgs:
-        logger.info("No organizations found missing sector_id.")
-        return
-
-    logger.info("Found %d organizations to process.", len(orgs))
-    
     processed = 0
     updated = 0
+    last_id = 0
     
-    for i in range(0, len(orgs), args.batch_size):
-        batch = orgs[i:i + args.batch_size]
-        logger.info("Processing batch %d/%d (size %d)...", (i // args.batch_size) + 1, (len(orgs) + args.batch_size - 1) // args.batch_size, len(batch))
+    while True:
+        query = supabase.table("organizations").select("id, name, website, description, mission_statement").is_("sector_id", "null")
+        if args.sse_only:
+            query = query.eq("is_sse", True)
         
-        mapping = assessor.assess_batch(batch)
-        
-        for org in batch:
-            org_id = org["id"]
-            if org_id not in mapping:
-                logger.warning("Org ID %d missing from LLM response", org_id)
-                continue
-                
-            sector_id = mapping[org_id]
-            logger.info("Org %d (%s) -> %s", org_id, org.get("name", "Unknown"), sector_id)
+        fetch_limit = 1000
+        if args.limit:
+            remaining = args.limit - processed
+            if remaining <= 0:
+                break
+            fetch_limit = min(remaining, 1000)
             
-            if not args.dry_run:
-                # Update DB
-                supabase.table("organizations").update({"sector_id": sector_id}).eq("id", org_id).execute()
-                updated += 1
+        response = query.order("id").gt("id", last_id).limit(fetch_limit).execute()
+        orgs = response.data
+        
+        if not orgs:
+            if processed == 0:
+                logger.info("No organizations found missing sector_id.")
+            break
+            
+        for i in range(0, len(orgs), args.batch_size):
+            batch = orgs[i:i + args.batch_size]
+            logger.info("Processing batch %d (size %d)...", (processed // args.batch_size) + 1, len(batch))
+            
+            mapping = assessor.assess_batch(batch)
+            
+            for org in batch:
+                org_id = org["id"]
+                if org_id not in mapping:
+                    logger.warning("Org ID %d missing from LLM response", org_id)
+                    continue
+                    
+                sector_id = mapping[org_id]
+                logger.info("Org %d (%s) -> %s", org_id, org.get("name", "Unknown"), sector_id)
                 
-        processed += len(batch)
+                if not args.dry_run:
+                    # Update DB
+                    supabase.table("organizations").update({"sector_id": sector_id}).eq("id", org_id).execute()
+                    updated += 1
+                    
+            processed += len(batch)
+            
+        last_id = orgs[-1]["id"]
         
     logger.info("Done. Processed %d orgs, updated %d orgs.", processed, updated)
 
