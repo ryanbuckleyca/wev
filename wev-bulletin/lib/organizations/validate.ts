@@ -221,7 +221,8 @@ export function buildOrgUpdateFields(
   }
 
   if (data.type !== undefined) updates.type = normalizeOrgType(data.type);
-  if (data.sector_id !== undefined) updates.sector_id = isValidSector(data.sector_id) ? (data.sector_id as string) : null;
+  if (data.sector_id !== undefined)
+    updates.sector_id = isValidSector(data.sector_id) ? (data.sector_id as string) : null;
   if (data.values_list !== undefined) {
     const valuesList = normalizeOrgValuesList(data.values_list);
     Object.assign(updates, applyValuesFields(valuesList));
