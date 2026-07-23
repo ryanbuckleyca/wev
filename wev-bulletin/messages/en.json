@@ -931,6 +931,7 @@
         "descriptionTooLong": "Description is too long (max 500 characters)",
         "missionTooLong": "Mission statement is too long (max 300 characters)",
         "invalidType": "Please select a valid organization type",
+        "invalidSector": "Please select a valid sector",
         "invalidValues": "One or more selected values are not recognized",
         "tooManyValues": "You can select at most 5 values",
         "slug_taken": "This slug is already in use",
