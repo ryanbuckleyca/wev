@@ -84,6 +84,7 @@
     "orgType": "Type",
     "missionStatement": "Mission",
     "values": "Values",
+    "sector": "Sector",
     "noSector": "Sector not specified"
   },
   "home": {

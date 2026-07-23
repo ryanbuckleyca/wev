@@ -179,7 +179,7 @@ export default function OrganizationCard({
 
   const getTypeLabel = (orgType: string | null) => getOrganizationTypeLabel(orgType, tOrgs) ?? '';
   const getSectorLabel = (sectorId: string | null) =>
-    sectorId ? tSectors(`${sectorId}.label`) : tOrgs('noSector');
+    sectorId ? tSectors(`${sectorId}.label`) : '';
 
   const hasFooter = Boolean(org.values_list?.length);
 
