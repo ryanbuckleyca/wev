@@ -57,6 +57,7 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
   );
   const [locationHasCoords, setLocationHasCoords] = useState(initialLocationState.hasCoords);
   const [type, setType] = useState(() => normalizeOrgType(initialValues?.type) || '');
+  const [sectorId, setSectorId] = useState(initialValues?.sector_id || '');
   const [isSse, setIsSse] = useState(initialValues?.is_sse ?? false);
   const [valuesList, setValuesList] = useState<string[]>(initialValues?.values_list ?? []);
   const [valueCutoff, setValueCutoff] = useState(valuesList.length);
@@ -95,6 +96,7 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
       lng: hasCoords ? location!.lng : null,
       geocode_accuracy_type: hasCoords ? 'city' : null,
       type: type || null,
+      sector_id: sectorId || null,
       is_sse: isSse,
       values_list: valuesList,
     };
@@ -107,6 +109,7 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     location,
     locationHasCoords,
     type,
+    sectorId,
     isSse,
     valuesList,
   ]);
@@ -127,6 +130,8 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     setLocationSelection,
     type,
     setType,
+    sectorId,
+    setSectorId,
     isSse,
     setIsSse,
     valuesList,

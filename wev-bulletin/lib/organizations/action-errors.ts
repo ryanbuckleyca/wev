@@ -11,6 +11,7 @@ const VALIDATION_ERROR_KEYS: Record<string, string> = {
   mission_too_long: 'errors.missionTooLong',
   invalid_type: 'errors.invalidType',
   invalid_values: 'errors.invalidValues',
+  invalid_sector: 'errors.invalidSector',
   too_many_values: 'errors.tooManyValues',
 };
 
