@@ -85,7 +85,11 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
         editHref={isAdmin ? `/${locale}/admin/organizations/${org.id}/edit` : null}
         editLabel={isAdmin ? tAdmin('edit') : undefined}
         valueMatch={valueMatch}
-        sectorLabel={org.sector_id ? tSectors(`${org.sector_id}.label`) : null}
+        sectorLabel={
+          org.sector_id && tSectors.has(`${org.sector_id}.label`)
+            ? tSectors(`${org.sector_id}.label`)
+            : null
+        }
         isLoggedIn={Boolean(user)}
       />
 
