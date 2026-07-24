@@ -296,6 +296,7 @@ class Organizations(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     geocode_accuracy_type: Optional[str] = None
+    sector_id: Optional[str] = None
 
 
 class Sources(BaseModel):
