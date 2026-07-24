@@ -20,6 +20,7 @@ export interface OrgIndexEntry {
   location: OrgRecord['location'];
   is_sse: OrgRecord['is_sse'];
   type: OrgRecord['type'];
+  sector_id: OrgRecord['sector_id'];
   values_list: OrgRecord['values_list'];
   // RPC-computed fields
   active_job_count: number;
