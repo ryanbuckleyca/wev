@@ -77,10 +77,7 @@ export default function OrganizationProfileHeader({
 
             {sectorLabel && (
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-foreground">
-                  {t('sector')}:
-                </span>{' '}
-                {sectorLabel}
+                <span className="font-medium text-foreground">{t('sector')}:</span> {sectorLabel}
               </div>
             )}
           </div>
