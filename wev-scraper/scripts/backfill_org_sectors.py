@@ -29,7 +29,7 @@ bootstrap_staging_from_argv(sys.argv, Path(__file__))
 
 # Deferred imports
 from llm.base import LLMProviderError  # noqa: E402
-from llm.factory import get_sse_provider  # noqa: E402
+from llm.factory import get_provider  # noqa: E402
 from utils.base_grounded_classifier import BaseGroundedClassifier  # noqa: E402
 from utils.db import supabase  # noqa: E402
 from utils.sector_prompts import (  # noqa: E402
@@ -43,7 +43,7 @@ from utils.sector_prompts import (  # noqa: E402
 class SectorBatchAssessor(BaseGroundedClassifier):
     def __init__(self):
         super().__init__()
-        self._provider = get_sse_provider()
+        self._provider = get_provider("gemini", model="gemini-2.5-flash-lite")
         if not self._provider:
             raise RuntimeError("LLM provider unavailable for SectorBatchAssessor")
 
