@@ -116,7 +116,7 @@ export default function OrganizationProfileHeader({
             {org.is_sse ? t('sseYes') : t('sseNo')}
           </span>
           <a
-            href="https://en.wikipedia.org/wiki/Social_solidarity_economy"
+            href="https://wikipedia.org/wiki/Solidarity_economy"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline"

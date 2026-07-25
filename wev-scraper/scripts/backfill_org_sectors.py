@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Backfill script to determine sector_id for existing organizations.
 
-Fetches organizations with sector_id IS NULL, batches them, and calls a 
+Fetches organizations with sector_id IS NULL, batches them, and calls a
 targeted LLM prompt to map them to the shared sector taxonomy.
 
 Usage:
@@ -23,9 +23,10 @@ from settings import ensure_env_loaded  # noqa: E402
 
 ensure_env_loaded()
 
-from utils.prod_env import bootstrap_staging_from_argv  # noqa: E402
+from utils.prod_env import bootstrap_prod_from_argv, bootstrap_staging_from_argv  # noqa: E402
 
 bootstrap_staging_from_argv(sys.argv, Path(__file__))
+bootstrap_prod_from_argv(sys.argv, Path(__file__))
 
 # Deferred imports
 from llm.base import LLMProviderError  # noqa: E402
@@ -84,18 +85,20 @@ class SectorBatchAssessor(BaseGroundedClassifier):
         for r in results:
             if not isinstance(r, dict):
                 continue
-            
+
             # The prompt says org_id is provided, but it could be string or int
             raw_org_id = r.get("org_id")
+            if raw_org_id is None:
+                continue
             try:
                 org_id = int(raw_org_id)
             except (TypeError, ValueError):
                 continue
-                
+
             sector_id = r.get("sector_id")
             if sector_id and sector_id not in valid_sectors:
                 sector_id = None
-            
+
             mapping[org_id] = sector_id
 
         return mapping
@@ -118,57 +121,57 @@ def main():
         sys.exit(1)
 
     logger.info("Fetching organizations with missing sector_id...")
-    
+
     processed = 0
     updated = 0
     last_id = 0
     batch_num = 1
-    
+
     while True:
         query = supabase.table("organizations").select("id, name, website, description, mission_statement").is_("sector_id", "null")
         if args.sse_only:
             query = query.eq("is_sse", True)
-        
+
         fetch_limit = 1000
         if args.limit:
             remaining = args.limit - processed
             if remaining <= 0:
                 break
             fetch_limit = min(remaining, 1000)
-            
+
         response = query.order("id").gt("id", last_id).limit(fetch_limit).execute()
         orgs = response.data
-        
+
         if not orgs:
             if processed == 0:
                 logger.info("No organizations found missing sector_id.")
             break
-            
+
         for i in range(0, len(orgs), args.batch_size):
             batch = orgs[i:i + args.batch_size]
             logger.info("Processing batch %d (size %d)...", batch_num, len(batch))
             batch_num += 1
-            
+
             mapping = assessor.assess_batch(batch)
-            
+
             for org in batch:
                 org_id = org["id"]
                 if org_id not in mapping:
                     logger.warning("Org ID %d missing from LLM response", org_id)
                     continue
-                    
+
                 sector_id = mapping[org_id]
                 logger.info("Org %d (%s) -> %s", org_id, org.get("name", "Unknown"), sector_id)
-                
+
                 if not args.dry_run:
                     # Update DB
                     supabase.table("organizations").update({"sector_id": sector_id}).eq("id", org_id).execute()
                     updated += 1
-                    
+
             processed += len(batch)
-            
+
         last_id = orgs[-1]["id"]
-        
+
     logger.info("Done. Processed %d orgs, updated %d orgs.", processed, updated)
 
 if __name__ == "__main__":
