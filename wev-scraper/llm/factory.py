@@ -129,7 +129,7 @@ def get_sse_provider() -> BaseLLMProvider | None:
 
     # Try Gemini first for grounding support
     try:
-        provider = get_provider(name="gemini")  # Uses gemini-2.5-flash
+        provider = get_provider(name="gemini", model="gemini-2.5-flash")  # Uses gemini-2.5-flash
         if provider.is_available():
             return provider
     except Exception:
