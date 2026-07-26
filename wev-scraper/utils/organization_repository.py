@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 import re
 
+from utils.organization_cache import extract_domain
+
 logger = logging.getLogger(__name__)
 
 _LIKE_SPECIAL = re.compile(r"[%_\\]")
@@ -32,13 +34,40 @@ class OrganizationRepository:
         try:
             resp = (
                 self._supabase.table("organizations")
-                .select("id, name, location")
+                .select("id, name, location, website")
                 .ilike("name", _escape_like(name.strip()))
                 .execute()
             )
             return resp.data or []
         except Exception as exc:
             logger.warning("OrganizationRepository: find_by_name failed for %r: %s", name, exc)
+            return []
+
+    def find_by_domain(self, domain: str) -> list[dict]:
+        """Find orgs whose website hostname matches ``domain`` (substring ILIKE).
+
+        Callers should pass a normalized hostname (e.g. ``mindrift.ai``).
+        """
+        cleaned = (domain or "").strip().lower()
+        if not cleaned:
+            return []
+        try:
+            resp = (
+                self._supabase.table("organizations")
+                .select("id, name, location, website")
+                .ilike("website", f"%{_escape_like(cleaned)}%")
+                .execute()
+            )
+            # Post-filter: require the hostname (not path/query) to match.
+            out: list[dict] = []
+            for row in resp.data or []:
+                if extract_domain(row.get("website")) == cleaned:
+                    out.append(row)
+            return out
+        except Exception as exc:
+            logger.warning(
+                "OrganizationRepository: find_by_domain failed for %r: %s", domain, exc
+            )
             return []
 
     def find_by_name_and_location(self, name: str, location: str | None = None) -> int | None:
