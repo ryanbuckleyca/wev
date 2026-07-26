@@ -223,6 +223,7 @@ class BaseFeedScraper:
             "employment_type": fields.get("employment_type"),
             "wage": fields.get("wage"),
             "language": fields.get("language"),
+            "website": fields.get("website") or fields.get("organization_website"),
         })
 
         return job_dict, False

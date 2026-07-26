@@ -84,3 +84,53 @@ def extract_domain(website: str | None) -> str | None:
     if not host or not re.search(r"[a-z0-9]", host):
         return None
     return _WWW_PREFIX.sub("", host) or None
+
+
+# Hosts shared across many unrelated orgs — never use as merge evidence.
+_SHARED_DOMAIN_SUFFIXES = frozenset({
+    "facebook.com",
+    "fb.com",
+    "linkedin.com",
+    "instagram.com",
+    "twitter.com",
+    "x.com",
+    "youtube.com",
+    "tiktok.com",
+    "linktr.ee",
+    "bit.ly",
+    "sites.google.com",
+    "wixsite.com",
+    "wix.com",
+    "squarespace.com",
+    "wordpress.com",
+    "indeed.com",
+    "glassdoor.com",
+    "greenhouse.io",
+    "lever.co",
+    "workable.com",
+    "bamboohr.com",
+    "smartrecruiters.com",
+    "jobvite.com",
+    "icims.com",
+    "myworkdayjobs.com",
+    "dayforcehcm.com",
+    "applytojob.com",
+})
+
+
+def is_shared_domain(domain: str | None) -> bool:
+    """True for social/ATS/hosting hosts that must not drive org identity."""
+    if not domain:
+        return False
+    d = domain.lower().strip(".")
+    if d in _SHARED_DOMAIN_SUFFIXES:
+        return True
+    return any(d.endswith("." + suffix) for suffix in _SHARED_DOMAIN_SUFFIXES)
+
+
+def evidence_domain(website: str | None) -> str | None:
+    """Hostname usable as org-match evidence, or None if missing/shared."""
+    domain = extract_domain(website)
+    if not domain or is_shared_domain(domain):
+        return None
+    return domain

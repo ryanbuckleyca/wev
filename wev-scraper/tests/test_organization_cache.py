@@ -13,7 +13,9 @@ from hypothesis import strategies as st
 from utils.organization_cache import (
     OrganizationCache,
     canonical_location,
+    evidence_domain,
     extract_domain,
+    is_shared_domain,
     make_cache_key,
 )
 
@@ -124,6 +126,18 @@ class TestExtractDomain:
         assert extract_domain(None) is None
         assert extract_domain("") is None
         assert extract_domain("!!!") is None
+
+
+class TestEvidenceDomain:
+    def test_rejects_shared_social_hosts(self):
+        assert is_shared_domain("facebook.com")
+        assert is_shared_domain("m.facebook.com")
+        assert evidence_domain("https://www.facebook.com/some-org") is None
+        assert evidence_domain("https://boards.greenhouse.io/acme") is None
+
+    def test_keeps_employer_hosts(self):
+        assert evidence_domain("https://www.mindrift.ai") == "mindrift.ai"
+        assert not is_shared_domain("mindrift.ai")
 
 
 # ── Property-based tests ──────────────────────────────────────────────────────

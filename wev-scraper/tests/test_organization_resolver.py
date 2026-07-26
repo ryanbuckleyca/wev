@@ -240,6 +240,56 @@ class TestDBMatchPath:
         assert result is None
         repo.insert.assert_not_called()
 
+    def test_domain_only_different_name_does_not_reuse(self):
+        """Job name Acme + mindrift.ai must not attach to Mindrift org."""
+        mindrift = {
+            "id": 107,
+            "name": "Mindrift",
+            "location": "Québec",
+            "website": "https://mindrift.ai",
+        }
+        repo = _make_repo(
+            find_by_name=[],
+            find_by_domain=[mindrift],
+            insert={"id": 99},
+        )
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "Acme Corp",
+            "Toronto",
+            "ON",
+            website="https://mindrift.ai",
+        )
+
+        assert result == 99
+        repo.insert.assert_called_once()
+
+    def test_shared_domain_is_ignored_as_merge_evidence(self):
+        other = {
+            "id": 50,
+            "name": "Other Org",
+            "location": "Toronto ON",
+            "website": "https://facebook.com/other",
+        }
+        repo = _make_repo(
+            find_by_name=[],
+            find_by_domain=[other],
+            insert={"id": 99},
+        )
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "Acme Corp",
+            "Toronto",
+            "ON",
+            website="https://facebook.com/acme",
+        )
+
+        assert result == 99
+        repo.find_by_domain.assert_not_called()
+        repo.insert.assert_called_once()
+
 
 # ── LLM success path ──────────────────────────────────────────────────────────
 

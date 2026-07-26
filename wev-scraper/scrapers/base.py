@@ -562,7 +562,7 @@ class BaseScraper:
         # Extract remaining fields; listing_data values take priority
         fields = {"date_posted": date_str, "job_title": title}
         for name in ("description", "organization", "location", "wage",
-                     "employment_type", "close_date"):
+                     "employment_type", "close_date", "website"):
             fields[name] = (
                 listing_data.get(name)
                 or self._get_field(name, job_page, listing_data)
@@ -1070,6 +1070,7 @@ class BaseScraper:
             "employment_type": kwargs.get("employment_type"),
             "wage": kwargs.get("wage"),
             "language": kwargs.get("language", "en"),
+            "website": kwargs.get("website") or kwargs.get("organization_website"),
         }
 
         # Normalize all fields
