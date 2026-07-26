@@ -8,14 +8,25 @@ from utils.organization_assessment import OrganizationAssessor
 from utils.organization_cache import (
     OrganizationCache,
     canonical_location,
+    extract_domain,
     make_cache_key,
 )
 from utils.organization_repository import OrganizationRepository
-from utils.slug import generate_slug, generate_unique_slug
+from utils.slug import generate_slug, generate_unique_slug, nfkd_to_ascii
 
 logger = logging.getLogger(__name__)
 
 _MAX_SLUG_ATTEMPTS = 10
+
+# Conservative: domain/website agreement is required to auto-merge when
+# multiple same-name candidates exist. Single compatible candidates still reuse.
+MERGE_THRESHOLD = 100
+
+_SCORE_DOMAIN = 100
+_SCORE_NAME = 50
+_SCORE_PROVINCE = 10
+_SCORE_MUNICIPALITY = 5
+_SCORE_DOMAIN_CONFLICT = -100
 
 
 @dataclass
@@ -24,6 +35,7 @@ class JobContext:
     municipality: str | None = None
     province: str | None = None
     location: str | None = None
+    website: str | None = None
     job_title: str = ""
     description: str = ""
     job_id: str | None = None
@@ -52,11 +64,11 @@ def create_resolver(supabase_client=None) -> OrganizationResolver:
 
 
 class OrganizationResolver:
-    """Resolves a job to an organization by name.
+    """Resolves a job to an organization via name + optional domain evidence.
 
-    When exactly one existing organization matches the job's organization name,
-    that org is reused regardless of location.  Ambiguous multi-match cases
-    (same name, multiple rows) fall through to create/assess rather than guessing.
+    Single compatible name match is reused across locations. Multiple candidates
+    are scored; only scores at/above MERGE_THRESHOLD auto-merge. Ambiguous
+    multi-match below threshold does not create another org row.
     """
 
     def __init__(
@@ -85,6 +97,7 @@ class OrganizationResolver:
         municipality: str | None = None,
         province: str | None = None,
         location: str | None = None,
+        website: str | None = None,
         job_title: str = "",
         description: str = "",
         job_id: str | None = None,
@@ -97,6 +110,7 @@ class OrganizationResolver:
             municipality=municipality,
             province=province,
             location=location,
+            website=website,
             job_title=job_title,
             description=description,
             job_id=job_id,
@@ -121,9 +135,16 @@ class OrganizationResolver:
         if cached_id is not None:
             return cached_id
 
-        db_id = self._resolve_via_db(ctx, cache_key)
+        db_id, block_create = self._resolve_via_db(ctx, cache_key)
         if db_id is not None:
             return db_id
+        if block_create:
+            logger.info(
+                "OrganizationResolver: ambiguous name match for raw_name=%r job_id=%s — not creating",
+                ctx.raw_name,
+                ctx.job_id,
+            )
+            return None
 
         canonical_loc = canonical_location(ctx.municipality, ctx.province, ctx.location)
 
@@ -134,13 +155,80 @@ class OrganizationResolver:
 
         return self._resolve_minimal(ctx, cache_key, canonical_loc)
 
-    def _resolve_via_db(self, ctx: JobContext, cache_key: str) -> int | None:
-        candidates = self._repo.find_by_name(ctx.raw_name)
+    def _collect_candidates(self, ctx: JobContext) -> list[dict]:
+        by_id: dict[int, dict] = {}
+        for row in self._repo.find_by_name(ctx.raw_name):
+            by_id[row["id"]] = row
+
+        domain = extract_domain(ctx.website)
+        if domain:
+            for row in self._repo.find_by_domain(domain):
+                by_id.setdefault(row["id"], row)
+
+        return list(by_id.values())
+
+    def _score_organization_match(self, organization: dict, ctx: JobContext) -> int:
+        score = 0
+        job_domain = extract_domain(ctx.website)
+        org_domain = extract_domain(organization.get("website"))
+
+        if job_domain and org_domain:
+            if job_domain == org_domain:
+                score += _SCORE_DOMAIN
+            else:
+                score += _SCORE_DOMAIN_CONFLICT
+
+        org_name = (organization.get("name") or "").strip()
+        if make_cache_key(org_name) == make_cache_key(ctx.raw_name):
+            score += _SCORE_NAME
+
+        org_loc = nfkd_to_ascii(organization.get("location") or "").lower()
+        if ctx.province:
+            province = nfkd_to_ascii(ctx.province).strip().lower()
+            if province and province in org_loc:
+                score += _SCORE_PROVINCE
+        if ctx.municipality:
+            municipality = nfkd_to_ascii(ctx.municipality).strip().lower()
+            if municipality and municipality in org_loc:
+                score += _SCORE_MUNICIPALITY
+
+        return score
+
+    def _domains_conflict(self, organization: dict, ctx: JobContext) -> bool:
+        job_domain = extract_domain(ctx.website)
+        org_domain = extract_domain(organization.get("website"))
+        return bool(job_domain and org_domain and job_domain != org_domain)
+
+    def _resolve_via_db(self, ctx: JobContext, cache_key: str) -> tuple[int | None, bool]:
+        """Return (org_id, block_create).
+
+        block_create=True means name/domain candidates exist but none are safe
+        to merge — caller must not insert another organization row.
+        """
+        candidates = self._collect_candidates(ctx)
+        if not candidates:
+            return None, False
+
         if len(candidates) == 1:
-            org_id = candidates[0]["id"]
+            only = candidates[0]
+            if self._domains_conflict(only, ctx):
+                # Distinct company sharing a lookalike name — allow create.
+                return None, False
+            org_id = only["id"]
             self._cache.set(cache_key, org_id)
-            return org_id
-        return None
+            return org_id, False
+
+        scored = [
+            (c, self._score_organization_match(c, ctx)) for c in candidates
+        ]
+        best, score = max(scored, key=lambda item: item[1])
+        if score >= MERGE_THRESHOLD:
+            org_id = best["id"]
+            self._cache.set(cache_key, org_id)
+            return org_id, False
+
+        # Ambiguous multi-match below threshold — do not create a third row.
+        return None, True
 
     def _llm_resolve(self, ctx: JobContext, cache_key: str, canonical_loc: str) -> int | None:
         row = self._assessor.assess_and_build_row(
@@ -171,6 +259,7 @@ class OrganizationResolver:
             slug_base=generate_slug(ctx.raw_name),
             cache_key=cache_key,
             job_id=ctx.job_id,
+            website=ctx.website,
         )
 
     def _build_and_insert_org(
