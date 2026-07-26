@@ -91,12 +91,6 @@ def location_is_compatible(
     return bool(cand_words & job_words)
 
 
-def make_cache_key(
-    name: str,
-    municipality: str | None,
-    province: str | None,
-    location: str | None = None,
-) -> str:
-    normalized_name = _normalize(name or "")
-    normalized_location = _normalize(canonical_location(municipality, province, location))
-    return f"{normalized_name}|{normalized_location}"
+def make_cache_key(name: str) -> str:
+    """Cache identity is organization name only — location is not part of identity."""
+    return _normalize(name or "")

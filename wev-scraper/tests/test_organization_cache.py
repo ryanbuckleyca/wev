@@ -82,48 +82,30 @@ class TestOrganizationCache:
 
 
 class TestMakeCacheKey:
-    def test_municipality_and_province(self):
-        key = make_cache_key("Centraide Montréal", "Montreal", "QC")
+    def test_normalized_name_only(self):
+        key = make_cache_key("Centraide Montréal")
         # NFKD via nfkd_to_ascii() decomposes é → e, then strips non-ASCII combining chars
-        # "Centraide Montréal" → "Centraide Montreal" → "centraide montreal"
-        # The key must be deterministic regardless of input encoding
-        key2 = make_cache_key("Centraide Montréal", "Montreal", "QC")
-        assert key == key2
+        assert key == "centraide montreal"
 
-    def test_location_used_as_proxy_when_no_municipality(self):
-        """When municipality is None, province or location feeds the cache key."""
-        loc_part = make_cache_key("My Org", None, "QC").split("|", 1)[1]
-        assert "qc" in loc_part
+    def test_location_is_not_part_of_identity(self):
+        """Same org name produces the same key regardless of job location context."""
+        # make_cache_key no longer accepts location — identity is name only
+        assert make_cache_key("My Org") == make_cache_key("My Org")
 
-    def test_location_param_used_when_muni_and_province_are_none(self):
-        """When both municipality and province are None, the location param is used."""
-        key = make_cache_key("My Org", None, None, location="Montreal QC")
-        assert key.endswith("montreal qc")
+    def test_empty_name(self):
+        assert make_cache_key("") == ""
+        assert make_cache_key("!!!") == ""
 
-    def test_empty_when_no_location_evidence(self):
-        key = make_cache_key("My Org", None, None)
-        assert key.endswith("|")
-
-    def test_only_ascii_alphanumeric_and_spaces_in_parts(self):
-        key = make_cache_key("Org!@#$", "Montréal", None)
-        # After stripping: name part has only alpha/digit/space
-        name_part, loc_part = key.split("|", 1)
-        for c in name_part:
+    def test_only_ascii_alphanumeric_and_spaces(self):
+        key = make_cache_key("Org!@#$ Montréal")
+        for c in key:
             assert c.isascii() and (c.isalpha() or c.isdigit() or c == " "), f"Bad char {c!r}"
 
     def test_same_org_different_case(self):
-        k1 = make_cache_key("My Org", "city", "qc")
-        k2 = make_cache_key("MY ORG", "CITY", "QC")
-        assert k1 == k2
+        assert make_cache_key("My Org") == make_cache_key("MY ORG")
 
     def test_accented_and_unaccented_produce_same_key(self):
-        k1 = make_cache_key("Centraide Montréal", "Montreal", "QC")
-        k2 = make_cache_key("Centraide Montreal", "Montreal", "QC")
-        assert k1 == k2
-
-    def test_pipe_separator(self):
-        key = make_cache_key("Org", "city", "qc")
-        assert "|" in key
+        assert make_cache_key("Centraide Montréal") == make_cache_key("Centraide Montreal")
 
 
 # ── Property-based tests ──────────────────────────────────────────────────────
@@ -131,14 +113,12 @@ class TestMakeCacheKey:
 # Feature: organizations, Property 2: Cache key is deterministic
 @given(
     name=st.text(min_size=0, max_size=100),
-    municipality=st.one_of(st.none(), st.text(min_size=0, max_size=50)),
-    province=st.one_of(st.none(), st.text(min_size=0, max_size=20)),
 )
 @settings(max_examples=300)
-def test_cache_key_is_deterministic(name, municipality, province):
+def test_cache_key_is_deterministic(name):
     """Property 2: Same inputs always produce the same key."""
-    k1 = make_cache_key(name, municipality, province)
-    k2 = make_cache_key(name, municipality, province)
+    k1 = make_cache_key(name)
+    k2 = make_cache_key(name)
     assert k1 == k2
 
 

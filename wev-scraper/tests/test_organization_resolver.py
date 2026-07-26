@@ -44,7 +44,7 @@ def _make_assessor(return_value):
 class TestCacheHitPath:
     def test_cache_hit_returns_cached_id_without_db_call(self):
         cache = OrganizationCache()
-        cache.set("test org|montreal qc", 99)
+        cache.set("test org", 99)
 
         repo = _make_repo()
         resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
@@ -68,7 +68,7 @@ class TestDBMatchPath:
         result = resolver.resolve("Test Org", "Montreal", "QC")
 
         assert result == 10
-        assert cache.get("test org|montreal qc") == 10
+        assert cache.get("test org") == 10
 
     def test_ambiguous_match_falls_to_minimal(self):
         org_rows = [
@@ -90,14 +90,18 @@ class TestDBMatchPath:
 
         assert result == 55
 
-    def test_incompatible_location_falls_to_minimal(self):
-        org_rows = [{"id": 10, "name": "Test Org", "location": "Vancouver BC"}]
-        repo = _make_repo(find_by_name=org_rows, insert={"id": 77})
-        resolver = _make_resolver(repo=repo, assessor=None)
+    def test_same_org_different_location_reuses_existing(self):
+        """Mindrift in Québec and Mindrift in Toronto share one organization_id."""
+        org_rows = [{"id": 107, "name": "Mindrift", "location": "Québec"}]
+        repo = _make_repo(find_by_name=org_rows)
+        cache = OrganizationCache()
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
 
-        result = resolver.resolve("Test Org", "Montreal", "QC")
+        result = resolver.resolve("Mindrift", "Toronto", "ON")
 
-        assert result == 77  # location incompatible → minimal fallback
+        assert result == 107
+        assert cache.get("mindrift") == 107
+        repo.insert.assert_not_called()
 
 
 # ── LLM success path ──────────────────────────────────────────────────────────
@@ -128,7 +132,7 @@ class TestLLMSuccessPath:
         result = resolver.resolve("Le Depot", "Montreal", "QC", job_title="Food Coordinator", description="description here")
 
         assert result == 201
-        assert cache.get("le depot|montreal qc") == 201
+        assert cache.get("le depot") == 201
         assessor.assess_and_build_row.assert_called_once()
 
     def test_llm_slug_empty_uses_canonical_name(self):
@@ -281,6 +285,18 @@ class TestSameRunDedup:
         # Second call hit the cache — find_by_name only called once
         repo.find_by_name.assert_called_once()
 
+    def test_same_org_different_location_second_call_uses_cache(self):
+        repo = _make_repo(find_by_name=[{"id": 107, "name": "Mindrift", "location": "Québec"}])
+        cache = OrganizationCache()
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
+
+        id1 = resolver.resolve("Mindrift", "Québec", "QC")
+        id2 = resolver.resolve("Mindrift", "Toronto", "ON")
+
+        assert id1 == id2 == 107
+        repo.find_by_name.assert_called_once()
+        repo.insert.assert_not_called()
+
 
 # ── Location-only path (no municipality/province) ─────────────────────────────
 
@@ -288,7 +304,7 @@ class TestSameRunDedup:
 class TestLocationOnlyPath:
     def test_cache_hit_with_location_only(self):
         cache = OrganizationCache()
-        cache.set("test org|montreal qc", 99)
+        cache.set("test org", 99)
         repo = _make_repo()
         resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
 
@@ -306,16 +322,17 @@ class TestLocationOnlyPath:
         result = resolver.resolve("Test Org", location="Montreal QC")
 
         assert result == 10
-        assert cache.get("test org|montreal qc") == 10
+        assert cache.get("test org") == 10
 
-    def test_uses_minimal_when_location_does_not_match(self):
+    def test_different_location_still_reuses_single_name_match(self):
         org_rows = [{"id": 10, "name": "Test Org", "location": "Vancouver BC"}]
-        repo = _make_repo(find_by_name=org_rows, insert={"id": 77})
+        repo = _make_repo(find_by_name=org_rows)
         resolver = _make_resolver(repo=repo, assessor=None)
 
         result = resolver.resolve("Test Org", location="Montreal QC")
 
-        assert result == 77  # location mismatch → minimal fallback
+        assert result == 10
+        repo.insert.assert_not_called()
 
     def test_location_fallback_in_canonical_location(self):
         repo = _make_repo(find_by_name=[], insert={"id": 88})
