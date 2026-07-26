@@ -10,7 +10,12 @@ Validates: Requirements 2.2, 3.1, 3.2, 3.3, 3.4, 3.5, 2.10
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from utils.organization_cache import OrganizationCache, canonical_location, extract_domain, make_cache_key
+from utils.organization_cache import (
+    OrganizationCache,
+    canonical_location,
+    extract_domain,
+    make_cache_key,
+)
 
 # ── canonical_location ──────────────────────────────────────────────────────────
 
