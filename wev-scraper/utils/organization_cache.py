@@ -126,6 +126,9 @@ _SHARED_DOMAIN_SUFFIXES = frozenset({
     "myworkdayjobs.com",
     "dayforcehcm.com",
     "applytojob.com",
+    # Eco Canada / JBoard employer profile hosts (not the hiring org).
+    "ecoworks.eco.ca",
+    "eco.ca",
 })
 
 
