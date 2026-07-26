@@ -255,6 +255,64 @@ class TestDBMatchPath:
         assert result is None
         repo.insert.assert_not_called()
 
+    def test_multi_match_all_domains_conflict_allows_create(self):
+        """Third same-name employer with its own domain is a new org, not blocked."""
+        org_rows = [
+            {
+                "id": 1,
+                "name": "ABC Autobody",
+                "location": "Québec",
+                "website": "https://abcquebec.ca",
+            },
+            {
+                "id": 2,
+                "name": "ABC Autobody",
+                "location": "Ontario",
+                "website": "https://abcautobodyontario.ca",
+            },
+        ]
+        repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "ABC Autobody",
+            "Toronto",
+            "ON",
+            website="https://abc-third.ca",
+        )
+
+        assert result == 99
+        repo.insert.assert_called_once()
+
+    def test_multi_match_partial_domain_still_blocks(self):
+        """If any same-name candidate lacks domain evidence, stay ambiguous."""
+        org_rows = [
+            {
+                "id": 1,
+                "name": "ABC Autobody",
+                "location": "Québec",
+                "website": "https://abcquebec.ca",
+            },
+            {
+                "id": 2,
+                "name": "ABC Autobody",
+                "location": "Ontario",
+                "website": None,
+            },
+        ]
+        repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "ABC Autobody",
+            "Toronto",
+            "ON",
+            website="https://abc-third.ca",
+        )
+
+        assert result is None
+        repo.insert.assert_not_called()
+
     def test_domain_only_different_name_does_not_reuse(self):
         """Job name Acme + mindrift.ai must not attach to Mindrift org."""
         mindrift = {
