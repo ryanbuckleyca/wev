@@ -84,6 +84,21 @@ class TestDBMatchPath:
         assert result is None
         repo.insert.assert_not_called()
 
+    def test_ambiguous_match_is_cached_as_blocked(self):
+        org_rows = [
+            {"id": 10, "name": "Test Org", "location": "Montreal QC", "website": None},
+            {"id": 11, "name": "Test Org", "location": "Toronto ON", "website": None},
+        ]
+        repo = _make_repo(find_by_name=org_rows)
+        cache = OrganizationCache()
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
+
+        assert resolver.resolve("Test Org", "Montreal", "QC") is None
+        assert resolver.resolve("Test Org", "Vancouver", "BC") is None
+
+        assert repo.find_by_name.call_count == 1
+        assert cache.is_blocked("test org")
+
     def test_no_candidates_falls_to_minimal(self):
         repo = _make_repo(find_by_name=[], insert={"id": 55})
         resolver = _make_resolver(repo=repo, assessor=None)
@@ -289,6 +304,59 @@ class TestDBMatchPath:
         assert result == 99
         repo.find_by_domain.assert_not_called()
         repo.insert.assert_called_once()
+
+    def test_llm_path_does_not_persist_shared_ctx_website(self):
+        assessor_result = {
+            "name": "Acme Corp",
+            "slug": "acme-corp",
+            "location": "Toronto ON",
+            "website": None,
+            "description": None,
+            "mission_statement": None,
+            "type": None,
+            "values": None,
+            "values_list": [],
+            "values_rated": None,
+            "sse_rating": "no",
+            "is_sse": False,
+            "sse_details": None,
+        }
+        assessor = _make_assessor(assessor_result)
+        repo = _make_repo(find_by_name=[], insert={"id": 77})
+        resolver = OrganizationResolver(
+            repo=repo, cache=OrganizationCache(), assessor=assessor
+        )
+
+        result = resolver.resolve(
+            "Acme Corp",
+            "Toronto",
+            "ON",
+            website="https://facebook.com/acme",
+            job_title="Engineer",
+            description="desc",
+        )
+
+        assert result == 77
+        assert repo.insert.call_args[0][0].get("website") is None
+
+    def test_province_substring_does_not_inflate_score(self):
+        resolver = _make_resolver(assessor=None)
+        org = {"id": 1, "name": "Test Org", "location": "Montreal QC", "website": None}
+        from utils.organization_resolver import JobContext
+
+        ctx = JobContext(
+            raw_name="Test Org",
+            municipality="Montreal",
+            province="on",
+            location=None,
+            website=None,
+            job_title=None,
+            description=None,
+            job_id=None,
+        )
+        # Name match (50) + municipality (5) only — province "on" must not
+        # match the letters inside "montreal".
+        assert resolver._score_organization_match(org, ctx) == 55
 
     def test_subdomain_does_not_conflict_with_apex(self):
         org_rows = [

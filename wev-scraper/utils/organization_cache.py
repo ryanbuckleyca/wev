@@ -26,6 +26,7 @@ class OrganizationCache:
     def __init__(self, max_size: int = 500) -> None:
         self._max_size = max_size
         self._cache: OrderedDict[str, int] = OrderedDict()
+        self._blocked: set[str] = set()
 
     def get(self, key: str) -> int | None:
         if key not in self._cache:
@@ -34,6 +35,7 @@ class OrganizationCache:
         return self._cache[key]
 
     def set(self, key: str, org_id: int) -> None:
+        self._blocked.discard(key)
         if key in self._cache:
             self._cache.move_to_end(key)
             self._cache[key] = org_id
@@ -42,8 +44,17 @@ class OrganizationCache:
             self._cache.popitem(last=False)
         self._cache[key] = org_id
 
+    def mark_blocked(self, key: str) -> None:
+        """Remember an ambiguous resolve so the same session key skips DB."""
+        self._cache.pop(key, None)
+        self._blocked.add(key)
+
+    def is_blocked(self, key: str) -> bool:
+        return key in self._blocked
+
     def clear(self) -> None:
         self._cache.clear()
+        self._blocked.clear()
 
 
 def _normalize(s: str) -> str:
@@ -128,12 +139,30 @@ def is_shared_domain(domain: str | None) -> bool:
     return any(d.endswith("." + suffix) for suffix in _SHARED_DOMAIN_SUFFIXES)
 
 
+# Multi-label public-suffix-like parents — not safe employer apexes.
+_PUBLIC_SUFFIX_LIKE = frozenset({
+    "co.uk",
+    "org.uk",
+    "ac.uk",
+    "gov.uk",
+    "com.au",
+    "net.au",
+    "org.au",
+    "co.nz",
+    "org.nz",
+    "co.jp",
+    "com.br",
+    "co.in",
+    "gc.ca",
+})
+
+
 def domains_match(a: str | None, b: str | None) -> bool:
     """True when hosts are equal or one is a subdomain of the other.
 
     ``careers.hatch.com`` matches ``hatch.com``; ``env.gc.ca`` does not match
-    ``canada.gc.ca``. Avoids treating vanity subdomains as different employers
-    without needing a public-suffix list.
+    ``canada.gc.ca``. Parents that look like public suffixes (``gc.ca``,
+    ``co.uk``) are not treated as employer apexes.
     """
     if not a or not b:
         return False
@@ -141,7 +170,14 @@ def domains_match(a: str | None, b: str | None) -> bool:
     right = b.lower().strip(".")
     if left == right:
         return True
-    return left.endswith("." + right) or right.endswith("." + left)
+    shorter, longer = (left, right) if len(left) <= len(right) else (right, left)
+    if not longer.endswith("." + shorter):
+        return False
+    if "." not in shorter:
+        return False
+    if shorter in _PUBLIC_SUFFIX_LIKE:
+        return False
+    return True
 
 
 def evidence_domain(website: str | None) -> str | None:

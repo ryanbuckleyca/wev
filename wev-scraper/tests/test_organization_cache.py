@@ -63,9 +63,20 @@ class TestOrganizationCache:
         cache = OrganizationCache()
         cache.set("a", 1)
         cache.set("b", 2)
+        cache.mark_blocked("c")
         cache.clear()
         assert cache.get("a") is None
         assert cache.get("b") is None
+        assert not cache.is_blocked("c")
+
+    def test_mark_blocked_skips_get_and_clears_on_set(self):
+        cache = OrganizationCache()
+        cache.mark_blocked("ambiguous")
+        assert cache.is_blocked("ambiguous")
+        assert cache.get("ambiguous") is None
+        cache.set("ambiguous", 42)
+        assert not cache.is_blocked("ambiguous")
+        assert cache.get("ambiguous") == 42
 
     def test_lru_eviction_on_full_cache(self):
         cache = OrganizationCache(max_size=3)
@@ -148,6 +159,10 @@ class TestDomainsMatch:
 
     def test_sibling_subdomains_do_not_match(self):
         assert not domains_match("env.gc.ca", "canada.gc.ca")
+
+    def test_public_suffix_parent_does_not_match(self):
+        assert not domains_match("env.gc.ca", "gc.ca")
+        assert not domains_match("example.co.uk", "co.uk")
 
     def test_unrelated_hosts_do_not_match(self):
         assert not domains_match("hatch.com", "artelia.com")
