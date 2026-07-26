@@ -14,6 +14,7 @@ from utils.organization_cache import (
     OrganizationCache,
     canonical_location,
     domains_match,
+    employer_apex,
     evidence_domain,
     extract_domain,
     is_shared_domain,
@@ -167,6 +168,17 @@ class TestDomainsMatch:
     def test_unrelated_hosts_do_not_match(self):
         assert not domains_match("hatch.com", "artelia.com")
         assert not domains_match("notevil.com", "evil.com")
+
+
+class TestEmployerApex:
+    def test_strips_vanity_subdomains(self):
+        assert employer_apex("careers.acme.com") == "acme.com"
+        assert employer_apex("jobs.acme.com") == "acme.com"
+        assert employer_apex("acme.com") == "acme.com"
+
+    def test_preserves_gc_ca_labels(self):
+        assert employer_apex("env.gc.ca") == "env.gc.ca"
+        assert employer_apex("canada.gc.ca") == "canada.gc.ca"
 
 
 # ── Property-based tests ──────────────────────────────────────────────────────

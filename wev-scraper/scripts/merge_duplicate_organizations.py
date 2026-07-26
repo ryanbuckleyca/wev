@@ -39,7 +39,7 @@ else:
     print("Using TEST database")
 
 from utils.db import fetch_all_rows, supabase  # noqa: E402
-from utils.organization_cache import domains_match, evidence_domain, extract_domain  # noqa: E402
+from utils.organization_cache import employer_apex, evidence_domain, extract_domain  # noqa: E402
 from utils.slug import nfkd_to_ascii  # noqa: E402
 
 # Short / acronym-like names need a human look even when websites don't conflict.
@@ -80,19 +80,22 @@ def normalize_name(name: str | None) -> str:
 def _domains_compatible(domains: list[str | None]) -> tuple[bool, str]:
     """Return (compatible, detail). Conflicting evidence domains → not compatible.
 
-    Subdomains of the same apex (careers.acme.com / acme.com) are compatible.
+    Subdomains of the same apex (``careers.acme.com`` / ``jobs.acme.com`` /
+    ``acme.com``) are compatible. Sibling hosts under a public-suffix-like
+    parent (``env.gc.ca`` / ``canada.gc.ca``) are not.
     """
     present = [d for d in domains if d]
     if not present:
         return True, "no employer domains set"
-    # All present domains must match each other (equal or subdomain).
-    anchor = min(present, key=len)
-    for d in present:
-        if not domains_match(d, anchor):
-            return False, f"conflicting domains: {', '.join(sorted(set(present)))}"
+
+    apexes = {employer_apex(d) for d in present}
+    if len(apexes) != 1:
+        return False, f"conflicting domains: {', '.join(sorted(set(present)))}"
+
+    apex = next(iter(apexes))
     if len(set(present)) == 1:
-        return True, f"compatible evidence domain: {anchor}"
-    return True, f"compatible evidence domains (subdomain-equivalent): {anchor}"
+        return True, f"compatible evidence domain: {apex}"
+    return True, f"compatible evidence domains (subdomain-equivalent): {apex}"
 
 
 def _only_shared_websites(rows: list[OrgRow]) -> bool:
