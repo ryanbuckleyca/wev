@@ -8,7 +8,6 @@ from utils.organization_assessment import OrganizationAssessor
 from utils.organization_cache import (
     OrganizationCache,
     canonical_location,
-    location_is_compatible,
     make_cache_key,
 )
 from utils.organization_repository import OrganizationRepository
@@ -53,13 +52,11 @@ def create_resolver(supabase_client=None) -> OrganizationResolver:
 
 
 class OrganizationResolver:
-    """Resolves a job to an organization by name + location.
+    """Resolves a job to an organization by name.
 
-    The unique index on (name, location) means the system creates separate
-    records per (name, location) pair.  It has no mechanism to say "Sobeys is
-    one org across all locations" — two jobs for the same employer in different
-    cities will produce distinct org rows.  This is intentional for now; if we
-    later need national/regional dedup, the design will need to change.
+    When exactly one existing organization matches the job's organization name,
+    that org is reused regardless of location.  Ambiguous multi-match cases
+    (same name, multiple rows) fall through to create/assess rather than guessing.
     """
 
     def __init__(
@@ -118,7 +115,7 @@ class OrganizationResolver:
             return None
 
     def _resolve_inner(self, ctx: JobContext) -> int | None:
-        cache_key = make_cache_key(ctx.raw_name, ctx.municipality, ctx.province, ctx.location)
+        cache_key = make_cache_key(ctx.raw_name)
 
         cached_id = self._cache.get(cache_key)
         if cached_id is not None:
@@ -139,20 +136,11 @@ class OrganizationResolver:
 
     def _resolve_via_db(self, ctx: JobContext, cache_key: str) -> int | None:
         candidates = self._repo.find_by_name(ctx.raw_name)
-        if not candidates:
-            return None
-
-        compatible = [
-            c for c in candidates
-            if location_is_compatible(c.get("location"), ctx.municipality, ctx.province, ctx.location)
-        ]
-
-        if len(compatible) != 1:
-            return None
-
-        org_id = compatible[0]["id"]
-        self._cache.set(cache_key, org_id)
-        return org_id
+        if len(candidates) == 1:
+            org_id = candidates[0]["id"]
+            self._cache.set(cache_key, org_id)
+            return org_id
+        return None
 
     def _llm_resolve(self, ctx: JobContext, cache_key: str, canonical_loc: str) -> int | None:
         row = self._assessor.assess_and_build_row(
