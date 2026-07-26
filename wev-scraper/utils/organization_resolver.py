@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 
 from utils.base_grounded_classifier import SSEClassificationError
@@ -146,6 +147,9 @@ class OrganizationResolver:
     def _resolve_inner(self, ctx: JobContext) -> int | None:
         cache_key = self._session_cache_key(ctx.raw_name, ctx.website)
 
+        if self._cache.is_blocked(cache_key):
+            return None
+
         cached_id = self._cache.get(cache_key)
         if cached_id is not None:
             return cached_id
@@ -159,6 +163,7 @@ class OrganizationResolver:
                 ctx.raw_name,
                 ctx.job_id,
             )
+            self._cache.mark_blocked(cache_key)
             return None
 
         canonical_loc = canonical_location(ctx.municipality, ctx.province, ctx.location)
@@ -186,6 +191,14 @@ class OrganizationResolver:
         org_name = (organization.get("name") or "").strip()
         return make_cache_key(org_name) == make_cache_key(ctx.raw_name)
 
+    @staticmethod
+    def _location_token_match(needle: str, haystack: str) -> bool:
+        """Whole-token match so province 'on' does not hit 'montreal'."""
+        if not needle or not haystack:
+            return False
+        tokens = set(re.findall(r"[a-z0-9]+", haystack))
+        return needle in tokens
+
     def _score_organization_match(self, organization: dict, ctx: JobContext) -> int:
         score = 0
         names_match = self._names_match(organization, ctx)
@@ -205,11 +218,11 @@ class OrganizationResolver:
         org_loc = nfkd_to_ascii(organization.get("location") or "").lower()
         if ctx.province:
             province = nfkd_to_ascii(ctx.province).strip().lower()
-            if province and province in org_loc:
+            if self._location_token_match(province, org_loc):
                 score += _SCORE_PROVINCE
         if ctx.municipality:
             municipality = nfkd_to_ascii(ctx.municipality).strip().lower()
-            if municipality and municipality in org_loc:
+            if self._location_token_match(municipality, org_loc):
                 score += _SCORE_MUNICIPALITY
 
         return score
@@ -268,7 +281,11 @@ class OrganizationResolver:
             return None
 
         # Assessor may discover a website — retry DB match before inserting.
-        assessed_website = row.get("website") or ctx.website
+        # Only fall back to scraped website when it is employer-owned evidence.
+        scraped_evidence = (
+            ctx.website if evidence_domain(ctx.website) else None
+        )
+        assessed_website = row.get("website") or scraped_evidence
         if assessed_website and assessed_website != ctx.website:
             retry_ctx = JobContext(
                 raw_name=ctx.raw_name,
@@ -285,6 +302,8 @@ class OrganizationResolver:
             if db_id is not None:
                 return db_id
             if block_create:
+                self._cache.mark_blocked(retry_key)
+                self._cache.mark_blocked(cache_key)
                 return None
 
         slug_base = row["slug"] or generate_slug(row["name"])
