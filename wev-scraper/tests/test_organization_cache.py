@@ -147,6 +147,8 @@ class TestEvidenceDomain:
         assert is_shared_domain("m.facebook.com")
         assert evidence_domain("https://www.facebook.com/some-org") is None
         assert evidence_domain("https://boards.greenhouse.io/acme") is None
+        assert evidence_domain("https://ecoworks.eco.ca/companies/acme") is None
+        assert evidence_domain("https://www.eco.ca/employers/acme") is None
 
     def test_keeps_employer_hosts(self):
         assert evidence_domain("https://www.mindrift.ai") == "mindrift.ai"
