@@ -44,6 +44,16 @@ class TestDomainsCompatible:
         ok, _ = _domains_compatible([None, None])
         assert ok is True
 
+    def test_sibling_subdomains_same_apex_compatible(self):
+        ok, detail = _domains_compatible(["careers.acme.com", "jobs.acme.com"])
+        assert ok is True
+        assert "acme.com" in detail
+
+    def test_gc_ca_siblings_not_compatible(self):
+        ok, detail = _domains_compatible(["env.gc.ca", "canada.gc.ca"])
+        assert ok is False
+        assert "conflicting" in detail
+
 
 class TestChooseSurvivor:
     def test_prefers_website_then_jobs_then_lowest_id(self):

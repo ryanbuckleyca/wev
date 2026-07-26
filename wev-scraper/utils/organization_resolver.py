@@ -172,6 +172,10 @@ class OrganizationResolver:
             llm_id = self._llm_resolve(ctx, cache_key, canonical_loc)
             if llm_id is not None:
                 return llm_id
+            # Assessor retry may mark this key blocked — do not fall through
+            # to minimal create and undo the ambiguous decision.
+            if self._cache.is_blocked(cache_key):
+                return None
 
         return self._resolve_minimal(ctx, cache_key, canonical_loc)
 

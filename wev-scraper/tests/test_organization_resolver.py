@@ -313,6 +313,55 @@ class TestDBMatchPath:
         assert result is None
         repo.insert.assert_not_called()
 
+    def test_llm_retry_ambiguous_does_not_fall_through_to_minimal(self):
+        """Assessor shared-host website must not undo an ambiguous block via minimal."""
+        org_rows = [
+            {
+                "id": 1,
+                "name": "ABC Autobody",
+                "location": "Québec",
+                "website": "https://abcquebec.ca",
+            },
+            {
+                "id": 2,
+                "name": "ABC Autobody",
+                "location": "Ontario",
+                "website": "https://abcautobodyontario.ca",
+            },
+        ]
+        assessor_result = {
+            "name": "ABC Autobody",
+            "slug": "abc-autobody",
+            "location": "Toronto ON",
+            "website": "https://facebook.com/abc-third",
+            "description": None,
+            "mission_statement": None,
+            "type": None,
+            "values": None,
+            "values_list": [],
+            "values_rated": None,
+            "sse_rating": "no",
+            "is_sse": False,
+            "sse_details": None,
+        }
+        repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
+        assessor = _make_assessor(assessor_result)
+        cache = OrganizationCache()
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=assessor)
+
+        result = resolver.resolve(
+            "ABC Autobody",
+            "Toronto",
+            "ON",
+            website="https://abc-third.ca",
+            job_title="Tech",
+            description="desc",
+        )
+
+        assert result is None
+        repo.insert.assert_not_called()
+        assert cache.is_blocked("abc autobody|abc-third.ca")
+
     def test_domain_only_different_name_does_not_reuse(self):
         """Job name Acme + mindrift.ai must not attach to Mindrift org."""
         mindrift = {

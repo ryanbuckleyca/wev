@@ -180,6 +180,27 @@ def domains_match(a: str | None, b: str | None) -> bool:
     return True
 
 
+def employer_apex(domain: str | None) -> str | None:
+    """Strip vanity subdomains down to a plausible employer apex.
+
+    ``careers.acme.com`` / ``jobs.acme.com`` → ``acme.com``. Stops before
+    public-suffix-like parents so ``env.gc.ca`` stays ``env.gc.ca``.
+    """
+    if not domain:
+        return None
+    current = domain.lower().strip(".")
+    if not current:
+        return None
+    while True:
+        parts = current.split(".")
+        if len(parts) <= 2:
+            return current
+        parent = ".".join(parts[1:])
+        if parent in _PUBLIC_SUFFIX_LIKE or "." not in parent:
+            return current
+        current = parent
+
+
 def evidence_domain(website: str | None) -> str | None:
     """Hostname usable as org-match evidence, or None if missing/shared."""
     domain = extract_domain(website)
