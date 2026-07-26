@@ -8,9 +8,13 @@ Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
 
 from __future__ import annotations
 
+import re
 from collections import OrderedDict
+from urllib.parse import urlparse
 
 from utils.slug import nfkd_to_ascii
+
+_WWW_PREFIX = re.compile(r"^www\.", re.IGNORECASE)
 
 
 class OrganizationCache:
@@ -67,3 +71,16 @@ def canonical_location(
 def make_cache_key(name: str) -> str:
     """Cache identity is organization name only — location is not part of identity."""
     return _normalize(name or "")
+
+
+def extract_domain(website: str | None) -> str | None:
+    """Return a normalized hostname (no www.) from a website URL, or None."""
+    if not website or not str(website).strip():
+        return None
+    raw = str(website).strip()
+    if "://" not in raw:
+        raw = "https://" + raw
+    host = (urlparse(raw).hostname or "").lower().strip(".")
+    if not host or not re.search(r"[a-z0-9]", host):
+        return None
+    return _WWW_PREFIX.sub("", host) or None

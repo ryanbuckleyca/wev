@@ -10,7 +10,7 @@ Validates: Requirements 2.2, 3.1, 3.2, 3.3, 3.4, 3.5, 2.10
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
+from utils.organization_cache import OrganizationCache, canonical_location, extract_domain, make_cache_key
 
 # ── canonical_location ──────────────────────────────────────────────────────────
 
@@ -106,6 +106,19 @@ class TestMakeCacheKey:
 
     def test_accented_and_unaccented_produce_same_key(self):
         assert make_cache_key("Centraide Montréal") == make_cache_key("Centraide Montreal")
+
+
+class TestExtractDomain:
+    def test_strips_www_and_scheme(self):
+        assert extract_domain("https://www.mindrift.ai/about") == "mindrift.ai"
+
+    def test_adds_scheme_when_missing(self):
+        assert extract_domain("abcquebec.ca") == "abcquebec.ca"
+
+    def test_empty_returns_none(self):
+        assert extract_domain(None) is None
+        assert extract_domain("") is None
+        assert extract_domain("!!!") is None
 
 
 # ── Property-based tests ──────────────────────────────────────────────────────
