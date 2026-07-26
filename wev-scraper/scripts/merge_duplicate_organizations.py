@@ -3,9 +3,9 @@
 
 Buckets
 -------
-auto-merge  same name with a shared employer evidence domain (and compatible hosts)
-review      same name but weak or ambiguous evidence (short acronym, no employer
-            domain, only shared/social/ATS websites, or divergent descriptions)
+auto-merge  same name where every row has a compatible employer evidence domain
+review      same name but weak or ambiguous evidence (short acronym, missing domain
+            on any row, only shared/social/ATS websites, etc.)
 skip        same name with conflicting employer website domains
 
 Merge mechanics (when --apply-auto-merge and not --dry-run, bucket is auto-merge):
@@ -181,12 +181,16 @@ def classify_cluster(normalized: str, rows: list[OrgRow]) -> ClusterDecision:
             rows=row_dicts,
         )
 
-    # Align with live resolver: do not auto-merge on name alone.
-    if not any(domains):
+    # Auto-merge only when every row has compatible employer-domain evidence.
+    if not all(domains):
+        missing = sum(1 for d in domains if not d)
         return ClusterDecision(
             bucket="review",
             normalized_name=normalized,
-            reason="no employer domain evidence; refuse name-only auto-merge",
+            reason=(
+                f"{missing} row(s) lack employer domain evidence; "
+                "refuse partial-evidence auto-merge"
+            ),
             survivor_id=survivor.id,
             merge_ids=merge_ids,
             domains=domains,

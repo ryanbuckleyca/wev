@@ -76,12 +76,21 @@ class TestClassifyCluster:
     def test_compatible_auto_merge(self):
         rows = [
             _row(id=107, name="Mindrift", domain="mindrift.ai", job_count=5),
-            _row(id=461, name="Mindrift", domain=None, job_count=1),
+            _row(id=461, name="Mindrift", domain="www.mindrift.ai", job_count=1),
         ]
         decision = classify_cluster("mindrift", rows)
         assert decision.bucket == "auto-merge"
         assert decision.survivor_id == 107
         assert decision.merge_ids == [461]
+
+    def test_partial_domain_evidence_goes_to_review(self):
+        rows = [
+            _row(id=107, name="Mindrift", domain="mindrift.ai", job_count=5),
+            _row(id=461, name="Mindrift", domain=None, job_count=1),
+        ]
+        decision = classify_cluster("mindrift", rows)
+        assert decision.bucket == "review"
+        assert "partial-evidence" in decision.reason
 
     def test_subdomain_equivalent_auto_merge(self):
         rows = [
@@ -120,4 +129,4 @@ class TestClassifyCluster:
         ]
         decision = classify_cluster("acme services", rows)
         assert decision.bucket == "review"
-        assert "name-only" in decision.reason
+        assert "lack employer domain evidence" in decision.reason
