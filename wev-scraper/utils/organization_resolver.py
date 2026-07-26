@@ -234,11 +234,31 @@ class OrganizationResolver:
             job_domain and org_domain and not domains_match(job_domain, org_domain)
         )
 
+    def _should_allow_create_despite_candidates(
+        self, ctx: JobContext, candidates: list[dict]
+    ) -> bool:
+        """True when candidates exist but none can be this employer.
+
+        - Domain-only hits on differently named orgs → create.
+        - Same-name orgs that all conflict on employer domain → create.
+        - Same-name with missing/compatible domain evidence → still ambiguous.
+        """
+        name_matches = [c for c in candidates if self._names_match(c, ctx)]
+        if not name_matches:
+            return True
+
+        job_domain = evidence_domain(ctx.website)
+        if not job_domain:
+            return False
+
+        return all(self._domains_conflict(c, ctx) for c in name_matches)
+
     def _resolve_via_db(self, ctx: JobContext, cache_key: str) -> tuple[int | None, bool]:
         """Return (org_id, block_create).
 
-        block_create=True means name/domain candidates exist but none are safe
-        to merge — caller must not insert another organization row.
+        block_create=True means candidates exist and identity is ambiguous —
+        caller must not insert another organization row. Distinct orgs that
+        share a lookalike name but conflict on domain evidence may still create.
         """
         candidates = self._collect_candidates(ctx)
         if not candidates:
@@ -265,7 +285,10 @@ class OrganizationResolver:
             self._cache.set(cache_key, org_id)
             return org_id, False
 
-        # Ambiguous multi-match below threshold — do not create a third row.
+        if self._should_allow_create_despite_candidates(ctx, candidates):
+            return None, False
+
+        # Ambiguous multi-match below threshold — do not create another row.
         return None, True
 
     def _llm_resolve(self, ctx: JobContext, cache_key: str, canonical_loc: str) -> int | None:
