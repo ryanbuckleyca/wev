@@ -88,6 +88,7 @@ class EcoCanadaScraper(BaseScraper):
             "job_url": listing_url,
             "job_title": job_data.get("title"),
             "organization": emp.get("name"),
+            "website": emp.get("website") or emp.get("url") or emp.get("company_url"),
             "description": job_data.get("description"),
             "wage": self._extract_wage(job_data),
             "location": job_data.get("location"),

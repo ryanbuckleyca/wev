@@ -24,7 +24,7 @@ def test_extract_job_fields(page):
     page.set_content("<script>window.job = {"
         "'title': 'Environmental Scientist',"
         "'description': '<p>Test description</p>',"
-        "'employer': {'name': 'Test Org'},"
+        "'employer': {'name': 'Test Org', 'website': 'https://testorg.ca'},"
         "'location': 'Calgary, AB',"
         "'min_compensation': '60000.00',"
         "'max_compensation': '80000.00',"
@@ -42,6 +42,7 @@ def test_extract_job_fields(page):
     
     assert job["job_title"] == "Environmental Scientist"
     assert job["organization"] == "Test Org"
+    assert job["website"] == "https://testorg.ca"
     assert job["description"] == "<p>Test description</p>"
     assert job["location"] == "Calgary, AB"
     assert job["wage"] == "$60000.00 - $80000.00 CAD annually"
@@ -49,6 +50,22 @@ def test_extract_job_fields(page):
     assert job["date_posted"] == "2026-07-15"
     assert job["close_date"] == "2026-07-29"
     assert job["listing_url"] == "https://ecoworks.eco.ca/jobs/123"
+
+def test_parse_job_data_includes_employer_website():
+    scraper = EcoCanadaScraper(make_source())
+    fields = scraper._parse_job_data(
+        {
+            "title": "Role",
+            "employer": {"name": "Test Org", "website": "https://testorg.ca"},
+            "description": "desc",
+            "location": "Calgary, AB",
+        },
+        "https://ecoworks.eco.ca/jobs/1",
+    )
+    assert fields["organization"] == "Test Org"
+    assert fields["website"] == "https://testorg.ca"
+    assert fields["listing_url"] == "https://ecoworks.eco.ca/jobs/1"
+
 
 def test_extract_wage():
     # Test min and max

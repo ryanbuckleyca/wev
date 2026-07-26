@@ -3,11 +3,12 @@
 
 Buckets
 -------
-auto-merge  same name, compatible websites (same domain / one or both missing)
-review      same name but weak or ambiguous evidence (short acronym, mixed signals)
-skip        same name with conflicting website domains
+auto-merge  same name, compatible employer domains (same evidence domain / one or both missing)
+review      same name but weak or ambiguous evidence (short acronym, mixed signals,
+            or only shared/social/ATS websites)
+skip        same name with conflicting employer website domains
 
-Merge mechanics (when not --dry-run and bucket is auto-merge):
+Merge mechanics (when --apply-auto-merge and not --dry-run, bucket is auto-merge):
   keep survivor A, UPDATE jobs SET organization_id = A WHERE organization_id IN (B, C, …),
   then DELETE the duplicate organization rows.
 
@@ -15,19 +16,17 @@ Usage:
     python scripts/merge_duplicate_organizations.py --dry-run
     python scripts/merge_duplicate_organizations.py --prod --dry-run
     python scripts/merge_duplicate_organizations.py --prod --dry-run --json /tmp/org-dupes.json
-    CONFIRM_PROD_RUN=YES python scripts/merge_duplicate_organizations.py --prod  # apply auto-merge only
+    CONFIRM_PROD_RUN=YES python scripts/merge_duplicate_organizations.py --prod --apply-auto-merge
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from urllib.parse import urlparse
 
 # --prod must load .env.production and confirm before utils.db is imported.
 from utils.prod_env import bootstrap_prod_from_argv, confirm_prod_run
@@ -40,13 +39,11 @@ else:
     print("Using TEST database")
 
 from utils.db import fetch_all_rows, supabase  # noqa: E402
+from utils.organization_cache import evidence_domain, extract_domain  # noqa: E402
 from utils.slug import nfkd_to_ascii  # noqa: E402
 
 # Short / acronym-like names need a human look even when websites don't conflict.
 _SHORT_NAME_MAX_LEN = 4
-
-# Strip www. and trailing dots for domain comparison.
-_WWW_PREFIX = re.compile(r"^www\.", re.IGNORECASE)
 
 
 @dataclass
@@ -80,27 +77,21 @@ def normalize_name(name: str | None) -> str:
     ).strip()
 
 
-def extract_domain(website: str | None) -> str | None:
-    if not website or not str(website).strip():
-        return None
-    raw = str(website).strip()
-    if "://" not in raw:
-        raw = "https://" + raw
-    parsed = urlparse(raw)
-    host = (parsed.hostname or "").lower().strip(".")
-    if not host:
-        return None
-    return _WWW_PREFIX.sub("", host) or None
-
-
 def _domains_compatible(domains: list[str | None]) -> tuple[bool, str]:
-    """Return (compatible, detail). Conflicting non-null domains → not compatible."""
+    """Return (compatible, detail). Conflicting non-null evidence domains → not compatible."""
     present = sorted({d for d in domains if d})
     if len(present) >= 2:
         return False, f"conflicting domains: {', '.join(present)}"
     if len(present) == 1:
-        return True, f"shared/compatible domain: {present[0]}"
-    return True, "no websites set (location-only split)"
+        return True, f"compatible evidence domain: {present[0]}"
+    return True, "no employer domains set (location-only split)"
+
+
+def _only_shared_websites(rows: list[OrgRow]) -> bool:
+    """True when rows have websites, but none are employer-owned evidence domains."""
+    has_website = any((r.website or "").strip() for r in rows)
+    has_evidence = any(r.domain for r in rows)
+    return has_website and not has_evidence
 
 
 def _is_short_name(normalized: str) -> bool:
@@ -144,6 +135,27 @@ def classify_cluster(normalized: str, rows: list[OrgRow]) -> ClusterDecision:
             bucket="skip",
             normalized_name=normalized,
             reason=domain_detail,
+            survivor_id=survivor.id,
+            merge_ids=merge_ids,
+            domains=domains,
+            rows=row_dicts,
+        )
+
+    if _only_shared_websites(rows):
+        shared_hosts = sorted(
+            {
+                extract_domain(r.website)
+                for r in rows
+                if extract_domain(r.website)
+            }
+        )
+        return ClusterDecision(
+            bucket="review",
+            normalized_name=normalized,
+            reason=(
+                "websites are shared/social/ATS hosts only "
+                f"({', '.join(shared_hosts)}); not usable as merge evidence"
+            ),
             survivor_id=survivor.id,
             merge_ids=merge_ids,
             domains=domains,
@@ -238,7 +250,7 @@ def build_decisions() -> list[ClusterDecision]:
                 slug=o.get("slug"),
                 description=o.get("description"),
                 job_count=job_counts.get(int(o["id"]), 0),
-                domain=extract_domain(o.get("website")),
+                domain=evidence_domain(o.get("website")),
             )
             for o in raw_rows
         ]

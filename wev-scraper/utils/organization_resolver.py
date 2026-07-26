@@ -8,7 +8,7 @@ from utils.organization_assessment import OrganizationAssessor
 from utils.organization_cache import (
     OrganizationCache,
     canonical_location,
-    extract_domain,
+    evidence_domain,
     make_cache_key,
 )
 from utils.organization_repository import OrganizationRepository
@@ -100,7 +100,7 @@ class OrganizationResolver:
         job that carries a conflicting domain.
         """
         base = make_cache_key(raw_name)
-        domain = extract_domain(website)
+        domain = evidence_domain(website)
         if domain:
             return f"{base}|{domain}"
         return base
@@ -174,27 +174,32 @@ class OrganizationResolver:
         for row in self._repo.find_by_name(ctx.raw_name):
             by_id[row["id"]] = row
 
-        domain = extract_domain(ctx.website)
+        domain = evidence_domain(ctx.website)
         if domain:
             for row in self._repo.find_by_domain(domain):
                 by_id.setdefault(row["id"], row)
 
         return list(by_id.values())
 
+    def _names_match(self, organization: dict, ctx: JobContext) -> bool:
+        org_name = (organization.get("name") or "").strip()
+        return make_cache_key(org_name) == make_cache_key(ctx.raw_name)
+
     def _score_organization_match(self, organization: dict, ctx: JobContext) -> int:
         score = 0
-        job_domain = extract_domain(ctx.website)
-        org_domain = extract_domain(organization.get("website"))
+        names_match = self._names_match(organization, ctx)
+        if names_match:
+            score += _SCORE_NAME
 
-        if job_domain and org_domain:
+        # Domain evidence only counts when names also agree — prevents
+        # facebook.com / shared-host merges across unrelated orgs.
+        job_domain = evidence_domain(ctx.website)
+        org_domain = evidence_domain(organization.get("website"))
+        if names_match and job_domain and org_domain:
             if job_domain == org_domain:
                 score += _SCORE_DOMAIN
             else:
                 score += _SCORE_DOMAIN_CONFLICT
-
-        org_name = (organization.get("name") or "").strip()
-        if make_cache_key(org_name) == make_cache_key(ctx.raw_name):
-            score += _SCORE_NAME
 
         org_loc = nfkd_to_ascii(organization.get("location") or "").lower()
         if ctx.province:
@@ -209,8 +214,8 @@ class OrganizationResolver:
         return score
 
     def _domains_conflict(self, organization: dict, ctx: JobContext) -> bool:
-        job_domain = extract_domain(ctx.website)
-        org_domain = extract_domain(organization.get("website"))
+        job_domain = evidence_domain(ctx.website)
+        org_domain = evidence_domain(organization.get("website"))
         return bool(job_domain and org_domain and job_domain != org_domain)
 
     def _resolve_via_db(self, ctx: JobContext, cache_key: str) -> tuple[int | None, bool]:
@@ -225,6 +230,9 @@ class OrganizationResolver:
 
         if len(candidates) == 1:
             only = candidates[0]
+            if not self._names_match(only, ctx):
+                # Domain-only hit on a differently named org — allow create.
+                return None, False
             if self._domains_conflict(only, ctx):
                 # Distinct company sharing a lookalike name — allow create.
                 return None, False
@@ -256,8 +264,30 @@ class OrganizationResolver:
         if row is None:
             return None
 
+        # Assessor may discover a website — retry DB match before inserting.
+        assessed_website = row.get("website") or ctx.website
+        if assessed_website and assessed_website != ctx.website:
+            retry_ctx = JobContext(
+                raw_name=ctx.raw_name,
+                municipality=ctx.municipality,
+                province=ctx.province,
+                location=ctx.location,
+                website=assessed_website,
+                job_title=ctx.job_title,
+                description=ctx.description,
+                job_id=ctx.job_id,
+            )
+            retry_key = self._session_cache_key(retry_ctx.raw_name, retry_ctx.website)
+            db_id, block_create = self._resolve_via_db(retry_ctx, retry_key)
+            if db_id is not None:
+                return db_id
+            if block_create:
+                return None
+
         slug_base = row["slug"] or generate_slug(row["name"])
         row["slug"] = self._find_available_slug(slug_base, ctx.job_id)
+        if assessed_website and not row.get("website"):
+            row["website"] = assessed_website
 
         return self._insert_or_resolve_conflict(row, cache_key, ctx.job_id)
 

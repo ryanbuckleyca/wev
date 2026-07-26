@@ -5,7 +5,9 @@ import json
 from utils.organization_assessment import (
     _ORG_DESCRIPTION_MAX_CHARS,
     _SSE_REASONING_MAX_CHARS,
+    _build_search_query,
     _parse_response,
+    _parse_website,
 )
 
 
@@ -63,3 +65,29 @@ def test_parse_response_allows_description_up_to_admin_limit():
 
     assert result is not None
     assert result["description"] == description
+
+
+def test_parse_website_keeps_employer_owned_host():
+    assert _parse_website("https://www.mindrift.ai/about") == "https://www.mindrift.ai/about"
+    assert _parse_website("mindrift.ai") == "https://mindrift.ai"
+
+
+def test_parse_website_rejects_shared_hosts():
+    assert _parse_website("https://boards.greenhouse.io/acme") is None
+    assert _parse_website("https://facebook.com/acme-org") is None
+    assert _parse_website("https://www.linkedin.com/company/acme") is None
+
+
+def test_parse_response_nulls_shared_website():
+    result = _parse_response(
+        _assessment_json(website="https://boards.greenhouse.io/nature-visuals"),
+        "Nature Visuals",
+    )
+    assert result is not None
+    assert result["website"] is None
+
+
+def test_build_search_query_targets_official_website():
+    assert _build_search_query("Mindrift", "Toronto", "ON") == (
+        '"Mindrift" official website Toronto ON'
+    )
