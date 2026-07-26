@@ -83,6 +83,15 @@ class TestClassifyCluster:
         assert decision.survivor_id == 107
         assert decision.merge_ids == [461]
 
+    def test_subdomain_equivalent_auto_merge(self):
+        rows = [
+            _row(id=1, domain="careers.hatch.com", job_count=1),
+            _row(id=2, domain="hatch.com", job_count=5),
+        ]
+        decision = classify_cluster("hatch", rows)
+        assert decision.bucket == "auto-merge"
+        assert decision.survivor_id == 2
+
     def test_shared_hosts_only_go_to_review(self):
         rows = [
             _row(
@@ -104,10 +113,11 @@ class TestClassifyCluster:
         assert decision.bucket == "review"
         assert "shared/social/ATS" in decision.reason
 
-    def test_distinct_descriptions_no_websites_review(self):
+    def test_name_only_without_domain_goes_to_review(self):
         rows = [
             _row(id=1, description="Food bank in Montreal", job_count=1),
             _row(id=2, description="Engineering consultancy", job_count=1),
         ]
         decision = classify_cluster("acme services", rows)
         assert decision.bucket == "review"
+        assert "name-only" in decision.reason

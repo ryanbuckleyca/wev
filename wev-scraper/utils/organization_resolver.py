@@ -8,6 +8,7 @@ from utils.organization_assessment import OrganizationAssessor
 from utils.organization_cache import (
     OrganizationCache,
     canonical_location,
+    domains_match,
     evidence_domain,
     make_cache_key,
 )
@@ -196,7 +197,7 @@ class OrganizationResolver:
         job_domain = evidence_domain(ctx.website)
         org_domain = evidence_domain(organization.get("website"))
         if names_match and job_domain and org_domain:
-            if job_domain == org_domain:
+            if domains_match(job_domain, org_domain):
                 score += _SCORE_DOMAIN
             else:
                 score += _SCORE_DOMAIN_CONFLICT
@@ -216,7 +217,9 @@ class OrganizationResolver:
     def _domains_conflict(self, organization: dict, ctx: JobContext) -> bool:
         job_domain = evidence_domain(ctx.website)
         org_domain = evidence_domain(organization.get("website"))
-        return bool(job_domain and org_domain and job_domain != org_domain)
+        return bool(
+            job_domain and org_domain and not domains_match(job_domain, org_domain)
+        )
 
     def _resolve_via_db(self, ctx: JobContext, cache_key: str) -> tuple[int | None, bool]:
         """Return (org_id, block_create).
@@ -303,7 +306,8 @@ class OrganizationResolver:
             slug_base=generate_slug(ctx.raw_name),
             cache_key=cache_key,
             job_id=ctx.job_id,
-            website=ctx.website,
+            # Persist only employer-owned sites (same filter as assessor path).
+            website=ctx.website if evidence_domain(ctx.website) else None,
         )
 
     def _build_and_insert_org(

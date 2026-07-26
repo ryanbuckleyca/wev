@@ -159,6 +159,23 @@ class TestFindByDomain:
         repo = OrganizationRepository(sb)
         assert repo.find_by_domain("mindrift.ai") == []
 
+    def test_careers_subdomain_matches_apex_row(self):
+        sb = MagicMock()
+        apex = MagicMock()
+        apex.data = [{"id": 10, "name": "Hatch", "website": "https://www.hatch.com"}]
+        careers = MagicMock()
+        careers.data = []
+        # Query order: careers.hatch.com then parent hatch.com
+        sb.table.return_value.select.return_value.ilike.return_value.execute.side_effect = [
+            careers,
+            apex,
+        ]
+        repo = OrganizationRepository(sb)
+        result = repo.find_by_domain("careers.hatch.com")
+        assert len(result) == 1
+        assert result[0]["id"] == 10
+
+
 def _make_repo_sb(data: list | None = None) -> MagicMock:
     """Build a Supabase mock with a query chain that always returns ``data``."""
     sb = MagicMock()
