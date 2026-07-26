@@ -132,6 +132,7 @@ class TestDBMatchPath:
 
         assert result == 107
         repo.insert.assert_not_called()
+        assert resolver._cache.get("mindrift|mindrift.ai") == 107
 
     def test_same_name_matching_domain_merges_to_domain_owner(self):
         org_rows = [
@@ -181,6 +182,39 @@ class TestDBMatchPath:
         )
 
         assert result == 99
+        repo.insert.assert_called_once()
+
+    def test_domain_aware_cache_does_not_reuse_across_conflicting_domains(self):
+        """Same scrape session: Quebec domain then Ontario domain must not share cache."""
+        quebec_row = {
+            "id": 1,
+            "name": "ABC Autobody",
+            "location": "Québec",
+            "website": "https://abcquebec.ca",
+        }
+        repo = _make_repo(find_by_name=[quebec_row])
+        repo.insert.side_effect = [{"id": 99}]
+        cache = OrganizationCache()
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
+
+        first = resolver.resolve(
+            "ABC Autobody",
+            "Montreal",
+            "QC",
+            website="https://abcquebec.ca",
+        )
+        second = resolver.resolve(
+            "ABC Autobody",
+            "Toronto",
+            "ON",
+            website="https://abcautobodyontario.ca",
+        )
+
+        assert first == 1
+        assert second == 99
+        assert cache.get("abc autobody|abcquebec.ca") == 1
+        assert cache.get("abc autobody|abcautobodyontario.ca") == 99
+        assert cache.get("abc autobody") is None
         repo.insert.assert_called_once()
 
     def test_ambiguous_without_domain_evidence_does_not_merge_or_create(self):

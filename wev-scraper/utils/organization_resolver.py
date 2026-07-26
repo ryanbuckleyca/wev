@@ -91,6 +91,20 @@ class OrganizationResolver:
             return "slug"
         return "identity"
 
+    @staticmethod
+    def _session_cache_key(raw_name: str, website: str | None = None) -> str:
+        """Name-only key, or name|domain when website evidence is present.
+
+        Keeps Stage 1 same-name reuse for jobs without a website, while
+        preventing a prior resolve from short-circuiting a later same-name
+        job that carries a conflicting domain.
+        """
+        base = make_cache_key(raw_name)
+        domain = extract_domain(website)
+        if domain:
+            return f"{base}|{domain}"
+        return base
+
     def resolve(
         self,
         raw_name: str,
@@ -129,7 +143,7 @@ class OrganizationResolver:
             return None
 
     def _resolve_inner(self, ctx: JobContext) -> int | None:
-        cache_key = make_cache_key(ctx.raw_name)
+        cache_key = self._session_cache_key(ctx.raw_name, ctx.website)
 
         cached_id = self._cache.get(cache_key)
         if cached_id is not None:
