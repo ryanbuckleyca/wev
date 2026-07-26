@@ -128,9 +128,39 @@ def is_shared_domain(domain: str | None) -> bool:
     return any(d.endswith("." + suffix) for suffix in _SHARED_DOMAIN_SUFFIXES)
 
 
+def domains_match(a: str | None, b: str | None) -> bool:
+    """True when hosts are equal or one is a subdomain of the other.
+
+    ``careers.hatch.com`` matches ``hatch.com``; ``env.gc.ca`` does not match
+    ``canada.gc.ca``. Avoids treating vanity subdomains as different employers
+    without needing a public-suffix list.
+    """
+    if not a or not b:
+        return False
+    left = a.lower().strip(".")
+    right = b.lower().strip(".")
+    if left == right:
+        return True
+    return left.endswith("." + right) or right.endswith("." + left)
+
+
 def evidence_domain(website: str | None) -> str | None:
     """Hostname usable as org-match evidence, or None if missing/shared."""
     domain = extract_domain(website)
     if not domain or is_shared_domain(domain):
         return None
     return domain
+
+
+def evidence_domain_query_hosts(domain: str) -> list[str]:
+    """Hosts to search when looking up ``domain`` (self + immediate parent)."""
+    cleaned = (domain or "").lower().strip(".")
+    if not cleaned:
+        return []
+    hosts = [cleaned]
+    parts = cleaned.split(".")
+    if len(parts) > 2:
+        parent = ".".join(parts[1:])
+        if parent and parent not in hosts:
+            hosts.append(parent)
+    return hosts

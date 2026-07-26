@@ -290,6 +290,43 @@ class TestDBMatchPath:
         repo.find_by_domain.assert_not_called()
         repo.insert.assert_called_once()
 
+    def test_subdomain_does_not_conflict_with_apex(self):
+        org_rows = [
+            {
+                "id": 10,
+                "name": "Hatch",
+                "location": "Mississauga ON",
+                "website": "https://www.hatch.com",
+            },
+        ]
+        repo = _make_repo(find_by_name=org_rows)
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "Hatch",
+            "Mississauga",
+            "ON",
+            website="https://careers.hatch.com",
+        )
+
+        assert result == 10
+        repo.insert.assert_not_called()
+
+    def test_minimal_fallback_drops_shared_website(self):
+        repo = _make_repo(find_by_name=[], insert={"id": 55})
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "Unknown Org",
+            "City",
+            "ON",
+            website="https://facebook.com/unknown-org",
+        )
+
+        assert result == 55
+        row = repo.insert.call_args[0][0]
+        assert row.get("website") is None
+
 
 # ── LLM success path ──────────────────────────────────────────────────────────
 

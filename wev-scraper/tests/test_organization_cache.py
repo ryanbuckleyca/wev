@@ -13,6 +13,7 @@ from hypothesis import strategies as st
 from utils.organization_cache import (
     OrganizationCache,
     canonical_location,
+    domains_match,
     evidence_domain,
     extract_domain,
     is_shared_domain,
@@ -138,6 +139,19 @@ class TestEvidenceDomain:
     def test_keeps_employer_hosts(self):
         assert evidence_domain("https://www.mindrift.ai") == "mindrift.ai"
         assert not is_shared_domain("mindrift.ai")
+
+
+class TestDomainsMatch:
+    def test_subdomain_matches_apex(self):
+        assert domains_match("careers.hatch.com", "hatch.com")
+        assert domains_match("hatch.com", "careers.hatch.com")
+
+    def test_sibling_subdomains_do_not_match(self):
+        assert not domains_match("env.gc.ca", "canada.gc.ca")
+
+    def test_unrelated_hosts_do_not_match(self):
+        assert not domains_match("hatch.com", "artelia.com")
+        assert not domains_match("notevil.com", "evil.com")
 
 
 # ── Property-based tests ──────────────────────────────────────────────────────

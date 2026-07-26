@@ -3,9 +3,9 @@
 
 Buckets
 -------
-auto-merge  same name, compatible employer domains (same evidence domain / one or both missing)
-review      same name but weak or ambiguous evidence (short acronym, mixed signals,
-            or only shared/social/ATS websites)
+auto-merge  same name with a shared employer evidence domain (and compatible hosts)
+review      same name but weak or ambiguous evidence (short acronym, no employer
+            domain, only shared/social/ATS websites, or divergent descriptions)
 skip        same name with conflicting employer website domains
 
 Merge mechanics (when --apply-auto-merge and not --dry-run, bucket is auto-merge):
@@ -39,7 +39,7 @@ else:
     print("Using TEST database")
 
 from utils.db import fetch_all_rows, supabase  # noqa: E402
-from utils.organization_cache import evidence_domain, extract_domain  # noqa: E402
+from utils.organization_cache import domains_match, evidence_domain, extract_domain  # noqa: E402
 from utils.slug import nfkd_to_ascii  # noqa: E402
 
 # Short / acronym-like names need a human look even when websites don't conflict.
@@ -78,13 +78,21 @@ def normalize_name(name: str | None) -> str:
 
 
 def _domains_compatible(domains: list[str | None]) -> tuple[bool, str]:
-    """Return (compatible, detail). Conflicting non-null evidence domains → not compatible."""
-    present = sorted({d for d in domains if d})
-    if len(present) >= 2:
-        return False, f"conflicting domains: {', '.join(present)}"
-    if len(present) == 1:
-        return True, f"compatible evidence domain: {present[0]}"
-    return True, "no employer domains set (location-only split)"
+    """Return (compatible, detail). Conflicting evidence domains → not compatible.
+
+    Subdomains of the same apex (careers.acme.com / acme.com) are compatible.
+    """
+    present = [d for d in domains if d]
+    if not present:
+        return True, "no employer domains set"
+    # All present domains must match each other (equal or subdomain).
+    anchor = min(present, key=len)
+    for d in present:
+        if not domains_match(d, anchor):
+            return False, f"conflicting domains: {', '.join(sorted(set(present)))}"
+    if len(set(present)) == 1:
+        return True, f"compatible evidence domain: {anchor}"
+    return True, f"compatible evidence domains (subdomain-equivalent): {anchor}"
 
 
 def _only_shared_websites(rows: list[OrgRow]) -> bool:
@@ -173,18 +181,12 @@ def classify_cluster(normalized: str, rows: list[OrgRow]) -> ClusterDecision:
             rows=row_dicts,
         )
 
-    # Descriptions differ meaningfully while websites are empty → soft review.
-    descs = [
-        (r.description or "").strip().lower()[:200]
-        for r in rows
-        if (r.description or "").strip()
-    ]
-    unique_descs = {d for d in descs if d}
-    if len(unique_descs) >= 2 and not any(domains):
+    # Align with live resolver: do not auto-merge on name alone.
+    if not any(domains):
         return ClusterDecision(
             bucket="review",
             normalized_name=normalized,
-            reason=f"multiple distinct descriptions and no websites; {domain_detail}",
+            reason="no employer domain evidence; refuse name-only auto-merge",
             survivor_id=survivor.id,
             merge_ids=merge_ids,
             domains=domains,
