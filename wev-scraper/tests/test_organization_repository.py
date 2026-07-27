@@ -132,6 +132,50 @@ class TestFindByName:
         assert len(result) == 1
         assert result[0]["id"] == 20
 
+
+class TestFindByDomain:
+    def test_filters_to_matching_hostname(self):
+        sb = MagicMock()
+        resp = MagicMock()
+        resp.data = [
+            {"id": 1, "name": "Mindrift", "website": "https://mindrift.ai"},
+            {"id": 2, "name": "Other", "website": "https://notmindrift.ai"},
+        ]
+        sb.table.return_value.select.return_value.ilike.return_value.execute.return_value = resp
+        repo = OrganizationRepository(sb)
+        result = repo.find_by_domain("mindrift.ai")
+        assert len(result) == 1
+        assert result[0]["id"] == 1
+
+    def test_empty_domain_returns_empty(self):
+        sb = MagicMock()
+        repo = OrganizationRepository(sb)
+        assert repo.find_by_domain("") == []
+        sb.table.assert_not_called()
+
+    def test_db_error_returns_empty(self):
+        sb = MagicMock()
+        sb.table.return_value.select.return_value.ilike.side_effect = Exception("DB down")
+        repo = OrganizationRepository(sb)
+        assert repo.find_by_domain("mindrift.ai") == []
+
+    def test_careers_subdomain_matches_apex_row(self):
+        sb = MagicMock()
+        apex = MagicMock()
+        apex.data = [{"id": 10, "name": "Hatch", "website": "https://www.hatch.com"}]
+        careers = MagicMock()
+        careers.data = []
+        # Query order: careers.hatch.com then parent hatch.com
+        sb.table.return_value.select.return_value.ilike.return_value.execute.side_effect = [
+            careers,
+            apex,
+        ]
+        repo = OrganizationRepository(sb)
+        result = repo.find_by_domain("careers.hatch.com")
+        assert len(result) == 1
+        assert result[0]["id"] == 10
+
+
 def _make_repo_sb(data: list | None = None) -> MagicMock:
     """Build a Supabase mock with a query chain that always returns ``data``."""
     sb = MagicMock()
