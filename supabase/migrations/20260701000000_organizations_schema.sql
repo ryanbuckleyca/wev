@@ -91,9 +91,10 @@ WHERE id IN (
   WHERE rn > 1
 );
 
--- Case-insensitive normalized identity index — treats null/empty location as ''
--- so repeated inserts for the same organization (regardless of location presence)
--- are rejected.
+-- Exact same-name + same-location-string duplicate / idempotency guard.
+-- Organization identity (cross-city reuse, distinct same-name employers) is
+-- resolved in the scraper OrganizationResolver — not by this index.
+-- Do not replace with UNIQUE(name).
 CREATE UNIQUE INDEX IF NOT EXISTS organizations_identity_key
   ON public.organizations (
     lower(btrim(name)),
