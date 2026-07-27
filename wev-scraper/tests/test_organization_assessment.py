@@ -246,3 +246,30 @@ def test_governance_gate_forces_other_yes_to_no():
     assert result is not None
     assert result["sse_rating"] == "no"
     assert any("governance_gate" in f for f in result["flags"])
+
+
+def test_governance_gate_keeps_aliased_mutual_forms_as_nonprofit_yes():
+    """Model may say mutual/community; we store nonprofit and keep Yes."""
+    for raw_type in ("mutual", "community", "mutual-aid"):
+        result = _parse_response(
+            _assessment_json(
+                type=raw_type,
+                sse_rating="strong_yes",
+                sse_reasoning="Member-owned mutual support structure.",
+            ),
+            "Grassroots Org",
+        )
+        assert result is not None
+        assert result["type"] == "nonprofit"
+        assert result["sse_rating"] == "strong_yes"
+        assert not any("governance_gate" in f for f in result["flags"])
+
+
+def test_normalize_type_aliases_mutual_and_community_to_nonprofit():
+    from utils.organization_assessment import _normalize_type
+
+    assert _normalize_type("mutual-aid") == "nonprofit"
+    assert _normalize_type("Mutual Aid Group") == "nonprofit"
+    assert _normalize_type("community association") == "nonprofit"
+    assert _normalize_type("community_project") == "nonprofit"
+    assert _normalize_type("credit union") == "cooperative"

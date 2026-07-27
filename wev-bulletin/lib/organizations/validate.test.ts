@@ -12,6 +12,9 @@ describe('normalizeOrgType', () => {
     expect(normalizeOrgType('non-profit')).toBe('nonprofit');
     expect(normalizeOrgType('social_enterprise')).toBe('social enterprise');
     expect(normalizeOrgType('Social Enterprise')).toBe('social enterprise');
+    expect(normalizeOrgType('mutual-aid')).toBe('nonprofit');
+    expect(normalizeOrgType('community association')).toBe('nonprofit');
+    expect(normalizeOrgType('credit union')).toBe('cooperative');
   });
 
   it('returns null for unknown types', () => {

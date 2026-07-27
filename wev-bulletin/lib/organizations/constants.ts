@@ -2,7 +2,13 @@ export const ORG_JOBS_PER_PAGE = 20;
 export const ORG_INDEX_PAGE_SIZE = 20;
 export const ADMIN_ORGS_PER_PAGE = 50;
 
-/** Canonical org type values stored in the database (aligned with scraper). */
+/** Canonical org type values stored in the database (aligned with scraper).
+ *
+ * SSE-eligible stored types: nonprofit, cooperative, social enterprise, union.
+ * Never SSE: government, other.
+ * Mutual societies / mutual-aid / community associations map to nonprofit
+ * (aliases) until a dedicated taxonomy branch defines separate terms.
+ */
 export const ORG_TYPES = [
   'nonprofit',
   'cooperative',

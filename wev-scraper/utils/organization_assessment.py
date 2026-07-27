@@ -46,6 +46,26 @@ ORG_TYPE_VALUES = (
     "other",
 )
 
+# Map normalized keys (spaces/hyphens stripped) → canonical stored type.
+# Mutual / community labels alias to nonprofit until a taxonomy branch
+# introduces dedicated terms.
+_ORG_TYPE_ALIASES: dict[str, str] = {
+    "nonprofit": "nonprofit",
+    "cooperative": "cooperative",
+    "socialenterprise": "social enterprise",
+    "mutual": "nonprofit",
+    "mutualaid": "nonprofit",
+    "mutualaidgroup": "nonprofit",
+    "mutualsociety": "nonprofit",
+    "community": "nonprofit",
+    "communityassociation": "nonprofit",
+    "communityproject": "nonprofit",
+    "creditunion": "cooperative",
+    "union": "union",
+    "government": "government",
+    "other": "other",
+}
+
 # Hard length limits for stored LLM fields. Keep in sync with
 # wev-bulletin/lib/organizations/constants.ts (description/mission).
 # Prompt asks the model to paraphrase within the limit. If it overshoots,
@@ -65,7 +85,7 @@ _JSON_FIELDS = f"""{{
   "website": "Employer's own homepage URL (https://...), or null — see WEBSITE RULES",
   "description": "Organization description (max {_ORG_DESCRIPTION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
   "mission_statement": "Organization mission/purpose (max {_ORG_MISSION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
-  "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null",
+  "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null. Map mutual societies, mutual-aid groups, and community associations/projects to nonprofit (or cooperative if clearly a coop/credit union). Use other only for conventional for-profit / residual forms",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
   "values_raw": "Organization values and principles if found on their website (max {_ORG_VALUES_RAW_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
@@ -215,8 +235,10 @@ def _build_search_query(
 
 
 def _normalize_type(raw: Any) -> str | None:
-    org_type = str(raw).strip().lower() if raw else None
-    return org_type if org_type in ORG_TYPE_VALUES else None
+    if not raw:
+        return None
+    key = re.sub(r"[\s_-]+", "", str(raw).strip().lower())
+    return _ORG_TYPE_ALIASES.get(key)
 
 
 def _normalize_values(raw_values: Any, valid_set: set[str]) -> list[str]:
@@ -237,8 +259,9 @@ def _validate_sse_rating(raw: Any) -> str:
     return rating if rating in ("strong_yes", "weak_yes", "no") else "no"
 
 
-# Types that can never be SSE yes. Null/unknown type is NOT in this set —
-# unknown means keep the model rating (optionally flagged elsewhere).
+# Known types that can never be SSE yes. Null/unknown type is NOT in this set.
+# Eligible stored types (must agree with ORG_EVALUATION_CRITERIA): nonprofit,
+# cooperative, social enterprise, union.
 _SSE_INELIGIBLE_ORG_TYPES = frozenset({
     "government",
     "other",
@@ -259,9 +282,9 @@ def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgRes
     flags = list(result.get("flags") or [])
     flags.append(
         "governance_gate: non-SSE org type cannot be SSE yes "
-        f"(type={org_type!r}; government and other are never SSE)"
+        f"(type={org_type!r}; government and other are never SSE; "
+        "eligible: nonprofit, cooperative, social enterprise, union)"
     )
-    # Keep LLM reasoning intact; do not append prose that can blow length caps.
     return AssessedOrgResult(
         **{
             **result,

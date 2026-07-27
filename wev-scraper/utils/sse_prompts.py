@@ -143,13 +143,22 @@ the employer — they must NOT raise or lower the SSE rating.
 GOVERNANCE GATE (required for any Yes — strong_yes or weak_yes):
 The organization must be a Solidarity Economy form, not a conventional for-profit
 and not a government / public-sector body.
-Eligible forms include: nonprofit / charity, cooperative, mutual, mutual-aid group,
-union, community association, or a genuine social enterprise with social/community
-ownership or statutory mission lock (not a regular corporation with CSR language).
-Conventional for-profit / private company / "Inc." agribusiness / market firm → rate "no"
-even if the mission mentions environment, community, or "respect for people."
-Government, public agency, municipality, crown corporation, school board, hospital
-authority, or other public-sector employer → rate "no". Public service is not SSE.
+Map "type" to one of the stored values only:
+  nonprofit, cooperative, social enterprise, government, union, other.
+SSE-eligible stored types (may be Yes): nonprofit, cooperative, social enterprise, union.
+Never-SSE stored types (always No): government, other.
+TYPE MAPPING (do not invent other type labels):
+- nonprofit — registered charity / nonprofit corporation / association; ALSO use this
+  for mutual societies, mutual-aid groups, community associations, and community
+  projects when they are not clearly cooperatives
+- cooperative — worker, consumer, producer, multi-stakeholder coop, or credit union
+- social enterprise — genuine SE with social/community ownership or statutory mission
+  lock (not a regular corporation with CSR language)
+- union — labour union
+- government — public agency / municipality / crown corp / school board / etc. → "no"
+- other — conventional for-profit / private company / residual → "no"
+  (even if the mission mentions environment, community, or "respect for people")
+Public service is not SSE. CSR/greenwashing in a for-profit is not SSE.
 
 MUST-HAVES (required for any Yes, in addition to the governance gate):
 1. Clear purpose beyond profit - mission prioritizes people/community/planet
@@ -164,6 +173,7 @@ NICE-TO-HAVES (strengthen Yes rating):
 8. Mission reinvestment - surplus goes to people/community/mission, not private shareholders
 
 AUTOMATIC NO FLAGS (triggers 'no' rating):
+- type is government or other (never SSE)
 - Government / public-sector employer (any level) — never SSE
 - Conventional for-profit with only CSR / ESG / "we respect the environment" language
 - No social/environmental/community mission (pure profit-focused)
@@ -173,14 +183,14 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
   those are job-posting concerns, not organization identity"""
 
 ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post completeness):
-- "strong_yes" = nonprofit/coop/mutual/union/community org (or locked social enterprise)
-  with clear SSE values and mission
-- "weak_yes" = eligible SSE governance form with partial/weaker mission evidence —
-  NEVER a conventional for-profit or government body
-- "no" = conventional for-profit (even with green/social marketing), government /
-  public-sector employer, or no substantive social/environmental mission
+- "strong_yes" = nonprofit / cooperative / union / locked social enterprise with clear
+  SSE values and mission (includes mutual-aid and community associations stored as nonprofit)
+- "weak_yes" = eligible SSE type (nonprofit, cooperative, social enterprise, union)
+  with partial/weaker mission evidence — NEVER government or other
+- "no" = government, other/conventional for-profit (even with green/social marketing),
+  or no substantive social/environmental mission
 - Greenwashing test: "respect for individuals and the environment" without SSE
-  governance → "no"
+  governance → "no" (and type should be other, not social enterprise)
 - Never rate "no" because a job description is truncated or lacks compensation details"""
 
 BATCH_RATING_GUIDELINES = """Be strict with ratings. Return JSON array ONLY, no preamble.
