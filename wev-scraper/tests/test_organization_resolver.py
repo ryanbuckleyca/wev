@@ -561,7 +561,7 @@ class TestLLMSuccessPath:
         repo.slug_exists.assert_called_with("my-new-org")
 
 
-# ── Identity unique-constraint conflict path ──────────────────────────────────
+# ── Exact name+location duplicate-guard conflict path ─────────────────────────
 
 
 class TestIdentityConflictPath:
@@ -597,19 +597,66 @@ class TestIdentityConflictPath:
         repo = _make_repo(
             find_by_name=[],
             find_by_name_and_location=None,
-            slug_exists=False,
             find_existing_slugs=set(),
         )
-        repo.insert.side_effect = [
-            Exception('duplicate key value violates unique constraint "organizations_slug_key"'),
-            {"id": 88},
-        ]
+        state = {"inserts": 0}
+        inserted_slugs: list[str] = []
+        repo.slug_exists.side_effect = (
+            lambda slug: slug == "slug-race-org" and state["inserts"] > 0
+        )
+
+        def insert_row(row):
+            # Capture now — resolver mutates the same row dict on retry.
+            inserted_slugs.append(row["slug"])
+            state["inserts"] += 1
+            if state["inserts"] == 1:
+                raise Exception(
+                    'duplicate key value violates unique constraint "organizations_slug_key"'
+                )
+            return {"id": 88}
+
+        repo.insert.side_effect = insert_row
         resolver = _make_resolver(repo=repo, assessor=None)
 
         result = resolver.resolve("Slug Race Org", "City", "ON")
 
         assert result == 88
-        assert repo.insert.call_count == 2
+        assert state["inserts"] == 2
+        assert inserted_slugs[0] == "slug-race-org"
+        assert inserted_slugs[1] != inserted_slugs[0]
+
+    def test_slug_detail_conflict_retries_with_new_slug(self):
+        """Postgres DETAIL Key (slug)=... must classify as slug, not identity."""
+        repo = _make_repo(
+            find_by_name=[],
+            find_by_name_and_location=None,
+            find_existing_slugs=set(),
+        )
+        state = {"inserts": 0}
+        inserted_slugs: list[str] = []
+        repo.slug_exists.side_effect = (
+            lambda slug: slug == "slug-race-org" and state["inserts"] > 0
+        )
+
+        def insert_row(row):
+            inserted_slugs.append(row["slug"])
+            state["inserts"] += 1
+            if state["inserts"] == 1:
+                raise Exception(
+                    "duplicate key value violates unique constraint "
+                    "DETAIL:  Key (slug)=(slug-race-org) already exists."
+                )
+            return {"id": 89}
+
+        repo.insert.side_effect = insert_row
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve("Slug Race Org", "City", "ON")
+
+        assert result == 89
+        assert state["inserts"] == 2
+        assert inserted_slugs[0] != inserted_slugs[1]
+        repo.find_by_name_and_location.assert_not_called()
 
     def test_non_duplicate_insert_error_returns_none(self):
         repo = _make_repo(
