@@ -28,9 +28,10 @@ from utils.organization_cache import evidence_domain
 from utils.slug import generate_slug
 from utils.location_parser import parse_address_with_geocodio
 from utils.sse_prompts import (
-    EVALUATION_CRITERIA,
     JSON_INSTRUCTIONS,
     LENGTH_LIMITED_FIELD_RULES,
+    ORG_EVALUATION_CRITERIA,
+    ORG_RATING_GUIDELINES,
     SSE_PRINCIPLES,
 )
 
@@ -45,32 +46,40 @@ ORG_TYPE_VALUES = (
     "other",
 )
 
-_PROMPT_DESC_MAX_CHARS = 1000
-# Keep in sync with wev-bulletin/lib/organizations/constants.ts where applicable.
+# Soft length targets for LLM output (paraphrase to fit). Keep in sync with
+# wev-bulletin/lib/organizations/constants.ts where applicable. Callers must
+# never hard-truncate these fields after generation.
 _ORG_DESCRIPTION_MAX_CHARS = 500
 _ORG_MISSION_MAX_CHARS = 500
-_SSE_REASONING_MAX_CHARS = 1000
+_ORG_VALUES_RAW_MAX_CHARS = 1000
+# Short evidence summary only — criterion lists live in must_haves_met / nice_to_haves_met.
+_SSE_REASONING_MAX_CHARS = 400
+
+# Truncate job-listing notes fed into the prompt only (not stored org fields).
+_PROMPT_DESC_MAX_CHARS = 1000
 
 _JSON_FIELDS = f"""{{
   "canonical_name": "Official organization name (string, required, non-empty)",
   "slug": "url-safe-kebab-case (string, required)",
   "website": "Employer's own homepage URL (https://...), or null — see WEBSITE RULES",
-  "description": "Brief organization description, max {_ORG_DESCRIPTION_MAX_CHARS} characters — must fit without being cut off, or null",
-  "mission_statement": "Organization mission/purpose statement, max {_ORG_MISSION_MAX_CHARS} characters — must fit without being cut off, or null",
+  "description": "Organization description (max {_ORG_DESCRIPTION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
+  "mission_statement": "Organization mission/purpose (max {_ORG_MISSION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
   "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
-  "values_raw": "Organization values and principles if found on their website, max 1000 characters — must fit without being cut off, or null",
+  "values_raw": "Organization values and principles if found on their website (max {_ORG_VALUES_RAW_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
   "sse_rating": "strong_yes or weak_yes or no",
   "sse_confidence": "0.0 to 1.0",
-  "sse_reasoning": "SSE rating explanation citing specific evidence. Must fit within {_SSE_REASONING_MAX_CHARS} characters without being cut off — write complete sentences only and shorten if needed rather than truncating",
-  "must_haves_met": ["list of criteria met"],
-  "nice_to_haves_met": ["list of criteria met"],
+  "sse_reasoning": "2–4 concise sentences citing the key evidence for the rating (max {_SSE_REASONING_MAX_CHARS} characters — paraphrase to fit completely; do not truncate). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays",
+  "must_haves_met": ["short labels of must-have criteria met — not prose paragraphs"],
+  "nice_to_haves_met": ["short labels of nice-to-have criteria met — not prose paragraphs"],
   "flags": ["any concerns", "ambiguities", "missing info"]
 }}"""
 
 _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
 - Prefer the organization's own official homepage (the domain they control).
+- If ORGANIZATION DATA lists a Known website, prefer that URL unless it violates
+  the rules below (shared/ATS/social) — then discover a better employer-owned site.
 - Do NOT use job-board, ATS, or careers-platform URLs (e.g. Greenhouse, Lever,
   Workday, Indeed, CharityVillage, LinkedIn jobs).
 - Do NOT use social profiles or link aggregators (Facebook, Instagram, LinkedIn
@@ -80,20 +89,23 @@ _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
 - If you cannot confidently identify the employer-owned site, return null.
 - Prefer https:// and the apex/homepage over a deep job posting path."""
 
-_combined_prompt = """You are evaluating an organization from scraped job data.
-Your goal is to identify the organization, extract its values and mission,
- and assess its Solidarity Economy (SSE) alignment.
+_combined_prompt = """You are evaluating an ORGANIZATION (employer), not a job posting.
+Identify the organization, extract its values and mission from research about the
+org itself, and assess its Solidarity Economy (SSE) alignment.
 
 {SSE_PRINCIPLES}
 
-{EVALUATION_CRITERIA}
+{ORG_EVALUATION_CRITERIA}
+
+{ORG_RATING_GUIDELINES}
 
 ORGANIZATION DATA:
   Raw name:    {raw_name}
   Municipality: {municipality}
   Province:     {province}
-  Job title:   {job_title}
-  Description (truncated):
+  Known website: {known_website}
+  Job title (identity hint only — ignore for SSE rating): {job_title}
+  Org/listing notes (identity hint only — ignore for SSE rating):
 {description}
 
 Return a JSON object with exactly these fields:
@@ -160,13 +172,19 @@ def _build_assessment_prompt(
     province: str | None,
     job_title: str,
     description: str,
+    known_website: str | None = None,
 ) -> str:
+    known = ""
+    if known_website and evidence_domain(known_website):
+        known = known_website.strip()
     return _combined_prompt.format(
         SSE_PRINCIPLES=SSE_PRINCIPLES,
-        EVALUATION_CRITERIA=EVALUATION_CRITERIA,
+        ORG_EVALUATION_CRITERIA=ORG_EVALUATION_CRITERIA,
+        ORG_RATING_GUIDELINES=ORG_RATING_GUIDELINES,
         raw_name=raw_name,
         municipality=municipality or "",
         province=province or "",
+        known_website=known or "(none — discover the employer-owned homepage)",
         job_title=job_title,
         description=description[:_PROMPT_DESC_MAX_CHARS],
         json_fields=_JSON_FIELDS,
@@ -182,6 +200,7 @@ def _build_search_query(
     raw_name: str,
     municipality: str | None = None,
     province: str | None = None,
+    known_website: str | None = None,
 ) -> str:
     """Grounding query aimed at the employer's own site, not the job board."""
     parts = [f'"{raw_name}"', "official website"]
@@ -189,6 +208,8 @@ def _build_search_query(
         parts.append(municipality)
     if province:
         parts.append(province)
+    if known_website and evidence_domain(known_website):
+        parts.append(known_website.strip())
     return " ".join(parts)
 
 
@@ -215,23 +236,46 @@ def _validate_sse_rating(raw: Any) -> str:
     return rating if rating in ("strong_yes", "weak_yes", "no") else "no"
 
 
-def _truncate_at_word(text: str, max_len: int) -> str:
-    if len(text) <= max_len:
-        return text
-    sliced = text[:max_len]
-    last_space = sliced.rfind(" ")
-    if last_space > 0:
-        return sliced[:last_space].rstrip()
-    return sliced
+# Eligible org types for any SSE "yes". Conventional for-profits map to "other".
+_SSE_ELIGIBLE_ORG_TYPES = frozenset({
+    "nonprofit",
+    "cooperative",
+    "social enterprise",
+    "union",
+})
 
 
-def _parse_text_field(data: dict, key: str, max_len: int | None = None) -> str | None:
+def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgResult:
+    """Force 'no' when a yes rating lacks eligible SSE governance type."""
+    if result["sse_rating"] == "no":
+        return result
+    org_type = result.get("type")
+    if org_type in _SSE_ELIGIBLE_ORG_TYPES:
+        return result
+
+    flags = list(result.get("flags") or [])
+    flags.append("governance_gate: non-SSE org type cannot be SSE yes")
+    reasoning = (result.get("sse_reasoning") or "").rstrip()
+    note = (
+        " Overridden to 'no': organization type "
+        f"{org_type!r} is not an eligible SSE governance form "
+        "(nonprofit, cooperative, social enterprise, or union); "
+        "CSR/environmental language alone is insufficient."
+    )
+    return AssessedOrgResult(
+        **{
+            **result,
+            "sse_rating": "no",
+            "flags": flags,
+            "sse_reasoning": reasoning + note,
+        }
+    )
+
+
+def _parse_text_field(data: dict, key: str) -> str | None:
     val = data.get(key)
     if val:
-        trimmed = str(val).strip()
-        if max_len is not None:
-            trimmed = _truncate_at_word(trimmed, max_len)
-        return trimmed
+        return str(val).strip()
     return None
 
 
@@ -304,25 +348,26 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
             canonical_name, raw_name, slug,
         )
 
-    return AssessedOrgResult(
-        canonical_name=canonical_name.strip(),
-        slug=slug,
-        website=_parse_website(data.get("website")),
-        description=_parse_text_field(data, "description", _ORG_DESCRIPTION_MAX_CHARS),
-        mission_statement=_parse_text_field(data, "mission_statement", _ORG_MISSION_MAX_CHARS),
-        type=_normalize_type(data.get("type")),
-        sector_id=data.get("sector_id") if data.get("sector_id") in get_sector_ids_set() else None,
-        values_raw=_parse_text_field(data, "values_raw", 1000),
-        values=_normalize_values(data.get("values", []), get_work_values_set()),
-        sse_rating=_validate_sse_rating(data.get("sse_rating")),
-        sse_confidence=_clamp_confidence(data.get("sse_confidence")),
-        sse_reasoning=(
-            _parse_text_field(data, "sse_reasoning", _SSE_REASONING_MAX_CHARS)
-            or "No reasoning provided"
-        ),
-        must_haves_met=_ensure_str_list(data.get("must_haves_met")),
-        nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
-        flags=_ensure_str_list(data.get("flags")),
+    return _apply_org_sse_governance_guard(
+        AssessedOrgResult(
+            canonical_name=canonical_name.strip(),
+            slug=slug,
+            website=_parse_website(data.get("website")),
+            description=_parse_text_field(data, "description"),
+            mission_statement=_parse_text_field(data, "mission_statement"),
+            type=_normalize_type(data.get("type")),
+            sector_id=data.get("sector_id") if data.get("sector_id") in get_sector_ids_set() else None,
+            values_raw=_parse_text_field(data, "values_raw"),
+            values=_normalize_values(data.get("values", []), get_work_values_set()),
+            sse_rating=_validate_sse_rating(data.get("sse_rating")),
+            sse_confidence=_clamp_confidence(data.get("sse_confidence")),
+            sse_reasoning=(
+                _parse_text_field(data, "sse_reasoning") or "No reasoning provided"
+            ),
+            must_haves_met=_ensure_str_list(data.get("must_haves_met")),
+            nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
+            flags=_ensure_str_list(data.get("flags")),
+        )
     )
 
 
@@ -367,18 +412,29 @@ class OrganizationAssessor(BaseGroundedClassifier):
         province: str | None = None,
         job_title: str = "",
         description: str = "",
+        known_website: str | None = None,
     ) -> AssessedOrgResult | None:
-        prompt = _build_assessment_prompt(raw_name, municipality, province, job_title, description)
-        search_query = _build_search_query(raw_name, municipality, province)
+        prompt = _build_assessment_prompt(
+            raw_name,
+            municipality,
+            province,
+            job_title,
+            description,
+            known_website=known_website,
+        )
+        search_query = _build_search_query(
+            raw_name, municipality, province, known_website=known_website,
+        )
 
         try:
             response_text = self._call_provider_with_retry(
                 provider=self.provider,
                 prompt=prompt,
                 system=(
-                    "You are an expert at identifying organizations from job listings, "
-                    "finding their official employer-owned website, mapping work values, "
-                    "and evaluating Solidarity Economy alignment."
+                    "You are an expert at identifying organizations, finding their "
+                    "official employer-owned website, mapping work values, and "
+                    "evaluating Solidarity Economy alignment of the ORGANIZATION "
+                    "(not job-posting completeness)."
                 ),
                 task="sse",
                 search_query=search_query,
@@ -401,12 +457,20 @@ class OrganizationAssessor(BaseGroundedClassifier):
         job_title: str = "",
         description: str = "",
         canonical_loc: str = "",
+        known_website: str | None = None,
     ) -> dict | None:
         """Assess the org and return a row dict ready for DB insert.
 
         Returns None if the LLM call fails (caller should use minimal fallback).
         """
-        result = self.assess(raw_name, municipality, province, job_title, description)
+        result = self.assess(
+            raw_name,
+            municipality,
+            province,
+            job_title,
+            description,
+            known_website=known_website,
+        )
         if result is None:
             return None
 
@@ -434,8 +498,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
     ) -> dict | None:
         """Re-assess an existing org and return an update dict.
 
-        Used by the backfill script for orgs created before the combined
-        assessor existed (null sse_rating).
+        Includes website when the assessor returns an employer-owned host.
+        Passes the org's current website (if evidence-grade) into search/prompt.
         """
         name = org.get("name")
         if not name:
@@ -443,14 +507,20 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 "assess_and_build_update: org_id=%s has no name, skipping", org.get("id"),
             )
             return None
+        known_website = org.get("website")
         result = self.assess(
             raw_name=name,
             municipality=org.get("municipality"),
             province=org.get("province"),
             job_title="",
             description=org.get("description") or "",
+            known_website=known_website,
         )
         if result is None:
             return None
 
-        return _result_to_db_fields(result)
+        updates = _result_to_db_fields(result)
+        website = result.get("website")
+        if website and evidence_domain(website):
+            updates["website"] = website
+        return updates

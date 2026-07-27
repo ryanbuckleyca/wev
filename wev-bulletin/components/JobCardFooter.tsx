@@ -23,6 +23,8 @@ interface JobCardFooterProps {
   fadeBackground?: string;
   workType?: 'remote' | 'hybrid' | 'office';
   selectedWorkTypes?: string[];
+  /** Free-text location pill (org cards); same visual style as workType. */
+  locationLabel?: string | null;
   language?: string | null;
   selectedLanguages?: string[];
   isLoggedIn?: boolean;
@@ -42,6 +44,7 @@ export default function JobCardFooter({
   fadeBackground = 'var(--muted)',
   workType,
   selectedWorkTypes = [],
+  locationLabel = null,
   language,
   selectedLanguages = [],
   isLoggedIn = true,
@@ -119,6 +122,19 @@ export default function JobCardFooter({
       label,
       tooltip,
       isMatched,
+      icon: 'location' as const,
+      type: 'workType' as const,
+    };
+  };
+
+  const buildLocationPill = (): ScrollablePillsItem | undefined => {
+    const label = locationLabel?.trim();
+    if (!label) return undefined;
+
+    return {
+      label,
+      tooltip: label,
+      isMatched: false,
       icon: 'location' as const,
       type: 'workType' as const,
     };
@@ -229,9 +245,12 @@ export default function JobCardFooter({
   const valueSummaryPill = summaryItems.find((item) => item.icon === 'heart');
   const skillSummaryPill = summaryItems.find((item) => item.icon === 'briefcase');
   const workTypePill = buildWorkTypePill();
+  const locationPill = buildLocationPill();
   const languagePill = buildLanguagePill();
 
-  const preItems = [workTypePill, languagePill].filter(Boolean) as ScrollablePillsItem[];
+  const preItems = [workTypePill, locationPill, languagePill].filter(
+    Boolean,
+  ) as ScrollablePillsItem[];
 
   const groups: ExpandablePillGroup[] = [
     { key: 'values', summary: valueSummaryPill, items: valueItems },

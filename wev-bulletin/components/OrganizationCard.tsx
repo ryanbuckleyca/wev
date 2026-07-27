@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { formatOrgLocationLabel, getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import { safeUrl } from '@/lib/url';
 import SseBadge from './SseBadge';
 import OrgValuesMatchFooter from './OrgValuesMatchFooter';
@@ -61,7 +61,7 @@ function OrganizationCardHeader({
   const description = org.description || org.mission_statement || noDescriptionLabel;
   const typeLabel = getTypeLabel(org.type);
   const sectorLabel = getSectorLabel(org.sector_id);
-  const metadata = [org.location, sectorLabel, typeLabel].filter(Boolean).join(' • ');
+  const metadata = [sectorLabel, typeLabel].filter(Boolean).join(' • ');
 
   const shouldTruncate = description.length > DESCRIPTION_PREVIEW_LENGTH;
   const preview = shouldTruncate
@@ -181,7 +181,8 @@ export default function OrganizationCard({
   const getSectorLabel = (sectorId: string | null) =>
     sectorId ? tSectors(`${sectorId}.label`) : '';
 
-  const hasFooter = Boolean(org.values_list?.length);
+  const locationLabel = formatOrgLocationLabel(org);
+  const hasFooter = Boolean(org.values_list?.length) || Boolean(locationLabel);
 
   return (
     <article className="relative rounded-wev-card transition-all duration-300 bg-card border border-border hover:border-primary overflow-hidden flex flex-col">
@@ -217,6 +218,7 @@ export default function OrganizationCard({
             sharedValues={org.shared_values || []}
             isLoggedIn={isLoggedIn}
             fadeBackground="var(--muted)"
+            locationLabel={locationLabel}
           />
         </div>
       )}

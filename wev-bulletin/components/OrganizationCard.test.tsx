@@ -1,20 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@/test-utils';
 import fc from 'fast-check';
 import OrganizationCard from './OrganizationCard';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
-
-// Mock @lineiconshq/react-lineicons to render a span with data-testid
-vi.mock('@lineiconshq/react-lineicons', () => ({
-  Leaf1Solid: 'Leaf1Solid',
-  Lineicons: ({ icon }: { icon: any }) => <span data-testid="lineicon-mock" />,
-}));
-
-// Mock @lineiconshq/free-icons
-vi.mock('@lineiconshq/free-icons', () => ({
-  Leaf1Solid: 'Leaf1Solid',
-  Lineicons: ({ icon }: { icon: any }) => <span data-testid="lineicon-mock" />,
-}));
 
 const baseProps = {
   locale: 'en',
@@ -36,6 +24,8 @@ function makeOrg(overrides: Partial<OrgIndexEntry> = {}): OrgIndexEntry {
     description: null,
     website: null,
     location: 'City',
+    municipality: null,
+    province: null,
     is_sse: false,
     type: null,
     sector_id: null,
@@ -54,11 +44,11 @@ describe('OrganizationCard', () => {
   it('Property 14: SSE badge renders iff is_sse is true', () => {
     fc.assert(
       fc.property(fc.boolean(), (is_sse) => {
-        const org = makeOrg({ is_sse });
+        const org = makeOrg({ is_sse, location: null });
 
         const { unmount } = render(<OrganizationCard {...baseProps} org={org} />);
 
-        const badge = screen.queryByTestId('lineicon-mock');
+        const badge = screen.queryByRole('img', { name: 'SSE' });
         if (is_sse) {
           expect(badge).toBeInTheDocument();
         } else {
@@ -87,5 +77,22 @@ describe('OrganizationCard', () => {
       }),
       { numRuns: 25 },
     );
+  });
+
+  it('shows a location pill in the footer when location is present', () => {
+    render(
+      <OrganizationCard
+        {...baseProps}
+        org={makeOrg({ location: null, municipality: 'Montreal', province: 'QC' })}
+      />,
+    );
+
+    expect(screen.getByText('Montreal, QC')).toBeInTheDocument();
+  });
+
+  it('shows a location pill from free-text location when mun/province are missing', () => {
+    render(<OrganizationCard {...baseProps} org={makeOrg({ location: 'Toronto' })} />);
+
+    expect(screen.getByText('Toronto')).toBeInTheDocument();
   });
 });

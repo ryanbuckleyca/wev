@@ -16,8 +16,9 @@ export type OrgType = (typeof ORG_TYPES)[number];
 
 export const MAX_ORG_VALUES = 5;
 
+/** Soft length targets for description/mission (LLM paraphrases to fit; admin UI matches). */
 export const MAX_ORG_DESCRIPTION_LENGTH = 500;
-export const MAX_ORG_MISSION_LENGTH = 300;
+export const MAX_ORG_MISSION_LENGTH = 500;
 
 /** Columns loaded/edited by the admin form. */
 export const ORG_ADMIN_FORM_COLUMNS =

@@ -155,6 +155,48 @@ def _safe_get(obj, key, default=None):
     return default
 
 
+_CA_PROVINCE_ALIASES = {
+    "AB": "AB",
+    "ALBERTA": "AB",
+    "BC": "BC",
+    "BRITISH COLUMBIA": "BC",
+    "MB": "MB",
+    "MANITOBA": "MB",
+    "NB": "NB",
+    "NEW BRUNSWICK": "NB",
+    "NL": "NL",
+    "NEWFOUNDLAND": "NL",
+    "NEWFOUNDLAND AND LABRADOR": "NL",
+    "NS": "NS",
+    "NOVA SCOTIA": "NS",
+    "NT": "NT",
+    "NORTHWEST TERRITORIES": "NT",
+    "NU": "NU",
+    "NUNAVUT": "NU",
+    "ON": "ON",
+    "ONTARIO": "ON",
+    "PE": "PE",
+    "PEI": "PE",
+    "PRINCE EDWARD ISLAND": "PE",
+    "QC": "QC",
+    "QUEBEC": "QC",
+    "QUÉBEC": "QC",
+    "SK": "SK",
+    "SASKATCHEWAN": "SK",
+    "YT": "YT",
+    "YUKON": "YT",
+    "YUKON TERRITORY": "YT",
+}
+
+
+def _normalize_ca_province_code(raw: Optional[str]) -> Optional[str]:
+    """Map Geocodio state/province text to a 2-letter Canadian code."""
+    if not raw:
+        return None
+    key = re.sub(r"\s+", " ", str(raw).strip()).upper()
+    return _CA_PROVINCE_ALIASES.get(key)
+
+
 def _extract_explicit_location(location: str) -> Optional[str]:
     """
     Extract explicit city/province mentions from location text.
@@ -537,12 +579,14 @@ def _geocode_with_geocodio_uncached(location: str) -> Optional[dict]:
             or _safe_get(address_components, "village")
         )
 
-        # Extract province (state code for Canadian addresses)
-        # Geocodio returns 2-letter province codes for Canada (ON, QC, BC, etc.)
-        province = _safe_get(address_components, "state")
-        if province:
-            # Ensure uppercase 2-letter code
-            province = province.upper()[:2] if len(province) > 2 else province.upper()
+        # Geocodio REST uses "state"; the geocodio Python client maps it to
+        # "state_province". Accept all three so dict mocks and live clients work.
+        province_raw = (
+            _safe_get(address_components, "state")
+            or _safe_get(address_components, "state_province")
+            or _safe_get(address_components, "province")
+        )
+        province = _normalize_ca_province_code(province_raw)
 
         # Ensure total time (including API call) is at least 1 second
         request_duration = time.time() - request_start
