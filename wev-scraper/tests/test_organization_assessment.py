@@ -97,6 +97,48 @@ def test_apply_length_repairs_drops_field_when_repair_fails():
     assert any("length_limit: dropped description" in f for f in fixed["flags"])
 
 
+def test_omit_dropped_length_fields_preserves_existing_on_reassess_update():
+    from utils.organization_assessment import (
+        _apply_length_repairs,
+        _fields_over_limit,
+        _omit_dropped_length_fields_from_update,
+        _result_to_db_fields,
+    )
+
+    long_desc = "y" * 1200
+    long_mission = "z" * 900
+    result = _parse_response(
+        _assessment_json(
+            description=long_desc,
+            mission_statement=long_mission,
+            sse_reasoning="Clear nonprofit mission evidence.",
+        ),
+        "Nature Visuals",
+    )
+    assert result is not None
+    fixed = _apply_length_repairs(result, _fields_over_limit(result), {}, "Nature Visuals")
+    updates = _omit_dropped_length_fields_from_update(_result_to_db_fields(fixed), fixed)
+    assert "description" not in updates
+    assert "mission_statement" not in updates
+    assert updates["sse_rating"] == "strong_yes"
+    assert "sse_details" in updates
+
+
+def test_org_assessment_prompt_requires_evidence_not_type_label_alone():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Acme Inc.",
+        "Montreal",
+        "QC",
+        job_title="Cook",
+        description="listing notes",
+    )
+    assert "evidence over labels" in prompt
+    assert "NOT from the \"type\" string alone" in prompt
+    assert "Base the rating on mission/governance evidence" in prompt
+
+
 def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
     from utils.organization_assessment import _build_assessment_prompt
 
