@@ -143,9 +143,15 @@ the employer — they must NOT raise or lower the SSE rating.
 GOVERNANCE GATE (required for any Yes — strong_yes or weak_yes):
 The organization must be a Solidarity Economy form, not a conventional for-profit
 and not a government / public-sector body.
+IMPORTANT — evidence over labels: score sse_rating from researched mission,
+governance, ownership, and public materials — NOT from the "type" string alone.
+A nonprofit/cooperative label without mission/governance evidence is not enough
+for Yes. Conversely, do not invent Yes from CSR slogans when structure is a
+conventional for-profit.
 Map "type" to one of the stored values only:
   nonprofit, cooperative, social enterprise, government, union, other.
-SSE-eligible stored types (may be Yes): nonprofit, cooperative, social enterprise, union.
+SSE-eligible stored types (may be Yes when evidence supports it):
+  nonprofit, cooperative, social enterprise, union.
 Never-SSE stored types (always No): government, other.
 TYPE MAPPING (do not invent other type labels):
 - nonprofit — registered charity / nonprofit corporation / association; ALSO use this
@@ -183,6 +189,7 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
   those are job-posting concerns, not organization identity"""
 
 ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post completeness):
+- Base the rating on mission/governance evidence from research, not the type label alone
 - "strong_yes" = nonprofit / cooperative / union / locked social enterprise with clear
   SSE values and mission (includes mutual-aid and community associations stored as nonprofit)
 - "weak_yes" = eligible SSE type (nonprofit, cooperative, social enterprise, union)

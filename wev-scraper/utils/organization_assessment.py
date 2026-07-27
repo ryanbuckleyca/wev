@@ -362,7 +362,13 @@ def _apply_length_repairs(
     repaired: dict[str, str],
     raw_name: str,
 ) -> AssessedOrgResult:
-    """Apply successful repairs; drop fields that still do not fit (no truncation)."""
+    """Apply successful repairs; drop fields that still do not fit (no truncation).
+
+    Dropped fields are set to None (or a short sse_reasoning fallback) and flagged
+    ``length_limit: dropped <field> ...``. Callers that update existing rows should
+    omit those keys so prior DB values are retained — see
+    ``_omit_dropped_length_fields_from_update``.
+    """
     updates: dict[str, Any] = {}
     flags = list(result.get("flags") or [])
     for field, (original, max_chars) in oversize.items():
@@ -387,6 +393,32 @@ def _apply_length_repairs(
         return result
     return AssessedOrgResult(**{**result, **updates, "flags": flags})
 
+
+# AssessedOrgResult field → organizations update column(s) to skip when repair drops.
+_LENGTH_DROP_UPDATE_KEYS: dict[str, tuple[str, ...]] = {
+    "description": ("description",),
+    "mission_statement": ("mission_statement",),
+    "values_raw": ("values",),
+    # sse_reasoning lives inside sse_details; keep the short fallback there.
+}
+
+
+def _omit_dropped_length_fields_from_update(
+    updates: dict,
+    result: AssessedOrgResult,
+) -> dict:
+    """Remove fields the repair pass dropped so reassess does not null existing DB text."""
+    omit: set[str] = set()
+    for flag in result.get("flags") or []:
+        if not flag.startswith("length_limit: dropped "):
+            continue
+        # "length_limit: dropped description after failed paraphrase repair"
+        parts = flag.split()
+        field = parts[2] if len(parts) > 2 else ""
+        omit.update(_LENGTH_DROP_UPDATE_KEYS.get(field, ()))
+    if not omit:
+        return updates
+    return {key: value for key, value in updates.items() if key not in omit}
 
 def _parse_text_field(data: dict, key: str) -> str | None:
     val = data.get(key)
@@ -677,6 +709,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
             return None
 
         updates = _result_to_db_fields(result)
+        updates = _omit_dropped_length_fields_from_update(updates, result)
         website = result.get("website")
         if website and evidence_domain(website):
             updates["website"] = website
