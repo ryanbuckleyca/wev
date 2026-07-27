@@ -279,6 +279,30 @@ def _parse_text_field(data: dict, key: str) -> str | None:
     return None
 
 
+# Soft limits are prompt guidance only — never hard-truncate stored fields.
+# Log when the LLM overshoots so we can monitor prompt compliance.
+_SOFT_LIMIT_FIELDS: tuple[tuple[str, int], ...] = (
+    ("description", _ORG_DESCRIPTION_MAX_CHARS),
+    ("mission_statement", _ORG_MISSION_MAX_CHARS),
+    ("values_raw", _ORG_VALUES_RAW_MAX_CHARS),
+    ("sse_reasoning", _SSE_REASONING_MAX_CHARS),
+)
+
+
+def _warn_over_soft_limits(result: AssessedOrgResult, raw_name: str) -> None:
+    for field, max_chars in _SOFT_LIMIT_FIELDS:
+        value = result.get(field)
+        if isinstance(value, str) and len(value) > max_chars:
+            logger.warning(
+                "OrganizationAssessor: %s exceeds soft limit for %r: "
+                "len=%d max=%d (kept untruncated)",
+                field,
+                raw_name,
+                len(value),
+                max_chars,
+            )
+
+
 def _parse_website(raw: Any) -> str | None:
     """Keep only http(s) employer-owned sites; drop ATS/social/shared hosts."""
     if not raw:
@@ -348,27 +372,27 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
             canonical_name, raw_name, slug,
         )
 
-    return _apply_org_sse_governance_guard(
-        AssessedOrgResult(
-            canonical_name=canonical_name.strip(),
-            slug=slug,
-            website=_parse_website(data.get("website")),
-            description=_parse_text_field(data, "description"),
-            mission_statement=_parse_text_field(data, "mission_statement"),
-            type=_normalize_type(data.get("type")),
-            sector_id=data.get("sector_id") if data.get("sector_id") in get_sector_ids_set() else None,
-            values_raw=_parse_text_field(data, "values_raw"),
-            values=_normalize_values(data.get("values", []), get_work_values_set()),
-            sse_rating=_validate_sse_rating(data.get("sse_rating")),
-            sse_confidence=_clamp_confidence(data.get("sse_confidence")),
-            sse_reasoning=(
-                _parse_text_field(data, "sse_reasoning") or "No reasoning provided"
-            ),
-            must_haves_met=_ensure_str_list(data.get("must_haves_met")),
-            nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
-            flags=_ensure_str_list(data.get("flags")),
-        )
+    result = AssessedOrgResult(
+        canonical_name=canonical_name.strip(),
+        slug=slug,
+        website=_parse_website(data.get("website")),
+        description=_parse_text_field(data, "description"),
+        mission_statement=_parse_text_field(data, "mission_statement"),
+        type=_normalize_type(data.get("type")),
+        sector_id=data.get("sector_id") if data.get("sector_id") in get_sector_ids_set() else None,
+        values_raw=_parse_text_field(data, "values_raw"),
+        values=_normalize_values(data.get("values", []), get_work_values_set()),
+        sse_rating=_validate_sse_rating(data.get("sse_rating")),
+        sse_confidence=_clamp_confidence(data.get("sse_confidence")),
+        sse_reasoning=(
+            _parse_text_field(data, "sse_reasoning") or "No reasoning provided"
+        ),
+        must_haves_met=_ensure_str_list(data.get("must_haves_met")),
+        nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
+        flags=_ensure_str_list(data.get("flags")),
     )
+    _warn_over_soft_limits(result, raw_name)
+    return _apply_org_sse_governance_guard(result)
 
 
 def _result_to_db_fields(result: AssessedOrgResult) -> dict:
