@@ -25,6 +25,7 @@ from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassifica
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
 from utils.organization_cache import evidence_domain
+from utils.organization_language import classify_org_language
 from utils.slug import generate_slug
 from utils.location_parser import parse_address_with_geocodio
 from utils.sse_prompts import (
@@ -557,6 +558,20 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     return _apply_org_sse_governance_guard(result)
 
 
+def _attach_org_language(row: dict) -> dict:
+    """Set organizations.language from the shared classifier (source of truth)."""
+    classification = classify_org_language(
+        name=row.get("name"),
+        description=row.get("description"),
+        mission_statement=row.get("mission_statement"),
+        website=row.get("website"),
+        fetch_web=False,
+    )
+    if classification.language:
+        row["language"] = classification.language
+    return row
+
+
 def _result_to_db_fields(result: AssessedOrgResult) -> dict:
     description_en = result["description_en"]
     description_fr = result["description_fr"]
@@ -778,7 +793,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
         # lat, lng, geocode_accuracy_type); it handles None/empty internally.
         geo_data = parse_address_with_geocodio(loc_str)
 
-        return {
+        return _attach_org_language({
             "name": result["canonical_name"],
             "slug": result["slug"],
             "location": loc_str,
@@ -789,7 +804,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
             "lng": geo_data.get("lng"),
             "geocode_accuracy_type": geo_data.get("geocode_accuracy_type"),
             **_result_to_db_fields(result),
-        }
+        })
 
     def assess_and_build_update(
         self,
@@ -828,4 +843,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
         website = result.get("website")
         if website and evidence_domain(website):
             updates["website"] = website
-        return updates
+        return _attach_org_language({
+            "name": name,
+            "website": updates.get("website") or org.get("website"),
+            **updates,
+        })

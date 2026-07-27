@@ -24,6 +24,7 @@ function buildFetchKey(locale: string, currentPage: number, sortBy: string, filt
     filters.selectedProvinces.join(','),
     filters.selectedMunicipalities.join(','),
     filters.selectedTypes.join(','),
+    filters.selectedLanguages.join(','),
   ].join('|');
 }
 
@@ -44,6 +45,7 @@ function buildSearchParams(
   filters.selectedProvinces.forEach((p) => params.append('province', p));
   filters.selectedMunicipalities.forEach((m) => params.append('municipality', m));
   filters.selectedTypes.forEach((t) => params.append('type', t));
+  filters.selectedLanguages.forEach((l) => params.append('language', l));
   return params;
 }
 

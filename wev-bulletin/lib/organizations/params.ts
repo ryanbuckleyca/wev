@@ -14,6 +14,7 @@ export interface OrgIndexParams {
   provinces: string[];
   municipalities: string[];
   orgTypes: string[];
+  languages: string[];
   sortBy: string;
 }
 
@@ -36,6 +37,16 @@ export function parseOrgIndexSearchParams(
   const provinces = searchParams.getAll('province');
   const municipalities = searchParams.getAll('municipality');
   const orgTypes = searchParams.getAll('type');
+  const languages = searchParams.getAll('language');
 
-  return { page, searchQuery, sseOnly, provinces, municipalities, orgTypes, sortBy };
+  return {
+    page,
+    searchQuery,
+    sseOnly,
+    provinces,
+    municipalities,
+    orgTypes,
+    languages,
+    sortBy,
+  };
 }

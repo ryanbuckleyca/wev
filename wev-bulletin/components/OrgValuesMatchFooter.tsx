@@ -14,6 +14,9 @@ interface Props {
   className?: string;
   /** Location pill label (same style as job work-type pills). */
   locationLabel?: string | null;
+  /** Org public language (`en` / `fr` / `bilingual`), same pill as jobs. */
+  language?: string | null;
+  selectedLanguages?: string[];
 }
 
 export function buildOrgValuesMatchTooltip(
@@ -46,6 +49,8 @@ export default function OrgValuesMatchFooter({
   fadeBackground = 'var(--muted)',
   className,
   locationLabel = null,
+  language = null,
+  selectedLanguages = [],
 }: Props) {
   const scorePercent = useMemo(() => {
     if (valueScore == null) return null;
@@ -58,7 +63,8 @@ export default function OrgValuesMatchFooter({
   }, [isLoggedIn, scorePercent, values, sharedValues]);
 
   const hasLocation = Boolean(locationLabel?.trim());
-  if (values.length === 0 && !hasLocation) return null;
+  const hasLanguage = Boolean(language);
+  if (values.length === 0 && !hasLocation && !hasLanguage) return null;
 
   const footer = (
     <JobCardFooter
@@ -75,6 +81,8 @@ export default function OrgValuesMatchFooter({
       fadeBackground={fadeBackground}
       isLoggedIn={isLoggedIn}
       locationLabel={locationLabel}
+      language={language}
+      selectedLanguages={selectedLanguages}
     />
   );
 
