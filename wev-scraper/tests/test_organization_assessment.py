@@ -30,32 +30,47 @@ def _assessment_json(**overrides) -> str:
     return json.dumps(payload)
 
 
-def test_parse_response_does_not_truncate_over_limit_text():
+def test_parse_response_does_not_truncate_over_limit_text(caplog):
     """Soft limits are prompt guidance only — never hard-cut stored fields."""
-    from utils.organization_assessment import _SSE_REASONING_MAX_CHARS
+    import logging
+
+    from utils.organization_assessment import (
+        _ORG_DESCRIPTION_MAX_CHARS,
+        _ORG_MISSION_MAX_CHARS,
+        _ORG_VALUES_RAW_MAX_CHARS,
+        _SSE_REASONING_MAX_CHARS,
+    )
 
     reasoning = ("word " * 200).strip()
     description = "y" * 1200
     mission = ("Mission sentence. " * 80).strip()
     values_raw = ("Values text. " * 100).strip()
     assert len(reasoning) > _SSE_REASONING_MAX_CHARS
-    assert len(description) > 500
+    assert len(description) > _ORG_DESCRIPTION_MAX_CHARS
+    assert len(mission) > _ORG_MISSION_MAX_CHARS
+    assert len(values_raw) > _ORG_VALUES_RAW_MAX_CHARS
 
-    result = _parse_response(
-        _assessment_json(
-            sse_reasoning=reasoning,
-            description=description,
-            mission_statement=mission,
-            values_raw=values_raw,
-        ),
-        "Nature Visuals",
-    )
+    with caplog.at_level(logging.WARNING, logger="utils.organization_assessment"):
+        result = _parse_response(
+            _assessment_json(
+                sse_reasoning=reasoning,
+                description=description,
+                mission_statement=mission,
+                values_raw=values_raw,
+            ),
+            "Nature Visuals",
+        )
 
     assert result is not None
     assert result["sse_reasoning"] == reasoning
     assert result["description"] == description
     assert result["mission_statement"] == mission
     assert result["values_raw"] == values_raw
+
+    warnings = [r.message for r in caplog.records if "exceeds soft limit" in r.message]
+    assert len(warnings) == 4
+    assert any("description" in w and "kept untruncated" in w for w in warnings)
+    assert any("sse_reasoning" in w for w in warnings)
 
 
 def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
