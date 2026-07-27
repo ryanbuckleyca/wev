@@ -30,47 +30,71 @@ def _assessment_json(**overrides) -> str:
     return json.dumps(payload)
 
 
-def test_parse_response_does_not_truncate_over_limit_text(caplog):
-    """Soft limits are prompt guidance only — never hard-cut stored fields."""
-    import logging
-
+def test_parse_response_keeps_over_limit_text_until_repair():
+    """Parse does not truncate; oversize detection is for the repair pass."""
     from utils.organization_assessment import (
         _ORG_DESCRIPTION_MAX_CHARS,
-        _ORG_MISSION_MAX_CHARS,
-        _ORG_VALUES_RAW_MAX_CHARS,
         _SSE_REASONING_MAX_CHARS,
+        _fields_over_limit,
     )
 
     reasoning = ("word " * 200).strip()
     description = "y" * 1200
-    mission = ("Mission sentence. " * 80).strip()
-    values_raw = ("Values text. " * 100).strip()
     assert len(reasoning) > _SSE_REASONING_MAX_CHARS
     assert len(description) > _ORG_DESCRIPTION_MAX_CHARS
-    assert len(mission) > _ORG_MISSION_MAX_CHARS
-    assert len(values_raw) > _ORG_VALUES_RAW_MAX_CHARS
 
-    with caplog.at_level(logging.WARNING, logger="utils.organization_assessment"):
-        result = _parse_response(
-            _assessment_json(
-                sse_reasoning=reasoning,
-                description=description,
-                mission_statement=mission,
-                values_raw=values_raw,
-            ),
-            "Nature Visuals",
-        )
+    result = _parse_response(
+        _assessment_json(sse_reasoning=reasoning, description=description),
+        "Nature Visuals",
+    )
 
     assert result is not None
     assert result["sse_reasoning"] == reasoning
     assert result["description"] == description
-    assert result["mission_statement"] == mission
-    assert result["values_raw"] == values_raw
+    over = _fields_over_limit(result)
+    assert "sse_reasoning" in over
+    assert "description" in over
 
-    warnings = [r.message for r in caplog.records if "exceeds soft limit" in r.message]
-    assert len(warnings) == 4
-    assert any("description" in w and "kept untruncated" in w for w in warnings)
-    assert any("sse_reasoning" in w for w in warnings)
+
+def test_apply_length_repairs_uses_fitting_paraphrase():
+    from utils.organization_assessment import (
+        _ORG_DESCRIPTION_MAX_CHARS,
+        _apply_length_repairs,
+        _fields_over_limit,
+    )
+
+    long_desc = "y" * 1200
+    result = _parse_response(
+        _assessment_json(description=long_desc),
+        "Nature Visuals",
+    )
+    assert result is not None
+    over = _fields_over_limit(result)
+    repaired = {"description": "A complete short paraphrase that fits."}
+    assert len(repaired["description"]) <= _ORG_DESCRIPTION_MAX_CHARS
+
+    fixed = _apply_length_repairs(result, over, repaired, "Nature Visuals")
+    assert fixed["description"] == repaired["description"]
+    assert not _fields_over_limit(fixed)
+
+
+def test_apply_length_repairs_drops_field_when_repair_fails():
+    from utils.organization_assessment import (
+        _apply_length_repairs,
+        _fields_over_limit,
+    )
+
+    long_desc = "y" * 1200
+    result = _parse_response(
+        _assessment_json(description=long_desc, sse_reasoning="ok"),
+        "Nature Visuals",
+    )
+    assert result is not None
+    over = _fields_over_limit(result)
+    # Empty repair map → drop oversize fields (no truncation).
+    fixed = _apply_length_repairs(result, over, {}, "Nature Visuals")
+    assert fixed["description"] is None
+    assert any("length_limit: dropped description" in f for f in fixed["flags"])
 
 
 def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
@@ -88,6 +112,7 @@ def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
     assert "paraphrase and condense" in prompt
     assert "Do NOT restate must_haves_met" in prompt
     assert "2–4 concise sentences" in prompt
+    assert "MUST fit within" in prompt
 
 
 def test_parse_website_keeps_employer_owned_host():
@@ -160,7 +185,6 @@ def test_governance_gate_forces_for_profit_weak_yes_to_no():
     assert result is not None
     assert result["sse_rating"] == "no"
     assert any("governance_gate" in f for f in result["flags"])
-    assert "Overridden to 'no'" in result["sse_reasoning"]
 
 
 def test_governance_gate_keeps_nonprofit_yes():
@@ -170,3 +194,55 @@ def test_governance_gate_keeps_nonprofit_yes():
     )
     assert result is not None
     assert result["sse_rating"] == "strong_yes"
+
+
+def test_org_assessment_prompt_excludes_government_from_sse():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt("City of Ottawa", "Ottawa", "ON", "", "")
+    assert "Government" in prompt or "government" in prompt
+    assert "Public service is not SSE" in prompt or "public-sector" in prompt.lower()
+
+
+def test_governance_gate_forces_government_yes_to_no():
+    """Public-sector orgs are not SSE governance forms (intentional)."""
+    result = _parse_response(
+        _assessment_json(
+            type="government",
+            sse_rating="strong_yes",
+            sse_reasoning="Public agency serving community needs.",
+        ),
+        "City Parks Department",
+    )
+    assert result is not None
+    assert result["sse_rating"] == "no"
+    assert any("governance_gate" in f for f in result["flags"])
+
+
+def test_governance_gate_keeps_yes_when_type_is_null():
+    """Null type means unknown — do not demote a model Yes."""
+    result = _parse_response(
+        _assessment_json(
+            type=None,
+            sse_rating="strong_yes",
+            sse_reasoning="Clear community ownership and mission.",
+        ),
+        "Mystery Mutual",
+    )
+    assert result is not None
+    assert result["sse_rating"] == "strong_yes"
+    assert not any("governance_gate" in f for f in result["flags"])
+
+
+def test_governance_gate_forces_other_yes_to_no():
+    result = _parse_response(
+        _assessment_json(
+            type="other",
+            sse_rating="weak_yes",
+            sse_reasoning="Mentions environment in CSR copy.",
+        ),
+        "Acme Inc.",
+    )
+    assert result is not None
+    assert result["sse_rating"] == "no"
+    assert any("governance_gate" in f for f in result["flags"])

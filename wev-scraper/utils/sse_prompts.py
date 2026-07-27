@@ -11,15 +11,14 @@ SSE_JSON_FIELDS = """  "rating": "strong_yes",
   "nice_to_haves_met": ["short labels of nice-to-have criteria met — not prose paragraphs"],
   "flags": ["any concerns", "ambiguities", "missing info"]"""
 
-# Soft targets for the LLM: compose complete text that fits. Callers must not
-# hard-truncate model output — if over-limit text arrives, keep it intact.
-LENGTH_LIMITED_FIELD_RULES = """LENGTH TARGETS FOR TEXT FIELDS (description, mission_statement, reasoning, values_raw):
-- Each field lists a maximum character count.
-- The entire returned string must already fit within that limit — never cut off mid-word or mid-sentence.
+# Hard limits for the LLM: compose complete text that fits. If the model
+# overshoots, OrganizationAssessor runs a repair paraphrase — never mid-text truncation.
+LENGTH_LIMITED_FIELD_RULES = """LENGTH LIMITS FOR TEXT FIELDS (description, mission_statement, reasoning, values_raw):
+- Each field lists a maximum character count — the returned string MUST fit within it.
+- Never cut off mid-word or mid-sentence in your own writing.
 - If source material is longer, paraphrase and condense: keep vital facts, do not invent details, and do not drop essential meaning.
-- Prefer shorter complete sentences over anything that would require truncation.
+- Prefer shorter complete sentences over anything that would exceed the limit.
 - End every string on a complete sentence with proper punctuation.
-- Downstream storage will not truncate your output; write text that is already complete and within the limit.
 - Reasoning must be brief (2–4 sentences). Put criterion checklists only in must_haves_met / nice_to_haves_met — never expand those lists into reasoning prose."""
 
 JSON_INSTRUCTIONS = """IMPORTANT:
@@ -119,6 +118,8 @@ NICE-TO-HAVES (strengthen Yes rating):
 10. Mission reinvestment - surplus goes to people/community/mission, not shareholders
 
 AUTOMATIC NO FLAGS (triggers 'no' rating):
+- Government / public-sector employer or role (municipality, federal/provincial agency,
+  crown corp, school board, public hospital authority, etc.) — never SSE
 - No social/environmental/community mission (pure profit-focused)
 - Profit-maximization focused with no visible social good
 - No reference to cooperation beyond internal team collaboration
@@ -129,7 +130,7 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
 RATING_GUIDELINES = """Be strict: 
 - "strong_yes" requires organizational commitment to SSE (nonprofit, coop, community-based) with clear stated values. Volunteer/internship roles can be strong_yes when mission + organization alignment are clear.
 - "weak_yes" for: mission-driven roles in traditional corps, environmental/social roles, for-profits with transparent SSE alignment, OR volunteer/internship roles with partial SSE alignment.
-- "no" for: profit-focused, no social mission, opaque/missing compensation (volunteer/internship work MUST be explicitly disclosed), or pure market-rate tech jobs."""
+- "no" for: government/public-sector employers or jobs, profit-focused, no social mission, opaque/missing compensation (volunteer/internship work MUST be explicitly disclosed), or pure market-rate tech jobs."""
 
 # Organization-level SSE criteria (NOT job-post criteria).
 # Used by OrganizationAssessor — never rate an org on job compensation/hours.
@@ -140,12 +141,15 @@ public materials). Job title/description below are ONLY optional hints to identi
 the employer — they must NOT raise or lower the SSE rating.
 
 GOVERNANCE GATE (required for any Yes — strong_yes or weak_yes):
-The organization must be a Solidarity Economy form, not a conventional for-profit.
+The organization must be a Solidarity Economy form, not a conventional for-profit
+and not a government / public-sector body.
 Eligible forms include: nonprofit / charity, cooperative, mutual, mutual-aid group,
 union, community association, or a genuine social enterprise with social/community
 ownership or statutory mission lock (not a regular corporation with CSR language).
 Conventional for-profit / private company / "Inc." agribusiness / market firm → rate "no"
 even if the mission mentions environment, community, or "respect for people."
+Government, public agency, municipality, crown corporation, school board, hospital
+authority, or other public-sector employer → rate "no". Public service is not SSE.
 
 MUST-HAVES (required for any Yes, in addition to the governance gate):
 1. Clear purpose beyond profit - mission prioritizes people/community/planet
@@ -160,6 +164,7 @@ NICE-TO-HAVES (strengthen Yes rating):
 8. Mission reinvestment - surplus goes to people/community/mission, not private shareholders
 
 AUTOMATIC NO FLAGS (triggers 'no' rating):
+- Government / public-sector employer (any level) — never SSE
 - Conventional for-profit with only CSR / ESG / "we respect the environment" language
 - No social/environmental/community mission (pure profit-focused)
 - Profit-maximization / competitiveness-first with social language as marketing
@@ -171,9 +176,9 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
 - "strong_yes" = nonprofit/coop/mutual/union/community org (or locked social enterprise)
   with clear SSE values and mission
 - "weak_yes" = eligible SSE governance form with partial/weaker mission evidence —
-  NEVER a conventional for-profit
-- "no" = conventional for-profit (even with green/social marketing), or no substantive
-  social/environmental mission
+  NEVER a conventional for-profit or government body
+- "no" = conventional for-profit (even with green/social marketing), government /
+  public-sector employer, or no substantive social/environmental mission
 - Greenwashing test: "respect for individuals and the environment" without SSE
   governance → "no"
 - Never rate "no" because a job description is truncated or lacks compensation details"""

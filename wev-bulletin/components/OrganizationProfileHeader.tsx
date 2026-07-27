@@ -3,7 +3,10 @@ import { Lineicons } from '@lineiconshq/react-lineicons';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
-import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import {
+  formatOrgLocationLabel,
+  getOrganizationTypeLabel,
+} from '@/lib/organizations/utils';
 import type { OrgRecord } from '@/lib/organizations/types';
 import type { OrgValueMatch } from '@/lib/organizations/value-match';
 import OrgValuesMatchFooter from './OrgValuesMatchFooter';
@@ -41,6 +44,7 @@ export default function OrganizationProfileHeader({
   const sseReasoning =
     sseDetails && typeof sseDetails.reasoning === 'string' ? sseDetails.reasoning : null;
   const values = org.values_list ?? [];
+  const locationLabel = formatOrgLocationLabel(org);
 
   return (
     <div className="mb-8">
@@ -51,9 +55,10 @@ export default function OrganizationProfileHeader({
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-x-6 gap-y-2 text-muted-foreground mt-4">
-            {org.location && (
+            {locationLabel && (
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-foreground">{t('location')}:</span> {org.location}
+                <span className="font-medium text-foreground">{t('location')}:</span>{' '}
+                {locationLabel}
               </div>
             )}
 
