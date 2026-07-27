@@ -199,7 +199,7 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
 
 export function buildOrgUpdateFields(
   data: Partial<OrgFormInput>,
-  options: { previousIsSse?: boolean | null; previousType?: string | null } = {},
+  options: { previousIsSse?: boolean | null; previousType?: OrgType | null } = {},
 ): Partial<NormalizedOrgPayload> {
   const updates: Partial<NormalizedOrgPayload> = {};
 
@@ -223,7 +223,7 @@ export function buildOrgUpdateFields(
   }
 
   const typeChanging = data.type !== undefined;
-  const nextType = typeChanging
+  const nextType: OrgType | null = typeChanging
     ? normalizeOrgType(data.type)
     : (options.previousType ?? null);
   if (typeChanging) updates.type = nextType;
@@ -240,7 +240,13 @@ export function buildOrgUpdateFields(
     const requested = data.is_sse ?? options.previousIsSse ?? false;
     const isSse = governmentBlocksSse ? false : Boolean(requested);
     updates.is_sse = isSse;
-    if (isSse !== options.previousIsSse || (typeChanging && governmentBlocksSse)) {
+    const requestOverridden =
+      data.is_sse !== undefined && Boolean(data.is_sse) !== isSse;
+    if (
+      isSse !== options.previousIsSse ||
+      (typeChanging && governmentBlocksSse) ||
+      requestOverridden
+    ) {
       Object.assign(updates, buildAdminSseFields(isSse));
     }
   }

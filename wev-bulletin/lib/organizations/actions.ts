@@ -9,6 +9,7 @@ import { logger } from '@/lib/logger';
 import { mapUniqueViolation } from './action-errors';
 import type { OrgFormInput } from './validate';
 import { buildOrgPayload, buildOrgUpdateFields, validateOrgInput } from './validate';
+import { normalizeOrgType } from './org-type';
 import type { OrgRecord } from './types';
 
 function revalidateOrganizationRoutes(slug?: string, previousSlug?: string) {
@@ -114,7 +115,7 @@ export async function updateOrganization(id: number, data: OrgUpdateInput): Prom
 
   const updates = buildOrgUpdateFields(data, {
     previousIsSse: existingOrg.is_sse,
-    previousType: existingOrg.type,
+    previousType: normalizeOrgType(existingOrg.type),
   });
 
   if (Object.keys(updates).length === 0) {

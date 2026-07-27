@@ -458,7 +458,6 @@ export type Database = {
           cv_import: Json | null
           full_name: string | null
           id: string
-          ideal_work_environment: string | null
           lat: number | null
           lng: number | null
           location_display_name: string | null
@@ -479,7 +478,6 @@ export type Database = {
           cv_import?: Json | null
           full_name?: string | null
           id: string
-          ideal_work_environment?: string | null
           lat?: number | null
           lng?: number | null
           location_display_name?: string | null
@@ -500,7 +498,6 @@ export type Database = {
           cv_import?: Json | null
           full_name?: string | null
           id?: string
-          ideal_work_environment?: string | null
           lat?: number | null
           lng?: number | null
           location_display_name?: string | null
