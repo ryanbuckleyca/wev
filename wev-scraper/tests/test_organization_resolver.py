@@ -561,7 +561,7 @@ class TestLLMSuccessPath:
         repo.slug_exists.assert_called_with("my-new-org")
 
 
-# ── Identity conflict path ────────────────────────────────────────────────────
+# ── Unique-constraint conflict path ───────────────────────────────────────────
 
 
 class TestIdentityConflictPath:
@@ -577,6 +577,45 @@ class TestIdentityConflictPath:
 
         assert result == 55
         repo.find_by_name_and_location.assert_called_once_with("Existing Org", "Montreal QC")
+
+    def test_insert_conflict_falls_back_to_single_name_match(self):
+        """After identity index drop, name+location miss can still recover via name."""
+        repo = _make_repo(
+            find_by_name=[{"id": 55, "name": "Existing Org", "location": "Toronto ON"}],
+            insert=Exception("duplicate key value violates unique constraint"),
+            find_by_name_and_location=None,
+        )
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        # First find_by_name (resolve) returns [] so we attempt insert; on conflict
+        # the second find_by_name (recovery) sees the single match.
+        repo.find_by_name.side_effect = [
+            [],
+            [{"id": 55, "name": "Existing Org", "location": "Toronto ON"}],
+        ]
+
+        result = resolver.resolve("Existing Org", "Montreal", "QC")
+
+        assert result == 55
+        repo.find_by_name_and_location.assert_called_once()
+
+    def test_insert_conflict_ambiguous_name_returns_none(self):
+        repo = _make_repo(
+            insert=Exception("duplicate key value violates unique constraint"),
+            find_by_name_and_location=None,
+        )
+        repo.find_by_name.side_effect = [
+            [],
+            [
+                {"id": 1, "name": "Acme", "location": "A"},
+                {"id": 2, "name": "Acme", "location": "B"},
+            ],
+        ]
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve("Acme", "City", "ON")
+
+        assert result is None
 
     def test_non_duplicate_insert_error_returns_none(self):
         repo = _make_repo(
