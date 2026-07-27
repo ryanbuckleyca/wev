@@ -89,7 +89,7 @@ class OrganizationResolver:
         exc_str = str(exc).lower()
         if "duplicate key" not in exc_str:
             return None
-        if "slug_key" in exc_str:
+        if "slug_key" in exc_str or "(slug)" in exc_str:
             return "slug"
         return "identity"
 
@@ -418,9 +418,10 @@ class OrganizationResolver:
                     row["slug"] = self._find_available_slug(row.get("slug", ""), seed=job_id)
                     continue
 
-                # Identity conflict (name+location) — re-select existing row.
-                # Do NOT classify here — the org already exists and was
-                # classified at creation time.
+                # Unique conflict that is not slug — re-select an existing org.
+                # Prefer name+location while the legacy identity index may still
+                # exist; after it is dropped, fall back to a single name match.
+                # Do NOT classify here — the org already exists.
                 existing_id = self._repo.find_by_name_and_location(
                     row.get("name", ""), row.get("location"),
                 )
@@ -428,10 +429,17 @@ class OrganizationResolver:
                     self._cache.set(cache_key, existing_id)
                     return existing_id
 
+                name_matches = self._repo.find_by_name(row.get("name", ""))
+                if len(name_matches) == 1:
+                    org_id = name_matches[0]["id"]
+                    self._cache.set(cache_key, org_id)
+                    return org_id
+
                 logger.error(
-                    "OrganizationResolver: identity conflict but re-select found nothing for %r job_id=%s",
+                    "OrganizationResolver: unique conflict but no safe re-select for %r job_id=%s matches=%s",
                     row.get("name"),
                     job_id,
+                    len(name_matches),
                 )
                 return None
 
