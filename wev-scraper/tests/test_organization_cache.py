@@ -10,7 +10,16 @@ Validates: Requirements 2.2, 3.1, 3.2, 3.3, 3.4, 3.5, 2.10
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
+from utils.organization_cache import (
+    OrganizationCache,
+    canonical_location,
+    domains_match,
+    employer_apex,
+    evidence_domain,
+    extract_domain,
+    is_shared_domain,
+    make_cache_key,
+)
 
 # ── canonical_location ──────────────────────────────────────────────────────────
 
@@ -55,9 +64,20 @@ class TestOrganizationCache:
         cache = OrganizationCache()
         cache.set("a", 1)
         cache.set("b", 2)
+        cache.mark_blocked("c")
         cache.clear()
         assert cache.get("a") is None
         assert cache.get("b") is None
+        assert not cache.is_blocked("c")
+
+    def test_mark_blocked_skips_get_and_clears_on_set(self):
+        cache = OrganizationCache()
+        cache.mark_blocked("ambiguous")
+        assert cache.is_blocked("ambiguous")
+        assert cache.get("ambiguous") is None
+        cache.set("ambiguous", 42)
+        assert not cache.is_blocked("ambiguous")
+        assert cache.get("ambiguous") == 42
 
     def test_lru_eviction_on_full_cache(self):
         cache = OrganizationCache(max_size=3)
@@ -106,6 +126,61 @@ class TestMakeCacheKey:
 
     def test_accented_and_unaccented_produce_same_key(self):
         assert make_cache_key("Centraide Montréal") == make_cache_key("Centraide Montreal")
+
+
+class TestExtractDomain:
+    def test_strips_www_and_scheme(self):
+        assert extract_domain("https://www.mindrift.ai/about") == "mindrift.ai"
+
+    def test_adds_scheme_when_missing(self):
+        assert extract_domain("abcquebec.ca") == "abcquebec.ca"
+
+    def test_empty_returns_none(self):
+        assert extract_domain(None) is None
+        assert extract_domain("") is None
+        assert extract_domain("!!!") is None
+
+
+class TestEvidenceDomain:
+    def test_rejects_shared_social_hosts(self):
+        assert is_shared_domain("facebook.com")
+        assert is_shared_domain("m.facebook.com")
+        assert evidence_domain("https://www.facebook.com/some-org") is None
+        assert evidence_domain("https://boards.greenhouse.io/acme") is None
+        assert evidence_domain("https://ecoworks.eco.ca/companies/acme") is None
+        assert evidence_domain("https://www.eco.ca/employers/acme") is None
+
+    def test_keeps_employer_hosts(self):
+        assert evidence_domain("https://www.mindrift.ai") == "mindrift.ai"
+        assert not is_shared_domain("mindrift.ai")
+
+
+class TestDomainsMatch:
+    def test_subdomain_matches_apex(self):
+        assert domains_match("careers.hatch.com", "hatch.com")
+        assert domains_match("hatch.com", "careers.hatch.com")
+
+    def test_sibling_subdomains_do_not_match(self):
+        assert not domains_match("env.gc.ca", "canada.gc.ca")
+
+    def test_public_suffix_parent_does_not_match(self):
+        assert not domains_match("env.gc.ca", "gc.ca")
+        assert not domains_match("example.co.uk", "co.uk")
+
+    def test_unrelated_hosts_do_not_match(self):
+        assert not domains_match("hatch.com", "artelia.com")
+        assert not domains_match("notevil.com", "evil.com")
+
+
+class TestEmployerApex:
+    def test_strips_vanity_subdomains(self):
+        assert employer_apex("careers.acme.com") == "acme.com"
+        assert employer_apex("jobs.acme.com") == "acme.com"
+        assert employer_apex("acme.com") == "acme.com"
+
+    def test_preserves_gc_ca_labels(self):
+        assert employer_apex("env.gc.ca") == "env.gc.ca"
+        assert employer_apex("canada.gc.ca") == "canada.gc.ca"
 
 
 # ── Property-based tests ──────────────────────────────────────────────────────

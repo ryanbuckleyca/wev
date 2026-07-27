@@ -24,6 +24,7 @@ from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
+from utils.organization_cache import evidence_domain
 from utils.slug import generate_slug
 from utils.location_parser import parse_address_with_geocodio
 from utils.sse_prompts import (
@@ -53,7 +54,7 @@ _SSE_REASONING_MAX_CHARS = 1000
 _JSON_FIELDS = f"""{{
   "canonical_name": "Official organization name (string, required, non-empty)",
   "slug": "url-safe-kebab-case (string, required)",
-  "website": "https://... or null",
+  "website": "Employer's own homepage URL (https://...), or null — see WEBSITE RULES",
   "description": "Brief organization description, max {_ORG_DESCRIPTION_MAX_CHARS} characters — must fit without being cut off, or null",
   "mission_statement": "Organization mission/purpose statement, max {_ORG_MISSION_MAX_CHARS} characters — must fit without being cut off, or null",
   "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null",
@@ -67,6 +68,17 @@ _JSON_FIELDS = f"""{{
   "nice_to_haves_met": ["list of criteria met"],
   "flags": ["any concerns", "ambiguities", "missing info"]
 }}"""
+
+_WEBSITE_RULES = """WEBSITE RULES for the "website" field:
+- Prefer the organization's own official homepage (the domain they control).
+- Do NOT use job-board, ATS, or careers-platform URLs (e.g. Greenhouse, Lever,
+  Workday, Indeed, CharityVillage, LinkedIn jobs).
+- Do NOT use social profiles or link aggregators (Facebook, Instagram, LinkedIn
+  company pages, Linktree, bit.ly) unless that is truly their only web presence
+  — in that case return null instead (social hosts are not reliable identity).
+- Do NOT use the scraped job listing URL.
+- If you cannot confidently identify the employer-owned site, return null.
+- Prefer https:// and the apex/homepage over a deep job posting path."""
 
 _combined_prompt = """You are evaluating an organization from scraped job data.
 Your goal is to identify the organization, extract its values and mission,
@@ -102,6 +114,8 @@ RULES for the "values" field:
 - "Help Society" and "Community" are distinct — use both if evidence supports both.
 - Be honest: if you can't determine values from the available information,
   return an empty array.
+
+{website_rules}
 
 {length_limited_field_rules}
 
@@ -158,9 +172,24 @@ def _build_assessment_prompt(
         json_fields=_JSON_FIELDS,
         sector_taxonomy_formatted=get_formatted_sector_taxonomy(),
         taxonomy_formatted=_format_taxonomy(),
+        website_rules=_WEBSITE_RULES,
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
         length_limited_field_rules=LENGTH_LIMITED_FIELD_RULES,
     )
+
+
+def _build_search_query(
+    raw_name: str,
+    municipality: str | None = None,
+    province: str | None = None,
+) -> str:
+    """Grounding query aimed at the employer's own site, not the job board."""
+    parts = [f'"{raw_name}"', "official website"]
+    if municipality:
+        parts.append(municipality)
+    if province:
+        parts.append(province)
+    return " ".join(parts)
 
 
 def _normalize_type(raw: Any) -> str | None:
@@ -207,11 +236,24 @@ def _parse_text_field(data: dict, key: str, max_len: int | None = None) -> str |
 
 
 def _parse_website(raw: Any) -> str | None:
-    if raw:
-        parsed = urlparse(str(raw).strip())
-        if parsed.scheme in ("http", "https"):
-            return str(raw).strip()
-    return None
+    """Keep only http(s) employer-owned sites; drop ATS/social/shared hosts."""
+    if not raw:
+        return None
+    url = str(raw).strip()
+    if not url:
+        return None
+    if "://" not in url:
+        url = "https://" + url
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return None
+    if evidence_domain(url) is None:
+        logger.info(
+            "OrganizationAssessor: rejecting non-evidence website %r",
+            url,
+        )
+        return None
+    return url
 
 
 def _ensure_str_list(raw: Any) -> list[str]:
@@ -327,18 +369,17 @@ class OrganizationAssessor(BaseGroundedClassifier):
         description: str = "",
     ) -> AssessedOrgResult | None:
         prompt = _build_assessment_prompt(raw_name, municipality, province, job_title, description)
-
-        search_query = f'"{raw_name}"'
-        if municipality:
-            search_query += f" {municipality}"
-        if province:
-            search_query += f" {province}"
+        search_query = _build_search_query(raw_name, municipality, province)
 
         try:
             response_text = self._call_provider_with_retry(
                 provider=self.provider,
                 prompt=prompt,
-                system="You are an expert at identifying organizations, mapping work values, and evaluating Solidarity Economy alignment.",
+                system=(
+                    "You are an expert at identifying organizations from job listings, "
+                    "finding their official employer-owned website, mapping work values, "
+                    "and evaluating Solidarity Economy alignment."
+                ),
                 task="sse",
                 search_query=search_query,
                 retries=1,

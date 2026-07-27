@@ -165,4 +165,6 @@ def normalize_job_data(job_data: dict) -> dict:
     normalized["description"] = normalize_text(job_data.get("description")) or ""
     normalized["summary"] = normalize_text(job_data.get("summary")) or None
     normalized["listing_url"] = normalize_text(job_data.get("listing_url"))
+    website = job_data.get("website") or job_data.get("organization_website")
+    normalized["website"] = normalize_text(website) if website else None
     return normalized
