@@ -35,6 +35,7 @@ function makeOrg(overrides: Partial<OrgIndexEntry> = {}): OrgIndexEntry {
     mission_statement: null,
     mission_statement_en: null,
     mission_statement_fr: null,
+    language: null,
     active_job_count: 5,
     total_count: 1,
     value_score: null,

@@ -181,6 +181,7 @@
       "en": "English",
       "fr": "French",
       "bilingual": "Bilingual",
+      "noData": "No language data available",
       "tooltip": {
         "matchesFilter": "{lang} matches your language filter.",
         "required": "Required language: {lang}.",

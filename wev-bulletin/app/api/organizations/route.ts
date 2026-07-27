@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabaseAuth.auth.getUser();
 
-  const { page, searchQuery, sseOnly, provinces, municipalities, orgTypes, sortBy } =
+  const { page, searchQuery, sseOnly, provinces, municipalities, orgTypes, languages, sortBy } =
     parseOrgIndexSearchParams(searchParams, Boolean(user));
 
   try {
@@ -23,6 +23,7 @@ export async function GET(request: Request) {
         provinces,
         municipalities,
         orgTypes,
+        languages,
         userId: user?.id ?? null,
         sortBy,
       },

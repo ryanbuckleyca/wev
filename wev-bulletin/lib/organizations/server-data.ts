@@ -19,6 +19,7 @@ export interface FetchOrganizationIndexOptions {
   provinces?: string[];
   municipalities?: string[];
   orgTypes?: string[];
+  languages?: string[];
   userId?: string | null;
   sortBy?: string | null;
 }
@@ -35,6 +36,7 @@ export async function fetchOrganizationIndex(
     provinces = [],
     municipalities = [],
     orgTypes = [],
+    languages = [],
     userId = null,
     sortBy = null,
   } = options;
@@ -54,7 +56,8 @@ export async function fetchOrganizationIndex(
     Boolean(searchQuery) ||
     provinces.length > 0 ||
     municipalities.length > 0 ||
-    orgTypes.length > 0;
+    orgTypes.length > 0 ||
+    languages.length > 0;
 
   // Run main query and baseline denominator count in parallel.
   // The denominator call uses p_limit:1 to return exactly one row carrying the
@@ -66,6 +69,7 @@ export async function fetchOrganizationIndex(
     p_provinces: null,
     p_municipalities: null,
     p_org_types: null,
+    p_languages: null,
     p_limit: 1,
     p_offset: 0,
     p_user_id: null,
@@ -79,6 +83,7 @@ export async function fetchOrganizationIndex(
     p_provinces: provinces.length > 0 ? provinces : null,
     p_municipalities: municipalities.length > 0 ? municipalities : null,
     p_org_types: orgTypes.length > 0 ? orgTypes : null,
+    p_languages: languages.length > 0 ? languages : null,
     p_limit: limit,
     p_offset: offset,
     p_user_id: userId,
@@ -205,6 +210,7 @@ export interface OrganizationFilterOptions {
   types: string[];
   provinces: string[];
   municipalitiesByProvince: Record<string, string[]>;
+  languages: string[];
 }
 
 export const fetchOrganizationFilterOptions = cache(
@@ -214,7 +220,7 @@ export const fetchOrganizationFilterOptions = cache(
     const minDate = bulletinAgeCutoffIso();
     const { data, error } = await supabaseServer
       .from('organizations')
-      .select('type, province, municipality, jobs!inner(date_posted)')
+      .select('type, province, municipality, language, jobs!inner(date_posted)')
       .gte('jobs.date_posted', minDate);
 
     if (error) {
@@ -225,10 +231,12 @@ export const fetchOrganizationFilterOptions = cache(
 
     const types = new Set<string>();
     const provinces = new Set<string>();
+    const languages = new Set<string>();
     const municipalitiesByProv: Record<string, Set<string>> = {};
 
     for (const org of data) {
       if (org.type) types.add(org.type);
+      if (org.language) languages.add(org.language);
       if (org.province) {
         provinces.add(org.province);
         if (org.municipality) {
@@ -249,6 +257,7 @@ export const fetchOrganizationFilterOptions = cache(
       types: Array.from(types).sort(),
       provinces: Array.from(provinces).sort(),
       municipalitiesByProvince,
+      languages: Array.from(languages).sort(),
     };
   },
 );

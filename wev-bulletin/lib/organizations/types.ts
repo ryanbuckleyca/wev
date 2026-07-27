@@ -28,6 +28,7 @@ export interface OrgIndexEntry {
   type: OrgRecord['type'];
   sector_id: OrgRecord['sector_id'];
   values_list: OrgRecord['values_list'];
+  language: OrgRecord['language'];
   // RPC-computed fields
   active_job_count: number;
   total_count: number;

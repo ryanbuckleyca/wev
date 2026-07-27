@@ -383,6 +383,7 @@ export type Database = {
           lng: number | null;
           location: string | null;
           logo_url: string | null;
+          language: string | null;
           mission_statement: string | null;
           mission_statement_en: string | null;
           mission_statement_fr: string | null;
@@ -411,6 +412,7 @@ export type Database = {
           lng?: number | null;
           location?: string | null;
           logo_url?: string | null;
+          language?: string | null;
           mission_statement?: string | null;
           mission_statement_en?: string | null;
           mission_statement_fr?: string | null;
@@ -439,6 +441,7 @@ export type Database = {
           lng?: number | null;
           location?: string | null;
           logo_url?: string | null;
+          language?: string | null;
           mission_statement?: string | null;
           mission_statement_en?: string | null;
           mission_statement_fr?: string | null;
@@ -717,6 +720,7 @@ export type Database = {
       get_active_organizations: {
         Args: {
           min_date: string;
+          p_languages?: string[];
           p_limit?: number;
           p_municipalities?: string[];
           p_offset?: number;
@@ -736,6 +740,7 @@ export type Database = {
           geocode_accuracy_type: string;
           id: number;
           is_sse: boolean;
+          language: string;
           lat: number;
           lng: number;
           location: string;

@@ -24,6 +24,7 @@ interface Props {
   showMoreLabel: string;
   showLessLabel: string;
   isLoggedIn: boolean;
+  selectedLanguages?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +177,7 @@ export default function OrganizationCard({
   showMoreLabel,
   showLessLabel,
   isLoggedIn,
+  selectedLanguages = [],
 }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
   const tOrgs = useTranslations('organizations');
@@ -186,7 +188,8 @@ export default function OrganizationCard({
     sectorId ? tSectors(`${sectorId}.label`) : '';
 
   const locationLabel = formatOrgLocationLabel(org);
-  const hasFooter = Boolean(org.values_list?.length) || Boolean(locationLabel);
+  const hasFooter =
+    Boolean(org.values_list?.length) || Boolean(locationLabel) || Boolean(org.language);
 
   return (
     <article className="relative rounded-wev-card transition-all duration-300 bg-card border border-border hover:border-primary overflow-hidden flex flex-col">
@@ -223,6 +226,8 @@ export default function OrganizationCard({
             isLoggedIn={isLoggedIn}
             fadeBackground="var(--muted)"
             locationLabel={locationLabel}
+            language={org.language}
+            selectedLanguages={selectedLanguages}
           />
         </div>
       )}
