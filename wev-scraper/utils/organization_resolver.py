@@ -418,7 +418,7 @@ class OrganizationResolver:
                     row["slug"] = self._find_available_slug(row.get("slug", ""), seed=job_id)
                     continue
 
-                # Identity unique index (exact name+location string) conflict —
+                # Exact name+location duplicate-guard index conflict —
                 # re-select the existing row. Do NOT classify here.
                 existing_id = self._repo.find_by_name_and_location(
                     row.get("name", ""), row.get("location"),
