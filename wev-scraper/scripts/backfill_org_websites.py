@@ -6,7 +6,8 @@ Modes
 website  Only orgs missing a website; write ``website`` when evidence-grade.
 full     Re-assess description / mission / values / type / sector / SSE / website.
          Uses a known official site in search when present. Overwrites existing
-         assessment fields.
+         assessment fields, except admin-reviewed SSE (``sse_details.reviewed`` /
+         ``admin_override``) unless ``--force-reviewed``.
 
 Usage:
     # Website-only dry-run (3 orgs, no writes)
@@ -157,6 +158,19 @@ def _parse_classified_at(org: dict) -> datetime | None:
         return None
 
 
+def _has_admin_sse_override(org: dict) -> bool:
+    """True when an admin curated SSE and full reassess must not clobber it."""
+    details = org.get("sse_details")
+    if not isinstance(details, dict):
+        return False
+    if details.get("reviewed") is True:
+        return True
+    flags = details.get("flags")
+    if isinstance(flags, list) and "admin_override" in flags:
+        return True
+    return False
+
+
 def _assessed_recently(org: dict, *, within: timedelta) -> bool:
     classified_at = _parse_classified_at(org)
     if classified_at is None:
@@ -174,6 +188,7 @@ def run(
     delay_seconds: float,
     after_id: int = 0,
     skip_recent_hours: float | None = None,
+    force_reviewed: bool = False,
 ) -> dict:
     try:
         assessor = OrganizationAssessor()
@@ -186,6 +201,7 @@ def run(
     updated = 0
     skipped = 0
     skipped_recent = 0
+    skipped_reviewed = 0
     errors = 0
     cursor = after_id
     fetch = fetch_orgs_missing_website if mode == "website" else fetch_orgs_any
@@ -200,6 +216,11 @@ def run(
         logger.info(
             "Skipping orgs assessed within the last %s hours",
             skip_recent_hours,
+        )
+    if mode == "full" and not force_reviewed:
+        logger.info(
+            "Skipping admin-reviewed orgs (sse_details.reviewed / admin_override); "
+            "pass --force-reviewed to overwrite"
         )
 
     while limit is None or processed < limit:
@@ -230,6 +251,19 @@ def run(
                     classified_at.isoformat() if classified_at else "?",
                 )
                 skipped_recent += 1
+                continue
+
+            if (
+                mode == "full"
+                and not force_reviewed
+                and _has_admin_sse_override(org)
+            ):
+                logger.info(
+                    "skip org_id=%s (%s) — admin-reviewed SSE (use --force-reviewed to overwrite)",
+                    org_id,
+                    name,
+                )
+                skipped_reviewed += 1
                 continue
 
             processed += 1
@@ -292,6 +326,7 @@ def run(
         "updated": updated,
         "skipped": skipped,
         "skipped_recent": skipped_recent,
+        "skipped_reviewed": skipped_reviewed,
         "errors": errors,
         "dry_run": dry_run,
         "limit": limit,
@@ -349,6 +384,14 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--force-reviewed",
+        action="store_true",
+        help=(
+            "In --mode full, overwrite orgs with admin-reviewed SSE "
+            "(sse_details.reviewed / admin_override). Default: skip them."
+        ),
+    )
+    parser.add_argument(
         "--delay-seconds",
         type=float,
         default=0.5,
@@ -367,6 +410,7 @@ def main() -> None:
         delay_seconds=args.delay_seconds,
         after_id=args.after_id,
         skip_recent_hours=args.skip_recent_hours,
+        force_reviewed=args.force_reviewed,
     )
 
 

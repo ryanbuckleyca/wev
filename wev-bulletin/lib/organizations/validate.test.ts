@@ -101,6 +101,17 @@ describe('buildOrgPayload', () => {
       geocode_accuracy_type: 'city',
     });
   });
+  it('forces is_sse false for government orgs', () => {
+    const payload = buildOrgPayload({
+      name: 'City Parks',
+      slug: 'city-parks',
+      type: 'government',
+      is_sse: true,
+    });
+    expect(payload.type).toBe('government');
+    expect(payload.is_sse).toBe(false);
+    expect(payload.sse_rating).toBe('no');
+  });
 });
 
 describe('buildOrgUpdateFields', () => {
@@ -112,6 +123,25 @@ describe('buildOrgUpdateFields', () => {
     const changed = buildOrgUpdateFields({ is_sse: false }, { previousIsSse: true });
     expect(changed.sse_rating).toBe('no');
     expect(changed.sse_details).toMatchObject({ flags: ['admin_override'] });
+  });
+
+  it('clears is_sse when type becomes government', () => {
+    const changed = buildOrgUpdateFields(
+      { type: 'government' },
+      { previousIsSse: true, previousType: 'nonprofit' },
+    );
+    expect(changed.type).toBe('government');
+    expect(changed.is_sse).toBe(false);
+    expect(changed.sse_rating).toBe('no');
+  });
+
+  it('rejects is_sse true while type remains government', () => {
+    const changed = buildOrgUpdateFields(
+      { is_sse: true },
+      { previousIsSse: false, previousType: 'government' },
+    );
+    expect(changed.is_sse).toBe(false);
+    expect(changed.sse_rating).toBe('no');
   });
 
   it('clears geo fields when location is cleared', () => {

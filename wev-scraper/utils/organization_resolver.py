@@ -303,6 +303,7 @@ class OrganizationResolver:
             job_title=ctx.job_title,
             description=ctx.description,
             canonical_loc=canonical_loc,
+            known_website=ctx.website,
         )
         if row is None:
             return None

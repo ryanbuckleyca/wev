@@ -46,9 +46,10 @@ ORG_TYPE_VALUES = (
     "other",
 )
 
-# Soft length targets for LLM output (paraphrase to fit). Keep in sync with
-# wev-bulletin/lib/organizations/constants.ts where applicable. Callers must
-# never hard-truncate these fields after generation.
+# Hard length limits for stored LLM fields. Keep in sync with
+# wev-bulletin/lib/organizations/constants.ts (description/mission).
+# Prompt asks the model to paraphrase within the limit. If it overshoots,
+# assess() runs a repair paraphrase call — never mid-text truncation.
 _ORG_DESCRIPTION_MAX_CHARS = 500
 _ORG_MISSION_MAX_CHARS = 500
 _ORG_VALUES_RAW_MAX_CHARS = 1000
@@ -236,52 +237,41 @@ def _validate_sse_rating(raw: Any) -> str:
     return rating if rating in ("strong_yes", "weak_yes", "no") else "no"
 
 
-# Eligible org types for any SSE "yes". Conventional for-profits map to "other".
-_SSE_ELIGIBLE_ORG_TYPES = frozenset({
-    "nonprofit",
-    "cooperative",
-    "social enterprise",
-    "union",
+# Types that can never be SSE yes. Null/unknown type is NOT in this set —
+# unknown means keep the model rating (optionally flagged elsewhere).
+_SSE_INELIGIBLE_ORG_TYPES = frozenset({
+    "government",
+    "other",
 })
 
 
 def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgResult:
-    """Force 'no' when a yes rating lacks eligible SSE governance type."""
+    """Force 'no' only when type is known and ineligible for SSE yes."""
     if result["sse_rating"] == "no":
         return result
     org_type = result.get("type")
-    if org_type in _SSE_ELIGIBLE_ORG_TYPES:
+    if org_type is None:
+        # Unknown type — do not demote a model Yes.
+        return result
+    if org_type not in _SSE_INELIGIBLE_ORG_TYPES:
         return result
 
     flags = list(result.get("flags") or [])
-    flags.append("governance_gate: non-SSE org type cannot be SSE yes")
-    reasoning = (result.get("sse_reasoning") or "").rstrip()
-    note = (
-        " Overridden to 'no': organization type "
-        f"{org_type!r} is not an eligible SSE governance form "
-        "(nonprofit, cooperative, social enterprise, or union); "
-        "CSR/environmental language alone is insufficient."
+    flags.append(
+        "governance_gate: non-SSE org type cannot be SSE yes "
+        f"(type={org_type!r}; government and other are never SSE)"
     )
+    # Keep LLM reasoning intact; do not append prose that can blow length caps.
     return AssessedOrgResult(
         **{
             **result,
             "sse_rating": "no",
             "flags": flags,
-            "sse_reasoning": reasoning + note,
         }
     )
 
 
-def _parse_text_field(data: dict, key: str) -> str | None:
-    val = data.get(key)
-    if val:
-        return str(val).strip()
-    return None
-
-
-# Soft limits are prompt guidance only — never hard-truncate stored fields.
-# Log when the LLM overshoots so we can monitor prompt compliance.
-_SOFT_LIMIT_FIELDS: tuple[tuple[str, int], ...] = (
+_LENGTH_LIMITED_FIELDS: tuple[tuple[str, int], ...] = (
     ("description", _ORG_DESCRIPTION_MAX_CHARS),
     ("mission_statement", _ORG_MISSION_MAX_CHARS),
     ("values_raw", _ORG_VALUES_RAW_MAX_CHARS),
@@ -289,18 +279,98 @@ _SOFT_LIMIT_FIELDS: tuple[tuple[str, int], ...] = (
 )
 
 
-def _warn_over_soft_limits(result: AssessedOrgResult, raw_name: str) -> None:
-    for field, max_chars in _SOFT_LIMIT_FIELDS:
+def _fields_over_limit(result: AssessedOrgResult) -> dict[str, tuple[str, int]]:
+    """Return {field: (text, max_chars)} for length-limited fields that overshoot."""
+    over: dict[str, tuple[str, int]] = {}
+    for field, max_chars in _LENGTH_LIMITED_FIELDS:
         value = result.get(field)
         if isinstance(value, str) and len(value) > max_chars:
-            logger.warning(
-                "OrganizationAssessor: %s exceeds soft limit for %r: "
-                "len=%d max=%d (kept untruncated)",
-                field,
-                raw_name,
-                len(value),
-                max_chars,
-            )
+            over[field] = (value, max_chars)
+    return over
+
+
+def _build_length_repair_prompt(oversize: dict[str, tuple[str, int]]) -> str:
+    payload = {
+        field: {
+            "max_chars": max_chars,
+            "current_len": len(text),
+            "text": text,
+        }
+        for field, (text, max_chars) in oversize.items()
+    }
+    return (
+        "The following JSON fields exceed their max character counts. "
+        "Rewrite each value so the ENTIRE string fits within max_chars.\n\n"
+        "Rules:\n"
+        "- Paraphrase and condense; keep vital facts; do not invent details.\n"
+        "- Complete sentences only — never cut mid-word or mid-sentence.\n"
+        "- Return ONLY a JSON object with the same keys and string values.\n"
+        "- Every returned string MUST be <= its max_chars.\n\n"
+        f"Fields:\n{json.dumps(payload, ensure_ascii=False)}"
+    )
+
+
+def _parse_length_repair_response(
+    response_text: str,
+    oversize: dict[str, tuple[str, int]],
+) -> dict[str, str]:
+    """Parse repair JSON; keep only keys that fit their max_chars."""
+    text = BaseGroundedClassifier._extract_json_block(response_text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    repaired: dict[str, str] = {}
+    for field, (_, max_chars) in oversize.items():
+        raw = data.get(field)
+        if not isinstance(raw, str):
+            continue
+        cleaned = raw.strip()
+        if cleaned and len(cleaned) <= max_chars:
+            repaired[field] = cleaned
+    return repaired
+
+
+def _apply_length_repairs(
+    result: AssessedOrgResult,
+    oversize: dict[str, tuple[str, int]],
+    repaired: dict[str, str],
+    raw_name: str,
+) -> AssessedOrgResult:
+    """Apply successful repairs; drop fields that still do not fit (no truncation)."""
+    updates: dict[str, Any] = {}
+    flags = list(result.get("flags") or [])
+    for field, (original, max_chars) in oversize.items():
+        new_val = repaired.get(field)
+        if new_val is not None:
+            updates[field] = new_val
+            continue
+        logger.warning(
+            "OrganizationAssessor: %s still over limit for %r after repair "
+            "(len=%d max=%d) — dropping field rather than truncating",
+            field,
+            raw_name,
+            len(original),
+            max_chars,
+        )
+        if field == "sse_reasoning":
+            updates[field] = "No reasoning provided"
+        else:
+            updates[field] = None
+        flags.append(f"length_limit: dropped {field} after failed paraphrase repair")
+    if not updates and flags == list(result.get("flags") or []):
+        return result
+    return AssessedOrgResult(**{**result, **updates, "flags": flags})
+
+
+def _parse_text_field(data: dict, key: str) -> str | None:
+    val = data.get(key)
+    if val:
+        text = str(val).strip()
+        return text or None
+    return None
 
 
 def _parse_website(raw: Any) -> str | None:
@@ -391,7 +461,6 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
         flags=_ensure_str_list(data.get("flags")),
     )
-    _warn_over_soft_limits(result, raw_name)
     return _apply_org_sse_governance_guard(result)
 
 
@@ -471,7 +540,48 @@ class OrganizationAssessor(BaseGroundedClassifier):
             )
             return None
 
-        return _parse_response(response_text, raw_name)
+        result = _parse_response(response_text, raw_name)
+        if result is None:
+            return None
+        return self._ensure_length_limits(result, raw_name)
+
+    def _ensure_length_limits(
+        self,
+        result: AssessedOrgResult,
+        raw_name: str,
+    ) -> AssessedOrgResult:
+        """Paraphrase any over-limit fields via a repair call; never truncate."""
+        oversize = _fields_over_limit(result)
+        if not oversize:
+            return result
+
+        logger.info(
+            "OrganizationAssessor: paraphrasing over-limit fields for %r: %s",
+            raw_name,
+            {field: len(text) for field, (text, _) in oversize.items()},
+        )
+        repaired: dict[str, str] = {}
+        try:
+            repair_text = self._call_provider_with_retry(
+                provider=self.provider,
+                prompt=_build_length_repair_prompt(oversize),
+                system=(
+                    "You rewrite text to fit strict character limits. "
+                    "Return JSON only. Never truncate mid-sentence — paraphrase."
+                ),
+                task="sse",
+                search_query=None,
+                retries=0,
+            )
+            repaired = _parse_length_repair_response(repair_text, oversize)
+        except (SSEClassificationError, LLMProviderError) as exc:
+            logger.warning(
+                "OrganizationAssessor: length repair LLM call failed for %r: %s",
+                raw_name,
+                exc,
+            )
+
+        return _apply_length_repairs(result, oversize, repaired, raw_name)
 
     def assess_and_build_row(
         self,

@@ -177,7 +177,9 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
   const name = data.name.trim();
   const slug = data.slug?.trim() || generateSlug(name);
   const valuesList = normalizeOrgValuesList(data.values_list);
-  const isSse = data.is_sse ?? false;
+  const type = normalizeOrgType(data.type);
+  // Government orgs are never SSE (type is allowed; SSE flag is not).
+  const isSse = type === 'government' ? false : (data.is_sse ?? false);
   const sseFields = buildAdminSseFields(isSse);
 
   return {
@@ -187,7 +189,7 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
     mission_statement: data.mission_statement?.trim() || null,
     website: data.website?.trim() || null,
     ...applyLocationFields(data),
-    type: normalizeOrgType(data.type),
+    type,
     sector_id: isValidSector(data.sector_id) ? (data.sector_id as string) : null,
     is_sse: isSse,
     ...applyValuesFields(valuesList),
@@ -197,7 +199,7 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
 
 export function buildOrgUpdateFields(
   data: Partial<OrgFormInput>,
-  options: { previousIsSse?: boolean | null } = {},
+  options: { previousIsSse?: boolean | null; previousType?: string | null } = {},
 ): Partial<NormalizedOrgPayload> {
   const updates: Partial<NormalizedOrgPayload> = {};
 
@@ -220,7 +222,12 @@ export function buildOrgUpdateFields(
     Object.assign(updates, applyLocationFields(data));
   }
 
-  if (data.type !== undefined) updates.type = normalizeOrgType(data.type);
+  const typeChanging = data.type !== undefined;
+  const nextType = typeChanging
+    ? normalizeOrgType(data.type)
+    : (options.previousType ?? null);
+  if (typeChanging) updates.type = nextType;
+
   if (data.sector_id !== undefined)
     updates.sector_id = isValidSector(data.sector_id) ? (data.sector_id as string) : null;
   if (data.values_list !== undefined) {
@@ -228,10 +235,13 @@ export function buildOrgUpdateFields(
     Object.assign(updates, applyValuesFields(valuesList));
   }
 
-  if (data.is_sse !== undefined) {
-    updates.is_sse = data.is_sse;
-    if (data.is_sse !== options.previousIsSse) {
-      Object.assign(updates, buildAdminSseFields(data.is_sse));
+  const governmentBlocksSse = nextType === 'government';
+  if (data.is_sse !== undefined || (typeChanging && governmentBlocksSse)) {
+    const requested = data.is_sse ?? options.previousIsSse ?? false;
+    const isSse = governmentBlocksSse ? false : Boolean(requested);
+    updates.is_sse = isSse;
+    if (isSse !== options.previousIsSse || (typeChanging && governmentBlocksSse)) {
+      Object.assign(updates, buildAdminSseFields(isSse));
     }
   }
 
