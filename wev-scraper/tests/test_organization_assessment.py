@@ -3,8 +3,6 @@
 import json
 
 from utils.organization_assessment import (
-    _ORG_DESCRIPTION_MAX_CHARS,
-    _SSE_REASONING_MAX_CHARS,
     _build_search_query,
     _parse_response,
     _parse_website,
@@ -32,39 +30,49 @@ def _assessment_json(**overrides) -> str:
     return json.dumps(payload)
 
 
-def test_parse_response_keeps_long_sse_reasoning():
-    reasoning = (
-        "The organization's core mission is to promote conservation and science education "
-        "through visual storytelling, directly aligning with social and environmental "
-        "well-being. They collaborate with various community partners and publish "
-        "educational materials that prioritize people and planet over profit."
-    )
-    assert len(reasoning) > 200
-    assert len(reasoning) <= _SSE_REASONING_MAX_CHARS
+def test_parse_response_does_not_truncate_over_limit_text():
+    """Soft limits are prompt guidance only — never hard-cut stored fields."""
+    from utils.organization_assessment import _SSE_REASONING_MAX_CHARS
 
-    result = _parse_response(_assessment_json(sse_reasoning=reasoning), "Nature Visuals")
+    reasoning = ("word " * 200).strip()
+    description = "y" * 1200
+    mission = ("Mission sentence. " * 80).strip()
+    values_raw = ("Values text. " * 100).strip()
+    assert len(reasoning) > _SSE_REASONING_MAX_CHARS
+    assert len(description) > 500
+
+    result = _parse_response(
+        _assessment_json(
+            sse_reasoning=reasoning,
+            description=description,
+            mission_statement=mission,
+            values_raw=values_raw,
+        ),
+        "Nature Visuals",
+    )
 
     assert result is not None
     assert result["sse_reasoning"] == reasoning
-
-
-def test_parse_response_caps_sse_reasoning_at_limit():
-    reasoning = ("word " * 300).strip()
-    assert len(reasoning) > _SSE_REASONING_MAX_CHARS
-
-    result = _parse_response(_assessment_json(sse_reasoning=reasoning), "Nature Visuals")
-
-    assert result is not None
-    assert len(result["sse_reasoning"]) <= _SSE_REASONING_MAX_CHARS
-    assert not result["sse_reasoning"].endswith("wo")
-
-
-def test_parse_response_allows_description_up_to_admin_limit():
-    description = "y" * _ORG_DESCRIPTION_MAX_CHARS
-    result = _parse_response(_assessment_json(description=description), "Nature Visuals")
-
-    assert result is not None
     assert result["description"] == description
+    assert result["mission_statement"] == mission
+    assert result["values_raw"] == values_raw
+
+
+def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Hamilton Bike Share Inc.",
+        "Hamilton",
+        "ON",
+        job_title="Coordinator",
+        description="listing notes",
+    )
+    assert "paraphrase to fit completely" in prompt
+    assert "do not truncate" in prompt
+    assert "paraphrase and condense" in prompt
+    assert "Do NOT restate must_haves_met" in prompt
+    assert "2–4 concise sentences" in prompt
 
 
 def test_parse_website_keeps_employer_owned_host():
@@ -91,3 +99,59 @@ def test_build_search_query_targets_official_website():
     assert _build_search_query("Mindrift", "Toronto", "ON") == (
         '"Mindrift" official website Toronto ON'
     )
+
+
+def test_build_search_query_includes_known_website():
+    assert _build_search_query(
+        "Gates Foundation",
+        known_website="https://www.gatesfoundation.org/",
+    ) == (
+        '"Gates Foundation" official website https://www.gatesfoundation.org/'
+    )
+
+
+def test_org_assessment_prompt_uses_org_not_job_sse_criteria():
+    from utils.organization_assessment import _build_assessment_prompt
+    from utils.sse_prompts import ORG_EVALUATION_CRITERIA
+
+    prompt = _build_assessment_prompt(
+        "Hamilton Bike Share Inc.",
+        "Hamilton",
+        "ON",
+        job_title="Coordinator",
+        description="truncated job posting...",
+    )
+    assert "ORGANIZATION (employer)" in prompt
+    assert "Transparent compensation" not in prompt
+    assert "Clear job expectations" not in prompt
+    assert "Do NOT flag missing job salary" in prompt
+    assert "GOVERNANCE GATE" in prompt
+    assert ORG_EVALUATION_CRITERIA in prompt
+
+
+def test_governance_gate_forces_for_profit_weak_yes_to_no():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Aliments Prémont Inc.",
+            slug="aliments-premont-inc",
+            type="other",
+            sse_rating="weak_yes",
+            sse_reasoning=(
+                "Mission mentions respect for individuals and the environment."
+            ),
+        ),
+        "Aliments Prémont Inc.",
+    )
+    assert result is not None
+    assert result["sse_rating"] == "no"
+    assert any("governance_gate" in f for f in result["flags"])
+    assert "Overridden to 'no'" in result["sse_reasoning"]
+
+
+def test_governance_gate_keeps_nonprofit_yes():
+    result = _parse_response(
+        _assessment_json(type="nonprofit", sse_rating="strong_yes"),
+        "Nature Visuals",
+    )
+    assert result is not None
+    assert result["sse_rating"] == "strong_yes"

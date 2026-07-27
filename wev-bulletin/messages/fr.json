@@ -916,7 +916,7 @@
         "slugInvalid": "L'identifiant ne peut contenir que des lettres minuscules, des chiffres et des traits d'union",
         "websiteInvalid": "Le site web doit commencer par http:// ou https://",
         "descriptionTooLong": "La description est trop longue (max. 500 caractères)",
-        "missionTooLong": "L'énoncé de mission est trop long (max. 300 caractères)",
+        "missionTooLong": "L'énoncé de mission est trop long (max. 500 caractères)",
         "invalidType": "Veuillez sélectionner un type d'organisation valide",
         "invalidSector": "Veuillez sélectionner un secteur valide",
         "invalidValues": "Une ou plusieurs valeurs sélectionnées ne sont pas reconnues",

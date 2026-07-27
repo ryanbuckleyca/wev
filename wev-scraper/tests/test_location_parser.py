@@ -134,7 +134,62 @@ def test_geocode_with_geocodio_uncached_success(mock_get_client):
     result = _geocode_with_geocodio_uncached("Toronto, ON")
 
     assert result["municipality"] == "Toronto"
+    assert result["province"] == "ON"
     assert result["lat"] == 43.65
+
+
+@patch('utils.location_parser._get_geocodio_client')
+def test_geocode_normalizes_full_province_name(mock_get_client):
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
+
+    mock_result = {
+        "address_components": {
+            "city": "Montreal",
+            "state": "Quebec",
+            "country": "Canada",
+        },
+        "location": {"lat": 45.5, "lng": -73.6},
+        "accuracy_type": "place",
+    }
+    mock_client.geocode.return_value = {"results": [mock_result]}
+
+    from utils.location_parser import _geocode_with_geocodio_uncached
+    result = _geocode_with_geocodio_uncached("Montreal, Quebec")
+    assert result["municipality"] == "Montreal"
+    assert result["province"] == "QC"
+
+
+@patch('utils.location_parser._get_geocodio_client')
+def test_geocode_reads_state_province_from_client_model(mock_get_client):
+    """geocodio Python client uses AddressComponents.state_province, not state."""
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
+
+    ac = MagicMock()
+    ac.city = "Boucherville"
+    ac.town = None
+    ac.village = None
+    ac.state = None
+    ac.province = None
+    ac.state_province = "QC"
+    ac.country = "CA"
+    ac.country_code = None
+
+    result_obj = MagicMock()
+    result_obj.address_components = ac
+    result_obj.location = MagicMock(lat=45.59, lng=-73.41)
+    result_obj.accuracy_type = "place"
+
+    response = MagicMock()
+    response.results = [result_obj]
+    mock_client.geocode.return_value = response
+
+    from utils.location_parser import _geocode_with_geocodio_uncached
+    result = _geocode_with_geocodio_uncached("Boucherville")
+    assert result["municipality"] == "Boucherville"
+    assert result["province"] == "QC"
+
 
 @patch('utils.location_parser._get_geocodio_client')
 def test_geocode_with_geocodio_uncached_non_canadian(mock_get_client):

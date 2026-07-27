@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getOrganizationTypeLabel, normalizeOrgTypeKey } from './org-type';
-import { resolveOrgSortBy } from './utils';
+import { formatOrgLocationLabel, resolveOrgSortBy } from './utils';
 
 describe('normalizeOrgTypeKey', () => {
   it('strips spaces, hyphens, and underscores', () => {
@@ -20,6 +20,32 @@ describe('resolveOrgSortBy', () => {
   it('falls back for unknown sort values', () => {
     expect(resolveOrgSortBy('nope', false)).toBe('org-asc');
     expect(resolveOrgSortBy('nope', true)).toBe('value-match-desc');
+  });
+});
+
+describe('formatOrgLocationLabel', () => {
+  it('prefers municipality and province', () => {
+    expect(
+      formatOrgLocationLabel({
+        location: 'Somewhere',
+        municipality: 'Montreal',
+        province: 'QC',
+      }),
+    ).toBe('Montreal, QC');
+  });
+
+  it('falls back to free-text location', () => {
+    expect(
+      formatOrgLocationLabel({
+        location: 'Toronto',
+        municipality: null,
+        province: null,
+      }),
+    ).toBe('Toronto');
+  });
+
+  it('returns null when nothing is set', () => {
+    expect(formatOrgLocationLabel({ location: null, municipality: null, province: null })).toBeNull();
   });
 });
 

@@ -930,7 +930,7 @@
         "slugInvalid": "Slug can only contain lowercase letters, numbers, and hyphens",
         "websiteInvalid": "Website must start with http:// or https://",
         "descriptionTooLong": "Description is too long (max 500 characters)",
-        "missionTooLong": "Mission statement is too long (max 300 characters)",
+        "missionTooLong": "Mission statement is too long (max 500 characters)",
         "invalidType": "Please select a valid organization type",
         "invalidSector": "Please select a valid sector",
         "invalidValues": "One or more selected values are not recognized",
