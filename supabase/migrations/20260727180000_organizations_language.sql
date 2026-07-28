@@ -14,8 +14,11 @@ ALTER TABLE public.organizations
   VALIDATE CONSTRAINT organizations_language_check;
 
 COMMENT ON COLUMN public.organizations.language IS
-  'Primary public language of the organization (en, fr, or bilingual). '
-  'Distinct from jobs.language (role/posting requirements).';
+  'Primary public language of the organization (en, fr, or bilingual). Existing values '
+  'are preserved. New classifications start from an LLM assessment of the official name; '
+  'organization-owned website evidence may confirm the result, and substantial confirmed '
+  'English and French materials produce bilingual. Generated descriptions, mission text, '
+  'and jobs.language are not classification evidence.';
 
 -- Note: CONCURRENTLY omitted — Supabase migrations run in a transaction
 -- (see 20260708000002_org_search_indexes.sql).
