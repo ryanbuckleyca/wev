@@ -7,12 +7,18 @@ ALTER TABLE public.organizations
 
 ALTER TABLE public.organizations
   ADD CONSTRAINT organizations_language_check
-  CHECK (language IS NULL OR language IN ('en', 'fr', 'bilingual'));
+  CHECK (language IS NULL OR language IN ('en', 'fr', 'bilingual'))
+  NOT VALID;
+
+ALTER TABLE public.organizations
+  VALIDATE CONSTRAINT organizations_language_check;
 
 COMMENT ON COLUMN public.organizations.language IS
   'Primary public language of the organization (en, fr, or bilingual). '
   'Distinct from jobs.language (role/posting requirements).';
 
+-- Note: CONCURRENTLY omitted — Supabase migrations run in a transaction
+-- (see 20260708000002_org_search_indexes.sql).
 CREATE INDEX IF NOT EXISTS orgs_language_idx
   ON public.organizations (language)
   WHERE language IS NOT NULL;

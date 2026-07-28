@@ -55,6 +55,7 @@ export default function OrganizationFilters({
     setSelectedTypes,
     selectedLanguages,
     setSelectedLanguages,
+    setCurrentPage,
     hasAnyFilters,
     isSuggestedDefaults,
     clearAllFilters,
@@ -69,8 +70,10 @@ export default function OrganizationFilters({
     onRemoveMunicipality: (m) =>
       setSelectedMunicipalities(toggleArrayItem(m, selectedMunicipalities)),
     onRemoveType: (type) => setSelectedTypes(toggleArrayItem(type, selectedTypes)),
-    onRemoveLanguage: (language) =>
-      setSelectedLanguages(toggleArrayItem(language, selectedLanguages)),
+    onRemoveLanguage: (language) => {
+      void setSelectedLanguages(toggleArrayItem(language, selectedLanguages));
+      void setCurrentPage(1);
+    },
     tOrgs: t,
     tFilters: tJobs,
   });
@@ -163,7 +166,10 @@ export default function OrganizationFilters({
               totalCount={filterOptions.languages.length}
               options={filterOptions.languages}
               selectedValues={selectedLanguages}
-              onToggle={(val) => setSelectedLanguages(toggleArrayItem(val, selectedLanguages))}
+              onToggle={(val) => {
+                void setSelectedLanguages(toggleArrayItem(val, selectedLanguages));
+                void setCurrentPage(1);
+              }}
               emptyMessage={tJobs('language.noData')}
               renderLabel={(lang) => orgLanguageLabel(lang, tJobs)}
             />

@@ -70,6 +70,32 @@ def test_discover_hreflang_pair():
     assert "en" in found and "fr" in found
 
 
+def test_discover_does_not_seed_locale_probes_without_signal():
+    found = _discover_locale_urls("<html><body>Hello</body></html>", "https://ex.org/")
+    assert found == {}
+
+
+def test_discover_adds_only_missing_counterpart():
+    html = """
+    <html><head>
+      <link rel="alternate" hreflang="en" href="https://ex.org/en/" />
+    </head></html>
+    """
+    found = _discover_locale_urls(html, "https://ex.org/")
+    assert found["en"] == "https://ex.org/en/"
+    assert found["fr"] == "https://ex.org/fr"
+
+
+def test_is_safe_public_url_blocks_private_and_metadata():
+    from utils.organization_language import _is_safe_public_url
+
+    assert _is_safe_public_url("https://127.0.0.1/") is False
+    assert _is_safe_public_url("http://192.168.1.10/page") is False
+    assert _is_safe_public_url("http://169.254.169.254/latest/meta-data") is False
+    assert _is_safe_public_url("http://localhost/admin") is False
+    assert _is_safe_public_url("ftp://example.org/") is False
+
+
 @patch("utils.organization_language._neutral_fetch")
 @patch("utils.organization_language._page_has_language")
 def test_classify_web_dual_probe_bilingual(mock_probe, mock_fetch):

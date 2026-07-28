@@ -112,50 +112,53 @@ def backfill_org_language(
     skipped = 0
 
     for org in orgs:
-        result = classify_org_language(
-            name=org.get("name"),
-            description=org.get("description"),
-            mission_statement=org.get("mission_statement"),
-            website=org.get("website"),
-            fetch_web=fetch_web,
-            llm_fn=llm_fn,
-        )
-        if not result.language:
-            skipped += 1
+        try:
+            result = classify_org_language(
+                name=org.get("name"),
+                description=org.get("description"),
+                mission_statement=org.get("mission_statement"),
+                website=org.get("website"),
+                fetch_web=fetch_web,
+                llm_fn=llm_fn,
+            )
+            if not result.language:
+                skipped += 1
+                logger.info(
+                    "skip org_id=%s name=%r source=%s reasons=%s",
+                    org["id"],
+                    org.get("name"),
+                    result.source,
+                    result.reasons,
+                )
+                continue
+
+            payload = {"language": result.language}
             logger.info(
-                "skip org_id=%s name=%r source=%s reasons=%s",
+                "%s org_id=%s name=%r → %s (source=%s conf=%.2f reasons=%s)",
+                "would update" if dry_run else "update",
                 org["id"],
                 org.get("name"),
+                result.language,
                 result.source,
+                result.confidence,
                 result.reasons,
             )
-            continue
-
-        payload = {"language": result.language}
-        logger.info(
-            "%s org_id=%s name=%r → %s (source=%s conf=%.2f reasons=%s)",
-            "would update" if dry_run else "update",
-            org["id"],
-            org.get("name"),
-            result.language,
-            result.source,
-            result.confidence,
-            result.reasons,
-        )
-        if not dry_run:
-            resp = (
-                supabase.table("organizations")
-                .update(payload)
-                .eq("id", org["id"])
-                .execute()
-            )
-            if not resp.data:
-                skipped += 1
-                logger.warning("update returned no data for org_id=%s", org["id"])
-                continue
-        updated += 1
-        if fetch_web:
-            time.sleep(0.4)
+            if not dry_run:
+                resp = (
+                    supabase.table("organizations")
+                    .update(payload)
+                    .eq("id", org["id"])
+                    .execute()
+                )
+                if not resp.data:
+                    skipped += 1
+                    logger.warning("update returned no data for org_id=%s", org["id"])
+                    continue
+            updated += 1
+        finally:
+            # Throttle web fetches on every attempt (skip / failed write included).
+            if fetch_web:
+                time.sleep(0.4)
 
     logger.info(
         "Done. %d updated, %d skipped%s.",
