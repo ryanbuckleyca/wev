@@ -282,6 +282,8 @@ class Organizations(BaseModel):
     type: Optional[str] = None
     slug: str
     description: Optional[str] = None
+    description_en: Optional[str] = None
+    description_fr: Optional[str] = None
     website: Optional[str] = None
     location: Optional[str] = None
     sse_rating: Optional[str] = None
@@ -289,6 +291,8 @@ class Organizations(BaseModel):
     is_sse: Optional[bool] = False
     logo_url: Optional[str] = None
     mission_statement: Optional[str] = None
+    mission_statement_en: Optional[str] = None
+    mission_statement_fr: Optional[str] = None
     values_list: Optional[List[str]] = None
     values_rated: Optional[Any] = None
     municipality: Optional[str] = None

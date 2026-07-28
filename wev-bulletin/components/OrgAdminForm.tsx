@@ -228,27 +228,53 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
       />
 
       <FormTextarea
-        label={t('fields.description')}
-        value={form.description}
-        onChange={form.setDescription}
-        placeholder={t('placeholders.description')}
-        htmlFor="org-description"
+        label={t('fields.descriptionEn')}
+        value={form.descriptionEn}
+        onChange={form.setDescriptionEn}
+        placeholder={t('placeholders.descriptionEn')}
+        htmlFor="org-description-en"
         rows={4}
         charLimit={MAX_ORG_DESCRIPTION_LENGTH}
-        error={errors.description}
+        error={errors.description_en || errors.description}
         disabled={isSubmitting}
         fullWidth
       />
 
       <FormTextarea
-        label={t('fields.missionStatement')}
-        value={form.missionStatement}
-        onChange={form.setMissionStatement}
-        placeholder={t('placeholders.missionStatement')}
-        htmlFor="org-mission"
+        label={t('fields.descriptionFr')}
+        value={form.descriptionFr}
+        onChange={form.setDescriptionFr}
+        placeholder={t('placeholders.descriptionFr')}
+        htmlFor="org-description-fr"
+        rows={4}
+        charLimit={MAX_ORG_DESCRIPTION_LENGTH}
+        error={errors.description_fr}
+        disabled={isSubmitting}
+        fullWidth
+      />
+
+      <FormTextarea
+        label={t('fields.missionStatementEn')}
+        value={form.missionStatementEn}
+        onChange={form.setMissionStatementEn}
+        placeholder={t('placeholders.missionStatementEn')}
+        htmlFor="org-mission-en"
         rows={3}
         charLimit={MAX_ORG_MISSION_LENGTH}
-        error={errors.mission_statement}
+        error={errors.mission_statement_en || errors.mission_statement}
+        disabled={isSubmitting}
+        fullWidth
+      />
+
+      <FormTextarea
+        label={t('fields.missionStatementFr')}
+        value={form.missionStatementFr}
+        onChange={form.setMissionStatementFr}
+        placeholder={t('placeholders.missionStatementFr')}
+        htmlFor="org-mission-fr"
+        rows={3}
+        charLimit={MAX_ORG_MISSION_LENGTH}
+        error={errors.mission_statement_fr}
         disabled={isSubmitting}
         fullWidth
       />
