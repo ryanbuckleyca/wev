@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Re-assess organizations with the grounded OrganizationAssessor.
+r"""Re-assess organizations with the grounded OrganizationAssessor.
 
 Modes
 -----

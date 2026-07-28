@@ -10,6 +10,17 @@ from utils.location_parser import (
 )
 
 
+def test_normalize_ca_province_code_french_and_abbrev():
+    from utils.location_parser import _normalize_ca_province_code
+
+    assert _normalize_ca_province_code("Nouveau-Brunswick") == "NB"
+    assert _normalize_ca_province_code("Colombie-Britannique") == "BC"
+    assert _normalize_ca_province_code("Terre-Neuve-et-Labrador") == "NL"
+    assert _normalize_ca_province_code("Nfld") == "NL"
+    assert _normalize_ca_province_code("P.E.I.") == "PE"
+    assert _normalize_ca_province_code("Nouvelle-Écosse") == "NS"
+
+
 def test_is_remote_location():
     assert is_remote_location("Remote") is True
     assert is_remote_location("Télétravail") is True

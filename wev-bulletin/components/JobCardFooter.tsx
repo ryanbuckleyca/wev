@@ -133,10 +133,9 @@ export default function JobCardFooter({
 
     return {
       label,
-      tooltip: label,
       isMatched: false,
       icon: 'location' as const,
-      type: 'workType' as const,
+      type: 'location' as const,
     };
   };
 
