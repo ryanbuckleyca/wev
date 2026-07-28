@@ -1,13 +1,7 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
-import {
-  parseAsArrayOf,
-  parseAsBoolean,
-  parseAsInteger,
-  parseAsString,
-  useQueryState,
-} from 'nuqs';
+import { parseAsArrayOf, parseAsBoolean, parseAsInteger, parseAsString, useQueryState } from 'nuqs';
 
 export interface OrganizationFilters {
   searchQuery: string;

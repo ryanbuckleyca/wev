@@ -14,7 +14,12 @@ interface UseOrganizationDataOptions {
  * Builds a deterministic string key from the current fetch parameters.
  * Used to detect when a new request is needed and to deduplicate in-flight requests.
  */
-function buildFetchKey(locale: string, currentPage: number, sortBy: string, filters: OrganizationFilters): string {
+function buildFetchKey(
+  locale: string,
+  currentPage: number,
+  sortBy: string,
+  filters: OrganizationFilters,
+): string {
   return [
     locale,
     currentPage,
