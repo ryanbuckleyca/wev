@@ -1,10 +1,13 @@
 """Classify organization public language: en | fr | bilingual.
 
-V1: stored name/description/mission + website URL path hints.
-V2: neutral homepage fetch, hreflang/switcher discovery, dual EN/FR probe.
+Signals (in priority order):
+1. Optional LLM assessment of the organization name
+2. Website URL / hreflang / locale probing (when fetch_web=True)
 
-The deterministic classifier is the source of truth. LLM is only used when
-signals are ambiguous (optional; callers pass an llm_fn).
+Synthetic LLM-generated description/mission text is intentionally excluded —
+those fields are not evidence of the organization's public language.
+
+LanguageClassification.source is for internal debugging only (not persisted).
 """
 
 from __future__ import annotations
@@ -81,79 +84,63 @@ class LanguageClassification:
 def classify_org_language(
     *,
     name: str | None = None,
-    description: str | None = None,
-    mission_statement: str | None = None,
     website: str | None = None,
     fetch_web: bool = False,
     llm_fn: Callable[[str], OrgLanguage | None] | None = None,
 ) -> LanguageClassification:
-    """Classify org language. V1 unless fetch_web=True (enables V2 probes)."""
+    """Classify org language from name / website signals (not generated prose)."""
     reasons: list[str] = []
 
+    name_language: OrgLanguage | None = None
+    if llm_fn is not None and name and name.strip():
+        try:
+            llm_language = llm_fn(name.strip())
+        except Exception as exc:  # noqa: BLE001 — backfill must continue
+            logger.warning("org language name LLM failed: %s", exc)
+            llm_language = None
+        if llm_language in VALID_ORG_LANGUAGES:
+            name_language = llm_language
+            reasons.append(f"name_llm={name_language}")
+
     url_signal = _url_locale_hints(website)
-    if url_signal == "bilingual":
-        return LanguageClassification(
-            "bilingual", 0.9, "url_hints", ("website path suggests both en and fr",)
-        )
-    if url_signal in ("en", "fr"):
+    if url_signal:
         reasons.append(f"url_hint={url_signal}")
 
-    text = _join_text(name, description, mission_statement)
-    text_signal = _detect_text_language(text)
-    if text_signal.language:
-        reasons.extend(text_signal.reasons)
-
+    web: LanguageClassification | None = None
     if fetch_web and website:
-        web = _classify_from_website(website, stored_text_signal=text_signal.language)
+        web = _classify_from_website(website)
+        reasons.extend(web.reasons)
+        # Confirmed substantial EN + FR website evidence upgrades any name result.
+        if web.language == "bilingual":
+            return LanguageClassification("bilingual", web.confidence, web.source, tuple(reasons))
         if web.language:
-            return LanguageClassification(
-                web.language,
-                web.confidence,
-                web.source,
-                tuple([*reasons, *web.reasons]),
-            )
+            reasons.append(f"web_signal={web.language}")
 
-    # Combine URL hint + text without fetch
-    if text_signal.language == "bilingual":
+    # The name assessment is primary unless the website confirms bilingual use.
+    if name_language:
         return LanguageClassification(
-            "bilingual", text_signal.confidence, "stored_text", tuple(reasons)
-        )
-    if text_signal.language and url_signal and text_signal.language != url_signal:
-        # Conflict: prefer bilingual if both locales evidenced
-        return LanguageClassification(
-            "bilingual",
+            name_language,
             0.7,
-            "text_url_conflict",
-            tuple([*reasons, "text and url disagree → bilingual"]),
-        )
-    if text_signal.language:
-        return LanguageClassification(
-            text_signal.language,
-            text_signal.confidence,
-            "stored_text",
+            "llm_name",
             tuple(reasons),
+        )
+
+    if web and web.language:
+        return LanguageClassification(
+            web.language,
+            web.confidence,
+            web.source,
+            tuple(reasons),
+        )
+
+    if url_signal == "bilingual":
+        return LanguageClassification(
+            "bilingual", 0.9, "url_hints", tuple(reasons)
         )
     if url_signal in ("en", "fr"):
         return LanguageClassification(url_signal, 0.55, "url_hints", tuple(reasons))
 
-    if llm_fn is not None:
-        prompt_blob = text or (website or "")
-        if prompt_blob.strip():
-            try:
-                llm_lang = llm_fn(prompt_blob)
-            except Exception as exc:  # noqa: BLE001 — backfill must continue
-                logger.warning("org language LLM fallback failed: %s", exc)
-                llm_lang = None
-            if llm_lang in VALID_ORG_LANGUAGES:
-                return LanguageClassification(
-                    llm_lang, 0.5, "llm", tuple([*reasons, "llm_fallback"])
-                )
-
     return LanguageClassification(None, 0.0, "unknown", tuple(reasons or ("insufficient_signal",)))
-
-
-def _join_text(*parts: str | None) -> str:
-    return "\n".join(p.strip() for p in parts if p and p.strip())
 
 
 def _url_locale_hints(website: str | None) -> OrgLanguage | None:
@@ -183,13 +170,14 @@ def _url_locale_hints(website: str | None) -> OrgLanguage | None:
 
 
 def _detect_text_language(text: str) -> LanguageClassification:
+    """Lightweight website-text scorer. Not a general language detector."""
     cleaned = re.sub(r"\s+", " ", (text or "").strip())
     if len(cleaned) < _MIN_TEXT_CHARS:
-        return LanguageClassification(None, 0.0, "stored_text", ("text_too_short",))
+        return LanguageClassification(None, 0.0, "text_markers", ("text_too_short",))
 
     tokens = re.findall(r"[A-Za-zÀ-ÿ']+", cleaned.lower())
     if not tokens:
-        return LanguageClassification(None, 0.0, "stored_text", ("no_tokens",))
+        return LanguageClassification(None, 0.0, "text_markers", ("no_tokens",))
 
     fr_hits = sum(1 for t in tokens if t in _FR_MARKERS)
     en_hits = sum(1 for t in tokens if t in _EN_MARKERS)
@@ -199,7 +187,7 @@ def _detect_text_language(text: str) -> LanguageClassification:
 
     total = fr_score + en_score
     if total < 2:
-        return LanguageClassification(None, 0.0, "stored_text", ("weak_marker_signal",))
+        return LanguageClassification(None, 0.0, "text_markers", ("weak_marker_signal",))
 
     fr_ratio = fr_score / total
     en_ratio = en_score / total
@@ -211,12 +199,12 @@ def _detect_text_language(text: str) -> LanguageClassification:
 
     # Both languages clearly present in the same blob
     if fr_ratio >= 0.28 and en_ratio >= 0.28 and fr_score >= 3 and en_score >= 3:
-        return LanguageClassification("bilingual", 0.75, "stored_text", reasons)
+        return LanguageClassification("bilingual", 0.75, "text_markers", reasons)
     if fr_ratio >= 0.62:
-        return LanguageClassification("fr", min(0.95, 0.55 + fr_ratio / 2), "stored_text", reasons)
+        return LanguageClassification("fr", min(0.95, 0.55 + fr_ratio / 2), "text_markers", reasons)
     if en_ratio >= 0.62:
-        return LanguageClassification("en", min(0.95, 0.55 + en_ratio / 2), "stored_text", reasons)
-    return LanguageClassification(None, 0.0, "stored_text", (*reasons, "ambiguous_mix"))
+        return LanguageClassification("en", min(0.95, 0.55 + en_ratio / 2), "text_markers", reasons)
+    return LanguageClassification(None, 0.0, "text_markers", (*reasons, "ambiguous_mix"))
 
 
 class _HrefCollector(HTMLParser):
@@ -233,11 +221,7 @@ class _HrefCollector(HTMLParser):
             self.hrefs.append(ad["href"])
 
 
-def _classify_from_website(
-    website: str,
-    *,
-    stored_text_signal: OrgLanguage | None,
-) -> LanguageClassification:
+def _classify_from_website(website: str) -> LanguageClassification:
     html, final_url = _neutral_fetch(website)
     if not html:
         return LanguageClassification(None, 0.0, "web_fetch", ("fetch_failed",))
@@ -251,30 +235,19 @@ def _classify_from_website(
         reasons.append(f"landing_hint={landing_hint}")
 
     if locales.get("en") and locales.get("fr"):
-        # Probe both sides
+        # Probe both sides. Only dual confirmation is positive evidence.
+        # Partial confirmation (one side fails) is inconclusive — fall through.
         en_ok = _page_has_language(locales["en"], "en")
         fr_ok = _page_has_language(locales["fr"], "fr")
         reasons.append(f"probe_en={en_ok}")
         reasons.append(f"probe_fr={fr_ok}")
         if en_ok and fr_ok:
             return LanguageClassification("bilingual", 0.95, "web_dual_probe", tuple(reasons))
-        if fr_ok and not en_ok:
-            return LanguageClassification("fr", 0.8, "web_dual_probe", tuple(reasons))
-        if en_ok and not fr_ok:
-            return LanguageClassification("en", 0.8, "web_dual_probe", tuple(reasons))
+        reasons.append("dual_probe_partial_inconclusive")
 
     page_lang = _detect_text_language(_html_to_text(html))
     if page_lang.language == "bilingual":
         return LanguageClassification("bilingual", 0.85, "web_text", tuple([*reasons, *page_lang.reasons]))
-
-    if page_lang.language and stored_text_signal and page_lang.language != stored_text_signal:
-        if {page_lang.language, stored_text_signal} == {"en", "fr"}:
-            return LanguageClassification(
-                "bilingual",
-                0.8,
-                "web_text_conflict",
-                tuple([*reasons, "stored vs page language disagree"]),
-            )
 
     if page_lang.language:
         return LanguageClassification(
@@ -470,14 +443,18 @@ def make_llm_language_fn() -> Callable[[str], OrgLanguage | None] | None:
 
     def _fn(text: str) -> OrgLanguage | None:
         prompt = (
-            "Classify the PRIMARY public language of this Canadian organization "
-            "from the text below. Reply with ONLY one token: en, fr, or bilingual.\n"
-            "- en = primarily English materials\n"
-            "- fr = primarily French materials\n"
-            "- bilingual = substantial public presence in both English and French\n\n"
-            f"TEXT:\n{text[:4000]}"
+            "Infer the likely primary public-language leaning of this Canadian "
+            "organization from its official name. Reply with ONLY one token: "
+            "en, fr, bilingual, or null.\n"
+            "- en = the name is clearly English-leaning\n"
+            "- fr = the name is clearly French-leaning\n"
+            "- bilingual = the official name contains substantial English and French "
+            "wording, including translated versions of the same name\n"
+            "- null = the name is ambiguous, invented, or language-neutral\n\n"
+            f"ORGANIZATION NAME:\n{text[:1000]}"
         )
-        raw = provider.complete(prompt)
+        # This classifier expects one plain token, not Groq's default JSON-object mode.
+        raw = provider.complete(prompt, json_mode=False)
         if raw is None:
             return None
         token = str(raw).strip().lower().split()[0].strip(".,\"'")

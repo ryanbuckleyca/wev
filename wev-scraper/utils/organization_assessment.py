@@ -25,7 +25,11 @@ from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassifica
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
 from utils.organization_cache import evidence_domain
-from utils.organization_language import classify_org_language
+from utils.organization_language import (
+    VALID_ORG_LANGUAGES,
+    classify_org_language,
+    make_llm_language_fn,
+)
 from utils.slug import generate_slug
 from utils.location_parser import parse_address_with_geocodio
 from utils.sse_prompts import (
@@ -98,7 +102,8 @@ _JSON_FIELDS = f"""{{
   "sse_reasoning_fr": "Same reasoning in French (max {_SSE_REASONING_MAX_CHARS} characters — paraphrase to fit completely; do not truncate)",
   "must_haves_met": ["short labels of must-have criteria met — not prose paragraphs"],
   "nice_to_haves_met": ["short labels of nice-to-have criteria met — not prose paragraphs"],
-  "flags": ["any concerns", "ambiguities", "missing info"]
+  "flags": ["any concerns", "ambiguities", "missing info"],
+  "public_language": "Primary language of the organization's own public materials (website, postings, documents, reports) observed during research. Use only: en, fr, bilingual, or null. Do not use the language of this response as evidence."
 }}"""
 
 _BILINGUAL_COPY_RULES = """BILINGUAL PUBLIC COPY (required):
@@ -120,6 +125,15 @@ _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
 - Do NOT use the scraped job listing URL.
 - If you cannot confidently identify the employer-owned site, return null.
 - Prefer https:// and the apex/homepage over a deep job posting path."""
+
+_PUBLIC_LANGUAGE_RULES = """PUBLIC_LANGUAGE RULES:
+- Start with the official organization name as the strongest indication of its
+  primary public-language leaning.
+- Verify that initial assessment against the organization's own materials you observed.
+- Do not infer from the language of this JSON response.
+- If the website confirms substantial materials in both English and French,
+  return bilingual even when the name leans toward one language.
+- If there is insufficient evidence, return null."""
 
 _combined_prompt = """You are evaluating an ORGANIZATION (employer), not a job posting.
 Identify the organization, extract its values and mission from research about the
@@ -163,6 +177,8 @@ RULES for the "values" field:
 
 {bilingual_copy_rules}
 
+{public_language_rules}
+
 {length_limited_field_rules}
 
 {JSON_INSTRUCTIONS}
@@ -188,6 +204,7 @@ class AssessedOrgResult(TypedDict):
     must_haves_met: List[str]
     nice_to_haves_met: List[str]
     flags: List[str]
+    public_language: str | None
 
 
 _TAXONOMY_STR: str | None = None
@@ -229,6 +246,7 @@ def _build_assessment_prompt(
         taxonomy_formatted=_format_taxonomy(),
         website_rules=_WEBSITE_RULES,
         bilingual_copy_rules=_BILINGUAL_COPY_RULES,
+        public_language_rules=_PUBLIC_LANGUAGE_RULES,
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
         length_limited_field_rules=LENGTH_LIMITED_FIELD_RULES,
     )
@@ -274,6 +292,14 @@ def _normalize_values(raw_values: Any, valid_set: set[str]) -> list[str]:
 def _validate_sse_rating(raw: Any) -> str:
     rating = str(raw or "").lower().strip()
     return rating if rating in ("strong_yes", "weak_yes", "no") else "no"
+
+
+def _validate_public_language(raw: Any) -> str | None:
+    """Accept only en | fr | bilingual; everything else → None."""
+    if not raw:
+        return None
+    value = str(raw).strip().lower()
+    return value if value in VALID_ORG_LANGUAGES else None
 
 
 # Known types that can never be SSE yes. Null/unknown type is NOT in this set.
@@ -554,18 +580,32 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         must_haves_met=_ensure_str_list(data.get("must_haves_met")),
         nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
         flags=_ensure_str_list(data.get("flags")),
+        public_language=_validate_public_language(data.get("public_language")),
     )
     return _apply_org_sse_governance_guard(result)
 
 
-def _attach_org_language(row: dict) -> dict:
-    """Set organizations.language from the shared classifier (source of truth)."""
+def _attach_org_language(
+    row: dict,
+    llm_public_language: str | None = None,
+) -> dict:
+    """Set organizations.language from observed public_language, else classifier.
+
+    Does not overwrite an already-populated language value.
+    ``llm_public_language`` is an observed input from research — not ground truth.
+    """
+    if row.get("language"):
+        return row
+
+    if llm_public_language in VALID_ORG_LANGUAGES:
+        row["language"] = llm_public_language
+        return row
+
     classification = classify_org_language(
         name=row.get("name"),
-        description=row.get("description"),
-        mission_statement=row.get("mission_statement"),
         website=row.get("website"),
-        fetch_web=False,
+        fetch_web=True,
+        llm_fn=make_llm_language_fn(),
     )
     if classification.language:
         row["language"] = classification.language
@@ -793,18 +833,21 @@ class OrganizationAssessor(BaseGroundedClassifier):
         # lat, lng, geocode_accuracy_type); it handles None/empty internally.
         geo_data = parse_address_with_geocodio(loc_str)
 
-        return _attach_org_language({
-            "name": result["canonical_name"],
-            "slug": result["slug"],
-            "location": loc_str,
-            "website": result["website"],
-            "municipality": geo_data.get("municipality"),
-            "province": geo_data.get("province"),
-            "lat": geo_data.get("lat"),
-            "lng": geo_data.get("lng"),
-            "geocode_accuracy_type": geo_data.get("geocode_accuracy_type"),
-            **_result_to_db_fields(result),
-        })
+        return _attach_org_language(
+            {
+                "name": result["canonical_name"],
+                "slug": result["slug"],
+                "location": loc_str,
+                "website": result["website"],
+                "municipality": geo_data.get("municipality"),
+                "province": geo_data.get("province"),
+                "lat": geo_data.get("lat"),
+                "lng": geo_data.get("lng"),
+                "geocode_accuracy_type": geo_data.get("geocode_accuracy_type"),
+                **_result_to_db_fields(result),
+            },
+            result.get("public_language"),
+        )
 
     def assess_and_build_update(
         self,
@@ -843,12 +886,16 @@ class OrganizationAssessor(BaseGroundedClassifier):
         website = result.get("website")
         if website and evidence_domain(website):
             updates["website"] = website
-        return _attach_org_language({
-            "name": name,
-            **updates,
-            "description": updates.get("description") or org.get("description"),
-            "mission_statement": (
-                updates.get("mission_statement") or org.get("mission_statement")
-            ),
-            "website": updates.get("website") or org.get("website"),
-        })
+        return _attach_org_language(
+            {
+                "name": name,
+                "language": org.get("language"),
+                **updates,
+                "description": updates.get("description") or org.get("description"),
+                "mission_statement": (
+                    updates.get("mission_statement") or org.get("mission_statement")
+                ),
+                "website": updates.get("website") or org.get("website"),
+            },
+            result.get("public_language"),
+        )

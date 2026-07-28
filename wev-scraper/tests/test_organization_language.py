@@ -7,6 +7,7 @@ from utils.organization_language import (
     _discover_locale_urls,
     _url_locale_hints,
     classify_org_language,
+    make_llm_language_fn,
 )
 
 
@@ -39,24 +40,45 @@ def test_detect_english_mission():
     assert result.language == "en"
 
 
-def test_classify_prefers_stored_french_text():
-    result = classify_org_language(
-        name="Centre communautaire",
-        description=(
-            "Le centre offre des services pour les familles et les jeunes "
-            "dans la communauté avec une mission de solidarité et d'entraide "
-            "pour les personnes vulnérables de notre quartier."
-        ),
-        mission_statement=None,
-        website="https://example.org",
-        fetch_web=False,
-    )
-    assert result.language == "fr"
-
-
 def test_classify_returns_none_when_empty():
-    result = classify_org_language(name="X", description=None, website=None)
+    result = classify_org_language(name="X", website=None)
     assert result.language is None
+
+
+def test_french_name_alone_does_not_force_english():
+    result = classify_org_language(name="Aliments Prémont Inc.")
+    assert result.language != "en"
+
+
+def test_llm_name_assessment_is_primary_over_single_language_website():
+    with patch("utils.organization_language._neutral_fetch") as mock_fetch:
+        mock_fetch.return_value = (
+            "<html><body>Our organization supports the community and its people.</body></html>",
+            "https://example.org",
+        )
+        result = classify_org_language(
+            name="Aliments Prémont Inc.",
+            website="https://example.org",
+            fetch_web=True,
+            llm_fn=lambda _name: "fr",
+        )
+
+    assert result.language == "fr"
+    assert result.source == "llm_name"
+
+
+@patch("llm.factory.get_sse_provider")
+def test_name_llm_disables_json_object_mode(mock_get_provider):
+    provider = mock_get_provider.return_value
+    provider.complete.return_value = "fr"
+
+    llm_fn = make_llm_language_fn()
+
+    assert llm_fn is not None
+    assert llm_fn("Aliments Prémont Inc.") == "fr"
+    provider.complete.assert_called_once()
+    assert provider.complete.call_args.kwargs["json_mode"] is False
+    assert "substantial English and French wording" in provider.complete.call_args.args[0]
 
 
 def test_discover_hreflang_pair():
@@ -112,9 +134,37 @@ def test_classify_web_dual_probe_bilingual(mock_probe, mock_fetch):
 
     result = classify_org_language(
         name="Acme",
-        description="Short",
         website="https://ex.org",
         fetch_web=True,
+        llm_fn=lambda _name: "fr",
     )
     assert result.language == "bilingual"
     assert result.source == "web_dual_probe"
+
+
+@patch("utils.organization_language._neutral_fetch")
+@patch("utils.organization_language._page_has_language")
+def test_dual_probe_partial_does_not_force_english(mock_probe, mock_fetch):
+    """Partial dual-probe (en ok, fr fail) must not confidently return English."""
+    mock_fetch.return_value = (
+        """
+        <html lang="en"><head>
+          <link rel="alternate" hreflang="en" href="https://ex.org/en/" />
+          <link rel="alternate" hreflang="fr" href="https://ex.org/fr/" />
+        </head><body>Welcome to our organization and community programs for people.</body></html>
+        """,
+        "https://ex.org/en/",
+    )
+
+    def _probe(url, expected):
+        return expected == "en"
+
+    mock_probe.side_effect = _probe
+
+    result = classify_org_language(
+        name="Acme Corp",
+        website="https://ex.org",
+        fetch_web=True,
+    )
+    assert not (result.language == "en" and result.source == "web_dual_probe")
+    assert result.source != "web_dual_probe" or result.language == "bilingual"

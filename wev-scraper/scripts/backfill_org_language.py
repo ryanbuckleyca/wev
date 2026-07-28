@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 r"""Backfill organizations.language only (en | fr | bilingual).
 
-V1 (default): stored name/description/mission + website URL path hints.
-V2 (--fetch-web): neutral homepage fetch, hreflang/switcher discovery, dual probe.
+By default, classify the organization name with the LLM and inspect its website.
+Confirmed bilingual website evidence upgrades a single-language name assessment.
 
 Usage:
     python scripts/backfill_org_language.py --dry-run --limit 20
@@ -12,11 +12,8 @@ Usage:
 
     CONFIRM_PROD_RUN=YES python scripts/backfill_org_language.py --prod
 
-    # Include homepage fetch (V2)
-    CONFIRM_PROD_RUN=YES python scripts/backfill_org_language.py --prod --fetch-web
-
-    # LLM only when deterministic signals are ambiguous
-    CONFIRM_PROD_RUN=YES python scripts/backfill_org_language.py --prod --use-llm
+    # Diagnostic opt-outs
+    python scripts/backfill_org_language.py --dry-run --no-fetch-web --no-llm
 """
 
 from __future__ import annotations
@@ -82,13 +79,13 @@ def backfill_org_language(
     dry_run: bool = False,
     limit: int | None = None,
     after_id: int = 0,
-    fetch_web: bool = False,
-    use_llm: bool = False,
+    fetch_web: bool = True,
+    use_llm: bool = True,
 ) -> None:
     logger.info(
         "Fetching organizations missing language%s%s...",
         " (with web fetch)" if fetch_web else "",
-        " (llm fallback)" if use_llm else "",
+        " (with name LLM)" if use_llm else "",
     )
     orgs = _fetch_orgs_needing_language(after_id=after_id)
     if limit is not None:
@@ -100,7 +97,7 @@ def backfill_org_language(
 
     llm_fn = make_llm_language_fn() if use_llm else None
     if use_llm and llm_fn is None:
-        logger.warning("--use-llm requested but no LLM provider available; continuing without it")
+        logger.warning("No LLM provider available; continuing with website evidence only")
 
     logger.info(
         "Found %d organization(s) to classify%s.",
@@ -115,8 +112,6 @@ def backfill_org_language(
         try:
             result = classify_org_language(
                 name=org.get("name"),
-                description=org.get("description"),
-                mission_statement=org.get("mission_statement"),
                 website=org.get("website"),
                 fetch_web=fetch_web,
                 llm_fn=llm_fn,
@@ -178,15 +173,18 @@ if __name__ == "__main__":
     parser.add_argument("--limit", type=int, default=None, metavar="N")
     parser.add_argument("--after-id", type=int, default=0, help="Resume after this org id")
     parser.add_argument(
-        "--fetch-web",
-        action="store_true",
-        help="V2: neutral homepage fetch + dual-locale probe",
+        "--no-fetch-web",
+        action="store_false",
+        dest="fetch_web",
+        help="Disable homepage fetch and dual-locale probing",
     )
     parser.add_argument(
-        "--use-llm",
-        action="store_true",
-        help="Call LLM only when deterministic signals are ambiguous",
+        "--no-llm",
+        action="store_false",
+        dest="use_llm",
+        help="Disable the initial LLM organization-name assessment",
     )
+    parser.set_defaults(fetch_web=True, use_llm=True)
     args = parser.parse_args()
     backfill_org_language(
         dry_run=args.dry_run,
