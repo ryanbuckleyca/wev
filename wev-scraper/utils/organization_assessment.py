@@ -83,7 +83,7 @@ _SSE_REASONING_MAX_CHARS = 400
 # Truncate job-listing notes fed into the prompt only (not stored org fields).
 _PROMPT_DESC_MAX_CHARS = 1000
 
-_JSON_FIELDS = f"""{{
+_JSON_FIELDS = """{
   "canonical_name": "Official organization name (string, required, non-empty)",
   "slug": "url-safe-kebab-case (string, required)",
   "website": "Employer's own homepage URL (https://...), or null — see WEBSITE RULES",
@@ -103,7 +103,7 @@ _JSON_FIELDS = f"""{{
   "nice_to_haves_met": ["short labels of nice-to-have criteria met — not prose paragraphs"],
   "flags": ["REQUIRED — see FLAGS RULES below"],
   "public_language": "Primary language of the organization's own public materials (website, postings, documents, reports) observed during research. Use only: en, fr, bilingual, or null. Do not use the language of this response as evidence."
-}}"""
+}"""
 
 _FLAGS_RULES = """FLAGS RULES (mandatory):
 You MUST populate the "flags" array accurately. Check each condition:
