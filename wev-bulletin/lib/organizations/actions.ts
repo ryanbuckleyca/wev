@@ -105,7 +105,9 @@ export async function updateOrganization(id: number, data: OrgUpdateInput): Prom
 
   const { data: existingOrg, error: existingError } = await supabaseServer
     .from('organizations')
-    .select('slug, is_sse, type')
+    .select(
+      'slug, is_sse, type, description_en, description_fr, mission_statement_en, mission_statement_fr',
+    )
     .eq('id', id)
     .single();
 
@@ -116,6 +118,10 @@ export async function updateOrganization(id: number, data: OrgUpdateInput): Prom
   const updates = buildOrgUpdateFields(data, {
     previousIsSse: existingOrg.is_sse,
     previousType: normalizeOrgType(existingOrg.type),
+    previousDescriptionEn: existingOrg.description_en,
+    previousDescriptionFr: existingOrg.description_fr,
+    previousMissionEn: existingOrg.mission_statement_en,
+    previousMissionFr: existingOrg.mission_statement_fr,
   });
 
   if (Object.keys(updates).length === 0) {

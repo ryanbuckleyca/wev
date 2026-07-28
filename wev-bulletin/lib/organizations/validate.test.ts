@@ -60,6 +60,18 @@ describe('validateOrgInput', () => {
       validateOrgInput({ name: 'Test Org', slug: 'test-org', website: 'example.org' }),
     ).toEqual({ field: 'website', error: 'website_invalid' });
   });
+
+  it('falls back to legacy description for length check when _en is empty', () => {
+    const long = 'x'.repeat(501);
+    expect(
+      validateOrgInput({
+        name: 'Test Org',
+        slug: 'test-org',
+        description_en: '',
+        description: long,
+      }),
+    ).toEqual({ field: 'description_en', error: 'description_too_long' });
+  });
 });
 
 describe('buildOrgPayload', () => {
@@ -164,5 +176,31 @@ describe('buildOrgUpdateFields', () => {
       lng: null,
       geocode_accuracy_type: null,
     });
+  });
+
+  it('preserves legacy description when only French is updated', () => {
+    const changed = buildOrgUpdateFields(
+      { description_fr: 'Description française.' },
+      {
+        previousDescriptionEn: 'English description.',
+        previousDescriptionFr: null,
+      },
+    );
+    expect(changed.description_fr).toBe('Description française.');
+    expect(changed).not.toHaveProperty('description_en');
+    expect(changed.description).toBe('English description.');
+  });
+
+  it('preserves legacy mission when only French is updated', () => {
+    const changed = buildOrgUpdateFields(
+      { mission_statement_fr: 'Mission française.' },
+      {
+        previousMissionEn: 'English mission.',
+        previousMissionFr: null,
+      },
+    );
+    expect(changed.mission_statement_fr).toBe('Mission française.');
+    expect(changed).not.toHaveProperty('mission_statement_en');
+    expect(changed.mission_statement).toBe('English mission.');
   });
 });

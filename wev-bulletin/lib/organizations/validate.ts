@@ -88,20 +88,22 @@ export function validateOrgInput(
     return { field: 'website', error: 'website_invalid' };
   }
 
-  const descriptionEn = data.description_en?.trim() ?? data.description?.trim() ?? '';
+  const descriptionEn =
+    data.description_en?.trim() || data.description?.trim() || '';
   if (descriptionEn.length > MAX_ORG_DESCRIPTION_LENGTH) {
     return { field: 'description_en', error: 'description_too_long' };
   }
-  const descriptionFr = data.description_fr?.trim() ?? '';
+  const descriptionFr = data.description_fr?.trim() || '';
   if (descriptionFr.length > MAX_ORG_DESCRIPTION_LENGTH) {
     return { field: 'description_fr', error: 'description_too_long' };
   }
 
-  const missionEn = data.mission_statement_en?.trim() ?? data.mission_statement?.trim() ?? '';
+  const missionEn =
+    data.mission_statement_en?.trim() || data.mission_statement?.trim() || '';
   if (missionEn.length > MAX_ORG_MISSION_LENGTH) {
     return { field: 'mission_statement_en', error: 'mission_too_long' };
   }
-  const missionFr = data.mission_statement_fr?.trim() ?? '';
+  const missionFr = data.mission_statement_fr?.trim() || '';
   if (missionFr.length > MAX_ORG_MISSION_LENGTH) {
     return { field: 'mission_statement_fr', error: 'mission_too_long' };
   }
@@ -224,7 +226,14 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
 
 export function buildOrgUpdateFields(
   data: Partial<OrgFormInput>,
-  options: { previousIsSse?: boolean | null; previousType?: OrgType | null } = {},
+  options: {
+    previousIsSse?: boolean | null;
+    previousType?: OrgType | null;
+    previousDescriptionEn?: string | null;
+    previousDescriptionFr?: string | null;
+    previousMissionEn?: string | null;
+    previousMissionFr?: string | null;
+  } = {},
 ): Partial<NormalizedOrgPayload> {
   const updates: Partial<NormalizedOrgPayload> = {};
 
@@ -248,9 +257,15 @@ export function buildOrgUpdateFields(
     }
     if (descriptionEn !== undefined) updates.description_en = descriptionEn;
     if (descriptionFr !== undefined) updates.description_fr = descriptionFr;
-    updates.description =
-      (descriptionEn !== undefined ? descriptionEn : null) ||
-      (descriptionFr !== undefined ? descriptionFr : null);
+    const resultingDescriptionEn =
+      descriptionEn !== undefined
+        ? descriptionEn
+        : options.previousDescriptionEn?.trim() || null;
+    const resultingDescriptionFr =
+      descriptionFr !== undefined
+        ? descriptionFr
+        : options.previousDescriptionFr?.trim() || null;
+    updates.description = resultingDescriptionEn || resultingDescriptionFr;
   }
 
   const missionTouched =
@@ -270,8 +285,11 @@ export function buildOrgUpdateFields(
     }
     if (missionEn !== undefined) updates.mission_statement_en = missionEn;
     if (missionFr !== undefined) updates.mission_statement_fr = missionFr;
-    updates.mission_statement =
-      (missionEn !== undefined ? missionEn : null) || (missionFr !== undefined ? missionFr : null);
+    const resultingMissionEn =
+      missionEn !== undefined ? missionEn : options.previousMissionEn?.trim() || null;
+    const resultingMissionFr =
+      missionFr !== undefined ? missionFr : options.previousMissionFr?.trim() || null;
+    updates.mission_statement = resultingMissionEn || resultingMissionFr;
   }
   if (data.website !== undefined) updates.website = data.website?.trim() || null;
 

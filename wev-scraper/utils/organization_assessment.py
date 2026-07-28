@@ -383,10 +383,10 @@ def _apply_length_repairs(
 ) -> AssessedOrgResult:
     """Apply successful repairs; drop fields that still do not fit (no truncation).
 
-    Dropped fields are set to None (or a short sse_reasoning fallback) and flagged
-    ``length_limit: dropped <field> ...``. Callers that update existing rows should
-    omit those keys so prior DB values are retained — see
-    ``_omit_dropped_length_fields_from_update``.
+    Dropped fields are set to None and flagged ``length_limit: dropped <field> ...``.
+    Callers that update existing rows should omit those keys so prior DB values are
+    retained — see ``_omit_dropped_length_fields_from_update``. For sse_reasoning_*,
+    restoration of prior locale text is handled by ``_merge_sse_details_preserving_reasoning``.
     """
     updates: dict[str, Any] = {}
     flags = list(result.get("flags") or [])
@@ -417,7 +417,8 @@ _LENGTH_DROP_UPDATE_KEYS: dict[str, tuple[str, ...]] = {
     "mission_statement_en": ("mission_statement_en", "mission_statement"),
     "mission_statement_fr": ("mission_statement_fr",),
     "values_raw": ("values",),
-    # sse_reasoning_* live inside sse_details; keep short fallbacks there.
+    # sse_reasoning_*: omitted from updates via _omit_dropped_length_fields_from_update;
+    # prior locale reasoning restored by _merge_sse_details_preserving_reasoning.
 }
 
 

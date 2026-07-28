@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getOrganizationBySlug, getOrganizationJobs } from '@/lib/organizations/server-data';
+import { pickOrgLocalizedText } from '@/lib/organizations/localized';
 import { computeOrgValueMatch } from '@/lib/organizations/value-match';
 import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
 import { createClient as createServerClient } from '@/lib/supabase/server';
@@ -22,8 +23,6 @@ export async function generateMetadata({ params }: PageProps) {
   const org = await getOrganizationBySlug(slug);
 
   if (!org) return {};
-
-  const { pickOrgLocalizedText } = await import('@/lib/organizations/localized');
 
   return {
     title: org.name,

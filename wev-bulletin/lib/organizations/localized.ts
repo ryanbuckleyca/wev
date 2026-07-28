@@ -2,6 +2,14 @@
  * Pick locale-specific org prose with fallbacks.
  * Prefer explicit _{locale}, then the other locale, then legacy monolingual column.
  */
+
+function firstNonEmptyTrimmed(...candidates: unknown[]): string | null {
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 export function pickOrgLocalizedText(
   org: {
     description?: string | null;
@@ -16,14 +24,11 @@ export function pickOrgLocalizedText(
 ): string | null {
   const preferred = locale.startsWith('fr') ? 'fr' : 'en';
   const other = preferred === 'fr' ? 'en' : 'fr';
-  const localizedPreferred = org[`${field}_${preferred}` as keyof typeof org];
-  const localizedOther = org[`${field}_${other}` as keyof typeof org];
-  const legacy = org[field];
-
-  for (const value of [localizedPreferred, localizedOther, legacy]) {
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
+  return firstNonEmptyTrimmed(
+    org[`${field}_${preferred}` as keyof typeof org],
+    org[`${field}_${other}` as keyof typeof org],
+    org[field],
+  );
 }
 
 export function pickSseReasoning(
@@ -33,9 +38,9 @@ export function pickSseReasoning(
   if (!sseDetails) return null;
   const preferred = locale.startsWith('fr') ? 'fr' : 'en';
   const other = preferred === 'fr' ? 'en' : 'fr';
-  for (const key of [`reasoning_${preferred}`, `reasoning_${other}`, 'reasoning'] as const) {
-    const value = sseDetails[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
+  return firstNonEmptyTrimmed(
+    sseDetails[`reasoning_${preferred}`],
+    sseDetails[`reasoning_${other}`],
+    sseDetails.reasoning,
+  );
 }
