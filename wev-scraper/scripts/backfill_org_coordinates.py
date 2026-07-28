@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Backfill organizations.municipality and organizations.province only.
+r"""Backfill organizations.municipality and organizations.province only.
 
 Does not write lat/lng/geocode_accuracy_type or any other org fields.
 Only fills fields that are currently null/empty — never overwrites existing values.
@@ -54,8 +54,11 @@ def _missing(value: str | None) -> bool:
     return not (value or "").strip()
 
 
-def _fetch_orgs_needing_fill() -> list[dict]:
-    """Orgs with location that still need municipality and/or province."""
+def _fetch_orgs_needing_fill(limit: int | None = None) -> list[dict]:
+    """Orgs with location that still need municipality and/or province.
+
+    When ``limit`` is set, stop paging once that many matching rows are collected.
+    """
     rows: list[dict] = []
     offset = 0
     while True:
@@ -64,6 +67,10 @@ def _fetch_orgs_needing_fill() -> list[dict]:
             .select("id, location, municipality, province")
             .not_.is_("location", "null")
             .neq("location", "")
+            .or_(
+                "municipality.is.null,municipality.eq.,"
+                "province.is.null,province.eq."
+            )
             .order("id")
             .range(offset, offset + PAGE_SIZE - 1)
             .execute()
@@ -76,6 +83,8 @@ def _fetch_orgs_needing_fill() -> list[dict]:
                 continue
             if _missing(org.get("municipality")) or _missing(org.get("province")):
                 rows.append(org)
+                if limit is not None and len(rows) >= limit:
+                    return rows
         if len(batch) < PAGE_SIZE:
             break
         offset += PAGE_SIZE
@@ -135,14 +144,11 @@ def backfill_org_municipality_province(
     limit: int | None = None,
 ) -> None:
     logger.info("Fetching organizations missing municipality and/or province...")
-    orgs_to_update = _fetch_orgs_needing_fill()
+    orgs_to_update = _fetch_orgs_needing_fill(limit)
 
     if not orgs_to_update:
         logger.info("No organizations need municipality/province backfill.")
         return
-
-    if limit is not None:
-        orgs_to_update = orgs_to_update[:limit]
 
     logger.info(
         "Found %d organization(s) to fill%s%s.",

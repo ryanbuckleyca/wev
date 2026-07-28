@@ -15,7 +15,7 @@ export interface ScrollablePillsItem {
   tooltip?: string;
   isMatched?: boolean;
   icon?: 'heart' | 'briefcase' | 'location' | 'globe';
-  type?: 'value' | 'skill' | 'summary' | 'workType' | 'language';
+  type?: 'value' | 'skill' | 'summary' | 'workType' | 'language' | 'location';
   className?: string;
   groupId?: string;
   groupKey?: string;

@@ -34,12 +34,42 @@ describe('formatOrgLocationLabel', () => {
     ).toBe('Montreal, QC');
   });
 
+  it('returns municipality alone when province is missing', () => {
+    expect(
+      formatOrgLocationLabel({
+        location: 'Somewhere',
+        municipality: 'Montreal',
+        province: null,
+      }),
+    ).toBe('Montreal');
+  });
+
+  it('returns province alone when municipality is missing', () => {
+    expect(
+      formatOrgLocationLabel({
+        location: 'Somewhere',
+        municipality: null,
+        province: 'QC',
+      }),
+    ).toBe('QC');
+  });
+
   it('falls back to free-text location', () => {
     expect(
       formatOrgLocationLabel({
         location: 'Toronto',
         municipality: null,
         province: null,
+      }),
+    ).toBe('Toronto');
+  });
+
+  it('ignores whitespace-only municipality or province and uses location', () => {
+    expect(
+      formatOrgLocationLabel({
+        location: 'Toronto',
+        municipality: '   ',
+        province: '\t',
       }),
     ).toBe('Toronto');
   });
