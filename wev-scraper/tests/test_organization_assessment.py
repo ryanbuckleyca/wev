@@ -1,7 +1,7 @@
 """Tests for organization assessment response parsing."""
 
 import json
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from utils.organization_assessment import (
     _attach_org_language,
@@ -98,20 +98,18 @@ def test_parse_response_keeps_over_limit_text_until_repair():
     assert "description_en" in over
 
 
-def test_ensure_length_limits_truncates_oversize_fields():
-    from unittest.mock import patch
-
+@patch('utils.organization_assessment.get_sse_provider')
+def test_ensure_length_limits_truncates_oversize_fields(mock_get_sse_provider):
     from utils.organization_assessment import (
         _ORG_DESCRIPTION_MAX_CHARS,
         _fields_over_limit,
         OrganizationAssessor,
         AssessedOrgResult,
     )
-    from llm.factory import get_sse_provider
 
-    with patch('utils.llm.factory.get_sse_provider') as mock_get_sse_provider:
-        mock_get_sse_provider.return_value = True  # Mock a successful provider
-        assessor = OrganizationAssessor()
+    mock_get_sse_provider.return_value = MagicMock() # Mock the provider
+
+    assessor = OrganizationAssessor()
 
     long_desc = "y" * 1200
     result = AssessedOrgResult(
@@ -287,7 +285,7 @@ def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
     assert "Never cut off mid-word or mid-sentence" in prompt
     assert "paraphrase and condense" in prompt
     assert "Do NOT restate must_haves_met" in prompt
-    assert "2–4 concise English sentences" in prompt
+    assert "Reasoning must be brief (2–4 sentences)" in prompt
     assert "MUST fit within" in prompt
     assert "description_en" in prompt and "description_fr" in prompt
     assert "BILINGUAL PUBLIC COPY" in prompt
