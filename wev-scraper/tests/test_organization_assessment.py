@@ -28,6 +28,7 @@ def _assessment_json(**overrides) -> str:
         "must_haves_met": ["Clear purpose beyond profit"],
         "nice_to_haves_met": [],
         "flags": [],
+        "public_language": None,
     }
     payload.update(overrides)
     return json.dumps(payload)
@@ -228,6 +229,20 @@ def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
     assert "MUST fit within" in prompt
     assert "description_en" in prompt and "description_fr" in prompt
     assert "BILINGUAL PUBLIC COPY" in prompt
+
+
+def test_org_assessment_prompt_prioritizes_name_then_bilingual_website_evidence():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Aliments Prémont Inc.",
+        "Sainte-Angèle-de-Prémont",
+        "QC",
+        job_title="Coordinator",
+        description="listing notes",
+    )
+    assert "organization name as the strongest indication" in prompt
+    assert "website confirms substantial materials in both English and French" in prompt
 
 
 def test_parse_website_keeps_employer_owned_host():
