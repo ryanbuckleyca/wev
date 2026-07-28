@@ -6,16 +6,20 @@ SSE_SEARCH_KEYWORDS = '(governance OR bylaws OR "articles of incorporation" OR "
 
 SSE_JSON_FIELDS = """  "rating": "strong_yes",
   "confidence": 0.85,
-  "reasoning": "SSE rating explanation citing which criteria are met/not met. Must fit within 1000 characters without being cut off — write complete sentences only and shorten if needed rather than truncating. Volunteer/internship positions are acceptable if mission is clear and disclosed upfront and volunteering or internship role is clearly stated.",
-  "must_haves_met": ["list", "of", "criteria"],
-  "nice_to_haves_met": ["list", "of", "criteria"],
+  "reasoning": "2–4 concise sentences citing key evidence for the rating (max 400 characters — paraphrase to fit completely; do not truncate). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays. Volunteer/internship positions are acceptable if mission is clear and disclosed upfront and volunteering or internship role is clearly stated.",
+  "must_haves_met": ["short labels of must-have criteria met — not prose paragraphs"],
+  "nice_to_haves_met": ["short labels of nice-to-have criteria met — not prose paragraphs"],
   "flags": ["any concerns", "ambiguities", "missing info"]"""
 
-LENGTH_LIMITED_FIELD_RULES = """LENGTH-LIMITED TEXT FIELDS (description, mission_statement, reasoning, values_raw):
-- Each field has a maximum character count shown in its description.
-- The entire string must fit within that limit — never truncate or cut off mid-word or mid-sentence.
-- Write shorter, complete sentences if needed to stay under the limit.
-- End every string on a complete sentence with proper punctuation."""
+# Hard limits for the LLM: compose complete text that fits. If the model
+# overshoots, OrganizationAssessor runs a repair paraphrase — never mid-text truncation.
+LENGTH_LIMITED_FIELD_RULES = """LENGTH LIMITS FOR TEXT FIELDS (description, mission_statement, reasoning, values_raw):
+- Each field lists a maximum character count — the returned string MUST fit within it.
+- Never cut off mid-word or mid-sentence in your own writing.
+- If source material is longer, paraphrase and condense: keep vital facts, do not invent details, and do not drop essential meaning.
+- Prefer shorter complete sentences over anything that would exceed the limit.
+- End every string on a complete sentence with proper punctuation.
+- Reasoning must be brief (2–4 sentences). Put criterion checklists only in must_haves_met / nice_to_haves_met — never expand those lists into reasoning prose."""
 
 JSON_INSTRUCTIONS = """IMPORTANT:
 - Return ONLY the JSON output, no commentary.
@@ -114,6 +118,8 @@ NICE-TO-HAVES (strengthen Yes rating):
 10. Mission reinvestment - surplus goes to people/community/mission, not shareholders
 
 AUTOMATIC NO FLAGS (triggers 'no' rating):
+- Government / public-sector employer or role (municipality, federal/provincial agency,
+  crown corp, school board, public hospital authority, etc.) — never SSE
 - No social/environmental/community mission (pure profit-focused)
 - Profit-maximization focused with no visible social good
 - No reference to cooperation beyond internal team collaboration
@@ -124,7 +130,75 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
 RATING_GUIDELINES = """Be strict: 
 - "strong_yes" requires organizational commitment to SSE (nonprofit, coop, community-based) with clear stated values. Volunteer/internship roles can be strong_yes when mission + organization alignment are clear.
 - "weak_yes" for: mission-driven roles in traditional corps, environmental/social roles, for-profits with transparent SSE alignment, OR volunteer/internship roles with partial SSE alignment.
-- "no" for: profit-focused, no social mission, opaque/missing compensation (volunteer/internship work MUST be explicitly disclosed), or pure market-rate tech jobs."""
+- "no" for: government/public-sector employers or jobs, profit-focused, no social mission, opaque/missing compensation (volunteer/internship work MUST be explicitly disclosed), or pure market-rate tech jobs."""
+
+# Organization-level SSE criteria (NOT job-post criteria).
+# Used by OrganizationAssessor — never rate an org on job compensation/hours.
+ORG_EVALUATION_CRITERIA = """EVALUATION CRITERIA (organization-level — NOT the job posting):
+
+Rate the ORGANIZATION itself from research (official website, mission, governance,
+public materials). Job title/description below are ONLY optional hints to identify
+the employer — they must NOT raise or lower the SSE rating.
+
+GOVERNANCE GATE (required for any Yes — strong_yes or weak_yes):
+The organization must be a Solidarity Economy form, not a conventional for-profit
+and not a government / public-sector body.
+IMPORTANT — evidence over labels: score sse_rating from researched mission,
+governance, ownership, and public materials — NOT from the "type" string alone.
+A nonprofit/cooperative label without mission/governance evidence is not enough
+for Yes. Conversely, do not invent Yes from CSR slogans when structure is a
+conventional for-profit.
+Map "type" to one of the stored values only:
+  nonprofit, cooperative, social enterprise, government, union, other.
+SSE-eligible stored types (may be Yes when evidence supports it):
+  nonprofit, cooperative, social enterprise, union.
+Never-SSE stored types (always No): government, other.
+TYPE MAPPING (do not invent other type labels):
+- nonprofit — registered charity / nonprofit corporation / association; ALSO use this
+  for mutual societies, mutual-aid groups, community associations, and community
+  projects when they are not clearly cooperatives
+- cooperative — worker, consumer, producer, multi-stakeholder coop, or credit union
+- social enterprise — genuine SE with social/community ownership or statutory mission
+  lock (not a regular corporation with CSR language)
+- union — labour union
+- government — public agency / municipality / crown corp / school board / etc. → "no"
+- other — conventional for-profit / private company / residual → "no"
+  (even if the mission mentions environment, community, or "respect for people")
+Public service is not SSE. CSR/greenwashing in a for-profit is not SSE.
+
+MUST-HAVES (required for any Yes, in addition to the governance gate):
+1. Clear purpose beyond profit - mission prioritizes people/community/planet
+2. Impact described intentionally - not CSR/greenwashing or marketing slogans
+3. Organization's work contributes to social/community/environmental good
+
+NICE-TO-HAVES (strengthen Yes rating):
+4. Solidarity-driven culture - cooperation, mutual support, collective/community language
+5. Participatory governance - workers/members have voice in decisions
+6. Explicit SSE governance model in public materials
+7. Investment in people - training, mentorship, education, leadership development
+8. Mission reinvestment - surplus goes to people/community/mission, not private shareholders
+
+AUTOMATIC NO FLAGS (triggers 'no' rating):
+- type is government or other (never SSE)
+- Government / public-sector employer (any level) — never SSE
+- Conventional for-profit with only CSR / ESG / "we respect the environment" language
+- No social/environmental/community mission (pure profit-focused)
+- Profit-maximization / competitiveness-first with social language as marketing
+- Mission-neutral language with only generic CSR
+- Do NOT flag missing job salary, hours, contract type, or truncated job text —
+  those are job-posting concerns, not organization identity"""
+
+ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post completeness):
+- Base the rating on mission/governance evidence from research, not the type label alone
+- "strong_yes" = nonprofit / cooperative / union / locked social enterprise with clear
+  SSE values and mission (includes mutual-aid and community associations stored as nonprofit)
+- "weak_yes" = eligible SSE type (nonprofit, cooperative, social enterprise, union)
+  with partial/weaker mission evidence — NEVER government or other
+- "no" = government, other/conventional for-profit (even with green/social marketing),
+  or no substantive social/environmental mission
+- Greenwashing test: "respect for individuals and the environment" without SSE
+  governance → "no" (and type should be other, not social enterprise)
+- Never rate "no" because a job description is truncated or lacks compensation details"""
 
 BATCH_RATING_GUIDELINES = """Be strict with ratings. Return JSON array ONLY, no preamble.
 - "strong_yes" = nonprofit/coop/community org with clear SSE values OR volunteer/internship role with strong mission and clear organizational alignment

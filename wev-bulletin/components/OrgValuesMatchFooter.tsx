@@ -12,6 +12,8 @@ interface Props {
   isLoggedIn: boolean;
   fadeBackground?: string;
   className?: string;
+  /** Location pill label (same style as job work-type pills). */
+  locationLabel?: string | null;
 }
 
 export function buildOrgValuesMatchTooltip(
@@ -43,6 +45,7 @@ export default function OrgValuesMatchFooter({
   isLoggedIn,
   fadeBackground = 'var(--muted)',
   className,
+  locationLabel = null,
 }: Props) {
   const scorePercent = useMemo(() => {
     if (valueScore == null) return null;
@@ -50,11 +53,12 @@ export default function OrgValuesMatchFooter({
   }, [valueScore]);
 
   const matchTooltipContent = useMemo(() => {
-    if (!isLoggedIn || scorePercent == null) return null;
+    if (!isLoggedIn || scorePercent == null || values.length === 0) return null;
     return buildOrgValuesMatchTooltip(values, scorePercent, sharedValues);
   }, [isLoggedIn, scorePercent, values, sharedValues]);
 
-  if (values.length === 0) return null;
+  const hasLocation = Boolean(locationLabel?.trim());
+  if (values.length === 0 && !hasLocation) return null;
 
   const footer = (
     <JobCardFooter
@@ -70,6 +74,7 @@ export default function OrgValuesMatchFooter({
       showMatchLoading={false}
       fadeBackground={fadeBackground}
       isLoggedIn={isLoggedIn}
+      locationLabel={locationLabel}
     />
   );
 

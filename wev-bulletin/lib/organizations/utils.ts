@@ -25,3 +25,18 @@ export function resolveOrgSortBy(sortBy: string, hasMatchScores: boolean): strin
   if (ORG_SORT_VALUES.has(sortBy)) return sortBy;
   return hasMatchScores ? 'value-match-desc' : 'org-asc';
 }
+
+/** Prefer structured mun/province; fall back to free-text location. */
+export function formatOrgLocationLabel(org: {
+  location?: string | null;
+  municipality?: string | null;
+  province?: string | null;
+}): string | null {
+  const mun = org.municipality?.trim() || '';
+  const prov = org.province?.trim() || '';
+  if (mun && prov) return `${mun}, ${prov}`;
+  if (mun) return mun;
+  if (prov) return prov;
+  const loc = org.location?.trim() || '';
+  return loc || null;
+}

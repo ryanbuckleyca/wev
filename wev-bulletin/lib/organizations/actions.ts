@@ -9,6 +9,7 @@ import { logger } from '@/lib/logger';
 import { mapUniqueViolation } from './action-errors';
 import type { OrgFormInput } from './validate';
 import { buildOrgPayload, buildOrgUpdateFields, validateOrgInput } from './validate';
+import { normalizeOrgType } from './org-type';
 import type { OrgRecord } from './types';
 
 function revalidateOrganizationRoutes(slug?: string, previousSlug?: string) {
@@ -104,7 +105,7 @@ export async function updateOrganization(id: number, data: OrgUpdateInput): Prom
 
   const { data: existingOrg, error: existingError } = await supabaseServer
     .from('organizations')
-    .select('slug, is_sse')
+    .select('slug, is_sse, type')
     .eq('id', id)
     .single();
 
@@ -112,12 +113,10 @@ export async function updateOrganization(id: number, data: OrgUpdateInput): Prom
     return { ok: false, error: 'not_found' };
   }
 
-  let previousIsSse: boolean | null | undefined = existingOrg.is_sse;
-  if (data.is_sse !== undefined) {
-    previousIsSse = existingOrg.is_sse;
-  }
-
-  const updates = buildOrgUpdateFields(data, { previousIsSse });
+  const updates = buildOrgUpdateFields(data, {
+    previousIsSse: existingOrg.is_sse,
+    previousType: normalizeOrgType(existingOrg.type),
+  });
 
   if (Object.keys(updates).length === 0) {
     const { data: org, error } = await supabaseServer

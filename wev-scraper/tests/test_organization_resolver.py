@@ -854,10 +854,18 @@ class TestLLMResolvePath:
             repo=repo, cache=OrganizationCache(), assessor=assessor
         )
 
-        result = resolver.resolve("Test Org AI", "City", "ON")
+        result = resolver.resolve(
+            "Test Org AI",
+            "City",
+            "ON",
+            website="https://scraped-employer.example",
+        )
 
         assert result == 999
         assessor.assess_and_build_row.assert_called_once()
+        assert assessor.assess_and_build_row.call_args.kwargs["known_website"] == (
+            "https://scraped-employer.example"
+        )
         repo.insert.assert_called_once()
 
         call_kwargs = repo.insert.call_args[0][0]
