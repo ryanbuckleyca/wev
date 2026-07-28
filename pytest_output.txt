@@ -1,0 +1,101 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/ry/code/wev
+plugins: anyio-4.13.0
+collected 462 items / 7 errors
+
+==================================== ERRORS ====================================
+___________ ERROR collecting wev-scraper/scrapers/base_feed_test.py ____________
+ImportError while importing test module '/Users/ry/code/wev/wev-scraper/scrapers/base_feed_test.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+wev-scraper/scrapers/base_feed_test.py:8: in <module>
+    from scrapers.base_feed import BaseFeedScraper
+wev-scraper/scrapers/base_feed.py:4: in <module>
+    import feedparser
+E   ModuleNotFoundError: No module named 'feedparser'
+______________ ERROR collecting wev-scraper/scrapers/cwc_test.py _______________
+ImportError while importing test module '/Users/ry/code/wev/wev-scraper/scrapers/cwc_test.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+wev-scraper/scrapers/cwc_test.py:6: in <module>
+    from scrapers.cwc import CWCScraper
+wev-scraper/scrapers/cwc.py:3: in <module>
+    import feedparser
+E   ModuleNotFoundError: No module named 'feedparser'
+_____ ERROR collecting wev-scraper/tests/test_backfill_organization_ids.py _____
+ImportError while importing test module '/Users/ry/code/wev/wev-scraper/tests/test_backfill_organization_ids.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+wev-scraper/tests/test_backfill_organization_ids.py:9: in <module>
+    from hypothesis import given, settings
+E   ModuleNotFoundError: No module named 'hypothesis'
+________ ERROR collecting wev-scraper/tests/test_organization_cache.py _________
+ImportError while importing test module '/Users/ry/code/wev/wev-scraper/tests/test_organization_cache.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+wev-scraper/tests/test_organization_cache.py:10: in <module>
+    from hypothesis import given, settings
+E   ModuleNotFoundError: No module named 'hypothesis'
+_____________ ERROR collecting wev-scraper/tests/test_registry.py ______________
+ImportError while importing test module '/Users/ry/code/wev/wev-scraper/tests/test_registry.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+wev-scraper/tests/test_registry.py:4: in <module>
+    from scrapers.registry import (
+wev-scraper/scrapers/registry.py:8: in <module>
+    from scrapers.cwc import CWCScraper
+wev-scraper/scrapers/cwc.py:3: in <module>
+    import feedparser
+E   ModuleNotFoundError: No module named 'feedparser'
+______________ ERROR collecting wev-scraper/tests/test_scrape.py _______________
+ImportError while importing test module '/Users/ry/code/wev/wev-scraper/tests/test_scrape.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+wev-scraper/tests/test_scrape.py:6: in <module>
+    from scrape import ScraperOrchestrator, ScraperResults, initialize_runtime_env, main
+wev-scraper/scrape.py:18: in <module>
+    from scrapers.registry import get_scraper_class, source_matches_slug
+wev-scraper/scrapers/registry.py:8: in <module>
+    from scrapers.cwc import CWCScraper
+wev-scraper/scrapers/cwc.py:3: in <module>
+    import feedparser
+E   ModuleNotFoundError: No module named 'feedparser'
+_______________ ERROR collecting wev-scraper/tests/test_slug.py ________________
+ImportError while importing test module '/Users/ry/code/wev/wev-scraper/tests/test_slug.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+wev-scraper/tests/test_slug.py:10: in <module>
+    from hypothesis import given, settings
+E   ModuleNotFoundError: No module named 'hypothesis'
+=========================== short test summary info ============================
+ERROR wev-scraper/scrapers/base_feed_test.py
+ERROR wev-scraper/scrapers/cwc_test.py
+ERROR wev-scraper/tests/test_backfill_organization_ids.py
+ERROR wev-scraper/tests/test_organization_cache.py
+ERROR wev-scraper/tests/test_registry.py
+ERROR wev-scraper/tests/test_scrape.py
+ERROR wev-scraper/tests/test_slug.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 7 errors during collection !!!!!!!!!!!!!!!!!!!!
+============================== 7 errors in 14.64s ==============================

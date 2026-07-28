@@ -139,51 +139,52 @@ def test_ensure_length_limits_truncates_oversize_fields():
     assert not _fields_over_limit(fixed)
 
 
-def test_apply_length_repairs_drops_field_when_repair_fails():
-    from utils.organization_assessment import (
-        _fields_over_limit,
-    )
-
-    long_desc = "y" * 1200
-    result = _parse_response(
-        _assessment_json(description_en=long_desc, sse_reasoning_en="ok"),
-        "Nature Visuals",
-    )
-    assert result is not None
-    over = _fields_over_limit(result)
-    # Empty repair map → drop oversize fields (no truncation).
-    fixed = _apply_length_repairs(result, over, {}, "Nature Visuals")
-    assert fixed["description_en"] is None
-    assert any("length_limit: dropped description_en" in f for f in fixed["flags"])
-
-
 def test_omit_dropped_length_fields_preserves_existing_on_reassess_update():
     from utils.organization_assessment import (
-        _apply_length_repairs,
         _fields_over_limit,
         _omit_dropped_length_fields_from_update,
         _result_to_db_fields,
+        AssessedOrgResult,
     )
 
-    long_desc = "y" * 1200
-    long_mission = "z" * 900
-    result = _parse_response(
-        _assessment_json(
-            description_en=long_desc,
-            mission_statement_en=long_mission,
-            sse_reasoning_en="Clear nonprofit mission evidence.",
-        ),
-        "Nature Visuals",
+    result = AssessedOrgResult(
+        canonical_name="Nature Visuals",
+        slug="nature-visuals",
+        website="https://example.org",
+        description_en=None,
+        description_fr="Une description existante.",
+        mission_statement_en=None,
+        mission_statement_fr="Une mission existante.",
+        type="nonprofit",
+        sector_id=None,
+        values_raw=None,
+        values=[],
+        sse_rating="strong_yes",
+        sse_confidence=0.9,
+        sse_reasoning_en="Clear nonprofit mission evidence.",
+        sse_reasoning_fr=None,
+        must_haves_met=[],
+        nice_to_haves_met=[],
+        flags=[
+            "length_limit: dropped description_en",
+            "length_limit: dropped mission_statement_en",
+        ],
+        public_language=None,
     )
-    assert result is not None
-    fixed = _apply_length_repairs(result, _fields_over_limit(result), {}, "Nature Visuals")
-    updates = _omit_dropped_length_fields_from_update(_result_to_db_fields(fixed), fixed)
+
+    updates_from_result = _result_to_db_fields(result)
+
+    updates = _omit_dropped_length_fields_from_update(updates_from_result, result)
+
     assert "description_en" not in updates
     assert "description" not in updates
     assert "mission_statement_en" not in updates
     assert "mission_statement" not in updates
+
     assert updates["sse_rating"] == "strong_yes"
     assert "sse_details" in updates
+    assert updates["description_fr"] == "Une description existante."
+    assert updates["mission_statement_fr"] == "Une mission existante."
 
 
 def test_omit_null_locale_fields_keeps_existing_fr_on_reassess():
@@ -278,7 +279,7 @@ def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
         description="listing notes",
     )
     assert "paraphrase to fit completely" in prompt
-    assert "do not truncate" in prompt
+    assert "Never cut off mid-word or mid-sentence" in prompt
     assert "paraphrase and condense" in prompt
     assert "Do NOT restate must_haves_met" in prompt
     assert "2–4 concise English sentences" in prompt
