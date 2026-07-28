@@ -1,101 +1,80 @@
 ============================= test session starts ==============================
 platform darwin -- Python 3.11.7, pytest-9.1.1, pluggy-1.6.0
 rootdir: /Users/ry/code/wev
-plugins: anyio-4.13.0
-collected 462 items / 7 errors
+plugins: mock-3.15.1, cov-7.1.0, anyio-4.14.1, hypothesis-6.156.1, typeguard-4.6.0
+collected 588 items
 
-==================================== ERRORS ====================================
-___________ ERROR collecting wev-scraper/scrapers/base_feed_test.py ____________
-ImportError while importing test module '/Users/ry/code/wev/wev-scraper/scrapers/base_feed_test.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-wev-scraper/scrapers/base_feed_test.py:8: in <module>
-    from scrapers.base_feed import BaseFeedScraper
-wev-scraper/scrapers/base_feed.py:4: in <module>
-    import feedparser
-E   ModuleNotFoundError: No module named 'feedparser'
-______________ ERROR collecting wev-scraper/scrapers/cwc_test.py _______________
-ImportError while importing test module '/Users/ry/code/wev/wev-scraper/scrapers/cwc_test.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-wev-scraper/scrapers/cwc_test.py:6: in <module>
-    from scrapers.cwc import CWCScraper
-wev-scraper/scrapers/cwc.py:3: in <module>
-    import feedparser
-E   ModuleNotFoundError: No module named 'feedparser'
-_____ ERROR collecting wev-scraper/tests/test_backfill_organization_ids.py _____
-ImportError while importing test module '/Users/ry/code/wev/wev-scraper/tests/test_backfill_organization_ids.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-wev-scraper/tests/test_backfill_organization_ids.py:9: in <module>
-    from hypothesis import given, settings
-E   ModuleNotFoundError: No module named 'hypothesis'
-________ ERROR collecting wev-scraper/tests/test_organization_cache.py _________
-ImportError while importing test module '/Users/ry/code/wev/wev-scraper/tests/test_organization_cache.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-wev-scraper/tests/test_organization_cache.py:10: in <module>
-    from hypothesis import given, settings
-E   ModuleNotFoundError: No module named 'hypothesis'
-_____________ ERROR collecting wev-scraper/tests/test_registry.py ______________
-ImportError while importing test module '/Users/ry/code/wev/wev-scraper/tests/test_registry.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-wev-scraper/tests/test_registry.py:4: in <module>
-    from scrapers.registry import (
-wev-scraper/scrapers/registry.py:8: in <module>
-    from scrapers.cwc import CWCScraper
-wev-scraper/scrapers/cwc.py:3: in <module>
-    import feedparser
-E   ModuleNotFoundError: No module named 'feedparser'
-______________ ERROR collecting wev-scraper/tests/test_scrape.py _______________
-ImportError while importing test module '/Users/ry/code/wev/wev-scraper/tests/test_scrape.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-wev-scraper/tests/test_scrape.py:6: in <module>
-    from scrape import ScraperOrchestrator, ScraperResults, initialize_runtime_env, main
-wev-scraper/scrape.py:18: in <module>
-    from scrapers.registry import get_scraper_class, source_matches_slug
-wev-scraper/scrapers/registry.py:8: in <module>
-    from scrapers.cwc import CWCScraper
-wev-scraper/scrapers/cwc.py:3: in <module>
-    import feedparser
-E   ModuleNotFoundError: No module named 'feedparser'
-_______________ ERROR collecting wev-scraper/tests/test_slug.py ________________
-ImportError while importing test module '/Users/ry/code/wev/wev-scraper/tests/test_slug.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/Cellar/python@3.11/3.11.7_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-wev-scraper/tests/test_slug.py:10: in <module>
-    from hypothesis import given, settings
-E   ModuleNotFoundError: No module named 'hypothesis'
-=========================== short test summary info ============================
-ERROR wev-scraper/scrapers/base_feed_test.py
-ERROR wev-scraper/scrapers/cwc_test.py
-ERROR wev-scraper/tests/test_backfill_organization_ids.py
-ERROR wev-scraper/tests/test_organization_cache.py
-ERROR wev-scraper/tests/test_registry.py
-ERROR wev-scraper/tests/test_scrape.py
-ERROR wev-scraper/tests/test_slug.py
-!!!!!!!!!!!!!!!!!!! Interrupted: 7 errors during collection !!!!!!!!!!!!!!!!!!!!
-============================== 7 errors in 14.64s ==============================
+wev-scraper/scrapers/base_feed_test.py ...........                       [  1%]
+wev-scraper/scrapers/centraide_test.py .....                             [  2%]
+wev-scraper/scrapers/charityvillage_test.py .......................      [  6%]
+wev-scraper/scrapers/csi_test.py .......                                 [  7%]
+wev-scraper/scrapers/cwc_test.py .......                                 [  9%]
+wev-scraper/scrapers/ecocanada_test.py .........                         [ 10%]
+wev-scraper/scrapers/goodwork_test.py .....                              [ 11%]
+wev-scraper/scrapers/macommunaute_test.py .....                          [ 12%]
+wev-scraper/tests/test_backfill_compensation.py .....                    [ 13%]
+wev-scraper/tests/test_backfill_organization_ids.py ...............      [ 15%]
+wev-scraper/tests/test_base.py ......................................... [ 22%]
+..........                                                               [ 24%]
+wev-scraper/tests/test_base_sse.py .                                     [ 24%]
+wev-scraper/tests/test_coco.py ..                                        [ 24%]
+wev-scraper/tests/test_compensation.py ....................              [ 28%]
+wev-scraper/tests/test_date_utils.py .......                             [ 29%]
+wev-scraper/tests/test_db_compensation.py .........                      [ 30%]
+wev-scraper/tests/test_dedup.py ...............                          [ 33%]
+wev-scraper/tests/test_extract_salary.py ..............................  [ 38%]
+wev-scraper/tests/test_factory.py ...                                    [ 39%]
+wev-scraper/tests/test_groq.py ..........                                [ 40%]
+wev-scraper/tests/test_jina_embedding.py .....                           [ 41%]
+wev-scraper/tests/test_job_values_tagger.py ........                     [ 43%]
+wev-scraper/tests/test_llm_config.py ...                                 [ 43%]
+wev-scraper/tests/test_llm_location_extractor.py ..                      [ 43%]
+wev-scraper/tests/test_llm_providers.py .....                            [ 44%]
+wev-scraper/tests/test_local_grounded.py ......                          [ 45%]
+wev-scraper/tests/test_location_parser.py ...............                [ 48%]
+wev-scraper/tests/test_merge_duplicate_organizations.py ..............   [ 50%]
+wev-scraper/tests/test_municipality_canonical.py ..........              [ 52%]
+wev-scraper/tests/test_organization_assessment.py ...................... [ 56%]
+......                                                                   [ 57%]
+wev-scraper/tests/test_organization_cache.py ........................... [ 61%]
+.....                                                                    [ 62%]
+wev-scraper/tests/test_organization_language.py ...............          [ 65%]
+wev-scraper/tests/test_organization_repository.py ...................    [ 68%]
+wev-scraper/tests/test_organization_resolver.py ........................ [ 72%]
+................                                                         [ 75%]
+wev-scraper/tests/test_registry.py ........                              [ 76%]
+wev-scraper/tests/test_save_job.py .............                         [ 78%]
+wev-scraper/tests/test_scrape.py .........................               [ 82%]
+wev-scraper/tests/test_settings.py .......                               [ 84%]
+wev-scraper/tests/test_slug.py ............................              [ 88%]
+wev-scraper/tests/test_storage.py ....                                   [ 89%]
+wev-scraper/tests/test_tag_esco_skills_vector.py ..........              [ 91%]
+wev-scraper/tests/test_tag_job_values.py .....                           [ 92%]
+wev-scraper/tests/test_unified_post_processor.py ............            [ 94%]
+wev-scraper/tests/test_url.py ................                           [ 96%]
+wev-scraper/tests/test_url_utils.py ...                                  [ 97%]
+wev-scraper/tests/test_workinculture.py ...............                  [100%]
+
+=============================== warnings summary ===============================
+wev-scraper/tests/test_base.py::test_start_browser
+  /Users/ry/code/wev/wev-scraper/venv/lib/python3.11/site-packages/playwright_stealth/stealth.py:216: UserWarning: Stealth has already been applied to this page or context. Skipping duplicate application.
+    warnings.warn(
+
+wev-scraper/tests/test_scrape.py::test_run_post_scrape_tasks_records_errors
+  /Users/ry/code/wev/wev-scraper/venv/lib/python3.11/site-packages/supabase/_sync/client.py:309: DeprecationWarning: The 'timeout' parameter is deprecated. Please configure it in the http client instead.
+    return SyncPostgrestClient(
+
+wev-scraper/tests/test_scrape.py::test_run_post_scrape_tasks_records_errors
+  /Users/ry/code/wev/wev-scraper/venv/lib/python3.11/site-packages/supabase/_sync/client.py:309: DeprecationWarning: The 'verify' parameter is deprecated. Please configure it in the http client instead.
+    return SyncPostgrestClient(
+
+wev-scraper/tests/test_scrape.py::test_handle_source_error
+  /Users/ry/code/wev/wev-scraper/venv/lib/python3.11/site-packages/supabase/_sync/client.py:264: DeprecationWarning: The 'timeout' parameter is deprecated. Please configure it in the http client instead.
+    return SyncStorageClient(
+
+wev-scraper/tests/test_scrape.py::test_handle_source_error
+  /Users/ry/code/wev/wev-scraper/venv/lib/python3.11/site-packages/supabase/_sync/client.py:264: DeprecationWarning: The 'verify' parameter is deprecated. Please configure it in the http client instead.
+    return SyncStorageClient(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 588 passed, 5 warnings in 355.86s (0:05:55) ==================
