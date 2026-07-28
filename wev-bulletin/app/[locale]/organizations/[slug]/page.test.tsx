@@ -122,7 +122,6 @@ describe('OrganizationDetailPage', () => {
       sector_id: null,
       values_list: null,
       values_rated: null,
-      slug: 'test-org',
     });
     mockGetOrganizationJobs.mockResolvedValue({
       jobs: [],
