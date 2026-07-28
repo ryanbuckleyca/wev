@@ -129,7 +129,7 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
 
 RATING_GUIDELINES = """Be strict: 
 - "strong_yes" requires organizational commitment to SSE (nonprofit, coop, community-based) with clear stated values. Volunteer/internship roles can be strong_yes when mission + organization alignment are clear.
-- "weak_yes" for: mission-driven roles in traditional corps, environmental/social roles, for-profits with transparent SSE alignment, OR volunteer/internship roles with partial SSE alignment.
+- "weak_yes" for: mission-driven roles in traditional corps, environmental/social roles, for-profits with transparent SSE alignment, volunteer/internship roles with partial SSE alignment, OR large institutional non-profits/foundations (e.g., Bill and Melinda Gates Foundation).
 - "no" for: government/public-sector employers or jobs, profit-focused, no social mission, opaque/missing compensation (volunteer/internship work MUST be explicitly disclosed), or pure market-rate tech jobs."""
 
 # Organization-level SSE criteria (NOT job-post criteria).
@@ -193,7 +193,7 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
 - "strong_yes" = nonprofit / cooperative / union / locked social enterprise with clear
   SSE values and mission (includes mutual-aid and community associations stored as nonprofit)
 - "weak_yes" = eligible SSE type (nonprofit, cooperative, social enterprise, union)
-  with partial/weaker mission evidence — NEVER government or other
+  with partial/weaker mission evidence, OR large institutional non-profits/foundations (e.g., Bill and Melinda Gates Foundation) — NEVER government or other
 - "no" = government, other/conventional for-profit (even with green/social marketing),
   or no substantive social/environmental mission
 - Greenwashing test: "respect for individuals and the environment" without SSE
@@ -202,7 +202,7 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
 
 BATCH_RATING_GUIDELINES = """Be strict with ratings. Return JSON array ONLY, no preamble.
 - "strong_yes" = nonprofit/coop/community org with clear SSE values OR volunteer/internship role with strong mission and clear organizational alignment
-- "weak_yes" = mission element but mixed structure OR volunteer/internship role with partial SSE alignment
+- "weak_yes" = mission element but mixed structure, volunteer/internship role with partial SSE alignment, OR large institutional non-profits/foundations (e.g., Bill and Melinda Gates Foundation)
 - "no" = profit-focused, no mission, or unpaid work without clear volunteer/internship disclosure"""
 
 # Single job classification (for real-time during scraping)

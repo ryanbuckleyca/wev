@@ -12,6 +12,9 @@ Usage:
 
     CONFIRM_PROD_RUN=YES python scripts/backfill_org_language.py --prod
 
+    # Re-classify EVERY org, replacing values from earlier (pre-fix) scrapes
+    CONFIRM_PROD_RUN=YES python scripts/backfill_org_language.py --prod --overwrite
+
     # Diagnostic opt-outs
     python scripts/backfill_org_language.py --dry-run --no-fetch-web --no-llm
 """
@@ -49,7 +52,7 @@ def _missing_language(value: str | None) -> bool:
     return not (value or "").strip()
 
 
-def _fetch_orgs_needing_language(*, after_id: int = 0) -> list[dict]:
+def _fetch_orgs_needing_language(*, after_id: int = 0, overwrite: bool = False) -> list[dict]:
     rows: list[dict] = []
     offset = 0
     while True:
@@ -66,7 +69,9 @@ def _fetch_orgs_needing_language(*, after_id: int = 0) -> list[dict]:
         if not batch:
             break
         for org in batch:
-            if _missing_language(org.get("language")):
+            # --overwrite re-classifies every org, replacing values from earlier
+            # (pre-fix) scrapes; otherwise only fill rows still missing a language.
+            if overwrite or _missing_language(org.get("language")):
                 rows.append(org)
         if len(batch) < PAGE_SIZE:
             break
@@ -81,13 +86,15 @@ def backfill_org_language(
     after_id: int = 0,
     fetch_web: bool = True,
     use_llm: bool = True,
+    overwrite: bool = False,
 ) -> None:
     logger.info(
-        "Fetching organizations missing language%s%s...",
+        "Fetching organizations %s language%s%s...",
+        "(overwriting existing)" if overwrite else "missing",
         " (with web fetch)" if fetch_web else "",
         " (with name LLM)" if use_llm else "",
     )
-    orgs = _fetch_orgs_needing_language(after_id=after_id)
+    orgs = _fetch_orgs_needing_language(after_id=after_id, overwrite=overwrite)
     if limit is not None:
         orgs = orgs[:limit]
 
@@ -115,6 +122,7 @@ def backfill_org_language(
                 website=org.get("website"),
                 fetch_web=fetch_web,
                 llm_fn=llm_fn,
+                use_llm=use_llm,
             )
             if not result.language:
                 skipped += 1
@@ -184,6 +192,12 @@ if __name__ == "__main__":
         dest="use_llm",
         help="Disable the initial LLM organization-name assessment",
     )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Re-classify and overwrite ALL orgs, not just those missing a language "
+        "(use to replace values from earlier, pre-fix scrapes)",
+    )
     parser.set_defaults(fetch_web=True, use_llm=True)
     args = parser.parse_args()
     backfill_org_language(
@@ -192,4 +206,5 @@ if __name__ == "__main__":
         after_id=args.after_id,
         fetch_web=args.fetch_web,
         use_llm=args.use_llm,
+        overwrite=args.overwrite,
     )

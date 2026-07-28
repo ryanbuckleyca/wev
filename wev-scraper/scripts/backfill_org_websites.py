@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 
 _SELECT = (
     "id, name, location, municipality, province, website, description, "
-    "mission_statement, sse_rating, is_sse, type, values_list, sse_details"
+    "mission_statement, sse_rating, is_sse, type, sector_id, language, values_list, sse_details"
 )
 
 
@@ -110,38 +110,43 @@ def _log_full_preview(org: dict, updates: dict, *, dry_run: bool) -> None:
         old_details = {}
     if not isinstance(new_details, dict):
         new_details = {}
-    # Log full mission/description; only clip very long reasoning for the log line.
-    logger.info(
-        "%s org_id=%s (%s)\n"
-        "  sse: %s → %s | is_sse: %s → %s\n"
-        "  website: %s → %s\n"
-        "  type: %s → %s\n"
-        "  mission: %r → %r\n"
-        "  description: %r → %r\n"
-        "  values: %s → %s\n"
-        "  sse_reasoning (old): %s\n"
-        "  sse_reasoning (new): %s",
-        "would update" if dry_run else "update",
-        org["id"],
-        org.get("name"),
-        org.get("sse_rating"),
-        updates.get("sse_rating"),
-        org.get("is_sse"),
-        updates.get("is_sse"),
-        org.get("website"),
-        updates.get("website", org.get("website")),
-        org.get("type"),
-        updates.get("type"),
-        _preview_text(org.get("mission_statement")),
-        _preview_text(updates.get("mission_statement")),
-        _preview_text(org.get("description")),
-        _preview_text(updates.get("description")),
-        org.get("values_list"),
-        updates.get("values_list"),
-        _preview_text(old_details.get("reasoning"), max_len=800) or "(none)",
-        _preview_text(new_details.get("reasoning"), max_len=800)
-        or "(no reasoning returned)",
-    )
+
+    lines = [f"\n{'='*60}\n{'would update' if dry_run else 'update'} org_id={org['id']} ({org.get('name')})"]
+    def add_field(label: str, old_val: Any, new_val: Any, max_len: int | None = None, is_long: bool = False) -> None:
+        if new_val is None and old_val is None:
+            lines.append(f"  [KEEP] {label}: (none)")
+            return
+            
+        if old_val == new_val:
+            val_str = _preview_text(str(old_val), max_len=max_len)
+            if is_long:
+                lines.append(f"  [KEEP] {label}: (unchanged, {len(str(old_val))} chars)")
+            else:
+                lines.append(f"  [KEEP] {label}: {val_str}")
+        else:
+            old_str = _preview_text(str(old_val) if old_val is not None else "(none)", max_len=max_len)
+            new_str = _preview_text(str(new_val) if new_val is not None else "(none)", max_len=max_len)
+            if is_long:
+                lines.append(f"  [UPDATE] {label}:\n    - {old_str}\n    + {new_str}")
+            else:
+                lines.append(f"  [UPDATE] {label}: {old_str} -> {new_str}")
+
+    add_field("sse", org.get("sse_rating"), updates.get("sse_rating"))
+    add_field("is_sse", org.get("is_sse"), updates.get("is_sse"))
+    add_field("type", org.get("type"), updates.get("type"))
+    add_field("sector", org.get("sector_id"), updates.get("sector_id"))
+    add_field("language", org.get("language"), updates.get("language"))
+    add_field("website", org.get("website"), updates.get("website"))
+    add_field("values", org.get("values_list"), updates.get("values_list"))
+    add_field("mission", org.get("mission_statement"), updates.get("mission_statement"), max_len=200, is_long=True)
+    add_field("description", org.get("description"), updates.get("description"), max_len=200, is_long=True)
+    
+    old_reasoning = old_details.get("reasoning")
+    new_reasoning = new_details.get("reasoning")
+    add_field("sse_reasoning", old_reasoning, new_reasoning, max_len=300, is_long=True)
+    add_field("flags", old_details.get("flags"), new_details.get("flags"))
+
+    logger.info("\n".join(lines))
 
 
 def _parse_classified_at(org: dict) -> datetime | None:
@@ -189,6 +194,7 @@ def run(
     after_id: int = 0,
     skip_recent_hours: float | None = None,
     force_reviewed: bool = False,
+    force_lang: bool = False,
 ) -> dict:
     try:
         assessor = OrganizationAssessor()
@@ -297,7 +303,7 @@ def run(
                             repo.update_org(org_id, website=website)
                         updated += 1
                 else:
-                    updates = assessor.assess_and_build_update(org)
+                    updates = assessor.assess_and_build_update(org, force_lang=force_lang)
                     if updates is None:
                         logger.info(
                             "skip org_id=%s (%s) — assessor returned None",
@@ -392,6 +398,11 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--force-lang",
+        action="store_true",
+        help="In --mode full, recalculate and override the language even if already populated.",
+    )
+    parser.add_argument(
         "--delay-seconds",
         type=float,
         default=0.5,
@@ -411,6 +422,7 @@ def main() -> None:
         after_id=args.after_id,
         skip_recent_hours=args.skip_recent_hours,
         force_reviewed=args.force_reviewed,
+        force_lang=args.force_lang,
     )
 
 

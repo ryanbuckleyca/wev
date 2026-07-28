@@ -102,16 +102,31 @@ class GeminiProvider(BaseLLMProvider):
         return bool(self._api_key or get_gemini_api_key())
 
     def _extract_text(self, response) -> str:
-        """Extract text content from a Gemini response object safely.
+        """Extract text content from a Gemini response object safely."""
+        text = getattr(response, "text", "") or ""
+        candidates = getattr(response, "candidates", None) or []
+        if not text and candidates:
+            # Try to extract from parts directly
+            candidate = candidates[0]
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or [] if content else []
+            for part in parts:
+                part_text = getattr(part, "text", None)
+                if part_text:
+                    text = part_text
+                    break
 
-        The SDK's response.text property already aggregates candidates[0].content.parts,
-        but we fall back to reading parts[0].text directly as a defensive measure against
-        known SDK versions where response.text can return an empty string despite content
-        being present in the parts array.
-        """
-        text = getattr(response, "text", "")
-        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-            text = text or getattr(response.candidates[0].content.parts[0], "text", "") or ""
+            if not text:
+                finish_reason = getattr(candidate, "finish_reason", "UNKNOWN")
+                part_types = [
+                    type(p).__name__ + (f"({getattr(p, 'function_call', None) and 'fn_call'})" if hasattr(p, 'function_call') else "")
+                    for p in parts
+                ]
+                logger.warning(
+                    "Empty text from Gemini. finish_reason=%s candidates=%d parts=%d part_types=%s",
+                    finish_reason, len(candidates), len(parts), part_types,
+                )
+
         return text or ""
 
     def complete(self, prompt: str, model: str | None = None, system: str | None = None, **kwargs) -> str:
@@ -137,13 +152,36 @@ class GeminiProvider(BaseLLMProvider):
         resolved_model = model or self._model
         timeout_ms = self._call_timeout_sec * 1000
 
+        safety_settings = [
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+        ]
+
         if use_grounding:
             config = types.GenerateContentConfig(
                 system_instruction=system,
                 tools=[types.Tool(google_search=types.GoogleSearch())],
+                safety_settings=safety_settings,
             )
         else:
-            config = types.GenerateContentConfig(system_instruction=system) if system else None
+            config = types.GenerateContentConfig(
+                system_instruction=system,
+                safety_settings=safety_settings,
+            )
 
         print(
             f"  … gemini: invoking generate_content "
