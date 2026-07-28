@@ -380,6 +380,8 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          description_en: string | null
+          description_fr: string | null
           geocode_accuracy_type: string | null
           id: number
           is_sse: boolean | null
@@ -388,6 +390,8 @@ export type Database = {
           location: string | null
           logo_url: string | null
           mission_statement: string | null
+          mission_statement_en: string | null
+          mission_statement_fr: string | null
           municipality: string | null
           name: string
           province: string | null
@@ -404,6 +408,8 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          description_en?: string | null
+          description_fr?: string | null
           geocode_accuracy_type?: string | null
           id?: number
           is_sse?: boolean | null
@@ -412,6 +418,8 @@ export type Database = {
           location?: string | null
           logo_url?: string | null
           mission_statement?: string | null
+          mission_statement_en?: string | null
+          mission_statement_fr?: string | null
           municipality?: string | null
           name: string
           province?: string | null
@@ -428,6 +436,8 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          description_en?: string | null
+          description_fr?: string | null
           geocode_accuracy_type?: string | null
           id?: number
           is_sse?: boolean | null
@@ -436,6 +446,8 @@ export type Database = {
           location?: string | null
           logo_url?: string | null
           mission_statement?: string | null
+          mission_statement_en?: string | null
+          mission_statement_fr?: string | null
           municipality?: string | null
           name?: string
           province?: string | null
@@ -725,6 +737,8 @@ export type Database = {
           active_job_count: number
           created_at: string
           description: string
+          description_en: string
+          description_fr: string
           geocode_accuracy_type: string
           id: number
           is_sse: boolean
@@ -733,6 +747,8 @@ export type Database = {
           location: string
           logo_url: string
           mission_statement: string
+          mission_statement_en: string
+          mission_statement_fr: string
           municipality: string
           name: string
           province: string

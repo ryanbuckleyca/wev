@@ -28,6 +28,6 @@ export const MAX_ORG_MISSION_LENGTH = 500;
 
 /** Columns loaded/edited by the admin form. */
 export const ORG_ADMIN_FORM_COLUMNS =
-  'id, name, slug, description, mission_statement, website, location, municipality, province, lat, lng, geocode_accuracy_type, type, is_sse, values, values_list' as const;
+  'id, name, slug, description, description_en, description_fr, mission_statement, mission_statement_en, mission_statement_fr, website, location, municipality, province, lat, lng, geocode_accuracy_type, type, is_sse, values, values_list' as const;
 
 export const SLUG_PATTERN = /^[a-z0-9-]+$/;

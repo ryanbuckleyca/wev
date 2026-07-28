@@ -14,14 +14,17 @@ def _assessment_json(**overrides) -> str:
         "canonical_name": "Nature Visuals",
         "slug": "nature-visuals",
         "website": "https://example.org",
-        "description": "A short description.",
-        "mission_statement": "Promote conservation through storytelling.",
+        "description_en": "A short description.",
+        "description_fr": "Une courte description.",
+        "mission_statement_en": "Promote conservation through storytelling.",
+        "mission_statement_fr": "Promouvoir la conservation par le récit.",
         "type": "nonprofit",
         "values_raw": None,
         "values": ["Help Society"],
         "sse_rating": "strong_yes",
         "sse_confidence": 0.9,
-        "sse_reasoning": "Aligned with SSE.",
+        "sse_reasoning_en": "Aligned with SSE.",
+        "sse_reasoning_fr": "Aligné avec l'ESS.",
         "must_haves_met": ["Clear purpose beyond profit"],
         "nice_to_haves_met": [],
         "flags": [],
@@ -44,16 +47,16 @@ def test_parse_response_keeps_over_limit_text_until_repair():
     assert len(description) > _ORG_DESCRIPTION_MAX_CHARS
 
     result = _parse_response(
-        _assessment_json(sse_reasoning=reasoning, description=description),
+        _assessment_json(sse_reasoning_en=reasoning, description_en=description),
         "Nature Visuals",
     )
 
     assert result is not None
-    assert result["sse_reasoning"] == reasoning
-    assert result["description"] == description
+    assert result["sse_reasoning_en"] == reasoning
+    assert result["description_en"] == description
     over = _fields_over_limit(result)
-    assert "sse_reasoning" in over
-    assert "description" in over
+    assert "sse_reasoning_en" in over
+    assert "description_en" in over
 
 
 def test_apply_length_repairs_uses_fitting_paraphrase():
@@ -65,16 +68,16 @@ def test_apply_length_repairs_uses_fitting_paraphrase():
 
     long_desc = "y" * 1200
     result = _parse_response(
-        _assessment_json(description=long_desc),
+        _assessment_json(description_en=long_desc),
         "Nature Visuals",
     )
     assert result is not None
     over = _fields_over_limit(result)
-    repaired = {"description": "A complete short paraphrase that fits."}
-    assert len(repaired["description"]) <= _ORG_DESCRIPTION_MAX_CHARS
+    repaired = {"description_en": "A complete short paraphrase that fits."}
+    assert len(repaired["description_en"]) <= _ORG_DESCRIPTION_MAX_CHARS
 
     fixed = _apply_length_repairs(result, over, repaired, "Nature Visuals")
-    assert fixed["description"] == repaired["description"]
+    assert fixed["description_en"] == repaired["description_en"]
     assert not _fields_over_limit(fixed)
 
 
@@ -86,15 +89,15 @@ def test_apply_length_repairs_drops_field_when_repair_fails():
 
     long_desc = "y" * 1200
     result = _parse_response(
-        _assessment_json(description=long_desc, sse_reasoning="ok"),
+        _assessment_json(description_en=long_desc, sse_reasoning_en="ok"),
         "Nature Visuals",
     )
     assert result is not None
     over = _fields_over_limit(result)
     # Empty repair map → drop oversize fields (no truncation).
     fixed = _apply_length_repairs(result, over, {}, "Nature Visuals")
-    assert fixed["description"] is None
-    assert any("length_limit: dropped description" in f for f in fixed["flags"])
+    assert fixed["description_en"] is None
+    assert any("length_limit: dropped description_en" in f for f in fixed["flags"])
 
 
 def test_omit_dropped_length_fields_preserves_existing_on_reassess_update():
@@ -109,16 +112,18 @@ def test_omit_dropped_length_fields_preserves_existing_on_reassess_update():
     long_mission = "z" * 900
     result = _parse_response(
         _assessment_json(
-            description=long_desc,
-            mission_statement=long_mission,
-            sse_reasoning="Clear nonprofit mission evidence.",
+            description_en=long_desc,
+            mission_statement_en=long_mission,
+            sse_reasoning_en="Clear nonprofit mission evidence.",
         ),
         "Nature Visuals",
     )
     assert result is not None
     fixed = _apply_length_repairs(result, _fields_over_limit(result), {}, "Nature Visuals")
     updates = _omit_dropped_length_fields_from_update(_result_to_db_fields(fixed), fixed)
+    assert "description_en" not in updates
     assert "description" not in updates
+    assert "mission_statement_en" not in updates
     assert "mission_statement" not in updates
     assert updates["sse_rating"] == "strong_yes"
     assert "sse_details" in updates
@@ -153,8 +158,10 @@ def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
     assert "do not truncate" in prompt
     assert "paraphrase and condense" in prompt
     assert "Do NOT restate must_haves_met" in prompt
-    assert "2–4 concise sentences" in prompt
+    assert "2–4 concise English sentences" in prompt
     assert "MUST fit within" in prompt
+    assert "description_en" in prompt and "description_fr" in prompt
+    assert "BILINGUAL PUBLIC COPY" in prompt
 
 
 def test_parse_website_keeps_employer_owned_host():

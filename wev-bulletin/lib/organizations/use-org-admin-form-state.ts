@@ -49,8 +49,16 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
 
   const [name, setName] = useState(initialValues?.name || '');
   const [slug, setSlug] = useState(initialValues?.slug || '');
-  const [description, setDescription] = useState(initialValues?.description || '');
-  const [missionStatement, setMissionStatement] = useState(initialValues?.mission_statement || '');
+  const [descriptionEn, setDescriptionEn] = useState(
+    initialValues?.description_en || initialValues?.description || '',
+  );
+  const [descriptionFr, setDescriptionFr] = useState(initialValues?.description_fr || '');
+  const [missionStatementEn, setMissionStatementEn] = useState(
+    initialValues?.mission_statement_en || initialValues?.mission_statement || '',
+  );
+  const [missionStatementFr, setMissionStatementFr] = useState(
+    initialValues?.mission_statement_fr || '',
+  );
   const [website, setWebsite] = useState(initialValues?.website || '');
   const [location, setLocation] = useState<LocationSelection | null>(
     initialLocationState.selection,
@@ -86,8 +94,10 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     return {
       name: name.trim(),
       slug: slug.trim(),
-      description: description.trim() || null,
-      mission_statement: missionStatement.trim() || null,
+      description_en: descriptionEn.trim() || null,
+      description_fr: descriptionFr.trim() || null,
+      mission_statement_en: missionStatementEn.trim() || null,
+      mission_statement_fr: missionStatementFr.trim() || null,
       website: website.trim() || null,
       location: location?.display_name?.trim() || null,
       municipality: hasCoords ? location?.name?.trim() || null : null,
@@ -103,8 +113,10 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
   }, [
     name,
     slug,
-    description,
-    missionStatement,
+    descriptionEn,
+    descriptionFr,
+    missionStatementEn,
+    missionStatementFr,
     website,
     location,
     locationHasCoords,
@@ -120,10 +132,14 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     setName,
     slug,
     setSlug,
-    description,
-    setDescription,
-    missionStatement,
-    setMissionStatement,
+    descriptionEn,
+    setDescriptionEn,
+    descriptionFr,
+    setDescriptionFr,
+    missionStatementEn,
+    setMissionStatementEn,
+    missionStatementFr,
+    setMissionStatementFr,
     website,
     setWebsite,
     location,

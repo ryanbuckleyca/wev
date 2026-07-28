@@ -15,7 +15,11 @@ export interface OrgFormInput {
   name: string;
   slug?: string;
   description?: string | null;
+  description_en?: string | null;
+  description_fr?: string | null;
   mission_statement?: string | null;
+  mission_statement_en?: string | null;
+  mission_statement_fr?: string | null;
   website?: string | null;
   location?: string | null;
   municipality?: string | null;
@@ -84,14 +88,22 @@ export function validateOrgInput(
     return { field: 'website', error: 'website_invalid' };
   }
 
-  const description = data.description?.trim() ?? '';
-  if (description.length > MAX_ORG_DESCRIPTION_LENGTH) {
-    return { field: 'description', error: 'description_too_long' };
+  const descriptionEn = data.description_en?.trim() ?? data.description?.trim() ?? '';
+  if (descriptionEn.length > MAX_ORG_DESCRIPTION_LENGTH) {
+    return { field: 'description_en', error: 'description_too_long' };
+  }
+  const descriptionFr = data.description_fr?.trim() ?? '';
+  if (descriptionFr.length > MAX_ORG_DESCRIPTION_LENGTH) {
+    return { field: 'description_fr', error: 'description_too_long' };
   }
 
-  const mission = data.mission_statement?.trim() ?? '';
-  if (mission.length > MAX_ORG_MISSION_LENGTH) {
-    return { field: 'mission_statement', error: 'mission_too_long' };
+  const missionEn = data.mission_statement_en?.trim() ?? data.mission_statement?.trim() ?? '';
+  if (missionEn.length > MAX_ORG_MISSION_LENGTH) {
+    return { field: 'mission_statement_en', error: 'mission_too_long' };
+  }
+  const missionFr = data.mission_statement_fr?.trim() ?? '';
+  if (missionFr.length > MAX_ORG_MISSION_LENGTH) {
+    return { field: 'mission_statement_fr', error: 'mission_too_long' };
   }
 
   if (data.type?.trim() && !normalizeOrgType(data.type)) {
@@ -119,7 +131,11 @@ export interface NormalizedOrgPayload {
   name: string;
   slug: string;
   description: string | null;
+  description_en: string | null;
+  description_fr: string | null;
   mission_statement: string | null;
+  mission_statement_en: string | null;
+  mission_statement_fr: string | null;
   website: string | null;
   location: string | null;
   municipality: string | null;
@@ -182,11 +198,20 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
   const isSse = type === 'government' ? false : (data.is_sse ?? false);
   const sseFields = buildAdminSseFields(isSse);
 
+  const descriptionEn = data.description_en?.trim() || data.description?.trim() || null;
+  const descriptionFr = data.description_fr?.trim() || null;
+  const missionEn = data.mission_statement_en?.trim() || data.mission_statement?.trim() || null;
+  const missionFr = data.mission_statement_fr?.trim() || null;
+
   return {
     name,
     slug,
-    description: data.description?.trim() || null,
-    mission_statement: data.mission_statement?.trim() || null,
+    description_en: descriptionEn,
+    description_fr: descriptionFr,
+    description: descriptionEn || descriptionFr,
+    mission_statement_en: missionEn,
+    mission_statement_fr: missionFr,
+    mission_statement: missionEn || missionFr,
     website: data.website?.trim() || null,
     ...applyLocationFields(data),
     type,
@@ -205,9 +230,49 @@ export function buildOrgUpdateFields(
 
   if (data.name !== undefined) updates.name = data.name.trim();
   if (data.slug !== undefined) updates.slug = data.slug.trim();
-  if (data.description !== undefined) updates.description = data.description?.trim() || null;
-  if (data.mission_statement !== undefined) {
-    updates.mission_statement = data.mission_statement?.trim() || null;
+
+  const descriptionTouched =
+    data.description !== undefined ||
+    data.description_en !== undefined ||
+    data.description_fr !== undefined;
+  if (descriptionTouched) {
+    let descriptionEn: string | null | undefined;
+    let descriptionFr: string | null | undefined;
+    if (data.description_en !== undefined) {
+      descriptionEn = data.description_en?.trim() || null;
+    } else if (data.description !== undefined) {
+      descriptionEn = data.description?.trim() || null;
+    }
+    if (data.description_fr !== undefined) {
+      descriptionFr = data.description_fr?.trim() || null;
+    }
+    if (descriptionEn !== undefined) updates.description_en = descriptionEn;
+    if (descriptionFr !== undefined) updates.description_fr = descriptionFr;
+    updates.description =
+      (descriptionEn !== undefined ? descriptionEn : null) ||
+      (descriptionFr !== undefined ? descriptionFr : null);
+  }
+
+  const missionTouched =
+    data.mission_statement !== undefined ||
+    data.mission_statement_en !== undefined ||
+    data.mission_statement_fr !== undefined;
+  if (missionTouched) {
+    let missionEn: string | null | undefined;
+    let missionFr: string | null | undefined;
+    if (data.mission_statement_en !== undefined) {
+      missionEn = data.mission_statement_en?.trim() || null;
+    } else if (data.mission_statement !== undefined) {
+      missionEn = data.mission_statement?.trim() || null;
+    }
+    if (data.mission_statement_fr !== undefined) {
+      missionFr = data.mission_statement_fr?.trim() || null;
+    }
+    if (missionEn !== undefined) updates.mission_statement_en = missionEn;
+    if (missionFr !== undefined) updates.mission_statement_fr = missionFr;
+    updates.mission_statement =
+      (missionEn !== undefined ? missionEn : null) ||
+      (missionFr !== undefined ? missionFr : null);
   }
   if (data.website !== undefined) updates.website = data.website?.trim() || null;
 
