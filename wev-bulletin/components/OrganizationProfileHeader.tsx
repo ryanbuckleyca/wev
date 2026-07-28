@@ -3,10 +3,7 @@ import { Lineicons } from '@lineiconshq/react-lineicons';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
-import {
-  formatOrgLocationLabel,
-  getOrganizationTypeLabel,
-} from '@/lib/organizations/utils';
+import { formatOrgLocationLabel, getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import { pickOrgLocalizedText, pickSseReasoning } from '@/lib/organizations/localized';
 import type { OrgRecord } from '@/lib/organizations/types';
 import type { OrgValueMatch } from '@/lib/organizations/value-match';

@@ -271,8 +271,7 @@ export function buildOrgUpdateFields(
     if (missionEn !== undefined) updates.mission_statement_en = missionEn;
     if (missionFr !== undefined) updates.mission_statement_fr = missionFr;
     updates.mission_statement =
-      (missionEn !== undefined ? missionEn : null) ||
-      (missionFr !== undefined ? missionFr : null);
+      (missionEn !== undefined ? missionEn : null) || (missionFr !== undefined ? missionFr : null);
   }
   if (data.website !== undefined) updates.website = data.website?.trim() || null;
 
@@ -305,8 +304,7 @@ export function buildOrgUpdateFields(
     const requested = data.is_sse ?? options.previousIsSse ?? false;
     const isSse = governmentBlocksSse ? false : Boolean(requested);
     updates.is_sse = isSse;
-    const requestOverridden =
-      data.is_sse !== undefined && Boolean(data.is_sse) !== isSse;
+    const requestOverridden = data.is_sse !== undefined && Boolean(data.is_sse) !== isSse;
     if (
       isSse !== options.previousIsSse ||
       (typeChanging && governmentBlocksSse) ||
