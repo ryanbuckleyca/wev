@@ -129,6 +129,72 @@ def test_omit_dropped_length_fields_preserves_existing_on_reassess_update():
     assert "sse_details" in updates
 
 
+def test_omit_null_locale_fields_keeps_existing_fr_on_reassess():
+    from utils.organization_assessment import (
+        _omit_null_locale_fields_from_update,
+        _result_to_db_fields,
+    )
+
+    result = _parse_response(
+        _assessment_json(
+            description_en="English only this pass.",
+            description_fr=None,
+            mission_statement_en="English mission.",
+            mission_statement_fr=None,
+            sse_reasoning_en="English reasoning.",
+            sse_reasoning_fr=None,
+        ),
+        "Nature Visuals",
+    )
+    assert result is not None
+    assert result["description_fr"] is None
+    assert result["sse_reasoning_fr"] is None
+
+    updates = _omit_null_locale_fields_from_update(_result_to_db_fields(result))
+    assert updates["description_en"] == "English only this pass."
+    assert "description_fr" not in updates
+    assert "mission_statement_fr" not in updates
+    assert updates["description"] == "English only this pass."
+
+
+def test_merge_sse_details_preserves_prior_fr_reasoning():
+    from utils.organization_assessment import (
+        _merge_sse_details_preserving_reasoning,
+        _result_to_db_fields,
+    )
+
+    result = _parse_response(
+        _assessment_json(
+            sse_reasoning_en="New English reasoning.",
+            sse_reasoning_fr=None,
+        ),
+        "Nature Visuals",
+    )
+    assert result is not None
+    updates = _merge_sse_details_preserving_reasoning(
+        _result_to_db_fields(result),
+        {
+            "reasoning_en": "Old English",
+            "reasoning_fr": "Ancien raisonnement français.",
+            "reasoning": "Old English",
+        },
+    )
+    details = updates["sse_details"]
+    assert details["reasoning_en"] == "New English reasoning."
+    assert details["reasoning_fr"] == "Ancien raisonnement français."
+    assert details["reasoning"] == "New English reasoning."
+
+
+def test_parse_response_does_not_invent_missing_reasoning_locale():
+    result = _parse_response(
+        _assessment_json(sse_reasoning_en="Only English.", sse_reasoning_fr=None),
+        "Nature Visuals",
+    )
+    assert result is not None
+    assert result["sse_reasoning_en"] == "Only English."
+    assert result["sse_reasoning_fr"] is None
+
+
 def test_org_assessment_prompt_requires_evidence_not_type_label_alone():
     from utils.organization_assessment import _build_assessment_prompt
 

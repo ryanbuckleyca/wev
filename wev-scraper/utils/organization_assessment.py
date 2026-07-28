@@ -182,8 +182,8 @@ class AssessedOrgResult(TypedDict):
     values: List[str]
     sse_rating: str
     sse_confidence: float
-    sse_reasoning_en: str
-    sse_reasoning_fr: str
+    sse_reasoning_en: str | None
+    sse_reasoning_fr: str | None
     must_haves_met: List[str]
     nice_to_haves_met: List[str]
     flags: List[str]
@@ -403,10 +403,7 @@ def _apply_length_repairs(
             len(original),
             max_chars,
         )
-        if field in ("sse_reasoning_en", "sse_reasoning_fr"):
-            updates[field] = "No reasoning provided" if field.endswith("_en") else "Aucun raisonnement fourni"
-        else:
-            updates[field] = None
+        updates[field] = None
         flags.append(f"length_limit: dropped {field} after failed paraphrase repair")
     if not updates and flags == list(result.get("flags") or []):
         return result
@@ -551,8 +548,8 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         values=_normalize_values(data.get("values", []), get_work_values_set()),
         sse_rating=_validate_sse_rating(data.get("sse_rating")),
         sse_confidence=_clamp_confidence(data.get("sse_confidence")),
-        sse_reasoning_en=reasoning_en or "No reasoning provided",
-        sse_reasoning_fr=reasoning_fr or "Aucun raisonnement fourni",
+        sse_reasoning_en=reasoning_en,
+        sse_reasoning_fr=reasoning_fr,
         must_haves_met=_ensure_str_list(data.get("must_haves_met")),
         nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
         flags=_ensure_str_list(data.get("flags")),
@@ -594,6 +591,65 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
             "reviewed": False,
         },
     }
+
+
+_BILINGUAL_TEXT_KEYS = (
+    "description_en",
+    "description_fr",
+    "mission_statement_en",
+    "mission_statement_fr",
+)
+
+
+def _omit_null_locale_fields_from_update(updates: dict) -> dict:
+    """Drop null bilingual columns so reassess does not wipe existing locale text."""
+    out = {
+        key: value
+        for key, value in updates.items()
+        if not (key in _BILINGUAL_TEXT_KEYS and value is None)
+    }
+    # Legacy search columns: only rewrite when at least one locale is present.
+    if "description_en" in out or "description_fr" in out:
+        legacy = out.get("description_en") or out.get("description_fr")
+        if legacy:
+            out["description"] = legacy
+        else:
+            out.pop("description", None)
+    else:
+        out.pop("description", None)
+
+    if "mission_statement_en" in out or "mission_statement_fr" in out:
+        legacy = out.get("mission_statement_en") or out.get("mission_statement_fr")
+        if legacy:
+            out["mission_statement"] = legacy
+        else:
+            out.pop("mission_statement", None)
+    else:
+        out.pop("mission_statement", None)
+    return out
+
+
+def _merge_sse_details_preserving_reasoning(
+    updates: dict,
+    previous_details: Any,
+) -> dict:
+    """Keep prior reasoning_* when the new assessor result left a locale blank."""
+    details = updates.get("sse_details")
+    if not isinstance(details, dict):
+        return updates
+    prev = previous_details if isinstance(previous_details, dict) else {}
+    merged = dict(details)
+    for key in ("reasoning_en", "reasoning_fr", "reasoning"):
+        new_val = merged.get(key)
+        old_val = prev.get(key)
+        if (not isinstance(new_val, str) or not new_val.strip()) and isinstance(old_val, str) and old_val.strip():
+            merged[key] = old_val
+    merged["reasoning"] = (
+        (merged.get("reasoning_en") if isinstance(merged.get("reasoning_en"), str) else None)
+        or (merged.get("reasoning_fr") if isinstance(merged.get("reasoning_fr"), str) else None)
+        or (merged.get("reasoning") if isinstance(merged.get("reasoning"), str) else None)
+    )
+    return {**updates, "sse_details": merged}
 
 
 class OrganizationAssessor(BaseGroundedClassifier):
@@ -767,6 +823,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
 
         updates = _result_to_db_fields(result)
         updates = _omit_dropped_length_fields_from_update(updates, result)
+        updates = _omit_null_locale_fields_from_update(updates)
+        updates = _merge_sse_details_preserving_reasoning(updates, org.get("sse_details"))
         website = result.get("website")
         if website and evidence_domain(website):
             updates["website"] = website

@@ -64,6 +64,7 @@ backups/
 *.log
 *.tmp
 *.temp
+wev.zip
 rclone-log.txt
 trunk_output.txt
 trunk_report.txt
