@@ -107,7 +107,7 @@ def test_ensure_length_limits_truncates_oversize_fields():
         OrganizationAssessor,
         AssessedOrgResult,
     )
-    from utils.llm.factory import get_sse_provider
+    from llm.factory import get_sse_provider
 
     with patch('utils.llm.factory.get_sse_provider') as mock_get_sse_provider:
         mock_get_sse_provider.return_value = True  # Mock a successful provider
