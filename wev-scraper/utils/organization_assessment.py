@@ -845,6 +845,10 @@ class OrganizationAssessor(BaseGroundedClassifier):
             updates["website"] = website
         return _attach_org_language({
             "name": name,
-            "website": updates.get("website") or org.get("website"),
             **updates,
+            "description": updates.get("description") or org.get("description"),
+            "mission_statement": (
+                updates.get("mission_statement") or org.get("mission_statement")
+            ),
+            "website": updates.get("website") or org.get("website"),
         })

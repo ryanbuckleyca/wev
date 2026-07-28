@@ -9,8 +9,10 @@ signals are ambiguous (optional; callers pass an llm_fn).
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import re
+import socket
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from typing import Callable, Literal
@@ -26,7 +28,13 @@ VALID_ORG_LANGUAGES = frozenset({"en", "fr", "bilingual"})
 _MIN_TEXT_CHARS = 40
 _FETCH_TIMEOUT_SEC = 12
 _MAX_PROBE_URLS = 4
+_MAX_REDIRECTS = 5
 _USER_AGENT = "wev-org-language/1.0 (+https://wevchange.org)"
+_BLOCKED_HOSTNAMES = frozenset({
+    "localhost",
+    "metadata.google.internal",
+    "metadata",
+})
 
 # Strong French function words / markers uncommon as English tokens.
 _FR_MARKERS = frozenset(
@@ -287,28 +295,92 @@ def _classify_from_website(
 def _neutral_fetch(url: str) -> tuple[str | None, str | None]:
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
+    if not _is_safe_public_url(url):
+        logger.info("org language fetch blocked unsafe URL %s", url)
+        return None, None
     try:
-        resp = requests.get(
-            url,
-            timeout=_FETCH_TIMEOUT_SEC,
-            headers={
-                "User-Agent": _USER_AGENT,
-                # Equal preference — never English-biased browser default
-                "Accept-Language": "en, fr;q=1.0, *;q=0.5",
-                "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
-            },
-            allow_redirects=True,
-        )
-        if resp.status_code >= 400:
-            logger.info("org language fetch HTTP %s for %s", resp.status_code, url)
-            return None, None
-        ctype = (resp.headers.get("Content-Type") or "").lower()
-        if "html" not in ctype and "text" not in ctype and ctype:
-            return None, None
-        return resp.text, str(resp.url)
+        current = url
+        for _ in range(_MAX_REDIRECTS + 1):
+            if not _is_safe_public_url(current):
+                logger.info("org language fetch blocked redirect to %s", current)
+                return None, None
+            resp = requests.get(
+                current,
+                timeout=_FETCH_TIMEOUT_SEC,
+                headers={
+                    "User-Agent": _USER_AGENT,
+                    # Equal preference — never English-biased browser default
+                    "Accept-Language": "en, fr;q=1.0, *;q=0.5",
+                    "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+                },
+                allow_redirects=False,
+            )
+            if resp.is_redirect or resp.is_permanent_redirect:
+                location = resp.headers.get("Location")
+                if not location:
+                    return None, None
+                current = urljoin(current, location)
+                continue
+            if resp.status_code >= 400:
+                logger.info("org language fetch HTTP %s for %s", resp.status_code, current)
+                return None, None
+            ctype = (resp.headers.get("Content-Type") or "").lower()
+            if "html" not in ctype and "text" not in ctype and ctype:
+                return None, None
+            return resp.text, str(resp.url)
+        logger.info("org language fetch exceeded redirect limit for %s", url)
+        return None, None
     except requests.RequestException as exc:
         logger.info("org language fetch failed for %s: %s", url, exc)
         return None, None
+
+
+def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    return bool(
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
+def _is_safe_public_url(url: str) -> bool:
+    """Reject non-http(s) and private/loopback/link-local/metadata targets."""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return False
+    if parsed.scheme not in ("http", "https"):
+        return False
+    host = parsed.hostname
+    if not host:
+        return False
+    if host.lower().strip(".") in _BLOCKED_HOSTNAMES:
+        return False
+    # Literal IP in the URL
+    try:
+        if _is_blocked_ip(ipaddress.ip_address(host)):
+            return False
+        return True
+    except ValueError:
+        pass
+    try:
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except (socket.gaierror, OSError, ValueError):
+        return False
+    if not infos:
+        return False
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if _is_blocked_ip(ip):
+            return False
+    return True
 
 
 def _discover_locale_urls(html: str, base_url: str) -> dict[str, str]:
@@ -329,11 +401,17 @@ def _discover_locale_urls(html: str, base_url: str) -> dict[str, str]:
         if hint in ("en", "fr"):
             found.setdefault(hint, abs_url)
 
-    # Common path probes from apex
+    # Only guess the missing counterpart when hreflang/switcher already confirmed
+    # at least one locale — do not seed both /en and /fr on monolingual sites.
+    if not found:
+        return {}
+
     parsed = urlparse(base_url)
     apex = f"{parsed.scheme}://{parsed.netloc}"
-    for code, path in (("en", "/en"), ("fr", "/fr"), ("en", "/en-ca"), ("fr", "/fr-ca")):
-        found.setdefault(code, urljoin(apex + "/", path.lstrip("/")))
+    if "en" in found and "fr" not in found:
+        found["fr"] = urljoin(apex + "/", "fr")
+    elif "fr" in found and "en" not in found:
+        found["en"] = urljoin(apex + "/", "en")
 
     # Cap distinct probes
     limited: dict[str, str] = {}
