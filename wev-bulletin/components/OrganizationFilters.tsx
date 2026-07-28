@@ -122,9 +122,7 @@ export default function OrganizationFilters({
               totalCount={filterOptions.provinces.length}
               options={filterOptions.provinces}
               selectedValues={selectedProvinces}
-              onToggle={(val) =>
-                setSelectedProvinces(toggleArrayItem(val, selectedProvinces))
-              }
+              onToggle={(val) => setSelectedProvinces(toggleArrayItem(val, selectedProvinces))}
               emptyMessage={tJobs('province.noData')}
             />
           </div>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Backfill organizations.language only (en | fr | bilingual).
+r"""Backfill organizations.language only (en | fr | bilingual).
 
 V1 (default): stored name/description/mission + website URL path hints.
 V2 (--fetch-web): neutral homepage fetch, hreflang/switcher discovery, dual probe.
