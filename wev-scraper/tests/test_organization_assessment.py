@@ -99,14 +99,19 @@ def test_parse_response_keeps_over_limit_text_until_repair():
 
 
 def test_ensure_length_limits_truncates_oversize_fields():
+    from unittest.mock import patch
+
     from utils.organization_assessment import (
         _ORG_DESCRIPTION_MAX_CHARS,
         _fields_over_limit,
         OrganizationAssessor,
         AssessedOrgResult,
     )
+    from utils.llm.factory import get_sse_provider
 
-    assessor = OrganizationAssessor()
+    with patch('utils.llm.factory.get_sse_provider') as mock_get_sse_provider:
+        mock_get_sse_provider.return_value = True  # Mock a successful provider
+        assessor = OrganizationAssessor()
 
     long_desc = "y" * 1200
     result = AssessedOrgResult(
