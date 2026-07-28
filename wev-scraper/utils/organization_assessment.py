@@ -97,7 +97,7 @@ _JSON_FIELDS = """{
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
   "sse_rating": "strong_yes or weak_yes or no",
   "sse_confidence": "0.0 to 1.0",
-  "sse_reasoning_en": "2–3 concise English sentences citing the key evidence for the rating (strictly under 320 chars / ~35 words — paraphrase to fit completely). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays",
+  "sse_reasoning_en": "2–4 concise English sentences citing the key evidence for the rating (strictly under 320 chars / ~35 words — paraphrase to fit completely). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays",
   "sse_reasoning_fr": "Same reasoning in French (strictly under 320 chars / ~35 words — paraphrase to fit completely)",
   "must_haves_met": ["short labels of must-have criteria met — not prose paragraphs"],
   "nice_to_haves_met": ["short labels of nice-to-have criteria met — not prose paragraphs"],
