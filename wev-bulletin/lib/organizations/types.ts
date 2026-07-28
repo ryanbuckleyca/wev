@@ -18,6 +18,8 @@ export interface OrgIndexEntry {
   mission_statement: OrgRecord['mission_statement'];
   website: OrgRecord['website'];
   location: OrgRecord['location'];
+  municipality: OrgRecord['municipality'];
+  province: OrgRecord['province'];
   is_sse: OrgRecord['is_sse'];
   type: OrgRecord['type'];
   sector_id: OrgRecord['sector_id'];

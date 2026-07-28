@@ -15,6 +15,7 @@ Merge mechanics (when --apply-auto-merge and not --dry-run, bucket is auto-merge
 Usage:
     python scripts/merge_duplicate_organizations.py --dry-run
     python scripts/merge_duplicate_organizations.py --prod --dry-run
+    python scripts/merge_duplicate_organizations.py --prod --dry-run --limit 5
     python scripts/merge_duplicate_organizations.py --prod --dry-run --json /tmp/org-dupes.json
     CONFIRM_PROD_RUN=YES python scripts/merge_duplicate_organizations.py --prod --apply-auto-merge
 """
@@ -226,7 +227,7 @@ def _job_counts_for(ids: list[int]) -> dict[int, int]:
     return counts
 
 
-def build_decisions() -> list[ClusterDecision]:
+def build_decisions(*, limit: int | None = None) -> list[ClusterDecision]:
     print("Fetching organizations...")
     orgs = fetch_all_rows(
         "organizations",
@@ -244,12 +245,17 @@ def build_decisions() -> list[ClusterDecision]:
     dup_groups = {k: v for k, v in groups.items() if len(v) > 1}
     print(f"Duplicate name clusters: {len(dup_groups)}")
 
-    all_ids = [int(o["id"]) for rows in dup_groups.values() for o in rows]
+    cluster_items = sorted(dup_groups.items())
+    if limit is not None:
+        cluster_items = cluster_items[: max(0, limit)]
+        print(f"Limiting to first {len(cluster_items)} cluster(s) (--limit={limit})")
+
+    all_ids = [int(o["id"]) for _, rows in cluster_items for o in rows]
     print(f"Counting jobs for {len(all_ids)} duplicate rows...")
     job_counts = _job_counts_for(all_ids)
 
     decisions: list[ClusterDecision] = []
-    for name, raw_rows in sorted(dup_groups.items()):
+    for name, raw_rows in cluster_items:
         rows = [
             OrgRow(
                 id=int(o["id"]),
@@ -351,9 +357,16 @@ def main() -> None:
         action="store_true",
         help="Apply auto-merge bucket (ignored when --dry-run).",
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Only classify/apply the first N duplicate-name clusters (sorted by name).",
+    )
     args = parser.parse_args()
 
-    decisions = build_decisions()
+    decisions = build_decisions(limit=args.limit)
     print_report(decisions)
 
     if args.json:
