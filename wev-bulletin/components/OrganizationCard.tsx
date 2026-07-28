@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { formatOrgLocationLabel, getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { pickOrgLocalizedText } from '@/lib/organizations/localized';
 import { safeUrl } from '@/lib/url';
 import SseBadge from './SseBadge';
 import OrgValuesMatchFooter from './OrgValuesMatchFooter';
@@ -58,7 +59,10 @@ function OrganizationCardHeader({
   getTypeLabel,
   getSectorLabel,
 }: CardHeaderProps) {
-  const description = org.description || org.mission_statement || noDescriptionLabel;
+  const description =
+    pickOrgLocalizedText(org, 'description', locale) ||
+    pickOrgLocalizedText(org, 'mission_statement', locale) ||
+    noDescriptionLabel;
   const typeLabel = getTypeLabel(org.type);
   const sectorLabel = getSectorLabel(org.sector_id);
   const metadata = [sectorLabel, typeLabel].filter(Boolean).join(' • ');

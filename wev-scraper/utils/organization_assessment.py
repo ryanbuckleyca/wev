@@ -83,19 +83,29 @@ _JSON_FIELDS = f"""{{
   "canonical_name": "Official organization name (string, required, non-empty)",
   "slug": "url-safe-kebab-case (string, required)",
   "website": "Employer's own homepage URL (https://...), or null — see WEBSITE RULES",
-  "description": "Organization description (max {_ORG_DESCRIPTION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
-  "mission_statement": "Organization mission/purpose (max {_ORG_MISSION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
+  "description_en": "Organization description in English (max {_ORG_DESCRIPTION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
+  "description_fr": "Same description in French (max {_ORG_DESCRIPTION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
+  "mission_statement_en": "Organization mission/purpose in English (max {_ORG_MISSION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
+  "mission_statement_fr": "Same mission/purpose in French (max {_ORG_MISSION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
   "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null. Map mutual societies, mutual-aid groups, and community associations/projects to nonprofit (or cooperative if clearly a coop/credit union). Use other only for conventional for-profit / residual forms",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
   "values_raw": "Organization values and principles if found on their website (max {_ORG_VALUES_RAW_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
   "sse_rating": "strong_yes or weak_yes or no",
   "sse_confidence": "0.0 to 1.0",
-  "sse_reasoning": "2–4 concise sentences citing the key evidence for the rating (max {_SSE_REASONING_MAX_CHARS} characters — paraphrase to fit completely; do not truncate). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays",
+  "sse_reasoning_en": "2–4 concise English sentences citing the key evidence for the rating (max {_SSE_REASONING_MAX_CHARS} characters — paraphrase to fit completely; do not truncate). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays",
+  "sse_reasoning_fr": "Same reasoning in French (max {_SSE_REASONING_MAX_CHARS} characters — paraphrase to fit completely; do not truncate)",
   "must_haves_met": ["short labels of must-have criteria met — not prose paragraphs"],
   "nice_to_haves_met": ["short labels of nice-to-have criteria met — not prose paragraphs"],
   "flags": ["any concerns", "ambiguities", "missing info"]
 }}"""
+
+_BILINGUAL_COPY_RULES = """BILINGUAL PUBLIC COPY (required):
+- Always provide BOTH English and French for description_*, mission_statement_*, and sse_reasoning_* when you have enough evidence to write the field at all.
+- If you can write the English version, also write the French version (and vice versa) — do not leave one locale null when the other is present.
+- Write natural French (not word-for-word calque) and natural English.
+- Knowdell "values" labels stay in English (taxonomy keys). values_raw may stay in the source language of the website.
+- must_haves_met / nice_to_haves_met / flags stay in English short labels."""
 
 _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
 - Prefer the organization's own official homepage (the domain they control).
@@ -150,6 +160,8 @@ RULES for the "values" field:
 
 {website_rules}
 
+{bilingual_copy_rules}
+
 {length_limited_field_rules}
 
 {JSON_INSTRUCTIONS}
@@ -160,15 +172,18 @@ class AssessedOrgResult(TypedDict):
     canonical_name: str
     slug: str
     website: str | None
-    description: str | None
-    mission_statement: str | None
+    description_en: str | None
+    description_fr: str | None
+    mission_statement_en: str | None
+    mission_statement_fr: str | None
     type: str | None
     sector_id: str | None
     values_raw: str | None
     values: List[str]
     sse_rating: str
     sse_confidence: float
-    sse_reasoning: str
+    sse_reasoning_en: str | None
+    sse_reasoning_fr: str | None
     must_haves_met: List[str]
     nice_to_haves_met: List[str]
     flags: List[str]
@@ -212,6 +227,7 @@ def _build_assessment_prompt(
         sector_taxonomy_formatted=get_formatted_sector_taxonomy(),
         taxonomy_formatted=_format_taxonomy(),
         website_rules=_WEBSITE_RULES,
+        bilingual_copy_rules=_BILINGUAL_COPY_RULES,
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
         length_limited_field_rules=LENGTH_LIMITED_FIELD_RULES,
     )
@@ -295,10 +311,13 @@ def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgRes
 
 
 _LENGTH_LIMITED_FIELDS: tuple[tuple[str, int], ...] = (
-    ("description", _ORG_DESCRIPTION_MAX_CHARS),
-    ("mission_statement", _ORG_MISSION_MAX_CHARS),
+    ("description_en", _ORG_DESCRIPTION_MAX_CHARS),
+    ("description_fr", _ORG_DESCRIPTION_MAX_CHARS),
+    ("mission_statement_en", _ORG_MISSION_MAX_CHARS),
+    ("mission_statement_fr", _ORG_MISSION_MAX_CHARS),
     ("values_raw", _ORG_VALUES_RAW_MAX_CHARS),
-    ("sse_reasoning", _SSE_REASONING_MAX_CHARS),
+    ("sse_reasoning_en", _SSE_REASONING_MAX_CHARS),
+    ("sse_reasoning_fr", _SSE_REASONING_MAX_CHARS),
 )
 
 
@@ -384,10 +403,7 @@ def _apply_length_repairs(
             len(original),
             max_chars,
         )
-        if field == "sse_reasoning":
-            updates[field] = "No reasoning provided"
-        else:
-            updates[field] = None
+        updates[field] = None
         flags.append(f"length_limit: dropped {field} after failed paraphrase repair")
     if not updates and flags == list(result.get("flags") or []):
         return result
@@ -396,10 +412,12 @@ def _apply_length_repairs(
 
 # AssessedOrgResult field → organizations update column(s) to skip when repair drops.
 _LENGTH_DROP_UPDATE_KEYS: dict[str, tuple[str, ...]] = {
-    "description": ("description",),
-    "mission_statement": ("mission_statement",),
+    "description_en": ("description_en", "description"),
+    "description_fr": ("description_fr",),
+    "mission_statement_en": ("mission_statement_en", "mission_statement"),
+    "mission_statement_fr": ("mission_statement_fr",),
     "values_raw": ("values",),
-    # sse_reasoning lives inside sse_details; keep the short fallback there.
+    # sse_reasoning_* live inside sse_details; keep short fallbacks there.
 }
 
 
@@ -462,6 +480,15 @@ def _clamp_confidence(raw: Any) -> float:
         return 0.5
 
 
+def _parse_localized_text(data: dict, key_en: str, key_fr: str, legacy_key: str) -> tuple[str | None, str | None]:
+    """Prefer explicit *_en/*_fr; fall back to legacy monolingual key as English."""
+    en = _parse_text_field(data, key_en)
+    fr = _parse_text_field(data, key_fr)
+    if en is None and fr is None:
+        en = _parse_text_field(data, legacy_key)
+    return en, fr
+
+
 def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | None:
     text = BaseGroundedClassifier._extract_json_block(response_text)
 
@@ -497,21 +524,32 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
             canonical_name, raw_name, slug,
         )
 
+    description_en, description_fr = _parse_localized_text(
+        data, "description_en", "description_fr", "description"
+    )
+    mission_en, mission_fr = _parse_localized_text(
+        data, "mission_statement_en", "mission_statement_fr", "mission_statement"
+    )
+    reasoning_en, reasoning_fr = _parse_localized_text(
+        data, "sse_reasoning_en", "sse_reasoning_fr", "sse_reasoning"
+    )
+
     result = AssessedOrgResult(
         canonical_name=canonical_name.strip(),
         slug=slug,
         website=_parse_website(data.get("website")),
-        description=_parse_text_field(data, "description"),
-        mission_statement=_parse_text_field(data, "mission_statement"),
+        description_en=description_en,
+        description_fr=description_fr,
+        mission_statement_en=mission_en,
+        mission_statement_fr=mission_fr,
         type=_normalize_type(data.get("type")),
         sector_id=data.get("sector_id") if data.get("sector_id") in get_sector_ids_set() else None,
         values_raw=_parse_text_field(data, "values_raw"),
         values=_normalize_values(data.get("values", []), get_work_values_set()),
         sse_rating=_validate_sse_rating(data.get("sse_rating")),
         sse_confidence=_clamp_confidence(data.get("sse_confidence")),
-        sse_reasoning=(
-            _parse_text_field(data, "sse_reasoning") or "No reasoning provided"
-        ),
+        sse_reasoning_en=reasoning_en,
+        sse_reasoning_fr=reasoning_fr,
         must_haves_met=_ensure_str_list(data.get("must_haves_met")),
         nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
         flags=_ensure_str_list(data.get("flags")),
@@ -520,9 +558,20 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
 
 
 def _result_to_db_fields(result: AssessedOrgResult) -> dict:
+    description_en = result["description_en"]
+    description_fr = result["description_fr"]
+    mission_en = result["mission_statement_en"]
+    mission_fr = result["mission_statement_fr"]
+    reasoning_en = result["sse_reasoning_en"]
+    reasoning_fr = result["sse_reasoning_fr"]
     return {
-        "description": result["description"],
-        "mission_statement": result["mission_statement"],
+        "description_en": description_en,
+        "description_fr": description_fr,
+        # Legacy columns: prefer English, else French, for search/compat readers.
+        "description": description_en or description_fr,
+        "mission_statement_en": mission_en,
+        "mission_statement_fr": mission_fr,
+        "mission_statement": mission_en or mission_fr,
         "type": result["type"],
         "sector_id": result["sector_id"],
         "values": result["values_raw"],
@@ -532,7 +581,9 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
         "is_sse": result["sse_rating"] in ("strong_yes", "weak_yes"),
         "sse_details": {
             "confidence": result["sse_confidence"],
-            "reasoning": result["sse_reasoning"],
+            "reasoning": reasoning_en or reasoning_fr,
+            "reasoning_en": reasoning_en,
+            "reasoning_fr": reasoning_fr,
             "must_haves_met": result["must_haves_met"],
             "nice_to_haves_met": result["nice_to_haves_met"],
             "flags": result["flags"],
@@ -540,6 +591,65 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
             "reviewed": False,
         },
     }
+
+
+_BILINGUAL_TEXT_KEYS = (
+    "description_en",
+    "description_fr",
+    "mission_statement_en",
+    "mission_statement_fr",
+)
+
+
+def _omit_null_locale_fields_from_update(updates: dict) -> dict:
+    """Drop null bilingual columns so reassess does not wipe existing locale text."""
+    out = {
+        key: value
+        for key, value in updates.items()
+        if not (key in _BILINGUAL_TEXT_KEYS and value is None)
+    }
+    # Legacy search columns: only rewrite when at least one locale is present.
+    if "description_en" in out or "description_fr" in out:
+        legacy = out.get("description_en") or out.get("description_fr")
+        if legacy:
+            out["description"] = legacy
+        else:
+            out.pop("description", None)
+    else:
+        out.pop("description", None)
+
+    if "mission_statement_en" in out or "mission_statement_fr" in out:
+        legacy = out.get("mission_statement_en") or out.get("mission_statement_fr")
+        if legacy:
+            out["mission_statement"] = legacy
+        else:
+            out.pop("mission_statement", None)
+    else:
+        out.pop("mission_statement", None)
+    return out
+
+
+def _merge_sse_details_preserving_reasoning(
+    updates: dict,
+    previous_details: Any,
+) -> dict:
+    """Keep prior reasoning_* when the new assessor result left a locale blank."""
+    details = updates.get("sse_details")
+    if not isinstance(details, dict):
+        return updates
+    prev = previous_details if isinstance(previous_details, dict) else {}
+    merged = dict(details)
+    for key in ("reasoning_en", "reasoning_fr", "reasoning"):
+        new_val = merged.get(key)
+        old_val = prev.get(key)
+        if (not isinstance(new_val, str) or not new_val.strip()) and isinstance(old_val, str) and old_val.strip():
+            merged[key] = old_val
+    merged["reasoning"] = (
+        (merged.get("reasoning_en") if isinstance(merged.get("reasoning_en"), str) else None)
+        or (merged.get("reasoning_fr") if isinstance(merged.get("reasoning_fr"), str) else None)
+        or (merged.get("reasoning") if isinstance(merged.get("reasoning"), str) else None)
+    )
+    return {**updates, "sse_details": merged}
 
 
 class OrganizationAssessor(BaseGroundedClassifier):
@@ -702,7 +812,10 @@ class OrganizationAssessor(BaseGroundedClassifier):
             municipality=org.get("municipality"),
             province=org.get("province"),
             job_title="",
-            description=org.get("description") or "",
+            description=org.get("description_en")
+            or org.get("description_fr")
+            or org.get("description")
+            or "",
             known_website=known_website,
         )
         if result is None:
@@ -710,6 +823,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
 
         updates = _result_to_db_fields(result)
         updates = _omit_dropped_length_fields_from_update(updates, result)
+        updates = _omit_null_locale_fields_from_update(updates)
+        updates = _merge_sse_details_preserving_reasoning(updates, org.get("sse_details"))
         website = result.get("website")
         if website and evidence_domain(website):
             updates["website"] = website

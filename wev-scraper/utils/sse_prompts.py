@@ -13,7 +13,7 @@ SSE_JSON_FIELDS = """  "rating": "strong_yes",
 
 # Hard limits for the LLM: compose complete text that fits. If the model
 # overshoots, OrganizationAssessor runs a repair paraphrase — never mid-text truncation.
-LENGTH_LIMITED_FIELD_RULES = """LENGTH LIMITS FOR TEXT FIELDS (description, mission_statement, reasoning, values_raw):
+LENGTH_LIMITED_FIELD_RULES = """LENGTH LIMITS FOR TEXT FIELDS (description_en, description_fr, mission_statement_en, mission_statement_fr, reasoning / sse_reasoning_en / sse_reasoning_fr, values_raw):
 - Each field lists a maximum character count — the returned string MUST fit within it.
 - Never cut off mid-word or mid-sentence in your own writing.
 - If source material is longer, paraphrase and condense: keep vital facts, do not invent details, and do not drop essential meaning.

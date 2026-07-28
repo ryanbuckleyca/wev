@@ -3,10 +3,8 @@ import { Lineicons } from '@lineiconshq/react-lineicons';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
-import {
-  formatOrgLocationLabel,
-  getOrganizationTypeLabel,
-} from '@/lib/organizations/utils';
+import { formatOrgLocationLabel, getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { pickOrgLocalizedText, pickSseReasoning } from '@/lib/organizations/localized';
 import type { OrgRecord } from '@/lib/organizations/types';
 import type { OrgValueMatch } from '@/lib/organizations/value-match';
 import OrgValuesMatchFooter from './OrgValuesMatchFooter';
@@ -15,6 +13,7 @@ import { cn } from '@/lib/utils';
 
 interface Props {
   org: OrgRecord;
+  locale: string;
   /**
    * next-intl translation function scoped to the **'organizations'** namespace.
    * Must be created with `getTranslations({ locale, namespace: 'organizations' })`.
@@ -29,6 +28,7 @@ interface Props {
 
 export default function OrganizationProfileHeader({
   org,
+  locale,
   t,
   editHref,
   editLabel,
@@ -41,10 +41,11 @@ export default function OrganizationProfileHeader({
     org.sse_details && typeof org.sse_details === 'object' && !Array.isArray(org.sse_details)
       ? (org.sse_details as Record<string, unknown>)
       : null;
-  const sseReasoning =
-    sseDetails && typeof sseDetails.reasoning === 'string' ? sseDetails.reasoning : null;
+  const sseReasoning = pickSseReasoning(sseDetails, locale);
   const values = org.values_list ?? [];
   const locationLabel = formatOrgLocationLabel(org);
+  const description = pickOrgLocalizedText(org, 'description', locale);
+  const mission = pickOrgLocalizedText(org, 'mission_statement', locale);
 
   return (
     <div className="mb-8">
@@ -134,19 +135,17 @@ export default function OrganizationProfileHeader({
         )}
       </div>
 
-      {org.description && (
+      {description && (
         <div className="mt-8 pt-8 border-t border-border">
           <h2 className="text-lg font-semibold text-foreground mb-3">{t('description')}</h2>
-          <p className="text-foreground whitespace-pre-wrap leading-relaxed">{org.description}</p>
+          <p className="text-foreground whitespace-pre-wrap leading-relaxed">{description}</p>
         </div>
       )}
 
-      {org.mission_statement && (
+      {mission && (
         <div className="mt-8 pt-8 border-t border-border">
           <h2 className="text-lg font-semibold text-foreground mb-3">{t('missionStatement')}</h2>
-          <p className="text-foreground whitespace-pre-wrap leading-relaxed">
-            {org.mission_statement}
-          </p>
+          <p className="text-foreground whitespace-pre-wrap leading-relaxed">{mission}</p>
         </div>
       )}
     </div>
