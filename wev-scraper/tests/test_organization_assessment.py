@@ -1,12 +1,50 @@
 """Tests for organization assessment response parsing."""
 
 import json
+from unittest.mock import patch
 
 from utils.organization_assessment import (
+    _attach_org_language,
     _build_search_query,
     _parse_response,
     _parse_website,
 )
+from utils.organization_language import LanguageClassification
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_english_name_yields_to_research_public_language(mock_classify):
+    mock_classify.return_value = LanguageClassification("en", 0.7, "llm_name", ())
+    row = _attach_org_language({"name": "Acme Foundation", "website": None}, "fr")
+    assert row["language"] == "fr"
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_french_name_beats_english_public_language(mock_classify):
+    mock_classify.return_value = LanguageClassification("fr", 0.7, "llm_name", ())
+    row = _attach_org_language({"name": "Fondation Acme", "website": None}, "en")
+    assert row["language"] == "fr"
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_confirmed_english_website_not_overridden_by_public_language(mock_classify):
+    mock_classify.return_value = LanguageClassification("en", 0.85, "web_text", ())
+    row = _attach_org_language({"name": "Acme", "website": "https://x.org"}, "fr")
+    assert row["language"] == "en"
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_public_language_used_when_no_name_or_web_signal(mock_classify):
+    mock_classify.return_value = LanguageClassification(None, 0.0, "unknown", ())
+    row = _attach_org_language({"name": "Neutral Co", "website": None}, "bilingual")
+    assert row["language"] == "bilingual"
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_existing_language_never_overwritten_by_attach(mock_classify):
+    row = _attach_org_language({"name": "X", "website": None, "language": "fr"}, "en")
+    assert row["language"] == "fr"
+    mock_classify.assert_not_called()
 
 
 def _assessment_json(**overrides) -> str:

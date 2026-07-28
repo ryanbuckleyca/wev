@@ -20,6 +20,16 @@ def test_url_hint_does_not_invent_bilingual_from_single_path():
     assert _url_locale_hints("https://example.org/") is None
 
 
+def test_classify_defaults_stay_offline_without_setup():
+    """Bare call (fetch_web/use_llm default True) must not touch the network.
+
+    The autouse conftest guard stubs the fetch + provider boundaries, so an
+    unmocked call resolves to no signal rather than performing real I/O.
+    """
+    result = classify_org_language(name="Some Org", website="https://example.org")
+    assert result.language is None
+
+
 def test_detect_french_mission():
     text = (
         "Notre organisation œuvre pour la solidarité et le bien commun. "
@@ -41,13 +51,18 @@ def test_detect_english_mission():
 
 
 def test_classify_returns_none_when_empty():
-    result = classify_org_language(name="X", website=None)
+    result = classify_org_language(name="X", website=None, use_llm=False)
     assert result.language is None
 
 
 def test_french_name_alone_does_not_force_english():
-    result = classify_org_language(name="Aliments Prémont Inc.")
-    assert result.language != "en"
+    result = classify_org_language(
+        name="Aliments Prémont Inc.",
+        website=None,
+        llm_fn=lambda _name: "fr",
+    )
+    assert result.language == "fr"
+    assert result.source == "llm_name"
 
 
 def test_llm_name_assessment_is_primary_over_single_language_website():
@@ -165,6 +180,7 @@ def test_dual_probe_partial_does_not_force_english(mock_probe, mock_fetch):
         name="Acme Corp",
         website="https://ex.org",
         fetch_web=True,
+        use_llm=False,
     )
     assert not (result.language == "en" and result.source == "web_dual_probe")
     assert result.source != "web_dual_probe" or result.language == "bilingual"

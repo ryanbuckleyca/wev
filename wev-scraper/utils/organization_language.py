@@ -85,11 +85,33 @@ def classify_org_language(
     *,
     name: str | None = None,
     website: str | None = None,
-    fetch_web: bool = False,
+    fetch_web: bool = True,
     llm_fn: Callable[[str], OrgLanguage | None] | None = None,
+    use_llm: bool = True,
 ) -> LanguageClassification:
-    """Classify org language from name / website signals (not generated prose)."""
+    """Classify org language from name / website signals (not generated prose).
+
+    Both signals run by default: the website is fetched (``fetch_web``) and the
+    organization name is assessed by an LLM (``use_llm``). Callers do not need to
+    supply ``llm_fn`` — it is built lazily from the configured provider. Inject a
+    fake ``llm_fn`` in tests, or pass ``use_llm=False`` to skip the name LLM.
+    """
     reasons: list[str] = []
+
+    if llm_fn is None and use_llm:
+        llm_fn = make_llm_language_fn()
+
+    # Fetch the site first: declared en+fr metadata is objective and independent
+    # of which localized page our egress IP happens to be served.
+    web: LanguageClassification | None = None
+    if fetch_web and website:
+        web = _classify_from_website(website)
+        reasons.extend(web.reasons)
+        # Confirmed substantial EN + FR website evidence is decisive bilingual.
+        if web.language == "bilingual":
+            return LanguageClassification("bilingual", web.confidence, web.source, tuple(reasons))
+        if web.language:
+            reasons.append(f"web_signal={web.language}")
 
     name_language: OrgLanguage | None = None
     if llm_fn is not None and name and name.strip():
@@ -102,21 +124,7 @@ def classify_org_language(
             name_language = llm_language
             reasons.append(f"name_llm={name_language}")
 
-    url_signal = _url_locale_hints(website)
-    if url_signal:
-        reasons.append(f"url_hint={url_signal}")
-
-    web: LanguageClassification | None = None
-    if fetch_web and website:
-        web = _classify_from_website(website)
-        reasons.extend(web.reasons)
-        # Confirmed substantial EN + FR website evidence upgrades any name result.
-        if web.language == "bilingual":
-            return LanguageClassification("bilingual", web.confidence, web.source, tuple(reasons))
-        if web.language:
-            reasons.append(f"web_signal={web.language}")
-
-    # The name assessment is primary unless the website confirms bilingual use.
+    # The name assessment is primary unless the website confirmed bilingual use.
     if name_language:
         return LanguageClassification(
             name_language,
@@ -132,13 +140,6 @@ def classify_org_language(
             web.source,
             tuple(reasons),
         )
-
-    if url_signal == "bilingual":
-        return LanguageClassification(
-            "bilingual", 0.9, "url_hints", tuple(reasons)
-        )
-    if url_signal in ("en", "fr"):
-        return LanguageClassification(url_signal, 0.55, "url_hints", tuple(reasons))
 
     return LanguageClassification(None, 0.0, "unknown", tuple(reasons or ("insufficient_signal",)))
 
@@ -304,7 +305,10 @@ def _neutral_fetch(url: str) -> tuple[str | None, str | None]:
         logger.info("org language fetch exceeded redirect limit for %s", url)
         return None, None
     except requests.RequestException as exc:
-        logger.info("org language fetch failed for %s: %s", url, exc)
+        err_msg = type(exc).__name__
+        if "SSLError" in str(exc):
+            err_msg = "SSLError (misconfigured certificate)"
+        logger.info("org language fetch failed for %s: %s", url, err_msg)
         return None, None
 
 

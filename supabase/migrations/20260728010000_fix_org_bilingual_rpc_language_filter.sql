@@ -1,33 +1,8 @@
--- Add organizations.language (same enum as jobs) for org public-identity language.
-ALTER TABLE public.organizations
-  ADD COLUMN IF NOT EXISTS language text;
+-- Repair get_active_organizations after 20260728000000_org_bilingual_content.sql
+-- accidentally dropped the p_languages parameter while adding bilingual org
+-- content columns. This restores the language-filtering signature and preserves
+-- the bilingual return fields/search behavior.
 
-ALTER TABLE public.organizations
-  DROP CONSTRAINT IF EXISTS organizations_language_check;
-
-ALTER TABLE public.organizations
-  ADD CONSTRAINT organizations_language_check
-  CHECK (language IS NULL OR language IN ('en', 'fr', 'bilingual'))
-  NOT VALID;
-
-ALTER TABLE public.organizations
-  VALIDATE CONSTRAINT organizations_language_check;
-
-COMMENT ON COLUMN public.organizations.language IS
-  'Primary public language of the organization (en, fr, or bilingual). Existing values '
-  'are preserved. New classifications use objective signals: the organization-owned '
-  'website (declared en+fr materials yield bilingual) plus an LLM assessment of the '
-  'official name; a research-derived public_language observation is only a tiebreaker '
-  'when those are silent. Generated descriptions, mission text, and jobs.language are '
-  'not classification evidence.';
-
--- Note: CONCURRENTLY omitted — Supabase migrations run in a transaction
--- (see 20260708000002_org_search_indexes.sql).
-CREATE INDEX IF NOT EXISTS orgs_language_idx
-  ON public.organizations (language)
-  WHERE language IS NOT NULL;
-
--- Refresh get_active_organizations: expose language + optional p_languages filter.
 DROP FUNCTION IF EXISTS public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text);
 DROP FUNCTION IF EXISTS public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text, text[]);
 
@@ -71,7 +46,11 @@ RETURNS TABLE (
   value_score float8,
   shared_values text[],
   sector_id text,
-  language text
+  language text,
+  description_en text,
+  description_fr text,
+  mission_statement_en text,
+  mission_statement_fr text
 )
 LANGUAGE plpgsql
 STABLE
@@ -86,7 +65,7 @@ BEGIN
   -- Use auth.uid() instead of trusting p_user_id parameter to prevent unauthorized profile access.
   authenticated_user_id := auth.uid();
 
-  -- Clamp pagination parameters to prevent unbounded queries
+  -- Clamp pagination parameters to prevent unbounded queries.
   v_limit := LEAST(COALESCE(p_limit, 20), 100);
   v_offset := GREATEST(COALESCE(p_offset, 0), 0);
 
@@ -140,12 +119,25 @@ BEGIN
       o.geocode_accuracy_type,
       o.sector_id,
       o.language,
+      o.description_en,
+      o.description_fr,
+      o.mission_statement_en,
+      o.mission_statement_fr,
       count(j.id) AS active_job_count,
       max(try_parse_job_date_posted(j.date_posted)) AS latest_job_posted
     FROM organizations o
     JOIN jobs j ON o.id = j.organization_id
     WHERE try_parse_job_date_posted(j.date_posted) >= min_date
-      AND (p_search IS NULL OR o.name ILIKE '%' || p_search || '%' OR o.description ILIKE '%' || p_search || '%')
+      AND (
+        p_search IS NULL
+        OR o.name ILIKE '%' || p_search || '%'
+        OR o.description ILIKE '%' || p_search || '%'
+        OR o.description_en ILIKE '%' || p_search || '%'
+        OR o.description_fr ILIKE '%' || p_search || '%'
+        OR o.mission_statement ILIKE '%' || p_search || '%'
+        OR o.mission_statement_en ILIKE '%' || p_search || '%'
+        OR o.mission_statement_fr ILIKE '%' || p_search || '%'
+      )
       AND (p_sse_only IS FALSE OR o.is_sse = true)
       AND (p_provinces IS NULL OR cardinality(p_provinces) = 0 OR o.province = ANY(p_provinces))
       AND (p_municipalities IS NULL OR cardinality(p_municipalities) = 0 OR o.municipality = ANY(p_municipalities))
@@ -219,7 +211,11 @@ BEGIN
     cm.value_score,
     cm.shared_values,
     oc.sector_id,
-    oc.language
+    oc.language,
+    oc.description_en,
+    oc.description_fr,
+    oc.mission_statement_en,
+    oc.mission_statement_fr
   FROM org_counts oc
   CROSS JOIN total_orgs t
   LEFT JOIN computed_matches cm ON cm.org_id = oc.id
@@ -238,7 +234,7 @@ GRANT EXECUTE ON FUNCTION public.get_active_organizations(timestamp with time zo
 
 COMMENT ON FUNCTION public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text, text[]) IS
   'Returns organizations with active job counts, optional value-match scoring, filtering (including language), and pagination. '
-  'Date filter: jobs.date_posted is parsed via try_parse_job_date_posted(); unparseable rows are excluded. '
-  'Anonymous access: EXECUTE is granted to anon for the public org index; when auth.uid() IS NULL, '
-  'profile data is not read and value_score/shared_values are NULL. '
-  'Compatibility: p_user_id is retained in the signature for existing RPC callers but ignored; auth.uid() is used for profile access.';
+  'Includes bilingual description/mission columns. Date filter: jobs.date_posted is parsed via try_parse_job_date_posted(); '
+  'unparseable rows are excluded. Anonymous access: EXECUTE is granted to anon for the public org index; when auth.uid() IS NULL, '
+  'profile data is not read and value_score/shared_values are NULL. Compatibility: p_user_id is retained in the signature for '
+  'existing RPC callers but ignored; auth.uid() is used for profile access.';
