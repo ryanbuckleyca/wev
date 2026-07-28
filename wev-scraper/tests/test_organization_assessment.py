@@ -98,31 +98,49 @@ def test_parse_response_keeps_over_limit_text_until_repair():
     assert "description_en" in over
 
 
-def test_apply_length_repairs_uses_fitting_paraphrase():
+def test_ensure_length_limits_truncates_oversize_fields():
     from utils.organization_assessment import (
         _ORG_DESCRIPTION_MAX_CHARS,
-        _apply_length_repairs,
         _fields_over_limit,
+        OrganizationAssessor,
+        AssessedOrgResult,
     )
+
+    assessor = OrganizationAssessor()
 
     long_desc = "y" * 1200
-    result = _parse_response(
-        _assessment_json(description_en=long_desc),
-        "Nature Visuals",
+    result = AssessedOrgResult(
+        canonical_name="Nature Visuals",
+        slug="nature-visuals",
+        website="https://example.org",
+        description_en=long_desc,
+        description_fr=None,
+        mission_statement_en=None,
+        mission_statement_fr=None,
+        type="nonprofit",
+        sector_id=None,
+        values_raw=None,
+        values=[],
+        sse_rating="no",
+        sse_confidence=0.5,
+        sse_reasoning_en=None,
+        sse_reasoning_fr=None,
+        must_haves_met=[],
+        nice_to_haves_met=[],
+        flags=[],
+        public_language=None,
     )
-    assert result is not None
-    over = _fields_over_limit(result)
-    repaired = {"description_en": "A complete short paraphrase that fits."}
-    assert len(repaired["description_en"]) <= _ORG_DESCRIPTION_MAX_CHARS
 
-    fixed = _apply_length_repairs(result, over, repaired, "Nature Visuals")
-    assert fixed["description_en"] == repaired["description_en"]
+    fixed = assessor._ensure_length_limits(result, "Nature Visuals")
+
+    assert fixed is not None
+    assert len(fixed["description_en"]) <= _ORG_DESCRIPTION_MAX_CHARS
+    assert "length_limit: truncated description_en" in fixed["flags"]
     assert not _fields_over_limit(fixed)
 
 
 def test_apply_length_repairs_drops_field_when_repair_fails():
     from utils.organization_assessment import (
-        _apply_length_repairs,
         _fields_over_limit,
     )
 
