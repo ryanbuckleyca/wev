@@ -82,6 +82,7 @@ export default function OrgValuesMatchFooter({
       isLoggedIn={isLoggedIn}
       locationLabel={locationLabel}
       language={language}
+      languageContext="organization"
       selectedLanguages={selectedLanguages}
     />
   );

@@ -185,7 +185,9 @@
       "tooltip": {
         "matchesFilter": "{lang} matches your language filter.",
         "required": "Required language: {lang}.",
-        "doesNotMatch": "Does not match your language filter ({lang} required)."
+        "doesNotMatch": "Does not match your language filter ({lang} required).",
+        "organizationPublic": "This organization's primary public language is {lang}.",
+        "organizationBilingual": "This organization publishes substantial public materials in both English and French."
       },
       "profileDefault": "Using your profile preference: {languages}.",
       "profileOverride": "Profile preference: {languages}. You can override this filter here.",

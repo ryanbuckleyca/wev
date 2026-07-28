@@ -185,7 +185,9 @@
       "tooltip": {
         "matchesFilter": "{lang} correspond à votre filtre de langue.",
         "required": "Langue requise : {lang}.",
-        "doesNotMatch": "Ne correspond pas à votre filtre de langue ({lang} requis)."
+        "doesNotMatch": "Ne correspond pas à votre filtre de langue ({lang} requis).",
+        "organizationPublic": "Langue publique principale de cette organisation : {lang}.",
+        "organizationBilingual": "Cette organisation publie d'importants contenus publics en français et en anglais."
       },
       "profileDefault": "Préférence du profil utilisée : {languages}.",
       "profileOverride": "Préférence du profil : {languages}. Vous pouvez remplacer ce filtre ici.",
