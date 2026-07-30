@@ -10,6 +10,7 @@ import MunicipalityFilterSection from './job-filters/MunicipalityFilterSection';
 import OrganizationSearch from './OrganizationSearch';
 import {
   buildOrgActiveFilterChips,
+  orgLanguageLabel,
   toggleArrayItem,
 } from './job-filters/build-org-active-filter-chips';
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
@@ -52,6 +53,9 @@ export default function OrganizationFilters({
     setSelectedMunicipalities,
     selectedTypes,
     setSelectedTypes,
+    selectedLanguages,
+    setSelectedLanguages,
+    setCurrentPage,
     hasAnyFilters,
     isSuggestedDefaults,
     clearAllFilters,
@@ -66,6 +70,10 @@ export default function OrganizationFilters({
     onRemoveMunicipality: (m) =>
       setSelectedMunicipalities(toggleArrayItem(m, selectedMunicipalities)),
     onRemoveType: (type) => setSelectedTypes(toggleArrayItem(type, selectedTypes)),
+    onRemoveLanguage: (language) => {
+      void setSelectedLanguages(toggleArrayItem(language, selectedLanguages));
+      void setCurrentPage(1);
+    },
     tOrgs: t,
     tFilters: tJobs,
   });
@@ -117,9 +125,7 @@ export default function OrganizationFilters({
               totalCount={filterOptions.provinces.length}
               options={filterOptions.provinces}
               selectedValues={selectedProvinces}
-              onToggle={(val) =>
-                setSelectedProvinces(toggleArrayItem(val, selectedProvinces))
-              }
+              onToggle={(val) => setSelectedProvinces(toggleArrayItem(val, selectedProvinces))}
               emptyMessage={tJobs('province.noData')}
             />
           </div>
@@ -140,7 +146,7 @@ export default function OrganizationFilters({
             />
           </div>
 
-          <div className="flex flex-col order-3 md:row-start-1 md:col-start-2 md:row-span-2 min-h-0">
+          <div className="flex flex-col order-3 md:row-start-1 md:col-start-2 min-h-0">
             <CheckboxFilterSection
               label={t('organizationType')}
               selectedCount={selectedTypes.length}
@@ -150,6 +156,22 @@ export default function OrganizationFilters({
               onToggle={(val) => setSelectedTypes(toggleArrayItem(val, selectedTypes))}
               emptyMessage={t('noOrganizationTypes')}
               renderLabel={(type) => getOrganizationTypeLabel(type, t)}
+            />
+          </div>
+
+          <div className="flex flex-col order-4 md:row-start-2 md:col-start-2 min-h-0">
+            <CheckboxFilterSection
+              label={tJobs('language.label')}
+              selectedCount={selectedLanguages.length}
+              totalCount={filterOptions.languages.length}
+              options={filterOptions.languages}
+              selectedValues={selectedLanguages}
+              onToggle={(val) => {
+                void setSelectedLanguages(toggleArrayItem(val, selectedLanguages));
+                void setCurrentPage(1);
+              }}
+              emptyMessage={tJobs('language.noData')}
+              renderLabel={(lang) => orgLanguageLabel(lang, tJobs)}
             />
           </div>
         </div>

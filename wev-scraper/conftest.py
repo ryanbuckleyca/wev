@@ -12,6 +12,24 @@ from playwright.sync_api import sync_playwright
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
 
+@pytest.fixture(autouse=True)
+def _org_language_offline_by_default(monkeypatch):
+    """Keep org-language classification offline unless a test opts in.
+
+    ``classify_org_language`` fetches the website and builds an LLM provider by
+    default. Without this guard, any test that reaches it (directly or via the
+    assessor) would make real network calls / provider builds. Tests that want
+    that behavior still override these boundaries themselves (e.g. patching
+    ``_neutral_fetch``), which takes precedence over these no-op defaults.
+    """
+    try:
+        import utils.organization_language as org_lang
+    except ImportError:
+        return
+    monkeypatch.setattr(org_lang, "_neutral_fetch", lambda _url: (None, None))
+    monkeypatch.setattr(org_lang, "make_llm_language_fn", lambda: None)
+
+
 @pytest.fixture(scope="session")
 def browser():
     pw = sync_playwright().start()

@@ -50,7 +50,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     }
   }
 
-  const { page, searchQuery, sseOnly, provinces, municipalities, orgTypes, sortBy } =
+  const { page, searchQuery, sseOnly, provinces, municipalities, orgTypes, languages, sortBy } =
     parseOrgIndexSearchParams(urlSearchParams, Boolean(user));
 
   const [initialData, filterOptions] = await Promise.all([
@@ -62,6 +62,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
         provinces,
         municipalities,
         orgTypes,
+        languages,
         userId: user?.id ?? null,
         sortBy,
       },

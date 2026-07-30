@@ -26,6 +26,8 @@ interface JobCardFooterProps {
   /** Free-text location pill (org cards); same visual style as workType. */
   locationLabel?: string | null;
   language?: string | null;
+  /** Whether language describes a job requirement or an organization's public presence. */
+  languageContext?: 'job' | 'organization';
   selectedLanguages?: string[];
   isLoggedIn?: boolean;
 }
@@ -46,6 +48,7 @@ export default function JobCardFooter({
   selectedWorkTypes = [],
   locationLabel = null,
   language,
+  languageContext = 'job',
   selectedLanguages = [],
   isLoggedIn = true,
 }: JobCardFooterProps) {
@@ -143,22 +146,31 @@ export default function JobCardFooter({
     if (!language) return undefined;
 
     const langLabel = getJobLanguageLabel(language, t);
+    const organizationDescription =
+      language === 'bilingual'
+        ? t('filters.language.tooltip.organizationBilingual')
+        : t('filters.language.tooltip.organizationPublic', { lang: langLabel });
 
     // Only mark the pill as matched when a language filter is active and it matches.
     // If no language filter is selected, the pill is not active but we still
-    // surface a descriptive tooltip indicating the job's required language.
+    // surface a descriptive tooltip indicating the relevant language.
     let isMatched = false;
-    let tooltip = t('filters.language.tooltip.required', { lang: langLabel });
+    let tooltip =
+      languageContext === 'organization'
+        ? organizationDescription
+        : t('filters.language.tooltip.required', { lang: langLabel });
 
     if (selectedLanguages.length === 0) {
-      // No language filter chosen: do not activate the pill, show required tooltip.
       isMatched = false;
-      tooltip = t('filters.language.tooltip.required', { lang: langLabel });
     } else {
       isMatched = selectedLanguages.includes(language);
-      tooltip = isMatched
+      const filterDescription = isMatched
         ? t('filters.language.tooltip.matchesFilter', { lang: langLabel })
         : t('filters.language.tooltip.doesNotMatch', { lang: langLabel });
+      tooltip =
+        languageContext === 'organization'
+          ? `${organizationDescription}<br/><br/>${filterDescription}`
+          : filterDescription;
     }
 
     return {

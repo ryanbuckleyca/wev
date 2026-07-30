@@ -1,7 +1,7 @@
 """Factory for LLM provider selection.
 
 Default: Groq for most tasks (summarization, location extraction, values tagging).
-SSE classification: Gemini Flash → Flash-Lite fallback for grounding.
+SSE classification: gemini-2.5-flash → gemini-2.5-flash-lite → groq.
 """
 
 import logging
@@ -107,18 +107,18 @@ def get_provider(
         raise ValueError(f"Provider {name} failed to initialize: {e}") from e
 
 
-def get_sse_provider() -> BaseLLMProvider | None:
-    """Return provider for SSE classification with fallback.
+def get_fallback_llm_provider() -> BaseLLMProvider | None:
+    """Return multi-tier LLM provider with runtime fallback.
 
     Priority order:
     1. If ENV_MODE=local: local_grounded (Tavily + Ollama)
-    2. Otherwise: gemini-2.5-flash (10 RPM, grounding)
-    3. Fallback: groq (~10 RPM, no grounding)
+    2. Otherwise: gemini-2.5-flash → gemini-2.5-flash-lite → groq
 
-    Returns:
-        Provider instance or None if no provider available.
+    Providers that fail to initialize (e.g. missing API key) are skipped;
+    remaining providers are still tried at call time.
+
+    Used by OrganizationAssessor, SSEClassifier, and location extraction.
     """
-    # Use local grounded provider in local mode
     if _is_local_mode():
         try:
             provider = get_provider(name="local_grounded")
@@ -127,23 +127,21 @@ def get_sse_provider() -> BaseLLMProvider | None:
         except Exception:
             pass
 
-    # Try Gemini first for grounding support
     try:
-        provider = get_provider(name="gemini", model="gemini-2.5-flash")  # Uses gemini-2.5-flash
-        if provider.is_available():
-            return provider
-    except Exception:
-        pass
+        from llm.gemini_fallback import SSEFallbackProvider
 
-    # Fallback to Groq (no grounding, but better than nothing)
-    try:
-        provider = get_provider(name="groq")
+        provider = SSEFallbackProvider()
         if provider.is_available():
             return provider
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("LLM fallback provider unavailable: %s", exc)
 
     return None
+
+
+def get_sse_provider() -> BaseLLMProvider | None:
+    """Return provider for SSE classification (alias of get_fallback_llm_provider)."""
+    return get_fallback_llm_provider()
 
 
 def get_unified_processor(**kwargs) -> "UnifiedJobProcessor":

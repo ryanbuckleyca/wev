@@ -135,6 +135,7 @@ describe('organizations/server-data', () => {
       p_provinces: null,
       p_municipalities: null,
       p_org_types: null,
+      p_languages: null,
       p_user_id: null,
       p_sort: 'org-asc',
     });
@@ -180,6 +181,7 @@ describe('organizations/server-data', () => {
         p_provinces: null,
         p_municipalities: null,
         p_org_types: null,
+        p_languages: null,
       }),
     );
     expect(result.totalAvailable).toBe(10);

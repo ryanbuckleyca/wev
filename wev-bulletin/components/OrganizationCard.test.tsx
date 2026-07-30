@@ -35,6 +35,7 @@ function makeOrg(overrides: Partial<OrgIndexEntry> = {}): OrgIndexEntry {
     mission_statement: null,
     mission_statement_en: null,
     mission_statement_fr: null,
+    language: null,
     active_job_count: 5,
     total_count: 1,
     value_score: null,
@@ -98,5 +99,33 @@ describe('OrganizationCard', () => {
     render(<OrganizationCard {...baseProps} org={makeOrg({ location: 'Toronto' })} />);
 
     expect(screen.getByText('Toronto')).toBeInTheDocument();
+  });
+
+  it('shows a language pill when org language is set and filter matches', () => {
+    render(
+      <OrganizationCard
+        {...baseProps}
+        org={makeOrg({ language: 'bilingual', location: null })}
+        selectedLanguages={['bilingual']}
+      />,
+    );
+
+    const pill = screen.getByText('Bilingual');
+    expect(pill).toBeInTheDocument();
+    expect(pill.closest('div')).not.toHaveClass('opacity-60');
+  });
+
+  it('shows a language pill when org language is set but filter does not match', () => {
+    render(
+      <OrganizationCard
+        {...baseProps}
+        org={makeOrg({ language: 'bilingual', location: null })}
+        selectedLanguages={['en']}
+      />,
+    );
+
+    const pill = screen.getByText('Bilingual');
+    expect(pill).toBeInTheDocument();
+    expect(pill.closest('div')).toHaveClass('opacity-60');
   });
 });
