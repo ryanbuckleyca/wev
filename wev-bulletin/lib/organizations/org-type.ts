@@ -6,7 +6,8 @@ type OrgTranslator = { (key: string): string; has: (key: string) => boolean };
 const ORG_TYPE_ALIASES: Record<string, OrgType> = {
   nonprofit: 'nonprofit',
   cooperative: 'cooperative',
-  socialenterprise: 'social enterprise',
+  // Dropped label — treat as residual / never-SSE.
+  socialenterprise: 'other',
   // Interim maps until a dedicated taxonomy branch splits these terms.
   mutual: 'nonprofit',
   mutualaid: 'nonprofit',

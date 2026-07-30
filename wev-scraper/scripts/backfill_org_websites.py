@@ -7,10 +7,11 @@ mode queries the organizations table and calls OrganizationAssessor directly.
 Modes
 -----
 website  Only orgs missing a website; write ``website`` when evidence-grade.
-minimal  Only never-assessed / minimal-fallback rows (``sse_rating IS NULL``).
-         These are created when the assessor fails during scrape; later scrapes
-         reuse them by name and never re-trigger assessment. This mode is the
-         targeted fix for that set.
+minimal  Only never-assessed / minimal-fallback rows (``sse_rating IS NULL``),
+         including rows remapped off the retired ``social enterprise`` type.
+         These are created when the assessor fails during scrape (or when a
+         bad type label is cleared); later scrapes reuse them by name and
+         never re-trigger assessment. This mode is the targeted fix for that set.
 full     Re-assess description / mission / values / type / sector / SSE / website
          for all orgs. Overwrites existing assessment fields, except
          admin-reviewed SSE (``sse_details.reviewed`` / ``admin_override``)

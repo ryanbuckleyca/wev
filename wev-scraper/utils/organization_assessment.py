@@ -86,13 +86,13 @@ _JSON_FIELDS = """{
   "canonical_name": "Official organization name (string, required, non-empty)",
   "slug": "url-safe-kebab-case (string, required)",
   "website": "Employer's own homepage URL (https://...), or null — see WEBSITE RULES",
-  "description_en": "Organization description in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. If inferred/invented, add 'description_inferred' to flags), or null",
+  "description_en": "Organization description in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. Record provenance in flags as 'description via=extracted|inferred|absent'), or null",
   "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
-  "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. If inferred/invented, add 'mission_inferred' to flags), or null",
+  "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. Record provenance in flags as 'mission via=extracted|inferred|absent'), or null",
   "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
   "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit. Use 'cooperative' for worker/consumer/producer coops and credit unions. Use 'other' for conventional for-profits and privately owned mission-driven businesses (including private nature/forest schools). Do NOT invent a social-enterprise type.",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
-  "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — extract closely from source. If inferred, add 'values_inferred' to flags), or null",
+  "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — extract closely from source. Record provenance in flags as 'values via=extracted|inferred|absent'), or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
   "sse_rating": "strong_yes or weak_yes or no",
   "sse_confidence": "0.0 to 1.0",
@@ -104,15 +104,26 @@ _JSON_FIELDS = """{
   "public_language": "Primary language of the organization's own public materials (website, postings, documents, reports) observed during research. Use only: en, fr, bilingual, or null. Do not use the language of this response as evidence."
 }"""
 
-_FLAGS_RULES = """FLAGS RULES (mandatory):
-You MUST populate the "flags" array accurately. Check each condition:
-- Add "description_inferred" if you wrote the description yourself rather than extracting/closely paraphrasing it from the organization's website or official materials.
-- Add "mission_inferred" if you wrote the mission statement yourself rather than finding it explicitly stated on the organization's website or official materials.
-- Add "values_inferred" if you inferred or guessed the organization's values rather than finding them explicitly listed on their website.
-- If the org's website was unreachable or had no useful content, add "website_unavailable".
-- Add any other concerns or ambiguities as short labels.
-- If ALL of description, mission, and values were extracted directly from the source, flags may be an empty array [].
-Most organizations do NOT explicitly publish a mission statement or values list — in those cases you MUST flag them."""
+_FLAGS_RULES = """FLAGS RULES (mandatory — same shape as language provenance):
+For EACH of description, mission, and values include exactly one flag:
+  description via=extracted|inferred|absent
+  mission via=extracted|inferred|absent
+  values via=extracted|inferred|absent
+
+Use:
+- via=extracted — closely taken/paraphrased from the org's own website or official materials
+- via=inferred — you composed or guessed it (including mapping Knowdell values from other text)
+- via=absent — you returned null/empty for that field
+
+Language provenance is added by code after your response (language:… via=… /
+language_reason:…). Do not invent language flags yourself.
+
+Also add when relevant:
+- website_unavailable — site unreachable or had no useful content
+- any other short concern labels
+
+Most organizations do NOT explicitly publish a mission statement or values list —
+prefer mission via=inferred / values via=inferred over claiming extracted."""
 
 _BILINGUAL_COPY_RULES = """BILINGUAL PUBLIC COPY (required):
 - Always provide BOTH English and French for description_*, mission_statement_*, and sse_reasoning_* when you have enough evidence to write the field at all.
@@ -318,6 +329,77 @@ _SSE_INELIGIBLE_ORG_TYPES = frozenset({
     "government",
     "other",
 })
+
+
+_CONTENT_PROVENANCE_FIELDS = ("description", "mission", "values")
+_CONTENT_VIA_STATUSES = frozenset({"extracted", "inferred", "absent"})
+
+
+def _is_content_provenance_flag(flag: str) -> bool:
+    """True for ``description via=…`` / legacy ``description_inferred`` style flags."""
+    fl = flag.strip().lower()
+    for field in _CONTENT_PROVENANCE_FIELDS:
+        if fl.startswith(f"{field} via="):
+            return True
+        if fl in {
+            f"{field}_extracted",
+            f"{field}_inferred",
+            f"{field}_absent",
+        }:
+            return True
+    return False
+
+
+def _content_via_from_flags(flags: list[str], field: str) -> str | None:
+    """Return extracted|inferred|absent if already present (new or legacy form)."""
+    field_l = field.lower()
+    for raw in flags:
+        if not isinstance(raw, str):
+            continue
+        fl = raw.strip().lower()
+        prefix = f"{field_l} via="
+        if fl.startswith(prefix):
+            status = fl[len(prefix):].strip()
+            if status in _CONTENT_VIA_STATUSES:
+                return status
+        for status in _CONTENT_VIA_STATUSES:
+            if fl == f"{field_l}_{status}":
+                return status
+    return None
+
+
+def _ensure_content_provenance_flags(result: AssessedOrgResult) -> AssessedOrgResult:
+    """Ensure description/mission/values each have a ``field via=…`` flag.
+
+    Matches language provenance shape (``language:en via=web_text``). If the
+    model omitted provenance for a populated field, default to via=inferred.
+    """
+    original = list(result.get("flags") or [])
+    kept = [f for f in original if isinstance(f, str) and not _is_content_provenance_flag(f)]
+    flags = list(kept)
+
+    has_description = bool(
+        result.get("description_en") or result.get("description_fr")
+    )
+    has_mission = bool(
+        result.get("mission_statement_en") or result.get("mission_statement_fr")
+    )
+    has_values = bool(result.get("values") or result.get("values_raw"))
+    present = {
+        "description": has_description,
+        "mission": has_mission,
+        "values": has_values,
+    }
+
+    for field in _CONTENT_PROVENANCE_FIELDS:
+        status = _content_via_from_flags(original, field)
+        if status is None:
+            status = "inferred" if present[field] else "absent"
+        flags.append(f"{field} via={status}")
+
+    if flags == original:
+        return result
+    return AssessedOrgResult(**{**result, "flags": flags})
 
 
 def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgResult:
@@ -527,7 +609,7 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         flags=_ensure_str_list(data.get("flags")),
         public_language=_validate_public_language(data.get("public_language")),
     )
-    return _apply_org_sse_governance_guard(result)
+    return _apply_org_sse_governance_guard(_ensure_content_provenance_flags(result))
 
 
 def _append_language_provenance_flags(
