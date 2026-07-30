@@ -14,23 +14,33 @@ from utils.organization_language import LanguageClassification
 
 @patch("utils.organization_assessment.classify_org_language")
 def test_english_name_yields_to_research_public_language(mock_classify):
-    mock_classify.return_value = LanguageClassification("en", 0.7, "llm_name", ())
-    row = _attach_org_language({"name": "Acme Foundation", "website": None}, "fr")
+    mock_classify.return_value = LanguageClassification("en", 0.7, "llm_name", ("name_llm=en",))
+    row = _attach_org_language(
+        {"name": "Acme Foundation", "website": None, "sse_details": {"flags": []}},
+        "fr",
+    )
     assert row["language"] == "fr"
+    flags = row["sse_details"]["flags"]
+    assert "language:fr via=public_language" in flags
+    assert "language_reason:name_llm=en" in flags
 
 
 @patch("utils.organization_assessment.classify_org_language")
 def test_french_name_beats_english_public_language(mock_classify):
-    mock_classify.return_value = LanguageClassification("fr", 0.7, "llm_name", ())
+    mock_classify.return_value = LanguageClassification("fr", 0.7, "llm_name", ("name_llm=fr",))
     row = _attach_org_language({"name": "Fondation Acme", "website": None}, "en")
     assert row["language"] == "fr"
+    assert "language:fr via=llm_name" in row["sse_details"]["flags"]
 
 
 @patch("utils.organization_assessment.classify_org_language")
 def test_confirmed_english_website_not_overridden_by_public_language(mock_classify):
-    mock_classify.return_value = LanguageClassification("en", 0.85, "web_text", ())
+    mock_classify.return_value = LanguageClassification(
+        "en", 0.85, "web_text", ("web_signal=en",)
+    )
     row = _attach_org_language({"name": "Acme", "website": "https://x.org"}, "fr")
     assert row["language"] == "en"
+    assert "language:en via=web_text" in row["sse_details"]["flags"]
 
 
 @patch("utils.organization_assessment.classify_org_language")
@@ -38,13 +48,19 @@ def test_public_language_used_when_no_name_or_web_signal(mock_classify):
     mock_classify.return_value = LanguageClassification(None, 0.0, "unknown", ())
     row = _attach_org_language({"name": "Neutral Co", "website": None}, "bilingual")
     assert row["language"] == "bilingual"
+    assert "language:bilingual via=public_language" in row["sse_details"]["flags"]
 
 
 @patch("utils.organization_assessment.classify_org_language")
 def test_existing_language_never_overwritten_by_attach(mock_classify):
-    row = _attach_org_language({"name": "X", "website": None, "language": "fr"}, "en")
+    row = _attach_org_language(
+        {"name": "X", "website": None, "language": "fr", "sse_details": {"flags": ["values_inferred"]}},
+        "en",
+    )
     assert row["language"] == "fr"
     mock_classify.assert_not_called()
+    assert "language:fr via=kept" in row["sse_details"]["flags"]
+    assert "values_inferred" in row["sse_details"]["flags"]
 
 
 def _assessment_json(**overrides) -> str:
@@ -392,6 +408,23 @@ def test_org_assessment_prompt_excludes_government_from_sse():
     prompt = _build_assessment_prompt("City of Ottawa", "Ottawa", "ON", "", "")
     assert "Government" in prompt or "government" in prompt
     assert "Public service is not SSE" in prompt or "public-sector" in prompt.lower()
+
+
+def test_org_assessment_prompt_rejects_mission_only_private_enterprise():
+    """Mission-driven private schools must be typed other, not invented SE."""
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt("Toronto Nature School", "Toronto", "ON", "", "")
+    assert "Mission-driven private enterprise is not SSE" in prompt
+    assert 'There is no "social enterprise" type' in prompt
+    assert "type alone is never sufficient" in prompt or "Type is necessary but not sufficient" in prompt
+
+
+def test_normalize_type_maps_social_enterprise_to_other():
+    from utils.organization_assessment import _normalize_type
+
+    assert _normalize_type("social enterprise") == "other"
+    assert _normalize_type("Social Enterprise") == "other"
 
 
 def test_governance_gate_forces_government_yes_to_no():

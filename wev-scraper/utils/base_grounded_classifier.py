@@ -35,11 +35,13 @@ class BaseGroundedClassifier:
         task: str,
         search_query: str | None,
         retries: int = 1,
+        **complete_kwargs,
     ) -> str:
         """Call the LLM provider, mapping provider exceptions to SSEClassificationError.
 
         Retries up to `retries` additional times on rate-limit errors (429).
         Auth errors (403) are re-raised immediately without retry.
+        Extra ``complete_kwargs`` are forwarded to ``provider.complete`` (e.g. use_grounding).
         """
         for attempt in range(retries + 1):
             try:
@@ -48,6 +50,7 @@ class BaseGroundedClassifier:
                     system=system,
                     task=task,
                     search_query=search_query,
+                    **complete_kwargs,
                 ).strip()
             except LLMProviderError as e:
                 if _is_rate_limit(str(e)) and attempt < retries:

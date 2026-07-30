@@ -1,19 +1,33 @@
 #!/usr/bin/env python
 r"""Re-assess organizations with the grounded OrganizationAssessor.
 
+Bypasses OrganizationResolver's alias-cache / existing-org short-circuit: each
+mode queries the organizations table and calls OrganizationAssessor directly.
+
 Modes
 -----
 website  Only orgs missing a website; write ``website`` when evidence-grade.
-full     Re-assess description / mission / values / type / sector / SSE / website.
-         Uses a known official site in search when present. Overwrites existing
-         assessment fields, except admin-reviewed SSE (``sse_details.reviewed`` /
-         ``admin_override``) unless ``--force-reviewed``.
+minimal  Only never-assessed / minimal-fallback rows (``sse_rating IS NULL``).
+         These are created when the assessor fails during scrape; later scrapes
+         reuse them by name and never re-trigger assessment. This mode is the
+         targeted fix for that set.
+full     Re-assess description / mission / values / type / sector / SSE / website
+         for all orgs. Overwrites existing assessment fields, except
+         admin-reviewed SSE (``sse_details.reviewed`` / ``admin_override``)
+         unless ``--force-reviewed``.
+
+Completed assessments (``sse_details.classified_at`` set) are skipped by default.
+Pass ``--overwrite-recent-hours N`` to re-do orgs assessed within the last N hours.
 
 Usage:
     # Website-only dry-run (3 orgs, no writes)
     python scripts/backfill_org_websites.py --dry-run --limit 3
 
-    # Full reassess dry-run (first 3)
+    # Re-assess minimal-fallback / unrated orgs only
+    CONFIRM_PROD_RUN=YES python scripts/backfill_org_websites.py \\
+        --prod --mode minimal --dry-run --limit 10
+
+    # Full reassess dry-run (first 3); skips already-classified orgs
     CONFIRM_PROD_RUN=YES python scripts/backfill_org_websites.py \\
         --prod --mode full --dry-run --limit 3
 
@@ -21,9 +35,9 @@ Usage:
     CONFIRM_PROD_RUN=YES python scripts/backfill_org_websites.py \\
         --prod --mode full --after-id 120
 
-    # Skip orgs assessed in the last 24h (default); disable with --skip-recent-hours 0
+    # Re-do orgs assessed in the last hour (e.g. fix a bad batch)
     CONFIRM_PROD_RUN=YES python scripts/backfill_org_websites.py \\
-        --prod --mode full --skip-recent-hours 24
+        --prod --mode full --overwrite-recent-hours 1 --limit 10
 """
 
 from __future__ import annotations
@@ -77,6 +91,25 @@ def fetch_orgs_missing_website(*, limit: int, after_id: int = 0) -> list[dict]:
     return [r for r in rows if not (r.get("website") or "").strip()]
 
 
+def fetch_orgs_minimal(*, limit: int, after_id: int = 0) -> list[dict]:
+    """Never-assessed / minimal-fallback orgs (``sse_rating IS NULL``).
+
+    Resolver writes these when OrganizationAssessor fails; subsequent scrapes
+    match by name and skip the assessor. Re-assess via this query + direct
+    ``assess_and_build_update`` (no alias cache).
+    """
+    resp = (
+        supabase.table("organizations")
+        .select(_SELECT)
+        .is_("sse_rating", "null")
+        .gt("id", after_id)
+        .order("id")
+        .limit(limit)
+        .execute()
+    )
+    return resp.data or []
+
+
 def fetch_orgs_any(*, limit: int, after_id: int = 0) -> list[dict]:
     """Any orgs ordered by id (for full reassess)."""
     resp = (
@@ -88,6 +121,19 @@ def fetch_orgs_any(*, limit: int, after_id: int = 0) -> list[dict]:
         .execute()
     )
     return resp.data or []
+
+
+_FETCHERS = {
+    "website": "fetch_orgs_missing_website",
+    "minimal": "fetch_orgs_minimal",
+    "full": "fetch_orgs_any",
+}
+
+
+def _fetcher_for(mode: str):
+    """Resolve mode → fetch callable (looked up at call time for test patching)."""
+    name = _FETCHERS[mode]
+    return globals()[name]
 
 
 def _preview_text(value: str | None, *, max_len: int | None = None) -> str | None:
@@ -117,7 +163,7 @@ def _log_full_preview(org: dict, updates: dict, *, dry_run: bool) -> None:
         if new_val is None and old_val is None:
             lines.append(f"  [KEEP] {label}: (none)")
             return
-            
+
         if old_val == new_val:
             val_str = _preview_text(str(old_val), max_len=max_len)
             if is_long:
@@ -141,7 +187,7 @@ def _log_full_preview(org: dict, updates: dict, *, dry_run: bool) -> None:
     add_field("values", org.get("values_list"), updates.get("values_list"))
     add_field("mission", org.get("mission_statement"), updates.get("mission_statement"), max_len=200, is_long=True)
     add_field("description", org.get("description"), updates.get("description"), max_len=200, is_long=True)
-    
+
     old_reasoning = old_details.get("reasoning")
     new_reasoning = new_details.get("reasoning")
     add_field("sse_reasoning", old_reasoning, new_reasoning, max_len=300, is_long=True)
@@ -186,6 +232,29 @@ def _assessed_recently(org: dict, *, within: timedelta) -> bool:
     return datetime.now(timezone.utc) - classified_at <= within
 
 
+def _should_skip_completed(
+    org: dict,
+    *,
+    overwrite_recent_hours: float | None,
+) -> bool:
+    """Skip orgs that already have classified_at, unless within overwrite window.
+
+    Default (no overwrite_recent_hours): skip every completed assessment.
+    With ``overwrite_recent_hours=N``: allow re-assess only when classified_at
+    is within the last N hours; older completed rows stay skipped.
+    """
+    classified_at = _parse_classified_at(org)
+    if classified_at is None:
+        return False
+    if overwrite_recent_hours is None:
+        return True
+    if overwrite_recent_hours <= 0:
+        return True
+    return not _assessed_recently(
+        org, within=timedelta(hours=overwrite_recent_hours),
+    )
+
+
 def run(
     *,
     mode: str,
@@ -193,7 +262,7 @@ def run(
     dry_run: bool,
     delay_seconds: float,
     after_id: int = 0,
-    skip_recent_hours: float | None = None,
+    overwrite_recent_hours: float | None = None,
     force_reviewed: bool = False,
     force_lang: bool = False,
 ) -> dict:
@@ -207,22 +276,28 @@ def run(
     processed = 0
     updated = 0
     skipped = 0
-    skipped_recent = 0
+    skipped_completed = 0
     skipped_reviewed = 0
     errors = 0
     cursor = after_id
-    fetch = fetch_orgs_missing_website if mode == "website" else fetch_orgs_any
-    recent_window = (
-        timedelta(hours=skip_recent_hours)
-        if skip_recent_hours is not None and skip_recent_hours > 0
-        else None
-    )
+    fetch = _fetcher_for(mode)
     if after_id:
         logger.info("Resuming after org id=%s", after_id)
-    if recent_window:
+    if mode == "minimal":
         logger.info(
-            "Skipping orgs assessed within the last %s hours",
-            skip_recent_hours,
+            "Mode minimal: re-assessing orgs with sse_rating IS NULL "
+            "(bypasses resolver alias-cache short-circuit)"
+        )
+    if overwrite_recent_hours is not None and overwrite_recent_hours > 0:
+        logger.info(
+            "Overwriting orgs assessed within the last %s hours "
+            "(older completed assessments still skipped)",
+            overwrite_recent_hours,
+        )
+    else:
+        logger.info(
+            "Skipping completed assessments (sse_details.classified_at set); "
+            "pass --overwrite-recent-hours N to re-do recent ones"
         )
     if mode == "full" and not force_reviewed:
         logger.info(
@@ -232,9 +307,8 @@ def run(
 
     while limit is None or processed < limit:
         batch_size = 25 if limit is None else min(25, limit - processed)
-        # When skipping recent, over-fetch a bit so we still fill --limit.
-        if recent_window is not None:
-            batch_size = max(batch_size, 25)
+        # Over-fetch when skipping completed so --limit still fills.
+        batch_size = max(batch_size, 25)
         if batch_size <= 0:
             break
         rows = fetch(limit=batch_size, after_id=cursor)
@@ -249,15 +323,17 @@ def run(
             name = org.get("name") or ""
             cursor = org_id
 
-            if recent_window is not None and _assessed_recently(org, within=recent_window):
+            if _should_skip_completed(
+                org, overwrite_recent_hours=overwrite_recent_hours,
+            ):
                 classified_at = _parse_classified_at(org)
                 logger.info(
-                    "skip org_id=%s (%s) — assessed recently (%s)",
+                    "skip org_id=%s (%s) — already assessed (%s)",
                     org_id,
                     name,
                     classified_at.isoformat() if classified_at else "?",
                 )
-                skipped_recent += 1
+                skipped_completed += 1
                 continue
 
             if (
@@ -304,6 +380,7 @@ def run(
                             repo.update_org(org_id, website=website)
                         updated += 1
                 else:
+                    # full + minimal: grounded reassess (SSE / type / values / …)
                     updates = assessor.assess_and_build_update(org, force_lang=force_lang)
                     if updates is None:
                         logger.info(
@@ -332,7 +409,7 @@ def run(
         "processed": processed,
         "updated": updated,
         "skipped": skipped,
-        "skipped_recent": skipped_recent,
+        "skipped_completed": skipped_completed,
         "skipped_reviewed": skipped_reviewed,
         "errors": errors,
         "dry_run": dry_run,
@@ -357,9 +434,14 @@ def main() -> None:
     parser.add_argument("--prod", action="store_true", help="Use production database.")
     parser.add_argument(
         "--mode",
-        choices=("website", "full"),
+        choices=("website", "minimal", "full"),
         default="website",
-        help="website = fill missing sites only; full = reassess SSE/mission/values/etc.",
+        help=(
+            "website = fill missing sites only; "
+            "minimal = reassess never-assessed / minimal-fallback rows "
+            "(sse_rating IS NULL); "
+            "full = reassess SSE/mission/values/etc. for all orgs."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -381,13 +463,13 @@ def main() -> None:
         help="Resume after this organization id (exclusive). Use last_id from a prior run.",
     )
     parser.add_argument(
-        "--skip-recent-hours",
+        "--overwrite-recent-hours",
         type=float,
-        default=24,
+        default=None,
         metavar="H",
         help=(
-            "Skip orgs whose sse_details.classified_at is within the last H hours "
-            "(default: 24). Set 0 to disable."
+            "Re-assess orgs whose sse_details.classified_at is within the last H hours. "
+            "By default, completed assessments are always skipped."
         ),
     )
     parser.add_argument(
@@ -395,13 +477,17 @@ def main() -> None:
         action="store_true",
         help=(
             "In --mode full, overwrite orgs with admin-reviewed SSE "
-            "(sse_details.reviewed / admin_override). Default: skip them."
+            "(sse_details.reviewed / admin_override). Default: skip them. "
+            "No effect in --mode minimal (those rows have no SSE yet)."
         ),
     )
     parser.add_argument(
         "--force-lang",
         action="store_true",
-        help="In --mode full, recalculate and override the language even if already populated.",
+        help=(
+            "In --mode full/minimal, recalculate and override the language "
+            "even if already populated."
+        ),
     )
     parser.add_argument(
         "--delay-seconds",
@@ -414,6 +500,8 @@ def main() -> None:
         parser.error("--limit must be >= 1")
     if args.after_id < 0:
         parser.error("--after-id must be >= 0")
+    if args.overwrite_recent_hours is not None and args.overwrite_recent_hours <= 0:
+        parser.error("--overwrite-recent-hours must be > 0")
 
     run(
         mode=args.mode,
@@ -421,7 +509,7 @@ def main() -> None:
         dry_run=args.dry_run,
         delay_seconds=args.delay_seconds,
         after_id=args.after_id,
-        skip_recent_hours=args.skip_recent_hours,
+        overwrite_recent_hours=args.overwrite_recent_hours,
         force_reviewed=args.force_reviewed,
         force_lang=args.force_lang,
     )
