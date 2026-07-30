@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class SSEFallbackProvider(BaseLLMProvider):
-    """Try Gemini Flash, then Flash-Lite, then Groq on any call failure."""
+    """Try Gemini Flash, then Flash-Lite, then Groq on failure or empty response."""
 
     def __init__(self, api_key: str | None = None):
         self._providers: list[tuple[str, BaseLLMProvider]] = []
@@ -74,6 +74,15 @@ class SSEFallbackProvider(BaseLLMProvider):
     ) -> str:
         return self._try_providers("complete", prompt, model=model, system=system, **kwargs)
 
+    @staticmethod
+    def _is_usable_result(result) -> bool:
+        """Reject None / blank strings so empty Gemini responses advance the chain."""
+        if result is None:
+            return False
+        if isinstance(result, str) and not result.strip():
+            return False
+        return True
+
     def _try_providers(self, method_name: str, *args, **kwargs):
         if not self._providers:
             raise LLMProviderError("No SSE providers are available or configured")
@@ -84,6 +93,11 @@ class SSEFallbackProvider(BaseLLMProvider):
             try:
                 method = getattr(provider, method_name)
                 result = method(*args, **kwargs)
+                if not self._is_usable_result(result):
+                    last_error = LLMProviderError(f"{name} returned empty response")
+                    failed.append(name)
+                    logger.warning("SSE provider %s returned empty response", name)
+                    continue
                 if failed:
                     logger.info(
                         "SSE fallback succeeded: %s → %s",

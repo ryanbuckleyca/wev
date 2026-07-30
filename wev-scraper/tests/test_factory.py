@@ -115,3 +115,54 @@ def test_sse_fallback_stops_at_flash_lite():
     assert provider.complete("prompt") == "lite-ok"
     groq.complete.assert_not_called()
     assert provider.current_model == "gemini-2.5-flash-lite"
+
+
+def test_sse_fallback_advances_on_empty_flash_response():
+    """Blank Gemini output must not short-circuit Flash → Lite → Groq."""
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.return_value = ""
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+    lite.complete.return_value = "   "  # whitespace-only also unusable
+
+    groq = MagicMock()
+    groq.is_available.return_value = True
+    groq.complete.return_value = '{"ok": true}'
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.GroqProvider", return_value=groq):
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider(api_key="test-key")
+
+    assert provider.complete("prompt") == '{"ok": true}'
+    flash.complete.assert_called_once()
+    lite.complete.assert_called_once()
+    groq.complete.assert_called_once()
+    assert provider.current_model == "groq"
+
+
+def test_sse_fallback_raises_when_all_return_empty():
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.return_value = ""
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+    lite.complete.return_value = None
+
+    groq = MagicMock()
+    groq.is_available.return_value = True
+    groq.complete.return_value = ""
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.GroqProvider", return_value=groq):
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider(api_key="test-key")
+
+    try:
+        provider.complete("prompt")
+        assert False, "expected LLMProviderError"
+    except LLMProviderError as exc:
+        assert "empty response" in str(exc)
