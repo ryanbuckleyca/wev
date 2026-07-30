@@ -11,13 +11,7 @@ export const ADMIN_ORGS_PER_PAGE = 50;
  * Former "social enterprise" label was dropped — it invited mission-only
  * Yes ratings; legacy values alias/migrate to other.
  */
-export const ORG_TYPES = [
-  'nonprofit',
-  'cooperative',
-  'government',
-  'union',
-  'other',
-] as const;
+export const ORG_TYPES = ['nonprofit', 'cooperative', 'government', 'union', 'other'] as const;
 
 export type OrgType = (typeof ORG_TYPES)[number];
 

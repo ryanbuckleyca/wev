@@ -1,7 +1,7 @@
 """Tests for organization assessment response parsing."""
 
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from utils.organization_assessment import (
     _attach_org_language,
@@ -118,9 +118,9 @@ def test_parse_response_keeps_over_limit_text_until_truncate():
 def test_ensure_length_limits_truncates_oversize_fields(mock_get_sse_provider):
     from utils.organization_assessment import (
         _ORG_DESCRIPTION_MAX_CHARS,
-        _fields_over_limit,
-        OrganizationAssessor,
         AssessedOrgResult,
+        OrganizationAssessor,
+        _fields_over_limit,
     )
 
     mock_get_sse_provider.return_value = MagicMock() # Mock the provider

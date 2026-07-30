@@ -75,7 +75,9 @@ describe('formatOrgLocationLabel', () => {
   });
 
   it('returns null when nothing is set', () => {
-    expect(formatOrgLocationLabel({ location: null, municipality: null, province: null })).toBeNull();
+    expect(
+      formatOrgLocationLabel({ location: null, municipality: null, province: null }),
+    ).toBeNull();
   });
 });
 
