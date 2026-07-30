@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from llm.base import LLMProviderError
-from utils.llm_location_extractor import extract_location_single, _extract_batch
+from utils.llm_location_extractor import _extract_batch, extract_location_single
 
 
 def test_extract_location_single_uses_fallback_provider():
