@@ -64,6 +64,9 @@ def _fetch_orgs_needing_language(*, after_id: int = 0, overwrite: bool = False) 
         )
         if after_id:
             query = query.gt("id", after_id)
+        # Server-side null filter when not overwriting; client still treats "" as missing.
+        if not overwrite:
+            query = query.is_("language", "null")
         resp = query.execute()
         batch = resp.data or []
         if not batch:

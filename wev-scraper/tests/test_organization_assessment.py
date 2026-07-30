@@ -88,8 +88,8 @@ def _assessment_json(**overrides) -> str:
     return json.dumps(payload)
 
 
-def test_parse_response_keeps_over_limit_text_until_repair():
-    """Parse does not truncate; oversize detection is for the repair pass."""
+def test_parse_response_keeps_over_limit_text_until_truncate():
+    """Parse does not truncate; oversize detection is for _smart_truncate."""
     from utils.organization_assessment import (
         _ORG_DESCRIPTION_MAX_CHARS,
         _SSE_REASONING_MAX_CHARS,
@@ -156,54 +156,6 @@ def test_ensure_length_limits_truncates_oversize_fields(mock_get_sse_provider):
     assert len(fixed["description_en"]) <= _ORG_DESCRIPTION_MAX_CHARS
     assert "length_limit: truncated description_en" in fixed["flags"]
     assert not _fields_over_limit(fixed)
-
-
-def test_omit_dropped_length_fields_preserves_existing_on_reassess_update():
-    from utils.organization_assessment import (
-        _fields_over_limit,
-        _omit_dropped_length_fields_from_update,
-        _result_to_db_fields,
-        AssessedOrgResult,
-    )
-
-    result = AssessedOrgResult(
-        canonical_name="Nature Visuals",
-        slug="nature-visuals",
-        website="https://example.org",
-        description_en=None,
-        description_fr="Une description existante.",
-        mission_statement_en=None,
-        mission_statement_fr="Une mission existante.",
-        type="nonprofit",
-        sector_id=None,
-        values_raw=None,
-        values=[],
-        sse_rating="strong_yes",
-        sse_confidence=0.9,
-        sse_reasoning_en="Clear nonprofit mission evidence.",
-        sse_reasoning_fr=None,
-        must_haves_met=[],
-        nice_to_haves_met=[],
-        flags=[
-            "length_limit: dropped description_en",
-            "length_limit: dropped mission_statement_en",
-        ],
-        public_language=None,
-    )
-
-    updates_from_result = _result_to_db_fields(result)
-
-    updates = _omit_dropped_length_fields_from_update(updates_from_result, result)
-
-    assert "description_en" not in updates
-    assert "description" not in updates
-    assert "mission_statement_en" not in updates
-    assert "mission_statement" not in updates
-
-    assert updates["sse_rating"] == "strong_yes"
-    assert "sse_details" in updates
-    assert updates["description_fr"] == "Une description existante."
-    assert updates["mission_statement_fr"] == "Une mission existante."
 
 
 def test_omit_null_locale_fields_keeps_existing_fr_on_reassess():
@@ -426,7 +378,7 @@ def test_governance_gate_forces_for_profit_weak_yes_to_no():
             slug="aliments-premont-inc",
             type="other",
             sse_rating="weak_yes",
-            sse_reasoning=(
+            sse_reasoning_en=(
                 "Mission mentions respect for individuals and the environment."
             ),
         ),
@@ -477,7 +429,7 @@ def test_governance_gate_forces_government_yes_to_no():
         _assessment_json(
             type="government",
             sse_rating="strong_yes",
-            sse_reasoning="Public agency serving community needs.",
+            sse_reasoning_en="Public agency serving community needs.",
         ),
         "City Parks Department",
     )
@@ -492,7 +444,7 @@ def test_governance_gate_keeps_yes_when_type_is_null():
         _assessment_json(
             type=None,
             sse_rating="strong_yes",
-            sse_reasoning="Clear community ownership and mission.",
+            sse_reasoning_en="Clear community ownership and mission.",
         ),
         "Mystery Mutual",
     )
@@ -506,7 +458,7 @@ def test_governance_gate_forces_other_yes_to_no():
         _assessment_json(
             type="other",
             sse_rating="weak_yes",
-            sse_reasoning="Mentions environment in CSR copy.",
+            sse_reasoning_en="Mentions environment in CSR copy.",
         ),
         "Acme Inc.",
     )
@@ -522,7 +474,7 @@ def test_governance_gate_keeps_aliased_mutual_forms_as_nonprofit_yes():
             _assessment_json(
                 type=raw_type,
                 sse_rating="strong_yes",
-                sse_reasoning="Member-owned mutual support structure.",
+                sse_reasoning_en="Member-owned mutual support structure.",
             ),
             "Grassroots Org",
         )

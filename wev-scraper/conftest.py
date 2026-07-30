@@ -24,7 +24,7 @@ def _org_language_offline_by_default(monkeypatch):
     """
     try:
         import utils.organization_language as org_lang
-    except Exception:
+    except ImportError:
         return
     monkeypatch.setattr(org_lang, "_neutral_fetch", lambda _url: (None, None))
     monkeypatch.setattr(org_lang, "make_llm_language_fn", lambda: None)

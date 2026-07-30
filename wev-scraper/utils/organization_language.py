@@ -19,7 +19,6 @@ import logging
 import re
 import socket
 from dataclasses import dataclass
-from html.parser import HTMLParser
 from typing import Callable, Literal
 from urllib.parse import urljoin, urlparse
 
@@ -32,7 +31,7 @@ VALID_ORG_LANGUAGES = frozenset({"en", "fr", "bilingual"})
 
 _MIN_TEXT_CHARS = 40
 _FETCH_TIMEOUT_SEC = 12
-_MAX_PROBE_URLS = 4
+_MAX_FETCH_BYTES = 500_000
 _MAX_REDIRECTS = 5
 _USER_AGENT = "wev-org-language/1.0 (+https://wevchange.org)"
 _BLOCKED_HOSTNAMES = frozenset({
@@ -210,20 +209,6 @@ def _detect_text_language(text: str) -> LanguageClassification:
     return LanguageClassification(None, 0.0, "text_markers", (*reasons, "ambiguous_mix"))
 
 
-class _HrefCollector(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__()
-        self.hrefs: list[str] = []
-        self.lang_attr: str | None = None
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        ad = {k.lower(): (v or "") for k, v in attrs}
-        if tag == "html" and ad.get("lang") and not self.lang_attr:
-            self.lang_attr = ad["lang"]
-        if tag == "a" and ad.get("href"):
-            self.hrefs.append(ad["href"])
-
-
 def _classify_from_website(website: str) -> LanguageClassification:
     html, final_url = _neutral_fetch(website)
     if not html:
@@ -290,20 +275,44 @@ def _neutral_fetch(url: str) -> tuple[str | None, str | None]:
                     "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
                 },
                 allow_redirects=False,
+                stream=True,
             )
             if resp.is_redirect or resp.is_permanent_redirect:
                 location = resp.headers.get("Location")
+                resp.close()
                 if not location:
                     return None, None
                 current = urljoin(current, location)
                 continue
             if resp.status_code >= 400:
                 logger.info("org language fetch HTTP %s for %s", resp.status_code, current)
+                resp.close()
                 return None, None
             ctype = (resp.headers.get("Content-Type") or "").lower()
             if "html" not in ctype and "text" not in ctype and ctype:
+                resp.close()
                 return None, None
-            return resp.text, str(resp.url)
+            content_length = resp.headers.get("Content-Length")
+            if content_length and content_length.isdigit() and int(content_length) > _MAX_FETCH_BYTES:
+                logger.info("org language fetch Content-Length over cap for %s", current)
+                resp.close()
+                return None, None
+            chunks: list[bytes] = []
+            total = 0
+            for chunk in resp.iter_content(chunk_size=8192):
+                if not chunk:
+                    continue
+                total += len(chunk)
+                if total > _MAX_FETCH_BYTES:
+                    logger.info("org language fetch exceeded size cap for %s", current)
+                    resp.close()
+                    return None, None
+                chunks.append(chunk)
+            encoding = resp.encoding or "utf-8"
+            text = b"".join(chunks).decode(encoding, errors="replace")
+            final_url = str(resp.url) if resp.url else current
+            resp.close()
+            return text, final_url
         logger.info("org language fetch exceeded redirect limit for %s", url)
         return None, None
     except requests.RequestException as exc:
@@ -392,14 +401,8 @@ def _discover_locale_urls(html: str, base_url: str) -> dict[str, str]:
     elif "fr" in found and "en" not in found:
         found["en"] = urljoin(apex + "/", "en")
 
-    # Cap distinct probes
-    limited: dict[str, str] = {}
-    for code in ("en", "fr"):
-        if code in found:
-            limited[code] = found[code]
-        if len(limited) >= _MAX_PROBE_URLS:
-            break
-    return limited
+    # Cap distinct probes to en/fr counterparts only.
+    return {code: found[code] for code in ("en", "fr") if code in found}
 
 
 def _page_has_language(url: str, expected: OrgLanguage) -> bool:
@@ -419,7 +422,9 @@ def _looks_like_soft_404(text: str, html: str) -> bool:
         return True
     markers = (
         "page not found",
-        "404",
+        "error 404",
+        "404 not found",
+        "erreur 404",
         "coming soon",
         "under construction",
         "page introuvable",
@@ -463,7 +468,10 @@ def make_llm_language_fn() -> Callable[[str], OrgLanguage | None] | None:
         raw = provider.complete(prompt, json_mode=False)
         if raw is None:
             return None
-        token = str(raw).strip().lower().split()[0].strip(".,\"'")
+        stripped = str(raw).strip().lower()
+        if not stripped:
+            return None
+        token = stripped.split()[0].strip(".,\"'")
         if token in VALID_ORG_LANGUAGES:
             return token  # type: ignore[return-value]
         return None

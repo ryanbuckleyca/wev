@@ -307,9 +307,8 @@ def run(
         )
 
     while limit is None or processed < limit:
-        batch_size = 25 if limit is None else min(25, limit - processed)
-        # Over-fetch when skipping completed so --limit still fills.
-        batch_size = max(batch_size, 25)
+        # Fixed fetch size; over-fetch when skipping completed so --limit still fills.
+        batch_size = 25
         if batch_size <= 0:
             break
         rows = fetch(limit=batch_size, after_id=cursor)
