@@ -10,8 +10,8 @@ import {
 describe('normalizeOrgType', () => {
   it('normalizes hyphenated and underscored variants', () => {
     expect(normalizeOrgType('non-profit')).toBe('nonprofit');
-    expect(normalizeOrgType('social_enterprise')).toBe('social enterprise');
-    expect(normalizeOrgType('Social Enterprise')).toBe('social enterprise');
+    expect(normalizeOrgType('social_enterprise')).toBe('other');
+    expect(normalizeOrgType('Social Enterprise')).toBe('other');
     expect(normalizeOrgType('mutual-aid')).toBe('nonprofit');
     expect(normalizeOrgType('community association')).toBe('nonprofit');
     expect(normalizeOrgType('credit union')).toBe('cooperative');

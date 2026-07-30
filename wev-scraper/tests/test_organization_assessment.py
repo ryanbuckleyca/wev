@@ -54,13 +54,13 @@ def test_public_language_used_when_no_name_or_web_signal(mock_classify):
 @patch("utils.organization_assessment.classify_org_language")
 def test_existing_language_never_overwritten_by_attach(mock_classify):
     row = _attach_org_language(
-        {"name": "X", "website": None, "language": "fr", "sse_details": {"flags": ["values_inferred"]}},
+        {"name": "X", "website": None, "language": "fr", "sse_details": {"flags": ["values via=inferred"]}},
         "en",
     )
     assert row["language"] == "fr"
     mock_classify.assert_not_called()
     assert "language:fr via=kept" in row["sse_details"]["flags"]
-    assert "values_inferred" in row["sse_details"]["flags"]
+    assert "values via=inferred" in row["sse_details"]["flags"]
 
 
 def _assessment_json(**overrides) -> str:
@@ -330,6 +330,50 @@ def test_parse_website_rejects_shared_hosts():
     assert _parse_website("https://boards.greenhouse.io/acme") is None
     assert _parse_website("https://facebook.com/acme-org") is None
     assert _parse_website("https://www.linkedin.com/company/acme") is None
+
+
+def test_parse_response_defaults_missing_content_provenance_to_inferred():
+    """Model omitted provenance flags — populated fields default to via=inferred."""
+    result = _parse_response(
+        _assessment_json(flags=[]),
+        "Nature Visuals",
+    )
+    assert result is not None
+    assert "description via=inferred" in result["flags"]
+    assert "mission via=inferred" in result["flags"]
+    assert "values via=inferred" in result["flags"]
+
+
+def test_parse_response_keeps_explicit_extracted_provenance():
+    result = _parse_response(
+        _assessment_json(
+            flags=[
+                "description via=extracted",
+                "mission via=extracted",
+                "values via=extracted",
+            ],
+        ),
+        "Nature Visuals",
+    )
+    assert result is not None
+    assert "description via=extracted" in result["flags"]
+    assert "description via=inferred" not in result["flags"]
+    assert "mission via=inferred" not in result["flags"]
+    assert "values via=inferred" not in result["flags"]
+
+
+def test_parse_response_normalizes_legacy_inferred_flags():
+    result = _parse_response(
+        _assessment_json(
+            flags=["description_inferred", "mission_extracted", "values_inferred"],
+        ),
+        "Nature Visuals",
+    )
+    assert result is not None
+    assert "description via=inferred" in result["flags"]
+    assert "mission via=extracted" in result["flags"]
+    assert "values via=inferred" in result["flags"]
+    assert "description_inferred" not in result["flags"]
 
 
 def test_parse_response_nulls_shared_website():

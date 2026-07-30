@@ -4,15 +4,16 @@ export const ADMIN_ORGS_PER_PAGE = 50;
 
 /** Canonical org type values stored in the database (aligned with scraper).
  *
- * SSE-eligible stored types: nonprofit, cooperative, social enterprise, union.
+ * SSE-eligible stored types: nonprofit, cooperative, union.
  * Never SSE: government, other.
  * Mutual societies / mutual-aid / community associations map to nonprofit
  * (aliases) until a dedicated taxonomy branch defines separate terms.
+ * Former "social enterprise" label was dropped — it invited mission-only
+ * Yes ratings; legacy values alias/migrate to other.
  */
 export const ORG_TYPES = [
   'nonprofit',
   'cooperative',
-  'social enterprise',
   'government',
   'union',
   'other',

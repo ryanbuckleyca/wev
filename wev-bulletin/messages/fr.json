@@ -55,14 +55,12 @@
     "type": {
       "nonprofit": "À but non lucratif",
       "cooperative": "Coopérative",
-      "socialenterprise": "Entreprise sociale",
       "government": "Gouvernement",
       "union": "Syndicat",
       "other": "Autre"
     },
     "nonprofit": "À but non lucratif",
     "cooperative": "Coopérative",
-    "socialenterprise": "Entreprise sociale",
     "government": "Gouvernement",
     "union": "Syndicat",
     "other": "Autre",
