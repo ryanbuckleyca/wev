@@ -1,7 +1,14 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
-import { parseAsArrayOf, parseAsBoolean, parseAsInteger, parseAsString, useQueryState } from 'nuqs';
+import {
+  parseAsArrayOf,
+  parseAsBoolean,
+  parseAsInteger,
+  parseAsNativeArrayOf,
+  parseAsString,
+  useQueryState,
+} from 'nuqs';
 
 export interface OrganizationFilters {
   searchQuery: string;
@@ -63,7 +70,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
   );
   const [selectedLanguages, setSelectedLanguages] = useQueryState(
     'language',
-    parseAsArrayOf(parseAsString).withDefault([]),
+    parseAsNativeArrayOf(parseAsString).withDefault([]),
   );
   const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
   // Default to empty string - let the consuming component resolve the actual default based on auth state

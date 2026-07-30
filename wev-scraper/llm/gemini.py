@@ -118,10 +118,12 @@ class GeminiProvider(BaseLLMProvider):
 
             if not text:
                 finish_reason = getattr(candidate, "finish_reason", "UNKNOWN")
-                part_types = [
-                    type(p).__name__ + (f"({getattr(p, 'function_call', None) and 'fn_call'})" if hasattr(p, 'function_call') else "")
-                    for p in parts
-                ]
+                part_types = []
+                for p in parts:
+                    label = type(p).__name__
+                    if hasattr(p, "function_call") and getattr(p, "function_call", None):
+                        label += "(fn_call)"
+                    part_types.append(label)
                 logger.warning(
                     "Empty text from Gemini. finish_reason=%s candidates=%d parts=%d part_types=%s",
                     finish_reason, len(candidates), len(parts), part_types,

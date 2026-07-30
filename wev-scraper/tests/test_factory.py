@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from llm.base import LLMProviderError
 from llm.factory import get_fallback_llm_provider, get_job_summary_provider, get_sse_provider
 from llm.gemini_fallback import SSEFallbackProvider
@@ -161,8 +163,5 @@ def test_sse_fallback_raises_when_all_return_empty():
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider(api_key="test-key")
 
-    try:
+    with pytest.raises(LLMProviderError, match="empty response"):
         provider.complete("prompt")
-        assert False, "expected LLMProviderError"
-    except LLMProviderError as exc:
-        assert "empty response" in str(exc)

@@ -97,6 +97,21 @@ describe('getOrganizationTypeLabel', () => {
     expect(getOrganizationTypeLabel('non-profit', t)).toBe('Nonprofit');
   });
 
+  it('resolves aliased socialenterprise to Other', () => {
+    const tWithOther = Object.assign(
+      (key: string) => {
+        const labels: Record<string, string> = {
+          nonprofit: 'Nonprofit',
+          other: 'Other',
+        };
+        return labels[key] ?? key;
+      },
+      { has: (key: string) => key === 'nonprofit' || key === 'other' },
+    );
+    expect(getOrganizationTypeLabel('socialenterprise', tWithOther)).toBe('Other');
+    expect(getOrganizationTypeLabel('social enterprise', tWithOther)).toBe('Other');
+  });
+
   it('returns raw type when no translation exists', () => {
     expect(getOrganizationTypeLabel('custom-type', t)).toBe('custom-type');
   });

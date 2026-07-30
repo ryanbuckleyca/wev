@@ -52,11 +52,13 @@ export function getOrganizationTypeLabel(
 ): string | null {
   if (!type) return null;
 
-  const normalized = normalizeOrgTypeKey(type);
-  if (t.has(normalized)) return t(normalized);
+  // Resolve aliases first so legacy labels (e.g. social enterprise → other) translate.
+  const canonical = normalizeOrgType(type);
+  const lookupKey = canonical ?? normalizeOrgTypeKey(type);
+  if (t.has(lookupKey)) return t(lookupKey);
 
-  const nestedKey = `type.${normalized}`;
+  const nestedKey = `type.${lookupKey}`;
   if (t.has(nestedKey)) return t(nestedKey);
 
-  return type;
+  return canonical ?? type;
 }

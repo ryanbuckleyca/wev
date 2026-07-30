@@ -182,5 +182,6 @@ def test_dual_probe_partial_does_not_force_english(mock_probe, mock_fetch):
         fetch_web=True,
         use_llm=False,
     )
-    assert not (result.language == "en" and result.source == "web_dual_probe")
-    assert result.source != "web_dual_probe" or result.language == "bilingual"
+    # Partial dual-probe must fall through — never claim bilingual dual-probe success.
+    assert result.source != "web_dual_probe"
+    assert result.source == "web_text" or result.language is None

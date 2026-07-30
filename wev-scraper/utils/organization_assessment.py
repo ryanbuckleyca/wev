@@ -72,7 +72,7 @@ _ORG_TYPE_ALIASES: dict[str, str] = {
 # Hard length limits for stored LLM fields. Keep in sync with
 # wev-bulletin/lib/organizations/constants.ts (description/mission).
 # Prompt asks the model to paraphrase within the limit. If it overshoots,
-# assess() runs a repair paraphrase call — never mid-text truncation.
+# assess() truncates with _smart_truncate (sentence-aware).
 _ORG_DESCRIPTION_MAX_CHARS = 500
 _ORG_MISSION_MAX_CHARS = 500
 _ORG_VALUES_RAW_MAX_CHARS = 1000
@@ -464,34 +464,6 @@ def _smart_truncate(text: str, max_chars: int) -> str:
     return truncated[:max_chars - 3] + '...'
 
 
-# AssessedOrgResult field → organizations update column(s) to skip when repair drops.
-_LENGTH_DROP_UPDATE_KEYS: dict[str, tuple[str, ...]] = {
-    "description_en": ("description_en", "description"),
-    "description_fr": ("description_fr",),
-    "mission_statement_en": ("mission_statement_en", "mission_statement"),
-    "mission_statement_fr": ("mission_statement_fr",),
-    "values_raw": ("values",),
-    # sse_reasoning_* live inside sse_details; keep short fallbacks there.
-}
-
-
-def _omit_dropped_length_fields_from_update(
-    updates: dict,
-    result: AssessedOrgResult,
-) -> dict:
-    """Remove fields the repair pass dropped so reassess does not null existing DB text."""
-    omit: set[str] = set()
-    for flag in result.get("flags") or []:
-        if not flag.startswith("length_limit: dropped "):
-            continue
-        # "length_limit: dropped description after failed paraphrase repair"
-        parts = flag.split()
-        field = parts[2] if len(parts) > 2 else ""
-        omit.update(_LENGTH_DROP_UPDATE_KEYS.get(field, ()))
-    if not omit:
-        return updates
-    return {key: value for key, value in updates.items() if key not in omit}
-
 def _parse_text_field(data: dict, key: str) -> str | None:
     val = data.get(key)
     if val:
@@ -651,6 +623,7 @@ def _attach_org_language(
     row: dict,
     llm_public_language: str | None = None,
     force_lang: bool = False,
+    fetch_web: bool = False,
 ) -> dict:
     """Set organizations.language from name/website signals, else public_language.
 
@@ -658,6 +631,9 @@ def _attach_org_language(
     is True. Objective signals (website metadata + name LLM) win;
     ``llm_public_language`` is a soft, research-derived model judgment used
     only as a tiebreaker when those are silent.
+
+    Website fetching is off by default (insert/reassess stay offline); pass
+    ``fetch_web=True`` from throttled backfills that intentionally probe sites.
 
     Always records provenance on ``sse_details.flags`` (``language:… via=…``
     and optional ``language_reason:…``), including when language is kept.
@@ -674,7 +650,7 @@ def _attach_org_language(
     classification = classify_org_language(
         name=row.get("name"),
         website=row.get("website"),
-        fetch_web=True,
+        fetch_web=fetch_web,
     )
     lang = classification.language
 
@@ -810,6 +786,14 @@ def _merge_sse_details_preserving_reasoning(
     return {**updates, "sse_details": merged}
 
 
+_ASSESSOR_SYSTEM = (
+    "You are an expert at identifying organizations, finding their "
+    "official employer-owned website, mapping work values, and "
+    "evaluating Solidarity Economy alignment of the ORGANIZATION "
+    "(not job-posting completeness)."
+)
+
+
 class OrganizationAssessor(BaseGroundedClassifier):
     """Single grounded LLM call: identifies org, maps values, produces SSE rating."""
 
@@ -846,12 +830,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
             response_text = self._call_provider_with_retry(
                 provider=self.provider,
                 prompt=prompt,
-                system=(
-                    "You are an expert at identifying organizations, finding their "
-                    "official employer-owned website, mapping work values, and "
-                    "evaluating Solidarity Economy alignment of the ORGANIZATION "
-                    "(not job-posting completeness)."
-                ),
+                system=_ASSESSOR_SYSTEM,
                 task="sse",
                 search_query=search_query,
                 retries=1,
@@ -874,12 +853,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 response_text = self._call_provider_with_retry(
                     provider=self.provider,
                     prompt=prompt,
-                    system=(
-                        "You are an expert at identifying organizations, finding their "
-                        "official employer-owned website, mapping work values, and "
-                        "evaluating Solidarity Economy alignment of the ORGANIZATION "
-                        "(not job-posting completeness)."
-                    ),
+                    system=_ASSESSOR_SYSTEM,
                     task="sse",
                     search_query=None,
                     retries=1,
@@ -930,6 +904,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
         description: str = "",
         canonical_loc: str = "",
         known_website: str | None = None,
+        fetch_web: bool = False,
     ) -> dict | None:
         """Assess the org and return a row dict ready for DB insert.
 
@@ -965,12 +940,14 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 **_result_to_db_fields(result),
             },
             result.get("public_language"),
+            fetch_web=fetch_web,
         )
 
     def assess_and_build_update(
         self,
         org: dict,
         force_lang: bool = False,
+        fetch_web: bool = False,
     ) -> dict | None:
         """Re-assess an existing org and return an update dict.
 
@@ -999,7 +976,6 @@ class OrganizationAssessor(BaseGroundedClassifier):
             return None
 
         updates = _result_to_db_fields(result)
-        updates = _omit_dropped_length_fields_from_update(updates, result)
         updates = _omit_null_locale_fields_from_update(updates)
         updates = _merge_sse_details_preserving_reasoning(updates, org.get("sse_details"))
         website = result.get("website")
@@ -1018,4 +994,5 @@ class OrganizationAssessor(BaseGroundedClassifier):
             },
             result.get("public_language"),
             force_lang=force_lang,
+            fetch_web=fetch_web,
         )
