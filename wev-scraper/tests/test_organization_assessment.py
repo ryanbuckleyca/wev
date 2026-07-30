@@ -1,12 +1,66 @@
 """Tests for organization assessment response parsing."""
 
 import json
+from unittest.mock import MagicMock, patch
 
 from utils.organization_assessment import (
+    _attach_org_language,
     _build_search_query,
     _parse_response,
     _parse_website,
 )
+from utils.organization_language import LanguageClassification
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_english_name_yields_to_research_public_language(mock_classify):
+    mock_classify.return_value = LanguageClassification("en", 0.7, "llm_name", ("name_llm=en",))
+    row = _attach_org_language(
+        {"name": "Acme Foundation", "website": None, "sse_details": {"flags": []}},
+        "fr",
+    )
+    assert row["language"] == "fr"
+    flags = row["sse_details"]["flags"]
+    assert "language:fr via=public_language" in flags
+    assert "language_reason:name_llm=en" in flags
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_french_name_beats_english_public_language(mock_classify):
+    mock_classify.return_value = LanguageClassification("fr", 0.7, "llm_name", ("name_llm=fr",))
+    row = _attach_org_language({"name": "Fondation Acme", "website": None}, "en")
+    assert row["language"] == "fr"
+    assert "language:fr via=llm_name" in row["sse_details"]["flags"]
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_confirmed_english_website_not_overridden_by_public_language(mock_classify):
+    mock_classify.return_value = LanguageClassification(
+        "en", 0.85, "web_text", ("web_signal=en",)
+    )
+    row = _attach_org_language({"name": "Acme", "website": "https://x.org"}, "fr")
+    assert row["language"] == "en"
+    assert "language:en via=web_text" in row["sse_details"]["flags"]
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_public_language_used_when_no_name_or_web_signal(mock_classify):
+    mock_classify.return_value = LanguageClassification(None, 0.0, "unknown", ())
+    row = _attach_org_language({"name": "Neutral Co", "website": None}, "bilingual")
+    assert row["language"] == "bilingual"
+    assert "language:bilingual via=public_language" in row["sse_details"]["flags"]
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_existing_language_never_overwritten_by_attach(mock_classify):
+    row = _attach_org_language(
+        {"name": "X", "website": None, "language": "fr", "sse_details": {"flags": ["values via=inferred"]}},
+        "en",
+    )
+    assert row["language"] == "fr"
+    mock_classify.assert_not_called()
+    assert "language:fr via=kept" in row["sse_details"]["flags"]
+    assert "values via=inferred" in row["sse_details"]["flags"]
 
 
 def _assessment_json(**overrides) -> str:
@@ -28,13 +82,14 @@ def _assessment_json(**overrides) -> str:
         "must_haves_met": ["Clear purpose beyond profit"],
         "nice_to_haves_met": [],
         "flags": [],
+        "public_language": None,
     }
     payload.update(overrides)
     return json.dumps(payload)
 
 
-def test_parse_response_keeps_over_limit_text_until_repair():
-    """Parse does not truncate; oversize detection is for the repair pass."""
+def test_parse_response_keeps_over_limit_text_until_truncate():
+    """Parse does not truncate; oversize detection is for _smart_truncate."""
     from utils.organization_assessment import (
         _ORG_DESCRIPTION_MAX_CHARS,
         _SSE_REASONING_MAX_CHARS,
@@ -59,74 +114,48 @@ def test_parse_response_keeps_over_limit_text_until_repair():
     assert "description_en" in over
 
 
-def test_apply_length_repairs_uses_fitting_paraphrase():
+@patch('utils.organization_assessment.get_sse_provider')
+def test_ensure_length_limits_truncates_oversize_fields(mock_get_sse_provider):
     from utils.organization_assessment import (
         _ORG_DESCRIPTION_MAX_CHARS,
-        _apply_length_repairs,
+        AssessedOrgResult,
+        OrganizationAssessor,
         _fields_over_limit,
     )
 
-    long_desc = "y" * 1200
-    result = _parse_response(
-        _assessment_json(description_en=long_desc),
-        "Nature Visuals",
-    )
-    assert result is not None
-    over = _fields_over_limit(result)
-    repaired = {"description_en": "A complete short paraphrase that fits."}
-    assert len(repaired["description_en"]) <= _ORG_DESCRIPTION_MAX_CHARS
+    mock_get_sse_provider.return_value = MagicMock() # Mock the provider
 
-    fixed = _apply_length_repairs(result, over, repaired, "Nature Visuals")
-    assert fixed["description_en"] == repaired["description_en"]
+    assessor = OrganizationAssessor()
+
+    long_desc = "y" * 1200
+    result = AssessedOrgResult(
+        canonical_name="Nature Visuals",
+        slug="nature-visuals",
+        website="https://example.org",
+        description_en=long_desc,
+        description_fr=None,
+        mission_statement_en=None,
+        mission_statement_fr=None,
+        type="nonprofit",
+        sector_id=None,
+        values_raw=None,
+        values=[],
+        sse_rating="no",
+        sse_confidence=0.5,
+        sse_reasoning_en=None,
+        sse_reasoning_fr=None,
+        must_haves_met=[],
+        nice_to_haves_met=[],
+        flags=[],
+        public_language=None,
+    )
+
+    fixed = assessor._ensure_length_limits(result, "Nature Visuals")
+
+    assert fixed is not None
+    assert len(fixed["description_en"]) <= _ORG_DESCRIPTION_MAX_CHARS
+    assert "length_limit: truncated description_en" in fixed["flags"]
     assert not _fields_over_limit(fixed)
-
-
-def test_apply_length_repairs_drops_field_when_repair_fails():
-    from utils.organization_assessment import (
-        _apply_length_repairs,
-        _fields_over_limit,
-    )
-
-    long_desc = "y" * 1200
-    result = _parse_response(
-        _assessment_json(description_en=long_desc, sse_reasoning_en="ok"),
-        "Nature Visuals",
-    )
-    assert result is not None
-    over = _fields_over_limit(result)
-    # Empty repair map → drop oversize fields (no truncation).
-    fixed = _apply_length_repairs(result, over, {}, "Nature Visuals")
-    assert fixed["description_en"] is None
-    assert any("length_limit: dropped description_en" in f for f in fixed["flags"])
-
-
-def test_omit_dropped_length_fields_preserves_existing_on_reassess_update():
-    from utils.organization_assessment import (
-        _apply_length_repairs,
-        _fields_over_limit,
-        _omit_dropped_length_fields_from_update,
-        _result_to_db_fields,
-    )
-
-    long_desc = "y" * 1200
-    long_mission = "z" * 900
-    result = _parse_response(
-        _assessment_json(
-            description_en=long_desc,
-            mission_statement_en=long_mission,
-            sse_reasoning_en="Clear nonprofit mission evidence.",
-        ),
-        "Nature Visuals",
-    )
-    assert result is not None
-    fixed = _apply_length_repairs(result, _fields_over_limit(result), {}, "Nature Visuals")
-    updates = _omit_dropped_length_fields_from_update(_result_to_db_fields(fixed), fixed)
-    assert "description_en" not in updates
-    assert "description" not in updates
-    assert "mission_statement_en" not in updates
-    assert "mission_statement" not in updates
-    assert updates["sse_rating"] == "strong_yes"
-    assert "sse_details" in updates
 
 
 def test_omit_null_locale_fields_keeps_existing_fr_on_reassess():
@@ -221,13 +250,27 @@ def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
         description="listing notes",
     )
     assert "paraphrase to fit completely" in prompt
-    assert "do not truncate" in prompt
+    assert "Never cut off mid-word or mid-sentence" in prompt
     assert "paraphrase and condense" in prompt
     assert "Do NOT restate must_haves_met" in prompt
-    assert "2–4 concise English sentences" in prompt
+    assert "Reasoning must be brief (2–4 sentences)" in prompt
     assert "MUST fit within" in prompt
     assert "description_en" in prompt and "description_fr" in prompt
     assert "BILINGUAL PUBLIC COPY" in prompt
+
+
+def test_org_assessment_prompt_prioritizes_name_then_bilingual_website_evidence():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Aliments Prémont Inc.",
+        "Sainte-Angèle-de-Prémont",
+        "QC",
+        job_title="Coordinator",
+        description="listing notes",
+    )
+    assert "organization name as the strongest indication" in prompt
+    assert "website confirms substantial materials in both English and French" in prompt
 
 
 def test_parse_website_keeps_employer_owned_host():
@@ -239,6 +282,50 @@ def test_parse_website_rejects_shared_hosts():
     assert _parse_website("https://boards.greenhouse.io/acme") is None
     assert _parse_website("https://facebook.com/acme-org") is None
     assert _parse_website("https://www.linkedin.com/company/acme") is None
+
+
+def test_parse_response_defaults_missing_content_provenance_to_inferred():
+    """Model omitted provenance flags — populated fields default to via=inferred."""
+    result = _parse_response(
+        _assessment_json(flags=[]),
+        "Nature Visuals",
+    )
+    assert result is not None
+    assert "description via=inferred" in result["flags"]
+    assert "mission via=inferred" in result["flags"]
+    assert "values via=inferred" in result["flags"]
+
+
+def test_parse_response_keeps_explicit_extracted_provenance():
+    result = _parse_response(
+        _assessment_json(
+            flags=[
+                "description via=extracted",
+                "mission via=extracted",
+                "values via=extracted",
+            ],
+        ),
+        "Nature Visuals",
+    )
+    assert result is not None
+    assert "description via=extracted" in result["flags"]
+    assert "description via=inferred" not in result["flags"]
+    assert "mission via=inferred" not in result["flags"]
+    assert "values via=inferred" not in result["flags"]
+
+
+def test_parse_response_normalizes_legacy_inferred_flags():
+    result = _parse_response(
+        _assessment_json(
+            flags=["description_inferred", "mission_extracted", "values_inferred"],
+        ),
+        "Nature Visuals",
+    )
+    assert result is not None
+    assert "description via=inferred" in result["flags"]
+    assert "mission via=extracted" in result["flags"]
+    assert "values via=inferred" in result["flags"]
+    assert "description_inferred" not in result["flags"]
 
 
 def test_parse_response_nulls_shared_website():
@@ -291,7 +378,7 @@ def test_governance_gate_forces_for_profit_weak_yes_to_no():
             slug="aliments-premont-inc",
             type="other",
             sse_rating="weak_yes",
-            sse_reasoning=(
+            sse_reasoning_en=(
                 "Mission mentions respect for individuals and the environment."
             ),
         ),
@@ -319,13 +406,30 @@ def test_org_assessment_prompt_excludes_government_from_sse():
     assert "Public service is not SSE" in prompt or "public-sector" in prompt.lower()
 
 
+def test_org_assessment_prompt_rejects_mission_only_private_enterprise():
+    """Mission-driven private schools must be typed other, not invented SE."""
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt("Toronto Nature School", "Toronto", "ON", "", "")
+    assert "Mission-driven private enterprise is not SSE" in prompt
+    assert 'There is no "social enterprise" type' in prompt
+    assert "type alone is never sufficient" in prompt or "Type is necessary but not sufficient" in prompt
+
+
+def test_normalize_type_maps_social_enterprise_to_other():
+    from utils.organization_assessment import _normalize_type
+
+    assert _normalize_type("social enterprise") == "other"
+    assert _normalize_type("Social Enterprise") == "other"
+
+
 def test_governance_gate_forces_government_yes_to_no():
     """Public-sector orgs are not SSE governance forms (intentional)."""
     result = _parse_response(
         _assessment_json(
             type="government",
             sse_rating="strong_yes",
-            sse_reasoning="Public agency serving community needs.",
+            sse_reasoning_en="Public agency serving community needs.",
         ),
         "City Parks Department",
     )
@@ -340,7 +444,7 @@ def test_governance_gate_keeps_yes_when_type_is_null():
         _assessment_json(
             type=None,
             sse_rating="strong_yes",
-            sse_reasoning="Clear community ownership and mission.",
+            sse_reasoning_en="Clear community ownership and mission.",
         ),
         "Mystery Mutual",
     )
@@ -354,7 +458,7 @@ def test_governance_gate_forces_other_yes_to_no():
         _assessment_json(
             type="other",
             sse_rating="weak_yes",
-            sse_reasoning="Mentions environment in CSR copy.",
+            sse_reasoning_en="Mentions environment in CSR copy.",
         ),
         "Acme Inc.",
     )
@@ -370,7 +474,7 @@ def test_governance_gate_keeps_aliased_mutual_forms_as_nonprofit_yes():
             _assessment_json(
                 type=raw_type,
                 sse_rating="strong_yes",
-                sse_reasoning="Member-owned mutual support structure.",
+                sse_reasoning_en="Member-owned mutual support structure.",
             ),
             "Grassroots Org",
         )

@@ -301,6 +301,7 @@ class Organizations(BaseModel):
     lng: Optional[float] = None
     geocode_accuracy_type: Optional[str] = None
     sector_id: Optional[str] = None
+    language: Optional[str] = None
 
 
 class Sources(BaseModel):

@@ -184,7 +184,10 @@ class OrganizationRepository:
         try:
             resp = (
                 self._supabase.table("organizations")
-                .select("id, name, description, type, website, values")
+                .select(
+                    "id, name, description, type, website, values, "
+                    "municipality, province, location, language, sse_details"
+                )
                 .is_("sse_rating", "null")
                 .order("id")
                 .gt("id", after_id)

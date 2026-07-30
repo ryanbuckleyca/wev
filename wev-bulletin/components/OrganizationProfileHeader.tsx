@@ -99,13 +99,14 @@ export default function OrganizationProfileHeader({
         )}
       </div>
 
-      {values.length > 0 && (
+      {(values.length > 0 || org.language) && (
         <OrgValuesMatchFooter
           values={values}
           valueScore={valueMatch?.valueScore ?? null}
           sharedValues={valueMatch?.sharedValues ?? []}
           isLoggedIn={isLoggedIn}
           className="mt-6 rounded-wev-card border border-border bg-muted px-4 py-3"
+          language={org.language}
         />
       )}
 

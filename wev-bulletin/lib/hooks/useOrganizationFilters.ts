@@ -5,6 +5,7 @@ import {
   parseAsArrayOf,
   parseAsBoolean,
   parseAsInteger,
+  parseAsNativeArrayOf,
   parseAsString,
   useQueryState,
 } from 'nuqs';
@@ -16,6 +17,7 @@ export interface OrganizationFilters {
   selectedProvinces: string[];
   selectedMunicipalities: string[];
   selectedTypes: string[];
+  selectedLanguages: string[];
 }
 
 /**
@@ -38,6 +40,8 @@ export interface OrganizationFilterControls {
   setSelectedMunicipalities: (value: string[] | null) => Promise<unknown> | void;
   selectedTypes: string[];
   setSelectedTypes: (value: string[] | null) => Promise<unknown> | void;
+  selectedLanguages: string[];
+  setSelectedLanguages: (value: string[] | null) => Promise<unknown> | void;
   currentPage: number;
   setCurrentPage: (value: number | null) => Promise<unknown> | void;
   sortBy: string;
@@ -64,6 +68,10 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     'type',
     parseAsArrayOf(parseAsString).withDefault([]),
   );
+  const [selectedLanguages, setSelectedLanguages] = useQueryState(
+    'language',
+    parseAsNativeArrayOf(parseAsString).withDefault([]),
+  );
   const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
   // Default to empty string - let the consuming component resolve the actual default based on auth state
   const [sortBy, setSortBy] = useQueryState('sortBy', parseAsString.withDefault(''));
@@ -75,8 +83,16 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedProvinces,
       selectedMunicipalities,
       selectedTypes,
+      selectedLanguages,
     }),
-    [searchQuery, showNonSse, selectedProvinces, selectedMunicipalities, selectedTypes],
+    [
+      searchQuery,
+      showNonSse,
+      selectedProvinces,
+      selectedMunicipalities,
+      selectedTypes,
+      selectedLanguages,
+    ],
   );
 
   // hasAnyFilters is false at the default state (showNonSse=false, nothing else set)
@@ -86,8 +102,16 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       showNonSse ||
       selectedProvinces.length > 0 ||
       selectedMunicipalities.length > 0 ||
-      selectedTypes.length > 0,
-    [searchQuery, showNonSse, selectedProvinces, selectedMunicipalities, selectedTypes],
+      selectedTypes.length > 0 ||
+      selectedLanguages.length > 0,
+    [
+      searchQuery,
+      showNonSse,
+      selectedProvinces,
+      selectedMunicipalities,
+      selectedTypes,
+      selectedLanguages,
+    ],
   );
 
   // Suggested defaults: showNonSse off (SSE-only), nothing else active
@@ -97,8 +121,16 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       !showNonSse &&
       selectedProvinces.length === 0 &&
       selectedMunicipalities.length === 0 &&
-      selectedTypes.length === 0,
-    [searchQuery, showNonSse, selectedProvinces, selectedMunicipalities, selectedTypes],
+      selectedTypes.length === 0 &&
+      selectedLanguages.length === 0,
+    [
+      searchQuery,
+      showNonSse,
+      selectedProvinces,
+      selectedMunicipalities,
+      selectedTypes,
+      selectedLanguages,
+    ],
   );
 
   const resetFilters = useCallback(
@@ -108,9 +140,18 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       void setSelectedProvinces([]);
       void setSelectedMunicipalities([]);
       void setSelectedTypes([]);
+      void setSelectedLanguages([]);
       void setCurrentPage(1);
     },
-    [setSearchQuery, setShowNonSse, setSelectedProvinces, setSelectedMunicipalities, setSelectedTypes, setCurrentPage],
+    [
+      setSearchQuery,
+      setShowNonSse,
+      setSelectedProvinces,
+      setSelectedMunicipalities,
+      setSelectedTypes,
+      setSelectedLanguages,
+      setCurrentPage,
+    ],
   );
 
   // clearAllFilters: resets everything, SSE filter goes back to SSE-only (default view).
@@ -130,6 +171,8 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     setSelectedMunicipalities,
     selectedTypes,
     setSelectedTypes,
+    selectedLanguages,
+    setSelectedLanguages,
     currentPage,
     setCurrentPage,
     sortBy,

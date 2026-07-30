@@ -12,7 +12,7 @@ SSE_JSON_FIELDS = """  "rating": "strong_yes",
   "flags": ["any concerns", "ambiguities", "missing info"]"""
 
 # Hard limits for the LLM: compose complete text that fits. If the model
-# overshoots, OrganizationAssessor runs a repair paraphrase — never mid-text truncation.
+# overshoots, OrganizationAssessor truncates with _smart_truncate.
 LENGTH_LIMITED_FIELD_RULES = """LENGTH LIMITS FOR TEXT FIELDS (description_en, description_fr, mission_statement_en, mission_statement_fr, reasoning / sse_reasoning_en / sse_reasoning_fr, values_raw):
 - Each field lists a maximum character count — the returned string MUST fit within it.
 - Never cut off mid-word or mid-sentence in your own writing.
@@ -113,7 +113,7 @@ MUST-HAVES (required for any Yes):
 NICE-TO-HAVES (strengthen Yes rating):
 6. Solidarity-driven culture - cooperation, mutual support, "we"/"collective"/"community" language
 7. Participatory governance - workers/members have voice in decisions
-8. Governance model stated - nonprofit, cooperative, mutual, social enterprise
+8. Governance model stated - nonprofit, cooperative, mutual, union
 9. Investment in workers/volunteers - training, mentorship, learning opportunities, professional dev
 10. Mission reinvestment - surplus goes to people/community/mission, not shareholders
 
@@ -129,7 +129,7 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
 
 RATING_GUIDELINES = """Be strict: 
 - "strong_yes" requires organizational commitment to SSE (nonprofit, coop, community-based) with clear stated values. Volunteer/internship roles can be strong_yes when mission + organization alignment are clear.
-- "weak_yes" for: mission-driven roles in traditional corps, environmental/social roles, for-profits with transparent SSE alignment, OR volunteer/internship roles with partial SSE alignment.
+- "weak_yes" for: mission-driven roles in traditional corps, environmental/social roles, for-profits with transparent SSE alignment, volunteer/internship roles with partial SSE alignment, or eligible SSE organizations that meet must-haves but show weaker participatory governance / thinner mission evidence. Nonprofit legal form alone is not automatic Yes — still score against the criteria.
 - "no" for: government/public-sector employers or jobs, profit-focused, no social mission, opaque/missing compensation (volunteer/internship work MUST be explicitly disclosed), or pure market-rate tech jobs."""
 
 # Organization-level SSE criteria (NOT job-post criteria).
@@ -145,26 +145,32 @@ The organization must be a Solidarity Economy form, not a conventional for-profi
 and not a government / public-sector body.
 IMPORTANT — evidence over labels: score sse_rating from researched mission,
 governance, ownership, and public materials — NOT from the "type" string alone.
-A nonprofit/cooperative label without mission/governance evidence is not enough
-for Yes. Conversely, do not invent Yes from CSR slogans when structure is a
-conventional for-profit.
+An eligible type (nonprofit / cooperative / union) without mission/governance
+evidence is not enough for Yes. Conversely, do not invent Yes from CSR slogans
+when structure is a conventional for-profit.
 Map "type" to one of the stored values only:
-  nonprofit, cooperative, social enterprise, government, union, other.
-SSE-eligible stored types (may be Yes when evidence supports it):
-  nonprofit, cooperative, social enterprise, union.
+  nonprofit, cooperative, government, union, other.
+SSE-eligible stored types (may be Yes when evidence supports it — type alone
+is never sufficient):
+  nonprofit, cooperative, union.
 Never-SSE stored types (always No): government, other.
 TYPE MAPPING (do not invent other type labels):
 - nonprofit — registered charity / nonprofit corporation / association; ALSO use this
   for mutual societies, mutual-aid groups, community associations, and community
-  projects when they are not clearly cooperatives
+  projects when they are not clearly cooperatives. Prefer this ONLY when public
+  materials show nonprofit/charity registration, an independent board serving a
+  non-proprietary mission, or clear non-distribution constraints — not merely a
+  mission-driven private business.
 - cooperative — worker, consumer, producer, multi-stakeholder coop, or credit union
-- social enterprise — genuine SE with social/community ownership or statutory mission
-  lock (not a regular corporation with CSR language)
 - union — labour union
 - government — public agency / municipality / crown corp / school board / etc. → "no"
-- other — conventional for-profit / private company / residual → "no"
-  (even if the mission mentions environment, community, or "respect for people")
+- other — conventional for-profit / private company / privately owned school or
+  program / residual → "no"
+  (even if the mission mentions environment, community, children, nature, or
+  "respect for people"; even if founded by an educator with a clear social purpose)
+There is no "social enterprise" type. Mission-driven private businesses are "other".
 Public service is not SSE. CSR/greenwashing in a for-profit is not SSE.
+Mission-driven private enterprise is not SSE.
 
 MUST-HAVES (required for any Yes, in addition to the governance gate):
 1. Clear purpose beyond profit - mission prioritizes people/community/planet
@@ -174,6 +180,9 @@ MUST-HAVES (required for any Yes, in addition to the governance gate):
 NICE-TO-HAVES (strengthen Yes rating):
 4. Solidarity-driven culture - cooperation, mutual support, collective/community language
 5. Participatory governance - workers/members have voice in decisions
+   (Many nonprofits use a conventional board + director hierarchy; that alone does
+   not disqualify them, but weaker member/worker voice usually means weak_yes
+   rather than strong_yes when must-haves are met.)
 6. Explicit SSE governance model in public materials
 7. Investment in people - training, mentorship, education, leadership development
 8. Mission reinvestment - surplus goes to people/community/mission, not private shareholders
@@ -182,6 +191,9 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
 - type is government or other (never SSE)
 - Government / public-sector employer (any level) — never SSE
 - Conventional for-profit with only CSR / ESG / "we respect the environment" language
+- Privately owned / founder-owned business or private school/program with a social
+  or environmental mission but no nonprofit, cooperative, or union governance
+  evidence → type "other", rating "no"
 - No social/environmental/community mission (pure profit-focused)
 - Profit-maximization / competitiveness-first with social language as marketing
 - Mission-neutral language with only generic CSR
@@ -190,19 +202,28 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
 
 ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post completeness):
 - Base the rating on mission/governance evidence from research, not the type label alone
-- "strong_yes" = nonprofit / cooperative / union / locked social enterprise with clear
-  SSE values and mission (includes mutual-aid and community associations stored as nonprofit)
-- "weak_yes" = eligible SSE type (nonprofit, cooperative, social enterprise, union)
-  with partial/weaker mission evidence — NEVER government or other
-- "no" = government, other/conventional for-profit (even with green/social marketing),
-  or no substantive social/environmental mission
-- Greenwashing test: "respect for individuals and the environment" without SSE
-  governance → "no" (and type should be other, not social enterprise)
+- Type is necessary but not sufficient: nonprofit/cooperative/union still need must-haves
+- Decide type BEFORE rating. If governance evidence only shows a private/founder-owned
+  business (including private schools and mission-driven education programs), type
+  MUST be "other" and rating MUST be "no"
+- "strong_yes" = nonprofit / cooperative / union with clear SSE values and mission
+  (includes mutual-aid and community associations stored as nonprofit)
+  plus meaningful participatory or solidarity governance evidence
+- "weak_yes" = eligible SSE type (nonprofit, cooperative, union) that meets must-haves
+  but has partial/weaker mission evidence and/or limited participatory governance
+  (common when a nonprofit is board- and director-led without broader member voice).
+  Nonprofit or foundation status alone is never automatic Yes — still apply
+  must-haves and automatic-no flags. NEVER government or other.
+- "no" = government, other/conventional for-profit / privately owned mission business
+  (even with strong green/social/education marketing), or no substantive
+  social/environmental mission
+- Greenwashing test: environmental, nature, outdoor-education, wellness, or
+  "community" mission without nonprofit/coop/union governance → "no" (type "other")
 - Never rate "no" because a job description is truncated or lacks compensation details"""
 
 BATCH_RATING_GUIDELINES = """Be strict with ratings. Return JSON array ONLY, no preamble.
 - "strong_yes" = nonprofit/coop/community org with clear SSE values OR volunteer/internship role with strong mission and clear organizational alignment
-- "weak_yes" = mission element but mixed structure OR volunteer/internship role with partial SSE alignment
+- "weak_yes" = mission element but mixed structure, volunteer/internship role with partial SSE alignment, or eligible SSE org with weaker participatory governance / thinner mission evidence (nonprofit legal form alone is not automatic Yes)
 - "no" = profit-focused, no mission, or unpaid work without clear volunteer/internship disclosure"""
 
 # Single job classification (for real-time during scraping)

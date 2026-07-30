@@ -111,6 +111,7 @@ export default function OrganizationIndexClient({
                   showMoreLabel={tCommon('showMore')}
                   showLessLabel={tCommon('showLess')}
                   isLoggedIn={Boolean(user)}
+                  selectedLanguages={controls.selectedLanguages}
                 />
               ))}
             </div>

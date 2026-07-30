@@ -25,6 +25,10 @@ from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassifica
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
 from utils.organization_cache import evidence_domain
+from utils.organization_language import (
+    VALID_ORG_LANGUAGES,
+    classify_org_language,
+)
 from utils.slug import generate_slug
 from utils.location_parser import parse_address_with_geocodio
 from utils.sse_prompts import (
@@ -40,7 +44,6 @@ logger = logging.getLogger(__name__)
 ORG_TYPE_VALUES = (
     "nonprofit",
     "cooperative",
-    "social enterprise",
     "government",
     "union",
     "other",
@@ -48,11 +51,11 @@ ORG_TYPE_VALUES = (
 
 # Map normalized keys (spaces/hyphens stripped) → canonical stored type.
 # Mutual / community labels alias to nonprofit until a taxonomy branch
-# introduces dedicated terms.
+# introduces dedicated terms. Former "social enterprise" → other.
 _ORG_TYPE_ALIASES: dict[str, str] = {
     "nonprofit": "nonprofit",
     "cooperative": "cooperative",
-    "socialenterprise": "social enterprise",
+    "socialenterprise": "other",
     "mutual": "nonprofit",
     "mutualaid": "nonprofit",
     "mutualaidgroup": "nonprofit",
@@ -69,7 +72,7 @@ _ORG_TYPE_ALIASES: dict[str, str] = {
 # Hard length limits for stored LLM fields. Keep in sync with
 # wev-bulletin/lib/organizations/constants.ts (description/mission).
 # Prompt asks the model to paraphrase within the limit. If it overshoots,
-# assess() runs a repair paraphrase call — never mid-text truncation.
+# assess() truncates with _smart_truncate (sentence-aware).
 _ORG_DESCRIPTION_MAX_CHARS = 500
 _ORG_MISSION_MAX_CHARS = 500
 _ORG_VALUES_RAW_MAX_CHARS = 1000
@@ -79,26 +82,48 @@ _SSE_REASONING_MAX_CHARS = 400
 # Truncate job-listing notes fed into the prompt only (not stored org fields).
 _PROMPT_DESC_MAX_CHARS = 1000
 
-_JSON_FIELDS = f"""{{
+_JSON_FIELDS = """{
   "canonical_name": "Official organization name (string, required, non-empty)",
   "slug": "url-safe-kebab-case (string, required)",
   "website": "Employer's own homepage URL (https://...), or null — see WEBSITE RULES",
-  "description_en": "Organization description in English (max {_ORG_DESCRIPTION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
-  "description_fr": "Same description in French (max {_ORG_DESCRIPTION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
-  "mission_statement_en": "Organization mission/purpose in English (max {_ORG_MISSION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
-  "mission_statement_fr": "Same mission/purpose in French (max {_ORG_MISSION_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
-  "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null. Map mutual societies, mutual-aid groups, and community associations/projects to nonprofit (or cooperative if clearly a coop/credit union). Use other only for conventional for-profit / residual forms",
+  "description_en": "Organization description in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. Record provenance in flags as 'description via=extracted|inferred|absent'), or null",
+  "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
+  "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. Record provenance in flags as 'mission via=extracted|inferred|absent'), or null",
+  "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
+  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit. Use 'cooperative' for worker/consumer/producer coops and credit unions. Use 'other' for conventional for-profits and privately owned mission-driven businesses (including private nature/forest schools). Do NOT invent a social-enterprise type.",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
-  "values_raw": "Organization values and principles if found on their website (max {_ORG_VALUES_RAW_MAX_CHARS} characters — paraphrase to fit completely; do not truncate), or null",
+  "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — extract closely from source. Record provenance in flags as 'values via=extracted|inferred|absent'), or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
   "sse_rating": "strong_yes or weak_yes or no",
   "sse_confidence": "0.0 to 1.0",
-  "sse_reasoning_en": "2–4 concise English sentences citing the key evidence for the rating (max {_SSE_REASONING_MAX_CHARS} characters — paraphrase to fit completely; do not truncate). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays",
-  "sse_reasoning_fr": "Same reasoning in French (max {_SSE_REASONING_MAX_CHARS} characters — paraphrase to fit completely; do not truncate)",
+  "sse_reasoning_en": "2–3 concise English sentences citing the key evidence for the rating (strictly under 320 chars / ~35 words — paraphrase to fit completely). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays",
+  "sse_reasoning_fr": "Same reasoning in French (strictly under 320 chars / ~35 words — paraphrase to fit completely)",
   "must_haves_met": ["short labels of must-have criteria met — not prose paragraphs"],
   "nice_to_haves_met": ["short labels of nice-to-have criteria met — not prose paragraphs"],
-  "flags": ["any concerns", "ambiguities", "missing info"]
-}}"""
+  "flags": ["REQUIRED — see FLAGS RULES below"],
+  "public_language": "Primary language of the organization's own public materials (website, postings, documents, reports) observed during research. Use only: en, fr, bilingual, or null. Do not use the language of this response as evidence."
+}"""
+
+_FLAGS_RULES = """FLAGS RULES (mandatory — same shape as language provenance):
+For EACH of description, mission, and values include exactly one flag:
+  description via=extracted|inferred|absent
+  mission via=extracted|inferred|absent
+  values via=extracted|inferred|absent
+
+Use:
+- via=extracted — closely taken/paraphrased from the org's own website or official materials
+- via=inferred — you composed or guessed it (including mapping Knowdell values from other text)
+- via=absent — you returned null/empty for that field
+
+Language provenance is added by code after your response (language:… via=… /
+language_reason:…). Do not invent language flags yourself.
+
+Also add when relevant:
+- website_unavailable — site unreachable or had no useful content
+- any other short concern labels
+
+Most organizations do NOT explicitly publish a mission statement or values list —
+prefer mission via=inferred / values via=inferred over claiming extracted."""
 
 _BILINGUAL_COPY_RULES = """BILINGUAL PUBLIC COPY (required):
 - Always provide BOTH English and French for description_*, mission_statement_*, and sse_reasoning_* when you have enough evidence to write the field at all.
@@ -119,6 +144,15 @@ _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
 - Do NOT use the scraped job listing URL.
 - If you cannot confidently identify the employer-owned site, return null.
 - Prefer https:// and the apex/homepage over a deep job posting path."""
+
+_PUBLIC_LANGUAGE_RULES = """PUBLIC_LANGUAGE RULES:
+- Start with the official organization name as the strongest indication of its
+  primary public-language leaning.
+- Verify that initial assessment against the organization's own materials you observed.
+- Do not infer from the language of this JSON response.
+- If the website confirms substantial materials in both English and French,
+  return bilingual even when the name leans toward one language.
+- If there is insufficient evidence, return null."""
 
 _combined_prompt = """You are evaluating an ORGANIZATION (employer), not a job posting.
 Identify the organization, extract its values and mission from research about the
@@ -162,6 +196,8 @@ RULES for the "values" field:
 
 {bilingual_copy_rules}
 
+{public_language_rules}
+
 {length_limited_field_rules}
 
 {JSON_INSTRUCTIONS}
@@ -187,6 +223,7 @@ class AssessedOrgResult(TypedDict):
     must_haves_met: List[str]
     nice_to_haves_met: List[str]
     flags: List[str]
+    public_language: str | None
 
 
 _TAXONOMY_STR: str | None = None
@@ -228,6 +265,7 @@ def _build_assessment_prompt(
         taxonomy_formatted=_format_taxonomy(),
         website_rules=_WEBSITE_RULES,
         bilingual_copy_rules=_BILINGUAL_COPY_RULES,
+        public_language_rules=_PUBLIC_LANGUAGE_RULES,
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
         length_limited_field_rules=LENGTH_LIMITED_FIELD_RULES,
     )
@@ -275,13 +313,93 @@ def _validate_sse_rating(raw: Any) -> str:
     return rating if rating in ("strong_yes", "weak_yes", "no") else "no"
 
 
+def _validate_public_language(raw: Any) -> str | None:
+    """Accept only en | fr | bilingual; everything else → None."""
+    if not raw:
+        return None
+    value = str(raw).strip().lower()
+    return value if value in VALID_ORG_LANGUAGES else None
+
+
 # Known types that can never be SSE yes. Null/unknown type is NOT in this set.
 # Eligible stored types (must agree with ORG_EVALUATION_CRITERIA): nonprofit,
-# cooperative, social enterprise, union.
+# cooperative, union. Eligible type is necessary but not sufficient — must-haves
+# still apply; type alone is never a Yes.
 _SSE_INELIGIBLE_ORG_TYPES = frozenset({
     "government",
     "other",
 })
+
+
+_CONTENT_PROVENANCE_FIELDS = ("description", "mission", "values")
+_CONTENT_VIA_STATUSES = frozenset({"extracted", "inferred", "absent"})
+
+
+def _is_content_provenance_flag(flag: str) -> bool:
+    """True for ``description via=…`` / legacy ``description_inferred`` style flags."""
+    fl = flag.strip().lower()
+    for field in _CONTENT_PROVENANCE_FIELDS:
+        if fl.startswith(f"{field} via="):
+            return True
+        if fl in {
+            f"{field}_extracted",
+            f"{field}_inferred",
+            f"{field}_absent",
+        }:
+            return True
+    return False
+
+
+def _content_via_from_flags(flags: list[str], field: str) -> str | None:
+    """Return extracted|inferred|absent if already present (new or legacy form)."""
+    field_l = field.lower()
+    for raw in flags:
+        if not isinstance(raw, str):
+            continue
+        fl = raw.strip().lower()
+        prefix = f"{field_l} via="
+        if fl.startswith(prefix):
+            status = fl[len(prefix):].strip()
+            if status in _CONTENT_VIA_STATUSES:
+                return status
+        for status in _CONTENT_VIA_STATUSES:
+            if fl == f"{field_l}_{status}":
+                return status
+    return None
+
+
+def _ensure_content_provenance_flags(result: AssessedOrgResult) -> AssessedOrgResult:
+    """Ensure description/mission/values each have a ``field via=…`` flag.
+
+    Matches language provenance shape (``language:en via=web_text``). If the
+    model omitted provenance for a populated field, default to via=inferred.
+    """
+    original = list(result.get("flags") or [])
+    kept = [f for f in original if isinstance(f, str) and not _is_content_provenance_flag(f)]
+    flags = list(kept)
+
+    has_description = bool(
+        result.get("description_en") or result.get("description_fr")
+    )
+    has_mission = bool(
+        result.get("mission_statement_en") or result.get("mission_statement_fr")
+    )
+    has_values = bool(result.get("values") or result.get("values_raw"))
+    present = {
+        "description": has_description,
+        "mission": has_mission,
+        "values": has_values,
+    }
+
+    for field in _CONTENT_PROVENANCE_FIELDS:
+        status = _content_via_from_flags(original, field)
+        if status is None:
+            status = "inferred" if present[field] else "absent"
+        flags.append(f"{field} via={status}")
+
+    if flags == original:
+        return result
+    return AssessedOrgResult(**{**result, "flags": flags})
 
 
 def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgResult:
@@ -299,7 +417,7 @@ def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgRes
     flags.append(
         "governance_gate: non-SSE org type cannot be SSE yes "
         f"(type={org_type!r}; government and other are never SSE; "
-        "eligible: nonprofit, cooperative, social enterprise, union)"
+        "eligible: nonprofit, cooperative, union)"
     )
     return AssessedOrgResult(
         **{
@@ -331,112 +449,20 @@ def _fields_over_limit(result: AssessedOrgResult) -> dict[str, tuple[str, int]]:
     return over
 
 
-def _build_length_repair_prompt(oversize: dict[str, tuple[str, int]]) -> str:
-    payload = {
-        field: {
-            "max_chars": max_chars,
-            "current_len": len(text),
-            "text": text,
-        }
-        for field, (text, max_chars) in oversize.items()
-    }
-    return (
-        "The following JSON fields exceed their max character counts. "
-        "Rewrite each value so the ENTIRE string fits within max_chars.\n\n"
-        "Rules:\n"
-        "- Paraphrase and condense; keep vital facts; do not invent details.\n"
-        "- Complete sentences only — never cut mid-word or mid-sentence.\n"
-        "- Return ONLY a JSON object with the same keys and string values.\n"
-        "- Every returned string MUST be <= its max_chars.\n\n"
-        f"Fields:\n{json.dumps(payload, ensure_ascii=False)}"
-    )
+def _smart_truncate(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    truncated = text[:max_chars]
+    # find the last sentence boundary
+    last_period = max(truncated.rfind('. '), truncated.rfind('! '), truncated.rfind('? '))
+    if last_period > 0:
+        return truncated[:last_period + 1]
+    # fallback to last space
+    last_space = truncated.rfind(' ')
+    if last_space > 0:
+        return truncated[:last_space] + '...'
+    return truncated[:max_chars - 3] + '...'
 
-
-def _parse_length_repair_response(
-    response_text: str,
-    oversize: dict[str, tuple[str, int]],
-) -> dict[str, str]:
-    """Parse repair JSON; keep only keys that fit their max_chars."""
-    text = BaseGroundedClassifier._extract_json_block(response_text)
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        return {}
-    if not isinstance(data, dict):
-        return {}
-    repaired: dict[str, str] = {}
-    for field, (_, max_chars) in oversize.items():
-        raw = data.get(field)
-        if not isinstance(raw, str):
-            continue
-        cleaned = raw.strip()
-        if cleaned and len(cleaned) <= max_chars:
-            repaired[field] = cleaned
-    return repaired
-
-
-def _apply_length_repairs(
-    result: AssessedOrgResult,
-    oversize: dict[str, tuple[str, int]],
-    repaired: dict[str, str],
-    raw_name: str,
-) -> AssessedOrgResult:
-    """Apply successful repairs; drop fields that still do not fit (no truncation).
-
-    Dropped fields are set to None (or a short sse_reasoning fallback) and flagged
-    ``length_limit: dropped <field> ...``. Callers that update existing rows should
-    omit those keys so prior DB values are retained — see
-    ``_omit_dropped_length_fields_from_update``.
-    """
-    updates: dict[str, Any] = {}
-    flags = list(result.get("flags") or [])
-    for field, (original, max_chars) in oversize.items():
-        new_val = repaired.get(field)
-        if new_val is not None:
-            updates[field] = new_val
-            continue
-        logger.warning(
-            "OrganizationAssessor: %s still over limit for %r after repair "
-            "(len=%d max=%d) — dropping field rather than truncating",
-            field,
-            raw_name,
-            len(original),
-            max_chars,
-        )
-        updates[field] = None
-        flags.append(f"length_limit: dropped {field} after failed paraphrase repair")
-    if not updates and flags == list(result.get("flags") or []):
-        return result
-    return AssessedOrgResult(**{**result, **updates, "flags": flags})
-
-
-# AssessedOrgResult field → organizations update column(s) to skip when repair drops.
-_LENGTH_DROP_UPDATE_KEYS: dict[str, tuple[str, ...]] = {
-    "description_en": ("description_en", "description"),
-    "description_fr": ("description_fr",),
-    "mission_statement_en": ("mission_statement_en", "mission_statement"),
-    "mission_statement_fr": ("mission_statement_fr",),
-    "values_raw": ("values",),
-    # sse_reasoning_* live inside sse_details; keep short fallbacks there.
-}
-
-
-def _omit_dropped_length_fields_from_update(
-    updates: dict,
-    result: AssessedOrgResult,
-) -> dict:
-    """Remove fields the repair pass dropped so reassess does not null existing DB text."""
-    omit: set[str] = set()
-    for flag in result.get("flags") or []:
-        if not flag.startswith("length_limit: dropped "):
-            continue
-        # "length_limit: dropped description after failed paraphrase repair"
-        parts = flag.split()
-        field = parts[2] if len(parts) > 2 else ""
-        omit.update(_LENGTH_DROP_UPDATE_KEYS.get(field, ()))
-    if not omit:
-        return updates
-    return {key: value for key, value in updates.items() if key not in omit}
 
 def _parse_text_field(data: dict, key: str) -> str | None:
     val = data.get(key)
@@ -553,8 +579,116 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         must_haves_met=_ensure_str_list(data.get("must_haves_met")),
         nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
         flags=_ensure_str_list(data.get("flags")),
+        public_language=_validate_public_language(data.get("public_language")),
     )
-    return _apply_org_sse_governance_guard(result)
+    return _apply_org_sse_governance_guard(_ensure_content_provenance_flags(result))
+
+
+def _append_language_provenance_flags(
+    row: dict,
+    *,
+    language: str | None,
+    via: str,
+    reasons: tuple[str, ...] = (),
+) -> None:
+    """Record how organizations.language was chosen on sse_details.flags."""
+    details = row.get("sse_details")
+    if not isinstance(details, dict):
+        details = {}
+        row["sse_details"] = details
+    else:
+        # Copy so we don't mutate a shared prior dict in place.
+        details = dict(details)
+        row["sse_details"] = details
+
+    flags = [
+        f for f in (details.get("flags") or [])
+        if isinstance(f, str) and not f.startswith("language")
+    ]
+    if language:
+        flags.append(f"language:{language} via={via}")
+    else:
+        flags.append(f"language:unset via={via}")
+    for reason in reasons[:6]:
+        label = str(reason).strip()
+        if not label:
+            continue
+        flag = f"language_reason:{label}"
+        if flag not in flags:
+            flags.append(flag)
+    details["flags"] = flags
+
+
+def _attach_org_language(
+    row: dict,
+    llm_public_language: str | None = None,
+    force_lang: bool = False,
+    fetch_web: bool = False,
+) -> dict:
+    """Set organizations.language from name/website signals, else public_language.
+
+    Does not overwrite an already-populated language value unless *force_lang*
+    is True. Objective signals (website metadata + name LLM) win;
+    ``llm_public_language`` is a soft, research-derived model judgment used
+    only as a tiebreaker when those are silent.
+
+    Website fetching is off by default (insert/reassess stay offline); pass
+    ``fetch_web=True`` from throttled backfills that intentionally probe sites.
+
+    Always records provenance on ``sse_details.flags`` (``language:… via=…``
+    and optional ``language_reason:…``), including when language is kept.
+    """
+    existing = row.get("language")
+    if existing and not force_lang:
+        _append_language_provenance_flags(
+            row,
+            language=str(existing),
+            via="kept",
+        )
+        return row
+
+    classification = classify_org_language(
+        name=row.get("name"),
+        website=row.get("website"),
+        fetch_web=fetch_web,
+    )
+    lang = classification.language
+
+    # An English name is a weak signal: English is a lingua franca in Canada, and
+    # many French/bilingual orgs carry an English or language-neutral legal name.
+    # A research-grounded public_language of fr/bilingual overrides a name-only
+    # English guess. French/bilingual names and confirmed website evidence stay
+    # authoritative.
+    name_only_english = classification.source == "llm_name" and lang == "en"
+    if llm_public_language in VALID_ORG_LANGUAGES and (
+        lang is None or (name_only_english and llm_public_language != "en")
+    ):
+        row["language"] = llm_public_language
+        _append_language_provenance_flags(
+            row,
+            language=llm_public_language,
+            via="public_language",
+            reasons=classification.reasons,
+        )
+        return row
+
+    if lang:
+        row["language"] = lang
+        _append_language_provenance_flags(
+            row,
+            language=lang,
+            via=classification.source,
+            reasons=classification.reasons,
+        )
+        return row
+
+    _append_language_provenance_flags(
+        row,
+        language=None,
+        via=classification.source or "unknown",
+        reasons=classification.reasons or ("insufficient_signal",),
+    )
+    return row
 
 
 def _result_to_db_fields(result: AssessedOrgResult) -> dict:
@@ -652,6 +786,14 @@ def _merge_sse_details_preserving_reasoning(
     return {**updates, "sse_details": merged}
 
 
+_ASSESSOR_SYSTEM = (
+    "You are an expert at identifying organizations, finding their "
+    "official employer-owned website, mapping work values, and "
+    "evaluating Solidarity Economy alignment of the ORGANIZATION "
+    "(not job-posting completeness)."
+)
+
+
 class OrganizationAssessor(BaseGroundedClassifier):
     """Single grounded LLM call: identifies org, maps values, produces SSE rating."""
 
@@ -688,12 +830,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
             response_text = self._call_provider_with_retry(
                 provider=self.provider,
                 prompt=prompt,
-                system=(
-                    "You are an expert at identifying organizations, finding their "
-                    "official employer-owned website, mapping work values, and "
-                    "evaluating Solidarity Economy alignment of the ORGANIZATION "
-                    "(not job-posting completeness)."
-                ),
+                system=_ASSESSOR_SYSTEM,
                 task="sse",
                 search_query=search_query,
                 retries=1,
@@ -705,6 +842,30 @@ class OrganizationAssessor(BaseGroundedClassifier):
             )
             return None
 
+        # Grounding sometimes silently fails, returning HTTP 200 with empty text.
+        # Retry once without grounding as a fallback.
+        if not response_text.strip():
+            logger.warning(
+                "OrganizationAssessor: empty response for %r — retrying without grounding",
+                raw_name,
+            )
+            try:
+                response_text = self._call_provider_with_retry(
+                    provider=self.provider,
+                    prompt=prompt,
+                    system=_ASSESSOR_SYSTEM,
+                    task="sse",
+                    search_query=None,
+                    retries=1,
+                    use_grounding=False,
+                )
+            except (SSEClassificationError, LLMProviderError) as exc:
+                logger.warning(
+                    "OrganizationAssessor LLM retry (no grounding) failed for %r: %s",
+                    raw_name, exc,
+                )
+                return None
+
         result = _parse_response(response_text, raw_name)
         if result is None:
             return None
@@ -715,38 +876,24 @@ class OrganizationAssessor(BaseGroundedClassifier):
         result: AssessedOrgResult,
         raw_name: str,
     ) -> AssessedOrgResult:
-        """Paraphrase any over-limit fields via a repair call; never truncate."""
+        """Truncate any over-limit fields to avoid breaking DB bounds."""
         oversize = _fields_over_limit(result)
         if not oversize:
             return result
 
         logger.info(
-            "OrganizationAssessor: paraphrasing over-limit fields for %r: %s",
+            "OrganizationAssessor: truncating over-limit fields for %r: %s",
             raw_name,
-            {field: len(text) for field, (text, _) in oversize.items()},
+            {field: f"{len(text)} > {max_chars}" for field, (text, max_chars) in oversize.items()},
         )
-        repaired: dict[str, str] = {}
-        try:
-            repair_text = self._call_provider_with_retry(
-                provider=self.provider,
-                prompt=_build_length_repair_prompt(oversize),
-                system=(
-                    "You rewrite text to fit strict character limits. "
-                    "Return JSON only. Never truncate mid-sentence — paraphrase."
-                ),
-                task="sse",
-                search_query=None,
-                retries=0,
-            )
-            repaired = _parse_length_repair_response(repair_text, oversize)
-        except (SSEClassificationError, LLMProviderError) as exc:
-            logger.warning(
-                "OrganizationAssessor: length repair LLM call failed for %r: %s",
-                raw_name,
-                exc,
-            )
+        
+        updates: dict[str, Any] = {}
+        flags = list(result.get("flags") or [])
+        for field, (original, max_chars) in oversize.items():
+            updates[field] = _smart_truncate(original, max_chars)
+            flags.append(f"length_limit: truncated {field}")
 
-        return _apply_length_repairs(result, oversize, repaired, raw_name)
+        return AssessedOrgResult(**{**result, **updates, "flags": flags})
 
     def assess_and_build_row(
         self,
@@ -757,6 +904,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
         description: str = "",
         canonical_loc: str = "",
         known_website: str | None = None,
+        fetch_web: bool = False,
     ) -> dict | None:
         """Assess the org and return a row dict ready for DB insert.
 
@@ -778,22 +926,28 @@ class OrganizationAssessor(BaseGroundedClassifier):
         # lat, lng, geocode_accuracy_type); it handles None/empty internally.
         geo_data = parse_address_with_geocodio(loc_str)
 
-        return {
-            "name": result["canonical_name"],
-            "slug": result["slug"],
-            "location": loc_str,
-            "website": result["website"],
-            "municipality": geo_data.get("municipality"),
-            "province": geo_data.get("province"),
-            "lat": geo_data.get("lat"),
-            "lng": geo_data.get("lng"),
-            "geocode_accuracy_type": geo_data.get("geocode_accuracy_type"),
-            **_result_to_db_fields(result),
-        }
+        return _attach_org_language(
+            {
+                "name": result["canonical_name"],
+                "slug": result["slug"],
+                "location": loc_str,
+                "website": result["website"],
+                "municipality": geo_data.get("municipality"),
+                "province": geo_data.get("province"),
+                "lat": geo_data.get("lat"),
+                "lng": geo_data.get("lng"),
+                "geocode_accuracy_type": geo_data.get("geocode_accuracy_type"),
+                **_result_to_db_fields(result),
+            },
+            result.get("public_language"),
+            fetch_web=fetch_web,
+        )
 
     def assess_and_build_update(
         self,
         org: dict,
+        force_lang: bool = False,
+        fetch_web: bool = False,
     ) -> dict | None:
         """Re-assess an existing org and return an update dict.
 
@@ -822,10 +976,23 @@ class OrganizationAssessor(BaseGroundedClassifier):
             return None
 
         updates = _result_to_db_fields(result)
-        updates = _omit_dropped_length_fields_from_update(updates, result)
         updates = _omit_null_locale_fields_from_update(updates)
         updates = _merge_sse_details_preserving_reasoning(updates, org.get("sse_details"))
         website = result.get("website")
         if website and evidence_domain(website):
             updates["website"] = website
-        return updates
+        return _attach_org_language(
+            {
+                "name": name,
+                "language": org.get("language"),
+                **updates,
+                "description": updates.get("description") or org.get("description"),
+                "mission_statement": (
+                    updates.get("mission_statement") or org.get("mission_statement")
+                ),
+                "website": updates.get("website") or org.get("website"),
+            },
+            result.get("public_language"),
+            force_lang=force_lang,
+            fetch_web=fetch_web,
+        )

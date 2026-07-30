@@ -379,6 +379,7 @@ export type Database = {
           geocode_accuracy_type: string | null;
           id: number;
           is_sse: boolean | null;
+          language: string | null;
           lat: number | null;
           lng: number | null;
           location: string | null;
@@ -407,6 +408,7 @@ export type Database = {
           geocode_accuracy_type?: string | null;
           id?: number;
           is_sse?: boolean | null;
+          language?: string | null;
           lat?: number | null;
           lng?: number | null;
           location?: string | null;
@@ -435,6 +437,7 @@ export type Database = {
           geocode_accuracy_type?: string | null;
           id?: number;
           is_sse?: boolean | null;
+          language?: string | null;
           lat?: number | null;
           lng?: number | null;
           location?: string | null;
@@ -464,6 +467,7 @@ export type Database = {
           cv_import: Json | null;
           full_name: string | null;
           id: string;
+          ideal_work_environment: string | null;
           lat: number | null;
           lng: number | null;
           location_display_name: string | null;
@@ -484,6 +488,7 @@ export type Database = {
           cv_import?: Json | null;
           full_name?: string | null;
           id: string;
+          ideal_work_environment?: string | null;
           lat?: number | null;
           lng?: number | null;
           location_display_name?: string | null;
@@ -504,6 +509,7 @@ export type Database = {
           cv_import?: Json | null;
           full_name?: string | null;
           id?: string;
+          ideal_work_environment?: string | null;
           lat?: number | null;
           lng?: number | null;
           location_display_name?: string | null;
@@ -717,6 +723,7 @@ export type Database = {
       get_active_organizations: {
         Args: {
           min_date: string;
+          p_languages?: string[];
           p_limit?: number;
           p_municipalities?: string[];
           p_offset?: number;
@@ -736,6 +743,7 @@ export type Database = {
           geocode_accuracy_type: string;
           id: number;
           is_sse: boolean;
+          language: string;
           lat: number;
           lng: number;
           location: string;
