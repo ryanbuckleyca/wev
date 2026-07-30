@@ -148,7 +148,10 @@ class GeminiProvider(BaseLLMProvider):
         logger.info(f"Gemini.complete: client ready in {t_client:.3f}s")
 
         task_type = kwargs.get("task")
-        use_grounding = should_use_grounding(task_type) if task_type else False
+        if "use_grounding" in kwargs:
+            use_grounding = bool(kwargs["use_grounding"])
+        else:
+            use_grounding = should_use_grounding(task_type) if task_type else False
         resolved_model = model or self._model
         timeout_ms = self._call_timeout_sec * 1000
 

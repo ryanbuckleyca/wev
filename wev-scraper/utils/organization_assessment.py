@@ -44,7 +44,6 @@ logger = logging.getLogger(__name__)
 ORG_TYPE_VALUES = (
     "nonprofit",
     "cooperative",
-    "social enterprise",
     "government",
     "union",
     "other",
@@ -52,11 +51,11 @@ ORG_TYPE_VALUES = (
 
 # Map normalized keys (spaces/hyphens stripped) → canonical stored type.
 # Mutual / community labels alias to nonprofit until a taxonomy branch
-# introduces dedicated terms.
+# introduces dedicated terms. Former "social enterprise" → other.
 _ORG_TYPE_ALIASES: dict[str, str] = {
     "nonprofit": "nonprofit",
     "cooperative": "cooperative",
-    "socialenterprise": "social enterprise",
+    "socialenterprise": "other",
     "mutual": "nonprofit",
     "mutualaid": "nonprofit",
     "mutualaidgroup": "nonprofit",
@@ -91,7 +90,7 @@ _JSON_FIELDS = """{
   "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
   "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. If inferred/invented, add 'mission_inferred' to flags), or null",
   "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
-  "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null. IMPORTANT: Classify based on governance control, not legal incorporation form. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. Reserve 'nonprofit' for organizations autonomously and democratically governed by their own members or independent board (even if heavily government-funded, as funding alone doesn't disqualify an org; control matters). Map mutuals/community groups to nonprofit. Use 'other' for conventional for-profits.",
+  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit. Use 'cooperative' for worker/consumer/producer coops and credit unions. Use 'other' for conventional for-profits and privately owned mission-driven businesses (including private nature/forest schools). Do NOT invent a social-enterprise type.",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
   "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — extract closely from source. If inferred, add 'values_inferred' to flags), or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
@@ -313,7 +312,8 @@ def _validate_public_language(raw: Any) -> str | None:
 
 # Known types that can never be SSE yes. Null/unknown type is NOT in this set.
 # Eligible stored types (must agree with ORG_EVALUATION_CRITERIA): nonprofit,
-# cooperative, social enterprise, union.
+# cooperative, union. Eligible type is necessary but not sufficient — must-haves
+# still apply; type alone is never a Yes.
 _SSE_INELIGIBLE_ORG_TYPES = frozenset({
     "government",
     "other",
@@ -335,7 +335,7 @@ def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgRes
     flags.append(
         "governance_gate: non-SSE org type cannot be SSE yes "
         f"(type={org_type!r}; government and other are never SSE; "
-        "eligible: nonprofit, cooperative, social enterprise, union)"
+        "eligible: nonprofit, cooperative, union)"
     )
     return AssessedOrgResult(
         **{
@@ -530,6 +530,41 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     return _apply_org_sse_governance_guard(result)
 
 
+def _append_language_provenance_flags(
+    row: dict,
+    *,
+    language: str | None,
+    via: str,
+    reasons: tuple[str, ...] = (),
+) -> None:
+    """Record how organizations.language was chosen on sse_details.flags."""
+    details = row.get("sse_details")
+    if not isinstance(details, dict):
+        details = {}
+        row["sse_details"] = details
+    else:
+        # Copy so we don't mutate a shared prior dict in place.
+        details = dict(details)
+        row["sse_details"] = details
+
+    flags = [
+        f for f in (details.get("flags") or [])
+        if isinstance(f, str) and not f.startswith("language")
+    ]
+    if language:
+        flags.append(f"language:{language} via={via}")
+    else:
+        flags.append(f"language:unset via={via}")
+    for reason in reasons[:6]:
+        label = str(reason).strip()
+        if not label:
+            continue
+        flag = f"language_reason:{label}"
+        if flag not in flags:
+            flags.append(flag)
+    details["flags"] = flags
+
+
 def _attach_org_language(
     row: dict,
     llm_public_language: str | None = None,
@@ -541,8 +576,17 @@ def _attach_org_language(
     is True. Objective signals (website metadata + name LLM) win;
     ``llm_public_language`` is a soft, research-derived model judgment used
     only as a tiebreaker when those are silent.
+
+    Always records provenance on ``sse_details.flags`` (``language:… via=…``
+    and optional ``language_reason:…``), including when language is kept.
     """
-    if row.get("language") and not force_lang:
+    existing = row.get("language")
+    if existing and not force_lang:
+        _append_language_provenance_flags(
+            row,
+            language=str(existing),
+            via="kept",
+        )
         return row
 
     classification = classify_org_language(
@@ -562,11 +606,30 @@ def _attach_org_language(
         lang is None or (name_only_english and llm_public_language != "en")
     ):
         row["language"] = llm_public_language
+        _append_language_provenance_flags(
+            row,
+            language=llm_public_language,
+            via="public_language",
+            reasons=classification.reasons,
+        )
         return row
 
     if lang:
         row["language"] = lang
+        _append_language_provenance_flags(
+            row,
+            language=lang,
+            via=classification.source,
+            reasons=classification.reasons,
+        )
+        return row
 
+    _append_language_provenance_flags(
+        row,
+        language=None,
+        via=classification.source or "unknown",
+        reasons=classification.reasons or ("insufficient_signal",),
+    )
     return row
 
 
@@ -738,6 +801,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                     task="sse",
                     search_query=None,
                     retries=1,
+                    use_grounding=False,
                 )
             except (SSEClassificationError, LLMProviderError) as exc:
                 logger.warning(

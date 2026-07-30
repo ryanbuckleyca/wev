@@ -1,105 +1,113 @@
-"""Gemini provider with automatic fallback from Flash to Flash-Lite.
+"""SSE provider with automatic Flash → Flash-Lite → Groq fallback.
 
-Primary: gemini-flash (paid, higher capability)
-Fallback: gemini-flash-lite (free tier, higher limits)
-Both support Google Search grounding.
+Primary: gemini-2.5-flash (Google Search grounding)
+Fallback: gemini-2.5-flash-lite (Google Search grounding, higher free-tier limits)
+Final: groq (no grounding, same JSON shape)
+
+Used by OrganizationAssessor / SSEClassifier via get_sse_provider().
 """
 
+from __future__ import annotations
+
 import logging
+from collections.abc import Callable
 
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.gemini import GeminiProvider
+from llm.groq import GroqProvider
 
 logger = logging.getLogger(__name__)
 
 
-class GeminiFallbackProvider(BaseLLMProvider):
-    """Gemini provider that falls back from Flash to Flash-Lite on rate limits."""
+class SSEFallbackProvider(BaseLLMProvider):
+    """Try Gemini Flash, then Flash-Lite, then Groq on any call failure."""
 
-    def __init__(self, api_key: str | None = None, model: str | None = None):
-        self._api_key = (api_key or "").strip()
-        self._primary_model = "gemini-2.5-flash"
-        self._fallback_model = "gemini-2.5-flash-lite"
-        
-        # Initialize both providers
-        self._primary_provider = GeminiProvider(api_key=api_key, model=self._primary_model)
-        self._fallback_provider = GeminiProvider(api_key=api_key, model=self._fallback_model)
-        
-        # Track which provider was last used successfully
-        self._last_successful_provider = None
-        self._use_primary = True  # Start with primary by default
+    def __init__(self, api_key: str | None = None):
+        self._providers: list[tuple[str, BaseLLMProvider]] = []
+        self._last_successful: str | None = None
+
+        candidates: list[tuple[str, Callable[[], BaseLLMProvider]]] = [
+            ("gemini-2.5-flash", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash")),
+            ("gemini-2.5-flash-lite", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash-lite")),
+            ("groq", lambda: GroqProvider()),
+        ]
+        for name, factory in candidates:
+            try:
+                provider = factory()
+                if provider.is_available():
+                    self._providers.append((name, provider))
+            except Exception as exc:
+                logger.warning("SSE fallback: skipping %s (%s)", name, exc)
 
     def is_available(self) -> bool:
-        """Check if either provider is available."""
-        return self._primary_provider.is_available() or self._fallback_provider.is_available()
+        return bool(self._providers)
 
-    def _try_with_fallback(self, method_name: str, *args, **kwargs):
-        """Try primary provider first, fall back to Flash-Lite on rate limits."""
-        providers_to_try = []
-        
-        # Determine order of providers to try
-        if self._use_primary and self._primary_provider.is_available():
-            providers_to_try.append(("primary", self._primary_provider))
-        if self._fallback_provider.is_available():
-            providers_to_try.append(("fallback", self._fallback_provider))
-        
-        # If primary is not available, try fallback first
-        if not self._use_primary and self._fallback_provider.is_available():
-            providers_to_try.insert(0, ("fallback", self._fallback_provider))
-        if not self._use_primary and self._primary_provider.is_available():
-            providers_to_try.append(("primary", self._primary_provider))
+    def _primary(self) -> BaseLLMProvider:
+        if not self._providers:
+            raise LLMProviderError("No SSE providers are available or configured")
+        return self._providers[0][1]
 
-        last_error = None
-        for provider_name, provider in providers_to_try:
+    def get_token_limits(self) -> dict:
+        return self._primary().get_token_limits()
+
+    def summarize_text(
+        self,
+        text: str,
+        max_chars: int = 300,
+        org_name: str | None = None,
+        job_title: str | None = None,
+    ) -> str:
+        return self._try_providers(
+            "summarize_text",
+            text,
+            max_chars,
+            org_name=org_name,
+            job_title=job_title,
+        )
+
+    def complete(
+        self,
+        prompt: str,
+        model: str | None = None,
+        system: str | None = None,
+        **kwargs,
+    ) -> str:
+        return self._try_providers("complete", prompt, model=model, system=system, **kwargs)
+
+    def _try_providers(self, method_name: str, *args, **kwargs):
+        if not self._providers:
+            raise LLMProviderError("No SSE providers are available or configured")
+
+        last_error: Exception | None = None
+        failed: list[str] = []
+        for name, provider in self._providers:
             try:
                 method = getattr(provider, method_name)
                 result = method(*args, **kwargs)
-                self._last_successful_provider = provider_name
+                if failed:
+                    logger.info(
+                        "SSE fallback succeeded: %s → %s",
+                        " → ".join(failed),
+                        name,
+                    )
+                self._last_successful = name
                 return result
-            except Exception as e:
-                last_error = e
-                # If it's a rate limit error and we have another provider to try, continue
-                if "rate limit" in str(e).lower() and len(providers_to_try) > 1:
-                    continue
-                raise
-        
-        # All providers failed
+            except Exception as exc:
+                last_error = exc
+                failed.append(name)
+                logger.warning("SSE provider %s failed: %s", name, exc)
+                continue
+
         if last_error:
             raise last_error
-        else:
-            raise LLMProviderError("No Gemini providers are available or configured")
-
-    def get_token_limits(self) -> dict:
-        """Return token limits for Gemini fallback provider."""
-        try:
-            return self._primary_provider.get_token_limits()
-        except Exception:
-            try:
-                return self._fallback_provider.get_token_limits()
-            except Exception:
-                return {
-                    "context_window": 1_048_576,
-                    "max_output_tokens": 65_535,
-                    "max_tokens_per_request": 900_000,
-                    "requests_per_minute": 4,
-                    "requests_per_day": 24,
-                    "recommended_batch_size": 50_000,
-                }
-
-    def summarize_text(self, text: str, max_chars: int = 300) -> str:
-        """Summarize text with automatic fallback."""
-        return self._try_with_fallback("summarize_text", text, max_chars)
+        raise LLMProviderError("All SSE providers failed")
 
     @property
     def current_model(self) -> str:
-        """Get the currently active model name."""
-        if self._last_successful_provider == "primary":
-            return self._primary_model
-        elif self._last_successful_provider == "fallback":
-            return self._fallback_model
-        else:
-            return self._primary_model  # Default to primary
+        if self._last_successful:
+            return self._last_successful
+        return self._providers[0][0] if self._providers else "none"
 
-    def complete(self, prompt: str, model: str | None = None, system: str | None = None) -> str:
-        """Generate text with automatic fallback."""
-        return self._try_with_fallback("complete", prompt, model, system)
+
+# Backward-compatible alias
+GeminiFallbackProvider = SSEFallbackProvider

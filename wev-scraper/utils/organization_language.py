@@ -7,7 +7,9 @@ Signals (in priority order):
 Synthetic LLM-generated description/mission text is intentionally excluded —
 those fields are not evidence of the organization's public language.
 
-LanguageClassification.source is for internal debugging only (not persisted).
+LanguageClassification.source / reasons are for debugging; when language is
+attached during org assessment they are also persisted onto sse_details.flags
+as ``language:… via=…`` / ``language_reason:…``.
 """
 
 from __future__ import annotations
