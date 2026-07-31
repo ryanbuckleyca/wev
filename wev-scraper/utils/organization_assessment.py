@@ -998,7 +998,6 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 search_query=search_query if use_grounding else None,
                 retries=1,
                 prefer_hosts=prefer_hosts if use_grounding else None,
-                include_domains=prefer_hosts if use_grounding else None,
                 require_terms=require_terms if use_grounding else None,
                 use_grounding=use_grounding,
             )
