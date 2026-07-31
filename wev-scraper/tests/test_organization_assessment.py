@@ -269,8 +269,9 @@ def test_org_assessment_prompt_prioritizes_name_then_bilingual_website_evidence(
         job_title="Coordinator",
         description="listing notes",
     )
-    assert "organization name as the strongest indication" in prompt
-    assert "website confirms substantial materials in both English and French" in prompt
+    assert "Priority for public_language" in prompt
+    assert "Organization name only as weak evidence" in prompt
+    assert "substantial English AND French" in prompt
 
 
 def test_parse_website_keeps_employer_owned_host():
@@ -337,6 +338,19 @@ def test_parse_response_nulls_shared_website():
     assert result["website"] is None
 
 
+def test_apply_website_known_guard_prefers_known_url():
+    from utils.organization_assessment import _apply_website_known_guard
+
+    result = _parse_response(
+        _assessment_json(website="https://wrong-example.org"),
+        "Nature Visuals",
+    )
+    assert result is not None
+    guarded = _apply_website_known_guard(result, "https://naturevisuals.org")
+    assert guarded["website"] == "https://naturevisuals.org"
+    assert any("website_guard" in f for f in (guarded.get("flags") or []) if isinstance(f, str))
+
+
 def test_build_search_query_targets_official_website():
     assert _build_search_query("Mindrift", "Toronto", "ON") == (
         '"Mindrift" official website Toronto ON'
@@ -364,11 +378,35 @@ def test_org_assessment_prompt_uses_org_not_job_sse_criteria():
         description="truncated job posting...",
     )
     assert "ORGANIZATION (employer)" in prompt
-    assert "Transparent compensation" not in prompt
-    assert "Clear job expectations" not in prompt
+    # Job must-haves 4–5 must not appear as numbered org criteria.
+    assert "4. Transparent compensation" not in prompt
+    assert "5. Clear job expectations" not in prompt
     assert "Do NOT flag missing job salary" in prompt
+    assert 'Do NOT put "Transparent compensation"' in prompt
+    assert "ORG MUST-HAVES / NICE-TO-HAVES LABELS" in prompt
     assert "GOVERNANCE GATE" in prompt
     assert ORG_EVALUATION_CRITERIA in prompt
+
+
+def test_org_parse_strips_job_leaked_must_haves():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Community Hub",
+            slug="community-hub",
+            type="nonprofit",
+            sse_rating="strong_yes",
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Transparent compensation",
+                "Clear job expectations",
+            ],
+            nice_to_haves_met=["Participatory governance", "salary disclosure"],
+        ),
+        "Community Hub",
+    )
+    assert result is not None
+    assert result["must_haves_met"] == ["Clear purpose beyond profit"]
+    assert result["nice_to_haves_met"] == ["Participatory governance"]
 
 
 def test_governance_gate_forces_for_profit_weak_yes_to_no():
@@ -492,3 +530,99 @@ def test_normalize_type_aliases_mutual_and_community_to_nonprofit():
     assert _normalize_type("community association") == "nonprofit"
     assert _normalize_type("community_project") == "nonprofit"
     assert _normalize_type("credit union") == "cooperative"
+
+
+def test_org_assessment_prompt_charity_community_nonprofit_floor():
+    """Charities/community env nonprofits → nonprofit + ≥weak_yes, not other/no."""
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Community Ecology Centre",
+        "Norval",
+        "ON",
+        job_title="",
+        description="",
+    )
+    assert "charities are never \"other\" for lacking cooperative governance" in prompt
+    assert 'AT LEAST "weak_yes"' in prompt
+    assert "board+ED charities stay nonprofit" in prompt or (
+        "board + executive director is still nonprofit" in prompt
+    )
+    assert "NEVER rate a registered charity" in prompt
+
+
+def test_org_assessment_prompt_mutual_aid_strong_yes_calibration():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Service d'entraide communautaire",
+        "Montreal",
+        "QC",
+        "",
+        "",
+    )
+    assert "mutual-aid, collective care, or solidarity" in prompt
+    assert "flat or non-hierarchical structure" in prompt
+    assert "Explicit cooperative labels are NOT required for strong_yes" in prompt
+
+
+def test_org_assessment_prompt_political_parties_are_other_not_government():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Provincial Political Party",
+        "Toronto",
+        "ON",
+        "",
+        "",
+    )
+    assert "Political parties and electoral organizations" in prompt
+    assert 'type "other", rating "no"' in prompt
+    assert "parties are NOT 'government'" in prompt or "NOT political parties" in prompt
+    # Must not instruct mapping parties to government
+    assert "political parties are not public bodies" in prompt.lower() or (
+        "NOT political parties — parties are not public bodies" in prompt
+    )
+
+
+def test_governance_gate_keeps_charity_nonprofit_weak_yes():
+    """Simulates corrected charity assessment: nonprofit + weak_yes survives gate."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Community Ecology Centre",
+            slug="community-ecology-centre",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "Registered community environmental charity with clear public-benefit mission."
+            ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
+        ),
+        "Community Ecology Centre",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "weak_yes"
+    assert not any("governance_gate" in f for f in result["flags"])
+
+
+def test_governance_gate_forces_political_party_other_yes_to_no():
+    """Political parties stored as other cannot be SSE yes."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Green Party Example",
+            slug="green-party-example",
+            type="other",
+            sse_rating="weak_yes",
+            sse_reasoning_en="Electoral organization with environmental platform.",
+        ),
+        "Green Party Example",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("governance_gate" in f for f in result["flags"])

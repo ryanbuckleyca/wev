@@ -1,43 +1,94 @@
-"""SSE provider with automatic Flash → Flash-Lite → Groq fallback.
+"""SSE / org-assessment provider chain with shared Tavily evidence.
 
-Primary: gemini-2.5-flash (Google Search grounding)
-Fallback: gemini-2.5-flash-lite (Google Search grounding, higher free-tier limits)
-Final: groq (no grounding, same JSON shape)
+Order (free tiers first, then local):
+  1. gemini-3.6-flash
+  2. gemini-3.5-flash-lite
+  3. groq
+  4. local_grounded (Ollama + Tavily already used upstream)
 
-Used by OrganizationAssessor / SSEClassifier via get_sse_provider().
+Google Search tool grounding is OFF by default for SSE so all four backends
+classify the same Tavily snippets (predictable is_sse / sector / language /
+website / extraction). Set USE_GOOGLE_SEARCH_GROUNDING=1 to restore Gemini's
+native Google Search tool (divergent evidence — not recommended for parity).
+
+Env overrides:
+  GEMINI_SSE_PRIMARY_MODEL   default gemini-3.6-flash
+  GEMINI_SSE_LITE_MODEL      default gemini-3.5-flash-lite
+  USE_GOOGLE_SEARCH_GROUNDING  0|1
 """
 
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable
 
 from llm.base import BaseLLMProvider, LLMProviderError
+from llm.config import should_use_grounding
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
+from llm.local_grounded import LocalGroundedProvider
+from llm.tavily_grounding import (
+    fetch_tavily_context,
+    inject_grounding_evidence,
+    is_tavily_available,
+    ollama_evidence_budget,
+    trim_evidence,
+)
+from settings import get_stripped_env
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_GEMINI_PRIMARY = "gemini-3.6-flash"
+DEFAULT_GEMINI_LITE = "gemini-3.5-flash-lite"
+
+
+def _use_google_search_grounding() -> bool:
+    raw = (os.environ.get("USE_GOOGLE_SEARCH_GROUNDING") or "").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
+
+def gemini_sse_primary_model() -> str:
+    return get_stripped_env("GEMINI_SSE_PRIMARY_MODEL") or DEFAULT_GEMINI_PRIMARY
+
+
+def gemini_sse_lite_model() -> str:
+    return get_stripped_env("GEMINI_SSE_LITE_MODEL") or DEFAULT_GEMINI_LITE
+
 
 class SSEFallbackProvider(BaseLLMProvider):
-    """Try Gemini Flash, then Flash-Lite, then Groq on failure or empty response."""
+    """Gemini 3 Flash → Flash-Lite → Groq → Ollama, with shared Tavily evidence."""
 
     def __init__(self, api_key: str | None = None):
         self._providers: list[tuple[str, BaseLLMProvider]] = []
         self._last_successful: str | None = None
 
+        primary = gemini_sse_primary_model()
+        lite = gemini_sse_lite_model()
+
         candidates: list[tuple[str, Callable[[], BaseLLMProvider]]] = [
-            ("gemini-2.5-flash", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash")),
-            ("gemini-2.5-flash-lite", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash-lite")),
+            (primary, lambda: GeminiProvider(api_key=api_key, model=primary)),
+            (lite, lambda: GeminiProvider(api_key=api_key, model=lite)),
             ("groq", lambda: GroqProvider()),
+            ("ollama", lambda: LocalGroundedProvider()),
         ]
         for name, factory in candidates:
             try:
                 provider = factory()
                 if provider.is_available():
                     self._providers.append((name, provider))
+                else:
+                    logger.warning("SSE fallback: skipping %s (unavailable)", name)
             except Exception as exc:
                 logger.warning("SSE fallback: skipping %s (%s)", name, exc)
+
+        if self._providers:
+            logger.info(
+                "SSE fallback chain: %s (tavily=%s google_search=%s)",
+                " → ".join(n for n, _ in self._providers),
+                is_tavily_available(),
+                _use_google_search_grounding(),
+            )
 
     def is_available(self) -> bool:
         return bool(self._providers)
@@ -72,11 +123,100 @@ class SSEFallbackProvider(BaseLLMProvider):
         system: str | None = None,
         **kwargs,
     ) -> str:
-        return self._try_providers("complete", prompt, model=model, system=system, **kwargs)
+        task = kwargs.get("task")
+        want_grounding = should_use_grounding(task) if task else False
+        if "use_grounding" in kwargs:
+            want_grounding = bool(kwargs["use_grounding"])
+
+        provider_kwargs = dict(kwargs)
+        include_domains = provider_kwargs.pop("include_domains", None)
+        prefer_hosts = provider_kwargs.pop("prefer_hosts", None)
+        require_terms = provider_kwargs.pop("require_terms", None)
+
+        evidence = ""
+        if want_grounding:
+            search_query = kwargs.get("search_query") or prompt[:200]
+            evidence = fetch_tavily_context(
+                str(search_query),
+                include_domains=include_domains,
+                prefer_hosts=prefer_hosts,
+                require_terms=require_terms,
+            )
+            # Same evidence pack for every backend; Google Search / nested Tavily
+            # stay off unless explicitly opted in.
+            if _use_google_search_grounding():
+                provider_kwargs["use_grounding"] = True
+            else:
+                provider_kwargs["use_grounding"] = False
+        else:
+            provider_kwargs.pop("use_grounding", None)
+
+        if not want_grounding:
+            return self._try_providers(
+                "complete",
+                prompt,
+                model=model,
+                system=system,
+                **provider_kwargs,
+            )
+
+        # Per-backend prompt: identical rules, tighter evidence budget for Ollama.
+        return self._try_grounded_complete(
+            prompt,
+            evidence=evidence,
+            model=model,
+            system=system,
+            **provider_kwargs,
+        )
+
+    def _try_grounded_complete(
+        self,
+        prompt: str,
+        *,
+        evidence: str,
+        model: str | None = None,
+        system: str | None = None,
+        **kwargs,
+    ) -> str:
+        if not self._providers:
+            raise LLMProviderError("No SSE providers are available or configured")
+
+        last_error: Exception | None = None
+        failed: list[str] = []
+        for name, provider in self._providers:
+            ev = evidence
+            if name == "ollama":
+                ev = trim_evidence(evidence, max_chars=ollama_evidence_budget())
+            call_prompt = inject_grounding_evidence(prompt, ev)
+            try:
+                result = provider.complete(
+                    call_prompt, model=model, system=system, **kwargs,
+                )
+                if not self._is_usable_result(result):
+                    last_error = LLMProviderError(f"{name} returned empty response")
+                    failed.append(name)
+                    logger.warning("SSE provider %s returned empty response", name)
+                    continue
+                if failed:
+                    logger.info(
+                        "SSE fallback succeeded: %s → %s",
+                        " → ".join(failed),
+                        name,
+                    )
+                self._last_successful = name
+                return result
+            except Exception as exc:
+                last_error = exc
+                failed.append(name)
+                logger.warning("SSE provider %s failed: %s", name, exc)
+                continue
+
+        if last_error:
+            raise last_error
+        raise LLMProviderError("All SSE providers failed")
 
     @staticmethod
     def _is_usable_result(result) -> bool:
-        """Reject None / blank strings so empty Gemini responses advance the chain."""
         if result is None:
             return False
         if isinstance(result, str) and not result.strip():

@@ -2,25 +2,15 @@
 
 Uses the google-genai SDK (google-genai package).
 
-Models in use:
-  gemini-2.5-flash        — default model for unified processing (summary, skills, values, SSE);
-                            requires Google Search grounding for SSE classification.
-  groq (llama-3.3-70b)   — fallback model for unified processing (no grounding)
+SSE / org assessment models (via ``SSEFallbackProvider``):
+  gemini-3.6-flash       — primary free-tier Flash
+  gemini-3.5-flash-lite  — higher free-tier volume fallback
 
-Free-tier rate limits (as of March 2026, confirmed from AI Studio live quota):
-  Gemini 2.5 Flash      : 4 RPM / 24 RPD (your quota)
-  Gemini 2.5 Flash Lite : 8 RPM / 22 RPD (your quota)
-  Gemini 3.1 Flash Lite : 0 RPM / 15 RPM, 0 RPD / 500 RPD (not available)
-  Gemma models          : 0 RPM / 30 RPM, 0 RPD / 14.4K RPD (not available)
+For predictable parity with Groq/Ollama, SSE evidence comes from shared Tavily
+injection (``llm.tavily_grounding``). Native Google Search tool grounding is
+opt-in via ``USE_GOOGLE_SEARCH_GROUNDING=1``.
 
-  No Gemini model currently offers a free tier suitable for large-scale summaries or values tagging.
-  Groq is the best option for summaries and values unless your quota increases.
-
-Constraints for the scraper:
-  - gemini-2.5-flash is reserved exclusively for SSE (Google Search grounding required).
-  - SSE calls: 1 per job → a 200-job scrape uses 200 req/day of the SSE quota.
-  - gemini-2.5-flash-lite is NOT usable for summaries at scale (20 req/day confirmed).
-  - Summaries and values are handled by Groq (see factory.py).
+Summaries and values default to Groq (see factory.py).
 """
 
 import logging
@@ -42,21 +32,21 @@ logger = logging.getLogger(__name__)
 class GeminiProvider(BaseLLMProvider):
     """Gemini provider. Choose model per task via constructor params."""
 
-    MODEL = "gemini-2.5-flash-lite"
+    MODEL = "gemini-3.5-flash-lite"
 
     def __init__(self, api_key: str | None = None, model: str | None = None):
         """Initialize Gemini provider with API key and model.
 
         Args:
             api_key: Google AI API key. If None, uses GEMINI_API_KEY env var.
-            model: Model name. Defaults to gemini-2.5-flash-lite.
-                 Use full names like: gemini-2.5-flash, gemini-2.5-flash-lite
+            model: Model name. Defaults to gemini-3.5-flash-lite.
+                 Prefer full names like: gemini-3.6-flash, gemini-3.5-flash-lite
         """
         self._api_key = (api_key or get_gemini_api_key() or "").strip()
         if not self._api_key:
             raise ValueError("GEMINI_API_KEY required")
 
-        self._model = model or "gemini-2.5-flash-lite"
+        self._model = model or "gemini-3.5-flash-lite"
         self._client = None
 
         try:

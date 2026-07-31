@@ -12,6 +12,28 @@ from llm.base import BaseLLMProvider, LLMProviderError
 
 logger = logging.getLogger(__name__)
 
+_TRUNCATE_MARK = "\n\n…[middle truncated for local model — use rules above + data below]\n\n"
+
+
+def _truncate_keep_ends(text: str, max_chars: int, *, head_ratio: float = 0.2) -> str:
+    """Keep prompt head (instructions) and tail (entity data / JSON schema).
+
+    Head-only truncation drops the payload local models must answer from, which
+    causes timeouts and empty/invalid JSON.
+    """
+    if max_chars <= 0 or len(text) <= max_chars:
+        return text
+    mark = _TRUNCATE_MARK
+    budget = max_chars - len(mark)
+    if budget < 64:
+        return text[: max(0, max_chars - 1)] + "…"
+    head_len = max(32, int(budget * head_ratio))
+    tail_len = budget - head_len
+    if tail_len < 32:
+        head_len = budget // 2
+        tail_len = budget - head_len
+    return text[:head_len] + mark + text[-tail_len:]
+
 
 class LocalGroundedProvider(BaseLLMProvider):
     """Local LLM provider using Tavily search + Ollama.
@@ -148,7 +170,8 @@ class LocalGroundedProvider(BaseLLMProvider):
             client = self._get_ollama_client()
 
             options = {
-                "num_predict": 2000,
+                # SSE/org JSON rarely needs >800 tokens; lower cap finishes sooner on CPU.
+                "num_predict": int(os.getenv("OLLAMA_NUM_PREDICT", "900" if json_mode else "2000")),
                 "temperature": 0.1,
             }
             fmt = "json" if json_mode else None
@@ -223,12 +246,16 @@ class LocalGroundedProvider(BaseLLMProvider):
         """Generate text using local LLM with optional grounding.
 
         Only uses Tavily search if grounding is enabled for this task type.
+        Honors explicit ``use_grounding`` (e.g. SSEFallbackProvider already
+        injected shared Tavily evidence — pass use_grounding=False).
         """
         from llm.config import should_use_grounding
 
-        # Check if we should use grounding via explicit task kwarg
         task_type = kwargs.get("task")
-        use_grounding = should_use_grounding(task_type) if task_type else False
+        if "use_grounding" in kwargs:
+            use_grounding = bool(kwargs["use_grounding"])
+        else:
+            use_grounding = should_use_grounding(task_type) if task_type else False
 
         t0 = time.perf_counter()
         if use_grounding:
@@ -262,6 +289,21 @@ Answer the following prompt: {prompt}"""
 
         if system:
             full_prompt = f"{system}\n\n{full_prompt}"
+
+        # Small local models choke on full org-assessor prompts (~20k+ chars).
+        # Keep head (rules) + tail (entity data / JSON schema) — head-only
+        # truncation drops the payload the model must answer from.
+        try:
+            max_prompt = int(os.getenv("OLLAMA_MAX_PROMPT_CHARS", "10000"))
+        except ValueError:
+            max_prompt = 10000
+        if max_prompt > 0 and len(full_prompt) > max_prompt:
+            logger.warning(
+                "local_grounded: truncating prompt %s → %s chars for Ollama (head+tail)",
+                len(full_prompt),
+                max_prompt,
+            )
+            full_prompt = _truncate_keep_ends(full_prompt, max_prompt)
 
         return self._generate_with_ollama(
             full_prompt, json_mode=(task_type in ("sse", "unified", "json"))

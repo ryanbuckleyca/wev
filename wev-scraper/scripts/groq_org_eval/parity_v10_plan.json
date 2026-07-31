@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-07-31T13:15:00Z",
+  "selection_notes": [
+    "No rated jobs were scraped within the 72-hour window.",
+    "Recent complete organizations have no linked rated jobs, so recent organizations are paired with complete older rated jobs for independent org/job parity coverage.",
+    "Toronto Wildlife job is included by explicit request; its parent organization (806) is currently incomplete, so it is the sole exception to the complete-parent job fallback criterion."
+  ],
+  "pairs": [
+    {
+      "tag": "ligue_twc",
+      "org_id": 1363,
+      "org_name": "La Ligue des Noirs du Québec",
+      "job_id": "96f648a9-fe36-4f6f-8118-0212deb1f98a",
+      "job_title": "Administrative Assistant",
+      "job_organization": "Toronto Wildlife Centre",
+      "relation": "independent; requested job exception"
+    },
+    {
+      "tag": "shein_goparity_hr",
+      "org_id": 1354,
+      "org_name": "SHEIN",
+      "job_id": "a7a0b259-f801-40e8-8978-ab08f52667cf",
+      "job_title": "HR & Admin Coordinator",
+      "job_organization": "Goparity Canada",
+      "relation": "independent"
+    },
+    {
+      "tag": "mastercard_goparity_program",
+      "org_id": 1349,
+      "org_name": "Mastercard Foundation",
+      "job_id": "221f2ce5-2f19-4559-8a5c-7c922e9779e9",
+      "job_title": "Program Coordinator – 1 Year Contract",
+      "job_organization": "Goparity Canada",
+      "relation": "independent"
+    },
+    {
+      "tag": "exp_evergreen",
+      "org_id": 1348,
+      "org_name": "EXP",
+      "job_id": "727962ad-042f-4048-a9f2-395545b2598f",
+      "job_title": "Account Manager – 1 Year Contract",
+      "job_organization": "Evergreen",
+      "relation": "independent"
+    },
+    {
+      "tag": "hutchinson_goparity_hr",
+      "org_id": 1347,
+      "org_name": "Hutchinson Environmental Sciences Ltd.",
+      "job_id": "a7a0b259-f801-40e8-8978-ab08f52667cf",
+      "job_title": "HR & Admin Coordinator",
+      "job_organization": "Goparity Canada",
+      "relation": "independent"
+    },
+    {
+      "tag": "goparity_linked_program",
+      "org_id": 87,
+      "org_name": "Goparity Canada",
+      "job_id": "221f2ce5-2f19-4559-8a5c-7c922e9779e9",
+      "job_title": "Program Coordinator – 1 Year Contract",
+      "job_organization": "Goparity Canada",
+      "relation": "linked complete parent"
+    },
+    {
+      "tag": "evergreen_linked_account",
+      "org_id": 71,
+      "org_name": "Evergreen",
+      "job_id": "727962ad-042f-4048-a9f2-395545b2598f",
+      "job_title": "Account Manager – 1 Year Contract",
+      "job_organization": "Evergreen",
+      "relation": "linked complete parent"
+    }
+  ]
+}

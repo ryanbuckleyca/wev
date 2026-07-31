@@ -1,0 +1,447 @@
+{
+  "generated_at": "2026-07-30T23:38:06.377671+00:00",
+  "dry_run": true,
+  "org_ref": {
+    "id": 1348,
+    "name": "EXP",
+    "is_sse": false,
+    "sse_rating": "no",
+    "sector_id": "environment-circular-economy",
+    "language": "en",
+    "type": "other",
+    "website": "https://www.exp.com",
+    "website_norm": "exp.com",
+    "mission": "EXP's mission is to understand, innovate, partner, and deliver engineering, architecture, design, and consulting services. They are committed to providing innovative, sustainable, and resilient solutions that improve communities and positively impact the built and natural environment, one project at a time.",
+    "description": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services for the built and natural environments. With a heritage dating back to 1906, it unites diverse professionals to deliver innovative and sustainable solutions globally. EXP is an employee-owned company, driven by passion for clients, employees, and communities.",
+    "values": [
+      "Competence",
+      "Diversity",
+      "Community",
+      "Environment",
+      "Group & Team"
+    ]
+  },
+  "job_ref": {
+    "id": "a47de111-4581-4f7d-b752-4464e004f469",
+    "title": "Coordonnateur·trice de l’engagement communautaire – Community Engagement Coordinator 2026",
+    "organization": "Le Dépôt: centre communautaire d'alimentation",
+    "is_sse": true,
+    "sse_rating": "strong_yes",
+    "language": "en",
+    "reasoning": null,
+    "summary_ref": "The Community Engagement Coordinator will create inclusive spaces, connect participants to resources, and build community partnerships at Le Dépôt, a community food center dedicated to making nutritious food accessible as a fundamental human right."
+  },
+  "org_evidence_chars": 0,
+  "job_evidence_chars": 0,
+  "org_results": {
+    "gemini-3.6-flash": {
+      "error": "parse_failed",
+      "raw": "",
+      "elapsed_s": 7.11
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": false,
+      "sse_rating": "no",
+      "sector_id": "community-civic-infrastructure",
+      "language": "bilingual",
+      "type": "other",
+      "website": "https://www.exp.com",
+      "website_norm": "exp.com",
+      "mission": "To provide innovative and sustainable engineering, architecture, design, and consulting solutions that shape communities and environments globally.",
+      "description": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services for the built and natural environments. With a heritage dating back to 1906, it unites diverse professionals to deliver innovative and sustainable solutions globally.",
+      "values": [
+        "Competence",
+        "Group & Team",
+        "Environment"
+      ],
+      "elapsed_s": 3.25,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": false,
+      "sse_rating": "no",
+      "sector_id": "community-civic-infrastructure",
+      "language": "en",
+      "type": "other",
+      "website": "https://www.exp.com",
+      "website_norm": "exp.com",
+      "mission": "No explicit mission statement found. (mission via=absent)",
+      "description": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services. It unites diverse professionals to deliver innovative and sustainable solutions globally. (description via=extracted)",
+      "values": "No explicit values statement found. (values via=absent)",
+      "elapsed_s": 4.1,
+      "provider": "groq"
+    },
+    "ollama": {
+      "error": "LLM provider error: Ollama generation failed: timed out",
+      "elapsed_s": 90.03
+    }
+  },
+  "job_results": {
+    "gemini-3.6-flash": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "language": null,
+      "reasoning": "Le Dépôt is a community food centre operating on rights-based, anti-oppressive, and social justice principles rather than traditional charity models. The role explicitly focuses on building collective power, organizing peer support, and addressing social determinants of health. Salary, hours, and benefits are fully transparent, aligning strongly with Solidarity Economy principles.",
+      "confidence": 0.95,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Intentional impact description",
+        "Role contributes to community good",
+        "Transparent compensation ($26.10/hr)",
+        "Clear job expectations and contract terms"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture and language",
+        "Participatory approaches and community empowerment",
+        "Community nonprofit governance model",
+        "Investment in worker training and development"
+      ],
+      "flags": [],
+      "elapsed_s": 5.77,
+      "provider": "gemini-3.6-flash"
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "language": null,
+      "reasoning": "Le Dépôt is a community food centre grounded in food sovereignty as a human right rather than charity. The role explicitly incorporates social justice, equity, anti-oppressive practices, and collective power. Compensation is clearly stated at 26.10 CAD per hour with robust benefits.",
+      "confidence": 0.95,
+      "must_haves_met": [
+        "Clear purpose beyond profit rooted in food security and human rights",
+        "Impact described intentionally through anti-oppressive framework",
+        "Role directly contributes to community social good",
+        "Transparent compensation at 26.10 CAD per hour",
+        "Clear job expectations and full contract details provided"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture and language of collective power",
+        "Commitment to racial justice and addressing systemic barriers",
+        "Investment in workers through professional development and health benefits",
+        "Community-based nonprofit model prioritizing people over profit"
+      ],
+      "flags": [],
+      "elapsed_s": 1.45,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "language": null,
+      "reasoning": "Le Dépôt is a community food centre with a clear mission to make nutritious food accessible to all, guided by values of social justice, equity, and dignity. The organization actively integrates anti-oppressive and anti-racist practices, demonstrating a strong commitment to SSE principles. The role of Community Engagement Coordinator contributes to social good by supporting participants in accessing relevant resources and services.",
+      "confidence": 0.9,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Impact described intentionally",
+        "Role contributes to social/community/environmental good",
+        "Transparent compensation",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture",
+        "Investment in workers",
+        "Mission reinvestment"
+      ],
+      "flags": [],
+      "elapsed_s": 5.03,
+      "provider": "groq"
+    },
+    "ollama": {
+      "error": "LLM provider error: Ollama generation failed: timed out",
+      "elapsed_s": 90.0
+    }
+  },
+  "org_vs_prod": {
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": false,
+          "cand": false
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "no",
+          "cand": "no"
+        },
+        "sector_id": {
+          "match": false,
+          "ref": "environment-circular-economy",
+          "cand": "community-civic-infrastructure"
+        },
+        "language": {
+          "match": false,
+          "ref": "en",
+          "cand": "bilingual"
+        },
+        "type": {
+          "match": true,
+          "ref": "other",
+          "cand": "other"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "exp.com",
+          "cand": "exp.com"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 1,
+          "ref": "EXP's mission is to understand, innovate, partner, and deliver engineering, architecture, design, and consulting services. They are committed to providing innov",
+          "cand": "To provide innovative and sustainable engineering, architecture, design, and consulting solutions that shape communities and environments globally."
+        },
+        "description": {
+          "score": 2,
+          "ref": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services for the built and natural environments. With a heritage dati",
+          "cand": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services for the built and natural environments. With a heritage dati"
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Competence', 'Diversity', 'Community', 'Environment', 'Group & Team']",
+          "cand": "['Competence', 'Group & Team', 'Environment']"
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": false,
+          "cand": false
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "no",
+          "cand": "no"
+        },
+        "sector_id": {
+          "match": false,
+          "ref": "environment-circular-economy",
+          "cand": "community-civic-infrastructure"
+        },
+        "language": {
+          "match": true,
+          "ref": "en",
+          "cand": "en"
+        },
+        "type": {
+          "match": true,
+          "ref": "other",
+          "cand": "other"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "exp.com",
+          "cand": "exp.com"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 0,
+          "ref": "EXP's mission is to understand, innovate, partner, and deliver engineering, architecture, design, and consulting services. They are committed to providing innov",
+          "cand": "No explicit mission statement found. (mission via=absent)"
+        },
+        "description": {
+          "score": 2,
+          "ref": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services for the built and natural environments. With a heritage dati",
+          "cand": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services. It unites diverse professionals to deliver innovative and s"
+        },
+        "values": {
+          "score": 0,
+          "ref": "['Competence', 'Diversity', 'Community', 'Environment', 'Group & Team']",
+          "cand": "No explicit values statement found. (values via=absent)"
+        }
+      }
+    }
+  },
+  "job_vs_prod": {
+    "gemini-3.6-flash": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Le Dépôt is a community food centre operating on rights-based, anti-oppressive, and social justice principles rather than traditional charity models. The role e"
+        }
+      }
+    },
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Le Dépôt is a community food centre grounded in food sovereignty as a human right rather than charity. The role explicitly incorporates social justice, equity, "
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Le Dépôt is a community food centre with a clear mission to make nutritious food accessible to all, guided by values of social justice, equity, and dignity. The"
+        }
+      }
+    }
+  },
+  "org_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": false,
+        "groq": false
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "no",
+        "groq": "no"
+      }
+    },
+    "sector_id": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "community-civic-infrastructure",
+        "groq": "community-civic-infrastructure"
+      }
+    },
+    "language": {
+      "all_models_agree": false,
+      "values": {
+        "gemini-3.5-flash-lite": "bilingual",
+        "groq": "en"
+      }
+    },
+    "type": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "other",
+        "groq": "other"
+      }
+    },
+    "website_norm": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "exp.com",
+        "groq": "exp.com"
+      }
+    }
+  },
+  "job_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": true,
+        "gemini-3.5-flash-lite": true,
+        "groq": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "strong_yes",
+        "gemini-3.5-flash-lite": "strong_yes",
+        "groq": "strong_yes"
+      }
+    }
+  },
+  "org_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sector_id": {
+      "matches": 0,
+      "total": 2,
+      "pct": 0.0
+    },
+    "language": {
+      "matches": 1,
+      "total": 2,
+      "pct": 50.0
+    },
+    "type": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "website_norm": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    }
+  },
+  "job_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 3,
+      "total": 3,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 3,
+      "total": 3,
+      "pct": 100.0
+    }
+  },
+  "note_org_vs_job": "Org assessment rates the employer (governance/mission). Job SSE classification rates the posting (role + org context + compensation rules). They can legitimately disagree (e.g. SSE-aligned role at a non-SSE employer)."
+}
