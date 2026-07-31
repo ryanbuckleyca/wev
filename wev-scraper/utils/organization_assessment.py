@@ -1137,10 +1137,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
             or org.get("description")
             or ""
         )
-        # Pass stored description for description_* only. That suppresses Tavily;
-        # interpretive fields must still not use it (prefer null without web evidence).
-        # Callers that need a fresh SSE/sector pass should clear description or supply
-        # web_evidence (e.g. scraped known website).
+        # Stored description is SOURCE DESCRIPTION for description_* only (prompt-gated).
+        # It does not disable Tavily; interpretive fields still use web research.
         result = self.assess(
             raw_name=name,
             municipality=org.get("municipality"),
