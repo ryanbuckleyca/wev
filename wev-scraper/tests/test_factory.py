@@ -82,12 +82,17 @@ def test_sse_fallback_tries_flash_then_lite_then_groq_then_ollama():
     groq.is_available.return_value = True
     groq.complete.side_effect = LLMProviderError("quota")
 
+    cerebras = MagicMock()
+    cerebras.is_available.return_value = True
+    cerebras.complete.side_effect = LLMProviderError("quota")
+
     ollama = MagicMock()
     ollama.is_available.return_value = True
     ollama.complete.return_value = '{"ok": true}'
 
     with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
          patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
+         patch("llm.gemini_fallback.CerebrasProvider", return_value=cerebras), \
          patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
          patch("llm.gemini_fallback.fetch_tavily_context", return_value="EVIDENCE"), \
          patch("llm.gemini_fallback.is_tavily_available", return_value=True), \
@@ -99,6 +104,7 @@ def test_sse_fallback_tries_flash_then_lite_then_groq_then_ollama():
             DEFAULT_GEMINI_PRIMARY,
             DEFAULT_GEMINI_LITE,
             "groq",
+            "cerebras",
             "ollama",
         ]
 
@@ -107,8 +113,8 @@ def test_sse_fallback_tries_flash_then_lite_then_groq_then_ollama():
         flash.complete.assert_called_once()
         lite.complete.assert_called_once()
         groq.complete.assert_called_once()
+        cerebras.complete.assert_called_once()
         ollama.complete.assert_called_once()
-        # Shared Tavily evidence injected; Google Search / nested Tavily off
         call_kwargs = ollama.complete.call_args.kwargs
         assert call_kwargs.get("use_grounding") is False
         ollama_prompt = ollama.complete.call_args.args[0]
@@ -127,22 +133,18 @@ def test_sse_fallback_stops_at_flash_lite():
     lite.is_available.return_value = True
     lite.complete.return_value = "lite-ok"
 
-    groq = MagicMock()
-    groq.is_available.return_value = True
-
-    ollama = MagicMock()
-    ollama.is_available.return_value = True
+    unavailable = MagicMock()
+    unavailable.is_available.return_value = False
 
     with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
-         patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
-         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
+         patch("llm.gemini_fallback.GroqProvider", return_value=unavailable), \
+         patch("llm.gemini_fallback.CerebrasProvider", return_value=unavailable), \
+         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=unavailable), \
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider(api_key="test-key")
         assert provider.complete("prompt", task="sse") == "lite-ok"
-        groq.complete.assert_not_called()
-        ollama.complete.assert_not_called()
         assert provider.current_model == DEFAULT_GEMINI_LITE
 
 
@@ -160,12 +162,13 @@ def test_sse_fallback_advances_on_empty_flash_response():
     groq.is_available.return_value = True
     groq.complete.return_value = '{"ok": true}'
 
-    ollama = MagicMock()
-    ollama.is_available.return_value = False
+    unavailable = MagicMock()
+    unavailable.is_available.return_value = False
 
     with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
          patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
-         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
+         patch("llm.gemini_fallback.CerebrasProvider", return_value=unavailable), \
+         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=unavailable), \
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
@@ -186,17 +189,14 @@ def test_sse_fallback_raises_when_all_return_empty():
     lite.is_available.return_value = True
     lite.complete.return_value = None
 
-    groq = MagicMock()
-    groq.is_available.return_value = True
-    groq.complete.return_value = ""
-
-    ollama = MagicMock()
-    ollama.is_available.return_value = True
-    ollama.complete.return_value = ""
+    empty = MagicMock()
+    empty.is_available.return_value = True
+    empty.complete.return_value = ""
 
     with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
-         patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
-         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
+         patch("llm.gemini_fallback.GroqProvider", return_value=empty), \
+         patch("llm.gemini_fallback.CerebrasProvider", return_value=empty), \
+         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=empty), \
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]

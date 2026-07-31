@@ -2,7 +2,7 @@
 
 Default: Groq for most tasks (summarization, location extraction, values tagging).
 SSE / org assessment chain (``get_sse_provider`` / ``get_fallback_llm_provider``):
-  gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama
+  gemini-3.6-flash → gemini-3.5-flash-lite → groq → cerebras → ollama
 with shared Tavily evidence (see ``llm.gemini_fallback`` / ``llm.tavily_grounding``).
 """
 
@@ -105,7 +105,7 @@ def get_fallback_llm_provider() -> BaseLLMProvider | None:
     """Return multi-tier LLM provider with runtime fallback.
 
     Always uses ``SSEFallbackProvider`` when available:
-      gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama
+      gemini-3.6-flash → gemini-3.5-flash-lite → groq → cerebras → ollama
 
     Shared Tavily evidence is injected once for ``task=sse`` so every backend
     sees the same snippets. Providers that fail to initialize are skipped.
