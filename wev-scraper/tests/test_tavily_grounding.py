@@ -1,11 +1,11 @@
 """Tests for shared Tavily evidence helpers."""
 
+from llm.local_grounded import _truncate_keep_ends
 from llm.tavily_grounding import (
     entity_require_terms,
     inject_grounding_evidence,
     trim_evidence,
 )
-from llm.local_grounded import _truncate_keep_ends
 
 
 def test_inject_grounding_evidence_marks_search_as_secondary():
