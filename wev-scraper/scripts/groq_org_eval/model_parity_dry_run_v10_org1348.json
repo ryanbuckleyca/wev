@@ -1,0 +1,398 @@
+{
+  "generated_at": "2026-07-31T13:50:23.792976+00:00",
+  "dry_run": true,
+  "org_ref": {
+    "id": 1348,
+    "name": "EXP",
+    "is_sse": false,
+    "sse_rating": "no",
+    "sector_id": "environment-circular-economy",
+    "language": "en",
+    "type": "other",
+    "website": "https://www.exp.com",
+    "website_norm": "exp.com",
+    "mission": "EXP's mission is to understand, innovate, partner, and deliver engineering, architecture, design, and consulting services. They are committed to providing innovative, sustainable, and resilient solutions that improve communities and positively impact the built and natural environment, one project at a time.",
+    "description": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services for the built and natural environments. With a heritage dating back to 1906, it unites diverse professionals to deliver innovative and sustainable solutions globally. EXP is an employee-owned company, driven by passion for clients, employees, and communities.",
+    "values": [
+      "Competence",
+      "Diversity",
+      "Community",
+      "Environment",
+      "Group & Team"
+    ]
+  },
+  "job_ref": {
+    "id": "135f1c13-7a7a-45e7-bcd0-4aff5f2083c2",
+    "title": "Job Opportunity",
+    "organization": "Canadian Parks and Wilderness Society | Apply",
+    "is_sse": true,
+    "sse_rating": "strong_yes",
+    "language": "en",
+    "reasoning": null,
+    "summary_ref": "The National Manager leads staff, develops, and implements land and freshwater conservation projects and campaigns, working with various stakeholders to protect Canada's natural heritage."
+  },
+  "org_evidence_chars": 4494,
+  "job_evidence_chars": 0,
+  "org_results": {
+    "gemini-3.6-flash": {
+      "error": "LLM provider error: Gemini completion error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 16.16300659s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-3.6-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '16s'}]}}",
+      "elapsed_s": 4.64
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": false,
+      "sse_rating": "no",
+      "sector_id": "environment-circular-economy",
+      "language": "bilingual",
+      "type": "other",
+      "website": "https://www.exp.com",
+      "website_norm": "exp.com",
+      "mission": "With a mission to understand, innovate, partner and deliver, EXP provides engineering, architecture, design and consulting services to the world's built and natural environments.",
+      "description": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services for the built and natural environments. With a heritage dating back to 1906, it unites diverse professionals to deliver innovative and sustainable solutions globally.",
+      "values": [
+        "Community",
+        "Environment",
+        "Competence",
+        "Group & Team",
+        "Practicality"
+      ],
+      "elapsed_s": 28.77,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": false,
+      "sse_rating": "no",
+      "sector_id": "environment-circular-economy",
+      "language": "en",
+      "type": "other",
+      "website": "https://www.exp.com",
+      "website_norm": "exp.com",
+      "mission": "To understand, innovate, partner and deliver for the built and natural environments.",
+      "description": "A multidisciplinary firm offering engineering, architecture, design, and consulting services.",
+      "values": [
+        "Creativity",
+        "Competence",
+        "Community"
+      ],
+      "elapsed_s": 2.68,
+      "provider": "groq"
+    }
+  },
+  "job_results": {
+    "gemini-3.6-flash": {
+      "error": "LLM provider error: Gemini completion error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 14.860049477s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '14s'}]}}",
+      "elapsed_s": 1.3
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "language": null,
+      "reasoning": "The Canadian Parks and Wilderness Society is a registered environmental charity operating with a clear conservation mission, but functions as a traditional advocacy NGO rather than a structural cooperative or solidarity economy enterprise. It satisfies basic transparency and equity commitments, yet lacks direct worker-owner governance or broader systemic solidarity economy principles.",
+      "confidence": 0.85,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Impact described intentionally",
+        "Role contributes to environmental good",
+        "Transparent compensation stated",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture",
+        "Investment in workers"
+      ],
+      "flags": [
+        "Traditional charitable NGO structure rather than cooperative or democratic worker self-management",
+        "Focus centers on public advocacy and land conservation rather than systemic economic transformation"
+      ],
+      "elapsed_s": 1.35,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "language": null,
+      "reasoning": "The Canadian Parks and Wilderness Society is a national charitable organization with a clear mission to protect at least half of Canada's public land and water. The role contributes to social and environmental good, and the organization prioritizes Indigenous-led conservation and reconciliation.",
+      "confidence": 0.9,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Impact described intentionally",
+        "Role contributes to social/community/environmental good",
+        "Transparent compensation",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture",
+        "Participatory governance",
+        "Governance model stated",
+        "Investment in workers"
+      ],
+      "flags": [],
+      "elapsed_s": 6.06,
+      "provider": "groq"
+    }
+  },
+  "org_vs_prod": {
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": false,
+          "cand": false
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "no",
+          "cand": "no"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "environment-circular-economy",
+          "cand": "environment-circular-economy"
+        },
+        "language": {
+          "match": false,
+          "ref": "en",
+          "cand": "bilingual"
+        },
+        "type": {
+          "match": true,
+          "ref": "other",
+          "cand": "other"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "exp.com",
+          "cand": "exp.com"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 2,
+          "ref": "EXP's mission is to understand, innovate, partner, and deliver engineering, architecture, design, and consulting services. They are committed to providing innov",
+          "cand": "With a mission to understand, innovate, partner and deliver, EXP provides engineering, architecture, design and consulting services to the world's built and nat"
+        },
+        "description": {
+          "score": 2,
+          "ref": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services for the built and natural environments. With a heritage dati",
+          "cand": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services for the built and natural environments. With a heritage dati"
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Competence', 'Diversity', 'Community', 'Environment', 'Group & Team']",
+          "cand": "['Community', 'Environment', 'Competence', 'Group & Team', 'Practicality']"
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": false,
+          "cand": false
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "no",
+          "cand": "no"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "environment-circular-economy",
+          "cand": "environment-circular-economy"
+        },
+        "language": {
+          "match": true,
+          "ref": "en",
+          "cand": "en"
+        },
+        "type": {
+          "match": true,
+          "ref": "other",
+          "cand": "other"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "exp.com",
+          "cand": "exp.com"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 1,
+          "ref": "EXP's mission is to understand, innovate, partner, and deliver engineering, architecture, design, and consulting services. They are committed to providing innov",
+          "cand": "To understand, innovate, partner and deliver for the built and natural environments."
+        },
+        "description": {
+          "score": 1,
+          "ref": "EXP is a multidisciplinary firm offering engineering, architecture, design, and consulting services for the built and natural environments. With a heritage dati",
+          "cand": "A multidisciplinary firm offering engineering, architecture, design, and consulting services."
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Competence', 'Diversity', 'Community', 'Environment', 'Group & Team']",
+          "cand": "['Creativity', 'Competence', 'Community']"
+        }
+      }
+    }
+  },
+  "job_vs_prod": {
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": "strong_yes",
+          "cand": "weak_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "The Canadian Parks and Wilderness Society is a registered environmental charity operating with a clear conservation mission, but functions as a traditional advo"
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "The Canadian Parks and Wilderness Society is a national charitable organization with a clear mission to protect at least half of Canada's public land and water."
+        }
+      }
+    }
+  },
+  "org_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": false,
+        "groq": false
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "no",
+        "groq": "no"
+      }
+    },
+    "sector_id": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "environment-circular-economy",
+        "groq": "environment-circular-economy"
+      }
+    },
+    "language": {
+      "all_models_agree": false,
+      "values": {
+        "gemini-3.5-flash-lite": "bilingual",
+        "groq": "en"
+      }
+    },
+    "type": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "other",
+        "groq": "other"
+      }
+    },
+    "website_norm": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "exp.com",
+        "groq": "exp.com"
+      }
+    }
+  },
+  "job_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": true,
+        "groq": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": false,
+      "values": {
+        "gemini-3.5-flash-lite": "weak_yes",
+        "groq": "strong_yes"
+      }
+    }
+  },
+  "org_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sector_id": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "language": {
+      "matches": 1,
+      "total": 2,
+      "pct": 50.0
+    },
+    "type": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "website_norm": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    }
+  },
+  "job_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 1,
+      "total": 2,
+      "pct": 50.0
+    }
+  },
+  "note_org_vs_job": "Org assessment rates the employer (governance/mission). Job SSE classification rates the posting (role + org context + compensation rules). They can legitimately disagree (e.g. SSE-aligned role at a non-SSE employer)."
+}

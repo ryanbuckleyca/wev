@@ -1,0 +1,389 @@
+{
+  "generated_at": "2026-07-30T23:03:59.652141+00:00",
+  "dry_run": true,
+  "org_ref": {
+    "id": 124,
+    "name": "La TOHU – Cité des arts du cirque",
+    "is_sse": false,
+    "sse_rating": "no",
+    "sector_id": null,
+    "language": null,
+    "type": null,
+    "website": null,
+    "website_norm": null,
+    "mission": null,
+    "description": null,
+    "values": null
+  },
+  "job_ref": {
+    "id": "221f2ce5-2f19-4559-8a5c-7c922e9779e9",
+    "title": "Program Coordinator – 1 Year Contract",
+    "organization": "Goparity Canada",
+    "is_sse": true,
+    "sse_rating": "strong_yes",
+    "language": "en",
+    "reasoning": null,
+    "summary_ref": "This Program Coordinator role supports the development, delivery, and administration of grant programs, including the Journalism Futures Fund, for a public foundation focused on building an inclusive and pluralist Canada."
+  },
+  "org_evidence_chars": 1013,
+  "job_evidence_chars": 0,
+  "org_results": {
+    "gemini-3.6-flash": {
+      "error": "LLM provider error: Gemini completion error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 14.798403074s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '14s'}]}}",
+      "elapsed_s": 5.54
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "sector_id": "arts-culture-information",
+      "language": "fr",
+      "type": "nonprofit",
+      "website": "https://tohu.ca",
+      "website_norm": "tohu.ca",
+      "mission": "To bring together circus, Earth, and humanity through circus arts programming, cultural events, visual arts exhibitions, and community engagement.",
+      "description": "La TOHU is a North American centre for performance, creativity, experimentation, and convergence of culture, located in the heart of the Cité des arts du cirque in Montreal.",
+      "values": [
+        "Community",
+        "Artistic Creativity",
+        "Help Society"
+      ],
+      "elapsed_s": 3.55,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "sector_id": "arts-culture-information",
+      "language": "fr",
+      "type": "nonprofit",
+      "website": "https://tohu.ca/en",
+      "website_norm": "tohu.ca",
+      "mission": "La TOHU is a place for dissemination, creation, experimentation and convergence between culture.",
+      "description": "La TOHU is a centre for performance, creativity, experimentation, and convergence of culture in Montreal.",
+      "values": "None found",
+      "elapsed_s": 2.82,
+      "provider": "groq"
+    },
+    "ollama": {
+      "error": "LLM provider error: Ollama generation failed: timed out",
+      "elapsed_s": 120.11
+    }
+  },
+  "job_results": {
+    "gemini-3.6-flash": {
+      "error": "LLM provider error: Gemini completion error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 13.529993064s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '13s'}]}}",
+      "elapsed_s": 1.27
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "language": null,
+      "reasoning": "Inspirit Foundation is a public foundation advancing racial, social, and economic justice through grantmaking and pooled funds. The role offers clear compensation and a mission-driven environment focused on social good, though it operates within a traditional philanthropic structure.",
+      "confidence": 0.9,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Intentional impact description",
+        "Role contributes to social good",
+        "Transparent compensation",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture",
+        "Mission reinvestment"
+      ],
+      "flags": [
+        "Traditional philanthropic hierarchy rather than democratic/cooperative governance"
+      ],
+      "elapsed_s": 1.07,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "language": null,
+      "reasoning": "Inspirit Foundation's mission to advance racial, social and economic justice and invest in media and arts for change suggests a strong focus on social good. However, the role of a Program Coordinator in a public foundation and the required periodic work from an office in Toronto suggest a somewhat traditional corporate structure. Volunteer/internship opportunities are not explicitly stated.",
+      "confidence": 0.6,
+      "must_haves_met": [
+        "Clear purpose beyond profit - mission prioritizes people/community/planet",
+        "Role contributes to social/community/environmental good",
+        "Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)"
+      ],
+      "nice_to_haves_met": [],
+      "flags": [
+        "Traditional corporate structure",
+        "Limited SSE alignment"
+      ],
+      "elapsed_s": 5.96,
+      "provider": "groq"
+    },
+    "ollama": {
+      "error": "LLM provider error: Ollama generation failed: timed out",
+      "elapsed_s": 120.01
+    }
+  },
+  "org_vs_prod": {
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": false,
+          "ref": false,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": "no",
+          "cand": "weak_yes"
+        },
+        "sector_id": {
+          "match": false,
+          "ref": null,
+          "cand": "arts-culture-information"
+        },
+        "language": {
+          "match": false,
+          "ref": null,
+          "cand": "fr"
+        },
+        "type": {
+          "match": false,
+          "ref": null,
+          "cand": "nonprofit"
+        },
+        "website_norm": {
+          "match": false,
+          "ref": null,
+          "cand": "tohu.ca"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 0,
+          "ref": null,
+          "cand": "To bring together circus, Earth, and humanity through circus arts programming, cultural events, visual arts exhibitions, and community engagement."
+        },
+        "description": {
+          "score": 0,
+          "ref": null,
+          "cand": "La TOHU is a North American centre for performance, creativity, experimentation, and convergence of culture, located in the heart of the Cité des arts du cirque"
+        },
+        "values": {
+          "score": 0,
+          "ref": null,
+          "cand": "['Community', 'Artistic Creativity', 'Help Society']"
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": false,
+          "ref": false,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": "no",
+          "cand": "weak_yes"
+        },
+        "sector_id": {
+          "match": false,
+          "ref": null,
+          "cand": "arts-culture-information"
+        },
+        "language": {
+          "match": false,
+          "ref": null,
+          "cand": "fr"
+        },
+        "type": {
+          "match": false,
+          "ref": null,
+          "cand": "nonprofit"
+        },
+        "website_norm": {
+          "match": false,
+          "ref": null,
+          "cand": "tohu.ca"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 0,
+          "ref": null,
+          "cand": "La TOHU is a place for dissemination, creation, experimentation and convergence between culture."
+        },
+        "description": {
+          "score": 0,
+          "ref": null,
+          "cand": "La TOHU is a centre for performance, creativity, experimentation, and convergence of culture in Montreal."
+        },
+        "values": {
+          "score": 0,
+          "ref": null,
+          "cand": "None found"
+        }
+      }
+    }
+  },
+  "job_vs_prod": {
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": "strong_yes",
+          "cand": "weak_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Inspirit Foundation is a public foundation advancing racial, social, and economic justice through grantmaking and pooled funds. The role offers clear compensati"
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": "strong_yes",
+          "cand": "weak_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Inspirit Foundation's mission to advance racial, social and economic justice and invest in media and arts for change suggests a strong focus on social good. How"
+        }
+      }
+    }
+  },
+  "org_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": true,
+        "groq": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "weak_yes",
+        "groq": "weak_yes"
+      }
+    },
+    "sector_id": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "arts-culture-information",
+        "groq": "arts-culture-information"
+      }
+    },
+    "language": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "fr",
+        "groq": "fr"
+      }
+    },
+    "type": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "nonprofit",
+        "groq": "nonprofit"
+      }
+    },
+    "website_norm": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "tohu.ca",
+        "groq": "tohu.ca"
+      }
+    }
+  },
+  "job_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": true,
+        "groq": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "weak_yes",
+        "groq": "weak_yes"
+      }
+    }
+  },
+  "org_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 0,
+      "total": 2,
+      "pct": 0.0
+    },
+    "sse_rating": {
+      "matches": 0,
+      "total": 2,
+      "pct": 0.0
+    },
+    "sector_id": {
+      "matches": 0,
+      "total": 2,
+      "pct": 0.0
+    },
+    "language": {
+      "matches": 0,
+      "total": 2,
+      "pct": 0.0
+    },
+    "type": {
+      "matches": 0,
+      "total": 2,
+      "pct": 0.0
+    },
+    "website_norm": {
+      "matches": 0,
+      "total": 2,
+      "pct": 0.0
+    }
+  },
+  "job_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 0,
+      "total": 2,
+      "pct": 0.0
+    }
+  },
+  "note_org_vs_job": "Org assessment rates the employer (governance/mission). Job SSE classification rates the posting (role + org context + compensation rules). They can legitimately disagree (e.g. SSE-aligned role at a non-SSE employer)."
+}

@@ -1,0 +1,527 @@
+{
+  "generated_at": "2026-07-30T23:41:55.860192+00:00",
+  "dry_run": true,
+  "org_ref": {
+    "id": 36,
+    "name": "L’Arrimage inc.",
+    "is_sse": true,
+    "sse_rating": "strong_yes",
+    "sector_id": "community-civic-infrastructure",
+    "language": "bilingual",
+    "type": "nonprofit",
+    "website": "https://www.larrimage.ca/",
+    "website_norm": "larrimage.ca",
+    "mission": "Access to the job market is at the heart of our commitment. Our mission is to support people in their job search, integration, and retention, recognizing the crucial role of work for their well-being and community belonging.",
+    "description": "L'Arrimage inc. is a non-profit organization providing specialized employment assistance services to individuals living with mental health challenges in Montreal and Laval since 1976. The organization aims for integration, follow-up, and long-term job retention, recognizing work as essential for well-being and community belonging. It collaborates with healthcare professionals and employers for successful workforce reintegration.",
+    "values": [
+      "Help Others",
+      "Help Society",
+      "Community",
+      "Moral Fulfillment",
+      "Security"
+    ]
+  },
+  "job_ref": {
+    "id": "e29705dd-7865-465a-9149-49c05956e603",
+    "title": "Organic veggie farming",
+    "organization": "Selva Farm",
+    "is_sse": false,
+    "sse_rating": "weak_yes",
+    "language": "en",
+    "reasoning": null,
+    "summary_ref": "A seasonal Farm General Labourer assists with all aspects of organic vegetable, fruit, and herb production, including greenhouse work, planting, weeding, harvesting, and land development, on a new farm project."
+  },
+  "org_evidence_chars": 0,
+  "job_evidence_chars": 0,
+  "org_results": {
+    "gemini-3.6-flash": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "sector_id": "community-civic-infrastructure",
+      "language": "fr",
+      "type": "nonprofit",
+      "website": "https://www.larrimage.ca/",
+      "website_norm": "larrimage.ca",
+      "mission": "To support individuals living with mental health challenges in gaining, retaining, and maintaining meaningful employment while fostering social integration and community well-being.",
+      "description": "L'Arrimage inc. is a non-profit organization providing specialized employment assistance services to individuals living with mental health challenges in Montreal and Laval since 1976. The organization aims for integration, follow-up, and long-term job retention, recognizing work as essential for well-being and community belonging.",
+      "values": [
+        "Community",
+        "Help Society",
+        "Help Others",
+        "Diversity",
+        "Moral Fulfillment"
+      ],
+      "elapsed_s": 16.57,
+      "provider": "gemini-3.6-flash"
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "sector_id": "care-health-social-services",
+      "language": "fr",
+      "type": "nonprofit",
+      "website": "https://www.larrimage.ca/",
+      "website_norm": "larrimage.ca",
+      "mission": "To promote the social and professional integration of adults living with mental health issues through personalized employment assistance, support, and community collaboration.",
+      "description": "L'Arrimage inc. is a non-profit organization providing specialized employment assistance services to individuals living with mental health challenges in Montreal and Laval since 1976.",
+      "values": [
+        "Help Others",
+        "Community",
+        "Help Society",
+        "Moral Fulfillment",
+        "Honesty and Integrity"
+      ],
+      "elapsed_s": 4.81,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "sector_id": "care-health-social-services",
+      "language": "fr",
+      "type": "nonprofit",
+      "website": "https://www.larrimage.ca/",
+      "website_norm": "larrimage.ca",
+      "mission": "Helping individuals with mental health challenges find employment and reintegrate into the workforce.",
+      "description": "Non-profit organization providing employment assistance to individuals with mental health challenges, aiming for integration and long-term job retention.",
+      "values": [
+        "Community",
+        "Help Others",
+        "Help Society"
+      ],
+      "elapsed_s": 3.37,
+      "provider": "groq"
+    },
+    "ollama": {
+      "error": "LLM provider error: Ollama generation failed: timed out",
+      "elapsed_s": 90.04
+    }
+  },
+  "job_results": {
+    "gemini-3.6-flash": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "language": null,
+      "reasoning": "Selva Farm is a small-scale organic farm focused on permaculture, sustainability, and community food access. While not structured as a cooperative or non-profit, the role contributes directly to sustainable agriculture and local food systems with transparent hourly pay ($18-$19/hr) and dedicated mentorship.",
+      "confidence": 0.85,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Intentional impact",
+        "Contributes to environmental/community good",
+        "Transparent compensation",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture",
+        "Investment in workers"
+      ],
+      "flags": [
+        "Private for-profit farm without explicit participatory governance structure"
+      ],
+      "elapsed_s": 5.8,
+      "provider": "gemini-3.6-flash"
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "language": null,
+      "reasoning": "Selva Farm provides transparent hourly compensation and meaningful local organic agriculture work centered on sustainability. While it is a small-scale for-profit farm project rather than a formal cooperative, it explicitly prioritizes environmental stewardship, local community access to fresh food, and worker skill-sharing.",
+      "confidence": 0.85,
+      "must_haves_met": [
+        "Clear purpose beyond profit (organic agriculture/sustainability)",
+        "Impact described intentionally",
+        "Role contributes to environmental and community good",
+        "Transparent compensation stated ($18-19/hr)",
+        "Clear job expectations (hours, contract type, duties)"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture and teamwork focus",
+        "Investment in workers (training, skills, free produce)",
+        "Respect for nature and sustainable practices"
+      ],
+      "flags": [
+        "Small first-year for-profit farm enterprise without explicit cooperative governance model"
+      ],
+      "elapsed_s": 9.44,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "language": null,
+      "reasoning": "The farm prioritizes organic veggie farming and offers benefits like access to high-quality vegetables and a beautiful work environment, showing some alignment with Solidarity Economy principles.",
+      "confidence": 0.7,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Impact described intentionally",
+        "Role contributes to social/community/environmental good",
+        "Transparent compensation or role type"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture",
+        "Investment in workers/volunteers"
+      ],
+      "flags": [
+        "No explicit governance model stated",
+        "No clear participatory governance"
+      ],
+      "elapsed_s": 5.52,
+      "provider": "groq"
+    },
+    "ollama": {
+      "error": "LLM provider error: Ollama generation failed: timed out",
+      "elapsed_s": 90.0
+    }
+  },
+  "org_vs_prod": {
+    "gemini-3.6-flash": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": "strong_yes",
+          "cand": "weak_yes"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "community-civic-infrastructure",
+          "cand": "community-civic-infrastructure"
+        },
+        "language": {
+          "match": false,
+          "ref": "bilingual",
+          "cand": "fr"
+        },
+        "type": {
+          "match": true,
+          "ref": "nonprofit",
+          "cand": "nonprofit"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "larrimage.ca",
+          "cand": "larrimage.ca"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 1,
+          "ref": "Access to the job market is at the heart of our commitment. Our mission is to support people in their job search, integration, and retention, recognizing the cr",
+          "cand": "To support individuals living with mental health challenges in gaining, retaining, and maintaining meaningful employment while fostering social integration and "
+        },
+        "description": {
+          "score": 2,
+          "ref": "L'Arrimage inc. is a non-profit organization providing specialized employment assistance services to individuals living with mental health challenges in Montrea",
+          "cand": "L'Arrimage inc. is a non-profit organization providing specialized employment assistance services to individuals living with mental health challenges in Montrea"
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Help Others', 'Help Society', 'Community', 'Moral Fulfillment', 'Security']",
+          "cand": "['Community', 'Help Society', 'Help Others', 'Diversity', 'Moral Fulfillment']"
+        }
+      }
+    },
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": "strong_yes",
+          "cand": "weak_yes"
+        },
+        "sector_id": {
+          "match": false,
+          "ref": "community-civic-infrastructure",
+          "cand": "care-health-social-services"
+        },
+        "language": {
+          "match": false,
+          "ref": "bilingual",
+          "cand": "fr"
+        },
+        "type": {
+          "match": true,
+          "ref": "nonprofit",
+          "cand": "nonprofit"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "larrimage.ca",
+          "cand": "larrimage.ca"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 1,
+          "ref": "Access to the job market is at the heart of our commitment. Our mission is to support people in their job search, integration, and retention, recognizing the cr",
+          "cand": "To promote the social and professional integration of adults living with mental health issues through personalized employment assistance, support, and community"
+        },
+        "description": {
+          "score": 2,
+          "ref": "L'Arrimage inc. is a non-profit organization providing specialized employment assistance services to individuals living with mental health challenges in Montrea",
+          "cand": "L'Arrimage inc. is a non-profit organization providing specialized employment assistance services to individuals living with mental health challenges in Montrea"
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Help Others', 'Help Society', 'Community', 'Moral Fulfillment', 'Security']",
+          "cand": "['Help Others', 'Community', 'Help Society', 'Moral Fulfillment', 'Honesty and Integrity']"
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": "strong_yes",
+          "cand": "weak_yes"
+        },
+        "sector_id": {
+          "match": false,
+          "ref": "community-civic-infrastructure",
+          "cand": "care-health-social-services"
+        },
+        "language": {
+          "match": false,
+          "ref": "bilingual",
+          "cand": "fr"
+        },
+        "type": {
+          "match": true,
+          "ref": "nonprofit",
+          "cand": "nonprofit"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "larrimage.ca",
+          "cand": "larrimage.ca"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 0,
+          "ref": "Access to the job market is at the heart of our commitment. Our mission is to support people in their job search, integration, and retention, recognizing the cr",
+          "cand": "Helping individuals with mental health challenges find employment and reintegrate into the workforce."
+        },
+        "description": {
+          "score": 2,
+          "ref": "L'Arrimage inc. is a non-profit organization providing specialized employment assistance services to individuals living with mental health challenges in Montrea",
+          "cand": "Non-profit organization providing employment assistance to individuals with mental health challenges, aiming for integration and long-term job retention."
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Help Others', 'Help Society', 'Community', 'Moral Fulfillment', 'Security']",
+          "cand": "['Community', 'Help Others', 'Help Society']"
+        }
+      }
+    }
+  },
+  "job_vs_prod": {
+    "gemini-3.6-flash": {
+      "categorical": {
+        "is_sse": {
+          "match": false,
+          "ref": false,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "weak_yes",
+          "cand": "weak_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Selva Farm is a small-scale organic farm focused on permaculture, sustainability, and community food access. While not structured as a cooperative or non-profit"
+        }
+      }
+    },
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": false,
+          "ref": false,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "weak_yes",
+          "cand": "weak_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Selva Farm provides transparent hourly compensation and meaningful local organic agriculture work centered on sustainability. While it is a small-scale for-prof"
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": false,
+          "ref": false,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "weak_yes",
+          "cand": "weak_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "The farm prioritizes organic veggie farming and offers benefits like access to high-quality vegetables and a beautiful work environment, showing some alignment "
+        }
+      }
+    }
+  },
+  "org_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": true,
+        "gemini-3.5-flash-lite": true,
+        "groq": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "weak_yes",
+        "gemini-3.5-flash-lite": "weak_yes",
+        "groq": "weak_yes"
+      }
+    },
+    "sector_id": {
+      "all_models_agree": false,
+      "values": {
+        "gemini-3.6-flash": "community-civic-infrastructure",
+        "gemini-3.5-flash-lite": "care-health-social-services",
+        "groq": "care-health-social-services"
+      }
+    },
+    "language": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "fr",
+        "gemini-3.5-flash-lite": "fr",
+        "groq": "fr"
+      }
+    },
+    "type": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "nonprofit",
+        "gemini-3.5-flash-lite": "nonprofit",
+        "groq": "nonprofit"
+      }
+    },
+    "website_norm": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "larrimage.ca",
+        "gemini-3.5-flash-lite": "larrimage.ca",
+        "groq": "larrimage.ca"
+      }
+    }
+  },
+  "job_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": true,
+        "gemini-3.5-flash-lite": true,
+        "groq": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "weak_yes",
+        "gemini-3.5-flash-lite": "weak_yes",
+        "groq": "weak_yes"
+      }
+    }
+  },
+  "org_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 3,
+      "total": 3,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 0,
+      "total": 3,
+      "pct": 0.0
+    },
+    "sector_id": {
+      "matches": 1,
+      "total": 3,
+      "pct": 33.3
+    },
+    "language": {
+      "matches": 0,
+      "total": 3,
+      "pct": 0.0
+    },
+    "type": {
+      "matches": 3,
+      "total": 3,
+      "pct": 100.0
+    },
+    "website_norm": {
+      "matches": 3,
+      "total": 3,
+      "pct": 100.0
+    }
+  },
+  "job_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 0,
+      "total": 3,
+      "pct": 0.0
+    },
+    "sse_rating": {
+      "matches": 3,
+      "total": 3,
+      "pct": 100.0
+    }
+  },
+  "note_org_vs_job": "Org assessment rates the employer (governance/mission). Job SSE classification rates the posting (role + org context + compensation rules). They can legitimately disagree (e.g. SSE-aligned role at a non-SSE employer)."
+}

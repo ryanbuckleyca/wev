@@ -1,0 +1,396 @@
+{
+  "generated_at": "2026-07-31T13:16:37.751006+00:00",
+  "dry_run": true,
+  "org_ref": {
+    "id": 1363,
+    "name": "La Ligue des Noirs du Québec",
+    "is_sse": true,
+    "sse_rating": "strong_yes",
+    "sector_id": "community-civic-infrastructure",
+    "language": "fr",
+    "type": "nonprofit",
+    "website": "https://liguedesnoirsduquebec.org",
+    "website_norm": "liguedesnoirsduquebec.org",
+    "mission": "To defend human rights, fight injustice and discrimination, and support victims of racism and racial profiling. The organization promotes equal opportunities for all citizens and educates governments and society on fundamental rights.",
+    "description": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and individuals advocating for impartial justice, fighting injustice and discrimination.",
+    "values": [
+      "Help Society",
+      "Diversity",
+      "Honesty and Integrity",
+      "Community",
+      "Knowledge"
+    ]
+  },
+  "job_ref": {
+    "id": "96f648a9-fe36-4f6f-8118-0212deb1f98a",
+    "title": "Administrative Assistant",
+    "organization": "Toronto Wildlife Centre",
+    "is_sse": true,
+    "sse_rating": "strong_yes",
+    "language": "en",
+    "reasoning": null,
+    "summary_ref": "This position provides comprehensive administrative and operational support to the Director of Operations and various departments at Canada's busiest wildlife rescue and rehabilitation charity."
+  },
+  "org_evidence_chars": 0,
+  "job_evidence_chars": 0,
+  "org_results": {
+    "gemini-3.6-flash": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "sector_id": "community-civic-infrastructure",
+      "language": "fr",
+      "type": "nonprofit",
+      "website": "https://liguedesnoirsduquebec.org",
+      "website_norm": "liguedesnoirsduquebec.org",
+      "mission": "To defend human rights, fight racial discrimination, and advocate for impartial justice and social equality for Black communities and all cultural communities in Quebec.",
+      "description": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and individuals advocating for impartial justice, fighting injustice and discrimination.",
+      "values": [
+        "Community",
+        "Diversity",
+        "Help Society",
+        "Honesty and Integrity",
+        "Moral Fulfillment"
+      ],
+      "elapsed_s": 41.76,
+      "provider": "gemini-3.6-flash"
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "sector_id": "community-civic-infrastructure",
+      "language": "fr",
+      "type": "nonprofit",
+      "website": "https://liguedesnoirsduquebec.org",
+      "website_norm": "liguedesnoirsduquebec.org",
+      "mission": "To defend human rights, combat racial discrimination, and promote equity and social justice for all cultural communities and individuals in Quebec.",
+      "description": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and individuals advocating for impartial justice, fighting injustice and discrimination.",
+      "values": [
+        "Community",
+        "Help Society",
+        "Honesty and Integrity",
+        "Moral Fulfillment",
+        "Diversity"
+      ],
+      "elapsed_s": 8.04,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "error": "LLM provider error: Groq API error (403): {\"error\":{\"message\":\"Access denied. Please check your network settings.\"}}",
+      "elapsed_s": 2.04
+    }
+  },
+  "job_results": {
+    "gemini-3.6-flash": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "language": null,
+      "reasoning": "Toronto Wildlife Centre is a registered charity dedicated to wildlife rescue, rehabilitation, and education. As a full-time position supporting core operational and administrative needs, the role directly sustains environmental and animal welfare efforts with clear, transparent hourly compensation.",
+      "confidence": 0.95,
+      "must_haves_met": [
+        "Purpose beyond profit",
+        "Intentional impact description",
+        "Role contributes to environmental good",
+        "Transparent compensation",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Governance model stated (registered charity)",
+        "Respect for nature and living beings",
+        "Investment in worker safety and training"
+      ],
+      "flags": [],
+      "elapsed_s": 28.42,
+      "provider": "gemini-3.6-flash"
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "language": null,
+      "reasoning": "Toronto Wildlife Centre is a registered charity providing wildlife rescue, medical care, and rehabilitation. The role supports this core charitable mission with transparent hourly compensation. While operated as a traditional nonprofit rather than a worker cooperative, its explicit social and environmental mission strongly aligns with solidarity economy values.",
+      "confidence": 0.95,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Impact described intentionally",
+        "Role contributes to environmental/community good",
+        "Transparent compensation stated",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture",
+        "Governance model stated (nonprofit/charity)"
+      ],
+      "flags": [],
+      "elapsed_s": 3.54,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "error": "LLM provider error: Groq API error (403): {\"error\":{\"message\":\"Access denied. Please check your network settings.\"}}",
+      "elapsed_s": 8.42
+    }
+  },
+  "org_vs_prod": {
+    "gemini-3.6-flash": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "community-civic-infrastructure",
+          "cand": "community-civic-infrastructure"
+        },
+        "language": {
+          "match": true,
+          "ref": "fr",
+          "cand": "fr"
+        },
+        "type": {
+          "match": true,
+          "ref": "nonprofit",
+          "cand": "nonprofit"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "liguedesnoirsduquebec.org",
+          "cand": "liguedesnoirsduquebec.org"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 1,
+          "ref": "To defend human rights, fight injustice and discrimination, and support victims of racism and racial profiling. The organization promotes equal opportunities fo",
+          "cand": "To defend human rights, fight racial discrimination, and advocate for impartial justice and social equality for Black communities and all cultural communities i"
+        },
+        "description": {
+          "score": 2,
+          "ref": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and indiv",
+          "cand": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and indiv"
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Help Society', 'Diversity', 'Honesty and Integrity', 'Community', 'Knowledge']",
+          "cand": "['Community', 'Diversity', 'Help Society', 'Honesty and Integrity', 'Moral Fulfillment']"
+        }
+      }
+    },
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "community-civic-infrastructure",
+          "cand": "community-civic-infrastructure"
+        },
+        "language": {
+          "match": true,
+          "ref": "fr",
+          "cand": "fr"
+        },
+        "type": {
+          "match": true,
+          "ref": "nonprofit",
+          "cand": "nonprofit"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "liguedesnoirsduquebec.org",
+          "cand": "liguedesnoirsduquebec.org"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 1,
+          "ref": "To defend human rights, fight injustice and discrimination, and support victims of racism and racial profiling. The organization promotes equal opportunities fo",
+          "cand": "To defend human rights, combat racial discrimination, and promote equity and social justice for all cultural communities and individuals in Quebec."
+        },
+        "description": {
+          "score": 2,
+          "ref": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and indiv",
+          "cand": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and indiv"
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Help Society', 'Diversity', 'Honesty and Integrity', 'Community', 'Knowledge']",
+          "cand": "['Community', 'Help Society', 'Honesty and Integrity', 'Moral Fulfillment', 'Diversity']"
+        }
+      }
+    }
+  },
+  "job_vs_prod": {
+    "gemini-3.6-flash": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Toronto Wildlife Centre is a registered charity dedicated to wildlife rescue, rehabilitation, and education. As a full-time position supporting core operational"
+        }
+      }
+    },
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Toronto Wildlife Centre is a registered charity providing wildlife rescue, medical care, and rehabilitation. The role supports this core charitable mission with"
+        }
+      }
+    }
+  },
+  "org_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": true,
+        "gemini-3.5-flash-lite": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "strong_yes",
+        "gemini-3.5-flash-lite": "strong_yes"
+      }
+    },
+    "sector_id": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "community-civic-infrastructure",
+        "gemini-3.5-flash-lite": "community-civic-infrastructure"
+      }
+    },
+    "language": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "fr",
+        "gemini-3.5-flash-lite": "fr"
+      }
+    },
+    "type": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "nonprofit",
+        "gemini-3.5-flash-lite": "nonprofit"
+      }
+    },
+    "website_norm": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "liguedesnoirsduquebec.org",
+        "gemini-3.5-flash-lite": "liguedesnoirsduquebec.org"
+      }
+    }
+  },
+  "job_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": true,
+        "gemini-3.5-flash-lite": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "strong_yes",
+        "gemini-3.5-flash-lite": "strong_yes"
+      }
+    }
+  },
+  "org_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sector_id": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "language": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "type": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "website_norm": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    }
+  },
+  "job_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    }
+  },
+  "note_org_vs_job": "Org assessment rates the employer (governance/mission). Job SSE classification rates the posting (role + org context + compensation rules). They can legitimately disagree (e.g. SSE-aligned role at a non-SSE employer)."
+}

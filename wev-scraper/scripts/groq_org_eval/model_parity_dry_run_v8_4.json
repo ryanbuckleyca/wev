@@ -1,0 +1,388 @@
+{
+  "generated_at": "2026-07-31T00:06:31.763899+00:00",
+  "dry_run": true,
+  "org_ref": {
+    "id": 1345,
+    "name": "Lyft, Inc.",
+    "is_sse": false,
+    "sse_rating": "no",
+    "sector_id": "technology-digital-infrastructure",
+    "language": "en",
+    "type": "other",
+    "website": "https://www.lyft.com",
+    "website_norm": "lyft.com",
+    "mission": "Lyft's mission is to \"Improve people's lives with the world's best transportation,\" focusing on accessibility and connection through its platform.",
+    "description": "Lyft, Inc. is an American corporation providing ride-hailing, e-scooter, and bike-sharing services across the U.S. and Canada. The company aims to improve urban mobility, reduce personal car ownership, and connect communities through its multimodal transportation network.",
+    "values": [
+      "Help Society",
+      "Community",
+      "Diversity",
+      "Competence",
+      "Environment"
+    ]
+  },
+  "job_ref": {
+    "id": "e0b168f3-3dbb-4bdb-9a79-f944b9e8b1b3",
+    "title": "Social Impact Coordinator",
+    "organization": "Lyft",
+    "is_sse": false,
+    "sse_rating": null,
+    "language": "en",
+    "reasoning": null,
+    "summary_ref": "This role coordinates Lyft's social impact programs and partnerships, particularly focusing on using transportation to increase access and opportunity, managing ride donation initiatives, and ensuring smooth operational execution across various stakeholders."
+  },
+  "org_evidence_chars": 0,
+  "job_evidence_chars": 0,
+  "org_results": {
+    "gemini-3.6-flash": {
+      "error": "LLM provider error: Gemini completion error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 11.14400757s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '11s'}]}}",
+      "elapsed_s": 3.72
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": false,
+      "sse_rating": "no",
+      "sector_id": "technology-digital-infrastructure",
+      "language": "en",
+      "type": "other",
+      "website": "https://www.lyft.com",
+      "website_norm": "lyft.com",
+      "mission": "To improve people's lives with the world's best transportation network.",
+      "description": "Lyft, Inc. is an American corporation providing ride-hailing, e-scooter, and bike-sharing services across the U.S. and Canada. The company aims to improve urban mobility, reduce personal car ownership, and connect communities.",
+      "values": [
+        "Community",
+        "Change and Variety",
+        "Fast Pace"
+      ],
+      "elapsed_s": 92.31,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": false,
+      "sse_rating": "no",
+      "sector_id": "technology-digital-infrastructure",
+      "language": "en",
+      "type": "other",
+      "website": "https://www.lyft.com",
+      "website_norm": "lyft.com",
+      "mission": "Improve urban mobility, reduce personal car ownership, and connect communities through its multimodal transportation network.",
+      "description": "Lyft, Inc. is an American corporation providing ride-hailing, e-scooter, and bike-sharing services across the U.S. and Canada.",
+      "values": null,
+      "elapsed_s": 2.27,
+      "provider": "groq"
+    }
+  },
+  "job_results": {
+    "gemini-3.6-flash": {
+      "error": "LLM provider error: Gemini completion error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 9.905870271s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '9s'}]}}",
+      "elapsed_s": 1.25
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": false,
+      "sse_rating": "no",
+      "language": null,
+      "reasoning": "Lyft is a traditional for-profit corporation focused on ride-hailing services. Despite having a corporate social impact team, the position does not align with Solidarity Economy principles as it operates within a profit-driven tech enterprise model.",
+      "confidence": 0.95,
+      "must_haves_met": [
+        "Role contributes to social/community good",
+        "Transparent compensation stated",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [],
+      "flags": [
+        "Traditional for-profit corporation",
+        "No cooperative or solidarity economy structure",
+        "Mission-neutral corporate social responsibility role"
+      ],
+      "elapsed_s": 1.08,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "language": null,
+      "reasoning": "Lyft's social impact team focuses on using transportation to increase access and opportunity for all, indicating a social mission. The role contributes to social good, but the organization is a traditional for-profit corporation.",
+      "confidence": 0.6,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Role contributes to social/community/environmental good",
+        "Transparent compensation or role type",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture",
+        "Investment in workers/volunteers"
+      ],
+      "flags": [
+        "For-profit corporation",
+        "Lack of participatory governance"
+      ],
+      "elapsed_s": 6.13,
+      "provider": "groq"
+    }
+  },
+  "org_vs_prod": {
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": false,
+          "cand": false
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "no",
+          "cand": "no"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "technology-digital-infrastructure",
+          "cand": "technology-digital-infrastructure"
+        },
+        "language": {
+          "match": true,
+          "ref": "en",
+          "cand": "en"
+        },
+        "type": {
+          "match": true,
+          "ref": "other",
+          "cand": "other"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "lyft.com",
+          "cand": "lyft.com"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 2,
+          "ref": "Lyft's mission is to \"Improve people's lives with the world's best transportation,\" focusing on accessibility and connection through its platform.",
+          "cand": "To improve people's lives with the world's best transportation network."
+        },
+        "description": {
+          "score": 2,
+          "ref": "Lyft, Inc. is an American corporation providing ride-hailing, e-scooter, and bike-sharing services across the U.S. and Canada. The company aims to improve urban",
+          "cand": "Lyft, Inc. is an American corporation providing ride-hailing, e-scooter, and bike-sharing services across the U.S. and Canada. The company aims to improve urban"
+        },
+        "values": {
+          "score": 0,
+          "ref": "['Help Society', 'Community', 'Diversity', 'Competence', 'Environment']",
+          "cand": "['Community', 'Change and Variety', 'Fast Pace']"
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": false,
+          "cand": false
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "no",
+          "cand": "no"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "technology-digital-infrastructure",
+          "cand": "technology-digital-infrastructure"
+        },
+        "language": {
+          "match": true,
+          "ref": "en",
+          "cand": "en"
+        },
+        "type": {
+          "match": true,
+          "ref": "other",
+          "cand": "other"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "lyft.com",
+          "cand": "lyft.com"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 1,
+          "ref": "Lyft's mission is to \"Improve people's lives with the world's best transportation,\" focusing on accessibility and connection through its platform.",
+          "cand": "Improve urban mobility, reduce personal car ownership, and connect communities through its multimodal transportation network."
+        },
+        "description": {
+          "score": 2,
+          "ref": "Lyft, Inc. is an American corporation providing ride-hailing, e-scooter, and bike-sharing services across the U.S. and Canada. The company aims to improve urban",
+          "cand": "Lyft, Inc. is an American corporation providing ride-hailing, e-scooter, and bike-sharing services across the U.S. and Canada."
+        },
+        "values": {
+          "score": 0,
+          "ref": "['Help Society', 'Community', 'Diversity', 'Competence', 'Environment']",
+          "cand": null
+        }
+      }
+    }
+  },
+  "job_vs_prod": {
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": false,
+          "cand": false
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": null,
+          "cand": "no"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Lyft is a traditional for-profit corporation focused on ride-hailing services. Despite having a corporate social impact team, the position does not align with S"
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": false,
+          "ref": false,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": null,
+          "cand": "weak_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Lyft's social impact team focuses on using transportation to increase access and opportunity for all, indicating a social mission. The role contributes to socia"
+        }
+      }
+    }
+  },
+  "org_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": false,
+        "groq": false
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "no",
+        "groq": "no"
+      }
+    },
+    "sector_id": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "technology-digital-infrastructure",
+        "groq": "technology-digital-infrastructure"
+      }
+    },
+    "language": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "en",
+        "groq": "en"
+      }
+    },
+    "type": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "other",
+        "groq": "other"
+      }
+    },
+    "website_norm": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "lyft.com",
+        "groq": "lyft.com"
+      }
+    }
+  },
+  "job_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": false,
+      "values": {
+        "gemini-3.5-flash-lite": false,
+        "groq": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": false,
+      "values": {
+        "gemini-3.5-flash-lite": "no",
+        "groq": "weak_yes"
+      }
+    }
+  },
+  "org_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sector_id": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "language": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "type": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "website_norm": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    }
+  },
+  "job_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 1,
+      "total": 2,
+      "pct": 50.0
+    },
+    "sse_rating": {
+      "matches": 0,
+      "total": 2,
+      "pct": 0.0
+    }
+  },
+  "note_org_vs_job": "Org assessment rates the employer (governance/mission). Job SSE classification rates the posting (role + org context + compensation rules). They can legitimately disagree (e.g. SSE-aligned role at a non-SSE employer)."
+}

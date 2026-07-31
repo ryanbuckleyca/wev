@@ -357,8 +357,10 @@ def run(
                         municipality=org.get("municipality"),
                         province=org.get("province"),
                         job_title="",
-                        description=org.get("description") or "",
+                        description="",
                         known_website=org.get("website"),
+                        existing_description=org.get("description") or "",
+                        listing_notes="",
                     )
                     website = (result or {}).get("website") if result else None
                     if not website or not evidence_domain(website):

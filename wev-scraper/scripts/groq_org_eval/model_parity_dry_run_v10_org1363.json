@@ -1,0 +1,469 @@
+{
+  "generated_at": "2026-07-31T13:46:41.175073+00:00",
+  "dry_run": true,
+  "org_ref": {
+    "id": 1363,
+    "name": "La Ligue des Noirs du Québec",
+    "is_sse": true,
+    "sse_rating": "strong_yes",
+    "sector_id": "community-civic-infrastructure",
+    "language": "fr",
+    "type": "nonprofit",
+    "website": "https://liguedesnoirsduquebec.org",
+    "website_norm": "liguedesnoirsduquebec.org",
+    "mission": "To defend human rights, fight injustice and discrimination, and support victims of racism and racial profiling. The organization promotes equal opportunities for all citizens and educates governments and society on fundamental rights.",
+    "description": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and individuals advocating for impartial justice, fighting injustice and discrimination.",
+    "values": [
+      "Help Society",
+      "Diversity",
+      "Honesty and Integrity",
+      "Community",
+      "Knowledge"
+    ]
+  },
+  "job_ref": {
+    "id": "21cb5cc3-5125-4108-9ac8-7421239dc027",
+    "title": "Conseiller-ère et formateur-ice en vie associative et démocratique",
+    "organization": "Centre de formation populaire",
+    "is_sse": true,
+    "sse_rating": "strong_yes",
+    "language": "en",
+    "reasoning": null,
+    "summary_ref": "Ce conseiller et formateur réalise des activités de formation et d'accompagnement en vie associative et démocratique, contribuant au développement d'outils et à la cogestion au sein d'un organisme communautaire."
+  },
+  "org_evidence_chars": 0,
+  "job_evidence_chars": 0,
+  "org_results": {
+    "gemini-3.6-flash": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "sector_id": "community-civic-infrastructure",
+      "language": "fr",
+      "type": "nonprofit",
+      "website": "https://liguedesnoirsduquebec.org",
+      "website_norm": "liguedesnoirsduquebec.org",
+      "mission": "To defend human rights, fight racial discrimination, support victims of injustice, and promote the social, economic, and political development of Black communities and minority groups in Quebec.",
+      "description": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights, social justice, and equality. It serves all cultural communities fighting injustice and discrimination.",
+      "values": [
+        "Community",
+        "Diversity",
+        "Help Society",
+        "Moral Fulfillment",
+        "Honesty and Integrity"
+      ],
+      "elapsed_s": 51.43,
+      "provider": "gemini-3.6-flash"
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "sector_id": "community-civic-infrastructure",
+      "language": "fr",
+      "type": "nonprofit",
+      "website": "https://liguedesnoirsduquebec.org",
+      "website_norm": "liguedesnoirsduquebec.org",
+      "mission": "To defend human rights, promote social justice, fight systemic discrimination, and ensure equality and impartial justice for all cultural communities and individuals across Quebec.",
+      "description": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and individuals advocating for impartial justice, fighting injustice and discrimination.",
+      "values": [
+        "Help Society",
+        "Community",
+        "Honesty and Integrity",
+        "Diversity"
+      ],
+      "elapsed_s": 5.89,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "sector_id": "community-civic-infrastructure",
+      "language": "fr",
+      "type": "nonprofit",
+      "website": "https://liguedesnoirsduquebec.org",
+      "website_norm": "liguedesnoirsduquebec.org",
+      "mission": "Defend human rights and social justice, serving all cultural communities.",
+      "description": "La Ligue des Noirs du Québec is a nonprofit organization defending human rights and social justice.",
+      "values": [
+        "Community",
+        "Help Society",
+        "Honesty and Integrity"
+      ],
+      "elapsed_s": 9.87,
+      "provider": "groq"
+    }
+  },
+  "job_results": {
+    "gemini-3.6-flash": {
+      "error": "LLM provider error: Gemini completion error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 41.275401647s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-3.6-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '41s'}]}}",
+      "elapsed_s": 1.9
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "language": null,
+      "reasoning": "Centre de formation populaire is an autonomous community training organization operating on cogestion (co-management) principles. The role directly advances democratic associative life, collective education, and community worker support within a transparent unionized structure.",
+      "confidence": 0.95,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Impact described intentionally",
+        "Role contributes to social/community good",
+        "Transparent compensation",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture",
+        "Participatory governance",
+        "Governance model stated",
+        "Investment in workers"
+      ],
+      "flags": [],
+      "elapsed_s": 5.61,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "language": null,
+      "reasoning": "The Centre de formation populaire is a community-based, autonomous organization with a cogovernance model, indicating a clear commitment to solidarity economy principles. The role contributes to social good through community development and education.",
+      "confidence": 0.9,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Impact described intentionally",
+        "Role contributes to social/community/environmental good",
+        "Transparent compensation or role type",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Solidarity-driven culture",
+        "Participatory governance",
+        "Governance model stated",
+        "Investment in workers/volunteers"
+      ],
+      "flags": [],
+      "elapsed_s": 1.26,
+      "provider": "groq"
+    }
+  },
+  "org_vs_prod": {
+    "gemini-3.6-flash": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "community-civic-infrastructure",
+          "cand": "community-civic-infrastructure"
+        },
+        "language": {
+          "match": true,
+          "ref": "fr",
+          "cand": "fr"
+        },
+        "type": {
+          "match": true,
+          "ref": "nonprofit",
+          "cand": "nonprofit"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "liguedesnoirsduquebec.org",
+          "cand": "liguedesnoirsduquebec.org"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 2,
+          "ref": "To defend human rights, fight injustice and discrimination, and support victims of racism and racial profiling. The organization promotes equal opportunities fo",
+          "cand": "To defend human rights, fight racial discrimination, support victims of injustice, and promote the social, economic, and political development of Black communit"
+        },
+        "description": {
+          "score": 2,
+          "ref": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and indiv",
+          "cand": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights, social justice, and equality. It serves all cultural communitie"
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Help Society', 'Diversity', 'Honesty and Integrity', 'Community', 'Knowledge']",
+          "cand": "['Community', 'Diversity', 'Help Society', 'Moral Fulfillment', 'Honesty and Integrity']"
+        }
+      }
+    },
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "community-civic-infrastructure",
+          "cand": "community-civic-infrastructure"
+        },
+        "language": {
+          "match": true,
+          "ref": "fr",
+          "cand": "fr"
+        },
+        "type": {
+          "match": true,
+          "ref": "nonprofit",
+          "cand": "nonprofit"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "liguedesnoirsduquebec.org",
+          "cand": "liguedesnoirsduquebec.org"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 1,
+          "ref": "To defend human rights, fight injustice and discrimination, and support victims of racism and racial profiling. The organization promotes equal opportunities fo",
+          "cand": "To defend human rights, promote social justice, fight systemic discrimination, and ensure equality and impartial justice for all cultural communities and indivi"
+        },
+        "description": {
+          "score": 2,
+          "ref": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and indiv",
+          "cand": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and indiv"
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Help Society', 'Diversity', 'Honesty and Integrity', 'Community', 'Knowledge']",
+          "cand": "['Help Society', 'Community', 'Honesty and Integrity', 'Diversity']"
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": "strong_yes",
+          "cand": "weak_yes"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "community-civic-infrastructure",
+          "cand": "community-civic-infrastructure"
+        },
+        "language": {
+          "match": true,
+          "ref": "fr",
+          "cand": "fr"
+        },
+        "type": {
+          "match": true,
+          "ref": "nonprofit",
+          "cand": "nonprofit"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "liguedesnoirsduquebec.org",
+          "cand": "liguedesnoirsduquebec.org"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 1,
+          "ref": "To defend human rights, fight injustice and discrimination, and support victims of racism and racial profiling. The organization promotes equal opportunities fo",
+          "cand": "Defend human rights and social justice, serving all cultural communities."
+        },
+        "description": {
+          "score": 2,
+          "ref": "La Ligue des Noirs du Québec is a nonprofit organization founded in 1969 to defend human rights and social justice. It serves all cultural communities and indiv",
+          "cand": "La Ligue des Noirs du Québec is a nonprofit organization defending human rights and social justice."
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Help Society', 'Diversity', 'Honesty and Integrity', 'Community', 'Knowledge']",
+          "cand": "['Community', 'Help Society', 'Honesty and Integrity']"
+        }
+      }
+    }
+  },
+  "job_vs_prod": {
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Centre de formation populaire is an autonomous community training organization operating on cogestion (co-management) principles. The role directly advances dem"
+        }
+      }
+    },
+    "groq": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "The Centre de formation populaire is a community-based, autonomous organization with a cogovernance model, indicating a clear commitment to solidarity economy p"
+        }
+      }
+    }
+  },
+  "org_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": true,
+        "gemini-3.5-flash-lite": true,
+        "groq": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": false,
+      "values": {
+        "gemini-3.6-flash": "strong_yes",
+        "gemini-3.5-flash-lite": "strong_yes",
+        "groq": "weak_yes"
+      }
+    },
+    "sector_id": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "community-civic-infrastructure",
+        "gemini-3.5-flash-lite": "community-civic-infrastructure",
+        "groq": "community-civic-infrastructure"
+      }
+    },
+    "language": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "fr",
+        "gemini-3.5-flash-lite": "fr",
+        "groq": "fr"
+      }
+    },
+    "type": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "nonprofit",
+        "gemini-3.5-flash-lite": "nonprofit",
+        "groq": "nonprofit"
+      }
+    },
+    "website_norm": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "liguedesnoirsduquebec.org",
+        "gemini-3.5-flash-lite": "liguedesnoirsduquebec.org",
+        "groq": "liguedesnoirsduquebec.org"
+      }
+    }
+  },
+  "job_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": true,
+        "groq": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "strong_yes",
+        "groq": "strong_yes"
+      }
+    }
+  },
+  "org_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 3,
+      "total": 3,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 2,
+      "total": 3,
+      "pct": 66.7
+    },
+    "sector_id": {
+      "matches": 3,
+      "total": 3,
+      "pct": 100.0
+    },
+    "language": {
+      "matches": 3,
+      "total": 3,
+      "pct": 100.0
+    },
+    "type": {
+      "matches": 3,
+      "total": 3,
+      "pct": 100.0
+    },
+    "website_norm": {
+      "matches": 3,
+      "total": 3,
+      "pct": 100.0
+    }
+  },
+  "job_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    }
+  },
+  "note_org_vs_job": "Org assessment rates the employer (governance/mission). Job SSE classification rates the posting (role + org context + compensation rules). They can legitimately disagree (e.g. SSE-aligned role at a non-SSE employer)."
+}

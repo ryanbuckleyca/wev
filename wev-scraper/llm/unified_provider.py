@@ -1,8 +1,12 @@
 """Unified LLM provider with multi-tier fallback for complete job processing.
 
-Tries backends in order (e.g. local Ollama when ``ENV_MODE=local``, else Gemini Flash,
-Flash-Lite, Groq). Each call uses ``task=unified``: summary + values + SSE fields are
-all inferred from the job text in one JSON payload.
+Tries backends in order:
+  gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama (when available).
+When ``ENV_MODE=local``, Ollama is also tried earlier for offline preference on
+unified (non-SSE-grounded) batches.
+
+Each call uses ``task=unified``: summary + values + SSE fields are all inferred
+from the job text in one JSON payload.
 
 Live **Google Search** in the Gemini SDK is off for ``task=unified`` unless
 ``FORCE_GROUNDING=1`` — that is independent of whether SSE columns appear in the prompt.
@@ -14,6 +18,7 @@ from typing import Any, Dict, List
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.config import should_use_grounding
 from llm.gemini import GeminiProvider
+from llm.gemini_fallback import gemini_sse_lite_model, gemini_sse_primary_model
 from llm.groq import GroqProvider
 from llm.local_grounded import LocalGroundedProvider
 from llm.prompts import (
@@ -34,25 +39,36 @@ class UnifiedJobProcessor:
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key
 
-        # When ENV_MODE=local, local_grounded (Ollama) is preferred over API providers.
-        # Tavily inside LocalGroundedProvider is only used when task=="sse", not for unified.
+        primary = gemini_sse_primary_model()
+        lite = gemini_sse_lite_model()
+
+        # When ENV_MODE=local, prefer Ollama early for unified batches (no API spend).
         local_first = [
-            ("local_grounded", lambda: LocalGroundedProvider(), "Ollama (local LLM)"),
+            ("ollama", lambda: LocalGroundedProvider(), "Ollama (local LLM)"),
         ] if is_local_env() else []
 
         candidates = [
             *local_first,
-            ("gemini-2.5-flash", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash"), "Gemini 2.5 Flash"),
-            ("gemini-2.5-flash-lite", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash-lite"), "Gemini 2.5 Flash-Lite"),
+            (primary, lambda: GeminiProvider(api_key=api_key, model=primary), f"Gemini ({primary})"),
+            (lite, lambda: GeminiProvider(api_key=api_key, model=lite), f"Gemini ({lite})"),
             ("groq", lambda: GroqProvider(), "Groq"),
         ]
+        # Always append Ollama last when not already first (API-exhausted fallback).
+        if not is_local_env():
+            candidates.append(
+                ("ollama", lambda: LocalGroundedProvider(), "Ollama (local LLM)"),
+            )
 
         self.providers = []
         for name, factory, description in candidates:
             try:
+                provider = factory()
+                if not provider.is_available():
+                    logger.warning("Skipping LLM provider %s (not available)", name)
+                    continue
                 self.providers.append({
                     "name": name,
-                    "provider": factory(),
+                    "provider": provider,
                     "description": description,
                 })
             except Exception as e:

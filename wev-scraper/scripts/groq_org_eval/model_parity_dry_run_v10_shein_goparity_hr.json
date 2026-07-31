@@ -1,0 +1,272 @@
+{
+  "generated_at": "2026-07-31T13:19:30.790445+00:00",
+  "dry_run": true,
+  "org_ref": {
+    "id": 1354,
+    "name": "SHEIN",
+    "is_sse": false,
+    "sse_rating": "no",
+    "sector_id": "retail-consumer-goods",
+    "language": "en",
+    "type": "other",
+    "website": "https://www.sheingroup.com/",
+    "website_norm": "sheingroup.com",
+    "mission": "SHEIN's mission is to be a leader in the fashion industry by bringing fashion into the modern era. It achieves this by employing cutting-edge technologies and processes to deliver affordable fashion quickly and widely, empowering self-expression.",
+    "description": "SHEIN is a global online fashion and lifestyle e-retailer, founded in 2012, committed to making fashion accessible to all. It uses on-demand manufacturing technology and an agile supply chain to deliver a wide variety of affordable products to customers in over 150 countries, disrupting the fashion industry.",
+    "values": [
+      "Help Society",
+      "Competence",
+      "Diversity",
+      "Creative Expression",
+      "Change and Variety"
+    ]
+  },
+  "job_ref": {
+    "id": "a7a0b259-f801-40e8-8978-ab08f52667cf",
+    "title": "HR & Admin Coordinator",
+    "organization": "Goparity Canada",
+    "is_sse": true,
+    "sse_rating": "strong_yes",
+    "language": "en",
+    "reasoning": null,
+    "summary_ref": "This HR & Admin Coordinator role supports the Finance, Admin, and HR teams at TREC and its clients by managing HR logistics, coordinating recruitment, handling office administration, and assisting with financial tasks, ideally within a non-profit context."
+  },
+  "org_evidence_chars": 1580,
+  "job_evidence_chars": 0,
+  "org_results": {
+    "gemini-3.6-flash": {
+      "error": "LLM provider error: Gemini completion error: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+      "elapsed_s": 13.68
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": false,
+      "sse_rating": "no",
+      "sector_id": "retail-consumer-goods",
+      "language": "en",
+      "type": "other",
+      "website": "https://www.sheingroup.com/",
+      "website_norm": "sheingroup.com",
+      "mission": "SHEIN is a global fashion and lifestyle e-retailer committed to making the beauty of fashion accessible to all through on-demand manufacturing and an agile supply chain that reduces inventory waste.",
+      "description": "SHEIN is a global online fashion and lifestyle e-retailer, founded in 2012, committed to making fashion accessible to all. It uses on-demand manufacturing technology and an agile supply chain to deliver a wide variety of affordable products to customers in over 150 countries, disrupting the fashion industry.",
+      "values": null,
+      "elapsed_s": 20.12,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "error": "LLM provider error: Groq API error (403): {\"error\":{\"message\":\"Access denied. Please check your network settings.\"}}",
+      "elapsed_s": 1.19
+    }
+  },
+  "job_results": {
+    "gemini-3.6-flash": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "language": null,
+      "reasoning": "Toronto Renewable Energy Co-operative (TREC) is a pioneer community renewable energy co-op and community capital incubator. The posting offers transparent compensation, robust worker benefits (including paid interview stipends and professional development allowance), and explicitly operates within a co-operative, mission-driven governance structure supporting local climate action.",
+      "confidence": 0.95,
+      "must_haves_met": [
+        "Purpose beyond profit",
+        "Intentional impact",
+        "Role contributes to environmental and community good",
+        "Transparent compensation",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Cooperative governance model stated",
+        "Solidarity-driven culture",
+        "Investment in workers",
+        "Participatory practices"
+      ],
+      "flags": [],
+      "elapsed_s": 18.96,
+      "provider": "gemini-3.6-flash"
+    },
+    "gemini-3.5-flash-lite": {
+      "error": "LLM provider error: Gemini completion error: The read operation timed out",
+      "elapsed_s": 90.01
+    },
+    "groq": {
+      "error": "LLM provider error: Groq API error (403): {\"error\":{\"message\":\"Access denied. Please check your network settings.\"}}",
+      "elapsed_s": 7.37
+    }
+  },
+  "org_vs_prod": {
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": false,
+          "cand": false
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "no",
+          "cand": "no"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "retail-consumer-goods",
+          "cand": "retail-consumer-goods"
+        },
+        "language": {
+          "match": true,
+          "ref": "en",
+          "cand": "en"
+        },
+        "type": {
+          "match": true,
+          "ref": "other",
+          "cand": "other"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "sheingroup.com",
+          "cand": "sheingroup.com"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 0,
+          "ref": "SHEIN's mission is to be a leader in the fashion industry by bringing fashion into the modern era. It achieves this by employing cutting-edge technologies and p",
+          "cand": "SHEIN is a global fashion and lifestyle e-retailer committed to making the beauty of fashion accessible to all through on-demand manufacturing and an agile supp"
+        },
+        "description": {
+          "score": 2,
+          "ref": "SHEIN is a global online fashion and lifestyle e-retailer, founded in 2012, committed to making fashion accessible to all. It uses on-demand manufacturing techn",
+          "cand": "SHEIN is a global online fashion and lifestyle e-retailer, founded in 2012, committed to making fashion accessible to all. It uses on-demand manufacturing techn"
+        },
+        "values": {
+          "score": 0,
+          "ref": "['Help Society', 'Competence', 'Diversity', 'Creative Expression', 'Change and Variety']",
+          "cand": null
+        }
+      }
+    }
+  },
+  "job_vs_prod": {
+    "gemini-3.6-flash": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Toronto Renewable Energy Co-operative (TREC) is a pioneer community renewable energy co-op and community capital incubator. The posting offers transparent compe"
+        }
+      }
+    }
+  },
+  "org_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": false
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "no"
+      }
+    },
+    "sector_id": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "retail-consumer-goods"
+      }
+    },
+    "language": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "en"
+      }
+    },
+    "type": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "other"
+      }
+    },
+    "website_norm": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.5-flash-lite": "sheingroup.com"
+      }
+    }
+  },
+  "job_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "strong_yes"
+      }
+    }
+  },
+  "org_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 1,
+      "total": 1,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 1,
+      "total": 1,
+      "pct": 100.0
+    },
+    "sector_id": {
+      "matches": 1,
+      "total": 1,
+      "pct": 100.0
+    },
+    "language": {
+      "matches": 1,
+      "total": 1,
+      "pct": 100.0
+    },
+    "type": {
+      "matches": 1,
+      "total": 1,
+      "pct": 100.0
+    },
+    "website_norm": {
+      "matches": 1,
+      "total": 1,
+      "pct": 100.0
+    }
+  },
+  "job_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 1,
+      "total": 1,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 1,
+      "total": 1,
+      "pct": 100.0
+    }
+  },
+  "note_org_vs_job": "Org assessment rates the employer (governance/mission). Job SSE classification rates the posting (role + org context + compensation rules). They can legitimately disagree (e.g. SSE-aligned role at a non-SSE employer)."
+}

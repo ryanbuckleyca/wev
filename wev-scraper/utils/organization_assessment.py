@@ -24,7 +24,7 @@ from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
-from utils.organization_cache import evidence_domain
+from utils.organization_cache import evidence_domain, extract_domain
 from utils.organization_language import (
     VALID_ORG_LANGUAGES,
     classify_org_language,
@@ -90,7 +90,7 @@ _JSON_FIELDS = """{
   "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
   "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. Record provenance in flags as 'mission via=extracted|inferred|absent'), or null",
   "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
-  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit. Use 'cooperative' for worker/consumer/producer coops and credit unions. Use 'other' for conventional for-profits and privately owned mission-driven businesses (including private nature/forest schools). Do NOT invent a social-enterprise type.",
+  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops and credit unions. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
   "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — extract closely from source. Record provenance in flags as 'values via=extracted|inferred|absent'), or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
@@ -98,11 +98,24 @@ _JSON_FIELDS = """{
   "sse_confidence": "0.0 to 1.0",
   "sse_reasoning_en": "2–3 concise English sentences citing the key evidence for the rating (strictly under 320 chars / ~35 words — paraphrase to fit completely). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays",
   "sse_reasoning_fr": "Same reasoning in French (strictly under 320 chars / ~35 words — paraphrase to fit completely)",
-  "must_haves_met": ["short labels of must-have criteria met — not prose paragraphs"],
-  "nice_to_haves_met": ["short labels of nice-to-have criteria met — not prose paragraphs"],
+  "must_haves_met": ["ONLY org must-have labels from ORG MUST-HAVES 1–3 below — never job/posting criteria"],
+  "nice_to_haves_met": ["ONLY org nice-to-have labels from ORG NICE-TO-HAVES below — never job/posting criteria"],
   "flags": ["REQUIRED — see FLAGS RULES below"],
-  "public_language": "Primary language of the organization's own public materials (website, postings, documents, reports) observed during research. Use only: en, fr, bilingual, or null. Do not use the language of this response as evidence."
+  "public_language": "Primary language of the organization's own public materials (website, postings, documents, reports) observed during research. Use only: en, fr, bilingual, or null. Do not use the language of this response as evidence. Prefer bilingual when the organization publishes substantial public materials in both English and French (or both EN and FR sites)."
 }"""
+
+_ORG_CRITERION_LABEL_RULES = """ORG MUST-HAVES / NICE-TO-HAVES LABELS (strict — org assessment only):
+- must_haves_met may ONLY list short labels for org must-haves 1–3 from ORG EVALUATION CRITERIA:
+  1) Clear purpose beyond profit
+  2) Impact described intentionally
+  3) Organization's work contributes to social/community/environmental good
+- nice_to_haves_met may ONLY list short labels from org nice-to-haves 4–8
+  (solidarity culture, participatory governance, SSE governance model, investment in people,
+  mission reinvestment).
+- NEVER include job-posting criteria such as: "Transparent compensation", salary disclosure,
+  "Clear job expectations", posting language, remote/hybrid, or other employment-ad must-haves.
+  Those belong ONLY to job classification — they are stale if copied into org must_haves_met.
+- If evidence is only about a job ad (pay, duties, location), do not invent org must-haves from that alone."""
 
 _FLAGS_RULES = """FLAGS RULES (mandatory — same shape as language provenance):
 For EACH of description, mission, and values include exactly one flag:
@@ -130,7 +143,8 @@ _BILINGUAL_COPY_RULES = """BILINGUAL PUBLIC COPY (required):
 - If you can write the English version, also write the French version (and vice versa) — do not leave one locale null when the other is present.
 - Write natural French (not word-for-word calque) and natural English.
 - Knowdell "values" labels stay in English (taxonomy keys). values_raw may stay in the source language of the website.
-- must_haves_met / nice_to_haves_met / flags stay in English short labels."""
+- must_haves_met / nice_to_haves_met / flags stay in English short labels.
+- must_haves_met / nice_to_haves_met must follow ORG CRITERION LABEL RULES (org criteria only — never compensation)."""
 
 _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
 - Prefer the organization's own official homepage (the domain they control).
@@ -142,17 +156,55 @@ _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
   company pages, Linktree, bit.ly) unless that is truly their only web presence
   — in that case return null instead (social hosts are not reliable identity).
 - Do NOT use the scraped job listing URL.
+- If Known website is "(none …)" / missing: return null unless research/search
+  evidence clearly identifies the employer-owned homepage. Never invent a domain
+  from the organization name (e.g. name.ca / name.org guesses).
 - If you cannot confidently identify the employer-owned site, return null.
 - Prefer https:// and the apex/homepage over a deep job posting path."""
 
 _PUBLIC_LANGUAGE_RULES = """PUBLIC_LANGUAGE RULES:
-- Start with the official organization name as the strongest indication of its
-  primary public-language leaning.
-- Verify that initial assessment against the organization's own materials you observed.
+Priority for public_language (en | fr | bilingual | null):
+1. Actual public-facing website language in materials you observed
+2. Explicit website language metadata
+3. hreflang or URL locale hints (/en/, /fr/, lang=, locale=)
+4. Organization name only as weak evidence
+- Verify name leaning against the organization's own materials you observed.
 - Do not infer from the language of this JSON response.
-- If the website confirms substantial materials in both English and French,
-  return bilingual even when the name leans toward one language.
+- Return bilingual when materials show substantial English AND French
+  (or an explicit bilingual claim) — including Canadian charities/foundations with
+  an EN site plus FR pages, FR toggle, /fr/ paths, or French program materials in
+  the research evidence. Prefer bilingual over en-only in those cases.
+- Do NOT upgrade to bilingual merely from a French or English legal name,
+  accented characters in the name, or a .ca domain alone.
+- Canadian / multinational engineering or environmental consultancies whose primary
+  corporate site is English → en. A thin FR landing page, careers locale, or
+  translated brochure does NOT make them bilingual.
+- If you only observed one locale and no bilingual signals, return that locale.
 - If there is insufficient evidence, return null."""
+
+_SECTOR_PRIORITY_RULES = """SECTOR PRIORITY (when multiple sectors could fit):
+- Score the organization's primary activity / service line, not a secondary theme.
+- Private environmental / water / geoscience / engineering consultancies
+  (including multi-discipline firms whose core line is environmental science,
+  water resources, remediation, or environmental engineering) →
+  environment-circular-economy (not community-civic-infrastructure).
+- Foundations whose core program is education / fellowships → education-knowledge.
+- Do not pick community-civic-infrastructure merely because the work has public
+  clients or "community" marketing language."""
+
+_SOURCE_DESCRIPTION_RULES = """SOURCE DESCRIPTION vs INTERPRETIVE FIELDS (mandatory):
+- is_sse / sse_rating, sector_id, public_language, type, website, mission_statement_*,
+  and values MUST come from official-website / supporting web research only.
+- NEVER use SOURCE DESCRIPTION (stored org blurb or job-listing body) to decide those
+  interpretive fields — listing copy is often wrong, stale, or about a related brand.
+- description_* only:
+  • If SOURCE DESCRIPTION is present: extract/adapt from it (flag description via=extracted).
+    Do NOT call on search snippets to rewrite or replace it.
+  • If SOURCE DESCRIPTION is absent: you may write description_* from web evidence
+    (via=inferred or via=extracted from web). This is the only case search may
+    supply description text.
+- LISTING / IDENTITY HINTS (job title, listing notes) are for disambiguating which
+  employer is meant — never for SSE rating, sector, language, type, or values."""
 
 _combined_prompt = """You are evaluating an ORGANIZATION (employer), not a job posting.
 Identify the organization, extract its values and mission from research about the
@@ -164,33 +216,26 @@ org itself, and assess its Solidarity Economy (SSE) alignment.
 
 {ORG_RATING_GUIDELINES}
 
-ORGANIZATION DATA:
-  Raw name:    {raw_name}
-  Municipality: {municipality}
-  Province:     {province}
-  Known website: {known_website}
-  Job title (identity hint only — ignore for SSE rating): {job_title}
-  Org/listing notes (identity hint only — ignore for SSE rating):
-{description}
+{org_criterion_label_rules}
 
-Return a JSON object with exactly these fields:
-{json_fields}
+{source_description_rules}
 
 ALLOWED SECTORS for the "sector_id" field:
 {sector_taxonomy_formatted}
+
+{sector_priority_rules}
 
 ALLOWED VALUES for the "values" field (use ONLY labels from this list):
 {taxonomy_formatted}
 
 RULES for the "values" field:
 - Values must exactly match labels from the ALLOWED VALUES list above (case-sensitive).
-- Choose 3 to 5 values that best describe the organization based on its mission,
-  description, website content, and overall purpose.
+- Choose 3 to 5 values from official-website / supporting web research about the org
+  (mission, governance, public materials) — NOT from SOURCE DESCRIPTION or listing notes.
 - Do NOT include labels not in the ALLOWED VALUES list.
 - Do NOT include duplicates.
 - "Help Society" and "Community" are distinct — use both if evidence supports both.
-- Be honest: if you can't determine values from the available information,
-  return an empty array.
+- Be honest: if you can't determine values from web research, return an empty array.
 
 {website_rules}
 
@@ -201,6 +246,21 @@ RULES for the "values" field:
 {length_limited_field_rules}
 
 {JSON_INSTRUCTIONS}
+
+ORGANIZATION DATA:
+  Raw name:    {raw_name}
+  Municipality: {municipality}
+  Province:     {province}
+  Known website: {known_website}
+  Job title (identity hint only): {job_title}
+  Listing notes (identity hint only — not for interpretive fields):
+{listing_notes}
+
+SOURCE DESCRIPTION (for description_* only — omit if none):
+{source_description}
+
+Return a JSON object with exactly these fields:
+{json_fields}
 """
 
 
@@ -244,28 +304,44 @@ def _build_assessment_prompt(
     municipality: str | None,
     province: str | None,
     job_title: str,
-    description: str,
+    description: str = "",
     known_website: str | None = None,
+    *,
+    existing_description: str | None = None,
+    listing_notes: str | None = None,
 ) -> str:
+    """Build the org-assessor prompt.
+
+    *description* is legacy: treated as listing notes unless *existing_description*
+    is passed. Listing notes never gate Tavily and must not drive interpretive fields.
+    """
     known = ""
     if known_website and evidence_domain(known_website):
         known = known_website.strip()
+    source = (existing_description if existing_description is not None else "") or ""
+    notes = (listing_notes if listing_notes is not None else description) or ""
+    source_block = source.strip()[:_PROMPT_DESC_MAX_CHARS] or "(none)"
+    notes_block = notes.strip()[:_PROMPT_DESC_MAX_CHARS] or "(none)"
     return _combined_prompt.format(
         SSE_PRINCIPLES=SSE_PRINCIPLES,
         ORG_EVALUATION_CRITERIA=ORG_EVALUATION_CRITERIA,
         ORG_RATING_GUIDELINES=ORG_RATING_GUIDELINES,
+        org_criterion_label_rules=_ORG_CRITERION_LABEL_RULES,
+        source_description_rules=_SOURCE_DESCRIPTION_RULES,
         raw_name=raw_name,
         municipality=municipality or "",
         province=province or "",
         known_website=known or "(none — discover the employer-owned homepage)",
         job_title=job_title,
-        description=description[:_PROMPT_DESC_MAX_CHARS],
+        listing_notes=notes_block,
+        source_description=source_block,
         json_fields=_JSON_FIELDS,
         sector_taxonomy_formatted=get_formatted_sector_taxonomy(),
         taxonomy_formatted=_format_taxonomy(),
         website_rules=_WEBSITE_RULES,
         bilingual_copy_rules=_BILINGUAL_COPY_RULES,
         public_language_rules=_PUBLIC_LANGUAGE_RULES,
+        sector_priority_rules=_SECTOR_PRIORITY_RULES,
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
         length_limited_field_rules=LENGTH_LIMITED_FIELD_RULES,
     )
@@ -400,6 +476,31 @@ def _ensure_content_provenance_flags(result: AssessedOrgResult) -> AssessedOrgRe
     if flags == original:
         return result
     return AssessedOrgResult(**{**result, "flags": flags})
+
+
+def _apply_website_known_guard(
+    result: AssessedOrgResult,
+    known_website: str | None,
+) -> AssessedOrgResult:
+    """Prefer a known employer-owned website for cross-provider predictability.
+
+    When Known website is evidence-grade, keep that URL (Gemini/Groq/Ollama often
+    invent alternate hosts without grounding). Model-discovered sites are kept
+    only when no known URL was provided.
+    """
+    known = known_website.strip() if known_website and evidence_domain(known_website) else None
+    if not known:
+        return result
+    current = result.get("website")
+    if current and extract_domain(current) == extract_domain(known):
+        # Normalize to the known URL string when domains match.
+        if current == known:
+            return result
+        return AssessedOrgResult(**{**result, "website": known})
+    flags = list(result.get("flags") or [])
+    if current and evidence_domain(current):
+        flags.append(f"website_guard: preferred known over model ({current})")
+    return AssessedOrgResult(**{**result, "website": known, "flags": flags})
 
 
 def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgResult:
@@ -576,8 +677,12 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         sse_confidence=_clamp_confidence(data.get("sse_confidence")),
         sse_reasoning_en=reasoning_en,
         sse_reasoning_fr=reasoning_fr,
-        must_haves_met=_ensure_str_list(data.get("must_haves_met")),
-        nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
+        must_haves_met=_strip_job_leaked_criterion_labels(
+            _ensure_str_list(data.get("must_haves_met"))
+        ),
+        nice_to_haves_met=_strip_job_leaked_criterion_labels(
+            _ensure_str_list(data.get("nice_to_haves_met"))
+        ),
         flags=_ensure_str_list(data.get("flags")),
         public_language=_validate_public_language(data.get("public_language")),
     )
@@ -790,8 +895,37 @@ _ASSESSOR_SYSTEM = (
     "You are an expert at identifying organizations, finding their "
     "official employer-owned website, mapping work values, and "
     "evaluating Solidarity Economy alignment of the ORGANIZATION "
-    "(not job-posting completeness)."
+    "(not job-posting completeness). "
+    "Interpretive fields (is_sse, sector, language, type, mission, values, website) "
+    "must come from official-website / supporting web research — never from a stored "
+    "or listing SOURCE DESCRIPTION. SOURCE DESCRIPTION is only for description_* "
+    "when present. Do not replace the named organization with a different org from search. "
+    "Org must_haves_met / nice_to_haves_met use only organization SSE criteria — "
+    "never Transparent compensation, Clear job expectations, or other job-ad must-haves."
 )
+
+# Job-level must-have phrases that must never appear on org assessments.
+_JOB_LEAKED_CRITERION_RE = re.compile(
+    r"transparent\s+compensation|clear\s+job\s+expectations|"
+    r"salary\s+disclosure|job\s+expectation|compensation\s+or\s+role\s+type|"
+    r"unpaid\s+trial|volunteer\s+opportunity\s+disclosed",
+    re.IGNORECASE,
+)
+
+
+def _strip_job_leaked_criterion_labels(labels: list[str]) -> list[str]:
+    """Drop job-posting must-haves that models sometimes copy onto org assessments."""
+    kept: list[str] = []
+    for label in labels:
+        if _JOB_LEAKED_CRITERION_RE.search(label):
+            logger.info(
+                "OrganizationAssessor: stripping job-leaked criterion label %r",
+                label,
+            )
+            continue
+        kept.append(label)
+    return kept
+
 
 
 class OrganizationAssessor(BaseGroundedClassifier):
@@ -813,18 +947,47 @@ class OrganizationAssessor(BaseGroundedClassifier):
         job_title: str = "",
         description: str = "",
         known_website: str | None = None,
+        *,
+        existing_description: str | None = None,
+        listing_notes: str | None = None,
+        web_evidence: str | None = None,
     ) -> AssessedOrgResult | None:
+        notes = listing_notes if listing_notes is not None else description
+        # SOURCE DESCRIPTION = stored org/job about-text for description_* only.
+        # Listing notes (legacy `description` arg) are identity hints — not SOURCE DESCRIPTION.
+        source = existing_description if existing_description is not None else ""
         prompt = _build_assessment_prompt(
             raw_name,
             municipality,
             province,
             job_title,
-            description,
+            description=description,
             known_website=known_website,
+            existing_description=source,
+            listing_notes=notes,
         )
+        prefetched = (web_evidence or "").strip()
+        if prefetched:
+            from llm.tavily_grounding import inject_grounding_evidence
+
+            prompt = inject_grounding_evidence(prompt, prefetched)
+
         search_query = _build_search_query(
             raw_name, municipality, province, known_website=known_website,
         )
+        prefer_hosts = None
+        if known_website and evidence_domain(known_website):
+            from utils.organization_cache import extract_domain
+
+            host = extract_domain(known_website)
+            prefer_hosts = [host] if host else None
+        from llm.tavily_grounding import entity_require_terms
+
+        require_terms = entity_require_terms(raw_name) or None
+        # Prefetched website scrape replaces Tavily. SOURCE DESCRIPTION does NOT
+        # suppress research — interpretive fields need web evidence; description_*
+        # fill-from-search is gated in the prompt only.
+        use_grounding = not prefetched
 
         try:
             response_text = self._call_provider_with_retry(
@@ -832,8 +995,12 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 prompt=prompt,
                 system=_ASSESSOR_SYSTEM,
                 task="sse",
-                search_query=search_query,
+                search_query=search_query if use_grounding else None,
                 retries=1,
+                prefer_hosts=prefer_hosts if use_grounding else None,
+                include_domains=prefer_hosts if use_grounding else None,
+                require_terms=require_terms if use_grounding else None,
+                use_grounding=use_grounding,
             )
         except (SSEClassificationError, LLMProviderError) as exc:
             logger.warning(
@@ -869,6 +1036,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
         result = _parse_response(response_text, raw_name)
         if result is None:
             return None
+        result = _apply_website_known_guard(result, known_website)
         return self._ensure_length_limits(result, raw_name)
 
     def _ensure_length_limits(
@@ -915,8 +1083,10 @@ class OrganizationAssessor(BaseGroundedClassifier):
             municipality,
             province,
             job_title,
-            description,
+            description="",
             known_website=known_website,
+            listing_notes=description,
+            existing_description="",
         )
         if result is None:
             return None
@@ -961,16 +1131,25 @@ class OrganizationAssessor(BaseGroundedClassifier):
             )
             return None
         known_website = org.get("website")
+        existing = (
+            org.get("description_en")
+            or org.get("description_fr")
+            or org.get("description")
+            or ""
+        )
+        # Pass stored description for description_* only. That suppresses Tavily;
+        # interpretive fields must still not use it (prefer null without web evidence).
+        # Callers that need a fresh SSE/sector pass should clear description or supply
+        # web_evidence (e.g. scraped known website).
         result = self.assess(
             raw_name=name,
             municipality=org.get("municipality"),
             province=org.get("province"),
             job_title="",
-            description=org.get("description_en")
-            or org.get("description_fr")
-            or org.get("description")
-            or "",
+            description="",
             known_website=known_website,
+            existing_description=existing,
+            listing_notes="",
         )
         if result is None:
             return None

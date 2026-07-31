@@ -107,7 +107,18 @@ class SSEClassifier(BaseGroundedClassifier):
         search_terms = f'"{org_name}"'
         if location and location != "Unknown":
             search_terms += f' "{location}"'
-        search_query = f'{search_terms} {SSE_SEARCH_KEYWORDS}'
+        # Keep search tight to the named employer — broad SSE keywords pull
+        # unrelated co-ops/NGOs that models then confuse with the posting.
+        search_query = f'{search_terms} official website mission governance'
+
+        from llm.tavily_grounding import entity_require_terms
+
+        require_terms = entity_require_terms(org_name) or None
+        # Tavily only when the job has no description text yet. When a posting
+        # body exists, do not call Tavily for description fill — and do not treat
+        # listing copy as evidence for org-level sector/language (job is_sse still
+        # scores the role from the posting + employer signals in that text).
+        has_description = bool(description.strip())
 
         last_error_message = ""
         for attempt in range(2):
@@ -115,10 +126,18 @@ class SSEClassifier(BaseGroundedClassifier):
                 response_text = self._call_provider_with_retry(
                     provider=self.provider,
                     prompt=prompt,
-                    system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
+                    system=(
+                        "You are an expert at analyzing job postings for Solidarity "
+                        "Economy alignment. Score the role from the posting body. "
+                        "Do not invent a different employer from search. Supporting "
+                        "web evidence is only for missing employer context when the "
+                        "posting has no description."
+                    ),
                     task="sse",
-                    search_query=search_query,
+                    search_query=None if has_description else search_query,
                     retries=0,  # The outer loop handles provider and parse retries
+                    require_terms=None if has_description else require_terms,
+                    use_grounding=not has_description,
                 )
             except SSEClassificationError as e:
                 last_error_message = str(e)

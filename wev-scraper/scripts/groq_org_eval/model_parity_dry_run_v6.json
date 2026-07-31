@@ -1,0 +1,399 @@
+{
+  "generated_at": "2026-07-30T23:18:16.323467+00:00",
+  "dry_run": true,
+  "org_ref": {
+    "id": 152,
+    "name": "GE Vernova, Inc.",
+    "is_sse": false,
+    "sse_rating": "no",
+    "sector_id": "environment-circular-economy",
+    "language": "en",
+    "type": "other",
+    "website": "https://www.gevernova.com",
+    "website_norm": "gevernova.com",
+    "mission": "Our urgent and optimistic mission is to electrify to thrive and decarbonize the world. We aim to accelerate the path to more reliable, affordable, and sustainable energy, powering economies and delivering electricity vital to health, safety, security, and improved quality of life.",
+    "description": "GE Vernova is a global energy company focused on electrifying and decarbonizing the world. It includes Power, Electrification, and Wind segments, with approximately 85,000 employees across 100+ countries. The company's technology helps generate about 25% of the world's electricity, aiming to deliver a more reliable, affordable, and sustainable energy future.",
+    "values": [
+      "Help Society",
+      "Group & Team",
+      "Honesty and Integrity"
+    ]
+  },
+  "job_ref": {
+    "id": "96f648a9-fe36-4f6f-8118-0212deb1f98a",
+    "title": "Administrative Assistant",
+    "organization": "Toronto Wildlife Centre",
+    "is_sse": true,
+    "sse_rating": "strong_yes",
+    "language": "en",
+    "reasoning": null,
+    "summary_ref": "This position provides comprehensive administrative and operational support to the Director of Operations and various departments at Canada's busiest wildlife rescue and rehabilitation charity."
+  },
+  "org_evidence_chars": 0,
+  "job_evidence_chars": 0,
+  "org_results": {
+    "gemini-3.6-flash": {
+      "is_sse": false,
+      "sse_rating": "no",
+      "sector_id": "environment-circular-economy",
+      "language": "en",
+      "type": "other",
+      "website": "https://www.gevernova.com",
+      "website_norm": "gevernova.com",
+      "mission": "To electrify and decarbonize the world, delivering a more reliable, affordable, and sustainable energy future.",
+      "description": "GE Vernova is a global energy company focused on electrifying and decarbonizing the world across Power, Electrification, and Wind segments. With 85,000 employees in 100+ countries, its technology helps generate about 25% of the world's electricity, aiming to deliver a reliable, affordable, and sustainable energy future.",
+      "values": [
+        "Environment",
+        "Help Society",
+        "Honesty and Integrity",
+        "Competence"
+      ],
+      "elapsed_s": 27.62,
+      "provider": "gemini-3.6-flash"
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": false,
+      "sse_rating": "no",
+      "sector_id": "environment-circular-economy",
+      "language": "en",
+      "type": "other",
+      "website": "https://www.gevernova.com",
+      "website_norm": "gevernova.com",
+      "mission": "To electrify and decarbonize the world, aiming to deliver a more reliable, affordable, and sustainable energy future.",
+      "description": "GE Vernova is a global energy company focused on electrifying and decarbonizing the world. It includes Power, Electrification, and Wind segments, providing technology that helps generate about 25% of the world's electricity.",
+      "values": [
+        "Environment",
+        "Competence"
+      ],
+      "elapsed_s": 7.34,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "error": "LLM provider error: Groq API error (403): {\"error\":{\"message\":\"Access denied. Please check your network settings.\"}}",
+      "elapsed_s": 0.53
+    },
+    "ollama": {
+      "error": "LLM provider error: Ollama generation failed: timed out",
+      "elapsed_s": 120.02
+    }
+  },
+  "job_results": {
+    "gemini-3.6-flash": {
+      "is_sse": true,
+      "sse_rating": "strong_yes",
+      "language": null,
+      "reasoning": "Toronto Wildlife Centre is a registered charity dedicated to rescuing and rehabilitating wildlife and educating the public. The posting explicitly discloses pay ($19–$22/hr), duties, and requires commitment to its environmental mission. As a nonprofit providing direct ecological care, it strongly aligns with SSE principles prioritizing nature and community good over profit.",
+      "confidence": 0.9,
+      "must_haves_met": [
+        "Purpose beyond profit",
+        "Intentional impact description",
+        "Role contributes to environmental good",
+        "Transparent compensation",
+        "Clear job expectations"
+      ],
+      "nice_to_haves_met": [
+        "Nonprofit governance model",
+        "Respect for nature and all living beings",
+        "Mission reinvestment"
+      ],
+      "flags": [],
+      "elapsed_s": 7.52,
+      "provider": "gemini-3.6-flash"
+    },
+    "gemini-3.5-flash-lite": {
+      "is_sse": true,
+      "sse_rating": "weak_yes",
+      "language": null,
+      "reasoning": "Toronto Wildlife Centre is a registered charity providing medical care and rehabilitation for native wildlife. While it features a clear environmental and animal welfare mission and transparent compensation, it operates as a traditional charity without explicit solidarity economy or worker-democratic governance structures.",
+      "confidence": 0.9,
+      "must_haves_met": [
+        "Clear purpose beyond profit",
+        "Impact described intentionally",
+        "Role contributes to social/environmental good",
+        "Transparent compensation stated",
+        "Clear job expectations and contract type"
+      ],
+      "nice_to_haves_met": [
+        "Mission-driven nonprofit context"
+      ],
+      "flags": [
+        "Traditional charity model without worker ownership or cooperative governance"
+      ],
+      "elapsed_s": 1.15,
+      "provider": "gemini-3.5-flash-lite"
+    },
+    "groq": {
+      "error": "LLM provider error: Groq API error (403): {\"error\":{\"message\":\"Access denied. Please check your network settings.\"}}",
+      "elapsed_s": 6.39
+    },
+    "ollama": {
+      "error": "LLM provider error: Ollama generation failed: timed out",
+      "elapsed_s": 120.02
+    }
+  },
+  "org_vs_prod": {
+    "gemini-3.6-flash": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": false,
+          "cand": false
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "no",
+          "cand": "no"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "environment-circular-economy",
+          "cand": "environment-circular-economy"
+        },
+        "language": {
+          "match": true,
+          "ref": "en",
+          "cand": "en"
+        },
+        "type": {
+          "match": true,
+          "ref": "other",
+          "cand": "other"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "gevernova.com",
+          "cand": "gevernova.com"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 2,
+          "ref": "Our urgent and optimistic mission is to electrify to thrive and decarbonize the world. We aim to accelerate the path to more reliable, affordable, and sustainab",
+          "cand": "To electrify and decarbonize the world, delivering a more reliable, affordable, and sustainable energy future."
+        },
+        "description": {
+          "score": 2,
+          "ref": "GE Vernova is a global energy company focused on electrifying and decarbonizing the world. It includes Power, Electrification, and Wind segments, with approxima",
+          "cand": "GE Vernova is a global energy company focused on electrifying and decarbonizing the world across Power, Electrification, and Wind segments. With 85,000 employee"
+        },
+        "values": {
+          "score": 2,
+          "ref": "['Help Society', 'Group & Team', 'Honesty and Integrity']",
+          "cand": "['Environment', 'Help Society', 'Honesty and Integrity', 'Competence']"
+        }
+      }
+    },
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": false,
+          "cand": false
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "no",
+          "cand": "no"
+        },
+        "sector_id": {
+          "match": true,
+          "ref": "environment-circular-economy",
+          "cand": "environment-circular-economy"
+        },
+        "language": {
+          "match": true,
+          "ref": "en",
+          "cand": "en"
+        },
+        "type": {
+          "match": true,
+          "ref": "other",
+          "cand": "other"
+        },
+        "website_norm": {
+          "match": true,
+          "ref": "gevernova.com",
+          "cand": "gevernova.com"
+        }
+      },
+      "text": {
+        "mission": {
+          "score": 2,
+          "ref": "Our urgent and optimistic mission is to electrify to thrive and decarbonize the world. We aim to accelerate the path to more reliable, affordable, and sustainab",
+          "cand": "To electrify and decarbonize the world, aiming to deliver a more reliable, affordable, and sustainable energy future."
+        },
+        "description": {
+          "score": 2,
+          "ref": "GE Vernova is a global energy company focused on electrifying and decarbonizing the world. It includes Power, Electrification, and Wind segments, with approxima",
+          "cand": "GE Vernova is a global energy company focused on electrifying and decarbonizing the world. It includes Power, Electrification, and Wind segments, providing tech"
+        },
+        "values": {
+          "score": 0,
+          "ref": "['Help Society', 'Group & Team', 'Honesty and Integrity']",
+          "cand": "['Environment', 'Competence']"
+        }
+      }
+    }
+  },
+  "job_vs_prod": {
+    "gemini-3.6-flash": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": true,
+          "ref": "strong_yes",
+          "cand": "strong_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Toronto Wildlife Centre is a registered charity dedicated to rescuing and rehabilitating wildlife and educating the public. The posting explicitly discloses pay"
+        }
+      }
+    },
+    "gemini-3.5-flash-lite": {
+      "categorical": {
+        "is_sse": {
+          "match": true,
+          "ref": true,
+          "cand": true
+        },
+        "sse_rating": {
+          "match": false,
+          "ref": "strong_yes",
+          "cand": "weak_yes"
+        },
+        "language": {
+          "match": null,
+          "ref": "en",
+          "cand": null,
+          "note": "not_produced_by_this_process"
+        }
+      },
+      "text": {
+        "reasoning": {
+          "score": 0,
+          "ref": null,
+          "cand": "Toronto Wildlife Centre is a registered charity providing medical care and rehabilitation for native wildlife. While it features a clear environmental and anima"
+        }
+      }
+    }
+  },
+  "org_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": false,
+        "gemini-3.5-flash-lite": false
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "no",
+        "gemini-3.5-flash-lite": "no"
+      }
+    },
+    "sector_id": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "environment-circular-economy",
+        "gemini-3.5-flash-lite": "environment-circular-economy"
+      }
+    },
+    "language": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "en",
+        "gemini-3.5-flash-lite": "en"
+      }
+    },
+    "type": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "other",
+        "gemini-3.5-flash-lite": "other"
+      }
+    },
+    "website_norm": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": "gevernova.com",
+        "gemini-3.5-flash-lite": "gevernova.com"
+      }
+    }
+  },
+  "job_cross_model_categorical": {
+    "is_sse": {
+      "all_models_agree": true,
+      "values": {
+        "gemini-3.6-flash": true,
+        "gemini-3.5-flash-lite": true
+      }
+    },
+    "sse_rating": {
+      "all_models_agree": false,
+      "values": {
+        "gemini-3.6-flash": "strong_yes",
+        "gemini-3.5-flash-lite": "weak_yes"
+      }
+    }
+  },
+  "org_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sector_id": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "language": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "type": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "website_norm": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    }
+  },
+  "job_categorical_accuracy_vs_prod": {
+    "is_sse": {
+      "matches": 2,
+      "total": 2,
+      "pct": 100.0
+    },
+    "sse_rating": {
+      "matches": 1,
+      "total": 2,
+      "pct": 50.0
+    }
+  },
+  "note_org_vs_job": "Org assessment rates the employer (governance/mission). Job SSE classification rates the posting (role + org context + compensation rules). They can legitimately disagree (e.g. SSE-aligned role at a non-SSE employer)."
+}
