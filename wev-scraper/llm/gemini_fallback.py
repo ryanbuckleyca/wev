@@ -1,12 +1,13 @@
 """SSE / org-assessment provider chain with shared Tavily evidence.
 
-Order (free tiers first, then local):
+Order (free tiers first, then extras, then local):
   1. gemini-3.6-flash
   2. gemini-3.5-flash-lite
   3. groq
-  4. local_grounded (Ollama + Tavily already used upstream)
+  4. cerebras
+  5. local_grounded (Ollama)
 
-Google Search tool grounding is OFF by default for SSE so all four backends
+Google Search tool grounding is OFF by default for SSE so all backends
 classify the same Tavily snippets (predictable is_sse / sector / language /
 website / extraction). Set USE_GOOGLE_SEARCH_GROUNDING=1 to restore Gemini's
 native Google Search tool (divergent evidence — not recommended for parity).
@@ -14,6 +15,7 @@ native Google Search tool (divergent evidence — not recommended for parity).
 Env overrides:
   GEMINI_SSE_PRIMARY_MODEL   default gemini-3.6-flash
   GEMINI_SSE_LITE_MODEL      default gemini-3.5-flash-lite
+  CEREBRAS_API_KEY / CEREBRAS_MODEL
   USE_GOOGLE_SEARCH_GROUNDING  0|1
 """
 
@@ -28,6 +30,7 @@ from llm.config import should_use_grounding
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
 from llm.local_grounded import LocalGroundedProvider
+from llm.openai_compatible import CerebrasProvider
 from llm.tavily_grounding import (
     fetch_tavily_context,
     inject_grounding_evidence,
@@ -57,7 +60,7 @@ def gemini_sse_lite_model() -> str:
 
 
 class SSEFallbackProvider(BaseLLMProvider):
-    """Gemini 3 Flash → Flash-Lite → Groq → Ollama, with shared Tavily evidence."""
+    """Gemini 3 Flash → Flash-Lite → Groq → Cerebras → Ollama."""
 
     def __init__(self, api_key: str | None = None):
         self._providers: list[tuple[str, BaseLLMProvider]] = []
@@ -70,6 +73,7 @@ class SSEFallbackProvider(BaseLLMProvider):
             (primary, lambda: GeminiProvider(api_key=api_key, model=primary)),
             (lite, lambda: GeminiProvider(api_key=api_key, model=lite)),
             ("groq", lambda: GroqProvider()),
+            ("cerebras", lambda: CerebrasProvider()),
             ("ollama", lambda: LocalGroundedProvider()),
         ]
         for name, factory in candidates:

@@ -1,0 +1,221 @@
+{
+  "generated_at": "2026-07-31T15:16:17.304139+00:00",
+  "provider": "cerebras",
+  "model": "gpt-oss-120b",
+  "org_accuracy": {
+    "is_sse": {
+      "matches": 0,
+      "total": 0,
+      "pct": null
+    },
+    "sse_rating": {
+      "matches": 0,
+      "total": 0,
+      "pct": null
+    },
+    "sector_id": {
+      "matches": 0,
+      "total": 0,
+      "pct": null
+    },
+    "language": {
+      "matches": 0,
+      "total": 0,
+      "pct": null
+    },
+    "type": {
+      "matches": 0,
+      "total": 0,
+      "pct": null
+    }
+  },
+  "job_accuracy": {
+    "is_sse": {
+      "matches": 5,
+      "total": 6,
+      "pct": 83.3
+    },
+    "sse_rating": {
+      "matches": 5,
+      "total": 6,
+      "pct": 83.3
+    }
+  },
+  "orgs": [],
+  "jobs": [
+    {
+      "job_id": "21cb5cc3-5125-4108-9ac8-7421239dc027",
+      "title": "Conseiller-\u00e8re et formateur-ice en vie associative et d\u00e9mocratique",
+      "organization": "Centre de formation populaire",
+      "prod": {
+        "is_sse": true,
+        "sse_rating": "strong_yes",
+        "language": "en"
+      },
+      "cerebras": {
+        "is_sse": true,
+        "sse_rating": "strong_yes",
+        "language": null,
+        "elapsed_s": 0.81,
+        "error": null
+      },
+      "compare": {
+        "is_sse": {
+          "match": true,
+          "prod": true,
+          "cerebras": true
+        },
+        "sse_rating": {
+          "match": true,
+          "prod": "strong_yes",
+          "cerebras": "strong_yes"
+        }
+      }
+    },
+    {
+      "job_id": "95df85b1-4336-49ba-83e1-875acde3ae86",
+      "title": "Volunteer Positions",
+      "organization": "EnviroCentre",
+      "prod": {
+        "is_sse": true,
+        "sse_rating": "strong_yes",
+        "language": "en"
+      },
+      "cerebras": {
+        "is_sse": true,
+        "sse_rating": "strong_yes",
+        "language": null,
+        "elapsed_s": 0.78,
+        "error": null
+      },
+      "compare": {
+        "is_sse": {
+          "match": true,
+          "prod": true,
+          "cerebras": true
+        },
+        "sse_rating": {
+          "match": true,
+          "prod": "strong_yes",
+          "cerebras": "strong_yes"
+        }
+      }
+    },
+    {
+      "job_id": "7ecc11d0-cb69-41f0-8c87-8f17853e02b4",
+      "title": "Senior Commercial Manager, Canada",
+      "organization": "Marine Stewardship Council (MSC)",
+      "prod": {
+        "is_sse": true,
+        "sse_rating": "no",
+        "language": "en"
+      },
+      "cerebras": {
+        "is_sse": false,
+        "sse_rating": "no",
+        "language": null,
+        "elapsed_s": 1.13,
+        "error": null
+      },
+      "compare": {
+        "is_sse": {
+          "match": false,
+          "prod": true,
+          "cerebras": false
+        },
+        "sse_rating": {
+          "match": true,
+          "prod": "no",
+          "cerebras": "no"
+        }
+      }
+    },
+    {
+      "job_id": "a7a0b259-f801-40e8-8978-ab08f52667cf",
+      "title": "HR & Admin Coordinator",
+      "organization": "Goparity Canada",
+      "prod": {
+        "is_sse": true,
+        "sse_rating": "strong_yes",
+        "language": "en"
+      },
+      "cerebras": {
+        "is_sse": true,
+        "sse_rating": "strong_yes",
+        "language": null,
+        "elapsed_s": 0.99,
+        "error": null
+      },
+      "compare": {
+        "is_sse": {
+          "match": true,
+          "prod": true,
+          "cerebras": true
+        },
+        "sse_rating": {
+          "match": true,
+          "prod": "strong_yes",
+          "cerebras": "strong_yes"
+        }
+      }
+    },
+    {
+      "job_id": "221f2ce5-2f19-4559-8a5c-7c922e9779e9",
+      "title": "Program Coordinator \u2013 1 Year Contract",
+      "organization": "Goparity Canada",
+      "prod": {
+        "is_sse": true,
+        "sse_rating": "strong_yes",
+        "language": "en"
+      },
+      "cerebras": {
+        "is_sse": true,
+        "sse_rating": "strong_yes",
+        "language": null,
+        "elapsed_s": 1.26,
+        "error": null
+      },
+      "compare": {
+        "is_sse": {
+          "match": true,
+          "prod": true,
+          "cerebras": true
+        },
+        "sse_rating": {
+          "match": true,
+          "prod": "strong_yes",
+          "cerebras": "strong_yes"
+        }
+      }
+    },
+    {
+      "job_id": "34bbfc67-cc57-45c6-8764-a0d54decc171",
+      "title": "Mechanical Project Manager \u2013 Industrial Mandate at Pratt & Whitney Canada (On-Site)",
+      "organization": "Bouthillette Parizeau & Associes",
+      "prod": {
+        "is_sse": false,
+        "sse_rating": "weak_yes",
+        "language": "en"
+      },
+      "cerebras": {
+        "is_sse": false,
+        "sse_rating": "no",
+        "language": null,
+        "elapsed_s": 0.78,
+        "error": null
+      },
+      "compare": {
+        "is_sse": {
+          "match": true,
+          "prod": false,
+          "cerebras": false
+        },
+        "sse_rating": {
+          "match": false,
+          "prod": "weak_yes",
+          "cerebras": "no"
+        }
+      }
+    }
+  ]
+}
