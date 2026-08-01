@@ -34,6 +34,7 @@ def test_prefer_hosts_only_does_not_set_include_domains():
         text = fetch_tavily_context(
             "Park People Toronto mission",
             prefer_hosts=["parkpeople.ca"],
+            max_chars=10_000,  # larger than fixture; avoid TAVILY_MAX_CHARS dependency
         )
 
     assert mock_client.search.called

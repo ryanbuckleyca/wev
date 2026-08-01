@@ -93,7 +93,7 @@ def test_sse_fallback_tries_flash_then_lite_then_groq_then_ollama():
          patch("llm.gemini_fallback.is_tavily_available", return_value=True), \
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
-        provider = SSEFallbackProvider(api_key="test-key")
+        provider = SSEFallbackProvider()
 
         assert [name for name, _ in provider._providers] == [
             DEFAULT_GEMINI_PRIMARY,
@@ -139,7 +139,7 @@ def test_sse_fallback_stops_at_flash_lite():
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
-        provider = SSEFallbackProvider(api_key="test-key")
+        provider = SSEFallbackProvider()
         assert provider.complete("prompt", task="sse") == "lite-ok"
         groq.complete.assert_not_called()
         ollama.complete.assert_not_called()
@@ -169,7 +169,7 @@ def test_sse_fallback_advances_on_empty_flash_response():
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
-        provider = SSEFallbackProvider(api_key="test-key")
+        provider = SSEFallbackProvider()
         assert provider.complete("prompt", task="sse") == '{"ok": true}'
         flash.complete.assert_called_once()
         lite.complete.assert_called_once()
@@ -200,7 +200,7 @@ def test_sse_fallback_raises_when_all_return_empty():
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
-        provider = SSEFallbackProvider(api_key="test-key")
+        provider = SSEFallbackProvider()
         with pytest.raises(LLMProviderError, match="empty response"):
             provider.complete("prompt", task="sse")
 
@@ -226,7 +226,7 @@ def test_sse_fallback_auto_enables_google_search_when_tavily_empty():
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
          patch("llm.gemini_fallback._google_search_grounding_override", return_value=None):
         mock_gemini.side_effect = [flash, lite]
-        provider = SSEFallbackProvider(api_key="test-key")
+        provider = SSEFallbackProvider()
         assert provider.complete("prompt", task="sse", search_query="q") == "ok"
         assert flash.complete.call_args.kwargs.get("use_grounding") is True
 
@@ -252,7 +252,7 @@ def test_sse_fallback_disables_google_search_when_tavily_injected():
          patch("llm.gemini_fallback.fetch_tavily_context", return_value="EVIDENCE"), \
          patch("llm.gemini_fallback._google_search_grounding_override", return_value=None):
         mock_gemini.side_effect = [flash, lite]
-        provider = SSEFallbackProvider(api_key="test-key")
+        provider = SSEFallbackProvider()
         assert provider.complete("prompt", task="sse", search_query="q") == "ok"
         assert flash.complete.call_args.kwargs.get("use_grounding") is False
         assert "EVIDENCE" in flash.complete.call_args.args[0]
