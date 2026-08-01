@@ -203,3 +203,56 @@ def test_sse_fallback_raises_when_all_return_empty():
         provider = SSEFallbackProvider(api_key="test-key")
         with pytest.raises(LLMProviderError, match="empty response"):
             provider.complete("prompt", task="sse")
+
+
+def test_sse_fallback_auto_enables_google_search_when_tavily_empty():
+    """Without Tavily evidence (and no env override), Gemini gets Google Search."""
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.return_value = "ok"
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+
+    groq = MagicMock()
+    groq.is_available.return_value = True
+
+    ollama = MagicMock()
+    ollama.is_available.return_value = True
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
+         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
+         patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
+         patch("llm.gemini_fallback._google_search_grounding_override", return_value=None):
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider(api_key="test-key")
+        assert provider.complete("prompt", task="sse", search_query="q") == "ok"
+        assert flash.complete.call_args.kwargs.get("use_grounding") is True
+
+
+def test_sse_fallback_disables_google_search_when_tavily_injected():
+    """Shared Tavily evidence present → no double-search on backends."""
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.return_value = "ok"
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+
+    groq = MagicMock()
+    groq.is_available.return_value = True
+
+    ollama = MagicMock()
+    ollama.is_available.return_value = True
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
+         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
+         patch("llm.gemini_fallback.fetch_tavily_context", return_value="EVIDENCE"), \
+         patch("llm.gemini_fallback._google_search_grounding_override", return_value=None):
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider(api_key="test-key")
+        assert provider.complete("prompt", task="sse", search_query="q") == "ok"
+        assert flash.complete.call_args.kwargs.get("use_grounding") is False
+        assert "EVIDENCE" in flash.complete.call_args.args[0]
