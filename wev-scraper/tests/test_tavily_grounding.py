@@ -1,11 +1,47 @@
 """Tests for shared Tavily evidence helpers."""
 
+from unittest.mock import MagicMock, patch
+
 from llm.local_grounded import _truncate_keep_ends
 from llm.tavily_grounding import (
     entity_require_terms,
+    fetch_tavily_context,
     inject_grounding_evidence,
     trim_evidence,
 )
+
+
+def test_prefer_hosts_only_does_not_set_include_domains():
+    """prefer_hosts ranks results but must not hard-filter via include_domains."""
+    mock_client = MagicMock()
+    mock_client.search.return_value = {
+        "results": [
+            {
+                "title": "Other Org",
+                "url": "https://other.org/about",
+                "content": "Unrelated co-op mission statement",
+            },
+            {
+                "title": "Park People",
+                "url": "https://parkpeople.ca/mission",
+                "content": "Park People builds healthy parks",
+            },
+        ]
+    }
+
+    with patch("llm.tavily_grounding.is_tavily_available", return_value=True), \
+         patch("llm.tavily_grounding._client", return_value=mock_client):
+        text = fetch_tavily_context(
+            "Park People Toronto mission",
+            prefer_hosts=["parkpeople.ca"],
+        )
+
+    assert mock_client.search.called
+    api_kwargs = mock_client.search.call_args.kwargs
+    assert "include_domains" not in api_kwargs
+    # Preferred host ranked ahead of noise
+    assert "parkpeople.ca" in text
+    assert text.index("parkpeople.ca") < text.index("other.org")
 
 
 def test_inject_grounding_evidence_marks_search_as_secondary():

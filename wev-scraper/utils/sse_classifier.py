@@ -8,7 +8,6 @@ from typing import TypedDict
 from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.sse_prompts import (
-    SSE_SEARCH_KEYWORDS,
     get_sse_batch_classification_prompt,
     get_sse_classification_prompt,
 )
@@ -85,18 +84,20 @@ class SSEClassifier(BaseGroundedClassifier):
         job_title = job_data.get("title") or job_data.get("job_title", "Unknown")
         location = job_data.get("location", "Unknown")
         salary = job_data.get("salary") or "Not specified"
-        description = job_data.get("description", "")
+        description = job_data.get("description", "") or ""
         posted_date = job_data.get("posted_date", datetime.utcnow().isoformat())
 
-        if not description or not description.strip():
-            raise SSEClassificationError("Job description is required for classification")
+        # Blank/missing descriptions still classify: Tavily grounding supplies
+        # employer context when there is no posting body. When a description
+        # exists, score from that text and keep grounding off.
+        has_description = bool(description.strip())
 
         prompt = get_sse_classification_prompt(
             org_name=org_name,
             job_title=job_title,
             location=location,
             salary=salary,
-            job_description=description,
+            job_description=description if has_description else "(no description provided)",
             posted_date=posted_date,
         )
 
@@ -114,11 +115,6 @@ class SSEClassifier(BaseGroundedClassifier):
         from llm.tavily_grounding import entity_require_terms
 
         require_terms = entity_require_terms(org_name) or None
-        # Tavily only when the job has no description text yet. When a posting
-        # body exists, do not call Tavily for description fill — and do not treat
-        # listing copy as evidence for org-level sector/language (job is_sse still
-        # scores the role from the posting + employer signals in that text).
-        has_description = bool(description.strip())
 
         last_error_message = ""
         for attempt in range(2):
@@ -196,23 +192,16 @@ class SSEClassifier(BaseGroundedClassifier):
 
         prompt = get_sse_batch_classification_prompt(normalized_jobs)
 
-        org_search_terms = []
-        for j in normalized_jobs:
-            if j["org_name"] and j["org_name"] != "Unknown":
-                term = f'"{j["org_name"]}"'
-                if j.get("location") and j["location"] != "Unknown":
-                    term += f' "{j["location"]}"'
-                org_search_terms.append(term)
-
-        search_query = " OR ".join(org_search_terms) + f" {SSE_SEARCH_KEYWORDS}" if org_search_terms else None
-
+        # Batch requires descriptions — mirror single-job policy: no Tavily /
+        # Google Search grounding when posting bodies are present.
         response_text = self._call_provider_with_retry(
             provider=self.provider,
             prompt=prompt,
             system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
             task="sse",
-            search_query=search_query,
+            search_query=None,
             retries=1,
+            use_grounding=False,
         )
 
         parse_result, parse_error = self._safe_parse_batch_response(response_text, len(jobs))
