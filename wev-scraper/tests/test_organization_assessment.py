@@ -7,7 +7,8 @@ from utils.organization_assessment import (
     _attach_org_language,
     _build_search_query,
     _parse_response,
-    _parse_website,)
+    _parse_website,
+)
 from utils.organization_language import LanguageClassification
 
 
@@ -69,9 +70,7 @@ def test_french_website_beats_name_llm(mock_classify):
 
 @patch("utils.organization_assessment.classify_org_language")
 def test_confirmed_english_website_not_overridden_by_public_language(mock_classify):
-    mock_classify.return_value = LanguageClassification(
-        "en", 0.85, "web_text", ("web_signal=en",)
-    )
+    mock_classify.return_value = LanguageClassification("en", 0.85, "web_text", ("web_signal=en",))
     row = _attach_org_language({"name": "Acme", "website": "https://x.org"}, "fr")
     assert row["language"] == "en"
     assert "language:en via=web_text" in row["sse_details"]["flags"]
@@ -87,9 +86,7 @@ def test_public_language_used_when_no_name_or_web_signal(mock_classify):
 
 @patch("utils.organization_assessment.classify_org_language")
 def test_force_lang_with_website_enables_fetch(mock_classify):
-    mock_classify.return_value = LanguageClassification(
-        "fr", 0.85, "web_text", ("web_signal=fr",)
-    )
+    mock_classify.return_value = LanguageClassification("fr", 0.85, "web_text", ("web_signal=fr",))
     row = _attach_org_language(
         {"name": "Org FR", "website": "https://exemple.qc.ca"},
         None,
@@ -104,7 +101,12 @@ def test_force_lang_with_website_enables_fetch(mock_classify):
 @patch("utils.organization_assessment.classify_org_language")
 def test_existing_language_never_overwritten_by_attach(mock_classify):
     row = _attach_org_language(
-        {"name": "X", "website": None, "language": "fr", "sse_details": {"flags": ["values via=inferred"]}},
+        {
+            "name": "X",
+            "website": None,
+            "language": "fr",
+            "sse_details": {"flags": ["values via=inferred"]},
+        },
         "en",
     )
     assert row["language"] == "fr"
@@ -164,7 +166,7 @@ def test_parse_response_keeps_over_limit_text_until_truncate():
     assert "description_en" in over
 
 
-@patch('utils.organization_assessment.get_sse_provider')
+@patch("utils.organization_assessment.get_sse_provider")
 def test_ensure_length_limits_truncates_oversize_fields(mock_get_sse_provider):
     from utils.organization_assessment import (
         _ORG_DESCRIPTION_MAX_CHARS,
@@ -173,7 +175,7 @@ def test_ensure_length_limits_truncates_oversize_fields(mock_get_sse_provider):
         _fields_over_limit,
     )
 
-    mock_get_sse_provider.return_value = MagicMock() # Mock the provider
+    mock_get_sse_provider.return_value = MagicMock()  # Mock the provider
 
     assessor = OrganizationAssessor()
 
@@ -285,7 +287,7 @@ def test_org_assessment_prompt_requires_evidence_not_type_label_alone():
         description="listing notes",
     )
     assert "evidence over labels" in prompt
-    assert "NOT from the \"type\" string alone" in prompt
+    assert 'NOT from the "type" string alone' in prompt
     assert "Base the rating on mission/governance evidence" in prompt
 
 
@@ -307,7 +309,6 @@ def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
     assert "MUST fit within" in prompt
     assert "description_en" in prompt and "description_fr" in prompt
     assert "BILINGUAL PUBLIC COPY" in prompt
-
 
 
 def test_org_assessment_prompt_prioritizes_name_then_bilingual_website_evidence():
@@ -648,9 +649,7 @@ def test_governance_gate_forces_for_profit_weak_yes_to_no():
             slug="aliments-premont-inc",
             type="other",
             sse_rating="weak_yes",
-            sse_reasoning_en=(
-                "Mission mentions respect for individuals and the environment."
-            ),
+            sse_reasoning_en=("Mission mentions respect for individuals and the environment."),
         ),
         "Aliments Prémont Inc.",
     )
@@ -671,8 +670,6 @@ def test_governance_gate_keeps_nonprofit_yes():
     assert result["sse_rating"] == "strong_yes"
 
 
-
-
 def test_org_assessment_prompt_excludes_government_from_sse():
     from utils.organization_assessment import _build_assessment_prompt
 
@@ -688,7 +685,10 @@ def test_org_assessment_prompt_rejects_mission_only_private_enterprise():
     prompt = _build_assessment_prompt("Toronto Nature School", "Toronto", "ON", "", "")
     assert "Mission-driven private enterprise is not SSE" in prompt
     assert 'There is no "social enterprise" type' in prompt
-    assert "type alone is never sufficient" in prompt or "Type is necessary but not sufficient" in prompt
+    assert (
+        "type alone is never sufficient" in prompt
+        or "Type is necessary but not sufficient" in prompt
+    )
 
 
 def test_normalize_type_maps_social_enterprise_to_other():
@@ -798,7 +798,7 @@ def test_org_assessment_prompt_charity_community_nonprofit_floor():
         job_title="",
         description="",
     )
-    assert "charities are never \"other\" for lacking cooperative governance" in prompt
+    assert 'charities are never "other" for lacking cooperative governance' in prompt
     assert 'AT LEAST "weak_yes"' in prompt
     assert "board+ED charities stay nonprofit" in prompt or (
         "board + executive director is still nonprofit" in prompt
@@ -821,15 +821,6 @@ def test_org_assessment_prompt_mutual_aid_strong_yes_calibration():
     assert "Explicit cooperative labels are NOT required for strong_yes" in prompt
 
 
-
-
-
-
-
-
-
-
-
 def test_build_search_query_stays_under_tavily_limit():
     q = _build_search_query(
         "Association pour la promotion de la santé des personnes utilisatrices de drogues",
@@ -839,7 +830,6 @@ def test_build_search_query_stays_under_tavily_limit():
         job_title="Coordonnateur.trice aux communications et au développement",
     )
     assert len(q) <= 400
-
 
 
 def test_org_assessment_prompt_political_parties_are_other_not_government():
@@ -936,9 +926,11 @@ def test_assess_hard_fails_when_is_tavily_available_false(mock_get_sse_provider)
     mock_get_sse_provider.return_value = mock_provider
     assessor = OrganizationAssessor()
 
-    with patch("llm.tavily_grounding.is_tavily_available", return_value=False), \
-         patch("llm.tavily_grounding.tavily_api_key", return_value=""), \
-         patch("llm.tavily_grounding._tavily_import_error", return_value=None):
+    with (
+        patch("llm.tavily_grounding.is_tavily_available", return_value=False),
+        patch("llm.tavily_grounding.tavily_api_key", return_value=""),
+        patch("llm.tavily_grounding._tavily_import_error", return_value=None),
+    ):
         with pytest.raises(TavilyUnavailableError, match="TAVILY_API_KEY"):
             assessor.assess(raw_name="Park People")
 
