@@ -7,8 +7,7 @@ from utils.organization_assessment import (
     _attach_org_language,
     _build_search_query,
     _parse_response,
-    _parse_website,
-)
+    _parse_website,)
 from utils.organization_language import LanguageClassification
 
 
@@ -26,11 +25,46 @@ def test_english_name_yields_to_research_public_language(mock_classify):
 
 
 @patch("utils.organization_assessment.classify_org_language")
-def test_french_name_beats_english_public_language(mock_classify):
+def test_french_name_yields_to_research_public_language(mock_classify):
+    """Name LLM is lowest priority — research public_language wins (YMCA/SAC bug)."""
     mock_classify.return_value = LanguageClassification("fr", 0.7, "llm_name", ("name_llm=fr",))
-    row = _attach_org_language({"name": "Fondation Acme", "website": None}, "en")
+    row = _attach_org_language({"name": "Fondation Acme", "website": None}, "bilingual")
+    assert row["language"] == "bilingual"
+    assert "language:bilingual via=public_language" in row["sse_details"]["flags"]
+    assert "language_reason:name_llm=fr" in row["sse_details"]["flags"]
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_website_bilingual_beats_name_llm_and_public_language(mock_classify):
+    mock_classify.return_value = LanguageClassification(
+        "bilingual",
+        0.95,
+        "web_dual_probe",
+        ("probe_en=True", "probe_fr=True"),
+    )
+    row = _attach_org_language(
+        {"name": "YMCA Québec", "website": "https://ymcaquebec.org"},
+        "fr",
+    )
+    assert row["language"] == "bilingual"
+    assert "language:bilingual via=web_dual_probe" in row["sse_details"]["flags"]
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_french_website_beats_name_llm(mock_classify):
+    """French-named org with French-only site → fr via=website, not llm_name."""
+    mock_classify.return_value = LanguageClassification(
+        "fr",
+        0.85,
+        "web_text",
+        ("web_signal=fr",),
+    )
+    row = _attach_org_language(
+        {"name": "Service d'aide aux conjoints", "website": "https://sac.qc.ca"},
+        "en",
+    )
     assert row["language"] == "fr"
-    assert "language:fr via=llm_name" in row["sse_details"]["flags"]
+    assert "language:fr via=web_text" in row["sse_details"]["flags"]
 
 
 @patch("utils.organization_assessment.classify_org_language")
@@ -49,6 +83,22 @@ def test_public_language_used_when_no_name_or_web_signal(mock_classify):
     row = _attach_org_language({"name": "Neutral Co", "website": None}, "bilingual")
     assert row["language"] == "bilingual"
     assert "language:bilingual via=public_language" in row["sse_details"]["flags"]
+
+
+@patch("utils.organization_assessment.classify_org_language")
+def test_force_lang_with_website_enables_fetch(mock_classify):
+    mock_classify.return_value = LanguageClassification(
+        "fr", 0.85, "web_text", ("web_signal=fr",)
+    )
+    row = _attach_org_language(
+        {"name": "Org FR", "website": "https://exemple.qc.ca"},
+        None,
+        force_lang=True,
+        fetch_web=False,
+    )
+    mock_classify.assert_called_once()
+    assert mock_classify.call_args.kwargs["fetch_web"] is True
+    assert row["language"] == "fr"
 
 
 @patch("utils.organization_assessment.classify_org_language")
@@ -247,7 +297,7 @@ def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
         "Hamilton",
         "ON",
         job_title="Coordinator",
-        description="listing notes",
+        listing_notes="listing notes",
     )
     assert "paraphrase to fit completely" in prompt
     assert "Never cut off mid-word or mid-sentence" in prompt
@@ -257,6 +307,7 @@ def test_org_assessment_prompt_asks_to_paraphrase_within_limits():
     assert "MUST fit within" in prompt
     assert "description_en" in prompt and "description_fr" in prompt
     assert "BILINGUAL PUBLIC COPY" in prompt
+
 
 
 def test_org_assessment_prompt_prioritizes_name_then_bilingual_website_evidence():
@@ -270,7 +321,8 @@ def test_org_assessment_prompt_prioritizes_name_then_bilingual_website_evidence(
         description="listing notes",
     )
     assert "Priority for public_language" in prompt
-    assert "Organization name only as weak evidence" in prompt
+    assert "Organization name ONLY as last-resort weak evidence" in prompt
+    assert "never let the name override confirmed page" in prompt
     assert "substantial English AND French" in prompt
 
 
@@ -351,19 +403,199 @@ def test_apply_website_known_guard_prefers_known_url():
     assert any("website_guard" in f for f in (guarded.get("flags") or []) if isinstance(f, str))
 
 
-def test_build_search_query_targets_official_website():
-    assert _build_search_query("Mindrift", "Toronto", "ON") == (
-        '"Mindrift" official website Toronto ON'
+@patch("utils.website_verify.verify_website_live", return_value=True)
+def test_confirm_result_website_keeps_evidence_host(mock_live):
+    from utils.organization_assessment import _confirm_result_website
+
+    result = _parse_response(
+        _assessment_json(website="https://naturevisuals.org"),
+        "Nature Visuals",
     )
+    assert result is not None
+    confirmed = _confirm_result_website(
+        result,
+        evidence_urls=["https://www.naturevisuals.org/about"],
+        known_website=None,
+    )
+    assert confirmed["website"] == "https://naturevisuals.org"
+    mock_live.assert_called_once()
+
+
+@patch("utils.website_verify.verify_website_live", return_value=True)
+def test_confirm_result_website_rejects_invented_host(mock_live):
+    from utils.organization_assessment import _confirm_result_website
+
+    result = _parse_response(
+        _assessment_json(website="https://invented-nature-visuals.org"),
+        "Nature Visuals",
+    )
+    assert result is not None
+    confirmed = _confirm_result_website(
+        result,
+        evidence_urls=["https://linkedin.com/company/nature-visuals"],
+        known_website=None,
+    )
+    assert confirmed["website"] is None
+    assert "website_unconfirmed" in confirmed["flags"]
+    mock_live.assert_not_called()
+
+
+@patch("utils.website_verify.verify_website_live", return_value=True)
+def test_confirm_result_website_clears_copy_on_foreign_gov(mock_live):
+    from utils.organization_assessment import _confirm_result_website
+
+    result = _parse_response(
+        _assessment_json(
+            website="https://gbi.georgia.gov",
+            description_en="Georgia Bureau of Investigation public safety agency",
+            mission_statement_en="Protect the citizens of Georgia",
+            values_raw="Integrity Service",
+        ),
+        "Gbi",
+    )
+    assert result is not None
+    confirmed = _confirm_result_website(
+        result,
+        evidence_urls=["https://gbi.georgia.gov/"],
+        known_website=None,
+        municipality="Montreal",
+        province="QC",
+    )
+    assert confirmed["website"] is None
+    assert "website_geo_conflict" in confirmed["flags"]
+    assert confirmed["description_en"] is None
+    assert confirmed["mission_statement_en"] is None
+    assert confirmed["values_raw"] is None
+    mock_live.assert_not_called()
+
+
+@patch("utils.website_verify.verify_website_live", return_value=True)
+def test_confirm_result_website_clears_copy_on_geo_conflict(mock_live):
+    from utils.organization_assessment import _confirm_result_website
+
+    result = _parse_response(
+        _assessment_json(
+            website="https://foxholefarmohio.com",
+            description_en="Family farm in Brookville Ohio",
+        ),
+        "Foxhole Farm",
+    )
+    assert result is not None
+    confirmed = _confirm_result_website(
+        result,
+        evidence_urls=["https://foxholefarmohio.com/"],
+        known_website=None,
+        municipality="Rockwood",
+        province="ON",
+        site_title="Foxhole Farm Ohio",
+        site_text="Welcome to our Brookville, Ohio farm since 1890",
+    )
+    assert confirmed["website"] is None
+    assert "website_geo_conflict" in confirmed["flags"]
+    assert confirmed["description_en"] is None
+
+
+def test_demote_extracted_without_confirmed_website():
+    from utils.organization_assessment import (
+        _demote_extracted_without_confirmed_website,
+    )
+
+    result = _parse_response(
+        _assessment_json(
+            website=None,
+            flags=[
+                "description via=extracted",
+                "mission via=extracted",
+                "values via=extracted",
+            ],
+        ),
+        "Nature Visuals",
+    )
+    assert result is not None
+    demoted = _demote_extracted_without_confirmed_website(result)
+    assert demoted["website"] is None
+    assert "description via=inferred" in demoted["flags"]
+    assert "mission via=inferred" in demoted["flags"]
+    assert "values via=inferred" in demoted["flags"]
+    assert "description via=extracted" not in demoted["flags"]
+
+
+def test_org_assessment_prompt_forbids_invented_websites():
+    from utils.organization_assessment import (
+        _build_assessment_prompt,
+    )
+
+    prompt = _build_assessment_prompt(
+        "Acme Co-op",
+        "Toronto",
+        "ON",
+        job_title="Coordinator",
+        description="listing notes",
+    )
+    assert "NEVER invent" in prompt or "Never invent" in prompt
+    assert "SUPPORTING" in prompt or "supporting" in prompt
+    assert "LinkedIn" in prompt or "Glassdoor" in prompt
+    assert "LOCATION DISAMBIGUATION" in prompt or "ENTITY / LOCATION" in prompt
+    assert "same-name" in prompt.lower() or "other countries" in prompt.lower()
+    assert "FLAGS RULES" in prompt
+    assert "via=extracted" in prompt
+    assert "CONFIRMED website" in prompt or "confirmed org website" in prompt.lower()
+
+
+def test_build_search_query_targets_official_website():
+    from utils.sse_prompts import SSE_SEARCH_KEYWORDS
+
+    q = _build_search_query("Mindrift", "Toronto", "ON")
+    assert '"Mindrift" Toronto Ontario Canada official website' in q
+    assert SSE_SEARCH_KEYWORDS in q
 
 
 def test_build_search_query_includes_known_website():
-    assert _build_search_query(
+    from utils.sse_prompts import SSE_SEARCH_KEYWORDS
+
+    q = _build_search_query(
         "Gates Foundation",
         known_website="https://www.gatesfoundation.org/",
-    ) == (
-        '"Gates Foundation" official website https://www.gatesfoundation.org/'
     )
+    assert '"Gates Foundation" official website https://www.gatesfoundation.org/' in q
+    assert SSE_SEARCH_KEYWORDS in q
+
+
+def test_build_search_query_foxhole_includes_location():
+    q = _build_search_query("Foxhole Farm", "Rockwood", "ON")
+    assert "Rockwood" in q
+    assert "Ontario" in q
+    assert "Canada" in q
+    assert '"Foxhole Farm"' in q
+
+
+def test_build_search_query_includes_job_title():
+    q = _build_search_query(
+        "9076-5215 QUÉBEC Inc.",
+        "Magog",
+        "QC",
+        job_title="Rembourreur",
+    )
+    assert '"9076-5215 QUÉBEC Inc."' in q
+    assert "Rembourreur" in q
+    assert "Magog" in q
+    assert "Quebec" in q
+    assert "registre" in q
+    assert "NEQ" in q
+    assert "official website" not in q
+
+
+def test_prefer_hosts_boosts_listing_and_qc_registre():
+    from utils.organization_assessment import _prefer_hosts_for_assess
+
+    hosts = _prefer_hosts_for_assess(
+        listing_url="https://www.macommunaute.ca/emploi/rembourreur",
+        raw_name="9076-5215 QUÉBEC Inc.",
+    )
+    assert hosts is not None
+    assert "macommunaute.ca" in hosts
+    assert "registreentreprises.gouv.qc.ca" in hosts
+    assert hosts.index("macommunaute.ca") < hosts.index("registreentreprises.gouv.qc.ca")
 
 
 def test_org_assessment_prompt_uses_org_not_job_sse_criteria():
@@ -429,11 +661,16 @@ def test_governance_gate_forces_for_profit_weak_yes_to_no():
 
 def test_governance_gate_keeps_nonprofit_yes():
     result = _parse_response(
-        _assessment_json(type="nonprofit", sse_rating="strong_yes"),
+        _assessment_json(
+            type="nonprofit",
+            sse_rating="strong_yes",
+        ),
         "Nature Visuals",
     )
     assert result is not None
     assert result["sse_rating"] == "strong_yes"
+
+
 
 
 def test_org_assessment_prompt_excludes_government_from_sse():
@@ -476,8 +713,8 @@ def test_governance_gate_forces_government_yes_to_no():
     assert any("governance_gate" in f for f in result["flags"])
 
 
-def test_governance_gate_keeps_yes_when_type_is_null():
-    """Null type means unknown — do not demote a model Yes."""
+def test_governance_gate_forces_yes_when_type_is_null():
+    """Null type with Yes is forbidden — demote to no."""
     result = _parse_response(
         _assessment_json(
             type=None,
@@ -487,8 +724,26 @@ def test_governance_gate_keeps_yes_when_type_is_null():
         "Mystery Mutual",
     )
     assert result is not None
-    assert result["sse_rating"] == "strong_yes"
-    assert not any("governance_gate" in f for f in result["flags"])
+    assert result["sse_rating"] == "no"
+    assert any("governance_gate" in f for f in result["flags"])
+    assert any("null type" in f for f in result["flags"])
+
+
+def test_governance_gate_demotes_yes_when_reasoning_admits_unconfirmed_status():
+    result = _parse_response(
+        _assessment_json(
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "Mission shows public benefit, but explicit nonprofit status "
+                "is not confirmed from public materials."
+            ),
+        ),
+        "Ambiguous School",
+    )
+    assert result is not None
+    assert result["sse_rating"] == "no"
+    assert any("unconfirmed" in f for f in result["flags"])
 
 
 def test_governance_gate_forces_other_yes_to_no():
@@ -566,6 +821,27 @@ def test_org_assessment_prompt_mutual_aid_strong_yes_calibration():
     assert "Explicit cooperative labels are NOT required for strong_yes" in prompt
 
 
+
+
+
+
+
+
+
+
+
+def test_build_search_query_stays_under_tavily_limit():
+    q = _build_search_query(
+        "Association pour la promotion de la santé des personnes utilisatrices de drogues",
+        "Montreal",
+        "QC",
+        known_website="https://aqpsud.org",
+        job_title="Coordonnateur.trice aux communications et au développement",
+    )
+    assert len(q) <= 400
+
+
+
 def test_org_assessment_prompt_political_parties_are_other_not_government():
     from utils.organization_assessment import _build_assessment_prompt
 
@@ -626,3 +902,44 @@ def test_governance_gate_forces_political_party_other_yes_to_no():
     assert result["type"] == "other"
     assert result["sse_rating"] == "no"
     assert any("governance_gate" in f for f in result["flags"])
+
+
+@patch("utils.organization_assessment.get_sse_provider")
+def test_assess_hard_fails_when_tavily_unavailable(mock_get_sse_provider):
+    """Org assessor must raise when Tavily is broken — never soft-None with empty evidence."""
+    import pytest
+    from llm.tavily_grounding import TavilyUnavailableError
+    from utils.organization_assessment import OrganizationAssessor
+
+    mock_provider = MagicMock()
+    mock_get_sse_provider.return_value = mock_provider
+    assessor = OrganizationAssessor()
+
+    with patch(
+        "llm.tavily_grounding.require_tavily",
+        side_effect=TavilyUnavailableError("No module named 'tavily'"),
+    ):
+        with pytest.raises(TavilyUnavailableError, match="tavily"):
+            assessor.assess(raw_name="Park People", municipality="Toronto", province="ON")
+
+    mock_provider.complete.assert_not_called()
+
+
+@patch("utils.organization_assessment.get_sse_provider")
+def test_assess_hard_fails_when_is_tavily_available_false(mock_get_sse_provider):
+    """is_tavily_available False → require_tavily raises → assess aborts."""
+    import pytest
+    from llm.tavily_grounding import TavilyUnavailableError
+    from utils.organization_assessment import OrganizationAssessor
+
+    mock_provider = MagicMock()
+    mock_get_sse_provider.return_value = mock_provider
+    assessor = OrganizationAssessor()
+
+    with patch("llm.tavily_grounding.is_tavily_available", return_value=False), \
+         patch("llm.tavily_grounding.tavily_api_key", return_value=""), \
+         patch("llm.tavily_grounding._tavily_import_error", return_value=None):
+        with pytest.raises(TavilyUnavailableError, match="TAVILY_API_KEY"):
+            assessor.assess(raw_name="Park People")
+
+    mock_provider.complete.assert_not_called()

@@ -3,7 +3,7 @@
 Controls when to use grounding across LLM providers.
 
 For SSE / org assessment, ``SSEFallbackProvider`` fetches shared Tavily evidence
-and injects it into the prompt for every backend (Gemini, Groq, Ollama).
+and injects it into the prompt for every backend (Gemini, Groq, Cerebras, Ollama).
 Native Google Search tool use is separate and opt-in
 (``USE_GOOGLE_SEARCH_GROUNDING=1``).
 

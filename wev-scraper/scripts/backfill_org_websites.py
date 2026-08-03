@@ -52,9 +52,13 @@ from pathlib import Path
 from typing import Any
 
 from utils.prod_env import bootstrap_prod_from_argv, confirm_prod_run
+from settings import ensure_env_loaded
 
-if "--prod" in sys.argv[1:]:
-    confirm_prod_run(full_prod=True)
+# Load base .env (LLM keys) before prod DB credential overlay.
+ensure_env_loaded()
+
+if "--prod" in sys.argv[1:] or "--publish" in sys.argv[1:]:
+    confirm_prod_run(full_prod="--prod" in sys.argv[1:])
     bootstrap_prod_from_argv(sys.argv[1:], Path(__file__))
     print("Using PRODUCTION database")
 else:
@@ -122,6 +126,43 @@ def fetch_orgs_any(*, limit: int, after_id: int = 0) -> list[dict]:
         .execute()
     )
     return resp.data or []
+
+
+def fetch_recent_job_for_org(org: dict) -> dict | None:
+    """Recent job linked to *org* (by organization_id, else organization name).
+
+    Returns job_title / listing_url / municipality / province when found.
+    """
+    org_id = org.get("id")
+    name = (org.get("name") or "").strip()
+    cols = "job_title, listing_url, municipality, province, organization, scraped_at"
+
+    if org_id is not None:
+        resp = (
+            supabase.table("jobs")
+            .select(cols)
+            .eq("organization_id", org_id)
+            .order("scraped_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+        if rows:
+            return rows[0]
+
+    if name:
+        resp = (
+            supabase.table("jobs")
+            .select(cols)
+            .eq("organization", name)
+            .order("scraped_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+        if rows:
+            return rows[0]
+    return None
 
 
 _FETCHERS = {
@@ -267,6 +308,12 @@ def run(
     force_reviewed: bool = False,
     force_lang: bool = False,
 ) -> dict:
+    # Hard-require Tavily before touching any org. Soft-empty evidence led to
+    # hallucinated websites when the package/key was missing in prod.
+    from llm.tavily_grounding import require_tavily
+
+    require_tavily()
+
     try:
         assessor = OrganizationAssessor()
     except Exception as exc:
@@ -351,16 +398,30 @@ def run(
 
             processed += 1
             try:
+                job = fetch_recent_job_for_org(org)
+                job_title = (job or {}).get("job_title") or ""
+                listing_url = (job or {}).get("listing_url") or None
+                job_mun = (job or {}).get("municipality")
+                job_prov = (job or {}).get("province")
+                if job:
+                    logger.info(
+                        "org_id=%s job context: title=%r listing=%s",
+                        org_id,
+                        job_title,
+                        listing_url,
+                    )
+
                 if mode == "website":
                     result = assessor.assess(
                         raw_name=name,
-                        municipality=org.get("municipality"),
-                        province=org.get("province"),
-                        job_title="",
+                        municipality=job_mun or org.get("municipality"),
+                        province=job_prov or org.get("province"),
+                        job_title=job_title,
                         description="",
                         known_website=org.get("website"),
                         existing_description=org.get("description") or "",
                         listing_notes="",
+                        listing_url=listing_url,
                     )
                     website = (result or {}).get("website") if result else None
                     if not website or not evidence_domain(website):
@@ -383,7 +444,14 @@ def run(
                         updated += 1
                 else:
                     # full + minimal: grounded reassess (SSE / type / values / …)
-                    updates = assessor.assess_and_build_update(org, force_lang=force_lang)
+                    updates = assessor.assess_and_build_update(
+                        org,
+                        force_lang=force_lang,
+                        job_title=job_title,
+                        listing_url=listing_url,
+                        municipality=job_mun,
+                        province=job_prov,
+                    )
                     if updates is None:
                         logger.info(
                             "skip org_id=%s (%s) — assessor returned None",
@@ -433,7 +501,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Re-assess org websites and/or SSE/mission/values via grounded LLM."
     )
-    parser.add_argument("--prod", action="store_true", help="Use production database.")
+    parser.add_argument("--prod", action="store_true", help="Use production database + prod LLM env.")
+    parser.add_argument(
+        "--publish",
+        action="store_true",
+        help=(
+            "Use production DB credentials only; keep LLM keys from base .env "
+            "(parent wev/.env). Mutually exclusive with --prod."
+        ),
+    )
     parser.add_argument(
         "--mode",
         choices=("website", "minimal", "full"),
@@ -505,16 +581,22 @@ def main() -> None:
     if args.overwrite_recent_hours is not None and args.overwrite_recent_hours <= 0:
         parser.error("--overwrite-recent-hours must be > 0")
 
-    run(
-        mode=args.mode,
-        limit=args.limit,
-        dry_run=args.dry_run,
-        delay_seconds=args.delay_seconds,
-        after_id=args.after_id,
-        overwrite_recent_hours=args.overwrite_recent_hours,
-        force_reviewed=args.force_reviewed,
-        force_lang=args.force_lang,
-    )
+    from llm.tavily_grounding import TavilyUnavailableError
+
+    try:
+        run(
+            mode=args.mode,
+            limit=args.limit,
+            dry_run=args.dry_run,
+            delay_seconds=args.delay_seconds,
+            after_id=args.after_id,
+            overwrite_recent_hours=args.overwrite_recent_hours,
+            force_reviewed=args.force_reviewed,
+            force_lang=args.force_lang,
+        )
+    except TavilyUnavailableError as exc:
+        logger.error("%s", exc)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

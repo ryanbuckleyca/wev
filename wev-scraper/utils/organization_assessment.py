@@ -24,7 +24,7 @@ from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
-from utils.organization_cache import evidence_domain, extract_domain
+from utils.organization_cache import domains_match, evidence_domain, extract_domain
 from utils.organization_language import (
     VALID_ORG_LANGUAGES,
     classify_org_language,
@@ -86,15 +86,16 @@ _JSON_FIELDS = """{
   "canonical_name": "Official organization name (string, required, non-empty)",
   "slug": "url-safe-kebab-case (string, required)",
   "website": "Employer's own homepage URL (https://...), or null — see WEBSITE RULES",
-  "description_en": "Organization description in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. Record provenance in flags as 'description via=extracted|inferred|absent'), or null",
-  "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
-  "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. Record provenance in flags as 'mission via=extracted|inferred|absent'), or null",
-  "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
-  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops and credit unions. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
+  "description_en": "Organization description in English (strictly under 400 chars / ~45 words — EXTRACT-FIRST: copy or minimally paraphrase source wording when present; preserve key nouns/phrasing. Record provenance in flags as 'description via=extracted|inferred|absent'), or null",
+  "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source; do not casually drop a locale when both EN and FR are evidenced), or null",
+  "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — EXTRACT-FIRST: copy or minimally paraphrase source wording when present; preserve key nouns/phrasing. Record provenance in flags as 'mission via=extracted|inferred|absent'), or null",
+  "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source; do not casually drop a locale when both EN and FR are evidenced), or null",
+  "type": "One of: nonprofit, cooperative, government, union, other — or null ONLY when research is too thin to choose. IMPORTANT: Decide type BEFORE sse_rating. Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. FORBIDDEN: strong_yes/weak_yes with type null. If nonprofit/coop/union is not evidenced, prefer 'other' (not null). If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops and credit unions. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
-  "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — extract closely from source. Record provenance in flags as 'values via=extracted|inferred|absent'), or null",
+  "sector_hint": "Alias for sector_id (code maps through allowlist — do not invent IDs)",
+  "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — EXTRACT-FIRST from source; minimal paraphrase. Record provenance in flags as 'values via=extracted|inferred|absent'), or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
-  "sse_rating": "strong_yes or weak_yes or no",
+  "sse_rating": "strong_yes or weak_yes or no — never Yes when type is null or ineligible",
   "sse_confidence": "0.0 to 1.0",
   "sse_reasoning_en": "2–3 concise English sentences citing the key evidence for the rating (strictly under 320 chars / ~35 words — paraphrase to fit completely). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays",
   "sse_reasoning_fr": "Same reasoning in French (strictly under 320 chars / ~35 words — paraphrase to fit completely)",
@@ -124,8 +125,10 @@ For EACH of description, mission, and values include exactly one flag:
   values via=extracted|inferred|absent
 
 Use:
-- via=extracted — closely taken/paraphrased from the org's own website or official materials
-- via=inferred — you composed or guessed it (including mapping Knowdell values from other text)
+- via=extracted — closely taken/paraphrased from the org's own CONFIRMED website
+  or official materials on that site. Do NOT use via=extracted when you only have
+  LinkedIn / Glassdoor / news / directory snippets and no confirmed org website.
+- via=inferred — you composed it from supporting secondary sources, or guessed
 - via=absent — you returned null/empty for that field
 
 Language provenance is added by code after your response (language:… via=… /
@@ -141,39 +144,84 @@ prefer mission via=inferred / values via=inferred over claiming extracted."""
 _BILINGUAL_COPY_RULES = """BILINGUAL PUBLIC COPY (required):
 - Always provide BOTH English and French for description_*, mission_statement_*, and sse_reasoning_* when you have enough evidence to write the field at all.
 - If you can write the English version, also write the French version (and vice versa) — do not leave one locale null when the other is present.
-- Write natural French (not word-for-word calque) and natural English.
+- When research evidences both EN and FR public materials, keep both locales populated — do not casually drop one language.
+- COPY FIDELITY: when SOURCE DESCRIPTION or extracted website text is present, prefer extract-first / minimal paraphrase — preserve key nouns and phrasing; do not freely rewrite.
+- Write natural French (not word-for-word calque) and natural English when translating a missing locale.
 - Knowdell "values" labels stay in English (taxonomy keys). values_raw may stay in the source language of the website.
 - must_haves_met / nice_to_haves_met / flags stay in English short labels.
 - must_haves_met / nice_to_haves_met must follow ORG CRITERION LABEL RULES (org criteria only — never compensation)."""
 
 _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
 - Prefer the organization's own official homepage (the domain they control).
+- CRITICAL: Copy the website URL ONLY from SUPPORTING WEB EVIDENCE link hosts
+  (or Known website). NEVER invent, guess, or fabricate a domain from the
+  organization name (e.g. name.ca / name.org guesses are forbidden).
 - If ORGANIZATION DATA lists a Known website, prefer that URL unless it violates
-  the rules below (shared/ATS/social) — then discover a better employer-owned site.
+  the rules below (shared/ATS/social) — then discover a better employer-owned site
+  that appears in the evidence URLs.
 - Do NOT use job-board, ATS, or careers-platform URLs (e.g. Greenhouse, Lever,
   Workday, Indeed, CharityVillage, LinkedIn jobs).
 - Do NOT use social profiles or link aggregators (Facebook, Instagram, LinkedIn
   company pages, Linktree, bit.ly) unless that is truly their only web presence
   — in that case return null instead (social hosts are not reliable identity).
 - Do NOT use the scraped job listing URL.
-- If Known website is "(none …)" / missing: return null unless research/search
-  evidence clearly identifies the employer-owned homepage. Never invent a domain
-  from the organization name (e.g. name.ca / name.org guesses).
-- If you cannot confidently identify the employer-owned site, return null.
+- If Known website is "(none …)" / missing: return null unless an evidence URL
+  clearly identifies the employer-owned homepage.
+- If you cannot confidently identify the employer-owned site from evidence,
+  return null — code will refuse unverified websites.
+- LOCATION DISAMBIGUATION: the website MUST belong to the employer of THIS job
+  in THIS municipality/province. Do NOT adopt a same-name org in another country
+  or city (e.g. a US ``*.gov`` agency or US farm for a Canadian posting). Prefer
+  evidence whose title/snippet mentions the same city/province. If only a
+  foreign same-name entity appears, return website null.
 - Prefer https:// and the apex/homepage over a deep job posting path."""
 
+_ENTITY_LOCATION_RULES = """ENTITY / LOCATION DISAMBIGUATION (mandatory):
+- You are assessing the employer of the job described in ORGANIZATION DATA
+  (raw name + municipality/province + job title / listing notes).
+- The assessed organization MUST be that employer in that location — not a
+  differently located org that shares a similar name.
+- When JOB LISTING PAGE EVIDENCE is present, identity on that listing is
+  authoritative for the employer name. Trade names on the listing (e.g.
+  operating-as / "Rembourrage Orford") may be used to search for an official
+  website, but do NOT replace the employer with an unrelated local plant or
+  same-city manufacturer found in web search (e.g. a Magog chemicals plant for
+  a numbered Québec rembourreur corporation).
+- Reject evidence that clearly places the entity in another country or distant
+  city when ORGANIZATION DATA has a Canadian province (e.g. Ohio / Georgia /
+  Atlanta for an ON or QC job).
+- If web evidence only supports a same-name org elsewhere, return:
+  website null, weak description/mission (or null), and weak_yes/no with flags
+  noting insufficient / wrong-entity evidence — do NOT copy the foreign entity.
+"""
+
+_LISTING_EVIDENCE_HEADER = """JOB LISTING PAGE EVIDENCE (authoritative for employer identity):
+- Prefer employer / trade-name identity from this page over city-level search noise.
+- Trade names here may guide website search; do not adopt an unrelated org.
+
+"""
+
+# Québec enterprise registry — boost when assessing numbered QC corporations.
+_QC_REGISTRE_HOST = "registreentreprises.gouv.qc.ca"
+
 _PUBLIC_LANGUAGE_RULES = """PUBLIC_LANGUAGE RULES:
-Priority for public_language (en | fr | bilingual | null):
-1. Actual public-facing website language in materials you observed
-2. Explicit website language metadata
-3. hreflang or URL locale hints (/en/, /fr/, lang=, locale=)
-4. Organization name only as weak evidence
+Priority for public_language (en | fr | bilingual | null) — page evidence first:
+1. Actual public-facing website language in materials you observed (confirmed site)
+2. Parallel locale trees / bilingual site structure: /en+/fr paths, hreflang pairs,
+   bilingual nav, dual-language page trees, or clearly bilingual source text
+3. Explicit website language metadata
+4. Organization name ONLY as last-resort weak evidence when no website/listing/
+   corpus language signal exists — never let the name override confirmed page
+   language or bilingual site structure
+- When a website was confirmed/fetched, decide language from that page evidence
+  first. Do not collapse a bilingual site to fr or en merely because the legal
+  name leans French or English.
 - Verify name leaning against the organization's own materials you observed.
 - Do not infer from the language of this JSON response.
 - Return bilingual when materials show substantial English AND French
   (or an explicit bilingual claim) — including Canadian charities/foundations with
   an EN site plus FR pages, FR toggle, /fr/ paths, or French program materials in
-  the research evidence. Prefer bilingual over en-only in those cases.
+  the research evidence. Prefer bilingual over en-only or fr-only in those cases.
 - Do NOT upgrade to bilingual merely from a French or English legal name,
   accented characters in the name, or a .ca domain alone.
 - Canadian / multinational engineering or environmental consultancies whose primary
@@ -195,14 +243,25 @@ _SECTOR_PRIORITY_RULES = """SECTOR PRIORITY (when multiple sectors could fit):
 _SOURCE_DESCRIPTION_RULES = """SOURCE DESCRIPTION vs INTERPRETIVE FIELDS (mandatory):
 - is_sse / sse_rating, sector_id, public_language, type, website, mission_statement_*,
   and values MUST come from official-website / supporting web research only.
+- PRIMARY vs SECONDARY sources:
+  • Once a website is identified from evidence, prefer that site's content for
+    description / mission / values (via=extracted only from that org site).
+  • LinkedIn, Glassdoor, news articles, and directories are SUPPORTING context
+    only — use them for SSE / identity disambiguation, not as if they were the
+    org homepage. Do not claim via=extracted from secondary sources alone.
+  • If no confirmed employer website is available, you may still assess SSE from
+    secondaries, but leave website null and prefer via=inferred or via=absent
+    for description / mission rather than inventing copy.
 - NEVER use SOURCE DESCRIPTION (stored org blurb or job-listing body) to decide those
   interpretive fields — listing copy is often wrong, stale, or about a related brand.
 - description_* only:
-  • If SOURCE DESCRIPTION is present: extract/adapt from it (flag description via=extracted).
-    Do NOT call on search snippets to rewrite or replace it.
+  • If SOURCE DESCRIPTION is present: extract/minimally paraphrase from it
+    (flag description via=extracted). Preserve key nouns and phrasing — do not
+    freely rewrite. Do NOT call on search snippets to replace it.
   • If SOURCE DESCRIPTION is absent: you may write description_* from web evidence
-    (via=inferred or via=extracted from web). This is the only case search may
-    supply description text.
+    (via=inferred or via=extracted from the confirmed org website only).
+- mission_statement_* / values_raw: when official-site text is present, extract-first
+  with minimal paraphrase; use via=inferred only when composing without a close source.
 - LISTING / IDENTITY HINTS (job title, listing notes) are for disambiguating which
   employer is meant — never for SSE rating, sector, language, type, or values."""
 
@@ -239,9 +298,13 @@ RULES for the "values" field:
 
 {website_rules}
 
+{entity_location_rules}
+
 {bilingual_copy_rules}
 
 {public_language_rules}
+
+{flags_rules}
 
 {length_limited_field_rules}
 
@@ -253,6 +316,7 @@ ORGANIZATION DATA:
   Province:     {province}
   Known website: {known_website}
   Job title (identity hint only): {job_title}
+  Listing URL (identity source when fetched): {listing_url}
   Listing notes (identity hint only — not for interpretive fields):
 {listing_notes}
 
@@ -309,8 +373,9 @@ def _build_assessment_prompt(
     *,
     existing_description: str | None = None,
     listing_notes: str | None = None,
+    listing_url: str | None = None,
 ) -> str:
-    """Build the org-assessor prompt.
+    """Build the single-shot org-assessor prompt.
 
     *description* is legacy: treated as listing notes unless *existing_description*
     is passed. Listing notes never gate Tavily and must not drive interpretive fields.
@@ -322,6 +387,7 @@ def _build_assessment_prompt(
     notes = (listing_notes if listing_notes is not None else description) or ""
     source_block = source.strip()[:_PROMPT_DESC_MAX_CHARS] or "(none)"
     notes_block = notes.strip()[:_PROMPT_DESC_MAX_CHARS] or "(none)"
+    listing = (listing_url or "").strip() or "(none)"
     return _combined_prompt.format(
         SSE_PRINCIPLES=SSE_PRINCIPLES,
         ORG_EVALUATION_CRITERIA=ORG_EVALUATION_CRITERIA,
@@ -332,19 +398,40 @@ def _build_assessment_prompt(
         municipality=municipality or "",
         province=province or "",
         known_website=known or "(none — discover the employer-owned homepage)",
-        job_title=job_title,
+        job_title=job_title or "(none)",
+        listing_url=listing,
         listing_notes=notes_block,
         source_description=source_block,
         json_fields=_JSON_FIELDS,
         sector_taxonomy_formatted=get_formatted_sector_taxonomy(),
         taxonomy_formatted=_format_taxonomy(),
         website_rules=_WEBSITE_RULES,
+        entity_location_rules=_ENTITY_LOCATION_RULES,
         bilingual_copy_rules=_BILINGUAL_COPY_RULES,
         public_language_rules=_PUBLIC_LANGUAGE_RULES,
+        flags_rules=_FLAGS_RULES,
         sector_priority_rules=_SECTOR_PRIORITY_RULES,
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
         length_limited_field_rules=LENGTH_LIMITED_FIELD_RULES,
     )
+
+
+# Map CA province codes → search-friendly full names (location-biased Tavily).
+_CA_PROVINCE_SEARCH_NAME: dict[str, str] = {
+    "AB": "Alberta",
+    "BC": "British Columbia",
+    "MB": "Manitoba",
+    "NB": "New Brunswick",
+    "NL": "Newfoundland",
+    "NS": "Nova Scotia",
+    "NT": "Northwest Territories",
+    "NU": "Nunavut",
+    "ON": "Ontario",
+    "PE": "Prince Edward Island",
+    "QC": "Quebec",
+    "SK": "Saskatchewan",
+    "YT": "Yukon",
+}
 
 
 def _build_search_query(
@@ -352,16 +439,134 @@ def _build_search_query(
     municipality: str | None = None,
     province: str | None = None,
     known_website: str | None = None,
+    *,
+    job_title: str | None = None,
 ) -> str:
-    """Grounding query aimed at the employer's own site, not the job board."""
-    parts = [f'"{raw_name}"', "official website"]
-    if municipality:
-        parts.append(municipality)
-    if province:
-        parts.append(province)
+    """Grounding query aimed at the employer's own site in the job location.
+
+    Includes job title when present (disambiguates numbered Québec corps from
+    city manufacturing noise) plus city + province so Tavily does not latch onto
+    a same-name org in another country (Foxhole Ohio vs Rockwood ON).
+    """
+    from utils.location_parser import _normalize_ca_province_code
+    from utils.website_verify import is_quebec_numbered_company
+
+    parts = [f'"{raw_name}"']
+    title = (job_title or "").strip()
+    if title:
+        parts.append(title)
+    mun = (municipality or "").strip()
+    if mun:
+        parts.append(mun)
+    prov_code = _normalize_ca_province_code(province)
+    if prov_code:
+        parts.append(_CA_PROVINCE_SEARCH_NAME.get(prov_code, prov_code))
+        # Job-title queries already pin the role; skip redundant Canada noise.
+        if not title:
+            parts.append("Canada")
+    elif province and str(province).strip():
+        parts.append(str(province).strip())
+    if is_quebec_numbered_company(raw_name):
+        parts.append("registre")
+        parts.append("NEQ")
+    if not title:
+        parts.append("official website")
     if known_website and evidence_domain(known_website):
         parts.append(known_website.strip())
-    return " ".join(parts)
+    # Bias Tavily toward About / charity / governance pages over job/program noise.
+    from utils.sse_prompts import SSE_SEARCH_KEYWORDS
+
+    parts.append(SSE_SEARCH_KEYWORDS)
+    query = " ".join(parts)
+    # Tavily hard-caps query length at 400; drop keywords first, then trim.
+    if len(query) > 400:
+        without_kw = " ".join(parts[:-1])
+        if len(without_kw) <= 400:
+            query = without_kw
+        else:
+            query = without_kw[:397].rstrip() + "..."
+    return query
+
+
+def _prefer_hosts_for_assess(
+    *,
+    known_website: str | None = None,
+    listing_url: str | None = None,
+    raw_name: str | None = None,
+) -> list[str] | None:
+    """Hosts to rank first in Tavily (known site, listing board, QC registre)."""
+    from utils.website_verify import is_quebec_numbered_company
+
+    hosts: list[str] = []
+    seen: set[str] = set()
+
+    def _add(host: str | None) -> None:
+        h = (host or "").strip().lower().lstrip(".")
+        if h.startswith("www."):
+            h = h[4:]
+        if not h or h in seen:
+            return
+        seen.add(h)
+        hosts.append(h)
+
+    if known_website and evidence_domain(known_website):
+        _add(extract_domain(known_website))
+    if listing_url and str(listing_url).strip():
+        _add(extract_domain(listing_url))
+    if is_quebec_numbered_company(raw_name):
+        _add(_QC_REGISTRE_HOST)
+    return hosts or None
+
+
+def _evidence_blob_for_url(
+    evidence_results: list | None,
+    candidate_url: str | None,
+) -> str:
+    """Concatenate Tavily title/content for hits on the same host as *candidate*."""
+    from utils.website_verify import url_host
+
+    host = url_host(candidate_url)
+    if not host or not evidence_results:
+        return ""
+    pieces: list[str] = []
+    for hit in evidence_results:
+        if isinstance(hit, dict):
+            url = hit.get("url")
+            title = hit.get("title") or ""
+            content = hit.get("content") or ""
+        else:
+            url = getattr(hit, "url", None)
+            title = getattr(hit, "title", "") or ""
+            content = getattr(hit, "content", "") or ""
+        if url_host(url) and domains_match(host, url_host(url)):
+            blob = f"{title}\n{content}".strip()
+            if blob:
+                pieces.append(blob)
+    return "\n".join(pieces)
+
+
+def _location_terms_for_tavily(
+    municipality: str | None,
+    province: str | None,
+) -> list[str]:
+    """Tokens used to boost Tavily hits that mention the job/org location."""
+    from utils.location_parser import _normalize_ca_province_code
+
+    terms: list[str] = []
+    mun = (municipality or "").strip()
+    if mun:
+        terms.append(mun.lower())
+    prov_code = _normalize_ca_province_code(province)
+    if prov_code:
+        terms.append(prov_code.lower())
+        full = _CA_PROVINCE_SEARCH_NAME.get(prov_code)
+        if full:
+            terms.append(full.lower())
+        terms.append("canada")
+    elif province and str(province).strip():
+        terms.append(str(province).strip().lower())
+    # Stable unique
+    return list(dict.fromkeys(t for t in terms if t))
 
 
 def _normalize_type(raw: Any) -> str | None:
@@ -397,15 +602,32 @@ def _validate_public_language(raw: Any) -> str | None:
     return value if value in VALID_ORG_LANGUAGES else None
 
 
-# Known types that can never be SSE yes. Null/unknown type is NOT in this set.
+# Known types that can never be SSE yes.
 # Eligible stored types (must agree with ORG_EVALUATION_CRITERIA): nonprofit,
 # cooperative, union. Eligible type is necessary but not sufficient — must-haves
-# still apply; type alone is never a Yes.
+# still apply; type alone is never a Yes. Null type with Yes is also demoted.
 _SSE_INELIGIBLE_ORG_TYPES = frozenset({
     "government",
     "other",
 })
 
+# Reasoning that admits legal form / ownership status is unconfirmed → demote Yes.
+_TYPE_STATUS_UNCONFIRMED_RE = re.compile(
+    r"(?:"
+    r"(?:nonprofit|non-profit|co-?operative|cooperative|union|charitable|charity|"
+    r"legal\s+form|ownership|incorporation)\s+"
+    r"(?:status\s+)?(?:is\s+|was\s+|remains?\s+)?"
+    r"(?:not\s+(?:yet\s+)?confirmed|unconfirmed|unknown|unclear|uncertain|"
+    r"could\s+not\s+(?:be\s+)?confirm(?:ed)?|not\s+evidenced)|"
+    r"(?:not\s+(?:yet\s+)?confirmed|unconfirmed|unknown|unclear|uncertain|"
+    r"could\s+not\s+(?:be\s+)?confirm(?:ed)?)\s+"
+    r".{0,60}?(?:nonprofit|non-profit|co-?op(?:erative)?|union|charitable|"
+    r"charity|legal\s+form|ownership)|"
+    r"(?:no|without)\s+(?:explicit\s+)?(?:nonprofit|non-profit|co-?op|"
+    r"cooperative|union)\s+status"
+    r")",
+    re.IGNORECASE | re.DOTALL,
+)
 
 _CONTENT_PROVENANCE_FIELDS = ("description", "mission", "values")
 _CONTENT_VIA_STATUSES = frozenset({"extracted", "inferred", "absent"})
@@ -486,7 +708,8 @@ def _apply_website_known_guard(
 
     When Known website is evidence-grade, keep that URL (Gemini/Groq/Ollama often
     invent alternate hosts without grounding). Model-discovered sites are kept
-    only when no known URL was provided.
+    only when no known URL was provided. Downstream ``confirm_website`` still
+    live-verifies before DB write.
     """
     known = known_website.strip() if known_website and evidence_domain(known_website) else None
     if not known:
@@ -503,30 +726,272 @@ def _apply_website_known_guard(
     return AssessedOrgResult(**{**result, "website": known, "flags": flags})
 
 
+def _confirm_result_website(
+    result: AssessedOrgResult,
+    *,
+    evidence_urls: list[str],
+    known_website: str | None,
+    municipality: str | None = None,
+    province: str | None = None,
+    site_text: str | None = None,
+    site_title: str | None = None,
+    org_raw_name: str | None = None,
+    evidence_snippet: str | None = None,
+) -> AssessedOrgResult:
+    """Null out website unless host is in Tavily evidence (or known) + live OK.
+
+    Also rejects foreign ``*.gov`` for Canadian provinces, strong geographic
+    conflicts, and pages missing significant org-name tokens. Wrong-entity
+    rejects also clear description/mission/values copied from that entity.
+    """
+    from utils.website_verify import (
+        confirm_website,
+        has_geographic_conflict,
+        is_foreign_gov_host,
+        page_mentions_org_name,
+    )
+
+    candidate = result.get("website")
+    known = known_website.strip() if known_website and str(known_website).strip() else None
+    known_host_match = bool(
+        candidate
+        and known
+        and extract_domain(candidate)
+        and extract_domain(known)
+        and extract_domain(candidate) == extract_domain(known)
+    )
+    name_mismatch = bool(
+        candidate
+        and org_raw_name
+        and str(org_raw_name).strip()
+        and not page_mentions_org_name(
+            site_text,
+            org_raw_name=org_raw_name,
+            site_title=site_title,
+            evidence_snippet=evidence_snippet,
+        )
+    )
+    # Known employer URL: name-token miss alone must not wipe the site or cascade
+    # into clearing description / flipping type downstream.
+    hard_name_mismatch = name_mismatch and not known_host_match
+    wrong_entity = bool(
+        candidate
+        and (
+            is_foreign_gov_host(candidate, province=province)
+            or has_geographic_conflict(
+                site_text,
+                municipality=municipality,
+                province=province,
+                site_title=site_title,
+            )
+            or hard_name_mismatch
+        )
+    )
+    confirmed = confirm_website(
+        candidate,
+        evidence_urls=evidence_urls,
+        known_website=known_website,
+        municipality=municipality,
+        province=province,
+        site_text=site_text,
+        site_title=site_title,
+        org_raw_name=org_raw_name,
+        evidence_snippet=evidence_snippet,
+        relax_name_check=known_host_match,
+    )
+    if confirmed == candidate:
+        return result
+    flags = list(result.get("flags") or [])
+    if candidate and not confirmed:
+        flags.append("website_unconfirmed")
+        if wrong_entity:
+            flags.append("website_geo_conflict")
+            logger.info(
+                "website wrong-entity/geo conflict — clearing description/"
+                "mission/values for %s",
+                candidate,
+            )
+            return AssessedOrgResult(
+                **{
+                    **result,
+                    "website": None,
+                    "description_en": None,
+                    "description_fr": None,
+                    "mission_statement_en": None,
+                    "mission_statement_fr": None,
+                    "values_raw": None,
+                    "flags": flags,
+                }
+            )
+    return AssessedOrgResult(**{**result, "website": confirmed, "flags": flags})
+
+
+def _apply_source_grounding(
+    result: AssessedOrgResult,
+    *,
+    website_text: str = "",
+    website_title: str = "",
+    tavily_text: str = "",
+    tavily_snippets: list[str] | None = None,
+    source_description: str | None = None,
+) -> AssessedOrgResult:
+    """Hard-check description/mission/values against fetched sources."""
+    from utils.source_grounding import build_grounding_corpora, ground_assessed_fields
+
+    # Only treat site text as primary when website survived confirmation.
+    has_site = bool(result.get("website"))
+    corpora = build_grounding_corpora(
+        website_text=website_text if has_site else "",
+        website_title=website_title if has_site else "",
+        tavily_snippets=tavily_snippets,
+        tavily_text=tavily_text,
+        source_description=source_description,
+    )
+    grounded = ground_assessed_fields(result, corpora)
+    return AssessedOrgResult(**grounded)  # type: ignore[misc]
+
+
+def _demote_extracted_without_confirmed_website(
+    result: AssessedOrgResult,
+) -> AssessedOrgResult:
+    """Do not claim via=extracted when there is no confirmed org website."""
+    if result.get("website"):
+        return result
+    original = list(result.get("flags") or [])
+    flags: list[str] = []
+    changed = False
+    for raw in original:
+        if not isinstance(raw, str):
+            flags.append(raw)
+            continue
+        fl = raw.strip().lower()
+        demoted = False
+        for field in _CONTENT_PROVENANCE_FIELDS:
+            if fl == f"{field} via=extracted":
+                flags.append(f"{field} via=inferred")
+                changed = True
+                demoted = True
+                break
+        if not demoted:
+            flags.append(raw)
+    if not changed:
+        return result
+    return AssessedOrgResult(**{**result, "flags": flags})
+
+
 def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgResult:
-    """Force 'no' only when type is known and ineligible for SSE yes."""
+    """Force 'no' when type is missing/ineligible or reasoning admits unconfirmed form."""
     if result["sse_rating"] == "no":
         return result
-    org_type = result.get("type")
-    if org_type is None:
-        # Unknown type — do not demote a model Yes.
-        return result
-    if org_type not in _SSE_INELIGIBLE_ORG_TYPES:
-        return result
 
+    org_type = result.get("type")
     flags = list(result.get("flags") or [])
-    flags.append(
-        "governance_gate: non-SSE org type cannot be SSE yes "
-        f"(type={org_type!r}; government and other are never SSE; "
-        "eligible: nonprofit, cooperative, union)"
+
+    if org_type is None:
+        flags.append(
+            "governance_gate: SSE yes requires an eligible org type "
+            "(nonprofit, cooperative, or union) — null type cannot be SSE yes"
+        )
+        return AssessedOrgResult(
+            **{
+                **result,
+                "sse_rating": "no",
+                "flags": flags,
+            }
+        )
+
+    if org_type in _SSE_INELIGIBLE_ORG_TYPES:
+        flags.append(
+            "governance_gate: non-SSE org type cannot be SSE yes "
+            f"(type={org_type!r}; government and other are never SSE; "
+            "eligible: nonprofit, cooperative, union)"
+        )
+        return AssessedOrgResult(
+            **{
+                **result,
+                "sse_rating": "no",
+                "flags": flags,
+            }
+        )
+
+    reasoning_blob = " ".join(
+        part
+        for part in (
+            result.get("sse_reasoning_en"),
+            result.get("sse_reasoning_fr"),
+        )
+        if isinstance(part, str) and part.strip()
     )
-    return AssessedOrgResult(
-        **{
-            **result,
-            "sse_rating": "no",
-            "flags": flags,
-        }
-    )
+    if reasoning_blob and _TYPE_STATUS_UNCONFIRMED_RE.search(reasoning_blob):
+        flags.append(
+            "governance_gate: demoted Yes — reasoning admits eligible legal "
+            "form / governance status is unconfirmed or unknown"
+        )
+        return AssessedOrgResult(
+            **{
+                **result,
+                "sse_rating": "no",
+                "flags": flags,
+            }
+        )
+
+    return result
+
+
+def _normalize_sector_id(raw: Any) -> str | None:
+    """Map sector_hint / sector_id through the allowlist (never freeform invent)."""
+    if not raw:
+        return None
+    value = str(raw).strip()
+    allowed = get_sector_ids_set()
+    if value in allowed:
+        return value
+    key = value.lower().replace("_", "-").replace(" ", "-")
+    return key if key in allowed else None
+
+
+def _ensure_str_list(raw: Any) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    for item in raw:
+        if item is None:
+            continue
+        text = str(item).strip()
+        if text:
+            out.append(text)
+    return out
+
+
+def _sse_provider_provenance(provider: Any) -> dict[str, str]:
+    """Best-effort provider + model labels for sse_details."""
+    if provider is None:
+        return {}
+    name: str | None = None
+    model: str | None = None
+
+    last = getattr(provider, "_last_successful", None)
+    chain = getattr(provider, "_providers", None)
+    if last and isinstance(chain, list):
+        name = str(last)
+        for chain_name, inner in chain:
+            if chain_name == last:
+                model = getattr(inner, "_model", None) or str(chain_name)
+                break
+        if model is None:
+            model = str(last)
+    else:
+        name = getattr(provider, "_name", None)
+        model = getattr(provider, "_model", None)
+        if name is None:
+            name = type(provider).__name__
+
+    out: dict[str, str] = {}
+    if name:
+        out["provider"] = str(name)
+    if model:
+        out["model"] = str(model)
+    return out
 
 
 _LENGTH_LIMITED_FIELDS: tuple[tuple[str, int], ...] = (
@@ -594,10 +1059,6 @@ def _parse_website(raw: Any) -> str | None:
     return url
 
 
-def _ensure_str_list(raw: Any) -> list[str]:
-    return [str(item) for item in (raw if isinstance(raw, list) else [])]
-
-
 def _clamp_confidence(raw: Any) -> float:
     if raw is None:
         return 0.5
@@ -616,9 +1077,8 @@ def _parse_localized_text(data: dict, key_en: str, key_fr: str, legacy_key: str)
     return en, fr
 
 
-def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | None:
+def _loads_json_object(response_text: str, raw_name: str) -> dict | None:
     text = BaseGroundedClassifier._extract_json_block(response_text)
-
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
@@ -627,12 +1087,19 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
             raw_name, exc, response_text[:200],
         )
         return None
-
     if not isinstance(data, dict):
         logger.warning(
             "OrganizationAssessor: expected dict, got %s for %r",
             type(data).__name__, raw_name,
         )
+        return None
+    return data
+
+
+def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | None:
+    """Parse a single-shot org assessment JSON payload."""
+    data = _loads_json_object(response_text, raw_name)
+    if data is None:
         return None
 
     canonical_name = data.get("canonical_name")
@@ -647,7 +1114,8 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     if not slug:
         slug = generate_slug(canonical_name)
         logger.warning(
-            "OrganizationAssessor: LLM returned no slug for canonical_name=%r raw_name=%r — generated slug=%r",
+            "OrganizationAssessor: LLM returned no slug for canonical_name=%r "
+            "raw_name=%r — generated slug=%r",
             canonical_name, raw_name, slug,
         )
 
@@ -660,7 +1128,7 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     reasoning_en, reasoning_fr = _parse_localized_text(
         data, "sse_reasoning_en", "sse_reasoning_fr", "sse_reasoning"
     )
-
+    sector_raw = data.get("sector_id", data.get("sector_hint"))
     result = AssessedOrgResult(
         canonical_name=canonical_name.strip(),
         slug=slug,
@@ -670,7 +1138,7 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         mission_statement_en=mission_en,
         mission_statement_fr=mission_fr,
         type=_normalize_type(data.get("type")),
-        sector_id=data.get("sector_id") if data.get("sector_id") in get_sector_ids_set() else None,
+        sector_id=_normalize_sector_id(sector_raw),
         values_raw=_parse_text_field(data, "values_raw"),
         values=_normalize_values(data.get("values", []), get_work_values_set()),
         sse_rating=_validate_sse_rating(data.get("sse_rating")),
@@ -686,7 +1154,8 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         flags=_ensure_str_list(data.get("flags")),
         public_language=_validate_public_language(data.get("public_language")),
     )
-    return _apply_org_sse_governance_guard(_ensure_content_provenance_flags(result))
+    gated = _apply_org_sse_governance_guard(result)
+    return _ensure_content_provenance_flags(gated)
 
 
 def _append_language_provenance_flags(
@@ -730,15 +1199,20 @@ def _attach_org_language(
     force_lang: bool = False,
     fetch_web: bool = False,
 ) -> dict:
-    """Set organizations.language from name/website signals, else public_language.
+    """Set organizations.language from website signals, else research, else name.
 
     Does not overwrite an already-populated language value unless *force_lang*
-    is True. Objective signals (website metadata + name LLM) win;
-    ``llm_public_language`` is a soft, research-derived model judgment used
-    only as a tiebreaker when those are silent.
+    is True.
+
+    Precedence:
+    1. Website evidence (``web_*`` sources from ``classify_org_language``)
+    2. Research-grounded ``llm_public_language`` (assessor public_language)
+    3. Name LLM (``via=llm_name``) — lowest priority; never overrides 1–2
 
     Website fetching is off by default (insert/reassess stay offline); pass
     ``fetch_web=True`` from throttled backfills that intentionally probe sites.
+    When a confirmed website is present, prefer ``fetch_web=True`` so page
+    evidence outranks the name LLM.
 
     Always records provenance on ``sse_details.flags`` (``language:… via=…``
     and optional ``language_reason:…``), including when language is kept.
@@ -752,21 +1226,24 @@ def _attach_org_language(
         )
         return row
 
+    # Prefer page evidence on force_lang reassess when a website is present.
+    # Inserts stay offline unless callers pass fetch_web=True explicitly.
+    effective_fetch = fetch_web or (
+        force_lang and bool((row.get("website") or "").strip())
+    )
     classification = classify_org_language(
         name=row.get("name"),
         website=row.get("website"),
-        fetch_web=fetch_web,
+        fetch_web=effective_fetch,
     )
     lang = classification.language
+    source = classification.source or "unknown"
+    web_source = source.startswith("web_")
 
-    # An English name is a weak signal: English is a lingua franca in Canada, and
-    # many French/bilingual orgs carry an English or language-neutral legal name.
-    # A research-grounded public_language of fr/bilingual overrides a name-only
-    # English guess. French/bilingual names and confirmed website evidence stay
-    # authoritative.
-    name_only_english = classification.source == "llm_name" and lang == "en"
+    # Name LLM is never authoritative over research public_language.
+    name_only = source == "llm_name"
     if llm_public_language in VALID_ORG_LANGUAGES and (
-        lang is None or (name_only_english and llm_public_language != "en")
+        lang is None or name_only
     ):
         row["language"] = llm_public_language
         _append_language_provenance_flags(
@@ -777,12 +1254,22 @@ def _attach_org_language(
         )
         return row
 
+    if lang and web_source:
+        row["language"] = lang
+        _append_language_provenance_flags(
+            row,
+            language=lang,
+            via=source,
+            reasons=classification.reasons,
+        )
+        return row
+
     if lang:
         row["language"] = lang
         _append_language_provenance_flags(
             row,
             language=lang,
-            via=classification.source,
+            via=source,
             reasons=classification.reasons,
         )
         return row
@@ -790,19 +1277,35 @@ def _attach_org_language(
     _append_language_provenance_flags(
         row,
         language=None,
-        via=classification.source or "unknown",
+        via=source,
         reasons=classification.reasons or ("insufficient_signal",),
     )
     return row
 
 
-def _result_to_db_fields(result: AssessedOrgResult) -> dict:
+def _result_to_db_fields(
+    result: AssessedOrgResult,
+    *,
+    provider: Any = None,
+) -> dict:
     description_en = result["description_en"]
     description_fr = result["description_fr"]
     mission_en = result["mission_statement_en"]
     mission_fr = result["mission_statement_fr"]
     reasoning_en = result["sse_reasoning_en"]
     reasoning_fr = result["sse_reasoning_fr"]
+    details: dict[str, Any] = {
+        "confidence": result["sse_confidence"],
+        "reasoning": reasoning_en or reasoning_fr,
+        "reasoning_en": reasoning_en,
+        "reasoning_fr": reasoning_fr,
+        "must_haves_met": result["must_haves_met"],
+        "nice_to_haves_met": result["nice_to_haves_met"],
+        "flags": result["flags"],
+        "classified_at": datetime.now(timezone.utc).isoformat(),
+        "reviewed": False,
+    }
+    details.update(_sse_provider_provenance(provider))
     return {
         "description_en": description_en,
         "description_fr": description_fr,
@@ -818,17 +1321,7 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
         "values_rated": [{"value": v, "rank": i + 1} for i, v in enumerate(result["values"])] if result["values"] else None,
         "sse_rating": result["sse_rating"],
         "is_sse": result["sse_rating"] in ("strong_yes", "weak_yes"),
-        "sse_details": {
-            "confidence": result["sse_confidence"],
-            "reasoning": reasoning_en or reasoning_fr,
-            "reasoning_en": reasoning_en,
-            "reasoning_fr": reasoning_fr,
-            "must_haves_met": result["must_haves_met"],
-            "nice_to_haves_met": result["nice_to_haves_met"],
-            "flags": result["flags"],
-            "classified_at": datetime.now(timezone.utc).isoformat(),
-            "reviewed": False,
-        },
+        "sse_details": details,
     }
 
 
@@ -840,8 +1333,28 @@ _BILINGUAL_TEXT_KEYS = (
 )
 
 
-def _omit_null_locale_fields_from_update(updates: dict) -> dict:
-    """Drop null bilingual columns so reassess does not wipe existing locale text."""
+def _omit_null_locale_fields_from_update(
+    updates: dict,
+    *,
+    force_clear_ungrounded: bool = False,
+) -> dict:
+    """Drop null bilingual columns so reassess does not wipe existing locale text.
+
+    When *force_clear_ungrounded* is True (geo conflict / grounding rejected all
+    copy), keep explicit nulls so wrong-entity text is cleared from the DB.
+    """
+    if force_clear_ungrounded:
+        out = dict(updates)
+        # Ensure legacy columns are cleared alongside locale fields.
+        if out.get("description_en") is None and out.get("description_fr") is None:
+            out["description"] = None
+        if (
+            out.get("mission_statement_en") is None
+            and out.get("mission_statement_fr") is None
+        ):
+            out["mission_statement"] = None
+        return out
+
     out = {
         key: value
         for key, value in updates.items()
@@ -868,6 +1381,16 @@ def _omit_null_locale_fields_from_update(updates: dict) -> dict:
     return out
 
 
+def _should_force_clear_copy(result: AssessedOrgResult) -> bool:
+    """True when assessment intentionally nulled previously present copy."""
+    flags = [f for f in (result.get("flags") or []) if isinstance(f, str)]
+    if any("website_geo_conflict" in f for f in flags):
+        return True
+    if any(f.endswith("_ungrounded") for f in flags):
+        return True
+    return False
+
+
 def _merge_sse_details_preserving_reasoning(
     updates: dict,
     previous_details: Any,
@@ -892,17 +1415,12 @@ def _merge_sse_details_preserving_reasoning(
 
 
 _ASSESSOR_SYSTEM = (
-    "You are an expert at identifying organizations, finding their "
-    "official employer-owned website, mapping work values, and "
-    "evaluating Solidarity Economy alignment of the ORGANIZATION "
-    "(not job-posting completeness). "
-    "Interpretive fields (is_sse, sector, language, type, mission, values, website) "
-    "must come from official-website / supporting web research — never from a stored "
-    "or listing SOURCE DESCRIPTION. SOURCE DESCRIPTION is only for description_* "
-    "when present. Do not replace the named organization with a different org from search. "
-    "Org must_haves_met / nice_to_haves_met use only organization SSE criteria — "
-    "never Transparent compensation, Clear job expectations, or other job-ad must-haves."
+    "You assess organizations for Solidarity Economy alignment. "
+    "Return JSON only. Prefer extract-first copy for description/mission/values. "
+    "Never invent employer websites; copy URLs only from evidence. "
+    "Never Yes when type is null — prefer other+no when legal form is unconfirmed."
 )
+
 
 # Job-level must-have phrases that must never appear on org assessments.
 _JOB_LEAKED_CRITERION_RE = re.compile(
@@ -939,6 +1457,58 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 "Check API keys (GEMINI_API_KEY, GROQ_API_KEY, TAVILY_API_KEY)."
             )
 
+    def _llm_complete(
+        self,
+        *,
+        prompt: str,
+        system: str,
+        raw_name: str,
+    ) -> str | None:
+        """Call provider at temperature 0; retry once on empty text."""
+        try:
+            response_text = self._call_provider_with_retry(
+                provider=self.provider,
+                prompt=prompt,
+                system=system,
+                task="sse",
+                search_query=None,
+                retries=1,
+                use_grounding=False,
+                temperature=0,
+            )
+        except (SSEClassificationError, LLMProviderError) as exc:
+            logger.warning(
+                "OrganizationAssessor LLM call failed for %r: %s",
+                raw_name, exc,
+            )
+            return None
+
+        if response_text.strip():
+            return response_text
+
+        logger.warning(
+            "OrganizationAssessor: empty response for %r — retrying",
+            raw_name,
+        )
+        try:
+            response_text = self._call_provider_with_retry(
+                provider=self.provider,
+                prompt=prompt,
+                system=system,
+                task="sse",
+                search_query=None,
+                retries=1,
+                use_grounding=False,
+                temperature=0,
+            )
+        except (SSEClassificationError, LLMProviderError) as exc:
+            logger.warning(
+                "OrganizationAssessor LLM retry failed for %r: %s",
+                raw_name, exc,
+            )
+            return None
+        return response_text if response_text.strip() else None
+
     def assess(
         self,
         raw_name: str,
@@ -950,6 +1520,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
         *,
         existing_description: str | None = None,
         listing_notes: str | None = None,
+        listing_url: str | None = None,
         web_evidence: str | None = None,
     ) -> AssessedOrgResult | None:
         notes = listing_notes if listing_notes is not None else description
@@ -965,77 +1536,154 @@ class OrganizationAssessor(BaseGroundedClassifier):
             known_website=known_website,
             existing_description=source,
             listing_notes=notes,
+            listing_url=listing_url,
         )
         prefetched = (web_evidence or "").strip()
-        if prefetched:
-            from llm.tavily_grounding import inject_grounding_evidence
+        evidence_urls: list[str] = []
+        tavily_text = ""
+        tavily_snippets: list[str] = []
+        evidence_results: list = []
+        from llm.tavily_grounding import (
+            TavilyUnavailableError,
+            fetch_tavily_evidence,
+            inject_grounding_evidence,
+            require_tavily,
+        )
+        from utils.source_grounding import (
+            WebsiteFetchCache,
+            evidence_snippets_from_results,
+            fetch_website_text,
+        )
+        from utils.website_verify import urls_from_evidence_text
 
-            prompt = inject_grounding_evidence(prompt, prefetched)
+        fetch_cache = WebsiteFetchCache()
+
+        # Listing page is authoritative identity evidence — fetch before Tavily/LLM.
+        listing = (listing_url or "").strip() or None
+        listing_block = ""
+        if listing:
+            listing_text, listing_title = fetch_website_text(
+                listing, timeout=8.0, cache=fetch_cache,
+            )
+            if listing_text or listing_title:
+                body = (listing_text or "")[:3000]
+                listing_block = (
+                    f"{_LISTING_EVIDENCE_HEADER}"
+                    f"Title: {listing_title or '(none)'}\n"
+                    f"URL: {listing}\n"
+                    f"{body}\n\n---\n\n"
+                )
+                prompt = listing_block + prompt
 
         search_query = _build_search_query(
-            raw_name, municipality, province, known_website=known_website,
+            raw_name,
+            municipality,
+            province,
+            known_website=known_website,
+            job_title=job_title,
         )
-        prefer_hosts = None
-        if known_website and evidence_domain(known_website):
-            from utils.organization_cache import extract_domain
-
-            host = extract_domain(known_website)
-            prefer_hosts = [host] if host else None
+        prefer_hosts = _prefer_hosts_for_assess(
+            known_website=known_website,
+            listing_url=listing,
+            raw_name=raw_name,
+        )
         from llm.tavily_grounding import entity_require_terms
 
         require_terms = entity_require_terms(raw_name) or None
-        # Prefetched website scrape replaces Tavily. SOURCE DESCRIPTION does NOT
-        # suppress research — interpretive fields need web evidence; description_*
-        # fill-from-search is gated in the prompt only.
-        use_grounding = not prefetched
+        location_terms = _location_terms_for_tavily(municipality, province) or None
+
+        # Prefetch Tavily in the assessor so we have structured evidence URLs
+        # for website confirmation. Inject into the prompt and disable nested
+        # grounding to avoid a second search.
+        evidence_block = ""
+        if prefetched:
+            evidence_block = prefetched
+            evidence_urls = urls_from_evidence_text(prefetched)
+            tavily_text = prefetched
+            tavily_snippets = [prefetched]
+        else:
+            # Hard-require before the LLM call — never assess with empty evidence
+            # when the Tavily package/key is broken (hallucinated websites).
+            require_tavily()
+            evidence = fetch_tavily_evidence(
+                search_query,
+                prefer_hosts=prefer_hosts,
+                require_terms=require_terms,
+                location_terms=location_terms,
+            )
+            if evidence.text:
+                evidence_block = evidence.text
+            evidence_urls = list(evidence.urls)
+            tavily_text = evidence.text
+            evidence_results = list(evidence.results)
+            tavily_snippets = evidence_snippets_from_results(
+                [
+                    {"title": r.title, "url": r.url, "content": r.content}
+                    for r in evidence.results
+                ]
+            )
+
+        if evidence_block:
+            prompt = inject_grounding_evidence(prompt, evidence_block)
 
         try:
-            response_text = self._call_provider_with_retry(
-                provider=self.provider,
+            response_text = self._llm_complete(
                 prompt=prompt,
                 system=_ASSESSOR_SYSTEM,
-                task="sse",
-                search_query=search_query if use_grounding else None,
-                retries=1,
-                prefer_hosts=prefer_hosts if use_grounding else None,
-                require_terms=require_terms if use_grounding else None,
-                use_grounding=use_grounding,
+                raw_name=raw_name,
             )
-        except (SSEClassificationError, LLMProviderError) as exc:
-            logger.warning(
-                "OrganizationAssessor LLM call failed for %r: %s",
-                raw_name, exc,
-            )
-            return None
+        except TavilyUnavailableError:
+            # Never soft-None when web research is broken — callers must abort.
+            raise
 
-        # Grounding sometimes silently fails, returning HTTP 200 with empty text.
-        # Retry once without grounding as a fallback.
-        if not response_text.strip():
-            logger.warning(
-                "OrganizationAssessor: empty response for %r — retrying without grounding",
-                raw_name,
-            )
-            try:
-                response_text = self._call_provider_with_retry(
-                    provider=self.provider,
-                    prompt=prompt,
-                    system=_ASSESSOR_SYSTEM,
-                    task="sse",
-                    search_query=None,
-                    retries=1,
-                    use_grounding=False,
-                )
-            except (SSEClassificationError, LLMProviderError) as exc:
-                logger.warning(
-                    "OrganizationAssessor LLM retry (no grounding) failed for %r: %s",
-                    raw_name, exc,
-                )
-                return None
+        if not response_text:
+            return None
 
         result = _parse_response(response_text, raw_name)
         if result is None:
             return None
         result = _apply_website_known_guard(result, known_website)
+
+        # Fetch confirmed-candidate homepage once (cached) for geo + name + grounding.
+        site_text, site_title = "", ""
+        candidate_url = result.get("website")
+        if candidate_url:
+            site_text, site_title = fetch_website_text(
+                candidate_url, timeout=8.0, cache=fetch_cache,
+            )
+
+        evidence_snippet = _evidence_blob_for_url(evidence_results, candidate_url)
+        result = _confirm_result_website(
+            result,
+            evidence_urls=evidence_urls,
+            known_website=known_website,
+            municipality=municipality,
+            province=province,
+            site_text=site_text,
+            site_title=site_title,
+            org_raw_name=raw_name,
+            evidence_snippet=evidence_snippet or None,
+        )
+        # If confirmation kept a different/normalized URL, refresh fetch.
+        confirmed_url = result.get("website")
+        if confirmed_url and confirmed_url != candidate_url:
+            site_text, site_title = fetch_website_text(
+                confirmed_url, timeout=8.0, cache=fetch_cache,
+            )
+        elif not confirmed_url:
+            site_text, site_title = "", ""
+
+        result = _demote_extracted_without_confirmed_website(result)
+        # Listing page text can ground identity-adjacent description when present.
+        listing_ground = listing_block if listing_block else ""
+        result = _apply_source_grounding(
+            result,
+            website_text=site_text,
+            website_title=site_title,
+            tavily_text=(listing_ground + "\n" + tavily_text).strip() if listing_ground else tavily_text,
+            tavily_snippets=([listing_ground] if listing_ground else []) + list(tavily_snippets),
+            source_description=source or None,
+        )
         return self._ensure_length_limits(result, raw_name)
 
     def _ensure_length_limits(
@@ -1072,6 +1720,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
         canonical_loc: str = "",
         known_website: str | None = None,
         fetch_web: bool = False,
+        listing_url: str | None = None,
     ) -> dict | None:
         """Assess the org and return a row dict ready for DB insert.
 
@@ -1086,6 +1735,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
             known_website=known_website,
             listing_notes=description,
             existing_description="",
+            listing_url=listing_url,
         )
         if result is None:
             return None
@@ -1106,7 +1756,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 "lat": geo_data.get("lat"),
                 "lng": geo_data.get("lng"),
                 "geocode_accuracy_type": geo_data.get("geocode_accuracy_type"),
-                **_result_to_db_fields(result),
+                **_result_to_db_fields(result, provider=self.provider),
             },
             result.get("public_language"),
             fetch_web=fetch_web,
@@ -1117,11 +1767,17 @@ class OrganizationAssessor(BaseGroundedClassifier):
         org: dict,
         force_lang: bool = False,
         fetch_web: bool = False,
+        *,
+        job_title: str = "",
+        listing_url: str | None = None,
+        municipality: str | None = None,
+        province: str | None = None,
     ) -> dict | None:
         """Re-assess an existing org and return an update dict.
 
         Includes website when the assessor returns an employer-owned host.
         Passes the org's current website (if evidence-grade) into search/prompt.
+        Optional job_* / listing_url / location overrides come from a linked job.
         """
         name = org.get("name")
         if not name:
@@ -1136,37 +1792,79 @@ class OrganizationAssessor(BaseGroundedClassifier):
             or org.get("description")
             or ""
         )
+        mun = municipality if municipality is not None else org.get("municipality")
+        prov = province if province is not None else org.get("province")
         # Stored description is SOURCE DESCRIPTION for description_* only (prompt-gated).
         # It does not disable Tavily; interpretive fields still use web research.
         result = self.assess(
             raw_name=name,
-            municipality=org.get("municipality"),
-            province=org.get("province"),
-            job_title="",
+            municipality=mun,
+            province=prov,
+            job_title=job_title or "",
             description="",
             known_website=known_website,
             existing_description=existing,
             listing_notes="",
+            listing_url=listing_url,
         )
         if result is None:
             return None
 
-        updates = _result_to_db_fields(result)
-        updates = _omit_null_locale_fields_from_update(updates)
+        updates = _result_to_db_fields(result, provider=self.provider)
+        force_clear = _should_force_clear_copy(result)
+        updates = _omit_null_locale_fields_from_update(
+            updates, force_clear_ungrounded=force_clear,
+        )
         updates = _merge_sse_details_preserving_reasoning(updates, org.get("sse_details"))
-        website = result.get("website")
-        if website and evidence_domain(website):
-            updates["website"] = website
+        # Confirmed website only — None clears invented/dead hosts from prior runs.
+        updates["website"] = result.get("website")
+        if force_clear:
+            updates["values"] = result.get("values_raw")
+
+        # Geocode when we have a location string (same as assess_and_build_row).
+        # Only write coords/geo fields when Geocodio returns values — never wipe
+        # existing good lat/lng with nulls on failure.
+        loc_str = (org.get("location") or "").strip() or None
+        if not loc_str:
+            mun_s = (mun or "").strip() or None
+            prov_s = (prov or "").strip() or None
+            if mun_s and prov_s:
+                loc_str = f"{mun_s}, {prov_s}"
+            elif mun_s or prov_s:
+                loc_str = mun_s or prov_s
+        if loc_str:
+            geo_data = parse_address_with_geocodio(loc_str)
+            if geo_data.get("lat") is not None and geo_data.get("lng") is not None:
+                for key in (
+                    "municipality",
+                    "province",
+                    "lat",
+                    "lng",
+                    "geocode_accuracy_type",
+                ):
+                    val = geo_data.get(key)
+                    if val is not None:
+                        updates[key] = val
+
         return _attach_org_language(
             {
                 "name": name,
                 "language": org.get("language"),
                 **updates,
-                "description": updates.get("description") or org.get("description"),
-                "mission_statement": (
-                    updates.get("mission_statement") or org.get("mission_statement")
+                "description": (
+                    updates.get("description")
+                    if force_clear
+                    else (updates.get("description") or org.get("description"))
                 ),
-                "website": updates.get("website") or org.get("website"),
+                "mission_statement": (
+                    updates.get("mission_statement")
+                    if force_clear
+                    else (
+                        updates.get("mission_statement")
+                        or org.get("mission_statement")
+                    )
+                ),
+                "website": updates.get("website"),
             },
             result.get("public_language"),
             force_lang=force_lang,

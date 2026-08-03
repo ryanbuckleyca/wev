@@ -3,6 +3,9 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from llm.tavily_grounding import TavilyUnavailableError
 from scripts.backfill_org_websites import (
     _FETCHERS,
     _should_skip_completed,
@@ -37,6 +40,54 @@ def test_fetch_orgs_minimal_filters_null_sse_rating():
     assert rows == mock_resp.data
 
 
+def test_run_aborts_when_tavily_unavailable():
+    """Backfill must refuse before processing any org when Tavily is broken."""
+    with patch(
+        "llm.tavily_grounding.require_tavily",
+        side_effect=TavilyUnavailableError("Tavily package missing"),
+    ), patch(
+        "scripts.backfill_org_websites.OrganizationAssessor",
+    ) as mock_assessor, patch(
+        "scripts.backfill_org_websites.fetch_orgs_minimal",
+    ) as mock_fetch:
+        with pytest.raises(TavilyUnavailableError, match="Tavily package missing"):
+            run(
+                mode="minimal",
+                limit=5,
+                dry_run=True,
+                delay_seconds=0,
+                after_id=0,
+            )
+
+    mock_assessor.assert_not_called()
+    mock_fetch.assert_not_called()
+
+
+def test_run_aborts_when_tavily_import_fails():
+    """Missing tavily package → require_tavily raises → no org processed."""
+    with patch(
+        "llm.tavily_grounding._tavily_import_error",
+        return_value="No module named 'tavily'",
+    ), patch(
+        "llm.tavily_grounding.tavily_api_key",
+        return_value="fake-key",
+    ), patch(
+        "scripts.backfill_org_websites.OrganizationAssessor",
+    ) as mock_assessor, patch(
+        "scripts.backfill_org_websites.fetch_orgs_minimal",
+    ) as mock_fetch:
+        with pytest.raises(TavilyUnavailableError, match="not importable"):
+            run(
+                mode="full",
+                limit=1,
+                dry_run=True,
+                delay_seconds=0,
+            )
+
+    mock_assessor.assert_not_called()
+    mock_fetch.assert_not_called()
+
+
 def test_run_minimal_mode_reassesses_and_updates():
     org = {
         "id": 42,
@@ -63,12 +114,17 @@ def test_run_minimal_mode_reassesses_and_updates():
     assessor.assess_and_build_update.return_value = updates
     repo = MagicMock()
 
-    with patch("scripts.backfill_org_websites.OrganizationAssessor", return_value=assessor), \
+    with patch("llm.tavily_grounding.require_tavily"), \
+         patch("scripts.backfill_org_websites.OrganizationAssessor", return_value=assessor), \
          patch("scripts.backfill_org_websites.OrganizationRepository", return_value=repo), \
          patch(
              "scripts.backfill_org_websites.fetch_orgs_minimal",
              side_effect=[[org], []],
-         ) as mock_fetch:
+         ) as mock_fetch, \
+         patch(
+             "scripts.backfill_org_websites.fetch_recent_job_for_org",
+             return_value=None,
+         ):
         summary = run(
             mode="minimal",
             limit=5,
@@ -78,7 +134,14 @@ def test_run_minimal_mode_reassesses_and_updates():
         )
 
     mock_fetch.assert_called()
-    assessor.assess_and_build_update.assert_called_once_with(org, force_lang=False)
+    assessor.assess_and_build_update.assert_called_once_with(
+        org,
+        force_lang=False,
+        job_title="",
+        listing_url=None,
+        municipality=None,
+        province=None,
+    )
     repo.update_org.assert_called_once_with(42, **updates)
     assert summary["mode"] == "minimal"
     assert summary["updated"] == 1

@@ -1,9 +1,9 @@
 """Unified LLM provider with multi-tier fallback for complete job processing.
 
 Tries backends in order:
-  gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama (when available).
-When ``ENV_MODE=local``, Ollama is also tried earlier for offline preference on
-unified (non-SSE-grounded) batches.
+  gemini-3.6-flash → gemini-3.5-flash-lite → groq → cerebras → ollama
+(when available). When ``ENV_MODE=local``, Ollama is also tried earlier for
+offline preference on unified (non-SSE-grounded) batches.
 
 Each call uses ``task=unified``: summary + values + SSE fields are all inferred
 from the job text in one JSON payload.
@@ -18,9 +18,16 @@ from typing import Any, Dict, List
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.config import should_use_grounding
 from llm.gemini import GeminiProvider
-from llm.gemini_fallback import gemini_sse_lite_model, gemini_sse_primary_model
+from llm.gemini_fallback import (
+    classify_llm_failure,
+    gemini_sse_lite_model,
+    gemini_sse_primary_model,
+    log_fallback_advance,
+    log_fallback_success,
+)
 from llm.groq import GroqProvider
 from llm.local_grounded import LocalGroundedProvider
+from llm.openai_compatible import CerebrasProvider
 from llm.prompts import (
     get_unified_prompt_instructions,
     get_unified_system_prompt,
@@ -31,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 # Single prompt shape for every backend: always request SSE *fields* (model infers from text).
 UNIFIED_INCLUDE_SSE_FIELDS = True
+_FALLBACK_PREFIX = "Unified fallback"
 
 
 class UnifiedJobProcessor:
@@ -52,6 +60,7 @@ class UnifiedJobProcessor:
             (primary, lambda: GeminiProvider(api_key=api_key, model=primary), f"Gemini ({primary})"),
             (lite, lambda: GeminiProvider(api_key=api_key, model=lite), f"Gemini ({lite})"),
             ("groq", lambda: GroqProvider(), "Groq"),
+            ("cerebras", lambda: CerebrasProvider(), "Cerebras"),
         ]
         # Always append Ollama last when not already first (API-exhausted fallback).
         if not is_local_env():
@@ -75,6 +84,11 @@ class UnifiedJobProcessor:
                 logger.warning("Skipping LLM provider %s (not usable): %s", name, e)
 
         self.last_successful_provider = None
+        if self.providers:
+            logger.info(
+                "Unified fallback chain: %s",
+                " → ".join(p["name"] for p in self.providers),
+            )
 
     def _try_provider(self, provider_info: dict, jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Try a specific provider for job processing."""
@@ -213,15 +227,25 @@ class UnifiedJobProcessor:
 
         last_error = None
         attempted_providers = []
+        failed: list[str] = []
 
         logger.info(f"Processing {len(jobs)} jobs with unified processor")
 
-        for provider_info in self.providers:
+        for idx, provider_info in enumerate(self.providers):
             provider_name = provider_info['name']
+            next_name = (
+                self.providers[idx + 1]["name"]
+                if idx + 1 < len(self.providers)
+                else None
+            )
             attempted_providers.append(provider_name)
 
             try:
-                logger.info(f"🔄 Trying provider: {provider_info['description']} ({provider_name})")
+                logger.info(
+                    "Trying provider: %s (%s)",
+                    provider_info["description"],
+                    provider_name,
+                )
                 provider = provider_info["provider"]
                 if not provider.is_available():
                     raise LLMProviderError(f"Provider {provider_name} not available")
@@ -249,16 +273,15 @@ class UnifiedJobProcessor:
                 )
 
                 self.last_successful_provider = provider_name
+                if failed:
+                    log_fallback_success(provider_name, prefix=_FALLBACK_PREFIX)
                 _gs = should_use_grounding("unified")
                 logger.info(
-                    "✅ Success with %s: processed %s jobs (google_search_grounding=%s)",
+                    "Success with %s: processed %s jobs (google_search_grounding=%s)",
                     provider_name,
                     len(all_results),
                     _gs,
                 )
-
-                if attempted_providers[0] != provider_name:
-                    logger.info(f"🔄 Fallback successful: {attempted_providers[0]} → {provider_name}")
 
                 return {
                     "results": all_results,
@@ -272,18 +295,18 @@ class UnifiedJobProcessor:
 
             except Exception as e:
                 last_error = e
-                error_msg = str(e).lower()
-                if "rate limit" in error_msg or "429" in error_msg or "quota" in error_msg or "resource_exhausted" in error_msg:
-                    logger.warning(f"🚫 Rate limit hit for {provider_name}: {e}")
-                elif "not available" in error_msg:
-                    logger.warning(f"❌ Provider {provider_name} not available: {e}")
-                else:
-                    logger.warning(f"💥 Failed with {provider_name}: {e}")
+                failed.append(provider_name)
+                log_fallback_advance(
+                    provider_name,
+                    classify_llm_failure(e),
+                    next_name,
+                    prefix=_FALLBACK_PREFIX,
+                )
                 continue
 
         error_msg = f"All providers failed. Last error: {last_error}"
-        logger.error(f"❌ {error_msg}")
-        logger.error(f"📊 Attempted providers in order: {' → '.join(attempted_providers)}")
+        logger.error("%s", error_msg)
+        logger.error("Attempted providers in order: %s", " → ".join(attempted_providers))
 
         return {
             "results": [],

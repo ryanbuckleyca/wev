@@ -9,3 +9,4 @@ google-genai
 tenacity
 feedparser
 pydantic>=2.0.0
+tavily-python

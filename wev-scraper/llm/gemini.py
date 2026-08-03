@@ -3,12 +3,11 @@
 Uses the google-genai SDK (google-genai package).
 
 SSE / org assessment models (via ``SSEFallbackProvider``):
-  gemini-3.6-flash       — primary free-tier Flash
-  gemini-3.5-flash-lite  — higher free-tier volume fallback
+  gemini-3.6-flash → gemini-3.5-flash-lite → groq → cerebras → ollama
 
-For predictable parity with Groq/Ollama, SSE evidence comes from shared Tavily
-injection (``llm.tavily_grounding``). Native Google Search tool grounding is
-opt-in via ``USE_GOOGLE_SEARCH_GROUNDING=1``.
+For predictable parity with Groq/Cerebras/Ollama, SSE evidence comes from shared
+Tavily injection (``llm.tavily_grounding``). Native Google Search tool grounding
+is opt-in via ``USE_GOOGLE_SEARCH_GROUNDING=1``.
 
 Summaries and values default to Groq (see factory.py).
 """
@@ -238,7 +237,22 @@ class GeminiProvider(BaseLLMProvider):
                     f"(model={resolved_model}, prompt_chars={len(prompt)}). "
                     f"The model may be stuck in an extended thinking loop."
                 ) from e
-            raise LLMProviderError(f"Gemini completion error: {e}") from e
+
+            err_msg = str(e).lower()
+            # Keep the raised message short — giant Google JSON belongs in
+            # __cause__, not the primary log line used by SSEFallbackProvider.
+            brief = " ".join(str(e).split())
+            if len(brief) > 180:
+                brief = brief[:177] + "..."
+            if "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg:
+                raise LLMProviderError(
+                    f"Gemini rate limit or quota exceeded "
+                    f"(model={resolved_model}, 429/RESOURCE_EXHAUSTED). "
+                    f"key_last4={self._key_last4()}"
+                ) from e
+            raise LLMProviderError(
+                f"Gemini completion error (model={resolved_model}): {brief}"
+            ) from e
         finally:
             stop_hb.set()
 
@@ -315,15 +329,20 @@ class GeminiProvider(BaseLLMProvider):
             if "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg:
                 raise LLMProviderError(
                     "Gemini rate limit or quota exceeded. "
-                    "gemini-2.5-flash-lite free tier: 30 req/min, 1,500 req/day. "
-                    "Quota resets at midnight Pacific. "
-                    f"key_last4={self._key_last4()} raw_error={err_msg_raw}"
+                    f"(model={self._model}, 429/RESOURCE_EXHAUSTED). "
+                    f"key_last4={self._key_last4()}"
                 ) from e
             if "403" in err_msg or "permission" in err_msg:
                 raise LLMProviderError(
-                    f"Gemini API key invalid or permission denied. Check GEMINI_API_KEY. key_last4={self._key_last4()} raw_error={err_msg_raw}"
+                    f"Gemini API key invalid or permission denied. "
+                    f"Check GEMINI_API_KEY. key_last4={self._key_last4()}"
                 ) from e
-            raise LLMProviderError(f"Gemini API error: key_last4={self._key_last4()} raw_error={err_msg_raw}") from e
+            brief = " ".join(err_msg_raw.split())
+            if len(brief) > 180:
+                brief = brief[:177] + "..."
+            raise LLMProviderError(
+                f"Gemini API error: key_last4={self._key_last4()} {brief}"
+            ) from e
 
         summary = self._extract_text(response).strip().strip('"').strip("'")
         summary = summary.replace("**", "")

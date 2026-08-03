@@ -268,6 +268,12 @@ class GroqProvider(BaseLLMProvider):
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
 
+        temperature = kwargs.get("temperature")
+        if temperature is None and kwargs.get("task") == "sse":
+            temperature = 0
+        if temperature is not None:
+            payload["temperature"] = float(temperature)
+
         # Use the specified model or current model with fallback
         if model and model != self._model:
             # Temporarily use the specified model

@@ -270,6 +270,7 @@ def save_job(job, source_id, *, resolver=None):
             job_title=job.get("job_title", ""),
             description=job.get("description", ""),
             job_id=resolver_job_id,
+            listing_url=job.get("listing_url"),
         )
 
     if existing_data:
