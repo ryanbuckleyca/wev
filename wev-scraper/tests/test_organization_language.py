@@ -65,19 +65,33 @@ def test_french_name_alone_does_not_force_english():
     assert result.source == "llm_name"
 
 
-def test_llm_name_assessment_is_primary_over_single_language_website():
+def test_website_language_beats_name_llm():
+    """Any website language signal beats name LLM (not only bilingual)."""
     with patch("utils.organization_language._neutral_fetch") as mock_fetch:
         mock_fetch.return_value = (
-            "<html><body>Our organization supports the community and its people.</body></html>",
-            "https://example.org",
+            "<html><body>Notre organisation œuvre pour la solidarité et le "
+            "bien commun dans la communauté avec des valeurs de coopération "
+            "pour tous les membres de la société.</body></html>",
+            "https://exemple.org",
         )
         result = classify_org_language(
             name="Aliments Prémont Inc.",
-            website="https://example.org",
+            website="https://exemple.org",
             fetch_web=True,
-            llm_fn=lambda _name: "fr",
+            llm_fn=lambda _name: "en",
         )
 
+    assert result.language == "fr"
+    assert result.source == "web_text"
+    assert result.source != "llm_name"
+
+
+def test_name_llm_only_when_no_website_signal():
+    result = classify_org_language(
+        name="Aliments Prémont Inc.",
+        website=None,
+        llm_fn=lambda _name: "fr",
+    )
     assert result.language == "fr"
     assert result.source == "llm_name"
 

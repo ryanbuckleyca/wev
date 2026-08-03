@@ -1,8 +1,11 @@
 """SSE Classification prompt templates for Gemini."""
 
-# Keywords added to organization searches to find mission/values/governance info
-# Focused on "information containers" that describe structure (bylaws, reports, etc.)
-SSE_SEARCH_KEYWORDS = '(governance OR bylaws OR "articles of incorporation" OR "annual report" OR "impact report" OR "board of directors")'
+# Keywords added to organization searches to find mission/values/governance info.
+# Keep short — Tavily max query length is 400 characters.
+SSE_SEARCH_KEYWORDS = (
+    '(about OR charity OR OBNL OR governance OR AGM OR "but non lucratif" '
+    'OR "économie sociale" OR "board of directors")'
+)
 
 SSE_JSON_FIELDS = """  "rating": "strong_yes",
   "confidence": 0.85,
@@ -220,6 +223,7 @@ NICE-TO-HAVES (strengthen Yes rating):
 
 AUTOMATIC NO FLAGS (triggers 'no' rating):
 - type is government or other (never SSE)
+- type is null / unknown while claiming Yes (use other+no instead)
 - Government / public-sector employer (any level) — never SSE
 - Political party / electoral organization — never SSE (type "other", not "government")
 - Conventional for-profit with only CSR / ESG / "we respect the environment" language
@@ -239,6 +243,8 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
   because governance is board+ED or lacks cooperative labels"""
 
 ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post completeness):
+- Never Yes (strong_yes/weak_yes) when type is null — prefer type "other" and rating "no"
+  when eligible legal form is not evidenced
 - Base the rating on mission/governance evidence from research, not the type label alone
 - Type is necessary but not sufficient: nonprofit/cooperative/union still need must-haves
 - Decide type BEFORE rating. If governance evidence only shows a private/founder-owned

@@ -22,6 +22,8 @@ CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
 # Prefer a capable production model; override with CEREBRAS_MODEL.
 # Account catalog (as of Jul 2026): gpt-oss-120b, gemma-4-31b, zai-glm-4.7
 DEFAULT_CEREBRAS_MODEL = "gpt-oss-120b"
+
+
 _MAX_RETRIES = 4
 _RETRY_BASE_DELAY = 20.0
 
@@ -123,6 +125,13 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             payload["stop"] = stop
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
+        # Pin low temperature for classification/JSON tasks when callers pass it,
+        # or default to 0 for SSE assessment (deterministic class labels).
+        temperature = kwargs.get("temperature")
+        if temperature is None and kwargs.get("task") == "sse":
+            temperature = 0
+        if temperature is not None:
+            payload["temperature"] = float(temperature)
 
         data = self._request(payload)
         choices = data.get("choices") or []
@@ -163,3 +172,4 @@ class CerebrasProvider(OpenAICompatibleProvider):
                 os.environ.get("CEREBRAS_MAX_TOKENS_PER_REQUEST", "16000")
             ),
         )
+

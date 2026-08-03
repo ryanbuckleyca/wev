@@ -59,6 +59,12 @@ def test_org_mutual_aid_and_flat_structure_prefer_strong_yes():
     assert "do not default to weak_yes" in ORG_RATING_GUIDELINES
 
 
+
+
+def test_org_forbids_null_type_yes():
+    assert "type is null / unknown while claiming Yes" in ORG_EVALUATION_CRITERIA
+    assert "Never Yes (strong_yes/weak_yes) when type is null" in ORG_RATING_GUIDELINES
+
 def test_org_political_parties_map_to_other_not_government():
     assert "Political parties and electoral organizations" in ORG_EVALUATION_CRITERIA
     assert 'type "other", rating "no"' in ORG_EVALUATION_CRITERIA

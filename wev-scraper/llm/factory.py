@@ -24,7 +24,7 @@ ProviderName = Literal["gemini", "groq"]
 
 # Model defaults
 # DEFAULT_MODEL: Used for most tasks (summarization, location extraction, values tagging)
-# SSE / org assessment: Gemini 3 Flash → Flash-Lite → Groq → Ollama via SSEFallbackProvider
+# SSE / org assessment: Gemini → Groq → Cerebras (Ollama optional) via SSEFallbackProvider
 DEFAULT_MODEL = "groq"  # Free tier: ~10 RPM, 12K TPM, 1000 RPH
 
 PROVIDERS: dict[str, type[BaseLLMProvider]] = {
@@ -142,7 +142,7 @@ def get_unified_processor(**kwargs) -> "UnifiedJobProcessor":
     """Return the unified job processor with intelligent fallback.
 
     Fallback order matches SSE:
-      gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama
+      gemini-3.6-flash → gemini-3.5-flash-lite → groq → cerebras → ollama
 
     Args:
         **kwargs: Passed to UnifiedJobProcessor constructor (e.g. api_key).

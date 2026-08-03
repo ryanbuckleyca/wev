@@ -1,8 +1,9 @@
 """Classify organization public language: en | fr | bilingual.
 
 Signals (in priority order):
-1. Optional LLM assessment of the organization name
-2. Website URL / hreflang / locale probing (when fetch_web=True)
+1. Website URL / hreflang / locale probing / page text (when fetch_web=True)
+2. Optional LLM assessment of the organization name (lowest priority — only when
+   no website language signal exists)
 
 Synthetic LLM-generated description/mission text is intentionally excluded —
 those fields are not evidence of the organization's public language.
@@ -90,12 +91,12 @@ def classify_org_language(
     llm_fn: Callable[[str], OrgLanguage | None] | None = None,
     use_llm: bool = True,
 ) -> LanguageClassification:
-    """Classify org language from name / website signals (not generated prose).
+    """Classify org language from website signals first, name LLM last.
 
-    Both signals run by default: the website is fetched (``fetch_web``) and the
-    organization name is assessed by an LLM (``use_llm``). Callers do not need to
-    supply ``llm_fn`` — it is built lazily from the configured provider. Inject a
-    fake ``llm_fn`` in tests, or pass ``use_llm=False`` to skip the name LLM.
+    Website fetch (``fetch_web``) is preferred: hreflang / locale trees / page
+    text are objective. The organization-name LLM runs only when no website
+    language signal exists. Inject a fake ``llm_fn`` in tests, or pass
+    ``use_llm=False`` to skip the name LLM.
     """
     reasons: list[str] = []
 
@@ -108,12 +109,19 @@ def classify_org_language(
     if fetch_web and website:
         web = _classify_from_website(website)
         reasons.extend(web.reasons)
-        # Confirmed substantial EN + FR website evidence is decisive bilingual.
+        # Any confirmed website language signal beats the name LLM.
         if web.language == "bilingual":
             return LanguageClassification("bilingual", web.confidence, web.source, tuple(reasons))
         if web.language:
             reasons.append(f"web_signal={web.language}")
+            return LanguageClassification(
+                web.language,
+                web.confidence,
+                web.source,
+                tuple(reasons),
+            )
 
+    # Name LLM is lowest priority — only when website evidence is absent.
     name_language: OrgLanguage | None = None
     if llm_fn is not None and name and name.strip():
         try:
@@ -125,20 +133,11 @@ def classify_org_language(
             name_language = llm_language
             reasons.append(f"name_llm={name_language}")
 
-    # The name assessment is primary unless the website confirmed bilingual use.
     if name_language:
         return LanguageClassification(
             name_language,
             0.7,
             "llm_name",
-            tuple(reasons),
-        )
-
-    if web and web.language:
-        return LanguageClassification(
-            web.language,
-            web.confidence,
-            web.source,
             tuple(reasons),
         )
 

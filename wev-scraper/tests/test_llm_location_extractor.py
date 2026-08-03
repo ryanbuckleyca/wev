@@ -51,3 +51,22 @@ def test_extract_batch_falls_through_provider_errors():
         results = _extract_batch(["Remote"])
 
     assert results == [{"municipality": None, "province": None, "work_type": "office"}]
+
+
+def test_extract_batch_treats_null_entries_as_default_office():
+    """Lite sometimes returns JSON arrays with null slots — do not NoneType.get."""
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = (
+        '[null, {"municipality": "Montreal", "province": "QC", "work_type": "office"}]'
+    )
+
+    with patch(
+        "utils.llm_location_extractor.get_fallback_llm_provider",
+        return_value=mock_provider,
+    ):
+        results = _extract_batch(["", "Montreal, QC"])
+
+    assert results == [
+        {"municipality": None, "province": None, "work_type": "office"},
+        {"municipality": "Montreal", "province": "QC", "work_type": "office"},
+    ]

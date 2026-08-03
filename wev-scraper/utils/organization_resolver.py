@@ -41,6 +41,7 @@ class JobContext:
     job_title: str = ""
     description: str = ""
     job_id: str | None = None
+    listing_url: str | None = None
 
 
 def create_resolver(supabase_client=None) -> OrganizationResolver:
@@ -117,6 +118,7 @@ class OrganizationResolver:
         job_title: str = "",
         description: str = "",
         job_id: str | None = None,
+        listing_url: str | None = None,
     ) -> int | None:
         if not raw_name or not raw_name.strip():
             return None
@@ -130,6 +132,7 @@ class OrganizationResolver:
             job_title=job_title,
             description=description,
             job_id=job_id,
+            listing_url=listing_url,
         )
 
         try:
@@ -304,6 +307,7 @@ class OrganizationResolver:
             description=ctx.description,
             canonical_loc=canonical_loc,
             known_website=ctx.website,
+            listing_url=ctx.listing_url,
         )
         if row is None:
             return None
@@ -324,6 +328,7 @@ class OrganizationResolver:
                 job_title=ctx.job_title,
                 description=ctx.description,
                 job_id=ctx.job_id,
+                listing_url=ctx.listing_url,
             )
             retry_key = self._session_cache_key(retry_ctx.raw_name, retry_ctx.website)
             db_id, block_create = self._resolve_via_db(retry_ctx, retry_key)

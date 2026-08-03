@@ -1,17 +1,124 @@
 """Tests for shared Tavily evidence helpers."""
 
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from llm.local_grounded import _truncate_keep_ends
 from llm.tavily_grounding import (
+    TavilyUnavailableError,
     entity_require_terms,
     inject_grounding_evidence,
+    is_tavily_available,
+    require_tavily,
     trim_evidence,
 )
+
+
+def test_require_tavily_raises_when_api_key_unset():
+    with patch("llm.tavily_grounding.tavily_api_key", return_value=""):
+        with pytest.raises(TavilyUnavailableError, match="TAVILY_API_KEY"):
+            require_tavily()
+
+
+def test_require_tavily_raises_when_package_missing():
+    with patch("llm.tavily_grounding.tavily_api_key", return_value="fake-key"), \
+         patch(
+             "llm.tavily_grounding._tavily_import_error",
+             return_value="No module named 'tavily'",
+         ):
+        with pytest.raises(TavilyUnavailableError, match="not importable"):
+            require_tavily()
+
+
+def test_require_tavily_raises_when_client_construct_fails():
+    with patch("llm.tavily_grounding.tavily_api_key", return_value="fake-key"), \
+         patch("llm.tavily_grounding._tavily_import_error", return_value=None), \
+         patch(
+             "llm.tavily_grounding._client",
+             side_effect=RuntimeError("bad credentials"),
+         ):
+        with pytest.raises(TavilyUnavailableError, match="could not be constructed"):
+            require_tavily()
+
+
+def test_is_tavily_available_false_without_key():
+    with patch("llm.tavily_grounding.tavily_api_key", return_value=""):
+        assert is_tavily_available() is False
+
+
+def test_is_tavily_available_false_when_import_fails():
+    with patch("llm.tavily_grounding.tavily_api_key", return_value="fake-key"), \
+         patch(
+             "llm.tavily_grounding._tavily_import_error",
+             return_value="No module named 'tavily'",
+         ):
+        assert is_tavily_available() is False
+
+
+
+def test_fetch_tavily_evidence_returns_urls():
+    from llm.tavily_grounding import TavilyEvidence, fetch_tavily_evidence
+
+    fake_client = MagicMock()
+    fake_client.search.return_value = {
+        "results": [
+            {
+                "title": "Acme",
+                "url": "https://acme.org/about",
+                "content": "Acme does good work.",
+            },
+            {
+                "title": "News",
+                "url": "https://news.ca/acme",
+                "content": "Acme mentioned.",
+            },
+        ]
+    }
+    with patch("llm.tavily_grounding.is_tavily_available", return_value=True), \
+         patch("llm.tavily_grounding._client", return_value=fake_client):
+        ev = fetch_tavily_evidence('"Acme" official website')
+    assert isinstance(ev, TavilyEvidence)
+    assert "Acme does good work" in ev.text
+    assert ev.urls == ["https://acme.org/about", "https://news.ca/acme"]
+    assert len(ev.results) == 2
+    assert ev.results[0].title == "Acme"
+    assert ev.results[0].url == "https://acme.org/about"
+    assert "good work" in ev.results[0].content
+
+
+def test_fetch_tavily_evidence_ranks_location_mentions():
+    from llm.tavily_grounding import fetch_tavily_evidence
+
+    fake_client = MagicMock()
+    fake_client.search.return_value = {
+        "results": [
+            {
+                "title": "Foxhole Farm Ohio",
+                "url": "https://foxholefarmohio.com",
+                "content": "Brookville Ohio vegetables",
+            },
+            {
+                "title": "Foxhole Farm Rockwood",
+                "url": "https://example.ca/foxhole",
+                "content": "CSA near Rockwood Ontario Canada",
+            },
+        ]
+    }
+    with patch("llm.tavily_grounding.is_tavily_available", return_value=True), \
+         patch("llm.tavily_grounding._client", return_value=fake_client):
+        ev = fetch_tavily_evidence(
+            '"Foxhole Farm" Rockwood Ontario',
+            location_terms=["rockwood", "ontario", "canada"],
+        )
+    assert ev.urls[0] == "https://example.ca/foxhole"
 
 
 def test_inject_grounding_evidence_marks_search_as_secondary():
     out = inject_grounding_evidence("PROMPT BODY", "snippet about org")
     assert out.startswith("SUPPORTING WEB EVIDENCE")
-    assert "Interpretive fields" in out
+    assert "PRIMARY" in out or "primary" in out.lower()
+    assert "NEVER invent" in out or "never invent" in out.lower()
     assert "SOURCE DESCRIPTION" in out
     assert "snippet about org" in out
     assert out.endswith("PROMPT BODY")

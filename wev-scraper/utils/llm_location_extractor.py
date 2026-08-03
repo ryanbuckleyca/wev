@@ -1,7 +1,7 @@
 """LLM-based location extraction for job postings.
 
 Uses the shared fallback chain
-(gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama),
+(gemini-3.6-flash → gemini-3.5-flash-lite → groq → cerebras → ollama),
 same as OrganizationAssessor and the unified post-processor. Handles edge cases
 like accented characters, French text, remote/hybrid locations, and regional
 descriptors that traditional regex patterns struggle with.
@@ -28,6 +28,12 @@ from typing import Any, Dict, List
 from llm.factory import get_fallback_llm_provider
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_OFFICE = {
+    "municipality": None,
+    "province": None,
+    "work_type": "office",
+}
 
 
 def extract_locations_for_jobs(
@@ -76,14 +82,22 @@ def extract_locations_for_jobs(
 
 
 def _default_results(n: int) -> List[Dict[str, Any]]:
-    return [
-        {
-            "municipality": None,
-            "province": None,
-            "work_type": "office",
-        }
-        for _ in range(n)
-    ]
+    return [dict(_DEFAULT_OFFICE) for _ in range(n)]
+
+
+def _normalize_location_result(item: Any) -> Dict[str, Any]:
+    """Coerce null / non-dict LLM entries to the default office result.
+
+    Flash-Lite (and others) sometimes return ``[null, {...}]``; treating null
+    as a default avoids ``NoneType.get`` after a successful fallback.
+    """
+    if not isinstance(item, dict):
+        return dict(_DEFAULT_OFFICE)
+    return {
+        "municipality": item.get("municipality"),
+        "province": item.get("province"),
+        "work_type": item.get("work_type") or "office",
+    }
 
 
 def _extract_batch(locations: List[str]) -> List[Dict[str, Any]]:
@@ -153,7 +167,7 @@ Format: [{{"municipality": "...", "province": "...", "work_type": "remote|hybrid
 
     try:
         # Same chain as OrganizationAssessor / unified processor:
-        # gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama.
+        # gemini-3.6-flash → gemini-3.5-flash-lite → groq → cerebras → ollama.
         # json_mode=False because we need a top-level JSON array, not an object.
         # Groq's json_object mode only supports a single root object, which causes
         # the model to collapse all results into one entry.
@@ -181,6 +195,11 @@ Format: [{{"municipality": "...", "province": "...", "work_type": "remote|hybrid
         if isinstance(results, dict):
             results = [results]
 
+        if not isinstance(results, list):
+            raise Exception(
+                f"Expected JSON array from location extraction, got {type(results).__name__}"
+            )
+
         # Validate we got the right number of results
         if len(results) != len(locations):
             print(f"Warning: Expected {len(locations)} results, got {len(results)}")
@@ -190,13 +209,10 @@ Format: [{{"municipality": "...", "province": "...", "work_type": "remote|hybrid
             while len(results) < len(locations):
                 missing_index = len(results)
                 print(f"  → Padding missing result at index {missing_index}: '{locations[missing_index] if missing_index < len(locations) else 'unknown'}'")
-                results.append({
-                    "municipality": None,
-                    "province": None,
-                    "work_type": "office"
-                })
+                results.append(dict(_DEFAULT_OFFICE))
 
-        return results
+        # Null / non-dict entries (common from lite) → default office result
+        return [_normalize_location_result(item) for item in results[: len(locations)]]
 
     except Exception as e:
         logger.warning("Error extracting locations with LLM: %s", e)
