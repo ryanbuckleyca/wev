@@ -12,9 +12,33 @@ from utils.sse_prompts import (
 
 def test_job_rating_rejects_traditional_corp_mission_roles():
     assert "traditional corporations" in RATING_GUIDELINES
-    assert "never for conventional for-profits" in RATING_GUIDELINES
+    assert "never for conventional" in RATING_GUIDELINES
+    assert "for-profits with green/social marketing" in RATING_GUIDELINES
     assert "private environmental consultancies" in RATING_GUIDELINES
     assert "GOVERNANCE GATE" in RATING_GUIDELINES
+
+
+def test_job_rating_hard_gates_commercial_farm_and_missing_pay():
+    assert "COMMERCIAL FARM / MARKET GARDEN GATE" in RATING_GUIDELINES
+    assert "COMPENSATION GATE" in RATING_GUIDELINES
+    assert "private/family/commercial farms" in RATING_GUIDELINES
+    assert "incomplete pay" in RATING_GUIDELINES
+    assert "market gardens" in EVALUATION_CRITERIA
+    assert "HARD gate even" in EVALUATION_CRITERIA
+
+
+def test_batch_rating_includes_farm_and_compensation_gates():
+    assert "COMMERCIAL FARM GATE" in BATCH_RATING_GUIDELINES
+    assert "COMPENSATION GATE" in BATCH_RATING_GUIDELINES
+    assert "commercial farms" in BATCH_RATING_GUIDELINES
+
+
+def test_sse_job_system_prompt_encodes_hard_gates():
+    from utils.sse_prompts import SSE_JOB_SYSTEM_PROMPT
+
+    assert "HARD GATES" in SSE_JOB_SYSTEM_PROMPT
+    assert "commercial farm" in SSE_JOB_SYSTEM_PROMPT
+    assert "missing/N/A pay" in SSE_JOB_SYSTEM_PROMPT
 
 
 def test_job_auto_no_flags_include_for_profit_csr():

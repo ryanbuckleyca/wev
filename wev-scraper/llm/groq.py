@@ -59,16 +59,23 @@ logger = logging.getLogger(__name__)
 
 # Groq model hierarchy for fallback (best to worst quality/reliability)
 # llama-3.3-70b: best instruction following, 12K TPM, 100K TPD — default
-# llama-3.1-8b:  fastest, 14.4K RPD — best for high-volume low-complexity tasks
+# llama-3.1-8b:  fastest, 14.4K RPD — DISABLED (too weak for SSE / org assessment)
 # qwen3-32b:     reasoning model, 6K TPM, 1K RPD
 # kimi-k2:       10K TPM, 1K RPD — last resort
 # llama-4-scout: optional; some accounts get model_not_found — keep last
+# TEMPORARILY DISABLED: all Groq cascade models empty — skip/fail cleanly until re-enabled.
 GROQ_MODELS = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-    "qwen/qwen3-32b",
-    "moonshotai/kimi-k2-instruct-0905",
-    "meta-llama/llama-4-scout-17b-16e-instruct",
+    # TEMPORARILY DISABLED: pause Groq cascade (70b → qwen → kimi → scout).
+    # "llama-3.3-70b-versatile",
+    # TEMPORARILY DISABLED: 8b soft-scores commercial employers (e.g. Voyageur Quest
+    # weak_yes after 70b TPD exhaustion). Prefer qwen/kimi or fail over to Cerebras.
+    # "llama-3.1-8b-instant",
+    # TEMPORARILY DISABLED: see above.
+    # "qwen/qwen3-32b",
+    # TEMPORARILY DISABLED: see above.
+    # "moonshotai/kimi-k2-instruct-0905",
+    # TEMPORARILY DISABLED: see above.
+    # "meta-llama/llama-4-scout-17b-16e-instruct",
 ]
 
 # Rate limiting: enforce a minimum gap between requests to stay under TPM.
@@ -128,12 +135,19 @@ class GroqProvider(BaseLLMProvider):
         self._current_model_index = 0
         self._exhausted_models: set[str] = set()
 
+        if not GROQ_MODELS:
+            logger.warning(
+                "[Groq] GROQ_MODELS is empty — all cascade models temporarily disabled; "
+                "provider will report unavailable / refuse requests."
+            )
+
         # If a specific model is requested, find its index in the hierarchy
         if self._model != DEFAULT_MODEL and self._model in GROQ_MODELS:
             self._current_model_index = GROQ_MODELS.index(self._model)
 
     def is_available(self) -> bool:
-        return bool(self._api_key)
+        # Empty GROQ_MODELS means Groq is intentionally offline (skip in SSE chain).
+        return bool(self._api_key) and bool(GROQ_MODELS)
 
     def _get_next_model(self) -> str | None:
         """Get the next available model in the fallback hierarchy.
@@ -167,6 +181,10 @@ class GroqProvider(BaseLLMProvider):
                 logger.info(f"[Groq] Switched to model: {next_model}")
 
     def _request(self, path: str, payload: dict, model_override: str | None = None) -> dict:
+        if not GROQ_MODELS:
+            raise LLMProviderError(
+                "No Groq models configured (GROQ_MODELS empty — temporarily disabled)"
+            )
         elapsed = time.monotonic() - self._last_request_time
         if elapsed < _MIN_REQUEST_INTERVAL:
             time.sleep(_MIN_REQUEST_INTERVAL - elapsed)

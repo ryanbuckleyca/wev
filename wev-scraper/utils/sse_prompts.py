@@ -127,11 +127,16 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
   business, corporate CSR / ESG / "social impact" team) — even when the role itself is
   environmental, community, or mission-flavored. Mission-driven work inside a
   traditional corporation is NOT Solidarity Economy.
+- Private / family / commercial farms and market gardens (including CSA-style or
+  "community food" marketing) without clear nonprofit, cooperative, or mutual
+  governance evidence — ecological farming alone is NOT Solidarity Economy.
 - No social/environmental/community mission (pure profit-focused)
 - Profit-maximization focused with no visible social good
 - No reference to cooperation beyond internal team collaboration
 - Mission-neutral language with generic CSR
-- Vague or missing compensation AND no volunteer/internship disclosure (if salary is "Volunteer" or role is internship, treat as disclosed)
+- Vague or missing compensation AND no volunteer/internship disclosure (if salary is
+  "Volunteer" or role is internship, treat as disclosed). This is a HARD gate even
+  for registered charities / nonprofits / coops: incomplete pay → rating "no".
 - Hidden unpaid work (e.g., "unpaid trial" rather than transparent volunteer role)"""
 
 RATING_GUIDELINES = """Be strict:
@@ -141,20 +146,32 @@ RATING_GUIDELINES = """Be strict:
   engineer roles at private environmental consultancies, and "social impact" or CSR
   roles at tech/corporate employers, are "no" even when the work is mission-flavored.
   Do NOT use weak_yes for "mission-driven roles in traditional corporations."
+- COMMERCIAL FARM / MARKET GARDEN GATE: privately owned farms, family farms, market
+  gardens, and similar commercial grower businesses are conventional for-profits →
+  "no". Do NOT soft-score weak_yes/strong_yes from ecological, regenerative, CSA,
+  "good food", or community marketing when governance is private/commercial.
+  Only rate Yes when the employer is evidenced as a nonprofit / cooperative /
+  community association (not merely a mission-flavored private farm).
+- COMPENSATION GATE (hard): if salary/wage is missing, N/A, "Not specified", or
+  otherwise undisclosed in the posting AND the role is not explicitly disclosed as
+  volunteer or internship, rating MUST be "no" — even when the employer is a clear
+  charity/nonprofit with a strong mission. Do not award Yes for incomplete pay.
 - "strong_yes" requires SSE-eligible employer governance PLUS clear mission and
-  values (registered charity / coop / community org with substantive public mission).
+  values (registered charity / coop / community org with substantive public mission)
+  PLUS transparent compensation or volunteer/internship disclosure.
   Prefer strong_yes over weak_yes when the employer is a clear nonprofit/charity and
   the role clearly advances that mission (including wildlife rehab, food security,
   community programs, fellowships, parks/wilderness conservation, environmental
   justice advocacy). Volunteer/internship roles can be strong_yes when mission +
-  organization alignment are clear.
+  organization alignment are clear AND role type is disclosed.
 - "weak_yes" ONLY for SSE-eligible employers (nonprofit/coop/union/community) that
-  meet must-haves but show thinner participatory governance or thinner mission
-  evidence — never for conventional for-profits with green/social marketing.
+  meet must-haves (including compensation/role-type disclosure) but show thinner
+  participatory governance or thinner mission evidence — never for conventional
+  for-profits with green/social marketing, and never for commercial farms.
 - "no" for: government/public-sector; conventional for-profit / private consultancy /
-  corporate CSR; profit-focused roles; opaque/missing compensation (volunteer/
-  internship work MUST be explicitly disclosed); pure market-rate tech jobs."""
-
+  corporate CSR; private/family/commercial farms without nonprofit/coop governance;
+  profit-focused roles; opaque/missing compensation (volunteer/internship work MUST
+  be explicitly disclosed); pure market-rate tech jobs."""
 # Organization-level SSE criteria (NOT job-post criteria).
 # Used by OrganizationAssessor — never rate an org on job compensation/hours.
 ORG_EVALUATION_CRITERIA = """EVALUATION CRITERIA (organization-level — NOT the job posting):
@@ -281,14 +298,36 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
 BATCH_RATING_GUIDELINES = """Be strict with ratings. Return JSON array ONLY, no preamble.
 - GOVERNANCE GATE: Yes only when the employer is nonprofit / coop / union / community —
   never conventional for-profit, consultancy, or corporate CSR / "social impact" teams.
+- COMMERCIAL FARM GATE: private/family/market-garden farms without nonprofit/coop
+  evidence → "no" (do not soft-score mission Yes on commercial farms).
+- COMPENSATION GATE: missing/opaque pay without volunteer/internship disclosure → "no"
+  even for charities.
 - "strong_yes" = SSE-eligible employer with clear SSE values OR volunteer/internship role
   with strong mission and clear organizational alignment at an SSE-eligible employer
+  (compensation/role-type must be disclosed)
 - "weak_yes" = SSE-eligible employer that meets must-haves but has weaker participatory
   governance / thinner mission evidence (nonprofit legal form alone is not automatic Yes).
-  Do NOT use weak_yes for mission-driven roles inside traditional corporations.
-- "no" = government/public-sector, conventional for-profit / CSR roles, profit-focused,
-  no mission, or unpaid work without clear volunteer/internship disclosure"""
+  Do NOT use weak_yes for mission-driven roles inside traditional corporations or
+  commercial farms.
+- "no" = government/public-sector, conventional for-profit / CSR roles, commercial farms
+  without nonprofit/coop governance, profit-focused, no mission, or unpaid/missing pay
+  without clear volunteer/internship disclosure"""
 
+# Shared system instruction for single-job SSE classification (all providers).
+SSE_JOB_SYSTEM_PROMPT = (
+    "You are an expert at analyzing job postings for Solidarity Economy alignment. "
+    "Score the role from the posting body. Do not invent a different employer from "
+    "search. Supporting web evidence may clarify employer identity / mission but must "
+    "not override clear posting facts. "
+    "HARD GATES — any Yes requires all of: (1) SSE-eligible employer governance "
+    "(nonprofit / coop / union / community association — NOT conventional for-profit, "
+    "private consultancy, corporate CSR, or private/family/commercial farm / market "
+    "garden without nonprofit/coop evidence); (2) transparent compensation OR explicit "
+    "volunteer/internship disclosure (missing/N/A pay → rating no, even for charities); "
+    "(3) clear social/community/environmental mission. "
+    "Never soft-score weak_yes/strong_yes from ecological or community marketing alone "
+    "when governance is private/commercial."
+)
 # Single job classification (for real-time during scraping)
 SSE_CLASSIFICATION_PROMPT = f"""You are evaluating whether a job posting aligns with Solidarity Economy (SSE) principles.
 

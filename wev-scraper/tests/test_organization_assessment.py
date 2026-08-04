@@ -898,6 +898,7 @@ def test_governance_gate_forces_political_party_other_yes_to_no():
 def test_assess_hard_fails_when_tavily_unavailable(mock_get_sse_provider):
     """Org assessor must raise when Tavily is broken — never soft-None with empty evidence."""
     import pytest
+
     from llm.tavily_grounding import TavilyUnavailableError
     from utils.organization_assessment import OrganizationAssessor
 
@@ -919,6 +920,7 @@ def test_assess_hard_fails_when_tavily_unavailable(mock_get_sse_provider):
 def test_assess_hard_fails_when_is_tavily_available_false(mock_get_sse_provider):
     """is_tavily_available False → require_tavily raises → assess aborts."""
     import pytest
+
     from llm.tavily_grounding import TavilyUnavailableError
     from utils.organization_assessment import OrganizationAssessor
 

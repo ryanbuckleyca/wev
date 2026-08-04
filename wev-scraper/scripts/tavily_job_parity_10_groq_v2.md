@@ -1,0 +1,220 @@
+# Tavily-always job parity: Groq vs prod vs Gemini (10 jobs) — v2
+
+Generated: `2026-08-03T16:17:30.294181+00:00`
+
+Re-run after shared prompt/guard tightenings (`--out-tag v2`). Compare **groq_v2** vs Gemini+Tavily vs prod.
+
+Same 10 jobs as Gemini+Tavily batches A+B (`scripts/tavily_job_parity_5_gemini.md`, `scripts/tavily_job_parity_5_gemini_b.md`), re-run with **Groq + Tavily**.
+
+## Setup
+
+- **SSE chain:** `groq` (Groq-only confirmed: `True`)
+- **`GEMINI_API_KEY` in process:** `False` (was present in .env before unset: `True`)
+- **`CEREBRAS_API_KEY` in process:** `False` (was present before unset: `True`)
+- **`USE_GOOGLE_SEARCH_GROUNDING`:** `False` — **off (expected)**; Tavily replaces Gemini-native Google Search grounding.
+- **Tavily available:** `True`
+- Mode: force `use_grounding=True` + employer search query (tavily-always); dry-run only — **no DB writes**.
+
+## Headline rates
+
+- **Groq vs prod:** rating `6/10` (60%) · is_sse `6/10` (60%) · both `5/10` (50%)
+- **Groq vs Gemini:** rating `10/10` (100%) · is_sse `10/10` (100%) · both `10/10` (100%)
+- **Gemini vs prod (prior):** rating `6/10` (60%) · is_sse `6/10` (60%) · both `5/10` (50%) — reminder: prior A+B was **6/10** rating.
+
+**Groq↔prod rating **6/10** · Groq↔Gemini rating **10/10** · Gemini↔prod rating **6/10** (prior 6/10).**
+
+## Summary table
+
+| # | Batch | Job | Org | Prod rating / is_sse | Gemini+T | Groq+T | G↔prod | Gr↔prod | Gr↔Gem | Provider | Elapsed |
+|---|-------|-----|-----|----------------------|----------|--------|--------|---------|--------|----------|---------|
+| 1 | A | Communications and Design Coordinato... | The New Farm Centre For Clim... | `strong_yes` / yes | `strong_yes` / yes | `strong_yes` / yes | yes | yes | yes | `groq` | 1.51s |
+| 2 | A | Lands, Waters and Consultation Coord... | Historic Saugeen Métis | `strong_yes` / yes | `strong_yes` / yes | `strong_yes` / yes | yes | yes | yes | `groq` | 2.04s |
+| 3 | A | Summer jobs, Student jobs | Georgian Bay Land Trust | `strong_yes` / yes | `strong_yes` / yes | `strong_yes` / yes | yes | yes | yes | `groq` | 2.01s |
+| 4 | A | Toronto outdoors, Summer camps | Toronto Island SUP (TISUP) | `weak_yes` / yes | `no` / NO | `no` / NO | NO | NO | yes | `groq` | 1.25s |
+| 5 | A | Algonquin Park Canoe Trip Guides 202... | Voyageur Quest | `weak_yes` / yes | `no` / NO | `no` / NO | NO | NO | yes | `groq` | 6.04s |
+| 6 | B | Administrative Assistant | Toronto Wildlife Centre | `strong_yes` / yes | `strong_yes` / yes | `strong_yes` / yes | yes | yes | yes | `groq` | 13.74s |
+| 7 | B | Good Food and Community | Persephone Market Garden | `weak_yes` / yes | `no` / NO | `no` / NO | NO | NO | yes | `groq` | 12.08s |
+| 8 | B | Field and Community Biologist | Turtle Guardians (of The Lan... | `no` / yes | `no` / NO | `no` / NO | NO | NO | yes | `groq` | 1.38s |
+| 9 | B | Urban forestry, ecology, arboricultu... | City of Mississauga | `strong_yes` / NO | `no` / NO | `no` / NO | NO | NO | yes | `groq` | 14.3s |
+| 10 | B | HR & Admin Coordinator | Toronto Renewable Energy Co-... | `strong_yes` / yes | `strong_yes` / yes | `strong_yes` / yes | yes | yes | yes | `groq` | 13.66s |
+
+Match flags are **both** `sse_rating` + `is_sse` (structural).
+
+## Verdict
+
+Yes — Groq+Tavily is about as consistent as Gemini+Tavily: high agreement with Gemini (10/10 both) and similar prod rating match (6/10 vs Gemini's 6/10). Groq completions: 10/10; errors: 0. Providers used: ['groq', 'groq', 'groq', 'groq', 'groq', 'groq', 'groq', 'groq', 'groq', 'groq'].
+
+### Notable flips
+
+- None — Groq matched Gemini on all structural fields.
+
+## Per-job detail
+
+## Job 1: `ba1492a7-32b8-46e4-bae2-ca5877cf5c83` (batch A)
+
+- **Title:** Communications and Design Coordinator
+- **Org:** The New Farm Centre For Climate Change (org_type=`None`)
+- **Baseline quality (prior):** strong
+
+| Field | Prod | Gemini+Tavily | Groq+Tavily |
+|-------|------|---------------|-------------|
+| `sse_rating` | `strong_yes` | `strong_yes` | `strong_yes` |
+| `is_sse` | `True` | `True` | `True` |
+| provider | — | `gemini-3.6-flash` | `groq` |
+
+- **Match flags:** groq↔prod=`True` · groq↔gemini=`True` · gemini↔prod=`True` (rating-only: gr↔prod=`True` · gr↔gem=`True`)
+- **Groq reasoning:** The New Farm Centre is a registered charity with a clear mission to develop and advocate for regenerative farming systems, prioritizing people, community, and planet. The role of Communications and Design Coordinator contributes to social and environmental good, with transparent compensation and clear job expectations.
+- **Tavily hosts:** canadahelps.org, facebook.com, impactkitchen.com, instagram.com, linkedin.com (4497 chars)
+
+## Job 2: `3b2ae1df-f5ce-4a6c-9636-76ffcb14c903` (batch A)
+
+- **Title:** Lands, Waters and Consultation Coordinator
+- **Org:** Historic Saugeen Métis (org_type=`other`)
+- **Baseline quality (prior):** strong
+
+| Field | Prod | Gemini+Tavily | Groq+Tavily |
+|-------|------|---------------|-------------|
+| `sse_rating` | `strong_yes` | `strong_yes` | `strong_yes` |
+| `is_sse` | `True` | `True` | `True` |
+| provider | — | `gemini-3.6-flash` | `groq` |
+
+- **Match flags:** groq↔prod=`True` · groq↔gemini=`True` · gemini↔prod=`True` (rating-only: gr↔prod=`True` · gr↔gem=`True`)
+- **Groq reasoning:** Historic Saugeen Métis is a community-driven organization with a clear social and environmental mission, governed by an elected Council. The role of Lands, Waters and Consultation Coordinator contributes to environmental stewardship and community engagement. Compensation is transparent, with a rate commensurate with experience.
+- **Tavily hosts:** brucecounty.on.ca, hdp-ca-prod-app-saug-engage-files.s3.ca-central-1.amazonaws.com, joshswaterjobs.com, saugeenmetis.com, visitsouthampton.ca (4490 chars)
+
+## Job 3: `352163a0-40a7-4b72-aecf-9a98035f334f` (batch A)
+
+- **Title:** Summer jobs, Student jobs
+- **Org:** Georgian Bay Land Trust (org_type=`nonprofit`)
+- **Baseline quality (prior):** strong
+
+| Field | Prod | Gemini+Tavily | Groq+Tavily |
+|-------|------|---------------|-------------|
+| `sse_rating` | `strong_yes` | `strong_yes` | `strong_yes` |
+| `is_sse` | `True` | `True` | `True` |
+| provider | — | `gemini-3.6-flash` | `groq` |
+
+- **Match flags:** groq↔prod=`True` · groq↔gemini=`True` · gemini↔prod=`True` (rating-only: gr↔prod=`True` · gr↔gem=`True`)
+- **Groq reasoning:** Georgian Bay Land Trust is a registered Canadian charity with a clear mission to protect wilderness lands and species. The role contributes to social/community/environmental good and has transparent compensation. The organization's governance and values align with Solidarity Economy principles.
+- **Tavily hosts:** causes.benevity.org, clementine-sapphire-3hnw.squarespace.com, gblt.org, gbtownship.ca, gohomebay.org (4497 chars)
+
+## Job 4: `9bdba800-f5f3-4e5d-b04d-b94206381125` (batch A)
+
+- **Title:** Toronto outdoors, Summer camps
+- **Org:** Toronto Island SUP (TISUP) (org_type=`None`)
+- **Baseline quality (prior):** strong
+
+| Field | Prod | Gemini+Tavily | Groq+Tavily |
+|-------|------|---------------|-------------|
+| `sse_rating` | `weak_yes` | `no` | `no` |
+| `is_sse` | `True` | `False` | `False` |
+| provider | — | `gemini-3.6-flash` | `groq` |
+
+- **Match flags:** groq↔prod=`False` · groq↔gemini=`True` · gemini↔prod=`False` (rating-only: gr↔prod=`False` · gr↔gem=`True`)
+- **Groq reasoning:** Toronto Island SUP is a for-profit business, and the job posting lacks transparent compensation information.
+- **Tavily hosts:** en.wikipedia.org, toronto.ca, torontoisland.com, torontoislandsup.com, tripadvisor.com (4497 chars)
+
+## Job 5: `afd79cf6-d699-4b59-86c4-68da2d3b28dc` (batch A)
+
+- **Title:** Algonquin Park Canoe Trip Guides 2026
+- **Org:** Voyageur Quest (org_type=`other`)
+- **Baseline quality (prior):** strong
+
+| Field | Prod | Gemini+Tavily | Groq+Tavily |
+|-------|------|---------------|-------------|
+| `sse_rating` | `weak_yes` | `no` | `no` |
+| `is_sse` | `True` | `False` | `False` |
+| provider | — | `gemini-3.5-flash-lite` | `groq` |
+
+- **Match flags:** groq↔prod=`False` · groq↔gemini=`True` · gemini↔prod=`False` (rating-only: gr↔prod=`False` · gr↔gem=`True`)
+- **Groq reasoning:** Voyageur Quest is a conventional for-profit wilderness tour company, not a nonprofit, cooperative, or community association, thus failing the governance gate for Solidarity Economy alignment.
+- **Tavily hosts:** alignable.com, voyageuroutfitting.com, voyageurquest.com (4492 chars)
+
+## Job 6: `96f648a9-fe36-4f6f-8118-0212deb1f98a` (batch B)
+
+- **Title:** Administrative Assistant
+- **Org:** Toronto Wildlife Centre (org_type=`None`)
+- **Baseline quality (prior):** placeholder
+
+| Field | Prod | Gemini+Tavily | Groq+Tavily |
+|-------|------|---------------|-------------|
+| `sse_rating` | `strong_yes` | `strong_yes` | `strong_yes` |
+| `is_sse` | `True` | `True` | `True` |
+| provider | — | `gemini-3.5-flash-lite` | `groq` |
+
+- **Match flags:** groq↔prod=`True` · groq↔gemini=`True` · gemini↔prod=`True` (rating-only: gr↔prod=`True` · gr↔gem=`True`)
+- **Groq reasoning:** Toronto Wildlife Centre is a registered charity with a clear mission to provide rescue, medical care, and rehabilitation to sick, injured, and orphaned native wildlife. The role of Administrative Assistant contributes to social/community/environmental good and has transparent compensation.
+- **Tavily hosts:** canada.ca, iaac-aeic.gc.ca, newswire.ca, torontowildlifecentre.com, urbantoronto.ca (4494 chars)
+
+## Job 7: `fb4a51bc-f3d0-4752-919d-cb52cad70d0e` (batch B)
+
+- **Title:** Good Food and Community
+- **Org:** Persephone Market Garden (org_type=`None`)
+- **Baseline quality (prior):** placeholder
+
+| Field | Prod | Gemini+Tavily | Groq+Tavily |
+|-------|------|---------------|-------------|
+| `sse_rating` | `weak_yes` | `no` | `no` |
+| `is_sse` | `True` | `False` | `False` |
+| provider | — | `gemini-3.6-flash` | `groq` |
+
+- **Match flags:** groq↔prod=`False` · groq↔gemini=`True` · gemini↔prod=`False` (rating-only: gr↔prod=`False` · gr↔gem=`True`)
+- **Groq reasoning:** The employer, Persephone Market Garden, is a private commercial farm without evidence of nonprofit or cooperative governance, and thus does not meet the governance gate for a Yes rating.
+- **Tavily hosts:** brucepeninsulapress.com, persephonemarketgarden.ca (2998 chars)
+
+## Job 8: `279e6095-d080-4a54-92c8-39b4f41284dd` (batch B)
+
+- **Title:** Field and Community Biologist
+- **Org:** Turtle Guardians (of The Land Between charity) (org_type=`nonprofit`)
+- **Baseline quality (prior):** placeholder
+
+| Field | Prod | Gemini+Tavily | Groq+Tavily |
+|-------|------|---------------|-------------|
+| `sse_rating` | `no` | `no` | `no` |
+| `is_sse` | `True` | `False` | `False` |
+| provider | — | `gemini-3.6-flash` | `groq` |
+
+- **Match flags:** groq↔prod=`False` · groq↔gemini=`True` · gemini↔prod=`False` (rating-only: gr↔prod=`True` · gr↔gem=`True`)
+- **Groq reasoning:** The posting lacks transparent compensation, with salary listed as N/A, and does not explicitly disclose the role as volunteer or internship.
+- **Tavily hosts:** kawarthanow.com, linkedin.com, thelandbetween.ca, youtube.com (4499 chars)
+
+## Job 9: `2d432887-86be-4527-b5a4-e2226ed5bebd` (batch B)
+
+- **Title:** Urban forestry, ecology, arboriculture, environmental science
+- **Org:** City of Mississauga (org_type=`government`)
+- **Baseline quality (prior):** placeholder
+
+| Field | Prod | Gemini+Tavily | Groq+Tavily |
+|-------|------|---------------|-------------|
+| `sse_rating` | `strong_yes` | `no` | `no` |
+| `is_sse` | `False` | `False` | `False` |
+| provider | — | `gemini-3.6-flash` | `groq` |
+
+- **Match flags:** groq↔prod=`False` · groq↔gemini=`True` · gemini↔prod=`False` (rating-only: gr↔prod=`False` · gr↔gem=`True`)
+- **Groq reasoning:** The employer is the City of Mississauga, a government/public-sector organization, which automatically triggers a 'no' rating.
+- **Tavily hosts:** ca.linkedin.com, en.wikipedia.org, mississauga.ca (4500 chars)
+
+## Job 10: `8ff9113e-d388-4139-ae75-386f89276598` (batch B)
+
+- **Title:** HR & Admin Coordinator
+- **Org:** Toronto Renewable Energy Co-operative / Tapestry Community Capital (org_type=`None`)
+- **Baseline quality (prior):** placeholder
+
+| Field | Prod | Gemini+Tavily | Groq+Tavily |
+|-------|------|---------------|-------------|
+| `sse_rating` | `strong_yes` | `strong_yes` | `strong_yes` |
+| `is_sse` | `True` | `True` | `True` |
+| provider | — | `gemini-3.6-flash` | `groq` |
+
+- **Match flags:** groq↔prod=`True` · groq↔gemini=`True` · gemini↔prod=`True` (rating-only: gr↔prod=`True` · gr↔gem=`True`)
+- **Groq reasoning:** TREC is a non-profit co-op with a clear social and environmental mission, prioritizing community-owned renewable energy. The role of HR & Admin Coordinator supports this mission and has transparent compensation.
+- **Tavily hosts:** ca.linkedin.com, mcconnellfoundation.ca, tapestrycapital.ca, trec.on.ca (4489 chars)
+
+## Failures / infra
+
+- None observed.
+
+Log: `/tmp/tavily_job_parity_10_groq_v2.log`
+JSON: `/Users/ry/code/wev/wev-scraper/scripts/tavily_job_parity_10_groq_v2.json`
+Script: `/Users/ry/code/wev/wev-scraper/scripts/tavily_job_parity_10_groq.py`
+

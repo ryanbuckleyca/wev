@@ -1,0 +1,1186 @@
+{
+  "generated_at": "2026-08-03T15:00:39.643004+00:00",
+  "mode": "tavily_always_force_grounding_gemini_first",
+  "dry_run": true,
+  "wrote_to_db": false,
+  "setup": {
+    "gemini_key_loaded": true,
+    "use_google_search_grounding": false,
+    "tavily_available": true,
+    "provider_chain": "gemini-3.6-flash \u2192 gemini-3.5-flash-lite \u2192 groq \u2192 cerebras",
+    "gemini_first": true
+  },
+  "sampling_note": "No rated jobs in last 7 days. Selected best available non-placeholder baselines (qualities=['strong', 'strong', 'strong', 'strong', 'strong']). Job sse_details had no explicit provider/model/grounding flags; real structured reasoning + must_haves used as proxy for older Gemini-grounded classifies.",
+  "sample_meta": {
+    "last_7d_count": 0,
+    "sampled": 39,
+    "baseline_note": "No rated jobs in last 7 days. Selected best available non-placeholder baselines (qualities=['strong', 'strong', 'strong', 'strong', 'strong']). Job sse_details had no explicit provider/model/grounding flags; real structured reasoning + must_haves used as proxy for older Gemini-grounded classifies.",
+    "picked_baseline": [
+      {
+        "id": "ba1492a7-32b8-46e4-bae2-ca5877cf5c83",
+        "organization": "The New Farm Centre For Climate Change",
+        "sse_rating": "strong_yes",
+        "score": 8,
+        "signals": [
+          "real_reasoning",
+          "long_reasoning",
+          "has_must_haves",
+          "has_nice_to_haves",
+          "has_classified_at",
+          "evidencey_reasoning"
+        ],
+        "quality": "strong"
+      },
+      {
+        "id": "3b2ae1df-f5ce-4a6c-9636-76ffcb14c903",
+        "organization": "Historic Saugeen M\u00e9tis",
+        "sse_rating": "strong_yes",
+        "score": 8,
+        "signals": [
+          "real_reasoning",
+          "long_reasoning",
+          "has_must_haves",
+          "has_nice_to_haves",
+          "has_classified_at",
+          "evidencey_reasoning"
+        ],
+        "quality": "strong"
+      },
+      {
+        "id": "352163a0-40a7-4b72-aecf-9a98035f334f",
+        "organization": "Georgian Bay Land Trust",
+        "sse_rating": "strong_yes",
+        "score": 8,
+        "signals": [
+          "real_reasoning",
+          "long_reasoning",
+          "has_must_haves",
+          "has_nice_to_haves",
+          "has_classified_at",
+          "evidencey_reasoning"
+        ],
+        "quality": "strong"
+      },
+      {
+        "id": "9bdba800-f5f3-4e5d-b04d-b94206381125",
+        "organization": "Toronto Island SUP (TISUP)",
+        "sse_rating": "weak_yes",
+        "score": 8,
+        "signals": [
+          "real_reasoning",
+          "long_reasoning",
+          "has_must_haves",
+          "has_nice_to_haves",
+          "has_classified_at",
+          "evidencey_reasoning"
+        ],
+        "quality": "strong"
+      },
+      {
+        "id": "afd79cf6-d699-4b59-86c4-68da2d3b28dc",
+        "organization": "Voyageur Quest",
+        "sse_rating": "weak_yes",
+        "score": 8,
+        "signals": [
+          "real_reasoning",
+          "long_reasoning",
+          "has_must_haves",
+          "has_nice_to_haves",
+          "has_classified_at",
+          "evidencey_reasoning"
+        ],
+        "quality": "strong"
+      }
+    ]
+  },
+  "headline": "**`sse_rating` 3/5 (60%)** \u00b7 **`is_sse` 3/5 (60%)** \u00b7 **both 3/5 (60%)** \u00b7 `type` N/A (job path). Gemini completions: 5/5. Errors: 0. Labels: {'agree': 3, 'improvement_stricter_for_profit': 2}.",
+  "match_rates": {
+    "n": 5,
+    "sse_rating_matches": 3,
+    "sse_rating_pct": "60",
+    "is_sse_matches": 3,
+    "is_sse_pct": "60",
+    "both_matches": 3,
+    "both_pct": "60",
+    "type_note": "N/A for job SSE classify (org-assessment field). Linked organizations.type shown for context only; not re-assessed.",
+    "gemini_provider_successes": 5
+  },
+  "verdict": "Tavily-always + Gemini-first matched old Gemini-grounded prod on 3/5 clear nonprofit/community `strong_yes` jobs (New Farm, Historic Saugeen M\u00e9tis, Georgian Bay Land Trust) with employer-correct Tavily hosts (e.g. gblt.org, saugeenmetis.com, regenerationcanada.org). The 2 mismatches are both `weak_yes`\u2192`no` on commercial outdoor operators (TISUP, Voyageur Quest): old Gemini paraphrased mission soft-Yes while Tavily+Gemini now enforces the for-profit gate (Voyageur already labeled for-profit in old reasoning; org row is `no`). That is stricter parity with the rubric, not evidence loss. `USE_GOOGLE_SEARCH_GROUNDING` is off (expected). Verdict: Tavily replaces Gemini-native Search grounding without hurting clear SSE Yes cases and is stricter/more consistent on borderline for-profits.",
+  "evidence_note": "Tavily returned hosts across the sample: brucecounty.on.ca, clementine-sapphire-3hnw.squarespace.com, facebook.com, gblt.org, gbtownship.ca, hdp-ca-prod-app-saug-engage-files.s3.ca-central-1.amazonaws.com, instagram.com, linkedin.com, myparrysoundnow.com, onthebaymagazine.com, pivotandgrow.com, planthebruce.ca, regenerationcanada.org, saugeenmetis.com, toronto.ca, torontoisland.com, torontoislandsup.com, tripadvisor.com, voyageuroutfitting.com, voyageurquest.com. Old Gemini-grounded prod reasoning typically paraphrases employer identity (charity/nonprofit/for-profit) without listing source URLs, so host overlap cannot be scored directly \u2014 compare whether Tavily evidence supports the same employer-structure claims the old reasoning made.",
+  "divergence_labels": {
+    "agree": 3,
+    "improvement_stricter_for_profit": 2
+  },
+  "providers_used": [
+    "gemini-3.6-flash",
+    "gemini-3.6-flash",
+    "gemini-3.6-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash-lite"
+  ],
+  "failures": [],
+  "jobs": [
+    {
+      "job_id": "ba1492a7-32b8-46e4-bae2-ca5877cf5c83",
+      "title": "Communications and Design Coordinator",
+      "organization": "The New Farm Centre For Climate Change",
+      "prod": {
+        "id": "ba1492a7-32b8-46e4-bae2-ca5877cf5c83",
+        "job_title": "Communications and Design Coordinator",
+        "organization": "The New Farm Centre For Climate Change",
+        "organization_id": 1012,
+        "location": "Creemore, Ontario / Hybrid (map)",
+        "municipality": "Creemore",
+        "province": "ON",
+        "wage": "$32 - $40",
+        "listing_url": "https://www.goodwork.ca/jobs/communications-marketing-and-graphic-design-jobs-wordpress-website-development-75495",
+        "date_posted": "2026-03-07",
+        "scraped_at": "2026-03-07T09:31:32.479898+00:00",
+        "language": "en",
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": null,
+        "org_sse_rating": null,
+        "org_is_sse": false,
+        "summary": "The Communications and Design Coordinator develops compelling visuals and written materials to tell the story of regenerative agriculture and its impact on communities and ecosystems.",
+        "description_len": 5789,
+        "description_preview": "Job Opportunity Position: Communications and Design Coordinator Organization: The New Farm Centre For Climate Change Location: Creemore, Ontario / Hybrid (map) The New Farm Centre seeks a creative and strategic Communications and Design Coordinator to help tell the story of regenerative agriculture and its impact on our communities and ecosystems. This is a meaningful opportunity to communicate th",
+        "baseline_quality": {
+          "score": 8,
+          "signals": [
+            "real_reasoning",
+            "long_reasoning",
+            "has_must_haves",
+            "has_nice_to_haves",
+            "has_classified_at",
+            "evidencey_reasoning"
+          ],
+          "quality": "strong"
+        },
+        "sse_details": {
+          "confidence": 0.95,
+          "reasoning": "The New Farm Centre is a registered charity with a clear mission focused on environmental and social good through regenerative agriculture. The role directly contributes to communicating this mission and supporting resilient food systems. Compensation is transparently stated, job expectations are clear, and the organization expresses a commitment to equity and justice. Several 'nice-to-haves' are met, including a focus on cooperation and a stated mission reinvestment through their charitable work. No automatic 'no' flags were triggered.",
+          "must_haves_met": [
+            "Clear purpose beyond profit - mission prioritizes people/community/planet",
+            "Impact described intentionally - not as afterthought or greenwashing",
+            "Role contributes to social/community/environmental good",
+            "Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront (including 'Volunteer' as salary)",
+            "Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)"
+          ],
+          "nice_to_haves_met": [
+            "Solidarity-driven culture - cooperation, mutual support, 'we'/'collective'/'community' language",
+            "Governance model stated - nonprofit, cooperative, mutual, social enterprise",
+            "Mission reinvestment - surplus goes to people/community/mission, not shareholders"
+          ],
+          "flags": [],
+          "classified_at": "2026-03-07T22:00:19.674757+00:00",
+          "provider": null,
+          "model": null,
+          "uses_google_search_grounding": null
+        }
+      },
+      "rerun": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": null,
+        "confidence": 0.95,
+        "reasoning": "The New Farm Centre is a registered charity dedicated to advancing regenerative agriculture, climate resilience, and food justice. As a non-profit that donates most of its harvest to food security organizations, it strongly aligns with Solidarity Economy principles. The role provides transparent compensation with benefits and directly supports public education and environmental advocacy.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Impact described intentionally",
+          "Role contributes to social/community/environmental good",
+          "Transparent compensation stated ($32 - $40/hr)",
+          "Clear job expectations and hours"
+        ],
+        "nice_to_haves_met": [
+          "Governance model stated (registered charity / non-profit)",
+          "Mission reinvestment (donates majority of produce to food security partners)",
+          "Investment in workers (GRSP matching, vacation pay)",
+          "Solidarity-driven culture and commitment to equity"
+        ],
+        "flags": [],
+        "classified_at": "2026-08-03T14:58:57.148210+00:00",
+        "provider": "gemini-3.6-flash",
+        "listing_url": "https://www.goodwork.ca/jobs/communications-marketing-and-graphic-design-jobs-wordpress-website-development-75495",
+        "search_query": "\"The New Farm Centre For Climate Change\" \"Creemore, Ontario / Hybrid (map)\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.linkedin.com/company/the-new-farm-centre",
+          "https://onthebaymagazine.com/a-new-season-at-the-new-farm",
+          "https://www.instagram.com/thenewfarm?hl=en",
+          "https://pivotandgrow.com/the-new-farm",
+          "https://regenerationcanada.org/en/map"
+        ],
+        "tavily_hosts": [
+          "instagram.com",
+          "linkedin.com",
+          "onthebaymagazine.com",
+          "pivotandgrow.com",
+          "regenerationcanada.org"
+        ],
+        "tavily_evidence_chars": 4492,
+        "elapsed_s": 26.67,
+        "error": null
+      },
+      "compare": {
+        "stable": {
+          "sse_rating": {
+            "match": true,
+            "prod": "strong_yes",
+            "rerun": "strong_yes"
+          },
+          "is_sse": {
+            "match": true,
+            "prod": true,
+            "rerun": true
+          }
+        },
+        "narrative": {
+          "confidence": {
+            "match": true,
+            "abs_diff": 0.0,
+            "prod": 0.95,
+            "rerun": 0.95
+          },
+          "reasoning": {
+            "match": false,
+            "prod": "The New Farm Centre is a registered charity with a clear mission focused on environmental and social good through regenerative agriculture. The role directly contributes to communicating this mission and supporting resilient food systems. Compensation is transparently stated, job expectations are clear, and the organization expresses a commitment to equity and justice. Several 'nice-to-haves' are met, including a focus on cooperation and a stated mission reinvestment through their charitable work. No automatic 'no' flags were triggered.",
+            "rerun": "The New Farm Centre is a registered charity dedicated to advancing regenerative agriculture, climate resilience, and food justice. As a non-profit that donates most of its harvest to food security organizations, it strongly aligns with Solidarity Economy principles. The role provides transparent compensation with benefits and directly supports public education and environmental advocacy."
+          },
+          "must_haves_met": {
+            "exact_match": false,
+            "overlap": [
+              "Role contributes to social/community/environmental good"
+            ],
+            "prod_only": [
+              "Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)",
+              "Clear purpose beyond profit - mission prioritizes people/community/planet",
+              "Impact described intentionally - not as afterthought or greenwashing",
+              "Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront (including 'Volunteer' as salary)"
+            ],
+            "rerun_only": [
+              "Clear job expectations and hours",
+              "Clear purpose beyond profit",
+              "Impact described intentionally",
+              "Transparent compensation stated ($32 - $40/hr)"
+            ],
+            "prod": [
+              "Clear purpose beyond profit - mission prioritizes people/community/planet",
+              "Impact described intentionally - not as afterthought or greenwashing",
+              "Role contributes to social/community/environmental good",
+              "Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront (including 'Volunteer' as salary)",
+              "Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)"
+            ],
+            "rerun": [
+              "Clear purpose beyond profit",
+              "Impact described intentionally",
+              "Role contributes to social/community/environmental good",
+              "Transparent compensation stated ($32 - $40/hr)",
+              "Clear job expectations and hours"
+            ]
+          },
+          "nice_to_haves_met": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "Governance model stated - nonprofit, cooperative, mutual, social enterprise",
+              "Mission reinvestment - surplus goes to people/community/mission, not shareholders",
+              "Solidarity-driven culture - cooperation, mutual support, 'we'/'collective'/'community' language"
+            ],
+            "rerun_only": [
+              "Governance model stated (registered charity / non-profit)",
+              "Investment in workers (GRSP matching, vacation pay)",
+              "Mission reinvestment (donates majority of produce to food security partners)",
+              "Solidarity-driven culture and commitment to equity"
+            ],
+            "prod": [
+              "Solidarity-driven culture - cooperation, mutual support, 'we'/'collective'/'community' language",
+              "Governance model stated - nonprofit, cooperative, mutual, social enterprise",
+              "Mission reinvestment - surplus goes to people/community/mission, not shareholders"
+            ],
+            "rerun": [
+              "Governance model stated (registered charity / non-profit)",
+              "Mission reinvestment (donates majority of produce to food security partners)",
+              "Investment in workers (GRSP matching, vacation pay)",
+              "Solidarity-driven culture and commitment to equity"
+            ]
+          },
+          "flags": {
+            "exact_match": true,
+            "overlap": [],
+            "prod_only": [],
+            "rerun_only": [],
+            "prod": [],
+            "rerun": []
+          }
+        },
+        "stable_all_match": true,
+        "type": {
+          "note": "Job SSE classify does not emit `type` (org-assessment field). Prod value below is linked organizations.type for context only.",
+          "prod_org_type": null,
+          "rerun_type": null,
+          "match": null
+        }
+      },
+      "divergence_label": "agree",
+      "diff_notes": [
+        "Divergence label: **agree**",
+        "Reasoning text drifted (expected for narrative fields)",
+        "must_haves set drift (prod_only=4, rerun_only=4)",
+        "Tavily hosts: instagram.com, linkedin.com, onthebaymagazine.com, pivotandgrow.com, regenerationcanada.org",
+        "Old reasoning cited no URLs (typical of Gemini grounding prose that paraphrases search without linking).",
+        "Structural fields matched",
+        "Baseline quality=strong score=8 signals=['real_reasoning', 'long_reasoning', 'has_must_haves', 'has_nice_to_haves', 'has_classified_at', 'evidencey_reasoning']"
+      ]
+    },
+    {
+      "job_id": "3b2ae1df-f5ce-4a6c-9636-76ffcb14c903",
+      "title": "Lands, Waters and Consultation Coordinator",
+      "organization": "Historic Saugeen M\u00e9tis",
+      "prod": {
+        "id": "3b2ae1df-f5ce-4a6c-9636-76ffcb14c903",
+        "job_title": "Lands, Waters and Consultation Coordinator",
+        "organization": "Historic Saugeen M\u00e9tis",
+        "organization_id": 468,
+        "location": "Southampton, Bruce County, Ontario",
+        "municipality": "Southampton",
+        "province": "ON",
+        "wage": "N/A",
+        "listing_url": "https://www.goodwork.ca/jobs/land-and-water-stewardship-environmental-studies-environmental-science-and-natural-resources-jobs-75494",
+        "date_posted": "2026-03-06",
+        "scraped_at": "2026-03-07T09:31:33.044441+00:00",
+        "language": "en",
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": "other",
+        "org_sse_rating": "weak_yes",
+        "org_is_sse": true,
+        "summary": "The Lands, Waters and Consultation Coordinator plays a key role in advancing HSM's environmental stewardship, regulatory review, consultation engagement, and emerging monitoring initiatives.",
+        "description_len": 4346,
+        "description_preview": "Land, water and environmental stewardship Position: Lands, Waters and Consultation Coordinator Organization: Historic Saugeen M\u00e9tis Location: Southampton, Bruce County, Ontario Term: 12-month contract with possibility of extension Hours: 32.5 hours/week (Mon-Fri, 9:00am-4:00pm) with possibility of a 4-day work week Closing Date: Thursday, March 19th, 2026 at 4:00pm EST Historic Saugeen M\u00e9tis \u2014 An ",
+        "baseline_quality": {
+          "score": 8,
+          "signals": [
+            "real_reasoning",
+            "long_reasoning",
+            "has_must_haves",
+            "has_nice_to_haves",
+            "has_classified_at",
+            "evidencey_reasoning"
+          ],
+          "quality": "strong"
+        },
+        "sse_details": {
+          "confidence": 0.95,
+          "reasoning": "The job posting for the Historic Saugeen M\u00e9tis, an independent, historic M\u00e9tis community, strongly aligns with Solidarity Economy (SSE) principles. All 'must-have' criteria are clearly met: the organization has a clear purpose beyond profit focused on people, community, and planet; the impact is intentionally described through environmental stewardship and community interests; the role directly contributes to social, community, and environmental good; compensation is transparently stated as an hourly rate; and job expectations regarding hours and contract type are clear. There are no automatic 'no' flags. Several 'nice-to-have' criteria are also met, reinforcing the 'strong_yes' rating, particularly the community-based governance model and investment in professional development.",
+          "must_haves_met": [
+            "1. Clear purpose beyond profit - mission prioritizes people/community/planet",
+            "2. Impact described intentionally - not as afterthought or greenwashing",
+            "3. Role contributes to social/community/environmental good",
+            "4. Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront (including \"Volunteer\" as salary)",
+            "5. Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)"
+          ],
+          "nice_to_haves_met": [
+            "6. Solidarity-driven culture - cooperation, mutual support, \"we\"/\"collective\"/\"community\" language",
+            "7. Participatory governance - workers/members have voice in decisions (implied by 'Council' in a community organization)",
+            "8. Governance model stated - nonprofit, cooperative, mutual, social enterprise (described as an 'independent, historic M\u00e9tis community')",
+            "9. Investment in workers/volunteers - training, mentorship, learning opportunities, professional dev",
+            "10. Mission reinvestment - surplus goes to people/community/mission, not shareholders (inferred from the nature of a community organization)"
+          ],
+          "flags": [
+            "The extent of participatory governance for workers beyond reporting to Council is not explicitly detailed, but implied by the community's governance structure.",
+            "Mission reinvestment is inferred from the nature of a community-based organization rather than explicitly stated in terms of surplus allocation."
+          ],
+          "classified_at": "2026-03-07T21:49:36.651660+00:00",
+          "provider": null,
+          "model": null,
+          "uses_google_search_grounding": null
+        }
+      },
+      "rerun": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": null,
+        "confidence": 0.95,
+        "reasoning": "Historic Saugeen M\u00e9tis is an elected, rights-bearing Indigenous community organization dedicated to community governance, culture, and lands stewardship. The role directly advances environmental protection and Indigenous rights with clear, transparent compensation ($37\u2013$42/hr) and strong worker investments including flexible hours and training.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Intentional impact description",
+          "Role contributes to community and environmental good",
+          "Transparent compensation ($37-$42/hr)",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Solidarity-driven culture",
+          "Participatory Indigenous governance model",
+          "Investment in worker professional development",
+          "Flexible working arrangements"
+        ],
+        "flags": [],
+        "classified_at": "2026-08-03T14:59:24.875135+00:00",
+        "provider": "gemini-3.6-flash",
+        "listing_url": "https://www.goodwork.ca/jobs/land-and-water-stewardship-environmental-studies-environmental-science-and-natural-resources-jobs-75494",
+        "search_query": "\"Historic Saugeen M\u00e9tis\" \"Southampton, Bruce County, Ontario\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://hdp-ca-prod-app-saug-engage-files.s3.ca-central-1.amazonaws.com/3717/4975/5324/Saugeen_Shores_CHMP.pdf",
+          "https://www.brucecounty.on.ca/sites/default/files/10.04.18_executive_committee_agenda.pdf",
+          "https://www.saugeenmetis.com/governance",
+          "https://www.planthebruce.ca/heritage/widgets/48342/videos/4440"
+        ],
+        "tavily_hosts": [
+          "brucecounty.on.ca",
+          "hdp-ca-prod-app-saug-engage-files.s3.ca-central-1.amazonaws.com",
+          "planthebruce.ca",
+          "saugeenmetis.com"
+        ],
+        "tavily_evidence_chars": 3744,
+        "elapsed_s": 11.16,
+        "error": null
+      },
+      "compare": {
+        "stable": {
+          "sse_rating": {
+            "match": true,
+            "prod": "strong_yes",
+            "rerun": "strong_yes"
+          },
+          "is_sse": {
+            "match": true,
+            "prod": true,
+            "rerun": true
+          }
+        },
+        "narrative": {
+          "confidence": {
+            "match": true,
+            "abs_diff": 0.0,
+            "prod": 0.95,
+            "rerun": 0.95
+          },
+          "reasoning": {
+            "match": false,
+            "prod": "The job posting for the Historic Saugeen M\u00e9tis, an independent, historic M\u00e9tis community, strongly aligns with Solidarity Economy (SSE) principles. All 'must-have' criteria are clearly met: the organization has a clear purpose beyond profit focused on people, community, and planet; the impact is intentionally described through environmental stewardship and community interests; the role directly contributes to social, community, and environmental good; compensation is transparently stated as an hourly rate; and job expectations regarding hours and contract type are clear. There are no automatic 'no' flags. Several 'nice-to-have' criteria are also met, reinforcing the 'strong_yes' rating, particularly the community-based governance model and investment in professional development.",
+            "rerun": "Historic Saugeen M\u00e9tis is an elected, rights-bearing Indigenous community organization dedicated to community governance, culture, and lands stewardship. The role directly advances environmental protection and Indigenous rights with clear, transparent compensation ($37\u2013$42/hr) and strong worker investments including flexible hours and training."
+          },
+          "must_haves_met": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "1. Clear purpose beyond profit - mission prioritizes people/community/planet",
+              "2. Impact described intentionally - not as afterthought or greenwashing",
+              "3. Role contributes to social/community/environmental good",
+              "4. Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront (including \"Volunteer\" as salary)",
+              "5. Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)"
+            ],
+            "rerun_only": [
+              "Clear job expectations",
+              "Clear purpose beyond profit",
+              "Intentional impact description",
+              "Role contributes to community and environmental good",
+              "Transparent compensation ($37-$42/hr)"
+            ],
+            "prod": [
+              "1. Clear purpose beyond profit - mission prioritizes people/community/planet",
+              "2. Impact described intentionally - not as afterthought or greenwashing",
+              "3. Role contributes to social/community/environmental good",
+              "4. Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront (including \"Volunteer\" as salary)",
+              "5. Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)"
+            ],
+            "rerun": [
+              "Clear purpose beyond profit",
+              "Intentional impact description",
+              "Role contributes to community and environmental good",
+              "Transparent compensation ($37-$42/hr)",
+              "Clear job expectations"
+            ]
+          },
+          "nice_to_haves_met": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "10. Mission reinvestment - surplus goes to people/community/mission, not shareholders (inferred from the nature of a community organization)",
+              "6. Solidarity-driven culture - cooperation, mutual support, \"we\"/\"collective\"/\"community\" language",
+              "7. Participatory governance - workers/members have voice in decisions (implied by 'Council' in a community organization)",
+              "8. Governance model stated - nonprofit, cooperative, mutual, social enterprise (described as an 'independent, historic M\u00e9tis community')",
+              "9. Investment in workers/volunteers - training, mentorship, learning opportunities, professional dev"
+            ],
+            "rerun_only": [
+              "Flexible working arrangements",
+              "Investment in worker professional development",
+              "Participatory Indigenous governance model",
+              "Solidarity-driven culture"
+            ],
+            "prod": [
+              "6. Solidarity-driven culture - cooperation, mutual support, \"we\"/\"collective\"/\"community\" language",
+              "7. Participatory governance - workers/members have voice in decisions (implied by 'Council' in a community organization)",
+              "8. Governance model stated - nonprofit, cooperative, mutual, social enterprise (described as an 'independent, historic M\u00e9tis community')",
+              "9. Investment in workers/volunteers - training, mentorship, learning opportunities, professional dev",
+              "10. Mission reinvestment - surplus goes to people/community/mission, not shareholders (inferred from the nature of a community organization)"
+            ],
+            "rerun": [
+              "Solidarity-driven culture",
+              "Participatory Indigenous governance model",
+              "Investment in worker professional development",
+              "Flexible working arrangements"
+            ]
+          },
+          "flags": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "Mission reinvestment is inferred from the nature of a community-based organization rather than explicitly stated in terms of surplus allocation.",
+              "The extent of participatory governance for workers beyond reporting to Council is not explicitly detailed, but implied by the community's governance structure."
+            ],
+            "rerun_only": [],
+            "prod": [
+              "The extent of participatory governance for workers beyond reporting to Council is not explicitly detailed, but implied by the community's governance structure.",
+              "Mission reinvestment is inferred from the nature of a community-based organization rather than explicitly stated in terms of surplus allocation."
+            ],
+            "rerun": []
+          }
+        },
+        "stable_all_match": true,
+        "type": {
+          "note": "Job SSE classify does not emit `type` (org-assessment field). Prod value below is linked organizations.type for context only.",
+          "prod_org_type": "other",
+          "rerun_type": null,
+          "match": null
+        }
+      },
+      "divergence_label": "agree",
+      "diff_notes": [
+        "Divergence label: **agree**",
+        "Reasoning text drifted (expected for narrative fields)",
+        "must_haves set drift (prod_only=5, rerun_only=5)",
+        "Tavily hosts: brucecounty.on.ca, hdp-ca-prod-app-saug-engage-files.s3.ca-central-1.amazonaws.com, planthebruce.ca, saugeenmetis.com",
+        "Old reasoning cited no URLs (typical of Gemini grounding prose that paraphrases search without linking).",
+        "Structural fields matched",
+        "Baseline quality=strong score=8 signals=['real_reasoning', 'long_reasoning', 'has_must_haves', 'has_nice_to_haves', 'has_classified_at', 'evidencey_reasoning']"
+      ]
+    },
+    {
+      "job_id": "352163a0-40a7-4b72-aecf-9a98035f334f",
+      "title": "Summer jobs, Student jobs",
+      "organization": "Georgian Bay Land Trust",
+      "prod": {
+        "id": "352163a0-40a7-4b72-aecf-9a98035f334f",
+        "job_title": "Summer jobs, Student jobs",
+        "organization": "Georgian Bay Land Trust",
+        "organization_id": 410,
+        "location": "Eastern Georgian Bay (Midland, Parry Sound, etc.)",
+        "municipality": "Midland",
+        "province": "ON",
+        "wage": "$21",
+        "listing_url": "https://www.goodwork.ca/jobs/communications-marketing-community-events-representative-spokesperson-and-ambassador-jobs-75434",
+        "date_posted": "2026-03-04",
+        "scraped_at": "2026-03-07T09:31:35.362496+00:00",
+        "language": "en",
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": "nonprofit",
+        "org_sse_rating": "strong_yes",
+        "org_is_sse": true,
+        "summary": "Summer Outreach Student represents Georgian Bay Land Trust at community events and supports fundraising and communications activities.",
+        "description_len": 3697,
+        "description_preview": "Summer jobs, Student jobs Summer Outreach Student Job Description 2026 Title: Summer Outreach Student Type: age 30 & under / summer Reports To: Communications Director Organization: Georgian Bay Land Trust Location: Eastern Georgian Bay (Midland, Parry Sound, etc.) Duration: approximately 16 weeks (35 - 40 hours/week) Overview: The Georgian Bay Land Trust (GBLT) Outreach Students will be responsib",
+        "baseline_quality": {
+          "score": 8,
+          "signals": [
+            "real_reasoning",
+            "long_reasoning",
+            "has_must_haves",
+            "has_nice_to_haves",
+            "has_classified_at",
+            "evidencey_reasoning"
+          ],
+          "quality": "strong"
+        },
+        "sse_details": {
+          "confidence": 0.95,
+          "reasoning": "The Georgian Bay Land Trust is a registered non-profit charity with a clear mission to preserve the environment of Eastern Georgian Bay and promote its appreciation for public benefit. This directly aligns with SSE principles by prioritizing the planet and community over profit. The job role, 'Summer Outreach Student,' directly contributes to this mission through community engagement, fundraising support, and potential direct conservation work, demonstrating intentional impact beyond profit. Compensation is transparently stated at $21/hr, and job expectations regarding hours and duration are clear. As a non-profit land trust, its governance model inherently supports mission reinvestment, with any surplus going back into its conservation and community initiatives rather than shareholders. The organization also explicitly mentions being 'volunteer-oriented' and actively engaging 'communities' and 'stakeholders' in its mission, indicating a solidarity-driven culture focused on collective good.",
+          "must_haves_met": [
+            "Clear purpose beyond profit - mission prioritizes people/community/planet",
+            "Impact described intentionally - not as afterthought or greenwashing",
+            "Role contributes to social/community/environmental good",
+            "Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront",
+            "Clear job expectations - hours, contract type, no unpaid trials"
+          ],
+          "nice_to_haves_met": [
+            "Solidarity-driven culture - cooperation, mutual support, \"we\"/\"collective\"/\"community\" language",
+            "Governance model stated - nonprofit, cooperative, mutual, social enterprise",
+            "Mission reinvestment - surplus goes to people/community/mission, not shareholders"
+          ],
+          "flags": [],
+          "classified_at": "2026-03-07T21:49:15.888809+00:00",
+          "provider": null,
+          "model": null,
+          "uses_google_search_grounding": null
+        }
+      },
+      "rerun": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": null,
+        "confidence": 0.95,
+        "reasoning": "The Georgian Bay Land Trust is a registered Canadian charity dedicated to protecting wilderness lands and species along eastern Georgian Bay. This role directly supports its mission through community outreach, environmental education, and public engagement. The position offers transparent compensation ($21/hour) and clear job expectations for a seasonal student role.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Impact described intentionally",
+          "Role contributes to environmental good",
+          "Transparent compensation ($21/hr)",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Nonprofit / registered charity governance model",
+          "Mission reinvestment",
+          "Solidarity-driven community engagement"
+        ],
+        "flags": [],
+        "classified_at": "2026-08-03T14:59:52.866245+00:00",
+        "provider": "gemini-3.6-flash",
+        "listing_url": "https://www.goodwork.ca/jobs/communications-marketing-community-events-representative-spokesperson-and-ambassador-jobs-75434",
+        "search_query": "\"Georgian Bay Land Trust\" \"Eastern Georgian Bay (Midland, Parry Sound, etc.)\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.myparrysoundnow.com/70651/news/georgian-bay-land-trust-continuing-to-protect-regions-unique-environment",
+          "https://clementine-sapphire-3hnw.squarespace.com/s/Visitors_Guide_2025.pdf",
+          "https://www.gblt.org",
+          "https://www.gbtownship.ca/living-here/environment-and-sustainability/environmental-and-sustainability-organizations",
+          "https://www.facebook.com/GeorgianBayLandTrust"
+        ],
+        "tavily_hosts": [
+          "clementine-sapphire-3hnw.squarespace.com",
+          "facebook.com",
+          "gblt.org",
+          "gbtownship.ca",
+          "myparrysoundnow.com"
+        ],
+        "tavily_evidence_chars": 2877,
+        "elapsed_s": 10.28,
+        "error": null
+      },
+      "compare": {
+        "stable": {
+          "sse_rating": {
+            "match": true,
+            "prod": "strong_yes",
+            "rerun": "strong_yes"
+          },
+          "is_sse": {
+            "match": true,
+            "prod": true,
+            "rerun": true
+          }
+        },
+        "narrative": {
+          "confidence": {
+            "match": true,
+            "abs_diff": 0.0,
+            "prod": 0.95,
+            "rerun": 0.95
+          },
+          "reasoning": {
+            "match": false,
+            "prod": "The Georgian Bay Land Trust is a registered non-profit charity with a clear mission to preserve the environment of Eastern Georgian Bay and promote its appreciation for public benefit. This directly aligns with SSE principles by prioritizing the planet and community over profit. The job role, 'Summer Outreach Student,' directly contributes to this mission through community engagement, fundraising support, and potential direct conservation work, demonstrating intentional impact beyond profit. Compensation is transparently stated at $21/hr, and job expectations regarding hours and duration are clear. As a non-profit land trust, its governance model inherently supports mission reinvestment, with any surplus going back into its conservation and community initiatives rather than shareholders. The organization also explicitly mentions being 'volunteer-oriented' and actively engaging 'communities' and 'stakeholders' in its mission, indicating a solidarity-driven culture focused on collective good.",
+            "rerun": "The Georgian Bay Land Trust is a registered Canadian charity dedicated to protecting wilderness lands and species along eastern Georgian Bay. This role directly supports its mission through community outreach, environmental education, and public engagement. The position offers transparent compensation ($21/hour) and clear job expectations for a seasonal student role."
+          },
+          "must_haves_met": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "Clear job expectations - hours, contract type, no unpaid trials",
+              "Clear purpose beyond profit - mission prioritizes people/community/planet",
+              "Impact described intentionally - not as afterthought or greenwashing",
+              "Role contributes to social/community/environmental good",
+              "Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront"
+            ],
+            "rerun_only": [
+              "Clear job expectations",
+              "Clear purpose beyond profit",
+              "Impact described intentionally",
+              "Role contributes to environmental good",
+              "Transparent compensation ($21/hr)"
+            ],
+            "prod": [
+              "Clear purpose beyond profit - mission prioritizes people/community/planet",
+              "Impact described intentionally - not as afterthought or greenwashing",
+              "Role contributes to social/community/environmental good",
+              "Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront",
+              "Clear job expectations - hours, contract type, no unpaid trials"
+            ],
+            "rerun": [
+              "Clear purpose beyond profit",
+              "Impact described intentionally",
+              "Role contributes to environmental good",
+              "Transparent compensation ($21/hr)",
+              "Clear job expectations"
+            ]
+          },
+          "nice_to_haves_met": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "Governance model stated - nonprofit, cooperative, mutual, social enterprise",
+              "Mission reinvestment - surplus goes to people/community/mission, not shareholders",
+              "Solidarity-driven culture - cooperation, mutual support, \"we\"/\"collective\"/\"community\" language"
+            ],
+            "rerun_only": [
+              "Mission reinvestment",
+              "Nonprofit / registered charity governance model",
+              "Solidarity-driven community engagement"
+            ],
+            "prod": [
+              "Solidarity-driven culture - cooperation, mutual support, \"we\"/\"collective\"/\"community\" language",
+              "Governance model stated - nonprofit, cooperative, mutual, social enterprise",
+              "Mission reinvestment - surplus goes to people/community/mission, not shareholders"
+            ],
+            "rerun": [
+              "Nonprofit / registered charity governance model",
+              "Mission reinvestment",
+              "Solidarity-driven community engagement"
+            ]
+          },
+          "flags": {
+            "exact_match": true,
+            "overlap": [],
+            "prod_only": [],
+            "rerun_only": [],
+            "prod": [],
+            "rerun": []
+          }
+        },
+        "stable_all_match": true,
+        "type": {
+          "note": "Job SSE classify does not emit `type` (org-assessment field). Prod value below is linked organizations.type for context only.",
+          "prod_org_type": "nonprofit",
+          "rerun_type": null,
+          "match": null
+        }
+      },
+      "divergence_label": "agree",
+      "diff_notes": [
+        "Divergence label: **agree**",
+        "Reasoning text drifted (expected for narrative fields)",
+        "must_haves set drift (prod_only=5, rerun_only=5)",
+        "Tavily hosts: clementine-sapphire-3hnw.squarespace.com, facebook.com, gblt.org, gbtownship.ca, myparrysoundnow.com",
+        "Old reasoning cited no URLs (typical of Gemini grounding prose that paraphrases search without linking).",
+        "Structural fields matched",
+        "Baseline quality=strong score=8 signals=['real_reasoning', 'long_reasoning', 'has_must_haves', 'has_nice_to_haves', 'has_classified_at', 'evidencey_reasoning']"
+      ]
+    },
+    {
+      "job_id": "9bdba800-f5f3-4e5d-b04d-b94206381125",
+      "title": "Toronto outdoors, Summer camps",
+      "organization": "Toronto Island SUP (TISUP)",
+      "prod": {
+        "id": "9bdba800-f5f3-4e5d-b04d-b94206381125",
+        "job_title": "Toronto outdoors, Summer camps",
+        "organization": "Toronto Island SUP (TISUP)",
+        "organization_id": 937,
+        "location": "Wards Island, Toronto Island ON",
+        "municipality": "Toronto",
+        "province": "ON",
+        "wage": "N/A",
+        "listing_url": "https://www.goodwork.ca/jobs/outdoor-recreation-and-summer-camp-director-jobs-75037",
+        "date_posted": "2026-03-04",
+        "scraped_at": "2026-03-07T09:31:35.928733+00:00",
+        "language": "en",
+        "sse_rating": "weak_yes",
+        "is_sse": true,
+        "type": null,
+        "org_sse_rating": null,
+        "org_is_sse": false,
+        "summary": "The Senior Commercial Manager leads the implementation of MSC's commercial strategy in Canada and promotes MSC certification to increase availability of certified products.",
+        "description_len": 6000,
+        "description_preview": "Toronto outdoors, Summer camps Hiring: Camp Director Camp: Toronto Island Kids Adventure Camp Employer: Toronto Island SUP (TISUP) Location: Wards Island, Toronto Island ON Also hiring: Summer Camp... Do you have 2+ years experience working with children/youth? Do you have experience with paddleboarding, kayaking, and swimming? Are you seeking a fulfilling role where you get to help build a camp p",
+        "baseline_quality": {
+          "score": 8,
+          "signals": [
+            "real_reasoning",
+            "long_reasoning",
+            "has_must_haves",
+            "has_nice_to_haves",
+            "has_classified_at",
+            "evidencey_reasoning"
+          ],
+          "quality": "strong"
+        },
+        "sse_details": {
+          "confidence": 0.8,
+          "reasoning": "The role focuses on a social and environmental purpose by providing outdoor education and community-building activities for children. The organization's mission appears to align with SSE principles, emphasizing character development and environmental awareness. However, the organizational structure and governance model are not explicitly stated, and compensation details are vague, falling into the 'discussed during interview' category rather than being transparently disclosed upfront. While volunteer work is not explicitly mentioned for this paid role, the lack of concrete salary information is a concern.",
+          "must_haves_met": [
+            "Clear purpose beyond profit - mission prioritizes people/community/planet",
+            "Impact described intentionally - not as afterthought or greenwashing",
+            "Role contributes to social/community/environmental good",
+            "Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)"
+          ],
+          "nice_to_haves_met": [
+            "Mission reinvestment - surplus goes to people/community/mission, not shareholders"
+          ],
+          "flags": [
+            "Salary is 'N/A' and compensation is described as 'competitive within the local outdoor recreation industry and is discussed during the interview process,' which lacks transparency.",
+            "The governance model of Toronto Island SUP is not specified."
+          ],
+          "classified_at": "2026-03-07T22:00:01.304889+00:00",
+          "provider": null,
+          "model": null,
+          "uses_google_search_grounding": null
+        }
+      },
+      "rerun": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "type": null,
+        "confidence": 0.95,
+        "reasoning": "Toronto Island SUP is a private, for-profit outdoor recreation business, which triggers an automatic 'no' flag under Solidarity Economy criteria despite its outdoor education and environmental focus. Additionally, compensation details are not disclosed upfront in the posting.",
+        "must_haves_met": [
+          "Role contributes to environmental and community education",
+          "Clear job expectations and commitment schedule"
+        ],
+        "nice_to_haves_met": [],
+        "flags": [
+          "Conventional for-profit employer",
+          "Undisclosed or vague compensation"
+        ],
+        "classified_at": "2026-08-03T15:00:19.718100+00:00",
+        "provider": "gemini-3.6-flash",
+        "listing_url": "https://www.goodwork.ca/jobs/outdoor-recreation-and-summer-camp-director-jobs-75037",
+        "search_query": "\"Toronto Island SUP (TISUP)\" \"Wards Island, Toronto Island ON\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.torontoislandsup.com",
+          "https://www.instagram.com/torontoislandsup?hl=en",
+          "https://www.tripadvisor.com/Attraction_Review-g155019-d6677780-Reviews-Toronto_Island_SUP-Toronto_Ontario.html",
+          "https://www.torontoisland.com",
+          "https://www.toronto.ca/explore-enjoy/toronto-island-ferries"
+        ],
+        "tavily_hosts": [
+          "instagram.com",
+          "toronto.ca",
+          "torontoisland.com",
+          "torontoislandsup.com",
+          "tripadvisor.com"
+        ],
+        "tavily_evidence_chars": 4129,
+        "elapsed_s": 10.24,
+        "error": null
+      },
+      "compare": {
+        "stable": {
+          "sse_rating": {
+            "match": false,
+            "prod": "weak_yes",
+            "rerun": "no"
+          },
+          "is_sse": {
+            "match": false,
+            "prod": true,
+            "rerun": false
+          }
+        },
+        "narrative": {
+          "confidence": {
+            "match": false,
+            "abs_diff": 0.1499999999999999,
+            "prod": 0.8,
+            "rerun": 0.95
+          },
+          "reasoning": {
+            "match": false,
+            "prod": "The role focuses on a social and environmental purpose by providing outdoor education and community-building activities for children. The organization's mission appears to align with SSE principles, emphasizing character development and environmental awareness. However, the organizational structure and governance model are not explicitly stated, and compensation details are vague, falling into the 'discussed during interview' category rather than being transparently disclosed upfront. While volunteer work is not explicitly mentioned for this paid role, the lack of concrete salary information is a concern.",
+            "rerun": "Toronto Island SUP is a private, for-profit outdoor recreation business, which triggers an automatic 'no' flag under Solidarity Economy criteria despite its outdoor education and environmental focus. Additionally, compensation details are not disclosed upfront in the posting."
+          },
+          "must_haves_met": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)",
+              "Clear purpose beyond profit - mission prioritizes people/community/planet",
+              "Impact described intentionally - not as afterthought or greenwashing",
+              "Role contributes to social/community/environmental good"
+            ],
+            "rerun_only": [
+              "Clear job expectations and commitment schedule",
+              "Role contributes to environmental and community education"
+            ],
+            "prod": [
+              "Clear purpose beyond profit - mission prioritizes people/community/planet",
+              "Impact described intentionally - not as afterthought or greenwashing",
+              "Role contributes to social/community/environmental good",
+              "Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)"
+            ],
+            "rerun": [
+              "Role contributes to environmental and community education",
+              "Clear job expectations and commitment schedule"
+            ]
+          },
+          "nice_to_haves_met": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "Mission reinvestment - surplus goes to people/community/mission, not shareholders"
+            ],
+            "rerun_only": [],
+            "prod": [
+              "Mission reinvestment - surplus goes to people/community/mission, not shareholders"
+            ],
+            "rerun": []
+          },
+          "flags": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "Salary is 'N/A' and compensation is described as 'competitive within the local outdoor recreation industry and is discussed during the interview process,' which lacks transparency.",
+              "The governance model of Toronto Island SUP is not specified."
+            ],
+            "rerun_only": [
+              "Conventional for-profit employer",
+              "Undisclosed or vague compensation"
+            ],
+            "prod": [
+              "Salary is 'N/A' and compensation is described as 'competitive within the local outdoor recreation industry and is discussed during the interview process,' which lacks transparency.",
+              "The governance model of Toronto Island SUP is not specified."
+            ],
+            "rerun": [
+              "Conventional for-profit employer",
+              "Undisclosed or vague compensation"
+            ]
+          }
+        },
+        "stable_all_match": false,
+        "type": {
+          "note": "Job SSE classify does not emit `type` (org-assessment field). Prod value below is linked organizations.type for context only.",
+          "prod_org_type": null,
+          "rerun_type": null,
+          "match": null
+        }
+      },
+      "divergence_label": "improvement_stricter_for_profit",
+      "diff_notes": [
+        "Divergence label: **improvement_stricter_for_profit**",
+        "Old Gemini gave weak_yes despite unknown governance + vague pay; Tavily surfaced torontoislandsup.com / tripadvisor commercial signals and Gemini correctly applied the for-profit automatic-no gate. Looks like improvement vs overly lenient old grounding, not a quality regression.",
+        "Structural drift on `sse_rating`: prod=weak_yes \u2192 rerun=no",
+        "Structural drift on `is_sse`: prod=True \u2192 rerun=False",
+        "Reasoning text drifted (expected for narrative fields)",
+        "must_haves set drift (prod_only=4, rerun_only=2)",
+        "Tavily hosts: instagram.com, toronto.ca, torontoisland.com, torontoislandsup.com, tripadvisor.com",
+        "Old reasoning cited no URLs (typical of Gemini grounding prose that paraphrases search without linking).",
+        "Baseline quality=strong score=8 signals=['real_reasoning', 'long_reasoning', 'has_must_haves', 'has_nice_to_haves', 'has_classified_at', 'evidencey_reasoning']"
+      ]
+    },
+    {
+      "job_id": "afd79cf6-d699-4b59-86c4-68da2d3b28dc",
+      "title": "Algonquin Park Canoe Trip Guides 2026",
+      "organization": "Voyageur Quest",
+      "prod": {
+        "id": "afd79cf6-d699-4b59-86c4-68da2d3b28dc",
+        "job_title": "Algonquin Park Canoe Trip Guides 2026",
+        "organization": "Voyageur Quest",
+        "organization_id": 774,
+        "location": "Based at Algonquin Park Access Pt #1, near South River, Ontario",
+        "municipality": "South River",
+        "province": "ON",
+        "wage": "$180 - $250",
+        "listing_url": "https://www.goodwork.ca/jobs/algonquin-park-canoe-guide-jobs-75425",
+        "date_posted": "2026-03-03",
+        "scraped_at": "2026-03-07T09:31:36.498622+00:00",
+        "language": "en",
+        "sse_rating": "weak_yes",
+        "is_sse": true,
+        "type": "other",
+        "org_sse_rating": "no",
+        "org_is_sse": false,
+        "summary": "The Algonquin Park Canoe Trip Guide leads canoe trips, teaches outdoor skills, and provides exceptional customer service to create unforgettable adventures.",
+        "description_len": 6468,
+        "description_preview": "Algonquin Park Canoe Trip Guides 2026 Positions: Algonquin Park Canoe Trip Guide Employer: Voyageur Quest Location: Based at Algonquin Park Access Pt #1, near South River, Ontario Housing: Lakeside shared staff cabin accommodation (see below) Contracts: Seasonal, Full-time, Part-time, Occasional or Contractor (May to October) Wage: $180\u2013$250/day + tips, based on experience and certifications Benef",
+        "baseline_quality": {
+          "score": 8,
+          "signals": [
+            "real_reasoning",
+            "long_reasoning",
+            "has_must_haves",
+            "has_nice_to_haves",
+            "has_classified_at",
+            "evidencey_reasoning"
+          ],
+          "quality": "strong"
+        },
+        "sse_details": {
+          "confidence": 0.8,
+          "reasoning": "The organization is a for-profit wilderness tour company, which automatically disqualifies it from a 'strong_yes' rating. However, the role itself aligns with SSE principles by focusing on education, connecting guests with nature, and fostering a sense of community among staff. The compensation is transparent, and there are stated opportunities for professional development. The mission is primarily focused on the experience of the outdoors and education, which has a social and environmental component, but it is within a commercial, for-profit structure.",
+          "must_haves_met": [
+            "Clear purpose beyond profit - mission prioritizes people/community/planet",
+            "Impact described intentionally - not as afterthought or greenwashing",
+            "Role contributes to social/community/environmental good",
+            "Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront (including \"Volunteer\" as salary)",
+            "Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)"
+          ],
+          "nice_to_haves_met": [
+            "Solidarity-driven culture - cooperation, mutual support, \"we\"/\"collective\"/\"community\" language",
+            "Investment in workers/volunteers - training, mentorship, learning opportunities, professional dev"
+          ],
+          "flags": [
+            "For-profit organization structure",
+            "While there's a focus on nature and education, the primary business model is commercial tourism."
+          ],
+          "classified_at": "2026-03-07T22:00:15.725796+00:00",
+          "provider": null,
+          "model": null,
+          "uses_google_search_grounding": null
+        }
+      },
+      "rerun": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "type": null,
+        "confidence": 0.95,
+        "reasoning": "Voyageur Quest is a commercial wilderness tour and outfitting company operating as a conventional for-profit enterprise rather than a cooperative, nonprofit, or solidarity economy entity. Because it is a private for-profit business, it fails the mandatory governance gate for Solidarity Economy alignment despite its outdoor and educational programming.",
+        "must_haves_met": [
+          "Impact described intentionally",
+          "Role contributes to environmental/outdoor good",
+          "Transparent compensation",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Investment in workers"
+        ],
+        "flags": [
+          "Employer is a conventional for-profit tour company rather than a nonprofit, cooperative, or solidarity enterprise."
+        ],
+        "classified_at": "2026-08-03T15:00:39.641385+00:00",
+        "provider": "gemini-3.5-flash-lite",
+        "listing_url": "https://www.goodwork.ca/jobs/algonquin-park-canoe-guide-jobs-75425",
+        "search_query": "\"Voyageur Quest\" \"Based at Algonquin Park Access Pt #1, near South River, Ontario\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.voyageuroutfitting.com",
+          "https://www.facebook.com/VoyageurQuest",
+          "https://voyageurquest.com/algonquin-provincial-park",
+          "https://voyageurquest.com/jobs-opportunities-voyageur-quest-algonquin-park",
+          "https://voyageurquest.com"
+        ],
+        "tavily_hosts": [
+          "facebook.com",
+          "voyageuroutfitting.com",
+          "voyageurquest.com"
+        ],
+        "tavily_evidence_chars": 3673,
+        "elapsed_s": 3.42,
+        "error": null
+      },
+      "compare": {
+        "stable": {
+          "sse_rating": {
+            "match": false,
+            "prod": "weak_yes",
+            "rerun": "no"
+          },
+          "is_sse": {
+            "match": false,
+            "prod": true,
+            "rerun": false
+          }
+        },
+        "narrative": {
+          "confidence": {
+            "match": false,
+            "abs_diff": 0.1499999999999999,
+            "prod": 0.8,
+            "rerun": 0.95
+          },
+          "reasoning": {
+            "match": false,
+            "prod": "The organization is a for-profit wilderness tour company, which automatically disqualifies it from a 'strong_yes' rating. However, the role itself aligns with SSE principles by focusing on education, connecting guests with nature, and fostering a sense of community among staff. The compensation is transparent, and there are stated opportunities for professional development. The mission is primarily focused on the experience of the outdoors and education, which has a social and environmental component, but it is within a commercial, for-profit structure.",
+            "rerun": "Voyageur Quest is a commercial wilderness tour and outfitting company operating as a conventional for-profit enterprise rather than a cooperative, nonprofit, or solidarity economy entity. Because it is a private for-profit business, it fails the mandatory governance gate for Solidarity Economy alignment despite its outdoor and educational programming."
+          },
+          "must_haves_met": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)",
+              "Clear purpose beyond profit - mission prioritizes people/community/planet",
+              "Impact described intentionally - not as afterthought or greenwashing",
+              "Role contributes to social/community/environmental good",
+              "Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront (including \"Volunteer\" as salary)"
+            ],
+            "rerun_only": [
+              "Clear job expectations",
+              "Impact described intentionally",
+              "Role contributes to environmental/outdoor good",
+              "Transparent compensation"
+            ],
+            "prod": [
+              "Clear purpose beyond profit - mission prioritizes people/community/planet",
+              "Impact described intentionally - not as afterthought or greenwashing",
+              "Role contributes to social/community/environmental good",
+              "Transparent compensation or role type - salary/pay clearly stated OR volunteer opportunity disclosed upfront (including \"Volunteer\" as salary)",
+              "Clear job expectations - hours, contract type, no unpaid trials (volunteer work explicitly disclosed upfront is acceptable)"
+            ],
+            "rerun": [
+              "Impact described intentionally",
+              "Role contributes to environmental/outdoor good",
+              "Transparent compensation",
+              "Clear job expectations"
+            ]
+          },
+          "nice_to_haves_met": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "Investment in workers/volunteers - training, mentorship, learning opportunities, professional dev",
+              "Solidarity-driven culture - cooperation, mutual support, \"we\"/\"collective\"/\"community\" language"
+            ],
+            "rerun_only": [
+              "Investment in workers"
+            ],
+            "prod": [
+              "Solidarity-driven culture - cooperation, mutual support, \"we\"/\"collective\"/\"community\" language",
+              "Investment in workers/volunteers - training, mentorship, learning opportunities, professional dev"
+            ],
+            "rerun": [
+              "Investment in workers"
+            ]
+          },
+          "flags": {
+            "exact_match": false,
+            "overlap": [],
+            "prod_only": [
+              "For-profit organization structure",
+              "While there's a focus on nature and education, the primary business model is commercial tourism."
+            ],
+            "rerun_only": [
+              "Employer is a conventional for-profit tour company rather than a nonprofit, cooperative, or solidarity enterprise."
+            ],
+            "prod": [
+              "For-profit organization structure",
+              "While there's a focus on nature and education, the primary business model is commercial tourism."
+            ],
+            "rerun": [
+              "Employer is a conventional for-profit tour company rather than a nonprofit, cooperative, or solidarity enterprise."
+            ]
+          }
+        },
+        "stable_all_match": false,
+        "type": {
+          "note": "Job SSE classify does not emit `type` (org-assessment field). Prod value below is linked organizations.type for context only.",
+          "prod_org_type": "other",
+          "rerun_type": null,
+          "match": null
+        }
+      },
+      "divergence_label": "improvement_stricter_for_profit",
+      "diff_notes": [
+        "Divergence label: **improvement_stricter_for_profit**",
+        "Old Gemini already called Voyageur Quest for-profit but still scored weak_yes; linked org assessment is sse_rating=no. Tavily hit voyageurquest.com and Gemini applied the hard for-profit gate \u2192 no. Aligns with org baseline; improvement over inconsistent job weak_yes.",
+        "Structural drift on `sse_rating`: prod=weak_yes \u2192 rerun=no",
+        "Structural drift on `is_sse`: prod=True \u2192 rerun=False",
+        "Reasoning text drifted (expected for narrative fields)",
+        "must_haves set drift (prod_only=5, rerun_only=4)",
+        "Tavily hosts: facebook.com, voyageuroutfitting.com, voyageurquest.com",
+        "Old reasoning cited no URLs (typical of Gemini grounding prose that paraphrases search without linking).",
+        "Baseline quality=strong score=8 signals=['real_reasoning', 'long_reasoning', 'has_must_haves', 'has_nice_to_haves', 'has_classified_at', 'evidencey_reasoning']"
+      ]
+    }
+  ]
+}

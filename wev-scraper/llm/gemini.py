@@ -165,17 +165,19 @@ class GeminiProvider(BaseLLMProvider):
             ),
         ]
 
+        temperature = kwargs.get("temperature")
+        if temperature is None and task_type == "sse":
+            temperature = 0
+
+        config_kwargs: dict = {
+            "system_instruction": system,
+            "safety_settings": safety_settings,
+        }
+        if temperature is not None:
+            config_kwargs["temperature"] = float(temperature)
         if use_grounding:
-            config = types.GenerateContentConfig(
-                system_instruction=system,
-                tools=[types.Tool(google_search=types.GoogleSearch())],
-                safety_settings=safety_settings,
-            )
-        else:
-            config = types.GenerateContentConfig(
-                system_instruction=system,
-                safety_settings=safety_settings,
-            )
+            config_kwargs["tools"] = [types.Tool(google_search=types.GoogleSearch())]
+        config = types.GenerateContentConfig(**config_kwargs)
 
         print(
             f"  … gemini: invoking generate_content "

@@ -63,7 +63,7 @@ from llm.tavily_grounding import (  # noqa: E402
     require_tavily,
 )
 from utils.db import reset_supabase_client_cache, supabase  # noqa: E402
-from utils.sse_classifier import SSEClassifier, SSEClassificationError  # noqa: E402
+from utils.sse_classifier import SSEClassificationError, SSEClassifier  # noqa: E402
 from utils.sse_prompts import get_sse_classification_prompt  # noqa: E402
 
 logging.basicConfig(

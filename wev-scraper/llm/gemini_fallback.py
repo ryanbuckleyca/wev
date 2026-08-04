@@ -29,7 +29,6 @@ from llm.base import BaseLLMProvider, LLMProviderError
 from llm.config import should_use_grounding
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
-from llm.local_grounded import LocalGroundedProvider
 from llm.openai_compatible import CerebrasProvider
 from llm.tavily_grounding import (
     fetch_tavily_context,

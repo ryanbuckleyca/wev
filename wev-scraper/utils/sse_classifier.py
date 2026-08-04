@@ -7,7 +7,9 @@ from typing import TypedDict
 
 from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
+from utils.sse_job_guards import apply_job_sse_guards
 from utils.sse_prompts import (
+    SSE_JOB_SYSTEM_PROMPT,
     SSE_SEARCH_KEYWORDS,
     get_sse_batch_classification_prompt,
     get_sse_classification_prompt,
@@ -126,14 +128,9 @@ class SSEClassifier(BaseGroundedClassifier):
                 response_text = self._call_provider_with_retry(
                     provider=self.provider,
                     prompt=prompt,
-                    system=(
-                        "You are an expert at analyzing job postings for Solidarity "
-                        "Economy alignment. Score the role from the posting body. "
-                        "Do not invent a different employer from search. Supporting "
-                        "web evidence is only for missing employer context when the "
-                        "posting has no description."
-                    ),
+                    system=SSE_JOB_SYSTEM_PROMPT,
                     task="sse",
+                    temperature=0,
                     search_query=None if has_description else search_query,
                     retries=0,  # The outer loop handles provider and parse retries
                     require_terms=None if has_description else require_terms,
@@ -146,7 +143,11 @@ class SSEClassifier(BaseGroundedClassifier):
 
             parsed_result, parse_error = self._safe_parse_sse_response(response_text, job_title, org_name)
             if parsed_result is not None:
-                return parsed_result
+                return apply_job_sse_guards(
+                    parsed_result,
+                    salary=salary,
+                    description=description,
+                )
             last_error_message = parse_error or "Unknown SSE parse error"
             logger.warning("SSE parse error (attempt %d/2): %s", attempt + 1, last_error_message)
 
@@ -209,15 +210,23 @@ class SSEClassifier(BaseGroundedClassifier):
         response_text = self._call_provider_with_retry(
             provider=self.provider,
             prompt=prompt,
-            system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
+            system=SSE_JOB_SYSTEM_PROMPT,
             task="sse",
+            temperature=0,
             search_query=search_query,
             retries=1,
         )
 
         parse_result, parse_error = self._safe_parse_batch_response(response_text, len(jobs))
         if parse_result is not None:
-            return parse_result
+            return [
+                apply_job_sse_guards(
+                    item,
+                    salary=normalized_jobs[i].get("salary"),
+                    description=normalized_jobs[i].get("description"),
+                )
+                for i, item in enumerate(parse_result)
+            ]
 
         logger.warning("SSE batch parse error: %s", parse_error)
         logger.debug("Response (last 200 chars): %r", response_text[-200:])

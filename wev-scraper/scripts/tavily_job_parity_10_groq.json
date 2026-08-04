@@ -1,0 +1,898 @@
+{
+  "generated_at": "2026-08-03T15:26:55.436221+00:00",
+  "mode": "tavily_always_force_grounding_groq_only",
+  "dry_run": true,
+  "wrote_to_db": false,
+  "setup": {
+    "gemini_key_in_process": false,
+    "gemini_was_in_env": true,
+    "cerebras_key_in_process": false,
+    "cerebras_was_in_env": true,
+    "use_google_search_grounding": false,
+    "tavily_available": true,
+    "provider_chain": "groq",
+    "groq_only": true,
+    "groq_first": true
+  },
+  "job_ids": [
+    "ba1492a7-32b8-46e4-bae2-ca5877cf5c83",
+    "3b2ae1df-f5ce-4a6c-9636-76ffcb14c903",
+    "352163a0-40a7-4b72-aecf-9a98035f334f",
+    "9bdba800-f5f3-4e5d-b04d-b94206381125",
+    "afd79cf6-d699-4b59-86c4-68da2d3b28dc",
+    "96f648a9-fe36-4f6f-8118-0212deb1f98a",
+    "fb4a51bc-f3d0-4752-919d-cb52cad70d0e",
+    "279e6095-d080-4a54-92c8-39b4f41284dd",
+    "2d432887-86be-4527-b5a4-e2226ed5bebd",
+    "8ff9113e-d388-4139-ae75-386f89276598"
+  ],
+  "headline": "Groq\u2194prod rating **6/10** \u00b7 Groq\u2194Gemini rating **8/10** \u00b7 Gemini\u2194prod rating **6/10** (prior 6/10).",
+  "match_rates": {
+    "n": 10,
+    "n_ok": 10,
+    "groq_vs_prod": {
+      "sse_rating": {
+        "n": 10,
+        "matches": 6,
+        "pct": "60",
+        "frac": "6/10"
+      },
+      "is_sse": {
+        "n": 10,
+        "matches": 8,
+        "pct": "80",
+        "frac": "8/10"
+      },
+      "both": {
+        "n": 10,
+        "matches": 6,
+        "pct": "60",
+        "frac": "6/10"
+      }
+    },
+    "groq_vs_gemini": {
+      "sse_rating": {
+        "n": 10,
+        "matches": 8,
+        "pct": "80",
+        "frac": "8/10"
+      },
+      "is_sse": {
+        "n": 10,
+        "matches": 8,
+        "pct": "80",
+        "frac": "8/10"
+      },
+      "both": {
+        "n": 10,
+        "matches": 8,
+        "pct": "80",
+        "frac": "8/10"
+      }
+    },
+    "gemini_vs_prod": {
+      "sse_rating": {
+        "n": 10,
+        "matches": 6,
+        "pct": "60",
+        "frac": "6/10"
+      },
+      "is_sse": {
+        "n": 10,
+        "matches": 6,
+        "pct": "60",
+        "frac": "6/10"
+      },
+      "both": {
+        "n": 10,
+        "matches": 5,
+        "pct": "50",
+        "frac": "5/10"
+      }
+    }
+  },
+  "verdict": "Yes \u2014 Groq+Tavily is about as consistent as Gemini+Tavily: high agreement with Gemini (8/10 both) and similar prod rating match (6/10 vs Gemini's 6/10). Groq completions: 10/10; errors: 0. Providers used: ['groq', 'groq', 'groq', 'groq', 'groq', 'groq', 'groq', 'groq', 'groq', 'groq'].",
+  "notable_flips": [
+    "**groq\u2260gemini** \u2014 Good Food and Community @ Persephone Market Garden: gemini=`no`/False \u2192 groq=`weak_yes`/True (prod=`weak_yes`/True)",
+    "**groq\u2260gemini** \u2014 Field and Community Biologist @ Turtle Guardians (of The Land Between charity): gemini=`no`/False \u2192 groq=`strong_yes`/True (prod=`no`/True)"
+  ],
+  "providers_used": [
+    "groq",
+    "groq",
+    "groq",
+    "groq",
+    "groq",
+    "groq",
+    "groq",
+    "groq",
+    "groq",
+    "groq"
+  ],
+  "failures": [],
+  "jobs": [
+    {
+      "job_id": "ba1492a7-32b8-46e4-bae2-ca5877cf5c83",
+      "batch": "A",
+      "title": "Communications and Design Coordinator",
+      "organization": "The New Farm Centre For Climate Change",
+      "prod": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "org_type": null,
+        "baseline_quality": "strong",
+        "reasoning": "The New Farm Centre is a registered charity with a clear mission focused on environmental and social good through regenerative agriculture. The role directly contributes to communicating this mission and supporting resilient food systems. Compensation is transparently stated, job expectations are clear, and the organization expresses a commitment to equity and justice. Several 'nice-to-haves' are met, including a focus on cooperation and a stated mission reinvestment through their charitable work. No automatic 'no' flags were triggered."
+      },
+      "gemini": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "provider": "gemini-3.6-flash",
+        "confidence": 0.95,
+        "reasoning": "The New Farm Centre is a registered charity dedicated to advancing regenerative agriculture, climate resilience, and food justice. As a non-profit that donates most of its harvest to food security organizations, it strongly aligns with Solidarity Economy principles. The role provides transparent compensation with benefits and directly supports public education and environmental advocacy.",
+        "tavily_hosts": [
+          "instagram.com",
+          "linkedin.com",
+          "onthebaymagazine.com",
+          "pivotandgrow.com",
+          "regenerationcanada.org"
+        ],
+        "divergence_label": "agree"
+      },
+      "rerun": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": null,
+        "confidence": 0.9,
+        "reasoning": "The New Farm Centre is a registered charity with a clear mission to develop and advocate for regenerative farming systems, mitigating climate change and fostering healthy ecosystems. The role of Communications and Design Coordinator contributes to this mission by promoting the organization's work and values. The organization's commitment to social and environmental good is evident in its programs and partnerships.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Impact described intentionally",
+          "Role contributes to social/community/environmental good",
+          "Transparent compensation",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Solidarity-driven culture",
+          "Participatory governance",
+          "Investment in workers/volunteers",
+          "Mission reinvestment"
+        ],
+        "flags": [],
+        "classified_at": "2026-08-03T15:24:32.277553+00:00",
+        "provider": "groq",
+        "listing_url": "https://www.goodwork.ca/jobs/communications-marketing-and-graphic-design-jobs-wordpress-website-development-75495",
+        "search_query": "\"The New Farm Centre For Climate Change\" \"Creemore, Ontario / Hybrid (map)\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.linkedin.com/company/the-new-farm-centre",
+          "https://onthebaymagazine.com/a-new-season-at-the-new-farm",
+          "https://www.instagram.com/thenewfarm?hl=en",
+          "https://pivotandgrow.com/the-new-farm",
+          "https://regenerationcanada.org/en/map"
+        ],
+        "tavily_hosts": [
+          "instagram.com",
+          "linkedin.com",
+          "onthebaymagazine.com",
+          "pivotandgrow.com",
+          "regenerationcanada.org"
+        ],
+        "tavily_evidence_chars": 4492,
+        "elapsed_s": 1.38,
+        "error": null
+      },
+      "match_flags": {
+        "groq_vs_prod_rating": true,
+        "groq_vs_prod_is_sse": true,
+        "groq_vs_prod": true,
+        "groq_vs_gemini_rating": true,
+        "groq_vs_gemini_is_sse": true,
+        "groq_vs_gemini": true,
+        "gemini_vs_prod_rating": true,
+        "gemini_vs_prod_is_sse": true,
+        "gemini_vs_prod": true
+      }
+    },
+    {
+      "job_id": "3b2ae1df-f5ce-4a6c-9636-76ffcb14c903",
+      "batch": "A",
+      "title": "Lands, Waters and Consultation Coordinator",
+      "organization": "Historic Saugeen M\u00e9tis",
+      "prod": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "org_type": "other",
+        "baseline_quality": "strong",
+        "reasoning": "The job posting for the Historic Saugeen M\u00e9tis, an independent, historic M\u00e9tis community, strongly aligns with Solidarity Economy (SSE) principles. All 'must-have' criteria are clearly met: the organization has a clear purpose beyond profit focused on people, community, and planet; the impact is intentionally described through environmental stewardship and community interests; the role directly contributes to social, community, and environmental good; compensation is transparently stated as an hourly rate; and job expectations regarding hours and contract type are clear. There are no automatic 'no' flags. Several 'nice-to-have' criteria are also met, reinforcing the 'strong_yes' rating, particularly the community-based governance model and investment in professional development."
+      },
+      "gemini": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "provider": "gemini-3.6-flash",
+        "confidence": 0.95,
+        "reasoning": "Historic Saugeen M\u00e9tis is an elected, rights-bearing Indigenous community organization dedicated to community governance, culture, and lands stewardship. The role directly advances environmental protection and Indigenous rights with clear, transparent compensation ($37\u2013$42/hr) and strong worker investments including flexible hours and training.",
+        "tavily_hosts": [
+          "brucecounty.on.ca",
+          "hdp-ca-prod-app-saug-engage-files.s3.ca-central-1.amazonaws.com",
+          "planthebruce.ca",
+          "saugeenmetis.com"
+        ],
+        "divergence_label": "agree"
+      },
+      "rerun": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": null,
+        "confidence": 0.9,
+        "reasoning": "Historic Saugeen M\u00e9tis is a nonprofit community organization with a clear mission prioritizing environmental stewardship and Indigenous rights. The role contributes to social and environmental good, and the organization's governance is rooted in community representation and collective decision-making.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Impact described intentionally",
+          "Role contributes to social/community/environmental good",
+          "Transparent compensation or role type",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Solidarity-driven culture",
+          "Participatory governance",
+          "Investment in workers/volunteers"
+        ],
+        "flags": [],
+        "classified_at": "2026-08-03T15:24:45.407020+00:00",
+        "provider": "groq",
+        "listing_url": "https://www.goodwork.ca/jobs/land-and-water-stewardship-environmental-studies-environmental-science-and-natural-resources-jobs-75494",
+        "search_query": "\"Historic Saugeen M\u00e9tis\" \"Southampton, Bruce County, Ontario\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://hdp-ca-prod-app-saug-engage-files.s3.ca-central-1.amazonaws.com/3717/4975/5324/Saugeen_Shores_CHMP.pdf",
+          "https://www.brucecounty.on.ca/sites/default/files/10.04.18_executive_committee_agenda.pdf",
+          "https://www.saugeenmetis.com/governance",
+          "https://www.planthebruce.ca/heritage/widgets/48342/videos/4440"
+        ],
+        "tavily_hosts": [
+          "brucecounty.on.ca",
+          "hdp-ca-prod-app-saug-engage-files.s3.ca-central-1.amazonaws.com",
+          "planthebruce.ca",
+          "saugeenmetis.com"
+        ],
+        "tavily_evidence_chars": 3744,
+        "elapsed_s": 1.06,
+        "error": null
+      },
+      "match_flags": {
+        "groq_vs_prod_rating": true,
+        "groq_vs_prod_is_sse": true,
+        "groq_vs_prod": true,
+        "groq_vs_gemini_rating": true,
+        "groq_vs_gemini_is_sse": true,
+        "groq_vs_gemini": true,
+        "gemini_vs_prod_rating": true,
+        "gemini_vs_prod_is_sse": true,
+        "gemini_vs_prod": true
+      }
+    },
+    {
+      "job_id": "352163a0-40a7-4b72-aecf-9a98035f334f",
+      "batch": "A",
+      "title": "Summer jobs, Student jobs",
+      "organization": "Georgian Bay Land Trust",
+      "prod": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "org_type": "nonprofit",
+        "baseline_quality": "strong",
+        "reasoning": "The Georgian Bay Land Trust is a registered non-profit charity with a clear mission to preserve the environment of Eastern Georgian Bay and promote its appreciation for public benefit. This directly aligns with SSE principles by prioritizing the planet and community over profit. The job role, 'Summer Outreach Student,' directly contributes to this mission through community engagement, fundraising support, and potential direct conservation work, demonstrating intentional impact beyond profit. Compensation is transparently stated at $21/hr, and job expectations regarding hours and duration are clear. As a non-profit land trust, its governance model inherently supports mission reinvestment, with any surplus going back into its conservation and community initiatives rather than shareholders. The organization also explicitly mentions being 'volunteer-oriented' and actively engaging 'communities' and 'stakeholders' in its mission, indicating a solidarity-driven culture focused on collective good."
+      },
+      "gemini": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "provider": "gemini-3.6-flash",
+        "confidence": 0.95,
+        "reasoning": "The Georgian Bay Land Trust is a registered Canadian charity dedicated to protecting wilderness lands and species along eastern Georgian Bay. This role directly supports its mission through community outreach, environmental education, and public engagement. The position offers transparent compensation ($21/hour) and clear job expectations for a seasonal student role.",
+        "tavily_hosts": [
+          "clementine-sapphire-3hnw.squarespace.com",
+          "facebook.com",
+          "gblt.org",
+          "gbtownship.ca",
+          "myparrysoundnow.com"
+        ],
+        "divergence_label": "agree"
+      },
+      "rerun": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": null,
+        "confidence": 0.9,
+        "reasoning": "Georgian Bay Land Trust is a registered charity with a clear mission to protect wilderness lands and species, and the role contributes to this social and environmental good. The organization's governance and values align with Solidarity Economy principles, prioritizing people and the planet over profit.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Impact described intentionally",
+          "Role contributes to social/community/environmental good",
+          "Transparent compensation",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Solidarity-driven culture",
+          "Mission reinvestment"
+        ],
+        "flags": [],
+        "classified_at": "2026-08-03T15:24:58.568297+00:00",
+        "provider": "groq",
+        "listing_url": "https://www.goodwork.ca/jobs/communications-marketing-community-events-representative-spokesperson-and-ambassador-jobs-75434",
+        "search_query": "\"Georgian Bay Land Trust\" \"Eastern Georgian Bay (Midland, Parry Sound, etc.)\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.myparrysoundnow.com/70651/news/georgian-bay-land-trust-continuing-to-protect-regions-unique-environment",
+          "https://clementine-sapphire-3hnw.squarespace.com/s/Visitors_Guide_2025.pdf",
+          "https://www.gblt.org",
+          "https://www.gbtownship.ca/living-here/environment-and-sustainability/environmental-and-sustainability-organizations",
+          "https://www.facebook.com/GeorgianBayLandTrust"
+        ],
+        "tavily_hosts": [
+          "clementine-sapphire-3hnw.squarespace.com",
+          "facebook.com",
+          "gblt.org",
+          "gbtownship.ca",
+          "myparrysoundnow.com"
+        ],
+        "tavily_evidence_chars": 2877,
+        "elapsed_s": 1.06,
+        "error": null
+      },
+      "match_flags": {
+        "groq_vs_prod_rating": true,
+        "groq_vs_prod_is_sse": true,
+        "groq_vs_prod": true,
+        "groq_vs_gemini_rating": true,
+        "groq_vs_gemini_is_sse": true,
+        "groq_vs_gemini": true,
+        "gemini_vs_prod_rating": true,
+        "gemini_vs_prod_is_sse": true,
+        "gemini_vs_prod": true
+      }
+    },
+    {
+      "job_id": "9bdba800-f5f3-4e5d-b04d-b94206381125",
+      "batch": "A",
+      "title": "Toronto outdoors, Summer camps",
+      "organization": "Toronto Island SUP (TISUP)",
+      "prod": {
+        "sse_rating": "weak_yes",
+        "is_sse": true,
+        "org_type": null,
+        "baseline_quality": "strong",
+        "reasoning": "The role focuses on a social and environmental purpose by providing outdoor education and community-building activities for children. The organization's mission appears to align with SSE principles, emphasizing character development and environmental awareness. However, the organizational structure and governance model are not explicitly stated, and compensation details are vague, falling into the 'discussed during interview' category rather than being transparently disclosed upfront. While volunteer work is not explicitly mentioned for this paid role, the lack of concrete salary information is a concern."
+      },
+      "gemini": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "provider": "gemini-3.6-flash",
+        "confidence": 0.95,
+        "reasoning": "Toronto Island SUP is a private, for-profit outdoor recreation business, which triggers an automatic 'no' flag under Solidarity Economy criteria despite its outdoor education and environmental focus. Additionally, compensation details are not disclosed upfront in the posting.",
+        "tavily_hosts": [
+          "instagram.com",
+          "toronto.ca",
+          "torontoisland.com",
+          "torontoislandsup.com",
+          "tripadvisor.com"
+        ],
+        "divergence_label": "improvement_stricter_for_profit"
+      },
+      "rerun": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "type": null,
+        "confidence": 0.8,
+        "reasoning": "Toronto Island SUP is a for-profit business, and the job posting does not indicate a nonprofit or cooperative governance structure.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Impact described intentionally",
+          "Role contributes to social/community/environmental good",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Solidarity-driven culture"
+        ],
+        "flags": [
+          "Conventional for-profit employer"
+        ],
+        "classified_at": "2026-08-03T15:25:11.932856+00:00",
+        "provider": "groq",
+        "listing_url": "https://www.goodwork.ca/jobs/outdoor-recreation-and-summer-camp-director-jobs-75037",
+        "search_query": "\"Toronto Island SUP (TISUP)\" \"Wards Island, Toronto Island ON\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.torontoislandsup.com",
+          "https://www.instagram.com/torontoislandsup?hl=en",
+          "https://www.tripadvisor.com/Attraction_Review-g155019-d6677780-Reviews-Toronto_Island_SUP-Toronto_Ontario.html",
+          "https://www.torontoisland.com",
+          "https://www.toronto.ca/explore-enjoy/toronto-island-ferries"
+        ],
+        "tavily_hosts": [
+          "instagram.com",
+          "toronto.ca",
+          "torontoisland.com",
+          "torontoislandsup.com",
+          "tripadvisor.com"
+        ],
+        "tavily_evidence_chars": 4129,
+        "elapsed_s": 1.28,
+        "error": null
+      },
+      "match_flags": {
+        "groq_vs_prod_rating": false,
+        "groq_vs_prod_is_sse": false,
+        "groq_vs_prod": false,
+        "groq_vs_gemini_rating": true,
+        "groq_vs_gemini_is_sse": true,
+        "groq_vs_gemini": true,
+        "gemini_vs_prod_rating": false,
+        "gemini_vs_prod_is_sse": false,
+        "gemini_vs_prod": false
+      }
+    },
+    {
+      "job_id": "afd79cf6-d699-4b59-86c4-68da2d3b28dc",
+      "batch": "A",
+      "title": "Algonquin Park Canoe Trip Guides 2026",
+      "organization": "Voyageur Quest",
+      "prod": {
+        "sse_rating": "weak_yes",
+        "is_sse": true,
+        "org_type": "other",
+        "baseline_quality": "strong",
+        "reasoning": "The organization is a for-profit wilderness tour company, which automatically disqualifies it from a 'strong_yes' rating. However, the role itself aligns with SSE principles by focusing on education, connecting guests with nature, and fostering a sense of community among staff. The compensation is transparent, and there are stated opportunities for professional development. The mission is primarily focused on the experience of the outdoors and education, which has a social and environmental component, but it is within a commercial, for-profit structure."
+      },
+      "gemini": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "provider": "gemini-3.5-flash-lite",
+        "confidence": 0.95,
+        "reasoning": "Voyageur Quest is a commercial wilderness tour and outfitting company operating as a conventional for-profit enterprise rather than a cooperative, nonprofit, or solidarity economy entity. Because it is a private for-profit business, it fails the mandatory governance gate for Solidarity Economy alignment despite its outdoor and educational programming.",
+        "tavily_hosts": [
+          "facebook.com",
+          "voyageuroutfitting.com",
+          "voyageurquest.com"
+        ],
+        "divergence_label": "improvement_stricter_for_profit"
+      },
+      "rerun": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "type": null,
+        "confidence": 0.9,
+        "reasoning": "Voyageur Quest is a conventional for-profit wilderness tour company, not a nonprofit, cooperative, or community association.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Impact described intentionally",
+          "Role contributes to social/community/environmental good",
+          "Transparent compensation",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Solidarity-driven culture"
+        ],
+        "flags": [
+          "Conventional for-profit employer"
+        ],
+        "classified_at": "2026-08-03T15:25:25.047305+00:00",
+        "provider": "groq",
+        "listing_url": "https://www.goodwork.ca/jobs/algonquin-park-canoe-guide-jobs-75425",
+        "search_query": "\"Voyageur Quest\" \"Based at Algonquin Park Access Pt #1, near South River, Ontario\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.voyageuroutfitting.com",
+          "https://www.facebook.com/VoyageurQuest",
+          "https://voyageurquest.com/algonquin-provincial-park",
+          "https://voyageurquest.com/jobs-opportunities-voyageur-quest-algonquin-park",
+          "https://voyageurquest.com"
+        ],
+        "tavily_hosts": [
+          "facebook.com",
+          "voyageuroutfitting.com",
+          "voyageurquest.com"
+        ],
+        "tavily_evidence_chars": 3673,
+        "elapsed_s": 1.02,
+        "error": null
+      },
+      "match_flags": {
+        "groq_vs_prod_rating": false,
+        "groq_vs_prod_is_sse": false,
+        "groq_vs_prod": false,
+        "groq_vs_gemini_rating": true,
+        "groq_vs_gemini_is_sse": true,
+        "groq_vs_gemini": true,
+        "gemini_vs_prod_rating": false,
+        "gemini_vs_prod_is_sse": false,
+        "gemini_vs_prod": false
+      }
+    },
+    {
+      "job_id": "96f648a9-fe36-4f6f-8118-0212deb1f98a",
+      "batch": "B",
+      "title": "Administrative Assistant",
+      "organization": "Toronto Wildlife Centre",
+      "prod": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "org_type": null,
+        "baseline_quality": "placeholder",
+        "reasoning": "Generated by unified processor"
+      },
+      "gemini": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "provider": "gemini-3.5-flash-lite",
+        "confidence": 0.95,
+        "reasoning": "Toronto Wildlife Centre is a registered charity dedicated to native wildlife rescue, medical care, and rehabilitation. The role directly supports this environmental mission with clearly stated compensation ($19\u2013$22/hour) and full-time employment terms.",
+        "tavily_hosts": [
+          "canada.ca",
+          "facebook.com",
+          "iaac-aeic.gc.ca",
+          "torontowildlifecentre.com"
+        ],
+        "divergence_label": "agree"
+      },
+      "rerun": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": null,
+        "confidence": 0.9,
+        "reasoning": "Toronto Wildlife Centre is a registered charity with a clear mission to rescue and rehabilitate native wildlife, and the role of Administrative Assistant supports this mission. The organization's values and governance structure align with Solidarity Economy principles, prioritizing people and the environment over profit.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Impact described intentionally",
+          "Role contributes to social/community/environmental good",
+          "Transparent compensation",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Solidarity-driven culture",
+          "Investment in workers/volunteers"
+        ],
+        "flags": [],
+        "classified_at": "2026-08-03T15:25:38.333362+00:00",
+        "provider": "groq",
+        "listing_url": "https://www.goodwork.ca/jobs/administrative-assistant-jobs-75497",
+        "search_query": "\"Toronto Wildlife Centre\" \"Currently located in Downsview Park (North York) with plans to move to Rouge National Urban Park (Scarborough), GTA\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.torontowildlifecentre.com/volunteer/volunteer-opportunities",
+          "https://iaac-aeic.gc.ca/050/evaluations/proj/89851?culture=en-CA",
+          "https://www.canada.ca/en/parks-canada/news/2025/01/government-of-canada-announces-intent-to-significantly-expand-rouge-national-urban-park.html",
+          "https://www.facebook.com/groups/CanadianLandscapes/posts/7626997544058742"
+        ],
+        "tavily_hosts": [
+          "canada.ca",
+          "facebook.com",
+          "iaac-aeic.gc.ca",
+          "torontowildlifecentre.com"
+        ],
+        "tavily_evidence_chars": 1962,
+        "elapsed_s": 1.22,
+        "error": null
+      },
+      "match_flags": {
+        "groq_vs_prod_rating": true,
+        "groq_vs_prod_is_sse": true,
+        "groq_vs_prod": true,
+        "groq_vs_gemini_rating": true,
+        "groq_vs_gemini_is_sse": true,
+        "groq_vs_gemini": true,
+        "gemini_vs_prod_rating": true,
+        "gemini_vs_prod_is_sse": true,
+        "gemini_vs_prod": true
+      }
+    },
+    {
+      "job_id": "fb4a51bc-f3d0-4752-919d-cb52cad70d0e",
+      "batch": "B",
+      "title": "Good Food and Community",
+      "organization": "Persephone Market Garden",
+      "prod": {
+        "sse_rating": "weak_yes",
+        "is_sse": true,
+        "org_type": null,
+        "baseline_quality": "placeholder",
+        "reasoning": "Generated by unified processor"
+      },
+      "gemini": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "provider": "gemini-3.6-flash",
+        "confidence": 0.95,
+        "reasoning": "While Persephone Market Garden engages in ecological farming and community-supported agriculture, it is a privately owned family farm rather than a non-profit or cooperative entity. Under the required governance criteria, private for-profit businesses fail the governance gate and do not qualify as Solidarity Economy organizations regardless of their ecological focus.",
+        "tavily_hosts": [
+          "destinationsouthbrucepeninsula.com",
+          "facebook.com",
+          "greysauble.on.ca",
+          "visitbrucepeninsula.ca",
+          "visitlionshead.ca"
+        ],
+        "divergence_label": "improvement_stricter_for_profit"
+      },
+      "rerun": {
+        "sse_rating": "weak_yes",
+        "is_sse": true,
+        "type": null,
+        "confidence": 0.7,
+        "reasoning": "Persephone Market Garden is a small-scale farm prioritizing community and nature, with a clear mission and values. The role contributes to social and environmental good, with transparent compensation and clear job expectations.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Impact described intentionally",
+          "Role contributes to social/community/environmental good",
+          "Transparent compensation or role type",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Solidarity-driven culture",
+          "Investment in workers/volunteers"
+        ],
+        "flags": [
+          "Lack of explicit governance model",
+          "No clear evidence of participatory governance"
+        ],
+        "classified_at": "2026-08-03T15:25:55.136927+00:00",
+        "provider": "groq",
+        "listing_url": "https://www.goodwork.ca/jobs/organic-no-till-veg-seeds-jobs-74979",
+        "search_query": "\"Persephone Market Garden\" \"Park Head, Ontario (between Owen Sound & Sauble Beach), Bruce-Grey, Ontario\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.greysauble.on.ca",
+          "https://visitbrucepeninsula.ca",
+          "https://visitlionshead.ca",
+          "https://www.destinationsouthbrucepeninsula.com/festivals-and-events",
+          "https://www.facebook.com/SouthBrucePeninsulaTownHall/posts/whats-happening-this-week-in-south-bruce-peninsulajuly-27-august-2monday-july-27/1375021541483733"
+        ],
+        "tavily_hosts": [
+          "destinationsouthbrucepeninsula.com",
+          "facebook.com",
+          "greysauble.on.ca",
+          "visitbrucepeninsula.ca",
+          "visitlionshead.ca"
+        ],
+        "tavily_evidence_chars": 4500,
+        "elapsed_s": 4.71,
+        "error": null
+      },
+      "match_flags": {
+        "groq_vs_prod_rating": true,
+        "groq_vs_prod_is_sse": true,
+        "groq_vs_prod": true,
+        "groq_vs_gemini_rating": false,
+        "groq_vs_gemini_is_sse": false,
+        "groq_vs_gemini": false,
+        "gemini_vs_prod_rating": false,
+        "gemini_vs_prod_is_sse": false,
+        "gemini_vs_prod": false
+      }
+    },
+    {
+      "job_id": "279e6095-d080-4a54-92c8-39b4f41284dd",
+      "batch": "B",
+      "title": "Field and Community Biologist",
+      "organization": "Turtle Guardians (of The Land Between charity)",
+      "prod": {
+        "sse_rating": "no",
+        "is_sse": true,
+        "org_type": "nonprofit",
+        "baseline_quality": "placeholder",
+        "reasoning": "Generated by unified processor"
+      },
+      "gemini": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "provider": "gemini-3.6-flash",
+        "confidence": 0.9,
+        "reasoning": "While Turtle Guardians is a registered charity dedicated to wildlife conservation, the posting lacks any wage or compensation details and does not disclose the role as a volunteer or internship position. Under the evaluation criteria, missing compensation without explicit volunteer or internship disclosure requires a no rating.",
+        "tavily_hosts": [
+          "ca.linkedin.com",
+          "facebook.com",
+          "kawarthanow.com",
+          "thelandbetween.ca",
+          "turtleguardians.com"
+        ],
+        "divergence_label": "improvement"
+      },
+      "rerun": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": null,
+        "confidence": 0.9,
+        "reasoning": "Turtle Guardians is a registered national charity with a clear mission to conserve turtles and their habitats. The role of Field and Community Biologist contributes to social and environmental good by supporting turtle conservation efforts.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Impact described intentionally",
+          "Role contributes to social/community/environmental good",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Solidarity-driven culture",
+          "Investment in workers/volunteers"
+        ],
+        "flags": [],
+        "classified_at": "2026-08-03T15:26:11.617349+00:00",
+        "provider": "groq",
+        "listing_url": "https://www.goodwork.ca/jobs/field-biology-wildlife-biology-and-environmental-science-jobs-75417",
+        "search_query": "\"Turtle Guardians (of The Land Between charity)\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://kawarthanow.com/2026/03/01/the-land-between-aims-to-protect-ontarios-at-risk-turtle-species-with-groundbreaking-ecopassage-designs",
+          "https://www.facebook.com/TurtleGuardians/posts/turtle-guardians-is-a-registered-national-charity-our-work-is-done-under-authori/1480326270801593",
+          "https://www.thelandbetween.ca",
+          "https://www.turtleguardians.com/wp-content/uploads/2026/01/TG-and-TLB-Annual-Report-and-Financial-Statements-2025.pdf",
+          "https://ca.linkedin.com/in/leora-berman-b9493649"
+        ],
+        "tavily_hosts": [
+          "ca.linkedin.com",
+          "facebook.com",
+          "kawarthanow.com",
+          "thelandbetween.ca",
+          "turtleguardians.com"
+        ],
+        "tavily_evidence_chars": 2593,
+        "elapsed_s": 4.39,
+        "error": null
+      },
+      "match_flags": {
+        "groq_vs_prod_rating": false,
+        "groq_vs_prod_is_sse": true,
+        "groq_vs_prod": false,
+        "groq_vs_gemini_rating": false,
+        "groq_vs_gemini_is_sse": false,
+        "groq_vs_gemini": false,
+        "gemini_vs_prod_rating": true,
+        "gemini_vs_prod_is_sse": false,
+        "gemini_vs_prod": false
+      }
+    },
+    {
+      "job_id": "2d432887-86be-4527-b5a4-e2226ed5bebd",
+      "batch": "B",
+      "title": "Urban forestry, ecology, arboriculture, environmental science",
+      "organization": "City of Mississauga",
+      "prod": {
+        "sse_rating": "strong_yes",
+        "is_sse": false,
+        "org_type": "government",
+        "baseline_quality": "placeholder",
+        "reasoning": "Generated by unified processor"
+      },
+      "gemini": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "provider": "gemini-3.6-flash",
+        "confidence": 1.0,
+        "reasoning": "The City of Mississauga is a municipal government body. Government and public-sector organizations are automatically excluded from the Solidarity Economy framework, regardless of whether the specific role has an environmental or community focus.",
+        "tavily_hosts": [
+          "ca.linkedin.com",
+          "en.wikipedia.org",
+          "mississauga.ca"
+        ],
+        "divergence_label": "regression"
+      },
+      "rerun": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "type": null,
+        "confidence": 0.9,
+        "reasoning": "The employer is a government/public-sector organization, which is not eligible for a Solidarity Economy alignment.",
+        "must_haves_met": [],
+        "nice_to_haves_met": [],
+        "flags": [
+          "Government/public-sector employer"
+        ],
+        "classified_at": "2026-08-03T15:26:34.910733+00:00",
+        "provider": "groq",
+        "listing_url": "https://www.goodwork.ca/jobs/urban-forestry-urban-ecology-arboriculture-and-environmental-science-jobs-75455",
+        "search_query": "\"City of Mississauga\" \"3240 Mavis Road, Mississauga ON, L5C 3K1\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.mississauga.ca/wp-content/uploads/2025/12/04085046/2025-Tree-Application-Form.pdf",
+          "https://ca.linkedin.com/company/city-of-mississauga",
+          "https://www.mississauga.ca",
+          "https://en.wikipedia.org/wiki/Mississauga",
+          "https://www.mississauga.ca/services-and-programs/forestry-and-environment/trees/request-to-injure-or-remove-trees"
+        ],
+        "tavily_hosts": [
+          "ca.linkedin.com",
+          "en.wikipedia.org",
+          "mississauga.ca"
+        ],
+        "tavily_evidence_chars": 4489,
+        "elapsed_s": 11.19,
+        "error": null
+      },
+      "match_flags": {
+        "groq_vs_prod_rating": false,
+        "groq_vs_prod_is_sse": true,
+        "groq_vs_prod": false,
+        "groq_vs_gemini_rating": true,
+        "groq_vs_gemini_is_sse": true,
+        "groq_vs_gemini": true,
+        "gemini_vs_prod_rating": false,
+        "gemini_vs_prod_is_sse": true,
+        "gemini_vs_prod": false
+      }
+    },
+    {
+      "job_id": "8ff9113e-d388-4139-ae75-386f89276598",
+      "batch": "B",
+      "title": "HR & Admin Coordinator",
+      "organization": "Toronto Renewable Energy Co-operative / Tapestry Community Capital",
+      "prod": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "org_type": null,
+        "baseline_quality": "placeholder",
+        "reasoning": "Generated by unified processor"
+      },
+      "gemini": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "provider": "gemini-3.6-flash",
+        "confidence": 0.95,
+        "reasoning": "Toronto Renewable Energy Co-operative (TREC) is a community-owned co-operative that incubates community capital initiatives like Tapestry. The role supports internal HR and operations for a co-operative enterprise dedicated to community-financed clean energy and social impact. Compensation is fully transparent, including paid interview stipends and strong staff benefits.",
+        "tavily_hosts": [
+          "ca.linkedin.com",
+          "goodwork.ca",
+          "tapestry.com",
+          "tapestrycapital.ca"
+        ],
+        "divergence_label": "agree"
+      },
+      "rerun": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "type": null,
+        "confidence": 0.9,
+        "reasoning": "Tapestry Community Capital is a nonprofit organization that supports community investment, prioritizing people and the planet. The role of HR & Admin Coordinator contributes to social and community good, with a clear mission and values alignment.",
+        "must_haves_met": [
+          "Clear purpose beyond profit",
+          "Impact described intentionally",
+          "Role contributes to social/community/environmental good",
+          "Transparent compensation",
+          "Clear job expectations"
+        ],
+        "nice_to_haves_met": [
+          "Solidarity-driven culture",
+          "Participatory governance",
+          "Investment in workers/volunteers"
+        ],
+        "flags": [],
+        "classified_at": "2026-08-03T15:26:55.433171+00:00",
+        "provider": "groq",
+        "listing_url": "https://www.goodwork.ca/jobs/human-resources-office-administration-and-management-jobs-75452",
+        "search_query": "\"Toronto Renewable Energy Co-operative / Tapestry Community Capital\" \"GTA/remote (must be able to work in the office one day a week)\" official website mission governance",
+        "tavily_always": true,
+        "tavily_urls": [
+          "https://www.goodwork.ca/job-cen.php?id=76281&dm=cen",
+          "https://ca.linkedin.com/company/tapestry-capital",
+          "https://tapestrycapital.ca/from-day-one-to-director-stephanies-journey-with-tapestry",
+          "https://tapestrycapital.ca/category/education",
+          "https://www.tapestry.com/sustainability/tapestry-advances-climate-strategy-through-community-solar-partnership"
+        ],
+        "tavily_hosts": [
+          "ca.linkedin.com",
+          "goodwork.ca",
+          "tapestry.com",
+          "tapestrycapital.ca"
+        ],
+        "tavily_evidence_chars": 4443,
+        "elapsed_s": 8.42,
+        "error": null
+      },
+      "match_flags": {
+        "groq_vs_prod_rating": true,
+        "groq_vs_prod_is_sse": true,
+        "groq_vs_prod": true,
+        "groq_vs_gemini_rating": true,
+        "groq_vs_gemini_is_sse": true,
+        "groq_vs_gemini": true,
+        "gemini_vs_prod_rating": true,
+        "gemini_vs_prod_is_sse": true,
+        "gemini_vs_prod": true
+      }
+    }
+  ]
+}
