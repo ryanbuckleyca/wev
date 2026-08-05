@@ -114,6 +114,11 @@ def test_get_stripped_env_reads_from_shared_settings():
         assert settings.get_jina_api_key() == "test-key"
 
 
+def test_get_groq_api_key_strips_whitespace():
+    with patch.dict(os.environ, {"GROQ_API_KEY": " gsk_test "}, clear=False):
+        assert settings.get_groq_api_key() == "gsk_test"
+
+
 def test_utils_db_import_does_not_create_supabase_client(monkeypatch):
     import importlib
     from unittest.mock import MagicMock

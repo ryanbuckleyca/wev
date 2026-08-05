@@ -25,7 +25,8 @@ Strategy for large runs:
   - Hourly cap (1,000 req) only becomes an issue above ~900 jobs in a single hour;
     well outside realistic single-run sizes.
 
-Grounding/search is not supported; SSE classification must use Gemini (Google Search grounding required).
+Grounding/search is not supported natively; SSE / org assessment injects shared
+Tavily evidence via ``SSEFallbackProvider`` before calling Groq.
 """
 
 from __future__ import annotations
@@ -57,17 +58,17 @@ DEFAULT_MODEL = "llama-3.3-70b-versatile"
 logger = logging.getLogger(__name__)
 
 # Groq model hierarchy for fallback (best to worst quality/reliability)
-# llama-4-scout: highest TPM (30K) but same RPD as 70b (1K/day) — good for large batches
 # llama-3.3-70b: best instruction following, 12K TPM, 100K TPD — default
 # llama-3.1-8b:  fastest, 14.4K RPD — best for high-volume low-complexity tasks
 # qwen3-32b:     reasoning model, 6K TPM, 1K RPD
 # kimi-k2:       10K TPM, 1K RPD — last resort
+# llama-4-scout: optional; some accounts get model_not_found — keep last
 GROQ_MODELS = [
-    "meta-llama/llama-4-scout-17b-16e-instruct",
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
     "qwen/qwen3-32b",
     "moonshotai/kimi-k2-instruct-0905",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
 ]
 
 # Rate limiting: enforce a minimum gap between requests to stay under TPM.

@@ -3,6 +3,8 @@
 import json
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from utils.organization_assessment import (
     _attach_org_language,
     _build_search_query,
@@ -269,8 +271,9 @@ def test_org_assessment_prompt_prioritizes_name_then_bilingual_website_evidence(
         job_title="Coordinator",
         description="listing notes",
     )
-    assert "organization name as the strongest indication" in prompt
-    assert "website confirms substantial materials in both English and French" in prompt
+    assert "Priority for public_language" in prompt
+    assert "Organization name only as weak evidence" in prompt
+    assert "substantial English AND French" in prompt
 
 
 def test_parse_website_keeps_employer_owned_host():
@@ -337,6 +340,19 @@ def test_parse_response_nulls_shared_website():
     assert result["website"] is None
 
 
+def test_apply_website_known_guard_prefers_known_url():
+    from utils.organization_assessment import _apply_website_known_guard
+
+    result = _parse_response(
+        _assessment_json(website="https://wrong-example.org"),
+        "Nature Visuals",
+    )
+    assert result is not None
+    guarded = _apply_website_known_guard(result, "https://naturevisuals.org")
+    assert guarded["website"] == "https://naturevisuals.org"
+    assert any("website_guard" in f for f in (guarded.get("flags") or []) if isinstance(f, str))
+
+
 def test_build_search_query_targets_official_website():
     assert _build_search_query("Mindrift", "Toronto", "ON") == (
         '"Mindrift" official website Toronto ON'
@@ -364,11 +380,35 @@ def test_org_assessment_prompt_uses_org_not_job_sse_criteria():
         description="truncated job posting...",
     )
     assert "ORGANIZATION (employer)" in prompt
-    assert "Transparent compensation" not in prompt
-    assert "Clear job expectations" not in prompt
+    # Job must-haves 4–5 must not appear as numbered org criteria.
+    assert "4. Transparent compensation" not in prompt
+    assert "5. Clear job expectations" not in prompt
     assert "Do NOT flag missing job salary" in prompt
+    assert 'Do NOT put "Transparent compensation"' in prompt
+    assert "ORG MUST-HAVES / NICE-TO-HAVES LABELS" in prompt
     assert "GOVERNANCE GATE" in prompt
     assert ORG_EVALUATION_CRITERIA in prompt
+
+
+def test_org_parse_strips_job_leaked_must_haves():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Community Hub",
+            slug="community-hub",
+            type="nonprofit",
+            sse_rating="strong_yes",
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Transparent compensation",
+                "Clear job expectations",
+            ],
+            nice_to_haves_met=["Participatory governance", "salary disclosure"],
+        ),
+        "Community Hub",
+    )
+    assert result is not None
+    assert result["must_haves_met"] == ["Clear purpose beyond profit"]
+    assert result["nice_to_haves_met"] == ["Participatory governance"]
 
 
 def test_governance_gate_forces_for_profit_weak_yes_to_no():
@@ -492,3 +532,392 @@ def test_normalize_type_aliases_mutual_and_community_to_nonprofit():
     assert _normalize_type("community association") == "nonprofit"
     assert _normalize_type("community_project") == "nonprofit"
     assert _normalize_type("credit union") == "cooperative"
+
+
+def test_org_assessment_prompt_charity_community_nonprofit_floor():
+    """Charities/community env nonprofits → nonprofit + ≥weak_yes, not other/no."""
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Community Ecology Centre",
+        "Norval",
+        "ON",
+        job_title="",
+        description="",
+    )
+    assert "charities are never \"other\" for lacking cooperative governance" in prompt
+    assert 'AT LEAST "weak_yes"' in prompt
+    assert "board+ED charities stay nonprofit" in prompt or (
+        "board + executive director is still nonprofit" in prompt
+    )
+    assert "NEVER rate a registered charity" in prompt
+
+
+def test_org_assessment_prompt_mutual_aid_strong_yes_calibration():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Service d'entraide communautaire",
+        "Montreal",
+        "QC",
+        "",
+        "",
+    )
+    assert "mutual-aid, collective care, or solidarity" in prompt
+    assert "flat or non-hierarchical structure" in prompt
+    assert "Explicit cooperative labels are NOT required for strong_yes" in prompt
+
+
+def test_org_assessment_prompt_political_parties_are_other_not_government():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Provincial Political Party",
+        "Toronto",
+        "ON",
+        "",
+        "",
+    )
+    assert "Political parties and electoral organizations" in prompt
+    assert 'type "other", rating "no"' in prompt
+    assert "parties are NOT 'government'" in prompt or "NOT political parties" in prompt
+    # Must not instruct mapping parties to government
+    assert "political parties are not public bodies" in prompt.lower() or (
+        "NOT political parties — parties are not public bodies" in prompt
+    )
+
+
+def test_governance_gate_keeps_charity_nonprofit_weak_yes():
+    """Simulates corrected charity assessment: nonprofit + weak_yes survives gate."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Community Ecology Centre",
+            slug="community-ecology-centre",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "Registered community environmental charity with clear public-benefit mission."
+            ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
+        ),
+        "Community Ecology Centre",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "weak_yes"
+    assert not any("governance_gate" in f for f in result["flags"])
+
+
+def test_result_to_db_fields_includes_evidence_website():
+    from utils.organization_assessment import _result_to_db_fields
+
+    result = _parse_response(
+        _assessment_json(website="https://greencommunitiescanada.org"),
+        "Green Communities Canada",
+    )
+    assert result is not None
+    updates = _result_to_db_fields(result)
+    assert updates.get("website") == "https://greencommunitiescanada.org"
+
+
+def test_result_to_db_fields_omits_shared_host_website():
+    from utils.organization_assessment import _result_to_db_fields
+
+    result = _parse_response(
+        _assessment_json(website="https://linkedin.com/company/acme"),
+        "Acme",
+    )
+    assert result is not None
+    assert result["website"] is None
+    updates = _result_to_db_fields(result)
+    assert "website" not in updates
+
+
+def test_private_company_gate_keeps_inc_charity_with_mission_no_cra():
+    """Inc. + clear nonprofit mission (no CRA phrase) must stay Yes/nonprofit."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Community Care Inc.",
+            slug="community-care-inc",
+            type="nonprofit",
+            sse_rating="strong_yes",
+            sse_reasoning_en=(
+                "A mission-driven nonprofit with a clear public-benefit mandate "
+                "serving vulnerable families; volunteer board oversees programs."
+            ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
+            flags=[],
+        ),
+        "Community Care Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "strong_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_keeps_inc_without_shareholders_soft_path():
+    """'without shareholders' must not demote via bare shareholder match."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Community Arts Collective Inc.",
+            slug="community-arts-collective-inc",
+            type="nonprofit",
+            sse_rating="strong_yes",
+            sse_reasoning_en=(
+                "A mission-driven community arts group without shareholders; "
+                "programs are overseen by a volunteer board."
+            ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
+            flags=[],
+        ),
+        "Community Arts Collective Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "strong_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_demotes_inc_with_commercial_ownership():
+    """Inc. + private/commercial ownership language without charity → other/no."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Family Music Programs Inc.",
+            slug="family-music-programs-inc",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "A privately owned commercial music school offering fee-based "
+                "private lessons; founder-owned studio with shareholders."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+            flags=[],
+        ),
+        "Family Music Programs Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_demotes_inc_commercial_despite_soft_mission_cues():
+    """Private/commercial evidence must beat soft mission/board keep language."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Harmony Music Academy Inc.",
+            slug="harmony-music-academy-inc",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "A privately owned commercial for-profit music school with a "
+                "mission-driven ethos and a board of directors overseeing programs."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+            flags=[],
+        ),
+        "Harmony Music Academy Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_demotes_invented_nonprofit_inc_bland_yes():
+    """Bare 'nonprofit' fluff + Inc. without strong soft cues → other/no."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Melody Music School Inc.",
+            slug="melody-music-school-inc",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "A nonprofit music school offering lessons and community "
+                "recitals with a mission-driven approach."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+            flags=[],
+        ),
+        "Melody Music School Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_demotes_consulting_inc_without_strong_soft():
+    """Consulting Inc. Yes with no private keywords and no strong soft → demote."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Northwind Consulting Inc.",
+            slug="northwind-consulting-inc",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "An environmental consulting firm helping clients meet "
+                "regulatory requirements; board of directors sets strategy."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+            flags=[],
+        ),
+        "Northwind Consulting Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
+@pytest.mark.parametrize("org_type", ["cooperative", "union"])
+def test_private_company_gate_skips_coop_union_with_corp_suffix(org_type):
+    """Corp suffix alone must not demote cooperative/union without registration."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Workers Collective Inc.",
+            slug="workers-collective-inc",
+            type=org_type,
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "A member-run organization providing mutual support; "
+                "no charity registration cited."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+            flags=[],
+        ),
+        "Workers Collective Inc.",
+    )
+    assert result is not None
+    assert result["type"] == org_type
+    assert result["sse_rating"] == "weak_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_demotes_explicit_for_profit_evidence():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Green Consult Co",
+            slug="green-consult-co",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "A privately owned environmental consultancy with CSR language."
+            ),
+        ),
+        "Green Consult Co",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_keeps_inc_with_charity_registration_evidence():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Community Care Inc.",
+            slug="community-care-inc",
+            type="nonprofit",
+            sse_rating="strong_yes",
+            sse_reasoning_en=(
+                "Registered charity with a clear public-benefit mission and "
+                "non-distribution constraints."
+            ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
+        ),
+        "Community Care Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "strong_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
+
+
+def test_org_assessment_prompt_rejects_commercial_inc_music_schools():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Family Music Programs Inc.",
+        "Toronto",
+        "ON",
+        "",
+        "",
+    )
+    assert "commercial Inc./Ltd. businesses are not nonprofits" in prompt
+    assert "known good sites must" in prompt
+    assert "RETURN THAT URL" in prompt
+
+
+def test_org_assessment_prompt_place_name_not_government():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Riverside Wind Orchestra",
+        "Riverside",
+        "ON",
+        "",
+        "",
+    )
+    assert "geographic branding only" in prompt
+    assert "Community orchestras" in prompt
+    assert "arts marketing, audience development" in prompt.lower()
+
+
+def test_place_name_guard_remaps_community_orchestra_from_government():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            type="government",
+            sector_id="community-civic-infrastructure",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "Named after the town of Riverside; assumed to be a public body "
+                "from the place name alone."
+            ),
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "weak_yes"
+    assert result["sector_id"] == "arts-culture-information"
+    assert any("place_name_guard" in f for f in result["flags"])
+
+
+def test_place_name_guard_keeps_true_municipal_agency():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Community Orchestra",
+            slug="riverside-community-orchestra",
+            type="government",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "A municipal department of the City of Riverside Parks Division "
+                "with a governing body appointed by council."
+            ),
+        ),
+        "Riverside Community Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "government"
+    assert result["sse_rating"] == "no"
+    assert not any("place_name_guard" in f for f in result["flags"])

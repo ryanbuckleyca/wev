@@ -120,17 +120,59 @@ NICE-TO-HAVES (strengthen Yes rating):
 AUTOMATIC NO FLAGS (triggers 'no' rating):
 - Government / public-sector employer or role (municipality, federal/provincial agency,
   crown corp, school board, public hospital authority, etc.) — never SSE
+- Conventional for-profit employer (private consultancy, engineering firm, shipping
+  line / commercial carrier, trading company, public company, founder-owned business,
+  corporate CSR / ESG / "social impact" / "stewardship" team) — even when the role
+  itself is environmental, community, commercial-sustainability, or mission-flavored.
+  Mission-driven work inside a traditional corporation is NOT Solidarity Economy.
+  Commercial / sales / BD titles at for-profit employers are always "no".
 - No social/environmental/community mission (pure profit-focused)
 - Profit-maximization focused with no visible social good
 - No reference to cooperation beyond internal team collaboration
 - Mission-neutral language with generic CSR
 - Vague or missing compensation AND no volunteer/internship disclosure (if salary is "Volunteer" or role is internship, treat as disclosed)
+  — EXCEPTION: when the employer is a clear nonprofit / charity / community
+  social-services agency and the role advances that mission, thin or missing
+  wage disclosure alone is NOT an automatic No (prefer weak_yes; still note
+  opaque pay in flags). Automatic No for pay still applies to hidden unpaid
+  trials and to governance-ineligible employers (for-profit / government).
 - Hidden unpaid work (e.g., "unpaid trial" rather than transparent volunteer role)"""
 
-RATING_GUIDELINES = """Be strict: 
-- "strong_yes" requires organizational commitment to SSE (nonprofit, coop, community-based) with clear stated values. Volunteer/internship roles can be strong_yes when mission + organization alignment are clear.
-- "weak_yes" for: mission-driven roles in traditional corps, environmental/social roles, for-profits with transparent SSE alignment, volunteer/internship roles with partial SSE alignment, or eligible SSE organizations that meet must-haves but show weaker participatory governance / thinner mission evidence. Nonprofit legal form alone is not automatic Yes — still score against the criteria.
-- "no" for: government/public-sector employers or jobs, profit-focused, no social mission, opaque/missing compensation (volunteer/internship work MUST be explicitly disclosed), or pure market-rate tech jobs."""
+RATING_GUIDELINES = """Be strict:
+- GOVERNANCE GATE for any Yes (strong_yes or weak_yes): the employer must be a
+  nonprofit / cooperative / union / community association — NOT a conventional
+  for-profit, consultancy, engineering firm, shipping/trading company, or public
+  company. Environmental scientist / technician / engineer / project-manager roles
+  at private environmental consultancies (and mechanical / industrial engineering
+  firms), and "social impact" or CSR roles at tech/corporate employers, are "no"
+  even when the work is mission-flavored.
+  Do NOT use weak_yes for "mission-driven roles in traditional corporations."
+- EMPLOYER IDENTITY: trust the full employer name in the posting (and researched
+  legal/common name). Do not swap a nonprofit for a similarly abbreviated for-profit
+  (or vice versa) from an acronym alone. Score governance from that identified entity.
+- COMMERCIAL TITLES: "Commercial Manager", sales, BD, fundraising, or partnerships
+  titles do not change the governance gate — at a clear nonprofit/charity they may
+  still be Yes when mission-aligned; at a for-profit commercial employer they are "no".
+- "strong_yes" requires SSE-eligible employer governance PLUS clear mission and
+  values (registered charity / coop / community org with substantive public mission).
+  Prefer strong_yes over weak_yes when the employer is a clear nonprofit/charity and
+  the role clearly advances that mission (including wildlife rehab, food security,
+  community programs, fellowships, parks/wilderness conservation, environmental
+  justice advocacy, ocean/sustainable-resource stewardship charities, popular education,
+  democratic / associative-life training, and community organizing education).
+  Volunteer/internship roles can be strong_yes when mission + organization alignment
+  are clear.
+- "weak_yes" ONLY for SSE-eligible employers (nonprofit/coop/union/community) that
+  meet must-haves but show thinner participatory governance or thinner mission
+  evidence — never for conventional for-profits with green/social marketing.
+  Also use weak_yes (not no) when a clear nonprofit/charity/community social-services
+  employer has a mission-aligned role but compensation is thin or missing — do not
+  false-no charities solely for opaque wage disclosure.
+- "no" for: government/public-sector; conventional for-profit / private consultancy /
+  engineering firm / shipping or trading company / corporate CSR; profit-focused
+  roles; hidden unpaid trials / undisclosed volunteer work; pure market-rate tech
+  jobs. Do NOT use "no" solely because a nonprofit/charity job ad omits salary when
+  other must-haves and governance are met."""
 
 # Organization-level SSE criteria (NOT job-post criteria).
 # Used by OrganizationAssessor — never rate an org on job compensation/hours.
@@ -157,18 +199,46 @@ Never-SSE stored types (always No): government, other.
 TYPE MAPPING (do not invent other type labels):
 - nonprofit — registered charity / nonprofit corporation / association; ALSO use this
   for mutual societies, mutual-aid groups, community associations, and community
-  projects when they are not clearly cooperatives. Prefer this ONLY when public
-  materials show nonprofit/charity registration, an independent board serving a
-  non-proprietary mission, or clear non-distribution constraints — not merely a
-  mission-driven private business.
+  projects when they are not clearly cooperatives. Prefer this when public materials
+  show nonprofit/charity registration, an independent board serving a non-proprietary
+  mission, or clear non-distribution constraints — not merely a mission-driven
+  private business. A conventional board + executive director is still nonprofit
+  when charity/nonprofit evidence is present — do NOT require cooperative labels.
 - cooperative — worker, consumer, producer, multi-stakeholder coop, or credit union
 - union — labour union
 - government — public agency / municipality / crown corp / school board / etc. → "no"
+  (NOT political parties — parties are not public bodies; see "other" below)
 - other — conventional for-profit / private company / privately owned school or
-  program / residual → "no"
+  program / political party or electoral organization / residual → "no"
   (even if the mission mentions environment, community, children, nature, or
   "respect for people"; even if founded by an educator with a clear social purpose)
+CRITICAL — place-name / city-in-name is NOT government:
+- A city, town, or region name in the organization name (or municipality field) is
+  geographic branding only — NOT evidence of a municipal or public-sector employer.
+- Community orchestras, choirs, bands, theatres, and similar arts / cultural
+  associations are typically type "nonprofit" (often sector arts-culture-information),
+  never "government", unless research shows a city department, municipal agency, or
+  other statutory public body.
+- Use type "government" only with explicit public-sector evidence (created by statute,
+  governing body appointed by a minister / council / public authority, crown corp,
+  school board, public hospital authority, municipal department, etc.).
+CRITICAL — commercial Inc./Ltd. businesses are not nonprofits:
+- Legal suffixes like Inc., Ltd., Corp., LLC often mark private companies.
+  Fee-based / commercial music schools, private arts or early-childhood education
+  programs, and similar founder-owned businesses → type "other", rating "no"
+  unless research shows charity / nonprofit / cooperative / union registration
+  (or equivalent non-distribution / public-benefit incorporation).
+- Do NOT invent type "nonprofit" or Yes from warm mission language alone when the
+  entity is a private company selling classes/programs without charity evidence.
+CRITICAL — charities are never "other" for lacking cooperative governance:
+- Registered charities and community environmental / social nonprofits with a clear
+  public-benefit mission → type "nonprofit" (never "other" merely because they lack
+  cooperative, mutualist, or SSE-branded governance language).
+- "other" means for-profit / private ownership / political party / residual — NOT
+  "standard nonprofit" or "board+ED charity".
 There is no "social enterprise" type. Mission-driven private businesses are "other".
+Political parties and electoral organizations → type "other", rating "no" (never SSE;
+never "government"; do not store as nonprofit Yes even if incorporated as a society).
 Public service is not SSE. CSR/greenwashing in a for-profit is not SSE.
 Mission-driven private enterprise is not SSE.
 
@@ -176,13 +246,14 @@ MUST-HAVES (required for any Yes, in addition to the governance gate):
 1. Clear purpose beyond profit - mission prioritizes people/community/planet
 2. Impact described intentionally - not CSR/greenwashing or marketing slogans
 3. Organization's work contributes to social/community/environmental good
+(Only these three. Do NOT copy job must-haves 4–5 such as "Transparent compensation"
+or "Clear job expectations" into must_haves_met — those are job-posting criteria only.)
 
 NICE-TO-HAVES (strengthen Yes rating):
 4. Solidarity-driven culture - cooperation, mutual support, collective/community language
 5. Participatory governance - workers/members have voice in decisions
    (Many nonprofits use a conventional board + director hierarchy; that alone does
-   not disqualify them, but weaker member/worker voice usually means weak_yes
-   rather than strong_yes when must-haves are met.)
+   NOT disqualify them and does NOT force type "other" or rating "no".)
 6. Explicit SSE governance model in public materials
 7. Investment in people - training, mentorship, education, leadership development
 8. Mission reinvestment - surplus goes to people/community/mission, not private shareholders
@@ -190,15 +261,26 @@ NICE-TO-HAVES (strengthen Yes rating):
 AUTOMATIC NO FLAGS (triggers 'no' rating):
 - type is government or other (never SSE)
 - Government / public-sector employer (any level) — never SSE
+  (Do NOT trigger from a city/town name in the org title alone — see place-name rule)
+- Political party / electoral organization — never SSE (type "other", not "government")
 - Conventional for-profit with only CSR / ESG / "we respect the environment" language
 - Privately owned / founder-owned business or private school/program with a social
   or environmental mission but no nonprofit, cooperative, or union governance
   evidence → type "other", rating "no"
+- Commercial music / arts / education businesses (including Inc./Ltd. fee-based
+  class providers) without charity or nonprofit registration → type "other",
+  rating "no" — warm "community" / early-childhood mission language is not SSE
 - No social/environmental/community mission (pure profit-focused)
 - Profit-maximization / competitiveness-first with social language as marketing
 - Mission-neutral language with only generic CSR
 - Do NOT flag missing job salary, hours, contract type, or truncated job text —
-  those are job-posting concerns, not organization identity"""
+  those are job-posting concerns, not organization identity
+- Do NOT put "Transparent compensation" or "Clear job expectations" in
+  must_haves_met / nice_to_haves_met / flags — org rubric has no compensation criteria
+- NEVER score is_sse / sector / language / type from SOURCE DESCRIPTION or listing
+  notes — those fields require official-website / supporting web research (or null)
+- NEVER rate a registered charity / community nonprofit "no" or type "other" solely
+  because governance is board+ED or lacks cooperative labels"""
 
 ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post completeness):
 - Base the rating on mission/governance evidence from research, not the type label alone
@@ -206,25 +288,61 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
 - Decide type BEFORE rating. If governance evidence only shows a private/founder-owned
   business (including private schools and mission-driven education programs), type
   MUST be "other" and rating MUST be "no"
-- "strong_yes" = nonprofit / cooperative / union with clear SSE values and mission
-  (includes mutual-aid and community associations stored as nonprofit)
-  plus meaningful participatory or solidarity governance evidence
-- "weak_yes" = eligible SSE type (nonprofit, cooperative, union) that meets must-haves
-  but has partial/weaker mission evidence and/or limited participatory governance
-  (common when a nonprofit is board- and director-led without broader member voice).
-  Nonprofit or foundation status alone is never automatic Yes — still apply
-  must-haves and automatic-no flags. NEVER government or other.
+- Never type "government" from a municipal place-name in the org title alone.
+  Community orchestras / community arts associations with accessible music, culture,
+  or arts-education public benefit → type "nonprofit" (prefer strong_yes when mission
+  evidence is clear) — not government/no.
+- Inc./Ltd./Corp. commercial music, arts, or education providers without charity
+  or nonprofit registration evidence → type "other", rating "no" (never invent
+  nonprofit + weak_yes from mission warmth alone)
+- Registered charity / community environmental or social nonprofit with a clear
+  public-benefit mission → type "nonprofit" and AT LEAST "weak_yes" (usually
+  "strong_yes" when mission evidence is clear). Never "other"/"no" merely for
+  lacking cooperative or SSE-labeled governance; board+ED is SSE-eligible.
+- "strong_yes" = nonprofit / cooperative / union with clear people/community/planet
+  mission. Prefer strong_yes (do not default to weak_yes) when ANY of these hold:
+  • registered charity / clear non-distribution / public-benefit constraints
+  • mutual-aid, collective care, or solidarity / "entraide" language in public materials
+  • flat or non-hierarchical structure, or meaningful participatory governance
+  • established community / social-economy org or grantmaking foundation with a
+    clear public-benefit mission — including conventional board + ED
+  • civil-rights / anti-racism / ethnocultural community leagues and similar
+    advocacy nonprofits with a clear people/community mission
+  • community arts / orchestra / choir / cultural associations with a clear
+    public-benefit or accessible arts-education mission
+  Explicit cooperative labels are NOT required for strong_yes.
+- "weak_yes" = eligible SSE type that meets must-haves but has thin/partial mission
+  evidence OR ambiguous whether the entity is truly nonprofit vs private — NOT merely
+  because a clear nonprofit uses board/ED structure, and NOT merely because it is a
+  nonprofit without coop labels. Nonprofit or foundation status alone is never
+  automatic Yes — still apply must-haves and automatic-no flags.
+  NEVER government or other.
 - "no" = government, other/conventional for-profit / privately owned mission business
-  (even with strong green/social/education marketing), or no substantive
-  social/environmental mission
+  / political party (type "other"), or no substantive social/environmental mission
 - Greenwashing test: environmental, nature, outdoor-education, wellness, or
   "community" mission without nonprofit/coop/union governance → "no" (type "other")
+  — but a registered charity or clear community nonprofit with that mission is
+  nonprofit Yes, not this greenwashing case
 - Never rate "no" because a job description is truncated or lacks compensation details"""
 
 BATCH_RATING_GUIDELINES = """Be strict with ratings. Return JSON array ONLY, no preamble.
-- "strong_yes" = nonprofit/coop/community org with clear SSE values OR volunteer/internship role with strong mission and clear organizational alignment
-- "weak_yes" = mission element but mixed structure, volunteer/internship role with partial SSE alignment, or eligible SSE org with weaker participatory governance / thinner mission evidence (nonprofit legal form alone is not automatic Yes)
-- "no" = profit-focused, no mission, or unpaid work without clear volunteer/internship disclosure"""
+- GOVERNANCE GATE: Yes only when the employer is nonprofit / coop / union / community —
+  never conventional for-profit, consultancy, engineering firm, shipping/trading
+  company, or corporate CSR / "social impact" teams.
+- EMPLOYER IDENTITY: trust the full employer name; do not swap entities from acronyms.
+- Prefer strong_yes (not weak_yes) when a clear nonprofit/charity employer has a
+  mission-aligned role — including popular education, democratic / associative-life
+  training, community organizing education, and environmental stewardship charities.
+- "strong_yes" = SSE-eligible employer with clear SSE values OR volunteer/internship role
+  with strong mission and clear organizational alignment at an SSE-eligible employer
+- "weak_yes" = SSE-eligible employer that meets must-haves but has weaker participatory
+  governance / thinner mission evidence (nonprofit legal form alone is not automatic Yes).
+  Do NOT use weak_yes for mission-driven roles inside traditional corporations.
+  Prefer weak_yes (not no) for clear nonprofit/charity employers when the only gap is
+  thin/missing wage disclosure.
+- "no" = government/public-sector, conventional for-profit / CSR roles, profit-focused,
+  no mission, or unpaid work without clear volunteer/internship disclosure.
+  Do not false-no charities solely for opaque compensation."""
 
 # Single job classification (for real-time during scraping)
 SSE_CLASSIFICATION_PROMPT = f"""You are evaluating whether a job posting aligns with Solidarity Economy (SSE) principles.
@@ -235,7 +353,7 @@ SSE_CLASSIFICATION_PROMPT = f"""You are evaluating whether a job posting aligns 
 
 ANALYZE THIS JOB:
 
-Organization: {{org_name}}
+Organization (scrape metadata — may be stale): {{org_name}}
 Role: {{job_title}}
 Location: {{location}}
 Salary: {{salary}}
@@ -244,9 +362,17 @@ Posted: {{posted_date}}
 Description:
 {{job_description}}
 
-{ESCAPED_SSE_JSON_OBJECT_SPEC}
+EMPLOYER IDENTITY (mandatory):
+- The hiring employer is whoever the posting itself describes (e.g. an "About …"
+  section, application/host org, or explicit employer name in the body).
+- The Organization metadata field above is only a scrape hint — it can be wrong,
+  outdated, or a related brand. If it conflicts with a clear employer in the
+  description, trust the description and use that name in reasoning.
+- Supporting web evidence must not introduce a third unrelated organization.
 
 {RATING_GUIDELINES}
+
+{ESCAPED_SSE_JSON_OBJECT_SPEC}
 """
 
 
