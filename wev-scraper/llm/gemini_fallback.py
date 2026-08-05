@@ -4,7 +4,7 @@ Order (free tiers first, then local):
   1. gemini-3.6-flash
   2. gemini-3.5-flash-lite
   3. groq
-  4. local_grounded (Ollama + Tavily already used upstream)
+  4. ollama (LocalGroundedProvider)
 
 Shared Tavily snippets are preferred so all backends see the same evidence.
 Gemini native Google Search is **never** enabled by this provider — grounding

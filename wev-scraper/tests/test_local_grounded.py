@@ -96,3 +96,22 @@ def test_token_limits(provider):
     limits = provider.get_token_limits()
     assert limits["context_window"] == 8_192
     assert limits["recommended_batch_size"] == 1
+
+def test_ollama_num_predict_invalid_env_falls_back(provider):
+    """Non-integer OLLAMA_NUM_PREDICT should fall back instead of raising."""
+    with patch.object(provider, "_check_ollama", return_value=True), \
+         patch.object(provider, "_get_ollama_client") as mock_get_client, \
+         patch.dict("os.environ", {"OLLAMA_NUM_PREDICT": "not-an-int"}, clear=False):
+
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_client.generate.return_value = {"response": "{}"}
+
+        provider._generate_with_ollama("{}", json_mode=True)
+        assert mock_client.generate.call_args[1]["options"]["num_predict"] == 900
+
+        mock_client.generate.reset_mock()
+        mock_client.generate.return_value = {"response": "ok"}
+        provider._generate_with_ollama("hi", json_mode=False)
+        assert mock_client.generate.call_args[1]["options"]["num_predict"] == 2000
+

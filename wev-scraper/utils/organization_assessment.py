@@ -1186,8 +1186,6 @@ class OrganizationAssessor(BaseGroundedClassifier):
         )
         prefer_hosts = None
         if known_website and evidence_domain(known_website):
-            from utils.organization_cache import extract_domain
-
             host = extract_domain(known_website)
             prefer_hosts = [host] if host else None
         from llm.tavily_grounding import entity_require_terms
