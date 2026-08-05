@@ -1,0 +1,403 @@
+{
+  "generated_at": "2026-08-04T15:38:12.793916+00:00",
+  "models": {
+    "gemini": "gemini-3.6-flash",
+    "groq": "llama-3.3-70b-versatile",
+    "gemini_retry": "settings key + Oakville 503 retries"
+  },
+  "env": {
+    "USE_GOOGLE_SEARCH_GROUNDING": "0",
+    "FORCE_GROUNDING": "1",
+    "GROQ_MODELS": [
+      "llama-3.3-70b-versatile",
+      "llama-3.1-8b-instant",
+      "qwen/qwen3-32b",
+      "moonshotai/kimi-k2-instruct-0905",
+      "meta-llama/llama-4-scout-17b-16e-instruct"
+    ]
+  },
+  "orgs": [
+    {
+      "org_id": 1415,
+      "name": "Oakville Wind Orchestra",
+      "prod": {
+        "location": "Oakville, ON",
+        "type": "nonprofit",
+        "sector_id": "arts-culture-information",
+        "sse_rating": "strong_yes",
+        "website": "https://www.oakvillewindorchestra.ca",
+        "website_norm": "oakvillewindorchestra.ca",
+        "is_sse": true,
+        "language": "en",
+        "mission_short": "To provide accessible, high-quality musical entertainment and community concerts while serving as an important cultural institution within Oakville and the broader Halton region."
+      },
+      "gemini": {
+        "location": "Oakville, ON",
+        "type": "nonprofit",
+        "sector_id": "arts-culture-information",
+        "sse_rating": "strong_yes",
+        "website": "https://www.oakvillewindorchestra.ca",
+        "website_norm": "oakvillewindorchestra.ca",
+        "is_sse": true,
+        "language": "en",
+        "mission_short": "To enrich the community by providing accessible, high-quality wind band music and supporting music education and appreciation.",
+        "elapsed_s": 17.34,
+        "provider_used": "gemini-3.6-flash",
+        "error": null
+      },
+      "groq": {
+        "location": "Oakville, ON",
+        "type": "government",
+        "sector_id": "community-civic-infrastructure",
+        "sse_rating": "no",
+        "website": "https://www.oakvillewindorchestra.ca",
+        "website_norm": "oakvillewindorchestra.ca",
+        "is_sse": false,
+        "language": "bilingual",
+        "mission_short": "No explicit mission statement found on the website.",
+        "elapsed_s": 2.97,
+        "provider_used": "groq",
+        "error": null
+      },
+      "notes": "gemini=prod; groq: REGRESSION sse strong_yes→no"
+    },
+    {
+      "org_id": 1408,
+      "name": "Artsmarketing Services Inc.",
+      "prod": {
+        "location": "",
+        "type": "other",
+        "sector_id": "community-civic-infrastructure",
+        "sse_rating": "no",
+        "website": "https://www.artsmarketing.com",
+        "website_norm": "artsmarketing.com",
+        "is_sse": false,
+        "language": "en",
+        "mission_short": "To help non-profit organizations grow their audience and raise critical funds through real conversations, supporting major cultural, health care, and charitable institutions in ful"
+      },
+      "gemini": {
+        "location": "",
+        "type": "other",
+        "sector_id": "arts-culture-information",
+        "sse_rating": "no",
+        "website": "https://www.artsmarketing.com",
+        "website_norm": "artsmarketing.com",
+        "is_sse": false,
+        "language": "en",
+        "mission_short": "To help non-profit organizations engage donors, members, and subscribers and raise funds through strategic conversations and fundraising campaigns.",
+        "elapsed_s": 14.45,
+        "provider_used": "gemini-3.6-flash",
+        "error": null
+      },
+      "groq": {
+        "location": "",
+        "type": "other",
+        "sector_id": "care-health-social-services",
+        "sse_rating": "no",
+        "website": "https://www.artsmarketing.com",
+        "website_norm": "artsmarketing.com",
+        "is_sse": false,
+        "language": "en",
+        "mission_short": "Raising funds and building community engagement with real conversations for charitable organizations.",
+        "elapsed_s": 2.91,
+        "provider_used": "groq",
+        "error": null
+      },
+      "notes": "gemini≠prod:sector_id; groq≠prod:sector_id"
+    },
+    {
+      "org_id": 1399,
+      "name": "Eeyou Marine Region Planning Commission",
+      "prod": {
+        "location": "Montreal, QC",
+        "type": "government",
+        "sector_id": "environment-circular-economy",
+        "sse_rating": "no",
+        "website": "https://eeyoumrpc.ca/",
+        "website_norm": "eeyoumrpc.ca",
+        "is_sse": false,
+        "language": "bilingual",
+        "mission_short": "To prepare land use plans that guide resource use and development in the Eeyou Marine Region while championing sustainable growth and environmental stewardship."
+      },
+      "gemini": {
+        "location": "Montreal, QC",
+        "type": "government",
+        "sector_id": "environment-circular-economy",
+        "sse_rating": "no",
+        "website": "https://eeyoumrpc.ca/",
+        "website_norm": "eeyoumrpc.ca",
+        "is_sse": false,
+        "language": "en",
+        "mission_short": "To champion sustainable growth, environmental stewardship, and land use planning across the Eeyou Marine Region in accordance with the Eeyou Marine Region Land Claims Agreement.",
+        "elapsed_s": 14.75,
+        "provider_used": "gemini-3.6-flash",
+        "error": null
+      },
+      "groq": {
+        "location": "Montreal, QC",
+        "type": "government",
+        "sector_id": "environment-circular-economy",
+        "sse_rating": "no",
+        "website": "https://eeyoumrpc.ca/",
+        "website_norm": "eeyoumrpc.ca",
+        "is_sse": false,
+        "language": "bilingual",
+        "mission_short": "Champions sustainable growth and environmental stewardship across the Eeyou Marine Region.",
+        "elapsed_s": 25.24,
+        "provider_used": "groq",
+        "error": null
+      },
+      "notes": "gemini=prod; groq=prod"
+    }
+  ],
+  "jobs": [
+    {
+      "job_id": "21cb5cc3-5125-4108-9ac8-7421239dc027",
+      "title": "Conseiller-ère et formateur-ice en vie associative et démocratique",
+      "organization": "Centre de formation populaire",
+      "prod": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "title": "Conseiller-ère et formateur-ice en vie associative et démocratique",
+        "organization": "Centre de formation populaire"
+      },
+      "gemini": {
+        "sse_rating": "strong_yes",
+        "is_sse": true,
+        "confidence": 0.95,
+        "reasoning_short": "Le Centre de formation populaire is an autonomous community non-profit operating under worker co-management (cogestion). The role directly advances democratic governance and associative practices acro",
+        "elapsed_s": 6.29,
+        "provider_used": "gemini-3.6-flash",
+        "error": null
+      },
+      "groq": {
+        "sse_rating": "weak_yes",
+        "is_sse": true,
+        "confidence": 0.62,
+        "reasoning_short": "The Centre de formation populaire is an autonomous community organization that supports community life and democracy. The role of Conseiller-ère et formateur-ice en vie associative et démocratique con",
+        "elapsed_s": 1.56,
+        "provider_used": "groq",
+        "error": null
+      },
+      "notes": "gemini=prod; groq≠prod:sse_rating (strong_yes→weak_yes)"
+    },
+    {
+      "job_id": "34bbfc67-cc57-45c6-8764-a0d54decc171",
+      "title": "Mechanical Project Manager – Industrial Mandate at Pratt & Whitney Canada (On-Site)",
+      "organization": "Bouthillette Parizeau & Associes",
+      "prod": {
+        "sse_rating": "weak_yes",
+        "is_sse": false,
+        "title": "Mechanical Project Manager – Industrial Mandate at Pratt & Whitney Canada (On-Site)",
+        "organization": "Bouthillette Parizeau & Associes"
+      },
+      "gemini": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "confidence": 0.95,
+        "reasoning_short": "Bouthillette Parizeau is a conventional for-profit engineering consulting firm, and this role is an industrial mandate for a private aerospace manufacturer. Under Solidarity Economy evaluation rules, ",
+        "elapsed_s": 5.55,
+        "provider_used": "gemini-3.6-flash",
+        "error": null
+      },
+      "groq": {
+        "sse_rating": "no",
+        "is_sse": false,
+        "confidence": 0.9,
+        "reasoning_short": "Bouthillette Parizeau is a conventional for-profit employer, a private engineering firm, which does not align with Solidarity Economy principles.",
+        "elapsed_s": 1.16,
+        "provider_used": "groq",
+        "error": null
+      },
+      "notes": "gemini≠prod:sse_rating (weak_yes→no); groq≠prod:sse_rating (weak_yes→no)"
+    },
+    {
+      "job_id": "7ecc11d0-cb69-41f0-8c87-8f17853e02b4",
+      "title": "Senior Commercial Manager, Canada",
+      "organization": "Marine Stewardship Council (MSC)",
+      "prod": {
+        "sse_rating": "no",
+        "is_sse": true,
+        "title": "Senior Commercial Manager, Canada",
+        "organization": "Marine Stewardship Council (MSC)"
+      },
+      "gemini": {
+        "sse_rating": "weak_yes",
+        "is_sse": true,
+        "confidence": 0.85,
+        "reasoning_short": "The Marine Stewardship Council is an international non-profit dedicated to ocean conservation and ending overfishing. This commercial role promotes sustainable seafood certification in Canada, directl",
+        "elapsed_s": 7.42,
+        "provider_used": "gemini-3.6-flash",
+        "error": null
+      },
+      "groq": {
+        "sse_rating": "weak_yes",
+        "is_sse": true,
+        "confidence": 0.7,
+        "reasoning_short": "The Marine Stewardship Council is a nonprofit organization with a clear mission to end overfishing and promote sustainable fishing practices. The role contributes to social and environmental good, and",
+        "elapsed_s": 1.36,
+        "provider_used": "groq",
+        "error": null
+      },
+      "notes": "gemini≠prod:sse_rating (no→weak_yes); groq≠prod:sse_rating (no→weak_yes)"
+    }
+  ],
+  "rates": {
+    "org_vs_prod": {
+      "gemini": {
+        "type": {
+          "matches": 3,
+          "total": 3,
+          "pct": 100.0
+        },
+        "sector_id": {
+          "matches": 2,
+          "total": 3,
+          "pct": 66.7
+        },
+        "sse_rating": {
+          "matches": 3,
+          "total": 3,
+          "pct": 100.0
+        },
+        "website": {
+          "matches": 3,
+          "total": 3,
+          "pct": 100.0
+        },
+        "is_sse": {
+          "matches": 3,
+          "total": 3,
+          "pct": 100.0
+        },
+        "_overall": {
+          "matches": 14,
+          "total": 15,
+          "pct": 93.3
+        }
+      },
+      "groq": {
+        "type": {
+          "matches": 2,
+          "total": 3,
+          "pct": 66.7
+        },
+        "sector_id": {
+          "matches": 1,
+          "total": 3,
+          "pct": 33.3
+        },
+        "sse_rating": {
+          "matches": 2,
+          "total": 3,
+          "pct": 66.7
+        },
+        "website": {
+          "matches": 3,
+          "total": 3,
+          "pct": 100.0
+        },
+        "is_sse": {
+          "matches": 2,
+          "total": 3,
+          "pct": 66.7
+        },
+        "_overall": {
+          "matches": 10,
+          "total": 15,
+          "pct": 66.7
+        }
+      }
+    },
+    "org_vs_gemini": {
+      "groq": {
+        "type": {
+          "matches": 2,
+          "total": 3,
+          "pct": 66.7
+        },
+        "sector_id": {
+          "matches": 1,
+          "total": 3,
+          "pct": 33.3
+        },
+        "sse_rating": {
+          "matches": 2,
+          "total": 3,
+          "pct": 66.7
+        },
+        "website": {
+          "matches": 3,
+          "total": 3,
+          "pct": 100.0
+        },
+        "is_sse": {
+          "matches": 2,
+          "total": 3,
+          "pct": 66.7
+        },
+        "_overall": {
+          "matches": 10,
+          "total": 15,
+          "pct": 66.7
+        }
+      }
+    },
+    "job_vs_prod": {
+      "gemini": {
+        "sse_rating": {
+          "matches": 1,
+          "total": 3,
+          "pct": 33.3
+        },
+        "is_sse": {
+          "matches": 3,
+          "total": 3,
+          "pct": 100.0
+        },
+        "_overall": {
+          "matches": 4,
+          "total": 6,
+          "pct": 66.7
+        }
+      },
+      "groq": {
+        "sse_rating": {
+          "matches": 0,
+          "total": 3,
+          "pct": 0.0
+        },
+        "is_sse": {
+          "matches": 3,
+          "total": 3,
+          "pct": 100.0
+        },
+        "_overall": {
+          "matches": 3,
+          "total": 6,
+          "pct": 50.0
+        }
+      }
+    },
+    "job_vs_gemini": {
+      "groq": {
+        "sse_rating": {
+          "matches": 2,
+          "total": 3,
+          "pct": 66.7
+        },
+        "is_sse": {
+          "matches": 3,
+          "total": 3,
+          "pct": 100.0
+        },
+        "_overall": {
+          "matches": 5,
+          "total": 6,
+          "pct": 83.3
+        }
+      }
+    }
+  },
+  "verdict": "- **Gemini+T ↔ prod**: orgs 93.3%, jobs 66.7% (model=gemini-3.6-flash).\n- **Groq+T ↔ prod**: orgs 66.7%, jobs 50.0%.\n- **Groq+T ↔ Gemini+T**: orgs 66.7%, jobs 83.3%.\n- **Websites stick**: Gemini 100.0%, Groq 100.0%.\n- Org Oakville Wind Orchestra: gemini=prod; groq: REGRESSION sse strong_yes→no\n- Org Artsmarketing Services Inc.: gemini≠prod:sector_id; groq≠prod:sector_id\n- Org Eeyou Marine Region Planning Commission: gemini=prod; groq=prod\n- Job Conseiller-ère et formateur-ice en vie a: gemini=prod; groq≠prod:sse_rating (strong_yes→weak_yes)\n- Job Mechanical Project Manager – Industrial : gemini≠prod:sse_rating (weak_yes→no); groq≠prod:sse_rating (weak_yes→no)\n- Job Senior Commercial Manager, Canada: gemini≠prod:sse_rating (no→weak_yes); groq≠prod:sse_rating (no→weak_yes)"
+}

@@ -97,3 +97,69 @@ def test_classify_jobs_batch_disables_grounding():
     kwargs = provider.complete.call_args.kwargs
     assert kwargs.get("use_grounding") is False
     assert kwargs.get("search_query") is None
+
+
+def test_compensation_guard_upgrades_nonprofit_false_no():
+    from utils.sse_classifier import _apply_nonprofit_compensation_guard
+
+    result = _apply_nonprofit_compensation_guard(
+        {
+            "rating": "no",
+            "confidence": 0.9,
+            "reasoning": (
+                "A community-focused non-profit human services agency with a "
+                "strong social mission. However, the job posting lacks transparent "
+                "compensation or wage disclosure for a paid part-time contract."
+            ),
+            "must_haves_met": ["Clear purpose beyond profit"],
+            "nice_to_haves_met": [],
+            "flags": ["Missing transparent compensation"],
+            "classified_at": "2026-08-04T00:00:00+00:00",
+            "reviewed": False,
+        },
+        org_name="Agence Example Social Services",
+    )
+    assert result["rating"] == "weak_yes"
+    assert any("compensation_guard" in f for f in result["flags"])
+
+
+def test_compensation_guard_keeps_for_profit_no():
+    from utils.sse_classifier import _apply_nonprofit_compensation_guard
+
+    result = _apply_nonprofit_compensation_guard(
+        {
+            "rating": "no",
+            "confidence": 0.9,
+            "reasoning": (
+                "Conventional for-profit construction firm. Also lacks salary disclosure."
+            ),
+            "must_haves_met": [],
+            "nice_to_haves_met": [],
+            "flags": ["for-profit employer", "opaque compensation"],
+            "classified_at": "2026-08-04T00:00:00+00:00",
+            "reviewed": False,
+        },
+        org_name="Cite Construction TM inc.",
+    )
+    assert result["rating"] == "no"
+
+
+def test_compensation_guard_keeps_hidden_unpaid_no():
+    from utils.sse_classifier import _apply_nonprofit_compensation_guard
+
+    result = _apply_nonprofit_compensation_guard(
+        {
+            "rating": "no",
+            "confidence": 0.8,
+            "reasoning": (
+                "Nonprofit agency posting hides an unpaid trial before any wage disclosure."
+            ),
+            "must_haves_met": [],
+            "nice_to_haves_met": [],
+            "flags": ["hidden unpaid trial", "missing compensation"],
+            "classified_at": "2026-08-04T00:00:00+00:00",
+            "reviewed": False,
+        },
+        org_name="Community Care Agency",
+    )
+    assert result["rating"] == "no"
