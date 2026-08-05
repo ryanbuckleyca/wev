@@ -100,6 +100,19 @@ def _backend_complete_kwargs(name: str, *, evidence: str, kwargs: dict) -> dict:
     return call_kwargs
 
 
+def _model_for_backend(name: str, model: str | None) -> str | None:
+    """Pass Gemini model overrides only to Gemini backends.
+
+    Groq/Ollama must keep their own defaults — a Gemini id (e.g. gemini-3.6-flash)
+    is invalid on those APIs and must not be forwarded.
+    """
+    if model is None:
+        return None
+    if _is_gemini_backend(name):
+        return model
+    return None
+
+
 def gemini_sse_primary_model() -> str:
     return get_stripped_env("GEMINI_SSE_PRIMARY_MODEL") or DEFAULT_GEMINI_PRIMARY
 
@@ -260,7 +273,10 @@ class SSEFallbackProvider(BaseLLMProvider):
             )
             try:
                 result = provider.complete(
-                    call_prompt, model=model, system=system, **call_kwargs,
+                    call_prompt,
+                    model=_model_for_backend(name, model),
+                    system=system,
+                    **call_kwargs,
                 )
                 if not self._is_usable_result(result):
                     last_error = LLMProviderError(f"{name} returned empty response")
@@ -299,10 +315,19 @@ class SSEFallbackProvider(BaseLLMProvider):
 
         last_error: Exception | None = None
         failed: list[str] = []
+        # Gemini-specific model override must not leak to Groq/Ollama.
+        model_override = kwargs.pop("model", None)
         for name, provider in self._providers:
             try:
                 method = getattr(provider, method_name)
-                result = method(*args, **kwargs)
+                call_kwargs = dict(kwargs)
+                backend_model = _model_for_backend(name, model_override)
+                if backend_model is not None:
+                    call_kwargs["model"] = backend_model
+                elif model_override is not None and method_name == "complete":
+                    # Explicitly omit Gemini id; provider keeps its own default.
+                    call_kwargs.pop("model", None)
+                result = method(*args, **call_kwargs)
                 if not self._is_usable_result(result):
                     last_error = LLMProviderError(f"{name} returned empty response")
                     failed.append(name)
