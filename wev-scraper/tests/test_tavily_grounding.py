@@ -2,12 +2,12 @@
 
 from unittest.mock import MagicMock, patch
 
-from llm.local_grounded import _truncate_keep_ends
 from llm.tavily_grounding import (
     entity_require_terms,
     fetch_tavily_context,
     inject_grounding_evidence,
     trim_evidence,
+    truncate_keep_ends,
 )
 
 
@@ -40,9 +40,53 @@ def test_prefer_hosts_only_does_not_set_include_domains():
     assert mock_client.search.called
     api_kwargs = mock_client.search.call_args.kwargs
     assert "include_domains" not in api_kwargs
+    assert "timeout" in api_kwargs
+    assert api_kwargs["timeout"] == 30.0
     # Preferred host ranked ahead of noise
     assert "parkpeople.ca" in text
     assert text.index("parkpeople.ca") < text.index("other.org")
+
+
+def test_fetch_tavily_retries_on_timeout_then_fails_soft():
+    """Hung/failed search retries then returns '' so SSE can continue."""
+    mock_client = MagicMock()
+    mock_client.search.side_effect = TimeoutError("timed out")
+
+    with patch("llm.tavily_grounding.is_tavily_available", return_value=True), \
+         patch("llm.tavily_grounding._client", return_value=mock_client), \
+         patch("llm.tavily_grounding.time.sleep") as mock_sleep, \
+         patch.dict("os.environ", {"TAVILY_MAX_RETRIES": "2", "TAVILY_TIMEOUT_SEC": "15"}, clear=False):
+        text = fetch_tavily_context("Park People mission")
+
+    assert text == ""
+    assert mock_client.search.call_count == 3  # 1 + 2 retries
+    assert mock_sleep.call_count == 2
+    assert mock_client.search.call_args.kwargs.get("timeout") == 15.0
+
+
+def test_fetch_tavily_succeeds_after_retry():
+    mock_client = MagicMock()
+    mock_client.search.side_effect = [
+        TimeoutError("timed out"),
+        {
+            "results": [
+                {
+                    "title": "Park People",
+                    "url": "https://parkpeople.ca",
+                    "content": "Park People builds healthy parks",
+                }
+            ]
+        },
+    ]
+
+    with patch("llm.tavily_grounding.is_tavily_available", return_value=True), \
+         patch("llm.tavily_grounding._client", return_value=mock_client), \
+         patch("llm.tavily_grounding.time.sleep"), \
+         patch.dict("os.environ", {"TAVILY_MAX_RETRIES": "2"}, clear=False):
+        text = fetch_tavily_context("Park People", max_chars=10_000)
+
+    assert "Park People builds healthy parks" in text
+    assert mock_client.search.call_count == 2
 
 
 def test_inject_grounding_evidence_marks_search_as_secondary():
@@ -77,7 +121,7 @@ def test_truncate_keep_ends_preserves_tail_json():
     head = "RULES " * 200
     tail = '{"is_sse": true, "sse_rating": "strong_yes"}'
     full = head + "MIDDLE NOISE " * 400 + tail
-    out = _truncate_keep_ends(full, max_chars=800, head_ratio=0.2)
+    out = truncate_keep_ends(full, max_chars=800, head_ratio=0.2)
     assert len(out) <= 800
     assert "RULES" in out
     assert '"sse_rating"' in out
@@ -117,7 +161,7 @@ def test_org_prompt_keeps_entity_after_local_truncate():
     assert "ORGANIZATION DATA" in prompt
     # Entity block must sit near the end so head+tail truncation keeps it.
     assert prompt.rfind("ORGANIZATION DATA") > prompt.find("ALLOWED VALUES")
-    truncated = _truncate_keep_ends(prompt, max_chars=8000)
+    truncated = truncate_keep_ends(prompt, max_chars=8000)
     assert "Park People" in truncated
     assert "canonical_name" in truncated
     assert "parkpeople.ca" in truncated.lower()

@@ -9,30 +9,9 @@ import threading
 import time
 
 from llm.base import BaseLLMProvider, LLMProviderError
+from llm.tavily_grounding import truncate_keep_ends as _truncate_keep_ends
 
 logger = logging.getLogger(__name__)
-
-_TRUNCATE_MARK = "\n\n…[middle truncated for local model — use rules above + data below]\n\n"
-
-
-def _truncate_keep_ends(text: str, max_chars: int, *, head_ratio: float = 0.2) -> str:
-    """Keep prompt head (instructions) and tail (entity data / JSON schema).
-
-    Head-only truncation drops the payload local models must answer from, which
-    causes timeouts and empty/invalid JSON.
-    """
-    if max_chars <= 0 or len(text) <= max_chars:
-        return text
-    mark = _TRUNCATE_MARK
-    budget = max_chars - len(mark)
-    if budget < 64:
-        return text[: max(0, max_chars - 1)] + "…"
-    head_len = max(32, int(budget * head_ratio))
-    tail_len = budget - head_len
-    if tail_len < 32:
-        head_len = budget // 2
-        tail_len = budget - head_len
-    return text[:head_len] + mark + text[-tail_len:]
 
 
 class LocalGroundedProvider(BaseLLMProvider):
