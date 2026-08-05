@@ -120,6 +120,7 @@ def test_compensation_guard_upgrades_nonprofit_false_no():
         org_name="Agence Example Social Services",
     )
     assert result["rating"] == "weak_yes"
+    assert result["confidence"] == 0.55
     assert any("compensation_guard" in f for f in result["flags"])
 
 
@@ -181,8 +182,7 @@ def test_compensation_guard_ignores_positive_salary_disclosure():
             "confidence": 0.85,
             "reasoning": (
                 "Nonprofit admin role at a charity. Salary disclosure is clear "
-                "at $52,000/year, but the posting fails must-haves on mission "
-                "alignment for this back-office function."
+                "at $52,000/year."
             ),
             "must_haves_met": [],
             "nice_to_haves_met": [],
@@ -193,7 +193,59 @@ def test_compensation_guard_ignores_positive_salary_disclosure():
         org_name="Helping Hands Charity",
     )
     assert result["rating"] == "no"
+    assert result["confidence"] == 0.85
     assert not any("compensation_guard" in f for f in result["flags"])
+
+
+def test_compensation_guard_upgrades_not_for_profit_spellings():
+    """not-for-profit / not for profit must not trip for-profit ineligibility."""
+    from utils.sse_classifier import _apply_nonprofit_compensation_guard
+
+    for spelling in ("not-for-profit", "not for profit"):
+        result = _apply_nonprofit_compensation_guard(
+            {
+                "rating": "no",
+                "confidence": 0.9,
+                "reasoning": (
+                    f"A clear {spelling} community agency with a strong social "
+                    "mission. Missing transparent compensation for the paid role."
+                ),
+                "must_haves_met": ["Clear purpose beyond profit"],
+                "nice_to_haves_met": [],
+                "flags": ["Missing transparent compensation"],
+                "classified_at": "2026-08-04T00:00:00+00:00",
+                "reviewed": False,
+            },
+            org_name="Helping Hands Charity",
+        )
+        assert result["rating"] == "weak_yes", spelling
+        assert result["confidence"] <= 0.55
+        assert any("compensation_guard" in f for f in result["flags"])
+
+
+def test_compensation_guard_upgrades_nongovernmental_nonprofit():
+    """non-governmental must not trip government ineligibility."""
+    from utils.sse_classifier import _apply_nonprofit_compensation_guard
+
+    result = _apply_nonprofit_compensation_guard(
+        {
+            "rating": "no",
+            "confidence": 0.88,
+            "reasoning": (
+                "A registered nonprofit / non-governmental organization with a "
+                "clear community mission. Thin wage disclosure for the paid role."
+            ),
+            "must_haves_met": ["Clear purpose beyond profit"],
+            "nice_to_haves_met": [],
+            "flags": ["Missing transparent compensation"],
+            "classified_at": "2026-08-04T00:00:00+00:00",
+            "reviewed": False,
+        },
+        org_name="Community Care Network",
+    )
+    assert result["rating"] == "weak_yes"
+    assert result["confidence"] <= 0.55
+    assert any("compensation_guard" in f for f in result["flags"])
 
 
 def test_compensation_guard_keeps_for_profit_no():

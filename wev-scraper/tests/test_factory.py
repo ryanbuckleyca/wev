@@ -295,6 +295,85 @@ def test_sse_fallback_google_search_opt_in_only_on_gemini():
         assert "search_query" not in groq.complete.call_args.kwargs
 
 
+def test_sse_fallback_gemini_model_override_not_forwarded_to_groq():
+    """Gemini model override must reach Gemini only; Groq keeps its default."""
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.side_effect = LLMProviderError("quota")
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+    lite.complete.side_effect = LLMProviderError("quota")
+
+    groq = MagicMock()
+    groq.is_available.return_value = True
+    groq.complete.return_value = "groq-ok"
+
+    ollama = MagicMock()
+    ollama.is_available.return_value = True
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
+         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
+         patch("llm.gemini_fallback.fetch_tavily_context", return_value="EVIDENCE"), \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=True), \
+         patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider()
+        assert (
+            provider.complete(
+                "prompt",
+                model="gemini-3.6-flash",
+                task="sse",
+                search_query="q",
+            )
+            == "groq-ok"
+        )
+        assert flash.complete.call_args.kwargs.get("model") == "gemini-3.6-flash"
+        assert lite.complete.call_args.kwargs.get("model") == "gemini-3.6-flash"
+        assert groq.complete.call_args.kwargs.get("model") is None
+
+
+def test_sse_fallback_gemini_model_override_not_forwarded_to_ollama():
+    """Gemini model override must not be passed when falling through to Ollama."""
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.side_effect = LLMProviderError("quota")
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+    lite.complete.side_effect = LLMProviderError("quota")
+
+    groq = MagicMock()
+    groq.is_available.return_value = True
+    groq.complete.side_effect = LLMProviderError("quota")
+
+    ollama = MagicMock()
+    ollama.is_available.return_value = True
+    ollama.complete.return_value = "ollama-ok"
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
+         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
+         patch("llm.gemini_fallback.fetch_tavily_context", return_value="EVIDENCE"), \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=True), \
+         patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider()
+        assert (
+            provider.complete(
+                "prompt",
+                model="gemini-3.5-flash-lite",
+                task="sse",
+                search_query="q",
+            )
+            == "ollama-ok"
+        )
+        assert flash.complete.call_args.kwargs.get("model") == "gemini-3.5-flash-lite"
+        assert groq.complete.call_args.kwargs.get("model") is None
+        assert ollama.complete.call_args.kwargs.get("model") is None
+
+
 def test_sse_fallback_forwards_use_grounding_false():
     """Explicit use_grounding=False must reach backends (not popped)."""
     flash = MagicMock()

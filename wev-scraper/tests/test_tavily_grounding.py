@@ -30,7 +30,8 @@ def test_prefer_hosts_only_does_not_set_include_domains():
     }
 
     with patch("llm.tavily_grounding.is_tavily_available", return_value=True), \
-         patch("llm.tavily_grounding._client", return_value=mock_client):
+         patch("llm.tavily_grounding._client", return_value=mock_client), \
+         patch.dict("os.environ", {"TAVILY_TIMEOUT_SEC": "30"}, clear=False):
         text = fetch_tavily_context(
             "Park People Toronto mission",
             prefer_hosts=["parkpeople.ca"],

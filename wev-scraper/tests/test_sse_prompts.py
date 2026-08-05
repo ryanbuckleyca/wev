@@ -97,7 +97,10 @@ def test_job_rating_prefers_strong_yes_for_popular_education_nonprofits():
 
 def test_job_rating_for_profit_commercial_and_engineering_gate():
     assert "engineering firm" in RATING_GUIDELINES
-    assert "shipping/trading company" in RATING_GUIDELINES or "shipping line" in EVALUATION_CRITERIA
+    assert "shipping/trading company" in RATING_GUIDELINES
+    assert "shipping/trading company" in EVALUATION_CRITERIA or (
+        "shipping" in EVALUATION_CRITERIA and "trading company" in EVALUATION_CRITERIA
+    )
     assert "COMMERCIAL TITLES" in RATING_GUIDELINES
     assert "Do not swap a nonprofit for a similarly abbreviated for-profit" in RATING_GUIDELINES
     assert "EMPLOYER IDENTITY" in BATCH_RATING_GUIDELINES

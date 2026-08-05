@@ -3,6 +3,8 @@
 import json
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from utils.organization_assessment import (
     _attach_org_language,
     _build_search_query,
@@ -781,6 +783,30 @@ def test_private_company_gate_demotes_consulting_inc_without_strong_soft():
     assert any("private_company_gate" in f for f in result["flags"])
 
 
+@pytest.mark.parametrize("org_type", ["cooperative", "union"])
+def test_private_company_gate_skips_coop_union_with_corp_suffix(org_type):
+    """Corp suffix alone must not demote cooperative/union without registration."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Workers Collective Inc.",
+            slug="workers-collective-inc",
+            type=org_type,
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "A member-run organization providing mutual support; "
+                "no charity registration cited."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+            flags=[],
+        ),
+        "Workers Collective Inc.",
+    )
+    assert result is not None
+    assert result["type"] == org_type
+    assert result["sse_rating"] == "weak_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
+
+
 def test_private_company_gate_demotes_explicit_for_profit_evidence():
     result = _parse_response(
         _assessment_json(
@@ -836,7 +862,8 @@ def test_org_assessment_prompt_rejects_commercial_inc_music_schools():
         "",
     )
     assert "commercial Inc./Ltd. businesses are not nonprofits" in prompt
-    assert "Known good sites must" in prompt or "RETURN THAT URL" in prompt
+    assert "known good sites must" in prompt
+    assert "RETURN THAT URL" in prompt
 
 
 def test_org_assessment_prompt_place_name_not_government():
@@ -850,7 +877,7 @@ def test_org_assessment_prompt_place_name_not_government():
         "",
     )
     assert "geographic branding only" in prompt
-    assert "Community orchestras" in prompt or "community orchestras" in prompt.lower()
+    assert "Community orchestras" in prompt
     assert "arts marketing, audience development" in prompt.lower()
 
 
@@ -871,7 +898,7 @@ def test_place_name_guard_remaps_community_orchestra_from_government():
     )
     assert result is not None
     assert result["type"] == "nonprofit"
-    assert result["sse_rating"] == "strong_yes"
+    assert result["sse_rating"] == "weak_yes"
     assert result["sector_id"] == "arts-culture-information"
     assert any("place_name_guard" in f for f in result["flags"])
 

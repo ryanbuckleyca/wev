@@ -56,7 +56,10 @@ _COMPENSATION_OPACITY_RE = re.compile(
     re.IGNORECASE,
 )
 _GOVERNANCE_INELIGIBLE_RE = re.compile(
-    r"for[- ]profit|government|public[- ]sector|crown corp|municipality|"
+    # Left non-(word|hyphen) boundary so "not-for-profit" / "non-governmental"
+    # do not trip for-profit / government; still match standalone forms.
+    r"(?<![-\w])(?<!not )for[- ]profit|(?<![-\w])government|"
+    r"public[- ]sector|crown corp|municipality|"
     # Word-bounded corporate — bare "corporate" must not match "incorporated".
     r"\bcorporate\b|consultancy|private company|traditional corporation",
     re.IGNORECASE,
@@ -125,9 +128,15 @@ def _apply_nonprofit_compensation_guard(
         "compensation_guard: nonprofit/charity employer — thin/missing wage "
         "disclosure alone must not force no → weak_yes"
     )
+    # Heuristic upgrade — do not keep a high model "no" confidence.
+    try:
+        orig_conf = float(result.get("confidence", 0.5))
+    except (TypeError, ValueError):
+        orig_conf = 0.5
     return {
         **result,
         "rating": "weak_yes",
+        "confidence": min(max(0.0, orig_conf), 0.55),
         "flags": new_flags,
     }
 
@@ -396,7 +405,7 @@ class SSEClassifier(BaseGroundedClassifier):
 
         names = list(org_names or [])
         results = []
-        for item in data_array:
+        for pos, item in enumerate(data_array):
             if not isinstance(item, dict):
                 raise ValueError(f"Expected object in array, got {type(item)}")
 
@@ -433,13 +442,8 @@ class SSEClassifier(BaseGroundedClassifier):
                 "classified_at": datetime.now(timezone.utc).isoformat(),
                 "reviewed": False,
             }
-            idx = item.get("index")
-            org_hint = ""
-            if isinstance(idx, int) and 0 <= idx < len(names):
-                org_hint = names[idx]
-            elif isinstance(idx, int) and 1 <= idx <= len(names):
-                # Some models emit 1-based indexes
-                org_hint = names[idx - 1]
+            # Map org names by response array position (not model index 0/1-base).
+            org_hint = names[pos] if pos < len(names) else ""
             results.append(
                 _apply_nonprofit_compensation_guard(parsed, org_name=org_hint)
             )

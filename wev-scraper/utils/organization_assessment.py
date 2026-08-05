@@ -199,9 +199,7 @@ _SECTOR_PRIORITY_RULES = """SECTOR PRIORITY (when multiple sectors could fit):
   community-civic-infrastructure merely because clients are nonprofits or
   "community" appears in marketing copy).
 - community-civic-infrastructure is residual/catch-all — prefer a more specific
-  sector whenever one applies.
-- Do not pick community-civic-infrastructure merely because the work has public
-  clients or "community" marketing language."""
+  sector whenever one applies."""
 
 _SOURCE_DESCRIPTION_RULES = """SOURCE DESCRIPTION vs INTERPRETIVE FIELDS (mandatory):
 - is_sse / sse_rating, sector_id, public_language, type, website, mission_statement_*,
@@ -709,9 +707,9 @@ def _apply_community_arts_place_name_guard(
     )
     new_rating = result.get("sse_rating") or "no"
     if new_rating == "no":
-        new_rating = "strong_yes"
+        new_rating = "weak_yes"
         flags.append(
-            "place_name_guard: restored strong_yes for community arts "
+            "place_name_guard: restored weak_yes for community arts "
             "nonprofit after false government typing"
         )
     sector = result.get("sector_id")
@@ -887,8 +885,10 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         public_language=_validate_public_language(data.get("public_language")),
     )
     gated = _apply_org_sse_governance_guard(_ensure_content_provenance_flags(result))
-    gated = _apply_private_company_sse_guard(gated, raw_name)
-    return _apply_community_arts_place_name_guard(gated, raw_name)
+    # Place-name remaps government→nonprofit (+ Yes floor) before the private-
+    # company gate so arts-derived Yes still faces Inc./commercial demotion.
+    gated = _apply_community_arts_place_name_guard(gated, raw_name)
+    return _apply_private_company_sse_guard(gated, raw_name)
 
 
 def _append_language_provenance_flags(
