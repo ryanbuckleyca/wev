@@ -148,9 +148,14 @@ class LocalGroundedProvider(BaseLLMProvider):
         try:
             client = self._get_ollama_client()
 
+            default_predict = 900 if json_mode else 2000
+            try:
+                num_predict = int(os.getenv("OLLAMA_NUM_PREDICT", str(default_predict)))
+            except (TypeError, ValueError):
+                num_predict = default_predict
             options = {
                 # SSE/org JSON rarely needs >800 tokens; lower cap finishes sooner on CPU.
-                "num_predict": int(os.getenv("OLLAMA_NUM_PREDICT", "900" if json_mode else "2000")),
+                "num_predict": num_predict,
                 "temperature": 0.1,
             }
             fmt = "json" if json_mode else None
