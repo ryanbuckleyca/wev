@@ -2,13 +2,13 @@
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 from typing import TypedDict
 
 from llm.factory import get_sse_provider
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.sse_prompts import (
-    SSE_SEARCH_KEYWORDS,
     get_sse_batch_classification_prompt,
     get_sse_classification_prompt,
 )
@@ -38,6 +38,107 @@ class SSEClassificationResult(TypedDict):
     classified_at: str
     reviewed: bool
 
+
+# Models sometimes false-no clear charities solely for missing wage lines.
+# Match opaque/missing/undisclosed pay only — bare "salary"/"wage" alone is not
+# enough, and positive phrasing ("Salary disclosure is clear") must not match.
+_COMPENSATION_OPACITY_RE = re.compile(
+    r"opaque(?:/missing)? (?:compensation|pay|wage|salary)|"
+    r"missing (?:transparent )?(?:compensation|pay|wage|salary)|"
+    r"(?:no|undisclosed|not[- ]listed|not[- ]disclosed) (?:compensation|pay|wage|salary)|"
+    r"(?:compensation|pay|wage|salary) (?:not|never) (?:stated|disclosed|listed|provided)|"
+    r"(?:missing|no|lacks?|opaque|not[- ]disclosed|undisclosed)"
+    r" (?:pay|wage|salary) disclosure|"
+    r"(?:pay|wage|salary) disclosure"
+    r" (?:is |are )?(?:missing|opaque|undisclosed|not disclosed|lacking)|"
+    r"lacks? (?:transparent )?(?:compensation|pay|wage|salary)|"
+    r"(?:thin|missing)(?:/opaque)? (?:wage|pay|compensation)",
+    re.IGNORECASE,
+)
+_GOVERNANCE_INELIGIBLE_RE = re.compile(
+    # Left non-(word|hyphen) boundary so "not-for-profit" / "non-governmental"
+    # do not trip for-profit / government; still match standalone forms.
+    r"(?<![-\w])(?<!not )for[- ]profit|(?<![-\w])government|"
+    r"public[- ]sector|crown corp|municipality|"
+    # Word-bounded corporate — bare "corporate" must not match "incorporated".
+    r"\bcorporate\b|consultancy|private company|traditional corporation",
+    re.IGNORECASE,
+)
+# Stronger "no" reasons than thin pay — do not upgrade these.
+# Avoid bare "does not meet" / "not … aligned" so thin-pay phrasing like
+# "does not meet transparent compensation standards" can still upgrade.
+_STRONGER_NO_REASON_RE = re.compile(
+    r"mission (?:fail|failure|does not|not met)|fails? (?:must[- ]haves?|mission)|"
+    r"does not meet (?:the )?(?:must[- ]haves?|mission(?:\s+alignment)?|"
+    r"SSE(?:[- ]?aligned)?(?:\s+criteria)?|eligibility)|"
+    r"not (?:SSE[- ]?aligned|mission[- ]aligned)|"
+    r"(?:SSE|mission) not aligned|"
+    r"role (?:is )?(?:not (?:SSE|mission)|fails? (?:must[- ]haves?|mission))|"
+    r"insufficient (?:mission|impact|public[- ]benefit)|"
+    r"no (?:clear )?(?:public[- ]benefit|social|community) mission",
+    re.IGNORECASE,
+)
+_NONPROFIT_EMPLOYER_RE = re.compile(
+    r"non[- ]?profit|not[- ]for[- ]profit|charity|charitable|"
+    r"community (?:agency|organization|organisation|centre|center|food)|"
+    r"human services|social services|social[- ]services|"
+    r"cooperative|co[- ]op|credit union|"
+    r"mutual[- ]aid|solidarity",
+    re.IGNORECASE,
+)
+_HIDDEN_UNPAID_RE = re.compile(
+    r"unpaid trial|hidden unpaid|undisclosed volunteer|unpaid work without",
+    re.IGNORECASE,
+)
+
+
+def _apply_nonprofit_compensation_guard(
+    result: SSEClassificationResult,
+    *,
+    org_name: str = "",
+) -> SSEClassificationResult:
+    """Upgrade false-no when a nonprofit was rejected only for thin/missing pay.
+
+    Clear charities / community social-services orgs should land at least
+    weak_yes when the only cited gap is opaque compensation (not hidden unpaid
+    work, not governance-ineligible employers, and not mission/role fails).
+    Org-name tokens never override explicit for-profit/gov evidence in the blob.
+    """
+    if result.get("rating") != "no":
+        return result
+
+    reasoning = str(result.get("reasoning") or "")
+    flags = [str(f) for f in (result.get("flags") or [])]
+    blob = " ".join([reasoning, " ".join(flags), org_name or ""])
+
+    if not _COMPENSATION_OPACITY_RE.search(blob):
+        return result
+    if _HIDDEN_UNPAID_RE.search(blob):
+        return result
+    # Explicit for-profit/gov in reasoning/flags wins — never upgrade.
+    if _GOVERNANCE_INELIGIBLE_RE.search(blob):
+        return result
+    if _STRONGER_NO_REASON_RE.search(blob):
+        return result
+    if not _NONPROFIT_EMPLOYER_RE.search(blob):
+        return result
+
+    new_flags = list(flags)
+    new_flags.append(
+        "compensation_guard: nonprofit/charity employer — thin/missing wage "
+        "disclosure alone must not force no → weak_yes"
+    )
+    # Heuristic upgrade — do not keep a high model "no" confidence.
+    try:
+        orig_conf = float(result.get("confidence", 0.5))
+    except (TypeError, ValueError):
+        orig_conf = 0.5
+    return {
+        **result,
+        "rating": "weak_yes",
+        "confidence": min(max(0.0, orig_conf), 0.55),
+        "flags": new_flags,
+    }
 
 class SSEClassifier(BaseGroundedClassifier):
     """Classifies jobs as Corporate vs SSE-aligned using Gemini.
@@ -85,18 +186,20 @@ class SSEClassifier(BaseGroundedClassifier):
         job_title = job_data.get("title") or job_data.get("job_title", "Unknown")
         location = job_data.get("location", "Unknown")
         salary = job_data.get("salary") or "Not specified"
-        description = job_data.get("description", "")
+        description = job_data.get("description", "") or ""
         posted_date = job_data.get("posted_date", datetime.utcnow().isoformat())
 
-        if not description or not description.strip():
-            raise SSEClassificationError("Job description is required for classification")
+        # Blank/missing descriptions still classify: Tavily grounding supplies
+        # employer context when there is no posting body. When a description
+        # exists, score from that text and keep grounding off.
+        has_description = bool(description.strip())
 
         prompt = get_sse_classification_prompt(
             org_name=org_name,
             job_title=job_title,
             location=location,
             salary=salary,
-            job_description=description,
+            job_description=description if has_description else "(no description provided)",
             posted_date=posted_date,
         )
 
@@ -107,7 +210,13 @@ class SSEClassifier(BaseGroundedClassifier):
         search_terms = f'"{org_name}"'
         if location and location != "Unknown":
             search_terms += f' "{location}"'
-        search_query = f'{search_terms} {SSE_SEARCH_KEYWORDS}'
+        # Keep search tight to the named employer — broad SSE keywords pull
+        # unrelated co-ops/NGOs that models then confuse with the posting.
+        search_query = f'{search_terms} official website mission governance'
+
+        from llm.tavily_grounding import entity_require_terms
+
+        require_terms = entity_require_terms(org_name) or None
 
         last_error_message = ""
         for attempt in range(2):
@@ -115,10 +224,18 @@ class SSEClassifier(BaseGroundedClassifier):
                 response_text = self._call_provider_with_retry(
                     provider=self.provider,
                     prompt=prompt,
-                    system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
+                    system=(
+                        "You are an expert at analyzing job postings for Solidarity "
+                        "Economy alignment. Score the role from the posting body. "
+                        "Do not invent a different employer from search. Supporting "
+                        "web evidence is only for missing employer context when the "
+                        "posting has no description."
+                    ),
                     task="sse",
-                    search_query=search_query,
+                    search_query=None if has_description else search_query,
                     retries=0,  # The outer loop handles provider and parse retries
+                    require_terms=None if has_description else require_terms,
+                    use_grounding=not has_description,
                 )
             except SSEClassificationError as e:
                 last_error_message = str(e)
@@ -177,26 +294,22 @@ class SSEClassifier(BaseGroundedClassifier):
 
         prompt = get_sse_batch_classification_prompt(normalized_jobs)
 
-        org_search_terms = []
-        for j in normalized_jobs:
-            if j["org_name"] and j["org_name"] != "Unknown":
-                term = f'"{j["org_name"]}"'
-                if j.get("location") and j["location"] != "Unknown":
-                    term += f' "{j["location"]}"'
-                org_search_terms.append(term)
-
-        search_query = " OR ".join(org_search_terms) + f" {SSE_SEARCH_KEYWORDS}" if org_search_terms else None
-
+        # Batch requires descriptions — mirror single-job policy: no Tavily /
+        # Google Search grounding when posting bodies are present.
         response_text = self._call_provider_with_retry(
             provider=self.provider,
             prompt=prompt,
             system="You are an expert at analyzing job postings for Solidarity Economy alignment.",
             task="sse",
-            search_query=search_query,
+            search_query=None,
             retries=1,
+            use_grounding=False,
         )
 
-        parse_result, parse_error = self._safe_parse_batch_response(response_text, len(jobs))
+        org_names = [j["org_name"] for j in normalized_jobs]
+        parse_result, parse_error = self._safe_parse_batch_response(
+            response_text, len(jobs), org_names=org_names,
+        )
         if parse_result is not None:
             return parse_result
 
@@ -247,7 +360,7 @@ class SSEClassifier(BaseGroundedClassifier):
 
         confidence = max(0.0, min(1.0, float(data.get("confidence", 0.5))))
 
-        return {
+        result: SSEClassificationResult = {
             "rating": rating,
             "confidence": confidence,
             "reasoning": str(data.get("reasoning", "No reasoning provided")),
@@ -257,15 +370,28 @@ class SSEClassifier(BaseGroundedClassifier):
             "classified_at": datetime.now(timezone.utc).isoformat(),
             "reviewed": False,
         }
+        return _apply_nonprofit_compensation_guard(result, org_name=org_name)
 
-    def _safe_parse_batch_response(self, response_text: str, num_jobs: int):
+    def _safe_parse_batch_response(
+        self,
+        response_text: str,
+        num_jobs: int,
+        org_names: list[str] | None = None,
+    ):
         """Return (results, error_message)."""
         try:
-            return self._parse_batch_sse_response(response_text, num_jobs), None
+            return self._parse_batch_sse_response(
+                response_text, num_jobs, org_names=org_names,
+            ), None
         except (json.JSONDecodeError, ValueError, TypeError) as e:
             return None, str(e)
 
-    def _parse_batch_sse_response(self, response_text: str, num_jobs: int) -> list[SSEClassificationResult]:
+    def _parse_batch_sse_response(
+        self,
+        response_text: str,
+        num_jobs: int,
+        org_names: list[str] | None = None,
+    ) -> list[SSEClassificationResult]:
         """Parse and validate a batch JSON array response."""
         text = self._extract_json_block(response_text)
 
@@ -277,8 +403,9 @@ class SSEClassifier(BaseGroundedClassifier):
         if len(data_array) != num_jobs:
             raise ValueError(f"Expected {num_jobs} results, got {len(data_array)}")
 
+        names = list(org_names or [])
         results = []
-        for item in data_array:
+        for pos, item in enumerate(data_array):
             if not isinstance(item, dict):
                 raise ValueError(f"Expected object in array, got {type(item)}")
 
@@ -305,7 +432,7 @@ class SSEClassifier(BaseGroundedClassifier):
 
             confidence = max(0.0, min(1.0, float(item.get("confidence", 0.5))))
 
-            results.append({
+            parsed: SSEClassificationResult = {
                 "rating": rating,
                 "confidence": confidence,
                 "reasoning": str(item.get("reasoning", "No reasoning provided")),
@@ -314,7 +441,11 @@ class SSEClassifier(BaseGroundedClassifier):
                 "flags": [str(f) for f in flags],
                 "classified_at": datetime.now(timezone.utc).isoformat(),
                 "reviewed": False,
-            })
+            }
+            # Map org names by response array position (not model index 0/1-base).
+            org_hint = names[pos] if pos < len(names) else ""
+            results.append(
+                _apply_nonprofit_compensation_guard(parsed, org_name=org_hint)
+            )
 
         return results
-

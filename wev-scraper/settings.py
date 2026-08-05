@@ -145,6 +145,11 @@ def get_gemini_api_key() -> str:
     return get_stripped_env("GEMINI_API_KEY")
 
 
+def get_groq_api_key() -> str:
+    """Return the configured Groq API key or an empty string."""
+    return get_stripped_env("GROQ_API_KEY")
+
+
 def get_jina_api_key() -> str:
     """Return the configured Jina API key or an empty string."""
     return get_stripped_env("JINA_API_KEY")

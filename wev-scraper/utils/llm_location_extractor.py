@@ -1,6 +1,7 @@
 """LLM-based location extraction for job postings.
 
-Uses the shared fallback chain (gemini-2.5-flash → gemini-2.5-flash-lite → groq),
+Uses the shared fallback chain
+(gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama),
 same as OrganizationAssessor and the unified post-processor. Handles edge cases
 like accented characters, French text, remote/hybrid locations, and regional
 descriptors that traditional regex patterns struggle with.
@@ -152,7 +153,7 @@ Format: [{{"municipality": "...", "province": "...", "work_type": "remote|hybrid
 
     try:
         # Same chain as OrganizationAssessor / unified processor:
-        # gemini-2.5-flash → gemini-2.5-flash-lite → groq (lazy, fault-tolerant init).
+        # gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama.
         # json_mode=False because we need a top-level JSON array, not an object.
         # Groq's json_object mode only supports a single root object, which causes
         # the model to collapse all results into one entry.
