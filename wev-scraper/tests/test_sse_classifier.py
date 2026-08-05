@@ -123,6 +123,79 @@ def test_compensation_guard_upgrades_nonprofit_false_no():
     assert any("compensation_guard" in f for f in result["flags"])
 
 
+def test_compensation_guard_upgrades_incorporated_charity_false_no():
+    """'incorporated' must not trip governance ineligible via bare 'corporate'."""
+    from utils.sse_classifier import _apply_nonprofit_compensation_guard
+
+    result = _apply_nonprofit_compensation_guard(
+        {
+            "rating": "no",
+            "confidence": 0.9,
+            "reasoning": (
+                "Nonprofit charity incorporated in Ontario with a clear community "
+                "mission. Missing transparent compensation for the paid role."
+            ),
+            "must_haves_met": ["Clear purpose beyond profit"],
+            "nice_to_haves_met": [],
+            "flags": ["Missing transparent compensation"],
+            "classified_at": "2026-08-04T00:00:00+00:00",
+            "reviewed": False,
+        },
+        org_name="Ontario Community Charity",
+    )
+    assert result["rating"] == "weak_yes"
+    assert any("compensation_guard" in f for f in result["flags"])
+
+
+def test_compensation_guard_upgrades_thin_pay_does_not_meet_phrasing():
+    """Thin-pay 'does not meet … compensation' must still upgrade (not mission fail)."""
+    from utils.sse_classifier import _apply_nonprofit_compensation_guard
+
+    result = _apply_nonprofit_compensation_guard(
+        {
+            "rating": "no",
+            "confidence": 0.9,
+            "reasoning": (
+                "Nonprofit charity with a strong social mission. Posting does not "
+                "meet transparent compensation standards for a paid contract."
+            ),
+            "must_haves_met": ["Clear purpose beyond profit"],
+            "nice_to_haves_met": [],
+            "flags": ["opaque compensation"],
+            "classified_at": "2026-08-04T00:00:00+00:00",
+            "reviewed": False,
+        },
+        org_name="Helping Hands Charity",
+    )
+    assert result["rating"] == "weak_yes"
+    assert any("compensation_guard" in f for f in result["flags"])
+
+
+def test_compensation_guard_ignores_positive_salary_disclosure():
+    """Positive 'Salary disclosure is clear' must not trigger opaque-pay upgrade."""
+    from utils.sse_classifier import _apply_nonprofit_compensation_guard
+
+    result = _apply_nonprofit_compensation_guard(
+        {
+            "rating": "no",
+            "confidence": 0.85,
+            "reasoning": (
+                "Nonprofit admin role at a charity. Salary disclosure is clear "
+                "at $52,000/year, but the posting fails must-haves on mission "
+                "alignment for this back-office function."
+            ),
+            "must_haves_met": [],
+            "nice_to_haves_met": [],
+            "flags": ["nonprofit", "salary disclosure clear"],
+            "classified_at": "2026-08-04T00:00:00+00:00",
+            "reviewed": False,
+        },
+        org_name="Helping Hands Charity",
+    )
+    assert result["rating"] == "no"
+    assert not any("compensation_guard" in f for f in result["flags"])
+
+
 def test_compensation_guard_keeps_for_profit_no():
     from utils.sse_classifier import _apply_nonprofit_compensation_guard
 
@@ -144,6 +217,53 @@ def test_compensation_guard_keeps_for_profit_no():
     assert result["rating"] == "no"
 
 
+def test_compensation_guard_keeps_for_profit_agency_name_with_salary():
+    """Story A: for-profit 'X Agency' + bare salary mention must stay no."""
+    from utils.sse_classifier import _apply_nonprofit_compensation_guard
+
+    result = _apply_nonprofit_compensation_guard(
+        {
+            "rating": "no",
+            "confidence": 0.85,
+            "reasoning": (
+                "For-profit marketing firm offering a salary of $55k. "
+                "Corporate employer with no SSE governance."
+            ),
+            "must_haves_met": [],
+            "nice_to_haves_met": [],
+            "flags": ["for-profit", "salary mentioned"],
+            "classified_at": "2026-08-04T00:00:00+00:00",
+            "reviewed": False,
+        },
+        org_name="Bright Agency",
+    )
+    assert result["rating"] == "no"
+
+
+def test_compensation_guard_keeps_mission_fail_with_stated_salary():
+    """Story B: legitimate mission no + stated salary must stay no."""
+    from utils.sse_classifier import _apply_nonprofit_compensation_guard
+
+    result = _apply_nonprofit_compensation_guard(
+        {
+            "rating": "no",
+            "confidence": 0.88,
+            "reasoning": (
+                "Nonprofit charity role fails mission alignment — the posting is "
+                "a back-office payroll clerk with no public-benefit connection. "
+                "Salary is $48,000/year."
+            ),
+            "must_haves_met": [],
+            "nice_to_haves_met": [],
+            "flags": ["mission fail", "salary stated"],
+            "classified_at": "2026-08-04T00:00:00+00:00",
+            "reviewed": False,
+        },
+        org_name="Helping Hands Charity",
+    )
+    assert result["rating"] == "no"
+
+
 def test_compensation_guard_keeps_hidden_unpaid_no():
     from utils.sse_classifier import _apply_nonprofit_compensation_guard
 
@@ -152,7 +272,8 @@ def test_compensation_guard_keeps_hidden_unpaid_no():
             "rating": "no",
             "confidence": 0.8,
             "reasoning": (
-                "Nonprofit agency posting hides an unpaid trial before any wage disclosure."
+                "Nonprofit community agency posting hides an unpaid trial before "
+                "any wage disclosure."
             ),
             "must_haves_met": [],
             "nice_to_haves_met": [],
@@ -160,6 +281,6 @@ def test_compensation_guard_keeps_hidden_unpaid_no():
             "classified_at": "2026-08-04T00:00:00+00:00",
             "reviewed": False,
         },
-        org_name="Community Care Agency",
+        org_name="Community Care Network",
     )
     assert result["rating"] == "no"

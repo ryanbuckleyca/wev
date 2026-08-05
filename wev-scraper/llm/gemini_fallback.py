@@ -7,19 +7,17 @@ Order (free tiers first, then local):
   4. local_grounded (Ollama + Tavily already used upstream)
 
 Shared Tavily snippets are preferred so all backends see the same evidence.
-When Tavily returns nothing (missing key / empty results), Gemini backends
-auto-enable the native Google Search tool so grounding is not silently lost.
-When Tavily evidence was injected, Google Search stays off (no double-search).
+Gemini native Google Search is **never** enabled by this provider — grounding
+is Tavily-only. When Tavily returns nothing, backends still receive
+``use_grounding=False`` (no silent Google Search fallback).
 
-USE_GOOGLE_SEARCH_GROUNDING overrides auto behavior:
-  unset  — auto (Google Search only when shared Tavily evidence is empty)
-  1      — always enable Google Search on Gemini
-  0      — always disable Google Search (even when Tavily is unavailable)
+``USE_GOOGLE_SEARCH_GROUNDING=1`` remains an explicit opt-in escape hatch for
+Gemini Google Search (parity / debugging only).
 
 Env overrides:
   GEMINI_SSE_PRIMARY_MODEL   default gemini-3.6-flash
   GEMINI_SSE_LITE_MODEL      default gemini-3.5-flash-lite
-  USE_GOOGLE_SEARCH_GROUNDING  unset|0|1
+  USE_GOOGLE_SEARCH_GROUNDING  unset|0 → off; 1 → force Google Search on Gemini
 """
 
 from __future__ import annotations
@@ -61,13 +59,15 @@ def _google_search_grounding_override() -> bool | None:
 def _resolve_backend_grounding(*, evidence: str) -> bool:
     """Decide whether backends should run their own search grounding.
 
-    Prefer shared Tavily evidence (no double-search). When that evidence is
-    empty, auto-enable Gemini Google Search unless the env override says otherwise.
+    Default is never — SSE uses shared Tavily only. ``USE_GOOGLE_SEARCH_GROUNDING=1``
+    is the sole opt-in for Gemini native Google Search.
     """
+    del evidence  # retained for call-site compatibility; no longer auto-gates
     override = _google_search_grounding_override()
-    if override is not None:
-        return override
-    return not bool((evidence or "").strip())
+    if override is True:
+        return True
+    # unset / 0 / False → never Google Search (Tavily-only)
+    return False
 
 
 def gemini_sse_primary_model() -> str:
@@ -164,13 +164,15 @@ class SSEFallbackProvider(BaseLLMProvider):
                 prefer_hosts=prefer_hosts,
                 require_terms=require_terms,
             )
-            # Shared Tavily when present; otherwise auto Google Search on Gemini
-            # (USE_GOOGLE_SEARCH_GROUNDING overrides — see module docstring).
+            # Shared Tavily when present; Google Search never auto-enabled
+            # (USE_GOOGLE_SEARCH_GROUNDING=1 is the only opt-in).
             provider_kwargs["use_grounding"] = _resolve_backend_grounding(
                 evidence=evidence,
             )
         else:
-            provider_kwargs.pop("use_grounding", None)
+            # Forward explicit False so backends do not re-enable via
+            # should_use_grounding(task).
+            provider_kwargs["use_grounding"] = False
 
         if not want_grounding:
             return self._try_providers(
