@@ -40,23 +40,46 @@ class SSEClassificationResult(TypedDict):
 
 
 # Models sometimes false-no clear charities solely for missing wage lines.
+# Match opaque/missing/undisclosed pay only — bare "salary"/"wage" alone is not
+# enough, and positive phrasing ("Salary disclosure is clear") must not match.
 _COMPENSATION_OPACITY_RE = re.compile(
-    r"transparent compensation|compensation|wage|salary|pay disclosure|"
-    r"opaque(?:/missing)? compensation|missing compensation|no salary|"
-    r"wage disclosure|pay (?:not|never) (?:stated|disclosed)|"
-    r"lacks? (?:transparent )?compensation",
+    r"opaque(?:/missing)? (?:compensation|pay|wage|salary)|"
+    r"missing (?:transparent )?(?:compensation|pay|wage|salary)|"
+    r"(?:no|undisclosed|not[- ]listed|not[- ]disclosed) (?:compensation|pay|wage|salary)|"
+    r"(?:compensation|pay|wage|salary) (?:not|never) (?:stated|disclosed|listed|provided)|"
+    r"(?:missing|no|lacks?|opaque|not[- ]disclosed|undisclosed)"
+    r" (?:pay|wage|salary) disclosure|"
+    r"(?:pay|wage|salary) disclosure"
+    r" (?:is |are )?(?:missing|opaque|undisclosed|not disclosed|lacking)|"
+    r"lacks? (?:transparent )?(?:compensation|pay|wage|salary)|"
+    r"(?:thin|missing)(?:/opaque)? (?:wage|pay|compensation)",
     re.IGNORECASE,
 )
 _GOVERNANCE_INELIGIBLE_RE = re.compile(
     r"for[- ]profit|government|public[- ]sector|crown corp|municipality|"
-    r"corporate|consultancy|private company|traditional corporation",
+    # Word-bounded corporate — bare "corporate" must not match "incorporated".
+    r"\bcorporate\b|consultancy|private company|traditional corporation",
+    re.IGNORECASE,
+)
+# Stronger "no" reasons than thin pay — do not upgrade these.
+# Avoid bare "does not meet" / "not … aligned" so thin-pay phrasing like
+# "does not meet transparent compensation standards" can still upgrade.
+_STRONGER_NO_REASON_RE = re.compile(
+    r"mission (?:fail|failure|does not|not met)|fails? (?:must[- ]haves?|mission)|"
+    r"does not meet (?:the )?(?:must[- ]haves?|mission(?:\s+alignment)?|"
+    r"SSE(?:[- ]?aligned)?(?:\s+criteria)?|eligibility)|"
+    r"not (?:SSE[- ]?aligned|mission[- ]aligned)|"
+    r"(?:SSE|mission) not aligned|"
+    r"role (?:is )?(?:not (?:SSE|mission)|fails? (?:must[- ]haves?|mission))|"
+    r"insufficient (?:mission|impact|public[- ]benefit)|"
+    r"no (?:clear )?(?:public[- ]benefit|social|community) mission",
     re.IGNORECASE,
 )
 _NONPROFIT_EMPLOYER_RE = re.compile(
     r"non[- ]?profit|not[- ]for[- ]profit|charity|charitable|"
     r"community (?:agency|organization|organisation|centre|center|food)|"
     r"human services|social services|social[- ]services|"
-    r"\bagency\b|\bagence\b|cooperative|co[- ]op|credit union|"
+    r"cooperative|co[- ]op|credit union|"
     r"mutual[- ]aid|solidarity",
     re.IGNORECASE,
 )
@@ -73,9 +96,10 @@ def _apply_nonprofit_compensation_guard(
 ) -> SSEClassificationResult:
     """Upgrade false-no when a nonprofit was rejected only for thin/missing pay.
 
-    Clear charities / community social-services agencies should land at least
+    Clear charities / community social-services orgs should land at least
     weak_yes when the only cited gap is opaque compensation (not hidden unpaid
-    work, and not governance-ineligible employers).
+    work, not governance-ineligible employers, and not mission/role fails).
+    Org-name tokens never override explicit for-profit/gov evidence in the blob.
     """
     if result.get("rating") != "no":
         return result
@@ -88,11 +112,10 @@ def _apply_nonprofit_compensation_guard(
         return result
     if _HIDDEN_UNPAID_RE.search(blob):
         return result
-    # Keep "no" when reasoning says for-profit/gov unless the employer name
-    # itself clearly marks a nonprofit/agency (name wins over CSR noise).
-    if _GOVERNANCE_INELIGIBLE_RE.search(blob) and not _NONPROFIT_EMPLOYER_RE.search(
-        org_name or ""
-    ):
+    # Explicit for-profit/gov in reasoning/flags wins — never upgrade.
+    if _GOVERNANCE_INELIGIBLE_RE.search(blob):
+        return result
+    if _STRONGER_NO_REASON_RE.search(blob):
         return result
     if not _NONPROFIT_EMPLOYER_RE.search(blob):
         return result

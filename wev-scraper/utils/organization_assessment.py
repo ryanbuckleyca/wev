@@ -550,17 +550,19 @@ _CORP_LEGAL_SUFFIX_RE = re.compile(
 )
 
 # Explicit private / commercial ownership signals in model text.
+# Shareholders: positive ownership only — do not match "without shareholders".
 _PRIVATE_COMPANY_EVIDENCE_RE = re.compile(
     r"for[- ]profits?|private(?:ly)?[- ]owned|private company|private business|"
-    r"founder[- ]owned|owner[- ]operated|shareholders?|"
+    r"founder[- ]owned|owner[- ]operated|"
+    r"(?:with|has|have)\s+(?:private\s+)?shareholders?|shareholder[- ]owned|"
     r"commercial (?:music|arts|education|school|program|enterprise)|"
     r"fee[- ]based (?:private|commercial)|tuition[- ]based|"
     r"privately (?:operated|run|owned)|conventional (?:for[- ]profit|private)",
     re.IGNORECASE,
 )
 
-# Charity / nonprofit registration — stronger than the model merely typing
-# "nonprofit". Presence keeps a Yes through the private-company gate.
+# Charity / nonprofit registration — strongest keep signal for the
+# private-company gate (CRA / letters patent / etc.).
 _CHARITY_REGISTRATION_EVIDENCE_RE = re.compile(
     r"registered charity|charitable (?:status|registration|number|organization)|"
     r"charity (?:number|registration|status)|CRA\b|canada revenue|"
@@ -568,6 +570,16 @@ _CHARITY_REGISTRATION_EVIDENCE_RE = re.compile(
     r"letters patent|incorporated as a (?:non[- ]?profit|charity)|"
     r"nonprofit corporation|not[- ]for[- ]profit corporation|"
     r"cooperative(?:s)? (?:registration|incorporation)|credit union",
+    re.IGNORECASE,
+)
+
+# Strong soft nonprofit / public-benefit cues — keep Inc./Ltd. suffix-only
+# Yes without demanding CRA boilerplate. Bare "nonprofit"/"charity"/
+# "mission-driven"/bare "directors" are NOT enough (models invent those).
+# Applied only after private/commercial demotion has already been checked.
+_SOFT_NONPROFIT_EVIDENCE_RE = re.compile(
+    r"public[- ]benefit|community (?:benefit|mission|service)|"
+    r"volunteer board|without (?:private )?shareholders?",
     re.IGNORECASE,
 )
 
@@ -603,38 +615,48 @@ def _apply_private_company_sse_guard(
     result: AssessedOrgResult,
     raw_name: str,
 ) -> AssessedOrgResult:
-    """Demote Yes when evidence is private/Inc. without charity registration.
+    """Demote Yes when evidence is private/commercial without charity signals.
 
     Catches models that invent type=nonprofit + weak_yes for commercial
     Inc./Ltd. businesses (e.g. fee-based private music/education schools).
-    Real charities that cite registration evidence are kept.
+
+    Order: registration keep → private/commercial demotion → strong soft
+    keep for suffix-only cases → corp-suffix demotion. Soft cues must not
+    override explicit private/commercial ownership language. Bare
+    nonprofit/charity fluff is not enough to keep an Inc. Yes.
     """
     if result["sse_rating"] not in ("strong_yes", "weak_yes"):
         return result
 
     name = (raw_name or result.get("canonical_name") or "").strip()
     blob = _org_assessment_evidence_blob(result)
+    org_type = result.get("type")
+
+    # Strongest keep: CRA / letters patent / charity registration.
     if _CHARITY_REGISTRATION_EVIDENCE_RE.search(blob):
         return result
 
-    has_private = bool(_PRIVATE_COMPANY_EVIDENCE_RE.search(blob))
-    has_corp_suffix = bool(_CORP_LEGAL_SUFFIX_RE.search(name))
-    org_type = result.get("type")
-
-    if has_private:
+    # Private/commercial ownership wins over soft mission/board language.
+    if _PRIVATE_COMPANY_EVIDENCE_RE.search(blob):
         return _demote_org_to_other_no(
             result,
             "private_company_gate: private/for-profit evidence without "
             "charity/nonprofit registration → type=other, rating=no",
         )
 
-    # Inc./Ltd./Corp. labeled nonprofit (or unknown) Yes without registration
-    # evidence — treat as conventional private company, not SSE.
-    if has_corp_suffix and org_type in ("nonprofit", None):
+    # Strong soft cues (volunteer board, public-benefit, without shareholders,
+    # community benefit/mission/service) keep real Inc. charities without CRA.
+    if _SOFT_NONPROFIT_EVIDENCE_RE.search(blob):
+        return result
+
+    # Inc./Ltd./Corp. nonprofit/unknown Yes without registration or strong
+    # soft evidence — treat as conventional private company, not SSE.
+    if _CORP_LEGAL_SUFFIX_RE.search(name) and org_type in ("nonprofit", None):
         return _demote_org_to_other_no(
             result,
             "private_company_gate: corporate legal suffix (Inc./Ltd./Corp.) "
-            "without charity/nonprofit registration evidence → type=other, rating=no",
+            "without charity/nonprofit registration or strong nonprofit "
+            "evidence → type=other, rating=no",
         )
 
     return result

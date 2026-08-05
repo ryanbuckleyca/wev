@@ -205,8 +205,8 @@ def test_sse_fallback_raises_when_all_return_empty():
             provider.complete("prompt", task="sse")
 
 
-def test_sse_fallback_auto_enables_google_search_when_tavily_empty():
-    """Without Tavily evidence (and no env override), Gemini gets Google Search."""
+def test_sse_fallback_never_auto_enables_google_search_when_tavily_empty():
+    """Tavily-only: empty evidence must not enable Gemini Google Search."""
     flash = MagicMock()
     flash.is_available.return_value = True
     flash.complete.return_value = "ok"
@@ -228,7 +228,41 @@ def test_sse_fallback_auto_enables_google_search_when_tavily_empty():
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider()
         assert provider.complete("prompt", task="sse", search_query="q") == "ok"
-        assert flash.complete.call_args.kwargs.get("use_grounding") is True
+        assert flash.complete.call_args.kwargs.get("use_grounding") is False
+
+
+def test_sse_fallback_forwards_use_grounding_false():
+    """Explicit use_grounding=False must reach backends (not popped)."""
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.return_value = "ok"
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+
+    groq = MagicMock()
+    groq.is_available.return_value = True
+
+    ollama = MagicMock()
+    ollama.is_available.return_value = True
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
+         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
+         patch("llm.gemini_fallback.fetch_tavily_context") as mock_tavily:
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider()
+        assert (
+            provider.complete(
+                "prompt",
+                task="sse",
+                use_grounding=False,
+                search_query="should-not-fetch",
+            )
+            == "ok"
+        )
+        mock_tavily.assert_not_called()
+        assert flash.complete.call_args.kwargs.get("use_grounding") is False
 
 
 def test_sse_fallback_disables_google_search_when_tavily_injected():

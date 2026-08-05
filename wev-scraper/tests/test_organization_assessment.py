@@ -635,8 +635,62 @@ def test_result_to_db_fields_omits_shared_host_website():
     assert "website" not in updates
 
 
-def test_private_company_gate_demotes_inc_nonprofit_without_charity_evidence():
-    """Inc. + invented nonprofit Yes without registration → other/no."""
+def test_private_company_gate_keeps_inc_charity_with_mission_no_cra():
+    """Inc. + clear nonprofit mission (no CRA phrase) must stay Yes/nonprofit."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Community Care Inc.",
+            slug="community-care-inc",
+            type="nonprofit",
+            sse_rating="strong_yes",
+            sse_reasoning_en=(
+                "A mission-driven nonprofit with a clear public-benefit mandate "
+                "serving vulnerable families; volunteer board oversees programs."
+            ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
+            flags=[],
+        ),
+        "Community Care Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "strong_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_keeps_inc_without_shareholders_soft_path():
+    """'without shareholders' must not demote via bare shareholder match."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Community Arts Collective Inc.",
+            slug="community-arts-collective-inc",
+            type="nonprofit",
+            sse_rating="strong_yes",
+            sse_reasoning_en=(
+                "A mission-driven community arts group without shareholders; "
+                "programs are overseen by a volunteer board."
+            ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
+            flags=[],
+        ),
+        "Community Arts Collective Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "strong_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_demotes_inc_with_commercial_ownership():
+    """Inc. + private/commercial ownership language without charity → other/no."""
     result = _parse_response(
         _assessment_json(
             canonical_name="Family Music Programs Inc.",
@@ -644,12 +698,82 @@ def test_private_company_gate_demotes_inc_nonprofit_without_charity_evidence():
             type="nonprofit",
             sse_rating="weak_yes",
             sse_reasoning_en=(
-                "Offers joyful family music classes that build community connections."
+                "A privately owned commercial music school offering fee-based "
+                "private lessons; founder-owned studio with shareholders."
             ),
             must_haves_met=["Clear purpose beyond profit"],
             flags=[],
         ),
         "Family Music Programs Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_demotes_inc_commercial_despite_soft_mission_cues():
+    """Private/commercial evidence must beat soft mission/board keep language."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Harmony Music Academy Inc.",
+            slug="harmony-music-academy-inc",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "A privately owned commercial for-profit music school with a "
+                "mission-driven ethos and a board of directors overseeing programs."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+            flags=[],
+        ),
+        "Harmony Music Academy Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_demotes_invented_nonprofit_inc_bland_yes():
+    """Bare 'nonprofit' fluff + Inc. without strong soft cues → other/no."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Melody Music School Inc.",
+            slug="melody-music-school-inc",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "A nonprofit music school offering lessons and community "
+                "recitals with a mission-driven approach."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+            flags=[],
+        ),
+        "Melody Music School Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_demotes_consulting_inc_without_strong_soft():
+    """Consulting Inc. Yes with no private keywords and no strong soft → demote."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Northwind Consulting Inc.",
+            slug="northwind-consulting-inc",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "An environmental consulting firm helping clients meet "
+                "regulatory requirements; board of directors sets strategy."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+            flags=[],
+        ),
+        "Northwind Consulting Inc.",
     )
     assert result is not None
     assert result["type"] == "other"
