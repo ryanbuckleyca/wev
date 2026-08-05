@@ -13,6 +13,10 @@ Env:
   TAVILY_SEARCH_DEPTH     — basic | advanced (default basic)
   TAVILY_MAX_CHARS        — default 4500 (cloud); Ollama uses a tighter trim
   TAVILY_OLLAMA_MAX_CHARS — default 1800
+  TAVILY_TIMEOUT_SEC      — per-request search timeout (default 30)
+  TAVILY_MAX_RETRIES      — retries after first failure (default 2)
+  MAX_GROUNDED_PROMPT_CHARS — default 100000; head+tail cap for Gemini/Groq
+                              combined prompt+evidence (Ollama uses its own budget)
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import time
 from functools import lru_cache
 from urllib.parse import urlparse
 
@@ -28,6 +33,17 @@ from llm.base import LLMProviderError
 logger = logging.getLogger(__name__)
 
 _WWW = re.compile(r"^www\.", re.I)
+
+# Cloud backends (Gemini/Groq) get large context windows; still cap combined
+# grounded prompts so runaway job text + evidence cannot grow unbounded.
+# Ollama keeps its tighter path (trim_evidence + OLLAMA_MAX_PROMPT_CHARS).
+DEFAULT_MAX_GROUNDED_PROMPT_CHARS = 100_000
+DEFAULT_TAVILY_TIMEOUT_SEC = 30.0
+DEFAULT_TAVILY_MAX_RETRIES = 2
+
+_TRUNCATE_MARK = (
+    "\n\n…[middle truncated — use rules above + data below]\n\n"
+)
 
 # Search is supporting context only — primary source lives in the prompt body.
 _EVIDENCE_HEADER = """SUPPORTING WEB EVIDENCE (secondary — from search):
@@ -72,6 +88,22 @@ def _env_int(name: str, default: int) -> int:
         return int(os.environ.get(name, str(default)))
     except ValueError:
         return default
+
+
+def _tavily_timeout_sec() -> float:
+    """Bounded per-request timeout for Tavily search (seconds)."""
+    try:
+        return max(1.0, float(os.environ.get("TAVILY_TIMEOUT_SEC", str(DEFAULT_TAVILY_TIMEOUT_SEC))))
+    except (TypeError, ValueError):
+        return DEFAULT_TAVILY_TIMEOUT_SEC
+
+
+def _tavily_max_retries() -> int:
+    """Retries after the first failed search attempt (capped)."""
+    try:
+        return max(0, min(5, int(os.environ.get("TAVILY_MAX_RETRIES", str(DEFAULT_TAVILY_MAX_RETRIES)))))
+    except (TypeError, ValueError):
+        return DEFAULT_TAVILY_MAX_RETRIES
 
 
 @lru_cache(maxsize=1)
@@ -161,26 +193,62 @@ def fetch_tavily_context(
     terms = [t.lower().strip() for t in (require_terms or []) if t and str(t).strip()]
     terms = list(dict.fromkeys(terms))  # stable unique
 
+    n = max_results if max_results is not None else _env_int("TAVILY_MAX_RESULTS", 5)
+    depth = (os.environ.get("TAVILY_SEARCH_DEPTH") or "basic").strip().lower()
+    if depth not in ("basic", "advanced"):
+        depth = "basic"
+
+    search_kwargs: dict = {
+        "search_depth": depth,
+        "max_results": max(1, n),
+        # TavilyClient.search(timeout=…) — fail fast so SSE chain continues
+        # without evidence (same pattern as requests timeout= on Groq/Jina).
+        "timeout": _tavily_timeout_sec(),
+    }
+    # Bias the API toward the employer domain when we know it.
+    domains = []
+    for d in include_domains or []:
+        host = _host(d) or str(d).strip().lower()
+        if host:
+            domains.append(host)
+    if domains:
+        search_kwargs["include_domains"] = domains[:5]
+
+    max_retries = _tavily_max_retries()
+    results: dict | None = None
+    last_exc: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            results = _client().search(q, **search_kwargs)
+            break
+        except Exception as exc:
+            last_exc = exc
+            if attempt < max_retries:
+                backoff = min(2.0, 0.5 * (2**attempt))
+                logger.warning(
+                    "Tavily search failed (attempt %s/%s): %s — retrying in %.1fs",
+                    attempt + 1,
+                    max_retries + 1,
+                    exc,
+                    backoff,
+                )
+                time.sleep(backoff)
+                continue
+            logger.warning(
+                "Tavily search failed after %s attempts: %s — continuing without evidence",
+                max_retries + 1,
+                exc,
+            )
+            return ""
+
+    if results is None:
+        logger.warning(
+            "Tavily search returned no response (%s) — continuing without evidence",
+            last_exc,
+        )
+        return ""
+
     try:
-        n = max_results if max_results is not None else _env_int("TAVILY_MAX_RESULTS", 5)
-        depth = (os.environ.get("TAVILY_SEARCH_DEPTH") or "basic").strip().lower()
-        if depth not in ("basic", "advanced"):
-            depth = "basic"
-
-        search_kwargs: dict = {
-            "search_depth": depth,
-            "max_results": max(1, n),
-        }
-        # Bias the API toward the employer domain when we know it.
-        domains = []
-        for d in include_domains or []:
-            host = _host(d) or str(d).strip().lower()
-            if host:
-                domains.append(host)
-        if domains:
-            search_kwargs["include_domains"] = domains[:5]
-
-        results = _client().search(q, **search_kwargs)
         ranked: list[tuple[int, str]] = []
         for item in results.get("results") or []:
             content = (item.get("content") or "").strip()
@@ -231,7 +299,7 @@ def fetch_tavily_context(
         )
         return text
     except Exception as exc:
-        logger.warning("Tavily search failed: %s", exc)
+        logger.warning("Tavily result processing failed: %s", exc)
         return ""
 
 
@@ -245,6 +313,30 @@ def trim_evidence(evidence: str, *, max_chars: int) -> str:
 
 def ollama_evidence_budget() -> int:
     return _env_int("TAVILY_OLLAMA_MAX_CHARS", 1800)
+
+
+def max_grounded_prompt_chars() -> int:
+    """Max chars for combined prompt+evidence on cloud (Gemini/Groq) backends."""
+    return _env_int("MAX_GROUNDED_PROMPT_CHARS", DEFAULT_MAX_GROUNDED_PROMPT_CHARS)
+
+
+def truncate_keep_ends(text: str, max_chars: int, *, head_ratio: float = 0.2) -> str:
+    """Keep prompt head (instructions) and tail (entity data / JSON schema).
+
+    Head-only truncation drops the payload models must answer from.
+    """
+    if max_chars <= 0 or len(text) <= max_chars:
+        return text
+    mark = _TRUNCATE_MARK
+    budget = max_chars - len(mark)
+    if budget < 64:
+        return text[: max(0, max_chars - 1)] + "…"
+    head_len = max(32, int(budget * head_ratio))
+    tail_len = budget - head_len
+    if tail_len < 32:
+        head_len = budget // 2
+        tail_len = budget - head_len
+    return text[:head_len] + mark + text[-tail_len:]
 
 
 def inject_grounding_evidence(prompt: str, evidence: str) -> str:

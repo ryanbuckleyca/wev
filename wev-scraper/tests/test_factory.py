@@ -229,6 +229,70 @@ def test_sse_fallback_never_auto_enables_google_search_when_tavily_empty():
         provider = SSEFallbackProvider()
         assert provider.complete("prompt", task="sse", search_query="q") == "ok"
         assert flash.complete.call_args.kwargs.get("use_grounding") is False
+        assert "search_query" not in flash.complete.call_args.kwargs
+
+
+def test_sse_fallback_empty_tavily_forces_non_gemini_grounding_off():
+    """Empty shared Tavily must not leave groq/ollama with nested search on."""
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.side_effect = LLMProviderError("quota")
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+    lite.complete.side_effect = LLMProviderError("quota")
+
+    groq = MagicMock()
+    groq.is_available.return_value = True
+    groq.complete.side_effect = LLMProviderError("quota")
+
+    ollama = MagicMock()
+    ollama.is_available.return_value = True
+    ollama.complete.return_value = '{"ok": true}'
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
+         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
+         patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
+         patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider()
+        assert provider.complete("prompt", task="sse", search_query="q") == '{"ok": true}'
+
+        for backend in (groq, ollama):
+            assert backend.complete.call_args.kwargs.get("use_grounding") is False
+            assert "search_query" not in backend.complete.call_args.kwargs
+
+
+def test_sse_fallback_google_search_opt_in_only_on_gemini():
+    """USE_GOOGLE_SEARCH_GROUNDING=1 enables Gemini only — not groq/ollama."""
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.side_effect = LLMProviderError("quota")
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+    lite.complete.side_effect = LLMProviderError("quota")
+
+    groq = MagicMock()
+    groq.is_available.return_value = True
+    groq.complete.return_value = "groq-ok"
+
+    ollama = MagicMock()
+    ollama.is_available.return_value = True
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
+         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
+         patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
+         patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "1"}, clear=False):
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider()
+        assert provider.complete("prompt", task="sse", search_query="q") == "groq-ok"
+        assert flash.complete.call_args.kwargs.get("use_grounding") is True
+        assert lite.complete.call_args.kwargs.get("use_grounding") is True
+        assert groq.complete.call_args.kwargs.get("use_grounding") is False
+        assert "search_query" not in groq.complete.call_args.kwargs
 
 
 def test_sse_fallback_forwards_use_grounding_false():
@@ -290,3 +354,64 @@ def test_sse_fallback_disables_google_search_when_tavily_injected():
         assert provider.complete("prompt", task="sse", search_query="q") == "ok"
         assert flash.complete.call_args.kwargs.get("use_grounding") is False
         assert "EVIDENCE" in flash.complete.call_args.args[0]
+
+
+def test_sse_fallback_truncates_cloud_grounded_prompt_keeps_ollama_budget():
+    """Cloud path caps combined prompt; Ollama still uses evidence budget only."""
+    from llm.tavily_grounding import inject_grounding_evidence, ollama_evidence_budget, trim_evidence
+
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.side_effect = LLMProviderError("quota")
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+    lite.complete.side_effect = LLMProviderError("quota")
+
+    groq = MagicMock()
+    groq.is_available.return_value = True
+    groq.complete.side_effect = LLMProviderError("quota")
+
+    ollama = MagicMock()
+    ollama.is_available.return_value = True
+    ollama.complete.return_value = '{"ok": true}'
+
+    # Oversized prompt + evidence so cloud truncate kicks in under a tiny limit.
+    huge_prompt = "HEAD_RULES " + ("X" * 500) + " TAIL_JSON"
+    huge_evidence = "EVIDENCE_START " + ("Y" * 800) + " EVIDENCE_END"
+    cloud_limit = 400
+    ollama_budget = 120
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
+         patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
+         patch("llm.gemini_fallback.fetch_tavily_context", return_value=huge_evidence), \
+         patch.dict(
+             "os.environ",
+             {
+                 "USE_GOOGLE_SEARCH_GROUNDING": "0",
+                 "MAX_GROUNDED_PROMPT_CHARS": str(cloud_limit),
+                 "TAVILY_OLLAMA_MAX_CHARS": str(ollama_budget),
+             },
+             clear=False,
+         ):
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider()
+        assert provider.complete(huge_prompt, task="sse", search_query="q") == '{"ok": true}'
+
+        # Cloud backends receive head+tail truncated combined prompts.
+        for backend in (flash, lite, groq):
+            cloud_prompt = backend.complete.call_args.args[0]
+            assert len(cloud_prompt) <= cloud_limit
+            assert "HEAD_RULES" in cloud_prompt or "SUPPORTING WEB EVIDENCE" in cloud_prompt
+            assert "TAIL_JSON" in cloud_prompt
+            assert "truncated" in cloud_prompt.lower()
+
+        # Ollama path: evidence trimmed to budget, then injected — no cloud cap.
+        ollama_prompt = ollama.complete.call_args.args[0]
+        expected_ev = trim_evidence(huge_evidence, max_chars=ollama_evidence_budget())
+        assert len(expected_ev) <= ollama_budget + 1  # ellipsis
+        assert ollama_prompt == inject_grounding_evidence(huge_prompt, expected_ev)
+        assert len(ollama_prompt) > cloud_limit  # not subject to cloud prompt cap
+        assert "EVIDENCE_START" in ollama_prompt
+        assert "Y" * 800 not in ollama_prompt  # middle of evidence trimmed

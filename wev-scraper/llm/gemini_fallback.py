@@ -18,6 +18,7 @@ Env overrides:
   GEMINI_SSE_PRIMARY_MODEL   default gemini-3.6-flash
   GEMINI_SSE_LITE_MODEL      default gemini-3.5-flash-lite
   USE_GOOGLE_SEARCH_GROUNDING  unset|0 → off; 1 → force Google Search on Gemini
+  MAX_GROUNDED_PROMPT_CHARS  default 100000; head+tail cap for Gemini/Groq
 """
 
 from __future__ import annotations
@@ -35,8 +36,10 @@ from llm.tavily_grounding import (
     fetch_tavily_context,
     inject_grounding_evidence,
     is_tavily_available,
+    max_grounded_prompt_chars,
     ollama_evidence_budget,
     trim_evidence,
+    truncate_keep_ends,
 )
 from settings import get_stripped_env
 
@@ -45,9 +48,13 @@ logger = logging.getLogger(__name__)
 DEFAULT_GEMINI_PRIMARY = "gemini-3.6-flash"
 DEFAULT_GEMINI_LITE = "gemini-3.5-flash-lite"
 
+# Backends that must never run nested search / Google Search when shared
+# Tavily evidence is (or isn't) injected upstream.
+_NON_GEMINI_BACKENDS = frozenset({"groq", "ollama", "cerebras"})
+
 
 def _google_search_grounding_override() -> bool | None:
-    """Return True/False if env forces on/off; None means auto."""
+    """Return True if env forces Google Search on; False/None means off (Tavily-only)."""
     raw = (os.environ.get("USE_GOOGLE_SEARCH_GROUNDING") or "").strip().lower()
     if raw in ("1", "true", "yes", "on"):
         return True
@@ -56,11 +63,16 @@ def _google_search_grounding_override() -> bool | None:
     return None
 
 
+def _is_gemini_backend(name: str) -> bool:
+    return "gemini" in (name or "").lower()
+
+
 def _resolve_backend_grounding(*, evidence: str) -> bool:
-    """Decide whether backends should run their own search grounding.
+    """Decide whether *Gemini* should run native Google Search grounding.
 
     Default is never — SSE uses shared Tavily only. ``USE_GOOGLE_SEARCH_GROUNDING=1``
-    is the sole opt-in for Gemini native Google Search.
+    is the sole opt-in. Non-Gemini backends are handled separately and always get
+    ``use_grounding=False`` (no nested Tavily / Google Search).
     """
     del evidence  # retained for call-site compatibility; no longer auto-gates
     override = _google_search_grounding_override()
@@ -68,6 +80,24 @@ def _resolve_backend_grounding(*, evidence: str) -> bool:
         return True
     # unset / 0 / False → never Google Search (Tavily-only)
     return False
+
+
+def _backend_complete_kwargs(name: str, *, evidence: str, kwargs: dict) -> dict:
+    """Per-backend complete kwargs under Tavily-only policy.
+
+    Non-Gemini (groq / ollama / cerebras): always ``use_grounding=False`` and
+    strip ``search_query`` so LocalGrounded cannot nested-search.
+    Gemini: Google Search only when ``USE_GOOGLE_SEARCH_GROUNDING=1``.
+    """
+    call_kwargs = dict(kwargs)
+    if name in _NON_GEMINI_BACKENDS or not _is_gemini_backend(name):
+        call_kwargs["use_grounding"] = False
+        call_kwargs.pop("search_query", None)
+        return call_kwargs
+    call_kwargs["use_grounding"] = _resolve_backend_grounding(evidence=evidence)
+    # Shared Tavily (if any) is already in the prompt; do not pass search_query.
+    call_kwargs.pop("search_query", None)
+    return call_kwargs
 
 
 def gemini_sse_primary_model() -> str:
@@ -164,8 +194,8 @@ class SSEFallbackProvider(BaseLLMProvider):
                 prefer_hosts=prefer_hosts,
                 require_terms=require_terms,
             )
-            # Shared Tavily when present; Google Search never auto-enabled
-            # (USE_GOOGLE_SEARCH_GROUNDING=1 is the only opt-in).
+            # Default for the chain: Tavily-only. Per-backend overrides in
+            # _try_grounded_complete force non-Gemini off and strip search_query.
             provider_kwargs["use_grounding"] = _resolve_backend_grounding(
                 evidence=evidence,
             )
@@ -209,11 +239,28 @@ class SSEFallbackProvider(BaseLLMProvider):
         for name, provider in self._providers:
             ev = evidence
             if name == "ollama":
+                # Tight evidence budget; LocalGroundedProvider also caps via
+                # OLLAMA_MAX_PROMPT_CHARS.
                 ev = trim_evidence(evidence, max_chars=ollama_evidence_budget())
             call_prompt = inject_grounding_evidence(prompt, ev)
+            if name != "ollama":
+                # Cloud path: cap combined prompt+evidence (head+tail) so
+                # oversized job text cannot blow past provider limits.
+                limit = max_grounded_prompt_chars()
+                if limit > 0 and len(call_prompt) > limit:
+                    logger.warning(
+                        "SSE grounded: truncating %s prompt %s → %s chars (head+tail)",
+                        name,
+                        len(call_prompt),
+                        limit,
+                    )
+                    call_prompt = truncate_keep_ends(call_prompt, limit)
+            call_kwargs = _backend_complete_kwargs(
+                name, evidence=evidence, kwargs=kwargs,
+            )
             try:
                 result = provider.complete(
-                    call_prompt, model=model, system=system, **kwargs,
+                    call_prompt, model=model, system=system, **call_kwargs,
                 )
                 if not self._is_usable_result(result):
                     last_error = LLMProviderError(f"{name} returned empty response")
