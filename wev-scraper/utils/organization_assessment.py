@@ -90,7 +90,7 @@ _JSON_FIELDS = """{
   "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
   "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. Record provenance in flags as 'mission via=extracted|inferred|absent'), or null",
   "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
-  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops and credit unions. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
+  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. A city/town/region name in the organization name is geographic branding only — NOT evidence of municipal/government status. Community orchestras, choirs, bands, theatres, and similar arts associations are typically 'nonprofit', not 'government', unless research shows a city department or statutory public body. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops and credit unions. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
   "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — extract closely from source. Record provenance in flags as 'values via=extracted|inferred|absent'), or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
@@ -148,8 +148,11 @@ _BILINGUAL_COPY_RULES = """BILINGUAL PUBLIC COPY (required):
 
 _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
 - Prefer the organization's own official homepage (the domain they control).
-- If ORGANIZATION DATA lists a Known website, prefer that URL unless it violates
-  the rules below (shared/ATS/social) — then discover a better employer-owned site.
+- If ORGANIZATION DATA lists a Known website that is an employer-owned http(s)
+  homepage (not shared/ATS/social), RETURN THAT URL. Do not null it out for
+  low confidence, alternate hosts, or re-assess caution — known good sites must
+  survive re-assessment. Only replace Known website when research clearly shows
+  a better employer-owned homepage (same org) or Known violates the rules below.
 - Do NOT use job-board, ATS, or careers-platform URLs (e.g. Greenhouse, Lever,
   Workday, Indeed, CharityVillage, LinkedIn jobs).
 - Do NOT use social profiles or link aggregators (Facebook, Instagram, LinkedIn
@@ -159,7 +162,8 @@ _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
 - If Known website is "(none …)" / missing: return null unless research/search
   evidence clearly identifies the employer-owned homepage. Never invent a domain
   from the organization name (e.g. name.ca / name.org guesses).
-- If you cannot confidently identify the employer-owned site, return null.
+- If Known is missing and you cannot confidently identify the employer-owned
+  site from research, return null.
 - Prefer https:// and the apex/homepage over a deep job posting path."""
 
 _PUBLIC_LANGUAGE_RULES = """PUBLIC_LANGUAGE RULES:
@@ -189,6 +193,13 @@ _SECTOR_PRIORITY_RULES = """SECTOR PRIORITY (when multiple sectors could fit):
   water resources, remediation, or environmental engineering) →
   environment-circular-economy (not community-civic-infrastructure).
 - Foundations whose core program is education / fellowships → education-knowledge.
+- Arts marketing, audience development, cultural fundraising, ticketing /
+  subscription services for arts organizations, or arts-information services →
+  arts-culture-information (not care-health-social-services; not
+  community-civic-infrastructure merely because clients are nonprofits or
+  "community" appears in marketing copy).
+- community-civic-infrastructure is residual/catch-all — prefer a more specific
+  sector whenever one applies.
 - Do not pick community-civic-infrastructure merely because the work has public
   clients or "community" marketing language."""
 
@@ -529,6 +540,173 @@ def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgRes
     )
 
 
+# Corporate legal suffixes that often mark private companies; many Canadian
+# charities also use Inc., so demotion also requires missing charity registration
+# evidence (see _apply_private_company_sse_guard).
+_CORP_LEGAL_SUFFIX_RE = re.compile(
+    r"\b(?:inc\.?|incorporated|ltd\.?|limited|llc|corp\.?|corporation|s\.?a\.?|"
+    r"gmbh|plc)\b",
+    re.IGNORECASE,
+)
+
+# Explicit private / commercial ownership signals in model text.
+_PRIVATE_COMPANY_EVIDENCE_RE = re.compile(
+    r"for[- ]profits?|private(?:ly)?[- ]owned|private company|private business|"
+    r"founder[- ]owned|owner[- ]operated|shareholders?|"
+    r"commercial (?:music|arts|education|school|program|enterprise)|"
+    r"fee[- ]based (?:private|commercial)|tuition[- ]based|"
+    r"privately (?:operated|run|owned)|conventional (?:for[- ]profit|private)",
+    re.IGNORECASE,
+)
+
+# Charity / nonprofit registration — stronger than the model merely typing
+# "nonprofit". Presence keeps a Yes through the private-company gate.
+_CHARITY_REGISTRATION_EVIDENCE_RE = re.compile(
+    r"registered charity|charitable (?:status|registration|number|organization)|"
+    r"charity (?:number|registration|status)|CRA\b|canada revenue|"
+    r"501\s*\(\s*c\s*\)|non[- ]distribution|without share capital|"
+    r"letters patent|incorporated as a (?:non[- ]?profit|charity)|"
+    r"nonprofit corporation|not[- ]for[- ]profit corporation|"
+    r"cooperative(?:s)? (?:registration|incorporation)|credit union",
+    re.IGNORECASE,
+)
+
+
+def _org_assessment_evidence_blob(result: AssessedOrgResult) -> str:
+    parts = [
+        result.get("sse_reasoning_en") or "",
+        result.get("sse_reasoning_fr") or "",
+        " ".join(str(x) for x in (result.get("flags") or [])),
+        " ".join(str(x) for x in (result.get("must_haves_met") or [])),
+        " ".join(str(x) for x in (result.get("nice_to_haves_met") or [])),
+    ]
+    return " ".join(parts)
+
+
+def _demote_org_to_other_no(
+    result: AssessedOrgResult,
+    flag: str,
+) -> AssessedOrgResult:
+    flags = list(result.get("flags") or [])
+    flags.append(flag)
+    return AssessedOrgResult(
+        **{
+            **result,
+            "type": "other",
+            "sse_rating": "no",
+            "flags": flags,
+        }
+    )
+
+
+def _apply_private_company_sse_guard(
+    result: AssessedOrgResult,
+    raw_name: str,
+) -> AssessedOrgResult:
+    """Demote Yes when evidence is private/Inc. without charity registration.
+
+    Catches models that invent type=nonprofit + weak_yes for commercial
+    Inc./Ltd. businesses (e.g. fee-based private music/education schools).
+    Real charities that cite registration evidence are kept.
+    """
+    if result["sse_rating"] not in ("strong_yes", "weak_yes"):
+        return result
+
+    name = (raw_name or result.get("canonical_name") or "").strip()
+    blob = _org_assessment_evidence_blob(result)
+    if _CHARITY_REGISTRATION_EVIDENCE_RE.search(blob):
+        return result
+
+    has_private = bool(_PRIVATE_COMPANY_EVIDENCE_RE.search(blob))
+    has_corp_suffix = bool(_CORP_LEGAL_SUFFIX_RE.search(name))
+    org_type = result.get("type")
+
+    if has_private:
+        return _demote_org_to_other_no(
+            result,
+            "private_company_gate: private/for-profit evidence without "
+            "charity/nonprofit registration → type=other, rating=no",
+        )
+
+    # Inc./Ltd./Corp. labeled nonprofit (or unknown) Yes without registration
+    # evidence — treat as conventional private company, not SSE.
+    if has_corp_suffix and org_type in ("nonprofit", None):
+        return _demote_org_to_other_no(
+            result,
+            "private_company_gate: corporate legal suffix (Inc./Ltd./Corp.) "
+            "without charity/nonprofit registration evidence → type=other, rating=no",
+        )
+
+    return result
+
+
+# Community arts names wrongly typed as government from a place-name alone.
+_COMMUNITY_ARTS_NAME_RE = re.compile(
+    r"\b(?:orchestra|philharmonic|symphony|choir|chorale|"
+    r"community (?:theatre|theater|band|chorus)|"
+    r"wind (?:orchestra|ensemble|band))\b",
+    re.IGNORECASE,
+)
+_EXPLICIT_GOVERNMENT_EVIDENCE_RE = re.compile(
+    r"municipal (?:department|agency|government|employer|parks)|"
+    r"city (?:department|agency)|town (?:council|department)|"
+    r"public[- ]sector|crown corp|"
+    r"statutory|created by (?:statute|legislation|government)|"
+    r"appointed by (?:a )?(?:minister|council|cabinet|public authority)|"
+    r"school board|public hospital|government (?:agency|department|body)|"
+    r"provincial (?:agency|ministry)|federal (?:agency|department)",
+    re.IGNORECASE,
+)
+
+
+def _apply_community_arts_place_name_guard(
+    result: AssessedOrgResult,
+    raw_name: str,
+) -> AssessedOrgResult:
+    """Correct government typing from city-in-name for community arts orgs.
+
+    Place names in orchestra/choir/theatre titles are geographic branding, not
+    municipal employment. Remap to nonprofit and restore a Yes floor when the
+    model also forced No solely via that mis-type.
+    """
+    if result.get("type") != "government":
+        return result
+
+    name = (raw_name or result.get("canonical_name") or "").strip()
+    if not _COMMUNITY_ARTS_NAME_RE.search(name):
+        return result
+
+    blob = _org_assessment_evidence_blob(result)
+    if _EXPLICIT_GOVERNMENT_EVIDENCE_RE.search(blob):
+        return result
+
+    flags = list(result.get("flags") or [])
+    flags.append(
+        "place_name_guard: community arts org — city/place in name is not "
+        "municipal/government evidence → type=nonprofit"
+    )
+    new_rating = result.get("sse_rating") or "no"
+    if new_rating == "no":
+        new_rating = "strong_yes"
+        flags.append(
+            "place_name_guard: restored strong_yes for community arts "
+            "nonprofit after false government typing"
+        )
+    sector = result.get("sector_id")
+    if sector in (None, "community-civic-infrastructure"):
+        sector = "arts-culture-information"
+
+    return AssessedOrgResult(
+        **{
+            **result,
+            "type": "nonprofit",
+            "sse_rating": new_rating,
+            "sector_id": sector,
+            "flags": flags,
+        }
+    )
+
+
 _LENGTH_LIMITED_FIELDS: tuple[tuple[str, int], ...] = (
     ("description_en", _ORG_DESCRIPTION_MAX_CHARS),
     ("description_fr", _ORG_DESCRIPTION_MAX_CHARS),
@@ -686,7 +864,9 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         flags=_ensure_str_list(data.get("flags")),
         public_language=_validate_public_language(data.get("public_language")),
     )
-    return _apply_org_sse_governance_guard(_ensure_content_provenance_flags(result))
+    gated = _apply_org_sse_governance_guard(_ensure_content_provenance_flags(result))
+    gated = _apply_private_company_sse_guard(gated, raw_name)
+    return _apply_community_arts_place_name_guard(gated, raw_name)
 
 
 def _append_language_provenance_flags(
@@ -803,7 +983,8 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
     mission_fr = result["mission_statement_fr"]
     reasoning_en = result["sse_reasoning_en"]
     reasoning_fr = result["sse_reasoning_fr"]
-    return {
+    website = result.get("website")
+    fields = {
         "description_en": description_en,
         "description_fr": description_fr,
         # Legacy columns: prefer English, else French, for search/compat readers.
@@ -830,6 +1011,12 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
             "reviewed": False,
         },
     }
+    # Persist employer-owned sites from assessor (+ known-website guard). Omitting
+    # this field made re-assess / parity harnesses report website=None even when
+    # Known website and Tavily evidence were available.
+    if website and evidence_domain(website):
+        fields["website"] = website
+    return fields
 
 
 _BILINGUAL_TEXT_KEYS = (

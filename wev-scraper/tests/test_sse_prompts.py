@@ -65,3 +65,39 @@ def test_org_political_parties_map_to_other_not_government():
     assert "NOT political parties" in ORG_EVALUATION_CRITERIA
     assert "political party" in ORG_EVALUATION_CRITERIA.lower()
     assert 'political party (type "other")' in ORG_RATING_GUIDELINES
+
+
+def test_job_rating_prefers_weak_yes_for_nonprofit_missing_wage():
+    assert "false-no charities solely for opaque" in RATING_GUIDELINES
+    assert "wage disclosure alone is NOT an automatic No" in EVALUATION_CRITERIA
+    assert "Prefer weak_yes (not no) for clear nonprofit/charity" in BATCH_RATING_GUIDELINES
+
+
+def test_org_prompt_rejects_commercial_inc_without_charity_registration():
+    assert "commercial Inc./Ltd. businesses are not nonprofits" in ORG_EVALUATION_CRITERIA
+    assert "Commercial music / arts / education businesses" in ORG_EVALUATION_CRITERIA
+    assert "Inc./Ltd./Corp. commercial music" in ORG_RATING_GUIDELINES
+
+
+def test_org_place_name_not_government_for_community_arts():
+    """City-in-name must not force municipal/government typing for arts orgs."""
+    assert "place-name / city-in-name is NOT government" in ORG_EVALUATION_CRITERIA
+    assert "geographic branding only" in ORG_EVALUATION_CRITERIA
+    assert "Community orchestras, choirs, bands, theatres" in ORG_EVALUATION_CRITERIA
+    assert "Never type \"government\" from a municipal place-name" in ORG_RATING_GUIDELINES
+    assert "community arts / orchestra / choir" in ORG_RATING_GUIDELINES
+
+
+def test_job_rating_prefers_strong_yes_for_popular_education_nonprofits():
+    assert "popular education" in RATING_GUIDELINES
+    assert "associative-life training" in RATING_GUIDELINES
+    assert "Prefer strong_yes (not weak_yes) when a clear nonprofit/charity" in BATCH_RATING_GUIDELINES
+    assert "democratic / associative-life" in BATCH_RATING_GUIDELINES
+
+
+def test_job_rating_for_profit_commercial_and_engineering_gate():
+    assert "engineering firm" in RATING_GUIDELINES
+    assert "shipping/trading company" in RATING_GUIDELINES or "shipping line" in EVALUATION_CRITERIA
+    assert "COMMERCIAL TITLES" in RATING_GUIDELINES
+    assert "Do not swap a nonprofit for a similarly abbreviated for-profit" in RATING_GUIDELINES
+    assert "EMPLOYER IDENTITY" in BATCH_RATING_GUIDELINES

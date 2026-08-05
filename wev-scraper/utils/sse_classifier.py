@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 from typing import TypedDict
 
@@ -37,6 +38,75 @@ class SSEClassificationResult(TypedDict):
     classified_at: str
     reviewed: bool
 
+
+# Models sometimes false-no clear charities solely for missing wage lines.
+_COMPENSATION_OPACITY_RE = re.compile(
+    r"transparent compensation|compensation|wage|salary|pay disclosure|"
+    r"opaque(?:/missing)? compensation|missing compensation|no salary|"
+    r"wage disclosure|pay (?:not|never) (?:stated|disclosed)|"
+    r"lacks? (?:transparent )?compensation",
+    re.IGNORECASE,
+)
+_GOVERNANCE_INELIGIBLE_RE = re.compile(
+    r"for[- ]profit|government|public[- ]sector|crown corp|municipality|"
+    r"corporate|consultancy|private company|traditional corporation",
+    re.IGNORECASE,
+)
+_NONPROFIT_EMPLOYER_RE = re.compile(
+    r"non[- ]?profit|not[- ]for[- ]profit|charity|charitable|"
+    r"community (?:agency|organization|organisation|centre|center|food)|"
+    r"human services|social services|social[- ]services|"
+    r"\bagency\b|\bagence\b|cooperative|co[- ]op|credit union|"
+    r"mutual[- ]aid|solidarity",
+    re.IGNORECASE,
+)
+_HIDDEN_UNPAID_RE = re.compile(
+    r"unpaid trial|hidden unpaid|undisclosed volunteer|unpaid work without",
+    re.IGNORECASE,
+)
+
+
+def _apply_nonprofit_compensation_guard(
+    result: SSEClassificationResult,
+    *,
+    org_name: str = "",
+) -> SSEClassificationResult:
+    """Upgrade false-no when a nonprofit was rejected only for thin/missing pay.
+
+    Clear charities / community social-services agencies should land at least
+    weak_yes when the only cited gap is opaque compensation (not hidden unpaid
+    work, and not governance-ineligible employers).
+    """
+    if result.get("rating") != "no":
+        return result
+
+    reasoning = str(result.get("reasoning") or "")
+    flags = [str(f) for f in (result.get("flags") or [])]
+    blob = " ".join([reasoning, " ".join(flags), org_name or ""])
+
+    if not _COMPENSATION_OPACITY_RE.search(blob):
+        return result
+    if _HIDDEN_UNPAID_RE.search(blob):
+        return result
+    # Keep "no" when reasoning says for-profit/gov unless the employer name
+    # itself clearly marks a nonprofit/agency (name wins over CSR noise).
+    if _GOVERNANCE_INELIGIBLE_RE.search(blob) and not _NONPROFIT_EMPLOYER_RE.search(
+        org_name or ""
+    ):
+        return result
+    if not _NONPROFIT_EMPLOYER_RE.search(blob):
+        return result
+
+    new_flags = list(flags)
+    new_flags.append(
+        "compensation_guard: nonprofit/charity employer — thin/missing wage "
+        "disclosure alone must not force no → weak_yes"
+    )
+    return {
+        **result,
+        "rating": "weak_yes",
+        "flags": new_flags,
+    }
 
 class SSEClassifier(BaseGroundedClassifier):
     """Classifies jobs as Corporate vs SSE-aligned using Gemini.
@@ -204,7 +274,10 @@ class SSEClassifier(BaseGroundedClassifier):
             use_grounding=False,
         )
 
-        parse_result, parse_error = self._safe_parse_batch_response(response_text, len(jobs))
+        org_names = [j["org_name"] for j in normalized_jobs]
+        parse_result, parse_error = self._safe_parse_batch_response(
+            response_text, len(jobs), org_names=org_names,
+        )
         if parse_result is not None:
             return parse_result
 
@@ -255,7 +328,7 @@ class SSEClassifier(BaseGroundedClassifier):
 
         confidence = max(0.0, min(1.0, float(data.get("confidence", 0.5))))
 
-        return {
+        result: SSEClassificationResult = {
             "rating": rating,
             "confidence": confidence,
             "reasoning": str(data.get("reasoning", "No reasoning provided")),
@@ -265,15 +338,28 @@ class SSEClassifier(BaseGroundedClassifier):
             "classified_at": datetime.now(timezone.utc).isoformat(),
             "reviewed": False,
         }
+        return _apply_nonprofit_compensation_guard(result, org_name=org_name)
 
-    def _safe_parse_batch_response(self, response_text: str, num_jobs: int):
+    def _safe_parse_batch_response(
+        self,
+        response_text: str,
+        num_jobs: int,
+        org_names: list[str] | None = None,
+    ):
         """Return (results, error_message)."""
         try:
-            return self._parse_batch_sse_response(response_text, num_jobs), None
+            return self._parse_batch_sse_response(
+                response_text, num_jobs, org_names=org_names,
+            ), None
         except (json.JSONDecodeError, ValueError, TypeError) as e:
             return None, str(e)
 
-    def _parse_batch_sse_response(self, response_text: str, num_jobs: int) -> list[SSEClassificationResult]:
+    def _parse_batch_sse_response(
+        self,
+        response_text: str,
+        num_jobs: int,
+        org_names: list[str] | None = None,
+    ) -> list[SSEClassificationResult]:
         """Parse and validate a batch JSON array response."""
         text = self._extract_json_block(response_text)
 
@@ -285,6 +371,7 @@ class SSEClassifier(BaseGroundedClassifier):
         if len(data_array) != num_jobs:
             raise ValueError(f"Expected {num_jobs} results, got {len(data_array)}")
 
+        names = list(org_names or [])
         results = []
         for item in data_array:
             if not isinstance(item, dict):
@@ -313,7 +400,7 @@ class SSEClassifier(BaseGroundedClassifier):
 
             confidence = max(0.0, min(1.0, float(item.get("confidence", 0.5))))
 
-            results.append({
+            parsed: SSEClassificationResult = {
                 "rating": rating,
                 "confidence": confidence,
                 "reasoning": str(item.get("reasoning", "No reasoning provided")),
@@ -322,7 +409,16 @@ class SSEClassifier(BaseGroundedClassifier):
                 "flags": [str(f) for f in flags],
                 "classified_at": datetime.now(timezone.utc).isoformat(),
                 "reviewed": False,
-            })
+            }
+            idx = item.get("index")
+            org_hint = ""
+            if isinstance(idx, int) and 0 <= idx < len(names):
+                org_hint = names[idx]
+            elif isinstance(idx, int) and 1 <= idx <= len(names):
+                # Some models emit 1-based indexes
+                org_hint = names[idx - 1]
+            results.append(
+                _apply_nonprofit_compensation_guard(parsed, org_name=org_hint)
+            )
 
         return results
-

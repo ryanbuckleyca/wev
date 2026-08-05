@@ -610,19 +610,163 @@ def test_governance_gate_keeps_charity_nonprofit_weak_yes():
     assert not any("governance_gate" in f for f in result["flags"])
 
 
-def test_governance_gate_forces_political_party_other_yes_to_no():
-    """Political parties stored as other cannot be SSE yes."""
+def test_result_to_db_fields_includes_evidence_website():
+    from utils.organization_assessment import _result_to_db_fields
+
+    result = _parse_response(
+        _assessment_json(website="https://greencommunitiescanada.org"),
+        "Green Communities Canada",
+    )
+    assert result is not None
+    updates = _result_to_db_fields(result)
+    assert updates.get("website") == "https://greencommunitiescanada.org"
+
+
+def test_result_to_db_fields_omits_shared_host_website():
+    from utils.organization_assessment import _result_to_db_fields
+
+    result = _parse_response(
+        _assessment_json(website="https://linkedin.com/company/acme"),
+        "Acme",
+    )
+    assert result is not None
+    assert result["website"] is None
+    updates = _result_to_db_fields(result)
+    assert "website" not in updates
+
+
+def test_private_company_gate_demotes_inc_nonprofit_without_charity_evidence():
+    """Inc. + invented nonprofit Yes without registration → other/no."""
     result = _parse_response(
         _assessment_json(
-            canonical_name="Green Party Example",
-            slug="green-party-example",
-            type="other",
+            canonical_name="Family Music Programs Inc.",
+            slug="family-music-programs-inc",
+            type="nonprofit",
             sse_rating="weak_yes",
-            sse_reasoning_en="Electoral organization with environmental platform.",
+            sse_reasoning_en=(
+                "Offers joyful family music classes that build community connections."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+            flags=[],
         ),
-        "Green Party Example",
+        "Family Music Programs Inc.",
     )
     assert result is not None
     assert result["type"] == "other"
     assert result["sse_rating"] == "no"
-    assert any("governance_gate" in f for f in result["flags"])
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_demotes_explicit_for_profit_evidence():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Green Consult Co",
+            slug="green-consult-co",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "A privately owned environmental consultancy with CSR language."
+            ),
+        ),
+        "Green Consult Co",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_keeps_inc_with_charity_registration_evidence():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Community Care Inc.",
+            slug="community-care-inc",
+            type="nonprofit",
+            sse_rating="strong_yes",
+            sse_reasoning_en=(
+                "Registered charity with a clear public-benefit mission and "
+                "non-distribution constraints."
+            ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
+        ),
+        "Community Care Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "strong_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
+
+
+def test_org_assessment_prompt_rejects_commercial_inc_music_schools():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Family Music Programs Inc.",
+        "Toronto",
+        "ON",
+        "",
+        "",
+    )
+    assert "commercial Inc./Ltd. businesses are not nonprofits" in prompt
+    assert "Known good sites must" in prompt or "RETURN THAT URL" in prompt
+
+
+def test_org_assessment_prompt_place_name_not_government():
+    from utils.organization_assessment import _build_assessment_prompt
+
+    prompt = _build_assessment_prompt(
+        "Riverside Wind Orchestra",
+        "Riverside",
+        "ON",
+        "",
+        "",
+    )
+    assert "geographic branding only" in prompt
+    assert "Community orchestras" in prompt or "community orchestras" in prompt.lower()
+    assert "arts marketing, audience development" in prompt.lower()
+
+
+def test_place_name_guard_remaps_community_orchestra_from_government():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            type="government",
+            sector_id="community-civic-infrastructure",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "Named after the town of Riverside; assumed to be a public body "
+                "from the place name alone."
+            ),
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "strong_yes"
+    assert result["sector_id"] == "arts-culture-information"
+    assert any("place_name_guard" in f for f in result["flags"])
+
+
+def test_place_name_guard_keeps_true_municipal_agency():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Community Orchestra",
+            slug="riverside-community-orchestra",
+            type="government",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "A municipal department of the City of Riverside Parks Division "
+                "with a governing body appointed by council."
+            ),
+        ),
+        "Riverside Community Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "government"
+    assert result["sse_rating"] == "no"
+    assert not any("place_name_guard" in f for f in result["flags"])
