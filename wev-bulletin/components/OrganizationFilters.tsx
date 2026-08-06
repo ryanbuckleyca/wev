@@ -55,6 +55,7 @@ export default function OrganizationFilters({
     setSelectedTypes,
     selectedLanguages,
     setSelectedLanguages,
+    setActivityWindow,
     setCurrentPage,
     hasAnyFilters,
     isSuggestedDefaults,
@@ -64,6 +65,7 @@ export default function OrganizationFilters({
 
   const activeFilterChips = buildOrgActiveFilterChips({
     filters,
+    onRemoveActivity: () => setActivityWindow('all'),
     onRemoveNonSse: () => setShowNonSse(false),
     onRemoveSearch: () => setSearchQuery(''),
     onRemoveProvince: (p) => setSelectedProvinces(toggleArrayItem(p, selectedProvinces)),
@@ -118,7 +120,22 @@ export default function OrganizationFilters({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
-          <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0">
+          <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0 space-y-2">
+            <label className="block text-sm font-semibold text-foreground mb-2">
+              {t('activityLabel')}
+            </label>
+            <select
+              value={controls.activityWindow}
+              onChange={(e) => controls.setActivityWindow(e.target.value)}
+              className="w-full px-4 py-2 text-[13px] font-medium border border-border rounded-wev-btn bg-background text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all"
+            >
+              <option value="all">{t('activityAll')}</option>
+              <option value="28d">{t('activity28d')}</option>
+              <option value="90d">{t('activity90d')}</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col order-2 md:row-start-2 md:col-start-1 min-h-0">
             <CheckboxFilterSection
               label={tJobs('province.label')}
               selectedCount={selectedProvinces.length}
@@ -130,7 +147,7 @@ export default function OrganizationFilters({
             />
           </div>
 
-          <div className="flex flex-col order-2 md:row-start-2 md:col-start-1 min-h-0">
+          <div className="flex flex-col order-3 md:row-start-3 md:col-start-1 min-h-0">
             <MunicipalityFilterSection
               label={tJobs('municipality.label')}
               selectedMunicipalities={selectedMunicipalities}
@@ -146,7 +163,7 @@ export default function OrganizationFilters({
             />
           </div>
 
-          <div className="flex flex-col order-3 md:row-start-1 md:col-start-2 min-h-0">
+          <div className="flex flex-col order-4 md:row-start-1 md:col-start-2 min-h-0">
             <CheckboxFilterSection
               label={t('organizationType')}
               selectedCount={selectedTypes.length}
@@ -159,7 +176,7 @@ export default function OrganizationFilters({
             />
           </div>
 
-          <div className="flex flex-col order-4 md:row-start-2 md:col-start-2 min-h-0">
+          <div className="flex flex-col order-5 md:row-start-2 md:col-start-2 min-h-0">
             <CheckboxFilterSection
               label={tJobs('language.label')}
               selectedCount={selectedLanguages.length}

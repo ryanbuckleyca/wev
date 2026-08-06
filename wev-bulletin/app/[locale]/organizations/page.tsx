@@ -50,7 +50,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     }
   }
 
-  const { page, searchQuery, sseOnly, provinces, municipalities, orgTypes, languages, sortBy } =
+  const { page, searchQuery, sseOnly, provinces, municipalities, orgTypes, languages, sortBy, activityDays } =
     parseOrgIndexSearchParams(urlSearchParams, Boolean(user));
 
   const [initialData, filterOptions] = await Promise.all([
@@ -65,10 +65,11 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
         languages,
         userId: user?.id ?? null,
         sortBy,
+        activityDays,
       },
       user ? supabaseAuth : undefined,
     ),
-    fetchOrganizationFilterOptions(),
+    fetchOrganizationFilterOptions(activityDays),
   ]);
 
   return (

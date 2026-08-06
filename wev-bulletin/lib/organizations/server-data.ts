@@ -9,6 +9,16 @@ import { ORG_INDEX_PAGE_SIZE, ORG_JOBS_PER_PAGE } from './constants';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
 // ---------------------------------------------------------------------------
+// Activity-window helpers
+// ---------------------------------------------------------------------------
+
+/** Maps an activityDays value to the min_date RPC parameter. */
+export function activityDaysToMinDate(activityDays: number | null | undefined): string | null {
+  if (activityDays == null) return null; // "All organisations" — no date filter
+  return new Date(Date.now() - activityDays * 24 * 60 * 60 * 1000).toISOString();
+}
+
+// ---------------------------------------------------------------------------
 // fetchOrganizationIndex
 // ---------------------------------------------------------------------------
 
@@ -22,6 +32,8 @@ export interface FetchOrganizationIndexOptions {
   languages?: string[];
   userId?: string | null;
   sortBy?: string | null;
+  /** null/undefined = all orgs (full directory), 28 = last 4 weeks, 90 = last 3 months */
+  activityDays?: number | null;
 }
 
 export async function fetchOrganizationIndex(
@@ -39,19 +51,17 @@ export async function fetchOrganizationIndex(
     languages = [],
     userId = null,
     sortBy = null,
+    activityDays = null,
   } = options;
 
   const page = Math.max(1, rawPage);
-  const minDate = bulletinAgeCutoffIso();
+  const minDate = activityDaysToMinDate(activityDays);
   const limit = ORG_INDEX_PAGE_SIZE;
   const offset = (page - 1) * limit;
   const effectiveSortBy = sortBy ?? (userId ? 'value-match-desc' : 'org-asc');
 
   // Product default is SSE-only; that is the baseline universe, not a "filter".
   // Denominator matches the current SSE scope with no search/geo/type chips.
-  // Unlike the jobs board, org index uses only the hard 28-day bulletin ceiling
-  // (`bulletinAgeCutoffIso`) — not the jobs-board 2-week `postedWithin` default.
-  // See `lib/bulletin/server-data.ts` for the jobs "X of Y" semantics.
   const hasUserFilters =
     Boolean(searchQuery) ||
     provinces.length > 0 ||
@@ -120,7 +130,9 @@ export async function fetchOrganizationIndex(
       : total
     : total;
 
-  if (orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
+  // In "all orgs" mode (min_date is null), active_job_count can be 0 for orgs
+  // with no recent jobs — that's expected, not an error.
+  if (minDate !== null && orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
     throw new Error('fetchOrganizationIndex: RPC response missing active_job_count');
   }
 
@@ -213,20 +225,38 @@ export interface OrganizationFilterOptions {
   languages: string[];
 }
 
+/**
+ * Returns the filter options (types, provinces, municipalities, languages)
+ * for the org index. When activityDays is null (full directory / "All
+ * organisations"), options are derived from all orgs. When activityDays is
+ * set, options are scoped to orgs with jobs in that window.
+ */
 export const fetchOrganizationFilterOptions = cache(
-  async (): Promise<OrganizationFilterOptions> => {
-    // Only surface filter values for organizations that currently have active jobs,
-    // so users don't see provinces/types that would produce zero results.
-    const minDate = bulletinAgeCutoffIso();
-    const { data, error } = await supabaseServer
-      .from('organizations')
-      .select('type, province, municipality, language, jobs!inner(date_posted)')
-      .gte('jobs.date_posted', minDate);
+  async (activityDays?: number | null): Promise<OrganizationFilterOptions> => {
+    let data: any[];
 
-    if (error) {
-      // Re-throw so the caller (page render) can surface the error rather than
-      // silently showing blank filter options that look like a bug.
-      throw new Error(`fetchOrganizationFilterOptions error: ${error.message}`);
+    if (activityDays == null) {
+      // Full directory: derive options from all organisations, no job join.
+      const result = await supabaseServer
+        .from('organizations')
+        .select('type, province, municipality, language');
+
+      if (result.error) {
+        throw new Error(`fetchOrganizationFilterOptions error: ${result.error.message}`);
+      }
+      data = result.data;
+    } else {
+      // Activity-filtered: only surface values for orgs with recent jobs.
+      const minDate = activityDaysToMinDate(activityDays);
+      const result = await supabaseServer
+        .from('organizations')
+        .select('type, province, municipality, language, jobs!inner(date_posted)')
+        .gte('jobs.date_posted', minDate!);
+
+      if (result.error) {
+        throw new Error(`fetchOrganizationFilterOptions error: ${result.error.message}`);
+      }
+      data = result.data;
     }
 
     const types = new Set<string>();
