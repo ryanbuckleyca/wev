@@ -37,9 +37,11 @@ describe('buildOrgActiveFilterChips', () => {
     selectedMunicipalities: [],
     selectedTypes: [],
     selectedLanguages: [],
+    activityWindow: 'all',
   };
 
   const baseChipHandlers = {
+    onRemoveActivity: vi.fn(),
     onRemoveNonSse: vi.fn(),
     onRemoveSearch: vi.fn(),
     onRemoveProvince: vi.fn(),
@@ -57,6 +59,21 @@ describe('buildOrgActiveFilterChips', () => {
     });
 
     expect(chips).toEqual([]);
+  });
+
+  it('creates a chip for activity window', () => {
+    const onRemove = vi.fn();
+    const chips = buildOrgActiveFilterChips({
+      filters: { ...baseFilters, activityWindow: '28d' },
+      ...baseChipHandlers,
+      onRemoveActivity: onRemove,
+    });
+
+    expect(chips).toHaveLength(1);
+    expect(chips[0].id).toBe('activity');
+    expect(chips[0].label).toBe('activity28d');
+    chips[0]!.onRemove!();
+    expect(onRemove).toHaveBeenCalled();
   });
 
   it('creates a chip for showNonSse filter', () => {
@@ -170,17 +187,19 @@ describe('buildOrgActiveFilterChips', () => {
         selectedMunicipalities: ['Toronto'],
         selectedTypes: ['nonprofit'],
         selectedLanguages: ['bilingual'],
+        activityWindow: '90d',
       },
       ...baseChipHandlers,
     });
 
-    expect(chips).toHaveLength(6);
-    expect(chips[0].id).toBe('nonSse');
-    expect(chips[1].id).toBe('q');
-    expect(chips[2].id).toBe('p-Ontario');
-    expect(chips[3].id).toBe('m-Toronto');
-    expect(chips[4].id).toBe('type-nonprofit');
-    expect(chips[5].id).toBe('lang-bilingual');
+    expect(chips).toHaveLength(7);
+    expect(chips[0].id).toBe('activity');
+    expect(chips[1].id).toBe('nonSse');
+    expect(chips[2].id).toBe('q');
+    expect(chips[3].id).toBe('p-Ontario');
+    expect(chips[4].id).toBe('m-Toronto');
+    expect(chips[5].id).toBe('type-nonprofit');
+    expect(chips[6].id).toBe('lang-bilingual');
   });
 });
 

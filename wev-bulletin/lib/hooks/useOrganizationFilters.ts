@@ -9,6 +9,7 @@ import {
   parseAsString,
   useQueryState,
 } from 'nuqs';
+import type { ActivityWindow } from '@/lib/organizations/params';
 
 export interface OrganizationFilters {
   searchQuery: string;
@@ -18,6 +19,8 @@ export interface OrganizationFilters {
   selectedMunicipalities: string[];
   selectedTypes: string[];
   selectedLanguages: string[];
+  /** Activity window: 'all' (default), '28d', or '90d'. */
+  activityWindow: ActivityWindow;
 }
 
 /**
@@ -42,6 +45,8 @@ export interface OrganizationFilterControls {
   setSelectedTypes: (value: string[] | null) => Promise<unknown> | void;
   selectedLanguages: string[];
   setSelectedLanguages: (value: string[] | null) => Promise<unknown> | void;
+  activityWindow: ActivityWindow;
+  setActivityWindow: (value: string | null) => Promise<unknown> | void;
   currentPage: number;
   setCurrentPage: (value: number | null) => Promise<unknown> | void;
   sortBy: string;
@@ -72,9 +77,17 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     'language',
     parseAsNativeArrayOf(parseAsString).withDefault([]),
   );
+  const [activityWindow, setActivityWindow] = useQueryState(
+    'activity',
+    parseAsString.withDefault('all'),
+  );
   const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
   // Default to empty string - let the consuming component resolve the actual default based on auth state
   const [sortBy, setSortBy] = useQueryState('sortBy', parseAsString.withDefault(''));
+
+  const typedActivityWindow = (
+    activityWindow === '28d' || activityWindow === '90d' ? activityWindow : 'all'
+  ) as ActivityWindow;
 
   const filters = useMemo<OrganizationFilters>(
     () => ({
@@ -84,6 +97,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedMunicipalities,
       selectedTypes,
       selectedLanguages,
+      activityWindow: typedActivityWindow,
     }),
     [
       searchQuery,
@@ -92,10 +106,11 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedMunicipalities,
       selectedTypes,
       selectedLanguages,
+      typedActivityWindow,
     ],
   );
 
-  // hasAnyFilters is false at the default state (showNonSse=false, nothing else set)
+  // hasAnyFilters is false at the default state (showNonSse=false, activity=all, nothing else set)
   const hasAnyFilters = useMemo(
     () =>
       !!searchQuery ||
@@ -103,7 +118,8 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedProvinces.length > 0 ||
       selectedMunicipalities.length > 0 ||
       selectedTypes.length > 0 ||
-      selectedLanguages.length > 0,
+      selectedLanguages.length > 0 ||
+      typedActivityWindow !== 'all',
     [
       searchQuery,
       showNonSse,
@@ -111,10 +127,11 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedMunicipalities,
       selectedTypes,
       selectedLanguages,
+      typedActivityWindow,
     ],
   );
 
-  // Suggested defaults: showNonSse off (SSE-only), nothing else active
+  // Suggested defaults: showNonSse off (SSE-only), activity=all, nothing else active
   const isSuggestedDefaults = useMemo(
     () =>
       !searchQuery &&
@@ -122,7 +139,8 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedProvinces.length === 0 &&
       selectedMunicipalities.length === 0 &&
       selectedTypes.length === 0 &&
-      selectedLanguages.length === 0,
+      selectedLanguages.length === 0 &&
+      typedActivityWindow === 'all',
     [
       searchQuery,
       showNonSse,
@@ -130,6 +148,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedMunicipalities,
       selectedTypes,
       selectedLanguages,
+      typedActivityWindow,
     ],
   );
 
@@ -141,6 +160,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       void setSelectedMunicipalities([]);
       void setSelectedTypes([]);
       void setSelectedLanguages([]);
+      void setActivityWindow('all');
       void setCurrentPage(1);
     },
     [
@@ -150,6 +170,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       setSelectedMunicipalities,
       setSelectedTypes,
       setSelectedLanguages,
+      setActivityWindow,
       setCurrentPage,
     ],
   );
@@ -173,6 +194,8 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     setSelectedTypes,
     selectedLanguages,
     setSelectedLanguages,
+    activityWindow: typedActivityWindow,
+    setActivityWindow,
     currentPage,
     setCurrentPage,
     sortBy,

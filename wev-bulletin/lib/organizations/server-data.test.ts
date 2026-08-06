@@ -61,7 +61,7 @@ vi.mock('@/lib/resolve-skill-labels', () => ({
   ),
 }));
 
-import { fetchOrganizationIndex, getOrganizationJobs } from './server-data';
+import { fetchOrganizationIndex, fetchOrganizationFilterOptions, getOrganizationJobs } from './server-data';
 
 function resetQuery(query: any) {
   query.select.mockClear().mockReturnValue(query);
@@ -116,18 +116,18 @@ describe('organizations/server-data', () => {
     vi.useRealTimers();
   });
 
-  it('uses the RPC to fetch organizations sorted with active job counts and pagination total', async () => {
+  it('uses the RPC to fetch organizations sorted with active job counts and pagination total (default: all orgs)', async () => {
     mockRpc.mockResolvedValue({
       data: [makeRpcOrg(2, 'Alpha Org', 1), makeRpcOrg(1, 'Zeta Org', 2)],
       error: null,
     });
 
-    const result = await fetchOrganizationIndex({ page: 1 });
+    const result = await fetchOrganizationIndex({ page: 1, activityDays: null });
 
     // Default SSE-only view with no user filters: single RPC (totalAvailable === total).
     expect(mockRpc).toHaveBeenCalledTimes(1);
     expect(mockRpc).toHaveBeenCalledWith('get_active_organizations', {
-      min_date: '2026-05-16T00:00:00.000Z',
+      min_date: null,
       p_limit: 20,
       p_offset: 0,
       p_search: null,
@@ -143,6 +143,22 @@ describe('organizations/server-data', () => {
     expect(result.totalAvailable).toBe(3);
     expect(result.orgs.map((org) => org.name)).toEqual(['Alpha Org', 'Zeta Org']);
     expect(result.orgs.map((org) => org.active_job_count)).toEqual([1, 2]);
+  });
+
+  it('passes the computed min_date when an activity window is provided', async () => {
+    mockRpc.mockResolvedValue({ data: [], error: null });
+
+    await fetchOrganizationIndex({ activityDays: 28 });
+
+    expect(mockRpc).toHaveBeenCalledWith('get_active_organizations', expect.objectContaining({
+      min_date: '2026-05-16T00:00:00.000Z',
+    }));
+
+    await fetchOrganizationIndex({ activityDays: 90 });
+
+    expect(mockRpc).toHaveBeenCalledWith('get_active_organizations', expect.objectContaining({
+      min_date: '2026-03-15T00:00:00.000Z',
+    }));
   });
 
   it('fetches a denominator scoped to the current SSE universe when user filters are set', async () => {
@@ -213,5 +229,41 @@ describe('organizations/server-data', () => {
     expect(jobsQuery.range).toHaveBeenCalledWith(20, 39);
     expect(result.total).toBe(1);
     expect(result.jobs).toHaveLength(1);
+  });
+
+  describe('fetchOrganizationFilterOptions', () => {
+    it('queries all organizations when activityDays is null', async () => {
+      organizationsQuery.setResult({
+        data: [{ type: 'nonprofit', province: 'Quebec', municipality: 'Montreal', language: 'fr' }],
+        error: null,
+      });
+
+      const options = await fetchOrganizationFilterOptions(null);
+
+      expect(mockFrom).toHaveBeenCalledWith('organizations');
+      expect(organizationsQuery.select).toHaveBeenCalledWith('type, province, municipality, language');
+      // Should not include a job date filter
+      expect(organizationsQuery.gte).not.toHaveBeenCalled();
+
+      expect(options.types).toEqual(['nonprofit']);
+      expect(options.provinces).toEqual(['Quebec']);
+      expect(options.municipalitiesByProvince).toEqual({ Quebec: ['Montreal'] });
+      expect(options.languages).toEqual(['fr']);
+    });
+
+    it('queries organizations with jobs when activityDays is set', async () => {
+      organizationsQuery.setResult({
+        data: [{ type: 'cooperative', province: 'Ontario', municipality: 'Toronto', language: 'en' }],
+        error: null,
+      });
+
+      const options = await fetchOrganizationFilterOptions(28);
+
+      expect(mockFrom).toHaveBeenCalledWith('organizations');
+      expect(organizationsQuery.select).toHaveBeenCalledWith('type, province, municipality, language, jobs!inner(date_posted)');
+      expect(organizationsQuery.gte).toHaveBeenCalledWith('jobs.date_posted', '2026-05-16T00:00:00.000Z');
+
+      expect(options.types).toEqual(['cooperative']);
+    });
   });
 });

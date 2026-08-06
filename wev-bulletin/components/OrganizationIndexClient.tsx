@@ -39,7 +39,7 @@ export default function OrganizationIndexClient({
   const hasMatchScores = authLoading ? initialHasMatchScores : Boolean(user);
   const effectiveSortBy = resolveOrgSortBy(controls.sortBy, hasMatchScores);
 
-  const { orgs, total, totalAvailable, loading, error } = useOrganizationData(
+  const { orgs, total, totalAvailable, filterOptions: dynamicFilterOptions, loading, error } = useOrganizationData(
     locale,
     {
       filters: controls.filters,
@@ -49,6 +49,8 @@ export default function OrganizationIndexClient({
     initialData,
   );
 
+  const activeFilterOptions = dynamicFilterOptions ?? filterOptions;
+
   const totalPages = Math.max(1, Math.ceil(total / ORG_JOBS_PER_PAGE));
   const showCountSkeleton = loading && orgs.length === 0;
 
@@ -56,7 +58,7 @@ export default function OrganizationIndexClient({
     <div className="flex flex-col gap-0 w-full">
       <OrganizationFilters
         controls={controls}
-        filterOptions={filterOptions}
+        filterOptions={activeFilterOptions}
         filteredCount={total}
         totalCount={totalAvailable}
         loading={loading}

@@ -7,6 +7,26 @@
 
 import { resolveOrgSortBy } from './utils';
 
+/** Activity window values synced between URL, client hooks, and server. */
+export type ActivityWindow = 'all' | '28d' | '90d';
+
+const ACTIVITY_DAYS: Record<ActivityWindow, number | null> = {
+  all: null,
+  '28d': 28,
+  '90d': 90,
+};
+
+/** Map an ActivityWindow string to an activityDays number (or null for all). */
+export function activityWindowToDays(window: ActivityWindow): number | null {
+  return ACTIVITY_DAYS[window] ?? null;
+}
+
+/** Parse the raw `activity` query param into a validated ActivityWindow value. */
+export function parseActivityWindow(raw: string | null | undefined): ActivityWindow {
+  if (raw === '28d' || raw === '90d') return raw;
+  return 'all';
+}
+
 export interface OrgIndexParams {
   page: number;
   searchQuery: string;
@@ -16,6 +36,8 @@ export interface OrgIndexParams {
   orgTypes: string[];
   languages: string[];
   sortBy: string;
+  activityWindow: ActivityWindow;
+  activityDays: number | null;
 }
 
 /**
@@ -38,6 +60,8 @@ export function parseOrgIndexSearchParams(
   const municipalities = searchParams.getAll('municipality');
   const orgTypes = searchParams.getAll('type');
   const languages = searchParams.getAll('language');
+  const activityWindow = parseActivityWindow(searchParams.get('activity'));
+  const activityDays = activityWindowToDays(activityWindow);
 
   return {
     page,
@@ -48,5 +72,7 @@ export function parseOrgIndexSearchParams(
     orgTypes,
     languages,
     sortBy,
+    activityWindow,
+    activityDays,
   };
 }
