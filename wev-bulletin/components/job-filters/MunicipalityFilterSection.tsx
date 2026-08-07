@@ -13,6 +13,8 @@ interface MunicipalityFilterSectionProps {
   municipalitiesByProvince: MunicipalitiesByProvince;
   onToggleMunicipality: (municipality: string) => void;
   className?: string;
+  disabledMunicipalities?: string[];
+  disabledTooltipMessage?: string;
   noDataMessage: string;
   selectProvinceMessage: string;
   showingFromSelectedMessage: string;
@@ -26,6 +28,8 @@ export default function MunicipalityFilterSection({
   municipalitiesByProvince,
   onToggleMunicipality,
   className,
+  disabledMunicipalities = [],
+  disabledTooltipMessage,
   noDataMessage,
   selectProvinceMessage,
   showingFromSelectedMessage,
@@ -62,16 +66,19 @@ export default function MunicipalityFilterSection({
                   ) : null}
                 </div>
                 {municipalities.map((municipality) => {
-                  const isSelected = selectedMunicipalities.includes(municipality);
-
+                  const isDisabled = disabledMunicipalities.includes(municipality);
                   return (
                     <label
                       key={`${province}-${municipality}`}
-                      className="flex items-center space-x-2 py-1 cursor-pointer rounded px-2 ml-2 transition-colors hover:bg-primary-tint"
+                      className={`flex items-center space-x-2 py-1 px-2 rounded transition-colors ${
+                        isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-primary-tint'
+                      }`}
+                      title={isDisabled ? disabledTooltipMessage : undefined}
                     >
                       <Checkbox
-                        checked={isSelected}
-                        onChange={() => onToggleMunicipality(municipality)}
+                        checked={selectedMunicipalities.includes(municipality)}
+                        onChange={() => !isDisabled && onToggleMunicipality(municipality)}
+                        disabled={isDisabled}
                       />
                       <span className="text-sm text-foreground">{municipality}</span>
                     </label>

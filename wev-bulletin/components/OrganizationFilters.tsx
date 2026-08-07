@@ -1,11 +1,13 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import Collapsible from './Collapsible';
 import BooleanFilterRow from './job-filters/BooleanFilterRow';
 import CheckboxFilterSection from './job-filters/CheckboxFilterSection';
+import FilterButtonGroup from './job-filters/FilterButtonGroup';
 import MunicipalityFilterSection from './job-filters/MunicipalityFilterSection';
 import OrganizationSearch from './OrganizationSearch';
 import {
@@ -64,6 +66,15 @@ export default function OrganizationFilters({
     applySuggestedDefaults,
   } = controls;
 
+  const activityOptions = useMemo(
+    () => [
+      { value: 'all', label: t('activityAll') },
+      { value: '28d', label: t('activity28d') },
+      { value: '90d', label: t('activity90d') },
+    ],
+    [t],
+  );
+
   const activeFilterChips = buildOrgActiveFilterChips({
     filters,
     onRemoveActivity: () => setActivityWindow('all'),
@@ -86,6 +97,26 @@ export default function OrganizationFilters({
     0,
   );
 
+  const disabledProvinces = filterOptions.provinces.filter(
+    (p) => !filterOptions.availableProvinces.includes(p)
+  );
+  const disabledTypes = filterOptions.types.filter(
+    (t) => !filterOptions.availableTypes.includes(t)
+  );
+  const disabledLanguages = filterOptions.languages.filter(
+    (l) => !filterOptions.availableLanguages.includes(l)
+  );
+  const disabledMunicipalities = Object.values(filterOptions.municipalitiesByProvince)
+    .flat()
+    .filter(
+      (m) =>
+        !Object.values(filterOptions.availableMunicipalitiesByProvince)
+          .flat()
+          .includes(m)
+    );
+
+  const disabledTooltipMessage = t('disabledOptionTooltip');
+
   return (
     <div className="bg-card border border-border rounded-wev-card mb-4 overflow-hidden">
       <OrganizationSearch
@@ -104,40 +135,15 @@ export default function OrganizationFilters({
       />
 
       <Collapsible id="org-filters-content" isOpen={filtersExpanded} className="p-6">
-        <div className="mb-4">
-          <BooleanFilterRow
-            checked={showNonSse}
-            onCheckedChange={(val) => setShowNonSse(val)}
-            label={t('showNonSse')}
-            icon={
-              <Lineicons
-                icon={showNonSse ? Leaf1Solid : Leaf1Outlined}
-                size={16}
-                className="shrink-0 text-primary"
-                aria-hidden
-              />
-            }
-          />
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
           <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0 space-y-2">
-            <label
-              htmlFor="activity-filter"
-              className="block text-sm font-semibold text-foreground mb-2"
-            >
-              {t('activityLabel')}
-            </label>
-            <select
-              id="activity-filter"
-              value={controls.activityWindow}
-              onChange={(e) => controls.setActivityWindow(e.target.value as ActivityWindow)}
-              className="w-full px-4 py-2 text-[13px] font-medium border border-border rounded-wev-btn bg-background text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all"
-            >
-              <option value="all">{t('activityAll')}</option>
-              <option value="28d">{t('activity28d')}</option>
-              <option value="90d">{t('activity90d')}</option>
-            </select>
+            <FilterButtonGroup
+              label={t('activityLabel')}
+              options={activityOptions}
+              isSelected={(value) => controls.activityWindow === value}
+              onSelect={(value) => controls.setActivityWindow(value as ActivityWindow)}
+              className="mb-0"
+            />
           </div>
 
           <div className="flex flex-col order-2 md:row-start-2 md:col-start-1 min-h-0">
@@ -147,6 +153,8 @@ export default function OrganizationFilters({
               totalCount={filterOptions.provinces.length}
               options={filterOptions.provinces}
               selectedValues={selectedProvinces}
+              disabledValues={disabledProvinces}
+              disabledTooltipMessage={disabledTooltipMessage}
               onToggle={(val) => setSelectedProvinces(toggleArrayItem(val, selectedProvinces))}
               emptyMessage={tJobs('province.noData')}
             />
@@ -159,6 +167,8 @@ export default function OrganizationFilters({
               totalMunicipalities={totalMunicipalities}
               selectedProvinces={selectedProvinces}
               municipalitiesByProvince={filterOptions.municipalitiesByProvince}
+              disabledMunicipalities={disabledMunicipalities}
+              disabledTooltipMessage={disabledTooltipMessage}
               onToggleMunicipality={(val) =>
                 setSelectedMunicipalities(toggleArrayItem(val, selectedMunicipalities))
               }
@@ -175,6 +185,8 @@ export default function OrganizationFilters({
               totalCount={filterOptions.types.length}
               options={filterOptions.types}
               selectedValues={selectedTypes}
+              disabledValues={disabledTypes}
+              disabledTooltipMessage={disabledTooltipMessage}
               onToggle={(val) => setSelectedTypes(toggleArrayItem(val, selectedTypes))}
               emptyMessage={t('noOrganizationTypes')}
               renderLabel={(type) => getOrganizationTypeLabel(type, t)}
@@ -188,6 +200,8 @@ export default function OrganizationFilters({
               totalCount={filterOptions.languages.length}
               options={filterOptions.languages}
               selectedValues={selectedLanguages}
+              disabledValues={disabledLanguages}
+              disabledTooltipMessage={disabledTooltipMessage}
               onToggle={(val) => {
                 void setSelectedLanguages(toggleArrayItem(val, selectedLanguages));
                 void setCurrentPage(1);

@@ -51,6 +51,7 @@
     "organization": "organisation",
     "organizations": "organisations",
     "organizationCount": "{count, plural, =0 {Aucune organisation} one {1 organisation} other {# organisations}}",
+    "disabledOptionTooltip": "Cette option n'est pas disponible pour les filtres actuels.",
     "activityLabel": "Activité",
     "activityAll": "Toutes les organisations",
     "activity28d": "Embauches dans les 4 dernières semaines",
