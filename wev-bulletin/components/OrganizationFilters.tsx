@@ -122,7 +122,10 @@ export default function OrganizationFilters({
 
         <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
           <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0 space-y-2">
-            <label htmlFor="activity-filter" className="block text-sm font-semibold text-foreground mb-2">
+            <label
+              htmlFor="activity-filter"
+              className="block text-sm font-semibold text-foreground mb-2"
+            >
               {t('activityLabel')}
             </label>
             <select
