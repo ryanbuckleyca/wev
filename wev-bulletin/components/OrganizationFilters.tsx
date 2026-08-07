@@ -97,24 +97,18 @@ export default function OrganizationFilters({
     0,
   );
 
-  const disabledProvinces = filterOptions.provinces.filter(
-    (p) => !(filterOptions.availableProvinces || filterOptions.provinces).includes(p)
-  );
-  const disabledTypes = filterOptions.types.filter(
-    (t) => !(filterOptions.availableTypes || filterOptions.types).includes(t)
-  );
-  const disabledLanguages = filterOptions.languages.filter(
-    (l) => !(filterOptions.availableLanguages || filterOptions.languages).includes(l)
-  );
+  const availableProvinces = filterOptions.availableProvinces ?? filterOptions.provinces ?? [];
+  const availableTypes = filterOptions.availableTypes ?? filterOptions.types ?? [];
+  const availableLanguages = filterOptions.availableLanguages ?? filterOptions.languages ?? [];
+  const availableMunicipalitiesByProvince =
+    filterOptions.availableMunicipalitiesByProvince ?? filterOptions.municipalitiesByProvince ?? {};
+
+  const disabledProvinces = filterOptions.provinces.filter((p) => !availableProvinces.includes(p));
+  const disabledTypes = filterOptions.types.filter((t) => !availableTypes.includes(t));
+  const disabledLanguages = filterOptions.languages.filter((l) => !availableLanguages.includes(l));
   const disabledMunicipalities = Object.values(filterOptions.municipalitiesByProvince || {})
     .flat()
-    .filter(
-      (m) =>
-        !(filterOptions.availableMunicipalitiesByProvince
-          ? Object.values(filterOptions.availableMunicipalitiesByProvince).flat()
-          : Object.values(filterOptions.municipalitiesByProvince || {}).flat()
-        ).includes(m)
-    );
+    .filter((m) => !Object.values(availableMunicipalitiesByProvince).flat().includes(m));
 
   const disabledTooltipMessage = t('disabledOptionTooltip');
 

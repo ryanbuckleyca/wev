@@ -266,29 +266,30 @@ export const fetchOrganizationFilterOptions = cache(
       const languages = Array.isArray(raw?.languages) ? raw.languages : [];
       const rawMunicipalities = Array.isArray(raw?.municipalities) ? raw.municipalities : [];
 
-      const municipalitiesByProv: Record<string, string[]> = {};
+      const municipalitiesByProv: Record<string, Set<string>> = {};
       for (const m of rawMunicipalities) {
         if (!municipalitiesByProv[m.province]) {
-          municipalitiesByProv[m.province] = [];
+          municipalitiesByProv[m.province] = new Set();
         }
-        municipalitiesByProv[m.province].push(m.municipality);
+        municipalitiesByProv[m.province].add(m.municipality);
       }
 
+      const finalMunicipalities: Record<string, string[]> = {};
       // Sort municipalities within each province
       for (const prov in municipalitiesByProv) {
-        municipalitiesByProv[prov].sort();
+        finalMunicipalities[prov] = Array.from(municipalitiesByProv[prov]).sort();
       }
 
       return {
         types: types.sort(),
         provinces: provinces.sort(),
         languages: languages.sort(),
-        municipalitiesByProvince: municipalitiesByProv,
+        municipalitiesByProvince: finalMunicipalities,
       };
     };
 
-    const globalOptions = formatOptions(data.global);
-    const availableOptions = formatOptions(data.available);
+    const globalOptions = formatOptions(data?.global ?? {});
+    const availableOptions = formatOptions(data?.available ?? {});
 
     return {
       types: globalOptions.types,
