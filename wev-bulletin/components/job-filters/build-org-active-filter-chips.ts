@@ -11,7 +11,6 @@ import type { ActiveFilterChip } from '@/components/JobSearch';
 interface BuildOrgFilterChipsInput {
   filters: OrganizationFilters;
   onRemoveActivity: () => void;
-  onRemoveNonSse: () => void;
   onRemoveSearch: () => void;
   onRemoveProvince: (province: string) => void;
   onRemoveMunicipality: (municipality: string) => void;
@@ -34,7 +33,6 @@ export function orgLanguageLabel(language: string, tFilters: (key: string) => st
 export function buildOrgActiveFilterChips({
   filters,
   onRemoveActivity,
-  onRemoveNonSse,
   onRemoveSearch,
   onRemoveProvince,
   onRemoveMunicipality,
@@ -50,15 +48,6 @@ export function buildOrgActiveFilterChips({
       id: 'activity',
       label: tOrgs(`activity${filters.activityWindow}`),
       onRemove: onRemoveActivity,
-    });
-  }
-
-  if (filters.showNonSse) {
-    chips.push({
-      id: 'nonSse',
-      label: tFilters('chips.allOrgs'),
-      title: tFilters('chips.allOrgs'),
-      onRemove: onRemoveNonSse,
     });
   }
 

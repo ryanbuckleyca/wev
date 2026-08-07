@@ -42,7 +42,6 @@ describe('buildOrgActiveFilterChips', () => {
 
   const baseChipHandlers = {
     onRemoveActivity: vi.fn(),
-    onRemoveNonSse: vi.fn(),
     onRemoveSearch: vi.fn(),
     onRemoveProvince: vi.fn(),
     onRemoveMunicipality: vi.fn(),
@@ -76,20 +75,7 @@ describe('buildOrgActiveFilterChips', () => {
     expect(onRemove).toHaveBeenCalled();
   });
 
-  it('creates a chip for showNonSse filter', () => {
-    const onRemove = vi.fn();
-    const chips = buildOrgActiveFilterChips({
-      filters: { ...baseFilters, showNonSse: true },
-      ...baseChipHandlers,
-      onRemoveNonSse: onRemove,
-    });
 
-    expect(chips).toHaveLength(1);
-    expect(chips[0].id).toBe('nonSse');
-    expect(chips[0].label).toBe('All organizations');
-    chips[0]!.onRemove!();
-    expect(onRemove).toHaveBeenCalled();
-  });
 
   it('creates a chip for search query', () => {
     const onRemove = vi.fn();
@@ -182,7 +168,7 @@ describe('buildOrgActiveFilterChips', () => {
     const chips = buildOrgActiveFilterChips({
       filters: {
         searchQuery: 'test',
-        showNonSse: true,
+        showNonSse: false,
         selectedProvinces: ['Ontario'],
         selectedMunicipalities: ['Toronto'],
         selectedTypes: ['nonprofit'],
@@ -192,14 +178,13 @@ describe('buildOrgActiveFilterChips', () => {
       ...baseChipHandlers,
     });
 
-    expect(chips).toHaveLength(7);
+    expect(chips).toHaveLength(6);
     expect(chips[0].id).toBe('activity');
-    expect(chips[1].id).toBe('nonSse');
-    expect(chips[2].id).toBe('q');
-    expect(chips[3].id).toBe('p-Ontario');
-    expect(chips[4].id).toBe('m-Toronto');
-    expect(chips[5].id).toBe('type-nonprofit');
-    expect(chips[6].id).toBe('lang-bilingual');
+    expect(chips[1].id).toBe('q');
+    expect(chips[2].id).toBe('p-Ontario');
+    expect(chips[3].id).toBe('m-Toronto');
+    expect(chips[4].id).toBe('type-nonprofit');
+    expect(chips[5].id).toBe('lang-bilingual');
   });
 });
 

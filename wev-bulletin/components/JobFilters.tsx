@@ -30,8 +30,6 @@ export default function JobFilters(props: JobFiltersProps) {
     selectedSources,
     selectedWorkTypes,
     selectedLanguages,
-    showNonSse,
-    setShowNonSse: onShowNonSseChange,
     showJobsWithoutSalary,
     setShowJobsWithoutSalary: onShowJobsWithoutSalaryChange,
     postedWithin,

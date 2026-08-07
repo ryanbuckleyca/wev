@@ -10,7 +10,6 @@ type TranslateFn = (key: string, values?: Record<string, string | number>) => st
 
 export type ActiveFilterChipInputs = {
   postedWithin: PostedWithinValue;
-  showNonSse: boolean;
   showJobsWithoutSalary: boolean;
   searchQuery: string;
   selectedWorkTypes: string[];
@@ -21,7 +20,6 @@ export type ActiveFilterChipInputs = {
   selectedSources: string[];
   selectedLanguages: string[];
   onPostedWithinChange: (value: PostedWithinValue) => void;
-  onShowNonSseChange: (value: boolean) => void;
   onShowJobsWithoutSalaryChange: (value: boolean) => void;
   onSearchChange: (value: string) => void;
   onWorkTypesChange: (value: string[]) => void;
@@ -83,15 +81,6 @@ export function buildActiveFilterChips(
     });
   }
 
-  // showNonSse=true means user opted into seeing non-SSE jobs — show a chip so they can remove it
-  if (input.showNonSse) {
-    chips.push({
-      id: 'nonSse',
-      label: getTranslationOrFallback(t, 'filters.chips.allJobs', 'All jobs'),
-      title: t('filters.chips.allJobs'),
-      onRemove: () => input.onShowNonSseChange(false),
-    });
-  }
 
   // Opted into showing jobs without listed compensation (default hides them).
   if (input.showJobsWithoutSalary) {

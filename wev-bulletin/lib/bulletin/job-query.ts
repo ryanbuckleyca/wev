@@ -36,8 +36,6 @@ export type BulletinFilters = {
   selectedSources: string[];
   selectedWorkTypes: string[];
   selectedLanguages: string[];
-  /** When true, non-SSE jobs are included. Default view shows SSE-only. */
-  showNonSse: boolean;
   showJobsWithoutSalary: boolean;
   postedWithin: PostedWithinSelection;
   now?: number;
@@ -88,7 +86,8 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
     if (!matchesSelection(job.employment_type, filters.selectedEmploymentTypes)) return false;
     if (!matchesSelection(job.source, filters.selectedSources)) return false;
 
-    if (filters.showNonSse === false && !job.is_sse) return false;
+    // SSE-only: never show non-SSE jobs in the front-end
+    if (!job.is_sse) return false;
     if (!filters.showJobsWithoutSalary && job.has_compensation !== true) return false;
 
     if (cutoffMs != null) {

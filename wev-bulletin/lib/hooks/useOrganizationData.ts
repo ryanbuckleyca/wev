@@ -26,7 +26,6 @@ function buildFetchKey(
     currentPage,
     sortBy,
     filters.searchQuery,
-    filters.showNonSse,
     filters.selectedProvinces.join(','),
     filters.selectedMunicipalities.join(','),
     filters.selectedTypes.join(','),
@@ -46,8 +45,6 @@ function buildSearchParams(
   params.set('page', String(currentPage));
   params.set('sortBy', sortBy);
   if (filters.searchQuery) params.set('q', filters.searchQuery);
-  // nonSse=true means "show non-SSE orgs" — server interprets absence as SSE-only
-  if (filters.showNonSse) params.set('nonSse', 'true');
   // Activity window: only set when not default ('all')
   if (filters.activityWindow !== 'all') params.set('activity', filters.activityWindow);
   // Param names must match useOrganizationFilters URL keys and the API route's getAll() keys

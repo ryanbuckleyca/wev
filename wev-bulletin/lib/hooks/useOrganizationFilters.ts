@@ -3,7 +3,6 @@
 import { useMemo, useCallback } from 'react';
 import {
   parseAsArrayOf,
-  parseAsBoolean,
   parseAsInteger,
   parseAsNativeArrayOf,
   parseAsString,
@@ -14,8 +13,6 @@ import { parseActivityWindow, type ActivityWindow } from '@/lib/organizations/pa
 
 export interface OrganizationFilters {
   searchQuery: string;
-  /** When true, non-SSE orgs are included. Default is false (SSE-only view). */
-  showNonSse: boolean;
   selectedProvinces: string[];
   selectedMunicipalities: string[];
   selectedTypes: string[];
@@ -36,8 +33,6 @@ export interface OrganizationFilterControls {
   filters: OrganizationFilters;
   searchQuery: string;
   setSearchQuery: (value: string | null) => Promise<unknown> | void;
-  showNonSse: boolean;
-  setShowNonSse: (value: boolean | null) => Promise<unknown> | void;
   selectedProvinces: string[];
   setSelectedProvinces: (value: string[] | null) => Promise<unknown> | void;
   selectedMunicipalities: string[];
@@ -60,8 +55,6 @@ export interface OrganizationFilterControls {
 
 export function useOrganizationFilters(): OrganizationFilterControls {
   const [searchQuery, setSearchQuery] = useQueryState('q', parseAsString.withDefault(''));
-  // showNonSse defaults to false → SSE-only view by default, without an active filter
-  const [showNonSse, setShowNonSse] = useQueryState('nonSse', parseAsBoolean.withDefault(false));
   const [selectedProvinces, setSelectedProvinces] = useQueryState(
     'province',
     parseAsArrayOf(parseAsString).withDefault([]),
@@ -91,7 +84,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
   const filters = useMemo<OrganizationFilters>(
     () => ({
       searchQuery,
-      showNonSse,
       selectedProvinces,
       selectedMunicipalities,
       selectedTypes,
@@ -100,7 +92,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     }),
     [
       searchQuery,
-      showNonSse,
       selectedProvinces,
       selectedMunicipalities,
       selectedTypes,
@@ -109,11 +100,10 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     ],
   );
 
-  // hasAnyFilters is false at the default state (showNonSse=false, activity=all, nothing else set)
+  // hasAnyFilters is false at the default state (activity=all, nothing else set)
   const hasAnyFilters = useMemo(
     () =>
       !!searchQuery ||
-      showNonSse ||
       selectedProvinces.length > 0 ||
       selectedMunicipalities.length > 0 ||
       selectedTypes.length > 0 ||
@@ -121,7 +111,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       typedActivityWindow !== 'all',
     [
       searchQuery,
-      showNonSse,
       selectedProvinces,
       selectedMunicipalities,
       selectedTypes,
@@ -130,11 +119,10 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     ],
   );
 
-  // Suggested defaults: showNonSse off (SSE-only), activity=all, nothing else active
+  // Suggested defaults: activity=all, nothing else active
   const isSuggestedDefaults = useMemo(
     () =>
       !searchQuery &&
-      !showNonSse &&
       selectedProvinces.length === 0 &&
       selectedMunicipalities.length === 0 &&
       selectedTypes.length === 0 &&
@@ -142,7 +130,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       typedActivityWindow === 'all',
     [
       searchQuery,
-      showNonSse,
       selectedProvinces,
       selectedMunicipalities,
       selectedTypes,
@@ -152,9 +139,8 @@ export function useOrganizationFilters(): OrganizationFilterControls {
   );
 
   const resetFilters = useCallback(
-    (nonSseDefault: boolean) => {
+    () => {
       void setSearchQuery('');
-      void setShowNonSse(nonSseDefault);
       void setSelectedProvinces([]);
       void setSelectedMunicipalities([]);
       void setSelectedTypes([]);
@@ -164,7 +150,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     },
     [
       setSearchQuery,
-      setShowNonSse,
       setSelectedProvinces,
       setSelectedMunicipalities,
       setSelectedTypes,
@@ -174,9 +159,9 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     ],
   );
 
-  // clearAllFilters: resets everything, SSE filter goes back to SSE-only (default view).
-  // applySuggestedDefaults: same as clear — SSE-only is the suggested default for orgs.
-  const clearAllFilters = useCallback(() => resetFilters(false), [resetFilters]);
+  // clearAllFilters: resets everything.
+  // applySuggestedDefaults: same as clear.
+  const clearAllFilters = useCallback(() => resetFilters(), [resetFilters]);
   const applySuggestedDefaults = clearAllFilters;
 
   const setActivityWindowAndResetPage = useCallback(
@@ -191,8 +176,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     filters,
     searchQuery,
     setSearchQuery,
-    showNonSse,
-    setShowNonSse,
     selectedProvinces,
     setSelectedProvinces,
     selectedMunicipalities,

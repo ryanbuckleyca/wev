@@ -45,8 +45,6 @@ export interface BulletinFilterControls {
   setSelectedWorkTypes: QueryStateSetter<string[]>;
   selectedLanguages: string[];
   setSelectedLanguages: QueryStateSetter<string[]>;
-  showNonSse: boolean;
-  setShowNonSse: QueryStateSetter<boolean>;
   showJobsWithoutSalary: boolean;
   setShowJobsWithoutSalary: QueryStateSetter<boolean>;
   postedWithin: PostedWithinSelection;
@@ -148,8 +146,6 @@ export function useBulletinFilters(
     },
     [setLangQuery],
   );
-  // showNonSse defaults to false → SSE-only view by default, without an active filter
-  const [showNonSse, setShowNonSse] = useQueryState('nonSse', parseAsBoolean.withDefault(false));
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState(
     'salary',
     parseAsBoolean.withDefault(false),
@@ -267,7 +263,6 @@ export function useBulletinFilters(
       selectedSources,
       selectedWorkTypes,
       selectedLanguages,
-      showNonSse,
       showJobsWithoutSalary,
       postedWithin,
     }),
@@ -280,7 +275,6 @@ export function useBulletinFilters(
       selectedSources,
       selectedWorkTypes,
       selectedLanguages,
-      showNonSse,
       showJobsWithoutSalary,
       postedWithin,
     ],
@@ -304,7 +298,6 @@ export function useBulletinFilters(
     selectedSources.length > 0 ||
     selectedWorkTypes.length > 0 ||
     selectedLanguages.length > 0 ||
-    showNonSse ||
     showJobsWithoutSalary ||
     postedWithin !== PRODUCT_DEFAULT_POSTED_WITHIN;
 
@@ -332,10 +325,9 @@ export function useBulletinFilters(
   // Restores the SSE/compensation/posted-within product baseline (the "not a
   // filter" defaults shared by Clear and Suggested).
   const applyProductBaseline = useCallback(() => {
-    void setShowNonSse(false);
     void setShowJobsWithoutSalary(false);
     void setPostedWithin(PRODUCT_DEFAULT_POSTED_WITHIN);
-  }, [setShowNonSse, setShowJobsWithoutSalary, setPostedWithin]);
+  }, [setShowJobsWithoutSalary, setPostedWithin]);
 
   const clearAllFilters = useCallback(() => {
     resetCommonFilters();
@@ -367,8 +359,6 @@ export function useBulletinFilters(
     setSelectedWorkTypes,
     selectedLanguages,
     setSelectedLanguages,
-    showNonSse,
-    setShowNonSse,
     showJobsWithoutSalary,
     setShowJobsWithoutSalary,
     postedWithin,

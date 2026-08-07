@@ -123,8 +123,6 @@ export function useBulletinFetch(
       params.set('postedWithin', filters.postedWithin);
 
       if (filters.searchQuery) params.set('q', filters.searchQuery);
-      // nonSse=true means "include non-SSE jobs"; absence means SSE-only (the default)
-      if (filters.showNonSse) params.set('nonSse', 'true');
       if (filters.showJobsWithoutSalary) params.set('nosal', 'true');
 
       filters.selectedOrganizations.forEach((o) => params.append('orgs', o));

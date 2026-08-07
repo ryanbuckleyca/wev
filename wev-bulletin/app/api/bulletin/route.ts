@@ -54,28 +54,8 @@ export async function GET(request: Request) {
     const works = searchParams.getAll('works');
     const langs = searchParams.getAll('langs');
 
-    // SSE filter with backward compatibility:
-    // - New API: nonSse=true means "include non-SSE jobs"; absence means SSE-only
-    // - Old API: sse=true means "SSE-only"; absence means include all
-    // - Priority: nonSse takes precedence if both are present
-    let onlySse: boolean;
-    const nonSseParam = searchParams.get('nonSse');
-    const sseParam = searchParams.get('sse');
-
-    if (nonSseParam !== null) {
-      // New API: nonSse present, use it (nonSse=true → onlySse=false)
-      onlySse = nonSseParam !== 'true';
-    } else if (sseParam !== null) {
-      // Old API: sse present, use it (sse=true → onlySse=true)
-      onlySse = sseParam === 'true';
-    } else {
-      // Neither present: default to SSE-only to match frontend default (showNonSse=false)
-      // This is intentional product behavior. The frontend defaults to showing only SSE jobs,
-      // and the API default aligns with that to prevent confusion when the page first loads.
-      // Legacy API clients that relied on the absence of 'sse' meaning "show all" will need
-      // to explicitly pass nonSse=true to see non-SSE jobs.
-      onlySse = true;
-    }
+    // SSE-only: non-SSE records are never surfaced in the front-end.
+    const onlySse = true;
 
     const includeUnlistedPay = searchParams.get('nosal') === 'true';
 

@@ -48,8 +48,6 @@ export default function OrganizationFilters({
     filters,
     searchQuery,
     setSearchQuery,
-    showNonSse,
-    setShowNonSse,
     selectedProvinces,
     setSelectedProvinces,
     selectedMunicipalities,
@@ -78,7 +76,6 @@ export default function OrganizationFilters({
   const activeFilterChips = buildOrgActiveFilterChips({
     filters,
     onRemoveActivity: () => setActivityWindow('all'),
-    onRemoveNonSse: () => setShowNonSse(false),
     onRemoveSearch: () => setSearchQuery(''),
     onRemoveProvince: (p) => setSelectedProvinces(toggleArrayItem(p, selectedProvinces)),
     onRemoveMunicipality: (m) =>
