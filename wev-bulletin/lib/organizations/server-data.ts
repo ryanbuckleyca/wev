@@ -18,7 +18,10 @@ export function activityDaysToMinDate(
   now: number = Date.now(),
 ): string | null {
   if (activityDays == null) return null; // "All organisations" — no date filter
-  return new Date(now - activityDays * 24 * 60 * 60 * 1000).toISOString();
+  const d = new Date(now);
+  d.setUTCDate(d.getUTCDate() - activityDays);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.toISOString();
 }
 
 // ---------------------------------------------------------------------------
