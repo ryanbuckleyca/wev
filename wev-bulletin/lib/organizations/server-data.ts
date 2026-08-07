@@ -18,9 +18,7 @@ export function activityDaysToMinDate(
   now: number = Date.now(),
 ): string | null {
   if (activityDays == null) return null; // "All organisations" — no date filter
-  const d = new Date(now - activityDays * 24 * 60 * 60 * 1000);
-  d.setUTCHours(0, 0, 0, 0);
-  return d.toISOString();
+  return new Date(now - activityDays * 24 * 60 * 60 * 1000).toISOString();
 }
 
 // ---------------------------------------------------------------------------
@@ -139,7 +137,7 @@ export async function fetchOrganizationIndex(
   // regardless of min_date. If it's missing, the RPC shape is unexpected.
   if (orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
     throw new Error(
-      `fetchOrganizationIndex: RPC response missing active_job_count. First row ID: ${orgs[0].id}`,
+      `fetchOrganizationIndex: RPC response missing active_job_count. First row: ${JSON.stringify(orgs[0])}`,
     );
   }
 

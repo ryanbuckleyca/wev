@@ -7,6 +7,7 @@ import {
   parseAsInteger,
   parseAsNativeArrayOf,
   parseAsString,
+  parseAsStringEnum,
   useQueryState,
 } from 'nuqs';
 import { parseActivityWindow, type ActivityWindow } from '@/lib/organizations/params';
@@ -79,7 +80,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
   );
   const [activityWindow, setActivityWindow] = useQueryState(
     'activity',
-    parseAsString.withDefault('all'),
+    parseAsStringEnum<ActivityWindow>(['all', '28d', '90d']).withDefault('all'),
   );
   const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
   // Default to empty string - let the consuming component resolve the actual default based on auth state
