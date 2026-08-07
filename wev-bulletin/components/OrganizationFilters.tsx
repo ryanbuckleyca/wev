@@ -98,21 +98,22 @@ export default function OrganizationFilters({
   );
 
   const disabledProvinces = filterOptions.provinces.filter(
-    (p) => !filterOptions.availableProvinces.includes(p)
+    (p) => !(filterOptions.availableProvinces || filterOptions.provinces).includes(p)
   );
   const disabledTypes = filterOptions.types.filter(
-    (t) => !filterOptions.availableTypes.includes(t)
+    (t) => !(filterOptions.availableTypes || filterOptions.types).includes(t)
   );
   const disabledLanguages = filterOptions.languages.filter(
-    (l) => !filterOptions.availableLanguages.includes(l)
+    (l) => !(filterOptions.availableLanguages || filterOptions.languages).includes(l)
   );
-  const disabledMunicipalities = Object.values(filterOptions.municipalitiesByProvince)
+  const disabledMunicipalities = Object.values(filterOptions.municipalitiesByProvince || {})
     .flat()
     .filter(
       (m) =>
-        !Object.values(filterOptions.availableMunicipalitiesByProvince)
-          .flat()
-          .includes(m)
+        !(filterOptions.availableMunicipalitiesByProvince
+          ? Object.values(filterOptions.availableMunicipalitiesByProvince).flat()
+          : Object.values(filterOptions.municipalitiesByProvince || {}).flat()
+        ).includes(m)
     );
 
   const disabledTooltipMessage = t('disabledOptionTooltip');
