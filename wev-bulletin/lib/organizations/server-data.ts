@@ -242,72 +242,50 @@ export interface OrganizationFilterOptions {
  */
 export const fetchOrganizationFilterOptions = cache(
   async (activityDays?: number | null): Promise<OrganizationFilterOptions> => {
-    // 1. Fetch global options (unfiltered by activity)
-    const globalResult = await supabaseServer
-      .from('organizations')
-      .select('type, province, municipality, language');
-
-    if (globalResult.error) {
-      throw new Error(`fetchOrganizationFilterOptions error: ${globalResult.error.message}`);
+    if (Number.isNaN(activityDays)) {
+      throw new Error(
+        `fetchOrganizationFilterOptions: invalid activityDays provided (got ${activityDays})`,
+      );
     }
 
-    let filteredData = globalResult.data;
+    const { data, error } = await supabaseServer.rpc('get_organization_filter_options', {
+      p_activity_days: activityDays ?? null,
+    });
 
-    // 2. Fetch activity-filtered options if needed
-    if (activityDays != null) {
-      if (Number.isNaN(activityDays)) {
-        throw new Error(
-          `fetchOrganizationFilterOptions: invalid activityDays provided (got ${activityDays})`,
-        );
-      }
-      const minDate = activityDaysToMinDate(activityDays);
-      const activityResult = await supabaseServer
-        .from('organizations')
-        .select('type, province, municipality, language, jobs!inner(date_posted)')
-        .gte('jobs.date_posted', minDate);
-
-      if (activityResult.error) {
-        throw new Error(`fetchOrganizationFilterOptions error: ${activityResult.error.message}`);
-      }
-      filteredData = activityResult.data;
+    if (error) {
+      throw new Error(`fetchOrganizationFilterOptions error: ${error.message}`);
     }
 
-    // Helper to build options from data
-    const buildOptions = (data: any[]) => {
-      const types = new Set<string>();
-      const provinces = new Set<string>();
-      const languages = new Set<string>();
-      const municipalitiesByProv: Record<string, Set<string>> = {};
+    // Helper to format the RPC response (handling the municipality mapping)
+    const formatOptions = (raw: any) => {
+      const types = Array.isArray(raw?.types) ? raw.types : [];
+      const provinces = Array.isArray(raw?.provinces) ? raw.provinces : [];
+      const languages = Array.isArray(raw?.languages) ? raw.languages : [];
+      const rawMunicipalities = Array.isArray(raw?.municipalities) ? raw.municipalities : [];
 
-      for (const org of data) {
-        if (org.type) types.add(org.type);
-        if (org.language) languages.add(org.language);
-        if (org.province) {
-          provinces.add(org.province);
-          if (org.municipality) {
-            if (!municipalitiesByProv[org.province]) {
-              municipalitiesByProv[org.province] = new Set<string>();
-            }
-            municipalitiesByProv[org.province].add(org.municipality);
-          }
+      const municipalitiesByProv: Record<string, string[]> = {};
+      for (const m of rawMunicipalities) {
+        if (!municipalitiesByProv[m.province]) {
+          municipalitiesByProv[m.province] = [];
         }
+        municipalitiesByProv[m.province].push(m.municipality);
       }
 
-      const municipalitiesByProvince: Record<string, string[]> = {};
-      for (const prov of Object.keys(municipalitiesByProv)) {
-        municipalitiesByProvince[prov] = Array.from(municipalitiesByProv[prov]).sort();
+      // Sort municipalities within each province
+      for (const prov in municipalitiesByProv) {
+        municipalitiesByProv[prov].sort();
       }
 
       return {
-        types: Array.from(types).sort(),
-        provinces: Array.from(provinces).sort(),
-        municipalitiesByProvince,
-        languages: Array.from(languages).sort(),
+        types: types.sort(),
+        provinces: provinces.sort(),
+        languages: languages.sort(),
+        municipalitiesByProvince: municipalitiesByProv,
       };
     };
 
-    const globalOptions = buildOptions(globalResult.data);
-    const availableOptions = buildOptions(filteredData);
+    const globalOptions = formatOptions(data.global);
+    const availableOptions = formatOptions(data.available);
 
     return {
       types: globalOptions.types,
