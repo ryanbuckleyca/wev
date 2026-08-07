@@ -135,10 +135,12 @@ export async function fetchOrganizationIndex(
       : total
     : total;
 
-  // In "all orgs" mode (min_date is null), active_job_count can be 0 for orgs
-  // with no recent jobs — that's expected, not an error.
-  if (minDate !== null && orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
-    throw new Error(`fetchOrganizationIndex: RPC response missing active_job_count. First row ID: ${orgs[0].id}`);
+  // active_job_count should always be returned by the RPC (0 for no recent jobs),
+  // regardless of min_date. If it's missing, the RPC shape is unexpected.
+  if (orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
+    throw new Error(
+      `fetchOrganizationIndex: RPC response missing active_job_count. First row ID: ${orgs[0].id}`,
+    );
   }
 
   return {
@@ -251,11 +253,13 @@ export const fetchOrganizationFilterOptions = cache(
       }
       data = result.data;
     } else {
+      if (Number.isNaN(activityDays)) {
+        throw new Error(
+          `fetchOrganizationFilterOptions: invalid activityDays provided (got ${activityDays})`,
+        );
+      }
       // Activity-filtered: only surface values for orgs with recent jobs.
       const minDate = activityDaysToMinDate(activityDays);
-      if (!minDate) {
-        throw new Error(`fetchOrganizationFilterOptions: minDate cannot be null when activityDays is provided (got ${activityDays})`);
-      }
       const result = await supabaseServer
         .from('organizations')
         .select('type, province, municipality, language, jobs!inner(date_posted)')

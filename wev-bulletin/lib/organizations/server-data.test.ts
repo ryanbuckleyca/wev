@@ -154,7 +154,7 @@ describe('organizations/server-data', () => {
 
     await fetchOrganizationIndex({ activityDays: 28 });
 
-    expect(mockRpc).toHaveBeenCalledWith(
+    expect(mockRpc).toHaveBeenLastCalledWith(
       'get_active_organizations',
       expect.objectContaining({
         min_date: '2026-05-16T00:00:00.000Z',
@@ -163,7 +163,7 @@ describe('organizations/server-data', () => {
 
     await fetchOrganizationIndex({ activityDays: 90 });
 
-    expect(mockRpc).toHaveBeenCalledWith(
+    expect(mockRpc).toHaveBeenLastCalledWith(
       'get_active_organizations',
       expect.objectContaining({
         min_date: '2026-03-15T00:00:00.000Z',
