@@ -1,6 +1,12 @@
 -- Migration: Add RPC to fetch organization filter options efficiently
 -- This replaces the unpaginated full-table scans previously done in Next.js
 
+-- Add a standalone index on parsed date to support efficient filtering
+-- when the leading organization_id is unconstrained (e.g., in hash joins).
+CREATE INDEX IF NOT EXISTS jobs_parsed_date_posted_idx
+  ON public.jobs (try_parse_job_date_posted(date_posted))
+  WHERE try_parse_job_date_posted(date_posted) IS NOT NULL;
+
 CREATE OR REPLACE FUNCTION get_organization_filter_options(p_activity_days integer DEFAULT NULL)
 RETURNS json
 LANGUAGE plpgsql
