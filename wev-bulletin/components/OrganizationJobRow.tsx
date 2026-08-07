@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import type { OrgJobPosting } from '@/lib/organizations/types';
 import type { JobMatchData } from '@/lib/supabase';
-import JobCardFooter from './JobCardFooter';
+import CardFooter from './CardFooter';
 import MatchDetailsTooltip from './MatchDetailsTooltip';
 
 function JobSkillFooter({
@@ -74,7 +74,7 @@ function JobSkillFooter({
 
   return (
     <div className="mt-3 pt-3 border-t border-border">
-      <JobCardFooter
+      <CardFooter
         values={values}
         skills={skills}
         sharedValues={match?.shared_values || []}

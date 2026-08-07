@@ -7,9 +7,9 @@ import InfoPopover from './InfoPopover';
 import ProgressDonut from './ProgressDonut';
 import ExpandablePills, { ExpandablePillGroup } from './ExpandablePills';
 import { ScrollablePillsItem } from '@/components/ui/ScrollablePills';
-import { getValueDefinition, getValueTranslationsHelper } from '@/lib/values';
+import { getValueTranslationsHelper } from '@/lib/values';
 
-interface JobCardFooterProps {
+interface CardFooterProps {
   values: string[];
   skills: string[];
   sharedValues: string[];
@@ -32,7 +32,7 @@ interface JobCardFooterProps {
   isLoggedIn?: boolean;
 }
 
-export default function JobCardFooter({
+export default function CardFooter({
   values,
   skills,
   sharedValues,
@@ -51,7 +51,7 @@ export default function JobCardFooter({
   languageContext = 'job',
   selectedLanguages = [],
   isLoggedIn = true,
-}: JobCardFooterProps) {
+}: CardFooterProps) {
   const t = useTranslations();
   const tMatch = useTranslations('matchDetails');
   const tValues = useTranslations('values');
