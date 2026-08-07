@@ -42,3 +42,8 @@ BEGIN
   );
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.get_organization_filter_options(integer) TO anon, authenticated, service_role;
+
+COMMENT ON FUNCTION public.get_organization_filter_options(integer) IS
+  'Returns a JSON payload containing global and active organization filter options (types, provinces, municipalities, languages) using efficient Postgres JSON aggregation.';
