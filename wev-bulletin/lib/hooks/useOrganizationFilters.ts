@@ -178,6 +178,14 @@ export function useOrganizationFilters(): OrganizationFilterControls {
   const clearAllFilters = useCallback(() => resetFilters(false), [resetFilters]);
   const applySuggestedDefaults = clearAllFilters;
 
+  const setActivityWindowAndResetPage = useCallback(
+    (value: ActivityWindow | null) => {
+      void setActivityWindow(value);
+      void setCurrentPage(1);
+    },
+    [setActivityWindow, setCurrentPage],
+  );
+
   return {
     filters,
     searchQuery,
@@ -193,7 +201,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     selectedLanguages,
     setSelectedLanguages,
     activityWindow: typedActivityWindow,
-    setActivityWindow,
+    setActivityWindow: setActivityWindowAndResetPage,
     currentPage,
     setCurrentPage,
     sortBy,

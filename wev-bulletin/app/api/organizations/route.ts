@@ -43,7 +43,7 @@ export async function GET(request: Request) {
         },
         user ? supabaseAuth : undefined,
       ),
-      fetchOrganizationFilterOptions(activityDays),
+      page === 1 ? fetchOrganizationFilterOptions(activityDays) : Promise.resolve(null),
     ]);
 
     return NextResponse.json({

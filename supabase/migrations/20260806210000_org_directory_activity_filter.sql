@@ -6,6 +6,13 @@
 --
 -- When min_date IS NOT NULL, behaviour is unchanged: INNER JOIN + date filter.
 
+DROP INDEX IF EXISTS public.jobs_org_id_parsed_date_posted_idx;
+
+CREATE INDEX IF NOT EXISTS jobs_org_id_parsed_date_posted_idx
+  ON public.jobs (organization_id, try_parse_job_date_posted(date_posted))
+  WHERE organization_id IS NOT NULL
+    AND try_parse_job_date_posted(date_posted) IS NOT NULL;
+
 DROP FUNCTION IF EXISTS public.get_active_organizations(timestamp with time zone, integer, integer, text, boolean, text[], text[], text[], uuid, text, text[]);
 
 CREATE OR REPLACE FUNCTION public.get_active_organizations(
@@ -125,13 +132,12 @@ BEGIN
       o.description_fr,
       o.mission_statement_en,
       o.mission_statement_fr,
-      -- active_job_count: when no date filter, count jobs in last 28 days for badge;
-      -- when date filter is active, count jobs matching that filter.
+      -- active_job_count: always count jobs in the last 28 days for the badge,
+      -- regardless of the directory filter window.
+      -- Note: try_parse_job_date_posted returns NULL for unparseable dates. Any such jobs
+      -- will fail the >= comparisons below and be correctly excluded from counts and max().
       count(j.id) FILTER (
-        WHERE CASE
-          WHEN min_date IS NULL THEN try_parse_job_date_posted(j.date_posted) >= v_badge_cutoff
-          ELSE true  -- already filtered by the JOIN condition below
-        END
+        WHERE try_parse_job_date_posted(j.date_posted) >= v_badge_cutoff
       ) AS active_job_count,
       max(try_parse_job_date_posted(j.date_posted)) AS latest_job_posted
     FROM organizations o
