@@ -52,7 +52,7 @@
     "organizations": "organizations",
     "organizationCount": "{count, plural, =0 {No organizations} one {1 organization} other {# organizations}}",
     "activityLabel": "Activity",
-    "activityAll": "All organisations",
+    "activityAll": "All organizations",
     "activity28d": "Hiring in the last 4 weeks",
     "activity90d": "Hiring in the last 3 months",
     "organizationType": "Organization Type",
