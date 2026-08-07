@@ -80,7 +80,7 @@ export default function CardFooter({
     matchedNames: string,
     unmatchedNames: string,
     nounKey: string,
-    icon: 'heart' | 'briefcase',
+    icon: 'heart' | 'hammer',
   ): ScrollablePillsItem | null => {
     if (totalCount === 0) return null;
 
@@ -214,7 +214,7 @@ export default function CardFooter({
       matchedSkillNames,
       unmatchedSkillNames,
       'skillNoun',
-      'briefcase',
+      'hammer',
     ),
   ].filter(Boolean) as ScrollablePillsItem[];
 
@@ -254,7 +254,7 @@ export default function CardFooter({
   });
 
   const valueSummaryPill = summaryItems.find((item) => item.icon === 'heart');
-  const skillSummaryPill = summaryItems.find((item) => item.icon === 'briefcase');
+  const skillSummaryPill = summaryItems.find((item) => item.icon === 'hammer');
   const workTypePill = buildWorkTypePill();
   const locationPill = buildLocationPill();
   const languagePill = buildLanguagePill();

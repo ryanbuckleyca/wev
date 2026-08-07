@@ -6,6 +6,7 @@ import {
   LocationArrowRightSolid,
   Globe1Outlined,
   ChevronDownOutlined,
+  BricksSolid
 } from '@lineiconshq/free-icons';
 import HorizontalScrollWithFades from './HorizontalScrollWithFades';
 import InfoPopover from '@/components/InfoPopover';
@@ -14,7 +15,7 @@ export interface ScrollablePillsItem {
   label: string;
   tooltip?: string;
   isMatched?: boolean;
-  icon?: 'heart' | 'briefcase' | 'location' | 'globe';
+  icon?: 'heart' | 'briefcase' | 'location' | 'globe' | 'hammer';
   type?: 'value' | 'skill' | 'summary' | 'workType' | 'language' | 'location';
   className?: string;
   groupId?: string;
@@ -105,6 +106,12 @@ export function ScrollablePills({
               ) : item.icon === 'location' ? (
                 <Lineicons
                   icon={LocationArrowRightSolid}
+                  size={12}
+                  className={`flex-shrink-0 ${item.isMatched ? 'text-wev-info' : 'text-gray-400'}`}
+                />
+              ) : item.icon === 'hammer' ? (
+                <Lineicons
+                  icon={BricksSolid}
                   size={12}
                   className={`flex-shrink-0 ${item.isMatched ? 'text-wev-info' : 'text-gray-400'}`}
                 />
