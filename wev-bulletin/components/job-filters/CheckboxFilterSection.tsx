@@ -47,7 +47,9 @@ export default function CheckboxFilterSection({
               <label
                 key={option}
                 className={`flex items-center space-x-2 py-1 px-2 rounded transition-colors ${
-                  isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-primary-tint'
+                  isDisabled
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'cursor-pointer hover:bg-primary-tint'
                 }`}
                 title={isDisabled ? disabledTooltipMessage : undefined}
               >
