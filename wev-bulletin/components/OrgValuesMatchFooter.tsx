@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
-import JobCardFooter from './JobCardFooter';
+import CardFooter from './CardFooter';
 import MatchDetailsTooltip from './MatchDetailsTooltip';
 
 interface Props {
@@ -67,7 +67,7 @@ export default function OrgValuesMatchFooter({
   if (values.length === 0 && !hasLocation && !hasLanguage) return null;
 
   const footer = (
-    <JobCardFooter
+    <CardFooter
       values={values}
       skills={[]}
       sharedValues={sharedValues}

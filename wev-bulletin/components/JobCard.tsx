@@ -5,9 +5,9 @@ import { useTranslations, useLocale } from 'next-intl';
 import { JobPosting, JobMatchData } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 import { parseDateString } from '@/lib/date-utils';
+import CardFooter from './CardFooter';
 import Collapsible from './Collapsible';
 import MatchDetailsTooltip from './MatchDetailsTooltip';
-import JobCardFooter from './JobCardFooter';
 import JobCardHeader from './JobCardHeader';
 import JobCardDetails from './JobCardDetails';
 import { useBookmarkAction } from '@/lib/hooks/useBookmarkAction';
@@ -156,7 +156,7 @@ export default function JobCard({
 
       {hasFooter && (
         <div className={`px-4 py-3 bg-muted ${isExpanded ? 'border-t border-border' : ''}`}>
-          <JobCardFooter
+          <CardFooter
             values={job.values || []}
             skills={job.skills || []}
             sharedValues={matchProp?.shared_values || []}
