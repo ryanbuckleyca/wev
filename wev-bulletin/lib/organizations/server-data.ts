@@ -228,6 +228,10 @@ export interface OrganizationFilterOptions {
   provinces: string[];
   municipalitiesByProvince: Record<string, string[]>;
   languages: string[];
+  availableTypes: string[];
+  availableProvinces: string[];
+  availableMunicipalitiesByProvince: Record<string, string[]>;
+  availableLanguages: string[];
 }
 
 /**
@@ -238,66 +242,82 @@ export interface OrganizationFilterOptions {
  */
 export const fetchOrganizationFilterOptions = cache(
   async (activityDays?: number | null): Promise<OrganizationFilterOptions> => {
-    let data: { type: string; province: string; municipality: string; language: string }[];
+    // 1. Fetch global options (unfiltered by activity)
+    const globalResult = await supabaseServer
+      .from('organizations')
+      .select('type, province, municipality, language');
 
-    if (activityDays == null) {
-      // Full directory: derive options from all organisations, no job join.
-      const result = await supabaseServer
-        .from('organizations')
-        .select('type, province, municipality, language');
+    if (globalResult.error) {
+      throw new Error(`fetchOrganizationFilterOptions error: ${globalResult.error.message}`);
+    }
 
-      if (result.error) {
-        throw new Error(`fetchOrganizationFilterOptions error: ${result.error.message}`);
-      }
-      data = result.data;
-    } else {
+    let filteredData = globalResult.data;
+
+    // 2. Fetch activity-filtered options if needed
+    if (activityDays != null) {
       if (Number.isNaN(activityDays)) {
         throw new Error(
           `fetchOrganizationFilterOptions: invalid activityDays provided (got ${activityDays})`,
         );
       }
-      // Activity-filtered: only surface values for orgs with recent jobs.
       const minDate = activityDaysToMinDate(activityDays);
-      const result = await supabaseServer
+      const activityResult = await supabaseServer
         .from('organizations')
         .select('type, province, municipality, language, jobs!inner(date_posted)')
         .gte('jobs.date_posted', minDate);
 
-      if (result.error) {
-        throw new Error(`fetchOrganizationFilterOptions error: ${result.error.message}`);
+      if (activityResult.error) {
+        throw new Error(`fetchOrganizationFilterOptions error: ${activityResult.error.message}`);
       }
-      data = result.data;
+      filteredData = activityResult.data;
     }
 
-    const types = new Set<string>();
-    const provinces = new Set<string>();
-    const languages = new Set<string>();
-    const municipalitiesByProv: Record<string, Set<string>> = {};
+    // Helper to build options from data
+    const buildOptions = (data: any[]) => {
+      const types = new Set<string>();
+      const provinces = new Set<string>();
+      const languages = new Set<string>();
+      const municipalitiesByProv: Record<string, Set<string>> = {};
 
-    for (const org of data) {
-      if (org.type) types.add(org.type);
-      if (org.language) languages.add(org.language);
-      if (org.province) {
-        provinces.add(org.province);
-        if (org.municipality) {
-          if (!municipalitiesByProv[org.province]) {
-            municipalitiesByProv[org.province] = new Set<string>();
+      for (const org of data) {
+        if (org.type) types.add(org.type);
+        if (org.language) languages.add(org.language);
+        if (org.province) {
+          provinces.add(org.province);
+          if (org.municipality) {
+            if (!municipalitiesByProv[org.province]) {
+              municipalitiesByProv[org.province] = new Set<string>();
+            }
+            municipalitiesByProv[org.province].add(org.municipality);
           }
-          municipalitiesByProv[org.province].add(org.municipality);
         }
       }
-    }
 
-    const municipalitiesByProvince: Record<string, string[]> = {};
-    for (const prov of Object.keys(municipalitiesByProv)) {
-      municipalitiesByProvince[prov] = Array.from(municipalitiesByProv[prov]).sort();
-    }
+      const municipalitiesByProvince: Record<string, string[]> = {};
+      for (const prov of Object.keys(municipalitiesByProv)) {
+        municipalitiesByProvince[prov] = Array.from(municipalitiesByProv[prov]).sort();
+      }
+
+      return {
+        types: Array.from(types).sort(),
+        provinces: Array.from(provinces).sort(),
+        municipalitiesByProvince,
+        languages: Array.from(languages).sort(),
+      };
+    };
+
+    const globalOptions = buildOptions(globalResult.data);
+    const availableOptions = buildOptions(filteredData);
 
     return {
-      types: Array.from(types).sort(),
-      provinces: Array.from(provinces).sort(),
-      municipalitiesByProvince,
-      languages: Array.from(languages).sort(),
+      types: globalOptions.types,
+      provinces: globalOptions.provinces,
+      municipalitiesByProvince: globalOptions.municipalitiesByProvince,
+      languages: globalOptions.languages,
+      availableTypes: availableOptions.types,
+      availableProvinces: availableOptions.provinces,
+      availableMunicipalitiesByProvince: availableOptions.municipalitiesByProvince,
+      availableLanguages: availableOptions.languages,
     };
   },
 );
