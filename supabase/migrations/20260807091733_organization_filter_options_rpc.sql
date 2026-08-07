@@ -4,7 +4,7 @@
 CREATE OR REPLACE FUNCTION get_organization_filter_options(p_activity_days integer DEFAULT NULL)
 RETURNS json
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
