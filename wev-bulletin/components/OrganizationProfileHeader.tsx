@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
 import { formatOrgLocationLabel, getOrganizationTypeLabel } from '@/lib/organizations/utils';
-import { pickOrgLocalizedText, pickSseReasoning } from '@/lib/organizations/localized';
+import { pickOrgLocalizedText } from '@/lib/organizations/localized';
 import type { OrgRecord } from '@/lib/organizations/types';
 import type { OrgValueMatch } from '@/lib/organizations/value-match';
 import OrgValuesMatchFooter from './OrgValuesMatchFooter';
@@ -35,11 +35,6 @@ export default function OrganizationProfileHeader({
   isLoggedIn = false,
 }: Props) {
   const websiteUrl = safeUrl(org.website);
-  const sseDetails =
-    org.sse_details && typeof org.sse_details === 'object' && !Array.isArray(org.sse_details)
-      ? (org.sse_details as Record<string, unknown>)
-      : null;
-  const sseReasoning = pickSseReasoning(sseDetails, locale);
   const values = org.values_list ?? [];
   const locationLabel = formatOrgLocationLabel(org);
   const description = pickOrgLocalizedText(org, 'description', locale);
