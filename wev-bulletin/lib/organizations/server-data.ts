@@ -13,9 +13,14 @@ import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 // ---------------------------------------------------------------------------
 
 /** Maps an activityDays value to the min_date RPC parameter. */
-export function activityDaysToMinDate(activityDays: number | null | undefined, now: number = Date.now()): string | null {
+export function activityDaysToMinDate(
+  activityDays: number | null | undefined,
+  now: number = Date.now(),
+): string | null {
   if (activityDays == null) return null; // "All organisations" — no date filter
-  return new Date(now - activityDays * 24 * 60 * 60 * 1000).toISOString();
+  const d = new Date(now - activityDays * 24 * 60 * 60 * 1000);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.toISOString();
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +138,7 @@ export async function fetchOrganizationIndex(
   // In "all orgs" mode (min_date is null), active_job_count can be 0 for orgs
   // with no recent jobs — that's expected, not an error.
   if (minDate !== null && orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
-    throw new Error('fetchOrganizationIndex: RPC response missing active_job_count');
+    throw new Error(`fetchOrganizationIndex: RPC response missing active_job_count. First row ID: ${orgs[0].id}`);
   }
 
   return {
@@ -249,7 +254,7 @@ export const fetchOrganizationFilterOptions = cache(
       // Activity-filtered: only surface values for orgs with recent jobs.
       const minDate = activityDaysToMinDate(activityDays);
       if (!minDate) {
-        throw new Error('fetchOrganizationFilterOptions: minDate cannot be null when activityDays is provided');
+        throw new Error(`fetchOrganizationFilterOptions: minDate cannot be null when activityDays is provided (got ${activityDays})`);
       }
       const result = await supabaseServer
         .from('organizations')
