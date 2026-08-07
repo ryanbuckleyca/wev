@@ -137,7 +137,7 @@ export async function fetchOrganizationIndex(
   // regardless of min_date. If it's missing, the RPC shape is unexpected.
   if (orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
     throw new Error(
-      `fetchOrganizationIndex: RPC response missing active_job_count. First row: ${JSON.stringify(orgs[0])}`,
+      `fetchOrganizationIndex: RPC response missing active_job_count. First row: id=${orgs[0].id}, name=${orgs[0].name}`,
     );
   }
 
