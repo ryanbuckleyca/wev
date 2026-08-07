@@ -61,7 +61,11 @@ vi.mock('@/lib/resolve-skill-labels', () => ({
   ),
 }));
 
-import { fetchOrganizationIndex, fetchOrganizationFilterOptions, getOrganizationJobs } from './server-data';
+import {
+  fetchOrganizationIndex,
+  fetchOrganizationFilterOptions,
+  getOrganizationJobs,
+} from './server-data';
 
 function resetQuery(query: any) {
   query.select.mockClear().mockReturnValue(query);
@@ -150,15 +154,21 @@ describe('organizations/server-data', () => {
 
     await fetchOrganizationIndex({ activityDays: 28 });
 
-    expect(mockRpc).toHaveBeenCalledWith('get_active_organizations', expect.objectContaining({
-      min_date: '2026-05-16T00:00:00.000Z',
-    }));
+    expect(mockRpc).toHaveBeenCalledWith(
+      'get_active_organizations',
+      expect.objectContaining({
+        min_date: '2026-05-16T00:00:00.000Z',
+      }),
+    );
 
     await fetchOrganizationIndex({ activityDays: 90 });
 
-    expect(mockRpc).toHaveBeenCalledWith('get_active_organizations', expect.objectContaining({
-      min_date: '2026-03-15T00:00:00.000Z',
-    }));
+    expect(mockRpc).toHaveBeenCalledWith(
+      'get_active_organizations',
+      expect.objectContaining({
+        min_date: '2026-03-15T00:00:00.000Z',
+      }),
+    );
   });
 
   it('fetches a denominator scoped to the current SSE universe when user filters are set', async () => {
@@ -241,7 +251,9 @@ describe('organizations/server-data', () => {
       const options = await fetchOrganizationFilterOptions(null);
 
       expect(mockFrom).toHaveBeenCalledWith('organizations');
-      expect(organizationsQuery.select).toHaveBeenCalledWith('type, province, municipality, language');
+      expect(organizationsQuery.select).toHaveBeenCalledWith(
+        'type, province, municipality, language',
+      );
       // Should not include a job date filter
       expect(organizationsQuery.gte).not.toHaveBeenCalled();
 
@@ -253,15 +265,22 @@ describe('organizations/server-data', () => {
 
     it('queries organizations with jobs when activityDays is set', async () => {
       organizationsQuery.setResult({
-        data: [{ type: 'cooperative', province: 'Ontario', municipality: 'Toronto', language: 'en' }],
+        data: [
+          { type: 'cooperative', province: 'Ontario', municipality: 'Toronto', language: 'en' },
+        ],
         error: null,
       });
 
       const options = await fetchOrganizationFilterOptions(28);
 
       expect(mockFrom).toHaveBeenCalledWith('organizations');
-      expect(organizationsQuery.select).toHaveBeenCalledWith('type, province, municipality, language, jobs!inner(date_posted)');
-      expect(organizationsQuery.gte).toHaveBeenCalledWith('jobs.date_posted', '2026-05-16T00:00:00.000Z');
+      expect(organizationsQuery.select).toHaveBeenCalledWith(
+        'type, province, municipality, language, jobs!inner(date_posted)',
+      );
+      expect(organizationsQuery.gte).toHaveBeenCalledWith(
+        'jobs.date_posted',
+        '2026-05-16T00:00:00.000Z',
+      );
 
       expect(options.types).toEqual(['cooperative']);
     });

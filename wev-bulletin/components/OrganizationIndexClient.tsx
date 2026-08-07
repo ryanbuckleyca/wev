@@ -39,7 +39,14 @@ export default function OrganizationIndexClient({
   const hasMatchScores = authLoading ? initialHasMatchScores : Boolean(user);
   const effectiveSortBy = resolveOrgSortBy(controls.sortBy, hasMatchScores);
 
-  const { orgs, total, totalAvailable, filterOptions: dynamicFilterOptions, loading, error } = useOrganizationData(
+  const {
+    orgs,
+    total,
+    totalAvailable,
+    filterOptions: dynamicFilterOptions,
+    loading,
+    error,
+  } = useOrganizationData(
     locale,
     {
       filters: controls.filters,

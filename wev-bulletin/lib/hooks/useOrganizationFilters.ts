@@ -9,7 +9,7 @@ import {
   parseAsString,
   useQueryState,
 } from 'nuqs';
-import type { ActivityWindow } from '@/lib/organizations/params';
+import { parseActivityWindow, type ActivityWindow } from '@/lib/organizations/params';
 
 export interface OrganizationFilters {
   searchQuery: string;
@@ -46,7 +46,7 @@ export interface OrganizationFilterControls {
   selectedLanguages: string[];
   setSelectedLanguages: (value: string[] | null) => Promise<unknown> | void;
   activityWindow: ActivityWindow;
-  setActivityWindow: (value: string | null) => Promise<unknown> | void;
+  setActivityWindow: (value: ActivityWindow | null) => Promise<unknown> | void;
   currentPage: number;
   setCurrentPage: (value: number | null) => Promise<unknown> | void;
   sortBy: string;
@@ -85,9 +85,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
   // Default to empty string - let the consuming component resolve the actual default based on auth state
   const [sortBy, setSortBy] = useQueryState('sortBy', parseAsString.withDefault(''));
 
-  const typedActivityWindow = (
-    activityWindow === '28d' || activityWindow === '90d' ? activityWindow : 'all'
-  ) as ActivityWindow;
+  const typedActivityWindow = parseActivityWindow(activityWindow);
 
   const filters = useMemo<OrganizationFilters>(
     () => ({

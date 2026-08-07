@@ -16,6 +16,7 @@ import {
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import type { OrganizationFilterControls } from '@/lib/hooks/useOrganizationFilters';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
+import type { ActivityWindow } from '@/lib/organizations/params';
 
 interface OrganizationFiltersProps {
   controls: OrganizationFilterControls;
@@ -121,12 +122,13 @@ export default function OrganizationFilters({
 
         <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
           <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0 space-y-2">
-            <label className="block text-sm font-semibold text-foreground mb-2">
+            <label htmlFor="activity-filter" className="block text-sm font-semibold text-foreground mb-2">
               {t('activityLabel')}
             </label>
             <select
+              id="activity-filter"
               value={controls.activityWindow}
-              onChange={(e) => controls.setActivityWindow(e.target.value)}
+              onChange={(e) => controls.setActivityWindow(e.target.value as ActivityWindow)}
               className="w-full px-4 py-2 text-[13px] font-medium border border-border rounded-wev-btn bg-background text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all"
             >
               <option value="all">{t('activityAll')}</option>

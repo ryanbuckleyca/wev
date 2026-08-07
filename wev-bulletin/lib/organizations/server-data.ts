@@ -13,9 +13,9 @@ import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 // ---------------------------------------------------------------------------
 
 /** Maps an activityDays value to the min_date RPC parameter. */
-export function activityDaysToMinDate(activityDays: number | null | undefined): string | null {
+export function activityDaysToMinDate(activityDays: number | null | undefined, now: number = Date.now()): string | null {
   if (activityDays == null) return null; // "All organisations" — no date filter
-  return new Date(Date.now() - activityDays * 24 * 60 * 60 * 1000).toISOString();
+  return new Date(now - activityDays * 24 * 60 * 60 * 1000).toISOString();
 }
 
 // ---------------------------------------------------------------------------
@@ -233,7 +233,7 @@ export interface OrganizationFilterOptions {
  */
 export const fetchOrganizationFilterOptions = cache(
   async (activityDays?: number | null): Promise<OrganizationFilterOptions> => {
-    let data: any[];
+    let data: { type: string; province: string; municipality: string; language: string }[];
 
     if (activityDays == null) {
       // Full directory: derive options from all organisations, no job join.
@@ -248,10 +248,13 @@ export const fetchOrganizationFilterOptions = cache(
     } else {
       // Activity-filtered: only surface values for orgs with recent jobs.
       const minDate = activityDaysToMinDate(activityDays);
+      if (!minDate) {
+        throw new Error('fetchOrganizationFilterOptions: minDate cannot be null when activityDays is provided');
+      }
       const result = await supabaseServer
         .from('organizations')
         .select('type, province, municipality, language, jobs!inner(date_posted)')
-        .gte('jobs.date_posted', minDate!);
+        .gte('jobs.date_posted', minDate);
 
       if (result.error) {
         throw new Error(`fetchOrganizationFilterOptions error: ${result.error.message}`);

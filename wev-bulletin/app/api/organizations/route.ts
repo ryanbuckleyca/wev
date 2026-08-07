@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
-import { fetchOrganizationIndex, fetchOrganizationFilterOptions } from '@/lib/organizations/server-data';
+import {
+  fetchOrganizationIndex,
+  fetchOrganizationFilterOptions,
+} from '@/lib/organizations/server-data';
 import { parseOrgIndexSearchParams } from '@/lib/organizations/params';
 
 export async function GET(request: Request) {
@@ -11,8 +14,17 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabaseAuth.auth.getUser();
 
-  const { page, searchQuery, sseOnly, provinces, municipalities, orgTypes, languages, sortBy, activityDays } =
-    parseOrgIndexSearchParams(searchParams, Boolean(user));
+  const {
+    page,
+    searchQuery,
+    sseOnly,
+    provinces,
+    municipalities,
+    orgTypes,
+    languages,
+    sortBy,
+    activityDays,
+  } = parseOrgIndexSearchParams(searchParams, Boolean(user));
 
   try {
     const [result, filterOptions] = await Promise.all([
