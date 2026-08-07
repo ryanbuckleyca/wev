@@ -57,32 +57,35 @@ export default function OrganizationProfileHeader({
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-x-6 gap-y-2 text-muted-foreground mt-4">
             {locationLabel && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col items-start gap-1.5">
                 <span className="font-medium text-foreground">{t('location')}:</span>{' '}
                 {locationLabel}
               </div>
             )}
 
             {websiteUrl && (
-              <a
-                href={websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline font-medium"
-              >
-                {t('visitWebsite')}
-              </a>
+                <div className="flex flex-col items-start gap-1.5">
+                  <span className="font-medium text-foreground">{t('website')}:</span>{' '}
+                  <a
+                    href={websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    {websiteUrl}
+                  </a>
+                </div>
             )}
 
             {org.type && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col items-start gap-1.5">
                 <span className="font-medium text-foreground">{t('orgType')}:</span>{' '}
                 {getOrganizationTypeLabel(org.type, t)}
               </div>
             )}
 
             {sectorLabel && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col items-start gap-1.5">
                 <span className="font-medium text-foreground">{t('sector')}:</span> {sectorLabel}
               </div>
             )}
@@ -110,7 +113,7 @@ export default function OrganizationProfileHeader({
         />
       )}
 
-      <div className="mt-4 pt-4 border-t border-border">
+      <div className="mt-4 pt-4">
         <div className="flex items-center gap-2">
           <span className="flex-shrink-0" role="img" aria-label={t('sseBadgeLabel')}>
             <Lineicons
