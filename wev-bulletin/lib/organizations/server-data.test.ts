@@ -242,20 +242,30 @@ describe('organizations/server-data', () => {
   });
 
   describe('fetchOrganizationFilterOptions', () => {
-    it('queries all organizations when activityDays is null', async () => {
-      organizationsQuery.setResult({
-        data: [{ type: 'nonprofit', province: 'Quebec', municipality: 'Montreal', language: 'fr' }],
+    it('queries the rpc when activityDays is null', async () => {
+      mockRpc.mockResolvedValueOnce({
+        data: {
+          global: {
+            types: ['nonprofit'],
+            provinces: ['Quebec'],
+            municipalities: [{ province: 'Quebec', municipality: 'Montreal' }],
+            languages: ['fr'],
+          },
+          available: {
+            types: ['nonprofit'],
+            provinces: ['Quebec'],
+            municipalities: [{ province: 'Quebec', municipality: 'Montreal' }],
+            languages: ['fr'],
+          },
+        },
         error: null,
       });
 
       const options = await fetchOrganizationFilterOptions(null);
 
-      expect(mockFrom).toHaveBeenCalledWith('organizations');
-      expect(organizationsQuery.select).toHaveBeenCalledWith(
-        'type, province, municipality, language',
-      );
-      // Should not include a job date filter
-      expect(organizationsQuery.gte).not.toHaveBeenCalled();
+      expect(mockRpc).toHaveBeenCalledWith('get_organization_filter_options', {
+        p_activity_days: null,
+      });
 
       expect(options.types).toEqual(['nonprofit']);
       expect(options.provinces).toEqual(['Quebec']);
@@ -263,26 +273,33 @@ describe('organizations/server-data', () => {
       expect(options.languages).toEqual(['fr']);
     });
 
-    it('queries organizations with jobs when activityDays is set', async () => {
-      organizationsQuery.setResult({
-        data: [
-          { type: 'cooperative', province: 'Ontario', municipality: 'Toronto', language: 'en' },
-        ],
+    it('queries the rpc when activityDays is set', async () => {
+      mockRpc.mockResolvedValueOnce({
+        data: {
+          global: {
+            types: ['cooperative', 'nonprofit'],
+            provinces: ['Ontario'],
+            municipalities: [{ province: 'Ontario', municipality: 'Toronto' }],
+            languages: ['en'],
+          },
+          available: {
+            types: ['cooperative'],
+            provinces: ['Ontario'],
+            municipalities: [{ province: 'Ontario', municipality: 'Toronto' }],
+            languages: ['en'],
+          },
+        },
         error: null,
       });
 
       const options = await fetchOrganizationFilterOptions(28);
 
-      expect(mockFrom).toHaveBeenCalledWith('organizations');
-      expect(organizationsQuery.select).toHaveBeenCalledWith(
-        'type, province, municipality, language, jobs!inner(date_posted)',
-      );
-      expect(organizationsQuery.gte).toHaveBeenCalledWith(
-        'jobs.date_posted',
-        '2026-05-16T00:00:00.000Z',
-      );
+      expect(mockRpc).toHaveBeenCalledWith('get_organization_filter_options', {
+        p_activity_days: 28,
+      });
 
-      expect(options.types).toEqual(['cooperative']);
+      expect(options.types).toEqual(['cooperative', 'nonprofit']);
+      expect(options.availableTypes).toEqual(['cooperative']);
     });
   });
 });

@@ -29,10 +29,10 @@ BEGIN
     v_available := v_global;
   ELSE
     SELECT json_build_object(
-      'types', coalesce((SELECT json_agg(t.type) FROM (SELECT DISTINCT o.type FROM organizations o INNER JOIN jobs j ON j.organization_id = o.id WHERE j.date_posted >= v_min_date AND o.type IS NOT NULL ORDER BY o.type) t), '[]'::json),
-      'provinces', coalesce((SELECT json_agg(t.province) FROM (SELECT DISTINCT o.province FROM organizations o INNER JOIN jobs j ON j.organization_id = o.id WHERE j.date_posted >= v_min_date AND o.province IS NOT NULL ORDER BY o.province) t), '[]'::json),
-      'languages', coalesce((SELECT json_agg(t.language) FROM (SELECT DISTINCT o.language FROM organizations o INNER JOIN jobs j ON j.organization_id = o.id WHERE j.date_posted >= v_min_date AND o.language IS NOT NULL ORDER BY o.language) t), '[]'::json),
-      'municipalities', coalesce((SELECT json_agg(t) FROM (SELECT DISTINCT o.province, o.municipality FROM organizations o INNER JOIN jobs j ON j.organization_id = o.id WHERE j.date_posted >= v_min_date AND o.province IS NOT NULL AND o.municipality IS NOT NULL ORDER BY o.province, o.municipality) t), '[]'::json)
+      'types', coalesce((SELECT json_agg(t.type) FROM (SELECT DISTINCT o.type FROM organizations o INNER JOIN jobs j ON j.organization_id = o.id WHERE try_parse_job_date_posted(j.date_posted) >= v_min_date AND o.type IS NOT NULL ORDER BY o.type) t), '[]'::json),
+      'provinces', coalesce((SELECT json_agg(t.province) FROM (SELECT DISTINCT o.province FROM organizations o INNER JOIN jobs j ON j.organization_id = o.id WHERE try_parse_job_date_posted(j.date_posted) >= v_min_date AND o.province IS NOT NULL ORDER BY o.province) t), '[]'::json),
+      'languages', coalesce((SELECT json_agg(t.language) FROM (SELECT DISTINCT o.language FROM organizations o INNER JOIN jobs j ON j.organization_id = o.id WHERE try_parse_job_date_posted(j.date_posted) >= v_min_date AND o.language IS NOT NULL ORDER BY o.language) t), '[]'::json),
+      'municipalities', coalesce((SELECT json_agg(t) FROM (SELECT DISTINCT o.province, o.municipality FROM organizations o INNER JOIN jobs j ON j.organization_id = o.id WHERE try_parse_job_date_posted(j.date_posted) >= v_min_date AND o.province IS NOT NULL AND o.municipality IS NOT NULL ORDER BY o.province, o.municipality) t), '[]'::json)
     ) INTO v_available;
   END IF;
 
