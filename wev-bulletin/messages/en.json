@@ -51,6 +51,11 @@
     "organization": "organization",
     "organizations": "organizations",
     "organizationCount": "{count, plural, =0 {No organizations} one {1 organization} other {# organizations}}",
+    "disabledOptionTooltip": "This option is not available for the current filters.",
+    "activityLabel": "Activity",
+    "activityAll": "All organizations",
+    "activity28d": "Hiring in the last 4 weeks",
+    "activity90d": "Hiring in the last 3 months",
     "organizationType": "Organization Type",
     "type": {
       "nonprofit": "Nonprofit",

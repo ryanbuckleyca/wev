@@ -1,11 +1,13 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import Collapsible from './Collapsible';
 import BooleanFilterRow from './job-filters/BooleanFilterRow';
 import CheckboxFilterSection from './job-filters/CheckboxFilterSection';
+import FilterButtonGroup from './job-filters/FilterButtonGroup';
 import MunicipalityFilterSection from './job-filters/MunicipalityFilterSection';
 import OrganizationSearch from './OrganizationSearch';
 import {
@@ -16,6 +18,7 @@ import {
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import type { OrganizationFilterControls } from '@/lib/hooks/useOrganizationFilters';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
+import type { ActivityWindow } from '@/lib/organizations/params';
 
 interface OrganizationFiltersProps {
   controls: OrganizationFilterControls;
@@ -55,6 +58,7 @@ export default function OrganizationFilters({
     setSelectedTypes,
     selectedLanguages,
     setSelectedLanguages,
+    setActivityWindow,
     setCurrentPage,
     hasAnyFilters,
     isSuggestedDefaults,
@@ -62,8 +66,18 @@ export default function OrganizationFilters({
     applySuggestedDefaults,
   } = controls;
 
+  const activityOptions = useMemo(
+    () => [
+      { value: 'all', label: t('activityAll') },
+      { value: '28d', label: t('activity28d') },
+      { value: '90d', label: t('activity90d') },
+    ],
+    [t],
+  );
+
   const activeFilterChips = buildOrgActiveFilterChips({
     filters,
+    onRemoveActivity: () => setActivityWindow('all'),
     onRemoveNonSse: () => setShowNonSse(false),
     onRemoveSearch: () => setSearchQuery(''),
     onRemoveProvince: (p) => setSelectedProvinces(toggleArrayItem(p, selectedProvinces)),
@@ -83,6 +97,21 @@ export default function OrganizationFilters({
     0,
   );
 
+  const availableProvinces = filterOptions.availableProvinces ?? filterOptions.provinces ?? [];
+  const availableTypes = filterOptions.availableTypes ?? filterOptions.types ?? [];
+  const availableLanguages = filterOptions.availableLanguages ?? filterOptions.languages ?? [];
+  const availableMunicipalitiesByProvince =
+    filterOptions.availableMunicipalitiesByProvince ?? filterOptions.municipalitiesByProvince ?? {};
+
+  const disabledProvinces = filterOptions.provinces.filter((p) => !availableProvinces.includes(p));
+  const disabledTypes = filterOptions.types.filter((t) => !availableTypes.includes(t));
+  const disabledLanguages = filterOptions.languages.filter((l) => !availableLanguages.includes(l));
+  const disabledMunicipalities = Object.values(filterOptions.municipalitiesByProvince || {})
+    .flat()
+    .filter((m) => !Object.values(availableMunicipalitiesByProvince).flat().includes(m));
+
+  const disabledTooltipMessage = t('disabledOptionTooltip');
+
   return (
     <div className="bg-card border border-border rounded-wev-card mb-4 overflow-hidden">
       <OrganizationSearch
@@ -101,42 +130,40 @@ export default function OrganizationFilters({
       />
 
       <Collapsible id="org-filters-content" isOpen={filtersExpanded} className="p-6">
-        <div className="mb-4">
-          <BooleanFilterRow
-            checked={showNonSse}
-            onCheckedChange={(val) => setShowNonSse(val)}
-            label={t('showNonSse')}
-            icon={
-              <Lineicons
-                icon={showNonSse ? Leaf1Solid : Leaf1Outlined}
-                size={16}
-                className="shrink-0 text-primary"
-                aria-hidden
-              />
-            }
-          />
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
-          <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0">
+          <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0 space-y-2">
+            <FilterButtonGroup
+              label={t('activityLabel')}
+              options={activityOptions}
+              isSelected={(value) => controls.activityWindow === value}
+              onSelect={(value) => controls.setActivityWindow(value as ActivityWindow)}
+              className="mb-0"
+            />
+          </div>
+
+          <div className="flex flex-col order-2 md:row-start-2 md:col-start-1 min-h-0">
             <CheckboxFilterSection
               label={tJobs('province.label')}
               selectedCount={selectedProvinces.length}
               totalCount={filterOptions.provinces.length}
               options={filterOptions.provinces}
               selectedValues={selectedProvinces}
+              disabledValues={disabledProvinces}
+              disabledTooltipMessage={disabledTooltipMessage}
               onToggle={(val) => setSelectedProvinces(toggleArrayItem(val, selectedProvinces))}
               emptyMessage={tJobs('province.noData')}
             />
           </div>
 
-          <div className="flex flex-col order-2 md:row-start-2 md:col-start-1 min-h-0">
+          <div className="flex flex-col order-3 md:row-start-3 md:col-start-1 min-h-0">
             <MunicipalityFilterSection
               label={tJobs('municipality.label')}
               selectedMunicipalities={selectedMunicipalities}
               totalMunicipalities={totalMunicipalities}
               selectedProvinces={selectedProvinces}
               municipalitiesByProvince={filterOptions.municipalitiesByProvince}
+              disabledMunicipalities={disabledMunicipalities}
+              disabledTooltipMessage={disabledTooltipMessage}
               onToggleMunicipality={(val) =>
                 setSelectedMunicipalities(toggleArrayItem(val, selectedMunicipalities))
               }
@@ -146,26 +173,30 @@ export default function OrganizationFilters({
             />
           </div>
 
-          <div className="flex flex-col order-3 md:row-start-1 md:col-start-2 min-h-0">
+          <div className="flex flex-col order-4 md:row-start-1 md:col-start-2 min-h-0">
             <CheckboxFilterSection
               label={t('organizationType')}
               selectedCount={selectedTypes.length}
               totalCount={filterOptions.types.length}
               options={filterOptions.types}
               selectedValues={selectedTypes}
+              disabledValues={disabledTypes}
+              disabledTooltipMessage={disabledTooltipMessage}
               onToggle={(val) => setSelectedTypes(toggleArrayItem(val, selectedTypes))}
               emptyMessage={t('noOrganizationTypes')}
               renderLabel={(type) => getOrganizationTypeLabel(type, t)}
             />
           </div>
 
-          <div className="flex flex-col order-4 md:row-start-2 md:col-start-2 min-h-0">
+          <div className="flex flex-col order-5 md:row-start-2 md:col-start-2 min-h-0">
             <CheckboxFilterSection
               label={tJobs('language.label')}
               selectedCount={selectedLanguages.length}
               totalCount={filterOptions.languages.length}
               options={filterOptions.languages}
               selectedValues={selectedLanguages}
+              disabledValues={disabledLanguages}
+              disabledTooltipMessage={disabledTooltipMessage}
               onToggle={(val) => {
                 void setSelectedLanguages(toggleArrayItem(val, selectedLanguages));
                 void setCurrentPage(1);
