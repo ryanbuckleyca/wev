@@ -6,7 +6,7 @@ import {
   LocationArrowRightSolid,
   Globe1Outlined,
   ChevronDownOutlined,
-  BricksSolid
+  BricksSolid,
 } from '@lineiconshq/free-icons';
 import HorizontalScrollWithFades from './HorizontalScrollWithFades';
 import InfoPopover from '@/components/InfoPopover';
