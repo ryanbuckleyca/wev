@@ -7,9 +7,9 @@ import InfoPopover from './InfoPopover';
 import ProgressDonut from './ProgressDonut';
 import ExpandablePills, { ExpandablePillGroup } from './ExpandablePills';
 import { ScrollablePillsItem } from '@/components/ui/ScrollablePills';
-import { getValueDefinition, getValueTranslationsHelper } from '@/lib/values';
+import { getValueTranslationsHelper } from '@/lib/values';
 
-interface JobCardFooterProps {
+interface CardFooterProps {
   values: string[];
   skills: string[];
   sharedValues: string[];
@@ -32,7 +32,7 @@ interface JobCardFooterProps {
   isLoggedIn?: boolean;
 }
 
-export default function JobCardFooter({
+export default function CardFooter({
   values,
   skills,
   sharedValues,
@@ -51,7 +51,7 @@ export default function JobCardFooter({
   languageContext = 'job',
   selectedLanguages = [],
   isLoggedIn = true,
-}: JobCardFooterProps) {
+}: CardFooterProps) {
   const t = useTranslations();
   const tMatch = useTranslations('matchDetails');
   const tValues = useTranslations('values');
@@ -80,7 +80,7 @@ export default function JobCardFooter({
     matchedNames: string,
     unmatchedNames: string,
     nounKey: string,
-    icon: 'heart' | 'briefcase',
+    icon: 'heart' | 'hammer',
   ): ScrollablePillsItem | null => {
     if (totalCount === 0) return null;
 
@@ -214,7 +214,7 @@ export default function JobCardFooter({
       matchedSkillNames,
       unmatchedSkillNames,
       'skillNoun',
-      'briefcase',
+      'hammer',
     ),
   ].filter(Boolean) as ScrollablePillsItem[];
 
@@ -254,7 +254,7 @@ export default function JobCardFooter({
   });
 
   const valueSummaryPill = summaryItems.find((item) => item.icon === 'heart');
-  const skillSummaryPill = summaryItems.find((item) => item.icon === 'briefcase');
+  const skillSummaryPill = summaryItems.find((item) => item.icon === 'hammer');
   const workTypePill = buildWorkTypePill();
   const locationPill = buildLocationPill();
   const languagePill = buildLanguagePill();

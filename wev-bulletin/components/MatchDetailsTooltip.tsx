@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import {
   HeartSolid,
-  Briefcase2Solid,
+  BricksSolid,
   LocationArrowRightSolid,
   CheckOutlined,
   XmarkOutlined,
@@ -160,7 +160,7 @@ export default function MatchDetailsTooltip({
             className="font-medium lowercase flex items-center gap-1"
             style={{ color: textColor }}
           >
-            <Lineicons icon={Briefcase2Solid} size={12} className="text-primary" />
+            <Lineicons icon={BricksSolid} size={12} className="text-primary" />
             <span>
               {t('skills')}: {skillMatchPercentage}%
             </span>
