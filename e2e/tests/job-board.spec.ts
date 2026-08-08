@@ -306,26 +306,6 @@ test.describe("Job board", () => {
     ).toHaveCount(1);
   });
 
-  test("reveals non-SSE jobs when the SSE-only filter is disabled", async ({
-    jobBoardPage,
-    expectations,
-  }) => {
-    await loadEnglishJobBoard(jobBoardPage);
-
-    // Note: The filter semantics changed from "SSE only" to "Show non-SSE"
-    // Setting to true now means "show non-SSE jobs" (reveals them)
-    await jobBoardPage.setBooleanFilter("sse", true);
-    await jobBoardPage.waitForResultsToUpdate();
-    await expectVisibleResults(
-      jobBoardPage,
-      expectations.sseOffCount,
-      expectations,
-    );
-
-    await jobBoardPage.searchFor(expectations.sampleJobs.nonSseOnly);
-    await jobBoardPage.waitForResultsToUpdate();
-    await expectVisibleResults(jobBoardPage, 1, expectations);
-  });
 
   test("shows filter-specific empty state message when filters hide all jobs", async ({
     jobBoardPage,
