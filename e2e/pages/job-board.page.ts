@@ -3,7 +3,7 @@ import { getLocalizedPathname, type AppLocale } from "@/i18n/routing";
 import { JOB_BOARD_TEST_IDS } from "@/lib/testing/job-board-contract";
 
 export type JobBoardLocale = AppLocale;
-type BooleanFilterName = "salary" | "sse";
+type BooleanFilterName = "salary";
 type ButtonFilterName = "postedWithin" | "workType";
 type CheckboxFilterName =
   | "employmentType"
@@ -29,7 +29,6 @@ type FilterLocators = {
   province: Locator;
   salary: Locator;
   source: Locator;
-  sse: Locator;
   workType: Locator;
 };
 
@@ -109,7 +108,6 @@ export class JobBoardPage {
       province: visibleByTestId(JOB_BOARD_TEST_IDS.provinceSection),
       salary: visibleByTestId(JOB_BOARD_TEST_IDS.salaryToggle),
       source: visibleByTestId(JOB_BOARD_TEST_IDS.sourceSection),
-      sse: visibleByTestId(JOB_BOARD_TEST_IDS.sseToggle),
       workType: visibleByTestId(JOB_BOARD_TEST_IDS.workTypeGroup),
     };
   }

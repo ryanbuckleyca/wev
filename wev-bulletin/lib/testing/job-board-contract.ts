@@ -3,7 +3,6 @@ export const JOB_BOARD_TEST_IDS = {
   postedWithinGroup: 'job-board-posted-within-group',
   workTypeGroup: 'job-board-work-type-group',
   languageGroup: 'job-board-language-group',
-  sseToggle: 'job-board-sse-toggle',
   salaryToggle: 'job-board-salary-toggle',
   provinceSection: 'job-board-province-section',
   municipalitySection: 'job-board-municipality-section',
