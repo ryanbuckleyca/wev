@@ -29,5 +29,13 @@ export const Briefcase2Solid = ({ children }: { children?: React.ReactNode }) =>
   React.createElement('span', null, children);
 export const LocationArrowRightSolid = ({ children }: { children?: React.ReactNode }) =>
   React.createElement('span', null, children);
+export const HeartOutlined = ({ children }: { children?: React.ReactNode }) =>
+  React.createElement('span', null, children);
+export const BriefcaseSolid = ({ children }: { children?: React.ReactNode }) =>
+  React.createElement('span', null, children);
+export const Globe1Outlined = ({ children }: { children?: React.ReactNode }) =>
+  React.createElement('span', null, children);
+export const BricksSolid = ({ children }: { children?: React.ReactNode }) =>
+  React.createElement('span', null, children);
 
 export default Lineicons;

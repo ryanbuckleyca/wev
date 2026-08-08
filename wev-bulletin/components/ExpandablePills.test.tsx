@@ -101,7 +101,7 @@ describe('ExpandablePills', () => {
           label: '2/5 skills',
           tooltip: 'Skills tooltip',
           isMatched: true,
-          icon: 'briefcase',
+          icon: 'hammer',
           type: 'summary',
         },
         items: [
