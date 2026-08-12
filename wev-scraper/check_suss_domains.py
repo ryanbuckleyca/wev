@@ -4,12 +4,14 @@
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 sys.path.insert(0, str(Path(__file__).parent))
 
-from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env.production")
 
-from utils.db import supabase
+from utils.db import supabase  # noqa: E402
+
 
 def main():
     response = supabase.table("organizations").select(

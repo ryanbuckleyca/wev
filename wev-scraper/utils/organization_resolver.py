@@ -9,8 +9,6 @@ from utils.organization_assessment import OrganizationAssessor
 from utils.organization_cache import (
     OrganizationCache,
     canonical_location,
-    domains_match,
-    evidence_domain,
     extract_org_identity,
     make_cache_key,
 )

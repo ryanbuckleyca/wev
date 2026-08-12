@@ -239,14 +239,14 @@ def fetch_tavily_context(
                 max_retries + 1,
                 exc,
             )
-            raise LLMProviderError(f"Tavily search failed after {max_retries + 1} attempts: {exc}")
+            raise LLMProviderError(f"Tavily search failed after {max_retries + 1} attempts: {exc}") from exc
 
     if results is None:
         logger.error(
             "Tavily search returned no response (%s) — FAILING HARD (grounding required)",
             last_exc,
         )
-        raise LLMProviderError(f"Tavily search returned no response: {last_exc}")
+        raise LLMProviderError(f"Tavily search returned no response: {last_exc}") from last_exc
 
     try:
         ranked: list[tuple[int, str]] = []

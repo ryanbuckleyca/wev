@@ -1410,7 +1410,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 # Skip this check if we have a known_website (trust the known website)
                 if not known_website:
                     discovered_domain = extract_domain(discovered_website) or ""
-                    org_name_lower = raw_name.lower().replace(" ", "").replace("-", "").replace("_", "")
+                    raw_name.lower().replace(" ", "").replace("-", "").replace("_", "")
                     domain_lower = discovered_domain.lower().replace("-", "").replace(".", "").replace("_", "")
 
                     # Extract significant name parts (skip common words like "the", "and", etc.)
