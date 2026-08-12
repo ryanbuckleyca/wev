@@ -631,7 +631,8 @@ def test_result_to_db_fields_includes_evidence_website():
     assert updates.get("website") == "https://greencommunitiescanada.org"
 
 
-def test_result_to_db_fields_omits_shared_host_website():
+def test_result_to_db_fields_accepts_shared_host_for_org_identity():
+    """Shared host websites (LinkedIn, Facebook) are now accepted for org identity tracking."""
     from utils.organization_assessment import _result_to_db_fields
 
     result = _parse_response(
@@ -639,9 +640,13 @@ def test_result_to_db_fields_omits_shared_host_website():
         "Acme",
     )
     assert result is not None
-    assert result["website"] is None
+    # Website is now accepted
+    assert result["website"] == "https://linkedin.com/company/acme"
     updates = _result_to_db_fields(result)
-    assert "website" not in updates
+    # And included in updates with proper flags
+    assert updates.get("website") == "https://linkedin.com/company/acme"
+    assert "website via=social_media" in updates.get("flags", [])
+    assert "website_platform:linkedin.com" in updates.get("flags", [])
 
 
 def test_private_company_gate_keeps_inc_charity_with_mission_no_cra():
