@@ -1003,10 +1003,12 @@ def _append_website_identity_flags(
         details = dict(details)
         row["sse_details"] = details
 
-    # Remove any existing website flags
+    # Remove existing website via/platform flags (preserve other website_* flags)
     flags = [
         f for f in (details.get("flags") or [])
-        if isinstance(f, str) and not f.startswith("website")
+        if isinstance(f, str)
+        and not f.startswith("website via=")
+        and not f.startswith("website_platform:")
     ]
 
     if not website:
@@ -1546,7 +1548,9 @@ class OrganizationAssessor(BaseGroundedClassifier):
             from utils.organization_cache import extract_org_identity
 
             identity = extract_org_identity(website)
-            _append_website_identity_flags(row, website, identity)
+            # Only add flags if identity was successfully extracted
+            if identity:
+                _append_website_identity_flags(row, website, identity)
 
         return _attach_org_language(
             row,
@@ -1604,8 +1608,9 @@ class OrganizationAssessor(BaseGroundedClassifier):
             # Extract identity for uniqueness matching and flag tracking
             identity = extract_org_identity(website)
 
-            # Add website identity provenance flags
-            _append_website_identity_flags(updates, website, identity)
+            # Only add flags if identity was successfully extracted
+            if identity:
+                _append_website_identity_flags(updates, website, identity)
 
             updates["website"] = website
         return _attach_org_language(

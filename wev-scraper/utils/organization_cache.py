@@ -115,6 +115,7 @@ _SHARED_DOMAIN_SUFFIXES = frozenset({
     "squarespace.com",
     "wordpress.com",
     "shopify.com",
+    "myshopify.com",  # Shopify stores use storename.myshopify.com
     "etsy.com",
     "panierdachat.app",
     "indeed.com",
@@ -310,8 +311,14 @@ def extract_org_identity(url: str | None) -> str | None:
 def classify_identity_type(identity: str | None) -> str:
     """Determine what type of identity this is.
 
-    Returns one of: employer_owned, marketplace, social_media, ats_board,
-    shared_hosting, invalid, unknown.
+    Returns one of:
+        - "employer_owned": Company's own domain
+        - "marketplace": Marketplace subdomain (wixsite, shopify, panierdachat, etc.)
+        - "social_media": Social media platform path (facebook, linkedin, etc.)
+        - "ats_board": Applicant tracking system / job board
+        - "shared_hosting": Other shared hosting platform
+        - "invalid": Root shared domain with no org identifier
+        - "unknown": Unable to determine (None or empty identity)
     """
     if not identity:
         return "unknown"
@@ -346,6 +353,13 @@ def extract_platform(identity: str | None) -> str:
     """Extract the platform name from an identity string.
 
     Returns the base shared platform domain (e.g., "facebook.com", "panierdachat.app").
+    Returns "unknown" if the identity doesn't match a known shared platform.
+
+    Examples:
+        "facebook.com/orgname" → "facebook.com"
+        "myorg.panierdachat.app" → "panierdachat.app"
+        "boards.greenhouse.io/acme" → "greenhouse.io"
+        "acmecorp.com" → "unknown"
     """
     if not identity:
         return "unknown"
