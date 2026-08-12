@@ -2,8 +2,8 @@
 """Count orgs assessed BEFORE the Gemini 3.x + Tavily upgrade (Aug 5, 2026)."""
 
 import sys
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 
 from utils.prod_env import bootstrap_prod_from_argv, confirm_prod_run
 
@@ -41,25 +41,25 @@ def main():
             dt = datetime.fromisoformat(classified_at.replace("Z", "+00:00"))
             if dt < CUTOFF_DATE:
                 old_orgs.append(org)
-        except:
+        except (ValueError, AttributeError, TypeError):
             continue
 
     print(f"\nFound {len(old_orgs)} orgs assessed with old models (before Gemini 3.x + Tavily)")
     print(f"Total orgs in DB: {len(response.data or [])}")
 
     if old_orgs:
-        print(f"\nFirst 10 examples:")
+        print("\nFirst 10 examples:")
         for org in old_orgs[:10]:
             dt_str = org["sse_details"]["classified_at"]
             print(f"  ID {org['id']}: {org['name']} (assessed {dt_str})")
 
-        print(f"\nLast 10 examples:")
+        print("\nLast 10 examples:")
         for org in old_orgs[-10:]:
             dt_str = org["sse_details"]["classified_at"]
             print(f"  ID {org['id']}: {org['name']} (assessed {dt_str})")
 
-        print(f"\nTo reprocess these, use:")
-        print(f"  cd wev-scraper && ./venv/bin/python3 scripts/backfill_org_websites.py --prod --mode full --overwrite-recent-hours 999999")
+        print("\nTo reprocess these, use:")
+        print("  cd wev-scraper && ./venv/bin/python3 scripts/backfill_org_websites.py --prod --mode full --overwrite-recent-hours 999999")
 
 if __name__ == "__main__":
     main()

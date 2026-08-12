@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test organization identity extraction from various URL formats"""
-from urllib.parse import urlparse
 import re
+from urllib.parse import urlparse
 
 # Replicate the shared domains list
 _SHARED_DOMAIN_SUFFIXES = frozenset({
@@ -73,7 +73,7 @@ def extract_org_identity(url: str) -> str | None:
     try:
         parsed = urlparse(normalized_url)
         hostname = (parsed.hostname or '').strip('.')
-    except:
+    except (ValueError, AttributeError, TypeError):
         # Invalid URL
         return None
 
