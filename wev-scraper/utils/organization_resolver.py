@@ -11,6 +11,7 @@ from utils.organization_cache import (
     canonical_location,
     domains_match,
     evidence_domain,
+    extract_org_identity,
     make_cache_key,
 )
 from utils.organization_repository import OrganizationRepository
@@ -95,16 +96,17 @@ class OrganizationResolver:
 
     @staticmethod
     def _session_cache_key(raw_name: str, website: str | None = None) -> str:
-        """Name-only key, or name|domain when website evidence is present.
+        """Name-only key, or name|identity when website evidence is present.
 
-        Keeps Stage 1 same-name reuse for jobs without a website, while
-        preventing a prior resolve from short-circuiting a later same-name
-        job that carries a conflicting domain.
+        Uses extract_org_identity() to get a unique identifier from the website,
+        which correctly handles marketplace subdomains and social media paths.
+        This prevents merging unrelated orgs that share a platform while allowing
+        proper matching when the identity is the same.
         """
         base = make_cache_key(raw_name)
-        domain = evidence_domain(website)
-        if domain:
-            return f"{base}|{domain}"
+        identity = extract_org_identity(website)
+        if identity:
+            return f"{base}|{identity}"
         return base
 
     def resolve(
@@ -180,14 +182,37 @@ class OrganizationResolver:
         return self._resolve_minimal(ctx, cache_key, canonical_loc)
 
     def _collect_candidates(self, ctx: JobContext) -> list[dict]:
+        """Collect candidate organizations by name and website identity."""
         by_id: dict[int, dict] = {}
         for row in self._repo.find_by_name(ctx.raw_name):
             by_id[row["id"]] = row
 
-        domain = evidence_domain(ctx.website)
-        if domain:
-            for row in self._repo.find_by_domain(domain):
-                by_id.setdefault(row["id"], row)
+        # Also search by website identity to find orgs with matching URLs
+        identity = extract_org_identity(ctx.website)
+        if identity:
+            # For employer-owned domains, use the existing domain search
+            # For shared platforms, search by the full identity string
+            if "/" in identity or "." in identity.split("/")[0] if "/" in identity else True:
+                # Search for websites that contain this identity
+                # This catches both exact matches and variations
+                try:
+                    resp = (
+                        self._repo._supabase.table("organizations")
+                        .select("id, name, location, website")
+                        .ilike("website", f"%{identity}%")
+                        .execute()
+                    )
+                    for row in resp.data or []:
+                        # Verify the identity actually matches
+                        row_identity = extract_org_identity(row.get("website"))
+                        if row_identity and row_identity == identity:
+                            by_id.setdefault(row["id"], row)
+                except Exception as exc:
+                    logger.warning(
+                        "OrganizationResolver: identity search failed for %r: %s",
+                        identity,
+                        exc,
+                    )
 
         return list(by_id.values())
 
@@ -209,14 +234,16 @@ class OrganizationResolver:
         if names_match:
             score += _SCORE_NAME
 
-        # Domain evidence only counts when names also agree — prevents
+        # Identity evidence only counts when names also agree — prevents
         # facebook.com / shared-host merges across unrelated orgs.
-        job_domain = evidence_domain(ctx.website)
-        org_domain = evidence_domain(organization.get("website"))
-        if names_match and job_domain and org_domain:
-            if domains_match(job_domain, org_domain):
+        job_identity = extract_org_identity(ctx.website)
+        org_identity = extract_org_identity(organization.get("website"))
+        if names_match and job_identity and org_identity:
+            if job_identity == org_identity:
+                # Exact identity match (handles marketplace/social media properly)
                 score += _SCORE_DOMAIN
             else:
+                # Different identities - conflict
                 score += _SCORE_DOMAIN_CONFLICT
 
         org_loc = nfkd_to_ascii(organization.get("location") or "").lower()
@@ -232,10 +259,11 @@ class OrganizationResolver:
         return score
 
     def _domains_conflict(self, organization: dict, ctx: JobContext) -> bool:
-        job_domain = evidence_domain(ctx.website)
-        org_domain = evidence_domain(organization.get("website"))
+        """Check if org identities conflict (different orgs despite same name)."""
+        job_identity = extract_org_identity(ctx.website)
+        org_identity = extract_org_identity(organization.get("website"))
         return bool(
-            job_domain and org_domain and not domains_match(job_domain, org_domain)
+            job_identity and org_identity and job_identity != org_identity
         )
 
     def _should_allow_create_despite_candidates(
@@ -243,16 +271,16 @@ class OrganizationResolver:
     ) -> bool:
         """True when candidates exist but none can be this employer.
 
-        - Domain-only hits on differently named orgs → create.
-        - Same-name orgs that all conflict on employer domain → create.
-        - Same-name with missing/compatible domain evidence → still ambiguous.
+        - Identity-only hits on differently named orgs → create.
+        - Same-name orgs that all conflict on identity → create.
+        - Same-name with missing/compatible identity evidence → still ambiguous.
         """
         name_matches = [c for c in candidates if self._names_match(c, ctx)]
         if not name_matches:
             return True
 
-        job_domain = evidence_domain(ctx.website)
-        if not job_domain:
+        job_identity = extract_org_identity(ctx.website)
+        if not job_identity:
             return False
 
         return all(self._domains_conflict(c, ctx) for c in name_matches)
@@ -309,11 +337,8 @@ class OrganizationResolver:
             return None
 
         # Assessor may discover a website — retry DB match before inserting.
-        # Only fall back to scraped website when it is employer-owned evidence.
-        scraped_evidence = (
-            ctx.website if evidence_domain(ctx.website) else None
-        )
-        assessed_website = row.get("website") or scraped_evidence
+        # Use org identity for any website (marketplace/social included).
+        assessed_website = row.get("website") or ctx.website
         if assessed_website and assessed_website != ctx.website:
             retry_ctx = JobContext(
                 raw_name=ctx.raw_name,
@@ -353,8 +378,8 @@ class OrganizationResolver:
             slug_base=generate_slug(ctx.raw_name),
             cache_key=cache_key,
             job_id=ctx.job_id,
-            # Persist only employer-owned sites (same filter as assessor path).
-            website=ctx.website if evidence_domain(ctx.website) else None,
+            # Accept any website (marketplace/social included) for org identity.
+            website=ctx.website,
         )
 
     def _build_and_insert_org(
