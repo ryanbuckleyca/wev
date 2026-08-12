@@ -281,21 +281,22 @@ def test_parse_website_keeps_employer_owned_host():
     assert _parse_website("mindrift.ai") == "https://mindrift.ai"
 
 
-def test_parse_website_rejects_shared_hosts():
-    assert _parse_website("https://boards.greenhouse.io/acme") is None
-    assert _parse_website("https://facebook.com/acme-org") is None
-    assert _parse_website("https://www.linkedin.com/company/acme") is None
+def test_parse_website_accepts_shared_hosts_for_org_identity():
+    """Shared platform URLs are now accepted for org identity tracking."""
+    assert _parse_website("https://boards.greenhouse.io/acme") == "https://boards.greenhouse.io/acme"
+    assert _parse_website("https://facebook.com/acme-org") == "https://facebook.com/acme-org"
+    assert _parse_website("https://www.linkedin.com/company/acme") == "https://www.linkedin.com/company/acme"
 
 
 def test_parse_response_defaults_missing_content_provenance_to_inferred():
-    """Model omitted provenance flags — populated fields default to via=inferred."""
+    """Model omitted provenance flags — populated fields default to via=inferred, except mission which becomes absent."""
     result = _parse_response(
         _assessment_json(flags=[]),
         "Nature Visuals",
     )
     assert result is not None
     assert "description via=inferred" in result["flags"]
-    assert "mission via=inferred" in result["flags"]
+    assert "mission via=absent" in result["flags"]  # Mission cannot be inferred
     assert "values via=inferred" in result["flags"]
 
 
@@ -331,40 +332,46 @@ def test_parse_response_normalizes_legacy_inferred_flags():
     assert "description_inferred" not in result["flags"]
 
 
-def test_parse_response_nulls_shared_website():
+def test_parse_response_accepts_shared_website_for_identity():
+    """Shared platform URLs are now accepted for org identity tracking."""
     result = _parse_response(
         _assessment_json(website="https://boards.greenhouse.io/nature-visuals"),
         "Nature Visuals",
     )
     assert result is not None
-    assert result["website"] is None
+    assert result["website"] == "https://boards.greenhouse.io/nature-visuals"
 
 
-def test_apply_website_known_guard_prefers_known_url():
+def test_apply_website_known_guard_trusts_discovered_url():
+    """With Tavily grounding, discovered URLs are now trusted over known URLs."""
     from utils.organization_assessment import _apply_website_known_guard
 
     result = _parse_response(
-        _assessment_json(website="https://wrong-example.org"),
+        _assessment_json(website="https://discovered-example.org"),
         "Nature Visuals",
     )
     assert result is not None
-    guarded = _apply_website_known_guard(result, "https://naturevisuals.org")
-    assert guarded["website"] == "https://naturevisuals.org"
-    assert any("website_guard" in f for f in (guarded.get("flags") or []) if isinstance(f, str))
+    guarded = _apply_website_known_guard(result, "https://old-known.org")
+    # Now trusts the discovered URL from Tavily
+    assert guarded["website"] == "https://discovered-example.org"
+    # Flags the update for auditing
+    assert any("website_updated" in str(f) for f in (guarded.get("flags") or []))
 
 
-def test_build_search_query_targets_official_website():
+def test_build_search_query_does_not_mention_official_website():
+    """Search query no longer includes 'official website' to avoid biasing toward generic content."""
     assert _build_search_query("Mindrift", "Toronto", "ON") == (
-        '"Mindrift" official website Toronto ON'
+        '"Mindrift" Toronto, ON, Canada'
     )
 
 
 def test_build_search_query_includes_known_website():
+    """Known website still included in search query but without 'official website' phrase."""
     assert _build_search_query(
         "Gates Foundation",
         known_website="https://www.gatesfoundation.org/",
     ) == (
-        '"Gates Foundation" official website https://www.gatesfoundation.org/'
+        '"Gates Foundation" Canada https://www.gatesfoundation.org/'
     )
 
 

@@ -52,9 +52,6 @@ DEFAULT_GEMINI_LITE = "gemini-3.5-flash-lite"
 # Tavily evidence is (or isn't) injected upstream.
 _NON_GEMINI_BACKENDS = frozenset({"groq", "ollama", "cerebras"})
 
-# Track providers that are exhausted for the session (quota errors)
-_EXHAUSTED_PROVIDERS: set[str] = set()
-
 
 def _is_quota_exhausted_error(exc: Exception) -> bool:
     """Check if exception indicates quota/rate limit exhaustion."""
@@ -141,6 +138,8 @@ class SSEFallbackProvider(BaseLLMProvider):
     def __init__(self, api_key: str | None = None):
         self._providers: list[tuple[str, BaseLLMProvider]] = []
         self._last_successful: str | None = None
+        # Track providers exhausted during this instance's lifetime
+        self._exhausted_providers: set[str] = set()
 
         primary = gemini_sse_primary_model()
         lite = gemini_sse_lite_model()
@@ -152,10 +151,6 @@ class SSEFallbackProvider(BaseLLMProvider):
             ("ollama", lambda: LocalGroundedProvider()),
         ]
         for name, factory in candidates:
-            # Skip providers that were exhausted in a previous attempt
-            if name in _EXHAUSTED_PROVIDERS:
-                logger.info("SSE fallback: skipping %s (quota exhausted earlier)", name)
-                continue
 
             try:
                 provider = factory()
@@ -270,7 +265,7 @@ class SSEFallbackProvider(BaseLLMProvider):
         failed: list[str] = []
         for name, provider in self._providers:
             # Skip providers that were exhausted in previous calls
-            if name in _EXHAUSTED_PROVIDERS:
+            if name in self._exhausted_providers:
                 logger.debug("SSE: skipping %s (quota exhausted earlier in session)", name)
                 failed.append(name)
                 continue
@@ -322,7 +317,7 @@ class SSEFallbackProvider(BaseLLMProvider):
 
                 # Mark provider as exhausted if it's a quota error
                 if _is_quota_exhausted_error(exc):
-                    _EXHAUSTED_PROVIDERS.add(name)
+                    self._exhausted_providers.add(name)
                     logger.warning(
                         "SSE provider %s quota exhausted — skipping for rest of session: %s",
                         name, exc
@@ -353,7 +348,7 @@ class SSEFallbackProvider(BaseLLMProvider):
         model_override = kwargs.pop("model", None)
         for name, provider in self._providers:
             # Skip providers that were exhausted in previous calls
-            if name in _EXHAUSTED_PROVIDERS:
+            if name in self._exhausted_providers:
                 logger.debug("SSE: skipping %s (quota exhausted earlier in session)", name)
                 failed.append(name)
                 continue
@@ -387,7 +382,7 @@ class SSEFallbackProvider(BaseLLMProvider):
 
                 # Mark provider as exhausted if it's a quota error
                 if _is_quota_exhausted_error(exc):
-                    _EXHAUSTED_PROVIDERS.add(name)
+                    self._exhausted_providers.add(name)
                     logger.warning(
                         "SSE provider %s quota exhausted — skipping for rest of session: %s",
                         name, exc
