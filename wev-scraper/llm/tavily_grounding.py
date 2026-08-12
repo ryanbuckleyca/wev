@@ -171,8 +171,8 @@ def fetch_tavily_context(
     if not q:
         return ""
     if not is_tavily_available():
-        logger.error("Tavily unavailable (TAVILY_API_KEY missing) — FAILING HARD (grounding required)")
-        raise LLMProviderError("Tavily unavailable: TAVILY_API_KEY not set")
+        logger.warning("Tavily unavailable (TAVILY_API_KEY missing) — no shared evidence")
+        return ""
 
     if max_chars is None:
         max_chars = _env_int("TAVILY_MAX_CHARS", 4500)
@@ -235,18 +235,18 @@ def fetch_tavily_context(
                 time.sleep(backoff)
                 continue
             logger.error(
-                "Tavily search failed after %s attempts: %s — FAILING HARD (grounding required)",
+                "Tavily search failed after %s attempts: %s — continuing without evidence",
                 max_retries + 1,
                 exc,
             )
-            raise LLMProviderError(f"Tavily search failed after {max_retries + 1} attempts: {exc}") from exc
+            return ""
 
     if results is None:
-        logger.error(
-            "Tavily search returned no response (%s) — FAILING HARD (grounding required)",
+        logger.warning(
+            "Tavily search returned no response (%s) — continuing without evidence",
             last_exc,
         )
-        raise LLMProviderError(f"Tavily search returned no response: {last_exc}") from last_exc
+        return ""
 
     try:
         ranked: list[tuple[int, str]] = []
