@@ -114,6 +114,9 @@ _SHARED_DOMAIN_SUFFIXES = frozenset({
     "wix.com",
     "squarespace.com",
     "wordpress.com",
+    "shopify.com",
+    "etsy.com",
+    "panierdachat.app",
     "indeed.com",
     "glassdoor.com",
     "greenhouse.io",
@@ -224,3 +227,143 @@ def evidence_domain_query_hosts(domain: str) -> list[str]:
         if parent and parent not in hosts:
             hosts.append(parent)
     return hosts
+
+
+def extract_org_identity(url: str | None) -> str | None:
+    """Extract a unique organization identifier from a URL.
+
+    For employer-owned domains: returns the domain only.
+    For shared hosting with subdomains: returns full subdomain.domain.
+    For shared platforms with paths: returns domain/path.
+    For subdomain + path combos: returns subdomain.domain/path.
+    For non-identifiable URLs: returns None.
+
+    Examples:
+        "https://acmecorp.com" → "acmecorp.com"
+        "https://wildlife-gardening.panierdachat.app" → "wildlife-gardening.panierdachat.app"
+        "https://www.facebook.com/WildlifeGardening.ca" → "facebook.com/wildlifegardening.ca"
+        "https://boards.greenhouse.io/acme" → "boards.greenhouse.io/acme"
+    """
+    if not url:
+        return None
+
+    normalized_url = str(url).lower().strip()
+    if "://" not in normalized_url:
+        normalized_url = "https://" + normalized_url
+
+    try:
+        parsed = urlparse(normalized_url)
+        hostname = (parsed.hostname or "").strip(".")
+    except Exception:
+        return None
+
+    if not hostname:
+        return None
+
+    # Remove www and mobile (m.) prefixes for normalization
+    domain = hostname
+    domain = _WWW_PREFIX.sub("", domain)
+    if domain.startswith("m."):
+        domain = domain[2:]
+
+    # Validate domain has alphanumeric characters and at least one dot (TLD)
+    if not domain or not re.search(r"[a-z0-9]", domain) or "." not in domain:
+        return None
+
+    # Check if this is a shared domain
+    if not is_shared_domain(domain):
+        # Employer-owned domain - just use the domain
+        return domain
+
+    # Shared domain - need to extract unique identifier
+
+    # Check for subdomain-based uniqueness
+    has_subdomain = False
+    for suffix in _SHARED_DOMAIN_SUFFIXES:
+        if domain == suffix:
+            # Exact match - this IS the shared domain root
+            break
+        if domain.endswith("." + suffix):
+            # Has subdomain before shared domain
+            has_subdomain = True
+            break
+
+    # Extract and normalize path
+    path = parsed.path.strip("/").split("?")[0].split("#")[0]
+    normalized_path = "/".join(p for p in path.split("/") if p)
+
+    # Determine identity based on what we have
+    if has_subdomain and normalized_path:
+        # Both subdomain AND path (e.g., boards.greenhouse.io/acme)
+        return f"{domain}/{normalized_path}"
+    elif has_subdomain:
+        # Just subdomain (e.g., mysite.wixsite.com)
+        return domain
+    elif normalized_path:
+        # Just path (e.g., facebook.com/OrgName)
+        return f"{domain}/{normalized_path}"
+    else:
+        # Neither subdomain nor path - can't identify org
+        return None
+
+
+def classify_identity_type(identity: str | None) -> str:
+    """Determine what type of identity this is.
+
+    Returns one of: employer_owned, marketplace, social_media, ats_board,
+    shared_hosting, invalid, unknown.
+    """
+    if not identity:
+        return "unknown"
+
+    # Check against shared domain list
+    for suffix in _SHARED_DOMAIN_SUFFIXES:
+        if identity == suffix:
+            return "invalid"  # Root domain only, no org identifier
+
+        # Has subdomain or path component indicating shared platform
+        if identity.startswith(f"{suffix}/") or identity.endswith(f".{suffix}") or f".{suffix}/" in identity:
+            # Determine platform category
+            if suffix in {"facebook.com", "fb.com", "linkedin.com", "instagram.com",
+                         "twitter.com", "x.com", "youtube.com", "tiktok.com"}:
+                return "social_media"
+            elif suffix in {"panierdachat.app", "etsy.com", "shopify.com",
+                           "wixsite.com", "wix.com", "squarespace.com", "wordpress.com"}:
+                return "marketplace"
+            elif suffix in {"greenhouse.io", "lever.co", "workable.com",
+                           "bamboohr.com", "smartrecruiters.com", "jobvite.com",
+                           "icims.com", "myworkdayjobs.com", "dayforcehcm.com",
+                           "applytojob.com"}:
+                return "ats_board"
+            else:
+                return "shared_hosting"
+
+    # No shared domain match = employer-owned
+    return "employer_owned"
+
+
+def extract_platform(identity: str | None) -> str:
+    """Extract the platform name from an identity string.
+
+    Returns the base shared platform domain (e.g., "facebook.com", "panierdachat.app").
+    """
+    if not identity:
+        return "unknown"
+
+    # For domain/path pattern (e.g., "facebook.com/orgname")
+    if "/" in identity:
+        base = identity.split("/")[0]
+        # Check if this base is or ends with a shared domain
+        for suffix in _SHARED_DOMAIN_SUFFIXES:
+            if base == suffix or base.endswith("." + suffix):
+                return suffix
+        return base
+
+    # For subdomain pattern (e.g., "myorg.panierdachat.app")
+    for suffix in _SHARED_DOMAIN_SUFFIXES:
+        if identity.endswith(f".{suffix}"):
+            return suffix
+        if identity == suffix:
+            return suffix
+
+    return "unknown"

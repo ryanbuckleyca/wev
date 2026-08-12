@@ -52,6 +52,20 @@ DEFAULT_GEMINI_LITE = "gemini-3.5-flash-lite"
 # Tavily evidence is (or isn't) injected upstream.
 _NON_GEMINI_BACKENDS = frozenset({"groq", "ollama", "cerebras"})
 
+# Track providers that are exhausted for the session (quota errors)
+_EXHAUSTED_PROVIDERS: set[str] = set()
+
+
+def _is_quota_exhausted_error(exc: Exception) -> bool:
+    """Check if exception indicates quota/rate limit exhaustion."""
+    err_str = str(exc).lower()
+    return (
+        "429" in err_str
+        or "resource_exhausted" in err_str
+        or "quota" in err_str
+        or "quota exceeded" in err_str
+    )
+
 
 def _google_search_grounding_override() -> bool | None:
     """Return True if env forces Google Search on; False/None means off (Tavily-only)."""
@@ -138,6 +152,11 @@ class SSEFallbackProvider(BaseLLMProvider):
             ("ollama", lambda: LocalGroundedProvider()),
         ]
         for name, factory in candidates:
+            # Skip providers that were exhausted in a previous attempt
+            if name in _EXHAUSTED_PROVIDERS:
+                logger.info("SSE fallback: skipping %s (quota exhausted earlier)", name)
+                continue
+
             try:
                 provider = factory()
                 if provider.is_available():
@@ -250,6 +269,12 @@ class SSEFallbackProvider(BaseLLMProvider):
         last_error: Exception | None = None
         failed: list[str] = []
         for name, provider in self._providers:
+            # Skip providers that were exhausted in previous calls
+            if name in _EXHAUSTED_PROVIDERS:
+                logger.debug("SSE: skipping %s (quota exhausted earlier in session)", name)
+                failed.append(name)
+                continue
+
             ev = evidence
             if name == "ollama":
                 # Tight evidence budget; LocalGroundedProvider also caps via
@@ -294,7 +319,16 @@ class SSEFallbackProvider(BaseLLMProvider):
             except Exception as exc:
                 last_error = exc
                 failed.append(name)
-                logger.warning("SSE provider %s failed: %s", name, exc)
+
+                # Mark provider as exhausted if it's a quota error
+                if _is_quota_exhausted_error(exc):
+                    _EXHAUSTED_PROVIDERS.add(name)
+                    logger.warning(
+                        "SSE provider %s quota exhausted — skipping for rest of session: %s",
+                        name, exc
+                    )
+                else:
+                    logger.warning("SSE provider %s failed: %s", name, exc)
                 continue
 
         if last_error:
@@ -318,6 +352,12 @@ class SSEFallbackProvider(BaseLLMProvider):
         # Gemini-specific model override must not leak to Groq/Ollama.
         model_override = kwargs.pop("model", None)
         for name, provider in self._providers:
+            # Skip providers that were exhausted in previous calls
+            if name in _EXHAUSTED_PROVIDERS:
+                logger.debug("SSE: skipping %s (quota exhausted earlier in session)", name)
+                failed.append(name)
+                continue
+
             try:
                 method = getattr(provider, method_name)
                 call_kwargs = dict(kwargs)
@@ -344,7 +384,16 @@ class SSEFallbackProvider(BaseLLMProvider):
             except Exception as exc:
                 last_error = exc
                 failed.append(name)
-                logger.warning("SSE provider %s failed: %s", name, exc)
+
+                # Mark provider as exhausted if it's a quota error
+                if _is_quota_exhausted_error(exc):
+                    _EXHAUSTED_PROVIDERS.add(name)
+                    logger.warning(
+                        "SSE provider %s quota exhausted — skipping for rest of session: %s",
+                        name, exc
+                    )
+                else:
+                    logger.warning("SSE provider %s failed: %s", name, exc)
                 continue
 
         if last_error:
