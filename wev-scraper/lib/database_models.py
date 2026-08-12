@@ -279,12 +279,11 @@ class Organizations(BaseModel):
     created_at: str
     name: str
     values: Optional[str] = None
-    type: Optional[str] = Field(
-        None,
-        description='Org governance form: nonprofit, cooperative, government, union, or other. SSE-eligible types are nonprofit, cooperative, and union — type alone is not sufficient for SSE Yes.',
-    )
+    type: Optional[str] = None
     slug: str
     description: Optional[str] = None
+    description_en: Optional[str] = None
+    description_fr: Optional[str] = None
     website: Optional[str] = None
     location: Optional[str] = None
     sse_rating: Optional[str] = None
@@ -292,6 +291,8 @@ class Organizations(BaseModel):
     is_sse: Optional[bool] = False
     logo_url: Optional[str] = None
     mission_statement: Optional[str] = None
+    mission_statement_en: Optional[str] = None
+    mission_statement_fr: Optional[str] = None
     values_list: Optional[List[str]] = None
     values_rated: Optional[Any] = None
     municipality: Optional[str] = None
@@ -300,22 +301,7 @@ class Organizations(BaseModel):
     lng: Optional[float] = None
     geocode_accuracy_type: Optional[str] = None
     sector_id: Optional[str] = None
-    language: Optional[str] = Field(
-        None,
-        description='Primary public language of the organization (en, fr, or bilingual). Distinct from jobs.language (role/posting requirements).',
-    )
-    description_en: Optional[str] = Field(
-        None, description='Public organization description in English.'
-    )
-    description_fr: Optional[str] = Field(
-        None, description='Public organization description in French.'
-    )
-    mission_statement_en: Optional[str] = Field(
-        None, description='Public organization mission statement in English.'
-    )
-    mission_statement_fr: Optional[str] = Field(
-        None, description='Public organization mission statement in French.'
-    )
+    language: Optional[str] = None
 
 
 class Sources(BaseModel):
