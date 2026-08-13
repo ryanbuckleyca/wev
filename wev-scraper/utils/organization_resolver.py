@@ -12,7 +12,7 @@ from utils.organization_cache import (
     extract_org_identity,
     make_cache_key,
 )
-from utils.organization_repository import OrganizationRepository, _escape_like
+from utils.organization_repository import OrganizationRepository, escape_like
 from utils.slug import generate_slug, generate_unique_slug, nfkd_to_ascii
 
 logger = logging.getLogger(__name__)
@@ -197,7 +197,7 @@ class OrganizationResolver:
                     resp = (
                         self._repo._supabase.table("organizations")
                         .select("id, name, location, website")
-                        .ilike("website", f"%{_escape_like(identity)}%")
+                        .ilike("website", f"%{escape_like(identity)}%")
                         .execute()
                     )
                     for row in resp.data or []:

@@ -273,8 +273,10 @@ def extract_org_identity(url: str | None) -> str | None:
 
     # Check if this is a shared domain
     if not is_shared_domain(domain):
-        # Employer-owned domain - just use the domain
-        return domain
+        # Employer-owned domain - normalize to apex for subdomain matching
+        # careers.hatch.com → hatch.com, but keep full domain if needed
+        apex = employer_apex(domain)
+        return apex or domain
 
     # Shared domain - need to extract unique identifier
 
