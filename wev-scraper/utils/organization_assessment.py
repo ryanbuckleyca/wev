@@ -874,21 +874,24 @@ def _parse_website(raw: Any) -> str | None:
     if any(hostname_lower.endswith("." + host) for host in link_aggregators):
         return None
 
-    # For ATS/job boards, allow if there's an org-specific path (e.g., greenhouse.io/company-name)
-    # These can be valid org identifiers when they have paths
-    ats_platforms = {
+    # Reject job boards and ATS platforms entirely - these are NOT valid org identifiers
+    # Even with paths, these are job listing URLs, not organization websites
+    # Only exception: Social media company pages (facebook.com/company, linkedin.com/company)
+    # and ATS platforms with org-specific SUBDOMAINS (e.g., boards.greenhouse.io)
+    # which are handled via the shared domain logic in extract_org_identity
+    job_boards = {
         "indeed.com",
         "glassdoor.com",
         "charityvillage.com",
     }
 
-    # Extract path for validation
-    path = parsed.path.strip("/")
-
-    # Reject ATS platforms without meaningful paths
-    if hostname_lower in ats_platforms and not path:
+    # Reject if it's a direct job board domain (with or without path)
+    if hostname_lower in job_boards:
         return None
-    if any(hostname_lower.endswith("." + host) for host in ats_platforms) and not path:
+    if any(hostname_lower.endswith("." + host) for host in job_boards):
+        # Allow ATS subdomains like boards.greenhouse.io, careers.greenhouse.io
+        # These have org-specific paths and are tracked in shared domains
+        # But reject direct subdomains of job boards (e.g., ca.indeed.com/jobs)
         return None
 
     return url

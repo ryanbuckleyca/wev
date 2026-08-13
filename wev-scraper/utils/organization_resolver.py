@@ -188,29 +188,32 @@ class OrganizationResolver:
         # Also search by website identity to find orgs with matching URLs
         identity = extract_org_identity(ctx.website)
         if identity:
-            # For employer-owned domains, use the existing domain search
-            # For shared platforms, search by the full identity string
-            if "/" in identity or "." in identity.split("/")[0] if "/" in identity else True:
-                # Search for websites that contain this identity
-                # This catches both exact matches and variations
-                try:
-                    resp = (
-                        self._repo._supabase.table("organizations")
-                        .select("id, name, location, website")
-                        .ilike("website", f"%{escape_like(identity)}%")
-                        .execute()
-                    )
-                    for row in resp.data or []:
-                        # Verify the identity actually matches
-                        row_identity = extract_org_identity(row.get("website"))
-                        if row_identity and row_identity == identity:
-                            by_id.setdefault(row["id"], row)
-                except Exception as exc:
-                    logger.warning(
-                        "OrganizationResolver: identity search failed for %r: %s",
-                        identity,
-                        exc,
-                    )
+            # Identity can be:
+            # - Plain domain (employer-owned): "acme.com"
+            # - Domain/path (social media): "facebook.com/acme"
+            # - Subdomain (marketplace): "myshop.panierdachat.app"
+            # - Subdomain/path (ATS): "boards.greenhouse.io/acme"
+
+            # Search for websites containing this identity
+            try:
+                resp = (
+                    self._repo._supabase.table("organizations")
+                    .select("id, name, location, website")
+                    .ilike("website", f"%{escape_like(identity)}%")
+                    .execute()
+                )
+                # Verify each candidate has the same extracted identity
+                # This prevents false matches (e.g., "acme.com" shouldn't match "fakeacme.com")
+                for row in resp.data or []:
+                    row_identity = extract_org_identity(row.get("website"))
+                    if row_identity and row_identity == identity:
+                        by_id.setdefault(row["id"], row)
+            except Exception as exc:
+                logger.warning(
+                    "OrganizationResolver: identity search failed for %r: %s",
+                    identity,
+                    exc,
+                )
 
         return list(by_id.values())
 

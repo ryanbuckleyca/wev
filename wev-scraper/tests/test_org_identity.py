@@ -53,11 +53,27 @@ def is_shared_domain(domain: str | None) -> bool:
     return any(d.endswith("." + suffix) for suffix in _SHARED_DOMAIN_SUFFIXES)
 
 
+def employer_apex(domain: str | None) -> str | None:
+    """Strip vanity subdomains down to a plausible employer apex."""
+    if not domain:
+        return None
+    current = domain.lower().strip(".")
+    if not current:
+        return None
+    # For simplicity in test, just strip one level
+    # Production has more sophisticated logic with PUBLIC_SUFFIX_LIKE
+    parts = current.split(".")
+    if len(parts) <= 2:
+        return current
+    # Strip one level for common subdomains
+    return ".".join(parts[1:])
+
+
 def extract_org_identity(url: str) -> str | None:
     """
     Extract a unique organization identifier from a URL.
 
-    For employer-owned domains: returns the domain
+    For employer-owned domains: returns normalized apex domain
     For shared hosting with subdomains: returns full subdomain.domain
     For shared platforms with paths: returns domain/path
     For subdomain + path combos: returns subdomain.domain/path
@@ -92,8 +108,9 @@ def extract_org_identity(url: str) -> str | None:
 
     # Check if this is a shared domain
     if not is_shared_domain(domain):
-        # Employer-owned domain - just use the domain
-        return domain
+        # Employer-owned domain - normalize to apex for subdomain matching
+        apex = employer_apex(domain)
+        return apex or domain
 
     # Shared domain - need to extract unique identifier
 
@@ -138,7 +155,7 @@ TEST_CASES = [
     ("https://acmecorp.com", "acmecorp.com", "✓ Basic employer domain"),
     ("https://www.acmecorp.com", "acmecorp.com", "✓ Employer domain with www"),
     ("http://acmecorp.com", "acmecorp.com", "✓ HTTP employer domain"),
-    ("https://careers.acmecorp.com/jobs", "careers.acmecorp.com", "✓ Employer subdomain with path"),
+    ("https://careers.acmecorp.com/jobs", "acmecorp.com", "✓ Employer subdomain normalized to apex"),
     ("HTTPS://WWW.ACMECORP.COM", "acmecorp.com", "✓ Case insensitive"),
     ("acmecorp.com", "acmecorp.com", "✓ No protocol"),
 
