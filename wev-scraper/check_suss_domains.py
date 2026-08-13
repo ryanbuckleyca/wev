@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
-"""Find organizations with shared platform websites."""
+"""Find organizations with shared platform websites.
 
+By default uses .env (dev/test). Use --prod flag for production data.
+"""
+
+import argparse
 import sys
 from pathlib import Path
 
@@ -8,12 +12,37 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-load_dotenv(Path(__file__).parent.parent / ".env.production")
 
-from utils.db import supabase  # noqa: E402
+def confirm_production():
+    """Interactive confirmation for production access."""
+    response = input("⚠️  Connect to PRODUCTION database? (yes/no): ")
+    return response.lower() in ("yes", "y")
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Find orgs with shared platform websites")
+    parser.add_argument(
+        "--prod",
+        action="store_true",
+        help="Use production database (requires confirmation)",
+    )
+    args = parser.parse_args()
+
+    # Load environment
+    if args.prod:
+        if not confirm_production():
+            print("❌ Production access cancelled")
+            sys.exit(1)
+        env_file = Path(__file__).parent.parent / ".env.production"
+        print("✅ Using PRODUCTION database")
+    else:
+        env_file = Path(__file__).parent.parent / ".env"
+        print("✅ Using development database")
+
+    load_dotenv(env_file)
+
+    from utils.db import supabase  # noqa: E402
+
     response = supabase.table("organizations").select(
         "id, name, website, location, created_at"
     ).or_(
@@ -39,6 +68,7 @@ def main():
     if response.data:
         ids = [str(row['id']) for row in response.data]
         print(f"Org IDs: {','.join(ids)}")
+
 
 if __name__ == "__main__":
     main()
