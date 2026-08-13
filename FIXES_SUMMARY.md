@@ -167,17 +167,43 @@ if not is_shared_domain(domain):
 
 
 ## Additional Files Modified for Security
-11. `wev-scraper/check_suss_domains.py` - Production guards with confirmation
-12. `wev-scraper/get_latest_org.py` - Production guards with confirmation
+11. `wev-scraper/check_suss_domains.py` - Production guards with confirmation, EOFError handling, error checking
+12. `wev-scraper/get_latest_org.py` - Production guards with confirmation, EOFError handling, error checking
+13. `wev-scraper/count_old_orgs.py` - Pagination to prevent unbounded queries
+
+## Additional MergeGuards Fixes (🟠 MEDIUM)
+
+### 5. EOFError Handling in Interactive Confirmations
+**Issue**: `input()` calls would crash with EOFError in non-interactive environments (CI, piped input).
+
+**Fix**: Wrapped confirmation prompts in try/except EOFError, default to denying production access.
+
+**Files**: `check_suss_domains.py`, `get_latest_org.py`
+
+### 6. Supabase Query Error Checking
+**Issue**: Query results used without checking for API errors, leading to misleading output or crashes.
+
+**Fix**: Added error checking with `response.error` before using `response.data`, fail fast with clear error messages.
+
+**Files**: `check_suss_domains.py`, `get_latest_org.py`
+
+### 7. Unbounded SELECT Query Pagination
+**Issue**: `count_old_orgs.py` loaded entire organizations table into memory, risking timeouts and memory pressure.
+
+**Fix**: Implemented pagination with 1000-row batches using `.range()`, progress feedback during fetch.
+
+**Files**: `count_old_orgs.py`
 
 ## Final Summary
 
 All test failures resolved, all MergeGuards security and code quality issues addressed:
 - ✅ **672 tests passing** (0 failing)
 - ✅ **2 HIGH security issues fixed** (URL validation, production access guards)
-- ✅ **2 MEDIUM code quality issues fixed** (logging, private imports)
-- ✅ Production database access now requires explicit `--prod` flag + interactive confirmation
+- ✅ **5 MEDIUM issues fixed** (logging, private imports, EOFError, error checking, pagination)
+- ✅ Production database access requires explicit `--prod` flag + interactive confirmation
 - ✅ URL validation prevents malformed URLs and link aggregators
 - ✅ Sensitive data logging downgraded to debug level
 - ✅ Public API for commonly used utility functions
 - ✅ Org identity tracking properly handles employer-owned subdomains
+- ✅ Scripts handle non-interactive environments gracefully
+- ✅ Database queries properly check for errors and paginate large result sets
