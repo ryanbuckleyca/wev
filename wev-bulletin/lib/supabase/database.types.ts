@@ -673,6 +673,7 @@ export type Database = {
           max_value: number | null;
           min_value: number | null;
           municipality: string | null;
+          org_is_sse: boolean | null;
           organization: string | null;
           organization_id: number | null;
           province: string | null;
@@ -771,6 +772,10 @@ export type Database = {
       get_auth_user_id_by_email: {
         Args: { input_email: string };
         Returns: string;
+      };
+      get_organization_filter_options: {
+        Args: { p_activity_days?: number };
+        Returns: Json;
       };
       is_valid_cv_import_metadata: { Args: { payload: Json }; Returns: boolean };
       job_confidence_weight: {
