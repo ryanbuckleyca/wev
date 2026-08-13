@@ -827,6 +827,11 @@ def _parse_website(raw: Any) -> str | None:
     Previously rejected all shared domains (Facebook, LinkedIn, etc). Now allows
     them as valid web presences when they're the best available option, since
     many small organizations only have social media or marketplace pages.
+
+    However, we still reject:
+    - Link aggregators (Linktree, bit.ly)
+    - Job boards and ATS platforms
+    - Malformed URLs
     """
     if not raw:
         return None
@@ -835,12 +840,57 @@ def _parse_website(raw: Any) -> str | None:
         return None
     if "://" not in url:
         url = "https://" + url
-    parsed = urlparse(url)
+
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return None
+
     if parsed.scheme not in ("http", "https"):
         return None
 
-    # Accept all URLs now - location validation and LLM prompt guard against wrong orgs
-    # The shared domain check was too restrictive and rejected valid organization presences
+    # Validate hostname exists and is not empty
+    hostname = parsed.hostname
+    if not hostname or not hostname.strip():
+        return None
+
+    # Basic hostname validation - must contain at least one dot and alphanumeric chars
+    if "." not in hostname or not re.search(r"[a-z0-9]", hostname.lower()):
+        return None
+
+    # Reject link aggregators - these are NEVER valid org identities
+    link_aggregators = {
+        "linktr.ee",
+        "bit.ly",
+        "tinyurl.com",
+        "t.co",
+        "ow.ly",
+        "buff.ly",
+    }
+
+    hostname_lower = hostname.lower().strip(".")
+    if hostname_lower in link_aggregators:
+        return None
+    if any(hostname_lower.endswith("." + host) for host in link_aggregators):
+        return None
+
+    # For ATS/job boards, allow if there's an org-specific path (e.g., greenhouse.io/company-name)
+    # These can be valid org identifiers when they have paths
+    ats_platforms = {
+        "indeed.com",
+        "glassdoor.com",
+        "charityvillage.com",
+    }
+
+    # Extract path for validation
+    path = parsed.path.strip("/")
+
+    # Reject ATS platforms without meaningful paths
+    if hostname_lower in ats_platforms and not path:
+        return None
+    if any(hostname_lower.endswith("." + host) for host in ats_platforms) and not path:
+        return None
+
     return url
 
 
@@ -911,9 +961,9 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         data, "sse_reasoning_en", "sse_reasoning_fr", "sse_reasoning"
     )
 
-    # DEBUG: Log what website the LLM returned
+    # Log what website the LLM returned (debug level to avoid routinely logging potentially sensitive fields)
     llm_website = data.get("website")
-    logger.info(f"LLM returned website field: {llm_website!r} for org {canonical_name}")
+    logger.debug(f"LLM returned website field: {llm_website!r} for org {canonical_name}")
 
     result = AssessedOrgResult(
         canonical_name=canonical_name.strip(),

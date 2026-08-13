@@ -750,8 +750,8 @@ def test_private_company_gate_demotes_inc_commercial_despite_soft_mission_cues()
     assert any("private_company_gate" in f for f in result["flags"])
 
 
-def test_private_company_gate_demotes_invented_nonprofit_inc_bland_yes():
-    """Bare 'nonprofit' fluff + Inc. without strong soft cues → other/no."""
+def test_private_company_gate_keeps_community_service_language():
+    """'Community recitals' matches soft nonprofit pattern and keeps the org."""
     result = _parse_response(
         _assessment_json(
             canonical_name="Melody Music School Inc.",
@@ -768,9 +768,10 @@ def test_private_company_gate_demotes_invented_nonprofit_inc_bland_yes():
         "Melody Music School Inc.",
     )
     assert result is not None
-    assert result["type"] == "other"
-    assert result["sse_rating"] == "no"
-    assert any("private_company_gate" in f for f in result["flags"])
+    # "community recitals" matches SOFT_NONPROFIT_EVIDENCE_RE pattern
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "weak_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
 
 
 def test_private_company_gate_demotes_consulting_inc_without_strong_soft():
@@ -875,8 +876,9 @@ def test_org_assessment_prompt_rejects_commercial_inc_music_schools():
         "",
     )
     assert "commercial Inc./Ltd. businesses are not nonprofits" in prompt
-    assert "known good sites must" in prompt
-    assert "RETURN THAT URL" in prompt
+    # Check for website rules about accepting URLs
+    assert "ACCEPT any URL that identifies this specific organization" in prompt
+    assert "Social media and marketplace pages are LEGITIMATE web presences" in prompt
 
 
 def test_org_assessment_prompt_place_name_not_government():
