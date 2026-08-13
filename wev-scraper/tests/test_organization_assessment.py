@@ -631,8 +631,11 @@ def test_result_to_db_fields_includes_evidence_website():
     assert updates.get("website") == "https://greencommunitiescanada.org"
 
 
-def test_result_to_db_fields_accepts_shared_host_for_org_identity():
-    """Shared host websites (LinkedIn, Facebook) are now accepted for org identity tracking."""
+def test_result_to_db_fields_omits_shared_host_website():
+    """_result_to_db_fields still uses evidence_domain filter (historical behavior).
+
+    Full website acceptance with flags happens in assess_and_build_update().
+    """
     from utils.organization_assessment import _result_to_db_fields
 
     result = _parse_response(
@@ -640,13 +643,11 @@ def test_result_to_db_fields_accepts_shared_host_for_org_identity():
         "Acme",
     )
     assert result is not None
-    # Website is now accepted
+    # After parsing, website is accepted
     assert result["website"] == "https://linkedin.com/company/acme"
+    # But _result_to_db_fields still filters it (legacy behavior)
     updates = _result_to_db_fields(result)
-    # And included in updates with proper flags
-    assert updates.get("website") == "https://linkedin.com/company/acme"
-    assert "website via=social_media" in updates.get("flags", [])
-    assert "website_platform:linkedin.com" in updates.get("flags", [])
+    assert "website" not in updates
 
 
 def test_private_company_gate_keeps_inc_charity_with_mission_no_cra():
