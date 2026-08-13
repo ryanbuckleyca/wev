@@ -73,7 +73,25 @@ Fixed all failing tests after implementing org identity tracking for shared host
 
 **Files**: `wev-scraper/utils/organization_assessment.py` (lines 824-897)
 
-### 2. PII/Logging Risk 🟠 MEDIUM
+### 2. Production Database Access Guards 🔴 HIGH
+
+**Issue**: Scripts unconditionally loaded `.env.production` and connected to production database, risking accidental data disclosure.
+
+**Fix**:
+
+```python
+- Default to .env (dev/test environment)
+- Require --prod flag for production access
+- Added interactive confirmation: "⚠️ Connect to PRODUCTION database? (yes/no)"
+- Exit if user declines confirmation
+- Clear indication of which environment is being used
+```
+
+**Files**:
+- `wev-scraper/check_suss_domains.py`
+- `wev-scraper/get_latest_org.py`
+
+### 3. PII/Logging Risk 🟠 MEDIUM
 
 **Issue**: Logged LLM-returned website at INFO level for every assessment.
 
@@ -81,7 +99,7 @@ Fixed all failing tests after implementing org identity tracking for shared host
 
 **Files**: `wev-scraper/utils/organization_assessment.py` (line 963)
 
-### 3. Private Symbol Import 🟠 MEDIUM
+### 4. Private Symbol Import 🟠 MEDIUM
 
 **Issue**: Imported `_escape_like` (private) from organization_repository.
 
@@ -146,3 +164,20 @@ if not is_shared_domain(domain):
 8. `wev-scraper/utils/organization_cache.py` - Apex normalization
 9. `wev-scraper/llm/gemini_fallback.py` - Instance-based exhausted tracking (already done)
 10. `wev-scraper/llm/tavily_grounding.py` - Soft-fail behavior (already done)
+
+
+## Additional Files Modified for Security
+11. `wev-scraper/check_suss_domains.py` - Production guards with confirmation
+12. `wev-scraper/get_latest_org.py` - Production guards with confirmation
+
+## Final Summary
+
+All test failures resolved, all MergeGuards security and code quality issues addressed:
+- ✅ **672 tests passing** (0 failing)
+- ✅ **2 HIGH security issues fixed** (URL validation, production access guards)
+- ✅ **2 MEDIUM code quality issues fixed** (logging, private imports)
+- ✅ Production database access now requires explicit `--prod` flag + interactive confirmation
+- ✅ URL validation prevents malformed URLs and link aggregators
+- ✅ Sensitive data logging downgraded to debug level
+- ✅ Public API for commonly used utility functions
+- ✅ Org identity tracking properly handles employer-owned subdomains
