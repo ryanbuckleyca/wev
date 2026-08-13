@@ -15,8 +15,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 def confirm_production():
     """Interactive confirmation for production access."""
-    response = input("⚠️  Connect to PRODUCTION database? (yes/no): ")
-    return response.lower() in ("yes", "y")
+    try:
+        response = input("⚠️  Connect to PRODUCTION database? (yes/no): ")
+        return response.lower() in ("yes", "y")
+    except EOFError:
+        # Non-interactive environment or interrupted input
+        print("\n❌ Non-interactive environment detected. Production access denied.")
+        return False
 
 
 def main():
@@ -55,6 +60,15 @@ def main():
         "website.ilike.%etsy.com%,"
         "website.ilike.%greenhouse.io%"
     ).not_.is_("website", "null").order("created_at", desc=True).limit(50).execute()
+
+    # Check for API errors
+    if hasattr(response, 'error') and response.error:
+        print(f"❌ Database query failed: {response.error}")
+        sys.exit(1)
+
+    if not response.data:
+        print("\nNo organizations found with shared platform websites")
+        return
 
     print(f"\nFound {len(response.data)} organizations with shared platform websites\n")
 

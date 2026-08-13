@@ -15,8 +15,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 def confirm_production():
     """Interactive confirmation for production access."""
-    response = input("⚠️  Connect to PRODUCTION database? (yes/no): ")
-    return response.lower() in ("yes", "y")
+    try:
+        response = input("⚠️  Connect to PRODUCTION database? (yes/no): ")
+        return response.lower() in ("yes", "y")
+    except EOFError:
+        # Non-interactive environment or interrupted input
+        print("\n❌ Non-interactive environment detected. Production access denied.")
+        return False
 
 
 def main():
@@ -44,6 +49,12 @@ def main():
     from utils.db import supabase  # noqa: E402
 
     response = supabase.table("organizations").select("id, name, created_at").order("id", desc=True).limit(1).execute()
+
+    # Check for API errors
+    if hasattr(response, 'error') and response.error:
+        print(f"❌ Database query failed: {response.error}")
+        sys.exit(1)
+
     if response.data:
         org = response.data[0]
         print(f"Latest org ID: {org['id']}")

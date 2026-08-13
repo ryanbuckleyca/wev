@@ -22,30 +22,54 @@ CUTOFF_DATE = datetime(2026, 8, 5, 22, 7, tzinfo=timezone.utc)  # 18:07 EST = 22
 def main():
     print(f"Finding orgs assessed before {CUTOFF_DATE.isoformat()}")
 
-    # Query for orgs with classified_at before cutoff
-    response = supabase.table("organizations").select(
-        "id, name, sse_details"
-    ).order("id").execute()
-
+    # Paginate through organizations to avoid loading entire table
     old_orgs = []
-    for org in response.data or []:
-        details = org.get("sse_details")
-        if not isinstance(details, dict):
-            continue
+    page_size = 1000
+    offset = 0
+    total_orgs = 0
 
-        classified_at = details.get("classified_at")
-        if not classified_at:
-            continue
+    print("Fetching organizations in batches...")
+    while True:
+        response = supabase.table("organizations").select(
+            "id, name, sse_details"
+        ).order("id").range(offset, offset + page_size - 1).execute()
 
-        try:
-            dt = datetime.fromisoformat(classified_at.replace("Z", "+00:00"))
-            if dt < CUTOFF_DATE:
-                old_orgs.append(org)
-        except (ValueError, AttributeError, TypeError):
-            continue
+        # Check for API errors
+        if hasattr(response, 'error') and response.error:
+            print(f"❌ Database query failed: {response.error}")
+            sys.exit(1)
+
+        if not response.data:
+            break
+
+        batch_size = len(response.data)
+        total_orgs += batch_size
+        print(f"  Processed {total_orgs} orgs...")
+
+        for org in response.data:
+            details = org.get("sse_details")
+            if not isinstance(details, dict):
+                continue
+
+            classified_at = details.get("classified_at")
+            if not classified_at:
+                continue
+
+            try:
+                dt = datetime.fromisoformat(classified_at.replace("Z", "+00:00"))
+                if dt < CUTOFF_DATE:
+                    old_orgs.append(org)
+            except (ValueError, AttributeError, TypeError):
+                continue
+
+        # Stop if we got fewer results than page size (last page)
+        if batch_size < page_size:
+            break
+
+        offset += page_size
 
     print(f"\nFound {len(old_orgs)} orgs assessed with old models (before Gemini 3.x + Tavily)")
-    print(f"Total orgs in DB: {len(response.data or [])}")
+    print(f"Total orgs in DB: {total_orgs}")
 
     if old_orgs:
         print("\nFirst 10 examples:")
