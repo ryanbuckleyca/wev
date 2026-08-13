@@ -5,26 +5,26 @@ Validates: Requirements 2.5, 2.7
 
 from unittest.mock import MagicMock
 
-from utils.organization_repository import OrganizationRepository, _escape_like
+from utils.organization_repository import OrganizationRepository, escape_like
 
-# ── _escape_like ────────────────────────────────────────────────────────────────
+# ── escape_like ────────────────────────────────────────────────────────────────
 
 
 class TestEscapeLike:
     def test_no_special_chars(self):
-        assert _escape_like("hello") == "hello"
+        assert escape_like("hello") == "hello"
 
     def test_escapes_percent(self):
-        assert _escape_like("100% Organic") == r"100\% Organic"
+        assert escape_like("100% Organic") == r"100\% Organic"
 
     def test_escapes_underscore(self):
-        assert _escape_like("test_name") == r"test\_name"
+        assert escape_like("test_name") == r"test\_name"
 
     def test_escapes_backslash(self):
-        assert _escape_like("foo\\bar") == r"foo\\bar"
+        assert escape_like("foo\\bar") == r"foo\\bar"
 
     def test_mixed_special_chars(self):
-        assert _escape_like("100%_organic") == r"100\%\_organic"
+        assert escape_like("100%_organic") == r"100\%\_organic"
 
 
 # ── find_by_name_and_location ───────────────────────────────────────────────────

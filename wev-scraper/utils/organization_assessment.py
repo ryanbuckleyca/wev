@@ -88,8 +88,8 @@ _JSON_FIELDS = """{
   "website": "Employer's own homepage URL (https://...), or null — see WEBSITE RULES",
   "description_en": "Organization description in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. Record provenance in flags as 'description via=extracted|inferred|absent'), or null",
   "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
-  "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. Record provenance in flags as 'mission via=extracted|inferred|absent'), or null",
-  "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
+  "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — ONLY extract if the organization explicitly states their mission/purpose on their own website or materials. Do NOT infer or compose a mission statement. If not found, use null. Record provenance in flags as 'mission via=extracted|absent'), or null",
+  "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if found in English, or extract if present in French on source. If not found, use null), or null",
   "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. A city/town/region name in the organization name is geographic branding only — NOT evidence of municipal/government status. Community orchestras, choirs, bands, theatres, and similar arts associations are typically 'nonprofit', not 'government', unless research shows a city department or statutory public body. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops and credit unions. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
   "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — extract closely from source. Record provenance in flags as 'values via=extracted|inferred|absent'), or null",
@@ -120,23 +120,27 @@ _ORG_CRITERION_LABEL_RULES = """ORG MUST-HAVES / NICE-TO-HAVES LABELS (strict �
 _FLAGS_RULES = """FLAGS RULES (mandatory — same shape as language provenance):
 For EACH of description, mission, and values include exactly one flag:
   description via=extracted|inferred|absent
-  mission via=extracted|inferred|absent
+  mission via=extracted|absent  (NEVER inferred — only use extracted or absent)
   values via=extracted|inferred|absent
 
 Use:
-- via=extracted — closely taken/paraphrased from the org's own website or official materials
-- via=inferred — you composed or guessed it (including mapping Knowdell values from other text)
+- via=extracted — ONLY when you found the text on the organization's OWN official website or materials (not third-party descriptions, not news articles, not directories). If the supporting web evidence does NOT include the organization's own domain, you MUST use via=inferred (for description/values) or via=absent (for mission), NOT via=extracted.
+- via=inferred — you composed or guessed it from secondary sources, third-party descriptions, or mapped it from other text (including mapping Knowdell values from other text). ONLY valid for description and values fields. NEVER use for mission.
 - via=absent — you returned null/empty for that field
+
+CRITICAL: If the organization's own website was unavailable or not found in the search results, ALL fields MUST be via=inferred (description/values) or via=absent (mission/missing fields), NEVER via=extracted.
+
+CRITICAL: Mission statements MUST ONLY be extracted from the organization's own explicit statement of mission/purpose. Do NOT compose, infer, or synthesize mission statements. If no explicit mission statement is found, use null and flag as 'mission via=absent'.
 
 Language provenance is added by code after your response (language:… via=… /
 language_reason:…). Do not invent language flags yourself.
 
 Also add when relevant:
-- website_unavailable — site unreachable or had no useful content
+- website_unavailable — when the org's own website was unreachable or not found in search results
 - any other short concern labels
 
 Most organizations do NOT explicitly publish a mission statement or values list —
-prefer mission via=inferred / values via=inferred over claiming extracted."""
+use mission via=absent / values via=inferred when not found on their site."""
 
 _BILINGUAL_COPY_RULES = """BILINGUAL PUBLIC COPY (required):
 - Always provide BOTH English and French for description_*, mission_statement_*, and sse_reasoning_* when you have enough evidence to write the field at all.
@@ -147,24 +151,20 @@ _BILINGUAL_COPY_RULES = """BILINGUAL PUBLIC COPY (required):
 - must_haves_met / nice_to_haves_met must follow ORG CRITERION LABEL RULES (org criteria only — never compensation)."""
 
 _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
-- Prefer the organization's own official homepage (the domain they control).
-- If ORGANIZATION DATA lists a Known website that is an employer-owned http(s)
-  homepage (not shared/ATS/social), RETURN THAT URL. Do not null it out for
-  low confidence, alternate hosts, or re-assess caution — known good sites must
-  survive re-assessment. Only replace Known website when research clearly shows
-  a better employer-owned homepage (same org) or Known violates the rules below.
-- Do NOT use job-board, ATS, or careers-platform URLs (e.g. Greenhouse, Lever,
-  Workday, Indeed, CharityVillage, LinkedIn jobs).
-- Do NOT use social profiles or link aggregators (Facebook, Instagram, LinkedIn
-  company pages, Linktree, bit.ly) unless that is truly their only web presence
-  — in that case return null instead (social hosts are not reliable identity).
-- Do NOT use the scraped job listing URL.
-- If Known website is "(none …)" / missing: return null unless research/search
-  evidence clearly identifies the employer-owned homepage. Never invent a domain
-  from the organization name (e.g. name.ca / name.org guesses).
-- If Known is missing and you cannot confidently identify the employer-owned
-  site from research, return null.
-- Prefer https:// and the apex/homepage over a deep job posting path."""
+- Extract the BEST AVAILABLE URL from research/search results.
+- ACCEPT any URL that identifies this specific organization, including:
+  * Official homepages (preferred)
+  * Marketplace/directory pages
+  * Social media pages - these are VALID if they have organization info
+- If you find ANY URL in the grounding evidence, return it.
+- Social media and marketplace pages are LEGITIMATE web presences for small organizations.
+- If ORGANIZATION DATA lists a Known website that looks wrong (different location/name),
+  REPLACE IT with any better URL you find in the grounding evidence.
+- Do NOT use job-board or ATS URLs (Greenhouse, Lever, Workday, Indeed, CharityVillage).
+- Do NOT use link aggregators (Linktree, bit.ly).
+- Do NOT use the scraped job listing URL itself.
+- If you cannot find ANY URL in research/grounding evidence, return null.
+- Prefer https:// and prefer homepages over deep paths."""
 
 _PUBLIC_LANGUAGE_RULES = """PUBLIC_LANGUAGE RULES:
 Priority for public_language (en | fr | bilingual | null):
@@ -362,14 +362,32 @@ def _build_search_query(
     province: str | None = None,
     known_website: str | None = None,
 ) -> str:
-    """Grounding query aimed at the employer's own site, not the job board."""
-    parts = [f'"{raw_name}"', "official website"]
-    if municipality:
-        parts.append(municipality)
-    if province:
-        parts.append(province)
+    """Grounding query aimed at finding the organization's web presence.
+
+    Includes location prominently to avoid matching organizations with similar
+    names in different regions/countries. Does NOT include "official website"
+    since that biases search toward generic content and misses marketplace/social pages.
+    """
+    # Start with quoted name and Canada to avoid international matches
+    parts = [f'"{raw_name}"']
+
+    # Add location BEFORE other terms to make it prominent in search
+    if municipality and province:
+        parts.append(f"{municipality}, {province}, Canada")
+    elif province:
+        parts.append(f"{province}, Canada")
+    elif municipality:
+        parts.append(f"{municipality}, Canada")
+    else:
+        parts.append("Canada")
+
+    # Do NOT add "official website" - it biases toward generic content
+    # and misses marketplace pages and social media
+
+    # Only include known_website if it's evidence-grade (not social/shared)
     if known_website and evidence_domain(known_website):
         parts.append(known_website.strip())
+
     return " ".join(parts)
 
 
@@ -457,7 +475,8 @@ def _ensure_content_provenance_flags(result: AssessedOrgResult) -> AssessedOrgRe
     """Ensure description/mission/values each have a ``field via=…`` flag.
 
     Matches language provenance shape (``language:en via=web_text``). If the
-    model omitted provenance for a populated field, default to via=inferred.
+    model omitted provenance for a populated field, default to via=inferred
+    (or via=absent for mission, which should never be inferred).
     """
     original = list(result.get("flags") or [])
     kept = [f for f in original if isinstance(f, str) and not _is_content_provenance_flag(f)]
@@ -479,7 +498,15 @@ def _ensure_content_provenance_flags(result: AssessedOrgResult) -> AssessedOrgRe
     for field in _CONTENT_PROVENANCE_FIELDS:
         status = _content_via_from_flags(original, field)
         if status is None:
-            status = "inferred" if present[field] else "absent"
+            # Mission should never be inferred - default to absent
+            if field == "mission":
+                status = "absent"
+            else:
+                status = "inferred" if present[field] else "absent"
+        # Validate mission can only be extracted or absent
+        if field == "mission" and status == "inferred":
+            status = "absent"
+            flags.append("mission_inferred_downgraded_to_absent")
         flags.append(f"{field} via={status}")
 
     if flags == original:
@@ -491,25 +518,43 @@ def _apply_website_known_guard(
     result: AssessedOrgResult,
     known_website: str | None,
 ) -> AssessedOrgResult:
-    """Prefer a known employer-owned website for cross-provider predictability.
+    """Allow website updates when discovered via grounding.
 
-    When Known website is evidence-grade, keep that URL (Gemini/Groq/Ollama often
-    invent alternate hosts without grounding). Model-discovered sites are kept
-    only when no known URL was provided.
+    Previously, this function always preferred known_website to prevent LLMs from
+    inventing URLs. However, now that we use Tavily grounding and location validation,
+    discovered websites are trustworthy and should replace potentially incorrect known URLs.
+
+    The function now:
+    1. Uses discovered website if found (from Tavily grounding)
+    2. Falls back to known website only if no discovered website found
+    3. Flags mismatches for auditing purposes
     """
-    known = known_website.strip() if known_website and evidence_domain(known_website) else None
-    if not known:
-        return result
-    current = result.get("website")
-    if current and extract_domain(current) == extract_domain(known):
-        # Normalize to the known URL string when domains match.
-        if current == known:
-            return result
-        return AssessedOrgResult(**{**result, "website": known})
-    flags = list(result.get("flags") or [])
-    if current and evidence_domain(current):
-        flags.append(f"website_guard: preferred known over model ({current})")
-    return AssessedOrgResult(**{**result, "website": known, "flags": flags})
+    known = known_website.strip() if known_website else None
+
+    discovered = result.get("website")
+    discovered_clean = discovered.strip() if discovered else None
+
+    if not discovered_clean:
+        # No discovered website - fall back to known
+        if flags := result.get("flags"):
+            if not any("website" in str(f).lower() for f in flags):
+                flags_list = list(flags)
+                flags_list.append("website_not_found")
+                result = AssessedOrgResult(**{**result, "flags": flags_list})
+        return result if not known else AssessedOrgResult(**{**result, "website": known})
+
+    # Discovered website exists - use it (trust Tavily + location validation)
+    if known:
+        discovered_domain = extract_domain(discovered_clean) or ""
+        known_domain = extract_domain(known) or ""
+        if discovered_domain and known_domain and discovered_domain != known_domain:
+            # Flag that we're updating the website
+            flags = list(result.get("flags") or [])
+            flags.append(f"website_updated: {known_domain} -> {discovered_domain}")
+            result = AssessedOrgResult(**{**result, "flags": flags})
+
+    # Use discovered website
+    return result
 
 
 def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgResult:
@@ -577,7 +622,12 @@ _CHARITY_REGISTRATION_EVIDENCE_RE = re.compile(
 # Applied only after private/commercial demotion has already been checked.
 _SOFT_NONPROFIT_EVIDENCE_RE = re.compile(
     r"public[- ]benefit|community (?:benefit|mission|service)|"
-    r"volunteer board|without (?:private )?shareholders?",
+    r"volunteer board|without (?:private )?shareholders?|"
+    r"volunteer[- ](?:run|led|based|driven|center|centre|organization)|"
+    r"(?:staffed|composed|operated)\s+(?:by|mainly by|primarily by)\s+volunteers?|"
+    r"non[- ]?profit(?:able)?(?:\s+organization)?|charitable\s+(?:mission|purpose|aims?)|"
+    r"community[- ]based\s+(?:organization|service)|social\s+(?:mission|purpose)|"
+    r"serves?\s+the\s+(?:community|public)|community\s+solidarity",
     re.IGNORECASE,
 )
 
@@ -772,7 +822,17 @@ def _parse_text_field(data: dict, key: str) -> str | None:
 
 
 def _parse_website(raw: Any) -> str | None:
-    """Keep only http(s) employer-owned sites; drop ATS/social/shared hosts."""
+    """Keep http(s) employer-owned sites; allow social/marketplace as fallback.
+
+    Previously rejected all shared domains (Facebook, LinkedIn, etc). Now allows
+    them as valid web presences when they're the best available option, since
+    many small organizations only have social media or marketplace pages.
+
+    However, we still reject:
+    - Link aggregators (Linktree, bit.ly)
+    - Job boards and ATS platforms
+    - Malformed URLs
+    """
     if not raw:
         return None
     url = str(raw).strip()
@@ -780,15 +840,60 @@ def _parse_website(raw: Any) -> str | None:
         return None
     if "://" not in url:
         url = "https://" + url
-    parsed = urlparse(url)
+
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return None
+
     if parsed.scheme not in ("http", "https"):
         return None
-    if evidence_domain(url) is None:
-        logger.info(
-            "OrganizationAssessor: rejecting non-evidence website %r",
-            url,
-        )
+
+    # Validate hostname exists and is not empty
+    hostname = parsed.hostname
+    if not hostname or not hostname.strip():
         return None
+
+    # Basic hostname validation - must contain at least one dot and alphanumeric chars
+    if "." not in hostname or not re.search(r"[a-z0-9]", hostname.lower()):
+        return None
+
+    # Reject link aggregators - these are NEVER valid org identities
+    link_aggregators = {
+        "linktr.ee",
+        "bit.ly",
+        "tinyurl.com",
+        "t.co",
+        "ow.ly",
+        "buff.ly",
+    }
+
+    hostname_lower = hostname.lower().strip(".")
+    if hostname_lower in link_aggregators:
+        return None
+    if any(hostname_lower.endswith("." + host) for host in link_aggregators):
+        return None
+
+    # Reject job boards and ATS platforms entirely - these are NOT valid org identifiers
+    # Even with paths, these are job listing URLs, not organization websites
+    # Only exception: Social media company pages (facebook.com/company, linkedin.com/company)
+    # and ATS platforms with org-specific SUBDOMAINS (e.g., boards.greenhouse.io)
+    # which are handled via the shared domain logic in extract_org_identity
+    job_boards = {
+        "indeed.com",
+        "glassdoor.com",
+        "charityvillage.com",
+    }
+
+    # Reject if it's a direct job board domain (with or without path)
+    if hostname_lower in job_boards:
+        return None
+    if any(hostname_lower.endswith("." + host) for host in job_boards):
+        # Allow ATS subdomains like boards.greenhouse.io, careers.greenhouse.io
+        # These have org-specific paths and are tracked in shared domains
+        # But reject direct subdomains of job boards (e.g., ca.indeed.com/jobs)
+        return None
+
     return url
 
 
@@ -859,10 +964,14 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         data, "sse_reasoning_en", "sse_reasoning_fr", "sse_reasoning"
     )
 
+    # Log what website the LLM returned (debug level to avoid routinely logging potentially sensitive fields)
+    llm_website = data.get("website")
+    logger.debug(f"LLM returned website field: {llm_website!r} for org {canonical_name}")
+
     result = AssessedOrgResult(
         canonical_name=canonical_name.strip(),
         slug=slug,
-        website=_parse_website(data.get("website")),
+        website=_parse_website(llm_website),
         description_en=description_en,
         description_fr=description_fr,
         mission_statement_en=mission_en,
@@ -923,6 +1032,54 @@ def _append_language_provenance_flags(
         flag = f"language_reason:{label}"
         if flag not in flags:
             flags.append(flag)
+    details["flags"] = flags
+
+
+def _append_website_identity_flags(
+    row: dict,
+    website: str | None,
+    identity: str | None,
+) -> None:
+    """Record website identity provenance on sse_details.flags.
+
+    Tracks the type of website (employer_owned, marketplace, social_media, etc.)
+    and the platform for shared hosting sites to enable filtering and review.
+    """
+    from utils.organization_cache import classify_identity_type, extract_platform
+
+    details = row.get("sse_details")
+    if not isinstance(details, dict):
+        details = {}
+        row["sse_details"] = details
+    else:
+        # Copy so we don't mutate a shared prior dict in place
+        details = dict(details)
+        row["sse_details"] = details
+
+    # Remove existing website via/platform flags (preserve other website_* flags)
+    flags = [
+        f for f in (details.get("flags") or [])
+        if isinstance(f, str)
+        and not f.startswith("website via=")
+        and not f.startswith("website_platform:")
+    ]
+
+    if not website:
+        details["flags"] = flags
+        return
+
+    # Determine identity type
+    identity_type = classify_identity_type(identity)
+
+    # Add new website flags
+    flags.append(f"website via={identity_type}")
+
+    # Add platform detail for non-employer domains
+    if identity_type not in {"employer_owned", "unknown", "invalid"}:
+        platform = extract_platform(identity)
+        if platform and platform != "unknown":
+            flags.append(f"website_platform:{platform}")
+
     details["flags"] = flags
 
 
@@ -1182,12 +1339,13 @@ class OrganizationAssessor(BaseGroundedClassifier):
             prompt = inject_grounding_evidence(prompt, prefetched)
 
         search_query = _build_search_query(
-            raw_name, municipality, province, known_website=known_website,
+            raw_name, municipality, province, known_website=None,  # Don't bias search with potentially wrong website
         )
         prefer_hosts = None
-        if known_website and evidence_domain(known_website):
-            host = extract_domain(known_website)
-            prefer_hosts = [host] if host else None
+        # Don't use known_website to bias Tavily - let it find the best match based on name+location
+        # if known_website and evidence_domain(known_website):
+        #     host = extract_domain(known_website)
+        #     prefer_hosts = [host] if host else None
         from llm.tavily_grounding import entity_require_terms
 
         require_terms = entity_require_terms(raw_name) or None
@@ -1242,7 +1400,128 @@ class OrganizationAssessor(BaseGroundedClassifier):
         result = _parse_response(response_text, raw_name)
         if result is None:
             return None
+
+        # Location validation: when we used grounding, validate that the discovered content
+        # matches the expected location and name (regardless of whether we have a known_website)
+        # Accept non-official sites as long as both name AND location match together
+        if use_grounding:
+            discovered_website = result.get("website")
+            if discovered_website and evidence_domain(discovered_website):
+                # Build location terms to check
+                location_terms = []
+                if municipality:
+                    # Add municipality terms (e.g., "Oxford County" -> ["oxford", "county"])
+                    location_terms.extend([t.lower() for t in municipality.split() if len(t) > 2])
+                if province:
+                    # Add province terms and abbreviations
+                    location_terms.extend([province.lower(), province.upper()])
+                    # Add common province name variations
+                    province_map = {
+                        "ON": ["ontario"],
+                        "QC": ["quebec", "québec"],
+                        "BC": ["british columbia"],
+                        "AB": ["alberta"],
+                        # Add more as needed
+                    }
+                    if province.upper() in province_map:
+                        location_terms.extend(province_map[province.upper()])
+
+                # If we have location info, validate it appears in the response
+                # We need at least 2 location term matches to avoid false positives from incidental mentions
+                if location_terms:
+                    # Check response_text and result fields for location terms
+                    searchable_content = " ".join([
+                        response_text.lower(),
+                        result.get("description_en", "").lower(),
+                        result.get("description_fr", "").lower(),
+                        result.get("mission_statement_en", "").lower() if result.get("mission_statement_en") else "",
+                        result.get("mission_statement_fr", "").lower() if result.get("mission_statement_fr") else "",
+                        str(result.get("values_en", [])).lower() if result.get("values_en") else "",
+                        str(result.get("values_fr", [])).lower() if result.get("values_fr") else "",
+                    ])
+
+                    # Count how many location terms match
+                    matches = [term for term in location_terms if term in searchable_content]
+
+                    # Require at least 2 distinct location term matches (or all terms if less than 2)
+                    required_matches = min(2, len(location_terms))
+                    location_found = len(matches) >= required_matches
+
+                    if not location_found:
+                        # Location mismatch - reject this result
+                        logger.warning(
+                            "OrganizationAssessor: location mismatch for %r - expected %s but found only %d/%d location terms: %s. Skipping.",
+                            raw_name,
+                            f"{municipality}, {province}" if municipality and province else municipality or province,
+                            len(matches),
+                            len(location_terms),
+                            matches,
+                        )
+                        return None
+
+                # Also validate name appears in domain (but be forgiving about exact match)
+                # Skip this check if we have a known_website (trust the known website)
+                if not known_website:
+                    discovered_domain = extract_domain(discovered_website) or ""
+                    raw_name.lower().replace(" ", "").replace("-", "").replace("_", "")
+                    domain_lower = discovered_domain.lower().replace("-", "").replace(".", "").replace("_", "")
+
+                    # Extract significant name parts (skip common words like "the", "and", etc.)
+                    skip_words = {"the", "and", "or", "of", "for", "inc", "ltd", "corp", "company"}
+                    name_parts = [
+                        p for p in raw_name.lower().split()
+                        if len(p) > 2 and p not in skip_words
+                    ]
+
+                    # Check if at least one significant name part appears in domain
+                    name_match = False
+                    if name_parts:
+                        # Check first 1-2 significant words from org name
+                        for part in name_parts[:2]:
+                            part_clean = part.replace("-", "").replace("_", "")
+                            if part_clean in domain_lower:
+                                name_match = True
+                                break
+                    else:
+                        # No significant name parts to check - accept it
+                        name_match = True
+
+                    if not name_match:
+                        # Name doesn't match domain - check if location at least matches
+                        # If location matches, we can still accept it (non-official site is OK)
+                        if location_terms:
+                            location_found_in_domain = any(term in discovered_domain.lower() for term in location_terms)
+                            if location_found_in_domain:
+                                # Location in domain compensates for name mismatch
+                                logger.info(
+                                    "OrganizationAssessor: accepting %r despite name mismatch - location found in domain %s",
+                                    raw_name, discovered_domain,
+                                )
+                            else:
+                                # Neither name nor location match - reject
+                                logger.warning(
+                                    "OrganizationAssessor: name and location mismatch for %r - domain %s doesn't match. Skipping.",
+                                    raw_name, discovered_domain,
+                                )
+                                return None
+                        else:
+                            # No location to validate, only name mismatch - reject
+                            logger.warning(
+                                "OrganizationAssessor: name mismatch for %r - domain %s doesn't contain org name. Skipping.",
+                                raw_name, discovered_domain,
+                            )
+                            return None
+
         result = _apply_website_known_guard(result, known_website)
+
+        # Add model used to flags for auditing
+        if hasattr(self.provider, 'current_model'):
+            model_used = self.provider.current_model
+            if model_used and model_used != "none":
+                flags = list(result.get("flags") or [])
+                flags.append(f"model:{model_used}")
+                result = AssessedOrgResult(**{**result, "flags": flags})
+
         return self._ensure_length_limits(result, raw_name)
 
     def _ensure_length_limits(
@@ -1260,7 +1539,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
             raw_name,
             {field: f"{len(text)} > {max_chars}" for field, (text, max_chars) in oversize.items()},
         )
-        
+
         updates: dict[str, Any] = {}
         flags = list(result.get("flags") or [])
         for field, (original, max_chars) in oversize.items():
@@ -1302,19 +1581,32 @@ class OrganizationAssessor(BaseGroundedClassifier):
         # lat, lng, geocode_accuracy_type); it handles None/empty internally.
         geo_data = parse_address_with_geocodio(loc_str)
 
+        # Build the row with all fields
+        row = {
+            "name": result["canonical_name"],
+            "slug": result["slug"],
+            "location": loc_str,
+            "website": result["website"],
+            "municipality": geo_data.get("municipality"),
+            "province": geo_data.get("province"),
+            "lat": geo_data.get("lat"),
+            "lng": geo_data.get("lng"),
+            "geocode_accuracy_type": geo_data.get("geocode_accuracy_type"),
+            **_result_to_db_fields(result),
+        }
+
+        # Add website identity provenance flags if website exists
+        website = result.get("website")
+        if website:
+            from utils.organization_cache import extract_org_identity
+
+            identity = extract_org_identity(website)
+            # Only add flags if identity was successfully extracted
+            if identity:
+                _append_website_identity_flags(row, website, identity)
+
         return _attach_org_language(
-            {
-                "name": result["canonical_name"],
-                "slug": result["slug"],
-                "location": loc_str,
-                "website": result["website"],
-                "municipality": geo_data.get("municipality"),
-                "province": geo_data.get("province"),
-                "lat": geo_data.get("lat"),
-                "lng": geo_data.get("lng"),
-                "geocode_accuracy_type": geo_data.get("geocode_accuracy_type"),
-                **_result_to_db_fields(result),
-            },
+            row,
             result.get("public_language"),
             fetch_web=fetch_web,
         )
@@ -1362,7 +1654,17 @@ class OrganizationAssessor(BaseGroundedClassifier):
         updates = _omit_null_locale_fields_from_update(updates)
         updates = _merge_sse_details_preserving_reasoning(updates, org.get("sse_details"))
         website = result.get("website")
-        if website and evidence_domain(website):
+        # Accept ANY website returned by LLM (location validation already done)
+        if website:
+            from utils.organization_cache import extract_org_identity
+
+            # Extract identity for uniqueness matching and flag tracking
+            identity = extract_org_identity(website)
+
+            # Only add flags if identity was successfully extracted
+            if identity:
+                _append_website_identity_flags(updates, website, identity)
+
             updates["website"] = website
         return _attach_org_language(
             {

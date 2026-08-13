@@ -234,7 +234,7 @@ def fetch_tavily_context(
                 )
                 time.sleep(backoff)
                 continue
-            logger.warning(
+            logger.error(
                 "Tavily search failed after %s attempts: %s — continuing without evidence",
                 max_retries + 1,
                 exc,

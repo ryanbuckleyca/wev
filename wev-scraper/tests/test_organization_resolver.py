@@ -313,8 +313,8 @@ class TestDBMatchPath:
         assert result is None
         repo.insert.assert_not_called()
 
-    def test_llm_retry_ambiguous_does_not_fall_through_to_minimal(self):
-        """Assessor shared-host website must not undo an ambiguous block via minimal."""
+    def test_llm_retry_ambiguous_with_identity_creates_new_org(self):
+        """With identity tracking, ambiguous name match but unique identity creates new org."""
         org_rows = [
             {
                 "id": 1,
@@ -345,6 +345,8 @@ class TestDBMatchPath:
             "sse_details": None,
         }
         repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
+        # Mock find_by_identity to return no matches (unique identity)
+        repo.find_by_identity = MagicMock(return_value=[])
         assessor = _make_assessor(assessor_result)
         cache = OrganizationCache()
         resolver = OrganizationResolver(repo=repo, cache=cache, assessor=assessor)
@@ -358,9 +360,9 @@ class TestDBMatchPath:
             description="desc",
         )
 
-        assert result is None
-        repo.insert.assert_not_called()
-        assert cache.is_blocked("abc autobody|abc-third.ca")
+        # With identity tracking, unique Facebook URL creates new org
+        assert result == 99
+        repo.insert.assert_called_once()
 
     def test_domain_only_different_name_does_not_reuse(self):
         """Job name Acme + mindrift.ai must not attach to Mindrift org."""
@@ -412,7 +414,8 @@ class TestDBMatchPath:
         repo.find_by_domain.assert_not_called()
         repo.insert.assert_called_once()
 
-    def test_llm_path_does_not_persist_shared_ctx_website(self):
+    def test_llm_path_persists_shared_ctx_website_for_identity(self):
+        """Context website (even shared host) is now persisted for org identity tracking."""
         assessor_result = {
             "name": "Acme Corp",
             "slug": "acme-corp",
@@ -430,6 +433,8 @@ class TestDBMatchPath:
         }
         assessor = _make_assessor(assessor_result)
         repo = _make_repo(find_by_name=[], insert={"id": 77})
+        # Mock find_by_identity to return no matches
+        repo.find_by_identity = MagicMock(return_value=[])
         resolver = OrganizationResolver(
             repo=repo, cache=OrganizationCache(), assessor=assessor
         )
@@ -444,7 +449,8 @@ class TestDBMatchPath:
         )
 
         assert result == 77
-        assert repo.insert.call_args[0][0].get("website") is None
+        # Context website is now persisted for identity tracking
+        assert repo.insert.call_args[0][0].get("website") == "https://facebook.com/acme"
 
     def test_province_substring_does_not_inflate_score(self):
         resolver = _make_resolver(assessor=None)
@@ -487,7 +493,8 @@ class TestDBMatchPath:
         assert result == 10
         repo.insert.assert_not_called()
 
-    def test_minimal_fallback_drops_shared_website(self):
+    def test_minimal_fallback_accepts_shared_website_for_identity(self):
+        """Minimal fallback now accepts shared website for org identity tracking."""
         repo = _make_repo(find_by_name=[], insert={"id": 55})
         resolver = _make_resolver(repo=repo, assessor=None)
 
@@ -500,7 +507,8 @@ class TestDBMatchPath:
 
         assert result == 55
         row = repo.insert.call_args[0][0]
-        assert row.get("website") is None
+        # Context website is now persisted for identity tracking
+        assert row.get("website") == "https://facebook.com/unknown-org"
 
 
 # ── LLM success path ──────────────────────────────────────────────────────────

@@ -137,10 +137,12 @@ def test_sse_fallback_stops_at_flash_lite():
          patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
          patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=False), \
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider()
-        assert provider.complete("prompt", task="sse") == "lite-ok"
+        result = provider.complete("prompt", task="sse")
+        assert result == "lite-ok"
         groq.complete.assert_not_called()
         ollama.complete.assert_not_called()
         assert provider.current_model == DEFAULT_GEMINI_LITE
@@ -167,10 +169,12 @@ def test_sse_fallback_advances_on_empty_flash_response():
          patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
          patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=False), \
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider()
-        assert provider.complete("prompt", task="sse") == '{"ok": true}'
+        result = provider.complete("prompt", task="sse")
+        assert result == '{"ok": true}'
         flash.complete.assert_called_once()
         lite.complete.assert_called_once()
         groq.complete.assert_called_once()
@@ -224,10 +228,12 @@ def test_sse_fallback_never_auto_enables_google_search_when_tavily_empty():
          patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
          patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=False), \
          patch("llm.gemini_fallback._google_search_grounding_override", return_value=None):
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider()
-        assert provider.complete("prompt", task="sse", search_query="q") == "ok"
+        result = provider.complete("prompt", task="sse", search_query="q")
+        assert result == "ok"
         assert flash.complete.call_args.kwargs.get("use_grounding") is False
         assert "search_query" not in flash.complete.call_args.kwargs
 
@@ -254,14 +260,17 @@ def test_sse_fallback_empty_tavily_forces_non_gemini_grounding_off():
          patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
          patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=False), \
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider()
-        assert provider.complete("prompt", task="sse", search_query="q") == '{"ok": true}'
+        result = provider.complete("prompt", task="sse", search_query="q")
+        assert result == '{"ok": true}'
 
         for backend in (groq, ollama):
-            assert backend.complete.call_args.kwargs.get("use_grounding") is False
-            assert "search_query" not in backend.complete.call_args.kwargs
+            call_kwargs = backend.complete.call_args.kwargs
+            assert call_kwargs.get("use_grounding") is False
+            assert "search_query" not in call_kwargs
 
 
 def test_sse_fallback_google_search_opt_in_only_on_gemini():
@@ -285,10 +294,12 @@ def test_sse_fallback_google_search_opt_in_only_on_gemini():
          patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
          patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=False), \
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "1"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider()
-        assert provider.complete("prompt", task="sse", search_query="q") == "groq-ok"
+        result = provider.complete("prompt", task="sse", search_query="q")
+        assert result == "groq-ok"
         assert flash.complete.call_args.kwargs.get("use_grounding") is True
         assert lite.complete.call_args.kwargs.get("use_grounding") is True
         assert groq.complete.call_args.kwargs.get("use_grounding") is False
@@ -320,15 +331,13 @@ def test_sse_fallback_gemini_model_override_not_forwarded_to_groq():
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider()
-        assert (
-            provider.complete(
-                "prompt",
-                model="gemini-3.6-flash",
-                task="sse",
-                search_query="q",
-            )
-            == "groq-ok"
+        result = provider.complete(
+            "prompt",
+            model="gemini-3.6-flash",
+            task="sse",
+            search_query="q",
         )
+        assert result == "groq-ok"
         assert flash.complete.call_args.kwargs.get("model") == "gemini-3.6-flash"
         assert lite.complete.call_args.kwargs.get("model") == "gemini-3.6-flash"
         assert groq.complete.call_args.kwargs.get("model") is None
@@ -360,15 +369,13 @@ def test_sse_fallback_gemini_model_override_not_forwarded_to_ollama():
          patch.dict("os.environ", {"USE_GOOGLE_SEARCH_GROUNDING": "0"}, clear=False):
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider()
-        assert (
-            provider.complete(
-                "prompt",
-                model="gemini-3.5-flash-lite",
-                task="sse",
-                search_query="q",
-            )
-            == "ollama-ok"
+        result = provider.complete(
+            "prompt",
+            model="gemini-3.5-flash-lite",
+            task="sse",
+            search_query="q",
         )
+        assert result == "ollama-ok"
         assert flash.complete.call_args.kwargs.get("model") == "gemini-3.5-flash-lite"
         assert groq.complete.call_args.kwargs.get("model") is None
         assert ollama.complete.call_args.kwargs.get("model") is None
@@ -392,18 +399,17 @@ def test_sse_fallback_forwards_use_grounding_false():
     with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
          patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
          patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
-         patch("llm.gemini_fallback.fetch_tavily_context") as mock_tavily:
+         patch("llm.gemini_fallback.fetch_tavily_context") as mock_tavily, \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=False):
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider()
-        assert (
-            provider.complete(
-                "prompt",
-                task="sse",
-                use_grounding=False,
-                search_query="should-not-fetch",
-            )
-            == "ok"
+        result = provider.complete(
+            "prompt",
+            task="sse",
+            use_grounding=False,
+            search_query="should-not-fetch",
         )
+        assert result == "ok"
         mock_tavily.assert_not_called()
         assert flash.complete.call_args.kwargs.get("use_grounding") is False
 
@@ -427,10 +433,12 @@ def test_sse_fallback_disables_google_search_when_tavily_injected():
          patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
          patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
          patch("llm.gemini_fallback.fetch_tavily_context", return_value="EVIDENCE"), \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=True), \
          patch("llm.gemini_fallback._google_search_grounding_override", return_value=None):
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider()
-        assert provider.complete("prompt", task="sse", search_query="q") == "ok"
+        result = provider.complete("prompt", task="sse", search_query="q")
+        assert result == "ok"
         assert flash.complete.call_args.kwargs.get("use_grounding") is False
         assert "EVIDENCE" in flash.complete.call_args.args[0]
 
@@ -465,6 +473,7 @@ def test_sse_fallback_truncates_cloud_grounded_prompt_keeps_ollama_budget():
          patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
          patch("llm.gemini_fallback.LocalGroundedProvider", return_value=ollama), \
          patch("llm.gemini_fallback.fetch_tavily_context", return_value=huge_evidence), \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=True), \
          patch.dict(
              "os.environ",
              {
@@ -476,7 +485,8 @@ def test_sse_fallback_truncates_cloud_grounded_prompt_keeps_ollama_budget():
          ):
         mock_gemini.side_effect = [flash, lite]
         provider = SSEFallbackProvider()
-        assert provider.complete(huge_prompt, task="sse", search_query="q") == '{"ok": true}'
+        result = provider.complete(huge_prompt, task="sse", search_query="q")
+        assert result == '{"ok": true}'
 
         # Cloud backends receive head+tail truncated combined prompts.
         for backend in (flash, lite, groq):

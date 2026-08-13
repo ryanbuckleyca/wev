@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 _LIKE_SPECIAL = re.compile(r"[%_\\]")
 
 
-def _escape_like(s: str) -> str:
+def escape_like(s: str) -> str:
     """Escape % and _ for ILIKE so they're treated literally.
 
     PostgREST passes ILIKE values through to PostgreSQL, where % and _
@@ -39,7 +39,7 @@ class OrganizationRepository:
             resp = (
                 self._supabase.table("organizations")
                 .select("id, name, location, website")
-                .ilike("name", _escape_like(name.strip()))
+                .ilike("name", escape_like(name.strip()))
                 .execute()
             )
             return resp.data or []
@@ -62,7 +62,7 @@ class OrganizationRepository:
                 resp = (
                     self._supabase.table("organizations")
                     .select("id, name, location, website")
-                    .ilike("website", f"%{_escape_like(host)}%")
+                    .ilike("website", f"%{escape_like(host)}%")
                     .execute()
                 )
                 for row in resp.data or []:
@@ -86,10 +86,10 @@ class OrganizationRepository:
             query = (
                 self._supabase.table("organizations")
                 .select("id")
-                .ilike("name", _escape_like(name.strip()))
+                .ilike("name", escape_like(name.strip()))
             )
             if location is not None and location.strip():
-                query = query.ilike("location", _escape_like(location.strip()))
+                query = query.ilike("location", escape_like(location.strip()))
             else:
                 # Both NULL and '' need to match because the unique identity index
                 # treats them identically: coalesce(nullif(lower(btrim(location)), ''), '')

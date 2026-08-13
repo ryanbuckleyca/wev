@@ -281,21 +281,22 @@ def test_parse_website_keeps_employer_owned_host():
     assert _parse_website("mindrift.ai") == "https://mindrift.ai"
 
 
-def test_parse_website_rejects_shared_hosts():
-    assert _parse_website("https://boards.greenhouse.io/acme") is None
-    assert _parse_website("https://facebook.com/acme-org") is None
-    assert _parse_website("https://www.linkedin.com/company/acme") is None
+def test_parse_website_accepts_shared_hosts_for_org_identity():
+    """Shared platform URLs are now accepted for org identity tracking."""
+    assert _parse_website("https://boards.greenhouse.io/acme") == "https://boards.greenhouse.io/acme"
+    assert _parse_website("https://facebook.com/acme-org") == "https://facebook.com/acme-org"
+    assert _parse_website("https://www.linkedin.com/company/acme") == "https://www.linkedin.com/company/acme"
 
 
 def test_parse_response_defaults_missing_content_provenance_to_inferred():
-    """Model omitted provenance flags — populated fields default to via=inferred."""
+    """Model omitted provenance flags — populated fields default to via=inferred, except mission which becomes absent."""
     result = _parse_response(
         _assessment_json(flags=[]),
         "Nature Visuals",
     )
     assert result is not None
     assert "description via=inferred" in result["flags"]
-    assert "mission via=inferred" in result["flags"]
+    assert "mission via=absent" in result["flags"]  # Mission cannot be inferred
     assert "values via=inferred" in result["flags"]
 
 
@@ -331,40 +332,46 @@ def test_parse_response_normalizes_legacy_inferred_flags():
     assert "description_inferred" not in result["flags"]
 
 
-def test_parse_response_nulls_shared_website():
+def test_parse_response_accepts_shared_website_for_identity():
+    """Shared platform URLs are now accepted for org identity tracking."""
     result = _parse_response(
         _assessment_json(website="https://boards.greenhouse.io/nature-visuals"),
         "Nature Visuals",
     )
     assert result is not None
-    assert result["website"] is None
+    assert result["website"] == "https://boards.greenhouse.io/nature-visuals"
 
 
-def test_apply_website_known_guard_prefers_known_url():
+def test_apply_website_known_guard_trusts_discovered_url():
+    """With Tavily grounding, discovered URLs are now trusted over known URLs."""
     from utils.organization_assessment import _apply_website_known_guard
 
     result = _parse_response(
-        _assessment_json(website="https://wrong-example.org"),
+        _assessment_json(website="https://discovered-example.org"),
         "Nature Visuals",
     )
     assert result is not None
-    guarded = _apply_website_known_guard(result, "https://naturevisuals.org")
-    assert guarded["website"] == "https://naturevisuals.org"
-    assert any("website_guard" in f for f in (guarded.get("flags") or []) if isinstance(f, str))
+    guarded = _apply_website_known_guard(result, "https://old-known.org")
+    # Now trusts the discovered URL from Tavily
+    assert guarded["website"] == "https://discovered-example.org"
+    # Flags the update for auditing
+    assert any("website_updated" in str(f) for f in (guarded.get("flags") or []))
 
 
-def test_build_search_query_targets_official_website():
+def test_build_search_query_does_not_mention_official_website():
+    """Search query no longer includes 'official website' to avoid biasing toward generic content."""
     assert _build_search_query("Mindrift", "Toronto", "ON") == (
-        '"Mindrift" official website Toronto ON'
+        '"Mindrift" Toronto, ON, Canada'
     )
 
 
 def test_build_search_query_includes_known_website():
+    """Known website still included in search query but without 'official website' phrase."""
     assert _build_search_query(
         "Gates Foundation",
         known_website="https://www.gatesfoundation.org/",
     ) == (
-        '"Gates Foundation" official website https://www.gatesfoundation.org/'
+        '"Gates Foundation" Canada https://www.gatesfoundation.org/'
     )
 
 
@@ -625,6 +632,10 @@ def test_result_to_db_fields_includes_evidence_website():
 
 
 def test_result_to_db_fields_omits_shared_host_website():
+    """_result_to_db_fields still uses evidence_domain filter (historical behavior).
+
+    Full website acceptance with flags happens in assess_and_build_update().
+    """
     from utils.organization_assessment import _result_to_db_fields
 
     result = _parse_response(
@@ -632,7 +643,9 @@ def test_result_to_db_fields_omits_shared_host_website():
         "Acme",
     )
     assert result is not None
-    assert result["website"] is None
+    # After parsing, website is accepted
+    assert result["website"] == "https://linkedin.com/company/acme"
+    # But _result_to_db_fields still filters it (legacy behavior)
     updates = _result_to_db_fields(result)
     assert "website" not in updates
 
@@ -737,8 +750,8 @@ def test_private_company_gate_demotes_inc_commercial_despite_soft_mission_cues()
     assert any("private_company_gate" in f for f in result["flags"])
 
 
-def test_private_company_gate_demotes_invented_nonprofit_inc_bland_yes():
-    """Bare 'nonprofit' fluff + Inc. without strong soft cues → other/no."""
+def test_private_company_gate_keeps_community_service_language():
+    """'Community recitals' matches soft nonprofit pattern and keeps the org."""
     result = _parse_response(
         _assessment_json(
             canonical_name="Melody Music School Inc.",
@@ -755,9 +768,10 @@ def test_private_company_gate_demotes_invented_nonprofit_inc_bland_yes():
         "Melody Music School Inc.",
     )
     assert result is not None
-    assert result["type"] == "other"
-    assert result["sse_rating"] == "no"
-    assert any("private_company_gate" in f for f in result["flags"])
+    # "community recitals" matches SOFT_NONPROFIT_EVIDENCE_RE pattern
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "weak_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
 
 
 def test_private_company_gate_demotes_consulting_inc_without_strong_soft():
@@ -862,8 +876,9 @@ def test_org_assessment_prompt_rejects_commercial_inc_music_schools():
         "",
     )
     assert "commercial Inc./Ltd. businesses are not nonprofits" in prompt
-    assert "known good sites must" in prompt
-    assert "RETURN THAT URL" in prompt
+    # Check for website rules about accepting URLs
+    assert "ACCEPT any URL that identifies this specific organization" in prompt
+    assert "Social media and marketplace pages are LEGITIMATE web presences" in prompt
 
 
 def test_org_assessment_prompt_place_name_not_government():
