@@ -41,6 +41,11 @@ DEFAULT_MAX_GROUNDED_PROMPT_CHARS = 100_000
 DEFAULT_TAVILY_TIMEOUT_SEC = 30.0
 DEFAULT_TAVILY_MAX_RETRIES = 2
 
+
+class TavilyGroundingError(LLMProviderError):
+    """Raised when Tavily grounding fails and is required for the operation."""
+    pass
+
 _TRUNCATE_MARK = (
     "\n\n…[middle truncated — use rules above + data below]\n\n"
 )
@@ -158,6 +163,7 @@ def fetch_tavily_context(
     include_domains: list[str] | None = None,
     prefer_hosts: list[str] | None = None,
     require_terms: list[str] | None = None,
+    required: bool = False,
 ) -> str:
     """Return concatenated Tavily snippets for *query*, or '' on soft failure.
 
@@ -166,12 +172,19 @@ def fetch_tavily_context(
 
     When *require_terms* is set, drop snippets that mention none of those terms
     (soft: if every hit would be dropped, keep the unfiltered ranked list).
+
+    When *required* is True, raises TavilyGroundingError on failure instead of
+    returning empty string (use when grounding is mandatory for the operation).
     """
     q = (query or "").strip()
     if not q:
         return ""
     if not is_tavily_available():
-        logger.warning("Tavily unavailable (TAVILY_API_KEY missing) — no shared evidence")
+        msg = "Tavily unavailable (TAVILY_API_KEY missing) — no shared evidence"
+        if required:
+            logger.error(msg)
+            raise TavilyGroundingError(msg)
+        logger.warning(msg)
         return ""
 
     if max_chars is None:
@@ -235,17 +248,23 @@ def fetch_tavily_context(
                 time.sleep(backoff)
                 continue
             logger.error(
-                "Tavily search failed after %s attempts: %s — continuing without evidence",
+                "Tavily search failed after %s attempts: %s",
                 max_retries + 1,
                 exc,
             )
+            if required:
+                raise TavilyGroundingError(
+                    f"Tavily search failed after {max_retries + 1} attempts: {exc}"
+                ) from exc
+            logger.info("Continuing without evidence (required=False)")
             return ""
 
     if results is None:
-        logger.warning(
-            "Tavily search returned no response (%s) — continuing without evidence",
-            last_exc,
-        )
+        msg = f"Tavily search returned no response ({last_exc})"
+        if required:
+            logger.error(msg)
+            raise TavilyGroundingError(msg)
+        logger.warning(msg + " — continuing without evidence")
         return ""
 
     try:

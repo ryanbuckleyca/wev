@@ -199,13 +199,7 @@ class SSEFallbackProvider(BaseLLMProvider):
             logger.info("SSE provider %s cooldown expired, re-enabling", name)
             return False
 
-        # Still in cooldown
-        remaining_minutes = (cooldown_expires - now) / 60
-        logger.debug(
-            "SSE provider %s in cooldown (%.1f minutes remaining)",
-            name,
-            remaining_minutes,
-        )
+        # Still in cooldown - no logging needed (already logged when marked exhausted)
         return True
 
     def _mark_provider_exhausted(self, name: str) -> None:
