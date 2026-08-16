@@ -13,19 +13,14 @@ def main():
     # Check Tavily availability upfront
     if not is_tavily_available():
         print("=" * 80)
-        print("WARNING: TAVILY NOT AVAILABLE")
+        print("ERROR: TAVILY NOT AVAILABLE")
         print("=" * 80)
-        print("\nTavily grounding is recommended for accurate organization assessment.")
-        print("Processing will continue but may produce lower quality results.")
-        print("Check:")
+        print("\nTavily grounding is required for accurate organization assessment.")
+        print("Please check:")
         print("  • TAVILY_API_KEY is set in environment")
         print("  • Tavily quota is not exhausted")
-
-        confirm = input("\nContinue without Tavily? (yes/no): ")
-        if confirm.lower() != 'yes':
-            print("Aborted.")
-            sys.exit(1)
-        print("\nContinuing without Tavily grounding...")
+        print("\nAborting to avoid processing with degraded quality.")
+        sys.exit(1)
 
     assessor = OrganizationAssessor()
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Retry failed organization assessments against production database
 set -e
-cd /Users/ry/code/wev/wev-scraper || exit
+cd "$(dirname "$0")" || exit
 
 if [[ ! -r "../.env.production" ]]; then
 	echo "⚠️  No readable .env.production found"
