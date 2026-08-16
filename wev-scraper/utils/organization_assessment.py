@@ -1915,7 +1915,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
                     if not name_match:
                         # Name doesn't match domain or URL path — check if location at least matches
                         # If location matches, we can still accept it (non-official site is OK)
-                        if location_terms and any(term in discovered_domain.lower() for term in location_terms):
+                        valid_loc_terms = [t for t in (location_terms or []) if len(t) > 2]
+                        if valid_loc_terms and any(term in discovered_domain.lower() for term in valid_loc_terms):
                             logger.info(
                                 "OrganizationAssessor: accepting %r despite name mismatch - location found in domain %s",
                                 raw_name, discovered_domain,
