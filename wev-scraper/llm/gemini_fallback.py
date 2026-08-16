@@ -260,6 +260,7 @@ class SSEFallbackProvider(BaseLLMProvider):
                 include_domains=include_domains,
                 prefer_hosts=prefer_hosts,
                 require_terms=require_terms,
+                required=True,
             )
             # Default for the chain: Tavily-only. Per-backend overrides in
             # _try_grounded_complete force non-Gemini off and strip search_query.

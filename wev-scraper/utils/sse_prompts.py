@@ -197,31 +197,49 @@ is never sufficient):
   nonprofit, cooperative, union.
 Never-SSE stored types (always No): government, other.
 TYPE MAPPING (do not invent other type labels):
-- nonprofit — registered charity / nonprofit corporation / association; ALSO use this
-  for mutual societies, mutual-aid groups, community associations, and community
-  projects when they are not clearly cooperatives. Prefer this when public materials
-  show nonprofit/charity registration, an independent board serving a non-proprietary
+- nonprofit — registered charity / nonprofit corporation / association (including OBNLs,
+  mutual societies, mutual-aid groups, community associations, and regional community /
+  economic development corporations with autonomous boards, such as CDECs or regional hubs,
+  even when receiving municipal or provincial funding / mandates). Prefer this when public
+  materials show nonprofit/charity registration, an independent board serving a non-proprietary
   mission, or clear non-distribution constraints — not merely a mission-driven
   private business. A conventional board + executive director is still nonprofit
   when charity/nonprofit evidence is present — do NOT require cooperative labels.
-- cooperative — worker, consumer, producer, multi-stakeholder coop, or credit union
+- cooperative — worker, consumer, producer, multi-stakeholder coop, credit union, or
+  worker-owned business / practice / collective (democratic worker ownership is
+  cooperative governance; worker-owned design / planning / consulting practices
+  are cooperatives, not conventional for-profits).
 - union — labour union
-- government — public agency / municipality / crown corp / school board / etc. → "no"
+- government — public agency / municipality / crown corp / school board / public hospital
+  authority / direct statutory department → "no"
   (NOT political parties — parties are not public bodies; see "other" below)
+  (NOT autonomous non-profit corporations or regional development hubs funded by municipal/provincial grants — see "nonprofit" above)
 - other — conventional for-profit / private company / privately owned school or
   program / political party or electoral organization / residual → "no"
   (even if the mission mentions environment, community, children, nature, or
   "respect for people"; even if founded by an educator with a clear social purpose)
-CRITICAL — place-name / city-in-name is NOT government:
+CRITICAL — place-name / city-in-name is NOT government (municipal funding is NOT government):
 - A city, town, or region name in the organization name (or municipality field) is
   geographic branding only — NOT evidence of a municipal or public-sector employer.
 - Community orchestras, choirs, bands, theatres, and similar arts / cultural
   associations are typically type "nonprofit" (often sector arts-culture-information),
   never "government", unless research shows a city department, municipal agency, or
   other statutory public body.
+- Autonomous non-profit corporations (OBNLs), regional economic development hubs,
+  and community development corporations that receive municipal or provincial funding/mandates
+  but operate under an independent non-profit board of directors are type "nonprofit"
+  (often sector community-civic-infrastructure), NOT "government".
 - Use type "government" only with explicit public-sector evidence (created by statute,
   governing body appointed by a minister / council / public authority, crown corp,
   school board, public hospital authority, municipal department, etc.).
+CRITICAL — worker-owned enterprises are cooperatives, not conventional consultancies:
+- Worker-owned businesses, worker-owned consultancies/practices/studios, and worker
+  collectives are type "cooperative" (SSE-eligible), NOT "other". Do NOT disqualify
+  a worker-owned practice as a conventional for-profit consultancy merely because it
+  offers consulting, engineering, planning, ecological design, or technical services.
+- NOTE: Conventional commercial corporations with equity-based employee stock ownership
+  plans (ESOPs / partner shares) remain type "other" and rating "no". Only democratic
+  worker cooperatives and worker collectives qualify as "cooperative".
 CRITICAL — commercial Inc./Ltd. businesses are not nonprofits:
 - Legal suffixes like Inc., Ltd., Corp., LLC often mark private companies.
   Fee-based / commercial music schools, private arts or early-childhood education
@@ -279,6 +297,8 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
   must_haves_met / nice_to_haves_met / flags — org rubric has no compensation criteria
 - NEVER score is_sse / sector / language / type from SOURCE DESCRIPTION or listing
   notes — those fields require official-website / supporting web research (or null)
+- Identity Anchor: SOURCE DESCRIPTION and Known website identify WHICH organization is being evaluated.
+  NEVER swap the entity for an unrelated organization that happens to share the same acronym or name in search results
 - NEVER rate a registered charity / community nonprofit "no" or type "other" solely
   because governance is board+ED or lacks cooperative labels"""
 
