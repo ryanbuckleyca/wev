@@ -178,6 +178,10 @@ def fetch_tavily_context(
     """
     q = (query or "").strip()
     if not q:
+        if required:
+            msg = "Empty query provided for Tavily search but grounding is required"
+            logger.error(msg)
+            raise TavilyGroundingError(msg)
         return ""
     if not is_tavily_available():
         msg = "Tavily unavailable (TAVILY_API_KEY missing) — no shared evidence"

@@ -18,6 +18,7 @@ from typing import Any, Dict, List
 
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.config import should_use_grounding
+from llm.cooldown import ProviderCooldownMixin, get_cooldown_minutes, is_quota_exhausted_error
 from llm.gemini import GeminiProvider
 from llm.gemini_fallback import gemini_sse_lite_model, gemini_sse_primary_model
 from llm.groq import GroqProvider
@@ -33,29 +34,10 @@ logger = logging.getLogger(__name__)
 # Single prompt shape for every backend: always request SSE *fields* (model infers from text).
 UNIFIED_INCLUDE_SSE_FIELDS = True
 
-DEFAULT_COOLDOWN_MINUTES = 15
 
 
-def _get_cooldown_minutes() -> int:
-    """Get quota cooldown period from env, default 15 minutes."""
-    try:
-        return int(get_stripped_env("QUOTA_COOLDOWN_MINUTES") or DEFAULT_COOLDOWN_MINUTES)
-    except (ValueError, TypeError):
-        return DEFAULT_COOLDOWN_MINUTES
 
-
-def _is_quota_exhausted_error(exc: Exception) -> bool:
-    """Check if exception indicates quota/rate limit exhaustion."""
-    err_str = str(exc).lower()
-    return (
-        "429" in err_str
-        or "resource_exhausted" in err_str
-        or "quota" in err_str
-        or "rate limit" in err_str
-    )
-
-
-class UnifiedJobProcessor:
+class UnifiedJobProcessor(ProviderCooldownMixin):
     """Unified job processor with intelligent fallback chain."""
 
     def __init__(self, api_key: str | None = None):
@@ -101,32 +83,7 @@ class UnifiedJobProcessor:
 
         self.last_successful_provider = None
 
-    def _is_provider_in_cooldown(self, name: str) -> bool:
-        """Check if provider is in cooldown period after quota exhaustion."""
-        if name not in self._exhausted_until:
-            return False
 
-        now = time.time()
-        cooldown_expires = self._exhausted_until[name]
-
-        if now >= cooldown_expires:
-            # Cooldown expired, remove from tracking
-            del self._exhausted_until[name]
-            logger.info("Unified provider %s cooldown expired, re-enabling", name)
-            return False
-
-        # Still in cooldown - no logging needed
-        return True
-
-    def _mark_provider_exhausted(self, name: str) -> None:
-        """Mark provider as quota exhausted with time-bounded cooldown."""
-        cooldown_expires = time.time() + self._cooldown_seconds
-        self._exhausted_until[name] = cooldown_expires
-        logger.warning(
-            "🚫 Rate limit hit for %s — cooling down for %d minutes",
-            name,
-            _get_cooldown_minutes(),
-        )
 
     def _try_provider(self, provider_info: dict, jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Try a specific provider for job processing."""
@@ -273,6 +230,7 @@ class UnifiedJobProcessor:
 
             # Skip providers in cooldown period after quota exhaustion
             if self._is_provider_in_cooldown(provider_name):
+                attempted_providers.append(f"{provider_name} (cooldown)")
                 continue
 
             attempted_providers.append(provider_name)
@@ -332,7 +290,7 @@ class UnifiedJobProcessor:
                 error_msg = str(e).lower()
 
                 # Mark provider as exhausted if quota/rate limit hit
-                if _is_quota_exhausted_error(e):
+                if is_quota_exhausted_error(e):
                     self._mark_provider_exhausted(provider_name)
                 elif "not available" in error_msg:
                     logger.warning(f"❌ Provider {provider_name} not available: {e}")
@@ -340,7 +298,10 @@ class UnifiedJobProcessor:
                     logger.warning(f"💥 Failed with {provider_name}: {e}")
                 continue
 
-        error_msg = f"All providers failed. Last error: {last_error}"
+        if not last_error and all("(cooldown)" in p for p in attempted_providers):
+            error_msg = f"All providers skipped due to cooldown. Attempted: {attempted_providers}"
+        else:
+            error_msg = f"All providers failed. Last error: {last_error}"
         logger.error(f"❌ {error_msg}")
         logger.error(f"📊 Attempted providers in order: {' → '.join(attempted_providers)}")
 

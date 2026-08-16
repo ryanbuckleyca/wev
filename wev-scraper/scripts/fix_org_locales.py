@@ -131,10 +131,8 @@ def fix_org_locales(dry_run: bool = False) -> None:
         if not updates:
             continue
 
-            
-        fixed_count += 1
-        
         if dry_run:
+            fixed_count += 1
             logger.info("Would update %s with %s", org.get("name"), list(updates.keys()))
             continue
             
@@ -169,6 +167,7 @@ def fix_org_locales(dry_run: bool = False) -> None:
         logger.info("Updating %s: %s", org.get("name"), list(db_updates.keys()))
         try:
             supabase.table("organizations").update(db_updates).eq("id", org["id"]).execute()
+            fixed_count += 1
         except Exception as e:
             logger.error("Failed to update org %s: %s", org["id"], e)
             

@@ -115,12 +115,18 @@ def main():
                         filtered_update[field] = value
 
                 if filtered_update:
-                    response = supabase.table('organizations').update(filtered_update).eq('id', org_id).execute()
-                    print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
-                    success_count += 1
-                else:
-                    print("  ⚠️  No new fields to update")
-                    success_count += 1
+                    # Conditional write: only update if the row hasn't changed since we read it.
+                    read_at = org.get('updated_at')
+                    query = supabase.table('organizations').update(filtered_update).eq('id', org_id)
+                    if read_at:
+                        query = query.eq('updated_at', read_at)
+                    resp = query.execute()
+                    if resp.data:
+                        print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
+                        success_count += 1
+                    else:
+                        print("  ⚠️  Conflict: row was modified since we read it, skipping")
+                        still_failed_count += 1
             else:
                 print("  ❌ Assessment still failed")
                 still_failed_count += 1

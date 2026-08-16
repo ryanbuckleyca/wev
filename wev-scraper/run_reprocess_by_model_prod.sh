@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 if [[ -f "../.env.production" ]]; then
 	set -a
 	# shellcheck disable=SC1091
-	source ../.env.production
+	source ../.env.production || exit 1
 	set +a
 	echo "✓ Loaded production environment"
 else
@@ -21,7 +21,7 @@ fi
 if [[ -f "../.env" ]]; then
 	set -a
 	# shellcheck disable=SC1091
-	source ../.env
+	source ../.env || exit 1
 	set +a
 	echo "✓ Loaded .env for API keys"
 fi
@@ -32,13 +32,9 @@ export USE_PROD_DB=1
 # Disable Groq in environment so it won't be used
 export GROQ_API_KEY=""
 
-# Activate virtual environment
-# shellcheck disable=SC1091
-source venv/bin/activate
-
 echo ""
 echo "Usage: $0 <mode> [--limit N]"
 echo "Modes: groq, no_tracking"
 echo ""
 
-python reprocess_by_model.py "$@"
+.venv/bin/python reprocess_by_model.py "$@"

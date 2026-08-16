@@ -9,21 +9,18 @@ cd "$(dirname "$0")"
 if [[ -f "../.env.production" ]]; then
 	set -a
 	# shellcheck disable=SC1091
-	source ../.env.production
+	source ../.env.production || exit 1
 	set +a
 	echo "✓ Loaded production environment"
 else
-	echo "⚠️  No .env.production found, using current environment"
+	echo "⚠️  No .env.production found"
+	exit 1
 fi
-
-# Activate virtual environment
-# shellcheck disable=SC1091
-source venv/bin/activate
 
 echo "Starting re-processing of incomplete organizations..."
 echo ""
 
-python reprocess_incomplete_orgs.py
+.venv/bin/python reprocess_incomplete_orgs.py
 
 echo ""
 echo "Re-processing complete!"

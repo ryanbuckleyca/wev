@@ -17,18 +17,18 @@ def get_orgs_by_model(model_filter=None):
         model_filter: 'groq', 'no_tracking', or specific model name
     """
     all_orgs = []
-    offset = 0
+    last_id = 0
     page_size = 1000
 
     try:
         while True:
-            response = supabase.table('organizations').select('*').range(offset, offset + page_size - 1).execute()
+            response = supabase.table('organizations').select('*').gt('id', last_id).order('id').limit(page_size).execute()
             if not response.data:
                 break
             all_orgs.extend(response.data)
             if len(response.data) < page_size:
                 break
-            offset += page_size
+            last_id = response.data[-1]['id']
     except Exception as e:
         print(f"❌ Failed to fetch organizations from database: {e}")
         sys.exit(1)
@@ -77,7 +77,14 @@ def main():
     if '--limit' in sys.argv:
         limit_idx = sys.argv.index('--limit')
         if limit_idx + 1 < len(sys.argv):
-            limit = int(sys.argv[limit_idx + 1])
+            try:
+                limit = int(sys.argv[limit_idx + 1])
+                if limit <= 0:
+                    print("❌ Error: --limit must be a positive integer.")
+                    sys.exit(1)
+            except ValueError:
+                print("❌ Error: --limit must be a valid integer.")
+                sys.exit(1)
 
     # Check Tavily
     if not is_tavily_available():

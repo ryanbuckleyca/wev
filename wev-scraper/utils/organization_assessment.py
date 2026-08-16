@@ -32,7 +32,7 @@ from utils.organization_language import (
 )
 from utils.slug import generate_slug
 from utils.location_parser import parse_address_with_geocodio
-from llm.tavily_grounding import _STOP, _TOKEN_RE
+from llm.tavily_grounding import entity_require_terms
 from utils.sse_prompts import (
     JSON_INSTRUCTIONS,
     LENGTH_LIMITED_FIELD_RULES,
@@ -407,8 +407,8 @@ def _build_search_query(
         # For short acronyms / names without a known website, extract 2-3 distinctive keywords
         # to avoid ambiguous acronym collisions on search engines.
         tokens = [
-            t for t in _TOKEN_RE.findall(context_hint.lower())
-            if t not in _STOP and len(t) > 3 and t not in raw_name.lower()
+            t for t in entity_require_terms(context_hint)
+            if len(t) > 3 and t not in raw_name.lower()
         ]
         if tokens:
             parts.extend(tokens[:3])
@@ -625,8 +625,9 @@ def _enforce_locale_correctness(result: AssessedOrgResult) -> AssessedOrgResult:
         if not en_val and not fr_val:
             continue
 
-        en_lang = _detect_text_language(en_val).language if en_val else None
-        fr_lang = _detect_text_language(fr_val).language if fr_val else None
+        # Only attempt detection on sufficiently long strings (20+ chars)
+        en_lang = _detect_text_language(en_val).language if en_val and len(en_val) >= 20 else None
+        fr_lang = _detect_text_language(fr_val).language if fr_val and len(fr_val) >= 20 else None
 
         # Case 1: straight swap — _en holds French, _fr holds English
         if en_lang == "fr" and fr_lang == "en":
@@ -1160,10 +1161,8 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         geographic_scope=_validate_geographic_scope(data.get("geographic_scope")),
     )
     gated = _apply_org_sse_governance_guard(
-        _enforce_locale_correctness(
-            _enforce_provenance_nulls(
-                _ensure_content_provenance_flags(result)
-            )
+        _enforce_provenance_nulls(
+            _ensure_content_provenance_flags(result)
         )
     )
     # Place-name remaps government→nonprofit (+ Yes floor) before the private-
@@ -1493,12 +1492,16 @@ class OrganizationAssessor(BaseGroundedClassifier):
         web_evidence: str | None = None,
     ) -> AssessedOrgResult | None:
         # Early rejection: private residences are not organizations
-        if raw_name and "private residence" in raw_name.lower():
-            logger.warning(
-                "OrganizationAssessor: rejecting 'private residence' - not an organization. Name: %r",
-                raw_name
-            )
-            return None
+        import unicodedata
+        if raw_name:
+            nfd = unicodedata.normalize('NFD', raw_name.lower())
+            norm_name = ''.join(c for c in nfd if not unicodedata.combining(c))
+            if "private residence" in norm_name or "residence privee" in norm_name:
+                logger.warning(
+                    "OrganizationAssessor: rejecting 'private residence' - not an organization. Name: %r",
+                    raw_name
+                )
+                return None
 
         notes = listing_notes if listing_notes is not None else description
         # SOURCE DESCRIPTION = stored org/job about-text for description_* only.
@@ -1587,6 +1590,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
         if result is None:
             return None
 
+        result = _enforce_locale_correctness(result)
+
         # Location validation: when we used grounding, validate that the discovered content
         # matches the expected location and name (regardless of whether we have a known_website)
         # Accept non-official sites as long as both name AND location match together
@@ -1623,8 +1628,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
                         (result.get("description_fr") or "").lower(),
                         (result.get("mission_statement_en") or "").lower(),
                         (result.get("mission_statement_fr") or "").lower(),
-                        str(result.get("values_en", []) or "").lower(),
-                        str(result.get("values_fr", []) or "").lower(),
+                        str(result.get("values", []) or "").lower(),
+                        str(result.get("values_raw", []) or "").lower(),
                     ])
 
                     # Count how many location terms match
@@ -1652,21 +1657,11 @@ class OrganizationAssessor(BaseGroundedClassifier):
                     # UNLESS:
                     # - the organization has national/provincial/international scope, OR
                     # - the location appears in the organization name itself (reduces need for repetition), OR
-                    # - the org name suggests a district/neighborhood (e.g., "Centre-Nord" for Montreal), OR
-                    # - we found at least 1 match and grounding was used (Tavily validated the org)
+                    # - the org name suggests a district/neighborhood (e.g., "Centre-Nord" for Montreal)
                     required_matches = min(2, len(location_terms))
 
-                    # Special case: if grounding was used and we have NO location matches,
-                    # it likely means the org's website doesn't mention location explicitly
-                    # but Tavily found it anyway. Trust the grounding result.
-                    if use_grounding and len(matches) == 0:
-                        location_found = True
-                        logger.debug(
-                            "OrganizationAssessor: accepting %r with 0 location matches - grounding (Tavily) provides validated location data",
-                            raw_name
-                        )
-                    # If location is in name, has district indicator, OR grounding was used, accept with just 1 match
-                    elif (location_in_name or has_district_name or use_grounding) and len(matches) >= 1:
+                    # If location is in name, has district indicator, accept with just 1 match
+                    if (location_in_name or has_district_name) and len(matches) >= 1:
                         location_found = True
                     else:
                         location_found = len(matches) >= required_matches
@@ -1734,9 +1729,9 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             continue
                         for p in name_str.lower().split():
                             # Remove all punctuation except apostrophes
-                            cleaned = p.translate(str.maketrans('', '', string.punctuation.replace("'", "").replace("'", "")))
+                            cleaned = p.translate(str.maketrans('', '', string.punctuation.replace("'", "").replace("\u2019", "")))
                             # Now handle apostrophes
-                            cleaned = normalize_text(cleaned.replace("'", "").replace("'", "").replace("-", ""))
+                            cleaned = normalize_text(cleaned.replace("'", "").replace("\u2019", "").replace("-", ""))
                             if len(cleaned) > 1 and cleaned.lower() not in skip_words and cleaned not in name_parts:
                                 name_parts.append(cleaned)
 
@@ -1755,7 +1750,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                     if name_parts:
                         # Check first 1-3 significant words from org name (partial match on longer words OK)
                         for part in name_parts[:3]:
-                            part_clean = part.replace("'", "").replace("'", "")
+                            part_clean = part.replace("'", "").replace("\u2019", "")
                             # Accept if part is in domain, OR if domain contains first 3+ chars of longer word
                             # Also handle numbers (like "7" in "batiment7")
                             if part_clean in domain_normalized or (len(part_clean) >= 6 and part_clean[:4] in domain_normalized):
@@ -1788,7 +1783,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                         if not name_match:
                             domain_with_hyphens = discovered_domain.lower().replace(".", "").replace("_", "")
                             for part in name_parts[:5]:  # Check more parts
-                                part_clean = part.replace("'", "").replace("'", "")
+                                part_clean = part.replace("'", "").replace("\u2019", "")
                                 if len(part_clean) >= 4 and part_clean in domain_with_hyphens:
                                     name_match = True
                                     logger.debug(
@@ -1921,30 +1916,16 @@ class OrganizationAssessor(BaseGroundedClassifier):
                     if not name_match:
                         # Name doesn't match domain or URL path — check if location at least matches
                         # If location matches, we can still accept it (non-official site is OK)
-                        if location_terms:
-                            location_found_in_domain = any(term in discovered_domain.lower() for term in location_terms)
-                            if location_found_in_domain:
-                                # Location in domain compensates for name mismatch
-                                logger.info(
-                                    "OrganizationAssessor: accepting %r despite name mismatch - location found in domain %s",
-                                    raw_name, discovered_domain,
-                                )
-                            else:
-                                # Neither name nor location match — null the website
-                                # but keep the rest of the assessment (don't discard it)
-                                logger.warning(
-                                    "OrganizationAssessor: name and location mismatch for %r - domain %s doesn't match. Clearing website.",
-                                    raw_name, discovered_domain,
-                                )
-                                result = AssessedOrgResult(**{**result, "website": None})
-                                flags = list(result.get("flags") or [])
-                                flags.append(f"website cleared: domain {discovered_domain} did not match org name")
-                                result = AssessedOrgResult(**{**result, "flags": flags})
-                        else:
-                            # No location to validate, only name mismatch — null the website
-                            logger.warning(
-                                "OrganizationAssessor: name mismatch for %r - domain %s doesn't contain org name. Clearing website.",
+                        if location_terms and any(term in discovered_domain.lower() for term in location_terms):
+                            logger.info(
+                                "OrganizationAssessor: accepting %r despite name mismatch - location found in domain %s",
                                 raw_name, discovered_domain,
+                            )
+                        else:
+                            reason = "name and location mismatch" if location_terms else "name mismatch"
+                            logger.warning(
+                                "OrganizationAssessor: %s for %r - domain %s doesn't match. Clearing website.",
+                                reason, raw_name, discovered_domain,
                             )
                             result = AssessedOrgResult(**{**result, "website": None})
                             flags = list(result.get("flags") or [])
