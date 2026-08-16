@@ -260,6 +260,9 @@ class SSEFallbackProvider(BaseLLMProvider):
                 include_domains=include_domains,
                 prefer_hosts=prefer_hosts,
                 require_terms=require_terms,
+                # required=True: any path that enables grounding must have working Tavily.
+                # This covers task=sse, FORCE_GROUNDING=1, and explicit use_grounding=True.
+                # Callers that want soft degradation should not enable grounding.
                 required=True,
             )
             # Default for the chain: Tavily-only. Per-backend overrides in

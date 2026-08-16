@@ -51,22 +51,21 @@ def _fetch_all_orgs() -> list[dict]:
     return rows
 
 
+from utils.organization_language import _detect_text_language  # noqa: E402
+
+
 def fix_org_locales(dry_run: bool = False) -> None:
     orgs = _fetch_all_orgs()
     logger.info("Fetched %d organizations to check", len(orgs))
 
     fixed_count = 0
-    
+
     for org in orgs:
         updates = {}
-        
-        # We need to construct a dict that matches what _enforce_locale_correctness expects
-        # so we can reuse our logic, or just reimplement the logic here on the DB fields.
-        # We will check description, mission, and sse_details reasoning
-        
+
         sse_details = org.get("sse_details") or {}
-        
-        # Build a temporary dict of the values
+
+        # Build a temporary dict of the locale-paired values
         vals = {
             "description_en": org.get("description_en"),
             "description_fr": org.get("description_fr"),
@@ -75,12 +74,49 @@ def fix_org_locales(dry_run: bool = False) -> None:
             "sse_reasoning_en": sse_details.get("reasoning_en"),
             "sse_reasoning_fr": sse_details.get("reasoning_fr"),
         }
-        
+
         for en_key, fr_key in _LOCALE_FIELD_PAIRS:
             en_val = vals.get(en_key)
             fr_val = vals.get(fr_key)
-            
-            # If one is missing but the other exists, translate it
+
+            if not en_val and not fr_val:
+                continue
+
+            en_lang = _detect_text_language(en_val).language if en_val else None
+            fr_lang = _detect_text_language(fr_val).language if fr_val else None
+
+            # Case 1: straight swap — _en holds French, _fr holds English
+            if en_lang == "fr" and fr_lang == "en":
+                updates[en_key] = fr_val
+                updates[fr_key] = en_val
+                logger.info("[%s] Swapped %s/%s (were reversed)", org.get("name"), en_key, fr_key)
+                continue
+
+            # Case 2: _en is French (and _fr is not English) — move to _fr, translate to English
+            if en_lang == "fr" and fr_lang != "en":
+                if not fr_val:
+                    updates[fr_key] = en_val
+                translated = _translate_text(en_val, "en")
+                if translated:
+                    updates[en_key] = translated
+                    logger.info("[%s] Moved %s→%s (was French), translated to English", org.get("name"), en_key, fr_key)
+                else:
+                    logger.warning("[%s] Translation to 'en' failed for %s; skipping", org.get("name"), en_key)
+                continue
+
+            # Case 3: _fr is English (and _en is not French) — move to _en, translate to French
+            if fr_lang == "en" and en_lang != "fr":
+                if not en_val:
+                    updates[en_key] = fr_val
+                translated = _translate_text(fr_val, "fr")
+                if translated:
+                    updates[fr_key] = translated
+                    logger.info("[%s] Moved %s→%s (was English), translated to French", org.get("name"), fr_key, en_key)
+                else:
+                    logger.warning("[%s] Translation to 'fr' failed for %s; skipping", org.get("name"), fr_key)
+                continue
+
+            # Case 4: one side is missing but the other is already the correct language
             if en_val and not fr_val:
                 translated = _translate_text(en_val, "fr")
                 if translated:
@@ -91,9 +127,10 @@ def fix_org_locales(dry_run: bool = False) -> None:
                 if translated:
                     updates[en_key] = translated
                     logger.info("[%s] Translated %s to English", org.get("name"), fr_key)
-                
+
         if not updates:
             continue
+
             
         fixed_count += 1
         
