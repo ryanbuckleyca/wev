@@ -17,6 +17,7 @@ else
 fi
 
 # Activate virtual environment
+# shellcheck disable=SC1091
 source venv/bin/activate
 
 echo "Starting re-processing of incomplete organizations..."
