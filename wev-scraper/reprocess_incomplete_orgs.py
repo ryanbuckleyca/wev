@@ -35,14 +35,18 @@ def main():
     page_size = 1000
 
     print("\nFetching organizations from database...")
-    while True:
-        response = supabase.table('organizations').select('*').range(offset, offset + page_size - 1).execute()
-        if not response.data:
-            break
-        all_orgs.extend(response.data)
-        if len(response.data) < page_size:
-            break
-        offset += page_size
+    try:
+        while True:
+            response = supabase.table('organizations').select('*').range(offset, offset + page_size - 1).execute()
+            if not response.data:
+                break
+            all_orgs.extend(response.data)
+            if len(response.data) < page_size:
+                break
+            offset += page_size
+    except Exception as e:
+        print(f"❌ Failed to fetch organizations from database: {e}")
+        sys.exit(1)
 
     print(f"Total organizations: {len(all_orgs)}")
 
