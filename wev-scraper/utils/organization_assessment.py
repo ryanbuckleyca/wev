@@ -593,7 +593,6 @@ _LOCALE_FIELD_PAIRS = (
 
 
 def _translate_text(text: str, target_lang: str) -> str | None:
-    from llm.factory import get_sse_provider
     provider = get_sse_provider()
     if not provider:
         logger.error("No LLM provider available for translation")
