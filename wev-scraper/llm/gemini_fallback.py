@@ -26,11 +26,11 @@ from __future__ import annotations
 
 import logging
 import os
-import time
 from collections.abc import Callable
 
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.config import should_use_grounding
+from llm.cooldown import ProviderCooldownMixin, get_cooldown_minutes, is_quota_exhausted_error
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
 from llm.local_grounded import LocalGroundedProvider
@@ -56,23 +56,7 @@ DEFAULT_COOLDOWN_MINUTES = 15
 _NON_GEMINI_BACKENDS = frozenset({"groq", "ollama", "cerebras"})
 
 
-def _get_cooldown_minutes() -> int:
-    """Get quota cooldown period from env, default 15 minutes."""
-    try:
-        return int(get_stripped_env("QUOTA_COOLDOWN_MINUTES") or DEFAULT_COOLDOWN_MINUTES)
-    except (ValueError, TypeError):
-        return DEFAULT_COOLDOWN_MINUTES
 
-
-def _is_quota_exhausted_error(exc: Exception) -> bool:
-    """Check if exception indicates quota/rate limit exhaustion."""
-    err_str = str(exc).lower()
-    return (
-        "429" in err_str
-        or "resource_exhausted" in err_str
-        or "quota" in err_str
-        or "quota exceeded" in err_str
-    )
 
 
 def _google_search_grounding_override() -> bool | None:
@@ -143,7 +127,7 @@ def gemini_sse_lite_model() -> str:
     return get_stripped_env("GEMINI_SSE_LITE_MODEL") or DEFAULT_GEMINI_LITE
 
 
-class SSEFallbackProvider(BaseLLMProvider):
+class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
     """Gemini 3 Flash → Flash-Lite → Groq → Ollama, with shared Tavily evidence."""
 
     def __init__(self, api_key: str | None = None):
@@ -152,7 +136,7 @@ class SSEFallbackProvider(BaseLLMProvider):
         # Track providers with quota exhaustion and when they can be retried
         # Maps provider name → timestamp when cooldown expires
         self._exhausted_until: dict[str, float] = {}
-        self._cooldown_seconds = _get_cooldown_minutes() * 60
+        self._cooldown_seconds = get_cooldown_minutes() * 60
 
         primary = gemini_sse_primary_model()
         lite = gemini_sse_lite_model()
@@ -185,38 +169,6 @@ class SSEFallbackProvider(BaseLLMProvider):
     def is_available(self) -> bool:
         return bool(self._providers)
 
-    def _is_provider_in_cooldown(self, name: str) -> bool:
-        """Check if provider is in cooldown period after quota exhaustion."""
-        if name not in self._exhausted_until:
-            return False
-
-        now = time.time()
-        cooldown_expires = self._exhausted_until[name]
-
-        if now >= cooldown_expires:
-            # Cooldown expired, remove from tracking
-            del self._exhausted_until[name]
-            logger.info("SSE provider %s cooldown expired, re-enabling", name)
-            return False
-
-        # Still in cooldown
-        remaining_minutes = (cooldown_expires - now) / 60
-        logger.debug(
-            "SSE provider %s in cooldown (%.1f minutes remaining)",
-            name,
-            remaining_minutes,
-        )
-        return True
-
-    def _mark_provider_exhausted(self, name: str) -> None:
-        """Mark provider as quota exhausted with time-bounded cooldown."""
-        cooldown_expires = time.time() + self._cooldown_seconds
-        self._exhausted_until[name] = cooldown_expires
-        logger.warning(
-            "SSE provider %s quota exhausted — cooling down for %d minutes",
-            name,
-            _get_cooldown_minutes(),
-        )
 
     def _primary(self) -> BaseLLMProvider:
         if not self._providers:
@@ -266,6 +218,10 @@ class SSEFallbackProvider(BaseLLMProvider):
                 include_domains=include_domains,
                 prefer_hosts=prefer_hosts,
                 require_terms=require_terms,
+                # required=True: any path that enables grounding must have working Tavily.
+                # This covers task=sse, FORCE_GROUNDING=1, and explicit use_grounding=True.
+                # Callers that want soft degradation should not enable grounding.
+                required=True,
             )
             # Default for the chain: Tavily-only. Per-backend overrides in
             # _try_grounded_complete force non-Gemini off and strip search_query.
@@ -361,7 +317,7 @@ class SSEFallbackProvider(BaseLLMProvider):
                 failed.append(name)
 
                 # Mark provider as exhausted with time-bounded cooldown if quota error
-                if _is_quota_exhausted_error(exc):
+                if is_quota_exhausted_error(exc):
                     self._mark_provider_exhausted(name)
                 else:
                     logger.warning("SSE provider %s failed: %s", name, exc)
@@ -421,7 +377,7 @@ class SSEFallbackProvider(BaseLLMProvider):
                 failed.append(name)
 
                 # Mark provider as exhausted with time-bounded cooldown if quota error
-                if _is_quota_exhausted_error(exc):
+                if is_quota_exhausted_error(exc):
                     self._mark_provider_exhausted(name)
                 else:
                     logger.warning("SSE provider %s failed: %s", name, exc)

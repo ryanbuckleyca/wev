@@ -27,10 +27,12 @@ from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_s
 from utils.organization_cache import evidence_domain, extract_domain
 from utils.organization_language import (
     VALID_ORG_LANGUAGES,
+    _detect_text_language,
     classify_org_language,
 )
 from utils.slug import generate_slug
 from utils.location_parser import parse_address_with_geocodio
+from llm.tavily_grounding import entity_require_terms
 from utils.sse_prompts import (
     JSON_INSTRUCTIONS,
     LENGTH_LIMITED_FIELD_RULES,
@@ -64,6 +66,12 @@ _ORG_TYPE_ALIASES: dict[str, str] = {
     "communityassociation": "nonprofit",
     "communityproject": "nonprofit",
     "creditunion": "cooperative",
+    "workercoop": "cooperative",
+    "workercooperative": "cooperative",
+    "workerowned": "cooperative",
+    "workerownedbusiness": "cooperative",
+    "workercollective": "cooperative",
+    "coop": "cooperative",
     "union": "union",
     "government": "government",
     "other": "other",
@@ -90,7 +98,7 @@ _JSON_FIELDS = """{
   "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
   "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — ONLY extract if the organization explicitly states their mission/purpose on their own website or materials. Do NOT infer or compose a mission statement. If not found, use null. Record provenance in flags as 'mission via=extracted|absent'), or null",
   "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if found in English, or extract if present in French on source. If not found, use null), or null",
-  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. A city/town/region name in the organization name is geographic branding only — NOT evidence of municipal/government status. Community orchestras, choirs, bands, theatres, and similar arts associations are typically 'nonprofit', not 'government', unless research shows a city department or statutory public body. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops and credit unions. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
+  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. A city/town/region name in the organization name is geographic branding only — NOT evidence of municipal/government status. Community orchestras, choirs, bands, theatres, and similar arts associations are typically 'nonprofit', not 'government', unless research shows a city department or statutory public body. Autonomous non-profit corporations (OBNLs) and regional development hubs with independent boards are 'nonprofit', even when receiving municipal/provincial grants. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops, credit unions, and worker-owned businesses/practices. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
   "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — extract closely from source. Record provenance in flags as 'values via=extracted|inferred|absent'), or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
@@ -101,7 +109,8 @@ _JSON_FIELDS = """{
   "must_haves_met": ["ONLY org must-have labels from ORG MUST-HAVES 1–3 below — never job/posting criteria"],
   "nice_to_haves_met": ["ONLY org nice-to-have labels from ORG NICE-TO-HAVES below — never job/posting criteria"],
   "flags": ["REQUIRED — see FLAGS RULES below"],
-  "public_language": "Primary language of the organization's own public materials (website, postings, documents, reports) observed during research. Use only: en, fr, bilingual, or null. Do not use the language of this response as evidence. Prefer bilingual when the organization publishes substantial public materials in both English and French (or both EN and FR sites)."
+  "public_language": "Primary language of the organization's own public materials (website, postings, documents, reports) observed during research. Use only: en, fr, bilingual, or null. Do not use the language of this response as evidence. Prefer bilingual when the organization publishes substantial public materials in both English and French (or both EN and FR sites).",
+  "geographic_scope": "Geographic reach of the organization based on evidence from their website and materials. Use: local (serves a single city/town/region), provincial (serves a single province), national (serves all or most of Canada), international (operates in multiple countries), or null if unclear. Base this on service area, chapters/locations, or mission statement, not just the organization name."
 }"""
 
 _ORG_CRITERION_LABEL_RULES = """ORG MUST-HAVES / NICE-TO-HAVES LABELS (strict — org assessment only):
@@ -154,10 +163,17 @@ _WEBSITE_RULES = """WEBSITE RULES for the "website" field:
 - Extract the BEST AVAILABLE URL from research/search results.
 - ACCEPT any URL that identifies this specific organization, including:
   * Official homepages (preferred)
-  * Marketplace/directory pages
+  * Marketplace/directory pages (acceptable fallback)
   * Social media pages - these are VALID if they have organization info
-- If you find ANY URL in the grounding evidence, return it.
 - Social media and marketplace pages are LEGITIMATE web presences for small organizations.
+- ALWAYS PREFER the organization's OWN homepage over directory/umbrella listings.
+  If the best search result is a directory page (e.g., rmjq.org/maison/...,
+  reflexerosemont.org/organismes/..., macommunaute.ca/..., yellowpages.ca/...),
+  look for the org's OWN website within that evidence:
+  * Check contact email domains — e.g., coordination@adozone.org → https://www.adozone.org/
+  * Check outbound "Website" or "Site web" links on the directory page
+  * Check any URL that uses the organization's name or acronym as the domain
+  Return the org's own homepage if found; use the directory URL only as a last resort.
 - If ORGANIZATION DATA lists a Known website that looks wrong (different location/name),
   REPLACE IT with any better URL you find in the grounding evidence.
 - Do NOT use job-board or ATS URLs (Greenhouse, Lever, Workday, Indeed, CharityVillage).
@@ -202,8 +218,9 @@ _SECTOR_PRIORITY_RULES = """SECTOR PRIORITY (when multiple sectors could fit):
   sector whenever one applies."""
 
 _SOURCE_DESCRIPTION_RULES = """SOURCE DESCRIPTION vs INTERPRETIVE FIELDS (mandatory):
+- ENTITY IDENTITY ANCHOR: The organization name, Known website, and SOURCE DESCRIPTION define WHICH specific entity is being evaluated. If supporting search results describe a DIFFERENT organization that merely shares the same acronym or name (e.g., matching a doctors' union when the source describes a women's enterprise network), DO NOT hijack the organization. Reject mismatched search results and assess the actual named entity.
 - is_sse / sse_rating, sector_id, public_language, type, website, mission_statement_*,
-  and values MUST come from official-website / supporting web research only.
+  and values MUST come from official-website / supporting web research of THAT specific organization.
 - NEVER use SOURCE DESCRIPTION (stored org blurb or job-listing body) to decide those
   interpretive fields — listing copy is often wrong, stale, or about a related brand.
 - description_* only:
@@ -213,7 +230,7 @@ _SOURCE_DESCRIPTION_RULES = """SOURCE DESCRIPTION vs INTERPRETIVE FIELDS (mandat
     (via=inferred or via=extracted from web). This is the only case search may
     supply description text.
 - LISTING / IDENTITY HINTS (job title, listing notes) are for disambiguating which
-  employer is meant — never for SSE rating, sector, language, type, or values."""
+  employer is meant — not for interpretive fields (never for SSE rating, sector, language, type, or values)."""
 
 _combined_prompt = """You are evaluating an ORGANIZATION (employer), not a job posting.
 Identify the organization, extract its values and mission from research about the
@@ -293,6 +310,7 @@ class AssessedOrgResult(TypedDict):
     nice_to_haves_met: List[str]
     flags: List[str]
     public_language: str | None
+    geographic_scope: str | None
 
 
 _TAXONOMY_STR: str | None = None
@@ -361,6 +379,7 @@ def _build_search_query(
     municipality: str | None = None,
     province: str | None = None,
     known_website: str | None = None,
+    context_hint: str | None = None,
 ) -> str:
     """Grounding query aimed at finding the organization's web presence.
 
@@ -368,7 +387,7 @@ def _build_search_query(
     names in different regions/countries. Does NOT include "official website"
     since that biases search toward generic content and misses marketplace/social pages.
     """
-    # Start with quoted name and Canada to avoid international matches
+    # Start with quoted name
     parts = [f'"{raw_name}"']
 
     # Add location BEFORE other terms to make it prominent in search
@@ -381,12 +400,18 @@ def _build_search_query(
     else:
         parts.append("Canada")
 
-    # Do NOT add "official website" - it biases toward generic content
-    # and misses marketplace pages and social media
-
-    # Only include known_website if it's evidence-grade (not social/shared)
+    # If known_website is evidence-grade (not social/shared), include it
     if known_website and evidence_domain(known_website):
         parts.append(known_website.strip())
+    elif context_hint and (len(raw_name.strip()) <= 6 or raw_name.isupper()):
+        # For short acronyms / names without a known website, extract 2-3 distinctive keywords
+        # to avoid ambiguous acronym collisions on search engines.
+        tokens = [
+            t for t in entity_require_terms(context_hint)
+            if len(t) > 3 and t not in raw_name.lower()
+        ]
+        if tokens:
+            parts.extend(tokens[:3])
 
     return " ".join(parts)
 
@@ -422,6 +447,15 @@ def _validate_public_language(raw: Any) -> str | None:
         return None
     value = str(raw).strip().lower()
     return value if value in VALID_ORG_LANGUAGES else None
+
+
+def _validate_geographic_scope(raw: Any) -> str | None:
+    """Accept only local | provincial | national | international; everything else → None."""
+    if not raw:
+        return None
+    value = str(raw).strip().lower()
+    valid_scopes = {"local", "provincial", "national", "international"}
+    return value if value in valid_scopes else None
 
 
 # Known types that can never be SSE yes. Null/unknown type is NOT in this set.
@@ -512,6 +546,137 @@ def _ensure_content_provenance_flags(result: AssessedOrgResult) -> AssessedOrgRe
     if flags == original:
         return result
     return AssessedOrgResult(**{**result, "flags": flags})
+
+
+def _enforce_provenance_nulls(result: AssessedOrgResult) -> AssessedOrgResult:
+    """Null out mission_statement and values_raw when not genuinely extracted.
+
+    - mission_statement must ONLY come from the org's own explicit statement.
+      If provenance is anything other than 'extracted', null it out.
+    - values_raw (the org's own stated values text) must also be extracted,
+      not composed by the LLM.  If not extracted, null it out.
+    - values_list (mapped Knowdell work values) is intentionally kept — it is
+      always inferred from description, mission, website content, etc.
+    """
+    flags = result.get("flags") or []
+    updates: dict = {}
+
+    mission_via = _content_via_from_flags(flags, "mission")
+    if mission_via != "extracted":
+        if result.get("mission_statement_en") or result.get("mission_statement_fr"):
+            updates["mission_statement_en"] = None
+            updates["mission_statement_fr"] = None
+            logger.debug(
+                "Nulled mission_statement (provenance=%s) for %s",
+                mission_via, result.get("canonical_name"),
+            )
+
+    values_via = _content_via_from_flags(flags, "values")
+    if values_via != "extracted":
+        if result.get("values_raw"):
+            updates["values_raw"] = None
+            logger.debug(
+                "Nulled values_raw (provenance=%s) for %s",
+                values_via, result.get("canonical_name"),
+            )
+
+    if updates:
+        return AssessedOrgResult(**{**result, **updates})
+    return result
+
+
+_LOCALE_FIELD_PAIRS = (
+    ("description_en", "description_fr"),
+    ("mission_statement_en", "mission_statement_fr"),
+    ("sse_reasoning_en", "sse_reasoning_fr"),
+)
+
+
+def _translate_text(text: str, target_lang: str) -> str | None:
+    provider = get_sse_provider()
+    if not provider:
+        logger.error("No LLM provider available for translation")
+        return None
+        
+    try:
+        lang_name = "English" if target_lang == "en" else "French"
+        prompt = f"Translate the following text into {lang_name}. Output ONLY the translated text, nothing else.\n\n{text}"
+        response = provider.complete(prompt, json_mode=False)
+        return response.strip()
+    except Exception as e:
+        logger.error("Failed to translate text to %s: %s", target_lang, e)
+        return None
+
+
+def _enforce_locale_correctness(result: AssessedOrgResult) -> AssessedOrgResult:
+    """Ensure _en fields contain English and _fr fields contain French.
+
+    The LLM sometimes returns French text in both the _en and _fr slots (or
+    vice-versa).  This guard uses lightweight marker-based detection to:
+    1. Swap if the locales are simply reversed.
+    2. Move the wrong-locale copy to the correct field and translate the text for the missing field.
+    """
+    updates: dict = {}
+
+    for en_key, fr_key in _LOCALE_FIELD_PAIRS:
+        en_val = result.get(en_key)
+        fr_val = result.get(fr_key)
+        if not en_val and not fr_val:
+            continue
+
+        # Only attempt detection on sufficiently long strings (20+ chars)
+        en_lang = _detect_text_language(en_val).language if en_val and len(en_val) >= 20 else None
+        fr_lang = _detect_text_language(fr_val).language if fr_val and len(fr_val) >= 20 else None
+
+        # Case 1: straight swap — _en holds French, _fr holds English
+        if en_lang == "fr" and fr_lang == "en":
+            updates[en_key] = fr_val
+            updates[fr_key] = en_val
+            logger.info(
+                "Swapped locales for %s/%s (were reversed) on %s",
+                en_key, fr_key, result.get("canonical_name"),
+            )
+            continue
+
+        # Case 2: _en is French but _fr is also French (or missing) — move _en → _fr, translate _en
+        if en_lang == "fr" and fr_lang != "en":
+            if not fr_val:
+                updates[fr_key] = en_val
+            translated = _translate_text(en_val, "en")
+            if translated:
+                updates[en_key] = translated
+            else:
+                logger.warning(
+                    "Translation to 'en' failed for %s/%s on %s; keeping original value",
+                    en_key, fr_key, result.get("canonical_name"),
+                )
+            logger.info(
+                "Moved %s→%s (was French) and translated to English on %s",
+                en_key, fr_key, result.get("canonical_name"),
+            )
+            continue
+
+        # Case 3: _fr is English but _en is also English (or missing) — move _fr → _en, translate _fr
+        if fr_lang == "en" and en_lang != "fr":
+            if not en_val:
+                updates[en_key] = fr_val
+            translated = _translate_text(fr_val, "fr")
+            if translated:
+                updates[fr_key] = translated
+            else:
+                logger.warning(
+                    "Translation to 'fr' failed for %s/%s on %s; keeping original value",
+                    fr_key, en_key, result.get("canonical_name"),
+                )
+            logger.info(
+                "Moved %s→%s (was English) and translated to French on %s",
+                fr_key, en_key, result.get("canonical_name"),
+            )
+            continue
+
+    if updates:
+        return AssessedOrgResult(**{**result, **updates})
+    return result
 
 
 def _apply_website_known_guard(
@@ -992,8 +1157,13 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         ),
         flags=_ensure_str_list(data.get("flags")),
         public_language=_validate_public_language(data.get("public_language")),
+        geographic_scope=_validate_geographic_scope(data.get("geographic_scope")),
     )
-    gated = _apply_org_sse_governance_guard(_ensure_content_provenance_flags(result))
+    gated = _apply_org_sse_governance_guard(
+        _enforce_provenance_nulls(
+            _ensure_content_provenance_flags(result)
+        )
+    )
     # Place-name remaps government→nonprofit (+ Yes floor) before the private-
     # company gate so arts-derived Yes still faces Inc./commercial demotion.
     gated = _apply_community_arts_place_name_guard(gated, raw_name)
@@ -1262,10 +1432,12 @@ _ASSESSOR_SYSTEM = (
     "official employer-owned website, mapping work values, and "
     "evaluating Solidarity Economy alignment of the ORGANIZATION "
     "(not job-posting completeness). "
+    "The organization name, Known website, and SOURCE DESCRIPTION define the target entity. "
+    "Do NOT replace the target organization with a different entity from search (e.g., matching a "
+    "doctors' union when the target is a women's enterprise CED). "
     "Interpretive fields (is_sse, sector, language, type, mission, values, website) "
-    "must come from official-website / supporting web research — never from a stored "
-    "or listing SOURCE DESCRIPTION. SOURCE DESCRIPTION is only for description_* "
-    "when present. Do not replace the named organization with a different org from search. "
+    "must come from official-website / supporting web research of the actual target entity. "
+    "SOURCE DESCRIPTION is for description_* when present. "
     "Org must_haves_met / nice_to_haves_met use only organization SSE criteria — "
     "never Transparent compensation, Clear job expectations, or other job-ad must-haves."
 )
@@ -1318,6 +1490,18 @@ class OrganizationAssessor(BaseGroundedClassifier):
         listing_notes: str | None = None,
         web_evidence: str | None = None,
     ) -> AssessedOrgResult | None:
+        # Early rejection: private residences are not organizations
+        import unicodedata
+        if raw_name:
+            nfd = unicodedata.normalize('NFD', raw_name.lower())
+            norm_name = ''.join(c for c in nfd if not unicodedata.combining(c))
+            if "private residence" in norm_name or "residence privee" in norm_name:
+                logger.warning(
+                    "OrganizationAssessor: rejecting 'private residence' - not an organization. Name: %r",
+                    raw_name
+                )
+                return None
+
         notes = listing_notes if listing_notes is not None else description
         # SOURCE DESCRIPTION = stored org/job about-text for description_* only.
         # Listing notes (legacy `description` arg) are identity hints — not SOURCE DESCRIPTION.
@@ -1339,13 +1523,17 @@ class OrganizationAssessor(BaseGroundedClassifier):
             prompt = inject_grounding_evidence(prompt, prefetched)
 
         search_query = _build_search_query(
-            raw_name, municipality, province, known_website=None,  # Don't bias search with potentially wrong website
+            raw_name,
+            municipality,
+            province,
+            known_website=known_website,
+            context_hint=source or notes,
         )
         prefer_hosts = None
-        # Don't use known_website to bias Tavily - let it find the best match based on name+location
-        # if known_website and evidence_domain(known_website):
-        #     host = extract_domain(known_website)
-        #     prefer_hosts = [host] if host else None
+        if known_website and evidence_domain(known_website):
+            host = extract_domain(known_website)
+            if host:
+                prefer_hosts = [host]
         from llm.tavily_grounding import entity_require_terms
 
         require_terms = entity_require_terms(raw_name) or None
@@ -1401,6 +1589,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
         if result is None:
             return None
 
+        result = _enforce_locale_correctness(result)
+
         # Location validation: when we used grounding, validate that the discovered content
         # matches the expected location and name (regardless of whether we have a known_website)
         # Accept non-official sites as long as both name AND location match together
@@ -1427,27 +1617,55 @@ class OrganizationAssessor(BaseGroundedClassifier):
                         location_terms.extend(province_map[province.upper()])
 
                 # If we have location info, validate it appears in the response
+                # UNLESS the organization has national/provincial/international scope
                 # We need at least 2 location term matches to avoid false positives from incidental mentions
                 if location_terms:
                     # Check response_text and result fields for location terms
                     searchable_content = " ".join([
-                        response_text.lower(),
-                        result.get("description_en", "").lower(),
-                        result.get("description_fr", "").lower(),
-                        result.get("mission_statement_en", "").lower() if result.get("mission_statement_en") else "",
-                        result.get("mission_statement_fr", "").lower() if result.get("mission_statement_fr") else "",
-                        str(result.get("values_en", [])).lower() if result.get("values_en") else "",
-                        str(result.get("values_fr", [])).lower() if result.get("values_fr") else "",
+                        (response_text or "").lower(),
+                        (result.get("description_en") or "").lower(),
+                        (result.get("description_fr") or "").lower(),
+                        (result.get("mission_statement_en") or "").lower(),
+                        (result.get("mission_statement_fr") or "").lower(),
+                        str(result.get("values", []) or "").lower(),
+                        str(result.get("values_raw", []) or "").lower(),
                     ])
 
                     # Count how many location terms match
                     matches = [term for term in location_terms if term in searchable_content]
 
-                    # Require at least 2 distinct location term matches (or all terms if less than 2)
-                    required_matches = min(2, len(location_terms))
-                    location_found = len(matches) >= required_matches
+                    # Check if location appears in the organization name itself
+                    raw_name_lower = raw_name.lower()
+                    location_in_name = any(term in raw_name_lower for term in location_terms if len(term) > 2)
 
-                    if not location_found:
+                    # Also check if org name contains district/neighborhood indicators (often means local to that city)
+                    # Common French and English district/neighborhood terms
+                    district_indicators = [
+                        'centre-', 'nord', 'sud', 'est', 'ouest', '-nord', '-sud', '-est', '-ouest',  # French directions (with/without hyphen)
+                        'north', 'south', 'east', 'west', 'downtown', 'uptown',  # English directions
+                        'rosemont', 'plateau', 'verdun', 'villeray', 'hochelaga', 'petite-patrie', 'ahuntsic',  # Montreal neighborhoods
+                        'scarborough', 'etobicoke', 'north york', 'east york',  # Toronto districts
+                    ]
+                    has_district_name = any(indicator in raw_name_lower for indicator in district_indicators)
+
+                    # Check geographic scope - relax location matching for broader scope organizations
+                    scope = (result.get("geographic_scope") or "").lower()
+                    is_broad_scope = scope in ("national", "provincial", "international")
+
+                    # Require at least 2 distinct location term matches (or all terms if less than 2)
+                    # UNLESS:
+                    # - the organization has national/provincial/international scope, OR
+                    # - the location appears in the organization name itself (reduces need for repetition), OR
+                    # - the org name suggests a district/neighborhood (e.g., "Centre-Nord" for Montreal)
+                    required_matches = min(2, len(location_terms))
+
+                    # If location is in name, has district indicator, accept with just 1 match
+                    if (location_in_name or has_district_name) and len(matches) >= 1:
+                        location_found = True
+                    else:
+                        location_found = len(matches) >= required_matches
+
+                    if not location_found and not is_broad_scope:
                         # Location mismatch - reject this result
                         logger.warning(
                             "OrganizationAssessor: location mismatch for %r - expected %s but found only %d/%d location terms: %s. Skipping.",
@@ -1458,59 +1676,261 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             matches,
                         )
                         return None
+                    elif not location_found and is_broad_scope:
+                        # Accept broader-scope organizations even without local location match
+                        logger.info(
+                            "OrganizationAssessor: accepting %r despite location mismatch - geographic_scope=%s indicates broader reach",
+                            raw_name, scope,
+                        )
+                    elif (location_in_name or has_district_name) and len(matches) >= 1:
+                        # Accepted with reduced requirement because location is in name or has district indicator
+                        logger.debug(
+                            "OrganizationAssessor: accepting %r with %d/%d location matches - location in org name or district indicator reduces validation requirement",
+                            raw_name, len(matches), len(location_terms),
+                        )
 
                 # Also validate name appears in domain (but be forgiving about exact match)
                 # Skip this check if we have a known_website (trust the known website)
-                if not known_website:
+                # OR if there's no location data (can't cross-validate name+location)
+                if not known_website and (municipality or province):
                     discovered_domain = extract_domain(discovered_website) or ""
-                    raw_name.lower().replace(" ", "").replace("-", "").replace("_", "")
                     domain_lower = discovered_domain.lower().replace("-", "").replace(".", "").replace("_", "")
 
+                    # Normalize Unicode characters for comparison (accents, etc.)
+                    import unicodedata
+                    def normalize_text(text):
+                        """Remove accents and normalize Unicode characters."""
+                        # Decompose characters (é -> e + accent)
+                        nfd = unicodedata.normalize('NFD', text)
+                        # Filter out combining characters (accents)
+                        return ''.join(c for c in nfd if not unicodedata.combining(c))
+
+                    raw_name_normalized = normalize_text(raw_name.lower())
+                    domain_normalized = normalize_text(domain_lower)
+
                     # Extract significant name parts (skip common words like "the", "and", etc.)
-                    skip_words = {"the", "and", "or", "of", "for", "inc", "ltd", "corp", "company"}
-                    name_parts = [
-                        p for p in raw_name.lower().split()
-                        if len(p) > 2 and p not in skip_words
-                    ]
+                    # Include common French articles and prepositions
+                    skip_words = {
+                        "the", "and", "or", "of", "for", "inc", "ltd", "corp", "company", "family", "companies",
+                        "de", "la", "le", "les", "des", "du", "aux", "un", "une", "et", "d",  # French
+                    }
+                    # Extract significant name parts from both raw_name AND researched canonical_name
+                    canonical_name = result.get("canonical_name") or ""
+                    names_to_check = [raw_name] if raw_name else []
+                    if canonical_name and canonical_name.lower() != (raw_name or "").lower():
+                        names_to_check.append(canonical_name)
+
+                    # Split on spaces and remove all punctuation except apostrophes (handle those separately)
+                    import string
+                    name_parts = []
+                    for name_str in names_to_check:
+                        if not name_str:
+                            continue
+                        for p in name_str.lower().split():
+                            # Remove all punctuation except apostrophes
+                            cleaned = p.translate(str.maketrans('', '', string.punctuation.replace("'", "").replace("\u2019", "")))
+                            # Now handle apostrophes
+                            cleaned = normalize_text(cleaned.replace("'", "").replace("\u2019", "").replace("-", ""))
+                            if len(cleaned) > 1 and cleaned.lower() not in skip_words and cleaned not in name_parts:
+                                name_parts.append(cleaned)
+
+                    # Check for acronyms in parentheses (e.g., "Find an Independent Mining Expert (FAIME)")
+                    import re
+                    acronym_match = re.search(r'\(([A-Z]{2,})\)', raw_name or "")
+                    org_acronym = acronym_match.group(1).lower() if acronym_match else None
+
+                    # Also check for ALL-CAPS words in the name (likely acronyms like "MSRK", "IBM", etc.)
+                    all_caps_words = re.findall(r'\b[A-Z]{2,}\b', raw_name or "")
+                    all_caps_acronyms = [word.lower() for word in all_caps_words] if all_caps_words else []
 
                     # Check if at least one significant name part appears in domain
+                    # OR if domain contains initials/acronym of the organization name
                     name_match = False
                     if name_parts:
-                        # Check first 1-2 significant words from org name
-                        for part in name_parts[:2]:
-                            part_clean = part.replace("-", "").replace("_", "")
-                            if part_clean in domain_lower:
+                        # Check first 1-3 significant words from org name (partial match on longer words OK)
+                        for part in name_parts[:3]:
+                            part_clean = part.replace("'", "").replace("\u2019", "")
+                            # Accept if part is in domain, OR if domain contains first 3+ chars of longer word
+                            # Also handle numbers (like "7" in "batiment7")
+                            if part_clean in domain_normalized or (len(part_clean) >= 6 and part_clean[:4] in domain_normalized):
                                 name_match = True
+                                logger.debug(
+                                    "OrganizationAssessor: accepting %r - domain %s contains word '%s'",
+                                    raw_name, discovered_domain, part_clean
+                                )
                                 break
+
+                        # Also check if domain contains a concatenation of multiple words from name
+                        # This catches "lalternativesantementale" from "L'Alternative... santé mentale"
+                        if not name_match and len(name_parts) >= 2:
+                            # Try pairs and triples of consecutive words
+                            for i in range(len(name_parts)):
+                                for j in range(i+2, min(i+4, len(name_parts)+1)):
+                                    concat = ''.join(name_parts[i:j])
+                                    if len(concat) >= 8 and concat in domain_normalized:
+                                        name_match = True
+                                        logger.debug(
+                                            "OrganizationAssessor: accepting %r - domain %s contains concatenated words '%s'",
+                                            raw_name, discovered_domain, concat
+                                        )
+                                        break
+                                if name_match:
+                                    break
+
+                        # Also check with hyphens preserved (for domains like "lalternative-cdj")
+                        # Get the original domain with hyphens but lowercase
+                        if not name_match:
+                            domain_with_hyphens = discovered_domain.lower().replace(".", "").replace("_", "")
+                            for part in name_parts[:5]:  # Check more parts
+                                part_clean = part.replace("'", "").replace("\u2019", "")
+                                if len(part_clean) >= 4 and part_clean in domain_with_hyphens:
+                                    name_match = True
+                                    logger.debug(
+                                        "OrganizationAssessor: accepting %r - domain %s (with hyphens) contains word '%s'",
+                                        raw_name, discovered_domain, part_clean
+                                    )
+                                    break
+
+                        # If no word match, check if domain contains stated acronym OR all-caps words
+                        if not name_match and (org_acronym or all_caps_acronyms):
+                            # Check parenthesized acronym
+                            if org_acronym and org_acronym in domain_normalized:
+                                name_match = True
+                                logger.debug(
+                                    "OrganizationAssessor: accepting %r - domain %s contains acronym '%s'",
+                                    raw_name, discovered_domain, org_acronym
+                                )
+                            # Check ALL-CAPS words (like "MSRK", "IBM")
+                            if not name_match:
+                                for caps_word in all_caps_acronyms:
+                                    if caps_word in domain_normalized:
+                                        name_match = True
+                                        logger.debug(
+                                            "OrganizationAssessor: accepting %r - domain %s contains all-caps acronym '%s'",
+                                            raw_name, discovered_domain, caps_word
+                                        )
+                                        break
+
+                        # If no word match, check if domain contains initials from ALL significant words
+                        if not name_match and len(name_parts) >= 2:
+                            # Build initials from first letter of each significant word
+                            initials = ''.join(p[0] for p in name_parts[:5])  # Up to 5 words
+                            if len(initials) >= 2 and initials in domain_normalized:
+                                name_match = True
+                                logger.debug(
+                                    "OrganizationAssessor: accepting %r - domain %s contains initials '%s'",
+                                    raw_name, discovered_domain, initials
+                                )
+                            # Also check if first 2-3 initials appear at START of domain (common for abbreviated domains)
+                            elif len(initials) >= 2:
+                                for length in [3, 2]:  # Try 3 letters first, then 2
+                                    if len(initials) >= length and domain_normalized.startswith(initials[:length]):
+                                        name_match = True
+                                        logger.debug(
+                                            "OrganizationAssessor: accepting %r - domain %s starts with initials '%s'",
+                                            raw_name, discovered_domain, initials[:length]
+                                        )
+                                        break
+
+                        # If still no match, try first word of each "phrase" separated by special chars
+                        # This catches cases like "Carrefour d'aide" -> "CCR" (Carrefour Centre something)
+                        if not name_match:
+                            # Get all words from original name, including those with apostrophes/dashes
+                            all_words = re.findall(r'\b[A-Za-zÀ-ÿ]+\b', raw_name)  # Include accented characters
+                            # Normalize and filter out skip words but include ALL remaining words for initials
+                            significant_words = [
+                                normalize_text(w) for w in all_words
+                                if normalize_text(w.lower()) not in skip_words and len(w) > 1
+                            ]
+                            if len(significant_words) >= 2:
+                                # Try various initial combinations
+                                full_initials = ''.join(w[0].lower() for w in significant_words[:6])
+                                # Check if ANY substring of 3+ initials appears in domain
+                                for i in range(len(full_initials) - 2):
+                                    substring = full_initials[i:i+3]
+                                    if substring in domain_normalized:
+                                        name_match = True
+                                        logger.debug(
+                                            "OrganizationAssessor: accepting %r - domain %s contains initial sequence '%s'",
+                                            raw_name, discovered_domain, substring
+                                        )
+                                        break
+
+                                # Also check if first 2-3 letters START the domain
+                                if not name_match and len(full_initials) >= 2:
+                                    for length in [3, 2]:
+                                        if len(full_initials) >= length and domain_normalized.startswith(full_initials[:length]):
+                                            name_match = True
+                                            logger.debug(
+                                                "OrganizationAssessor: accepting %r - domain %s starts with initial sequence '%s'",
+                                                raw_name, discovered_domain, full_initials[:length]
+                                            )
+                                            break
+
+                                # For French orgs, also try with first letter of EACH word (including d', l', etc.)
+                                # Split on apostrophes and spaces to get ALL tokens
+                                if not name_match:
+                                    all_tokens = re.split(r"[\s']+", raw_name_normalized)
+                                    token_initials = ''.join(t[0] for t in all_tokens if len(t) > 0)[:6]
+                                    if len(token_initials) >= 3:
+                                        # Check if first 3 token initials START the domain
+                                        if domain_normalized.startswith(token_initials[:3]):
+                                            name_match = True
+                                            logger.debug(
+                                                "OrganizationAssessor: accepting %r - domain %s starts with token initials '%s'",
+                                                raw_name, discovered_domain, token_initials[:3]
+                                            )
+                                        # Or if they appear anywhere in domain
+                                        elif token_initials[:3] in domain_normalized:
+                                            name_match = True
+                                            logger.debug(
+                                                "OrganizationAssessor: accepting %r - domain %s contains token initials '%s'",
+                                                raw_name, discovered_domain, token_initials[:3]
+                                            )
                     else:
                         # No significant name parts to check - accept it
                         name_match = True
 
                     if not name_match:
-                        # Name doesn't match domain - check if location at least matches
-                        # If location matches, we can still accept it (non-official site is OK)
-                        if location_terms:
-                            location_found_in_domain = any(term in discovered_domain.lower() for term in location_terms)
-                            if location_found_in_domain:
-                                # Location in domain compensates for name mismatch
+                        # Domain didn't match — check the full URL path/slug
+                        # This catches directory/platform URLs like:
+                        #   yellowpages.ca/.../Polyanthus-Landscaping
+                        #   macommunaute.ca/.../maison-des-jeunes-pointe-saint-charles
+                        #   about.me/engagingminds
+                        from urllib.parse import urlparse
+                        url_path = urlparse(discovered_website).path.lower()
+                        url_path_normalized = normalize_text(
+                            url_path.replace("-", "").replace("_", "").replace("/", " ")
+                        )
+                        for part in name_parts[:5]:
+                            part_clean = part.replace("'", "").replace("\u2019", "")
+                            if len(part_clean) >= 4 and part_clean in url_path_normalized:
+                                name_match = True
                                 logger.info(
-                                    "OrganizationAssessor: accepting %r despite name mismatch - location found in domain %s",
-                                    raw_name, discovered_domain,
+                                    "OrganizationAssessor: accepting %r - URL path of %s contains word '%s'",
+                                    raw_name, discovered_website, part_clean,
                                 )
-                            else:
-                                # Neither name nor location match - reject
-                                logger.warning(
-                                    "OrganizationAssessor: name and location mismatch for %r - domain %s doesn't match. Skipping.",
-                                    raw_name, discovered_domain,
-                                )
-                                return None
-                        else:
-                            # No location to validate, only name mismatch - reject
-                            logger.warning(
-                                "OrganizationAssessor: name mismatch for %r - domain %s doesn't contain org name. Skipping.",
+                                break
+
+                    if not name_match:
+                        # Name doesn't match domain or URL path — check if location at least matches
+                        # If location matches, we can still accept it (non-official site is OK)
+                        valid_loc_terms = [t for t in (location_terms or []) if len(t) > 2]
+                        if valid_loc_terms and any(term in discovered_domain.lower() for term in valid_loc_terms):
+                            logger.info(
+                                "OrganizationAssessor: accepting %r despite name mismatch - location found in domain %s",
                                 raw_name, discovered_domain,
                             )
-                            return None
+                        else:
+                            reason = "name and location mismatch" if location_terms else "name mismatch"
+                            logger.warning(
+                                "OrganizationAssessor: %s for %r - domain %s doesn't match. Clearing website.",
+                                reason, raw_name, discovered_domain,
+                            )
+                            result = AssessedOrgResult(**{**result, "website": None})
+                            flags = list(result.get("flags") or [])
+                            flags.append(f"website cleared: domain {discovered_domain} did not match org name")
+                            result = AssessedOrgResult(**{**result, "flags": flags})
 
         result = _apply_website_known_guard(result, known_website)
 

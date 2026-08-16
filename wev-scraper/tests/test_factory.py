@@ -504,3 +504,17 @@ def test_sse_fallback_truncates_cloud_grounded_prompt_keeps_ollama_budget():
         assert len(ollama_prompt) > cloud_limit  # not subject to cloud prompt cap
         assert "EVIDENCE_START" in ollama_prompt
         assert "Y" * 800 not in ollama_prompt  # middle of evidence trimmed
+
+
+def test_sse_fallback_raises_when_tavily_grounding_fails():
+    """When grounding is required (task='sse'), Tavily failures fail hard."""
+    from llm.tavily_grounding import TavilyGroundingError
+
+    with patch(
+        "llm.gemini_fallback.fetch_tavily_context",
+        side_effect=TavilyGroundingError("Tavily search failed: usage limit exceeded"),
+    ):
+        provider = SSEFallbackProvider()
+        with pytest.raises(TavilyGroundingError, match="usage limit exceeded"):
+            provider.complete("prompt", task="sse", search_query="q")
+

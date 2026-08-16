@@ -17,6 +17,7 @@ from typing import Any, Dict, List
 
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.config import should_use_grounding
+from llm.cooldown import ProviderCooldownMixin, get_cooldown_minutes, is_quota_exhausted_error
 from llm.gemini import GeminiProvider
 from llm.gemini_fallback import gemini_sse_lite_model, gemini_sse_primary_model
 from llm.groq import GroqProvider
@@ -33,11 +34,16 @@ logger = logging.getLogger(__name__)
 UNIFIED_INCLUDE_SSE_FIELDS = True
 
 
-class UnifiedJobProcessor:
+
+
+class UnifiedJobProcessor(ProviderCooldownMixin):
     """Unified job processor with intelligent fallback chain."""
 
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key
+        # Track providers with quota exhaustion and when they can be retried
+        self._exhausted_until: dict[str, float] = {}
+        self._cooldown_seconds = get_cooldown_minutes() * 60
 
         primary = gemini_sse_primary_model()
         lite = gemini_sse_lite_model()
@@ -75,6 +81,8 @@ class UnifiedJobProcessor:
                 logger.warning("Skipping LLM provider %s (not usable): %s", name, e)
 
         self.last_successful_provider = None
+
+
 
     def _try_provider(self, provider_info: dict, jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Try a specific provider for job processing."""
@@ -218,6 +226,12 @@ class UnifiedJobProcessor:
 
         for provider_info in self.providers:
             provider_name = provider_info['name']
+
+            # Skip providers in cooldown period after quota exhaustion
+            if self._is_provider_in_cooldown(provider_name):
+                attempted_providers.append(f"{provider_name} (cooldown)")
+                continue
+
             attempted_providers.append(provider_name)
 
             try:
@@ -273,15 +287,20 @@ class UnifiedJobProcessor:
             except Exception as e:
                 last_error = e
                 error_msg = str(e).lower()
-                if "rate limit" in error_msg or "429" in error_msg or "quota" in error_msg or "resource_exhausted" in error_msg:
-                    logger.warning(f"🚫 Rate limit hit for {provider_name}: {e}")
+
+                # Mark provider as exhausted if quota/rate limit hit
+                if is_quota_exhausted_error(e):
+                    self._mark_provider_exhausted(provider_name)
                 elif "not available" in error_msg:
                     logger.warning(f"❌ Provider {provider_name} not available: {e}")
                 else:
                     logger.warning(f"💥 Failed with {provider_name}: {e}")
                 continue
 
-        error_msg = f"All providers failed. Last error: {last_error}"
+        if not last_error and all("(cooldown)" in p for p in attempted_providers):
+            error_msg = f"All providers skipped due to cooldown. Attempted: {attempted_providers}"
+        else:
+            error_msg = f"All providers failed. Last error: {last_error}"
         logger.error(f"❌ {error_msg}")
         logger.error(f"📊 Attempted providers in order: {' → '.join(attempted_providers)}")
 
