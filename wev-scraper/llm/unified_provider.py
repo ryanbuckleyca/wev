@@ -13,7 +13,6 @@ Live **Google Search** in the Gemini SDK is off for ``task=unified`` unless
 """
 
 import logging
-import time
 from typing import Any, Dict, List
 
 from llm.base import BaseLLMProvider, LLMProviderError
@@ -27,7 +26,7 @@ from llm.prompts import (
     get_unified_prompt_instructions,
     get_unified_system_prompt,
 )
-from settings import get_stripped_env, is_local_env
+from settings import is_local_env
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
         self.api_key = api_key
         # Track providers with quota exhaustion and when they can be retried
         self._exhausted_until: dict[str, float] = {}
-        self._cooldown_seconds = _get_cooldown_minutes() * 60
+        self._cooldown_seconds = get_cooldown_minutes() * 60
 
         primary = gemini_sse_primary_model()
         lite = gemini_sse_lite_model()
