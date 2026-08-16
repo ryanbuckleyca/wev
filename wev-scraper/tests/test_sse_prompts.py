@@ -104,3 +104,18 @@ def test_job_rating_for_profit_commercial_and_engineering_gate():
     assert "COMMERCIAL TITLES" in RATING_GUIDELINES
     assert "Do not swap a nonprofit for a similarly abbreviated for-profit" in RATING_GUIDELINES
     assert "EMPLOYER IDENTITY" in BATCH_RATING_GUIDELINES
+
+
+def test_org_worker_owned_practices_are_cooperatives():
+    """Worker-owned practices and collectives must be recognized as cooperatives."""
+    assert "worker-owned enterprises are cooperatives" in ORG_EVALUATION_CRITERIA
+    assert "worker-owned business" in ORG_EVALUATION_CRITERIA
+    assert "democratic worker ownership is" in ORG_EVALUATION_CRITERIA
+    assert "employee stock ownership" in ORG_EVALUATION_CRITERIA
+
+
+def test_org_publicly_funded_nonprofits_not_government():
+    """Autonomous OBNLs / development hubs with municipal grants must remain nonprofit."""
+    assert "Autonomous non-profit corporations (OBNLs)" in ORG_EVALUATION_CRITERIA
+    assert "regional economic development hubs" in ORG_EVALUATION_CRITERIA
+    assert "independent non-profit board of directors" in ORG_EVALUATION_CRITERIA

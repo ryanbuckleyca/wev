@@ -14,6 +14,7 @@ class MaCommunauteScraper(BaseScraper):
     """
 
     is_chronological = True
+    force_headed_on_vpn = True
     language = "fr"
     listing_selector = ".card-posts a.card-post"
     job_wait_selector = ".entry-content, .single-content, article"

@@ -83,7 +83,11 @@ def _assessment_json(**overrides) -> str:
         "sse_reasoning_fr": "Aligné avec l'ESS.",
         "must_haves_met": ["Clear purpose beyond profit"],
         "nice_to_haves_met": [],
-        "flags": [],
+        "flags": [
+            "description via=extracted",
+            "mission via=extracted",
+            "values via=extracted",
+        ],
         "public_language": None,
     }
     payload.update(overrides)
@@ -539,6 +543,10 @@ def test_normalize_type_aliases_mutual_and_community_to_nonprofit():
     assert _normalize_type("community association") == "nonprofit"
     assert _normalize_type("community_project") == "nonprofit"
     assert _normalize_type("credit union") == "cooperative"
+    assert _normalize_type("worker-owned") == "cooperative"
+    assert _normalize_type("worker coop") == "cooperative"
+    assert _normalize_type("worker cooperative") == "cooperative"
+    assert _normalize_type("coop") == "cooperative"
 
 
 def test_org_assessment_prompt_charity_community_nonprofit_floor():
@@ -936,3 +944,125 @@ def test_place_name_guard_keeps_true_municipal_agency():
     assert result["type"] == "government"
     assert result["sse_rating"] == "no"
     assert not any("place_name_guard" in f for f in result["flags"])
+
+
+def test_assess_handles_null_geographic_scope():
+    """Assessor should handle None/null geographic_scope without raising AttributeError."""
+    from unittest.mock import MagicMock, patch
+
+    from utils.organization_assessment import OrganizationAssessor
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = json.dumps({
+        "canonical_name": "Net Zero Atlantic",
+        "slug": "net-zero-atlantic",
+        "type": "nonprofit",
+        "sector_id": "energy-utilities",
+        "values": ["sustainability"],
+        "values_raw": "Sustainability",
+        "sse_rating": "weak_yes",
+        "sse_confidence": 0.8,
+        "sse_reasoning_en": "Environmental nonprofit working on net-zero transition.",
+        "sse_reasoning_fr": None,
+        "must_haves_met": ["Explicit primary social, environmental, or community purpose"],
+        "nice_to_haves_met": [],
+        "flags": [
+            "description via=extracted",
+            "mission via=extracted",
+            "values via=extracted",
+        ],
+        "public_language": "en",
+        "geographic_scope": None,
+        "website": "https://netzeroatlantic.ca",
+        "description_en": "Net Zero Atlantic is a research association in Halifax, NS.",
+        "description_fr": None,
+        "mission_statement_en": "Advancing transition to net zero.",
+        "mission_statement_fr": None,
+        "values_en": ["sustainability"],
+        "values_fr": [],
+    })
+
+    with patch("utils.organization_assessment.get_sse_provider", return_value=mock_provider):
+        assessor = OrganizationAssessor()
+        result = assessor.assess(
+            raw_name="Net Zero Atlantic",
+            municipality="Halifax",
+            province="NS",
+        )
+    assert result is not None
+    assert result["canonical_name"] == "Net Zero Atlantic"
+    assert result["geographic_scope"] is None
+
+
+def test_build_search_query_with_known_website_and_acronym():
+    from utils.organization_assessment import _build_search_query
+
+    # With known website: includes website
+    q1 = _build_search_query("PARO", "Toronto", "ON", known_website="https://paro.ca")
+    assert '"PARO"' in q1
+    assert "Toronto, ON, Canada" in q1
+    assert "https://paro.ca" in q1
+
+    # Short acronym without known website: extracts distinctive keywords from context
+    q2 = _build_search_query(
+        "PARO",
+        "Toronto",
+        "ON",
+        known_website=None,
+        context_hint="PARO is a women's enterprise and community economic development organization.",
+    )
+    assert '"PARO"' in q2
+    assert "Toronto, ON, Canada" in q2
+    assert "women" in q2 or "enterprise" in q2 or "development" in q2
+
+
+def test_assess_passes_prefer_hosts_for_known_website():
+    from unittest.mock import MagicMock, patch
+
+    from utils.organization_assessment import OrganizationAssessor
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = json.dumps({
+        "canonical_name": "PARO Centre for Women's Enterprise",
+        "slug": "paro-centre-for-womens-enterprise",
+        "type": "nonprofit",
+        "sector_id": "community-civic-infrastructure",
+        "values": ["Community"],
+        "values_raw": "Community",
+        "sse_rating": "strong_yes",
+        "sse_confidence": 0.95,
+        "sse_reasoning_en": "Non-profit women's enterprise CED.",
+        "sse_reasoning_fr": None,
+        "must_haves_met": ["Explicit primary social, environmental, or community purpose"],
+        "nice_to_haves_met": [],
+        "flags": [
+            "description via=extracted",
+            "mission via=extracted",
+            "values via=extracted",
+        ],
+        "public_language": "en",
+        "geographic_scope": "provincial",
+        "website": "https://paro.ca",
+        "description_en": "PARO is a specialized women's enterprise...",
+        "description_fr": None,
+        "mission_statement_en": "Empower women entrepreneurs.",
+        "mission_statement_fr": None,
+        "values_en": ["Community"],
+        "values_fr": [],
+    })
+
+    with patch("utils.organization_assessment.get_sse_provider", return_value=mock_provider):
+        assessor = OrganizationAssessor()
+        assessor.assess(
+            raw_name="PARO",
+            municipality="Toronto",
+            province="ON",
+            known_website="https://paro.ca",
+            existing_description="PARO is a women's enterprise organization in Ontario.",
+        )
+
+    call_kwargs = mock_provider.complete.call_args.kwargs
+    assert call_kwargs.get("prefer_hosts") == ["paro.ca"]
+    assert "https://paro.ca" in call_kwargs.get("search_query", "")
+
+
