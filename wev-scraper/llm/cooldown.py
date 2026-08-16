@@ -23,7 +23,8 @@ DEFAULT_COOLDOWN_MINUTES = 15
 def get_cooldown_minutes() -> int:
     """Return the cooldown period (minutes) from env, defaulting to 15."""
     try:
-        return int(get_stripped_env("QUOTA_COOLDOWN_MINUTES") or DEFAULT_COOLDOWN_MINUTES)
+        val = int(get_stripped_env("QUOTA_COOLDOWN_MINUTES") or DEFAULT_COOLDOWN_MINUTES)
+        return val if val >= 0 else DEFAULT_COOLDOWN_MINUTES
     except (ValueError, TypeError):
         return DEFAULT_COOLDOWN_MINUTES
 
