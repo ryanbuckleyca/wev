@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Reprocess organizations based on model tracking status."""
 
+import json
 import sys
 import time
-import json
-from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
-from utils.db import supabase
+
 from llm.tavily_grounding import is_tavily_available
+from utils.db import supabase
+from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
+
 
 def get_orgs_by_model(model_filter=None):
     """Get organizations filtered by model used.
@@ -44,7 +46,7 @@ def get_orgs_by_model(model_filter=None):
                     if flag.startswith('model:'):
                         model_flag = flag.replace('model:', '')
                         break
-            except:
+            except Exception:
                 pass
 
         if model_filter == 'no_tracking' and model_flag is None:
@@ -150,7 +152,7 @@ def main():
 
                 # Always update to get new model tracking
                 if update_fields:
-                    response = supabase.table('organizations').update(update_fields).eq('id', org_id).execute()
+                    supabase.table('organizations').update(update_fields).eq('id', org_id).execute()
                     print(f"  ✅ Updated {len(update_fields)} fields:")
                     for field, new_val in sorted(update_fields.items()):
                         old_val = org.get(field)
@@ -167,9 +169,9 @@ def main():
                             print(f"     {field}: (unchanged) {new_str}")
                     success_count += 1
                 else:
-                    print(f"  ⚠️  No fields to update")
+                    print("  ⚠️  No fields to update")
             else:
-                print(f"  ❌ Assessment failed")
+                print("  ❌ Assessment failed")
                 error_count += 1
 
         except Exception as e:

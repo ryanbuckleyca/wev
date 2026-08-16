@@ -3,10 +3,11 @@
 
 import sys
 import time
-from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
-from utils.db import supabase
-from utils.log import scraper_log
+
 from llm.tavily_grounding import is_tavily_available
+from utils.db import supabase
+from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
+
 
 def main():
     # Check Tavily availability upfront
@@ -146,9 +147,9 @@ def main():
                     print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
                     success_count += 1
                 else:
-                    print(f"  ⚠️  No new fields to update")
+                    print("  ⚠️  No new fields to update")
             else:
-                print(f"  ❌ Assessment failed")
+                print("  ❌ Assessment failed")
                 error_count += 1
 
         except Exception as e:

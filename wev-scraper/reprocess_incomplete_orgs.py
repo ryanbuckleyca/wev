@@ -4,10 +4,11 @@
 import sys
 import time
 from datetime import datetime, timedelta
-from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
-from utils.db import supabase
-from utils.log import scraper_log
+
 from llm.tavily_grounding import is_tavily_available
+from utils.db import supabase
+from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
+
 
 def main():
     # Check Tavily availability upfront
@@ -70,7 +71,7 @@ def main():
     # Show what's missing
     print("\nMissing field breakdown:")
     missing_stats = {}
-    for org, missing in incomplete_orgs:
+    for _org, missing in incomplete_orgs:
         for field in missing:
             missing_stats[field] = missing_stats.get(field, 0) + 1
 
@@ -165,10 +166,10 @@ def main():
                     print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
                     success_count += 1
                 else:
-                    print(f"  ⚠️  No new fields to update")
+                    print("  ⚠️  No new fields to update")
                     no_change_count += 1
             else:
-                print(f"  ❌ Assessment failed")
+                print("  ❌ Assessment failed")
                 error_count += 1
 
         except Exception as e:

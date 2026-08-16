@@ -945,6 +945,7 @@ def test_place_name_guard_keeps_true_municipal_agency():
 def test_assess_handles_null_geographic_scope():
     """Assessor should handle None/null geographic_scope without raising AttributeError."""
     from unittest.mock import MagicMock, patch
+
     from utils.organization_assessment import OrganizationAssessor
 
     mock_provider = MagicMock()
@@ -1009,6 +1010,7 @@ def test_build_search_query_with_known_website_and_acronym():
 
 def test_assess_passes_prefer_hosts_for_known_website():
     from unittest.mock import MagicMock, patch
+
     from utils.organization_assessment import OrganizationAssessor
 
     mock_provider = MagicMock()

@@ -6,11 +6,14 @@ set -e
 cd "$(dirname "$0")"
 
 # Load production environment
-if [ -f "../.env.production" ]; then
-    export $(grep -v '^#' ../.env.production | xargs)
-    echo "✓ Loaded production environment"
+if [[ -f "../.env.production" ]]; then
+	set -a
+	# shellcheck disable=SC1091
+	source ../.env.production
+	set +a
+	echo "✓ Loaded production environment"
 else
-    echo "⚠️  No .env.production found, using current environment"
+	echo "⚠️  No .env.production found, using current environment"
 fi
 
 # Activate virtual environment

@@ -3,9 +3,10 @@
 
 import sys
 import time
-from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
-from utils.db import supabase
+
 from llm.tavily_grounding import is_tavily_available
+from utils.db import supabase
+from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
 
 # List of org names that failed validation
 FAILED_ORGS = [
@@ -118,10 +119,10 @@ def main():
                     print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
                     success_count += 1
                 else:
-                    print(f"  ⚠️  No new fields to update")
+                    print("  ⚠️  No new fields to update")
                     success_count += 1
             else:
-                print(f"  ❌ Assessment still failed")
+                print("  ❌ Assessment still failed")
                 still_failed_count += 1
 
         except Exception as e:
