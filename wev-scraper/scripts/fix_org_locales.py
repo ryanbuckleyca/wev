@@ -22,7 +22,6 @@ else:
     print("Using TEST database")
 
 from utils.db import PAGE_SIZE, supabase  # noqa: E402
-from utils.organization_language import _detect_text_language  # noqa: E402
 from utils.organization_assessment import _LOCALE_FIELD_PAIRS, _translate_text  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")

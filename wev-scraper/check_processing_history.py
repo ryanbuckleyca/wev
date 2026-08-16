@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Check which organizations were processed with new models/Tavily vs old models."""
 
-from utils.db import supabase
-from datetime import datetime, timedelta
 import json
+from datetime import datetime, timedelta, timezone
+
+from utils.db import supabase
+
 
 def main():
     print("=" * 80)
@@ -47,7 +49,7 @@ def main():
                             model = flag.replace('model:', '')
                             model_counts[model] = model_counts.get(model, 0) + 1
                             break  # Only count once per org
-            except:
+            except Exception:
                 pass
 
     print("\n" + "=" * 80)
@@ -56,16 +58,12 @@ def main():
     print(f"\nOrganizations with model flag: {with_model_flag}/{len(all_orgs)} ({with_model_flag/len(all_orgs)*100:.1f}%)")
 
     if model_counts:
-        print("\nModel breakdown:")
+        print("\nBreakdown by model:")
         for model, count in sorted(model_counts.items(), key=lambda x: x[1], reverse=True):
-            print(f"  {model}: {count}")
-    else:
-        print("\n⚠️  No model flags found in any organization")
-        print("This suggests the model tracking feature was added recently")
+            print(f"  • {model}: {count} ({count/len(all_orgs)*100:.1f}%)")
 
-    # Analyze update timestamps
-    now = datetime.utcnow()
-
+    # Check timestamps to see when processing happened
+    now = datetime.now(timezone.utc)
     last_24h = 0
     last_week = 0
     last_month = 0
@@ -79,7 +77,8 @@ def main():
             continue
 
         try:
-            updated_dt = datetime.fromisoformat(updated_at.replace('Z', '+00:00')).replace(tzinfo=None)
+            # Parse ISO timestamp
+            updated_dt = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
             age = now - updated_dt
 
             if age < timedelta(hours=24):
@@ -90,7 +89,7 @@ def main():
                 last_month += 1
             else:
                 older += 1
-        except:
+        except Exception:
             no_timestamp += 1
 
     print("\n" + "=" * 80)
@@ -128,7 +127,7 @@ def main():
                 try:
                     updated_dt = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
                     print(f"    Last updated: {updated_dt.strftime('%Y-%m-%d %H:%M UTC')}")
-                except:
+                except Exception:
                     print(f"    Last updated: {updated_at}")
 
     # Summary
@@ -139,8 +138,8 @@ def main():
     print(f"⚠️  Organizations needing attention: {len(incomplete)}")
 
     if with_model_flag == 0:
-        print(f"\n⚠️  Model tracking: Not available")
-        print(f"   Model flags were likely added after most orgs were processed")
+        print("\n⚠️  Model tracking: Not available")
+        print("   Model flags were likely added after most orgs were processed")
         print(f"   {last_24h} orgs updated in last 24h may have model tracking")
     else:
         print(f"\n📊 Model tracking: {with_model_flag} orgs ({with_model_flag/len(all_orgs)*100:.1f}%)")
