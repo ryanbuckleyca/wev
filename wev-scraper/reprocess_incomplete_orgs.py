@@ -31,19 +31,19 @@ def main():
 
     # Fetch all organizations
     all_orgs = []
-    offset = 0
+    last_id = 0
     page_size = 1000
 
     print("\nFetching organizations from database...")
     try:
         while True:
-            response = supabase.table('organizations').select('*').range(offset, offset + page_size - 1).execute()
+            response = supabase.table('organizations').select('*').gt('id', last_id).order('id').limit(page_size).execute()
             if not response.data:
                 break
             all_orgs.extend(response.data)
             if len(response.data) < page_size:
                 break
-            offset += page_size
+            last_id = response.data[-1]['id']
     except Exception as e:
         print(f"❌ Failed to fetch organizations from database: {e}")
         sys.exit(1)
@@ -166,9 +166,18 @@ def main():
                         filtered_update[field] = value
 
                 if filtered_update:
-                    response = supabase.table('organizations').update(filtered_update).eq('id', org_id).execute()
-                    print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
-                    success_count += 1
+                    # Conditional write: only update if the row hasn't changed since we read it.
+                    read_at = org.get('updated_at')
+                    query = supabase.table('organizations').update(filtered_update).eq('id', org_id)
+                    if read_at:
+                        query = query.eq('updated_at', read_at)
+                    resp = query.execute()
+                    if resp.data:
+                        print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
+                        success_count += 1
+                    else:
+                        print("  ⚠️  Conflict: row was modified since we read it, skipping")
+                        error_count += 1
                 else:
                     print("  ⚠️  No new fields to update")
                     no_change_count += 1

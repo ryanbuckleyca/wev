@@ -83,7 +83,11 @@ def _assessment_json(**overrides) -> str:
         "sse_reasoning_fr": "Aligné avec l'ESS.",
         "must_haves_met": ["Clear purpose beyond profit"],
         "nice_to_haves_met": [],
-        "flags": [],
+        "flags": [
+            "description via=extracted",
+            "mission via=extracted",
+            "values via=extracted",
+        ],
         "public_language": None,
     }
     payload.update(overrides)
@@ -962,11 +966,15 @@ def test_assess_handles_null_geographic_scope():
         "sse_reasoning_fr": None,
         "must_haves_met": ["Explicit primary social, environmental, or community purpose"],
         "nice_to_haves_met": [],
-        "flags": ["description via=extracted"],
+        "flags": [
+            "description via=extracted",
+            "mission via=extracted",
+            "values via=extracted",
+        ],
         "public_language": "en",
         "geographic_scope": None,
         "website": "https://netzeroatlantic.ca",
-        "description_en": "Net Zero Atlantic is a research association.",
+        "description_en": "Net Zero Atlantic is a research association in Halifax, NS.",
         "description_fr": None,
         "mission_statement_en": "Advancing transition to net zero.",
         "mission_statement_fr": None,
@@ -1027,7 +1035,11 @@ def test_assess_passes_prefer_hosts_for_known_website():
         "sse_reasoning_fr": None,
         "must_haves_met": ["Explicit primary social, environmental, or community purpose"],
         "nice_to_haves_met": [],
-        "flags": ["description via=extracted"],
+        "flags": [
+            "description via=extracted",
+            "mission via=extracted",
+            "values via=extracted",
+        ],
         "public_language": "en",
         "geographic_scope": "provincial",
         "website": "https://paro.ca",
