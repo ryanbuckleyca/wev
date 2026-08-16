@@ -32,6 +32,7 @@ from utils.organization_language import (
 )
 from utils.slug import generate_slug
 from utils.location_parser import parse_address_with_geocodio
+from llm.tavily_grounding import _STOP, _TOKEN_RE
 from utils.sse_prompts import (
     JSON_INSTRUCTIONS,
     LENGTH_LIMITED_FIELD_RULES,
@@ -405,7 +406,6 @@ def _build_search_query(
     elif context_hint and (len(raw_name.strip()) <= 6 or raw_name.isupper()):
         # For short acronyms / names without a known website, extract 2-3 distinctive keywords
         # to avoid ambiguous acronym collisions on search engines.
-        from llm.tavily_grounding import _STOP, _TOKEN_RE
         tokens = [
             t for t in _TOKEN_RE.findall(context_hint.lower())
             if t not in _STOP and len(t) > 3 and t not in raw_name.lower()
@@ -643,7 +643,13 @@ def _enforce_locale_correctness(result: AssessedOrgResult) -> AssessedOrgResult:
             if not fr_val:
                 updates[fr_key] = en_val
             translated = _translate_text(en_val, "en")
-            updates[en_key] = translated
+            if translated:
+                updates[en_key] = translated
+            else:
+                logger.warning(
+                    "Translation to 'en' failed for %s/%s on %s; keeping original value",
+                    en_key, fr_key, result.get("canonical_name"),
+                )
             logger.info(
                 "Moved %s→%s (was French) and translated to English on %s",
                 en_key, fr_key, result.get("canonical_name"),
@@ -655,7 +661,13 @@ def _enforce_locale_correctness(result: AssessedOrgResult) -> AssessedOrgResult:
             if not en_val:
                 updates[en_key] = fr_val
             translated = _translate_text(fr_val, "fr")
-            updates[fr_key] = translated
+            if translated:
+                updates[fr_key] = translated
+            else:
+                logger.warning(
+                    "Translation to 'fr' failed for %s/%s on %s; keeping original value",
+                    fr_key, en_key, result.get("canonical_name"),
+                )
             logger.info(
                 "Moved %s→%s (was English) and translated to French on %s",
                 fr_key, en_key, result.get("canonical_name"),
