@@ -20,14 +20,18 @@ def get_orgs_by_model(model_filter=None):
     offset = 0
     page_size = 1000
 
-    while True:
-        response = supabase.table('organizations').select('*').range(offset, offset + page_size - 1).execute()
-        if not response.data:
-            break
-        all_orgs.extend(response.data)
-        if len(response.data) < page_size:
-            break
-        offset += page_size
+    try:
+        while True:
+            response = supabase.table('organizations').select('*').range(offset, offset + page_size - 1).execute()
+            if not response.data:
+                break
+            all_orgs.extend(response.data)
+            if len(response.data) < page_size:
+                break
+            offset += page_size
+    except Exception as e:
+        print(f"❌ Failed to fetch organizations from database: {e}")
+        sys.exit(1)
 
     filtered = []
     for org in all_orgs:

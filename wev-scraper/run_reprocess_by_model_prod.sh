@@ -8,6 +8,7 @@ cd "$(dirname "$0")"
 # Load production environment first
 if [[ -f "../.env.production" ]]; then
 	set -a
+	# shellcheck disable=SC1091
 	source ../.env.production
 	set +a
 	echo "✓ Loaded production environment"
@@ -19,6 +20,7 @@ fi
 # Also load .env for keys like TAVILY_API_KEY
 if [[ -f "../.env" ]]; then
 	set -a
+	# shellcheck disable=SC1091
 	source ../.env
 	set +a
 	echo "✓ Loaded .env for API keys"
@@ -31,6 +33,7 @@ export USE_PROD_DB=1
 export GROQ_API_KEY=""
 
 # Activate virtual environment
+# shellcheck disable=SC1091
 source venv/bin/activate
 
 echo ""
