@@ -4,8 +4,8 @@ set -e
 cd /Users/ry/code/wev/wev-scraper || exit
 
 if [[ ! -r "../.env.production" ]]; then
-    echo "⚠️  No readable .env.production found"
-    exit 1
+	echo "⚠️  No readable .env.production found"
+	exit 1
 fi
 
 set -a

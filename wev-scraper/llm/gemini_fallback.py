@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import logging
 import os
-import time
 from collections.abc import Callable
 
 from llm.base import BaseLLMProvider, LLMProviderError
@@ -137,7 +136,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
         # Track providers with quota exhaustion and when they can be retried
         # Maps provider name → timestamp when cooldown expires
         self._exhausted_until: dict[str, float] = {}
-        self._cooldown_seconds = _get_cooldown_minutes() * 60
+        self._cooldown_seconds = get_cooldown_minutes() * 60
 
         primary = gemini_sse_primary_model()
         lite = gemini_sse_lite_model()
