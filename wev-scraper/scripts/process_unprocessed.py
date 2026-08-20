@@ -7,20 +7,21 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# ── Env setup: target PROD DB with confirmation bypass ───────────────────
-os.environ["USE_PROD_DB"] = "1"
-os.environ["PROD_CONFIRMED"] = "1"
-os.environ["CONFIRM_PROD_RUN"] = "YES"
-os.environ["ENV_MODE"] = "prod"
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 SCRAPER_DIR = SCRIPT_DIR.parent if SCRIPT_DIR.name == "scripts" else SCRIPT_DIR
 REPO_ROOT = SCRAPER_DIR.parent
 sys.path.insert(0, str(SCRAPER_DIR))
 
+# ── Load dotenv files FIRST so they can't override mandatory prod settings ─
 for env_file in [REPO_ROOT / ".env", REPO_ROOT / ".env.production"]:
     if env_file.exists():
         load_dotenv(env_file, override=True)
+
+# ── Env setup: target PROD DB with confirmation bypass (set AFTER dotenv) ──
+os.environ["USE_PROD_DB"] = "1"
+os.environ["PROD_CONFIRMED"] = "1"
+os.environ["CONFIRM_PROD_RUN"] = "YES"
+os.environ["ENV_MODE"] = "prod"
 
 from settings import get_supabase_settings  # noqa: E402
 from utils.db import supabase  # noqa: E402
@@ -65,6 +66,8 @@ def fetch_unprocessed_jobs():
             needs.append("language")
         if not j.get("skills"):
             needs.append("skills")
+        if j.get("organization_id") is None:
+            needs.append("organization_id")
         if needs:
             unprocessed.append((j, needs))
     return all_jobs, unprocessed
@@ -219,14 +222,14 @@ def process_unprocessed_orgs(unprocessed):
 
             if result:
                 update_fields = _result_to_db_fields(result)
-                # Only populate missing fields, keep existing data
                 filtered = {}
                 for field, value in update_fields.items():
-                    if not org.get(field) and value:
+                    if org.get(field) is None and value is not None:
                         filtered[field] = value
-                # Always update language/values_list if they came back and were missing
-                for field in ["language", "values_list", "values_rated"]:
-                    if field in update_fields and update_fields[field] and not org.get(field):
+                # Always update values_list/values_rated if they came back and were missing
+                # (language is not included here — _result_to_db_fields does not write it)
+                for field in ["values_list", "values_rated"]:
+                    if field in update_fields and update_fields[field] and org.get(field) is None:
                         filtered[field] = update_fields[field]
 
                 if filtered:
@@ -267,19 +270,19 @@ def main():
         _log("✅ Nothing to process.")
         return
 
-    # ── Process JOBS first ────────────────────────────────────────────────────
-    job_ok, job_err = 0, 0
-    if unprocessed_jobs:
-        t0 = time.time()
-        job_ok, job_err = process_unprocessed_jobs(unprocessed_jobs)
-        _log(f"JOBS: {job_ok} processed, {job_err} errors  ({time.time()-t0:.1f}s)")
-
-    # ── Process ORGS (so jobs can get organization_id links) ───────
+    # ── Process ORGS first (so jobs can resolve organization_id links) ────────
     org_ok, org_err = 0, 0
     if unprocessed_orgs:
         t0 = time.time()
         org_ok, org_err = process_unprocessed_orgs(unprocessed_orgs)
         _log(f"ORGS: {org_ok} ok, {org_err} errors  ({time.time()-t0:.1f}s)")
+
+    # ── Process JOBS ────────────────────────────────────────────────────
+    job_ok, job_err = 0, 0
+    if unprocessed_jobs:
+        t0 = time.time()
+        job_ok, job_err = process_unprocessed_jobs(unprocessed_jobs)
+        _log(f"JOBS: {job_ok} processed, {job_err} errors  ({time.time()-t0:.1f}s)")
 
     _log("\n" + "=" * 70)
     _log("FINAL SUMMARY")

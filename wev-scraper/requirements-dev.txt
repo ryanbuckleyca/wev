@@ -3,7 +3,6 @@
 pytest
 pytest-mock
 pytest-cov
-tavily-python
 ollama
 ruff
 pyright
@@ -19,4 +18,3 @@ transformers>=4.40,<5
 einops>=0.7,<0.9
 numpy<2
 hypothesis>=6.100.0
-tavily-python==0.7.27

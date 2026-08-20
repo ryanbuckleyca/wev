@@ -61,7 +61,7 @@ class CSIScraper(BaseScraper):
 
     def open_listings_page(self, page, filter_value=None):
         self.processed_urls = set()
-        page.goto(self.source["url"])
+        return super().open_listings_page(page, filter_value)
 
     def has_next_page(self, page):
         try:

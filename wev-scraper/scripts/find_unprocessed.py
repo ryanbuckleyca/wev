@@ -6,20 +6,22 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-os.environ["USE_PROD_DB"] = "1"
-os.environ["PROD_CONFIRMED"] = "1"
-os.environ["CONFIRM_PROD_RUN"] = "YES"
-os.environ["ENV_MODE"] = "prod"
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 SCRAPER_DIR = SCRIPT_DIR.parent if SCRIPT_DIR.name == "scripts" else SCRIPT_DIR
 REPO_ROOT = SCRAPER_DIR.parent
 
 sys.path.insert(0, str(SCRAPER_DIR))
 
+# ── Load dotenv files FIRST so they can't override mandatory prod settings ─
 for env_file in [REPO_ROOT / ".env", REPO_ROOT / ".env.production"]:
     if env_file.exists():
         load_dotenv(env_file, override=True)
+
+# ── Env setup: target PROD DB with confirmation bypass (set AFTER dotenv) ──
+os.environ["USE_PROD_DB"] = "1"
+os.environ["PROD_CONFIRMED"] = "1"
+os.environ["CONFIRM_PROD_RUN"] = "YES"
+os.environ["ENV_MODE"] = "prod"
 
 from settings import get_supabase_settings  # noqa: E402
 from utils.db import supabase  # noqa: E402
@@ -88,7 +90,7 @@ print("=" * 70)
 # Organizations: unprocessed = missing sector_id OR missing type OR missing description_en OR missing description_fr OR missing language
 # First check columns exist
 try:
-    org_resp = supabase.table("organizations").select("id, name, sector_id, type, description, mission_statement, values_list, values_rated, language, municipality, province, slug, website, location, is_sse, sse_rating, created_at, updated_at").execute()
+    org_resp = supabase.table("organizations").select("id, name, sector_id, type, description, description_en, description_fr, mission_statement, values_list, values_rated, language, municipality, province, slug, website, location, is_sse, sse_rating, created_at, updated_at").execute()
 except Exception as e:
     print(f"Warning: Some columns may not exist, trying reduced select: {e}")
     org_resp = supabase.table("organizations").select("*").execute()
