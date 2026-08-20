@@ -9,10 +9,6 @@ beforeEach(() => {
   vi.useRealTimers();
 });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 // `server-only` throws when imported outside Next server; Vitest runs in Node.
 vi.mock('server-only', () => ({}));
 
@@ -75,6 +71,7 @@ afterAll(() => {
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await act(async () => {
     cleanup();
   });

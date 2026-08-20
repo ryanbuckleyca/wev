@@ -147,8 +147,13 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
             ("groq", lambda: GroqProvider()),
             ("ollama", lambda: LocalGroundedProvider()),
         ]
-        for name, factory in candidates:
 
+        disable_local = os.environ.get("DISABLE_LOCAL_FALLBACK", "").strip().lower() in ("1", "true", "yes", "on")
+
+        for name, factory in candidates:
+            if disable_local and name == "ollama":
+                logger.warning("SSE fallback: skipping ollama (DISABLE_LOCAL_FALLBACK=1)")
+                continue
             try:
                 provider = factory()
                 if provider.is_available():
