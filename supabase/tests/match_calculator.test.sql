@@ -3,7 +3,7 @@
 
 begin;
 
-select plan(13);
+select plan(12);
 
 -- ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -173,6 +173,8 @@ select ok(
 
 -- Narrow-trigger check: UPDATE only summary/description (not in the watchlist)
 -- and confirm no new queue row appeared for test_job_id.
+delete from public.job_match_recalc_queue where job_id = :test_job_id;
+
 update public.jobs
 set summary = 'summary-only update should not trigger match recalc',
     description = 'description-only update'

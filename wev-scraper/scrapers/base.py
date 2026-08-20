@@ -841,6 +841,7 @@ class BaseScraper:
             "listing_url": kwargs.get("listing_url"),
             "employment_type": kwargs.get("employment_type"),
             "wage": kwargs.get("wage"),
+            "website": kwargs.get("website"),
             "language": kwargs.get("language", "en"),
         }
 
