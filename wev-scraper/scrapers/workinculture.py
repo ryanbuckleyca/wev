@@ -87,8 +87,6 @@ class WorkInCultureScraper(BaseScraper):
                 scraper_log("\tClicking Algolia pagination next link…")
                 next_link.click(timeout=5000)
                 page.wait_for_timeout(1000)
-            else:
-                raise Exception("No pagination next link found")
         except Exception as e:
             scraper_log(f"\tPagination failed: {e}\n{traceback.format_exc()}")
             raise
