@@ -15,24 +15,23 @@ import json
 import logging
 import re
 from datetime import datetime, timezone
-from dataclasses import dataclass
-from typing import Any, List, TypedDict, Optional
+from typing import Any, List, TypedDict
 from urllib.parse import urlparse
 
 from llm.base import LLMProviderError
 from llm.factory import get_sse_provider
+from llm.tavily_grounding import entity_require_terms
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
-from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
+from utils.location_parser import parse_address_with_geocodio
 from utils.organization_cache import evidence_domain, extract_domain
 from utils.organization_language import (
     VALID_ORG_LANGUAGES,
     _detect_text_language,
     classify_org_language,
 )
+from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
 from utils.slug import generate_slug
-from utils.location_parser import parse_address_with_geocodio
-from llm.tavily_grounding import entity_require_terms
 from utils.sse_prompts import (
     JSON_INSTRUCTIONS,
     LENGTH_LIMITED_FIELD_RULES,
@@ -110,7 +109,9 @@ _JSON_FIELDS = """{
   "nice_to_haves_met": ["ONLY org nice-to-have labels from ORG NICE-TO-HAVES below — never job/posting criteria"],
   "flags": ["REQUIRED — see FLAGS RULES below"],
   "public_language": "Primary language of the organization's own public materials (website, postings, documents, reports) observed during research. Use only: en, fr, bilingual, or null. Do not use the language of this response as evidence. Prefer bilingual when the organization publishes substantial public materials in both English and French (or both EN and FR sites).",
-  "geographic_scope": "Geographic reach of the organization based on evidence from their website and materials. Use: local (serves a single city/town/region), provincial (serves a single province), national (serves all or most of Canada), international (operates in multiple countries), or null if unclear. Base this on service area, chapters/locations, or mission statement, not just the organization name."
+  "geographic_scope": "Geographic reach of the organization based on evidence from their website and materials. Use: local (serves a single city/town/region), provincial (serves a single province), national (serves all or most of Canada), international (operates in multiple countries), or null if unclear. Base this on service area, chapters/locations, or mission statement, not just the organization name.",
+  "headquarters_municipality": "The primary municipality (city, town, etc.) where the organization is headquartered or based, according to their website. If fully remote or no specific headquarters can be found, use null.",
+  "headquarters_province": "The province or territory (e.g. 'ON', 'QC', 'BC') where the organization is headquartered or based. Use standard 2-letter abbreviation. If fully remote or unknown, use null."
 }"""
 
 _ORG_CRITERION_LABEL_RULES = """ORG MUST-HAVES / NICE-TO-HAVES LABELS (strict — org assessment only):
@@ -311,6 +312,8 @@ class AssessedOrgResult(TypedDict):
     flags: List[str]
     public_language: str | None
     geographic_scope: str | None
+    headquarters_municipality: str | None
+    headquarters_province: str | None
 
 
 _TAXONOMY_STR: str | None = None
@@ -458,6 +461,74 @@ def _validate_geographic_scope(raw: Any) -> str | None:
     return value if value in valid_scopes else None
 
 
+# Province/territory name → canonical two-letter code for CA plus common US state
+# entries we might encounter. Anything not mapped is rejected by _validate_province_code.
+_PROVINCE_NAME_TO_CODE: dict[str, str] = {
+    # Canada
+    "alberta": "AB",
+    "british columbia": "BC",
+    "colombie britannique": "BC",
+    "colombie-britannique": "BC",
+    "manitoba": "MB",
+    "new brunswick": "NB",
+    "nouveau brunswick": "NB",
+    "newfoundland and labrador": "NL",
+    "newfoundland": "NL",
+    "terre-neuve": "NL",
+    "terre-neuve-et-labrador": "NL",
+    "northwest territories": "NT",
+    "territoires du nord-ouest": "NT",
+    "nova scotia": "NS",
+    "nouvelle-ecosse": "NS",
+    "nouvelle-écosse": "NS",
+    "nunavut": "NU",
+    "ontario": "ON",
+    "prince edward island": "PE",
+    "ile-du-prince-edouard": "PE",
+    "île-du-prince-édouard": "PE",
+    "quebec": "QC",
+    "québec": "QC",
+    "saskatchewan": "SK",
+    "yukon": "YT",
+    # US border states occasionally seen as "province"
+    "maine": "ME",
+    "new york": "NY",
+    "michigan": "MI",
+    "washington": "WA",
+    "minnesota": "MN",
+    "north dakota": "ND",
+    "montana": "MT",
+    "vermont": "VT",
+    "new hampshire": "NH",
+}
+
+
+def _validate_province_code(raw: Any) -> str | None:
+    """Normalize a province/territory value to a canonical two-letter code.
+
+    Accepts either a raw full name (English/French) or the code itself. Returns
+    the canonical uppercase code, or None for unrecognized / too-long values.
+    """
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    if len(s) <= 2:
+        code = s.upper()
+        if code in frozenset(_PROVINCE_NAME_TO_CODE.values()):
+            return code
+        return None
+    key = s.lower()
+    mapped = _PROVINCE_NAME_TO_CODE.get(key)
+    if mapped:
+        return mapped
+    # Cap length: prevent arbitrarily long free-text from being persisted as-is.
+    if len(s) > 64:
+        return None
+    return None
+
+
 # Known types that can never be SSE yes. Null/unknown type is NOT in this set.
 # Eligible stored types (must agree with ORG_EVALUATION_CRITERIA): nonprofit,
 # cooperative, union. Eligible type is necessary but not sufficient — must-haves
@@ -597,7 +668,7 @@ def _translate_text(text: str, target_lang: str) -> str | None:
     if not provider:
         logger.error("No LLM provider available for translation")
         return None
-        
+
     try:
         lang_name = "English" if target_lang == "en" else "French"
         prompt = f"Translate the following text into {lang_name}. Output ONLY the translated text, nothing else.\n\n{text}"
@@ -1158,6 +1229,8 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         flags=_ensure_str_list(data.get("flags")),
         public_language=_validate_public_language(data.get("public_language")),
         geographic_scope=_validate_geographic_scope(data.get("geographic_scope")),
+        headquarters_municipality=_parse_text_field(data, "headquarters_municipality"),
+        headquarters_province=_validate_province_code(_parse_text_field(data, "headquarters_province")),
     )
     gated = _apply_org_sse_governance_guard(
         _enforce_provenance_nulls(
@@ -1360,6 +1433,9 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
             "reviewed": False,
         },
     }
+    public_language = result.get("public_language")
+    if public_language in VALID_ORG_LANGUAGES:
+        fields["language"] = public_language
     # Persist employer-owned sites from assessor (+ known-website guard). Omitting
     # this field made re-assess / parity harnesses report website=None even when
     # Known website and Tavily evidence were available.
@@ -1997,9 +2073,31 @@ class OrganizationAssessor(BaseGroundedClassifier):
             return None
 
         loc_str = canonical_loc or None
-        # parse_address_with_geocodio always returns a complete dict (municipality, province,
-        # lat, lng, geocode_accuracy_type); it handles None/empty internally.
-        geo_data = parse_address_with_geocodio(loc_str)
+        llm_mun = result.get("headquarters_municipality")
+        llm_prov = result.get("headquarters_province")
+
+        if llm_mun:
+            # A municipality-level HQ is the only case where we replace the
+            # canonical location: province-only LLM output is too coarse (often
+            # just "ON"/"QC") and would clobber an existing city-level loc.
+            hq_loc = ", ".join(part for part in (llm_mun, llm_prov) if part)
+            loc_str = hq_loc or loc_str
+            geo_data = parse_address_with_geocodio(hq_loc)
+
+            # Use the cleaned up municipality/province from geocodio if available, else raw LLM
+            municipality = geo_data.get("municipality") or llm_mun
+            province = geo_data.get("province") or llm_prov
+            # Keep province canonical: apply name→code cleanup if missing a code
+            province = _validate_province_code(province) or province
+        else:
+            # Province-only or no-HQ path: keep the job's canonical location
+            # string and geocode that for lat/lng. When only llm_prov exists we
+            # still use it to sanitize the final province field via the
+            # validator, but we don't rewrite loc_str or geocode just a prov.
+            geo_data = parse_address_with_geocodio(loc_str)
+            municipality = geo_data.get("municipality") or municipality
+            province = geo_data.get("province") or (llm_prov or province)
+            province = _validate_province_code(province) or province
 
         # Build the row with all fields
         row = {
@@ -2007,8 +2105,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
             "slug": result["slug"],
             "location": loc_str,
             "website": result["website"],
-            "municipality": geo_data.get("municipality"),
-            "province": geo_data.get("province"),
+            "municipality": municipality,
+            "province": province,
             "lat": geo_data.get("lat"),
             "lng": geo_data.get("lng"),
             "geocode_accuracy_type": geo_data.get("geocode_accuracy_type"),

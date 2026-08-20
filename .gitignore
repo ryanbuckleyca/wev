@@ -69,6 +69,7 @@ rclone-log.txt
 trunk_output.txt
 trunk_report.txt
 trunk_results.txt
+*_ids.txt
 
 # Trunk / local tooling caches
 .trunk-cache/

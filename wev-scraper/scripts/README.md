@@ -43,7 +43,7 @@ python scripts/unified_post_processor.py --task all
 python scripts/unified_post_processor.py --task summary
 python scripts/unified_post_processor.py --task values
 python scripts/unified_post_processor.py --task sse
-python scripts/unified_post_processor.py --task all --limit 50
+python scripts/unified_post_processor.py --task all --page-limit 50
 python scripts/unified_post_processor.py --job-id <uuid>
 python scripts/unified_post_processor.py --dry-run --verbose
 ```

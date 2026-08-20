@@ -1,11 +1,10 @@
-from scrapers.base import BaseScraper, _debug_report
+from scrapers.base import BaseScraper
 from utils.extractors import extract_salary_from_text
 from utils.log import scraper_log
 
 
 class CSIScraper(BaseScraper):
     is_chronological = True
-    force_headed_on_vpn = True
     listing_selector = "h4.elementor-heading-title a"
     job_wait_selector = "h2.elementor-heading-title"
 
@@ -18,18 +17,7 @@ class CSIScraper(BaseScraper):
         self.processed_urls = set()
 
     def start_browser(self, headless=True, viewport=None):
-        # #region debug-point C:csi-start-browser
-        _debug_report("C", "scrapers/csi.py:start_browser", "CSI browser config", {
-            "source": (self.source or {}).get("name"),
-            "requested_headless": headless,
-            "requested_viewport": viewport,
-        })
-        # #endregion
-        return super().start_browser(
-            headless=headless,
-            viewport={"width": 1280, "height": 1400},
-            use_proxy=True,
-        )
+        return super().start_browser(headless=headless, viewport={"width": 1280, "height": 1400})
 
     def setup_pagination(self, page):
         pass  # CSI uses "Load More" button; no page count needed
@@ -73,20 +61,7 @@ class CSIScraper(BaseScraper):
 
     def open_listings_page(self, page, filter_value=None):
         self.processed_urls = set()
-        # #region debug-point C:csi-open-listings
-        _debug_report("C", "scrapers/csi.py:open_listings_page", "CSI navigating to listings", {
-            "source": (self.source or {}).get("name"),
-            "url": self.source["url"],
-            "filter_value": filter_value,
-        })
-        # #endregion
-        super().open_listings_page(page, filter_value)
-        # #region debug-point C:csi-opened
-        _debug_report("C", "scrapers/csi.py:open_listings_page", "CSI listings opened", {
-            "source": (self.source or {}).get("name"),
-            "final_url": page.url,
-        })
-        # #endregion
+        return super().open_listings_page(page, filter_value)
 
     def has_next_page(self, page):
         try:

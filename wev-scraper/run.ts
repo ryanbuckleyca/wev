@@ -85,9 +85,7 @@ async function main() {
   const scriptArgs = args.slice(1).filter((a) => a !== "--");
   const envIndex = scriptArgs.indexOf("--env");
   const scriptEnv =
-    envIndex >= 0 && scriptArgs[envIndex + 1]
-      ? scriptArgs[envIndex + 1]
-      : null;
+    envIndex >= 0 && scriptArgs[envIndex + 1] ? scriptArgs[envIndex + 1] : null;
   const isProd = scriptArgs.includes("--prod") || scriptEnv === "prod";
   const isPublish =
     (scriptArgs.includes("--publish") || scriptEnv === "publish") &&
@@ -143,12 +141,13 @@ async function main() {
       !isLightweightScrape
     ) {
       console.log("▶ Syncing Python Dependencies...");
-      execVerbose(venvPipCmd, ["install", "--quiet", "-r", "requirements.txt"]);
-      execVerbose(venvPipCmd, ["install", "--quiet", "-e", "."]);
-
-      if (task === "scrape" && !isLightweightScrape) {
-        execVerbose(venvPlaywrightCmd, ["install", "--with-deps", "chromium"]);
-      }
+      execVerbose(venvPipCmd, ["install", "-r", "requirements.txt"]);
+      console.log("▶ Provisioning Playwright browser (Chromium)...");
+      const playwrightArgs =
+        process.platform === "linux"
+          ? ["install", "chromium", "--with-deps"]
+          : ["install", "chromium"];
+      execVerbose(venvPlaywrightCmd, playwrightArgs);
     }
 
     console.log(`▶ Executing ${scriptPath}...`);

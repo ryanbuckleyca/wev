@@ -153,31 +153,72 @@ def test_has_next_page_returns_false_when_no_more(scraper):
     assert scraper.has_next_page(page) is False
 
 
-def test_has_next_page_logs_selector_failures(scraper):
+def test_has_next_page_propagates_unexpected_locator_errors(scraper):
     page = MagicMock()
-    page.locator.side_effect = [Exception("load more failed"), Exception("pagination failed")]
+    page.locator.side_effect = Exception("internal playwright crash")
+
+    import pytest
+    with pytest.raises(Exception, match="internal playwright crash"):
+        scraper.has_next_page(page)
+
+
+def test_has_enabled_load_more_button_logs_and_handles_timeout(scraper):
+    page = MagicMock()
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+    btn = MagicMock()
+    btn.count.return_value = 1
+    btn.first.is_enabled.side_effect = PlaywrightTimeoutError("stuck")
+
+    page.locator.return_value = btn
 
     with patch("scrapers.workinculture.scraper_log") as mock_log:
-        assert scraper.has_next_page(page) is False
+        assert scraper._has_enabled_load_more_button(page) is False
 
-    assert mock_log.call_count == 2
+    assert mock_log.call_count == 1
 
 
-def test_go_next_page_skips_fallback_when_next_link_missing(scraper):
+def test_go_next_page_raises_when_next_link_missing(scraper):
     page = MagicMock()
     load_more_button = MagicMock()
     load_more_button.count.return_value = 0
     load_more_button.is_enabled.return_value = False
 
     next_link = MagicMock()
-    next_link.count.return_value = 0
+    next_link_locator = MagicMock(first=next_link)
+    next_link_locator.count.return_value = 0
 
     page.locator.side_effect = [
         load_more_button,
-        MagicMock(first=next_link),
+        next_link_locator,
     ]
 
-    scraper.go_next_page(page)
+    import pytest
+    with pytest.raises(Exception, match="No pagination next link found"):
+        scraper.go_next_page(page)
 
     next_link.click.assert_not_called()
-    page.wait_for_timeout.assert_not_called()
+
+
+def test_go_next_page_propagates_click_exception(scraper):
+    page = MagicMock()
+    load_more_button = MagicMock()
+    load_more_button.count.return_value = 0
+    load_more_button.is_enabled.return_value = False
+
+    click_error = RuntimeError("stale element reference")
+    next_link = MagicMock()
+    next_link.click.side_effect = click_error
+
+    next_link_locator = MagicMock(first=next_link)
+    next_link_locator.count.return_value = 1
+
+    page.locator.side_effect = [
+        load_more_button,
+        next_link_locator,
+    ]
+
+    import pytest
+    with pytest.raises(RuntimeError, match="stale element reference"):
+        scraper.go_next_page(page)
+
+    next_link.click.assert_called_once()
