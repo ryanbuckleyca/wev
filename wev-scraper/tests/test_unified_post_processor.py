@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 from scripts.unified_post_processor import (
     ProcessingOptions,
     _build_update_data,
+    _enqueue_job_match_recalc,
     _needs_processing,
+    _touches_match_relevant,
     _try_db_write,
     is_transient_db_error,
     main,
@@ -79,6 +81,9 @@ def test_is_transient_db_error():
     e.code = "503"
     assert is_transient_db_error(e) is True
 
+    e.code = "57014"
+    assert is_transient_db_error(e) is True
+
     e.code = "500"
     assert is_transient_db_error(e) is False
 
@@ -86,6 +91,21 @@ def test_is_transient_db_error():
     assert is_transient_db_error(e) is False
 
     assert is_transient_db_error(TimeoutError()) is True
+
+
+def test_touches_match_relevant_recognises_only_match_columns():
+    assert _touches_match_relevant({"summary": "S"}) is False
+    assert _touches_match_relevant({"language": "en"}) is False
+    assert _touches_match_relevant({"sse_details": "{}"}) is False
+    assert _touches_match_relevant({"values": ["Ambition"]}) is True
+    assert _touches_match_relevant({"values_rated": []}) is True
+    assert _touches_match_relevant({"skills": ["S1"]}) is True
+    assert _touches_match_relevant({"work_type": "Remote"}) is True
+    assert _touches_match_relevant({"lat": 45.5}) is True
+    assert _touches_match_relevant({"lng": -73.5}) is True
+    assert _touches_match_relevant({"municipality": "Montréal"}) is True
+    assert _touches_match_relevant({"province": "QC"}) is True
+    assert _touches_match_relevant({"geocode_accuracy_type": "rooftop"}) is True
 
 
 def test_needs_processing_all_skips_complete_sse_false():
@@ -114,6 +134,44 @@ def test_try_db_write_success(mock_supabase):
 
     _try_db_write({"id": "j1"}, {"summary": "S"}, mock_supabase)
     mock_table.update.assert_called_with({"summary": "S"})
+
+
+@patch("scripts.unified_post_processor.supabase")
+def test_try_db_write_retries_57014_then_succeeds(mock_supabase):
+    """A transient 57014 statement_timeout on first attempt is retried and succeeds."""
+    mock_table = mock_supabase.table.return_value
+    call_count = 0
+
+    def _fake_update_call(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            timeout_err = Exception("statement_timeout: canceling statement due to statement timeout")
+            timeout_err.code = "57014"
+            raise timeout_err
+        return MagicMock()
+
+    (mock_table.update.return_value.eq.return_value.execute.side_effect) = _fake_update_call
+
+    _try_db_write({"id": "j1"}, {"summary": "S"}, mock_supabase)
+
+    # Retry decorator should have triggered multiple execute() calls (1 fail + 1 success)
+    assert call_count >= 2
+
+
+@patch("scripts.unified_post_processor.supabase")
+def test_enqueue_job_match_recalc_calls_rpc(mock_supabase):
+    _enqueue_job_match_recalc("j1", mock_supabase)
+    mock_supabase.rpc.assert_called_once_with(
+        "enqueue_job_match_recalc", {"p_job_id": "j1"}
+    )
+    mock_supabase.rpc.return_value.execute.assert_called_once_with()
+
+
+@patch("scripts.unified_post_processor.supabase")
+def test_enqueue_job_match_recalc_swallows_missing_rpc(mock_supabase):
+    mock_supabase.rpc.side_effect = Exception("function does not exist")
+    _enqueue_job_match_recalc("j1", mock_supabase)
 
 @patch("scripts.unified_post_processor.get_unified_processor")
 @patch("scripts.unified_post_processor.supabase")

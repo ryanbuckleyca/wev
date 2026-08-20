@@ -1,4 +1,5 @@
 import type { JobPosting } from '@/lib/supabase';
+import { normalizeLocation } from './search-utils';
 
 export type MunicipalitiesByProvince = Record<string, string[]>;
 
@@ -17,11 +18,15 @@ export function toggleSelection(items: string[], value: string): string[] {
 
 export function buildFilterOptions(jobs: JobPosting[]): BulletinFilterOptions {
   const organizations = new Set<string>();
-  const provinces = new Set<string>();
-  const municipalitiesByProvince: Record<string, Set<string>> = {};
+  // provinceKey -> preferredProvinceLabel
+  const provinces = new Map<string, string>();
+  // provinceKey -> Map<foldedMuniKey, preferredMuniLabel>
+  const municipalitiesByProvince: Record<string, Map<string, string>> = {};
   const employmentTypes = new Set<string>();
   const sources = new Set<string>();
   const languages = new Set<string>();
+
+  const isAscii = (s: string) => /^[\x00-\x7F]*$/.test(s);
 
   jobs.forEach((job) => {
     if (job.organization) organizations.add(job.organization);
@@ -30,29 +35,45 @@ export function buildFilterOptions(jobs: JobPosting[]): BulletinFilterOptions {
     if (job.language) languages.add(job.language);
 
     if (!job.province) return;
-    provinces.add(job.province);
 
-    if (!municipalitiesByProvince[job.province]) {
-      municipalitiesByProvince[job.province] = new Set<string>();
+    const provLabel = job.province.trim();
+    const provKey = normalizeLocation(provLabel);
+
+    const existingProv = provinces.get(provKey);
+    if (!existingProv || (isAscii(provLabel) && !isAscii(existingProv))) {
+      provinces.set(provKey, provLabel);
+    }
+
+    if (!municipalitiesByProvince[provKey]) {
+      municipalitiesByProvince[provKey] = new Map<string, string>();
     }
 
     if (job.municipality) {
-      municipalitiesByProvince[job.province].add(job.municipality);
+      const muniLabel = job.municipality.trim();
+      const muniKey = normalizeLocation(muniLabel);
+      const existingMuni = municipalitiesByProvince[provKey].get(muniKey);
+
+      if (!existingMuni || (isAscii(muniLabel) && !isAscii(existingMuni))) {
+        municipalitiesByProvince[provKey].set(muniKey, muniLabel);
+      }
     }
   });
 
   const sortedMunicipalitiesByProvince: MunicipalitiesByProvince = {};
-  Object.keys(municipalitiesByProvince)
-    .sort()
-    .forEach((province) => {
-      sortedMunicipalitiesByProvince[province] = Array.from(
-        municipalitiesByProvince[province],
-      ).sort();
-    });
+  const sortedProvKeys = Array.from(provinces.keys()).sort((a, b) =>
+    provinces.get(a)!.localeCompare(provinces.get(b)!),
+  );
+
+  sortedProvKeys.forEach((provKey) => {
+    const provLabel = provinces.get(provKey)!;
+    sortedMunicipalitiesByProvince[provLabel] = Array.from(
+      municipalitiesByProvince[provKey].values(),
+    ).sort();
+  });
 
   return {
     organizations: Array.from(organizations).sort(),
-    provinces: Array.from(provinces).sort(),
+    provinces: Array.from(provinces.values()).sort(),
     municipalitiesByProvince: sortedMunicipalitiesByProvince,
     employmentTypes: Array.from(employmentTypes).sort(),
     sources: Array.from(sources).sort(),

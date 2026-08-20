@@ -13,6 +13,7 @@ Live **Google Search** in the Gemini SDK is off for ``task=unified`` unless
 """
 
 import logging
+import os
 from typing import Any, Dict, List
 
 from llm.base import BaseLLMProvider, LLMProviderError
@@ -65,8 +66,13 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                 ("ollama", lambda: LocalGroundedProvider(), "Ollama (local LLM)"),
             )
 
+        disable_local = os.environ.get("DISABLE_LOCAL_FALLBACK", "").strip().lower() in ("1", "true", "yes", "on")
+
         self.providers = []
         for name, factory, description in candidates:
+            if disable_local and name == "ollama":
+                logger.warning("Skipping LLM provider ollama (DISABLE_LOCAL_FALLBACK=1)")
+                continue
             try:
                 provider = factory()
                 if not provider.is_available():

@@ -129,6 +129,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      job_match_recalc_queue: {
+        Row: {
+          attempts: number;
+          claimed_at: string | null;
+          claimed_by: string | null;
+          enqueued_at: string;
+          job_id: string;
+          last_error: string | null;
+          processed_at: string | null;
+          run_after: string;
+        };
+        Insert: {
+          attempts?: number;
+          claimed_at?: string | null;
+          claimed_by?: string | null;
+          enqueued_at?: string;
+          job_id: string;
+          last_error?: string | null;
+          processed_at?: string | null;
+          run_after?: string;
+        };
+        Update: {
+          attempts?: number;
+          claimed_at?: string | null;
+          claimed_by?: string | null;
+          enqueued_at?: string;
+          job_id?: string;
+          last_error?: string | null;
+          processed_at?: string | null;
+          run_after?: string;
+        };
+        Relationships: [];
+      };
       job_matches: {
         Row: {
           job_id: string;
@@ -673,7 +706,6 @@ export type Database = {
           max_value: number | null;
           min_value: number | null;
           municipality: string | null;
-          org_is_sse: boolean | null;
           organization: string | null;
           organization_id: number | null;
           province: string | null;
@@ -720,6 +752,10 @@ export type Database = {
         Returns: undefined;
       };
       earth: { Args: never; Returns: number };
+      enqueue_job_match_recalc: {
+        Args: { p_job_id: string };
+        Returns: undefined;
+      };
       f_unaccent: { Args: { '': string }; Returns: string };
       get_active_organizations: {
         Args: {
@@ -818,6 +854,18 @@ export type Database = {
               similarity: number;
             }[];
           };
+      process_job_match_recalc_queue: {
+        Args: {
+          p_attempts_max?: number;
+          p_batch_size?: number;
+          p_claim_owner?: string;
+          p_lease_seconds?: number;
+        };
+        Returns: {
+          failed_jobs: number;
+          processed_jobs: number;
+        }[];
+      };
       purge_request_logs: { Args: never; Returns: undefined };
       rank_weight: {
         Args: { p_rank: number; p_total: number };

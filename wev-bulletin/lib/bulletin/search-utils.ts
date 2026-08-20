@@ -18,3 +18,13 @@ export function formatSearchQuery(query: string): {
   // Fall back to standard websearch for complex queries
   return { formatted: trimmed, type: 'websearch' };
 }
+
+/**
+ * Normalizes a location name (municipality or province) for comparison/filtering (unaccented lowercase).
+ */
+export function normalizeLocation(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}

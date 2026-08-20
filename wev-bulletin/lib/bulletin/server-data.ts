@@ -11,7 +11,7 @@ import type { Profile } from '@/lib/supabase/profiles';
 import { buildFilterOptions, type BulletinFilterOptions } from './filter-options';
 import { throwBulletinQueryError } from './fts-errors';
 import { resolveOrgSlugs } from './resolve-org-slugs';
-import { formatSearchQuery } from './search-utils';
+import { formatSearchQuery, normalizeLocation } from './search-utils';
 
 // Re-exported for callers that historically imported these from server-data.
 export {
@@ -113,8 +113,14 @@ function applyNonFacetFilters(query: any, input: BulletinQueryInput) {
 
 function applyBulletinFilters(query: any, input: BulletinQueryInput) {
   if (input.orgs.length) query = query.in('organization', input.orgs);
-  if (input.provs.length) query = query.in('province', input.provs);
-  if (input.munis.length) query = query.in('municipality', input.munis);
+  if (input.provs.length) {
+    const normalizedProvs = input.provs.map(normalizeLocation);
+    query = query.in('search_province', normalizedProvs);
+  }
+  if (input.munis.length) {
+    const normalizedMunis = input.munis.map(normalizeLocation);
+    query = query.in('search_municipality', normalizedMunis);
+  }
   if (input.emps.length) query = query.in('employment_type', input.emps);
   if (input.srcs.length) query = query.in('source', input.srcs);
   return applyNonFacetFilters(query, input);

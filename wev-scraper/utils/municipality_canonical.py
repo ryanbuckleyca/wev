@@ -15,8 +15,8 @@ from typing import Optional
 _CTRL = re.compile(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]")
 
 
-def fold_municipality_key(s: str) -> str:
-    """Lowercase, NFD, strip combining marks — same idea as bulletin foldMunicipalityKey."""
+def normalize_location(s: str) -> str:
+    """Lowercase, NFD, strip combining marks — same idea as bulletin normalizeLocation."""
     return "".join(
         c
         for c in unicodedata.normalize("NFD", s.lower())
@@ -60,6 +60,9 @@ def canonicalize_municipality(
     municipality: Optional[str],
     _province: Optional[str] = None,
 ) -> Optional[str]:
-    """Normalize municipality for persistence (NFC + trim only)."""
+    """Normalize municipality for persistence (Generic NFC + trim)."""
     del _province
+    # Just do standard Unicode normalization (NFC) and trimming.
+    # We rely on the search_municipality column and UI-level merging
+    # to handle accent variants generically.
     return nfc_trim_municipality(municipality)
