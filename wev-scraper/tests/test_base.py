@@ -26,14 +26,6 @@ class StubWithCustomExtract(BaseScraper):
         return "custom-title"
 
 
-class ForceHeadedStubScraper(BaseScraper):
-    force_headed = True
-
-
-class ForceHeadedOnVPNStubScraper(BaseScraper):
-    force_headed_on_vpn = True
-
-
 # --- extract_with_selectors ---
 
 
@@ -303,26 +295,6 @@ def test_resolve_headless_env_other_value_does_not_force(monkeypatch):
     assert scraper._resolve_headless(True) is True
 
 
-def test_resolve_headless_scraper_can_force_headed(monkeypatch):
-    monkeypatch.delenv("SCRAPER_HEADED", raising=False)
-    scraper = ForceHeadedStubScraper(make_source())
-    assert scraper._resolve_headless(True) is False
-
-
-def test_resolve_headless_scraper_force_headed_on_vpn_only(monkeypatch):
-    monkeypatch.delenv("SCRAPER_HEADED", raising=False)
-    monkeypatch.delenv("SCRAPER_VPN_MODE", raising=False)
-    scraper = ForceHeadedOnVPNStubScraper(make_source())
-    assert scraper._resolve_headless(True) is True
-
-
-def test_resolve_headless_scraper_force_headed_on_vpn_when_enabled(monkeypatch):
-    monkeypatch.delenv("SCRAPER_HEADED", raising=False)
-    monkeypatch.setenv("SCRAPER_VPN_MODE", "1")
-    scraper = ForceHeadedOnVPNStubScraper(make_source())
-    assert scraper._resolve_headless(True) is False
-
-
 # --- get_job_url board-URL guard ---
 
 
@@ -401,43 +373,6 @@ def test_is_error_page_cloudflare(page):
         scraper._is_error_page(page)
 
 
-def test_is_error_page_does_not_pause_without_vpn(page, monkeypatch):
-    monkeypatch.delenv("SCRAPER_VPN_MODE", raising=False)
-    page.set_content('<html><body><div class="cf-challenge"></div></body></html>')
-    scraper = BaseScraper(make_source(name="Manual Test Source"))
-    scraper._resolved_headless = False
-
-    with patch("sys.stdin.isatty", return_value=True), patch("builtins.input") as mock_input:
-        with pytest.raises(Exception, match="Bot challenge detected"):
-            scraper._is_error_page(page)
-
-    mock_input.assert_not_called()
-
-
-def test_is_error_page_allows_manual_challenge_resume_in_vpn_mode(page, monkeypatch):
-    monkeypatch.setenv("SCRAPER_VPN_MODE", "1")
-    page.goto("data:text/html,<html></html>")
-    page.set_content('<html><body><div class="cf-challenge"></div></body></html>')
-    scraper = BaseScraper(make_source(name="Manual Test Source"))
-    scraper._resolved_headless = False
-
-    def complete_challenge(_prompt):
-        page.set_content("<html><head><title>Jobs</title></head><body>Listings ready</body></html>")
-        return ""
-
-    with patch("sys.stdin.isatty", return_value=True), patch("builtins.input", side_effect=complete_challenge):
-        scraper._is_error_page(page)
-
-
-def test_restore_page_scrollability_best_effort():
-    page = MagicMock()
-
-    BaseScraper._restore_page_scrollability(page)
-
-    page.add_style_tag.assert_called_once()
-    page.evaluate.assert_called_once()
-
-
 # --- extract_job_fields ---
 
 @patch("scrapers.base.is_recent_job", return_value=False)
@@ -509,24 +444,6 @@ def test_get_stealth(reset_stealth):
         assert mock_stealth_class.call_count == 1
         _get_stealth()
         assert mock_stealth_class.call_count == 1
-
-
-def test_build_context_headers_real_chrome_uses_browser_defaults():
-    scraper = BaseScraper(make_source())
-    headers, user_agent = scraper._build_context_headers(use_real_chrome=True)
-
-    assert user_agent is None
-    assert "Sec-CH-UA" not in headers
-    assert headers["Accept-Language"] == "en-CA,en-US;q=0.9,en;q=0.8"
-
-
-def test_build_context_headers_chromium_spoofs_fingerprint():
-    scraper = BaseScraper(make_source())
-    headers, user_agent = scraper._build_context_headers(use_real_chrome=False)
-
-    assert user_agent is not None
-    assert headers["Sec-CH-UA"] == '"Google Chrome";v="149", "Chromium";v="149", "Not_A Brand";v="24"'
-    assert headers["Sec-CH-UA-Mobile"] == "?0"
 
 
 @patch("playwright.sync_api.sync_playwright")

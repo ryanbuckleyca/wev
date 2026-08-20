@@ -143,12 +143,7 @@ async function main() {
       !isLightweightScrape
     ) {
       console.log("▶ Syncing Python Dependencies...");
-      execVerbose(venvPipCmd, ["install", "--quiet", "-r", "requirements.txt"]);
-      execVerbose(venvPipCmd, ["install", "--quiet", "-e", "."]);
-
-      if (task === "scrape" && !isLightweightScrape) {
-        execVerbose(venvPlaywrightCmd, ["install", "--with-deps", "chromium"]);
-      }
+      execVerbose(venvPipCmd, ["install", "-r", "requirements.txt"]);
     }
 
     console.log(`▶ Executing ${scriptPath}...`);

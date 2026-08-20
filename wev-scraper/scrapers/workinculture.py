@@ -48,15 +48,17 @@ class WorkInCultureScraper(BaseScraper):
         return super().get_job_url(item)
 
     def _has_enabled_load_more_button(self, page) -> bool:
-        btn = page.locator(self.INFINITE_HITS_LOAD_MORE_BUTTON)
-        return btn.count() > 0 and btn.first.is_enabled(timeout=2000)
-
-    def has_next_page(self, page):
         try:
-            if self._has_enabled_load_more_button(page):
+            btn = page.locator(self.INFINITE_HITS_LOAD_MORE_BUTTON)
+            if btn.count() > 0 and btn.first.is_enabled(timeout=2000):
                 return True
         except Exception as e:
-            scraper_log(f"\tLoad-more detection failed: {e}\n{traceback.format_exc()}")
+            scraper_log(f"\tLoad-more button detection failed: {e}\n{traceback.format_exc()}")
+        return False
+
+    def has_next_page(self, page):
+        if self._has_enabled_load_more_button(page):
+            return True
         try:
             next_item = page.locator(self.PAGINATION_NEXT_ITEM)
             if next_item.count() > 0:
@@ -66,24 +68,25 @@ class WorkInCultureScraper(BaseScraper):
         return False
 
     def go_next_page(self, page):
-        try:
-            if self._has_enabled_load_more_button(page):
+        if self._has_enabled_load_more_button(page):
+            try:
                 btn = page.locator(self.INFINITE_HITS_LOAD_MORE_BUTTON).first
                 scraper_log("\tClicking Algolia 'Load More' button…")
                 btn.scroll_into_view_if_needed()
                 btn.click(timeout=5000)
                 page.wait_for_timeout(1000)
                 return
-        except Exception as e:
-            scraper_log(f"\tInfiniteHits button unavailable or failed: {e}\n{traceback.format_exc()}")
+            except Exception as e:
+                scraper_log(f"\tInfiniteHits button click failed: {e}\n{traceback.format_exc()}")
+
         try:
-            next_link = page.locator(
-                f"{self.PAGINATION_NEXT_ITEM} a"
-            ).first
-            if next_link.count() == 0:
-                return
-            scraper_log("\tClicking Algolia pagination next link…")
-            next_link.click(timeout=5000)
-            page.wait_for_timeout(1000)
+            next_link_locator = page.locator(f"{self.PAGINATION_NEXT_ITEM} a")
+            if next_link_locator.count() > 0:
+                next_link = next_link_locator.first
+                scraper_log("\tClicking Algolia pagination next link…")
+                next_link.click(timeout=5000)
+                page.wait_for_timeout(1000)
+            else:
+                scraper_log("\tNo pagination next link found, stopping.")
         except Exception as e:
             scraper_log(f"\tPagination failed: {e}\n{traceback.format_exc()}")

@@ -154,6 +154,9 @@ def test_ensure_length_limits_truncates_oversize_fields(mock_get_sse_provider):
         nice_to_haves_met=[],
         flags=[],
         public_language=None,
+        geographic_scope=None,
+        headquarters_municipality=None,
+        headquarters_province=None,
     )
 
     fixed = assessor._ensure_length_limits(result, "Nature Visuals")
@@ -658,6 +661,50 @@ def test_result_to_db_fields_omits_shared_host_website():
     assert "website" not in updates
 
 
+def test_assess_and_build_row_uses_hq_location_when_geocoding_hq():
+    from utils.organization_assessment import OrganizationAssessor
+
+    result = _parse_response(
+        _assessment_json(
+            headquarters_municipality="Ottawa",
+            headquarters_province="ON",
+        ),
+        "Nature Visuals",
+    )
+    assert result is not None
+
+    assessor = object.__new__(OrganizationAssessor)
+    assessor.assess = MagicMock(return_value=result)
+
+    with patch(
+        "utils.organization_assessment.parse_address_with_geocodio",
+        return_value={
+            "municipality": "Ottawa",
+            "province": "ON",
+            "lat": 45.4215,
+            "lng": -75.6972,
+            "geocode_accuracy_type": "city",
+        },
+    ) as mock_geocode, patch(
+        "utils.organization_assessment.classify_org_language",
+        return_value=LanguageClassification(None, 0.0, "unknown", ()),
+    ):
+        row = assessor.assess_and_build_row(
+            raw_name="Nature Visuals",
+            municipality="Toronto",
+            province="ON",
+            canonical_loc="Toronto, ON",
+        )
+
+    mock_geocode.assert_called_once_with("Ottawa, ON")
+    assert row is not None
+    assert row["location"] == "Ottawa, ON"
+    assert row["municipality"] == "Ottawa"
+    assert row["province"] == "ON"
+    assert row["lat"] == 45.4215
+    assert row["lng"] == -75.6972
+
+
 def test_private_company_gate_keeps_inc_charity_with_mission_no_cra():
     """Inc. + clear nonprofit mission (no CRA phrase) must stay Yes/nonprofit."""
     result = _parse_response(
@@ -1064,5 +1111,3 @@ def test_assess_passes_prefer_hosts_for_known_website():
     call_kwargs = mock_provider.complete.call_args.kwargs
     assert call_kwargs.get("prefer_hosts") == ["paro.ca"]
     assert "https://paro.ca" in call_kwargs.get("search_query", "")
-
-

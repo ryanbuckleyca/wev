@@ -39,7 +39,7 @@ const sections = [
     title: "Process (local/staging only)",
     lines: [
       "npm run process:local / process:staging",
-      "npm run process -- --env staging --limit 50",
+      "npm run process -- --env staging --page-limit 50",
     ],
   },
   {
