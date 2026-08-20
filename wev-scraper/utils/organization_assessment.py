@@ -1433,6 +1433,9 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
             "reviewed": False,
         },
     }
+    public_language = result.get("public_language")
+    if public_language in VALID_ORG_LANGUAGES:
+        fields["language"] = public_language
     # Persist employer-owned sites from assessor (+ known-website guard). Omitting
     # this field made re-assess / parity harnesses report website=None even when
     # Known website and Tavily evidence were available.

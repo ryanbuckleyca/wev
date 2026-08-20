@@ -88,10 +88,16 @@ def fetch_unprocessed_orgs():
                 .range(page * page_size, (page + 1) * page_size - 1)
                 .execute()
             )
-        except Exception:
+        except Exception as e:
+            msg = str(e).lower()
+            expected_failure = any(
+                marker in msg for marker in ("column", "does not exist", "42703", "undefined")
+            )
+            if not expected_failure:
+                raise
             resp = (
                 supabase.table("organizations")
-                .select("id,name,sector_id,type,description,website,location,is_sse,sse_rating,mission_statement,values_list,values_rated,language,municipality,province,lat,lng,geocode_accuracy_type,created_at")
+                .select("id,name,sector_id,type,description,description_en,description_fr,website,location,is_sse,sse_rating,mission_statement,values_list,values_rated,language,municipality,province,lat,lng,geocode_accuracy_type,created_at")
                 .order("id")
                 .range(page * page_size, (page + 1) * page_size - 1)
                 .execute()
@@ -226,8 +232,6 @@ def process_unprocessed_orgs(unprocessed):
                 for field, value in update_fields.items():
                     if org.get(field) is None and value is not None:
                         filtered[field] = value
-                # Always update values_list/values_rated if they came back and were missing
-                # (language is not included here — _result_to_db_fields does not write it)
                 for field in ["values_list", "values_rated"]:
                     if field in update_fields and update_fields[field] and org.get(field) is None:
                         filtered[field] = update_fields[field]
@@ -235,8 +239,6 @@ def process_unprocessed_orgs(unprocessed):
                 if filtered:
                     supabase.table("organizations").update(filtered).eq("id", oid).execute()
                     success += 1
-                else:
-                    success += 1  # assessor ran but nothing new to write
             else:
                 errors += 1
 
