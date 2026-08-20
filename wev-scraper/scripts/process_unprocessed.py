@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Process all unprocessed orgs and jobs in prod DB."""
-import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # ── Env setup: target PROD DB with confirmation bypass ───────────────────
 os.environ["USE_PROD_DB"] = "1"
@@ -18,7 +18,6 @@ SCRAPER_DIR = SCRIPT_DIR.parent if SCRIPT_DIR.name == "scripts" else SCRIPT_DIR
 REPO_ROOT = SCRAPER_DIR.parent
 sys.path.insert(0, str(SCRAPER_DIR))
 
-from dotenv import load_dotenv
 for env_file in [REPO_ROOT / ".env", REPO_ROOT / ".env.production"]:
     if env_file.exists():
         load_dotenv(env_file, override=True)
@@ -131,8 +130,8 @@ def process_unprocessed_jobs(unprocessed, skip_esco=False):
     job_ids = [j["id"] for j, _ in unprocessed]
     _log(f"Processing {len(job_ids)} jobs in chunks...")
 
-    from scripts.unified_post_processor import process_jobs_unified, ProcessingOptions
     from scripts.tag_esco_skills_vector import tag_esco_skills_vector
+    from scripts.unified_post_processor import ProcessingOptions, process_jobs_unified
 
     unified_processed = 0
     unified_errors = 0
@@ -195,7 +194,7 @@ def process_unprocessed_orgs(unprocessed):
 
     success = 0
     errors = 0
-    for i, (org, needs) in enumerate(unprocessed, 1):
+    for i, (org, _needs) in enumerate(unprocessed, 1):
         oid = org["id"]
         name = org.get("name") or "(unnamed)"
         municipality = org.get("municipality")

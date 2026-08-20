@@ -13,7 +13,6 @@ import time
 from typing import Any, Dict, List, Tuple
 
 from utils.db import fetch_all_rows, supabase
-from utils.env import is_truthy_env
 from utils.log import scraper_log as _log
 
 VALID_LANGUAGES = frozenset({"en", "fr", "bilingual"})

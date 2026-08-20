@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Query prod DB for unprocessed orgs and jobs."""
-import json
 import os
 import sys
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 os.environ["USE_PROD_DB"] = "1"
 os.environ["PROD_CONFIRMED"] = "1"
@@ -16,7 +17,6 @@ REPO_ROOT = SCRAPER_DIR.parent
 
 sys.path.insert(0, str(SCRAPER_DIR))
 
-from dotenv import load_dotenv
 for env_file in [REPO_ROOT / ".env", REPO_ROOT / ".env.production"]:
     if env_file.exists():
         load_dotenv(env_file, override=True)
