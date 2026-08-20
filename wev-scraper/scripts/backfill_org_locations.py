@@ -81,6 +81,7 @@ def main() -> None:
     success_count = 0
     error_count = 0
     no_change_count = 0
+    dry_run_count = 0
 
     for i, org in enumerate(all_orgs, 1):
         org_id = org['id']
@@ -144,7 +145,7 @@ def main() -> None:
                             error_count += 1
                     else:
                         print(f"  ✅ Would update: {update_fields}")
-                        success_count += 1
+                        dry_run_count += 1
                 else:
                     print("  ⚠️  LLM found no HQ (Remote/Unknown)")
                     no_change_count += 1
@@ -161,9 +162,14 @@ def main() -> None:
     print("\n" + "=" * 80)
     print("BACKFILL COMPLETE" + (" (DRY RUN)" if dry_run else ""))
     print("=" * 80)
-    print(f"Successfully processed: {success_count}")
-    print(f"No HQ found: {no_change_count}")
-    print(f"Failed: {error_count}")
+    if dry_run:
+        print(f"Would update:          {dry_run_count}")
+        print(f"No HQ found / no-op:   {no_change_count}")
+        print(f"Failed:                {error_count}")
+    else:
+        print(f"Successfully processed: {success_count}")
+        print(f"No HQ found / no-op:    {no_change_count}")
+        print(f"Failed:                 {error_count}")
     print(f"Total processed: {len(all_orgs)}")
 
 if __name__ == '__main__':

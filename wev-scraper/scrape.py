@@ -120,14 +120,20 @@ class ScraperOrchestrator:
         _log("-" * 40)
 
         from utils.catch_up import catch_up_unprocessed
-        report = catch_up_unprocessed()
+        try:
+            report = catch_up_unprocessed()
+        except Exception as e:
+            _log(f"❌ Catch-up pass failed (non-fatal): {e}")
+            traceback.print_exc()
+            self.results.catch_up = {
+                "orgs_total": 0, "orgs_processed": 0, "orgs_errors": 0,
+                "jobs_total": 0, "jobs_processed": 0, "jobs_errors": 1,
+            }
+            _log("Continuing to main scraping work despite catch-up failure.")
+            return
+
         self.results.catch_up = report
 
-        # Collect job IDs from catch-up if any were newly processed
-        # (they are already written so they don't need re-save, but may need
-        #  post-processing such as value match recalc — treat as non-fatal if
-        #  we can't list them cheaply; catch_up_unprocessed already ran them
-        #  through its own unified post-processor pass.)
         if report["orgs_total"] or report["jobs_total"]:
             _log("Catch-up pass complete.")
         else:

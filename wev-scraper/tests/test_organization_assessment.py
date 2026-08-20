@@ -705,6 +705,59 @@ def test_assess_and_build_row_uses_hq_location_when_geocoding_hq():
     assert row["lng"] == -75.6972
 
 
+def test_assess_and_build_row_preserves_canonical_loc_when_only_province_hq():
+    """Province-only LLM output must not clobber city-level canonical location.
+
+    When headquarters_municipality is absent but headquarters_province is set,
+    the assessor must keep the original canonical_loc for the `location`
+    string, must NOT geocode the bare province string, and must preserve the
+    municipality from the canonical fallback geocode while still applying
+    the province validator to the final province value.
+    """
+    from utils.organization_assessment import OrganizationAssessor
+
+    result = _parse_response(
+        _assessment_json(
+            headquarters_municipality=None,
+            headquarters_province="ON",
+        ),
+        "Nature Visuals",
+    )
+    assert result is not None
+
+    assessor = object.__new__(OrganizationAssessor)
+    assessor.assess = MagicMock(return_value=result)
+
+    with patch(
+        "utils.organization_assessment.parse_address_with_geocodio",
+        return_value={
+            "municipality": "Toronto",
+            "province": "ON",
+            "lat": 43.6532,
+            "lng": -79.3832,
+            "geocode_accuracy_type": "city",
+        },
+    ) as mock_geocode, patch(
+        "utils.organization_assessment.classify_org_language",
+        return_value=LanguageClassification(None, 0.0, "unknown", ()),
+    ):
+        row = assessor.assess_and_build_row(
+            raw_name="Nature Visuals",
+            municipality="Toronto",
+            province="ON",
+            canonical_loc="Toronto, ON",
+        )
+
+    # Must not be called with bare province "ON"
+    mock_geocode.assert_called_once_with("Toronto, ON")
+    assert row is not None
+    assert row["location"] == "Toronto, ON"
+    assert row["municipality"] == "Toronto"
+    assert row["province"] == "ON"
+    assert row["lat"] == 43.6532
+    assert row["lng"] == -79.3832
+
+
 def test_private_company_gate_keeps_inc_charity_with_mission_no_cra():
     """Inc. + clear nonprofit mission (no CRA phrase) must stay Yes/nonprofit."""
     result = _parse_response(

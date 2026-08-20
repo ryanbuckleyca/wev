@@ -137,6 +137,29 @@ def test_try_db_write_success(mock_supabase):
 
 
 @patch("scripts.unified_post_processor.supabase")
+def test_try_db_write_retries_57014_then_succeeds(mock_supabase):
+    """A transient 57014 statement_timeout on first attempt is retried and succeeds."""
+    mock_table = mock_supabase.table.return_value
+    call_count = 0
+
+    def _fake_update_call(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            timeout_err = Exception("statement_timeout: canceling statement due to statement timeout")
+            timeout_err.code = "57014"
+            raise timeout_err
+        return MagicMock()
+
+    (mock_table.update.return_value.eq.return_value.execute.side_effect) = _fake_update_call
+
+    _try_db_write({"id": "j1"}, {"summary": "S"}, mock_supabase)
+
+    # Retry decorator should have triggered multiple execute() calls (1 fail + 1 success)
+    assert call_count >= 2
+
+
+@patch("scripts.unified_post_processor.supabase")
 def test_enqueue_job_match_recalc_calls_rpc(mock_supabase):
     _enqueue_job_match_recalc("j1", mock_supabase)
     mock_supabase.rpc.assert_called_once_with(

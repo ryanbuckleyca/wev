@@ -75,6 +75,7 @@ begin
 end;
 $func$;
 
+revoke all on function public.enqueue_job_match_recalc(uuid) from public, anon, authenticated;
 grant execute on function public.enqueue_job_match_recalc(uuid) to service_role;
 
 --------------------------------------------------------------------------------
@@ -162,6 +163,7 @@ begin
 end;
 $func$;
 
+revoke all on function public.process_job_match_recalc_queue(int, int, text, int) from public, anon, authenticated;
 grant execute on function public.process_job_match_recalc_queue(int, int, text, int)
   to service_role;
 

@@ -29,7 +29,7 @@ def find_unprocessed_jobs() -> List[Tuple[Dict[str, Any], List[str]]]:
     jobs: List[dict] = fetch_all_rows(
         "jobs",
         "id, listing_url, summary, values, is_sse, language, skills, organization_id, "
-        "description, job_title, organization, scraped_at",
+        "job_title, organization, scraped_at",
         order_by="scraped_at",
         desc=False,
     )
@@ -46,6 +46,8 @@ def find_unprocessed_jobs() -> List[Tuple[Dict[str, Any], List[str]]]:
             needs.append("language")
         if not j.get("skills"):
             needs.append("skills")
+        if j.get("organization_id") is None:
+            needs.append("organization_id")
         if needs:
             unprocessed.append((j, needs))
     return unprocessed
@@ -56,10 +58,17 @@ def find_unprocessed_organizations() -> List[Tuple[Dict[str, Any], List[str]]]:
     # Try full select first; fall back to the column set we know always exists.
     try:
         orgs: List[dict] = fetch_all_rows("organizations", "*", order_by="id", desc=False)
-    except Exception:
+    except Exception as e:
+        # Only swallow missing-column/schema errors; let auth/network errors bubble up.
+        msg = str(e).lower()
+        expected_failure = any(
+            marker in msg for marker in ("column", "does not exist", "42703", "undefined")
+        )
+        if not expected_failure:
+            raise
         orgs = fetch_all_rows(
             "organizations",
-            "id,name,sector_id,type,description,website,location,is_sse,sse_rating,"
+            "id,name,sector_id,type,description,description_en,description_fr,website,location,is_sse,sse_rating,"
             "mission_statement,values_list,values_rated,language,municipality,province,"
             "lat,lng,geocode_accuracy_type,created_at,slug",
             order_by="id",
@@ -187,8 +196,11 @@ def process_unprocessed_organizations(
                 update_fields = _result_to_db_fields(result)
                 filtered = {}
                 for field, value in update_fields.items():
-                    # Fill missing fields only — don't clobber existing data
-                    if not org.get(field) and value:
+                    # Fill missing fields only — treat only None as missing, and
+                    # write any non-None value (including boolean False / empty
+                    # strings) so is_sse=False and similar explicit results
+                    # are persisted correctly instead of being re-processed.
+                    if org.get(field) is None and value is not None:
                         filtered[field] = value
                 if filtered:
                     supabase.table("organizations").update(filtered).eq("id", oid).execute()
@@ -240,24 +252,7 @@ def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) ->
         _log("SCRAPER_SHOULD_CATCH_UP=0 — skipping unprocessed catch-up pass.")
         return report
 
-    # ── 1. Jobs first ─────────────────────────────────────────────────────────────────
-    if not skip_jobs:
-        t0 = time.time()
-        unprocessed_jobs = find_unprocessed_jobs()
-        report["jobs_total"] = len(unprocessed_jobs)
-        if unprocessed_jobs:
-            _log(f"Found {len(unprocessed_jobs)} unprocessed jobs — processing before scraping new data")
-            ok, err = process_unprocessed_jobs(unprocessed_jobs)
-            report["jobs_processed"] = ok
-            report["jobs_errors"] = err
-            _log(
-                f"Job catch-up complete: {ok}/{len(unprocessed_jobs)} processed, {err} errors "
-                f"({time.time() - t0:.1f}s)"
-            )
-        else:
-            _log("✅ All jobs already processed.")
-
-    # ── 2. Organizations (so jobs can resolve organization_id properly) ──
+    # ── 1. Organizations first (so jobs can resolve organization_id properly) ──
     if not skip_orgs:
         t0 = time.time()
         unprocessed_orgs = find_unprocessed_organizations()
@@ -273,5 +268,22 @@ def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) ->
             )
         else:
             _log("✅ All organizations already processed.")
+
+    # ── 2. Jobs ─────────────────────────────────────────────────────────────────
+    if not skip_jobs:
+        t0 = time.time()
+        unprocessed_jobs = find_unprocessed_jobs()
+        report["jobs_total"] = len(unprocessed_jobs)
+        if unprocessed_jobs:
+            _log(f"Found {len(unprocessed_jobs)} unprocessed jobs — processing before scraping new data")
+            ok, err = process_unprocessed_jobs(unprocessed_jobs)
+            report["jobs_processed"] = ok
+            report["jobs_errors"] = err
+            _log(
+                f"Job catch-up complete: {ok}/{len(unprocessed_jobs)} processed, {err} errors "
+                f"({time.time() - t0:.1f}s)"
+            )
+        else:
+            _log("✅ All jobs already processed.")
 
     return report

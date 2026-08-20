@@ -78,6 +78,7 @@ class WorkInCultureScraper(BaseScraper):
                 return
             except Exception as e:
                 scraper_log(f"\tInfiniteHits button click failed: {e}\n{traceback.format_exc()}")
+                raise
 
         try:
             next_link_locator = page.locator(f"{self.PAGINATION_NEXT_ITEM} a")
@@ -87,6 +88,7 @@ class WorkInCultureScraper(BaseScraper):
                 next_link.click(timeout=5000)
                 page.wait_for_timeout(1000)
             else:
-                scraper_log("\tNo pagination next link found, stopping.")
+                raise Exception("No pagination next link found")
         except Exception as e:
             scraper_log(f"\tPagination failed: {e}\n{traceback.format_exc()}")
+            raise

@@ -142,6 +142,8 @@ async function main() {
     ) {
       console.log("▶ Syncing Python Dependencies...");
       execVerbose(venvPipCmd, ["install", "-r", "requirements.txt"]);
+      console.log("▶ Provisioning Playwright browser (Chromium)...");
+      execVerbose(venvPlaywrightCmd, ["install", "chromium"]);
     }
 
     console.log(`▶ Executing ${scriptPath}...`);
