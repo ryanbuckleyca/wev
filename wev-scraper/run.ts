@@ -85,9 +85,7 @@ async function main() {
   const scriptArgs = args.slice(1).filter((a) => a !== "--");
   const envIndex = scriptArgs.indexOf("--env");
   const scriptEnv =
-    envIndex >= 0 && scriptArgs[envIndex + 1]
-      ? scriptArgs[envIndex + 1]
-      : null;
+    envIndex >= 0 && scriptArgs[envIndex + 1] ? scriptArgs[envIndex + 1] : null;
   const isProd = scriptArgs.includes("--prod") || scriptEnv === "prod";
   const isPublish =
     (scriptArgs.includes("--publish") || scriptEnv === "publish") &&
