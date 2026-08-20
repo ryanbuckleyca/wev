@@ -170,11 +170,12 @@ def test_go_next_page_skips_fallback_when_next_link_missing(scraper):
     load_more_button.is_enabled.return_value = False
 
     next_link = MagicMock()
-    next_link.count.return_value = 0
+    next_link_locator = MagicMock(first=next_link)
+    next_link_locator.count.return_value = 0
 
     page.locator.side_effect = [
         load_more_button,
-        MagicMock(first=next_link),
+        next_link_locator,
     ]
 
     scraper.go_next_page(page)
