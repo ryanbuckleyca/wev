@@ -196,15 +196,11 @@ def process_unprocessed_organizations(
                 update_fields = _result_to_db_fields(result)
                 filtered = {}
                 for field, value in update_fields.items():
-                    # Fill missing fields only — treat only None as missing, and
-                    # write any non-None value (including boolean False / empty
-                    # strings) so is_sse=False and similar explicit results
-                    # are persisted correctly instead of being re-processed.
                     if org.get(field) is None and value is not None:
                         filtered[field] = value
                 if filtered:
                     supabase.table("organizations").update(filtered).eq("id", oid).execute()
-                success += 1
+                    success += 1
             else:
                 errors += 1
         except Exception as e:

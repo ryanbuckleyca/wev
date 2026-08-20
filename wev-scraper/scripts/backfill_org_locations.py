@@ -111,15 +111,22 @@ def main() -> None:
                 llm_mun = result.get("headquarters_municipality")
                 llm_prov = result.get("headquarters_province")
 
-                if llm_mun or llm_prov:
+                geo_data = {}
+                if llm_mun:
                     print(f"  🧠 LLM extracted HQ: {llm_mun}, {llm_prov}")
                     hq_loc = ", ".join(part for part in (llm_mun, llm_prov) if part)
                     geo_data = parse_address_with_geocodio(hq_loc)
+                elif llm_prov and (loc_str or "").strip():
+                    print(f"  🧠 LLM extracted province-only HQ: {llm_prov}; using org location for geocoding")
+                    geo_data = parse_address_with_geocodio(loc_str)
+                elif llm_prov:
+                    print(f"  🧠 LLM extracted province-only HQ: {llm_prov}; no location string to geocode, keeping existing coords")
 
+                if llm_mun or llm_prov:
                     municipality = geo_data.get("municipality") or llm_mun
                     province = geo_data.get("province") or llm_prov
 
-                    print(f"  📍 Geocoded HQ: {municipality}, {province} (lat={geo_data.get('lat')}, lng={geo_data.get('lng')})")
+                    print(f"  📍 Resolved HQ: {municipality}, {province} (lat={geo_data.get('lat')}, lng={geo_data.get('lng')})")
 
                     update_fields = _build_location_update_fields(
                         org,

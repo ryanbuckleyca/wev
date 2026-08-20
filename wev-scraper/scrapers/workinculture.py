@@ -48,23 +48,22 @@ class WorkInCultureScraper(BaseScraper):
         return super().get_job_url(item)
 
     def _has_enabled_load_more_button(self, page) -> bool:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         try:
             btn = page.locator(self.INFINITE_HITS_LOAD_MORE_BUTTON)
             if btn.count() > 0 and btn.first.is_enabled(timeout=2000):
                 return True
-        except Exception as e:
-            scraper_log(f"\tLoad-more button detection failed: {e}\n{traceback.format_exc()}")
+        except PlaywrightTimeoutError as e:
+            scraper_log(f"\tLoad-more button detection timed out: {e}\n{traceback.format_exc()}")
+            return False
         return False
 
     def has_next_page(self, page):
         if self._has_enabled_load_more_button(page):
             return True
-        try:
-            next_item = page.locator(self.PAGINATION_NEXT_ITEM)
-            if next_item.count() > 0:
-                return True
-        except Exception as e:
-            scraper_log(f"\tPagination next-item detection failed: {e}\n{traceback.format_exc()}")
+        next_item = page.locator(self.PAGINATION_NEXT_ITEM)
+        if next_item.count() > 0:
+            return True
         return False
 
     def go_next_page(self, page):
@@ -87,6 +86,8 @@ class WorkInCultureScraper(BaseScraper):
                 scraper_log("\tClicking Algolia pagination next link…")
                 next_link.click(timeout=5000)
                 page.wait_for_timeout(1000)
+            else:
+                raise Exception("No pagination next link found")
         except Exception as e:
             scraper_log(f"\tPagination failed: {e}\n{traceback.format_exc()}")
             raise
