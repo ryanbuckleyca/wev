@@ -24,3 +24,6 @@ LEFT JOIN sources s ON j.source_id = s.id
 LEFT JOIN job_matches jm
   ON j.id = jm.job_id
   AND jm.user_id = auth.uid();
+
+-- Re-grant SELECT permissions lost by DROP VIEW
+grant select on public.matched_jobs to anon, authenticated, service_role;

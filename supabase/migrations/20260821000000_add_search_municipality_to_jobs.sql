@@ -1,12 +1,12 @@
 -- Add a stored generated column for accent-insensitive municipality search.
 -- This ensures that filtering for "Montreal" finds "Montréal" and vice versa.
 
-ALTER TABLE public.jobs 
-ADD COLUMN IF NOT EXISTS search_municipality text 
+ALTER TABLE public.jobs
+ADD COLUMN IF NOT EXISTS search_municipality text
 GENERATED ALWAYS AS (public.f_unaccent(lower(municipality))) STORED;
 
 -- Create an index to optimise filter queries
-CREATE INDEX IF NOT EXISTS idx_jobs_search_municipality 
+CREATE INDEX IF NOT EXISTS idx_jobs_search_municipality
 ON public.jobs (search_municipality);
 
 -- Recreate the view so it includes the new column
@@ -24,3 +24,6 @@ LEFT JOIN sources s ON j.source_id = s.id
 LEFT JOIN job_matches jm
   ON j.id = jm.job_id
   AND jm.user_id = auth.uid();
+
+-- Re-grant SELECT permissions lost by DROP VIEW
+grant select on public.matched_jobs to anon, authenticated, service_role;
