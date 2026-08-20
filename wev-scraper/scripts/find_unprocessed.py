@@ -21,8 +21,8 @@ for env_file in [REPO_ROOT / ".env", REPO_ROOT / ".env.production"]:
     if env_file.exists():
         load_dotenv(env_file, override=True)
 
-from settings import get_supabase_settings
-from utils.db import supabase
+from settings import get_supabase_settings  # noqa: E402
+from utils.db import supabase  # noqa: E402
 
 config = get_supabase_settings()
 print(f"DB URL: {config.url}")
