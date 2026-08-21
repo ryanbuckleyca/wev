@@ -1155,15 +1155,114 @@ def _parse_localized_text(data: dict, key_en: str, key_fr: str, legacy_key: str)
     return en, fr
 
 
+def _sanitize_llm_json(text: str) -> str:
+    """Repair common LLM-produced JSON defects before json.loads.
+
+    Known failure modes from Gemini/Groq when asked for JSON alongside markdown/grounding:
+
+    1. **Backticks inside double-quoted strings (Pattern A)** — the model wraps any
+       "code-like" token (URLs, slugs, IDs) in `` `inline code` `` backticks, then wraps
+       the *whole thing* again in double quotes.  Example::
+
+           "website": "`https://renewsafety.com`"
+
+       This actually parses as valid JSON but leaves literal `` ` `` characters inside the
+       value, which later break URL/domain checks.  We remove the wrapping backticks.
+
+    2. **Bare backtick-delimited strings (Pattern B)** — the model occasionally drops the
+       outer double quotes entirely and uses markdown backticks as a JSON string delimiter,
+       which is *not* valid JSON.  Example::
+
+           "website": `https://dhilmar.com`,
+           "description_en": `Mining company "operating" the Éléonore mine`,
+
+       This is the usual cause of ``Expecting value`` / ``Expecting property name`` errors
+       at the property *after* a backtick-string, because the parser sees the closing
+       backtick, doesn't recognize it as ending a string, and therefore misaligns every
+       subsequent token.
+
+    We apply Pattern A first (harmless, always safe), then Pattern B conservatively
+    (only at `: ` value boundaries, where a JSON string value is expected).  If a
+    best-effort parse still fails, we fall back to character-level backtick → quote
+    substitution for the small class of responses where the model truly went
+    backtick-happy everywhere.
+    """
+    if not text:
+        return text
+
+    # --- Pattern A: strip wrapping backticks inside a double-quoted string value. ---
+    # Match "`thing`" where thing contains no quotes/newlines (avoids accidentally
+    # matching nested content).  URLs, slugs, and short identifiers all fit this.
+    text = re.sub(
+        r'"`([^"`\n\r]+)`"',
+        r'"\1"',
+        text,
+    )
+
+    # --- Pattern B: replace bare backtick-delimited values that stand in for a JSON ---
+    # string after a key.  Match: `: ` + optional whitespace + `` `content` ``
+    # + (comma | closing brace/bracket | end-of-line/whitespace).
+    #
+    # Inside the backtick payload we allow any character EXCEPT an unescaped backtick,
+    # and we collapse it into a double-quoted string while escaping any stray double
+    # quotes already in the payload (Pattern B often contains unescaped quotes — e.g.
+    # a sentence with the word "operating" inside backticks).
+    def _rewrite_backtick_value(match: re.Match[str]) -> str:
+        prefix = match.group(1)          # e.g. ':  '
+        payload = match.group(2)         # content inside ``...``
+        # Escape any double quotes or backslashes the payload already contained
+        # (the model would have needed to escape them inside a real JSON string).
+        escaped = payload.replace("\\", "\\\\").replace('"', '\\"')
+        return f'{prefix}"{escaped}"'
+
+    text = re.sub(
+        r'(:\s*)`([^`]*)`',
+        _rewrite_backtick_value,
+        text,
+    )
+
+    return text
+
+
 def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | None:
     text = BaseGroundedClassifier._extract_json_block(response_text)
 
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError as exc:
+    data = None
+    first_error: json.JSONDecodeError | None = None
+    for attempt, candidate in enumerate((
+        text,
+        _sanitize_llm_json(text),
+    )):
+        try:
+            data = json.loads(candidate)
+            if attempt > 0:
+                logger.info(
+                    "OrganizationAssessor: _sanitize_llm_json salvaged parse for %r (attempt %s)",
+                    raw_name, attempt + 1,
+                )
+            break
+        except json.JSONDecodeError as exc:
+            if first_error is None:
+                first_error = exc
+            # Last-ditch: wholesale backtick → double-quote swap only on retry 2.
+            # Can technically produce an invalid parse if backticks appear inside prose,
+            # but this catches the remaining tail of "all string delimiters are backticks"
+            # responses and at this point json.loads is already failing anyway.
+            if attempt == 1:
+                try:
+                    data = json.loads(candidate.replace("`", '"'))
+                    logger.info(
+                        "OrganizationAssessor: last-resort backtick→quote salvage succeeded for %r",
+                        raw_name,
+                    )
+                    break
+                except json.JSONDecodeError:
+                    pass
+
+    if data is None:
         logger.warning(
             "OrganizationAssessor: failed to parse JSON for %r: %s — response: %r",
-            raw_name, exc, response_text[:200],
+            raw_name, first_error, response_text[:200],
         )
         return None
 
