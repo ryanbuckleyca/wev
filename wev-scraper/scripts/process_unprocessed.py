@@ -24,13 +24,12 @@ os.environ["CONFIRM_PROD_RUN"] = "YES"
 os.environ["ENV_MODE"] = "prod"
 
 from settings import get_supabase_settings  # noqa: E402
+from utils.catch_up import VALID_LANGUAGES, _is_org_field_missing  # noqa: E402
 from utils.db import supabase  # noqa: E402
 from utils.log import scraper_log as _log  # noqa: E402
 
 config = get_supabase_settings()
 _log(f"DB URL: {config.url}")
-
-VALID_LANGUAGES = {"en", "fr", "bilingual"}
 
 
 def fetch_unprocessed_jobs():
@@ -230,11 +229,8 @@ def process_unprocessed_orgs(unprocessed):
                 update_fields = _result_to_db_fields(result)
                 filtered = {}
                 for field, value in update_fields.items():
-                    if org.get(field) is None and value is not None:
+                    if value is not None and _is_org_field_missing(org, field):
                         filtered[field] = value
-                for field in ["values_list", "values_rated"]:
-                    if field in update_fields and update_fields[field] and org.get(field) is None:
-                        filtered[field] = update_fields[field]
 
                 if filtered:
                     supabase.table("organizations").update(filtered).eq("id", oid).execute()

@@ -142,12 +142,14 @@ async function main() {
     ) {
       console.log("▶ Syncing Python Dependencies...");
       execVerbose(venvPipCmd, ["install", "-r", "requirements.txt"]);
-      console.log("▶ Provisioning Playwright browser (Chromium)...");
-      const playwrightArgs =
-        process.platform === "linux"
-          ? ["install", "chromium", "--with-deps"]
-          : ["install", "chromium"];
-      execVerbose(venvPlaywrightCmd, playwrightArgs);
+      if (task === "scrape") {
+        console.log("▶ Provisioning Playwright browser (Chromium)...");
+        const playwrightArgs =
+          process.platform === "linux"
+            ? ["install", "chromium", "--with-deps"]
+            : ["install", "chromium"];
+        execVerbose(venvPlaywrightCmd, playwrightArgs);
+      }
     }
 
     console.log(`▶ Executing ${scriptPath}...`);

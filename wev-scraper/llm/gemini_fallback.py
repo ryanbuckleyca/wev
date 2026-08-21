@@ -214,12 +214,14 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
         include_domains = provider_kwargs.pop("include_domains", None)
         prefer_hosts = provider_kwargs.pop("prefer_hosts", None)
         require_terms = provider_kwargs.pop("require_terms", None)
+        max_results = provider_kwargs.pop("max_results", None)
 
         evidence = ""
         if want_grounding:
             search_query = kwargs.get("search_query") or prompt[:200]
             evidence = fetch_tavily_context(
                 str(search_query),
+                max_results=max_results,
                 include_domains=include_domains,
                 prefer_hosts=prefer_hosts,
                 require_terms=require_terms,
