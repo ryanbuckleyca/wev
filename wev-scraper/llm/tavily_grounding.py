@@ -9,7 +9,7 @@ employer/role with a different org found in snippets.
 
 Env:
   TAVILY_API_KEY          — required for evidence fetch
-  TAVILY_MAX_RESULTS      — default 5
+  TAVILY_MAX_RESULTS      — default 10
   TAVILY_SEARCH_DEPTH     — basic | advanced (default basic)
   TAVILY_MAX_CHARS        — default 4500 (cloud); Ollama uses a tighter trim
   TAVILY_OLLAMA_MAX_CHARS — default 1800
@@ -210,7 +210,7 @@ def fetch_tavily_context(
     terms = [t.lower().strip() for t in (require_terms or []) if t and str(t).strip()]
     terms = list(dict.fromkeys(terms))  # stable unique
 
-    n = max_results if max_results is not None else _env_int("TAVILY_MAX_RESULTS", 5)
+    n = max_results if max_results is not None else _env_int("TAVILY_MAX_RESULTS", 10)
     depth = (os.environ.get("TAVILY_SEARCH_DEPTH") or "basic").strip().lower()
     if depth not in ("basic", "advanced"):
         depth = "basic"

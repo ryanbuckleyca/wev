@@ -1673,97 +1673,244 @@ class OrganizationAssessor(BaseGroundedClassifier):
         if use_grounding:
             discovered_website = result.get("website")
             if discovered_website and evidence_domain(discovered_website):
-                # Build location terms to check
-                location_terms = []
-                if municipality:
-                    # Add municipality terms (e.g., "Oxford County" -> ["oxford", "county"])
-                    location_terms.extend([t.lower() for t in municipality.split() if len(t) > 2])
-                if province:
-                    # Add province terms and abbreviations
-                    location_terms.extend([province.lower(), province.upper()])
-                    # Add common province name variations
-                    province_map = {
-                        "ON": ["ontario"],
-                        "QC": ["quebec", "québec"],
-                        "BC": ["british columbia"],
-                        "AB": ["alberta"],
-                        # Add more as needed
-                    }
-                    if province.upper() in province_map:
-                        location_terms.extend(province_map[province.upper()])
+                # --- Heuristic: skip location validation when the INPUT location is clearly garbage. ---
+                # Examples:
+                #   (municipality="NT", province="NT")     → mun is a prov code, parse failure
+                #   (municipality="QC", province="QC")     → same
+                #   (municipality=None, province=None)     → no info
+                # Otherwise we build impossible-to-satisfy requirements (e.g. 2 terms
+                # that can't both match) and incorrectly reject valid assessments.
+                _valid_prov_codes = frozenset({
+                    "AB","BC","MB","NB","NL","NS","NU","NT","ON","PE","QC","SK","YT",
+                    "ME","NY","MI","WA","MN","ND","MT","VT","NH",
+                })
+                mun_s = (municipality or "").strip()
+                prov_s = (province or "").strip()
+                def _looks_like_prov_code(s: str) -> bool:
+                    return len(s) <= 3 and s.upper() in _valid_prov_codes
+                input_loc_is_useless = (
+                    (not mun_s and not prov_s)
+                    or (mun_s and _looks_like_prov_code(mun_s))
+                    or (prov_s and mun_s.upper() == prov_s.upper() and _looks_like_prov_code(prov_s))
+                )
+                if not input_loc_is_useless:
+                    # Build location terms to check (all lowercased and deduped so that
+                    # e.g. "qc" and "QC" do not double-count as 2 distinct terms — since
+                    # searchable_content is always lowercased, the uppercase variant
+                    # could never match and inflated required_matches artificially.)
+                    location_terms_set: set[str] = set()
+                    if municipality:
+                        for t in municipality.split():
+                            tl = t.lower()
+                            if len(tl) > 2:
+                                location_terms_set.add(tl)
+                    if province:
+                        location_terms_set.add(province.lower())
+                        # Full province/territory names in EN+FR (all 13 provinces + territories)
+                        province_map = {
+                            "ON": ["ontario"],
+                            "QC": ["quebec", "québec"],
+                            "BC": ["british columbia", "colombie britannique", "colombie-britannique"],
+                            "AB": ["alberta"],
+                            "MB": ["manitoba"],
+                            "NB": ["new brunswick", "nouveau brunswick"],
+                            "NL": ["newfoundland and labrador", "newfoundland", "terre-neuve", "terre-neuve-et-labrador"],
+                            "NS": ["nova scotia", "nouvelle-ecosse", "nouvelle-écosse"],
+                            "NU": ["nunavut"],
+                            "NT": ["northwest territories", "territoires du nord-ouest"],
+                            "PE": ["prince edward island", "ile-du-prince-edouard", "île-du-prince-édouard"],
+                            "SK": ["saskatchewan"],
+                            "YT": ["yukon"],
+                            "ME": ["maine"],
+                            "NY": ["new york"],
+                            "MI": ["michigan"],
+                            "WA": ["washington"],
+                            "MN": ["minnesota"],
+                            "ND": ["north dakota"],
+                            "MT": ["montana"],
+                            "VT": ["vermont"],
+                            "NH": ["new hampshire"],
+                        }
+                        if province.upper() in province_map:
+                            for full_name in province_map[province.upper()]:
+                                for word in full_name.split():
+                                    wl = word.lower()
+                                    if len(wl) > 2:
+                                        location_terms_set.add(wl)
+                    location_terms = list(location_terms_set)
 
-                # If we have location info, validate it appears in the response
-                # UNLESS the organization has national/provincial/international scope
-                # We need at least 2 location term matches to avoid false positives from incidental mentions
-                if location_terms:
-                    # Check response_text and result fields for location terms
-                    searchable_content = " ".join([
-                        (response_text or "").lower(),
-                        (result.get("description_en") or "").lower(),
-                        (result.get("description_fr") or "").lower(),
-                        (result.get("mission_statement_en") or "").lower(),
-                        (result.get("mission_statement_fr") or "").lower(),
-                        str(result.get("values", []) or "").lower(),
-                        str(result.get("values_raw", []) or "").lower(),
-                    ])
+                    # If we have location info, validate it appears in the response
+                    # UNLESS the organization has national/provincial/international scope
+                    # We need at least 2 location term matches to avoid false positives from incidental mentions
+                    if location_terms:
+                        # Include:
+                        #   * raw LLM response blob + description/mission/values (original fields)
+                        #   * LLM's explicit structured HQ fields (headquarters_municipality / _province)
+                        #   * discovered website URL and domain (e.g. montreal.ca → "montreal" matches)
+                        #   * HQ-province normalised as a 2-letter code too
+                        llm_hq_prov_code = _validate_province_code(result.get("headquarters_province"))
+                        _extra_hq_parts: list[str] = []
+                        if llm_hq_prov_code:
+                            _extra_hq_parts.append(llm_hq_prov_code.lower())
+                        website_str = (discovered_website or "")
+                        domain_str = extract_domain(website_str) or ""
+                        searchable_content = " ".join([
+                            (response_text or "").lower(),
+                            (result.get("description_en") or "").lower(),
+                            (result.get("description_fr") or "").lower(),
+                            (result.get("mission_statement_en") or "").lower(),
+                            (result.get("mission_statement_fr") or "").lower(),
+                            str(result.get("values", []) or "").lower(),
+                            str(result.get("values_raw", []) or "").lower(),
+                            (result.get("headquarters_municipality") or "").lower(),
+                            (result.get("headquarters_province") or "").lower(),
+                            " ".join(p.lower() for p in _extra_hq_parts),
+                            website_str.lower(),
+                            domain_str.lower(),
+                        ])
 
-                    # Count how many location terms match
-                    matches = [term for term in location_terms if term in searchable_content]
+                        # Count how many DISTINCT location terms match (set to avoid
+                        # double-counting same term that appears in multiple fields)
+                        matches_set: set[str] = {
+                            term for term in location_terms if term in searchable_content
+                        }
+                        matches = list(matches_set)
 
-                    # Check if location appears in the organization name itself
-                    raw_name_lower = raw_name.lower()
-                    location_in_name = any(term in raw_name_lower for term in location_terms if len(term) > 2)
-
-                    # Also check if org name contains district/neighborhood indicators (often means local to that city)
-                    # Common French and English district/neighborhood terms
-                    district_indicators = [
-                        'centre-', 'nord', 'sud', 'est', 'ouest', '-nord', '-sud', '-est', '-ouest',  # French directions (with/without hyphen)
-                        'north', 'south', 'east', 'west', 'downtown', 'uptown',  # English directions
-                        'rosemont', 'plateau', 'verdun', 'villeray', 'hochelaga', 'petite-patrie', 'ahuntsic',  # Montreal neighborhoods
-                        'scarborough', 'etobicoke', 'north york', 'east york',  # Toronto districts
-                    ]
-                    has_district_name = any(indicator in raw_name_lower for indicator in district_indicators)
-
-                    # Check geographic scope - relax location matching for broader scope organizations
-                    scope = (result.get("geographic_scope") or "").lower()
-                    is_broad_scope = scope in ("national", "provincial", "international")
-
-                    # Require at least 2 distinct location term matches (or all terms if less than 2)
-                    # UNLESS:
-                    # - the organization has national/provincial/international scope, OR
-                    # - the location appears in the organization name itself (reduces need for repetition), OR
-                    # - the org name suggests a district/neighborhood (e.g., "Centre-Nord" for Montreal)
-                    required_matches = min(2, len(location_terms))
-
-                    # If location is in name, has district indicator, accept with just 1 match
-                    if (location_in_name or has_district_name) and len(matches) >= 1:
-                        location_found = True
-                    else:
-                        location_found = len(matches) >= required_matches
-
-                    if not location_found and not is_broad_scope:
-                        # Location mismatch - reject this result
-                        logger.warning(
-                            "OrganizationAssessor: location mismatch for %r - expected %s but found only %d/%d location terms: %s. Skipping.",
-                            raw_name,
-                            f"{municipality}, {province}" if municipality and province else municipality or province,
-                            len(matches),
-                            len(location_terms),
-                            matches,
+                        # Check if location appears in the organization name itself
+                        raw_name_lower = raw_name.lower()
+                        location_in_name = any(
+                            term in raw_name_lower for term in location_terms if len(term) > 2
                         )
-                        return None
-                    elif not location_found and is_broad_scope:
-                        # Accept broader-scope organizations even without local location match
-                        logger.info(
-                            "OrganizationAssessor: accepting %r despite location mismatch - geographic_scope=%s indicates broader reach",
-                            raw_name, scope,
+
+                        # Also check if org name contains district/neighborhood indicators
+                        # (often means local to that city, so a single prov match suffices)
+                        #
+                        # Heuristic rules for "looks district-like":
+                        #   1. French/English direction or cardinal term (nord/sud/east/west etc.)
+                        #   2. Saint-/Ste- prefix (common for boroughs like St-Léonard, Ste-Foy)
+                        #   3. Well-known Montréal/Toronto/Québec borough names
+                        #   4. Any standalone hyphenated pair that looks like a
+                        #      direction+name (covers many new boroughs without manual listing)
+                        district_indicators = [
+                            # French directions (with/without hyphen)
+                            'centre-', 'nord', 'sud', 'est', 'ouest',
+                            '-nord', '-sud', '-est', '-ouest',
+                            # English directions
+                            'north', 'south', 'east', 'west', 'downtown', 'uptown',
+                            # Saint/Ste- prefixes (French + English forms)
+                            'saint-', 'ste-', 'st-',
+                            'saint ', 'ste ', 'st ',
+                            # --- Montréal boroughs / common neighborhoods (expanded) ---
+                            'rosemont', 'plateau', 'verdun', 'villeray', 'hochelaga',
+                            'petite-patrie', 'ahuntsic', 'cartierville',
+                            'saint-leonard', 'st-leonard', 'saint-léonard',
+                            'mile-end', 'mile end', 'outremont', 'cote-des-neiges',
+                            'côte-des-neiges', 'ndg', 'notre-dame-de-grace',
+                            'pointe-aux-trembles', 'riviere-des-prairies',
+                            'rivière-des-prairies', 'lasalle', 'pierrefonds',
+                            'roxboro', 'dollard', 'dorval', 'pointe-claire',
+                            'kirkland', 'beaconsfield', 'senneville', 'montreal-est',
+                            'montreal-nord', 'st-laurent', 'saint-laurent',
+                            'ahuntsic', 'cartierville',
+                            # --- Québec city / other QC cities known boroughs ---
+                            'sainte-foy', 'st-foy', 'sillery', 'charlesbourg',
+                            'beauport', 'vanier', 'limoilou',
+                            'lachine', 'lasalle', 'dorval',
+                            # --- Toronto districts (expanded) ---
+                            'scarborough', 'etobicoke', 'north york', 'east york',
+                            'york', 'danforth', 'high-park', 'parkdale',
+                            'liberty village', 'riverdale', 'leslieville',
+                            'cabbagetown', 'regent park', 'st-jamestown',
+                            'kensington-market', 'annex', 'yonge-eglinton',
+                            # --- Ottawa / Gatineau ---
+                            'hull', 'aylmer', 'gatineau', 'nepean', 'kanata',
+                            'orleans', 'barrhaven', 'bells corners',
+                            # --- Vancouver / BC lower mainland ---
+                            'burnaby', 'surrey', 'richmond', 'coquitlam',
+                            'new westminster', 'north vancouver', 'west vancouver',
+                            'east van', 'strathcona', 'mount pleasant',
+                            'commercial drive', 'kerrisdale', 'shaughnessy',
+                            # --- Calgary / Edmonton ---
+                            'beltline', 'kensington', 'inglewood', 'marda loop',
+                            'whyte ave', 'old strathcona',
+                            # --- Halifax ---
+                            'dartmouth', 'bedford', 'sackville', 'spryfield',
+                            # --- Winnipeg ---
+                            'saint boniface', 'st-boniface', 'transcona',
+                            'st-vital', 'fort garry', 'river heights',
+                            # --- Hamilton ---
+                            'dundurn', 'westdale', 'mcmaster', 'stoney creek',
+                            'ancaster', 'burlington',
+                        ]
+                        has_district_name = any(
+                            indicator in raw_name_lower
+                            for indicator in district_indicators
                         )
-                    elif (location_in_name or has_district_name) and len(matches) >= 1:
-                        # Accepted with reduced requirement because location is in name or has district indicator
-                        logger.debug(
-                            "OrganizationAssessor: accepting %r with %d/%d location matches - location in org name or district indicator reduces validation requirement",
-                            raw_name, len(matches), len(location_terms),
-                        )
+                        # Additional catch-all: name contains a hyphenated cardinal
+                        # direction followed by a word that looks like a neighbourhood
+                        # e.g. "Centre-Nord de Montréal", "Saint-Saveur"
+                        if not has_district_name:
+                            _hyphen_parts = [
+                                p for p in re.split(r"\s+", raw_name_lower) if "-" in p
+                            ]
+                            for part in _hyphen_parts:
+                                left, _, right = part.partition("-")
+                                left, right = left.strip(), right.strip()
+                                if (
+                                    len(left) >= 3
+                                    and len(right) >= 3
+                                    and (
+                                        left in {"centre","nord","sud","est","ouest",
+                                                 "saint","ste","st","north","south",
+                                                 "east","west","old","new","ville",
+                                                 "mont","fort"}
+                                        or right in {"nord","sud","est","ouest",
+                                                     "north","south","east","west"}
+                                    )
+                                ):
+                                    has_district_name = True
+                                    break
+
+                        # Check geographic scope - relax location matching for broader scope organizations
+                        scope = (result.get("geographic_scope") or "").lower()
+                        is_broad_scope = scope in ("national", "provincial", "international")
+
+                        # Require at least 2 distinct location term matches (or all terms if less than 2)
+                        # UNLESS:
+                        # - the organization has national/provincial/international scope, OR
+                        # - the location appears in the organization name itself (reduces need for repetition), OR
+                        # - the org name suggests a district/neighborhood (e.g., "Centre-Nord" for Montreal)
+                        required_matches = min(2, len(location_terms))
+
+                        # If location is in name, has district indicator, accept with just 1 match
+                        if (location_in_name or has_district_name) and len(matches) >= 1:
+                            location_found = True
+                        else:
+                            location_found = len(matches) >= required_matches
+
+                        if not location_found and not is_broad_scope:
+                            # Location mismatch - reject this result
+                            logger.warning(
+                                "OrganizationAssessor: location mismatch for %r - expected %s but found only %d/%d location terms: %s. Skipping.",
+                                raw_name,
+                                f"{municipality}, {province}" if municipality and province else municipality or province,
+                                len(matches),
+                                len(location_terms),
+                                matches,
+                            )
+                            return None
+                        elif not location_found and is_broad_scope:
+                            # Accept broader-scope organizations even without local location match
+                            logger.info(
+                                "OrganizationAssessor: accepting %r despite location mismatch - geographic_scope=%s indicates broader reach",
+                                raw_name, scope,
+                            )
+                        elif (location_in_name or has_district_name) and len(matches) >= 1:
+                            # Accepted with reduced requirement because location is in name or has district indicator
+                            logger.debug(
+                                "OrganizationAssessor: accepting %r with %d/%d location matches - location in org name or district indicator reduces validation requirement",
+                                raw_name, len(matches), len(location_terms),
+                            )
 
                 # Also validate name appears in domain (but be forgiving about exact match)
                 # Skip this check if we have a known_website (trust the known website)
