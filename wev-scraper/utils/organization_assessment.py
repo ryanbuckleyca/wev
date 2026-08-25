@@ -130,7 +130,7 @@ _DISTRICT_INDICATORS = [
 
 # Compile pattern with word boundaries (allowing standard word chars or hyphens)
 DISTRICT_INDICATORS_PATTERN = re.compile(
-    r'(?:\b|(?<=\s|^))(' + '|'.join(re.escape(i) for i in _DISTRICT_INDICATORS) + r')(?:\b|(?=\s|$))'
+    r'(?:^|\s|\b)(' + '|'.join(re.escape(i) for i in _DISTRICT_INDICATORS) + r')(?=$|\s|\b)'
 )
 
 # Hard length limits for stored LLM fields. Keep in sync with
