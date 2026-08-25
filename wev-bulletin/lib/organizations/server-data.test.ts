@@ -140,6 +140,7 @@ describe('organizations/server-data', () => {
       p_municipalities: null,
       p_org_types: null,
       p_languages: null,
+      p_sectors: null,
       p_user_id: null,
       p_sort: 'org-asc',
     });
