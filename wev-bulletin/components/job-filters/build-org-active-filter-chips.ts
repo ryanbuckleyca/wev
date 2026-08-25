@@ -17,10 +17,13 @@ interface BuildOrgFilterChipsInput {
   onRemoveMunicipality: (municipality: string) => void;
   onRemoveType: (type: string) => void;
   onRemoveLanguage: (language: string) => void;
+  onRemoveSector: (sector: string) => void;
   /** next-intl t function scoped to the 'organizations' namespace */
   tOrgs: { (key: string): string; has: (key: string) => boolean };
   /** next-intl t function scoped to the 'filters' namespace */
   tFilters: (key: string) => string;
+  /** next-intl t function scoped to the 'taxonomy.sectors' namespace */
+  tSectors: (key: string) => string;
 }
 
 /** Labels for org language chips/filters; tFilters is scoped to `filters`. */
@@ -40,8 +43,10 @@ export function buildOrgActiveFilterChips({
   onRemoveMunicipality,
   onRemoveType,
   onRemoveLanguage,
+  onRemoveSector,
   tOrgs,
   tFilters,
+  tSectors,
 }: BuildOrgFilterChipsInput): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = [];
 
@@ -99,6 +104,14 @@ export function buildOrgActiveFilterChips({
       id: `lang-${language}`,
       label: orgLanguageLabel(language, tFilters),
       onRemove: () => onRemoveLanguage(language),
+    });
+  }
+
+  for (const sector of filters.selectedSectors) {
+    chips.push({
+      id: `sector-${sector}`,
+      label: tSectors(`${sector}.label`),
+      onRemove: () => onRemoveSector(sector),
     });
   }
 

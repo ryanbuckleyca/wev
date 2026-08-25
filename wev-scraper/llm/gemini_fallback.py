@@ -148,11 +148,11 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
             ("ollama", lambda: LocalGroundedProvider()),
         ]
 
-        disable_local = os.environ.get("DISABLE_LOCAL_FALLBACK", "").strip().lower() in ("1", "true", "yes", "on")
+        enable_local = os.environ.get("ENABLE_LOCAL_FALLBACK", "").strip().lower() in ("1", "true", "yes", "on")
 
         for name, factory in candidates:
-            if disable_local and name == "ollama":
-                logger.warning("SSE fallback: skipping ollama (DISABLE_LOCAL_FALLBACK=1)")
+            if not enable_local and name == "ollama":
+                logger.warning("SSE fallback: skipping ollama (ENABLE_LOCAL_FALLBACK not set)")
                 continue
             try:
                 provider = factory()

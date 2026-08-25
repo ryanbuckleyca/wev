@@ -58,6 +58,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     municipalities,
     orgTypes,
     languages,
+    sectors,
     sortBy,
     activityDays,
   } = parseOrgIndexSearchParams(urlSearchParams, Boolean(user));
@@ -72,6 +73,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
         municipalities,
         orgTypes,
         languages,
+        sectors,
         userId: user?.id ?? null,
         sortBy,
         activityDays,

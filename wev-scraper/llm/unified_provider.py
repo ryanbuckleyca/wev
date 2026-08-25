@@ -66,12 +66,12 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                 ("ollama", lambda: LocalGroundedProvider(), "Ollama (local LLM)"),
             )
 
-        disable_local = os.environ.get("DISABLE_LOCAL_FALLBACK", "").strip().lower() in ("1", "true", "yes", "on")
+        enable_local = os.environ.get("ENABLE_LOCAL_FALLBACK", "").strip().lower() in ("1", "true", "yes", "on")
 
         self.providers = []
         for name, factory, description in candidates:
-            if disable_local and name == "ollama":
-                logger.warning("Skipping LLM provider ollama (DISABLE_LOCAL_FALLBACK=1)")
+            if not enable_local and name == "ollama":
+                logger.warning("Skipping LLM provider ollama (ENABLE_LOCAL_FALLBACK not set)")
                 continue
             try:
                 provider = factory()
