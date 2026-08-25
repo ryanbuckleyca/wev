@@ -1230,8 +1230,8 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     data = None
     first_error: json.JSONDecodeError | None = None
     for attempt, candidate in enumerate((
-        text,
         _sanitize_llm_json(text),
+        text,
     )):
         try:
             data = json.loads(candidate)
@@ -1870,9 +1870,14 @@ class OrganizationAssessor(BaseGroundedClassifier):
 
                         # Count how many DISTINCT location terms match (set to avoid
                         # double-counting same term that appears in multiple fields)
-                        matches_set: set[str] = {
-                            term for term in location_terms if term in searchable_content
-                        }
+                        matches_set: set[str] = set()
+                        for term in location_terms:
+                            if len(term) <= 2:
+                                if re.search(r'\b' + re.escape(term) + r'\b', searchable_content):
+                                    matches_set.add(term)
+                            else:
+                                if term in searchable_content:
+                                    matches_set.add(term)
                         matches = list(matches_set)
 
                         # Check if location appears in the organization name itself
@@ -1890,61 +1895,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                         #   3. Well-known Montréal/Toronto/Québec borough names
                         #   4. Any standalone hyphenated pair that looks like a
                         #      direction+name (covers many new boroughs without manual listing)
-                        district_indicators = [
-                            # French directions (with/without hyphen)
-                            'centre-', 'nord', 'sud', 'est', 'ouest',
-                            '-nord', '-sud', '-est', '-ouest',
-                            # English directions
-                            'north', 'south', 'east', 'west', 'downtown', 'uptown',
-                            # Saint/Ste- prefixes (French + English forms)
-                            'saint-', 'ste-', 'st-',
-                            'saint ', 'ste ', 'st ',
-                            # --- Montréal boroughs / common neighborhoods (expanded) ---
-                            'rosemont', 'plateau', 'verdun', 'villeray', 'hochelaga',
-                            'petite-patrie', 'ahuntsic', 'cartierville',
-                            'saint-leonard', 'st-leonard', 'saint-léonard',
-                            'mile-end', 'mile end', 'outremont', 'cote-des-neiges',
-                            'côte-des-neiges', 'ndg', 'notre-dame-de-grace',
-                            'pointe-aux-trembles', 'riviere-des-prairies',
-                            'rivière-des-prairies', 'lasalle', 'pierrefonds',
-                            'roxboro', 'dollard', 'dorval', 'pointe-claire',
-                            'kirkland', 'beaconsfield', 'senneville', 'montreal-est',
-                            'montreal-nord', 'st-laurent', 'saint-laurent',
-                            'ahuntsic', 'cartierville',
-                            # --- Québec city / other QC cities known boroughs ---
-                            'sainte-foy', 'st-foy', 'sillery', 'charlesbourg',
-                            'beauport', 'vanier', 'limoilou',
-                            'lachine', 'lasalle', 'dorval',
-                            # --- Toronto districts (expanded) ---
-                            'scarborough', 'etobicoke', 'north york', 'east york',
-                            'york', 'danforth', 'high-park', 'parkdale',
-                            'liberty village', 'riverdale', 'leslieville',
-                            'cabbagetown', 'regent park', 'st-jamestown',
-                            'kensington-market', 'annex', 'yonge-eglinton',
-                            # --- Ottawa / Gatineau ---
-                            'hull', 'aylmer', 'gatineau', 'nepean', 'kanata',
-                            'orleans', 'barrhaven', 'bells corners',
-                            # --- Vancouver / BC lower mainland ---
-                            'burnaby', 'surrey', 'richmond', 'coquitlam',
-                            'new westminster', 'north vancouver', 'west vancouver',
-                            'east van', 'strathcona', 'mount pleasant',
-                            'commercial drive', 'kerrisdale', 'shaughnessy',
-                            # --- Calgary / Edmonton ---
-                            'beltline', 'kensington', 'inglewood', 'marda loop',
-                            'whyte ave', 'old strathcona',
-                            # --- Halifax ---
-                            'dartmouth', 'bedford', 'sackville', 'spryfield',
-                            # --- Winnipeg ---
-                            'saint boniface', 'st-boniface', 'transcona',
-                            'st-vital', 'fort garry', 'river heights',
-                            # --- Hamilton ---
-                            'dundurn', 'westdale', 'mcmaster', 'stoney creek',
-                            'ancaster', 'burlington',
-                        ]
-                        has_district_name = any(
-                            indicator in raw_name_lower
-                            for indicator in district_indicators
-                        )
+                        has_district_name = bool(DISTRICT_INDICATORS_PATTERN.search(raw_name_lower))
                         # Additional catch-all: name contains a hyphenated cardinal
                         # direction followed by a word that looks like a neighbourhood
                         # e.g. "Centre-Nord de Montréal", "Saint-Saveur"

@@ -3,7 +3,9 @@ import path from "node:path";
 import fs from "node:fs";
 import * as readline from "node:readline";
 
-const SCRAPER_DIR = path.dirname(new URL(import.meta.url).pathname);
+import { fileURLToPath } from "node:url";
+
+const SCRAPER_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function execVerbose(cmd: string, args: string[] = []) {
   const result = spawnSync(cmd, args, { stdio: "inherit", cwd: SCRAPER_DIR });

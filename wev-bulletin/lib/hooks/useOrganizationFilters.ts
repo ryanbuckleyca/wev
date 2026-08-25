@@ -83,7 +83,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
   );
   const [selectedSectors, setSelectedSectors] = useQueryState(
     'sector',
-    parseAsArrayOf(parseAsString).withDefault([]),
+    parseAsNativeArrayOf(parseAsString).withDefault([]),
   );
   const [activityWindow, setActivityWindow] = useQueryState(
     'activity',

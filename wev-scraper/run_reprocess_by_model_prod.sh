@@ -37,4 +37,4 @@ echo "Usage: $0 <mode> [--limit N]"
 echo "Modes: groq, no_tracking"
 echo ""
 
-venv/bin/python reprocess_by_model.py "$@"
+.venv/bin/python reprocess_by_model.py "$@"
