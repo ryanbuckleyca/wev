@@ -1,8 +1,13 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from llm.base import LLMProviderError, error_suggests_try_next_provider
 from llm.factory import get_provider
 
+@pytest.fixture(autouse=True)
+def enable_local_fallback(monkeypatch):
+    monkeypatch.setenv("ENABLE_LOCAL_FALLBACK", "1")
 
 def test_error_suggests_try_next_provider_503():
     err = LLMProviderError(
