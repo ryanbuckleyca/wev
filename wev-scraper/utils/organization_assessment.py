@@ -76,6 +76,63 @@ _ORG_TYPE_ALIASES: dict[str, str] = {
     "other": "other",
 }
 
+_DISTRICT_INDICATORS = [
+    # French directions (with/without hyphen)
+    'centre-', 'nord', 'sud', 'est', 'ouest',
+    '-nord', '-sud', '-est', '-ouest',
+    # English directions
+    'north', 'south', 'east', 'west', 'downtown', 'uptown',
+    # Saint/Ste- prefixes (French + English forms)
+    'saint-', 'ste-', 'st-',
+    'saint ', 'ste ', 'st ',
+    # --- Montréal boroughs / common neighborhoods (expanded) ---
+    'rosemont', 'plateau', 'verdun', 'villeray', 'hochelaga',
+    'petite-patrie', 'ahuntsic', 'cartierville',
+    'saint-leonard', 'st-leonard', 'saint-léonard',
+    'mile-end', 'mile end', 'outremont', 'cote-des-neiges',
+    'côte-des-neiges', 'ndg', 'notre-dame-de-grace',
+    'pointe-aux-trembles', 'riviere-des-prairies',
+    'rivière-des-prairies', 'lasalle', 'pierrefonds',
+    'roxboro', 'dollard', 'dorval', 'pointe-claire',
+    'kirkland', 'beaconsfield', 'senneville', 'montreal-est',
+    'montreal-nord', 'st-laurent', 'saint-laurent',
+    'ahuntsic', 'cartierville',
+    # --- Québec city / other QC cities known boroughs ---
+    'sainte-foy', 'st-foy', 'sillery', 'charlesbourg',
+    'beauport', 'vanier', 'limoilou',
+    'lachine', 'lasalle', 'dorval',
+    # --- Toronto districts (expanded) ---
+    'scarborough', 'etobicoke', 'north york', 'east york',
+    'york', 'danforth', 'high-park', 'parkdale',
+    'liberty village', 'riverdale', 'leslieville',
+    'cabbagetown', 'regent park', 'st-jamestown',
+    'kensington-market', 'annex', 'yonge-eglinton',
+    # --- Ottawa / Gatineau ---
+    'hull', 'aylmer', 'gatineau', 'nepean', 'kanata',
+    'orleans', 'barrhaven', 'bells corners',
+    # --- Vancouver / BC lower mainland ---
+    'burnaby', 'surrey', 'richmond', 'coquitlam',
+    'new westminster', 'north vancouver', 'west vancouver',
+    'east van', 'strathcona', 'mount pleasant',
+    'commercial drive', 'kerrisdale', 'shaughnessy',
+    # --- Calgary / Edmonton ---
+    'beltline', 'kensington', 'inglewood', 'marda loop',
+    'whyte ave', 'old strathcona',
+    # --- Halifax ---
+    'dartmouth', 'bedford', 'sackville', 'spryfield',
+    # --- Winnipeg ---
+    'saint boniface', 'st-boniface', 'transcona',
+    'st-vital', 'fort garry', 'river heights',
+    # --- Hamilton ---
+    'dundurn', 'westdale', 'mcmaster', 'stoney creek',
+    'ancaster', 'burlington',
+]
+
+# Compile pattern with word boundaries (allowing standard word chars or hyphens)
+DISTRICT_INDICATORS_PATTERN = re.compile(
+    r'(?:\b|(?<=\s|^))(' + '|'.join(re.escape(i) for i in _DISTRICT_INDICATORS) + r')(?:\b|(?=\s|$))'
+)
+
 # Hard length limits for stored LLM fields. Keep in sync with
 # wev-bulletin/lib/organizations/constants.ts (description/mission).
 # Prompt asks the model to paraphrase within the limit. If it overshoots,
