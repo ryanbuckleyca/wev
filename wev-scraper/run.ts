@@ -3,8 +3,10 @@ import path from "node:path";
 import fs from "node:fs";
 import * as readline from "node:readline";
 
+const SCRAPER_DIR = path.dirname(new URL(import.meta.url).pathname);
+
 function execVerbose(cmd: string, args: string[] = []) {
-  const result = spawnSync(cmd, args, { stdio: "inherit" });
+  const result = spawnSync(cmd, args, { stdio: "inherit", cwd: SCRAPER_DIR });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
