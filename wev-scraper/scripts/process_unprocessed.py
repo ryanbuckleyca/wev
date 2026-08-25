@@ -152,19 +152,24 @@ def process_unprocessed_jobs(unprocessed, skip_esco=False):
         _log(f"--- Job Chunk {i//chunk_size + 1} ({len(chunk)} jobs) ---")
 
         # 1) Unified post-processor
-        try:
-            result = process_jobs_unified(ProcessingOptions(
-                task="all",
-                page_limit=None,
-                job_ids=chunk,
-                dry_run=False,
-                verbose=False,
-            ))
-            unified_errors += result.get("errors", 0)
-            unified_processed += result.get("processed", 0)
-        except Exception as e:
-            _log(f"✗ Unified post-processor failed for chunk: {e}")
-            unified_errors += len(chunk)
+        unified_chunk = [
+            j["id"] for j, needs in unprocessed[i:i + chunk_size]
+            if any(req in needs for req in ("summary", "values", "sse", "language"))
+        ]
+        if unified_chunk:
+            try:
+                result = process_jobs_unified(ProcessingOptions(
+                    task="all",
+                    page_limit=None,
+                    job_ids=unified_chunk,
+                    dry_run=False,
+                    verbose=False,
+                ))
+                unified_errors += result.get("errors", 0)
+                unified_processed += result.get("processed", 0)
+            except Exception as e:
+                _log(f"✗ Unified post-processor failed for chunk: {e}")
+                unified_errors += len(unified_chunk)
 
         # 2) ESCO skills tagging
         if not skip_esco:

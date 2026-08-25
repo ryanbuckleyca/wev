@@ -1925,12 +1925,15 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             domain_str.lower(),
                         ])
 
+                        structured_prov = (result.get("headquarters_province") or "").lower()
+                        structured_prov_code = (llm_hq_prov_code or "").lower()
+
                         # Count how many DISTINCT location terms match (set to avoid
                         # double-counting same term that appears in multiple fields)
                         matches_set: set[str] = set()
                         for term in location_terms:
                             if len(term) <= 2:
-                                if re.search(r'\b' + re.escape(term) + r'\b', searchable_content):
+                                if term == structured_prov or term == structured_prov_code:
                                     matches_set.add(term)
                             else:
                                 if term in searchable_content:

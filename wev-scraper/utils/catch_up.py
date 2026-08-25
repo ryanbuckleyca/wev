@@ -141,21 +141,22 @@ def process_unprocessed_jobs(
     total_processed = 0
 
     # 1) Unified post-processor (summary / values / SSE / language)
-    if any(
-        ("summary" in needs) or ("values" in needs) or ("sse" in needs) or ("language" in needs)
-        for _, needs in unprocessed
-    ):
+    unified_job_ids = [
+        j["id"] for j, needs in unprocessed
+        if any(req in needs for req in ("summary", "values", "sse", "language"))
+    ]
+    if unified_job_ids:
         try:
             from scripts.unified_post_processor import ProcessingOptions, process_jobs_unified
 
             result = process_jobs_unified(
-                ProcessingOptions(task="all", page_limit=None, job_ids=job_ids, dry_run=False, verbose=False)
+                ProcessingOptions(task="all", page_limit=None, job_ids=unified_job_ids, dry_run=False, verbose=False)
             )
             total_processed += result.get("processed", 0)
             total_errors += result.get("errors", 0)
         except Exception as e:
             _log(f"❌ Unified post-processor failed: {e}")
-            total_errors += len(unprocessed)
+            total_errors += len(unified_job_ids)
 
     # 2) ESCO skills vector tagging
     esco_ids = [j["id"] for j, needs in unprocessed if "skills" in needs]

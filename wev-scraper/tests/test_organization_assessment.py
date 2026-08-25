@@ -1073,6 +1073,8 @@ def test_assess_handles_null_geographic_scope():
         ],
         "public_language": "en",
         "geographic_scope": None,
+        "headquarters_municipality": "Halifax",
+        "headquarters_province": "NS",
         "website": "https://netzeroatlantic.ca",
         "description_en": "Net Zero Atlantic is a research association in Halifax, NS.",
         "description_fr": None,
