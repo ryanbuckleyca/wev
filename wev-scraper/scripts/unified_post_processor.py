@@ -337,7 +337,7 @@ def _build_update_data(task: TaskType, job_result: dict, job: dict | None = None
 
     if task in ["all", "sse"] and "is_sse" in job_result:
         update_data["is_sse"] = job_result["is_sse"]
-        flags = job_result.get("flags", [])
+        flags = list(job_result.get("flags") or [])
         if provider:
             flags.append(f"model:{provider}")
         sse_details = {
