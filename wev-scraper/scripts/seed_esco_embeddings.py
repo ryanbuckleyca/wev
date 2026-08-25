@@ -18,6 +18,8 @@ import time
 from pathlib import Path
 
 # Ensure wev-scraper root is on sys.path when run directly
+_SCRAPER_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_SCRAPER_DIR))
 
 from settings import ensure_env_loaded  # noqa: E402
 from utils.prod_env import bootstrap_staging_from_argv  # noqa: E402

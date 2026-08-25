@@ -11,6 +11,10 @@ from llm.gemini_fallback import (
 )
 
 
+@pytest.fixture(autouse=True)
+def enable_local_fallback(monkeypatch):
+    monkeypatch.setenv("ENABLE_LOCAL_FALLBACK", "1")
+
 def test_get_job_summary_provider_local():
     provider_mock = MagicMock()
     provider_mock.is_available.return_value = True

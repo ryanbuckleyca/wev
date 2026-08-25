@@ -76,6 +76,63 @@ _ORG_TYPE_ALIASES: dict[str, str] = {
     "other": "other",
 }
 
+_DISTRICT_INDICATORS = [
+    # French directions (with/without hyphen)
+    'centre-', 'nord', 'sud', 'est', 'ouest',
+    '-nord', '-sud', '-est', '-ouest',
+    # English directions
+    'north', 'south', 'east', 'west', 'downtown', 'uptown',
+    # Saint/Ste- prefixes (French + English forms)
+    'saint-', 'ste-', 'st-',
+    'saint ', 'ste ', 'st ',
+    # --- Montréal boroughs / common neighborhoods (expanded) ---
+    'rosemont', 'plateau', 'verdun', 'villeray', 'hochelaga',
+    'petite-patrie', 'ahuntsic', 'cartierville',
+    'saint-leonard', 'st-leonard', 'saint-léonard',
+    'mile-end', 'mile end', 'outremont', 'cote-des-neiges',
+    'côte-des-neiges', 'ndg', 'notre-dame-de-grace',
+    'pointe-aux-trembles', 'riviere-des-prairies',
+    'rivière-des-prairies', 'lasalle', 'pierrefonds',
+    'roxboro', 'dollard', 'dorval', 'pointe-claire',
+    'kirkland', 'beaconsfield', 'senneville', 'montreal-est',
+    'montreal-nord', 'st-laurent', 'saint-laurent',
+    'ahuntsic', 'cartierville',
+    # --- Québec city / other QC cities known boroughs ---
+    'sainte-foy', 'st-foy', 'sillery', 'charlesbourg',
+    'beauport', 'vanier', 'limoilou',
+    'lachine', 'lasalle', 'dorval',
+    # --- Toronto districts (expanded) ---
+    'scarborough', 'etobicoke', 'north york', 'east york',
+    'york', 'danforth', 'high-park', 'parkdale',
+    'liberty village', 'riverdale', 'leslieville',
+    'cabbagetown', 'regent park', 'st-jamestown',
+    'kensington-market', 'annex', 'yonge-eglinton',
+    # --- Ottawa / Gatineau ---
+    'hull', 'aylmer', 'gatineau', 'nepean', 'kanata',
+    'orleans', 'barrhaven', 'bells corners',
+    # --- Vancouver / BC lower mainland ---
+    'burnaby', 'surrey', 'richmond', 'coquitlam',
+    'new westminster', 'north vancouver', 'west vancouver',
+    'east van', 'strathcona', 'mount pleasant',
+    'commercial drive', 'kerrisdale', 'shaughnessy',
+    # --- Calgary / Edmonton ---
+    'beltline', 'kensington', 'inglewood', 'marda loop',
+    'whyte ave', 'old strathcona',
+    # --- Halifax ---
+    'dartmouth', 'bedford', 'sackville', 'spryfield',
+    # --- Winnipeg ---
+    'saint boniface', 'st-boniface', 'transcona',
+    'st-vital', 'fort garry', 'river heights',
+    # --- Hamilton ---
+    'dundurn', 'westdale', 'mcmaster', 'stoney creek',
+    'ancaster', 'burlington',
+]
+
+# Compile pattern with word boundaries (allowing standard word chars or hyphens)
+DISTRICT_INDICATORS_PATTERN = re.compile(
+    r'(?:^|\s|\b)(' + '|'.join(re.escape(i) for i in _DISTRICT_INDICATORS) + r')(?=$|\s|\b)'
+)
+
 # Hard length limits for stored LLM fields. Keep in sync with
 # wev-bulletin/lib/organizations/constants.ts (description/mission).
 # Prompt asks the model to paraphrase within the limit. If it overshoots,
@@ -1155,15 +1212,114 @@ def _parse_localized_text(data: dict, key_en: str, key_fr: str, legacy_key: str)
     return en, fr
 
 
+def _sanitize_llm_json(text: str) -> str:
+    """Repair common LLM-produced JSON defects before json.loads.
+
+    Known failure modes from Gemini/Groq when asked for JSON alongside markdown/grounding:
+
+    1. **Backticks inside double-quoted strings (Pattern A)** — the model wraps any
+       "code-like" token (URLs, slugs, IDs) in `` `inline code` `` backticks, then wraps
+       the *whole thing* again in double quotes.  Example::
+
+           "website": "`https://renewsafety.com`"
+
+       This actually parses as valid JSON but leaves literal `` ` `` characters inside the
+       value, which later break URL/domain checks.  We remove the wrapping backticks.
+
+    2. **Bare backtick-delimited strings (Pattern B)** — the model occasionally drops the
+       outer double quotes entirely and uses markdown backticks as a JSON string delimiter,
+       which is *not* valid JSON.  Example::
+
+           "website": `https://dhilmar.com`,
+           "description_en": `Mining company "operating" the Éléonore mine`,
+
+       This is the usual cause of ``Expecting value`` / ``Expecting property name`` errors
+       at the property *after* a backtick-string, because the parser sees the closing
+       backtick, doesn't recognize it as ending a string, and therefore misaligns every
+       subsequent token.
+
+    We apply Pattern A first (harmless, always safe), then Pattern B conservatively
+    (only at `: ` value boundaries, where a JSON string value is expected).  If a
+    best-effort parse still fails, we fall back to character-level backtick → quote
+    substitution for the small class of responses where the model truly went
+    backtick-happy everywhere.
+    """
+    if not text:
+        return text
+
+    # --- Pattern A: strip wrapping backticks inside a double-quoted string value. ---
+    # Match "`thing`" where thing contains no quotes/newlines (avoids accidentally
+    # matching nested content).  URLs, slugs, and short identifiers all fit this.
+    text = re.sub(
+        r'"`([^"`\n\r]+)`"',
+        r'"\1"',
+        text,
+    )
+
+    # --- Pattern B: replace bare backtick-delimited values that stand in for a JSON ---
+    # string after a key.  Match: `: ` + optional whitespace + `` `content` ``
+    # + (comma | closing brace/bracket | end-of-line/whitespace).
+    #
+    # Inside the backtick payload we allow any character EXCEPT an unescaped backtick,
+    # and we collapse it into a double-quoted string while escaping any stray double
+    # quotes already in the payload (Pattern B often contains unescaped quotes — e.g.
+    # a sentence with the word "operating" inside backticks).
+    def _rewrite_backtick_value(match: re.Match[str]) -> str:
+        prefix = match.group(1)          # e.g. ':  '
+        payload = match.group(2)         # content inside ``...``
+        # Escape any double quotes or backslashes the payload already contained
+        # (the model would have needed to escape them inside a real JSON string).
+        escaped = payload.replace("\\", "\\\\").replace('"', '\\"')
+        return f'{prefix}"{escaped}"'
+
+    text = re.sub(
+        r'(:\s*)`([^`]*)`',
+        _rewrite_backtick_value,
+        text,
+    )
+
+    return text
+
+
 def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | None:
     text = BaseGroundedClassifier._extract_json_block(response_text)
 
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError as exc:
+    data = None
+    first_error: json.JSONDecodeError | None = None
+    for attempt, candidate in enumerate((
+        _sanitize_llm_json(text),
+        text,
+    )):
+        try:
+            data = json.loads(candidate)
+            if attempt > 0:
+                logger.info(
+                    "OrganizationAssessor: _sanitize_llm_json salvaged parse for %r (attempt %s)",
+                    raw_name, attempt + 1,
+                )
+            break
+        except json.JSONDecodeError as exc:
+            if first_error is None:
+                first_error = exc
+            # Last-ditch: wholesale backtick → double-quote swap only on retry 2.
+            # Can technically produce an invalid parse if backticks appear inside prose,
+            # but this catches the remaining tail of "all string delimiters are backticks"
+            # responses and at this point json.loads is already failing anyway.
+            if attempt == 1:
+                try:
+                    data = json.loads(candidate.replace("`", '"'))
+                    logger.info(
+                        "OrganizationAssessor: last-resort backtick→quote salvage succeeded for %r",
+                        raw_name,
+                    )
+                    break
+                except json.JSONDecodeError:
+                    pass
+
+    if data is None:
         logger.warning(
             "OrganizationAssessor: failed to parse JSON for %r: %s — response: %r",
-            raw_name, exc, response_text[:200],
+            raw_name, first_error, response_text[:200],
         )
         return None
 
@@ -1673,97 +1829,198 @@ class OrganizationAssessor(BaseGroundedClassifier):
         if use_grounding:
             discovered_website = result.get("website")
             if discovered_website and evidence_domain(discovered_website):
-                # Build location terms to check
-                location_terms = []
-                if municipality:
-                    # Add municipality terms (e.g., "Oxford County" -> ["oxford", "county"])
-                    location_terms.extend([t.lower() for t in municipality.split() if len(t) > 2])
-                if province:
-                    # Add province terms and abbreviations
-                    location_terms.extend([province.lower(), province.upper()])
-                    # Add common province name variations
-                    province_map = {
-                        "ON": ["ontario"],
-                        "QC": ["quebec", "québec"],
-                        "BC": ["british columbia"],
-                        "AB": ["alberta"],
-                        # Add more as needed
-                    }
-                    if province.upper() in province_map:
-                        location_terms.extend(province_map[province.upper()])
+                # --- Heuristic: skip location validation when the INPUT location is clearly garbage. ---
+                # Examples:
+                #   (municipality="NT", province="NT")     → mun is a prov code, parse failure
+                #   (municipality="QC", province="QC")     → same
+                #   (municipality=None, province=None)     → no info
+                # Otherwise we build impossible-to-satisfy requirements (e.g. 2 terms
+                # that can't both match) and incorrectly reject valid assessments.
+                _valid_prov_codes = frozenset({
+                    "AB","BC","MB","NB","NL","NS","NU","NT","ON","PE","QC","SK","YT",
+                    "ME","NY","MI","WA","MN","ND","MT","VT","NH",
+                })
+                mun_s = (municipality or "").strip()
+                prov_s = (province or "").strip()
+                def _looks_like_prov_code(s: str) -> bool:
+                    return len(s) <= 3 and s.upper() in _valid_prov_codes
+                input_loc_is_useless = (
+                    (not mun_s and not prov_s)
+                    or (mun_s and _looks_like_prov_code(mun_s))
+                    or (prov_s and mun_s.upper() == prov_s.upper() and _looks_like_prov_code(prov_s))
+                )
+                if not input_loc_is_useless:
+                    # Build location terms to check (all lowercased and deduped so that
+                    # e.g. "qc" and "QC" do not double-count as 2 distinct terms — since
+                    # searchable_content is always lowercased, the uppercase variant
+                    # could never match and inflated required_matches artificially.)
+                    location_terms_set: set[str] = set()
+                    if municipality:
+                        for t in municipality.split():
+                            tl = t.lower()
+                            if len(tl) > 2:
+                                location_terms_set.add(tl)
+                    if province:
+                        location_terms_set.add(province.lower())
+                        # Full province/territory names in EN+FR (all 13 provinces + territories)
+                        province_map = {
+                            "ON": ["ontario"],
+                            "QC": ["quebec", "québec"],
+                            "BC": ["british columbia", "colombie britannique", "colombie-britannique"],
+                            "AB": ["alberta"],
+                            "MB": ["manitoba"],
+                            "NB": ["new brunswick", "nouveau brunswick"],
+                            "NL": ["newfoundland and labrador", "newfoundland", "terre-neuve", "terre-neuve-et-labrador"],
+                            "NS": ["nova scotia", "nouvelle-ecosse", "nouvelle-écosse"],
+                            "NU": ["nunavut"],
+                            "NT": ["northwest territories", "territoires du nord-ouest"],
+                            "PE": ["prince edward island", "ile-du-prince-edouard", "île-du-prince-édouard"],
+                            "SK": ["saskatchewan"],
+                            "YT": ["yukon"],
+                            "ME": ["maine"],
+                            "NY": ["new york"],
+                            "MI": ["michigan"],
+                            "WA": ["washington"],
+                            "MN": ["minnesota"],
+                            "ND": ["north dakota"],
+                            "MT": ["montana"],
+                            "VT": ["vermont"],
+                            "NH": ["new hampshire"],
+                        }
+                        if province.upper() in province_map:
+                            for full_name in province_map[province.upper()]:
+                                for word in full_name.split():
+                                    wl = word.lower()
+                                    if len(wl) > 2:
+                                        location_terms_set.add(wl)
+                    location_terms = list(location_terms_set)
 
-                # If we have location info, validate it appears in the response
-                # UNLESS the organization has national/provincial/international scope
-                # We need at least 2 location term matches to avoid false positives from incidental mentions
-                if location_terms:
-                    # Check response_text and result fields for location terms
-                    searchable_content = " ".join([
-                        (response_text or "").lower(),
-                        (result.get("description_en") or "").lower(),
-                        (result.get("description_fr") or "").lower(),
-                        (result.get("mission_statement_en") or "").lower(),
-                        (result.get("mission_statement_fr") or "").lower(),
-                        str(result.get("values", []) or "").lower(),
-                        str(result.get("values_raw", []) or "").lower(),
-                    ])
+                    # If we have location info, validate it appears in the response
+                    # UNLESS the organization has national/provincial/international scope
+                    # We need at least 2 location term matches to avoid false positives from incidental mentions
+                    if location_terms:
+                        # Include:
+                        #   * raw LLM response blob + description/mission/values (original fields)
+                        #   * LLM's explicit structured HQ fields (headquarters_municipality / _province)
+                        #   * discovered website URL and domain (e.g. montreal.ca → "montreal" matches)
+                        #   * HQ-province normalised as a 2-letter code too
+                        llm_hq_prov_code = _validate_province_code(result.get("headquarters_province"))
+                        _extra_hq_parts: list[str] = []
+                        if llm_hq_prov_code:
+                            _extra_hq_parts.append(llm_hq_prov_code.lower())
+                        website_str = (discovered_website or "")
+                        domain_str = extract_domain(website_str) or ""
+                        searchable_content = " ".join([
+                            (response_text or "").lower(),
+                            (result.get("description_en") or "").lower(),
+                            (result.get("description_fr") or "").lower(),
+                            (result.get("mission_statement_en") or "").lower(),
+                            (result.get("mission_statement_fr") or "").lower(),
+                            str(result.get("values", []) or "").lower(),
+                            str(result.get("values_raw", []) or "").lower(),
+                            (result.get("headquarters_municipality") or "").lower(),
+                            (result.get("headquarters_province") or "").lower(),
+                            " ".join(p.lower() for p in _extra_hq_parts),
+                            website_str.lower(),
+                            domain_str.lower(),
+                        ])
 
-                    # Count how many location terms match
-                    matches = [term for term in location_terms if term in searchable_content]
+                        structured_prov = (result.get("headquarters_province") or "").lower()
+                        structured_prov_code = (llm_hq_prov_code or "").lower()
 
-                    # Check if location appears in the organization name itself
-                    raw_name_lower = raw_name.lower()
-                    location_in_name = any(term in raw_name_lower for term in location_terms if len(term) > 2)
+                        # Count how many DISTINCT location terms match (set to avoid
+                        # double-counting same term that appears in multiple fields)
+                        matches_set: set[str] = set()
+                        for term in location_terms:
+                            if len(term) <= 2:
+                                if term == structured_prov or term == structured_prov_code:
+                                    matches_set.add(term)
+                            else:
+                                if term in searchable_content:
+                                    matches_set.add(term)
+                        matches = list(matches_set)
 
-                    # Also check if org name contains district/neighborhood indicators (often means local to that city)
-                    # Common French and English district/neighborhood terms
-                    district_indicators = [
-                        'centre-', 'nord', 'sud', 'est', 'ouest', '-nord', '-sud', '-est', '-ouest',  # French directions (with/without hyphen)
-                        'north', 'south', 'east', 'west', 'downtown', 'uptown',  # English directions
-                        'rosemont', 'plateau', 'verdun', 'villeray', 'hochelaga', 'petite-patrie', 'ahuntsic',  # Montreal neighborhoods
-                        'scarborough', 'etobicoke', 'north york', 'east york',  # Toronto districts
-                    ]
-                    has_district_name = any(indicator in raw_name_lower for indicator in district_indicators)
-
-                    # Check geographic scope - relax location matching for broader scope organizations
-                    scope = (result.get("geographic_scope") or "").lower()
-                    is_broad_scope = scope in ("national", "provincial", "international")
-
-                    # Require at least 2 distinct location term matches (or all terms if less than 2)
-                    # UNLESS:
-                    # - the organization has national/provincial/international scope, OR
-                    # - the location appears in the organization name itself (reduces need for repetition), OR
-                    # - the org name suggests a district/neighborhood (e.g., "Centre-Nord" for Montreal)
-                    required_matches = min(2, len(location_terms))
-
-                    # If location is in name, has district indicator, accept with just 1 match
-                    if (location_in_name or has_district_name) and len(matches) >= 1:
-                        location_found = True
-                    else:
-                        location_found = len(matches) >= required_matches
-
-                    if not location_found and not is_broad_scope:
-                        # Location mismatch - reject this result
-                        logger.warning(
-                            "OrganizationAssessor: location mismatch for %r - expected %s but found only %d/%d location terms: %s. Skipping.",
-                            raw_name,
-                            f"{municipality}, {province}" if municipality and province else municipality or province,
-                            len(matches),
-                            len(location_terms),
-                            matches,
+                        # Check if location appears in the organization name itself
+                        raw_name_lower = raw_name.lower()
+                        location_in_name = any(
+                            term in raw_name_lower for term in location_terms if len(term) > 2
                         )
-                        return None
-                    elif not location_found and is_broad_scope:
-                        # Accept broader-scope organizations even without local location match
-                        logger.info(
-                            "OrganizationAssessor: accepting %r despite location mismatch - geographic_scope=%s indicates broader reach",
-                            raw_name, scope,
-                        )
-                    elif (location_in_name or has_district_name) and len(matches) >= 1:
-                        # Accepted with reduced requirement because location is in name or has district indicator
-                        logger.debug(
-                            "OrganizationAssessor: accepting %r with %d/%d location matches - location in org name or district indicator reduces validation requirement",
-                            raw_name, len(matches), len(location_terms),
-                        )
+
+                        # Also check if org name contains district/neighborhood indicators
+                        # (often means local to that city, so a single prov match suffices)
+                        #
+                        # Heuristic rules for "looks district-like":
+                        #   1. French/English direction or cardinal term (nord/sud/east/west etc.)
+                        #   2. Saint-/Ste- prefix (common for boroughs like St-Léonard, Ste-Foy)
+                        #   3. Well-known Montréal/Toronto/Québec borough names
+                        #   4. Any standalone hyphenated pair that looks like a
+                        #      direction+name (covers many new boroughs without manual listing)
+                        has_district_name = bool(DISTRICT_INDICATORS_PATTERN.search(raw_name_lower))
+                        # Additional catch-all: name contains a hyphenated cardinal
+                        # direction followed by a word that looks like a neighbourhood
+                        # e.g. "Centre-Nord de Montréal", "Saint-Saveur"
+                        if not has_district_name:
+                            _hyphen_parts = [
+                                p for p in re.split(r"\s+", raw_name_lower) if "-" in p
+                            ]
+                            for part in _hyphen_parts:
+                                left, _, right = part.partition("-")
+                                left, right = left.strip(), right.strip()
+                                if (
+                                    len(left) >= 3
+                                    and len(right) >= 3
+                                    and (
+                                        left in {"centre","nord","sud","est","ouest",
+                                                 "saint","ste","st","north","south",
+                                                 "east","west","old","new","ville",
+                                                 "mont","fort"}
+                                        or right in {"nord","sud","est","ouest",
+                                                     "north","south","east","west"}
+                                    )
+                                ):
+                                    has_district_name = True
+                                    break
+
+                        # Check geographic scope - relax location matching for broader scope organizations
+                        scope = (result.get("geographic_scope") or "").lower()
+                        is_broad_scope = scope in ("national", "provincial", "international")
+
+                        # Require at least 2 distinct location term matches (or all terms if less than 2)
+                        # UNLESS:
+                        # - the organization has national/provincial/international scope, OR
+                        # - the location appears in the organization name itself (reduces need for repetition), OR
+                        # - the org name suggests a district/neighborhood (e.g., "Centre-Nord" for Montreal)
+                        required_matches = min(2, len(location_terms))
+
+                        # If location is in name, has district indicator, accept with just 1 match
+                        if (location_in_name or has_district_name) and len(matches) >= 1:
+                            location_found = True
+                        else:
+                            location_found = len(matches) >= required_matches
+
+                        if not location_found and not is_broad_scope:
+                            # Location mismatch - reject this result
+                            logger.warning(
+                                "OrganizationAssessor: location mismatch for %r - expected %s but found only %d/%d location terms: %s. Skipping.",
+                                raw_name,
+                                f"{municipality}, {province}" if municipality and province else municipality or province,
+                                len(matches),
+                                len(location_terms),
+                                matches,
+                            )
+                            return None
+                        elif not location_found and is_broad_scope:
+                            # Accept broader-scope organizations even without local location match
+                            logger.info(
+                                "OrganizationAssessor: accepting %r despite location mismatch - geographic_scope=%s indicates broader reach",
+                                raw_name, scope,
+                            )
+                        elif (location_in_name or has_district_name) and len(matches) >= 1:
+                            # Accepted with reduced requirement because location is in name or has district indicator
+                            logger.debug(
+                                "OrganizationAssessor: accepting %r with %d/%d location matches - location in org name or district indicator reduces validation requirement",
+                                raw_name, len(matches), len(location_terms),
+                            )
 
                 # Also validate name appears in domain (but be forgiving about exact match)
                 # Skip this check if we have a known_website (trust the known website)
@@ -1810,8 +2067,6 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             if len(cleaned) > 1 and cleaned.lower() not in skip_words and cleaned not in name_parts:
                                 name_parts.append(cleaned)
 
-                    # Check for acronyms in parentheses (e.g., "Find an Independent Mining Expert (FAIME)")
-                    import re
                     acronym_match = re.search(r'\(([A-Z]{2,})\)', raw_name or "")
                     org_acronym = acronym_match.group(1).lower() if acronym_match else None
 

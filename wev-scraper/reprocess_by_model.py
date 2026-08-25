@@ -5,9 +5,13 @@ import json
 import sys
 import time
 
-from llm.tavily_grounding import is_tavily_available
-from utils.db import supabase
-from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
+from dotenv import load_dotenv
+
+load_dotenv('../.env')
+
+from llm.tavily_grounding import is_tavily_available  # noqa: E402
+from utils.db import supabase  # noqa: E402
+from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields  # noqa: E402
 
 
 def get_orgs_by_model(model_filter=None):
@@ -64,11 +68,12 @@ def get_orgs_by_model(model_filter=None):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python reprocess_by_model.py <groq|no_tracking> [--limit N]")
+        print("Usage: python reprocess_by_model.py <model_name|no_tracking> [--limit N] [--yes]")
         print("\nOptions:")
-        print("  groq        - Reprocess organizations processed with Groq")
-        print("  no_tracking - Reprocess organizations without model tracking")
-        print("  --limit N   - Limit to N organizations (default: all)")
+        print("  <model_name> - Reprocess organizations processed with this model (e.g., groq, ollama)")
+        print("  no_tracking  - Reprocess organizations without model tracking")
+        print("  --limit N    - Limit to N organizations (default: all)")
+        print("  --yes        - Skip interactive confirmation")
         sys.exit(1)
 
     mode = sys.argv[1]
@@ -100,15 +105,12 @@ def main():
     print("=" * 80)
 
     # Get organizations
-    if mode == 'groq':
-        orgs = get_orgs_by_model('groq')
-        print(f"\nFound {len(orgs)} organizations processed with Groq")
-    elif mode == 'no_tracking':
+    if mode == 'no_tracking':
         orgs = get_orgs_by_model('no_tracking')
         print(f"\nFound {len(orgs)} organizations without model tracking")
     else:
-        print(f"Unknown mode: {mode}")
-        sys.exit(1)
+        orgs = get_orgs_by_model(mode)
+        print(f"\nFound {len(orgs)} organizations processed with {mode}")
 
     if not orgs:
         print("No organizations to process!")
@@ -125,10 +127,11 @@ def main():
     if len(orgs) > 5:
         print(f"  ... and {len(orgs) - 5} more")
 
-    confirm = input(f"\nReprocess {len(orgs)} organizations? (yes/no): ")
-    if confirm.lower() != 'yes':
-        print("Cancelled.")
-        return
+    if '--yes' not in sys.argv:
+        confirm = input(f"\nReprocess {len(orgs)} organizations? (yes/no): ")
+        if confirm.lower() != 'yes':
+            print("Cancelled.")
+            return
 
     print("\nProcessing...")
     assessor = OrganizationAssessor()

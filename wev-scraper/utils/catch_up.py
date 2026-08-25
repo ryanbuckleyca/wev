@@ -18,6 +18,28 @@ from utils.log import scraper_log as _log
 VALID_LANGUAGES = frozenset({"en", "fr", "bilingual"})
 PAGE_SIZE = 1000
 
+_ORG_BOOL_FIELDS = frozenset({"is_sse"})
+_ORG_LIST_FIELDS = frozenset({"values_list", "values_rated", "must_haves_met", "nice_to_haves_met", "skills"})
+_ORG_LANGUAGE_FIELDS = frozenset({"language"})
+
+
+def _is_org_field_missing(org: Dict[str, Any], field: str) -> bool:
+    """Field-aware "is missing" predicate for org rows that matches the
+    incomplete-record scan semantics, while preserving explicit booleans.
+    """
+    if field in _ORG_BOOL_FIELDS:
+        return org.get(field) is None
+    if field in _ORG_LANGUAGE_FIELDS:
+        return org.get(field) not in VALID_LANGUAGES
+    if field in _ORG_LIST_FIELDS:
+        return not org.get(field)
+    value = org.get(field)
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    return False
+
 
 # ---------------------------------------------------------------------------
 # Query helpers
@@ -119,21 +141,22 @@ def process_unprocessed_jobs(
     total_processed = 0
 
     # 1) Unified post-processor (summary / values / SSE / language)
-    if any(
-        ("summary" in needs) or ("values" in needs) or ("sse" in needs) or ("language" in needs)
-        for _, needs in unprocessed
-    ):
+    unified_job_ids = [
+        j["id"] for j, needs in unprocessed
+        if any(req in needs for req in ("summary", "values", "sse", "language"))
+    ]
+    if unified_job_ids:
         try:
             from scripts.unified_post_processor import ProcessingOptions, process_jobs_unified
 
             result = process_jobs_unified(
-                ProcessingOptions(task="all", page_limit=None, job_ids=job_ids, dry_run=False, verbose=False)
+                ProcessingOptions(task="all", page_limit=None, job_ids=unified_job_ids, dry_run=False, verbose=False)
             )
             total_processed += result.get("processed", 0)
             total_errors += result.get("errors", 0)
         except Exception as e:
             _log(f"❌ Unified post-processor failed: {e}")
-            total_errors += len(unprocessed)
+            total_errors += len(unified_job_ids)
 
     # 2) ESCO skills vector tagging
     esco_ids = [j["id"] for j, needs in unprocessed if "skills" in needs]
@@ -196,7 +219,7 @@ def process_unprocessed_organizations(
                 update_fields = _result_to_db_fields(result)
                 filtered = {}
                 for field, value in update_fields.items():
-                    if org.get(field) is None and value is not None:
+                    if value is not None and _is_org_field_missing(org, field):
                         filtered[field] = value
                 if filtered:
                     supabase.table("organizations").update(filtered).eq("id", oid).execute()

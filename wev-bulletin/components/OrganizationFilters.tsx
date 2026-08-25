@@ -43,6 +43,7 @@ export default function OrganizationFilters({
   // tJobs reuses the jobs `filters` namespace for province/municipality/chip labels.
   // If those keys are restructured, this component will need to be updated too.
   const tJobs = useTranslations('filters');
+  const tSectors = useTranslations('taxonomy.sectors');
 
   const {
     filters,
@@ -58,6 +59,8 @@ export default function OrganizationFilters({
     setSelectedTypes,
     selectedLanguages,
     setSelectedLanguages,
+    selectedSectors,
+    setSelectedSectors,
     setActivityWindow,
     setCurrentPage,
     hasAnyFilters,
@@ -88,8 +91,13 @@ export default function OrganizationFilters({
       void setSelectedLanguages(toggleArrayItem(language, selectedLanguages));
       void setCurrentPage(1);
     },
+    onRemoveSector: (sector) => {
+      void setSelectedSectors(toggleArrayItem(sector, selectedSectors));
+      void setCurrentPage(1);
+    },
     tOrgs: t,
     tFilters: tJobs,
+    tSectors,
   });
 
   const totalMunicipalities = Object.values(filterOptions.municipalitiesByProvince).reduce(
@@ -100,12 +108,14 @@ export default function OrganizationFilters({
   const availableProvinces = filterOptions.availableProvinces ?? filterOptions.provinces ?? [];
   const availableTypes = filterOptions.availableTypes ?? filterOptions.types ?? [];
   const availableLanguages = filterOptions.availableLanguages ?? filterOptions.languages ?? [];
+  const availableSectors = filterOptions.availableSectors ?? filterOptions.sectors ?? [];
   const availableMunicipalitiesByProvince =
     filterOptions.availableMunicipalitiesByProvince ?? filterOptions.municipalitiesByProvince ?? {};
 
   const disabledProvinces = filterOptions.provinces.filter((p) => !availableProvinces.includes(p));
   const disabledTypes = filterOptions.types.filter((t) => !availableTypes.includes(t));
   const disabledLanguages = filterOptions.languages.filter((l) => !availableLanguages.includes(l));
+  const disabledSectors = filterOptions.sectors.filter((s) => !availableSectors.includes(s));
   const disabledMunicipalities = Object.values(filterOptions.municipalitiesByProvince || {})
     .flat()
     .filter((m) => !Object.values(availableMunicipalitiesByProvince).flat().includes(m));
@@ -203,6 +213,26 @@ export default function OrganizationFilters({
               }}
               emptyMessage={tJobs('language.noData')}
               renderLabel={(lang) => orgLanguageLabel(lang, tJobs)}
+            />
+          </div>
+
+          <div className="flex flex-col order-6 md:row-start-3 md:col-start-2 min-h-0">
+            <CheckboxFilterSection
+              label={t('sector')}
+              selectedCount={selectedSectors.length}
+              totalCount={filterOptions.sectors.length}
+              options={filterOptions.sectors}
+              selectedValues={selectedSectors}
+              disabledValues={disabledSectors}
+              disabledTooltipMessage={disabledTooltipMessage}
+              onToggle={(val) => {
+                void setSelectedSectors(toggleArrayItem(val, selectedSectors));
+                void setCurrentPage(1);
+              }}
+              emptyMessage={t('noOrganizationSectors')}
+              renderLabel={(sectorId) =>
+                tSectors.has(`${sectorId}.label`) ? tSectors(`${sectorId}.label`) : sectorId
+              }
             />
           </div>
         </div>

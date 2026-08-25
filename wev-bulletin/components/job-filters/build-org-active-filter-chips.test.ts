@@ -37,8 +37,11 @@ describe('buildOrgActiveFilterChips', () => {
     selectedMunicipalities: [],
     selectedTypes: [],
     selectedLanguages: [],
+    selectedSectors: [],
     activityWindow: 'all',
   };
+
+  const mockTSectors = vi.fn((key: string) => key);
 
   const baseChipHandlers = {
     onRemoveActivity: vi.fn(),
@@ -48,8 +51,10 @@ describe('buildOrgActiveFilterChips', () => {
     onRemoveMunicipality: vi.fn(),
     onRemoveType: vi.fn(),
     onRemoveLanguage: vi.fn(),
+    onRemoveSector: vi.fn(),
     tOrgs: mockTOrgs,
     tFilters: mockTFilters,
+    tSectors: mockTSectors,
   };
 
   it('returns empty array when no filters are active', () => {
@@ -187,12 +192,13 @@ describe('buildOrgActiveFilterChips', () => {
         selectedMunicipalities: ['Toronto'],
         selectedTypes: ['nonprofit'],
         selectedLanguages: ['bilingual'],
+        selectedSectors: ['tech'],
         activityWindow: '90d',
       },
       ...baseChipHandlers,
     });
 
-    expect(chips).toHaveLength(7);
+    expect(chips).toHaveLength(8);
     expect(chips[0].id).toBe('activity');
     expect(chips[1].id).toBe('nonSse');
     expect(chips[2].id).toBe('q');
@@ -200,6 +206,7 @@ describe('buildOrgActiveFilterChips', () => {
     expect(chips[4].id).toBe('m-Toronto');
     expect(chips[5].id).toBe('type-nonprofit');
     expect(chips[6].id).toBe('lang-bilingual');
+    expect(chips[7].id).toBe('sector-tech');
   });
 });
 

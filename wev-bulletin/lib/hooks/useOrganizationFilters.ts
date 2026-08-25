@@ -20,6 +20,7 @@ export interface OrganizationFilters {
   selectedMunicipalities: string[];
   selectedTypes: string[];
   selectedLanguages: string[];
+  selectedSectors: string[];
   /** Activity window: 'all' (default), '28d', or '90d'. */
   activityWindow: ActivityWindow;
 }
@@ -46,6 +47,8 @@ export interface OrganizationFilterControls {
   setSelectedTypes: (value: string[] | null) => Promise<unknown> | void;
   selectedLanguages: string[];
   setSelectedLanguages: (value: string[] | null) => Promise<unknown> | void;
+  selectedSectors: string[];
+  setSelectedSectors: (value: string[] | null) => Promise<unknown> | void;
   activityWindow: ActivityWindow;
   setActivityWindow: (value: ActivityWindow | null) => Promise<unknown> | void;
   currentPage: number;
@@ -78,6 +81,10 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     'language',
     parseAsNativeArrayOf(parseAsString).withDefault([]),
   );
+  const [selectedSectors, setSelectedSectors] = useQueryState(
+    'sector',
+    parseAsNativeArrayOf(parseAsString).withDefault([]),
+  );
   const [activityWindow, setActivityWindow] = useQueryState(
     'activity',
     parseAsStringEnum<ActivityWindow>(['all', '28d', '90d']).withDefault('all'),
@@ -96,6 +103,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedMunicipalities,
       selectedTypes,
       selectedLanguages,
+      selectedSectors,
       activityWindow: typedActivityWindow,
     }),
     [
@@ -105,6 +113,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedMunicipalities,
       selectedTypes,
       selectedLanguages,
+      selectedSectors,
       typedActivityWindow,
     ],
   );
@@ -118,6 +127,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedMunicipalities.length > 0 ||
       selectedTypes.length > 0 ||
       selectedLanguages.length > 0 ||
+      selectedSectors.length > 0 ||
       typedActivityWindow !== 'all',
     [
       searchQuery,
@@ -126,6 +136,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedMunicipalities,
       selectedTypes,
       selectedLanguages,
+      selectedSectors,
       typedActivityWindow,
     ],
   );
@@ -139,6 +150,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedMunicipalities.length === 0 &&
       selectedTypes.length === 0 &&
       selectedLanguages.length === 0 &&
+      selectedSectors.length === 0 &&
       typedActivityWindow === 'all',
     [
       searchQuery,
@@ -147,6 +159,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedMunicipalities,
       selectedTypes,
       selectedLanguages,
+      selectedSectors,
       typedActivityWindow,
     ],
   );
@@ -159,6 +172,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       void setSelectedMunicipalities([]);
       void setSelectedTypes([]);
       void setSelectedLanguages([]);
+      void setSelectedSectors([]);
       void setActivityWindow('all');
       void setCurrentPage(1);
     },
@@ -169,6 +183,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       setSelectedMunicipalities,
       setSelectedTypes,
       setSelectedLanguages,
+      setSelectedSectors,
       setActivityWindow,
       setCurrentPage,
     ],
@@ -201,6 +216,8 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     setSelectedTypes,
     selectedLanguages,
     setSelectedLanguages,
+    selectedSectors,
+    setSelectedSectors,
     activityWindow: typedActivityWindow,
     setActivityWindow: setActivityWindowAndResetPage,
     currentPage,

@@ -3,8 +3,12 @@ import path from "node:path";
 import fs from "node:fs";
 import * as readline from "node:readline";
 
+import { fileURLToPath } from "node:url";
+
+const SCRAPER_DIR = path.dirname(fileURLToPath(import.meta.url));
+
 function execVerbose(cmd: string, args: string[] = []) {
-  const result = spawnSync(cmd, args, { stdio: "inherit" });
+  const result = spawnSync(cmd, args, { stdio: "inherit", cwd: SCRAPER_DIR });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
@@ -142,12 +146,14 @@ async function main() {
     ) {
       console.log("▶ Syncing Python Dependencies...");
       execVerbose(venvPipCmd, ["install", "-r", "requirements.txt"]);
-      console.log("▶ Provisioning Playwright browser (Chromium)...");
-      const playwrightArgs =
-        process.platform === "linux"
-          ? ["install", "chromium", "--with-deps"]
-          : ["install", "chromium"];
-      execVerbose(venvPlaywrightCmd, playwrightArgs);
+      if (task === "scrape") {
+        console.log("▶ Provisioning Playwright browser (Chromium)...");
+        const playwrightArgs =
+          process.platform === "linux"
+            ? ["install", "chromium", "--with-deps"]
+            : ["install", "chromium"];
+        execVerbose(venvPlaywrightCmd, playwrightArgs);
+      }
     }
 
     console.log(`▶ Executing ${scriptPath}...`);
