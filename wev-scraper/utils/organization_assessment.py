@@ -2056,8 +2056,6 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             if len(cleaned) > 1 and cleaned.lower() not in skip_words and cleaned not in name_parts:
                                 name_parts.append(cleaned)
 
-                    # Check for acronyms in parentheses (e.g., "Find an Independent Mining Expert (FAIME)")
-                    import re
                     acronym_match = re.search(r'\(([A-Z]{2,})\)', raw_name or "")
                     org_acronym = acronym_match.group(1).lower() if acronym_match else None
 

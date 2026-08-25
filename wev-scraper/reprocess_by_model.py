@@ -2,16 +2,16 @@
 """Reprocess organizations based on model tracking status."""
 
 import json
-import os
 import sys
 import time
 
 from dotenv import load_dotenv
+
 load_dotenv('../.env')
 
-from llm.tavily_grounding import is_tavily_available
-from utils.db import supabase
-from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
+from llm.tavily_grounding import is_tavily_available  # noqa: E402
+from utils.db import supabase  # noqa: E402
+from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields  # noqa: E402
 
 
 def get_orgs_by_model(model_filter=None):
