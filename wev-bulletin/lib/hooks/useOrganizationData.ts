@@ -31,6 +31,7 @@ function buildFetchKey(
     filters.selectedMunicipalities.join(','),
     filters.selectedTypes.join(','),
     filters.selectedLanguages.join(','),
+    filters.selectedSectors.join(','),
     filters.activityWindow,
   ].join('|');
 }
@@ -55,6 +56,7 @@ function buildSearchParams(
   filters.selectedMunicipalities.forEach((m) => params.append('municipality', m));
   filters.selectedTypes.forEach((t) => params.append('type', t));
   filters.selectedLanguages.forEach((l) => params.append('language', l));
+  filters.selectedSectors.forEach((s) => params.append('sector', s));
   return params;
 }
 

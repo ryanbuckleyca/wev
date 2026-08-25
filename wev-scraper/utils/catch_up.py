@@ -140,9 +140,9 @@ def process_unprocessed_jobs(
     total_errors = 0
     total_processed = 0
 
-    # 1) Unified post-processor (summary / values / SSE / language / organization_id)
+    # 1) Unified post-processor (summary / values / SSE / language)
     if any(
-        ("summary" in needs) or ("values" in needs) or ("sse" in needs) or ("language" in needs) or ("organization_id" in needs)
+        ("summary" in needs) or ("values" in needs) or ("sse" in needs) or ("language" in needs)
         for _, needs in unprocessed
     ):
         try:

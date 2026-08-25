@@ -68,11 +68,12 @@ def get_orgs_by_model(model_filter=None):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python reprocess_by_model.py <model_name|no_tracking> [--limit N]")
+        print("Usage: python reprocess_by_model.py <model_name|no_tracking> [--limit N] [--yes]")
         print("\nOptions:")
         print("  <model_name> - Reprocess organizations processed with this model (e.g., groq, ollama)")
         print("  no_tracking  - Reprocess organizations without model tracking")
         print("  --limit N    - Limit to N organizations (default: all)")
+        print("  --yes        - Skip interactive confirmation")
         sys.exit(1)
 
     mode = sys.argv[1]
