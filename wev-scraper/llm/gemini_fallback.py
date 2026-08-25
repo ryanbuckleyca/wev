@@ -148,11 +148,11 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
             ("ollama", lambda: LocalGroundedProvider()),
         ]
 
-        enable_local = os.environ.get("ENABLE_LOCAL_FALLBACK", "").strip().lower() in ("1", "true", "yes", "on")
+        disable_local = os.environ.get("DISABLE_LOCAL_FALLBACK", "").strip().lower() in ("1", "true", "yes", "on")
 
         for name, factory in candidates:
-            if not enable_local and name == "ollama":
-                logger.warning("SSE fallback: skipping ollama (ENABLE_LOCAL_FALLBACK not set)")
+            if disable_local and name == "ollama":
+                logger.warning("SSE fallback: skipping ollama (DISABLE_LOCAL_FALLBACK=1)")
                 continue
             try:
                 provider = factory()
@@ -214,14 +214,12 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
         include_domains = provider_kwargs.pop("include_domains", None)
         prefer_hosts = provider_kwargs.pop("prefer_hosts", None)
         require_terms = provider_kwargs.pop("require_terms", None)
-        max_results = provider_kwargs.pop("max_results", None)
 
         evidence = ""
         if want_grounding:
             search_query = kwargs.get("search_query") or prompt[:200]
             evidence = fetch_tavily_context(
                 str(search_query),
-                max_results=max_results,
                 include_domains=include_domains,
                 prefer_hosts=prefer_hosts,
                 require_terms=require_terms,
