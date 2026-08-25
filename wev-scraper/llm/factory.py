@@ -35,9 +35,9 @@ PROVIDERS: dict[str, type[BaseLLMProvider]] = {
 }
 
 
-def _disable_local_fallback() -> bool:
-    """Return True when DISABLE_LOCAL_FALLBACK disables ollama/local_grounded paths."""
-    return (os.environ.get("DISABLE_LOCAL_FALLBACK", "").strip().lower()
+def _enable_local_fallback() -> bool:
+    """Return True when ENABLE_LOCAL_FALLBACK enables ollama/local_grounded paths."""
+    return (os.environ.get("ENABLE_LOCAL_FALLBACK", "").strip().lower()
             in ("1", "true", "yes", "on"))
 
 
@@ -50,10 +50,10 @@ def get_job_summary_provider() -> BaseLLMProvider | None:
     """Return the LLM provider for job summarization, or None if not configured.
 
     Priority order:
-    1. If ENV_MODE=local and DISABLE_LOCAL_FALLBACK is off: local_grounded (Ollama)
+    1. If ENV_MODE=local and ENABLE_LOCAL_FALLBACK is on: local_grounded (Ollama)
     2. Otherwise: LLM_PROVIDER env var or default "groq"
     """
-    if _is_local_mode() and not _disable_local_fallback():
+    if _is_local_mode() and _enable_local_fallback():
         try:
             provider = get_provider(name="local_grounded")
             if provider.is_available():
@@ -89,7 +89,7 @@ def get_provider(
     if name is None:
         name = get_stripped_env("LLM_PROVIDER") or None
 
-        if name is None and _is_local_mode() and not _disable_local_fallback():
+        if name is None and _is_local_mode() and _enable_local_fallback():
             name = "local_grounded"
             logger.info("Local mode: using local_grounded provider")
 
@@ -129,7 +129,7 @@ def get_fallback_llm_provider() -> BaseLLMProvider | None:
         logger.warning("LLM fallback provider unavailable: %s", exc)
 
     # Last resort: Ollama alone (e.g. no Gemini/Groq keys and chain init failed)
-    if _is_local_mode() and not _disable_local_fallback():
+    if _is_local_mode() and _enable_local_fallback():
         try:
             provider = get_provider(name="local_grounded")
             if provider.is_available():

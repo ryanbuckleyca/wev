@@ -85,7 +85,8 @@
     "missionStatement": "Mission",
     "values": "Values",
     "sector": "Sector",
-    "noSector": "Sector not specified"
+    "noSector": "Sector not specified",
+    "noOrganizationSectors": "No sectors available"
   },
   "home": {
     "heading": "Bulletin – Job Postings",
@@ -416,7 +417,6 @@
     "skillsListboxKbdHint": "Use Arrow keys to move through results, Space or Enter to toggle selection.",
     "skillsSelectedRegionLabel": "Selected skills, {count, number} {count, plural, one {item} other {items}}",
     "skillsSelectedRegionHint": "Press Enter to move among selected skills and remove them. Press Tab to skip to search results. Arrow Down also moves focus to search results.",
-
     "skillsSearching": "Searching skills...",
     "skillsMaxReached": "Maximum {max} skills selected. Remove one to add another.",
     "skillsHardMaxReached": "Maximum {max} skills reached. Remove one to add another.",

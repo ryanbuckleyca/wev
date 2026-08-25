@@ -36,6 +36,7 @@ export interface FetchOrganizationIndexOptions {
   municipalities?: string[];
   orgTypes?: string[];
   languages?: string[];
+  sectors?: string[];
   userId?: string | null;
   sortBy?: string | null;
   /** null/undefined = all orgs (full directory), 28 = last 4 weeks, 90 = last 3 months */
@@ -55,6 +56,7 @@ export async function fetchOrganizationIndex(
     municipalities = [],
     orgTypes = [],
     languages = [],
+    sectors = [],
     userId = null,
     sortBy = null,
     activityDays = null,
@@ -67,13 +69,14 @@ export async function fetchOrganizationIndex(
   const effectiveSortBy = sortBy ?? (userId ? 'value-match-desc' : 'org-asc');
 
   // Product default is SSE-only; that is the baseline universe, not a "filter".
-  // Denominator matches the current SSE scope with no search/geo/type chips.
+  // Denominator matches the current SSE scope with no search/geo/type/sector chips.
   const hasUserFilters =
     Boolean(searchQuery) ||
     provinces.length > 0 ||
     municipalities.length > 0 ||
     orgTypes.length > 0 ||
-    languages.length > 0;
+    languages.length > 0 ||
+    sectors.length > 0;
 
   // Run main query and baseline denominator count in parallel.
   // The denominator call uses p_limit:1 to return exactly one row carrying the
@@ -86,6 +89,7 @@ export async function fetchOrganizationIndex(
     p_municipalities: null,
     p_org_types: null,
     p_languages: null,
+    p_sectors: null,
     p_limit: 1,
     p_offset: 0,
     p_user_id: null,
@@ -100,6 +104,7 @@ export async function fetchOrganizationIndex(
     p_municipalities: municipalities.length > 0 ? municipalities : null,
     p_org_types: orgTypes.length > 0 ? orgTypes : null,
     p_languages: languages.length > 0 ? languages : null,
+    p_sectors: sectors.length > 0 ? sectors : null,
     p_limit: limit,
     p_offset: offset,
     p_user_id: userId,
@@ -231,10 +236,12 @@ export interface OrganizationFilterOptions {
   provinces: string[];
   municipalitiesByProvince: Record<string, string[]>;
   languages: string[];
+  sectors: string[];
   availableTypes: string[];
   availableProvinces: string[];
   availableMunicipalitiesByProvince: Record<string, string[]>;
   availableLanguages: string[];
+  availableSectors: string[];
 }
 
 /**
@@ -264,6 +271,7 @@ export const fetchOrganizationFilterOptions = cache(
       const types = Array.isArray(raw?.types) ? raw.types : [];
       const provinces = Array.isArray(raw?.provinces) ? raw.provinces : [];
       const languages = Array.isArray(raw?.languages) ? raw.languages : [];
+      const sectors = Array.isArray(raw?.sectors) ? raw.sectors : [];
       const rawMunicipalities = Array.isArray(raw?.municipalities) ? raw.municipalities : [];
 
       const municipalitiesByProv: Record<string, Set<string>> = {};
@@ -284,6 +292,7 @@ export const fetchOrganizationFilterOptions = cache(
         types: types.sort(),
         provinces: provinces.sort(),
         languages: languages.sort(),
+        sectors: sectors.sort(),
         municipalitiesByProvince: finalMunicipalities,
       };
     };
@@ -296,10 +305,12 @@ export const fetchOrganizationFilterOptions = cache(
       provinces: globalOptions.provinces,
       municipalitiesByProvince: globalOptions.municipalitiesByProvince,
       languages: globalOptions.languages,
+      sectors: globalOptions.sectors,
       availableTypes: availableOptions.types,
       availableProvinces: availableOptions.provinces,
       availableMunicipalitiesByProvince: availableOptions.municipalitiesByProvince,
       availableLanguages: availableOptions.languages,
+      availableSectors: availableOptions.sectors,
     };
   },
 );
