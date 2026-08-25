@@ -230,7 +230,9 @@ export default function OrganizationFilters({
                 void setCurrentPage(1);
               }}
               emptyMessage={t('noOrganizationSectors')}
-              renderLabel={(sectorId) => tSectors.has(`${sectorId}.label`) ? tSectors(`${sectorId}.label`) : sectorId}
+              renderLabel={(sectorId) =>
+                tSectors.has(`${sectorId}.label`) ? tSectors(`${sectorId}.label`) : sectorId
+              }
             />
           </div>
         </div>
