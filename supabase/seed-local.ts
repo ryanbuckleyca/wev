@@ -21,9 +21,7 @@ async function main() {
   const projectRef = process.env.SUPABASE_PROJECT_REF || "localhost";
 
   if (!secretKey) {
-    console.error(
-      "❌ Error: SUPABASE_SECRET_KEY is not set in environment.",
-    );
+    console.error("❌ Error: SUPABASE_SECRET_KEY is not set in environment.");
     process.exit(1);
   }
 

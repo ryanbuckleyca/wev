@@ -217,10 +217,10 @@ This single command performs the following operations:
 1.  **`npm install`**: Installs all Node.js dependencies for the `wev-bulletin` project.
 2.  **`npm run install:scraper-deps`**: Installs all Python dependencies for the `wev-scraper` project.
 3.  **`npm run prep`**:
-        *   **`npx supabase start`**: Starts your local Supabase services (requires Docker Desktop).
-        *   **`yes | npx supabase db reset`**: Resets your local Supabase database, applies all migrations from scratch, and runs any SQL seed scripts (`supabase/seed.sql`). The `yes |` automatically confirms the reset prompt.
-        *   **`npm run db:seed-local`**: Seeds your local database with deterministic job postings and other data using programmatic seeding defined in `supabase/src/seeder.ts`.
-        *   **`npm run skills:index`**: Fetches ESCO skills, generates embeddings, and upserts them into your Supabase database.
+    _ **`npx supabase start`**: Starts your local Supabase services (requires Docker Desktop).
+    _ **`yes | npx supabase db reset`**: Resets your local Supabase database, applies all migrations from scratch, and runs any SQL seed scripts (`supabase/seed.sql`). The `yes |` automatically confirms the reset prompt.
+    _ **`npm run db:seed-local`**: Seeds your local database with deterministic job postings and other data using programmatic seeding defined in `supabase/src/seeder.ts`.
+    _ **`npm run skills:index`**: Fetches ESCO skills, generates embeddings, and upserts them into your Supabase database.
 
 ### Running the Development Server
 

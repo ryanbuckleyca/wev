@@ -145,10 +145,7 @@ function resolveDbUrl(
     }
 
     // If it's not a standard postgres URI, we must ensure it doesn't leak credentials.
-    if (
-      url.match(/(?:^|\s)password\s*=/i) ||
-      url.match(/:[^:@]+@/)
-    ) {
+    if (url.match(/(?:^|\s)password\s*=/i) || url.match(/:[^:@]+@/)) {
       throw new Error(
         "Database URL contains potential credentials but could not be safely parsed. " +
           "Please remove the password from the URL and use PGPASSWORD, or use a standard postgresql:// URI.",
