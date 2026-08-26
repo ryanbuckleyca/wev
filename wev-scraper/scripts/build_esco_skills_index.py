@@ -554,11 +554,11 @@ def _to_db_row(record: dict, upserted_at: str) -> dict:
     }
 
 
-def upsert_supabase(records: list[dict], supabase_url: str, service_role_key: str, batch_size: int) -> None:
-    if not supabase_url or not service_role_key:
+def upsert_supabase(records: list[dict], supabase_url: str, secret_key: str, batch_size: int) -> None:
+    if not supabase_url or not secret_key:
         raise ValueError(
             "Missing Supabase credentials. Provide --supabase-url and --supabase-key "
-            "or set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY."
+            "or set SUPABASE_URL + SUPABASE_SECRET_KEY."
         )
     if batch_size <= 0:
         raise ValueError("--batch-size must be > 0")
@@ -566,8 +566,8 @@ def upsert_supabase(records: list[dict], supabase_url: str, service_role_key: st
     base_url = supabase_url.rstrip("/")
     endpoint = f"{base_url}/rest/v1/esco_skills?on_conflict=concept_uri"
     headers = {
-        "apikey": service_role_key,
-        "Authorization": f"Bearer {service_role_key}",
+        "apikey": secret_key,
+        "Authorization": f"Bearer {secret_key}",
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }
@@ -637,8 +637,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--supabase-key",
-        default=os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "",
-        help="Supabase service role key (default from env SUPABASE_SERVICE_ROLE_KEY).",
+        default=os.getenv("SUPABASE_SECRET_KEY") or "",
+        help="Supabase secret key (default from env SUPABASE_SECRET_KEY).",
     )
     parser.add_argument(
         "--batch-size",
@@ -690,7 +690,7 @@ def main(argv: list[str]) -> int:
         upsert_supabase(
             records,
             supabase_url=args.supabase_url,
-            service_role_key=args.supabase_key,
+            secret_key=args.supabase_key,
             batch_size=args.batch_size,
         )
 

@@ -9,10 +9,10 @@ import {
 
 loadProductionEnvOnly(findRepoRoot());
 
-const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } =
+const { url: SUPABASE_URL, secretKey: SUPABASE_SECRET_KEY } =
   getSupabaseScriptConfig("backup.ts", PROD_SCRIPT_CONFIG);
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
   auth: { persistSession: false },
 });
 

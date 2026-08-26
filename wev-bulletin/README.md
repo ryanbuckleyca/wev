@@ -198,7 +198,7 @@ cp .env.example .env
 Fill in your environment variables. The `wev-bulletin` project and its associated scripts require:
 
 - **`SUPABASE_URL`**: Your local Supabase project URL (e.g., `http://127.0.0.1:54321`).
-- **`SUPABASE_SERVICE_ROLE_KEY`**: Your Supabase service role key for your local instance. This can be found in your Supabase Studio or CLI output after `supabase start`. **Keep this secret.**
+- **`SUPABASE_SECRET_KEY`**: Your Supabase secret key (`sb_secret_…`) for your local instance. This can be found in your Supabase Studio or CLI output after `supabase start`. **Keep this secret.**
 - **`WEV_GITHUB_TOKEN`**: A GitHub personal access token with `actions:write` permission (as detailed in the "GitHub Token Setup" section below).
 
 **Note:** The `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PROJECT_REF` are now derived internally by scripts, so you only need to explicitly set `SUPABASE_URL` for local development.
@@ -301,7 +301,7 @@ NEXT_PUBLIC_SITE_URL=https://bulletin.wevchange.org
 
 # Server-side variables
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_SECRET_KEY=your-secret-key
 ```
 
 #### Northflank (Runtime)
@@ -313,7 +313,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 NEXT_PUBLIC_SITE_URL=https://bulletin.wevchange.org
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_SECRET_KEY=your-secret-key
 ```
 
 ### Why Both Locations?

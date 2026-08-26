@@ -1,0 +1,934 @@
+diff --git a/.env.example b/.env.example
+index f07d4bd..0e71816 100644
+--- a/.env.example
++++ b/.env.example
+@@ -6,11 +6,11 @@ NODE_ENV=example
+ 
+ SUPABASE_DB_PASSWORD=your_db_password
+ SUPABASE_PROJECT_REF=your_project_ref
+-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
++SUPABASE_SECRET_KEY=your_secret_key
+ SUPABASE_URL=your_supabase_url
+ # Optional: explicit postgres URL for restore sequence reset. If unset, restore
+ # builds one from SUPABASE_DB_PASSWORD + SUPABASE_PROJECT_REF (or uses the
+-# reset_restore_identity_sequences RPC via the service role key).
++# reset_restore_identity_sequences RPC via the secret key).
+ # SUPABASE_DB_URL=postgresql://postgres:your_db_password@db.your_project_ref.supabase.co:5432/postgres
+ 
+ ################
+diff --git a/.env.production.example b/.env.production.example
+index eab6f77..dff77ba 100644
+--- a/.env.production.example
++++ b/.env.production.example
+@@ -4,7 +4,7 @@
+ # Used by: npm run backup, npm run sync:local, npm run sync:staging
+ 
+ SUPABASE_URL=https://your-project-ref.supabase.co
+-SUPABASE_SERVICE_ROLE_KEY=your_production_service_role_key
++SUPABASE_SECRET_KEY=your_production_secret_key
+ SUPABASE_PROJECT_REF=your_project_ref
+ SUPABASE_DB_PASSWORD=your_db_password
+ # Optional override; otherwise restore builds the URL from PROJECT_REF + DB_PASSWORD
+diff --git a/e2e/global-setup.ts b/e2e/global-setup.ts
+index fcc4c60..8c5f566 100644
+--- a/e2e/global-setup.ts
++++ b/e2e/global-setup.ts
+@@ -20,10 +20,10 @@ function loadEnvironmentVariables() {
+ /**
+  * Safety checks to prevent accidental execution against production resources.
+  */
+-function validateDatabaseUrl(supabaseUrl: string, serviceRoleKey: string) {
+-  if (!supabaseUrl || !serviceRoleKey) {
++function validateDatabaseUrl(supabaseUrl: string, secretKey: string) {
++  if (!supabaseUrl || !secretKey) {
+     console.error(
+-      "❌ ERROR: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing during E2E setup.",
++      "❌ ERROR: SUPABASE_URL or SUPABASE_SECRET_KEY missing during E2E setup.",
+     );
+     process.exit(1);
+   }
+@@ -91,14 +91,14 @@ async function globalSetup() {
+     loadEnvironmentVariables();
+ 
+     const supabaseUrl = process.env.SUPABASE_URL as string;
+-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
++    const secretKey = process.env.SUPABASE_SECRET_KEY as string;
+ 
+-    validateDatabaseUrl(supabaseUrl, serviceRoleKey);
++    validateDatabaseUrl(supabaseUrl, secretKey);
+ 
+     console.log(`▶ Seeding test database: ${supabaseUrl}`);
+     await resetAndSeedDatabase({
+       supabaseUrl,
+-      serviceRoleKey,
++      secretKey,
+       projectRef: "localhost",
+     });
+     console.log("✅ E2E Global Setup: Database seeded successfully.");
+diff --git a/e2e/support/auth-admin.ts b/e2e/support/auth-admin.ts
+index be0eaf5..c68d0c1 100644
+--- a/e2e/support/auth-admin.ts
++++ b/e2e/support/auth-admin.ts
+@@ -102,17 +102,17 @@ async function findUserIdByEmail(
+   }
+ }
+ 
+-function getServiceRoleClient() {
++function getAdminClient() {
+   const supabaseUrl = getRequiredEnv("SUPABASE_URL");
+-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
++  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim();
+ 
+-  if (!serviceRoleKey) {
++  if (!secretKey) {
+     throw new Error(
+-      "Missing required e2e environment variable: SUPABASE_SERVICE_ROLE_KEY",
++      "Missing required e2e environment variable: SUPABASE_SECRET_KEY",
+     );
+   }
+ 
+-  return createClient(supabaseUrl, serviceRoleKey, {
++  return createClient(supabaseUrl, secretKey, {
+     auth: { autoRefreshToken: false, persistSession: false },
+   });
+ }
+@@ -120,14 +120,14 @@ function getServiceRoleClient() {
+ export async function getAuthUserIdByEmail(
+   email: string,
+ ): Promise<string | null> {
+-  const admin = getServiceRoleClient();
++  const admin = getAdminClient();
+   return findUserIdByEmail(admin as AuthAdminClient, email);
+ }
+ 
+ export async function recalculateMatchesForUserId(
+   userId: string,
+ ): Promise<void> {
+-  const supabase = getServiceRoleClient();
++  const supabase = getAdminClient();
+ 
+   const { error } = await supabase.rpc("recalculate_matches_for_user", {
+     p_user_id: userId,
+@@ -150,7 +150,7 @@ export async function recalculateMatchesForEmail(email: string): Promise<void> {
+ export async function countJobMatchesForUserId(
+   userId: string,
+ ): Promise<number> {
+-  const supabase = getServiceRoleClient();
++  const supabase = getAdminClient();
+ 
+   const { count, error } = await supabase
+     .from("job_matches")
+@@ -165,7 +165,7 @@ export async function countJobMatchesForUserId(
+ }
+ 
+ export async function deleteAuthUserByEmail(email: string): Promise<void> {
+-  const admin = getServiceRoleClient();
++  const admin = getAdminClient();
+ 
+   const targetId = await findUserIdByEmail(admin as AuthAdminClient, email);
+   if (!targetId) return;
+@@ -180,8 +180,8 @@ export async function createManagedE2EUser(
+   seed: string,
+ ): Promise<ManagedE2EUser> {
+   const { email, password } = buildE2EUserIdentity(seed);
+-  const admin = getServiceRoleClient() as unknown as AuthAdminClient &
+-    ReturnType<typeof getServiceRoleClient>;
++  const admin = getAdminClient() as unknown as AuthAdminClient &
++    ReturnType<typeof getAdminClient>;
+ 
+   const existingId = await findUserIdByEmail(admin, email);
+   if (existingId) {
+diff --git a/scripts/inspect_orgs.js b/scripts/inspect_orgs.js
+index c7b5a96..b9ea5c4 100644
+--- a/scripts/inspect_orgs.js
++++ b/scripts/inspect_orgs.js
+@@ -1,7 +1,7 @@
+ const { createClient } = require("@supabase/supabase-js");
+ 
+ const url = process.env.SUPABASE_PROD_URL;
+-const key = process.env.SUPABASE_PROD_SERVICE_ROLE_KEY;
++const key = process.env.SUPABASE_PROD_SECRET_KEY;
+ 
+ const supabase = createClient(url, key);
+ 
+diff --git a/scripts/inspect_orgs.py b/scripts/inspect_orgs.py
+index c6f9582..5097dbf 100644
+--- a/scripts/inspect_orgs.py
++++ b/scripts/inspect_orgs.py
+@@ -2,7 +2,7 @@ import os
+ from supabase import Client, create_client  # type: ignore
+ 
+ url = os.environ.get("SUPABASE_PROD_URL")
+-key = os.environ.get("SUPABASE_PROD_SERVICE_ROLE_KEY")
++key = os.environ.get("SUPABASE_PROD_SECRET_KEY")
+ 
+ if not url or not key:
+     print("Missing credentials")
+diff --git a/scripts/list-sources.ts b/scripts/list-sources.ts
+index c646acc..80b59ea 100644
+--- a/scripts/list-sources.ts
++++ b/scripts/list-sources.ts
+@@ -24,10 +24,10 @@ async function main() {
+   loadEnvFiles(env);
+ 
+   const url = process.env.SUPABASE_URL?.trim();
+-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
++  const key = process.env.SUPABASE_SECRET_KEY?.trim();
+   if (!url || !key) {
+     console.error(
+-      "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment.",
++      "Missing SUPABASE_URL or SUPABASE_SECRET_KEY in environment.",
+     );
+     process.exit(1);
+   }
+diff --git a/supabase/README.md b/supabase/README.md
+index a7b7697..b5b1aaa 100644
+--- a/supabase/README.md
++++ b/supabase/README.md
+@@ -33,7 +33,7 @@ This command automatically:
+ 
+ ## Running a Backup
+ 
+-1. Ensure your `.env` file in the project root contains valid `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
++1. Ensure your `.env` file in the project root contains valid `SUPABASE_URL` and `SUPABASE_SECRET_KEY`.
+ 2. From the project root, run:
+ 
+    ```sh
+diff --git a/supabase/apply-migrations-direct.py b/supabase/apply-migrations-direct.py
+index a01005d..c26c67e 100644
+--- a/supabase/apply-migrations-direct.py
++++ b/supabase/apply-migrations-direct.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Apply migrations directly via Supabase REST API using service role key."""
++"""Apply migrations directly via Supabase REST API using secret key."""
+ 
+ import os
+ import sys
+@@ -13,10 +13,10 @@ from dotenv import load_dotenv, find_dotenv
+ load_dotenv(find_dotenv())
+ 
+ SUPABASE_URL = os.getenv('SUPABASE_URL') or os.getenv('NEXT_PUBLIC_SUPABASE_URL')
+-SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
++SERVICE_KEY = os.getenv('SUPABASE_SECRET_KEY')
+ 
+ if not SUPABASE_URL or not SERVICE_KEY:
+-    print("Error: Missing SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
++    print("Error: Missing SUPABASE_URL and SUPABASE_SECRET_KEY")
+     sys.exit(1)
+ 
+ MIGRATIONS_DIR = Path(__file__).parent / 'migrations'
+diff --git a/supabase/apply-migrations.ts b/supabase/apply-migrations.ts
+index e0bcaef..4ce2465 100644
+--- a/supabase/apply-migrations.ts
++++ b/supabase/apply-migrations.ts
+@@ -7,11 +7,11 @@ loadEnv();
+ 
+ const SUPABASE_URL =
+   process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
++const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY;
+ 
+ if (!SUPABASE_URL || !SUPABASE_KEY) {
+   console.error(
+-    "Error: Missing SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables",
++    "Error: Missing SUPABASE_URL and SUPABASE_SECRET_KEY environment variables",
+   );
+   process.exit(1);
+ }
+diff --git a/supabase/backup.md b/supabase/backup.md
+index d6d380c..dc5cbb9 100644
+--- a/supabase/backup.md
++++ b/supabase/backup.md
+@@ -5,14 +5,14 @@ This folder contains scripts and instructions for backing up your Supabase datab
+ ## How the Backup Script Works
+ 
+ - The `backup.js` script reads all migration `.sql` files in `supabase/migrations/` to discover the current set of tables (including dropped tables).
+-- It attempts to back up all tables in your Supabase project using the Supabase REST API and your service role key.
++- It attempts to back up all tables in your Supabase project using the Supabase REST API and your secret key.
+ - Backups are saved as JSON files in `supabase/backups/`.
+ - On the Supabase free plan, only public tables can be backed up programmatically. Auth tables (like `auth.users`) and system tables are not accessible via the API.
+ - For user accounts, you must manually export `auth.users` from the Supabase dashboard (see below).
+ 
+ ## How to Run a Backup
+ 
+-1. Ensure your `.env` file in the project root contains valid `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
++1. Ensure your `.env` file in the project root contains valid `SUPABASE_URL` and `SUPABASE_SECRET_KEY`.
+ 2. Run the backup script from the project root:
+ 
+    ```sh
+diff --git a/supabase/backup.ts b/supabase/backup.ts
+index 6716356..b5b4886 100644
+--- a/supabase/backup.ts
++++ b/supabase/backup.ts
+@@ -9,10 +9,10 @@ import {
+ 
+ loadProductionEnvOnly(findRepoRoot());
+ 
+-const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } =
++const { url: SUPABASE_URL, secretKey: SUPABASE_SECRET_KEY } =
+   getSupabaseScriptConfig("backup.ts", PROD_SCRIPT_CONFIG);
+ 
+-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
++const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
+   auth: { persistSession: false },
+ });
+ 
+diff --git a/supabase/cleanup-duplicates.ts b/supabase/cleanup-duplicates.ts
+index a55fd1c..b9327b0 100644
+--- a/supabase/cleanup-duplicates.ts
++++ b/supabase/cleanup-duplicates.ts
+@@ -56,19 +56,19 @@ function createSupabaseClient({ prod }: { prod: boolean }) {
+     loadProductionEnvOnly(findRepoRoot());
+   }
+ 
+-  const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } =
++  const { url: SUPABASE_URL, secretKey: SUPABASE_SECRET_KEY } =
+     getSupabaseScriptConfig(
+       "cleanup-duplicates.ts",
+       prod
+         ? PROD_SCRIPT_CONFIG
+         : {
+             urlEnv: "SUPABASE_URL",
+-            keyEnvNames: ["SUPABASE_SERVICE_ROLE_KEY"],
+-            keyDescription: "local service role key",
++            keyEnvNames: ["SUPABASE_SECRET_KEY"],
++            keyDescription: "local secret key",
+           },
+     );
+ 
+-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
++  return createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
+     auth: { persistSession: false },
+   });
+ }
+diff --git a/supabase/lib/env.ts b/supabase/lib/env.ts
+index 0b8a689..f98dd89 100644
+--- a/supabase/lib/env.ts
++++ b/supabase/lib/env.ts
+@@ -40,7 +40,7 @@ export function loadTargetEnv(
+     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+     process.env.SUPABASE_ANON_KEY;
+ 
+-  const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
++  const secretKey = process.env.SUPABASE_SECRET_KEY;
+ 
+   if (!supabaseUrl || !anonKey) {
+     console.error(
+diff --git a/supabase/restore.ts b/supabase/restore.ts
+index c6a4a96..8497dec 100644
+--- a/supabase/restore.ts
++++ b/supabase/restore.ts
+@@ -346,16 +346,16 @@ async function main() {
+   const env = parseRestoreArgs(argv);
+   loadEnvFiles(env);
+ 
+-  const { url: supabaseUrl, serviceRoleKey } = getSupabaseScriptConfig(
++  const { url: supabaseUrl, secretKey } = getSupabaseScriptConfig(
+     "restore.ts",
+     {
+       urlEnv: "SUPABASE_URL",
+-      keyEnvNames: ["SUPABASE_SERVICE_ROLE_KEY"],
+-      keyDescription: `${env} service role key`,
++      keyEnvNames: ["SUPABASE_SECRET_KEY"],
++      keyDescription: `${env} secret key`,
+     },
+   );
+ 
+-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
++  const supabase = createClient(supabaseUrl, secretKey, {
+     auth: { persistSession: false },
+   });
+ 
+diff --git a/supabase/seed-local.ts b/supabase/seed-local.ts
+index 0688256..0678ffd 100644
+--- a/supabase/seed-local.ts
++++ b/supabase/seed-local.ts
+@@ -17,12 +17,12 @@ async function main() {
+   loadEnv({ path: envPath });
+ 
+   const supabaseUrl = process.env.SUPABASE_URL || "http://localhost:54321";
+-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
++  const secretKey = process.env.SUPABASE_SECRET_KEY;
+   const projectRef = process.env.SUPABASE_PROJECT_REF || "localhost";
+ 
+-  if (!serviceRoleKey) {
++  if (!secretKey) {
+     console.error(
+-      "❌ Error: SUPABASE_SERVICE_ROLE_KEY is not set in environment.",
++      "❌ Error: SUPABASE_SECRET_KEY is not set in environment.",
+     );
+     process.exit(1);
+   }
+@@ -32,7 +32,7 @@ async function main() {
+ 
+     const config = {
+       projectRef,
+-      serviceRoleKey,
++      secretKey,
+       supabaseUrl,
+     };
+ 
+diff --git a/supabase/seed-staging.ts b/supabase/seed-staging.ts
+index 3901aa9..9d783d8 100644
+--- a/supabase/seed-staging.ts
++++ b/supabase/seed-staging.ts
+@@ -42,15 +42,15 @@ async function main() {
+   loadEnvFiles("staging", root);
+ 
+   const supabaseUrl = process.env.SUPABASE_URL;
+-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
++  const secretKey = process.env.SUPABASE_SECRET_KEY;
+   const projectRef = process.env.SUPABASE_PROJECT_REF;
+ 
+   // Prod credentials for syncing — loaded from .env.production only.
+   loadProductionEnvOnly(root);
+   const prodUrl = process.env.SUPABASE_URL;
+-  const prodKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
++  const prodKey = process.env.SUPABASE_SECRET_KEY;
+ 
+-  if (!supabaseUrl || !serviceRoleKey || !projectRef || !prodUrl || !prodKey) {
++  if (!supabaseUrl || !secretKey || !projectRef || !prodUrl || !prodKey) {
+     console.error(
+       "❌ Error: Missing staging credentials in .env.staging or production credentials in .env.production",
+     );
+@@ -103,7 +103,7 @@ async function main() {
+ 
+     console.log(`▶ Seeding staging project: ${projectRef}`);
+     await resetAndSeedDatabase(
+-      { projectRef, serviceRoleKey, supabaseUrl },
++      { projectRef, secretKey, supabaseUrl },
+       prodSources,
+     );
+ 
+diff --git a/supabase/src/script-config.ts b/supabase/src/script-config.ts
+index 00d2989..df25aec 100644
+--- a/supabase/src/script-config.ts
++++ b/supabase/src/script-config.ts
+@@ -39,8 +39,8 @@ export interface ScriptConfigParams {
+ /** Production Supabase credentials in `.env.production` (separate from local `.env`). */
+ export const PROD_SCRIPT_CONFIG: ScriptConfigParams = {
+   urlEnvNames: ["SUPABASE_URL"],
+-  keyEnvNames: ["SUPABASE_SERVICE_ROLE_KEY"],
+-  keyDescription: "production service role key",
++  keyEnvNames: ["SUPABASE_SECRET_KEY"],
++  keyDescription: "production secret key",
+ };
+ 
+ function resolveUrl(scriptName: string, params: ScriptConfigParams): string {
+@@ -62,15 +62,11 @@ export function getSupabaseScriptConfig(
+   scriptName: string,
+   params: ScriptConfigParams,
+ ) {
+-  const standardizedKeys = params.keyEnvNames.map((k) =>
+-    k.replace("SECRET_KEY", "SERVICE_ROLE_KEY"),
+-  );
+-
+   return {
+     url: resolveUrl(scriptName, params),
+-    serviceRoleKey: getRequiredAnyEnv(
++    secretKey: getRequiredAnyEnv(
+       scriptName,
+-      standardizedKeys,
++      params.keyEnvNames,
+       params.keyDescription,
+     ),
+   };
+diff --git a/supabase/src/seeder.ts b/supabase/src/seeder.ts
+index 1395f8f..5d77e3c 100644
+--- a/supabase/src/seeder.ts
++++ b/supabase/src/seeder.ts
+@@ -10,7 +10,7 @@ import path from "node:path";
+ 
+ export interface SupabaseDatabaseConfig {
+   projectRef: string;
+-  serviceRoleKey: string;
++  secretKey: string;
+   supabaseUrl: string;
+ }
+ 
+@@ -84,13 +84,13 @@ function assertExpectedProjectRef(
+ }
+ 
+ function createDatabaseClient({
+-  serviceRoleKey,
++  secretKey,
+   supabaseUrl,
+ }: Pick<
+   SupabaseDatabaseConfig,
+-  "serviceRoleKey" | "supabaseUrl"
++  "secretKey" | "supabaseUrl"
+ >): SupabaseClient<Database> {
+-  return createClient<Database>(supabaseUrl, serviceRoleKey, {
++  return createClient<Database>(supabaseUrl, secretKey, {
+     auth: { persistSession: false },
+   });
+ }
+diff --git a/wev-bulletin/README.md b/wev-bulletin/README.md
+index bbfe027..28b5414 100644
+--- a/wev-bulletin/README.md
++++ b/wev-bulletin/README.md
+@@ -198,7 +198,7 @@ cp .env.example .env
+ Fill in your environment variables. The `wev-bulletin` project and its associated scripts require:
+ 
+ - **`SUPABASE_URL`**: Your local Supabase project URL (e.g., `http://127.0.0.1:54321`).
+-- **`SUPABASE_SERVICE_ROLE_KEY`**: Your Supabase service role key for your local instance. This can be found in your Supabase Studio or CLI output after `supabase start`. **Keep this secret.**
++- **`SUPABASE_SECRET_KEY`**: Your Supabase secret key (`sb_secret_…`) for your local instance. This can be found in your Supabase Studio or CLI output after `supabase start`. **Keep this secret.**
+ - **`WEV_GITHUB_TOKEN`**: A GitHub personal access token with `actions:write` permission (as detailed in the "GitHub Token Setup" section below).
+ 
+ **Note:** The `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PROJECT_REF` are now derived internally by scripts, so you only need to explicitly set `SUPABASE_URL` for local development.
+@@ -301,7 +301,7 @@ NEXT_PUBLIC_SITE_URL=https://bulletin.wevchange.org
+ 
+ # Server-side variables
+ SUPABASE_URL=https://your-project.supabase.co
+-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
++SUPABASE_SECRET_KEY=your-secret-key
+ ```
+ 
+ #### Northflank (Runtime)
+@@ -313,7 +313,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+ NEXT_PUBLIC_SITE_URL=https://bulletin.wevchange.org
+ SUPABASE_URL=https://your-project.supabase.co
+-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
++SUPABASE_SECRET_KEY=your-secret-key
+ ```
+ 
+ ### Why Both Locations?
+diff --git a/wev-bulletin/SKILLS_SETUP.md b/wev-bulletin/SKILLS_SETUP.md
+index 445d635..2b6aa1e 100644
+--- a/wev-bulletin/SKILLS_SETUP.md
++++ b/wev-bulletin/SKILLS_SETUP.md
+@@ -114,13 +114,13 @@ npm run skills:index -- \
+   --input-json supabase/seed/esco_skills_index.json \
+   --upsert-db \
+   --supabase-url $SUPABASE_URL \
+-  --supabase-key $SUPABASE_SERVICE_ROLE_KEY
++  --supabase-key $SUPABASE_SECRET_KEY
+ 
+ # Or do both in one command:
+ npm run skills:index -- \
+   --upsert-db \
+   --supabase-url $SUPABASE_URL \
+-  --supabase-key $SUPABASE_SERVICE_ROLE_KEY
++  --supabase-key $SUPABASE_SECRET_KEY
+ ```
+ 
+ **Note**: The script reads env vars from `.env.test` or `.env` automatically if you don't pass flags.
+diff --git a/wev-bulletin/lib/supabase-server.ts b/wev-bulletin/lib/supabase-server.ts
+index 4a323d3..0ebb217 100644
+--- a/wev-bulletin/lib/supabase-server.ts
++++ b/wev-bulletin/lib/supabase-server.ts
+@@ -1,17 +1,17 @@
+ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+ 
+ /**
+- * Server-only Supabase client. Uses service role key.
++ * Server-only Supabase client. Uses secret key (sb_secret_).
+  * Only import this in API routes or Server Components — never in client components.
+  *
+- * Module-level singleton: correct for a service-role client with static credentials
++ * Module-level singleton: correct for a secret-key client with static credentials
+  * on a long-lived Node process (Northflank). Fails hard at startup if env vars are missing.
+  *
+  * For user-scoped clients (RLS via JWT): create per-request with the user's token instead.
+  */
+ const getSupabaseServer = () => {
+   const url = process.env.SUPABASE_URL;
+-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
++  const key = process.env.SUPABASE_SECRET_KEY;
+ 
+   if (!url || !key) {
+     // Only throw if we are NOT in a build environment or if explicitly requested.
+@@ -23,7 +23,7 @@ const getSupabaseServer = () => {
+       console.warn('Supabase server env missing during build. Using dummy client.');
+       return createClient('https://dummy.supabase.co', 'dummy-key');
+     }
+-    throw new Error('Missing Supabase server env. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
++    throw new Error('Missing Supabase server env. Set SUPABASE_URL and SUPABASE_SECRET_KEY.');
+   }
+ 
+   return createClient(url, key, {
+diff --git a/wev-bulletin/package.json b/wev-bulletin/package.json
+index bbcddf9..ca3b519 100644
+--- a/wev-bulletin/package.json
++++ b/wev-bulletin/package.json
+@@ -19,7 +19,7 @@
+     "tsc": "tsc --noEmit",
+     "skills:index": "python3 ../wev-scraper/scripts/build_esco_skills_index.py",
+     "db:seed-local": "tsx scripts/seed-local.ts",
+-    "prep": "npx supabase start && yes | npx supabase db reset && npm run db:seed-local && npm run skills:index -- --upsert-db --supabase-url $SUPABASE_URL --supabase-key $SUPABASE_SERVICE_ROLE_KEY",
++    "prep": "npx supabase start && yes | npx supabase db reset && npm run db:seed-local && npm run skills:index -- --upsert-db --supabase-url $SUPABASE_URL --supabase-key $SUPABASE_SECRET_KEY",
+     "setup": "npm install && npm run install:scraper-deps && npm run prep"
+   },
+   "dependencies": {
+diff --git a/wev-bulletin/prep_output.txt b/wev-bulletin/prep_output.txt
+index 66b79aa..13f5d77 100644
+--- a/wev-bulletin/prep_output.txt
++++ b/wev-bulletin/prep_output.txt
+@@ -1,6 +1,6 @@
+ 
+ > bulletin@0.1.0 prep
+-> npx supabase start && yes | npx supabase db reset && npm run db:seed-local && npm run install:scraper-deps && npm run skills:index -- --upsert-db --supabase-url $SUPABASE_URL --supabase-key $SUPABASE_SERVICE_ROLE_KEY
++> npx supabase start && yes | npx supabase db reset && npm run db:seed-local && npm run install:scraper-deps && npm run skills:index -- --upsert-db --supabase-url $SUPABASE_URL --supabase-key $SUPABASE_SECRET_KEY
+ 
+ Using workdir /Users/ry/code/wev
+ failed to inspect service: Cannot connect to the Docker daemon at unix:///Users/ry/.docker/run/docker.sock. Is the docker daemon running?
+@@ -11,4 +11,4 @@ npm error path /Users/ry/code/wev/wev-bulletin
+ npm error workspace bulletin@0.1.0
+ npm error location /Users/ry/code/wev/wev-bulletin
+ npm error command failed
+-npm error command sh -c npx supabase start && yes | npx supabase db reset && npm run db:seed-local && npm run install:scraper-deps && npm run skills:index -- --upsert-db --supabase-url $SUPABASE_URL --supabase-key $SUPABASE_SERVICE_ROLE_KEY
++npm error command sh -c npx supabase start && yes | npx supabase db reset && npm run db:seed-local && npm run install:scraper-deps && npm run skills:index -- --upsert-db --supabase-url $SUPABASE_URL --supabase-key $SUPABASE_SECRET_KEY
+diff --git a/wev-bulletin/test-utils/env-setup.ts b/wev-bulletin/test-utils/env-setup.ts
+index 5d01f07..ebf92e3 100644
+--- a/wev-bulletin/test-utils/env-setup.ts
++++ b/wev-bulletin/test-utils/env-setup.ts
+@@ -16,7 +16,7 @@ export function setupTestEnv() {
+   config({ path: path.join(root, '.env.test'), override: true });
+ 
+   const url = process.env.SUPABASE_URL;
+-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
++  const key = process.env.SUPABASE_SECRET_KEY;
+ 
+   if (process.env.USE_PROD_DB === '1' || (url && url === process.env.SUPABASE_PROD_URL)) {
+     throw new Error('Tests cannot run against the production database.');
+diff --git a/wev-bulletin/test-utils/real-db.ts b/wev-bulletin/test-utils/real-db.ts
+index 4698a62..0262e7d 100644
+--- a/wev-bulletin/test-utils/real-db.ts
++++ b/wev-bulletin/test-utils/real-db.ts
+@@ -9,7 +9,7 @@ export function getRealDatabaseClient() {
+   const { url, key } = setupTestEnv();
+ 
+   if (!url || !key) {
+-    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set. Is supabase running?');
++    throw new Error('SUPABASE_URL and SUPABASE_SECRET_KEY must be set. Is supabase running?');
+   }
+ 
+   return createClient(url, key, {
+diff --git a/wev-bulletin/vitest.setup.ts b/wev-bulletin/vitest.setup.ts
+index 5f221cb..820dce9 100644
+--- a/wev-bulletin/vitest.setup.ts
++++ b/wev-bulletin/vitest.setup.ts
+@@ -20,7 +20,7 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+ process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'test-key';
+ // Required by supabase-server.ts (throws at module load if missing)
+ process.env.SUPABASE_URL = 'https://test.supabase.co';
+-process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
++process.env.SUPABASE_SECRET_KEY = 'test-secret-key';
+ 
+ process.env.VITEST = 'true';
+ process.env.LOG_LEVEL = 'silent';
+diff --git a/wev-scraper/conftest.py b/wev-scraper/conftest.py
+index ea9f4d4..5b62dcf 100644
+--- a/wev-scraper/conftest.py
++++ b/wev-scraper/conftest.py
+@@ -4,7 +4,7 @@ import os
+ # at import time. Real credentials come from .env; these are fallbacks for
+ # clean CI environments where .env doesn't exist.
+ os.environ.setdefault("SUPABASE_URL", "http://localhost:54321")
+-os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test-secret-key")
++os.environ.setdefault("SUPABASE_SECRET_KEY", "test-secret-key")
+ 
+ import pytest
+ from playwright.sync_api import sync_playwright
+diff --git a/wev-scraper/scripts/build_esco_skills_index.py b/wev-scraper/scripts/build_esco_skills_index.py
+index 170425b..6c5c3b0 100644
+--- a/wev-scraper/scripts/build_esco_skills_index.py
++++ b/wev-scraper/scripts/build_esco_skills_index.py
+@@ -554,11 +554,11 @@ def _to_db_row(record: dict, upserted_at: str) -> dict:
+     }
+ 
+ 
+-def upsert_supabase(records: list[dict], supabase_url: str, service_role_key: str, batch_size: int) -> None:
+-    if not supabase_url or not service_role_key:
++def upsert_supabase(records: list[dict], supabase_url: str, secret_key: str, batch_size: int) -> None:
++    if not supabase_url or not secret_key:
+         raise ValueError(
+             "Missing Supabase credentials. Provide --supabase-url and --supabase-key "
+-            "or set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY."
++            "or set SUPABASE_URL + SUPABASE_SECRET_KEY."
+         )
+     if batch_size <= 0:
+         raise ValueError("--batch-size must be > 0")
+@@ -566,8 +566,8 @@ def upsert_supabase(records: list[dict], supabase_url: str, service_role_key: st
+     base_url = supabase_url.rstrip("/")
+     endpoint = f"{base_url}/rest/v1/esco_skills?on_conflict=concept_uri"
+     headers = {
+-        "apikey": service_role_key,
+-        "Authorization": f"Bearer {service_role_key}",
++        "apikey": secret_key,
++        "Authorization": f"Bearer {secret_key}",
+         "Content-Type": "application/json",
+         "Prefer": "resolution=merge-duplicates,return=minimal",
+     }
+@@ -637,8 +637,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
+     )
+     parser.add_argument(
+         "--supabase-key",
+-        default=os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "",
+-        help="Supabase service role key (default from env SUPABASE_SERVICE_ROLE_KEY).",
++        default=os.getenv("SUPABASE_SECRET_KEY") or "",
++        help="Supabase secret key (default from env SUPABASE_SECRET_KEY).",
+     )
+     parser.add_argument(
+         "--batch-size",
+@@ -690,7 +690,7 @@ def main(argv: list[str]) -> int:
+         upsert_supabase(
+             records,
+             supabase_url=args.supabase_url,
+-            service_role_key=args.supabase_key,
++            secret_key=args.supabase_key,
+             batch_size=args.batch_size,
+         )
+ 
+diff --git a/wev-scraper/scripts/check_job_processing_status.py b/wev-scraper/scripts/check_job_processing_status.py
+index 90e772a..7bd4d9b 100644
+--- a/wev-scraper/scripts/check_job_processing_status.py
++++ b/wev-scraper/scripts/check_job_processing_status.py
+@@ -14,14 +14,14 @@ from dotenv import find_dotenv, load_dotenv
+ load_dotenv(find_dotenv())
+ 
+ 
+-def query_all_jobs(supabase_url: str, service_role_key: str) -> list[dict]:
++def query_all_jobs(supabase_url: str, secret_key: str) -> list[dict]:
+     """Query all jobs with their skills and raw_skills."""
+     base_url = supabase_url.rstrip("/")
+     endpoint = f"{base_url}/rest/v1/jobs?select=id,job_title,organization,skills,raw_skills,scraped_at"
+ 
+     headers = {
+-        "apikey": service_role_key,
+-        "Authorization": f"Bearer {service_role_key}",
++        "apikey": secret_key,
++        "Authorization": f"Bearer {secret_key}",
+         "Accept": "application/json",
+     }
+ 
+@@ -49,8 +49,8 @@ def main():
+     )
+     parser.add_argument(
+         "--supabase-key",
+-        default=os.getenv("SUPABASE_PROD_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
+-        help="Supabase service role key",
++        default=os.getenv("SUPABASE_PROD_SECRET_KEY") or os.getenv("SUPABASE_SECRET_KEY"),
++        help="Supabase secret key",
+     )
+     parser.add_argument(
+         "--min-raw-skills",
+diff --git a/wev-scraper/scripts/delete_old_jobs.py b/wev-scraper/scripts/delete_old_jobs.py
+index 0529dca..0a7ec6d 100644
+--- a/wev-scraper/scripts/delete_old_jobs.py
++++ b/wev-scraper/scripts/delete_old_jobs.py
+@@ -15,7 +15,7 @@ from dotenv import find_dotenv, load_dotenv
+ load_dotenv(find_dotenv())
+ 
+ 
+-def query_old_jobs(supabase_url: str, service_role_key: str, days_old: int) -> list[dict]:
++def query_old_jobs(supabase_url: str, secret_key: str, days_old: int) -> list[dict]:
+     """Query jobs older than the specified number of days."""
+     base_url = supabase_url.rstrip("/")
+ 
+@@ -26,8 +26,8 @@ def query_old_jobs(supabase_url: str, service_role_key: str, days_old: int) -> l
+     endpoint = f"{base_url}/rest/v1/jobs?select=id,job_title,organization,date_posted,scraped_at&scraped_at=lt.{cutoff_date}"
+ 
+     headers = {
+-        "apikey": service_role_key,
+-        "Authorization": f"Bearer {service_role_key}",
++        "apikey": secret_key,
++        "Authorization": f"Bearer {secret_key}",
+         "Accept": "application/json",
+     }
+ 
+@@ -46,7 +46,7 @@ def query_old_jobs(supabase_url: str, service_role_key: str, days_old: int) -> l
+         return []
+ 
+ 
+-def delete_jobs(supabase_url: str, service_role_key: str, job_ids: list[str]) -> int:
++def delete_jobs(supabase_url: str, secret_key: str, job_ids: list[str]) -> int:
+     """Delete jobs by their IDs."""
+     base_url = supabase_url.rstrip("/")
+ 
+@@ -55,8 +55,8 @@ def delete_jobs(supabase_url: str, service_role_key: str, job_ids: list[str]) ->
+     endpoint = f"{base_url}/rest/v1/jobs?id=in.({ids_filter})"
+ 
+     headers = {
+-        "apikey": service_role_key,
+-        "Authorization": f"Bearer {service_role_key}",
++        "apikey": secret_key,
++        "Authorization": f"Bearer {secret_key}",
+         "Prefer": "return=minimal",
+     }
+ 
+@@ -84,8 +84,8 @@ def main():
+     )
+     parser.add_argument(
+         "--supabase-key",
+-        default=os.getenv("SUPABASE_PROD_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
+-        help="Supabase service role key",
++        default=os.getenv("SUPABASE_PROD_SECRET_KEY") or os.getenv("SUPABASE_SECRET_KEY"),
++        help="Supabase secret key",
+     )
+     parser.add_argument(
+         "--days",
+diff --git a/wev-scraper/scripts/migrate_values_prod.py b/wev-scraper/scripts/migrate_values_prod.py
+index bc80b74..a2fc5e4 100644
+--- a/wev-scraper/scripts/migrate_values_prod.py
++++ b/wev-scraper/scripts/migrate_values_prod.py
+@@ -11,16 +11,16 @@ load_dotenv(find_dotenv())
+ 
+ # Use production credentials
+ SUPABASE_URL = os.environ.get("SUPABASE_PROD_URL")
+-SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_PROD_SERVICE_ROLE_KEY")
++SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_PROD_SECRET_KEY")
+ 
+-if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
++if not SUPABASE_URL or not SUPABASE_SECRET_KEY:
+     print("❌ Production Supabase credentials not found")
+     exit(1)
+ 
+ print(f"🔗 Connecting to: {SUPABASE_URL}")
+ 
+ # Create client
+-supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
++supabase = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+ 
+ try:
+     # Check if column exists
+diff --git a/wev-scraper/scripts/tag_esco_skills_vector.py b/wev-scraper/scripts/tag_esco_skills_vector.py
+index 5ed95ca..ce2d591 100644
+--- a/wev-scraper/scripts/tag_esco_skills_vector.py
++++ b/wev-scraper/scripts/tag_esco_skills_vector.py
+@@ -25,7 +25,7 @@ from pathlib import Path
+ 
+ # Load env before any DB import. Mirror unified_post_processor.py: always load
+ # .env, then if --prod is set, override with .env.production so SUPABASE_URL /
+-# SUPABASE_SERVICE_ROLE_KEY point at prod. We can't rely on dotenv-cli at the
++# SUPABASE_SECRET_KEY point at prod. We can't rely on dotenv-cli at the
+ # npm layer because it is first-wins (won't override .env values).
+ from settings import ensure_env_loaded, load_env_file  # noqa: E402
+ 
+diff --git a/wev-scraper/settings.py b/wev-scraper/settings.py
+index 45a8879..32e4c9a 100644
+--- a/wev-scraper/settings.py
++++ b/wev-scraper/settings.py
+@@ -47,9 +47,9 @@ def load_env_file(env_file: str | Path) -> None:
+ # intact when "publishing" results to a different DB.
+ _SUPABASE_DB_KEYS: tuple[str, ...] = (
+     "SUPABASE_URL",
+-    "SUPABASE_SERVICE_ROLE_KEY",
++    "SUPABASE_SECRET_KEY",
+     "SUPABASE_PROD_URL",
+-    "SUPABASE_PROD_SERVICE_ROLE_KEY",
++    "SUPABASE_PROD_SECRET_KEY",
+     "SUPABASE_PROJECT_REF",
+ )
+ 
+@@ -106,14 +106,14 @@ def get_supabase_settings() -> SupabaseSettings:
+     """Return the active Supabase credentials for the current runtime mode.
+ 
+     When USE_PROD_DB=1, prefer the SUPABASE_PROD_* prefixed credentials. If those
+-    aren't set, fall back to SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — this
++    aren't set, fall back to SUPABASE_URL / SUPABASE_SECRET_KEY — this
+     supports the override-file pattern where `.env.production` is loaded with
+     override=True and rewrites the unprefixed names in place (see scrape.py).
+     """
+     raw_url = get_env("SUPABASE_URL")
+     prod_url = get_env("SUPABASE_PROD_URL")
+-    raw_key = get_env("SUPABASE_SERVICE_ROLE_KEY")
+-    prod_key = get_env("SUPABASE_PROD_SERVICE_ROLE_KEY")
++    raw_key = get_env("SUPABASE_SECRET_KEY")
++    prod_key = get_env("SUPABASE_PROD_SECRET_KEY")
+ 
+     use_prod = is_truthy_env("USE_PROD_DB")
+     if use_prod:
+@@ -127,10 +127,10 @@ def get_supabase_settings() -> SupabaseSettings:
+         if use_prod:
+             raise ValueError(
+                 "Production Supabase credentials not set. Provide either "
+-                "SUPABASE_PROD_URL/SUPABASE_PROD_SERVICE_ROLE_KEY or override "
+-                "SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY via .env.production."
++                "SUPABASE_PROD_URL/SUPABASE_PROD_SECRET_KEY or override "
++                "SUPABASE_URL/SUPABASE_SECRET_KEY via .env.production."
+             )
+-        raise ValueError("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set")
++        raise ValueError("SUPABASE_URL or SUPABASE_SECRET_KEY not set")
+ 
+     return SupabaseSettings(url=url, secret_key=secret_key)
+ 
+diff --git a/wev-scraper/tests/test_settings.py b/wev-scraper/tests/test_settings.py
+index e6f5617..271a434 100644
+--- a/wev-scraper/tests/test_settings.py
++++ b/wev-scraper/tests/test_settings.py
+@@ -40,9 +40,9 @@ def test_get_supabase_settings_uses_prod_credentials_when_enabled():
+         {
+             "USE_PROD_DB": "1",
+             "SUPABASE_URL": "http://localhost:54321",
+-            "SUPABASE_SERVICE_ROLE_KEY": "local-key",
++            "SUPABASE_SECRET_KEY": "local-key",
+             "SUPABASE_PROD_URL": "https://prod.example.supabase.co",
+-            "SUPABASE_PROD_SERVICE_ROLE_KEY": "prod-key",
++            "SUPABASE_PROD_SECRET_KEY": "prod-key",
+         },
+         clear=False,
+     ):
+@@ -54,18 +54,18 @@ def test_get_supabase_settings_uses_prod_credentials_when_enabled():
+ 
+ def test_get_supabase_settings_falls_back_to_unprefixed_when_prod_vars_missing(monkeypatch):
+     """When USE_PROD_DB=1 and SUPABASE_PROD_* aren't set, fall back to
+-    SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY. This supports the override-file
++    SUPABASE_URL / SUPABASE_SECRET_KEY. This supports the override-file
+     pattern where `.env.production` rewrites the unprefixed names in place."""
+     # Skip dotenv loading so the developer's actual .env doesn't leak in
+     monkeypatch.setattr(settings, "_ENV_LOADED", True)
+     monkeypatch.delenv("SUPABASE_PROD_URL", raising=False)
+-    monkeypatch.delenv("SUPABASE_PROD_SERVICE_ROLE_KEY", raising=False)
++    monkeypatch.delenv("SUPABASE_PROD_SECRET_KEY", raising=False)
+     with patch.dict(
+         os.environ,
+         {
+             "USE_PROD_DB": "1",
+             "SUPABASE_URL": "https://prod.example.supabase.co",
+-            "SUPABASE_SERVICE_ROLE_KEY": "prod-key-from-override",
++            "SUPABASE_SECRET_KEY": "prod-key-from-override",
+         },
+         clear=False,
+     ):
+@@ -80,13 +80,13 @@ def test_load_db_credentials_only_swaps_db_keys_only(tmp_path, monkeypatch):
+     prod_env = tmp_path / ".env.production"
+     prod_env.write_text(
+         "SUPABASE_URL=https://prod.example.supabase.co\n"
+-        "SUPABASE_SERVICE_ROLE_KEY=prod-key\n"
++        "SUPABASE_SECRET_KEY=prod-key\n"
+         "SUPABASE_PROJECT_REF=teuvfoftdjfsnkkbnzps\n"
+         "GROQ_API_KEY=should-not-be-applied\n"
+         "ENV_MODE=should-not-be-applied\n"
+     )
+     monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+-    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "local-key")
++    monkeypatch.setenv("SUPABASE_SECRET_KEY", "local-key")
+     monkeypatch.setenv("GROQ_API_KEY", "local-groq-key")
+     monkeypatch.setenv("ENV_MODE", "local")
+ 
+@@ -94,11 +94,11 @@ def test_load_db_credentials_only_swaps_db_keys_only(tmp_path, monkeypatch):
+ 
+     assert set(applied) == {
+         "SUPABASE_URL",
+-        "SUPABASE_SERVICE_ROLE_KEY",
++        "SUPABASE_SECRET_KEY",
+         "SUPABASE_PROJECT_REF",
+     }
+     assert os.environ["SUPABASE_URL"] == "https://prod.example.supabase.co"
+-    assert os.environ["SUPABASE_SERVICE_ROLE_KEY"] == "prod-key"
++    assert os.environ["SUPABASE_SECRET_KEY"] == "prod-key"
+     assert os.environ["SUPABASE_PROJECT_REF"] == "teuvfoftdjfsnkkbnzps"
+     assert os.environ["GROQ_API_KEY"] == "local-groq-key"
+     assert os.environ["ENV_MODE"] == "local"
+@@ -138,7 +138,7 @@ def test_utils_db_import_does_not_create_supabase_client(monkeypatch):
+     monkeypatch.setattr(supabase_lib, "create_client", fake_create_client)
+     monkeypatch.setattr(settings, "_ENV_LOADED", False)
+     monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+-    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test-secret-key")
++    monkeypatch.setenv("SUPABASE_SECRET_KEY", "test-secret-key")
+ 
+     db = importlib.reload(db)
+ 

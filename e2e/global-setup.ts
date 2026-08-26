@@ -20,10 +20,10 @@ function loadEnvironmentVariables() {
 /**
  * Safety checks to prevent accidental execution against production resources.
  */
-function validateDatabaseUrl(supabaseUrl: string, serviceRoleKey: string) {
-  if (!supabaseUrl || !serviceRoleKey) {
+function validateDatabaseUrl(supabaseUrl: string, secretKey: string) {
+  if (!supabaseUrl || !secretKey) {
     console.error(
-      "❌ ERROR: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing during E2E setup.",
+      "❌ ERROR: SUPABASE_URL or SUPABASE_SECRET_KEY missing during E2E setup.",
     );
     process.exit(1);
   }
@@ -91,14 +91,14 @@ async function globalSetup() {
     loadEnvironmentVariables();
 
     const supabaseUrl = process.env.SUPABASE_URL as string;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+    const secretKey = process.env.SUPABASE_SECRET_KEY as string;
 
-    validateDatabaseUrl(supabaseUrl, serviceRoleKey);
+    validateDatabaseUrl(supabaseUrl, secretKey);
 
     console.log(`▶ Seeding test database: ${supabaseUrl}`);
     await resetAndSeedDatabase({
       supabaseUrl,
-      serviceRoleKey,
+      secretKey,
       projectRef: "localhost",
     });
     console.log("✅ E2E Global Setup: Database seeded successfully.");

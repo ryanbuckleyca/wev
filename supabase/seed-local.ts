@@ -17,12 +17,12 @@ async function main() {
   loadEnv({ path: envPath });
 
   const supabaseUrl = process.env.SUPABASE_URL || "http://localhost:54321";
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secretKey = process.env.SUPABASE_SECRET_KEY;
   const projectRef = process.env.SUPABASE_PROJECT_REF || "localhost";
 
-  if (!serviceRoleKey) {
+  if (!secretKey) {
     console.error(
-      "❌ Error: SUPABASE_SERVICE_ROLE_KEY is not set in environment.",
+      "❌ Error: SUPABASE_SECRET_KEY is not set in environment.",
     );
     process.exit(1);
   }
@@ -32,7 +32,7 @@ async function main() {
 
     const config = {
       projectRef,
-      serviceRoleKey,
+      secretKey,
       supabaseUrl,
     };
 

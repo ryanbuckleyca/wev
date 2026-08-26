@@ -346,16 +346,16 @@ async function main() {
   const env = parseRestoreArgs(argv);
   loadEnvFiles(env);
 
-  const { url: supabaseUrl, serviceRoleKey } = getSupabaseScriptConfig(
+  const { url: supabaseUrl, secretKey } = getSupabaseScriptConfig(
     "restore.ts",
     {
       urlEnv: "SUPABASE_URL",
-      keyEnvNames: ["SUPABASE_SERVICE_ROLE_KEY"],
-      keyDescription: `${env} service role key`,
+      keyEnvNames: ["SUPABASE_SECRET_KEY"],
+      keyDescription: `${env} secret key`,
     },
   );
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  const supabase = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false },
   });
 

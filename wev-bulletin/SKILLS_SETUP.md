@@ -114,13 +114,13 @@ npm run skills:index -- \
   --input-json supabase/seed/esco_skills_index.json \
   --upsert-db \
   --supabase-url $SUPABASE_URL \
-  --supabase-key $SUPABASE_SERVICE_ROLE_KEY
+  --supabase-key $SUPABASE_SECRET_KEY
 
 # Or do both in one command:
 npm run skills:index -- \
   --upsert-db \
   --supabase-url $SUPABASE_URL \
-  --supabase-key $SUPABASE_SERVICE_ROLE_KEY
+  --supabase-key $SUPABASE_SECRET_KEY
 ```
 
 **Note**: The script reads env vars from `.env.test` or `.env` automatically if you don't pass flags.

@@ -1,7 +1,7 @@
 const { createClient } = require("@supabase/supabase-js");
 
 const url = process.env.SUPABASE_PROD_URL;
-const key = process.env.SUPABASE_PROD_SERVICE_ROLE_KEY;
+const key = process.env.SUPABASE_PROD_SECRET_KEY;
 
 const supabase = createClient(url, key);
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply migrations directly via Supabase REST API using service role key."""
+"""Apply migrations directly via Supabase REST API using secret key."""
 
 import os
 import sys
@@ -13,10 +13,10 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
 SUPABASE_URL = os.getenv('SUPABASE_URL') or os.getenv('NEXT_PUBLIC_SUPABASE_URL')
-SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+SERVICE_KEY = os.getenv('SUPABASE_SECRET_KEY')
 
 if not SUPABASE_URL or not SERVICE_KEY:
-    print("Error: Missing SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
+    print("Error: Missing SUPABASE_URL and SUPABASE_SECRET_KEY")
     sys.exit(1)
 
 MIGRATIONS_DIR = Path(__file__).parent / 'migrations'
