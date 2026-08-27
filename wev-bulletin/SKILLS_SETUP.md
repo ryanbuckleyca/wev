@@ -56,7 +56,7 @@ This document outlines the skills-based matching system implementation and setup
   - Response: `{ skills: string[] }` (concept URIs)
 - **2-Stage Pipeline**:
   1. **DB Shortlist**: Extract keywords from text, search ESCO DB, build ~150 candidates
-  2. **LLM Selection**: Send shortlist to Groq (llama-3.3-70b-versatile), get final max 10 skills
+  2. **LLM Selection**: Send shortlist to Groq (openai/gpt-oss-120b), get final max 10 skills
 - **Benefits**:
   - Avoids sending 13k+ skills to LLM (token limit + cost)
   - Deterministic DB search + smart LLM filtering
@@ -352,7 +352,7 @@ Test files:
 ## Notes
 
 - **ESCO API**: We use it for indexing only, not runtime queries (for stability/performance)
-- **Groq Model**: Using `llama-3.3-70b-versatile` (fast, accurate, cost-effective)
+- **Groq Model**: Using `openai/gpt-oss-120b` (fast, accurate, cost-effective)
 - **Max Skills**: Both users and jobs limited to 10 skills (enforced in DB + UI)
 - **Matching Weight**: 60% values / 40% skills when both present (adjust in migration if needed)
 - **Locale Fallback**: If FR label missing, falls back to EN (and vice versa)
