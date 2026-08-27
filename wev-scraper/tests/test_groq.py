@@ -1,3 +1,4 @@
+from llm import unified_provider
 import json
 from unittest.mock import MagicMock, patch
 
@@ -27,7 +28,7 @@ def test_get_next_model():
     first = provider._model
     provider._mark_model_exhausted(first)
     assert provider._model != first
-    assert provider._model in ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant", "qwen/qwen3-32b", "moonshotai/kimi-k2-instruct-0905", "openai/gpt-oss-120b"]
+    assert provider._model in ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.6-27b"]
 
 @patch("requests.post")
 def test_request_success(mock_post):
