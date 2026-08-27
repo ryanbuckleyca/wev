@@ -23,6 +23,9 @@ describe('buildOrgActiveFilterChips', () => {
   const mockTFilters = vi.fn((key: string) => {
     const map: Record<string, string> = {
       'chips.allOrgs': 'All organizations',
+      'language.en': 'English',
+      'language.fr': 'French',
+      'language.bilingual': 'Bilingual',
     };
     return map[key] ?? key;
   });
@@ -33,34 +36,57 @@ describe('buildOrgActiveFilterChips', () => {
     selectedProvinces: [],
     selectedMunicipalities: [],
     selectedTypes: [],
+    selectedLanguages: [],
+    selectedSectors: [],
+    activityWindow: 'all',
+  };
+
+  const mockTSectors = vi.fn((key: string) => key);
+
+  const baseChipHandlers = {
+    onRemoveActivity: vi.fn(),
+    onRemoveNonSse: vi.fn(),
+    onRemoveSearch: vi.fn(),
+    onRemoveProvince: vi.fn(),
+    onRemoveMunicipality: vi.fn(),
+    onRemoveType: vi.fn(),
+    onRemoveLanguage: vi.fn(),
+    onRemoveSector: vi.fn(),
+    tOrgs: mockTOrgs,
+    tFilters: mockTFilters,
+    tSectors: mockTSectors,
   };
 
   it('returns empty array when no filters are active', () => {
     const chips = buildOrgActiveFilterChips({
       filters: baseFilters,
-      onRemoveNonSse: vi.fn(),
-      onRemoveSearch: vi.fn(),
-      onRemoveProvince: vi.fn(),
-      onRemoveMunicipality: vi.fn(),
-      onRemoveType: vi.fn(),
-      tOrgs: mockTOrgs,
-      tFilters: mockTFilters,
+      ...baseChipHandlers,
     });
 
     expect(chips).toEqual([]);
+  });
+
+  it('creates a chip for activity window', () => {
+    const onRemove = vi.fn();
+    const chips = buildOrgActiveFilterChips({
+      filters: { ...baseFilters, activityWindow: '28d' },
+      ...baseChipHandlers,
+      onRemoveActivity: onRemove,
+    });
+
+    expect(chips).toHaveLength(1);
+    expect(chips[0].id).toBe('activity');
+    expect(chips[0].label).toBe('activity28d');
+    chips[0]!.onRemove!();
+    expect(onRemove).toHaveBeenCalled();
   });
 
   it('creates a chip for showNonSse filter', () => {
     const onRemove = vi.fn();
     const chips = buildOrgActiveFilterChips({
       filters: { ...baseFilters, showNonSse: true },
+      ...baseChipHandlers,
       onRemoveNonSse: onRemove,
-      onRemoveSearch: vi.fn(),
-      onRemoveProvince: vi.fn(),
-      onRemoveMunicipality: vi.fn(),
-      onRemoveType: vi.fn(),
-      tOrgs: mockTOrgs,
-      tFilters: mockTFilters,
     });
 
     expect(chips).toHaveLength(1);
@@ -74,13 +100,8 @@ describe('buildOrgActiveFilterChips', () => {
     const onRemove = vi.fn();
     const chips = buildOrgActiveFilterChips({
       filters: { ...baseFilters, searchQuery: 'Test Query' },
-      onRemoveNonSse: vi.fn(),
+      ...baseChipHandlers,
       onRemoveSearch: onRemove,
-      onRemoveProvince: vi.fn(),
-      onRemoveMunicipality: vi.fn(),
-      onRemoveType: vi.fn(),
-      tOrgs: mockTOrgs,
-      tFilters: mockTFilters,
     });
 
     expect(chips).toHaveLength(1);
@@ -94,13 +115,8 @@ describe('buildOrgActiveFilterChips', () => {
     const onRemove = vi.fn();
     const chips = buildOrgActiveFilterChips({
       filters: { ...baseFilters, selectedProvinces: ['Ontario', 'Quebec'] },
-      onRemoveNonSse: vi.fn(),
-      onRemoveSearch: vi.fn(),
+      ...baseChipHandlers,
       onRemoveProvince: onRemove,
-      onRemoveMunicipality: vi.fn(),
-      onRemoveType: vi.fn(),
-      tOrgs: mockTOrgs,
-      tFilters: mockTFilters,
     });
 
     expect(chips).toHaveLength(2);
@@ -117,13 +133,8 @@ describe('buildOrgActiveFilterChips', () => {
     const onRemove = vi.fn();
     const chips = buildOrgActiveFilterChips({
       filters: { ...baseFilters, selectedMunicipalities: ['Toronto', 'Montreal'] },
-      onRemoveNonSse: vi.fn(),
-      onRemoveSearch: vi.fn(),
-      onRemoveProvince: vi.fn(),
+      ...baseChipHandlers,
       onRemoveMunicipality: onRemove,
-      onRemoveType: vi.fn(),
-      tOrgs: mockTOrgs,
-      tFilters: mockTFilters,
     });
 
     expect(chips).toHaveLength(2);
@@ -140,13 +151,8 @@ describe('buildOrgActiveFilterChips', () => {
     const onRemove = vi.fn();
     const chips = buildOrgActiveFilterChips({
       filters: { ...baseFilters, selectedTypes: ['nonprofit', 'government'] },
-      onRemoveNonSse: vi.fn(),
-      onRemoveSearch: vi.fn(),
-      onRemoveProvince: vi.fn(),
-      onRemoveMunicipality: vi.fn(),
+      ...baseChipHandlers,
       onRemoveType: onRemove,
-      tOrgs: mockTOrgs,
-      tFilters: mockTFilters,
     });
 
     expect(chips).toHaveLength(2);
@@ -159,6 +165,24 @@ describe('buildOrgActiveFilterChips', () => {
     expect(onRemove).toHaveBeenCalledWith('nonprofit');
   });
 
+  it('creates chips for selected languages with translated labels', () => {
+    const onRemove = vi.fn();
+    const chips = buildOrgActiveFilterChips({
+      filters: { ...baseFilters, selectedLanguages: ['en', 'fr'] },
+      ...baseChipHandlers,
+      onRemoveLanguage: onRemove,
+    });
+
+    expect(chips).toHaveLength(2);
+    expect(chips[0].id).toBe('lang-en');
+    expect(chips[0].label).toBe('English');
+    expect(chips[1].id).toBe('lang-fr');
+    expect(chips[1].label).toBe('French');
+
+    chips[0]!.onRemove!();
+    expect(onRemove).toHaveBeenCalledWith('en');
+  });
+
   it('creates chips for all filter types combined', () => {
     const chips = buildOrgActiveFilterChips({
       filters: {
@@ -167,22 +191,22 @@ describe('buildOrgActiveFilterChips', () => {
         selectedProvinces: ['Ontario'],
         selectedMunicipalities: ['Toronto'],
         selectedTypes: ['nonprofit'],
+        selectedLanguages: ['bilingual'],
+        selectedSectors: ['tech'],
+        activityWindow: '90d',
       },
-      onRemoveNonSse: vi.fn(),
-      onRemoveSearch: vi.fn(),
-      onRemoveProvince: vi.fn(),
-      onRemoveMunicipality: vi.fn(),
-      onRemoveType: vi.fn(),
-      tOrgs: mockTOrgs,
-      tFilters: mockTFilters,
+      ...baseChipHandlers,
     });
 
-    expect(chips).toHaveLength(5);
-    expect(chips[0].id).toBe('nonSse');
-    expect(chips[1].id).toBe('q');
-    expect(chips[2].id).toBe('p-Ontario');
-    expect(chips[3].id).toBe('m-Toronto');
-    expect(chips[4].id).toBe('type-nonprofit');
+    expect(chips).toHaveLength(8);
+    expect(chips[0].id).toBe('activity');
+    expect(chips[1].id).toBe('nonSse');
+    expect(chips[2].id).toBe('q');
+    expect(chips[3].id).toBe('p-Ontario');
+    expect(chips[4].id).toBe('m-Toronto');
+    expect(chips[5].id).toBe('type-nonprofit');
+    expect(chips[6].id).toBe('lang-bilingual');
+    expect(chips[7].id).toBe('sector-tech');
   });
 });
 

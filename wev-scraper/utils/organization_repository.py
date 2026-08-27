@@ -10,12 +10,18 @@ from __future__ import annotations
 import logging
 import re
 
+from utils.organization_cache import (
+    domains_match,
+    evidence_domain_query_hosts,
+    extract_domain,
+)
+
 logger = logging.getLogger(__name__)
 
 _LIKE_SPECIAL = re.compile(r"[%_\\]")
 
 
-def _escape_like(s: str) -> str:
+def escape_like(s: str) -> str:
     """Escape % and _ for ILIKE so they're treated literally.
 
     PostgREST passes ILIKE values through to PostgreSQL, where % and _
@@ -32,13 +38,42 @@ class OrganizationRepository:
         try:
             resp = (
                 self._supabase.table("organizations")
-                .select("id, name, location")
-                .ilike("name", _escape_like(name.strip()))
+                .select("id, name, location, website")
+                .ilike("name", escape_like(name.strip()))
                 .execute()
             )
             return resp.data or []
         except Exception as exc:
             logger.warning("OrganizationRepository: find_by_name failed for %r: %s", name, exc)
+            return []
+
+    def find_by_domain(self, domain: str) -> list[dict]:
+        """Find orgs whose website hostname matches ``domain`` (or a parent host).
+
+        Callers should pass a normalized hostname (e.g. ``mindrift.ai``).
+        ``careers.example.com`` also searches ``example.com`` so apex rows match.
+        """
+        cleaned = (domain or "").strip().lower()
+        if not cleaned:
+            return []
+        try:
+            by_id: dict[int, dict] = {}
+            for host in evidence_domain_query_hosts(cleaned):
+                resp = (
+                    self._supabase.table("organizations")
+                    .select("id, name, location, website")
+                    .ilike("website", f"%{escape_like(host)}%")
+                    .execute()
+                )
+                for row in resp.data or []:
+                    row_domain = extract_domain(row.get("website"))
+                    if row_domain and domains_match(row_domain, cleaned):
+                        by_id[row["id"]] = row
+            return list(by_id.values())
+        except Exception as exc:
+            logger.warning(
+                "OrganizationRepository: find_by_domain failed for %r: %s", domain, exc
+            )
             return []
 
     def find_by_name_and_location(self, name: str, location: str | None = None) -> int | None:
@@ -51,10 +86,10 @@ class OrganizationRepository:
             query = (
                 self._supabase.table("organizations")
                 .select("id")
-                .ilike("name", _escape_like(name.strip()))
+                .ilike("name", escape_like(name.strip()))
             )
             if location is not None and location.strip():
-                query = query.ilike("location", _escape_like(location.strip()))
+                query = query.ilike("location", escape_like(location.strip()))
             else:
                 # Both NULL and '' need to match because the unique identity index
                 # treats them identically: coalesce(nullif(lower(btrim(location)), ''), '')
@@ -149,7 +184,10 @@ class OrganizationRepository:
         try:
             resp = (
                 self._supabase.table("organizations")
-                .select("id, name, description, type, website, values")
+                .select(
+                    "id, name, description, type, website, values, "
+                    "municipality, province, location, language, sse_details"
+                )
                 .is_("sse_rating", "null")
                 .order("id")
                 .gt("id", after_id)

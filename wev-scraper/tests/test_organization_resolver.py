@@ -13,6 +13,7 @@ from utils.organization_resolver import OrganizationResolver
 def _make_repo(**kwargs) -> MagicMock:
     repo = MagicMock(spec=OrganizationRepository)
     repo.find_by_name.return_value = kwargs.get("find_by_name", [])
+    repo.find_by_domain.return_value = kwargs.get("find_by_domain", [])
     repo.slug_exists.return_value = kwargs.get("slug_exists", False)
     repo.find_existing_slugs.return_value = kwargs.get("find_existing_slugs", set())
     insert_val = kwargs.get("insert", {"id": 42})
@@ -44,7 +45,7 @@ def _make_assessor(return_value):
 class TestCacheHitPath:
     def test_cache_hit_returns_cached_id_without_db_call(self):
         cache = OrganizationCache()
-        cache.set("test org|montreal qc", 99)
+        cache.set("test org", 99)
 
         repo = _make_repo()
         resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
@@ -68,19 +69,35 @@ class TestDBMatchPath:
         result = resolver.resolve("Test Org", "Montreal", "QC")
 
         assert result == 10
-        assert cache.get("test org|montreal qc") == 10
+        assert cache.get("test org") == 10
 
-    def test_ambiguous_match_falls_to_minimal(self):
+    def test_ambiguous_match_does_not_create(self):
         org_rows = [
-            {"id": 10, "name": "Test Org", "location": "Montreal QC"},
-            {"id": 11, "name": "Test Org", "location": "Montreal QC"},
+            {"id": 10, "name": "Test Org", "location": "Montreal QC", "website": None},
+            {"id": 11, "name": "Test Org", "location": "Toronto ON", "website": None},
         ]
         repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
         resolver = _make_resolver(repo=repo, assessor=None)
 
         result = resolver.resolve("Test Org", "Montreal", "QC")
 
-        assert result == 99  # fell through to minimal insert
+        assert result is None
+        repo.insert.assert_not_called()
+
+    def test_ambiguous_match_is_cached_as_blocked(self):
+        org_rows = [
+            {"id": 10, "name": "Test Org", "location": "Montreal QC", "website": None},
+            {"id": 11, "name": "Test Org", "location": "Toronto ON", "website": None},
+        ]
+        repo = _make_repo(find_by_name=org_rows)
+        cache = OrganizationCache()
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
+
+        assert resolver.resolve("Test Org", "Montreal", "QC") is None
+        assert resolver.resolve("Test Org", "Vancouver", "BC") is None
+
+        assert repo.find_by_name.call_count == 1
+        assert cache.is_blocked("test org")
 
     def test_no_candidates_falls_to_minimal(self):
         repo = _make_repo(find_by_name=[], insert={"id": 55})
@@ -90,14 +107,408 @@ class TestDBMatchPath:
 
         assert result == 55
 
-    def test_incompatible_location_falls_to_minimal(self):
-        org_rows = [{"id": 10, "name": "Test Org", "location": "Vancouver BC"}]
-        repo = _make_repo(find_by_name=org_rows, insert={"id": 77})
+    def test_same_org_different_location_reuses_existing(self):
+        """Mindrift in Québec and Mindrift in Toronto share one organization_id."""
+        org_rows = [{"id": 107, "name": "Mindrift", "location": "Québec", "website": None}]
+        repo = _make_repo(find_by_name=org_rows)
+        cache = OrganizationCache()
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
+
+        result = resolver.resolve("Mindrift", "Toronto", "ON")
+
+        assert result == 107
+        assert cache.get("mindrift") == 107
+        repo.insert.assert_not_called()
+
+    def test_national_org_same_domain_merges_across_cities(self):
+        org_rows = [
+            {
+                "id": 107,
+                "name": "Mindrift",
+                "location": "Québec",
+                "website": "https://mindrift.ai/",
+            },
+            {
+                "id": 461,
+                "name": "Mindrift",
+                "location": "Toronto ON",
+                "website": None,
+            },
+        ]
+        repo = _make_repo(find_by_name=org_rows)
         resolver = _make_resolver(repo=repo, assessor=None)
 
-        result = resolver.resolve("Test Org", "Montreal", "QC")
+        result = resolver.resolve(
+            "Mindrift",
+            "Toronto",
+            "ON",
+            website="https://mindrift.ai",
+        )
 
-        assert result == 77  # location incompatible → minimal fallback
+        assert result == 107
+        repo.insert.assert_not_called()
+        assert resolver._cache.get("mindrift|mindrift.ai") == 107
+
+    def test_same_name_matching_domain_merges_to_domain_owner(self):
+        org_rows = [
+            {
+                "id": 1,
+                "name": "ABC Autobody",
+                "location": "Québec",
+                "website": "https://abcquebec.ca",
+            },
+            {
+                "id": 2,
+                "name": "ABC Autobody",
+                "location": "Ontario",
+                "website": "https://abcautobodyontario.ca",
+            },
+        ]
+        repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "ABC Autobody",
+            "Toronto",
+            "ON",
+            website="https://abcautobodyontario.ca",
+        )
+
+        assert result == 2
+        repo.insert.assert_not_called()
+
+    def test_same_name_conflicting_domain_vs_single_candidate_allows_create(self):
+        org_rows = [
+            {
+                "id": 1,
+                "name": "ABC Autobody",
+                "location": "Québec",
+                "website": "https://abcquebec.ca",
+            },
+        ]
+        repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "ABC Autobody",
+            "Toronto",
+            "ON",
+            website="https://abcautobodyontario.ca",
+        )
+
+        assert result == 99
+        repo.insert.assert_called_once()
+
+    def test_domain_aware_cache_does_not_reuse_across_conflicting_domains(self):
+        """Same scrape session: Quebec domain then Ontario domain must not share cache."""
+        quebec_row = {
+            "id": 1,
+            "name": "ABC Autobody",
+            "location": "Québec",
+            "website": "https://abcquebec.ca",
+        }
+        repo = _make_repo(find_by_name=[quebec_row])
+        repo.insert.side_effect = [{"id": 99}]
+        cache = OrganizationCache()
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
+
+        first = resolver.resolve(
+            "ABC Autobody",
+            "Montreal",
+            "QC",
+            website="https://abcquebec.ca",
+        )
+        second = resolver.resolve(
+            "ABC Autobody",
+            "Toronto",
+            "ON",
+            website="https://abcautobodyontario.ca",
+        )
+
+        assert first == 1
+        assert second == 99
+        assert cache.get("abc autobody|abcquebec.ca") == 1
+        assert cache.get("abc autobody|abcautobodyontario.ca") == 99
+        assert cache.get("abc autobody") is None
+        repo.insert.assert_called_once()
+
+    def test_ambiguous_without_domain_evidence_does_not_merge_or_create(self):
+        org_rows = [
+            {
+                "id": 1,
+                "name": "ABC Autobody",
+                "location": "Québec",
+                "website": "https://abcquebec.ca",
+            },
+            {
+                "id": 2,
+                "name": "ABC Autobody",
+                "location": "Ontario",
+                "website": "https://abcautobodyontario.ca",
+            },
+        ]
+        repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve("ABC Autobody", "Toronto", "ON")
+
+        assert result is None
+        repo.insert.assert_not_called()
+
+    def test_multi_match_all_domains_conflict_allows_create(self):
+        """Third same-name employer with its own domain is a new org, not blocked."""
+        org_rows = [
+            {
+                "id": 1,
+                "name": "ABC Autobody",
+                "location": "Québec",
+                "website": "https://abcquebec.ca",
+            },
+            {
+                "id": 2,
+                "name": "ABC Autobody",
+                "location": "Ontario",
+                "website": "https://abcautobodyontario.ca",
+            },
+        ]
+        repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "ABC Autobody",
+            "Toronto",
+            "ON",
+            website="https://abc-third.ca",
+        )
+
+        assert result == 99
+        repo.insert.assert_called_once()
+
+    def test_multi_match_partial_domain_still_blocks(self):
+        """If any same-name candidate lacks domain evidence, stay ambiguous."""
+        org_rows = [
+            {
+                "id": 1,
+                "name": "ABC Autobody",
+                "location": "Québec",
+                "website": "https://abcquebec.ca",
+            },
+            {
+                "id": 2,
+                "name": "ABC Autobody",
+                "location": "Ontario",
+                "website": None,
+            },
+        ]
+        repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "ABC Autobody",
+            "Toronto",
+            "ON",
+            website="https://abc-third.ca",
+        )
+
+        assert result is None
+        repo.insert.assert_not_called()
+
+    def test_llm_retry_ambiguous_with_identity_creates_new_org(self):
+        """With identity tracking, ambiguous name match but unique identity creates new org."""
+        org_rows = [
+            {
+                "id": 1,
+                "name": "ABC Autobody",
+                "location": "Québec",
+                "website": "https://abcquebec.ca",
+            },
+            {
+                "id": 2,
+                "name": "ABC Autobody",
+                "location": "Ontario",
+                "website": "https://abcautobodyontario.ca",
+            },
+        ]
+        assessor_result = {
+            "name": "ABC Autobody",
+            "slug": "abc-autobody",
+            "location": "Toronto ON",
+            "website": "https://facebook.com/abc-third",
+            "description": None,
+            "mission_statement": None,
+            "type": None,
+            "values": None,
+            "values_list": [],
+            "values_rated": None,
+            "sse_rating": "no",
+            "is_sse": False,
+            "sse_details": None,
+        }
+        repo = _make_repo(find_by_name=org_rows, insert={"id": 99})
+        # Mock find_by_identity to return no matches (unique identity)
+        repo.find_by_identity = MagicMock(return_value=[])
+        assessor = _make_assessor(assessor_result)
+        cache = OrganizationCache()
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=assessor)
+
+        result = resolver.resolve(
+            "ABC Autobody",
+            "Toronto",
+            "ON",
+            website="https://abc-third.ca",
+            job_title="Tech",
+            description="desc",
+        )
+
+        # With identity tracking, unique Facebook URL creates new org
+        assert result == 99
+        repo.insert.assert_called_once()
+
+    def test_domain_only_different_name_does_not_reuse(self):
+        """Job name Acme + mindrift.ai must not attach to Mindrift org."""
+        mindrift = {
+            "id": 107,
+            "name": "Mindrift",
+            "location": "Québec",
+            "website": "https://mindrift.ai",
+        }
+        repo = _make_repo(
+            find_by_name=[],
+            find_by_domain=[mindrift],
+            insert={"id": 99},
+        )
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "Acme Corp",
+            "Toronto",
+            "ON",
+            website="https://mindrift.ai",
+        )
+
+        assert result == 99
+        repo.insert.assert_called_once()
+
+    def test_shared_domain_is_ignored_as_merge_evidence(self):
+        other = {
+            "id": 50,
+            "name": "Other Org",
+            "location": "Toronto ON",
+            "website": "https://facebook.com/other",
+        }
+        repo = _make_repo(
+            find_by_name=[],
+            find_by_domain=[other],
+            insert={"id": 99},
+        )
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "Acme Corp",
+            "Toronto",
+            "ON",
+            website="https://facebook.com/acme",
+        )
+
+        assert result == 99
+        repo.find_by_domain.assert_not_called()
+        repo.insert.assert_called_once()
+
+    def test_llm_path_persists_shared_ctx_website_for_identity(self):
+        """Context website (even shared host) is now persisted for org identity tracking."""
+        assessor_result = {
+            "name": "Acme Corp",
+            "slug": "acme-corp",
+            "location": "Toronto ON",
+            "website": None,
+            "description": None,
+            "mission_statement": None,
+            "type": None,
+            "values": None,
+            "values_list": [],
+            "values_rated": None,
+            "sse_rating": "no",
+            "is_sse": False,
+            "sse_details": None,
+        }
+        assessor = _make_assessor(assessor_result)
+        repo = _make_repo(find_by_name=[], insert={"id": 77})
+        # Mock find_by_identity to return no matches
+        repo.find_by_identity = MagicMock(return_value=[])
+        resolver = OrganizationResolver(
+            repo=repo, cache=OrganizationCache(), assessor=assessor
+        )
+
+        result = resolver.resolve(
+            "Acme Corp",
+            "Toronto",
+            "ON",
+            website="https://facebook.com/acme",
+            job_title="Engineer",
+            description="desc",
+        )
+
+        assert result == 77
+        # Context website is now persisted for identity tracking
+        assert repo.insert.call_args[0][0].get("website") == "https://facebook.com/acme"
+
+    def test_province_substring_does_not_inflate_score(self):
+        resolver = _make_resolver(assessor=None)
+        org = {"id": 1, "name": "Test Org", "location": "Montreal QC", "website": None}
+        from utils.organization_resolver import JobContext
+
+        ctx = JobContext(
+            raw_name="Test Org",
+            municipality="Montreal",
+            province="on",
+            location=None,
+            website=None,
+            job_title=None,
+            description=None,
+            job_id=None,
+        )
+        # Name match (50) + municipality (5) only — province "on" must not
+        # match the letters inside "montreal".
+        assert resolver._score_organization_match(org, ctx) == 55
+
+    def test_subdomain_does_not_conflict_with_apex(self):
+        org_rows = [
+            {
+                "id": 10,
+                "name": "Hatch",
+                "location": "Mississauga ON",
+                "website": "https://www.hatch.com",
+            },
+        ]
+        repo = _make_repo(find_by_name=org_rows)
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "Hatch",
+            "Mississauga",
+            "ON",
+            website="https://careers.hatch.com",
+        )
+
+        assert result == 10
+        repo.insert.assert_not_called()
+
+    def test_minimal_fallback_accepts_shared_website_for_identity(self):
+        """Minimal fallback now accepts shared website for org identity tracking."""
+        repo = _make_repo(find_by_name=[], insert={"id": 55})
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "Unknown Org",
+            "City",
+            "ON",
+            website="https://facebook.com/unknown-org",
+        )
+
+        assert result == 55
+        row = repo.insert.call_args[0][0]
+        # Context website is now persisted for identity tracking
+        assert row.get("website") == "https://facebook.com/unknown-org"
 
 
 # ── LLM success path ──────────────────────────────────────────────────────────
@@ -128,7 +539,7 @@ class TestLLMSuccessPath:
         result = resolver.resolve("Le Depot", "Montreal", "QC", job_title="Food Coordinator", description="description here")
 
         assert result == 201
-        assert cache.get("le depot|montreal qc") == 201
+        assert cache.get("le depot") == 201
         assessor.assess_and_build_row.assert_called_once()
 
     def test_llm_slug_empty_uses_canonical_name(self):
@@ -158,7 +569,7 @@ class TestLLMSuccessPath:
         repo.slug_exists.assert_called_with("my-new-org")
 
 
-# ── Identity conflict path ────────────────────────────────────────────────────
+# ── Exact name+location duplicate-guard conflict path ─────────────────────────
 
 
 class TestIdentityConflictPath:
@@ -174,6 +585,86 @@ class TestIdentityConflictPath:
 
         assert result == 55
         repo.find_by_name_and_location.assert_called_once_with("Existing Org", "Montreal QC")
+
+    def test_insert_conflict_without_reselect_returns_none(self):
+        repo = _make_repo(
+            find_by_name=[],
+            insert=Exception(
+                'duplicate key value violates unique constraint "organizations_identity_key"'
+            ),
+            find_by_name_and_location=None,
+        )
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve("Existing Org", "Montreal", "QC")
+
+        assert result is None
+        repo.find_by_name_and_location.assert_called_once()
+
+    def test_slug_conflict_retries_with_new_slug(self):
+        repo = _make_repo(
+            find_by_name=[],
+            find_by_name_and_location=None,
+            find_existing_slugs=set(),
+        )
+        state = {"inserts": 0}
+        inserted_slugs: list[str] = []
+        repo.slug_exists.side_effect = (
+            lambda slug: slug == "slug-race-org" and state["inserts"] > 0
+        )
+
+        def insert_row(row):
+            # Capture now — resolver mutates the same row dict on retry.
+            inserted_slugs.append(row["slug"])
+            state["inserts"] += 1
+            if state["inserts"] == 1:
+                raise Exception(
+                    'duplicate key value violates unique constraint "organizations_slug_key"'
+                )
+            return {"id": 88}
+
+        repo.insert.side_effect = insert_row
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve("Slug Race Org", "City", "ON")
+
+        assert result == 88
+        assert state["inserts"] == 2
+        assert inserted_slugs[0] == "slug-race-org"
+        assert inserted_slugs[1] != inserted_slugs[0]
+
+    def test_slug_detail_conflict_retries_with_new_slug(self):
+        """Postgres DETAIL Key (slug)=... must classify as slug, not identity."""
+        repo = _make_repo(
+            find_by_name=[],
+            find_by_name_and_location=None,
+            find_existing_slugs=set(),
+        )
+        state = {"inserts": 0}
+        inserted_slugs: list[str] = []
+        repo.slug_exists.side_effect = (
+            lambda slug: slug == "slug-race-org" and state["inserts"] > 0
+        )
+
+        def insert_row(row):
+            inserted_slugs.append(row["slug"])
+            state["inserts"] += 1
+            if state["inserts"] == 1:
+                raise Exception(
+                    "duplicate key value violates unique constraint "
+                    "DETAIL:  Key (slug)=(slug-race-org) already exists."
+                )
+            return {"id": 89}
+
+        repo.insert.side_effect = insert_row
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve("Slug Race Org", "City", "ON")
+
+        assert result == 89
+        assert state["inserts"] == 2
+        assert inserted_slugs[0] != inserted_slugs[1]
+        repo.find_by_name_and_location.assert_not_called()
 
     def test_non_duplicate_insert_error_returns_none(self):
         repo = _make_repo(
@@ -281,6 +772,18 @@ class TestSameRunDedup:
         # Second call hit the cache — find_by_name only called once
         repo.find_by_name.assert_called_once()
 
+    def test_same_org_different_location_second_call_uses_cache(self):
+        repo = _make_repo(find_by_name=[{"id": 107, "name": "Mindrift", "location": "Québec"}])
+        cache = OrganizationCache()
+        resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
+
+        id1 = resolver.resolve("Mindrift", "Québec", "QC")
+        id2 = resolver.resolve("Mindrift", "Toronto", "ON")
+
+        assert id1 == id2 == 107
+        repo.find_by_name.assert_called_once()
+        repo.insert.assert_not_called()
+
 
 # ── Location-only path (no municipality/province) ─────────────────────────────
 
@@ -288,7 +791,7 @@ class TestSameRunDedup:
 class TestLocationOnlyPath:
     def test_cache_hit_with_location_only(self):
         cache = OrganizationCache()
-        cache.set("test org|montreal qc", 99)
+        cache.set("test org", 99)
         repo = _make_repo()
         resolver = OrganizationResolver(repo=repo, cache=cache, assessor=None)
 
@@ -306,16 +809,17 @@ class TestLocationOnlyPath:
         result = resolver.resolve("Test Org", location="Montreal QC")
 
         assert result == 10
-        assert cache.get("test org|montreal qc") == 10
+        assert cache.get("test org") == 10
 
-    def test_uses_minimal_when_location_does_not_match(self):
+    def test_different_location_still_reuses_single_name_match(self):
         org_rows = [{"id": 10, "name": "Test Org", "location": "Vancouver BC"}]
-        repo = _make_repo(find_by_name=org_rows, insert={"id": 77})
+        repo = _make_repo(find_by_name=org_rows)
         resolver = _make_resolver(repo=repo, assessor=None)
 
         result = resolver.resolve("Test Org", location="Montreal QC")
 
-        assert result == 77  # location mismatch → minimal fallback
+        assert result == 10
+        repo.insert.assert_not_called()
 
     def test_location_fallback_in_canonical_location(self):
         repo = _make_repo(find_by_name=[], insert={"id": 88})
@@ -358,10 +862,18 @@ class TestLLMResolvePath:
             repo=repo, cache=OrganizationCache(), assessor=assessor
         )
 
-        result = resolver.resolve("Test Org AI", "City", "ON")
+        result = resolver.resolve(
+            "Test Org AI",
+            "City",
+            "ON",
+            website="https://scraped-employer.example",
+        )
 
         assert result == 999
         assessor.assess_and_build_row.assert_called_once()
+        assert assessor.assess_and_build_row.call_args.kwargs["known_website"] == (
+            "https://scraped-employer.example"
+        )
         repo.insert.assert_called_once()
 
         call_kwargs = repo.insert.call_args[0][0]

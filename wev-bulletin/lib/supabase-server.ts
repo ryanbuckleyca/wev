@@ -1,17 +1,17 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * Server-only Supabase client. Uses service role key.
+ * Server-only Supabase client. Uses secret key (sb_secret_).
  * Only import this in API routes or Server Components — never in client components.
  *
- * Module-level singleton: correct for a service-role client with static credentials
+ * Module-level singleton: correct for a secret-key client with static credentials
  * on a long-lived Node process (Northflank). Fails hard at startup if env vars are missing.
  *
  * For user-scoped clients (RLS via JWT): create per-request with the user's token instead.
  */
 const getSupabaseServer = () => {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = process.env.SUPABASE_SECRET_KEY;
 
   if (!url || !key) {
     // Only throw if we are NOT in a build environment or if explicitly requested.
@@ -23,7 +23,7 @@ const getSupabaseServer = () => {
       console.warn('Supabase server env missing during build. Using dummy client.');
       return createClient('https://dummy.supabase.co', 'dummy-key');
     }
-    throw new Error('Missing Supabase server env. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+    throw new Error('Missing Supabase server env. Set SUPABASE_URL and SUPABASE_SECRET_KEY.');
   }
 
   return createClient(url, key, {

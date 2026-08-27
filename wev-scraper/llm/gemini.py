@@ -2,25 +2,15 @@
 
 Uses the google-genai SDK (google-genai package).
 
-Models in use:
-  gemini-2.5-flash        — default model for unified processing (summary, skills, values, SSE);
-                            requires Google Search grounding for SSE classification.
-  groq (llama-3.3-70b)   — fallback model for unified processing (no grounding)
+SSE / org assessment models (via ``SSEFallbackProvider``):
+  gemini-3.6-flash       — primary free-tier Flash
+  gemini-3.5-flash-lite  — higher free-tier volume fallback
 
-Free-tier rate limits (as of March 2026, confirmed from AI Studio live quota):
-  Gemini 2.5 Flash      : 4 RPM / 24 RPD (your quota)
-  Gemini 2.5 Flash Lite : 8 RPM / 22 RPD (your quota)
-  Gemini 3.1 Flash Lite : 0 RPM / 15 RPM, 0 RPD / 500 RPD (not available)
-  Gemma models          : 0 RPM / 30 RPM, 0 RPD / 14.4K RPD (not available)
+For predictable parity with Groq/Ollama, SSE evidence comes from shared Tavily
+injection (``llm.tavily_grounding``). Native Google Search tool grounding is
+opt-in via ``USE_GOOGLE_SEARCH_GROUNDING=1``.
 
-  No Gemini model currently offers a free tier suitable for large-scale summaries or values tagging.
-  Groq is the best option for summaries and values unless your quota increases.
-
-Constraints for the scraper:
-  - gemini-2.5-flash is reserved exclusively for SSE (Google Search grounding required).
-  - SSE calls: 1 per job → a 200-job scrape uses 200 req/day of the SSE quota.
-  - gemini-2.5-flash-lite is NOT usable for summaries at scale (20 req/day confirmed).
-  - Summaries and values are handled by Groq (see factory.py).
+Summaries and values default to Groq (see factory.py).
 """
 
 import logging
@@ -42,21 +32,21 @@ logger = logging.getLogger(__name__)
 class GeminiProvider(BaseLLMProvider):
     """Gemini provider. Choose model per task via constructor params."""
 
-    MODEL = "gemini-2.5-flash-lite"
+    MODEL = "gemini-3.5-flash-lite"
 
     def __init__(self, api_key: str | None = None, model: str | None = None):
         """Initialize Gemini provider with API key and model.
 
         Args:
             api_key: Google AI API key. If None, uses GEMINI_API_KEY env var.
-            model: Model name. Defaults to gemini-2.5-flash-lite.
-                 Use full names like: gemini-2.5-flash, gemini-2.5-flash-lite
+            model: Model name. Defaults to gemini-3.5-flash-lite.
+                 Prefer full names like: gemini-3.6-flash, gemini-3.5-flash-lite
         """
         self._api_key = (api_key or get_gemini_api_key() or "").strip()
         if not self._api_key:
             raise ValueError("GEMINI_API_KEY required")
 
-        self._model = model or "gemini-2.5-flash-lite"
+        self._model = model or "gemini-3.5-flash-lite"
         self._client = None
 
         try:
@@ -102,16 +92,33 @@ class GeminiProvider(BaseLLMProvider):
         return bool(self._api_key or get_gemini_api_key())
 
     def _extract_text(self, response) -> str:
-        """Extract text content from a Gemini response object safely.
+        """Extract text content from a Gemini response object safely."""
+        text = getattr(response, "text", "") or ""
+        candidates = getattr(response, "candidates", None) or []
+        if not text and candidates:
+            # Try to extract from parts directly
+            candidate = candidates[0]
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or [] if content else []
+            for part in parts:
+                part_text = getattr(part, "text", None)
+                if part_text:
+                    text = part_text
+                    break
 
-        The SDK's response.text property already aggregates candidates[0].content.parts,
-        but we fall back to reading parts[0].text directly as a defensive measure against
-        known SDK versions where response.text can return an empty string despite content
-        being present in the parts array.
-        """
-        text = getattr(response, "text", "")
-        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-            text = text or getattr(response.candidates[0].content.parts[0], "text", "") or ""
+            if not text:
+                finish_reason = getattr(candidate, "finish_reason", "UNKNOWN")
+                part_types = []
+                for p in parts:
+                    label = type(p).__name__
+                    if hasattr(p, "function_call") and getattr(p, "function_call", None):
+                        label += "(fn_call)"
+                    part_types.append(label)
+                logger.warning(
+                    "Empty text from Gemini. finish_reason=%s candidates=%d parts=%d part_types=%s",
+                    finish_reason, len(candidates), len(parts), part_types,
+                )
+
         return text or ""
 
     def complete(self, prompt: str, model: str | None = None, system: str | None = None, **kwargs) -> str:
@@ -133,17 +140,43 @@ class GeminiProvider(BaseLLMProvider):
         logger.info(f"Gemini.complete: client ready in {t_client:.3f}s")
 
         task_type = kwargs.get("task")
-        use_grounding = should_use_grounding(task_type) if task_type else False
+        if "use_grounding" in kwargs:
+            use_grounding = bool(kwargs["use_grounding"])
+        else:
+            use_grounding = should_use_grounding(task_type) if task_type else False
         resolved_model = model or self._model
         timeout_ms = self._call_timeout_sec * 1000
+
+        safety_settings = [
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+        ]
 
         if use_grounding:
             config = types.GenerateContentConfig(
                 system_instruction=system,
                 tools=[types.Tool(google_search=types.GoogleSearch())],
+                safety_settings=safety_settings,
             )
         else:
-            config = types.GenerateContentConfig(system_instruction=system) if system else None
+            config = types.GenerateContentConfig(
+                system_instruction=system,
+                safety_settings=safety_settings,
+            )
 
         print(
             f"  … gemini: invoking generate_content "

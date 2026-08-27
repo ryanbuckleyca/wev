@@ -10,28 +10,53 @@ import type { ActiveFilterChip } from '@/components/JobSearch';
 
 interface BuildOrgFilterChipsInput {
   filters: OrganizationFilters;
+  onRemoveActivity: () => void;
   onRemoveNonSse: () => void;
   onRemoveSearch: () => void;
   onRemoveProvince: (province: string) => void;
   onRemoveMunicipality: (municipality: string) => void;
   onRemoveType: (type: string) => void;
+  onRemoveLanguage: (language: string) => void;
+  onRemoveSector: (sector: string) => void;
   /** next-intl t function scoped to the 'organizations' namespace */
   tOrgs: { (key: string): string; has: (key: string) => boolean };
   /** next-intl t function scoped to the 'filters' namespace */
   tFilters: (key: string) => string;
+  /** next-intl t function scoped to the 'taxonomy.sectors' namespace */
+  tSectors: (key: string) => string;
+}
+
+/** Labels for org language chips/filters; tFilters is scoped to `filters`. */
+export function orgLanguageLabel(language: string, tFilters: (key: string) => string): string {
+  if (language === 'en') return tFilters('language.en');
+  if (language === 'fr') return tFilters('language.fr');
+  if (language === 'bilingual') return tFilters('language.bilingual');
+  return language;
 }
 
 export function buildOrgActiveFilterChips({
   filters,
+  onRemoveActivity,
   onRemoveNonSse,
   onRemoveSearch,
   onRemoveProvince,
   onRemoveMunicipality,
   onRemoveType,
+  onRemoveLanguage,
+  onRemoveSector,
   tOrgs,
   tFilters,
+  tSectors,
 }: BuildOrgFilterChipsInput): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = [];
+
+  if (filters.activityWindow !== 'all') {
+    chips.push({
+      id: 'activity',
+      label: tOrgs(`activity${filters.activityWindow}`),
+      onRemove: onRemoveActivity,
+    });
+  }
 
   if (filters.showNonSse) {
     chips.push({
@@ -71,6 +96,22 @@ export function buildOrgActiveFilterChips({
       id: `type-${type}`,
       label: getOrganizationTypeLabel(type, tOrgs) ?? type,
       onRemove: () => onRemoveType(type),
+    });
+  }
+
+  for (const language of filters.selectedLanguages) {
+    chips.push({
+      id: `lang-${language}`,
+      label: orgLanguageLabel(language, tFilters),
+      onRemove: () => onRemoveLanguage(language),
+    });
+  }
+
+  for (const sector of filters.selectedSectors) {
+    chips.push({
+      id: `sector-${sector}`,
+      label: tSectors(`${sector}.label`),
+      onRemove: () => onRemoveSector(sector),
     });
   }
 

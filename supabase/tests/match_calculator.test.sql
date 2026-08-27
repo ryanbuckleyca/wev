@@ -3,7 +3,7 @@
 
 begin;
 
-select plan(9);
+select plan(12);
 
 -- ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -130,8 +130,11 @@ select ok(
   'trigger: profile update automatically updates job_matches skill_score'
 );
 
--- ─── Test 6: job-initiated matching ──────────────────────────────────────────
--- When a new job is added or updated, recalculate_matches_for_job should work.
+-- ─── Test 6: job-initiated matching via async queue worker ────────────────────
+-- Previously this test relied on a synchronous jobs trigger; the canonical
+-- path is now enqueue_job_match_recalc() + process_job_match_recalc_queue().
+-- This test also verifies the trigger has been narrowed: a pure summary-only
+-- UPDATE must NOT enqueue match recalculation.
 
 \set test_job_id_2 '''00000000-0000-0000-0000-000000000004'''
 
@@ -146,18 +149,51 @@ insert into public.jobs (
   'remote', 45.4215, -75.6972, 'Ottawa', 'ON'
 ) on conflict (id) do nothing;
 
-select recalculate_matches_for_job(:test_job_id_2);
+-- Confirm INSERT enqueues because the row has match-relevant data.
+select ok(
+  exists(
+    select 1 from public.job_match_recalc_queue
+     where job_id = :test_job_id_2 and processed_at is null
+  ),
+  'async job recalc: INSERT of qualified job enqueues recalc'
+);
+
+-- Drain the queue manually (pg_cron schedules are not active inside tests).
+select ok(
+  (select processed_jobs >= 0 from public.process_job_match_recalc_queue(
+    p_batch_size => 25, p_claim_owner => 'pgtap'
+  )),
+  'async job recalc: process_job_match_recalc_queue runs without error'
+);
 
 select ok(
   exists(select 1 from public.job_matches where user_id = :test_user_id and job_id = :test_job_id_2),
-  'job-initiated: recalculate_matches_for_job creates match for existing user'
+  'async job recalc: worker creates match for existing user'
+);
+
+-- Narrow-trigger check: UPDATE only summary/description (not in the watchlist)
+-- and confirm no new queue row appeared for test_job_id.
+delete from public.job_match_recalc_queue where job_id = :test_job_id;
+
+update public.jobs
+set summary = 'summary-only update should not trigger match recalc',
+    description = 'description-only update'
+where id = :test_job_id;
+
+select ok(
+  not exists(
+    select 1 from public.job_match_recalc_queue
+     where job_id = :test_job_id and enqueued_at > now() - interval '10s'
+  ),
+  'async job recalc: summary/description UPDATE does not enqueue recalc'
 );
 
 -- ─── Cleanup ─────────────────────────────────────────────────────────────────
 
+delete from public.job_match_recalc_queue where job_id in (:test_job_id, :test_job_id_2);
 delete from public.job_matches where user_id = :test_user_id;
 delete from public.profiles    where id = :test_user_id;
-delete from public.jobs        where id = :test_job_id;
+delete from public.jobs        where id in (:test_job_id, :test_job_id_2);
 delete from public.sources     where id = :test_source_id;
 delete from public.esco_skills where concept_uri like 'pgtap-%';
 

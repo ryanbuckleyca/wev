@@ -22,7 +22,7 @@ import unicodedata
 from collections import defaultdict
 
 from utils.db import PAGE_SIZE, supabase
-from utils.municipality_canonical import fold_municipality_key, pick_preferred_municipality_label
+from utils.municipality_canonical import normalize_location, pick_preferred_municipality_label
 
 
 def _paginate_jobs(columns: str):
@@ -57,7 +57,7 @@ def backfill_accent_merges(*, apply: bool, quiet: bool) -> dict[str, int]:
             if not m or not str(m).strip():
                 continue
             province = _nfc(str(row.get("province") or ""))
-            clusters[(province, fold_municipality_key(m))].add(_nfc(str(m)))
+            clusters[(province, normalize_location(m))].add(_nfc(str(m)))
 
     preferred: dict[tuple[str, str], str] = {}
     merge_groups: list[tuple[tuple[str, str], list[str], str]] = []
@@ -84,7 +84,7 @@ def backfill_accent_merges(*, apply: bool, quiet: bool) -> dict[str, int]:
                 unchanged += 1
                 continue
             province = _nfc(str(row.get("province") or ""))
-            key = (province, fold_municipality_key(str(old)))
+            key = (province, normalize_location(str(old)))
             new = preferred.get(key, _nfc(str(old)))
             if new == _nfc(str(old)):
                 unchanged += 1

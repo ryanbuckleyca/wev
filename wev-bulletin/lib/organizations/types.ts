@@ -15,13 +15,20 @@ export interface OrgIndexEntry {
   name: OrgRecord['name'];
   slug: OrgRecord['slug'];
   description: OrgRecord['description'];
+  description_en: OrgRecord['description_en'];
+  description_fr: OrgRecord['description_fr'];
   mission_statement: OrgRecord['mission_statement'];
+  mission_statement_en: OrgRecord['mission_statement_en'];
+  mission_statement_fr: OrgRecord['mission_statement_fr'];
   website: OrgRecord['website'];
   location: OrgRecord['location'];
+  municipality: OrgRecord['municipality'];
+  province: OrgRecord['province'];
   is_sse: OrgRecord['is_sse'];
   type: OrgRecord['type'];
   sector_id: OrgRecord['sector_id'];
   values_list: OrgRecord['values_list'];
+  language: OrgRecord['language'];
   // RPC-computed fields
   active_job_count: number;
   total_count: number;

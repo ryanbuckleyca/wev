@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
+import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
 import type { OrganizationFilters } from './useOrganizationFilters';
 
 interface UseOrganizationDataOptions {
@@ -14,7 +15,12 @@ interface UseOrganizationDataOptions {
  * Builds a deterministic string key from the current fetch parameters.
  * Used to detect when a new request is needed and to deduplicate in-flight requests.
  */
-function buildFetchKey(locale: string, currentPage: number, sortBy: string, filters: OrganizationFilters): string {
+function buildFetchKey(
+  locale: string,
+  currentPage: number,
+  sortBy: string,
+  filters: OrganizationFilters,
+): string {
   return [
     locale,
     currentPage,
@@ -24,6 +30,9 @@ function buildFetchKey(locale: string, currentPage: number, sortBy: string, filt
     filters.selectedProvinces.join(','),
     filters.selectedMunicipalities.join(','),
     filters.selectedTypes.join(','),
+    filters.selectedLanguages.join(','),
+    filters.selectedSectors.join(','),
+    filters.activityWindow,
   ].join('|');
 }
 
@@ -40,17 +49,26 @@ function buildSearchParams(
   if (filters.searchQuery) params.set('q', filters.searchQuery);
   // nonSse=true means "show non-SSE orgs" — server interprets absence as SSE-only
   if (filters.showNonSse) params.set('nonSse', 'true');
+  // Activity window: only set when not default ('all')
+  if (filters.activityWindow !== 'all') params.set('activity', filters.activityWindow);
   // Param names must match useOrganizationFilters URL keys and the API route's getAll() keys
   filters.selectedProvinces.forEach((p) => params.append('province', p));
   filters.selectedMunicipalities.forEach((m) => params.append('municipality', m));
   filters.selectedTypes.forEach((t) => params.append('type', t));
+  filters.selectedLanguages.forEach((l) => params.append('language', l));
+  filters.selectedSectors.forEach((s) => params.append('sector', s));
   return params;
 }
 
 export function useOrganizationData(
   locale: string,
   options: UseOrganizationDataOptions,
-  initialData?: { orgs: OrgIndexEntry[]; total: number; totalAvailable?: number },
+  initialData?: {
+    orgs: OrgIndexEntry[];
+    total: number;
+    totalAvailable?: number;
+    filterOptions?: OrganizationFilterOptions;
+  },
 ) {
   const { filters, currentPage, sortBy } = options;
 
@@ -58,6 +76,9 @@ export function useOrganizationData(
   const [total, setTotal] = useState<number>(() => initialData?.total ?? 0);
   const [totalAvailable, setTotalAvailable] = useState<number>(
     () => initialData?.totalAvailable ?? initialData?.total ?? 0,
+  );
+  const [filterOptions, setFilterOptions] = useState<OrganizationFilterOptions | null>(
+    () => initialData?.filterOptions ?? null,
   );
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +120,7 @@ export function useOrganizationData(
         setOrgs(data.orgs);
         setTotal(data.total);
         setTotalAvailable(data.totalAvailable ?? data.total);
+        if (data.filterOptions) setFilterOptions(data.filterOptions);
         hasDataRef.current = true;
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
@@ -116,5 +138,5 @@ export function useOrganizationData(
     };
   }, [fetchKey, locale, currentPage, sortBy, filters]);
 
-  return { orgs, total, totalAvailable, loading, error };
+  return { orgs, total, totalAvailable, filterOptions, loading, error };
 }

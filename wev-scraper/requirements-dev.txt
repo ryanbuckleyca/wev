@@ -3,7 +3,6 @@
 pytest
 pytest-mock
 pytest-cov
-tavily-python
 ollama
 ruff
 pyright

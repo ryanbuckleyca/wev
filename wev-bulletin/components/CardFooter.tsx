@@ -7,9 +7,9 @@ import InfoPopover from './InfoPopover';
 import ProgressDonut from './ProgressDonut';
 import ExpandablePills, { ExpandablePillGroup } from './ExpandablePills';
 import { ScrollablePillsItem } from '@/components/ui/ScrollablePills';
-import { getValueDefinition, getValueTranslationsHelper } from '@/lib/values';
+import { getValueTranslationsHelper } from '@/lib/values';
 
-interface JobCardFooterProps {
+interface CardFooterProps {
   values: string[];
   skills: string[];
   sharedValues: string[];
@@ -23,12 +23,16 @@ interface JobCardFooterProps {
   fadeBackground?: string;
   workType?: 'remote' | 'hybrid' | 'office';
   selectedWorkTypes?: string[];
+  /** Free-text location pill (org cards); same visual style as workType. */
+  locationLabel?: string | null;
   language?: string | null;
+  /** Whether language describes a job requirement or an organization's public presence. */
+  languageContext?: 'job' | 'organization';
   selectedLanguages?: string[];
   isLoggedIn?: boolean;
 }
 
-export default function JobCardFooter({
+export default function CardFooter({
   values,
   skills,
   sharedValues,
@@ -42,10 +46,12 @@ export default function JobCardFooter({
   fadeBackground = 'var(--muted)',
   workType,
   selectedWorkTypes = [],
+  locationLabel = null,
   language,
+  languageContext = 'job',
   selectedLanguages = [],
   isLoggedIn = true,
-}: JobCardFooterProps) {
+}: CardFooterProps) {
   const t = useTranslations();
   const tMatch = useTranslations('matchDetails');
   const tValues = useTranslations('values');
@@ -74,7 +80,7 @@ export default function JobCardFooter({
     matchedNames: string,
     unmatchedNames: string,
     nounKey: string,
-    icon: 'heart' | 'briefcase',
+    icon: 'heart' | 'hammer',
   ): ScrollablePillsItem | null => {
     if (totalCount === 0) return null;
 
@@ -124,26 +130,47 @@ export default function JobCardFooter({
     };
   };
 
+  const buildLocationPill = (): ScrollablePillsItem | undefined => {
+    const label = locationLabel?.trim();
+    if (!label) return undefined;
+
+    return {
+      label,
+      isMatched: false,
+      icon: 'location' as const,
+      type: 'location' as const,
+    };
+  };
+
   const buildLanguagePill = (): ScrollablePillsItem | undefined => {
     if (!language) return undefined;
 
     const langLabel = getJobLanguageLabel(language, t);
+    const organizationDescription =
+      language === 'bilingual'
+        ? t('filters.language.tooltip.organizationBilingual')
+        : t('filters.language.tooltip.organizationPublic', { lang: langLabel });
 
     // Only mark the pill as matched when a language filter is active and it matches.
     // If no language filter is selected, the pill is not active but we still
-    // surface a descriptive tooltip indicating the job's required language.
+    // surface a descriptive tooltip indicating the relevant language.
     let isMatched = false;
-    let tooltip = t('filters.language.tooltip.required', { lang: langLabel });
+    let tooltip =
+      languageContext === 'organization'
+        ? organizationDescription
+        : t('filters.language.tooltip.required', { lang: langLabel });
 
     if (selectedLanguages.length === 0) {
-      // No language filter chosen: do not activate the pill, show required tooltip.
       isMatched = false;
-      tooltip = t('filters.language.tooltip.required', { lang: langLabel });
     } else {
       isMatched = selectedLanguages.includes(language);
-      tooltip = isMatched
+      const filterDescription = isMatched
         ? t('filters.language.tooltip.matchesFilter', { lang: langLabel })
         : t('filters.language.tooltip.doesNotMatch', { lang: langLabel });
+      tooltip =
+        languageContext === 'organization'
+          ? `${organizationDescription}<br/><br/>${filterDescription}`
+          : filterDescription;
     }
 
     return {
@@ -187,7 +214,7 @@ export default function JobCardFooter({
       matchedSkillNames,
       unmatchedSkillNames,
       'skillNoun',
-      'briefcase',
+      'hammer',
     ),
   ].filter(Boolean) as ScrollablePillsItem[];
 
@@ -227,11 +254,14 @@ export default function JobCardFooter({
   });
 
   const valueSummaryPill = summaryItems.find((item) => item.icon === 'heart');
-  const skillSummaryPill = summaryItems.find((item) => item.icon === 'briefcase');
+  const skillSummaryPill = summaryItems.find((item) => item.icon === 'hammer');
   const workTypePill = buildWorkTypePill();
+  const locationPill = buildLocationPill();
   const languagePill = buildLanguagePill();
 
-  const preItems = [workTypePill, languagePill].filter(Boolean) as ScrollablePillsItem[];
+  const preItems = [workTypePill, locationPill, languagePill].filter(
+    Boolean,
+  ) as ScrollablePillsItem[];
 
   const groups: ExpandablePillGroup[] = [
     { key: 'values', summary: valueSummaryPill, items: valueItems },

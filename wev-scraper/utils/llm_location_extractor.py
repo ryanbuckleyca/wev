@@ -1,8 +1,10 @@
 """LLM-based location extraction for job postings.
 
-Uses the default provider for location extraction, unless VPN mode requests Gemini.
-Handles edge cases like accented characters, French text, remote/hybrid locations,
-and regional descriptors that traditional regex patterns struggle with.
+Uses the shared fallback chain
+(gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama),
+same as OrganizationAssessor and the unified post-processor. Handles edge cases
+like accented characters, French text, remote/hybrid locations, and regional
+descriptors that traditional regex patterns struggle with.
 
 Usage:
     from utils.llm_location_extractor import extract_locations_for_jobs
@@ -19,12 +21,13 @@ Usage:
 """
 
 import json
-import os
+import logging
 import time
 from typing import Any, Dict, List
 
-from llm.factory import DEFAULT_MODEL, get_provider
-from utils.env import is_truthy_env
+from llm.factory import get_fallback_llm_provider
+
+logger = logging.getLogger(__name__)
 
 
 def extract_locations_for_jobs(
@@ -72,11 +75,15 @@ def extract_locations_for_jobs(
             time.sleep(rate_limit_seconds)
 
 
-def _get_location_extraction_provider_name() -> str:
-    """Return the provider used for location extraction."""
-    if is_truthy_env("SCRAPER_VPN_MODE"):
-        return "gemini"
-    return DEFAULT_MODEL
+def _default_results(n: int) -> List[Dict[str, Any]]:
+    return [
+        {
+            "municipality": None,
+            "province": None,
+            "work_type": "office",
+        }
+        for _ in range(n)
+    ]
 
 
 def _extract_batch(locations: List[str]) -> List[Dict[str, Any]]:
@@ -145,16 +152,22 @@ Format: [{{"municipality": "...", "province": "...", "work_type": "remote|hybrid
     full_prompt = prompt.format(locations_json=locations_json)
 
     try:
-        provider_name = _get_location_extraction_provider_name()
-        # VPN mode switches location extraction to Gemini; otherwise use the default provider.
+        # Same chain as OrganizationAssessor / unified processor:
+        # gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama.
         # json_mode=False because we need a top-level JSON array, not an object.
         # Groq's json_object mode only supports a single root object, which causes
         # the model to collapse all results into one entry.
-        provider = get_provider(name=provider_name)
+        provider = get_fallback_llm_provider()
+        if not provider:
+            raise RuntimeError(
+                "No LLM provider available for location extraction "
+                "(check GEMINI_API_KEY / GROQ_API_KEY)"
+            )
+
         response = provider.complete(full_prompt, json_mode=False)
 
         if not response:
-            raise Exception(f"{provider_name} returned empty response")
+            raise Exception("LLM returned empty response for location extraction")
 
         text = response.strip()
         if text.startswith("```"):
@@ -186,16 +199,9 @@ Format: [{{"municipality": "...", "province": "...", "work_type": "remote|hybrid
         return results
 
     except Exception as e:
+        logger.warning("Error extracting locations with LLM: %s", e)
         print(f"Error extracting locations with LLM: {e}")
-        # Return default values on error
-        return [
-            {
-                "municipality": None,
-                "province": None,
-                "work_type": "office"
-            }
-            for _ in locations
-        ]
+        return _default_results(len(locations))
 
 
 def extract_location_single(location: str) -> Dict[str, Any]:

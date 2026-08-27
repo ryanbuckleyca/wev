@@ -42,15 +42,15 @@ async function main() {
   loadEnvFiles("staging", root);
 
   const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secretKey = process.env.SUPABASE_SECRET_KEY;
   const projectRef = process.env.SUPABASE_PROJECT_REF;
 
   // Prod credentials for syncing — loaded from .env.production only.
   loadProductionEnvOnly(root);
   const prodUrl = process.env.SUPABASE_URL;
-  const prodKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const prodKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!supabaseUrl || !serviceRoleKey || !projectRef || !prodUrl || !prodKey) {
+  if (!supabaseUrl || !secretKey || !projectRef || !prodUrl || !prodKey) {
     console.error(
       "❌ Error: Missing staging credentials in .env.staging or production credentials in .env.production",
     );
@@ -103,7 +103,7 @@ async function main() {
 
     console.log(`▶ Seeding staging project: ${projectRef}`);
     await resetAndSeedDatabase(
-      { projectRef, serviceRoleKey, supabaseUrl },
+      { projectRef, secretKey, supabaseUrl },
       prodSources,
     );
 

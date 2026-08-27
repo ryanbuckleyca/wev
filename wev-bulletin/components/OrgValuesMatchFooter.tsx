@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
-import JobCardFooter from './JobCardFooter';
+import CardFooter from './CardFooter';
 import MatchDetailsTooltip from './MatchDetailsTooltip';
 
 interface Props {
@@ -12,6 +12,11 @@ interface Props {
   isLoggedIn: boolean;
   fadeBackground?: string;
   className?: string;
+  /** Location pill label (same style as job work-type pills). */
+  locationLabel?: string | null;
+  /** Org public language (`en` / `fr` / `bilingual`), same pill as jobs. */
+  language?: string | null;
+  selectedLanguages?: string[];
 }
 
 export function buildOrgValuesMatchTooltip(
@@ -43,6 +48,9 @@ export default function OrgValuesMatchFooter({
   isLoggedIn,
   fadeBackground = 'var(--muted)',
   className,
+  locationLabel = null,
+  language = null,
+  selectedLanguages = [],
 }: Props) {
   const scorePercent = useMemo(() => {
     if (valueScore == null) return null;
@@ -50,14 +58,16 @@ export default function OrgValuesMatchFooter({
   }, [valueScore]);
 
   const matchTooltipContent = useMemo(() => {
-    if (!isLoggedIn || scorePercent == null) return null;
+    if (!isLoggedIn || scorePercent == null || values.length === 0) return null;
     return buildOrgValuesMatchTooltip(values, scorePercent, sharedValues);
   }, [isLoggedIn, scorePercent, values, sharedValues]);
 
-  if (values.length === 0) return null;
+  const hasLocation = Boolean(locationLabel?.trim());
+  const hasLanguage = Boolean(language);
+  if (values.length === 0 && !hasLocation && !hasLanguage) return null;
 
   const footer = (
-    <JobCardFooter
+    <CardFooter
       values={values}
       skills={[]}
       sharedValues={sharedValues}
@@ -70,6 +80,10 @@ export default function OrgValuesMatchFooter({
       showMatchLoading={false}
       fadeBackground={fadeBackground}
       isLoggedIn={isLoggedIn}
+      locationLabel={locationLabel}
+      language={language}
+      languageContext="organization"
+      selectedLanguages={selectedLanguages}
     />
   );
 

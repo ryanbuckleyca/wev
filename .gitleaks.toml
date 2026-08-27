@@ -1,0 +1,17 @@
+# Gitleaks configuration
+# Allowlist false positives from test files that contain dummy passwords
+
+[allowlist]
+description = "Allowlisted files and patterns"
+
+# Test files with dummy/fake passwords used in unit and e2e tests
+paths = [
+  '''e2e/tests/auth/signup\.spec\.ts''',
+  '''e2e/tests/auth-email\.spec\.ts''',
+  '''e2e/tests/mutating/matching\.spec\.ts''',
+  '''wev-bulletin/lib/password-strength\.test\.ts''',
+  '''wev-bulletin/lib/account/password-verifier\.test\.ts''',
+  '''wev-bulletin/app/api/account/route\.test\.ts''',
+  '''wev-bulletin/app/\[locale\]/account-settings/page\.test\.tsx''',
+  '''lib/password-strength\.test\.ts''',
+]

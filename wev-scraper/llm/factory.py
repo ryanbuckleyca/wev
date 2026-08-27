@@ -1,10 +1,13 @@
 """Factory for LLM provider selection.
 
 Default: Groq for most tasks (summarization, location extraction, values tagging).
-SSE classification: Gemini Flash → Flash-Lite fallback for grounding.
+SSE / org assessment chain (``get_sse_provider`` / ``get_fallback_llm_provider``):
+  gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama
+with shared Tavily evidence (see ``llm.gemini_fallback`` / ``llm.tavily_grounding``).
 """
 
 import logging
+import os
 from typing import TYPE_CHECKING, Literal
 
 from llm.base import BaseLLMProvider
@@ -22,17 +25,21 @@ ProviderName = Literal["gemini", "groq"]
 
 # Model defaults
 # DEFAULT_MODEL: Used for most tasks (summarization, location extraction, values tagging)
-# SSE classification: Uses gemini-2.5-flash → gemini-2.5-flash-lite → groq via unified processor
-DEFAULT_MODEL = "groq" # Free tier: ~10 RPM, 12K TPM, 1000 RPH
+# SSE / org assessment: Gemini 3 Flash → Flash-Lite → Groq → Ollama via SSEFallbackProvider
+DEFAULT_MODEL = "groq"  # Free tier: ~10 RPM, 12K TPM, 1000 RPH
 
 PROVIDERS: dict[str, type[BaseLLMProvider]] = {
     "gemini": GeminiProvider,
     "groq": GroqProvider,
     "local_grounded": LocalGroundedProvider,
-    # Add future providers without changing callers:
-    # "openai": OpenAIProvider,
-    # "anthropic": AnthropicProvider,
 }
+
+
+def _enable_local_fallback() -> bool:
+    """Return True when ENABLE_LOCAL_FALLBACK opts in to ollama/local_grounded paths."""
+    return (os.environ.get("ENABLE_LOCAL_FALLBACK", "").strip().lower()
+            in ("1", "true", "yes", "on"))
+
 
 def _is_local_mode() -> bool:
     """Return True if running locally (ENV_MODE=local)."""
@@ -43,11 +50,10 @@ def get_job_summary_provider() -> BaseLLMProvider | None:
     """Return the LLM provider for job summarization, or None if not configured.
 
     Priority order:
-    1. If ENV_MODE=local: local_grounded (Tavily + Ollama)
+    1. If ENV_MODE=local and ENABLE_LOCAL_FALLBACK is on: local_grounded (Ollama)
     2. Otherwise: LLM_PROVIDER env var or default "groq"
     """
-    # Use local grounded provider in local mode
-    if _is_local_mode():
+    if _is_local_mode() and _enable_local_fallback():
         try:
             provider = get_provider(name="local_grounded")
             if provider.is_available():
@@ -55,7 +61,6 @@ def get_job_summary_provider() -> BaseLLMProvider | None:
         except Exception:
             pass
 
-    # Fall back to regular provider selection
     try:
         provider = get_provider()
         if provider.is_available():
@@ -81,17 +86,13 @@ def get_provider(
     Raises:
         ValueError: If provider name not found or provider unavailable.
     """
-    # Auto-detect provider if not specified
     if name is None:
-        # Check for explicit provider choice first
         name = get_stripped_env("LLM_PROVIDER") or None
 
-        # If in local mode and no explicit provider, use local grounded
-        if name is None and _is_local_mode():
+        if name is None and _is_local_mode() and _enable_local_fallback():
             name = "local_grounded"
             logger.info("Local mode: using local_grounded provider")
 
-        # Default fallback
         if name is None:
             name = DEFAULT_MODEL
 
@@ -107,19 +108,28 @@ def get_provider(
         raise ValueError(f"Provider {name} failed to initialize: {e}") from e
 
 
-def get_sse_provider() -> BaseLLMProvider | None:
-    """Return provider for SSE classification with fallback.
+def get_fallback_llm_provider() -> BaseLLMProvider | None:
+    """Return multi-tier LLM provider with runtime fallback.
 
-    Priority order:
-    1. If ENV_MODE=local: local_grounded (Tavily + Ollama)
-    2. Otherwise: gemini-2.5-flash (10 RPM, grounding)
-    3. Fallback: groq (~10 RPM, no grounding)
+    Always uses ``SSEFallbackProvider`` when available:
+      gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama (if ENABLE_LOCAL_FALLBACK)
 
-    Returns:
-        Provider instance or None if no provider available.
+    Shared Tavily evidence is injected once for ``task=sse`` so every backend
+    sees the same snippets. Providers that fail to initialize are skipped.
+
+    Used by OrganizationAssessor, SSEClassifier, and location extraction.
     """
-    # Use local grounded provider in local mode
-    if _is_local_mode():
+    try:
+        from llm.gemini_fallback import SSEFallbackProvider
+
+        provider = SSEFallbackProvider()
+        if provider.is_available():
+            return provider
+    except Exception as exc:
+        logger.warning("LLM fallback provider unavailable: %s", exc)
+
+    # Last resort: Ollama alone (e.g. no Gemini/Groq keys and chain init failed)
+    if _is_local_mode() and _enable_local_fallback():
         try:
             provider = get_provider(name="local_grounded")
             if provider.is_available():
@@ -127,36 +137,19 @@ def get_sse_provider() -> BaseLLMProvider | None:
         except Exception:
             pass
 
-    # Try Gemini first for grounding support
-    try:
-        provider = get_provider(name="gemini", model="gemini-2.5-flash")  # Uses gemini-2.5-flash
-        if provider.is_available():
-            return provider
-    except Exception:
-        pass
-
-    # Fallback to Groq (no grounding, but better than nothing)
-    try:
-        provider = get_provider(name="groq")
-        if provider.is_available():
-            return provider
-    except Exception:
-        pass
-
     return None
+
+
+def get_sse_provider() -> BaseLLMProvider | None:
+    """Return provider for SSE / org assessment (alias of get_fallback_llm_provider)."""
+    return get_fallback_llm_provider()
 
 
 def get_unified_processor(**kwargs) -> "UnifiedJobProcessor":
     """Return the unified job processor with intelligent fallback.
 
-    The unified processor handles: summary + raw_skills + values + SSE classification
-    in a single LLM call with automatic fallback:
-    1. gemini-2.5-flash
-    2. gemini-2.5-flash-lite
-    3. groq (~10 RPM; same JSON shape including SSE fields, no web search tools)
-
-    When Gemini returns transient errors (503, overload), ``complete_batch`` re-raises so
-    this chain can try Groq.
+    Fallback order matches SSE:
+      gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama
 
     Args:
         **kwargs: Passed to UnifiedJobProcessor constructor (e.g. api_key).

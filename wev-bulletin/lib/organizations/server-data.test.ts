@@ -61,7 +61,11 @@ vi.mock('@/lib/resolve-skill-labels', () => ({
   ),
 }));
 
-import { fetchOrganizationIndex, getOrganizationJobs } from './server-data';
+import {
+  fetchOrganizationIndex,
+  fetchOrganizationFilterOptions,
+  getOrganizationJobs,
+} from './server-data';
 
 function resetQuery(query: any) {
   query.select.mockClear().mockReturnValue(query);
@@ -84,6 +88,8 @@ function makeRpcOrg(id: number, name: string, active_job_count: number) {
     type: null,
     slug: `${name.toLowerCase()}-${id}`,
     description: null,
+    description_en: null,
+    description_fr: null,
     website: null,
     location: null,
     sse_rating: null,
@@ -91,6 +97,8 @@ function makeRpcOrg(id: number, name: string, active_job_count: number) {
     is_sse: false,
     logo_url: null,
     mission_statement: null,
+    mission_statement_en: null,
+    mission_statement_fr: null,
     values_list: null,
     values_rated: null,
     active_job_count,
@@ -112,18 +120,18 @@ describe('organizations/server-data', () => {
     vi.useRealTimers();
   });
 
-  it('uses the RPC to fetch organizations sorted with active job counts and pagination total', async () => {
+  it('uses the RPC to fetch organizations sorted with active job counts and pagination total (default: all orgs)', async () => {
     mockRpc.mockResolvedValue({
       data: [makeRpcOrg(2, 'Alpha Org', 1), makeRpcOrg(1, 'Zeta Org', 2)],
       error: null,
     });
 
-    const result = await fetchOrganizationIndex({ page: 1 });
+    const result = await fetchOrganizationIndex({ page: 1, activityDays: null });
 
     // Default SSE-only view with no user filters: single RPC (totalAvailable === total).
     expect(mockRpc).toHaveBeenCalledTimes(1);
     expect(mockRpc).toHaveBeenCalledWith('get_active_organizations', {
-      min_date: '2026-05-16T00:00:00.000Z',
+      min_date: null,
       p_limit: 20,
       p_offset: 0,
       p_search: null,
@@ -131,6 +139,8 @@ describe('organizations/server-data', () => {
       p_provinces: null,
       p_municipalities: null,
       p_org_types: null,
+      p_languages: null,
+      p_sectors: null,
       p_user_id: null,
       p_sort: 'org-asc',
     });
@@ -138,6 +148,28 @@ describe('organizations/server-data', () => {
     expect(result.totalAvailable).toBe(3);
     expect(result.orgs.map((org) => org.name)).toEqual(['Alpha Org', 'Zeta Org']);
     expect(result.orgs.map((org) => org.active_job_count)).toEqual([1, 2]);
+  });
+
+  it('passes the computed min_date when an activity window is provided', async () => {
+    mockRpc.mockResolvedValue({ data: [], error: null });
+
+    await fetchOrganizationIndex({ activityDays: 28 });
+
+    expect(mockRpc).toHaveBeenLastCalledWith(
+      'get_active_organizations',
+      expect.objectContaining({
+        min_date: '2026-05-16T00:00:00.000Z',
+      }),
+    );
+
+    await fetchOrganizationIndex({ activityDays: 90 });
+
+    expect(mockRpc).toHaveBeenLastCalledWith(
+      'get_active_organizations',
+      expect.objectContaining({
+        min_date: '2026-03-15T00:00:00.000Z',
+      }),
+    );
   });
 
   it('fetches a denominator scoped to the current SSE universe when user filters are set', async () => {
@@ -176,6 +208,7 @@ describe('organizations/server-data', () => {
         p_provinces: null,
         p_municipalities: null,
         p_org_types: null,
+        p_languages: null,
       }),
     );
     expect(result.totalAvailable).toBe(10);
@@ -207,5 +240,67 @@ describe('organizations/server-data', () => {
     expect(jobsQuery.range).toHaveBeenCalledWith(20, 39);
     expect(result.total).toBe(1);
     expect(result.jobs).toHaveLength(1);
+  });
+
+  describe('fetchOrganizationFilterOptions', () => {
+    it('queries the rpc when activityDays is null', async () => {
+      mockRpc.mockResolvedValueOnce({
+        data: {
+          global: {
+            types: ['nonprofit'],
+            provinces: ['Quebec'],
+            municipalities: [{ province: 'Quebec', municipality: 'Montreal' }],
+            languages: ['fr'],
+          },
+          available: {
+            types: ['nonprofit'],
+            provinces: ['Quebec'],
+            municipalities: [{ province: 'Quebec', municipality: 'Montreal' }],
+            languages: ['fr'],
+          },
+        },
+        error: null,
+      });
+
+      const options = await fetchOrganizationFilterOptions(null);
+
+      expect(mockRpc).toHaveBeenCalledWith('get_organization_filter_options', {
+        p_activity_days: null,
+      });
+
+      expect(options.types).toEqual(['nonprofit']);
+      expect(options.provinces).toEqual(['Quebec']);
+      expect(options.municipalitiesByProvince).toEqual({ Quebec: ['Montreal'] });
+      expect(options.languages).toEqual(['fr']);
+    });
+
+    it('queries the rpc when activityDays is set', async () => {
+      mockRpc.mockResolvedValueOnce({
+        data: {
+          global: {
+            types: ['cooperative', 'nonprofit'],
+            provinces: ['Ontario'],
+            municipalities: [{ province: 'Ontario', municipality: 'Toronto' }],
+            languages: ['en'],
+          },
+          available: {
+            types: ['cooperative'],
+            provinces: ['Ontario'],
+            municipalities: [{ province: 'Ontario', municipality: 'Toronto' }],
+            languages: ['en'],
+          },
+        },
+        error: null,
+      });
+
+      const options = await fetchOrganizationFilterOptions(28);
+
+      expect(mockRpc).toHaveBeenCalledWith('get_organization_filter_options', {
+        p_activity_days: 28,
+      });
+
+      expect(options.types).toEqual(['cooperative', 'nonprofit']);
+      expect(options.availableTypes).toEqual(['cooperative']);
+    });
   });
 });

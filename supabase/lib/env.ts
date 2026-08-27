@@ -40,7 +40,7 @@ export function loadTargetEnv(
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     process.env.SUPABASE_ANON_KEY;
 
-  const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secretKey = process.env.SUPABASE_SECRET_KEY;
 
   if (!supabaseUrl || !anonKey) {
     console.error(

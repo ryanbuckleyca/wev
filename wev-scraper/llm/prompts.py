@@ -151,7 +151,9 @@ def get_unified_system_prompt(include_sse: bool = False) -> str:
 
     if include_sse:
         base_parts.extend([
-            "- is_sse: boolean - true if social/solidarity economy (non-profit, cooperative, etc.)",
+            "- is_sse: boolean - true only for social/solidarity economy employers "
+            "(nonprofit, cooperative, mutual, union, etc.). "
+            "false for government/public-sector employers and conventional for-profits",
             "- sse_confidence: float 0-1 for classification confidence",
         ])
 

@@ -9,6 +9,22 @@ import { ORG_INDEX_PAGE_SIZE, ORG_JOBS_PER_PAGE } from './constants';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
 // ---------------------------------------------------------------------------
+// Activity-window helpers
+// ---------------------------------------------------------------------------
+
+/** Maps an activityDays value to the min_date RPC parameter. */
+export function activityDaysToMinDate(
+  activityDays: number | null | undefined,
+  now: number = Date.now(),
+): string | null {
+  if (activityDays == null) return null; // "All organisations" — no date filter
+  const d = new Date(now);
+  d.setUTCDate(d.getUTCDate() - activityDays);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+// ---------------------------------------------------------------------------
 // fetchOrganizationIndex
 // ---------------------------------------------------------------------------
 
@@ -19,8 +35,12 @@ export interface FetchOrganizationIndexOptions {
   provinces?: string[];
   municipalities?: string[];
   orgTypes?: string[];
+  languages?: string[];
+  sectors?: string[];
   userId?: string | null;
   sortBy?: string | null;
+  /** null/undefined = all orgs (full directory), 28 = last 4 weeks, 90 = last 3 months */
+  activityDays?: number | null;
 }
 
 export async function fetchOrganizationIndex(
@@ -35,26 +55,28 @@ export async function fetchOrganizationIndex(
     provinces = [],
     municipalities = [],
     orgTypes = [],
+    languages = [],
+    sectors = [],
     userId = null,
     sortBy = null,
+    activityDays = null,
   } = options;
 
   const page = Math.max(1, rawPage);
-  const minDate = bulletinAgeCutoffIso();
+  const minDate = activityDaysToMinDate(activityDays);
   const limit = ORG_INDEX_PAGE_SIZE;
   const offset = (page - 1) * limit;
   const effectiveSortBy = sortBy ?? (userId ? 'value-match-desc' : 'org-asc');
 
   // Product default is SSE-only; that is the baseline universe, not a "filter".
-  // Denominator matches the current SSE scope with no search/geo/type chips.
-  // Unlike the jobs board, org index uses only the hard 28-day bulletin ceiling
-  // (`bulletinAgeCutoffIso`) — not the jobs-board 2-week `postedWithin` default.
-  // See `lib/bulletin/server-data.ts` for the jobs "X of Y" semantics.
+  // Denominator matches the current SSE scope with no search/geo/type/sector chips.
   const hasUserFilters =
     Boolean(searchQuery) ||
     provinces.length > 0 ||
     municipalities.length > 0 ||
-    orgTypes.length > 0;
+    orgTypes.length > 0 ||
+    languages.length > 0 ||
+    sectors.length > 0;
 
   // Run main query and baseline denominator count in parallel.
   // The denominator call uses p_limit:1 to return exactly one row carrying the
@@ -66,6 +88,8 @@ export async function fetchOrganizationIndex(
     p_provinces: null,
     p_municipalities: null,
     p_org_types: null,
+    p_languages: null,
+    p_sectors: null,
     p_limit: 1,
     p_offset: 0,
     p_user_id: null,
@@ -79,6 +103,8 @@ export async function fetchOrganizationIndex(
     p_provinces: provinces.length > 0 ? provinces : null,
     p_municipalities: municipalities.length > 0 ? municipalities : null,
     p_org_types: orgTypes.length > 0 ? orgTypes : null,
+    p_languages: languages.length > 0 ? languages : null,
+    p_sectors: sectors.length > 0 ? sectors : null,
     p_limit: limit,
     p_offset: offset,
     p_user_id: userId,
@@ -115,8 +141,12 @@ export async function fetchOrganizationIndex(
       : total
     : total;
 
+  // active_job_count should always be returned by the RPC (0 for no recent jobs),
+  // regardless of min_date. If it's missing, the RPC shape is unexpected.
   if (orgs && orgs.length > 0 && orgs[0].active_job_count == null) {
-    throw new Error('fetchOrganizationIndex: RPC response missing active_job_count');
+    throw new Error(
+      `fetchOrganizationIndex: RPC response missing active_job_count. First row: id=${orgs[0].id}, name=${orgs[0].name}`,
+    );
   }
 
   return {
@@ -205,50 +235,82 @@ export interface OrganizationFilterOptions {
   types: string[];
   provinces: string[];
   municipalitiesByProvince: Record<string, string[]>;
+  languages: string[];
+  sectors: string[];
+  availableTypes: string[];
+  availableProvinces: string[];
+  availableMunicipalitiesByProvince: Record<string, string[]>;
+  availableLanguages: string[];
+  availableSectors: string[];
 }
 
+/**
+ * Returns the filter options (types, provinces, municipalities, languages)
+ * for the org index. When activityDays is null (full directory / "All
+ * organisations"), options are derived from all orgs. When activityDays is
+ * set, options are scoped to orgs with jobs in that window.
+ */
 export const fetchOrganizationFilterOptions = cache(
-  async (): Promise<OrganizationFilterOptions> => {
-    // Only surface filter values for organizations that currently have active jobs,
-    // so users don't see provinces/types that would produce zero results.
-    const minDate = bulletinAgeCutoffIso();
-    const { data, error } = await supabaseServer
-      .from('organizations')
-      .select('type, province, municipality, jobs!inner(date_posted)')
-      .gte('jobs.date_posted', minDate);
+  async (activityDays?: number | null): Promise<OrganizationFilterOptions> => {
+    if (Number.isNaN(activityDays)) {
+      throw new Error(
+        `fetchOrganizationFilterOptions: invalid activityDays provided (got ${activityDays})`,
+      );
+    }
+
+    const { data, error } = await supabaseServer.rpc('get_organization_filter_options', {
+      p_activity_days: activityDays ?? null,
+    });
 
     if (error) {
-      // Re-throw so the caller (page render) can surface the error rather than
-      // silently showing blank filter options that look like a bug.
       throw new Error(`fetchOrganizationFilterOptions error: ${error.message}`);
     }
 
-    const types = new Set<string>();
-    const provinces = new Set<string>();
-    const municipalitiesByProv: Record<string, Set<string>> = {};
+    // Helper to format the RPC response (handling the municipality mapping)
+    const formatOptions = (raw: any) => {
+      const types = Array.isArray(raw?.types) ? raw.types : [];
+      const provinces = Array.isArray(raw?.provinces) ? raw.provinces : [];
+      const languages = Array.isArray(raw?.languages) ? raw.languages : [];
+      const sectors = Array.isArray(raw?.sectors) ? raw.sectors : [];
+      const rawMunicipalities = Array.isArray(raw?.municipalities) ? raw.municipalities : [];
 
-    for (const org of data) {
-      if (org.type) types.add(org.type);
-      if (org.province) {
-        provinces.add(org.province);
-        if (org.municipality) {
-          if (!municipalitiesByProv[org.province]) {
-            municipalitiesByProv[org.province] = new Set<string>();
-          }
-          municipalitiesByProv[org.province].add(org.municipality);
+      const municipalitiesByProv: Record<string, Set<string>> = {};
+      for (const m of rawMunicipalities) {
+        if (!municipalitiesByProv[m.province]) {
+          municipalitiesByProv[m.province] = new Set();
         }
+        municipalitiesByProv[m.province].add(m.municipality);
       }
-    }
 
-    const municipalitiesByProvince: Record<string, string[]> = {};
-    for (const prov of Object.keys(municipalitiesByProv)) {
-      municipalitiesByProvince[prov] = Array.from(municipalitiesByProv[prov]).sort();
-    }
+      const finalMunicipalities: Record<string, string[]> = {};
+      // Sort municipalities within each province
+      for (const prov in municipalitiesByProv) {
+        finalMunicipalities[prov] = Array.from(municipalitiesByProv[prov]).sort();
+      }
+
+      return {
+        types: types.sort(),
+        provinces: provinces.sort(),
+        languages: languages.sort(),
+        sectors: sectors.sort(),
+        municipalitiesByProvince: finalMunicipalities,
+      };
+    };
+
+    const globalOptions = formatOptions(data?.global ?? {});
+    const availableOptions = formatOptions(data?.available ?? {});
 
     return {
-      types: Array.from(types).sort(),
-      provinces: Array.from(provinces).sort(),
-      municipalitiesByProvince,
+      types: globalOptions.types,
+      provinces: globalOptions.provinces,
+      municipalitiesByProvince: globalOptions.municipalitiesByProvince,
+      languages: globalOptions.languages,
+      sectors: globalOptions.sectors,
+      availableTypes: availableOptions.types,
+      availableProvinces: availableOptions.provinces,
+      availableMunicipalitiesByProvince: availableOptions.municipalitiesByProvince,
+      availableLanguages: availableOptions.languages,
+      availableSectors: availableOptions.sectors,
     };
   },
 );

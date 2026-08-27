@@ -25,7 +25,7 @@ from pathlib import Path
 
 # Load env before any DB import. Mirror unified_post_processor.py: always load
 # .env, then if --prod is set, override with .env.production so SUPABASE_URL /
-# SUPABASE_SERVICE_ROLE_KEY point at prod. We can't rely on dotenv-cli at the
+# SUPABASE_SECRET_KEY point at prod. We can't rely on dotenv-cli at the
 # npm layer because it is first-wins (won't override .env values).
 from settings import ensure_env_loaded, load_env_file  # noqa: E402
 

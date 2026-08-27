@@ -5,9 +5,12 @@ import {
   parseAsArrayOf,
   parseAsBoolean,
   parseAsInteger,
+  parseAsNativeArrayOf,
   parseAsString,
+  parseAsStringEnum,
   useQueryState,
 } from 'nuqs';
+import { parseActivityWindow, type ActivityWindow } from '@/lib/organizations/params';
 
 export interface OrganizationFilters {
   searchQuery: string;
@@ -16,6 +19,10 @@ export interface OrganizationFilters {
   selectedProvinces: string[];
   selectedMunicipalities: string[];
   selectedTypes: string[];
+  selectedLanguages: string[];
+  selectedSectors: string[];
+  /** Activity window: 'all' (default), '28d', or '90d'. */
+  activityWindow: ActivityWindow;
 }
 
 /**
@@ -38,6 +45,12 @@ export interface OrganizationFilterControls {
   setSelectedMunicipalities: (value: string[] | null) => Promise<unknown> | void;
   selectedTypes: string[];
   setSelectedTypes: (value: string[] | null) => Promise<unknown> | void;
+  selectedLanguages: string[];
+  setSelectedLanguages: (value: string[] | null) => Promise<unknown> | void;
+  selectedSectors: string[];
+  setSelectedSectors: (value: string[] | null) => Promise<unknown> | void;
+  activityWindow: ActivityWindow;
+  setActivityWindow: (value: ActivityWindow | null) => Promise<unknown> | void;
   currentPage: number;
   setCurrentPage: (value: number | null) => Promise<unknown> | void;
   sortBy: string;
@@ -64,9 +77,23 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     'type',
     parseAsArrayOf(parseAsString).withDefault([]),
   );
+  const [selectedLanguages, setSelectedLanguages] = useQueryState(
+    'language',
+    parseAsNativeArrayOf(parseAsString).withDefault([]),
+  );
+  const [selectedSectors, setSelectedSectors] = useQueryState(
+    'sector',
+    parseAsNativeArrayOf(parseAsString).withDefault([]),
+  );
+  const [activityWindow, setActivityWindow] = useQueryState(
+    'activity',
+    parseAsStringEnum<ActivityWindow>(['all', '28d', '90d']).withDefault('all'),
+  );
   const [currentPage, setCurrentPage] = useQueryState('page', parseAsInteger.withDefault(1));
   // Default to empty string - let the consuming component resolve the actual default based on auth state
   const [sortBy, setSortBy] = useQueryState('sortBy', parseAsString.withDefault(''));
+
+  const typedActivityWindow = parseActivityWindow(activityWindow);
 
   const filters = useMemo<OrganizationFilters>(
     () => ({
@@ -75,30 +102,66 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedProvinces,
       selectedMunicipalities,
       selectedTypes,
+      selectedLanguages,
+      selectedSectors,
+      activityWindow: typedActivityWindow,
     }),
-    [searchQuery, showNonSse, selectedProvinces, selectedMunicipalities, selectedTypes],
+    [
+      searchQuery,
+      showNonSse,
+      selectedProvinces,
+      selectedMunicipalities,
+      selectedTypes,
+      selectedLanguages,
+      selectedSectors,
+      typedActivityWindow,
+    ],
   );
 
-  // hasAnyFilters is false at the default state (showNonSse=false, nothing else set)
+  // hasAnyFilters is false at the default state (showNonSse=false, activity=all, nothing else set)
   const hasAnyFilters = useMemo(
     () =>
       !!searchQuery ||
       showNonSse ||
       selectedProvinces.length > 0 ||
       selectedMunicipalities.length > 0 ||
-      selectedTypes.length > 0,
-    [searchQuery, showNonSse, selectedProvinces, selectedMunicipalities, selectedTypes],
+      selectedTypes.length > 0 ||
+      selectedLanguages.length > 0 ||
+      selectedSectors.length > 0 ||
+      typedActivityWindow !== 'all',
+    [
+      searchQuery,
+      showNonSse,
+      selectedProvinces,
+      selectedMunicipalities,
+      selectedTypes,
+      selectedLanguages,
+      selectedSectors,
+      typedActivityWindow,
+    ],
   );
 
-  // Suggested defaults: showNonSse off (SSE-only), nothing else active
+  // Suggested defaults: showNonSse off (SSE-only), activity=all, nothing else active
   const isSuggestedDefaults = useMemo(
     () =>
       !searchQuery &&
       !showNonSse &&
       selectedProvinces.length === 0 &&
       selectedMunicipalities.length === 0 &&
-      selectedTypes.length === 0,
-    [searchQuery, showNonSse, selectedProvinces, selectedMunicipalities, selectedTypes],
+      selectedTypes.length === 0 &&
+      selectedLanguages.length === 0 &&
+      selectedSectors.length === 0 &&
+      typedActivityWindow === 'all',
+    [
+      searchQuery,
+      showNonSse,
+      selectedProvinces,
+      selectedMunicipalities,
+      selectedTypes,
+      selectedLanguages,
+      selectedSectors,
+      typedActivityWindow,
+    ],
   );
 
   const resetFilters = useCallback(
@@ -108,15 +171,36 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       void setSelectedProvinces([]);
       void setSelectedMunicipalities([]);
       void setSelectedTypes([]);
+      void setSelectedLanguages([]);
+      void setSelectedSectors([]);
+      void setActivityWindow('all');
       void setCurrentPage(1);
     },
-    [setSearchQuery, setShowNonSse, setSelectedProvinces, setSelectedMunicipalities, setSelectedTypes, setCurrentPage],
+    [
+      setSearchQuery,
+      setShowNonSse,
+      setSelectedProvinces,
+      setSelectedMunicipalities,
+      setSelectedTypes,
+      setSelectedLanguages,
+      setSelectedSectors,
+      setActivityWindow,
+      setCurrentPage,
+    ],
   );
 
   // clearAllFilters: resets everything, SSE filter goes back to SSE-only (default view).
   // applySuggestedDefaults: same as clear — SSE-only is the suggested default for orgs.
   const clearAllFilters = useCallback(() => resetFilters(false), [resetFilters]);
   const applySuggestedDefaults = clearAllFilters;
+
+  const setActivityWindowAndResetPage = useCallback(
+    (value: ActivityWindow | null) => {
+      void setActivityWindow(value);
+      void setCurrentPage(1);
+    },
+    [setActivityWindow, setCurrentPage],
+  );
 
   return {
     filters,
@@ -130,6 +214,12 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     setSelectedMunicipalities,
     selectedTypes,
     setSelectedTypes,
+    selectedLanguages,
+    setSelectedLanguages,
+    selectedSectors,
+    setSelectedSectors,
+    activityWindow: typedActivityWindow,
+    setActivityWindow: setActivityWindowAndResetPage,
     currentPage,
     setCurrentPage,
     sortBy,

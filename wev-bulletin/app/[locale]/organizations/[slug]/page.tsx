@@ -18,14 +18,16 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   const org = await getOrganizationBySlug(slug);
 
   if (!org) return {};
 
+  const { pickOrgLocalizedText } = await import('@/lib/organizations/localized');
+
   return {
     title: org.name,
-    description: org.description || undefined,
+    description: pickOrgLocalizedText(org, 'description', locale) || undefined,
   };
 }
 
@@ -81,6 +83,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
     <PageLayout maxWidth="lg">
       <OrganizationProfileHeader
         org={org}
+        locale={locale}
         t={t}
         editHref={isAdmin ? `/${locale}/admin/organizations/${org.id}/edit` : null}
         editLabel={isAdmin ? tAdmin('edit') : undefined}

@@ -13,6 +13,7 @@ node_modules/
 .pnp.js
 
 # Build artifacts
+wev.zip
 .next/
 build/
 dist/
@@ -64,10 +65,12 @@ backups/
 *.log
 *.tmp
 *.temp
+wev.zip
 rclone-log.txt
 trunk_output.txt
 trunk_report.txt
 trunk_results.txt
+*_ids.txt
 
 # Trunk / local tooling caches
 .trunk-cache/

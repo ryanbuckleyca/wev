@@ -16,7 +16,7 @@ export function setupTestEnv() {
   config({ path: path.join(root, '.env.test'), override: true });
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = process.env.SUPABASE_SECRET_KEY;
 
   if (process.env.USE_PROD_DB === '1' || (url && url === process.env.SUPABASE_PROD_URL)) {
     throw new Error('Tests cannot run against the production database.');

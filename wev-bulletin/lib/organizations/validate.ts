@@ -15,7 +15,11 @@ export interface OrgFormInput {
   name: string;
   slug?: string;
   description?: string | null;
+  description_en?: string | null;
+  description_fr?: string | null;
   mission_statement?: string | null;
+  mission_statement_en?: string | null;
+  mission_statement_fr?: string | null;
   website?: string | null;
   location?: string | null;
   municipality?: string | null;
@@ -84,14 +88,22 @@ export function validateOrgInput(
     return { field: 'website', error: 'website_invalid' };
   }
 
-  const description = data.description?.trim() ?? '';
-  if (description.length > MAX_ORG_DESCRIPTION_LENGTH) {
-    return { field: 'description', error: 'description_too_long' };
+  const descriptionEn = data.description_en?.trim() ?? data.description?.trim() ?? '';
+  if (descriptionEn.length > MAX_ORG_DESCRIPTION_LENGTH) {
+    return { field: 'description_en', error: 'description_too_long' };
+  }
+  const descriptionFr = data.description_fr?.trim() ?? '';
+  if (descriptionFr.length > MAX_ORG_DESCRIPTION_LENGTH) {
+    return { field: 'description_fr', error: 'description_too_long' };
   }
 
-  const mission = data.mission_statement?.trim() ?? '';
-  if (mission.length > MAX_ORG_MISSION_LENGTH) {
-    return { field: 'mission_statement', error: 'mission_too_long' };
+  const missionEn = data.mission_statement_en?.trim() ?? data.mission_statement?.trim() ?? '';
+  if (missionEn.length > MAX_ORG_MISSION_LENGTH) {
+    return { field: 'mission_statement_en', error: 'mission_too_long' };
+  }
+  const missionFr = data.mission_statement_fr?.trim() ?? '';
+  if (missionFr.length > MAX_ORG_MISSION_LENGTH) {
+    return { field: 'mission_statement_fr', error: 'mission_too_long' };
   }
 
   if (data.type?.trim() && !normalizeOrgType(data.type)) {
@@ -119,7 +131,11 @@ export interface NormalizedOrgPayload {
   name: string;
   slug: string;
   description: string | null;
+  description_en: string | null;
+  description_fr: string | null;
   mission_statement: string | null;
+  mission_statement_en: string | null;
+  mission_statement_fr: string | null;
   website: string | null;
   location: string | null;
   municipality: string | null;
@@ -177,17 +193,28 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
   const name = data.name.trim();
   const slug = data.slug?.trim() || generateSlug(name);
   const valuesList = normalizeOrgValuesList(data.values_list);
-  const isSse = data.is_sse ?? false;
+  const type = normalizeOrgType(data.type);
+  // Government orgs are never SSE (type is allowed; SSE flag is not).
+  const isSse = type === 'government' ? false : (data.is_sse ?? false);
   const sseFields = buildAdminSseFields(isSse);
+
+  const descriptionEn = data.description_en?.trim() || data.description?.trim() || null;
+  const descriptionFr = data.description_fr?.trim() || null;
+  const missionEn = data.mission_statement_en?.trim() || data.mission_statement?.trim() || null;
+  const missionFr = data.mission_statement_fr?.trim() || null;
 
   return {
     name,
     slug,
-    description: data.description?.trim() || null,
-    mission_statement: data.mission_statement?.trim() || null,
+    description_en: descriptionEn,
+    description_fr: descriptionFr,
+    description: descriptionEn || descriptionFr,
+    mission_statement_en: missionEn,
+    mission_statement_fr: missionFr,
+    mission_statement: missionEn || missionFr,
     website: data.website?.trim() || null,
     ...applyLocationFields(data),
-    type: normalizeOrgType(data.type),
+    type,
     sector_id: isValidSector(data.sector_id) ? (data.sector_id as string) : null,
     is_sse: isSse,
     ...applyValuesFields(valuesList),
@@ -197,15 +224,54 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
 
 export function buildOrgUpdateFields(
   data: Partial<OrgFormInput>,
-  options: { previousIsSse?: boolean | null } = {},
+  options: { previousIsSse?: boolean | null; previousType?: OrgType | null } = {},
 ): Partial<NormalizedOrgPayload> {
   const updates: Partial<NormalizedOrgPayload> = {};
 
   if (data.name !== undefined) updates.name = data.name.trim();
   if (data.slug !== undefined) updates.slug = data.slug.trim();
-  if (data.description !== undefined) updates.description = data.description?.trim() || null;
-  if (data.mission_statement !== undefined) {
-    updates.mission_statement = data.mission_statement?.trim() || null;
+
+  const descriptionTouched =
+    data.description !== undefined ||
+    data.description_en !== undefined ||
+    data.description_fr !== undefined;
+  if (descriptionTouched) {
+    let descriptionEn: string | null | undefined;
+    let descriptionFr: string | null | undefined;
+    if (data.description_en !== undefined) {
+      descriptionEn = data.description_en?.trim() || null;
+    } else if (data.description !== undefined) {
+      descriptionEn = data.description?.trim() || null;
+    }
+    if (data.description_fr !== undefined) {
+      descriptionFr = data.description_fr?.trim() || null;
+    }
+    if (descriptionEn !== undefined) updates.description_en = descriptionEn;
+    if (descriptionFr !== undefined) updates.description_fr = descriptionFr;
+    updates.description =
+      (descriptionEn !== undefined ? descriptionEn : null) ||
+      (descriptionFr !== undefined ? descriptionFr : null);
+  }
+
+  const missionTouched =
+    data.mission_statement !== undefined ||
+    data.mission_statement_en !== undefined ||
+    data.mission_statement_fr !== undefined;
+  if (missionTouched) {
+    let missionEn: string | null | undefined;
+    let missionFr: string | null | undefined;
+    if (data.mission_statement_en !== undefined) {
+      missionEn = data.mission_statement_en?.trim() || null;
+    } else if (data.mission_statement !== undefined) {
+      missionEn = data.mission_statement?.trim() || null;
+    }
+    if (data.mission_statement_fr !== undefined) {
+      missionFr = data.mission_statement_fr?.trim() || null;
+    }
+    if (missionEn !== undefined) updates.mission_statement_en = missionEn;
+    if (missionFr !== undefined) updates.mission_statement_fr = missionFr;
+    updates.mission_statement =
+      (missionEn !== undefined ? missionEn : null) || (missionFr !== undefined ? missionFr : null);
   }
   if (data.website !== undefined) updates.website = data.website?.trim() || null;
 
@@ -220,7 +286,12 @@ export function buildOrgUpdateFields(
     Object.assign(updates, applyLocationFields(data));
   }
 
-  if (data.type !== undefined) updates.type = normalizeOrgType(data.type);
+  const typeChanging = data.type !== undefined;
+  const nextType: OrgType | null = typeChanging
+    ? normalizeOrgType(data.type)
+    : (options.previousType ?? null);
+  if (typeChanging) updates.type = nextType;
+
   if (data.sector_id !== undefined)
     updates.sector_id = isValidSector(data.sector_id) ? (data.sector_id as string) : null;
   if (data.values_list !== undefined) {
@@ -228,10 +299,18 @@ export function buildOrgUpdateFields(
     Object.assign(updates, applyValuesFields(valuesList));
   }
 
-  if (data.is_sse !== undefined) {
-    updates.is_sse = data.is_sse;
-    if (data.is_sse !== options.previousIsSse) {
-      Object.assign(updates, buildAdminSseFields(data.is_sse));
+  const governmentBlocksSse = nextType === 'government';
+  if (data.is_sse !== undefined || (typeChanging && governmentBlocksSse)) {
+    const requested = data.is_sse ?? options.previousIsSse ?? false;
+    const isSse = governmentBlocksSse ? false : Boolean(requested);
+    updates.is_sse = isSse;
+    const requestOverridden = data.is_sse !== undefined && Boolean(data.is_sse) !== isSse;
+    if (
+      isSse !== options.previousIsSse ||
+      (typeChanging && governmentBlocksSse) ||
+      requestOverridden
+    ) {
+      Object.assign(updates, buildAdminSseFields(isSse));
     }
   }
 

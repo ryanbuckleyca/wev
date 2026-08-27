@@ -10,7 +10,16 @@ Validates: Requirements 2.2, 3.1, 3.2, 3.3, 3.4, 3.5, 2.10
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from utils.organization_cache import OrganizationCache, canonical_location, make_cache_key
+from utils.organization_cache import (
+    OrganizationCache,
+    canonical_location,
+    domains_match,
+    employer_apex,
+    evidence_domain,
+    extract_domain,
+    is_shared_domain,
+    make_cache_key,
+)
 
 # ── canonical_location ──────────────────────────────────────────────────────────
 
@@ -55,9 +64,20 @@ class TestOrganizationCache:
         cache = OrganizationCache()
         cache.set("a", 1)
         cache.set("b", 2)
+        cache.mark_blocked("c")
         cache.clear()
         assert cache.get("a") is None
         assert cache.get("b") is None
+        assert not cache.is_blocked("c")
+
+    def test_mark_blocked_skips_get_and_clears_on_set(self):
+        cache = OrganizationCache()
+        cache.mark_blocked("ambiguous")
+        assert cache.is_blocked("ambiguous")
+        assert cache.get("ambiguous") is None
+        cache.set("ambiguous", 42)
+        assert not cache.is_blocked("ambiguous")
+        assert cache.get("ambiguous") == 42
 
     def test_lru_eviction_on_full_cache(self):
         cache = OrganizationCache(max_size=3)
@@ -82,48 +102,85 @@ class TestOrganizationCache:
 
 
 class TestMakeCacheKey:
-    def test_municipality_and_province(self):
-        key = make_cache_key("Centraide Montréal", "Montreal", "QC")
+    def test_normalized_name_only(self):
+        key = make_cache_key("Centraide Montréal")
         # NFKD via nfkd_to_ascii() decomposes é → e, then strips non-ASCII combining chars
-        # "Centraide Montréal" → "Centraide Montreal" → "centraide montreal"
-        # The key must be deterministic regardless of input encoding
-        key2 = make_cache_key("Centraide Montréal", "Montreal", "QC")
-        assert key == key2
+        assert key == "centraide montreal"
 
-    def test_location_used_as_proxy_when_no_municipality(self):
-        """When municipality is None, province or location feeds the cache key."""
-        loc_part = make_cache_key("My Org", None, "QC").split("|", 1)[1]
-        assert "qc" in loc_part
+    def test_location_is_not_part_of_identity(self):
+        """Same org name produces the same key regardless of job location context."""
+        # make_cache_key no longer accepts location — identity is name only
+        assert make_cache_key("My Org") == make_cache_key("My Org")
 
-    def test_location_param_used_when_muni_and_province_are_none(self):
-        """When both municipality and province are None, the location param is used."""
-        key = make_cache_key("My Org", None, None, location="Montreal QC")
-        assert key.endswith("montreal qc")
+    def test_empty_name(self):
+        assert make_cache_key("") == ""
+        assert make_cache_key("!!!") == ""
 
-    def test_empty_when_no_location_evidence(self):
-        key = make_cache_key("My Org", None, None)
-        assert key.endswith("|")
-
-    def test_only_ascii_alphanumeric_and_spaces_in_parts(self):
-        key = make_cache_key("Org!@#$", "Montréal", None)
-        # After stripping: name part has only alpha/digit/space
-        name_part, loc_part = key.split("|", 1)
-        for c in name_part:
+    def test_only_ascii_alphanumeric_and_spaces(self):
+        key = make_cache_key("Org!@#$ Montréal")
+        for c in key:
             assert c.isascii() and (c.isalpha() or c.isdigit() or c == " "), f"Bad char {c!r}"
 
     def test_same_org_different_case(self):
-        k1 = make_cache_key("My Org", "city", "qc")
-        k2 = make_cache_key("MY ORG", "CITY", "QC")
-        assert k1 == k2
+        assert make_cache_key("My Org") == make_cache_key("MY ORG")
 
     def test_accented_and_unaccented_produce_same_key(self):
-        k1 = make_cache_key("Centraide Montréal", "Montreal", "QC")
-        k2 = make_cache_key("Centraide Montreal", "Montreal", "QC")
-        assert k1 == k2
+        assert make_cache_key("Centraide Montréal") == make_cache_key("Centraide Montreal")
 
-    def test_pipe_separator(self):
-        key = make_cache_key("Org", "city", "qc")
-        assert "|" in key
+
+class TestExtractDomain:
+    def test_strips_www_and_scheme(self):
+        assert extract_domain("https://www.mindrift.ai/about") == "mindrift.ai"
+
+    def test_adds_scheme_when_missing(self):
+        assert extract_domain("abcquebec.ca") == "abcquebec.ca"
+
+    def test_empty_returns_none(self):
+        assert extract_domain(None) is None
+        assert extract_domain("") is None
+        assert extract_domain("!!!") is None
+
+
+class TestEvidenceDomain:
+    def test_rejects_shared_social_hosts(self):
+        assert is_shared_domain("facebook.com")
+        assert is_shared_domain("m.facebook.com")
+        assert evidence_domain("https://www.facebook.com/some-org") is None
+        assert evidence_domain("https://boards.greenhouse.io/acme") is None
+        assert evidence_domain("https://ecoworks.eco.ca/companies/acme") is None
+        assert evidence_domain("https://www.eco.ca/employers/acme") is None
+
+    def test_keeps_employer_hosts(self):
+        assert evidence_domain("https://www.mindrift.ai") == "mindrift.ai"
+        assert not is_shared_domain("mindrift.ai")
+
+
+class TestDomainsMatch:
+    def test_subdomain_matches_apex(self):
+        assert domains_match("careers.hatch.com", "hatch.com")
+        assert domains_match("hatch.com", "careers.hatch.com")
+
+    def test_sibling_subdomains_do_not_match(self):
+        assert not domains_match("env.gc.ca", "canada.gc.ca")
+
+    def test_public_suffix_parent_does_not_match(self):
+        assert not domains_match("env.gc.ca", "gc.ca")
+        assert not domains_match("example.co.uk", "co.uk")
+
+    def test_unrelated_hosts_do_not_match(self):
+        assert not domains_match("hatch.com", "artelia.com")
+        assert not domains_match("notevil.com", "evil.com")
+
+
+class TestEmployerApex:
+    def test_strips_vanity_subdomains(self):
+        assert employer_apex("careers.acme.com") == "acme.com"
+        assert employer_apex("jobs.acme.com") == "acme.com"
+        assert employer_apex("acme.com") == "acme.com"
+
+    def test_preserves_gc_ca_labels(self):
+        assert employer_apex("env.gc.ca") == "env.gc.ca"
+        assert employer_apex("canada.gc.ca") == "canada.gc.ca"
 
 
 # ── Property-based tests ──────────────────────────────────────────────────────
@@ -131,14 +188,12 @@ class TestMakeCacheKey:
 # Feature: organizations, Property 2: Cache key is deterministic
 @given(
     name=st.text(min_size=0, max_size=100),
-    municipality=st.one_of(st.none(), st.text(min_size=0, max_size=50)),
-    province=st.one_of(st.none(), st.text(min_size=0, max_size=20)),
 )
 @settings(max_examples=300)
-def test_cache_key_is_deterministic(name, municipality, province):
+def test_cache_key_is_deterministic(name):
     """Property 2: Same inputs always produce the same key."""
-    k1 = make_cache_key(name, municipality, province)
-    k2 = make_cache_key(name, municipality, province)
+    k1 = make_cache_key(name)
+    k2 = make_cache_key(name)
     assert k1 == k2
 
 

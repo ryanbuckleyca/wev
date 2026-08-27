@@ -1,4 +1,5 @@
 from scrapers.base import BaseScraper
+from utils.organization_cache import evidence_domain
 
 
 class EcoCanadaScraper(BaseScraper):
@@ -82,12 +83,25 @@ class EcoCanadaScraper(BaseScraper):
             return str(emp_type).lower().replace("_", "-").replace(" ", "-")
         return None
 
+    @staticmethod
+    def _employer_website(emp: dict) -> str | None:
+        """Prefer website, then url/company_url — only employer-owned hosts."""
+        for key in ("website", "url", "company_url"):
+            candidate = emp.get(key)
+            if not candidate:
+                continue
+            cleaned = str(candidate).strip()
+            if cleaned and evidence_domain(cleaned):
+                return cleaned
+        return None
+
     def _parse_job_data(self, job_data: dict, listing_url: str) -> dict:
         emp = job_data.get("employer") or {}
         return {
             "job_url": listing_url,
             "job_title": job_data.get("title"),
             "organization": emp.get("name"),
+            "website": self._employer_website(emp),
             "description": job_data.get("description"),
             "wage": self._extract_wage(job_data),
             "location": job_data.get("location"),

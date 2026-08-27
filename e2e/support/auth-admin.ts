@@ -102,17 +102,17 @@ async function findUserIdByEmail(
   }
 }
 
-function getServiceRoleClient() {
+function getAdminClient() {
   const supabaseUrl = getRequiredEnv("SUPABASE_URL");
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim();
 
-  if (!serviceRoleKey) {
+  if (!secretKey) {
     throw new Error(
-      "Missing required e2e environment variable: SUPABASE_SERVICE_ROLE_KEY",
+      "Missing required e2e environment variable: SUPABASE_SECRET_KEY",
     );
   }
 
-  return createClient(supabaseUrl, serviceRoleKey, {
+  return createClient(supabaseUrl, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
@@ -120,14 +120,14 @@ function getServiceRoleClient() {
 export async function getAuthUserIdByEmail(
   email: string,
 ): Promise<string | null> {
-  const admin = getServiceRoleClient();
+  const admin = getAdminClient();
   return findUserIdByEmail(admin as AuthAdminClient, email);
 }
 
 export async function recalculateMatchesForUserId(
   userId: string,
 ): Promise<void> {
-  const supabase = getServiceRoleClient();
+  const supabase = getAdminClient();
 
   const { error } = await supabase.rpc("recalculate_matches_for_user", {
     p_user_id: userId,
@@ -150,7 +150,7 @@ export async function recalculateMatchesForEmail(email: string): Promise<void> {
 export async function countJobMatchesForUserId(
   userId: string,
 ): Promise<number> {
-  const supabase = getServiceRoleClient();
+  const supabase = getAdminClient();
 
   const { count, error } = await supabase
     .from("job_matches")
@@ -165,7 +165,7 @@ export async function countJobMatchesForUserId(
 }
 
 export async function deleteAuthUserByEmail(email: string): Promise<void> {
-  const admin = getServiceRoleClient();
+  const admin = getAdminClient();
 
   const targetId = await findUserIdByEmail(admin as AuthAdminClient, email);
   if (!targetId) return;
@@ -180,8 +180,8 @@ export async function createManagedE2EUser(
   seed: string,
 ): Promise<ManagedE2EUser> {
   const { email, password } = buildE2EUserIdentity(seed);
-  const admin = getServiceRoleClient() as unknown as AuthAdminClient &
-    ReturnType<typeof getServiceRoleClient>;
+  const admin = getAdminClient() as unknown as AuthAdminClient &
+    ReturnType<typeof getAdminClient>;
 
   const existingId = await findUserIdByEmail(admin, email);
   if (existingId) {

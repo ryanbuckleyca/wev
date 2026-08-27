@@ -24,10 +24,10 @@ async function main() {
   loadEnvFiles(env);
 
   const url = process.env.SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const key = process.env.SUPABASE_SECRET_KEY?.trim();
   if (!url || !key) {
     console.error(
-      "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment.",
+      "Missing SUPABASE_URL or SUPABASE_SECRET_KEY in environment.",
     );
     process.exit(1);
   }

@@ -114,7 +114,7 @@ jobs:
 
           echo "SUPABASE_URL=$API_URL" >> $GITHUB_ENV
           echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
-          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
+          echo "SUPABASE_SECRET_KEY=$SECRET_KEY" >> $GITHUB_ENV
           echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> $GITHUB_ENV
 
       - name: Build Next.js app
@@ -122,7 +122,7 @@ jobs:
           # Hard fallbacks ensure vars are never empty even if parsing fails.
           # SUPABASE_URL and NEXT_PUBLIC_SUPABASE_URL are always 127.0.0.1:54321.
           SUPABASE_URL: ${{ env.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ env.SUPABASE_SECRET_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_SITE_URL: http://localhost:3000

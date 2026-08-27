@@ -1,19 +1,26 @@
 """Unified LLM provider with multi-tier fallback for complete job processing.
 
-Tries backends in order (e.g. local Ollama when ``ENV_MODE=local``, else Gemini Flash,
-Flash-Lite, Groq). Each call uses ``task=unified``: summary + values + SSE fields are
-all inferred from the job text in one JSON payload.
+Tries backends in order:
+  gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama (when available).
+When ``ENV_MODE=local``, Ollama is also tried earlier for offline preference on
+unified (non-SSE-grounded) batches.
+
+Each call uses ``task=unified``: summary + values + SSE fields are all inferred
+from the job text in one JSON payload.
 
 Live **Google Search** in the Gemini SDK is off for ``task=unified`` unless
 ``FORCE_GROUNDING=1`` — that is independent of whether SSE columns appear in the prompt.
 """
 
 import logging
+import os
 from typing import Any, Dict, List
 
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.config import should_use_grounding
+from llm.cooldown import ProviderCooldownMixin, get_cooldown_minutes, is_quota_exhausted_error
 from llm.gemini import GeminiProvider
+from llm.gemini_fallback import gemini_sse_lite_model, gemini_sse_primary_model
 from llm.groq import GroqProvider
 from llm.local_grounded import LocalGroundedProvider
 from llm.prompts import (
@@ -28,37 +35,60 @@ logger = logging.getLogger(__name__)
 UNIFIED_INCLUDE_SSE_FIELDS = True
 
 
-class UnifiedJobProcessor:
+
+
+class UnifiedJobProcessor(ProviderCooldownMixin):
     """Unified job processor with intelligent fallback chain."""
 
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key
+        # Track providers with quota exhaustion and when they can be retried
+        self._exhausted_until: dict[str, float] = {}
+        self._cooldown_seconds = get_cooldown_minutes() * 60
 
-        # When ENV_MODE=local, local_grounded (Ollama) is preferred over API providers.
-        # Tavily inside LocalGroundedProvider is only used when task=="sse", not for unified.
+        primary = gemini_sse_primary_model()
+        lite = gemini_sse_lite_model()
+
+        # When ENV_MODE=local, prefer Ollama early for unified batches (no API spend).
         local_first = [
-            ("local_grounded", lambda: LocalGroundedProvider(), "Ollama (local LLM)"),
+            ("ollama", lambda: LocalGroundedProvider(), "Ollama (local LLM)"),
         ] if is_local_env() else []
 
         candidates = [
             *local_first,
-            ("gemini-2.5-flash", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash"), "Gemini 2.5 Flash"),
-            ("gemini-2.5-flash-lite", lambda: GeminiProvider(api_key=api_key, model="gemini-2.5-flash-lite"), "Gemini 2.5 Flash-Lite"),
+            (primary, lambda: GeminiProvider(api_key=api_key, model=primary), f"Gemini ({primary})"),
+            (lite, lambda: GeminiProvider(api_key=api_key, model=lite), f"Gemini ({lite})"),
             ("groq", lambda: GroqProvider(), "Groq"),
         ]
+        # Always append Ollama last when not already first (API-exhausted fallback).
+        if not is_local_env():
+            candidates.append(
+                ("ollama", lambda: LocalGroundedProvider(), "Ollama (local LLM)"),
+            )
+
+        enable_local = os.environ.get("ENABLE_LOCAL_FALLBACK", "").strip().lower() in ("1", "true", "yes", "on")
 
         self.providers = []
         for name, factory, description in candidates:
+            if not enable_local and name == "ollama":
+                logger.warning("Skipping LLM provider ollama (ENABLE_LOCAL_FALLBACK not set)")
+                continue
             try:
+                provider = factory()
+                if not provider.is_available():
+                    logger.warning("Skipping LLM provider %s (not available)", name)
+                    continue
                 self.providers.append({
                     "name": name,
-                    "provider": factory(),
+                    "provider": provider,
                     "description": description,
                 })
             except Exception as e:
                 logger.warning("Skipping LLM provider %s (not usable): %s", name, e)
 
         self.last_successful_provider = None
+
+
 
     def _try_provider(self, provider_info: dict, jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Try a specific provider for job processing."""
@@ -202,6 +232,12 @@ class UnifiedJobProcessor:
 
         for provider_info in self.providers:
             provider_name = provider_info['name']
+
+            # Skip providers in cooldown period after quota exhaustion
+            if self._is_provider_in_cooldown(provider_name):
+                attempted_providers.append(f"{provider_name} (cooldown)")
+                continue
+
             attempted_providers.append(provider_name)
 
             try:
@@ -257,15 +293,20 @@ class UnifiedJobProcessor:
             except Exception as e:
                 last_error = e
                 error_msg = str(e).lower()
-                if "rate limit" in error_msg or "429" in error_msg or "quota" in error_msg or "resource_exhausted" in error_msg:
-                    logger.warning(f"🚫 Rate limit hit for {provider_name}: {e}")
+
+                # Mark provider as exhausted if quota/rate limit hit
+                if is_quota_exhausted_error(e):
+                    self._mark_provider_exhausted(provider_name)
                 elif "not available" in error_msg:
                     logger.warning(f"❌ Provider {provider_name} not available: {e}")
                 else:
                     logger.warning(f"💥 Failed with {provider_name}: {e}")
                 continue
 
-        error_msg = f"All providers failed. Last error: {last_error}"
+        if not last_error and all("(cooldown)" in p for p in attempted_providers):
+            error_msg = f"All providers skipped due to cooldown. Attempted: {attempted_providers}"
+        else:
+            error_msg = f"All providers failed. Last error: {last_error}"
         logger.error(f"❌ {error_msg}")
         logger.error(f"📊 Attempted providers in order: {' → '.join(attempted_providers)}")
 

@@ -145,10 +145,7 @@ function resolveDbUrl(
     }
 
     // If it's not a standard postgres URI, we must ensure it doesn't leak credentials.
-    if (
-      url.match(/(?:^|\s)password\s*=/i) ||
-      url.match(/:[^:@]+@/)
-    ) {
+    if (url.match(/(?:^|\s)password\s*=/i) || url.match(/:[^:@]+@/)) {
       throw new Error(
         "Database URL contains potential credentials but could not be safely parsed. " +
           "Please remove the password from the URL and use PGPASSWORD, or use a standard postgresql:// URI.",
@@ -346,16 +343,16 @@ async function main() {
   const env = parseRestoreArgs(argv);
   loadEnvFiles(env);
 
-  const { url: supabaseUrl, serviceRoleKey } = getSupabaseScriptConfig(
+  const { url: supabaseUrl, secretKey } = getSupabaseScriptConfig(
     "restore.ts",
     {
       urlEnv: "SUPABASE_URL",
-      keyEnvNames: ["SUPABASE_SERVICE_ROLE_KEY"],
-      keyDescription: `${env} service role key`,
+      keyEnvNames: ["SUPABASE_SECRET_KEY"],
+      keyDescription: `${env} secret key`,
     },
   );
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  const supabase = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false },
   });
 

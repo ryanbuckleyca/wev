@@ -10,7 +10,7 @@ import path from "node:path";
 
 export interface SupabaseDatabaseConfig {
   projectRef: string;
-  serviceRoleKey: string;
+  secretKey: string;
   supabaseUrl: string;
 }
 
@@ -84,13 +84,13 @@ function assertExpectedProjectRef(
 }
 
 function createDatabaseClient({
-  serviceRoleKey,
+  secretKey,
   supabaseUrl,
 }: Pick<
   SupabaseDatabaseConfig,
-  "serviceRoleKey" | "supabaseUrl"
+  "secretKey" | "supabaseUrl"
 >): SupabaseClient<Database> {
-  return createClient<Database>(supabaseUrl, serviceRoleKey, {
+  return createClient<Database>(supabaseUrl, secretKey, {
     auth: { persistSession: false },
   });
 }

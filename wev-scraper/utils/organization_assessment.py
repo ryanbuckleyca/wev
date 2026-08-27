@@ -15,21 +15,28 @@ import json
 import logging
 import re
 from datetime import datetime, timezone
-from dataclasses import dataclass
-from typing import Any, List, TypedDict, Optional
+from typing import Any, List, TypedDict
 from urllib.parse import urlparse
 
 from llm.base import LLMProviderError
 from llm.factory import get_sse_provider
+from llm.tavily_grounding import entity_require_terms
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
+from utils.location_parser import parse_address_with_geocodio
+from utils.organization_cache import evidence_domain, extract_domain
+from utils.organization_language import (
+    VALID_ORG_LANGUAGES,
+    _detect_text_language,
+    classify_org_language,
+)
 from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
 from utils.slug import generate_slug
-from utils.location_parser import parse_address_with_geocodio
 from utils.sse_prompts import (
-    EVALUATION_CRITERIA,
     JSON_INSTRUCTIONS,
     LENGTH_LIMITED_FIELD_RULES,
+    ORG_EVALUATION_CRITERIA,
+    ORG_RATING_GUIDELINES,
     SSE_PRINCIPLES,
 )
 
@@ -38,74 +45,306 @@ logger = logging.getLogger(__name__)
 ORG_TYPE_VALUES = (
     "nonprofit",
     "cooperative",
-    "social enterprise",
     "government",
     "union",
     "other",
 )
 
-_PROMPT_DESC_MAX_CHARS = 1000
-# Keep in sync with wev-bulletin/lib/organizations/constants.ts where applicable.
+# Map normalized keys (spaces/hyphens stripped) → canonical stored type.
+# Mutual / community labels alias to nonprofit until a taxonomy branch
+# introduces dedicated terms. Former "social enterprise" → other.
+_ORG_TYPE_ALIASES: dict[str, str] = {
+    "nonprofit": "nonprofit",
+    "cooperative": "cooperative",
+    "socialenterprise": "other",
+    "mutual": "nonprofit",
+    "mutualaid": "nonprofit",
+    "mutualaidgroup": "nonprofit",
+    "mutualsociety": "nonprofit",
+    "community": "nonprofit",
+    "communityassociation": "nonprofit",
+    "communityproject": "nonprofit",
+    "creditunion": "cooperative",
+    "workercoop": "cooperative",
+    "workercooperative": "cooperative",
+    "workerowned": "cooperative",
+    "workerownedbusiness": "cooperative",
+    "workercollective": "cooperative",
+    "coop": "cooperative",
+    "union": "union",
+    "government": "government",
+    "other": "other",
+}
+
+_DISTRICT_INDICATORS = [
+    # French directions (with/without hyphen)
+    'centre-', 'nord', 'sud', 'est', 'ouest',
+    '-nord', '-sud', '-est', '-ouest',
+    # English directions
+    'north', 'south', 'east', 'west', 'downtown', 'uptown',
+    # Saint/Ste- prefixes (French + English forms)
+    'saint-', 'ste-', 'st-',
+    'saint ', 'ste ', 'st ',
+    # --- Montréal boroughs / common neighborhoods (expanded) ---
+    'rosemont', 'plateau', 'verdun', 'villeray', 'hochelaga',
+    'petite-patrie', 'ahuntsic', 'cartierville',
+    'saint-leonard', 'st-leonard', 'saint-léonard',
+    'mile-end', 'mile end', 'outremont', 'cote-des-neiges',
+    'côte-des-neiges', 'ndg', 'notre-dame-de-grace',
+    'pointe-aux-trembles', 'riviere-des-prairies',
+    'rivière-des-prairies', 'lasalle', 'pierrefonds',
+    'roxboro', 'dollard', 'dorval', 'pointe-claire',
+    'kirkland', 'beaconsfield', 'senneville', 'montreal-est',
+    'montreal-nord', 'st-laurent', 'saint-laurent',
+    'ahuntsic', 'cartierville',
+    # --- Québec city / other QC cities known boroughs ---
+    'sainte-foy', 'st-foy', 'sillery', 'charlesbourg',
+    'beauport', 'vanier', 'limoilou',
+    'lachine', 'lasalle', 'dorval',
+    # --- Toronto districts (expanded) ---
+    'scarborough', 'etobicoke', 'north york', 'east york',
+    'york', 'danforth', 'high-park', 'parkdale',
+    'liberty village', 'riverdale', 'leslieville',
+    'cabbagetown', 'regent park', 'st-jamestown',
+    'kensington-market', 'annex', 'yonge-eglinton',
+    # --- Ottawa / Gatineau ---
+    'hull', 'aylmer', 'gatineau', 'nepean', 'kanata',
+    'orleans', 'barrhaven', 'bells corners',
+    # --- Vancouver / BC lower mainland ---
+    'burnaby', 'surrey', 'richmond', 'coquitlam',
+    'new westminster', 'north vancouver', 'west vancouver',
+    'east van', 'strathcona', 'mount pleasant',
+    'commercial drive', 'kerrisdale', 'shaughnessy',
+    # --- Calgary / Edmonton ---
+    'beltline', 'kensington', 'inglewood', 'marda loop',
+    'whyte ave', 'old strathcona',
+    # --- Halifax ---
+    'dartmouth', 'bedford', 'sackville', 'spryfield',
+    # --- Winnipeg ---
+    'saint boniface', 'st-boniface', 'transcona',
+    'st-vital', 'fort garry', 'river heights',
+    # --- Hamilton ---
+    'dundurn', 'westdale', 'mcmaster', 'stoney creek',
+    'ancaster', 'burlington',
+]
+
+# Compile pattern with word boundaries (allowing standard word chars or hyphens)
+DISTRICT_INDICATORS_PATTERN = re.compile(
+    r'(?:^|\s|\b)(' + '|'.join(re.escape(i) for i in _DISTRICT_INDICATORS) + r')(?=$|\s|\b)'
+)
+
+# Hard length limits for stored LLM fields. Keep in sync with
+# wev-bulletin/lib/organizations/constants.ts (description/mission).
+# Prompt asks the model to paraphrase within the limit. If it overshoots,
+# assess() truncates with _smart_truncate (sentence-aware).
 _ORG_DESCRIPTION_MAX_CHARS = 500
 _ORG_MISSION_MAX_CHARS = 500
-_SSE_REASONING_MAX_CHARS = 1000
+_ORG_VALUES_RAW_MAX_CHARS = 1000
+# Short evidence summary only — criterion lists live in must_haves_met / nice_to_haves_met.
+_SSE_REASONING_MAX_CHARS = 400
 
-_JSON_FIELDS = f"""{{
+# Truncate job-listing notes fed into the prompt only (not stored org fields).
+_PROMPT_DESC_MAX_CHARS = 1000
+
+_JSON_FIELDS = """{
   "canonical_name": "Official organization name (string, required, non-empty)",
   "slug": "url-safe-kebab-case (string, required)",
-  "website": "https://... or null",
-  "description": "Brief organization description, max {_ORG_DESCRIPTION_MAX_CHARS} characters — must fit without being cut off, or null",
-  "mission_statement": "Organization mission/purpose statement, max {_ORG_MISSION_MAX_CHARS} characters — must fit without being cut off, or null",
-  "type": "One of: nonprofit, cooperative, social enterprise, government, union, other — or null",
+  "website": "Employer's own homepage URL (https://...), or null — see WEBSITE RULES",
+  "description_en": "Organization description in English (strictly under 400 chars / ~45 words — extract exactly or closely from source if possible. Record provenance in flags as 'description via=extracted|inferred|absent'), or null",
+  "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
+  "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — ONLY extract if the organization explicitly states their mission/purpose on their own website or materials. Do NOT infer or compose a mission statement. If not found, use null. Record provenance in flags as 'mission via=extracted|absent'), or null",
+  "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if found in English, or extract if present in French on source. If not found, use null), or null",
+  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. A city/town/region name in the organization name is geographic branding only — NOT evidence of municipal/government status. Community orchestras, choirs, bands, theatres, and similar arts associations are typically 'nonprofit', not 'government', unless research shows a city department or statutory public body. Autonomous non-profit corporations (OBNLs) and regional development hubs with independent boards are 'nonprofit', even when receiving municipal/provincial grants. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops, credit unions, and worker-owned businesses/practices. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
-  "values_raw": "Organization values and principles if found on their website, max 1000 characters — must fit without being cut off, or null",
+  "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — extract closely from source. Record provenance in flags as 'values via=extracted|inferred|absent'), or null",
   "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
   "sse_rating": "strong_yes or weak_yes or no",
   "sse_confidence": "0.0 to 1.0",
-  "sse_reasoning": "SSE rating explanation citing specific evidence. Must fit within {_SSE_REASONING_MAX_CHARS} characters without being cut off — write complete sentences only and shorten if needed rather than truncating",
-  "must_haves_met": ["list of criteria met"],
-  "nice_to_haves_met": ["list of criteria met"],
-  "flags": ["any concerns", "ambiguities", "missing info"]
-}}"""
+  "sse_reasoning_en": "2–3 concise English sentences citing the key evidence for the rating (strictly under 320 chars / ~35 words — paraphrase to fit completely). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays",
+  "sse_reasoning_fr": "Same reasoning in French (strictly under 320 chars / ~35 words — paraphrase to fit completely)",
+  "must_haves_met": ["ONLY org must-have labels from ORG MUST-HAVES 1–3 below — never job/posting criteria"],
+  "nice_to_haves_met": ["ONLY org nice-to-have labels from ORG NICE-TO-HAVES below — never job/posting criteria"],
+  "flags": ["REQUIRED — see FLAGS RULES below"],
+  "public_language": "Primary language of the organization's own public materials (website, postings, documents, reports) observed during research. Use only: en, fr, bilingual, or null. Do not use the language of this response as evidence. Prefer bilingual when the organization publishes substantial public materials in both English and French (or both EN and FR sites).",
+  "geographic_scope": "Geographic reach of the organization based on evidence from their website and materials. Use: local (serves a single city/town/region), provincial (serves a single province), national (serves all or most of Canada), international (operates in multiple countries), or null if unclear. Base this on service area, chapters/locations, or mission statement, not just the organization name.",
+  "headquarters_municipality": "The primary municipality (city, town, etc.) where the organization is headquartered or based, according to their website. If fully remote or no specific headquarters can be found, use null.",
+  "headquarters_province": "The province or territory (e.g. 'ON', 'QC', 'BC') where the organization is headquartered or based. Use standard 2-letter abbreviation. If fully remote or unknown, use null."
+}"""
 
-_combined_prompt = """You are evaluating an organization from scraped job data.
-Your goal is to identify the organization, extract its values and mission,
- and assess its Solidarity Economy (SSE) alignment.
+_ORG_CRITERION_LABEL_RULES = """ORG MUST-HAVES / NICE-TO-HAVES LABELS (strict — org assessment only):
+- must_haves_met may ONLY list short labels for org must-haves 1–3 from ORG EVALUATION CRITERIA:
+  1) Clear purpose beyond profit
+  2) Impact described intentionally
+  3) Organization's work contributes to social/community/environmental good
+- nice_to_haves_met may ONLY list short labels from org nice-to-haves 4–8
+  (solidarity culture, participatory governance, SSE governance model, investment in people,
+  mission reinvestment).
+- NEVER include job-posting criteria such as: "Transparent compensation", salary disclosure,
+  "Clear job expectations", posting language, remote/hybrid, or other employment-ad must-haves.
+  Those belong ONLY to job classification — they are stale if copied into org must_haves_met.
+- If evidence is only about a job ad (pay, duties, location), do not invent org must-haves from that alone."""
+
+_FLAGS_RULES = """FLAGS RULES (mandatory — same shape as language provenance):
+For EACH of description, mission, and values include exactly one flag:
+  description via=extracted|inferred|absent
+  mission via=extracted|absent  (NEVER inferred — only use extracted or absent)
+  values via=extracted|inferred|absent
+
+Use:
+- via=extracted — ONLY when you found the text on the organization's OWN official website or materials (not third-party descriptions, not news articles, not directories). If the supporting web evidence does NOT include the organization's own domain, you MUST use via=inferred (for description/values) or via=absent (for mission), NOT via=extracted.
+- via=inferred — you composed or guessed it from secondary sources, third-party descriptions, or mapped it from other text (including mapping Knowdell values from other text). ONLY valid for description and values fields. NEVER use for mission.
+- via=absent — you returned null/empty for that field
+
+CRITICAL: If the organization's own website was unavailable or not found in the search results, ALL fields MUST be via=inferred (description/values) or via=absent (mission/missing fields), NEVER via=extracted.
+
+CRITICAL: Mission statements MUST ONLY be extracted from the organization's own explicit statement of mission/purpose. Do NOT compose, infer, or synthesize mission statements. If no explicit mission statement is found, use null and flag as 'mission via=absent'.
+
+Language provenance is added by code after your response (language:… via=… /
+language_reason:…). Do not invent language flags yourself.
+
+Also add when relevant:
+- website_unavailable — when the org's own website was unreachable or not found in search results
+- any other short concern labels
+
+Most organizations do NOT explicitly publish a mission statement or values list —
+use mission via=absent / values via=inferred when not found on their site."""
+
+_BILINGUAL_COPY_RULES = """BILINGUAL PUBLIC COPY (required):
+- Always provide BOTH English and French for description_*, mission_statement_*, and sse_reasoning_* when you have enough evidence to write the field at all.
+- If you can write the English version, also write the French version (and vice versa) — do not leave one locale null when the other is present.
+- Write natural French (not word-for-word calque) and natural English.
+- Knowdell "values" labels stay in English (taxonomy keys). values_raw may stay in the source language of the website.
+- must_haves_met / nice_to_haves_met / flags stay in English short labels.
+- must_haves_met / nice_to_haves_met must follow ORG CRITERION LABEL RULES (org criteria only — never compensation)."""
+
+_WEBSITE_RULES = """WEBSITE RULES for the "website" field:
+- Extract the BEST AVAILABLE URL from research/search results.
+- ACCEPT any URL that identifies this specific organization, including:
+  * Official homepages (preferred)
+  * Marketplace/directory pages (acceptable fallback)
+  * Social media pages - these are VALID if they have organization info
+- Social media and marketplace pages are LEGITIMATE web presences for small organizations.
+- ALWAYS PREFER the organization's OWN homepage over directory/umbrella listings.
+  If the best search result is a directory page (e.g., rmjq.org/maison/...,
+  reflexerosemont.org/organismes/..., macommunaute.ca/..., yellowpages.ca/...),
+  look for the org's OWN website within that evidence:
+  * Check contact email domains — e.g., coordination@adozone.org → https://www.adozone.org/
+  * Check outbound "Website" or "Site web" links on the directory page
+  * Check any URL that uses the organization's name or acronym as the domain
+  Return the org's own homepage if found; use the directory URL only as a last resort.
+- If ORGANIZATION DATA lists a Known website that looks wrong (different location/name),
+  REPLACE IT with any better URL you find in the grounding evidence.
+- Do NOT use job-board or ATS URLs (Greenhouse, Lever, Workday, Indeed, CharityVillage).
+- Do NOT use link aggregators (Linktree, bit.ly).
+- Do NOT use the scraped job listing URL itself.
+- If you cannot find ANY URL in research/grounding evidence, return null.
+- Prefer https:// and prefer homepages over deep paths."""
+
+_PUBLIC_LANGUAGE_RULES = """PUBLIC_LANGUAGE RULES:
+Priority for public_language (en | fr | bilingual | null):
+1. Actual public-facing website language in materials you observed
+2. Explicit website language metadata
+3. hreflang or URL locale hints (/en/, /fr/, lang=, locale=)
+4. Organization name only as weak evidence
+- Verify name leaning against the organization's own materials you observed.
+- Do not infer from the language of this JSON response.
+- Return bilingual when materials show substantial English AND French
+  (or an explicit bilingual claim) — including Canadian charities/foundations with
+  an EN site plus FR pages, FR toggle, /fr/ paths, or French program materials in
+  the research evidence. Prefer bilingual over en-only in those cases.
+- Do NOT upgrade to bilingual merely from a French or English legal name,
+  accented characters in the name, or a .ca domain alone.
+- Canadian / multinational engineering or environmental consultancies whose primary
+  corporate site is English → en. A thin FR landing page, careers locale, or
+  translated brochure does NOT make them bilingual.
+- If you only observed one locale and no bilingual signals, return that locale.
+- If there is insufficient evidence, return null."""
+
+_SECTOR_PRIORITY_RULES = """SECTOR PRIORITY (when multiple sectors could fit):
+- Score the organization's primary activity / service line, not a secondary theme.
+- Private environmental / water / geoscience / engineering consultancies
+  (including multi-discipline firms whose core line is environmental science,
+  water resources, remediation, or environmental engineering) →
+  environment-circular-economy (not community-civic-infrastructure).
+- Foundations whose core program is education / fellowships → education-knowledge.
+- Arts marketing, audience development, cultural fundraising, ticketing /
+  subscription services for arts organizations, or arts-information services →
+  arts-culture-information (not care-health-social-services; not
+  community-civic-infrastructure merely because clients are nonprofits or
+  "community" appears in marketing copy).
+- community-civic-infrastructure is residual/catch-all — prefer a more specific
+  sector whenever one applies."""
+
+_SOURCE_DESCRIPTION_RULES = """SOURCE DESCRIPTION vs INTERPRETIVE FIELDS (mandatory):
+- ENTITY IDENTITY ANCHOR: The organization name, Known website, and SOURCE DESCRIPTION define WHICH specific entity is being evaluated. If supporting search results describe a DIFFERENT organization that merely shares the same acronym or name (e.g., matching a doctors' union when the source describes a women's enterprise network), DO NOT hijack the organization. Reject mismatched search results and assess the actual named entity.
+- is_sse / sse_rating, sector_id, public_language, type, website, mission_statement_*,
+  and values MUST come from official-website / supporting web research of THAT specific organization.
+- NEVER use SOURCE DESCRIPTION (stored org blurb or job-listing body) to decide those
+  interpretive fields — listing copy is often wrong, stale, or about a related brand.
+- description_* only:
+  • If SOURCE DESCRIPTION is present: extract/adapt from it (flag description via=extracted).
+    Do NOT call on search snippets to rewrite or replace it.
+  • If SOURCE DESCRIPTION is absent: you may write description_* from web evidence
+    (via=inferred or via=extracted from web). This is the only case search may
+    supply description text.
+- LISTING / IDENTITY HINTS (job title, listing notes) are for disambiguating which
+  employer is meant — not for interpretive fields (never for SSE rating, sector, language, type, or values)."""
+
+_combined_prompt = """You are evaluating an ORGANIZATION (employer), not a job posting.
+Identify the organization, extract its values and mission from research about the
+org itself, and assess its Solidarity Economy (SSE) alignment.
 
 {SSE_PRINCIPLES}
 
-{EVALUATION_CRITERIA}
+{ORG_EVALUATION_CRITERIA}
 
-ORGANIZATION DATA:
-  Raw name:    {raw_name}
-  Municipality: {municipality}
-  Province:     {province}
-  Job title:   {job_title}
-  Description (truncated):
-{description}
+{ORG_RATING_GUIDELINES}
 
-Return a JSON object with exactly these fields:
-{json_fields}
+{org_criterion_label_rules}
+
+{source_description_rules}
 
 ALLOWED SECTORS for the "sector_id" field:
 {sector_taxonomy_formatted}
+
+{sector_priority_rules}
 
 ALLOWED VALUES for the "values" field (use ONLY labels from this list):
 {taxonomy_formatted}
 
 RULES for the "values" field:
 - Values must exactly match labels from the ALLOWED VALUES list above (case-sensitive).
-- Choose 3 to 5 values that best describe the organization based on its mission,
-  description, website content, and overall purpose.
+- Choose 3 to 5 values from official-website / supporting web research about the org
+  (mission, governance, public materials) — NOT from SOURCE DESCRIPTION or listing notes.
 - Do NOT include labels not in the ALLOWED VALUES list.
 - Do NOT include duplicates.
 - "Help Society" and "Community" are distinct — use both if evidence supports both.
-- Be honest: if you can't determine values from the available information,
-  return an empty array.
+- Be honest: if you can't determine values from web research, return an empty array.
+
+{website_rules}
+
+{bilingual_copy_rules}
+
+{public_language_rules}
 
 {length_limited_field_rules}
 
 {JSON_INSTRUCTIONS}
+
+ORGANIZATION DATA:
+  Raw name:    {raw_name}
+  Municipality: {municipality}
+  Province:     {province}
+  Known website: {known_website}
+  Job title (identity hint only): {job_title}
+  Listing notes (identity hint only — not for interpretive fields):
+{listing_notes}
+
+SOURCE DESCRIPTION (for description_* only — omit if none):
+{source_description}
+
+Return a JSON object with exactly these fields:
+{json_fields}
 """
 
 
@@ -113,18 +352,25 @@ class AssessedOrgResult(TypedDict):
     canonical_name: str
     slug: str
     website: str | None
-    description: str | None
-    mission_statement: str | None
+    description_en: str | None
+    description_fr: str | None
+    mission_statement_en: str | None
+    mission_statement_fr: str | None
     type: str | None
     sector_id: str | None
     values_raw: str | None
     values: List[str]
     sse_rating: str
     sse_confidence: float
-    sse_reasoning: str
+    sse_reasoning_en: str | None
+    sse_reasoning_fr: str | None
     must_haves_met: List[str]
     nice_to_haves_met: List[str]
     flags: List[str]
+    public_language: str | None
+    geographic_scope: str | None
+    headquarters_municipality: str | None
+    headquarters_province: str | None
 
 
 _TAXONOMY_STR: str | None = None
@@ -145,27 +391,96 @@ def _build_assessment_prompt(
     municipality: str | None,
     province: str | None,
     job_title: str,
-    description: str,
+    description: str = "",
+    known_website: str | None = None,
+    *,
+    existing_description: str | None = None,
+    listing_notes: str | None = None,
 ) -> str:
+    """Build the org-assessor prompt.
+
+    *description* is legacy: treated as listing notes unless *existing_description*
+    is passed. Listing notes never gate Tavily and must not drive interpretive fields.
+    """
+    known = ""
+    if known_website and evidence_domain(known_website):
+        known = known_website.strip()
+    source = (existing_description if existing_description is not None else "") or ""
+    notes = (listing_notes if listing_notes is not None else description) or ""
+    source_block = source.strip()[:_PROMPT_DESC_MAX_CHARS] or "(none)"
+    notes_block = notes.strip()[:_PROMPT_DESC_MAX_CHARS] or "(none)"
     return _combined_prompt.format(
         SSE_PRINCIPLES=SSE_PRINCIPLES,
-        EVALUATION_CRITERIA=EVALUATION_CRITERIA,
+        ORG_EVALUATION_CRITERIA=ORG_EVALUATION_CRITERIA,
+        ORG_RATING_GUIDELINES=ORG_RATING_GUIDELINES,
+        org_criterion_label_rules=_ORG_CRITERION_LABEL_RULES,
+        source_description_rules=_SOURCE_DESCRIPTION_RULES,
         raw_name=raw_name,
         municipality=municipality or "",
         province=province or "",
+        known_website=known or "(none — discover the employer-owned homepage)",
         job_title=job_title,
-        description=description[:_PROMPT_DESC_MAX_CHARS],
+        listing_notes=notes_block,
+        source_description=source_block,
         json_fields=_JSON_FIELDS,
         sector_taxonomy_formatted=get_formatted_sector_taxonomy(),
         taxonomy_formatted=_format_taxonomy(),
+        website_rules=_WEBSITE_RULES,
+        bilingual_copy_rules=_BILINGUAL_COPY_RULES,
+        public_language_rules=_PUBLIC_LANGUAGE_RULES,
+        sector_priority_rules=_SECTOR_PRIORITY_RULES,
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
         length_limited_field_rules=LENGTH_LIMITED_FIELD_RULES,
     )
 
 
+def _build_search_query(
+    raw_name: str,
+    municipality: str | None = None,
+    province: str | None = None,
+    known_website: str | None = None,
+    context_hint: str | None = None,
+) -> str:
+    """Grounding query aimed at finding the organization's web presence.
+
+    Includes location prominently to avoid matching organizations with similar
+    names in different regions/countries. Does NOT include "official website"
+    since that biases search toward generic content and misses marketplace/social pages.
+    """
+    # Start with quoted name
+    parts = [f'"{raw_name}"']
+
+    # Add location BEFORE other terms to make it prominent in search
+    if municipality and province:
+        parts.append(f"{municipality}, {province}, Canada")
+    elif province:
+        parts.append(f"{province}, Canada")
+    elif municipality:
+        parts.append(f"{municipality}, Canada")
+    else:
+        parts.append("Canada")
+
+    # If known_website is evidence-grade (not social/shared), include it
+    if known_website and evidence_domain(known_website):
+        parts.append(known_website.strip())
+    elif context_hint and (len(raw_name.strip()) <= 6 or raw_name.isupper()):
+        # For short acronyms / names without a known website, extract 2-3 distinctive keywords
+        # to avoid ambiguous acronym collisions on search engines.
+        tokens = [
+            t for t in entity_require_terms(context_hint)
+            if len(t) > 3 and t not in raw_name.lower()
+        ]
+        if tokens:
+            parts.extend(tokens[:3])
+
+    return " ".join(parts)
+
+
 def _normalize_type(raw: Any) -> str | None:
-    org_type = str(raw).strip().lower() if raw else None
-    return org_type if org_type in ORG_TYPE_VALUES else None
+    if not raw:
+        return None
+    key = re.sub(r"[\s_-]+", "", str(raw).strip().lower())
+    return _ORG_TYPE_ALIASES.get(key)
 
 
 def _normalize_values(raw_values: Any, valid_set: set[str]) -> list[str]:
@@ -186,32 +501,693 @@ def _validate_sse_rating(raw: Any) -> str:
     return rating if rating in ("strong_yes", "weak_yes", "no") else "no"
 
 
-def _truncate_at_word(text: str, max_len: int) -> str:
-    if len(text) <= max_len:
+def _validate_public_language(raw: Any) -> str | None:
+    """Accept only en | fr | bilingual; everything else → None."""
+    if not raw:
+        return None
+    value = str(raw).strip().lower()
+    return value if value in VALID_ORG_LANGUAGES else None
+
+
+def _validate_geographic_scope(raw: Any) -> str | None:
+    """Accept only local | provincial | national | international; everything else → None."""
+    if not raw:
+        return None
+    value = str(raw).strip().lower()
+    valid_scopes = {"local", "provincial", "national", "international"}
+    return value if value in valid_scopes else None
+
+
+# Province/territory name → canonical two-letter code for CA plus common US state
+# entries we might encounter. Anything not mapped is rejected by _validate_province_code.
+_PROVINCE_NAME_TO_CODE: dict[str, str] = {
+    # Canada
+    "alberta": "AB",
+    "british columbia": "BC",
+    "colombie britannique": "BC",
+    "colombie-britannique": "BC",
+    "manitoba": "MB",
+    "new brunswick": "NB",
+    "nouveau brunswick": "NB",
+    "newfoundland and labrador": "NL",
+    "newfoundland": "NL",
+    "terre-neuve": "NL",
+    "terre-neuve-et-labrador": "NL",
+    "northwest territories": "NT",
+    "territoires du nord-ouest": "NT",
+    "nova scotia": "NS",
+    "nouvelle-ecosse": "NS",
+    "nouvelle-écosse": "NS",
+    "nunavut": "NU",
+    "ontario": "ON",
+    "prince edward island": "PE",
+    "ile-du-prince-edouard": "PE",
+    "île-du-prince-édouard": "PE",
+    "quebec": "QC",
+    "québec": "QC",
+    "saskatchewan": "SK",
+    "yukon": "YT",
+    # US border states occasionally seen as "province"
+    "maine": "ME",
+    "new york": "NY",
+    "michigan": "MI",
+    "washington": "WA",
+    "minnesota": "MN",
+    "north dakota": "ND",
+    "montana": "MT",
+    "vermont": "VT",
+    "new hampshire": "NH",
+}
+
+
+def _validate_province_code(raw: Any) -> str | None:
+    """Normalize a province/territory value to a canonical two-letter code.
+
+    Accepts either a raw full name (English/French) or the code itself. Returns
+    the canonical uppercase code, or None for unrecognized / too-long values.
+    """
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    if len(s) <= 2:
+        code = s.upper()
+        if code in frozenset(_PROVINCE_NAME_TO_CODE.values()):
+            return code
+        return None
+    key = s.lower()
+    mapped = _PROVINCE_NAME_TO_CODE.get(key)
+    if mapped:
+        return mapped
+    # Cap length: prevent arbitrarily long free-text from being persisted as-is.
+    if len(s) > 64:
+        return None
+    return None
+
+
+# Known types that can never be SSE yes. Null/unknown type is NOT in this set.
+# Eligible stored types (must agree with ORG_EVALUATION_CRITERIA): nonprofit,
+# cooperative, union. Eligible type is necessary but not sufficient — must-haves
+# still apply; type alone is never a Yes.
+_SSE_INELIGIBLE_ORG_TYPES = frozenset({
+    "government",
+    "other",
+})
+
+
+_CONTENT_PROVENANCE_FIELDS = ("description", "mission", "values")
+_CONTENT_VIA_STATUSES = frozenset({"extracted", "inferred", "absent"})
+
+
+def _is_content_provenance_flag(flag: str) -> bool:
+    """True for ``description via=…`` / legacy ``description_inferred`` style flags."""
+    fl = flag.strip().lower()
+    for field in _CONTENT_PROVENANCE_FIELDS:
+        if fl.startswith(f"{field} via="):
+            return True
+        if fl in {
+            f"{field}_extracted",
+            f"{field}_inferred",
+            f"{field}_absent",
+        }:
+            return True
+    return False
+
+
+def _content_via_from_flags(flags: list[str], field: str) -> str | None:
+    """Return extracted|inferred|absent if already present (new or legacy form)."""
+    field_l = field.lower()
+    for raw in flags:
+        if not isinstance(raw, str):
+            continue
+        fl = raw.strip().lower()
+        prefix = f"{field_l} via="
+        if fl.startswith(prefix):
+            status = fl[len(prefix):].strip()
+            if status in _CONTENT_VIA_STATUSES:
+                return status
+        for status in _CONTENT_VIA_STATUSES:
+            if fl == f"{field_l}_{status}":
+                return status
+    return None
+
+
+def _ensure_content_provenance_flags(result: AssessedOrgResult) -> AssessedOrgResult:
+    """Ensure description/mission/values each have a ``field via=…`` flag.
+
+    Matches language provenance shape (``language:en via=web_text``). If the
+    model omitted provenance for a populated field, default to via=inferred
+    (or via=absent for mission, which should never be inferred).
+    """
+    original = list(result.get("flags") or [])
+    kept = [f for f in original if isinstance(f, str) and not _is_content_provenance_flag(f)]
+    flags = list(kept)
+
+    has_description = bool(
+        result.get("description_en") or result.get("description_fr")
+    )
+    has_mission = bool(
+        result.get("mission_statement_en") or result.get("mission_statement_fr")
+    )
+    has_values = bool(result.get("values") or result.get("values_raw"))
+    present = {
+        "description": has_description,
+        "mission": has_mission,
+        "values": has_values,
+    }
+
+    for field in _CONTENT_PROVENANCE_FIELDS:
+        status = _content_via_from_flags(original, field)
+        if status is None:
+            # Mission should never be inferred - default to absent
+            if field == "mission":
+                status = "absent"
+            else:
+                status = "inferred" if present[field] else "absent"
+        # Validate mission can only be extracted or absent
+        if field == "mission" and status == "inferred":
+            status = "absent"
+            flags.append("mission_inferred_downgraded_to_absent")
+        flags.append(f"{field} via={status}")
+
+    if flags == original:
+        return result
+    return AssessedOrgResult(**{**result, "flags": flags})
+
+
+def _enforce_provenance_nulls(result: AssessedOrgResult) -> AssessedOrgResult:
+    """Null out mission_statement and values_raw when not genuinely extracted.
+
+    - mission_statement must ONLY come from the org's own explicit statement.
+      If provenance is anything other than 'extracted', null it out.
+    - values_raw (the org's own stated values text) must also be extracted,
+      not composed by the LLM.  If not extracted, null it out.
+    - values_list (mapped Knowdell work values) is intentionally kept — it is
+      always inferred from description, mission, website content, etc.
+    """
+    flags = result.get("flags") or []
+    updates: dict = {}
+
+    mission_via = _content_via_from_flags(flags, "mission")
+    if mission_via != "extracted":
+        if result.get("mission_statement_en") or result.get("mission_statement_fr"):
+            updates["mission_statement_en"] = None
+            updates["mission_statement_fr"] = None
+            logger.debug(
+                "Nulled mission_statement (provenance=%s) for %s",
+                mission_via, result.get("canonical_name"),
+            )
+
+    values_via = _content_via_from_flags(flags, "values")
+    if values_via != "extracted":
+        if result.get("values_raw"):
+            updates["values_raw"] = None
+            logger.debug(
+                "Nulled values_raw (provenance=%s) for %s",
+                values_via, result.get("canonical_name"),
+            )
+
+    if updates:
+        return AssessedOrgResult(**{**result, **updates})
+    return result
+
+
+_LOCALE_FIELD_PAIRS = (
+    ("description_en", "description_fr"),
+    ("mission_statement_en", "mission_statement_fr"),
+    ("sse_reasoning_en", "sse_reasoning_fr"),
+)
+
+
+def _translate_text(text: str, target_lang: str) -> str | None:
+    provider = get_sse_provider()
+    if not provider:
+        logger.error("No LLM provider available for translation")
+        return None
+
+    try:
+        lang_name = "English" if target_lang == "en" else "French"
+        prompt = f"Translate the following text into {lang_name}. Output ONLY the translated text, nothing else.\n\n{text}"
+        response = provider.complete(prompt, json_mode=False)
+        return response.strip()
+    except Exception as e:
+        logger.error("Failed to translate text to %s: %s", target_lang, e)
+        return None
+
+
+def _enforce_locale_correctness(result: AssessedOrgResult) -> AssessedOrgResult:
+    """Ensure _en fields contain English and _fr fields contain French.
+
+    The LLM sometimes returns French text in both the _en and _fr slots (or
+    vice-versa).  This guard uses lightweight marker-based detection to:
+    1. Swap if the locales are simply reversed.
+    2. Move the wrong-locale copy to the correct field and translate the text for the missing field.
+    """
+    updates: dict = {}
+
+    for en_key, fr_key in _LOCALE_FIELD_PAIRS:
+        en_val = result.get(en_key)
+        fr_val = result.get(fr_key)
+        if not en_val and not fr_val:
+            continue
+
+        # Only attempt detection on sufficiently long strings (20+ chars)
+        en_lang = _detect_text_language(en_val).language if en_val and len(en_val) >= 20 else None
+        fr_lang = _detect_text_language(fr_val).language if fr_val and len(fr_val) >= 20 else None
+
+        # Case 1: straight swap — _en holds French, _fr holds English
+        if en_lang == "fr" and fr_lang == "en":
+            updates[en_key] = fr_val
+            updates[fr_key] = en_val
+            logger.info(
+                "Swapped locales for %s/%s (were reversed) on %s",
+                en_key, fr_key, result.get("canonical_name"),
+            )
+            continue
+
+        # Case 2: _en is French but _fr is also French (or missing) — move _en → _fr, translate _en
+        if en_lang == "fr" and fr_lang != "en":
+            if not fr_val:
+                updates[fr_key] = en_val
+            translated = _translate_text(en_val, "en")
+            if translated:
+                updates[en_key] = translated
+            else:
+                logger.warning(
+                    "Translation to 'en' failed for %s/%s on %s; keeping original value",
+                    en_key, fr_key, result.get("canonical_name"),
+                )
+            logger.info(
+                "Moved %s→%s (was French) and translated to English on %s",
+                en_key, fr_key, result.get("canonical_name"),
+            )
+            continue
+
+        # Case 3: _fr is English but _en is also English (or missing) — move _fr → _en, translate _fr
+        if fr_lang == "en" and en_lang != "fr":
+            if not en_val:
+                updates[en_key] = fr_val
+            translated = _translate_text(fr_val, "fr")
+            if translated:
+                updates[fr_key] = translated
+            else:
+                logger.warning(
+                    "Translation to 'fr' failed for %s/%s on %s; keeping original value",
+                    fr_key, en_key, result.get("canonical_name"),
+                )
+            logger.info(
+                "Moved %s→%s (was English) and translated to French on %s",
+                fr_key, en_key, result.get("canonical_name"),
+            )
+            continue
+
+    if updates:
+        return AssessedOrgResult(**{**result, **updates})
+    return result
+
+
+def _apply_website_known_guard(
+    result: AssessedOrgResult,
+    known_website: str | None,
+) -> AssessedOrgResult:
+    """Allow website updates when discovered via grounding.
+
+    Previously, this function always preferred known_website to prevent LLMs from
+    inventing URLs. However, now that we use Tavily grounding and location validation,
+    discovered websites are trustworthy and should replace potentially incorrect known URLs.
+
+    The function now:
+    1. Uses discovered website if found (from Tavily grounding)
+    2. Falls back to known website only if no discovered website found
+    3. Flags mismatches for auditing purposes
+    """
+    known = known_website.strip() if known_website else None
+
+    discovered = result.get("website")
+    discovered_clean = discovered.strip() if discovered else None
+
+    if not discovered_clean:
+        # No discovered website - fall back to known
+        if flags := result.get("flags"):
+            if not any("website" in str(f).lower() for f in flags):
+                flags_list = list(flags)
+                flags_list.append("website_not_found")
+                result = AssessedOrgResult(**{**result, "flags": flags_list})
+        return result if not known else AssessedOrgResult(**{**result, "website": known})
+
+    # Discovered website exists - use it (trust Tavily + location validation)
+    if known:
+        discovered_domain = extract_domain(discovered_clean) or ""
+        known_domain = extract_domain(known) or ""
+        if discovered_domain and known_domain and discovered_domain != known_domain:
+            # Flag that we're updating the website
+            flags = list(result.get("flags") or [])
+            flags.append(f"website_updated: {known_domain} -> {discovered_domain}")
+            result = AssessedOrgResult(**{**result, "flags": flags})
+
+    # Use discovered website
+    return result
+
+
+def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgResult:
+    """Force 'no' only when type is known and ineligible for SSE yes."""
+    if result["sse_rating"] == "no":
+        return result
+    org_type = result.get("type")
+    if org_type is None:
+        # Unknown type — do not demote a model Yes.
+        return result
+    if org_type not in _SSE_INELIGIBLE_ORG_TYPES:
+        return result
+
+    flags = list(result.get("flags") or [])
+    flags.append(
+        "governance_gate: non-SSE org type cannot be SSE yes "
+        f"(type={org_type!r}; government and other are never SSE; "
+        "eligible: nonprofit, cooperative, union)"
+    )
+    return AssessedOrgResult(
+        **{
+            **result,
+            "sse_rating": "no",
+            "flags": flags,
+        }
+    )
+
+
+# Corporate legal suffixes that often mark private companies; many Canadian
+# charities also use Inc., so demotion also requires missing charity registration
+# evidence (see _apply_private_company_sse_guard).
+_CORP_LEGAL_SUFFIX_RE = re.compile(
+    r"\b(?:inc\.?|incorporated|ltd\.?|limited|llc|corp\.?|corporation|s\.?a\.?|"
+    r"gmbh|plc)\b",
+    re.IGNORECASE,
+)
+
+# Explicit private / commercial ownership signals in model text.
+# Shareholders: positive ownership only — do not match "without shareholders".
+_PRIVATE_COMPANY_EVIDENCE_RE = re.compile(
+    r"for[- ]profits?|private(?:ly)?[- ]owned|private company|private business|"
+    r"founder[- ]owned|owner[- ]operated|"
+    r"(?:with|has|have)\s+(?:private\s+)?shareholders?|shareholder[- ]owned|"
+    r"commercial (?:music|arts|education|school|program|enterprise)|"
+    r"fee[- ]based (?:private|commercial)|tuition[- ]based|"
+    r"privately (?:operated|run|owned)|conventional (?:for[- ]profit|private)",
+    re.IGNORECASE,
+)
+
+# Charity / nonprofit registration — strongest keep signal for the
+# private-company gate (CRA / letters patent / etc.).
+_CHARITY_REGISTRATION_EVIDENCE_RE = re.compile(
+    r"registered charity|charitable (?:status|registration|number|organization)|"
+    r"charity (?:number|registration|status)|CRA\b|canada revenue|"
+    r"501\s*\(\s*c\s*\)|non[- ]distribution|without share capital|"
+    r"letters patent|incorporated as a (?:non[- ]?profit|charity)|"
+    r"nonprofit corporation|not[- ]for[- ]profit corporation|"
+    r"cooperative(?:s)? (?:registration|incorporation)|credit union",
+    re.IGNORECASE,
+)
+
+# Strong soft nonprofit / public-benefit cues — keep Inc./Ltd. suffix-only
+# Yes without demanding CRA boilerplate. Bare "nonprofit"/"charity"/
+# "mission-driven"/bare "directors" are NOT enough (models invent those).
+# Applied only after private/commercial demotion has already been checked.
+_SOFT_NONPROFIT_EVIDENCE_RE = re.compile(
+    r"public[- ]benefit|community (?:benefit|mission|service)|"
+    r"volunteer board|without (?:private )?shareholders?|"
+    r"volunteer[- ](?:run|led|based|driven|center|centre|organization)|"
+    r"(?:staffed|composed|operated)\s+(?:by|mainly by|primarily by)\s+volunteers?|"
+    r"non[- ]?profit(?:able)?(?:\s+organization)?|charitable\s+(?:mission|purpose|aims?)|"
+    r"community[- ]based\s+(?:organization|service)|social\s+(?:mission|purpose)|"
+    r"serves?\s+the\s+(?:community|public)|community\s+solidarity",
+    re.IGNORECASE,
+)
+
+
+def _org_assessment_evidence_blob(result: AssessedOrgResult) -> str:
+    parts = [
+        result.get("sse_reasoning_en") or "",
+        result.get("sse_reasoning_fr") or "",
+        " ".join(str(x) for x in (result.get("flags") or [])),
+        " ".join(str(x) for x in (result.get("must_haves_met") or [])),
+        " ".join(str(x) for x in (result.get("nice_to_haves_met") or [])),
+    ]
+    return " ".join(parts)
+
+
+def _demote_org_to_other_no(
+    result: AssessedOrgResult,
+    flag: str,
+) -> AssessedOrgResult:
+    flags = list(result.get("flags") or [])
+    flags.append(flag)
+    return AssessedOrgResult(
+        **{
+            **result,
+            "type": "other",
+            "sse_rating": "no",
+            "flags": flags,
+        }
+    )
+
+
+def _apply_private_company_sse_guard(
+    result: AssessedOrgResult,
+    raw_name: str,
+) -> AssessedOrgResult:
+    """Demote Yes when evidence is private/commercial without charity signals.
+
+    Catches models that invent type=nonprofit + weak_yes for commercial
+    Inc./Ltd. businesses (e.g. fee-based private music/education schools).
+
+    Order: registration keep → private/commercial demotion → strong soft
+    keep for suffix-only cases → corp-suffix demotion. Soft cues must not
+    override explicit private/commercial ownership language. Bare
+    nonprofit/charity fluff is not enough to keep an Inc. Yes.
+    """
+    if result["sse_rating"] not in ("strong_yes", "weak_yes"):
+        return result
+
+    name = (raw_name or result.get("canonical_name") or "").strip()
+    blob = _org_assessment_evidence_blob(result)
+    org_type = result.get("type")
+
+    # Strongest keep: CRA / letters patent / charity registration.
+    if _CHARITY_REGISTRATION_EVIDENCE_RE.search(blob):
+        return result
+
+    # Private/commercial ownership wins over soft mission/board language.
+    if _PRIVATE_COMPANY_EVIDENCE_RE.search(blob):
+        return _demote_org_to_other_no(
+            result,
+            "private_company_gate: private/for-profit evidence without "
+            "charity/nonprofit registration → type=other, rating=no",
+        )
+
+    # Strong soft cues (volunteer board, public-benefit, without shareholders,
+    # community benefit/mission/service) keep real Inc. charities without CRA.
+    if _SOFT_NONPROFIT_EVIDENCE_RE.search(blob):
+        return result
+
+    # Inc./Ltd./Corp. nonprofit/unknown Yes without registration or strong
+    # soft evidence — treat as conventional private company, not SSE.
+    if _CORP_LEGAL_SUFFIX_RE.search(name) and org_type in ("nonprofit", None):
+        return _demote_org_to_other_no(
+            result,
+            "private_company_gate: corporate legal suffix (Inc./Ltd./Corp.) "
+            "without charity/nonprofit registration or strong nonprofit "
+            "evidence → type=other, rating=no",
+        )
+
+    return result
+
+
+# Community arts names wrongly typed as government from a place-name alone.
+_COMMUNITY_ARTS_NAME_RE = re.compile(
+    r"\b(?:orchestra|philharmonic|symphony|choir|chorale|"
+    r"community (?:theatre|theater|band|chorus)|"
+    r"wind (?:orchestra|ensemble|band))\b",
+    re.IGNORECASE,
+)
+_EXPLICIT_GOVERNMENT_EVIDENCE_RE = re.compile(
+    r"municipal (?:department|agency|government|employer|parks)|"
+    r"city (?:department|agency)|town (?:council|department)|"
+    r"public[- ]sector|crown corp|"
+    r"statutory|created by (?:statute|legislation|government)|"
+    r"appointed by (?:a )?(?:minister|council|cabinet|public authority)|"
+    r"school board|public hospital|government (?:agency|department|body)|"
+    r"provincial (?:agency|ministry)|federal (?:agency|department)",
+    re.IGNORECASE,
+)
+
+
+def _apply_community_arts_place_name_guard(
+    result: AssessedOrgResult,
+    raw_name: str,
+) -> AssessedOrgResult:
+    """Correct government typing from city-in-name for community arts orgs.
+
+    Place names in orchestra/choir/theatre titles are geographic branding, not
+    municipal employment. Remap to nonprofit and restore a Yes floor when the
+    model also forced No solely via that mis-type.
+    """
+    if result.get("type") != "government":
+        return result
+
+    name = (raw_name or result.get("canonical_name") or "").strip()
+    if not _COMMUNITY_ARTS_NAME_RE.search(name):
+        return result
+
+    blob = _org_assessment_evidence_blob(result)
+    if _EXPLICIT_GOVERNMENT_EVIDENCE_RE.search(blob):
+        return result
+
+    flags = list(result.get("flags") or [])
+    flags.append(
+        "place_name_guard: community arts org — city/place in name is not "
+        "municipal/government evidence → type=nonprofit"
+    )
+    new_rating = result.get("sse_rating") or "no"
+    if new_rating == "no":
+        new_rating = "weak_yes"
+        flags.append(
+            "place_name_guard: restored weak_yes for community arts "
+            "nonprofit after false government typing"
+        )
+    sector = result.get("sector_id")
+    if sector in (None, "community-civic-infrastructure"):
+        sector = "arts-culture-information"
+
+    return AssessedOrgResult(
+        **{
+            **result,
+            "type": "nonprofit",
+            "sse_rating": new_rating,
+            "sector_id": sector,
+            "flags": flags,
+        }
+    )
+
+
+_LENGTH_LIMITED_FIELDS: tuple[tuple[str, int], ...] = (
+    ("description_en", _ORG_DESCRIPTION_MAX_CHARS),
+    ("description_fr", _ORG_DESCRIPTION_MAX_CHARS),
+    ("mission_statement_en", _ORG_MISSION_MAX_CHARS),
+    ("mission_statement_fr", _ORG_MISSION_MAX_CHARS),
+    ("values_raw", _ORG_VALUES_RAW_MAX_CHARS),
+    ("sse_reasoning_en", _SSE_REASONING_MAX_CHARS),
+    ("sse_reasoning_fr", _SSE_REASONING_MAX_CHARS),
+)
+
+
+def _fields_over_limit(result: AssessedOrgResult) -> dict[str, tuple[str, int]]:
+    """Return {field: (text, max_chars)} for length-limited fields that overshoot."""
+    over: dict[str, tuple[str, int]] = {}
+    for field, max_chars in _LENGTH_LIMITED_FIELDS:
+        value = result.get(field)
+        if isinstance(value, str) and len(value) > max_chars:
+            over[field] = (value, max_chars)
+    return over
+
+
+def _smart_truncate(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
         return text
-    sliced = text[:max_len]
-    last_space = sliced.rfind(" ")
+    truncated = text[:max_chars]
+    # find the last sentence boundary
+    last_period = max(truncated.rfind('. '), truncated.rfind('! '), truncated.rfind('? '))
+    if last_period > 0:
+        return truncated[:last_period + 1]
+    # fallback to last space
+    last_space = truncated.rfind(' ')
     if last_space > 0:
-        return sliced[:last_space].rstrip()
-    return sliced
+        return truncated[:last_space] + '...'
+    return truncated[:max_chars - 3] + '...'
 
 
-def _parse_text_field(data: dict, key: str, max_len: int | None = None) -> str | None:
+def _parse_text_field(data: dict, key: str) -> str | None:
     val = data.get(key)
     if val:
-        trimmed = str(val).strip()
-        if max_len is not None:
-            trimmed = _truncate_at_word(trimmed, max_len)
-        return trimmed
+        text = str(val).strip()
+        return text or None
     return None
 
 
 def _parse_website(raw: Any) -> str | None:
-    if raw:
-        parsed = urlparse(str(raw).strip())
-        if parsed.scheme in ("http", "https"):
-            return str(raw).strip()
-    return None
+    """Keep http(s) employer-owned sites; allow social/marketplace as fallback.
+
+    Previously rejected all shared domains (Facebook, LinkedIn, etc). Now allows
+    them as valid web presences when they're the best available option, since
+    many small organizations only have social media or marketplace pages.
+
+    However, we still reject:
+    - Link aggregators (Linktree, bit.ly)
+    - Job boards and ATS platforms
+    - Malformed URLs
+    """
+    if not raw:
+        return None
+    url = str(raw).strip()
+    if not url:
+        return None
+    if "://" not in url:
+        url = "https://" + url
+
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return None
+
+    if parsed.scheme not in ("http", "https"):
+        return None
+
+    # Validate hostname exists and is not empty
+    hostname = parsed.hostname
+    if not hostname or not hostname.strip():
+        return None
+
+    # Basic hostname validation - must contain at least one dot and alphanumeric chars
+    if "." not in hostname or not re.search(r"[a-z0-9]", hostname.lower()):
+        return None
+
+    # Reject link aggregators - these are NEVER valid org identities
+    link_aggregators = {
+        "linktr.ee",
+        "bit.ly",
+        "tinyurl.com",
+        "t.co",
+        "ow.ly",
+        "buff.ly",
+    }
+
+    hostname_lower = hostname.lower().strip(".")
+    if hostname_lower in link_aggregators:
+        return None
+    if any(hostname_lower.endswith("." + host) for host in link_aggregators):
+        return None
+
+    # Reject job boards and ATS platforms entirely - these are NOT valid org identifiers
+    # Even with paths, these are job listing URLs, not organization websites
+    # Only exception: Social media company pages (facebook.com/company, linkedin.com/company)
+    # and ATS platforms with org-specific SUBDOMAINS (e.g., boards.greenhouse.io)
+    # which are handled via the shared domain logic in extract_org_identity
+    job_boards = {
+        "indeed.com",
+        "glassdoor.com",
+        "charityvillage.com",
+    }
+
+    # Reject if it's a direct job board domain (with or without path)
+    if hostname_lower in job_boards:
+        return None
+    if any(hostname_lower.endswith("." + host) for host in job_boards):
+        # Allow ATS subdomains like boards.greenhouse.io, careers.greenhouse.io
+        # These have org-specific paths and are tracked in shared domains
+        # But reject direct subdomains of job boards (e.g., ca.indeed.com/jobs)
+        return None
+
+    return url
 
 
 def _ensure_str_list(raw: Any) -> list[str]:
@@ -227,15 +1203,123 @@ def _clamp_confidence(raw: Any) -> float:
         return 0.5
 
 
+def _parse_localized_text(data: dict, key_en: str, key_fr: str, legacy_key: str) -> tuple[str | None, str | None]:
+    """Prefer explicit *_en/*_fr; fall back to legacy monolingual key as English."""
+    en = _parse_text_field(data, key_en)
+    fr = _parse_text_field(data, key_fr)
+    if en is None and fr is None:
+        en = _parse_text_field(data, legacy_key)
+    return en, fr
+
+
+def _sanitize_llm_json(text: str) -> str:
+    """Repair common LLM-produced JSON defects before json.loads.
+
+    Known failure modes from Gemini/Groq when asked for JSON alongside markdown/grounding:
+
+    1. **Backticks inside double-quoted strings (Pattern A)** — the model wraps any
+       "code-like" token (URLs, slugs, IDs) in `` `inline code` `` backticks, then wraps
+       the *whole thing* again in double quotes.  Example::
+
+           "website": "`https://renewsafety.com`"
+
+       This actually parses as valid JSON but leaves literal `` ` `` characters inside the
+       value, which later break URL/domain checks.  We remove the wrapping backticks.
+
+    2. **Bare backtick-delimited strings (Pattern B)** — the model occasionally drops the
+       outer double quotes entirely and uses markdown backticks as a JSON string delimiter,
+       which is *not* valid JSON.  Example::
+
+           "website": `https://dhilmar.com`,
+           "description_en": `Mining company "operating" the Éléonore mine`,
+
+       This is the usual cause of ``Expecting value`` / ``Expecting property name`` errors
+       at the property *after* a backtick-string, because the parser sees the closing
+       backtick, doesn't recognize it as ending a string, and therefore misaligns every
+       subsequent token.
+
+    We apply Pattern A first (harmless, always safe), then Pattern B conservatively
+    (only at `: ` value boundaries, where a JSON string value is expected).  If a
+    best-effort parse still fails, we fall back to character-level backtick → quote
+    substitution for the small class of responses where the model truly went
+    backtick-happy everywhere.
+    """
+    if not text:
+        return text
+
+    # --- Pattern A: strip wrapping backticks inside a double-quoted string value. ---
+    # Match "`thing`" where thing contains no quotes/newlines (avoids accidentally
+    # matching nested content).  URLs, slugs, and short identifiers all fit this.
+    text = re.sub(
+        r'"`([^"`\n\r]+)`"',
+        r'"\1"',
+        text,
+    )
+
+    # --- Pattern B: replace bare backtick-delimited values that stand in for a JSON ---
+    # string after a key.  Match: `: ` + optional whitespace + `` `content` ``
+    # + (comma | closing brace/bracket | end-of-line/whitespace).
+    #
+    # Inside the backtick payload we allow any character EXCEPT an unescaped backtick,
+    # and we collapse it into a double-quoted string while escaping any stray double
+    # quotes already in the payload (Pattern B often contains unescaped quotes — e.g.
+    # a sentence with the word "operating" inside backticks).
+    def _rewrite_backtick_value(match: re.Match[str]) -> str:
+        prefix = match.group(1)          # e.g. ':  '
+        payload = match.group(2)         # content inside ``...``
+        # Escape any double quotes or backslashes the payload already contained
+        # (the model would have needed to escape them inside a real JSON string).
+        escaped = payload.replace("\\", "\\\\").replace('"', '\\"')
+        return f'{prefix}"{escaped}"'
+
+    text = re.sub(
+        r'(:\s*)`([^`]*)`',
+        _rewrite_backtick_value,
+        text,
+    )
+
+    return text
+
+
 def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | None:
     text = BaseGroundedClassifier._extract_json_block(response_text)
 
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError as exc:
+    data = None
+    first_error: json.JSONDecodeError | None = None
+    for attempt, candidate in enumerate((
+        _sanitize_llm_json(text),
+        text,
+    )):
+        try:
+            data = json.loads(candidate)
+            if attempt > 0:
+                logger.info(
+                    "OrganizationAssessor: _sanitize_llm_json salvaged parse for %r (attempt %s)",
+                    raw_name, attempt + 1,
+                )
+            break
+        except json.JSONDecodeError as exc:
+            if first_error is None:
+                first_error = exc
+            # Last-ditch: wholesale backtick → double-quote swap only on retry 2.
+            # Can technically produce an invalid parse if backticks appear inside prose,
+            # but this catches the remaining tail of "all string delimiters are backticks"
+            # responses and at this point json.loads is already failing anyway.
+            if attempt == 1:
+                try:
+                    data = json.loads(candidate.replace("`", '"'))
+                    logger.info(
+                        "OrganizationAssessor: last-resort backtick→quote salvage succeeded for %r",
+                        raw_name,
+                    )
+                    break
+                except json.JSONDecodeError:
+                    pass
+
+    if data is None:
         logger.warning(
             "OrganizationAssessor: failed to parse JSON for %r: %s — response: %r",
-            raw_name, exc, response_text[:200],
+            raw_name, first_error, response_text[:200],
         )
         return None
 
@@ -262,32 +1346,230 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
             canonical_name, raw_name, slug,
         )
 
-    return AssessedOrgResult(
+    description_en, description_fr = _parse_localized_text(
+        data, "description_en", "description_fr", "description"
+    )
+    mission_en, mission_fr = _parse_localized_text(
+        data, "mission_statement_en", "mission_statement_fr", "mission_statement"
+    )
+    reasoning_en, reasoning_fr = _parse_localized_text(
+        data, "sse_reasoning_en", "sse_reasoning_fr", "sse_reasoning"
+    )
+
+    # Log what website the LLM returned (debug level to avoid routinely logging potentially sensitive fields)
+    llm_website = data.get("website")
+    logger.debug(f"LLM returned website field: {llm_website!r} for org {canonical_name}")
+
+    result = AssessedOrgResult(
         canonical_name=canonical_name.strip(),
         slug=slug,
-        website=_parse_website(data.get("website")),
-        description=_parse_text_field(data, "description", _ORG_DESCRIPTION_MAX_CHARS),
-        mission_statement=_parse_text_field(data, "mission_statement", _ORG_MISSION_MAX_CHARS),
+        website=_parse_website(llm_website),
+        description_en=description_en,
+        description_fr=description_fr,
+        mission_statement_en=mission_en,
+        mission_statement_fr=mission_fr,
         type=_normalize_type(data.get("type")),
         sector_id=data.get("sector_id") if data.get("sector_id") in get_sector_ids_set() else None,
-        values_raw=_parse_text_field(data, "values_raw", 1000),
+        values_raw=_parse_text_field(data, "values_raw"),
         values=_normalize_values(data.get("values", []), get_work_values_set()),
         sse_rating=_validate_sse_rating(data.get("sse_rating")),
         sse_confidence=_clamp_confidence(data.get("sse_confidence")),
-        sse_reasoning=(
-            _parse_text_field(data, "sse_reasoning", _SSE_REASONING_MAX_CHARS)
-            or "No reasoning provided"
+        sse_reasoning_en=reasoning_en,
+        sse_reasoning_fr=reasoning_fr,
+        must_haves_met=_strip_job_leaked_criterion_labels(
+            _ensure_str_list(data.get("must_haves_met"))
         ),
-        must_haves_met=_ensure_str_list(data.get("must_haves_met")),
-        nice_to_haves_met=_ensure_str_list(data.get("nice_to_haves_met")),
+        nice_to_haves_met=_strip_job_leaked_criterion_labels(
+            _ensure_str_list(data.get("nice_to_haves_met"))
+        ),
         flags=_ensure_str_list(data.get("flags")),
+        public_language=_validate_public_language(data.get("public_language")),
+        geographic_scope=_validate_geographic_scope(data.get("geographic_scope")),
+        headquarters_municipality=_parse_text_field(data, "headquarters_municipality"),
+        headquarters_province=_validate_province_code(_parse_text_field(data, "headquarters_province")),
     )
+    gated = _apply_org_sse_governance_guard(
+        _enforce_provenance_nulls(
+            _ensure_content_provenance_flags(result)
+        )
+    )
+    # Place-name remaps government→nonprofit (+ Yes floor) before the private-
+    # company gate so arts-derived Yes still faces Inc./commercial demotion.
+    gated = _apply_community_arts_place_name_guard(gated, raw_name)
+    return _apply_private_company_sse_guard(gated, raw_name)
+
+
+def _append_language_provenance_flags(
+    row: dict,
+    *,
+    language: str | None,
+    via: str,
+    reasons: tuple[str, ...] = (),
+) -> None:
+    """Record how organizations.language was chosen on sse_details.flags."""
+    details = row.get("sse_details")
+    if not isinstance(details, dict):
+        details = {}
+        row["sse_details"] = details
+    else:
+        # Copy so we don't mutate a shared prior dict in place.
+        details = dict(details)
+        row["sse_details"] = details
+
+    flags = [
+        f for f in (details.get("flags") or [])
+        if isinstance(f, str) and not f.startswith("language")
+    ]
+    if language:
+        flags.append(f"language:{language} via={via}")
+    else:
+        flags.append(f"language:unset via={via}")
+    for reason in reasons[:6]:
+        label = str(reason).strip()
+        if not label:
+            continue
+        flag = f"language_reason:{label}"
+        if flag not in flags:
+            flags.append(flag)
+    details["flags"] = flags
+
+
+def _append_website_identity_flags(
+    row: dict,
+    website: str | None,
+    identity: str | None,
+) -> None:
+    """Record website identity provenance on sse_details.flags.
+
+    Tracks the type of website (employer_owned, marketplace, social_media, etc.)
+    and the platform for shared hosting sites to enable filtering and review.
+    """
+    from utils.organization_cache import classify_identity_type, extract_platform
+
+    details = row.get("sse_details")
+    if not isinstance(details, dict):
+        details = {}
+        row["sse_details"] = details
+    else:
+        # Copy so we don't mutate a shared prior dict in place
+        details = dict(details)
+        row["sse_details"] = details
+
+    # Remove existing website via/platform flags (preserve other website_* flags)
+    flags = [
+        f for f in (details.get("flags") or [])
+        if isinstance(f, str)
+        and not f.startswith("website via=")
+        and not f.startswith("website_platform:")
+    ]
+
+    if not website:
+        details["flags"] = flags
+        return
+
+    # Determine identity type
+    identity_type = classify_identity_type(identity)
+
+    # Add new website flags
+    flags.append(f"website via={identity_type}")
+
+    # Add platform detail for non-employer domains
+    if identity_type not in {"employer_owned", "unknown", "invalid"}:
+        platform = extract_platform(identity)
+        if platform and platform != "unknown":
+            flags.append(f"website_platform:{platform}")
+
+    details["flags"] = flags
+
+
+def _attach_org_language(
+    row: dict,
+    llm_public_language: str | None = None,
+    force_lang: bool = False,
+    fetch_web: bool = False,
+) -> dict:
+    """Set organizations.language from name/website signals, else public_language.
+
+    Does not overwrite an already-populated language value unless *force_lang*
+    is True. Objective signals (website metadata + name LLM) win;
+    ``llm_public_language`` is a soft, research-derived model judgment used
+    only as a tiebreaker when those are silent.
+
+    Website fetching is off by default (insert/reassess stay offline); pass
+    ``fetch_web=True`` from throttled backfills that intentionally probe sites.
+
+    Always records provenance on ``sse_details.flags`` (``language:… via=…``
+    and optional ``language_reason:…``), including when language is kept.
+    """
+    existing = row.get("language")
+    if existing and not force_lang:
+        _append_language_provenance_flags(
+            row,
+            language=str(existing),
+            via="kept",
+        )
+        return row
+
+    classification = classify_org_language(
+        name=row.get("name"),
+        website=row.get("website"),
+        fetch_web=fetch_web,
+    )
+    lang = classification.language
+
+    # An English name is a weak signal: English is a lingua franca in Canada, and
+    # many French/bilingual orgs carry an English or language-neutral legal name.
+    # A research-grounded public_language of fr/bilingual overrides a name-only
+    # English guess. French/bilingual names and confirmed website evidence stay
+    # authoritative.
+    name_only_english = classification.source == "llm_name" and lang == "en"
+    if llm_public_language in VALID_ORG_LANGUAGES and (
+        lang is None or (name_only_english and llm_public_language != "en")
+    ):
+        row["language"] = llm_public_language
+        _append_language_provenance_flags(
+            row,
+            language=llm_public_language,
+            via="public_language",
+            reasons=classification.reasons,
+        )
+        return row
+
+    if lang:
+        row["language"] = lang
+        _append_language_provenance_flags(
+            row,
+            language=lang,
+            via=classification.source,
+            reasons=classification.reasons,
+        )
+        return row
+
+    _append_language_provenance_flags(
+        row,
+        language=None,
+        via=classification.source or "unknown",
+        reasons=classification.reasons or ("insufficient_signal",),
+    )
+    return row
 
 
 def _result_to_db_fields(result: AssessedOrgResult) -> dict:
-    return {
-        "description": result["description"],
-        "mission_statement": result["mission_statement"],
+    description_en = result["description_en"]
+    description_fr = result["description_fr"]
+    mission_en = result["mission_statement_en"]
+    mission_fr = result["mission_statement_fr"]
+    reasoning_en = result["sse_reasoning_en"]
+    reasoning_fr = result["sse_reasoning_fr"]
+    website = result.get("website")
+    fields = {
+        "description_en": description_en,
+        "description_fr": description_fr,
+        # Legacy columns: prefer English, else French, for search/compat readers.
+        "description": description_en or description_fr,
+        "mission_statement_en": mission_en,
+        "mission_statement_fr": mission_fr,
+        "mission_statement": mission_en or mission_fr,
         "type": result["type"],
         "sector_id": result["sector_id"],
         "values": result["values_raw"],
@@ -297,7 +1579,9 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
         "is_sse": result["sse_rating"] in ("strong_yes", "weak_yes"),
         "sse_details": {
             "confidence": result["sse_confidence"],
-            "reasoning": result["sse_reasoning"],
+            "reasoning": reasoning_en or reasoning_fr,
+            "reasoning_en": reasoning_en,
+            "reasoning_fr": reasoning_fr,
             "must_haves_met": result["must_haves_met"],
             "nice_to_haves_met": result["nice_to_haves_met"],
             "flags": result["flags"],
@@ -305,6 +1589,113 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
             "reviewed": False,
         },
     }
+    public_language = result.get("public_language")
+    if public_language in VALID_ORG_LANGUAGES:
+        fields["language"] = public_language
+    # Persist employer-owned sites from assessor (+ known-website guard). Omitting
+    # this field made re-assess / parity harnesses report website=None even when
+    # Known website and Tavily evidence were available.
+    if website and evidence_domain(website):
+        fields["website"] = website
+    return fields
+
+
+_BILINGUAL_TEXT_KEYS = (
+    "description_en",
+    "description_fr",
+    "mission_statement_en",
+    "mission_statement_fr",
+)
+
+
+def _omit_null_locale_fields_from_update(updates: dict) -> dict:
+    """Drop null bilingual columns so reassess does not wipe existing locale text."""
+    out = {
+        key: value
+        for key, value in updates.items()
+        if not (key in _BILINGUAL_TEXT_KEYS and value is None)
+    }
+    # Legacy search columns: only rewrite when at least one locale is present.
+    if "description_en" in out or "description_fr" in out:
+        legacy = out.get("description_en") or out.get("description_fr")
+        if legacy:
+            out["description"] = legacy
+        else:
+            out.pop("description", None)
+    else:
+        out.pop("description", None)
+
+    if "mission_statement_en" in out or "mission_statement_fr" in out:
+        legacy = out.get("mission_statement_en") or out.get("mission_statement_fr")
+        if legacy:
+            out["mission_statement"] = legacy
+        else:
+            out.pop("mission_statement", None)
+    else:
+        out.pop("mission_statement", None)
+    return out
+
+
+def _merge_sse_details_preserving_reasoning(
+    updates: dict,
+    previous_details: Any,
+) -> dict:
+    """Keep prior reasoning_* when the new assessor result left a locale blank."""
+    details = updates.get("sse_details")
+    if not isinstance(details, dict):
+        return updates
+    prev = previous_details if isinstance(previous_details, dict) else {}
+    merged = dict(details)
+    for key in ("reasoning_en", "reasoning_fr", "reasoning"):
+        new_val = merged.get(key)
+        old_val = prev.get(key)
+        if (not isinstance(new_val, str) or not new_val.strip()) and isinstance(old_val, str) and old_val.strip():
+            merged[key] = old_val
+    merged["reasoning"] = (
+        (merged.get("reasoning_en") if isinstance(merged.get("reasoning_en"), str) else None)
+        or (merged.get("reasoning_fr") if isinstance(merged.get("reasoning_fr"), str) else None)
+        or (merged.get("reasoning") if isinstance(merged.get("reasoning"), str) else None)
+    )
+    return {**updates, "sse_details": merged}
+
+
+_ASSESSOR_SYSTEM = (
+    "You are an expert at identifying organizations, finding their "
+    "official employer-owned website, mapping work values, and "
+    "evaluating Solidarity Economy alignment of the ORGANIZATION "
+    "(not job-posting completeness). "
+    "The organization name, Known website, and SOURCE DESCRIPTION define the target entity. "
+    "Do NOT replace the target organization with a different entity from search (e.g., matching a "
+    "doctors' union when the target is a women's enterprise CED). "
+    "Interpretive fields (is_sse, sector, language, type, mission, values, website) "
+    "must come from official-website / supporting web research of the actual target entity. "
+    "SOURCE DESCRIPTION is for description_* when present. "
+    "Org must_haves_met / nice_to_haves_met use only organization SSE criteria — "
+    "never Transparent compensation, Clear job expectations, or other job-ad must-haves."
+)
+
+# Job-level must-have phrases that must never appear on org assessments.
+_JOB_LEAKED_CRITERION_RE = re.compile(
+    r"transparent\s+compensation|clear\s+job\s+expectations|"
+    r"salary\s+disclosure|job\s+expectation|compensation\s+or\s+role\s+type|"
+    r"unpaid\s+trial|volunteer\s+opportunity\s+disclosed",
+    re.IGNORECASE,
+)
+
+
+def _strip_job_leaked_criterion_labels(labels: list[str]) -> list[str]:
+    """Drop job-posting must-haves that models sometimes copy onto org assessments."""
+    kept: list[str] = []
+    for label in labels:
+        if _JOB_LEAKED_CRITERION_RE.search(label):
+            logger.info(
+                "OrganizationAssessor: stripping job-leaked criterion label %r",
+                label,
+            )
+            continue
+        kept.append(label)
+    return kept
+
 
 
 class OrganizationAssessor(BaseGroundedClassifier):
@@ -325,23 +1716,75 @@ class OrganizationAssessor(BaseGroundedClassifier):
         province: str | None = None,
         job_title: str = "",
         description: str = "",
+        known_website: str | None = None,
+        *,
+        existing_description: str | None = None,
+        listing_notes: str | None = None,
+        web_evidence: str | None = None,
     ) -> AssessedOrgResult | None:
-        prompt = _build_assessment_prompt(raw_name, municipality, province, job_title, description)
+        # Early rejection: private residences are not organizations
+        import unicodedata
+        if raw_name:
+            nfd = unicodedata.normalize('NFD', raw_name.lower())
+            norm_name = ''.join(c for c in nfd if not unicodedata.combining(c))
+            if "private residence" in norm_name or "residence privee" in norm_name:
+                logger.warning(
+                    "OrganizationAssessor: rejecting 'private residence' - not an organization. Name: %r",
+                    raw_name
+                )
+                return None
 
-        search_query = f'"{raw_name}"'
-        if municipality:
-            search_query += f" {municipality}"
-        if province:
-            search_query += f" {province}"
+        notes = listing_notes if listing_notes is not None else description
+        # SOURCE DESCRIPTION = stored org/job about-text for description_* only.
+        # Listing notes (legacy `description` arg) are identity hints — not SOURCE DESCRIPTION.
+        source = existing_description if existing_description is not None else ""
+        prompt = _build_assessment_prompt(
+            raw_name,
+            municipality,
+            province,
+            job_title,
+            description=description,
+            known_website=known_website,
+            existing_description=source,
+            listing_notes=notes,
+        )
+        prefetched = (web_evidence or "").strip()
+        if prefetched:
+            from llm.tavily_grounding import inject_grounding_evidence
+
+            prompt = inject_grounding_evidence(prompt, prefetched)
+
+        search_query = _build_search_query(
+            raw_name,
+            municipality,
+            province,
+            known_website=known_website,
+            context_hint=source or notes,
+        )
+        prefer_hosts = None
+        if known_website and evidence_domain(known_website):
+            host = extract_domain(known_website)
+            if host:
+                prefer_hosts = [host]
+        from llm.tavily_grounding import entity_require_terms
+
+        require_terms = entity_require_terms(raw_name) or None
+        # Prefetched website scrape replaces Tavily. SOURCE DESCRIPTION does NOT
+        # suppress research — interpretive fields need web evidence; description_*
+        # fill-from-search is gated in the prompt only.
+        use_grounding = not prefetched
 
         try:
             response_text = self._call_provider_with_retry(
                 provider=self.provider,
                 prompt=prompt,
-                system="You are an expert at identifying organizations, mapping work values, and evaluating Solidarity Economy alignment.",
+                system=_ASSESSOR_SYSTEM,
                 task="sse",
-                search_query=search_query,
+                search_query=search_query if use_grounding else None,
                 retries=1,
+                prefer_hosts=prefer_hosts if use_grounding else None,
+                require_terms=require_terms if use_grounding else None,
+                use_grounding=use_grounding,
             )
         except (SSEClassificationError, LLMProviderError) as exc:
             logger.warning(
@@ -350,7 +1793,511 @@ class OrganizationAssessor(BaseGroundedClassifier):
             )
             return None
 
-        return _parse_response(response_text, raw_name)
+        # Grounding sometimes silently fails, returning HTTP 200 with empty text.
+        # Retry once without grounding as a fallback.
+        if not response_text.strip():
+            logger.warning(
+                "OrganizationAssessor: empty response for %r — retrying without grounding",
+                raw_name,
+            )
+            try:
+                response_text = self._call_provider_with_retry(
+                    provider=self.provider,
+                    prompt=prompt,
+                    system=_ASSESSOR_SYSTEM,
+                    task="sse",
+                    search_query=None,
+                    retries=1,
+                    use_grounding=False,
+                )
+            except (SSEClassificationError, LLMProviderError) as exc:
+                logger.warning(
+                    "OrganizationAssessor LLM retry (no grounding) failed for %r: %s",
+                    raw_name, exc,
+                )
+                return None
+
+        result = _parse_response(response_text, raw_name)
+        if result is None:
+            return None
+
+        result = _enforce_locale_correctness(result)
+
+        # Location validation: when we used grounding, validate that the discovered content
+        # matches the expected location and name (regardless of whether we have a known_website)
+        # Accept non-official sites as long as both name AND location match together
+        if use_grounding:
+            discovered_website = result.get("website")
+            if discovered_website and evidence_domain(discovered_website):
+                # --- Heuristic: skip location validation when the INPUT location is clearly garbage. ---
+                # Examples:
+                #   (municipality="NT", province="NT")     → mun is a prov code, parse failure
+                #   (municipality="QC", province="QC")     → same
+                #   (municipality=None, province=None)     → no info
+                # Otherwise we build impossible-to-satisfy requirements (e.g. 2 terms
+                # that can't both match) and incorrectly reject valid assessments.
+                _valid_prov_codes = frozenset({
+                    "AB","BC","MB","NB","NL","NS","NU","NT","ON","PE","QC","SK","YT",
+                    "ME","NY","MI","WA","MN","ND","MT","VT","NH",
+                })
+                mun_s = (municipality or "").strip()
+                prov_s = (province or "").strip()
+                def _looks_like_prov_code(s: str) -> bool:
+                    return len(s) <= 3 and s.upper() in _valid_prov_codes
+                input_loc_is_useless = (
+                    (not mun_s and not prov_s)
+                    or (mun_s and _looks_like_prov_code(mun_s))
+                    or (prov_s and mun_s.upper() == prov_s.upper() and _looks_like_prov_code(prov_s))
+                )
+                if not input_loc_is_useless:
+                    # Build location terms to check (all lowercased and deduped so that
+                    # e.g. "qc" and "QC" do not double-count as 2 distinct terms — since
+                    # searchable_content is always lowercased, the uppercase variant
+                    # could never match and inflated required_matches artificially.)
+                    location_terms_set: set[str] = set()
+                    if municipality:
+                        for t in municipality.split():
+                            tl = t.lower()
+                            if len(tl) > 2:
+                                location_terms_set.add(tl)
+                    if province:
+                        location_terms_set.add(province.lower())
+                        # Full province/territory names in EN+FR (all 13 provinces + territories)
+                        province_map = {
+                            "ON": ["ontario"],
+                            "QC": ["quebec", "québec"],
+                            "BC": ["british columbia", "colombie britannique", "colombie-britannique"],
+                            "AB": ["alberta"],
+                            "MB": ["manitoba"],
+                            "NB": ["new brunswick", "nouveau brunswick"],
+                            "NL": ["newfoundland and labrador", "newfoundland", "terre-neuve", "terre-neuve-et-labrador"],
+                            "NS": ["nova scotia", "nouvelle-ecosse", "nouvelle-écosse"],
+                            "NU": ["nunavut"],
+                            "NT": ["northwest territories", "territoires du nord-ouest"],
+                            "PE": ["prince edward island", "ile-du-prince-edouard", "île-du-prince-édouard"],
+                            "SK": ["saskatchewan"],
+                            "YT": ["yukon"],
+                            "ME": ["maine"],
+                            "NY": ["new york"],
+                            "MI": ["michigan"],
+                            "WA": ["washington"],
+                            "MN": ["minnesota"],
+                            "ND": ["north dakota"],
+                            "MT": ["montana"],
+                            "VT": ["vermont"],
+                            "NH": ["new hampshire"],
+                        }
+                        if province.upper() in province_map:
+                            for full_name in province_map[province.upper()]:
+                                for word in full_name.split():
+                                    wl = word.lower()
+                                    if len(wl) > 2:
+                                        location_terms_set.add(wl)
+                    location_terms = list(location_terms_set)
+
+                    # If we have location info, validate it appears in the response
+                    # UNLESS the organization has national/provincial/international scope
+                    # We need at least 2 location term matches to avoid false positives from incidental mentions
+                    if location_terms:
+                        # Include:
+                        #   * raw LLM response blob + description/mission/values (original fields)
+                        #   * LLM's explicit structured HQ fields (headquarters_municipality / _province)
+                        #   * discovered website URL and domain (e.g. montreal.ca → "montreal" matches)
+                        #   * HQ-province normalised as a 2-letter code too
+                        llm_hq_prov_code = _validate_province_code(result.get("headquarters_province"))
+                        _extra_hq_parts: list[str] = []
+                        if llm_hq_prov_code:
+                            _extra_hq_parts.append(llm_hq_prov_code.lower())
+                        website_str = (discovered_website or "")
+                        domain_str = extract_domain(website_str) or ""
+                        searchable_content = " ".join([
+                            (response_text or "").lower(),
+                            (result.get("description_en") or "").lower(),
+                            (result.get("description_fr") or "").lower(),
+                            (result.get("mission_statement_en") or "").lower(),
+                            (result.get("mission_statement_fr") or "").lower(),
+                            str(result.get("values", []) or "").lower(),
+                            str(result.get("values_raw", []) or "").lower(),
+                            (result.get("headquarters_municipality") or "").lower(),
+                            (result.get("headquarters_province") or "").lower(),
+                            " ".join(p.lower() for p in _extra_hq_parts),
+                            website_str.lower(),
+                            domain_str.lower(),
+                        ])
+
+                        structured_prov = (result.get("headquarters_province") or "").lower()
+                        structured_prov_code = (llm_hq_prov_code or "").lower()
+
+                        # Count how many DISTINCT location terms match (set to avoid
+                        # double-counting same term that appears in multiple fields)
+                        matches_set: set[str] = set()
+                        for term in location_terms:
+                            if len(term) <= 2:
+                                if term == structured_prov or term == structured_prov_code:
+                                    matches_set.add(term)
+                            else:
+                                if term in searchable_content:
+                                    matches_set.add(term)
+                        matches = list(matches_set)
+
+                        # Check if location appears in the organization name itself
+                        raw_name_lower = raw_name.lower()
+                        location_in_name = any(
+                            term in raw_name_lower for term in location_terms if len(term) > 2
+                        )
+
+                        # Also check if org name contains district/neighborhood indicators
+                        # (often means local to that city, so a single prov match suffices)
+                        #
+                        # Heuristic rules for "looks district-like":
+                        #   1. French/English direction or cardinal term (nord/sud/east/west etc.)
+                        #   2. Saint-/Ste- prefix (common for boroughs like St-Léonard, Ste-Foy)
+                        #   3. Well-known Montréal/Toronto/Québec borough names
+                        #   4. Any standalone hyphenated pair that looks like a
+                        #      direction+name (covers many new boroughs without manual listing)
+                        has_district_name = bool(DISTRICT_INDICATORS_PATTERN.search(raw_name_lower))
+                        # Additional catch-all: name contains a hyphenated cardinal
+                        # direction followed by a word that looks like a neighbourhood
+                        # e.g. "Centre-Nord de Montréal", "Saint-Saveur"
+                        if not has_district_name:
+                            _hyphen_parts = [
+                                p for p in re.split(r"\s+", raw_name_lower) if "-" in p
+                            ]
+                            for part in _hyphen_parts:
+                                left, _, right = part.partition("-")
+                                left, right = left.strip(), right.strip()
+                                if (
+                                    len(left) >= 3
+                                    and len(right) >= 3
+                                    and (
+                                        left in {"centre","nord","sud","est","ouest",
+                                                 "saint","ste","st","north","south",
+                                                 "east","west","old","new","ville",
+                                                 "mont","fort"}
+                                        or right in {"nord","sud","est","ouest",
+                                                     "north","south","east","west"}
+                                    )
+                                ):
+                                    has_district_name = True
+                                    break
+
+                        # Check geographic scope - relax location matching for broader scope organizations
+                        scope = (result.get("geographic_scope") or "").lower()
+                        is_broad_scope = scope in ("national", "provincial", "international")
+
+                        # Require at least 2 distinct location term matches (or all terms if less than 2)
+                        # UNLESS:
+                        # - the organization has national/provincial/international scope, OR
+                        # - the location appears in the organization name itself (reduces need for repetition), OR
+                        # - the org name suggests a district/neighborhood (e.g., "Centre-Nord" for Montreal)
+                        required_matches = min(2, len(location_terms))
+
+                        # If location is in name, has district indicator, accept with just 1 match
+                        if (location_in_name or has_district_name) and len(matches) >= 1:
+                            location_found = True
+                        else:
+                            location_found = len(matches) >= required_matches
+
+                        if not location_found and not is_broad_scope:
+                            # Location mismatch - reject this result
+                            logger.warning(
+                                "OrganizationAssessor: location mismatch for %r - expected %s but found only %d/%d location terms: %s. Skipping.",
+                                raw_name,
+                                f"{municipality}, {province}" if municipality and province else municipality or province,
+                                len(matches),
+                                len(location_terms),
+                                matches,
+                            )
+                            return None
+                        elif not location_found and is_broad_scope:
+                            # Accept broader-scope organizations even without local location match
+                            logger.info(
+                                "OrganizationAssessor: accepting %r despite location mismatch - geographic_scope=%s indicates broader reach",
+                                raw_name, scope,
+                            )
+                        elif (location_in_name or has_district_name) and len(matches) >= 1:
+                            # Accepted with reduced requirement because location is in name or has district indicator
+                            logger.debug(
+                                "OrganizationAssessor: accepting %r with %d/%d location matches - location in org name or district indicator reduces validation requirement",
+                                raw_name, len(matches), len(location_terms),
+                            )
+
+                # Also validate name appears in domain (but be forgiving about exact match)
+                # Skip this check if we have a known_website (trust the known website)
+                # OR if there's no location data (can't cross-validate name+location)
+                if not known_website and (municipality or province):
+                    discovered_domain = extract_domain(discovered_website) or ""
+                    domain_lower = discovered_domain.lower().replace("-", "").replace(".", "").replace("_", "")
+
+                    # Normalize Unicode characters for comparison (accents, etc.)
+                    import unicodedata
+                    def normalize_text(text):
+                        """Remove accents and normalize Unicode characters."""
+                        # Decompose characters (é -> e + accent)
+                        nfd = unicodedata.normalize('NFD', text)
+                        # Filter out combining characters (accents)
+                        return ''.join(c for c in nfd if not unicodedata.combining(c))
+
+                    raw_name_normalized = normalize_text(raw_name.lower())
+                    domain_normalized = normalize_text(domain_lower)
+
+                    # Extract significant name parts (skip common words like "the", "and", etc.)
+                    # Include common French articles and prepositions
+                    skip_words = {
+                        "the", "and", "or", "of", "for", "inc", "ltd", "corp", "company", "family", "companies",
+                        "de", "la", "le", "les", "des", "du", "aux", "un", "une", "et", "d",  # French
+                    }
+                    # Extract significant name parts from both raw_name AND researched canonical_name
+                    canonical_name = result.get("canonical_name") or ""
+                    names_to_check = [raw_name] if raw_name else []
+                    if canonical_name and canonical_name.lower() != (raw_name or "").lower():
+                        names_to_check.append(canonical_name)
+
+                    # Split on spaces and remove all punctuation except apostrophes (handle those separately)
+                    import string
+                    name_parts = []
+                    for name_str in names_to_check:
+                        if not name_str:
+                            continue
+                        for p in name_str.lower().split():
+                            # Remove all punctuation except apostrophes
+                            cleaned = p.translate(str.maketrans('', '', string.punctuation.replace("'", "").replace("\u2019", "")))
+                            # Now handle apostrophes
+                            cleaned = normalize_text(cleaned.replace("'", "").replace("\u2019", "").replace("-", ""))
+                            if len(cleaned) > 1 and cleaned.lower() not in skip_words and cleaned not in name_parts:
+                                name_parts.append(cleaned)
+
+                    acronym_match = re.search(r'\(([A-Z]{2,})\)', raw_name or "")
+                    org_acronym = acronym_match.group(1).lower() if acronym_match else None
+
+                    # Also check for ALL-CAPS words in the name (likely acronyms like "MSRK", "IBM", etc.)
+                    all_caps_words = re.findall(r'\b[A-Z]{2,}\b', raw_name or "")
+                    all_caps_acronyms = [word.lower() for word in all_caps_words] if all_caps_words else []
+
+                    # Check if at least one significant name part appears in domain
+                    # OR if domain contains initials/acronym of the organization name
+                    name_match = False
+                    if name_parts:
+                        # Check first 1-3 significant words from org name (partial match on longer words OK)
+                        for part in name_parts[:3]:
+                            part_clean = part.replace("'", "").replace("\u2019", "")
+                            # Accept if part is in domain, OR if domain contains first 3+ chars of longer word
+                            # Also handle numbers (like "7" in "batiment7")
+                            if part_clean in domain_normalized or (len(part_clean) >= 6 and part_clean[:4] in domain_normalized):
+                                name_match = True
+                                logger.debug(
+                                    "OrganizationAssessor: accepting %r - domain %s contains word '%s'",
+                                    raw_name, discovered_domain, part_clean
+                                )
+                                break
+
+                        # Also check if domain contains a concatenation of multiple words from name
+                        # This catches "lalternativesantementale" from "L'Alternative... santé mentale"
+                        if not name_match and len(name_parts) >= 2:
+                            # Try pairs and triples of consecutive words
+                            for i in range(len(name_parts)):
+                                for j in range(i+2, min(i+4, len(name_parts)+1)):
+                                    concat = ''.join(name_parts[i:j])
+                                    if len(concat) >= 8 and concat in domain_normalized:
+                                        name_match = True
+                                        logger.debug(
+                                            "OrganizationAssessor: accepting %r - domain %s contains concatenated words '%s'",
+                                            raw_name, discovered_domain, concat
+                                        )
+                                        break
+                                if name_match:
+                                    break
+
+                        # Also check with hyphens preserved (for domains like "lalternative-cdj")
+                        # Get the original domain with hyphens but lowercase
+                        if not name_match:
+                            domain_with_hyphens = discovered_domain.lower().replace(".", "").replace("_", "")
+                            for part in name_parts[:5]:  # Check more parts
+                                part_clean = part.replace("'", "").replace("\u2019", "")
+                                if len(part_clean) >= 4 and part_clean in domain_with_hyphens:
+                                    name_match = True
+                                    logger.debug(
+                                        "OrganizationAssessor: accepting %r - domain %s (with hyphens) contains word '%s'",
+                                        raw_name, discovered_domain, part_clean
+                                    )
+                                    break
+
+                        # If no word match, check if domain contains stated acronym OR all-caps words
+                        if not name_match and (org_acronym or all_caps_acronyms):
+                            # Check parenthesized acronym
+                            if org_acronym and org_acronym in domain_normalized:
+                                name_match = True
+                                logger.debug(
+                                    "OrganizationAssessor: accepting %r - domain %s contains acronym '%s'",
+                                    raw_name, discovered_domain, org_acronym
+                                )
+                            # Check ALL-CAPS words (like "MSRK", "IBM")
+                            if not name_match:
+                                for caps_word in all_caps_acronyms:
+                                    if caps_word in domain_normalized:
+                                        name_match = True
+                                        logger.debug(
+                                            "OrganizationAssessor: accepting %r - domain %s contains all-caps acronym '%s'",
+                                            raw_name, discovered_domain, caps_word
+                                        )
+                                        break
+
+                        # If no word match, check if domain contains initials from ALL significant words
+                        if not name_match and len(name_parts) >= 2:
+                            # Build initials from first letter of each significant word
+                            initials = ''.join(p[0] for p in name_parts[:5])  # Up to 5 words
+                            if len(initials) >= 2 and initials in domain_normalized:
+                                name_match = True
+                                logger.debug(
+                                    "OrganizationAssessor: accepting %r - domain %s contains initials '%s'",
+                                    raw_name, discovered_domain, initials
+                                )
+                            # Also check if first 2-3 initials appear at START of domain (common for abbreviated domains)
+                            elif len(initials) >= 2:
+                                for length in [3, 2]:  # Try 3 letters first, then 2
+                                    if len(initials) >= length and domain_normalized.startswith(initials[:length]):
+                                        name_match = True
+                                        logger.debug(
+                                            "OrganizationAssessor: accepting %r - domain %s starts with initials '%s'",
+                                            raw_name, discovered_domain, initials[:length]
+                                        )
+                                        break
+
+                        # If still no match, try first word of each "phrase" separated by special chars
+                        # This catches cases like "Carrefour d'aide" -> "CCR" (Carrefour Centre something)
+                        if not name_match:
+                            # Get all words from original name, including those with apostrophes/dashes
+                            all_words = re.findall(r'\b[A-Za-zÀ-ÿ]+\b', raw_name)  # Include accented characters
+                            # Normalize and filter out skip words but include ALL remaining words for initials
+                            significant_words = [
+                                normalize_text(w) for w in all_words
+                                if normalize_text(w.lower()) not in skip_words and len(w) > 1
+                            ]
+                            if len(significant_words) >= 2:
+                                # Try various initial combinations
+                                full_initials = ''.join(w[0].lower() for w in significant_words[:6])
+                                # Check if ANY substring of 3+ initials appears in domain
+                                for i in range(len(full_initials) - 2):
+                                    substring = full_initials[i:i+3]
+                                    if substring in domain_normalized:
+                                        name_match = True
+                                        logger.debug(
+                                            "OrganizationAssessor: accepting %r - domain %s contains initial sequence '%s'",
+                                            raw_name, discovered_domain, substring
+                                        )
+                                        break
+
+                                # Also check if first 2-3 letters START the domain
+                                if not name_match and len(full_initials) >= 2:
+                                    for length in [3, 2]:
+                                        if len(full_initials) >= length and domain_normalized.startswith(full_initials[:length]):
+                                            name_match = True
+                                            logger.debug(
+                                                "OrganizationAssessor: accepting %r - domain %s starts with initial sequence '%s'",
+                                                raw_name, discovered_domain, full_initials[:length]
+                                            )
+                                            break
+
+                                # For French orgs, also try with first letter of EACH word (including d', l', etc.)
+                                # Split on apostrophes and spaces to get ALL tokens
+                                if not name_match:
+                                    all_tokens = re.split(r"[\s']+", raw_name_normalized)
+                                    token_initials = ''.join(t[0] for t in all_tokens if len(t) > 0)[:6]
+                                    if len(token_initials) >= 3:
+                                        # Check if first 3 token initials START the domain
+                                        if domain_normalized.startswith(token_initials[:3]):
+                                            name_match = True
+                                            logger.debug(
+                                                "OrganizationAssessor: accepting %r - domain %s starts with token initials '%s'",
+                                                raw_name, discovered_domain, token_initials[:3]
+                                            )
+                                        # Or if they appear anywhere in domain
+                                        elif token_initials[:3] in domain_normalized:
+                                            name_match = True
+                                            logger.debug(
+                                                "OrganizationAssessor: accepting %r - domain %s contains token initials '%s'",
+                                                raw_name, discovered_domain, token_initials[:3]
+                                            )
+                    else:
+                        # No significant name parts to check - accept it
+                        name_match = True
+
+                    if not name_match:
+                        # Domain didn't match — check the full URL path/slug
+                        # This catches directory/platform URLs like:
+                        #   yellowpages.ca/.../Polyanthus-Landscaping
+                        #   macommunaute.ca/.../maison-des-jeunes-pointe-saint-charles
+                        #   about.me/engagingminds
+                        from urllib.parse import urlparse
+                        url_path = urlparse(discovered_website).path.lower()
+                        url_path_normalized = normalize_text(
+                            url_path.replace("-", "").replace("_", "").replace("/", " ")
+                        )
+                        for part in name_parts[:5]:
+                            part_clean = part.replace("'", "").replace("\u2019", "")
+                            if len(part_clean) >= 4 and part_clean in url_path_normalized:
+                                name_match = True
+                                logger.info(
+                                    "OrganizationAssessor: accepting %r - URL path of %s contains word '%s'",
+                                    raw_name, discovered_website, part_clean,
+                                )
+                                break
+
+                    if not name_match:
+                        # Name doesn't match domain or URL path — check if location at least matches
+                        # If location matches, we can still accept it (non-official site is OK)
+                        valid_loc_terms = [t for t in (location_terms or []) if len(t) > 2]
+                        if valid_loc_terms and any(term in discovered_domain.lower() for term in valid_loc_terms):
+                            logger.info(
+                                "OrganizationAssessor: accepting %r despite name mismatch - location found in domain %s",
+                                raw_name, discovered_domain,
+                            )
+                        else:
+                            reason = "name and location mismatch" if location_terms else "name mismatch"
+                            logger.warning(
+                                "OrganizationAssessor: %s for %r - domain %s doesn't match. Clearing website.",
+                                reason, raw_name, discovered_domain,
+                            )
+                            result = AssessedOrgResult(**{**result, "website": None})
+                            flags = list(result.get("flags") or [])
+                            flags.append(f"website cleared: domain {discovered_domain} did not match org name")
+                            result = AssessedOrgResult(**{**result, "flags": flags})
+
+        result = _apply_website_known_guard(result, known_website)
+
+        # Add model used to flags for auditing
+        if hasattr(self.provider, 'current_model'):
+            model_used = self.provider.current_model
+            if model_used and model_used != "none":
+                flags = list(result.get("flags") or [])
+                flags.append(f"model:{model_used}")
+                result = AssessedOrgResult(**{**result, "flags": flags})
+
+        return self._ensure_length_limits(result, raw_name)
+
+    def _ensure_length_limits(
+        self,
+        result: AssessedOrgResult,
+        raw_name: str,
+    ) -> AssessedOrgResult:
+        """Truncate any over-limit fields to avoid breaking DB bounds."""
+        oversize = _fields_over_limit(result)
+        if not oversize:
+            return result
+
+        logger.info(
+            "OrganizationAssessor: truncating over-limit fields for %r: %s",
+            raw_name,
+            {field: f"{len(text)} > {max_chars}" for field, (text, max_chars) in oversize.items()},
+        )
+
+        updates: dict[str, Any] = {}
+        flags = list(result.get("flags") or [])
+        for field, (original, max_chars) in oversize.items():
+            updates[field] = _smart_truncate(original, max_chars)
+            flags.append(f"length_limit: truncated {field}")
+
+        return AssessedOrgResult(**{**result, **updates, "flags": flags})
 
     def assess_and_build_row(
         self,
@@ -360,41 +2307,93 @@ class OrganizationAssessor(BaseGroundedClassifier):
         job_title: str = "",
         description: str = "",
         canonical_loc: str = "",
+        known_website: str | None = None,
+        fetch_web: bool = False,
     ) -> dict | None:
         """Assess the org and return a row dict ready for DB insert.
 
         Returns None if the LLM call fails (caller should use minimal fallback).
         """
-        result = self.assess(raw_name, municipality, province, job_title, description)
+        result = self.assess(
+            raw_name,
+            municipality,
+            province,
+            job_title,
+            description="",
+            known_website=known_website,
+            listing_notes=description,
+            existing_description="",
+        )
         if result is None:
             return None
 
         loc_str = canonical_loc or None
-        # parse_address_with_geocodio always returns a complete dict (municipality, province,
-        # lat, lng, geocode_accuracy_type); it handles None/empty internally.
-        geo_data = parse_address_with_geocodio(loc_str)
+        llm_mun = result.get("headquarters_municipality")
+        llm_prov = result.get("headquarters_province")
 
-        return {
+        if llm_mun:
+            # A municipality-level HQ is the only case where we replace the
+            # canonical location: province-only LLM output is too coarse (often
+            # just "ON"/"QC") and would clobber an existing city-level loc.
+            hq_loc = ", ".join(part for part in (llm_mun, llm_prov) if part)
+            loc_str = hq_loc or loc_str
+            geo_data = parse_address_with_geocodio(hq_loc)
+
+            # Use the cleaned up municipality/province from geocodio if available, else raw LLM
+            municipality = geo_data.get("municipality") or llm_mun
+            province = geo_data.get("province") or llm_prov
+            # Keep province canonical: apply name→code cleanup if missing a code
+            province = _validate_province_code(province) or province
+        else:
+            # Province-only or no-HQ path: keep the job's canonical location
+            # string and geocode that for lat/lng. When only llm_prov exists we
+            # still use it to sanitize the final province field via the
+            # validator, but we don't rewrite loc_str or geocode just a prov.
+            geo_data = parse_address_with_geocodio(loc_str)
+            municipality = geo_data.get("municipality") or municipality
+            province = geo_data.get("province") or (llm_prov or province)
+            province = _validate_province_code(province) or province
+
+        # Build the row with all fields
+        row = {
             "name": result["canonical_name"],
             "slug": result["slug"],
             "location": loc_str,
             "website": result["website"],
-            "municipality": geo_data.get("municipality"),
-            "province": geo_data.get("province"),
+            "municipality": municipality,
+            "province": province,
             "lat": geo_data.get("lat"),
             "lng": geo_data.get("lng"),
             "geocode_accuracy_type": geo_data.get("geocode_accuracy_type"),
             **_result_to_db_fields(result),
         }
 
+        # Add website identity provenance flags if website exists
+        website = result.get("website")
+        if website:
+            from utils.organization_cache import extract_org_identity
+
+            identity = extract_org_identity(website)
+            # Only add flags if identity was successfully extracted
+            if identity:
+                _append_website_identity_flags(row, website, identity)
+
+        return _attach_org_language(
+            row,
+            result.get("public_language"),
+            fetch_web=fetch_web,
+        )
+
     def assess_and_build_update(
         self,
         org: dict,
+        force_lang: bool = False,
+        fetch_web: bool = False,
     ) -> dict | None:
         """Re-assess an existing org and return an update dict.
 
-        Used by the backfill script for orgs created before the combined
-        assessor existed (null sse_rating).
+        Includes website when the assessor returns an employer-owned host.
+        Passes the org's current website (if evidence-grade) into search/prompt.
         """
         name = org.get("name")
         if not name:
@@ -402,14 +2401,56 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 "assess_and_build_update: org_id=%s has no name, skipping", org.get("id"),
             )
             return None
+        known_website = org.get("website")
+        existing = (
+            org.get("description_en")
+            or org.get("description_fr")
+            or org.get("description")
+            or ""
+        )
+        # Stored description is SOURCE DESCRIPTION for description_* only (prompt-gated).
+        # It does not disable Tavily; interpretive fields still use web research.
         result = self.assess(
             raw_name=name,
             municipality=org.get("municipality"),
             province=org.get("province"),
             job_title="",
-            description=org.get("description") or "",
+            description="",
+            known_website=known_website,
+            existing_description=existing,
+            listing_notes="",
         )
         if result is None:
             return None
 
-        return _result_to_db_fields(result)
+        updates = _result_to_db_fields(result)
+        updates = _omit_null_locale_fields_from_update(updates)
+        updates = _merge_sse_details_preserving_reasoning(updates, org.get("sse_details"))
+        website = result.get("website")
+        # Accept ANY website returned by LLM (location validation already done)
+        if website:
+            from utils.organization_cache import extract_org_identity
+
+            # Extract identity for uniqueness matching and flag tracking
+            identity = extract_org_identity(website)
+
+            # Only add flags if identity was successfully extracted
+            if identity:
+                _append_website_identity_flags(updates, website, identity)
+
+            updates["website"] = website
+        return _attach_org_language(
+            {
+                "name": name,
+                "language": org.get("language"),
+                **updates,
+                "description": updates.get("description") or org.get("description"),
+                "mission_statement": (
+                    updates.get("mission_statement") or org.get("mission_statement")
+                ),
+                "website": updates.get("website") or org.get("website"),
+            },
+            result.get("public_language"),
+            force_lang=force_lang,
+            fetch_web=fetch_web,
+        )

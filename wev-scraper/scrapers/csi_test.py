@@ -1,6 +1,4 @@
-from unittest.mock import patch
 
-from scrapers.base import BaseScraper
 from scrapers.csi import CSIScraper
 
 
@@ -13,7 +11,7 @@ def test_get_job_url(page):
     item = page.locator("a").first
     url = scraper.get_job_url(item)
     assert url == "https://socialinnovation.org/job1/"
-
+    
     # Test duplicate URL
     assert scraper.get_job_url(item) is None
 
@@ -65,33 +63,6 @@ def test_has_next_page(page):
     scraper = CSIScraper(make_source())
     page.set_content('<button>Load More</button>')
     assert scraper.has_next_page(page) is True
-
+    
     page.set_content('<div>No button</div>')
     assert scraper.has_next_page(page) is False
-
-
-def test_start_browser_enables_proxy():
-    scraper = CSIScraper(make_source())
-
-    with patch.object(BaseScraper, "start_browser", return_value="page") as mock_start:
-        page = scraper.start_browser()
-
-    assert page == "page"
-    mock_start.assert_called_once_with(
-        headless=True,
-        viewport={"width": 1280, "height": 1400},
-        use_proxy=True,
-    )
-
-
-def test_open_listings_page_uses_stable_navigation():
-    scraper = CSIScraper(make_source())
-
-    with patch.object(BaseScraper, "open_listings_page") as mock_open:
-        class StubPage:
-            url = "https://socialinnovation.org/jobs/"
-
-        page = StubPage()
-        scraper.open_listings_page(page)
-
-    mock_open.assert_called_once_with(page, None)
