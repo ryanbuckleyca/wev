@@ -27,7 +27,7 @@ def test_get_next_model():
     first = provider._model
     provider._mark_model_exhausted(first)
     assert provider._model != first
-    assert provider._model in ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant", "qwen/qwen3-32b", "moonshotai/kimi-k2-instruct-0905"]
+    assert provider._model in ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant", "qwen/qwen3-32b", "moonshotai/kimi-k2-instruct-0905", "llama-3.1-70b-versatile"]
 
 @patch("requests.post")
 def test_request_success(mock_post):
