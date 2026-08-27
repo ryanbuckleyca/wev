@@ -3,7 +3,7 @@
 Uses the Groq API at https://api.groq.com/openai and requires an API key in
 the environment variable GROQ_API_KEY.
 
-Default model: llama-3.3-70b-versatile — Llama 3.3 70B on Groq's LPU inference,
+Default model: openai/gpt-oss-120b — Llama 3.3 70B on Groq's LPU inference,
 fast and high quality for summarization and structured JSON output.
 Context window: 128k tokens.
 
@@ -53,30 +53,37 @@ from llm.prompts import (
 )
 
 GROQ_BASE_URL = "https://api.groq.com/openai"
-DEFAULT_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_MODEL = "openai/gpt-oss-120b"
 
 logger = logging.getLogger(__name__)
 
 # Groq model hierarchy for fallback (best to worst quality/reliability)
-# llama-3.3-70b: best instruction following, 12K TPM, 100K TPD — default
-# llama-3.1-8b:  fastest, 14.4K RPD — best for high-volume low-complexity tasks
-# qwen3-32b:     reasoning model, 6K TPM, 1K RPD
-# kimi-k2:       10K TPM, 1K RPD — last resort
-# llama-4-scout: optional; some accounts get model_not_found — keep last
+#
+# 2026-08-26: llama-3.3-70b-versatile, llama-3.1-8b-instant, qwen/qwen3-32b,
+# meta-llama/llama-4-scout-17b-16e-instruct, and moonshotai/kimi-k2-instruct-0905
+# have ALL been deprecated by Groq (announced 2026-03-23 and 2026-06-17; the
+# llama-3.x pair's shutdown date of 2026-08-16 has now passed, which is why
+# they started 404ing with model_not_found). See console.groq.com/docs/deprecations.
+# Replaced with Groq's own recommended migration targets:
+# openai/gpt-oss-120b: best reasoning/instruction-following — default
+# openai/gpt-oss-20b:  faster/lighter, good for high-volume low-complexity tasks
+# qwen/qwen3.6-27b:    Groq serves this as a preview model, not production —
+#                      kept as last resort only; re-check its status periodically
 GROQ_MODELS = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-    "qwen/qwen3-32b",
-    "moonshotai/kimi-k2-instruct-0905",
-    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.6-27b",
 ]
 
 # Rate limiting: enforce a minimum gap between requests to stay under TPM.
-# llama-3.3-70b (default): 12K TPM → at ~2K tokens/call, ~6 calls/min → 10s gap is safe.
-# llama-4-scout: 30K TPM → could go faster, but 6s is fine for our volumes.
 _MIN_REQUEST_INTERVAL = 6.0
 _MAX_RETRIES = 8   # enough to wait through several TPM windows (each ~62s)
 _RETRY_BASE_DELAY = 15.0
+
+# Conservative character ceiling for prompt inputs across all Groq models.
+# Groq on_demand tier caps TPM at 8,000 tokens per minute.
+# 24,000 chars ≈ 6,000 tokens input + 1,500 max completion tokens = 7,500 total tokens.
+_SAFE_MAX_PROMPT_CHARS = 24000
 
 
 def _strip_org_name(text: str, org_name: str) -> str:
@@ -223,11 +230,67 @@ class GroqProvider(BaseLLMProvider):
                 last_err = LLMProviderError(f"Groq API error (429): {resp.text[:200]}")
                 continue
             if not resp.ok:
+                resp_text_lower = resp.text.lower()
                 if resp.status_code == 413:
-                    # Request too large for this model — don't mark exhausted,
-                    # just raise so the caller can trim the prompt and retry
+                    # Groq uses 413 for two different things:
+                    #   1. The prompt genuinely exceeds this model's max context —
+                    #      no model swap or wait will help; caller must trim.
+                    #   2. A per-minute token quota rejection dressed up as 413
+                    #      instead of 429 (code=="rate_limit_exceeded", mentions
+                    #      "tokens per minute"). Here the single request already
+                    #      exceeds the model's ENTIRE per-minute allowance, so
+                    #      waiting and retrying the same model fails identically
+                    #      every time — treat it like the 429 daily-exhausted
+                    #      case and move to a model with more TPM headroom.
+                    is_tpm_413 = (
+                        "rate_limit_exceeded" in resp_text_lower
+                        or "tokens per minute" in resp_text_lower
+                    )
+                    if is_tpm_413:
+                        self._mark_model_exhausted(current_model)
+                        next_model = self._get_next_model()
+                        if next_model and next_model != current_model:
+                            logger.warning(
+                                f"[Groq] {current_model} TPM ceiling too low for this request "
+                                f"({resp.text[:150]}), switching to {next_model}"
+                            )
+                            print(f"  [Groq] {current_model} TPM too low for this request → switching to {next_model}", flush=True)
+                            payload["model"] = next_model
+                            current_model = next_model
+                            continue
+                        raise LLMProviderError(
+                            f"Request exceeds the TPM ceiling on every configured Groq model: {resp.text[:200]}"
+                        )
+                    # Genuinely oversized for this model's context window — don't
+                    # mark exhausted, just raise so the caller can trim the prompt
                     raise LLMProviderError(
                         f"Groq API error ({resp.status_code}): {resp.text[:400]}"
+                    )
+                is_dead_model = (
+                    resp.status_code in (400, 404)
+                    and (
+                        "model_not_found" in resp_text_lower
+                        or "model_decommissioned" in resp_text_lower
+                        or "does not exist" in resp_text_lower
+                    )
+                )
+                if is_dead_model:
+                    # Groq retired this model outright (not a rate limit) — treat
+                    # it the same as daily-quota exhaustion and move to the next
+                    # model in GROQ_MODELS rather than failing the whole call.
+                    self._mark_model_exhausted(current_model)
+                    next_model = self._get_next_model()
+                    if next_model and next_model != current_model:
+                        logger.warning(
+                            f"[Groq] {current_model} unavailable ({resp.status_code}: "
+                            f"{resp.text[:150]}), switching to {next_model}"
+                        )
+                        print(f"  [Groq] {current_model} unavailable → switching to {next_model}", flush=True)
+                        payload["model"] = next_model
+                        current_model = next_model
+                        continue
+                    raise LLMProviderError(
+                        f"All Groq models unavailable: {resp.text[:200]}"
                     )
                 raise LLMProviderError(
                     f"Groq API error ({resp.status_code}): {resp.text[:400]}"
@@ -252,6 +315,23 @@ class GroqProvider(BaseLLMProvider):
             # Unified post-processor expects a top-level JSON *array*; Groq's json_object
             # mode requires a top-level object and breaks parsing if the model obeys the API.
             json_mode = kwargs.get("task") != "unified"
+
+        # --- Dynamic Prompt Truncation to respect Groq on_demand TPM limits ---
+        active_model = model or self._model
+
+        if len(prompt) > _SAFE_MAX_PROMPT_CHARS:
+            logger.warning(
+                f"[Groq] Prompt length ({len(prompt)} chars) exceeds safe TPM limit for {active_model}. "
+                f"Truncating to {_SAFE_MAX_PROMPT_CHARS} chars."
+            )
+            print(f"  [Groq] Truncating prompt from {len(prompt)} to {_SAFE_MAX_PROMPT_CHARS} chars to fit TPM limits.", flush=True)
+
+            # If JSON mode is active, the word "json" MUST survive truncation
+            if json_mode:
+                prompt = prompt[:_SAFE_MAX_PROMPT_CHARS - 60] + "\n\nCRITICAL: Output valid JSON only."
+            else:
+                prompt = prompt[:_SAFE_MAX_PROMPT_CHARS]
+        # ----------------------------------------------------------------------
 
         messages: list[dict] = []
         if system:
@@ -282,81 +362,48 @@ class GroqProvider(BaseLLMProvider):
         return (choices[0].get("message") or {}).get("content", "") or ""
 
     def get_token_limits(self) -> dict:
-        """Return token limits for the current active Groq model.
-
-        Free-tier limits (confirmed from console.groq.com/settings/limits):
-          model                    RPM  RPD    TPM    TPD
-          llama-4-scout-17b         30   1K    30K   500K
-          llama-3.3-70b-versatile   30   1K    12K   100K
-          llama-3.1-8b-instant      30  14.4K   6K   500K
-          qwen/qwen3-32b            60   1K     6K   500K
-          moonshotai/kimi-k2-0905   60   1K    10K   300K
-
-        recommended_batch_size targets ~80% of TPM to leave headroom for
-        response tokens and avoid hitting the per-minute cap mid-batch.
-        TPD is the daily ceiling — large batches help conserve RPD.
-        """
+        """Return token limits for the current active Groq model."""
         model = self._model
-        if "llama-4-scout" in model:
+        if "gpt-oss-120b" in model:
             return {
-                "context_window": 10_000_000,
+                "context_window": 128_000,
                 "requests_per_minute": 30,
                 "requests_per_day": 1_000,
-                "tokens_per_minute": 30_000,
-                "tokens_per_day": 500_000,
-                "max_tokens_per_request": 30_000,
-                "recommended_batch_size": 24_000,  # 80% of per-request cap
-            }
-        elif "llama-3.3-70b" in model:
-            return {
-                "context_window": 131_072,
-                "requests_per_minute": 30,
-                "requests_per_day": 1_000,
-                "tokens_per_minute": 12_000,
+                "tokens_per_minute": 8_000,
                 "tokens_per_day": 100_000,
-                "max_tokens_per_request": 12_000,   # hard per-request cap (= TPM on free tier)
-                "recommended_batch_size": 9_600,    # 80% of per-request cap
+                "max_tokens_per_request": 8_000,
+                "recommended_batch_size": 6_400,
             }
-        elif "llama-3.1-8b" in model:
+        elif "gpt-oss-20b" in model:
             return {
-                "context_window": 131_072,
+                "context_window": 128_000,
                 "requests_per_minute": 30,
                 "requests_per_day": 14_400,
-                "tokens_per_minute": 6_000,
+                "tokens_per_minute": 8_000,
                 "tokens_per_day": 500_000,
-                "max_tokens_per_request": 6_000,
-                "recommended_batch_size": 4_800,
+                "max_tokens_per_request": 8_000,
+                "recommended_batch_size": 6_400,
             }
-        elif "qwen3-32b" in model:
+        elif "qwen" in model:
             return {
                 "context_window": 32_768,
                 "requests_per_minute": 60,
                 "requests_per_day": 1_000,
-                "tokens_per_minute": 6_000,
+                "tokens_per_minute": 8_000,
                 "tokens_per_day": 500_000,
-                "max_tokens_per_request": 6_000,
-                "recommended_batch_size": 4_800,
-            }
-        elif "kimi-k2" in model:
-            return {
-                "context_window": 131_072,
-                "requests_per_minute": 60,
-                "requests_per_day": 1_000,
-                "tokens_per_minute": 10_000,
-                "tokens_per_day": 300_000,
-                "max_tokens_per_request": 10_000,
-                "recommended_batch_size": 8_000,
+                "max_tokens_per_request": 8_000,
+                "recommended_batch_size": 6_400,
             }
         else:
             # Safe fallback
             return {
-                "context_window": 131_072,
+                "context_window": 32_768,
                 "requests_per_minute": 30,
                 "requests_per_day": 1_000,
-                "tokens_per_minute": 6_000,
+                "tokens_per_minute": 8_000,
                 "tokens_per_day": 100_000,
-                "max_tokens_per_request": 6_000,
-                "recommended_batch_size": 4_800,
+                "max_tokens_per_request": 8_000,
+                "recommended_batch_size": 6_400,
             }
 
     def summarize_and_tag_values_batch(self, jobs: list[dict], max_chars: int = 300, max_values: int = 5) -> list[dict]:

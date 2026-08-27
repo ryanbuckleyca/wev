@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     const { text, metadata } = await parseCvOnServer(file, locale);
 
     // 2. Extract Skills and Values from text
-    const groqModel = process.env.GROQ_MODEL_CV ?? 'llama-3.3-70b-versatile';
+    const groqModel = process.env.GROQ_MODEL_CV ?? 'openai/gpt-oss-120b';
     const result = await extractSkillsAndValuesFromCv({
       cvText: text,
       userId: auth.user.id,

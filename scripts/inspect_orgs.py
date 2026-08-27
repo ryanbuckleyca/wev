@@ -2,7 +2,7 @@ import os
 from supabase import Client, create_client  # type: ignore
 
 url = os.environ.get("SUPABASE_PROD_URL")
-key = os.environ.get("SUPABASE_PROD_SERVICE_ROLE_KEY")
+key = os.environ.get("SUPABASE_PROD_SECRET_KEY")
 
 if not url or not key:
     print("Missing credentials")

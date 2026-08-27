@@ -15,7 +15,7 @@ from dotenv import find_dotenv, load_dotenv
 load_dotenv(find_dotenv())
 
 
-def query_old_jobs(supabase_url: str, service_role_key: str, days_old: int) -> list[dict]:
+def query_old_jobs(supabase_url: str, secret_key: str, days_old: int) -> list[dict]:
     """Query jobs older than the specified number of days."""
     base_url = supabase_url.rstrip("/")
 
@@ -26,8 +26,8 @@ def query_old_jobs(supabase_url: str, service_role_key: str, days_old: int) -> l
     endpoint = f"{base_url}/rest/v1/jobs?select=id,job_title,organization,date_posted,scraped_at&scraped_at=lt.{cutoff_date}"
 
     headers = {
-        "apikey": service_role_key,
-        "Authorization": f"Bearer {service_role_key}",
+        "apikey": secret_key,
+        "Authorization": f"Bearer {secret_key}",
         "Accept": "application/json",
     }
 
@@ -46,7 +46,7 @@ def query_old_jobs(supabase_url: str, service_role_key: str, days_old: int) -> l
         return []
 
 
-def delete_jobs(supabase_url: str, service_role_key: str, job_ids: list[str]) -> int:
+def delete_jobs(supabase_url: str, secret_key: str, job_ids: list[str]) -> int:
     """Delete jobs by their IDs."""
     base_url = supabase_url.rstrip("/")
 
@@ -55,8 +55,8 @@ def delete_jobs(supabase_url: str, service_role_key: str, job_ids: list[str]) ->
     endpoint = f"{base_url}/rest/v1/jobs?id=in.({ids_filter})"
 
     headers = {
-        "apikey": service_role_key,
-        "Authorization": f"Bearer {service_role_key}",
+        "apikey": secret_key,
+        "Authorization": f"Bearer {secret_key}",
         "Prefer": "return=minimal",
     }
 
@@ -84,8 +84,8 @@ def main():
     )
     parser.add_argument(
         "--supabase-key",
-        default=os.getenv("SUPABASE_PROD_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
-        help="Supabase service role key",
+        default=os.getenv("SUPABASE_PROD_SECRET_KEY") or os.getenv("SUPABASE_SECRET_KEY"),
+        help="Supabase secret key",
     )
     parser.add_argument(
         "--days",

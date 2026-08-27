@@ -13,6 +13,7 @@ node_modules/
 .pnp.js
 
 # Build artifacts
+wev.zip
 .next/
 build/
 dist/

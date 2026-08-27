@@ -47,9 +47,9 @@ def load_env_file(env_file: str | Path) -> None:
 # intact when "publishing" results to a different DB.
 _SUPABASE_DB_KEYS: tuple[str, ...] = (
     "SUPABASE_URL",
-    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_SECRET_KEY",
     "SUPABASE_PROD_URL",
-    "SUPABASE_PROD_SERVICE_ROLE_KEY",
+    "SUPABASE_PROD_SECRET_KEY",
     "SUPABASE_PROJECT_REF",
 )
 
@@ -106,14 +106,14 @@ def get_supabase_settings() -> SupabaseSettings:
     """Return the active Supabase credentials for the current runtime mode.
 
     When USE_PROD_DB=1, prefer the SUPABASE_PROD_* prefixed credentials. If those
-    aren't set, fall back to SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — this
+    aren't set, fall back to SUPABASE_URL / SUPABASE_SECRET_KEY — this
     supports the override-file pattern where `.env.production` is loaded with
     override=True and rewrites the unprefixed names in place (see scrape.py).
     """
     raw_url = get_env("SUPABASE_URL")
     prod_url = get_env("SUPABASE_PROD_URL")
-    raw_key = get_env("SUPABASE_SERVICE_ROLE_KEY")
-    prod_key = get_env("SUPABASE_PROD_SERVICE_ROLE_KEY")
+    raw_key = get_env("SUPABASE_SECRET_KEY")
+    prod_key = get_env("SUPABASE_PROD_SECRET_KEY")
 
     use_prod = is_truthy_env("USE_PROD_DB")
     if use_prod:
@@ -127,10 +127,10 @@ def get_supabase_settings() -> SupabaseSettings:
         if use_prod:
             raise ValueError(
                 "Production Supabase credentials not set. Provide either "
-                "SUPABASE_PROD_URL/SUPABASE_PROD_SERVICE_ROLE_KEY or override "
-                "SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY via .env.production."
+                "SUPABASE_PROD_URL/SUPABASE_PROD_SECRET_KEY or override "
+                "SUPABASE_URL/SUPABASE_SECRET_KEY via .env.production."
             )
-        raise ValueError("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set")
+        raise ValueError("SUPABASE_URL or SUPABASE_SECRET_KEY not set")
 
     return SupabaseSettings(url=url, secret_key=secret_key)
 

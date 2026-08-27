@@ -33,7 +33,7 @@ This command automatically:
 
 ## Running a Backup
 
-1. Ensure your `.env` file in the project root contains valid `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+1. Ensure your `.env` file in the project root contains valid `SUPABASE_URL` and `SUPABASE_SECRET_KEY`.
 2. From the project root, run:
 
    ```sh

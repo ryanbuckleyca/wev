@@ -56,19 +56,19 @@ function createSupabaseClient({ prod }: { prod: boolean }) {
     loadProductionEnvOnly(findRepoRoot());
   }
 
-  const { url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY } =
+  const { url: SUPABASE_URL, secretKey: SUPABASE_SECRET_KEY } =
     getSupabaseScriptConfig(
       "cleanup-duplicates.ts",
       prod
         ? PROD_SCRIPT_CONFIG
         : {
             urlEnv: "SUPABASE_URL",
-            keyEnvNames: ["SUPABASE_SERVICE_ROLE_KEY"],
-            keyDescription: "local service role key",
+            keyEnvNames: ["SUPABASE_SECRET_KEY"],
+            keyDescription: "local secret key",
           },
     );
 
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
     auth: { persistSession: false },
   });
 }

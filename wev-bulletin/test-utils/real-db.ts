@@ -9,7 +9,7 @@ export function getRealDatabaseClient() {
   const { url, key } = setupTestEnv();
 
   if (!url || !key) {
-    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set. Is supabase running?');
+    throw new Error('SUPABASE_URL and SUPABASE_SECRET_KEY must be set. Is supabase running?');
   }
 
   return createClient(url, key, {

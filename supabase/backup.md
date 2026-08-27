@@ -5,14 +5,14 @@ This folder contains scripts and instructions for backing up your Supabase datab
 ## How the Backup Script Works
 
 - The `backup.js` script reads all migration `.sql` files in `supabase/migrations/` to discover the current set of tables (including dropped tables).
-- It attempts to back up all tables in your Supabase project using the Supabase REST API and your service role key.
+- It attempts to back up all tables in your Supabase project using the Supabase REST API and your secret key.
 - Backups are saved as JSON files in `supabase/backups/`.
 - On the Supabase free plan, only public tables can be backed up programmatically. Auth tables (like `auth.users`) and system tables are not accessible via the API.
 - For user accounts, you must manually export `auth.users` from the Supabase dashboard (see below).
 
 ## How to Run a Backup
 
-1. Ensure your `.env` file in the project root contains valid `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+1. Ensure your `.env` file in the project root contains valid `SUPABASE_URL` and `SUPABASE_SECRET_KEY`.
 2. Run the backup script from the project root:
 
    ```sh

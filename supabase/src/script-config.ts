@@ -39,8 +39,8 @@ export interface ScriptConfigParams {
 /** Production Supabase credentials in `.env.production` (separate from local `.env`). */
 export const PROD_SCRIPT_CONFIG: ScriptConfigParams = {
   urlEnvNames: ["SUPABASE_URL"],
-  keyEnvNames: ["SUPABASE_SERVICE_ROLE_KEY"],
-  keyDescription: "production service role key",
+  keyEnvNames: ["SUPABASE_SECRET_KEY"],
+  keyDescription: "production secret key",
 };
 
 function resolveUrl(scriptName: string, params: ScriptConfigParams): string {
@@ -62,15 +62,11 @@ export function getSupabaseScriptConfig(
   scriptName: string,
   params: ScriptConfigParams,
 ) {
-  const standardizedKeys = params.keyEnvNames.map((k) =>
-    k.replace("SECRET_KEY", "SERVICE_ROLE_KEY"),
-  );
-
   return {
     url: resolveUrl(scriptName, params),
-    serviceRoleKey: getRequiredAnyEnv(
+    secretKey: getRequiredAnyEnv(
       scriptName,
-      standardizedKeys,
+      params.keyEnvNames,
       params.keyDescription,
     ),
   };
