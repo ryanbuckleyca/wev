@@ -3,7 +3,7 @@
 Uses the Groq API at https://api.groq.com/openai and requires an API key in
 the environment variable GROQ_API_KEY.
 
-Default model: openai/gpt-oss-120b — Llama 3.3 70B on Groq's LPU inference,
+Default model: llama-3.1-70b-versatile — Llama 3.3 70B on Groq's LPU inference,
 fast and high quality for summarization and structured JSON output.
 Context window: 128k tokens.
 
@@ -53,7 +53,7 @@ from llm.prompts import (
 )
 
 GROQ_BASE_URL = "https://api.groq.com/openai"
-DEFAULT_MODEL = "openai/gpt-oss-120b"
+DEFAULT_MODEL = "llama-3.1-70b-versatile"
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +65,12 @@ logger = logging.getLogger(__name__)
 # llama-3.x pair's shutdown date of 2026-08-16 has now passed, which is why
 # they started 404ing with model_not_found). See console.groq.com/docs/deprecations.
 # Replaced with Groq's own recommended migration targets:
-# openai/gpt-oss-120b: best reasoning/instruction-following — default
+# llama-3.1-70b-versatile: best reasoning/instruction-following — default
 # openai/gpt-oss-20b:  faster/lighter, good for high-volume low-complexity tasks
 # qwen/qwen3.6-27b:    Groq serves this as a preview model, not production —
 #                      kept as last resort only; re-check its status periodically
 GROQ_MODELS = [
-    "openai/gpt-oss-120b",
+    "llama-3.1-70b-versatile",
     "openai/gpt-oss-20b",
     "qwen/qwen3.6-27b",
 ]
