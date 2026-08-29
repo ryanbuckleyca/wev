@@ -288,6 +288,41 @@ html.theme-switching *::after {
   .wev-checkbox:disabled {
     @apply cursor-not-allowed opacity-50;
   }
+
+  /* Radio – same footprint as .wev-checkbox, circular, filled inner dot when selected. */
+  .wev-radio {
+    @apply h-5 w-5 shrink-0 cursor-pointer rounded-full border-2 border-border bg-card transition-colors duration-200;
+    -webkit-appearance: none;
+    appearance: none;
+    accent-color: var(--primary);
+    background-color: var(--card);
+    background-image: none;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 10px 10px;
+  }
+
+  .wev-radio:hover {
+    border-color: var(--primary);
+  }
+
+  .wev-radio:checked {
+    border-color: var(--primary);
+    background-image: radial-gradient(circle, var(--primary) 35%, transparent 38%);
+  }
+
+  .wev-radio:focus {
+    outline: none;
+  }
+
+  .wev-radio:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  .wev-radio:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
 }
 
 /* Toasts - Style guide matching */
