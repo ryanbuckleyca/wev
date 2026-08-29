@@ -214,6 +214,38 @@ describe('organizations/server-data', () => {
     expect(result.totalAvailable).toBe(10);
   });
 
+  it('passes selected sectors to the RPC as p_sectors', async () => {
+    mockRpc
+      .mockResolvedValueOnce({
+        data: [makeRpcOrg(2, 'Alpha Org', 1)],
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: [{ ...makeRpcOrg(2, 'Alpha Org', 1), total_count: 10 }],
+        error: null,
+      });
+
+    await fetchOrganizationIndex({
+      page: 1,
+      sectors: ['arts-culture-information', 'community-civic-infrastructure'],
+    });
+
+    expect(mockRpc).toHaveBeenNthCalledWith(
+      1,
+      'get_active_organizations',
+      expect.objectContaining({
+        p_sectors: ['arts-culture-information', 'community-civic-infrastructure'],
+      }),
+    );
+    expect(mockRpc).toHaveBeenNthCalledWith(
+      2,
+      'get_active_organizations',
+      expect.objectContaining({
+        p_sectors: null,
+      }),
+    );
+  });
+
   it('fetches organization jobs using the date_posted age window and pagination', async () => {
     jobsQuery.setResult({
       data: [
