@@ -292,6 +292,7 @@ html.theme-switching *::after {
   /* Radio – same footprint as .wev-checkbox, circular, filled inner dot when selected. */
   .wev-radio {
     @apply h-5 w-5 shrink-0 cursor-pointer rounded-full border-2 border-border bg-card transition-colors duration-200;
+
     -webkit-appearance: none;
     appearance: none;
     accent-color: var(--primary);

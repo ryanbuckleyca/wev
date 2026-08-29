@@ -42,5 +42,20 @@ describe('RadioFilterSection', () => {
 
     expect(screen.getByRole('radio', { name: 'All organizations' })).not.toBeChecked();
     expect(screen.getByRole('radio', { name: 'Hiring in the last 4 weeks' })).toBeChecked();
+    expect(screen.getByRole('radiogroup', { name: 'Activity' })).toBeInTheDocument();
+  });
+
+  it('names the radiogroup when the section label is not a string', () => {
+    render(
+      <RadioFilterSection
+        label={<span>Activity</span>}
+        name="org-activity"
+        options={options}
+        selectedValue="all"
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('radiogroup', { name: 'Activity' })).toBeInTheDocument();
   });
 });

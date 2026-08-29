@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Radio } from '@/components/ui/Radio';
 import { FILTER_LIST_BOX_CLASS } from './filter-list-box';
 
@@ -28,14 +28,14 @@ export default function RadioFilterSection({
   className,
   listClassName = FILTER_LIST_BOX_CLASS,
 }: RadioFilterSectionProps) {
+  const labelId = useId();
+
   return (
     <div className={className}>
-      <div className="block text-sm font-semibold text-foreground mb-2">{label}</div>
-      <div
-        className={listClassName}
-        role="radiogroup"
-        aria-label={typeof label === 'string' ? label : undefined}
-      >
+      <div id={labelId} className="block text-sm font-semibold text-foreground mb-2">
+        {label}
+      </div>
+      <div className={listClassName} role="radiogroup" aria-labelledby={labelId}>
         {options.map((option) => (
           <label
             key={option.value}
