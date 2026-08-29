@@ -57,6 +57,7 @@ lint:
     - taplo@0.10.0
     - eslint@9.39.4
     - pyright@1.1.409
+    - gitleaks@8.29.0
 actions:
   disabled:
     - trunk-announce

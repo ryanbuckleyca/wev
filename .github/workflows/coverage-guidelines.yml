@@ -80,7 +80,7 @@ jobs:
       - name: Coverage guidelines report
         env:
           SUPABASE_URL: "https://test.supabase.co"
-          SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key"
+          SUPABASE_SECRET_KEY: "test-secret-key"
           NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co"
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "test-key"
         run: npm run coverage:guidelines
