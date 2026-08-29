@@ -4,7 +4,11 @@ import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import Collapsible from './Collapsible';
 import CheckboxFilterSection from './job-filters/CheckboxFilterSection';
-import { FILTER_LIST_BOX_CLASS } from './job-filters/filter-list-box';
+import {
+  FILTER_LIST_BOX_CLASS,
+  FILTER_LIST_BOX_COMPACT_CLASS,
+} from './job-filters/filter-list-box';
+
 import MunicipalityFilterSection from './job-filters/MunicipalityFilterSection';
 import RadioFilterSection from './job-filters/RadioFilterSection';
 import OrganizationSearch from './OrganizationSearch';
@@ -139,17 +143,37 @@ export default function OrganizationFilters({
 
       <Collapsible id="org-filters-content" isOpen={filtersExpanded} className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
-          <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0">
+          <div className="flex flex-col min-h-0">
             <RadioFilterSection
               label={t('activityLabel')}
               name="org-activity"
               options={activityOptions}
               selectedValue={controls.activityWindow}
               onSelect={(value) => controls.setActivityWindow(value as ActivityWindow)}
+              listClassName={FILTER_LIST_BOX_COMPACT_CLASS}
             />
           </div>
 
-          <div className="flex flex-col order-2 md:row-start-2 md:col-start-1 min-h-0">
+          <div className="flex flex-col min-h-0">
+            <CheckboxFilterSection
+              label={tJobs('language.label')}
+              selectedCount={selectedLanguages.length}
+              totalCount={filterOptions.languages.length}
+              options={filterOptions.languages}
+              selectedValues={selectedLanguages}
+              disabledValues={disabledLanguages}
+              disabledTooltipMessage={disabledTooltipMessage}
+              onToggle={(val) => {
+                void setSelectedLanguages(toggleArrayItem(val, selectedLanguages));
+                void setCurrentPage(1);
+              }}
+              emptyMessage={tJobs('language.noData')}
+              listClassName={FILTER_LIST_BOX_COMPACT_CLASS}
+              renderLabel={(lang) => orgLanguageLabel(lang, tJobs)}
+            />
+          </div>
+
+          <div className="flex flex-col min-h-0">
             <CheckboxFilterSection
               label={tJobs('province.label')}
               selectedCount={selectedProvinces.length}
@@ -164,7 +188,7 @@ export default function OrganizationFilters({
             />
           </div>
 
-          <div className="flex flex-col order-3 md:row-start-3 md:col-start-1 min-h-0">
+          <div className="flex flex-col min-h-0">
             <MunicipalityFilterSection
               label={tJobs('municipality.label')}
               selectedMunicipalities={selectedMunicipalities}
@@ -183,7 +207,7 @@ export default function OrganizationFilters({
             />
           </div>
 
-          <div className="flex flex-col order-4 md:row-start-1 md:col-start-2 min-h-0">
+          <div className="flex flex-col min-h-0">
             <CheckboxFilterSection
               label={t('organizationType')}
               selectedCount={selectedTypes.length}
@@ -199,26 +223,7 @@ export default function OrganizationFilters({
             />
           </div>
 
-          <div className="flex flex-col order-5 md:row-start-2 md:col-start-2 min-h-0">
-            <CheckboxFilterSection
-              label={tJobs('language.label')}
-              selectedCount={selectedLanguages.length}
-              totalCount={filterOptions.languages.length}
-              options={filterOptions.languages}
-              selectedValues={selectedLanguages}
-              disabledValues={disabledLanguages}
-              disabledTooltipMessage={disabledTooltipMessage}
-              onToggle={(val) => {
-                void setSelectedLanguages(toggleArrayItem(val, selectedLanguages));
-                void setCurrentPage(1);
-              }}
-              emptyMessage={tJobs('language.noData')}
-              listClassName={FILTER_LIST_BOX_CLASS}
-              renderLabel={(lang) => orgLanguageLabel(lang, tJobs)}
-            />
-          </div>
-
-          <div className="flex flex-col order-6 md:row-start-3 md:col-start-2 min-h-0">
+          <div className="flex flex-col min-h-0">
             <CheckboxFilterSection
               label={t('sector')}
               selectedCount={selectedSectors.length}
