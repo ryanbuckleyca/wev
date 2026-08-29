@@ -4,6 +4,7 @@ import { CheckOutlined } from '@lineiconshq/free-icons';
 import { Lineicons } from '@lineiconshq/react-lineicons';
 import { Checkbox } from '@/components/ui/Checkbox';
 import type { MunicipalitiesByProvince } from '@/lib/bulletin/filter-options';
+import { FILTER_LIST_BOX_CLASS } from './filter-list-box';
 
 interface MunicipalityFilterSectionProps {
   label: string;
@@ -13,6 +14,7 @@ interface MunicipalityFilterSectionProps {
   municipalitiesByProvince: MunicipalitiesByProvince;
   onToggleMunicipality: (municipality: string) => void;
   className?: string;
+  listClassName?: string;
   disabledMunicipalities?: string[];
   disabledTooltipMessage?: string;
   noDataMessage: string;
@@ -28,6 +30,7 @@ export default function MunicipalityFilterSection({
   municipalitiesByProvince,
   onToggleMunicipality,
   className,
+  listClassName = FILTER_LIST_BOX_CLASS,
   disabledMunicipalities = [],
   disabledTooltipMessage,
   noDataMessage,
@@ -44,7 +47,7 @@ export default function MunicipalityFilterSection({
           </span>
         ) : null}
       </label>
-      <div className="h-48 overflow-y-auto border border-border rounded-wev-btn p-2 bg-background">
+      <div className={listClassName}>
         {totalMunicipalities === 0 ? (
           <p className="text-sm text-muted-foreground italic px-2 py-2">{noDataMessage}</p>
         ) : Object.keys(municipalitiesByProvince).length === 0 ? (

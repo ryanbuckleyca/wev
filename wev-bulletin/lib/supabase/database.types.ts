@@ -8,7 +8,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.1';
+    PostgrestVersion: '14.17';
   };
   public: {
     Tables: {
@@ -293,6 +293,8 @@ export type Database = {
           organization_id: number | null;
           province: string | null;
           scraped_at: string;
+          search_municipality: string | null;
+          search_province: string | null;
           skills: string[];
           source_id: string;
           sse_details: Json | null;
@@ -334,6 +336,8 @@ export type Database = {
           organization_id?: number | null;
           province?: string | null;
           scraped_at?: string;
+          search_municipality?: string | null;
+          search_province?: string | null;
           skills?: string[];
           source_id: string;
           sse_details?: Json | null;
@@ -375,6 +379,8 @@ export type Database = {
           organization_id?: number | null;
           province?: string | null;
           scraped_at?: string;
+          search_municipality?: string | null;
+          search_province?: string | null;
           skills?: string[];
           source_id?: string;
           sse_details?: Json | null;
@@ -710,6 +716,8 @@ export type Database = {
           organization_id: number | null;
           province: string | null;
           scraped_at: string | null;
+          search_municipality: string | null;
+          search_province: string | null;
           skill_score: number | null;
           skills: string[] | null;
           source: string | null;
@@ -767,6 +775,7 @@ export type Database = {
           p_org_types?: string[];
           p_provinces?: string[];
           p_search?: string;
+          p_sectors?: string[];
           p_sort?: string;
           p_sse_only?: boolean;
           p_user_id?: string;
@@ -782,6 +791,7 @@ export type Database = {
           is_sse: boolean;
           language: string;
           lat: number;
+          latest_job_posted: string;
           lng: number;
           location: string;
           logo_url: string;
