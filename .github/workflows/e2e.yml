@@ -100,8 +100,8 @@ jobs:
         # Use the CLI installed by npm ci so workflow behavior stays stable
         # when Supabase publishes new versions.
         # Output the env format directly to a file, source it natively in bash
-        # so there's no brittle grep/awk parsing, and then map the generic CLI
-        # variables to our Next.js-specific names in $GITHUB_ENV.
+        # so there's no brittle grep/awk parsing, and then map CLI names
+        # (API_URL, SECRET_KEY, PUBLISHABLE_KEY) to our Next.js env vars.
         run: |
           ./node_modules/.bin/supabase start --yes --exclude studio,edge-runtime,logflare,vector
           ./node_modules/.bin/supabase status -o env > supabase.env
@@ -115,7 +115,7 @@ jobs:
           echo "SUPABASE_URL=$API_URL" >> $GITHUB_ENV
           echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
           echo "SUPABASE_SECRET_KEY=$SECRET_KEY" >> $GITHUB_ENV
-          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY" >> $GITHUB_ENV
 
       - name: Build Next.js app
         env:

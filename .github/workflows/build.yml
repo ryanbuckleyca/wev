@@ -51,7 +51,7 @@ jobs:
         env:
           # Server-only; not exposed to client. Use placeholders if missing so CI build succeeds.
           SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY || 'placeholder-service-role-key' }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY || 'placeholder-secret-key' }}
           # Client-side variables needed for middleware and build
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_KEY || 'placeholder-publishable-key' }}
@@ -65,6 +65,6 @@ jobs:
           echo ""
           echo "Remember to set these environment variables in Northflank:"
           echo "  - SUPABASE_URL (server-only)"
-          echo "  - SUPABASE_SERVICE_ROLE_KEY (server-only, never expose)"
+          echo "  - SUPABASE_SECRET_KEY (server-only, never expose)"
           echo "  - NEXT_PUBLIC_SITE_URL (for auth redirects, e.g. https://bulletin.wevchange.org)"
           echo "  - WEV_GITHUB_TOKEN (for API routes)"
