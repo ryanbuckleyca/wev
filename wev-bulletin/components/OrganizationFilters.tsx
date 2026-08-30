@@ -2,13 +2,15 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons';
-import { Lineicons } from '@lineiconshq/react-lineicons';
 import Collapsible from './Collapsible';
-import BooleanFilterRow from './job-filters/BooleanFilterRow';
 import CheckboxFilterSection from './job-filters/CheckboxFilterSection';
-import FilterButtonGroup from './job-filters/FilterButtonGroup';
+import {
+  FILTER_LIST_BOX_CLASS,
+  FILTER_LIST_BOX_COMPACT_CLASS,
+} from './job-filters/filter-list-box';
+
 import MunicipalityFilterSection from './job-filters/MunicipalityFilterSection';
+import RadioFilterSection from './job-filters/RadioFilterSection';
 import OrganizationSearch from './OrganizationSearch';
 import {
   buildOrgActiveFilterChips,
@@ -141,64 +143,18 @@ export default function OrganizationFilters({
 
       <Collapsible id="org-filters-content" isOpen={filtersExpanded} className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start gap-x-4 gap-y-4 mb-2">
-          <div className="flex flex-col order-1 md:row-start-1 md:col-start-1 min-h-0 space-y-2">
-            <FilterButtonGroup
+          <div className="flex flex-col min-h-0">
+            <RadioFilterSection
               label={t('activityLabel')}
+              name="org-activity"
               options={activityOptions}
-              isSelected={(value) => controls.activityWindow === value}
+              selectedValue={controls.activityWindow}
               onSelect={(value) => controls.setActivityWindow(value as ActivityWindow)}
-              className="mb-0"
+              listClassName={FILTER_LIST_BOX_COMPACT_CLASS}
             />
           </div>
 
-          <div className="flex flex-col order-2 md:row-start-2 md:col-start-1 min-h-0">
-            <CheckboxFilterSection
-              label={tJobs('province.label')}
-              selectedCount={selectedProvinces.length}
-              totalCount={filterOptions.provinces.length}
-              options={filterOptions.provinces}
-              selectedValues={selectedProvinces}
-              disabledValues={disabledProvinces}
-              disabledTooltipMessage={disabledTooltipMessage}
-              onToggle={(val) => setSelectedProvinces(toggleArrayItem(val, selectedProvinces))}
-              emptyMessage={tJobs('province.noData')}
-            />
-          </div>
-
-          <div className="flex flex-col order-3 md:row-start-3 md:col-start-1 min-h-0">
-            <MunicipalityFilterSection
-              label={tJobs('municipality.label')}
-              selectedMunicipalities={selectedMunicipalities}
-              totalMunicipalities={totalMunicipalities}
-              selectedProvinces={selectedProvinces}
-              municipalitiesByProvince={filterOptions.municipalitiesByProvince}
-              disabledMunicipalities={disabledMunicipalities}
-              disabledTooltipMessage={disabledTooltipMessage}
-              onToggleMunicipality={(val) =>
-                setSelectedMunicipalities(toggleArrayItem(val, selectedMunicipalities))
-              }
-              noDataMessage={tJobs('municipality.noData')}
-              selectProvinceMessage={tJobs('municipality.selectProvince')}
-              showingFromSelectedMessage={tJobs('municipality.showingFromSelected')}
-            />
-          </div>
-
-          <div className="flex flex-col order-4 md:row-start-1 md:col-start-2 min-h-0">
-            <CheckboxFilterSection
-              label={t('organizationType')}
-              selectedCount={selectedTypes.length}
-              totalCount={filterOptions.types.length}
-              options={filterOptions.types}
-              selectedValues={selectedTypes}
-              disabledValues={disabledTypes}
-              disabledTooltipMessage={disabledTooltipMessage}
-              onToggle={(val) => setSelectedTypes(toggleArrayItem(val, selectedTypes))}
-              emptyMessage={t('noOrganizationTypes')}
-              renderLabel={(type) => getOrganizationTypeLabel(type, t)}
-            />
-          </div>
-
-          <div className="flex flex-col order-5 md:row-start-2 md:col-start-2 min-h-0">
+          <div className="flex flex-col min-h-0">
             <CheckboxFilterSection
               label={tJobs('language.label')}
               selectedCount={selectedLanguages.length}
@@ -212,11 +168,62 @@ export default function OrganizationFilters({
                 void setCurrentPage(1);
               }}
               emptyMessage={tJobs('language.noData')}
+              listClassName={FILTER_LIST_BOX_COMPACT_CLASS}
               renderLabel={(lang) => orgLanguageLabel(lang, tJobs)}
             />
           </div>
 
-          <div className="flex flex-col order-6 md:row-start-3 md:col-start-2 min-h-0">
+          <div className="flex flex-col min-h-0">
+            <CheckboxFilterSection
+              label={tJobs('province.label')}
+              selectedCount={selectedProvinces.length}
+              totalCount={filterOptions.provinces.length}
+              options={filterOptions.provinces}
+              selectedValues={selectedProvinces}
+              disabledValues={disabledProvinces}
+              disabledTooltipMessage={disabledTooltipMessage}
+              onToggle={(val) => setSelectedProvinces(toggleArrayItem(val, selectedProvinces))}
+              emptyMessage={tJobs('province.noData')}
+              listClassName={FILTER_LIST_BOX_CLASS}
+            />
+          </div>
+
+          <div className="flex flex-col min-h-0">
+            <MunicipalityFilterSection
+              label={tJobs('municipality.label')}
+              selectedMunicipalities={selectedMunicipalities}
+              totalMunicipalities={totalMunicipalities}
+              selectedProvinces={selectedProvinces}
+              municipalitiesByProvince={filterOptions.municipalitiesByProvince}
+              disabledMunicipalities={disabledMunicipalities}
+              disabledTooltipMessage={disabledTooltipMessage}
+              onToggleMunicipality={(val) =>
+                setSelectedMunicipalities(toggleArrayItem(val, selectedMunicipalities))
+              }
+              listClassName={FILTER_LIST_BOX_CLASS}
+              noDataMessage={tJobs('municipality.noData')}
+              selectProvinceMessage={tJobs('municipality.selectProvince')}
+              showingFromSelectedMessage={tJobs('municipality.showingFromSelected')}
+            />
+          </div>
+
+          <div className="flex flex-col min-h-0">
+            <CheckboxFilterSection
+              label={t('organizationType')}
+              selectedCount={selectedTypes.length}
+              totalCount={filterOptions.types.length}
+              options={filterOptions.types}
+              selectedValues={selectedTypes}
+              disabledValues={disabledTypes}
+              disabledTooltipMessage={disabledTooltipMessage}
+              onToggle={(val) => setSelectedTypes(toggleArrayItem(val, selectedTypes))}
+              emptyMessage={t('noOrganizationTypes')}
+              listClassName={FILTER_LIST_BOX_CLASS}
+              renderLabel={(type) => getOrganizationTypeLabel(type, t)}
+            />
+          </div>
+
+          <div className="flex flex-col min-h-0">
             <CheckboxFilterSection
               label={t('sector')}
               selectedCount={selectedSectors.length}
@@ -230,6 +237,7 @@ export default function OrganizationFilters({
                 void setCurrentPage(1);
               }}
               emptyMessage={t('noOrganizationSectors')}
+              listClassName={FILTER_LIST_BOX_CLASS}
               renderLabel={(sectorId) =>
                 tSectors.has(`${sectorId}.label`) ? tSectors(`${sectorId}.label`) : sectorId
               }

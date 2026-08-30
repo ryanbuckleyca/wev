@@ -1,5 +1,26 @@
 # Gitleaks configuration
-# Allowlist false positives from test files that contain dummy passwords
+# [extend] is required: a custom config replaces the default rule set unless
+# we inherit it. Without useDefault, this file would only apply the allowlist.
+
+title = "wev"
+
+[extend]
+useDefault = true
+
+# Default gitleaks 8.29 does not ship sb_secret_ (new Supabase admin keys).
+[[rules]]
+id = "supabase-secret-key"
+description = "Supabase secret key"
+regex = '''sb_secret_[a-zA-Z0-9_-]{31}'''
+keywords = ["sb_secret_"]
+
+# Groq inference keys (gsk_ + 48 alphanumerics). Not in gitleaks 8.29.
+[[rules]]
+id = "groq-api-key"
+description = "Groq API key"
+regex = '''gsk_[a-zA-Z0-9]{48}'''
+entropy = 4.0
+keywords = ["gsk_"]
 
 [allowlist]
 description = "Allowlisted files and patterns"
