@@ -57,7 +57,7 @@ class BaseScraper:
        - SELECTORS = { ... }           (CSS selectors for job fields, see below)
        - is_chronological = True/False  (stop early when an old job is found?)
        - date_language = "fr"           (only if dates are non-English)
-       - filter_values = [...]          (if the site needs province/region filtering)
+       - filter_values = [...]          (optional: multiple listing-page passes)
 
     3. That's usually enough. The base handles:
        - Finding listing items via listing_selector

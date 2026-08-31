@@ -5,6 +5,11 @@ def make_source():
     return {"id": "test", "url": "https://www.charityvillage.com", "name": "CharityVillage"}
 
 
+def test_get_listings_url():
+    scraper = CharityVillageScraper(make_source())
+    assert scraper.get_listings_url() == "https://www.charityvillage.com/jobs"
+
+
 def test_extract_job_title(page):
     scraper = CharityVillageScraper(make_source())
     page.set_content('<div data-testid="title">Senior Developer</div>')

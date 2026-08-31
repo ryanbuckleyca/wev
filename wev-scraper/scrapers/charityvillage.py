@@ -4,18 +4,7 @@ from scrapers.base import BaseScraper
 from utils.extractors import extract_salary_from_text
 from utils.log import scraper_log
 
-_LISTING_URLS = {
-    "Toronto, ON": (
-        "https://www.charityvillage.com/jobs?geo_location=Toronto%2C+ON"
-        "&lon=-79.347015&lat=43.65107&radius=25&locality=Toronto%2C+ON"
-        "&locationType=locality"
-    ),
-    "Montreal, QC": (
-        "https://www.charityvillage.com/jobs?geo_location=Montr%C3%A9al%2C+QC"
-        "&lon=-73.567256&lat=45.501689&radius=25&locality=Montr%C3%A9al%2C+QC"
-        "&locationType=locality"
-    ),
-}
+_LISTINGS_URL = "https://www.charityvillage.com/jobs"
 
 _NEXT_PAGE_PATTERN = re.compile(r"next", re.IGNORECASE)
 
@@ -28,7 +17,6 @@ _EMPLOYMENT_TYPE_KEYWORDS = [
 
 class CharityVillageScraper(BaseScraper):
     is_chronological = True
-    filter_values = ["Toronto, ON", "Montreal, QC"]
     listing_selector = "div[data-testid='jcl-job-teaser-wrapper']"
     job_wait_selector = "div[data-testid='job-detail-wrapper']"
 
@@ -37,10 +25,10 @@ class CharityVillageScraper(BaseScraper):
         self.current_page_number = 1
 
     def get_listings_url(self, filter_value=None):
-        return _LISTING_URLS.get(filter_value, "https://www.charityvillage.com/jobs")
+        return _LISTINGS_URL
 
     def open_listings_page(self, page, filter_value=None):
-        url = self.get_listings_url(filter_value)
+        url = self.get_listings_url()
         scraper_log(f"\nNavigating to {url}")
         self._goto_with_networkidle(page, url)
         page.wait_for_timeout(3000)
