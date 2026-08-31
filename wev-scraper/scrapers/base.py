@@ -415,8 +415,10 @@ class BaseScraper:
                 'meta[name="pubdate"], '
                 'meta[property="article:modified_time"], '
                 'meta[name="article:published_time"]'
-            ).first
-            return meta.get_attribute("content") or None
+            )
+            if meta.count() == 0:  # count() does not wait
+                return None
+            return meta.first.get_attribute("content") or None
         except Exception:
             return None
 
@@ -578,7 +580,11 @@ class BaseScraper:
             else:
                 selector = spec
             try:
-                loc = page.locator(selector).first
+                loc = page.locator(selector)
+                if loc.count() == 0:  # count() does not wait
+                    data[key] = None
+                    continue
+                loc = loc.first
                 if method == "html":
                     value = loc.inner_html()
                 elif method == "attr":

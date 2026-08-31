@@ -156,6 +156,9 @@ class CharityVillageScraper(BaseScraper):
 
     def _extract_text(self, page, selector: str) -> str | None:
         try:
-            return page.locator(selector).first.inner_text().strip()
+            loc = page.locator(selector)
+            if loc.count() == 0:  # count() does not wait
+                return None
+            return loc.first.inner_text().strip()
         except Exception:
             return None

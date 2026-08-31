@@ -150,22 +150,27 @@ class MaCommunauteScraper(BaseScraper):
             return "volunteer"
         # Try to detect from the detail page meta block
         try:
-            meta_text = page.locator(".job-meta, .entry-meta, aside, .sidebar").first.inner_text()
-            meta_lower = meta_text.lower()
-            if "temps plein" in meta_lower:
-                return "full-time"
-            if "temps partiel" in meta_lower:
-                return "part-time"
-            # "poste contractuel" or "emploi contractuel" = fixed-term contract
-            if re.search(r"(?:poste|emploi)\s+contractuel", meta_lower):
-                return "contract"
-            if "bénévol" in meta_lower or "benevol" in meta_lower:
-                return "volunteer"
+            loc = page.locator(".job-meta, .entry-meta, aside, .sidebar")
+            if loc.count() > 0:  # count() does not wait
+                meta_text = loc.first.inner_text()
+                meta_lower = meta_text.lower()
+                if "temps plein" in meta_lower:
+                    return "full-time"
+                if "temps partiel" in meta_lower:
+                    return "part-time"
+                # "poste contractuel" or "emploi contractuel" = fixed-term contract
+                if re.search(r"(?:poste|emploi)\s+contractuel", meta_lower):
+                    return "contract"
+                if "bénévol" in meta_lower or "benevol" in meta_lower:
+                    return "volunteer"
         except Exception:
             pass
         # Fall back to scanning the full page text
         try:
-            text = page.locator("article, .entry-content").first.inner_text().lower()
+            loc = page.locator("article, .entry-content")
+            if loc.count() == 0:
+                return None
+            text = loc.first.inner_text().lower()
             if "temps plein" in text:
                 return "full-time"
             if "temps partiel" in text:
