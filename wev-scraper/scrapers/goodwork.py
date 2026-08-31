@@ -26,18 +26,18 @@ WAGE_LABEL_PATTERNS = [
 
 class GoodWorkScraper(BaseScraper):
     is_chronological = True
-    filter_values = ["Ontario", "Quebec"]
     listing_selector = ".listingthumb.row"
     job_wait_selector = "h2, h3"
 
     # setup_pagination is intentionally a no-op: page_count is not used here.
     # Pagination is driven entirely by has_next_page / go_next_page.
 
-    def open_listings_page(self, page, filter_value=None):
-        self._goto_with_networkidle(page, self.get_listings_url(filter_value))
-        if filter_value:
-            self._filter_jobs(page, filter_value)
-        # Store the post-filter URL so go_next_page can paginate from the right base
+    def get_listings_url(self):
+        return "https://www.goodwork.ca/jobs.php"
+
+    def open_listings_page(self, page):
+        self._goto_with_networkidle(page, self.get_listings_url())
+        # Store the listings URL so go_next_page can paginate from the right base
         self._listings_base_url = page.url
 
     def has_next_page(self, page):
@@ -220,9 +220,3 @@ class GoodWorkScraper(BaseScraper):
         """Strategy 3: scan full page text for any salary pattern."""
         text = self._get_first_div_text(page) or self._get_page_text(page)
         return extract_salary_from_text(text) if text else None
-
-    def _filter_jobs(self, page, filter_value):
-        scraper_log(f"\nFiltering by {filter_value}")
-        page.select_option("#prov", label=filter_value)
-        with page.expect_navigation(url="**/jobs.php"):
-            page.get_by_role("button", name="Search").click()

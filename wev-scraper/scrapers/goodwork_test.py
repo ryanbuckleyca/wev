@@ -4,6 +4,12 @@ from scrapers.goodwork import GoodWorkScraper
 def make_source():
     return {"id": "test", "url": "https://www.goodwork.ca", "name": "GoodWork"}
 
+
+def test_get_listings_url():
+    scraper = GoodWorkScraper(make_source())
+    assert scraper.get_listings_url() == "https://www.goodwork.ca/jobs.php"
+
+
 def test_extract_job_title(page):
     scraper = GoodWorkScraper(make_source())
     # GoodWork looks for <p><strong>Position:</strong> ...</p>

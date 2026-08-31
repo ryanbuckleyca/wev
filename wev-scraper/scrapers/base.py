@@ -57,7 +57,6 @@ class BaseScraper:
        - SELECTORS = { ... }           (CSS selectors for job fields, see below)
        - is_chronological = True/False  (stop early when an old job is found?)
        - date_language = "fr"           (only if dates are non-English)
-       - filter_values = [...]          (if the site needs province/region filtering)
 
     3. That's usually enough. The base handles:
        - Finding listing items via listing_selector
@@ -94,7 +93,7 @@ class BaseScraper:
     5. Optional hooks:
        - get_listing_data(item)        -> extract fields from the listing page
                                           (returned dict takes priority over job page)
-       - open_listings_page(page, filter_value)
+       - open_listings_page(page)
        - setup_pagination(page)
        - has_next_page(page) / go_next_page(page)
        - start_browser(headless, viewport)
@@ -169,11 +168,8 @@ class BaseScraper:
             return None
 
     # ---- Subclass hooks ----
-    def get_listings_url(self, filter_value=None):
+    def get_listings_url(self):
         return self.source["url"]
-
-    def get_filter_values(self):
-        return getattr(self, "filter_values", [None])
 
     def _retry(self, func, *args, max_retries=3, **kwargs):
         """Retry func up to max_retries times. Bails immediately on 403s when no proxy is available."""
@@ -203,10 +199,10 @@ class BaseScraper:
                     scraper_log(f"\t❌ Failed after {max_retries} attempts")
                     raise
 
-    def open_listings_page(self, page, filter_value=None):
+    def open_listings_page(self, page):
         """Navigate to the listings page. Waits for networkidle, checks for error pages (403/404/Cloudflare), retries up to 3 times on failure."""
         def _load_page():
-            self._goto_with_networkidle(page, self.get_listings_url(filter_value))
+            self._goto_with_networkidle(page, self.get_listings_url())
             # Check if page loaded successfully (not a 404 or error page)
             self._is_error_page(page)
 
@@ -424,32 +420,31 @@ class BaseScraper:
     def fetch_jobs(self, headless=True):
         self.listings_page = self.start_browser(headless=headless)
         try:
-            for filter_value in self.get_filter_values() or [None]:
-                self.current_page_number = 1
-                self.page_count = 1
-                self.should_quit_list = False
-                self.open_listings_page(self.listings_page, filter_value)
-                self.setup_pagination(self.listings_page)
-                while True:
-                    if self.should_quit_list:
-                        break
-                    items = self.get_listing_items(self.listings_page)
-                    self._process_listing_items(items)
-                    if self.should_quit_list:
-                        scraper_log(f"\tStopped after page {self.current_page_number} (chronological early exit).")
-                        break
-                    if not self.has_next_page(self.listings_page):
-                        scraper_log(f"\tNo more pages after page {self.current_page_number}.")
-                        break
+            self.current_page_number = 1
+            self.page_count = 1
+            self.should_quit_list = False
+            self.open_listings_page(self.listings_page)
+            self.setup_pagination(self.listings_page)
+            while True:
+                if self.should_quit_list:
+                    break
+                items = self.get_listing_items(self.listings_page)
+                self._process_listing_items(items)
+                if self.should_quit_list:
+                    scraper_log(f"\tStopped after page {self.current_page_number} (chronological early exit).")
+                    break
+                if not self.has_next_page(self.listings_page):
+                    scraper_log(f"\tNo more pages after page {self.current_page_number}.")
+                    break
+                try:
+                    self.go_next_page(self.listings_page)
+                except Exception as e:
+                    scraper_log(f"\tNotice: Pagination failed on page {self.current_page_number}: {e}")
                     try:
-                        self.go_next_page(self.listings_page)
-                    except Exception as e:
-                        scraper_log(f"\tNotice: Pagination failed on page {self.current_page_number}: {e}")
-                        try:
-                            self.upload_error_screenshot_from_page(self.listings_page)
-                        except Exception:
-                            pass
-                        break
+                        self.upload_error_screenshot_from_page(self.listings_page)
+                    except Exception:
+                        pass
+                    break
         finally:
             self.close_browser()
         return self.jobs
