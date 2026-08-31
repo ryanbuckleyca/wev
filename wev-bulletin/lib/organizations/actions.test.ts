@@ -168,7 +168,10 @@ describe('organizations/actions', () => {
     });
 
     /** updateOrganization reads the existing row, then writes; queue both. */
-    const queueExistingThenUpdated = (existing: unknown, updated: unknown = { id: 5, slug: 's' }) => {
+    const queueExistingThenUpdated = (
+      existing: unknown,
+      updated: unknown = { id: 5, slug: 's' },
+    ) => {
       (organizationsQuery.single as Mock)
         .mockResolvedValueOnce({ data: existing, error: null })
         .mockResolvedValueOnce({ data: updated, error: null });
