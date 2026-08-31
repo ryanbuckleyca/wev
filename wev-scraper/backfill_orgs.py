@@ -5,6 +5,7 @@ import sys
 import time
 
 from llm.tavily_grounding import is_tavily_available
+from utils.catch_up import SKIP_REASON_EXCEPTION, _park_org, resolve_org_skip_reason
 from utils.db import supabase
 from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
 
@@ -119,7 +120,7 @@ def main():
             # Re-assess the organization WITH TAVILY GROUNDING
             # If Tavily is unavailable, this will use grounding but fall back gracefully
             # For critical backfill operations, consider using web_evidence with required=True
-            result = assessor.assess(
+            outcome = assessor.assess_with_outcome(
                 raw_name=name,
                 municipality=municipality,
                 province=province,
@@ -129,38 +130,42 @@ def main():
                 existing_description=existing_description,
             )
 
-            if result:
-                # Build update payload
-                update_fields = _result_to_db_fields(result)
-
+            filtered_update = {}
+            if outcome.result:
                 # Only update fields that are currently missing
-                filtered_update = {}
-                for field, value in update_fields.items():
+                for field, value in _result_to_db_fields(outcome.result).items():
                     if not org.get(field) and value:
                         filtered_update[field] = value
 
-                if filtered_update:
-                    # Conditional write: only update if the row hasn't changed since we read it.
-                    read_at = org.get('updated_at')
-                    query = supabase.table('organizations').update(filtered_update).eq('id', org_id)
-                    if read_at:
-                        query = query.eq('updated_at', read_at)
-                    resp = query.execute()
-                    if resp.data:
-                        print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
-                        success_count += 1
-                    else:
-                        print("  ⚠️  Conflict: row was modified since we read it, skipping")
-                        error_count += 1
-                else:
-                    print("  ⚠️  No new fields to update")
-            else:
-                print("  ❌ Assessment failed")
+            # Record the outcome alongside the fields so a completed org drops out
+            # of the admin review queue and a failed one stays parked.
+            reason = resolve_org_skip_reason(org, outcome, filtered_update)
+            payload = {**filtered_update, 'assessment_skip_reason': reason}
+
+            # Conditional write: only update if the row hasn't changed since we read it.
+            read_at = org.get('updated_at')
+            query = supabase.table('organizations').update(payload).eq('id', org_id)
+            if read_at:
+                query = query.eq('updated_at', read_at)
+            resp = query.execute()
+
+            if not resp.data:
+                print("  ⚠️  Conflict: row was modified since we read it, skipping")
                 error_count += 1
+            elif reason is None:
+                print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
+                success_count += 1
+            else:
+                if filtered_update:
+                    print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
+                print(f"  ⏸  Parked for review: {reason}")
+                if outcome.result is None:
+                    error_count += 1
 
         except Exception as e:
             print(f"  ❌ Error: {e}")
             error_count += 1
+            _park_org(org_id, SKIP_REASON_EXCEPTION)
 
         # Rate limiting
         time.sleep(0.5)

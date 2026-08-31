@@ -12,6 +12,7 @@ const VALIDATION_ERROR_KEYS: Record<string, string> = {
   invalid_type: 'errors.invalidType',
   invalid_values: 'errors.invalidValues',
   invalid_sector: 'errors.invalidSector',
+  invalid_language: 'errors.invalidLanguage',
   too_many_values: 'errors.tooManyValues',
 };
 

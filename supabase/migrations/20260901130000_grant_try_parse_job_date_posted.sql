@@ -1,0 +1,22 @@
+-- Let signed-in visitors load the organizations directory.
+--
+-- 20260709000000 locked this helper down with:
+--   REVOKE ALL ... FROM PUBLIC;
+--   GRANT EXECUTE ... TO service_role;
+--
+-- but its only callers, get_active_organizations and
+-- get_organization_filter_options, are SECURITY INVOKER and are granted to anon
+-- and authenticated. A SECURITY INVOKER function runs nested calls as the
+-- caller, so those roles need EXECUTE here too.
+--
+-- The failure was invisible while logged out because
+-- lib/organizations/server-data.ts calls the RPC with the service-role client
+-- for anonymous visitors and only switches to the caller's client when a user
+-- id is present (personalized value-overlap scoring via auth.uid()). So the
+-- directory 500'd with "permission denied for function
+-- try_parse_job_date_posted" for signed-in users only.
+--
+-- Safe to expose: the function takes text, returns timestamptz, reads no
+-- tables, and is IMMUTABLE. It is a string parser, not a data accessor.
+
+GRANT EXECUTE ON FUNCTION public.try_parse_job_date_posted(text) TO anon, authenticated;

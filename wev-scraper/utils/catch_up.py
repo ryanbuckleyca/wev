@@ -4,6 +4,11 @@ Reusable helpers used by scrape.py and by ad-hoc scripts like process_unprocesse
 - An "unprocessed job" lacks any of: summary, values, is_sse, valid language, skills
 - An "unprocessed organization" lacks any of: sector_id, type, description_en/description_fr,
   valid language, or values_list
+
+Organizations are assessed at most once per catch-up. Any attempt that does not
+complete the org writes organizations.assessment_skip_reason, which parks the row
+so later runs skip it instead of re-spending LLM credits. Admins clear the reason
+from the admin organizations page to grant another attempt.
 """
 
 from __future__ import annotations
@@ -17,6 +22,18 @@ from utils.log import scraper_log as _log
 
 VALID_LANGUAGES = frozenset({"en", "fr", "bilingual"})
 PAGE_SIZE = 1000
+
+# Assessment ran but left the org short of complete. Written here rather than by
+# the assessor, which cannot see what the DB already had.
+SKIP_REASON_NO_NEW_FIELDS = "no_new_fields"
+SKIP_REASON_PARTIAL_FILL = "partial_fill"
+SKIP_REASON_EXCEPTION = "exception"
+# Written by the 20260901120000 migration for the pre-existing backlog.
+SKIP_REASON_INCOMPLETE_BACKLOG = "incomplete_backlog"
+# Admin chose to stop surfacing this org in the review queue.
+SKIP_REASON_IGNORED = "ignored"
+
+DEFAULT_CATCH_UP_ORG_LIMIT = 20
 
 _ORG_BOOL_FIELDS = frozenset({"is_sse"})
 _ORG_LIST_FIELDS = frozenset({"values_list", "values_rated", "must_haves_met", "nice_to_haves_met", "skills"})
@@ -75,8 +92,38 @@ def find_unprocessed_jobs() -> List[Tuple[Dict[str, Any], List[str]]]:
     return unprocessed
 
 
-def find_unprocessed_organizations() -> List[Tuple[Dict[str, Any], List[str]]]:
-    """Return (org, needs[]) tuples for every organization missing core assessed fields."""
+def find_missing_org_fields(org: Dict[str, Any]) -> List[str]:
+    """Return the required assessed fields this organization is still missing.
+
+    An organization with no missing fields is complete and must never be queued
+    for assessment.
+    """
+    needs: List[str] = []
+    if not org.get("sector_id"):
+        needs.append("sector_id")
+    if not org.get("type"):
+        needs.append("type")
+    desc_en = org.get("description_en") or org.get("description")
+    if not (desc_en or "").strip():
+        needs.append("description_en")
+    if not (org.get("description_fr") or "").strip():
+        needs.append("description_fr")
+    if org.get("language") not in VALID_LANGUAGES:
+        needs.append("language")
+    if not org.get("values_list"):
+        needs.append("values_list")
+    return needs
+
+
+def find_unprocessed_organizations(
+    *, include_parked: bool = False
+) -> List[Tuple[Dict[str, Any], List[str]]]:
+    """Return (org, needs[]) tuples for organizations eligible for assessment.
+
+    Eligible means incomplete AND not parked. A row is parked once
+    assessment_skip_reason is set, which happens after any attempt that failed to
+    complete it; only an admin (or include_parked) brings it back.
+    """
     # Try full select first; fall back to the column set we know always exists.
     try:
         orgs: List[dict] = fetch_all_rows("organizations", "*", order_by="id", desc=False)
@@ -92,31 +139,63 @@ def find_unprocessed_organizations() -> List[Tuple[Dict[str, Any], List[str]]]:
             "organizations",
             "id,name,sector_id,type,description,description_en,description_fr,website,location,is_sse,sse_rating,"
             "mission_statement,values_list,values_rated,language,municipality,province,"
-            "lat,lng,geocode_accuracy_type,created_at,slug",
+            "lat,lng,geocode_accuracy_type,created_at,slug,assessment_skip_reason",
             order_by="id",
             desc=False,
         )
 
     unprocessed: List[Tuple[Dict[str, Any], List[str]]] = []
     for o in orgs:
-        needs: List[str] = []
-        if not o.get("sector_id"):
-            needs.append("sector_id")
-        if not o.get("type"):
-            needs.append("type")
-        desc_en = o.get("description_en") or o.get("description")
-        desc_fr = o.get("description_fr")
-        if not (desc_en or "").strip():
-            needs.append("description_en")
-        if not (desc_fr or "").strip():
-            needs.append("description_fr")
-        if o.get("language") not in VALID_LANGUAGES:
-            needs.append("language")
-        if not o.get("values_list"):
-            needs.append("values_list")
+        # fetch_all_rows only supports equality filters, so parked rows are
+        # filtered here rather than pushed down to PostgREST.
+        if not include_parked and o.get("assessment_skip_reason") is not None:
+            continue
+        needs = find_missing_org_fields(o)
         if needs:
             unprocessed.append((o, needs))
     return unprocessed
+
+
+def resolve_org_skip_reason(
+    org: Dict[str, Any],
+    outcome: Any,
+    filtered: Dict[str, Any],
+) -> str | None:
+    """Decide what to write to assessment_skip_reason after one attempt.
+
+    Returns None when the org came out complete (clearing any prior reason), or
+    the reason that parks it for human review. Order-independent: it merges
+    *filtered* over *org* itself rather than trusting the caller to have done so.
+    """
+    if outcome.result is None:
+        return outcome.skip_reason or SKIP_REASON_EXCEPTION
+    if not filtered:
+        return SKIP_REASON_NO_NEW_FIELDS
+    if find_missing_org_fields({**org, **filtered}):
+        return SKIP_REASON_PARTIAL_FILL
+    return None
+
+
+def _park_org(oid: Any, reason: str | None) -> None:
+    """Write assessment_skip_reason on its own, tolerating DB failure.
+
+    Only for exception handlers: a failed park must not abort the remaining orgs.
+    """
+    try:
+        supabase.table("organizations").update(
+            {"assessment_skip_reason": reason}
+        ).eq("id", oid).execute()
+    except Exception as e:
+        _log(f"  ⚠️  Could not park org {oid} as {reason!r}: {e}")
+
+
+def org_batch_limit() -> int:
+    """Max orgs to assess per catch-up run. 0 or negative means no cap."""
+    raw = os.environ.get("CATCH_UP_ORG_LIMIT", str(DEFAULT_CATCH_UP_ORG_LIMIT))
+    try:
+        return int(raw)
+    except ValueError:
+        return DEFAULT_CATCH_UP_ORG_LIMIT
 
 
 # ---------------------------------------------------------------------------
@@ -176,13 +255,18 @@ def process_unprocessed_jobs(
 
 def process_unprocessed_organizations(
     unprocessed: List[Tuple[Dict[str, Any], List[str]]],
-) -> Tuple[int, int]:
-    """Re-assess every (org, needs[]) with OrganizationAssessor and write missing fields.
+) -> Tuple[int, int, int]:
+    """Assess every (org, needs[]) once and write both fields and skip reason.
 
-    Returns (success_count, error_count).
+    Every attempt writes assessment_skip_reason — NULL when the org came out
+    complete, otherwise the reason it parked. Writing on failure is the point:
+    previously a failed assessment wrote nothing, so the same orgs were retried
+    on every scrape forever.
+
+    Returns (success_count, error_count, parked_count).
     """
     if not unprocessed:
-        return 0, 0
+        return 0, 0, 0
 
     _log(f"Assessing {len(unprocessed)} previously-incomplete organizations...")
 
@@ -196,16 +280,20 @@ def process_unprocessed_organizations(
 
     success = 0
     errors = 0
+    parked = 0
     for i, (org, _needs) in enumerate(unprocessed, 1):
         oid = org["id"]
         name = org.get("name") or "(unnamed)"
 
         if i % 25 == 0:
-            _log(f"  Orgs: {i}/{len(unprocessed)} | success={success} | errors={errors}")
+            _log(
+                f"  Orgs: {i}/{len(unprocessed)} | success={success} | "
+                f"parked={parked} | errors={errors}"
+            )
 
         try:
             existing_description = org.get("description_en") or org.get("description")
-            result = assessor.assess(
+            outcome = assessor.assess_with_outcome(
                 raw_name=name,
                 municipality=org.get("municipality"),
                 province=org.get("province"),
@@ -215,20 +303,32 @@ def process_unprocessed_organizations(
                 existing_description=existing_description,
             )
 
-            if result:
-                update_fields = _result_to_db_fields(result)
-                filtered = {}
+            filtered: Dict[str, Any] = {}
+            if outcome.result:
+                update_fields = _result_to_db_fields(outcome.result)
                 for field, value in update_fields.items():
                     if value is not None and _is_org_field_missing(org, field):
                         filtered[field] = value
-                if filtered:
-                    supabase.table("organizations").update(filtered).eq("id", oid).execute()
-                    success += 1
+
+            reason = resolve_org_skip_reason(org, outcome, filtered)
+
+            # One write: field updates plus the park decision.
+            payload = {**filtered, "assessment_skip_reason": reason}
+            supabase.table("organizations").update(payload).eq("id", oid).execute()
+            org.update(filtered)
+
+            if reason is None:
+                success += 1
             else:
-                errors += 1
+                parked += 1
+                if outcome.result is None:
+                    errors += 1
+                _log(f"  ⏸  Org [{name}] parked: {reason}")
         except Exception as e:
             _log(f"  Org [{name}] error: {e}")
             errors += 1
+            parked += 1
+            _park_org(oid, SKIP_REASON_EXCEPTION)
 
         # Gentle rate limit — Gemini free tier ~15 RPM; keep well under to avoid
         # 429/503 spikes that trigger long cooldowns. Override via
@@ -240,7 +340,7 @@ def process_unprocessed_organizations(
         if delay_s > 0:
             time.sleep(delay_s)
 
-    return success, errors
+    return success, errors, parked
 
 
 # ---------------------------------------------------------------------------
@@ -260,6 +360,7 @@ def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) ->
     report: Dict[str, int] = {
         "orgs_total": 0,
         "orgs_processed": 0,
+        "orgs_parked": 0,
         "orgs_errors": 0,
         "jobs_total": 0,
         "jobs_processed": 0,
@@ -274,19 +375,36 @@ def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) ->
     # ── 1. Organizations first (so jobs can resolve organization_id properly) ──
     if not skip_orgs:
         t0 = time.time()
-        unprocessed_orgs = find_unprocessed_organizations()
+        eligible_orgs = find_unprocessed_organizations()
+        limit = org_batch_limit()
+        if limit > 0 and len(eligible_orgs) > limit:
+            # Ordered by id, so the backlog drains deterministically across runs
+            # instead of blocking the scrape behind hundreds of LLM calls.
+            _log(
+                f"Found {len(eligible_orgs)} eligible incomplete orgs — "
+                f"processing first {limit} (CATCH_UP_ORG_LIMIT={limit})"
+            )
+            unprocessed_orgs = eligible_orgs[:limit]
+        else:
+            unprocessed_orgs = eligible_orgs
+            if unprocessed_orgs:
+                _log(
+                    f"Found {len(unprocessed_orgs)} eligible incomplete orgs — "
+                    "processing before scraping new data"
+                )
         report["orgs_total"] = len(unprocessed_orgs)
         if unprocessed_orgs:
-            _log(f"Found {len(unprocessed_orgs)} incomplete orgs — processing before scraping new data")
-            ok, err = process_unprocessed_organizations(unprocessed_orgs)
+            ok, err, parked = process_unprocessed_organizations(unprocessed_orgs)
             report["orgs_processed"] = ok
             report["orgs_errors"] = err
+            report["orgs_parked"] = parked
             _log(
-                f"Org catch-up complete: {ok}/{len(unprocessed_orgs)} ok, {err} errors "
+                f"Org catch-up complete: {ok}/{len(unprocessed_orgs)} ok, "
+                f"{parked} parked for review, {err} errors "
                 f"({time.time() - t0:.1f}s)"
             )
         else:
-            _log("✅ All organizations already processed.")
+            _log("✅ No organizations eligible for assessment.")
 
     # ── 2. Jobs ─────────────────────────────────────────────────────────────────
     if not skip_jobs:

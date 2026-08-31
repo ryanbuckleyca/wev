@@ -411,6 +411,7 @@ export type Database = {
       };
       organizations: {
         Row: {
+          assessment_skip_reason: string | null;
           created_at: string;
           description: string | null;
           description_en: string | null;
@@ -440,6 +441,7 @@ export type Database = {
           website: string | null;
         };
         Insert: {
+          assessment_skip_reason?: string | null;
           created_at?: string;
           description?: string | null;
           description_en?: string | null;
@@ -469,6 +471,7 @@ export type Database = {
           website?: string | null;
         };
         Update: {
+          assessment_skip_reason?: string | null;
           created_at?: string;
           description?: string | null;
           description_en?: string | null;

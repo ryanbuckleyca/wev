@@ -14,6 +14,8 @@ import LocationAutocomplete from './profile/LocationAutocomplete';
 import OrgSlugField from './OrgSlugField';
 import OrgTypeSelect from './OrgTypeSelect';
 import OrgSectorSelect from './OrgSectorSelect';
+import OrgLanguageSelect from './OrgLanguageSelect';
+import OrgReviewActions from './admin/OrgReviewActions';
 import {
   createOrganization,
   updateOrganization,
@@ -30,6 +32,10 @@ import {
   MAX_ORG_MISSION_LENGTH,
   MAX_ORG_VALUES,
 } from '@/lib/organizations/constants';
+import {
+  ORG_SKIP_REASON_IGNORED,
+  findMissingOrgFields,
+} from '@/lib/organizations/assessment-review';
 import { getOrganizationTypeLabel } from '@/lib/organizations/org-type';
 import { parseOrgId } from '@/lib/organizations/parse-org-id';
 import { useOrgAdminFormState } from '@/lib/organizations/use-org-admin-form-state';
@@ -81,6 +87,25 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
     (orgType: string) => getOrganizationTypeLabel(orgType, tOrgs) ?? orgType,
     [tOrgs],
   );
+
+  const orgIdForReview = parseOrgId(initialValues?.id);
+  const skipReason = initialValues?.assessment_skip_reason ?? null;
+  // Ignored orgs are parked on purpose, so they get no banner.
+  const showReviewBanner = Boolean(skipReason) && skipReason !== ORG_SKIP_REASON_IGNORED;
+  const skipReasonLabel =
+    skipReason && t.has(`skipReasons.${skipReason}`)
+      ? t(`skipReasons.${skipReason}`)
+      : (skipReason ?? t('skipReasons.unknown'));
+
+  // Recomputed from live form state so the checklist shrinks as fields are filled.
+  const missingFields = findMissingOrgFields({
+    sector_id: form.sectorId,
+    type: form.type,
+    description_en: form.descriptionEn,
+    description_fr: form.descriptionFr,
+    language: form.language,
+    values_list: form.valuesList,
+  });
 
   const handleValueToggle = (id: string) => {
     form.setValuesList((prev) => {
@@ -199,6 +224,33 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
       {errors.general && (
         <div className="p-4 rounded bg-destructive/10 text-destructive border border-destructive/20">
           {errors.general}
+        </div>
+      )}
+
+      {showReviewBanner && orgIdForReview !== null && (
+        <div className="p-4 rounded bg-warning/10 text-foreground border border-warning/30">
+          <p className="font-medium">{t('review.banner', { reason: skipReasonLabel })}</p>
+          {missingFields.length > 0 ? (
+            <div className="mt-2 text-sm">
+              <p className="text-muted-foreground">{t('review.missingIntro')}</p>
+              <ul className="mt-1 list-disc list-inside text-muted-foreground">
+                {missingFields.map((field) => (
+                  <li key={field}>{t(`review.missingFields.${field}`)}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">{t('review.missingNone')}</p>
+          )}
+          <p className="mt-2 text-sm text-muted-foreground">{t('review.bannerHint')}</p>
+          <div className="mt-3">
+            <OrgReviewActions
+              orgId={orgIdForReview}
+              currentReason={skipReason}
+              locale={locale}
+              disabled={isSubmitting || isDeleting}
+            />
+          </div>
         </div>
       )}
 
@@ -326,6 +378,16 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
         label={t('fields.sector')}
         placeholder={t('placeholders.selectSector')}
         error={errors.sector_id}
+        disabled={isSubmitting}
+      />
+
+      <OrgLanguageSelect
+        value={form.language}
+        onChange={form.setLanguage}
+        label={t('fields.language')}
+        placeholder={t('placeholders.selectLanguage')}
+        hint={t('hints.language')}
+        error={errors.language}
         disabled={isSubmitting}
       />
 

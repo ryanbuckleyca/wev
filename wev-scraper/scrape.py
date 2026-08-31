@@ -126,7 +126,7 @@ class ScraperOrchestrator:
             _log(f"❌ Catch-up pass failed (non-fatal): {e}")
             traceback.print_exc()
             self.results.catch_up = {
-                "orgs_total": 0, "orgs_processed": 0, "orgs_errors": 0,
+                "orgs_total": 0, "orgs_processed": 0, "orgs_parked": 0, "orgs_errors": 0,
                 "jobs_total": 0, "jobs_processed": 0, "jobs_errors": 1,
             }
             _log("Continuing to main scraping work despite catch-up failure.")
@@ -380,7 +380,11 @@ class ScraperOrchestrator:
             if cu.get("orgs_total"):
                 o_ok = cu.get("orgs_processed", 0)
                 o_err = cu.get("orgs_errors", 0)
-                _log(f"  Organizations: {o_ok}/{cu['orgs_total']} ok, {o_err} errors")
+                o_parked = cu.get("orgs_parked", 0)
+                _log(
+                    f"  Organizations: {o_ok}/{cu['orgs_total']} ok, "
+                    f"{o_parked} parked for review, {o_err} errors"
+                )
             if cu.get("jobs_total"):
                 j_ok = cu.get("jobs_processed", 0)
                 j_err = cu.get("jobs_errors", 0)
