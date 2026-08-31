@@ -24,10 +24,10 @@ class CharityVillageScraper(BaseScraper):
         super().__init__(source)
         self.current_page_number = 1
 
-    def get_listings_url(self, filter_value=None):
+    def get_listings_url(self):
         return _LISTINGS_URL
 
-    def open_listings_page(self, page, filter_value=None):
+    def open_listings_page(self, page):
         url = self.get_listings_url()
         scraper_log(f"\nNavigating to {url}")
         self._goto_with_networkidle(page, url)

@@ -32,10 +32,10 @@ class GoodWorkScraper(BaseScraper):
     # setup_pagination is intentionally a no-op: page_count is not used here.
     # Pagination is driven entirely by has_next_page / go_next_page.
 
-    def get_listings_url(self, filter_value=None):
+    def get_listings_url(self):
         return "https://www.goodwork.ca/jobs.php"
 
-    def open_listings_page(self, page, filter_value=None):
+    def open_listings_page(self, page):
         self._goto_with_networkidle(page, self.get_listings_url())
         # Store the listings URL so go_next_page can paginate from the right base
         self._listings_base_url = page.url

@@ -59,9 +59,9 @@ class CSIScraper(BaseScraper):
             scraper_log(f"\t\tWarning: Could not extract listing data: {e}")
         return data
 
-    def open_listings_page(self, page, filter_value=None):
+    def open_listings_page(self, page):
         self.processed_urls = set()
-        return super().open_listings_page(page, filter_value)
+        return super().open_listings_page(page)
 
     def has_next_page(self, page):
         try:
