@@ -61,25 +61,28 @@ class MaCommunauteScraper(BaseScraper):
         """Extract date, location, title, and organization from the listing card."""
         data = {}
         try:
-            # "12 mars 2026 • <i>Montréal</i>" — strip the location part to get just the date
-            date_text = item.locator(".date").inner_text().strip()
-            # Everything before the bullet is the date
-            data["date_posted"] = date_text.split("•")[0].strip()
+            date_loc = item.locator(".date")
+            if date_loc.count() > 0:
+                # "12 mars 2026 • <i>Montréal</i>" — strip the location part to get just the date
+                date_text = date_loc.inner_text().strip()
+                data["date_posted"] = date_text.split("•")[0].strip()
+                loc_loc = date_loc.locator("i")
+                if loc_loc.count() > 0:
+                    data["location"] = loc_loc.inner_text().strip()
         except Exception:
             pass
 
         try:
-            data["location"] = item.locator(".date i").inner_text().strip()
+            title_loc = item.locator("h3")
+            if title_loc.count() > 0:
+                data["job_title"] = title_loc.inner_text().strip()
         except Exception:
             pass
 
         try:
-            data["job_title"] = item.locator("h3").inner_text().strip()
-        except Exception:
-            pass
-
-        try:
-            data["organization"] = item.locator(".auteur").inner_text().strip()
+            org_loc = item.locator(".auteur")
+            if org_loc.count() > 0:
+                data["organization"] = org_loc.inner_text().strip()
         except Exception:
             pass
 
@@ -183,8 +186,10 @@ class MaCommunauteScraper(BaseScraper):
 
     def extract_wage(self, page, listing_data):
         try:
-            text = page.locator(".post-content, .entry-content, article").first.inner_text()
-            return extract_salary_from_text(text)
+            loc = page.locator(".post-content, .entry-content, article")
+            if loc.count() == 0:
+                return None
+            return extract_salary_from_text(loc.first.inner_text())
         except Exception:
             pass
         return None

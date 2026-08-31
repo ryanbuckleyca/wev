@@ -40,13 +40,12 @@ class CSIScraper(BaseScraper):
             parent = item.locator("xpath=ancestor::div[contains(@class, 'elementor-widget-wrap')]").first
             icon_items = parent.locator(".elementor-icon-list-item").all()
             for icon_item in icon_items:
-                try:
-                    sr_only = icon_item.locator(".sr-only-text").inner_text().strip()
-                except Exception:
-                    sr_only = ""
-                try:
-                    full_text = icon_item.locator(".elementor-icon-list-text").inner_text().strip()
-                except Exception:
+                sr_loc = icon_item.locator(".sr-only-text")
+                sr_only = sr_loc.inner_text().strip() if sr_loc.count() > 0 else ""
+                text_loc = icon_item.locator(".elementor-icon-list-text")
+                if text_loc.count() > 0:
+                    full_text = text_loc.inner_text().strip()
+                else:
                     full_text = icon_item.inner_text().strip()
 
                 if "Contract Type:" in sr_only:
@@ -83,29 +82,39 @@ class CSIScraper(BaseScraper):
         if date:
             return date
         try:
-            return page.locator(".post-date, .date-posted").inner_text(timeout=3000).strip()
+            loc = page.locator(".post-date, .date-posted")
+            if loc.count() == 0:
+                return None
+            return loc.first.inner_text().strip()
         except Exception:
             return None
 
     def extract_job_title(self, page, listing_data):
-        try:
-            return page.locator("h2.elementor-heading-title.elementor-size-default").inner_text().strip()
-        except Exception:
+        for sel in (
+            "h2.elementor-heading-title.elementor-size-default",
+            "h2.elementor-heading-title",
+        ):
             try:
-                return page.locator("h2.elementor-heading-title").inner_text().strip()
+                loc = page.locator(sel)
+                if loc.count() == 0:
+                    continue
+                return loc.first.inner_text().strip()
             except Exception:
-                return None
+                continue
+        return None
 
     def extract_wage(self, page, listing_data):
         """Extract wage from icon-list on the job detail page."""
         try:
             icon_list = page.locator("[data-widget_type='icon-list.default']")
-            icon_list.first.wait_for(timeout=3000)
+            if icon_list.count() == 0:
+                return None
             for item in icon_list.locator(".elementor-icon-list-item").all():
-                try:
-                    full_text = item.locator(".elementor-icon-list-text").inner_text(timeout=2000).strip()
-                except Exception:
-                    full_text = item.inner_text(timeout=2000).strip()
+                text_loc = item.locator(".elementor-icon-list-text")
+                if text_loc.count() > 0:
+                    full_text = text_loc.inner_text().strip()
+                else:
+                    full_text = item.inner_text().strip()
                 if "$" in full_text or "salary" in full_text.lower() or "Compensation:" in full_text:
                     raw = full_text.split(":", 1)[-1].strip() if ":" in full_text else full_text
                     return extract_salary_from_text(raw) or raw

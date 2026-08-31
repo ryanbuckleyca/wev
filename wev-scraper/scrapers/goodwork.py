@@ -98,10 +98,12 @@ class GoodWorkScraper(BaseScraper):
         if not title:
             title = self._search_text_for_label(page, TITLE_LABELS)
         if not title:
-            try:
-                title = page.locator("h2").first.inner_text().strip()
-            except Exception:
-                pass
+            loc = page.locator("h2")
+            if loc.count() > 0:
+                try:
+                    title = loc.first.inner_text().strip()
+                except Exception:
+                    pass
         return title or "Unknown"
 
     def extract_date_posted(self, page, listing_data):
@@ -152,19 +154,28 @@ class GoodWorkScraper(BaseScraper):
 
     def _get_first_div_text(self, page) -> str | None:
         try:
-            return page.locator("#page").locator(".row").locator("div").first.inner_text()
+            loc = page.locator("#page").locator(".row").locator("div")
+            if loc.count() == 0:
+                return None
+            return loc.first.inner_text()
         except Exception:
             return None
 
     def _get_footer_text(self, page) -> str | None:
         try:
-            return page.locator("#page").locator(".row").last.inner_text(timeout=5000).strip()
+            loc = page.locator("#page").locator(".row")
+            if loc.count() == 0:
+                return None
+            return loc.last.inner_text().strip()
         except Exception:
             return None
 
     def _get_page_text(self, page) -> str | None:
         try:
-            return page.locator("#page").inner_text()
+            loc = page.locator("#page")
+            if loc.count() == 0:
+                return None
+            return loc.inner_text()
         except Exception:
             return None
 
