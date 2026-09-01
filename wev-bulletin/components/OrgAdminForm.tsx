@@ -92,10 +92,9 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
   const skipReason = initialValues?.assessment_skip_reason ?? null;
   // Ignored orgs are parked on purpose, so they get no banner.
   const showReviewBanner = Boolean(skipReason) && skipReason !== ORG_SKIP_REASON_IGNORED;
-  const skipReasonLabel =
-    skipReason && t.has(`skipReasons.${skipReason}`)
-      ? t(`skipReasons.${skipReason}`)
-      : (skipReason ?? t('skipReasons.unknown'));
+  const skipReasonLabel = skipReason
+    ? t(`skipReasons.${skipReason}`, { defaultValue: skipReason })
+    : t('skipReasons.unknown');
 
   // Recomputed from live form state so the checklist shrinks as fields are filled.
   const missingFields = findMissingOrgFields({

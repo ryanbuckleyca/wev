@@ -90,9 +90,7 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
   // before the translations catch up.
   const reasonLabel = (reason: string | null) =>
     reason
-      ? t.has(`skipReasons.${reason}`)
-        ? t(`skipReasons.${reason}`)
-        : reason
+      ? t(`skipReasons.${reason}`, { defaultValue: reason })
       : t('skipReasons.unknown');
 
   return (
