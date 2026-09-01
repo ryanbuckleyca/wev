@@ -10,12 +10,12 @@ CUTOFF=20260901140000
 
 # Single source of truth: function names from revoke lines in the baseline migration.
 RESTRICTED="$(
-	grep -E 'revoke all on function public\.' "${BASELINE}" \
-		| grep -oE 'public\.[a-z_0-9]+' \
-		| sed 's/public\.//' \
-		| grep -v '^apply_restricted_rpc_grants$' \
-		| sort -u \
-		| paste -sd'|' -
+	grep -E 'revoke all on function public\.' "${BASELINE}" |
+		grep -oE 'public\.[a-z_0-9]+' |
+		sed 's/public\.//' |
+		grep -v '^apply_restricted_rpc_grants$' |
+		sort -u |
+		paste -sd'|' -
 )"
 
 if [[ -z ${RESTRICTED} ]]; then
