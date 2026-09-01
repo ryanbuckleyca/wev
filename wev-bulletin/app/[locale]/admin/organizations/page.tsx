@@ -89,9 +89,7 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
   // Unknown reasons still render something useful: the scraper may add a reason
   // before the translations catch up.
   const reasonLabel = (reason: string | null) =>
-    reason
-      ? t(`skipReasons.${reason}`, { defaultValue: reason })
-      : t('skipReasons.unknown');
+    reason ? t(`skipReasons.${reason}`, { defaultValue: reason }) : t('skipReasons.unknown');
 
   return (
     // xl, not the lg default: this table carries up to seven columns, and at

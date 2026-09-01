@@ -356,7 +356,6 @@ def process_unprocessed_organizations(
             )
 
             write = persist_org_assessment_outcome(org, outcome)
-            filtered = write.filtered
             reason = write.reason
 
             if not write.applied:
