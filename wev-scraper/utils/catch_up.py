@@ -395,9 +395,9 @@ def process_unprocessed_organizations(
 
 
 def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) -> Dict[str, int]:
-    """Find any unprocessed orgs/jobs in the DB and process them (before scraping new items).
+    """Find any unprocessed orgs/jobs in the DB and process them after scraping.
 
-    Used automatically by the scraper at the top of each run. Returns a dict
+    Used automatically by the scraper at the end of each run. Returns a dict
     with counts for logging/reporting.
 
     Set skip_orgs/skip_jobs to True to disable that pass (useful when you only
@@ -436,7 +436,7 @@ def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) ->
             if unprocessed_orgs:
                 _log(
                     f"Found {len(unprocessed_orgs)} eligible incomplete orgs — "
-                    "processing before scraping new data"
+                    "processing after scraping new data"
                 )
         report["orgs_total"] = len(unprocessed_orgs)
         if unprocessed_orgs:
@@ -458,7 +458,7 @@ def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) ->
         unprocessed_jobs = find_unprocessed_jobs()
         report["jobs_total"] = len(unprocessed_jobs)
         if unprocessed_jobs:
-            _log(f"Found {len(unprocessed_jobs)} unprocessed jobs — processing before scraping new data")
+            _log(f"Found {len(unprocessed_jobs)} unprocessed jobs — processing after scraping new data")
             ok, err = process_unprocessed_jobs(unprocessed_jobs)
             report["jobs_processed"] = ok
             report["jobs_errors"] = err
