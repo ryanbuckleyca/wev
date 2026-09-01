@@ -80,8 +80,8 @@ split `CREATE OR REPLACE FUNCTION` statements are still detected.
 
 `apply_restricted_rpc_grants()` itself is **superuser-only** — migrations call it;
 service_role uses the individual RPCs whose grants it sets. When adding a new
-restricted RPC, update both `apply_restricted_rpc_grants()` and the `RESTRICTED`
-list in `supabase/scripts/check-restricted-rpc-grants.sh`.
+restricted RPC, add a `revoke`/`grant` pair inside `apply_restricted_rpc_grants()`
+(the CI checker derives the watched function list from those revoke lines).
 
 ### 6. Keep Generated Types Fresh
 

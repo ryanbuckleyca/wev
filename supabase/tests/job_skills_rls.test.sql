@@ -78,8 +78,10 @@ select ok(
   'service_role has EXECUTE on enqueue_job_match_recalc'
 );
 
+-- lives_ok/throws_ok strings must use literal SQL (see rate_limiting.test.sql);
+-- psql :variables are not expanded inside those dynamic strings under pg_prove.
 select lives_ok(
-  'select public.enqueue_job_match_recalc(' || :test_job_id || ')',
+  $$select public.enqueue_job_match_recalc('00000000-0000-0000-0000-000000000099'::uuid)$$,
   'service_role can call enqueue_job_match_recalc'
 );
 
@@ -88,7 +90,7 @@ select lives_ok(
 reset role;
 
 select lives_ok(
-  'select public.enqueue_job_match_recalc(' || :test_job_id || ')',
+  $$select public.enqueue_job_match_recalc('00000000-0000-0000-0000-000000000099'::uuid)$$,
   'enqueue_job_match_recalc works with queue RLS enabled (superuser)'
 );
 

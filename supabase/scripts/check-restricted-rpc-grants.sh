@@ -5,12 +5,25 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MIGRATIONS="${ROOT}/supabase/migrations"
+BASELINE="${MIGRATIONS}/20260901140000_supabase_security_hardening.sql"
 CUTOFF=20260901140000
 
-RESTRICTED='bulk_update_skill_embeddings|recalculate_matches_for_user|recalculate_matches_for_job|enqueue_job_match_recalc|process_job_match_recalc_queue|purge_request_logs|reset_restore_identity_sequences|trigger_recalculate_job_matches|trigger_recalculate_user_matches|verify_user_password|handle_auth_user_created'
-# Keep RESTRICTED in sync with the function list inside apply_restricted_rpc_grants().
+# Single source of truth: function names from revoke lines in the baseline migration.
+RESTRICTED="$(
+	grep -E 'revoke all on function public\.' "${BASELINE}" \
+		| grep -oE 'public\.[a-z_0-9]+' \
+		| sed 's/public\.//' \
+		| grep -v '^apply_restricted_rpc_grants$' \
+		| sort -u \
+		| paste -sd'|' -
+)"
 
-# Match CREATE [OR REPLACE] FUNCTION across line breaks and SQL comments.
+if [[ -z ${RESTRICTED} ]]; then
+	echo "ERROR: could not derive restricted RPC list from ${BASELINE}" >&2
+	exit 1
+fi
+
+# Match CREATE [OR REPLACE] FUNCTION across line breaks.
 RESTRICTED_FN_PATTERN="create\\s+(?:or\\s+replace\\s+)?function\\s+(?:public\\.)?(?:${RESTRICTED})\\b"
 
 failed=0
@@ -36,4 +49,4 @@ if [[ ${failed} -ne 0 ]]; then
 	exit 1
 fi
 
-echo "Restricted RPC migration check passed."
+echo "Restricted RPC migration check passed (${RESTRICTED//|/, })."

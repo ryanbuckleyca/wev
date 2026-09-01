@@ -24,6 +24,8 @@ create policy "No direct client access to job_match_recalc_queue"
   using (false)
   with check (false);
 
+-- Workers use SECURITY DEFINER enqueue/drain RPCs; service_role DML is for
+-- supabaseServer/admin tooling only. Keep service_role credentials server-side.
 grant select, insert, update, delete on public.job_match_recalc_queue to service_role;
 
 comment on table public.job_match_recalc_queue is
@@ -59,8 +61,7 @@ comment on table public.job_skills is
 create or replace function public.apply_restricted_rpc_grants()
 returns void
 language plpgsql
-security definer
-set search_path = public
+set search_path = pg_catalog, public
 as $func$
 begin
   -- Scraper seeder only
