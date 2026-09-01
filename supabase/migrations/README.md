@@ -75,7 +75,11 @@ SELECT public.apply_restricted_rpc_grants();
 
 CI runs `supabase/scripts/check-restricted-rpc-grants.sh` on every DB test workflow to
 fail migrations that replace a restricted RPC without calling the helper (applies to
-migrations after `20260901140000`).
+migrations after `20260901140000`). The script uses a multiline-aware matcher so
+split `CREATE OR REPLACE FUNCTION` statements are still detected.
+
+`apply_restricted_rpc_grants()` itself is **superuser-only** — migrations call it;
+service_role uses the individual RPCs whose grants it sets.
 
 ### 6. Keep Generated Types Fresh
 

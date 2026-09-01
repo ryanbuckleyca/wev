@@ -112,11 +112,14 @@ $func$;
 
 alter function public.apply_restricted_rpc_grants() owner to postgres;
 
--- Not exposed via PostgREST; migrations invoke it as the postgres superuser.
+-- Superuser-only: not callable via PostgREST or service_role. Migrations run as
+-- postgres and invoke SELECT apply_restricted_rpc_grants(); app runtimes use the
+-- individual restricted RPCs (service_role / authenticated) whose grants this sets.
 revoke all on function public.apply_restricted_rpc_grants() from public, anon, authenticated, service_role;
 
 select public.apply_restricted_rpc_grants();
 
 comment on function public.apply_restricted_rpc_grants() is
   'Re-applies EXECUTE grants on internal SECURITY DEFINER RPCs. '
-  'Invoked by migrations (postgres superuser) after any CREATE OR REPLACE on those functions.';
+  'Superuser/migration-only — not granted to service_role or PostgREST roles. '
+  'Call after any CREATE OR REPLACE on those functions.';
