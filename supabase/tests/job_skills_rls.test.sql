@@ -7,28 +7,27 @@
 
 begin;
 
-select plan(6);
+select plan(8);
 
-\set test_job_id '''00000000-0000-0000-0000-000000000099'''
-\set test_source_id '''00000000-0000-0000-0000-000000000098'''
-\set test_skill_uri '''pgtap-skill-rls-test'''
+\set test_job_id 00000000-0000-0000-0000-000000000099
+\set test_source_id 00000000-0000-0000-0000-000000000098
 
 -- ─── Fixtures (superuser bypasses RLS) ───────────────────────────────────────
 
 reset role;
 
 insert into public.sources (id, name, url)
-values (:test_source_id, 'RLS Test Source', 'https://rls-test.example.com')
+values (:test_source_id::uuid, 'RLS Test Source', 'https://rls-test.example.com')
 on conflict (id) do nothing;
 
 insert into public.esco_skills (concept_uri, preferred_label_en)
-values (:test_skill_uri, 'RLS Test Skill')
+values ('pgtap-skill-rls-test', 'RLS Test Skill')
 on conflict (concept_uri) do nothing;
 
 insert into public.jobs (id, source_id, job_title, organization, listing_url)
 values (
-  :test_job_id,
-  :test_source_id,
+  :test_job_id::uuid,
+  :test_source_id::uuid,
   'RLS Test Job',
   'Test Org',
   'https://example.com/rls-test-job'
@@ -36,11 +35,11 @@ values (
 on conflict (id) do nothing;
 
 insert into public.job_skills (job_id, skill_id, score, source)
-values (:test_job_id, :test_skill_uri, 0.9, 'pgtap')
+values (:test_job_id::uuid, 'pgtap-skill-rls-test', 0.9, 'pgtap')
 on conflict (job_id, skill_id) do nothing;
 
 insert into public.job_match_recalc_queue (job_id)
-values (:test_job_id)
+values (:test_job_id::uuid)
 on conflict (job_id) do nothing;
 
 -- ─── anon: job_skills read, queue denied ─────────────────────────────────────
@@ -48,16 +47,15 @@ on conflict (job_id) do nothing;
 set local role anon;
 
 select is(
-  (select count(*)::int from public.job_skills where job_id = :test_job_id),
+  (select count(*)::int from public.job_skills where job_id = :test_job_id::uuid),
   1,
   'anon can read job_skills'
 );
 
-select throws_ok(
-  $$select count(*) from public.job_match_recalc_queue$$,
-  '42501',
-  null,
-  'anon cannot read job_match_recalc_queue'
+select is(
+  (select count(*)::int from public.job_match_recalc_queue),
+  0,
+  'anon RLS policy denies job_match_recalc_queue rows'
 );
 
 -- ─── service_role: queue access with RLS enabled ─────────────────────────────
@@ -66,14 +64,21 @@ reset role;
 set local role service_role;
 
 select is(
-  (select count(*)::int from public.job_match_recalc_queue where job_id = :test_job_id),
+  (select count(*)::int from public.job_match_recalc_queue where job_id = :test_job_id::uuid),
   1,
   'service_role can read job_match_recalc_queue with RLS enabled'
 );
 
--- ─── RPC grants: anon/authenticated denied, service_role allowed ─────────────
+-- ─── SECURITY DEFINER enqueue still works (superuser / migration context) ────
 
 reset role;
+
+select lives_ok(
+  format('select public.enqueue_job_match_recalc(%L::uuid)', :test_job_id),
+  'enqueue_job_match_recalc works with queue RLS enabled'
+);
+
+-- ─── RPC grants ──────────────────────────────────────────────────────────────
 
 select ok(
   not has_function_privilege('anon', 'public.bulk_update_skill_embeddings(jsonb)', 'EXECUTE'),
@@ -86,6 +91,11 @@ select set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000
 select ok(
   not has_function_privilege('authenticated', 'public.bulk_update_skill_embeddings(jsonb)', 'EXECUTE'),
   'authenticated lacks EXECUTE on bulk_update_skill_embeddings'
+);
+
+select ok(
+  has_function_privilege('authenticated', 'public.verify_user_password(text)', 'EXECUTE'),
+  'authenticated has EXECUTE on verify_user_password'
 );
 
 reset role;

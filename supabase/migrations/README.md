@@ -73,6 +73,10 @@ grants in the same migration:
 SELECT public.apply_restricted_rpc_grants();
 ```
 
+CI runs `supabase/scripts/check-restricted-rpc-grants.sh` on every DB test workflow to
+fail migrations that replace a restricted RPC without calling the helper (applies to
+migrations after `20260901140000`).
+
 ### 6. Keep Generated Types Fresh
 
 If you need to refresh the app's database types without running a migration, use:

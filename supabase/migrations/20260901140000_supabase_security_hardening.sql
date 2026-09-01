@@ -9,13 +9,23 @@
 
 alter table public.job_match_recalc_queue enable row level security;
 
--- Re-assert table grants: service_role bypasses RLS; anon/authenticated have none.
+-- Explicit deny for PostgREST client roles. service_role bypasses RLS; postgres-owned
+-- SECURITY DEFINER enqueue/drain functions bypass RLS when they touch the queue.
+drop policy if exists "No direct client access to job_match_recalc_queue"
+  on public.job_match_recalc_queue;
+
+create policy "No direct client access to job_match_recalc_queue"
+  on public.job_match_recalc_queue
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
+
 grant select, insert, update, delete on public.job_match_recalc_queue to service_role;
 
--- Workers access the queue via:
---   * SECURITY DEFINER enqueue/drain functions (owned by postgres; bypass RLS)
---   * service_role direct table access (bypasses RLS)
--- Triggers call enqueue via SECURITY DEFINER trigger_recalculate_job_matches().
+comment on table public.job_match_recalc_queue is
+  'Async job-match recalc worker queue. Client roles (anon/authenticated) are '
+  'denied by RLS; service_role bypasses RLS; workers use SECURITY DEFINER RPCs.';
 
 --------------------------------------------------------------------------------
 -- 2. job_skills — shared job metadata, public read (like esco_skills)
@@ -23,6 +33,8 @@ grant select, insert, update, delete on public.job_match_recalc_queue to service
 
 -- Columns are non-PII: job_id, skill_id, score, source, created_at.
 -- Same data is already public on jobs.skills and esco_skills labels.
+drop policy if exists "Allow public read access for job_skills" on public.job_skills;
+
 create policy "Allow public read access for job_skills"
   on public.job_skills for select
   using (true);
@@ -38,11 +50,13 @@ comment on table public.job_skills is
 --
 -- CREATE OR REPLACE resets EXECUTE to PUBLIC. Any migration that replaces one
 -- of these functions must end with:  select public.apply_restricted_rpc_grants();
+-- CI enforces this via supabase/scripts/check-restricted-rpc-grants.sh
 --------------------------------------------------------------------------------
 
 create or replace function public.apply_restricted_rpc_grants()
 returns void
 language plpgsql
+security definer
 set search_path = public
 as $func$
 begin
@@ -76,7 +90,9 @@ begin
   revoke all on function public.trigger_recalculate_job_matches() from public, anon, authenticated;
   revoke all on function public.trigger_recalculate_user_matches() from public, anon, authenticated;
 
-  -- Authenticated users only (checks auth.uid() internally)
+  -- Authenticated session only: wev-bulletin/lib/account/password-verifier.ts calls
+  -- this via the user's server client; the function raises if auth.uid() is null.
+  -- No anon callers exist in this codebase (signup uses GoTrue, not this RPC).
   revoke all on function public.verify_user_password(text) from public, anon;
   grant execute on function public.verify_user_password(text) to authenticated;
 
@@ -94,11 +110,13 @@ begin
 end;
 $func$;
 
--- Migration-only helper: not callable via PostgREST
+alter function public.apply_restricted_rpc_grants() owner to postgres;
+
+-- Not exposed via PostgREST; migrations invoke it as the postgres superuser.
 revoke all on function public.apply_restricted_rpc_grants() from public, anon, authenticated, service_role;
 
 select public.apply_restricted_rpc_grants();
 
 comment on function public.apply_restricted_rpc_grants() is
   'Re-applies EXECUTE grants on internal SECURITY DEFINER RPCs. '
-  'Call via migration after any CREATE OR REPLACE on those functions.';
+  'Invoked by migrations (postgres superuser) after any CREATE OR REPLACE on those functions.';
