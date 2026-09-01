@@ -54,10 +54,11 @@ select is(
   'anon can read job_skills'
 );
 
-select is(
-  (select count(*)::int from public.job_match_recalc_queue),
-  0,
-  'anon RLS policy denies job_match_recalc_queue rows'
+select throws_ok(
+  $$select count(*) from public.job_match_recalc_queue$$,
+  '42501',
+  null,
+  'anon cannot read job_match_recalc_queue (no table grant)'
 );
 
 -- ─── service_role: queue access with RLS enabled ─────────────────────────────
