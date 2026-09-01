@@ -61,7 +61,19 @@ CREATE POLICY "Users can view own data" ON my_table
   FOR SELECT USING (auth.uid() = user_id);
 ```
 
-### 5. Keep Generated Types Fresh
+### 5. Restricted RPC grants
+
+`CREATE OR REPLACE` on a function resets `EXECUTE` to `PUBLIC`. After replacing any
+internal SECURITY DEFINER RPC listed in `apply_restricted_rpc_grants()`, re-apply
+grants in the same migration:
+
+```sql
+-- ... CREATE OR REPLACE FUNCTION public.recalculate_matches_for_user ...
+
+SELECT public.apply_restricted_rpc_grants();
+```
+
+### 6. Keep Generated Types Fresh
 
 If you need to refresh the app's database types without running a migration, use:
 
