@@ -13,9 +13,11 @@ from utils.catch_up import (
     SKIP_REASON_EXCEPTION,
     SKIP_REASON_NO_NEW_FIELDS,
     SKIP_REASON_PARTIAL_FILL,
+    filter_assessment_update_fields,
     find_missing_org_fields,
     find_unprocessed_organizations,
     org_batch_limit,
+    persist_org_assessment_outcome,
     process_unprocessed_organizations,
     resolve_org_skip_reason,
 )
@@ -200,6 +202,45 @@ def test_resolution_does_not_depend_on_caller_merging_first():
     assert before is after is None
 
 
+def test_filter_assessment_update_fields_uses_field_aware_missing_predicate():
+    org = _complete_org(language=None, values_list=[])
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+    db_fields = {
+        "language": "en",
+        "values_list": ["Community"],
+        "description_en": "Already had one.",
+    }
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    assert filtered == {"language": "en", "values_list": ["Community"]}
+
+
+def test_persist_org_assessment_outcome_skips_stale_rows():
+    org = _complete_org(id=7, sector_id=None, updated_at="2026-01-01T00:00:00Z")
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+
+    table = MagicMock()
+    table.update.return_value = table
+    table.eq.return_value = table
+    table.execute.return_value = MagicMock(data=[])
+
+    with patch("utils.catch_up.supabase") as mock_sb, patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value={"sector_id": "housing"},
+    ):
+        mock_sb.table.return_value = table
+        write = persist_org_assessment_outcome(org, outcome)
+
+    assert write.applied is False
+    assert write.reason is None
+    assert table.eq.call_count == 2
+
+
 # ---------------------------------------------------------------------------
 # Writes: every attempt records its outcome
 # ---------------------------------------------------------------------------
@@ -304,15 +345,15 @@ def test_unexpected_error_parks_and_keeps_going():
 # Manually-run scripts that select incomplete orgs and fill assessed fields.
 # Each must write assessment_skip_reason, or a success leaves a stale reason and
 # the org is stranded in the admin review queue forever.
-BACKLOG_SCRIPTS = [
+PERSIST_BACKLOG_SCRIPTS = [
     "backfill_orgs",
     "reprocess_incomplete_orgs",
     "retry_failed_orgs",
-    "reprocess_by_model",
 ]
+ALL_BACKLOG_SCRIPTS = [*PERSIST_BACKLOG_SCRIPTS, "reprocess_by_model"]
 
 
-@pytest.mark.parametrize("module_name", BACKLOG_SCRIPTS)
+@pytest.mark.parametrize("module_name", PERSIST_BACKLOG_SCRIPTS)
 def test_backlog_script_uses_the_shared_write_path(module_name):
     import importlib
     import inspect
@@ -320,21 +361,37 @@ def test_backlog_script_uses_the_shared_write_path(module_name):
     module = importlib.import_module(module_name)
     source = inspect.getsource(module)
 
-    assert hasattr(module, "resolve_org_skip_reason"), (
-        f"{module_name} must import resolve_org_skip_reason so its write path "
+    assert "persist_org_assessment_outcome" in source, (
+        f"{module_name} must use persist_org_assessment_outcome so its write path "
         "matches catch_up"
     )
     assert "assess_with_outcome(" in source, (
         f"{module_name} must call assess_with_outcome() to learn why an "
         "assessment failed"
     )
-    assert "assessment_skip_reason" in source, (
-        f"{module_name} must persist assessment_skip_reason"
-    )
     assert "assessor.assess(" not in source, (
         f"{module_name} still calls the bare assess() wrapper, which discards "
         "the skip reason"
     )
+
+
+@pytest.mark.parametrize("module_name", ALL_BACKLOG_SCRIPTS)
+def test_backlog_script_records_assessment_skip_reason(module_name):
+    import importlib
+    import inspect
+
+    module = importlib.import_module(module_name)
+    source = inspect.getsource(module)
+
+    assert (
+        "assessment_skip_reason" in source
+        or "persist_org_assessment_outcome" in source
+    ), (
+        f"{module_name} must persist assessment_skip_reason via the shared "
+        "write path"
+    )
+    assert "assess_with_outcome(" in source
+    assert "assessor.assess(" not in source
 
 
 def test_park_failure_does_not_abort_the_run():

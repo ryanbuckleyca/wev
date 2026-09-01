@@ -6,9 +6,9 @@ import time
 from datetime import datetime, timedelta
 
 from llm.tavily_grounding import is_tavily_available
-from utils.catch_up import SKIP_REASON_EXCEPTION, _park_org, resolve_org_skip_reason
+from utils.catch_up import SKIP_REASON_EXCEPTION, _park_org, persist_org_assessment_outcome
 from utils.db import supabase
-from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
+from utils.organization_assessment import OrganizationAssessor
 
 
 def main():
@@ -157,26 +157,11 @@ def main():
                 existing_description=existing_description,
             )
 
-            filtered_update = {}
-            if outcome.result:
-                # Only update fields that are currently missing
-                for field, value in _result_to_db_fields(outcome.result).items():
-                    if not org.get(field) and value:
-                        filtered_update[field] = value
+            write = persist_org_assessment_outcome(org, outcome)
+            filtered_update = write.filtered
+            reason = write.reason
 
-            # Record the outcome alongside the fields so a completed org drops out
-            # of the admin review queue and a failed one stays parked.
-            reason = resolve_org_skip_reason(org, outcome, filtered_update)
-            payload = {**filtered_update, 'assessment_skip_reason': reason}
-
-            # Conditional write: only update if the row hasn't changed since we read it.
-            read_at = org.get('updated_at')
-            query = supabase.table('organizations').update(payload).eq('id', org_id)
-            if read_at:
-                query = query.eq('updated_at', read_at)
-            resp = query.execute()
-
-            if not resp.data:
+            if not write.applied:
                 print("  ⚠️  Conflict: row was modified since we read it, skipping")
                 error_count += 1
             elif reason is None:

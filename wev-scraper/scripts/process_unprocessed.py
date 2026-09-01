@@ -28,11 +28,10 @@ from settings import get_supabase_settings  # noqa: E402
 from utils.catch_up import (  # noqa: E402
     SKIP_REASON_EXCEPTION,
     VALID_LANGUAGES,
-    _is_org_field_missing,
     _park_org,
     find_missing_org_fields,
     org_batch_limit,
-    resolve_org_skip_reason,
+    persist_org_assessment_outcome,
 )
 from utils.db import supabase  # noqa: E402
 from utils.log import scraper_log as _log  # noqa: E402
@@ -134,7 +133,7 @@ def fetch_unprocessed_orgs(include_parked=False):
                     "description_fr,website,location,is_sse,sse_rating,"
                     "mission_statement,values_list,values_rated,language,"
                     "municipality,province,lat,lng,geocode_accuracy_type,created_at,"
-                    "assessment_skip_reason"
+                    "updated_at,assessment_skip_reason"
                 )
                 .order("id")
                 .range(page * page_size, (page + 1) * page_size - 1)
@@ -271,10 +270,7 @@ def process_unprocessed_orgs(unprocessed):
     _log(f"Assessing {len(unprocessed)} organizations...")
 
     from llm.tavily_grounding import is_tavily_available
-    from utils.organization_assessment import (
-        OrganizationAssessor,
-        _result_to_db_fields,
-    )
+    from utils.organization_assessment import OrganizationAssessor
 
     if not is_tavily_available():
         _log(
@@ -314,28 +310,14 @@ def process_unprocessed_orgs(unprocessed):
 
             assessed += 1
 
-            filtered = {}
+            write = persist_org_assessment_outcome(org, outcome)
+            filtered = write.filtered
+            reason = write.reason
 
-            if outcome.result:
-                update_fields = _result_to_db_fields(outcome.result)
-
-                for field, value in update_fields.items():
-                    if value is not None and _is_org_field_missing(org, field):
-                        filtered[field] = value
-
-            reason = resolve_org_skip_reason(org, outcome, filtered)
-
-            # Single write: the filled fields plus the park decision. Writing the
-            # reason even when no field changed is what stops the endless retry.
-            payload = {**filtered, "assessment_skip_reason": reason}
-
-            supabase.table("organizations").update(payload).eq(
-                "id", oid
-            ).execute()
-
-            # Keep our local copy in sync so the completion check reflects the
-            # values we just wrote to the database.
-            org.update(filtered)
+            if not write.applied:
+                errors += 1
+                _log(f"  ⚠️  Org [{name}] skipped: row changed since read")
+                continue
 
             if filtered:
                 updated += 1

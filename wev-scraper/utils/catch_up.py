@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import time
+from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
 from utils.db import fetch_all_rows, supabase
@@ -139,7 +140,7 @@ def find_unprocessed_organizations(
             "organizations",
             "id,name,sector_id,type,description,description_en,description_fr,website,location,is_sse,sse_rating,"
             "mission_statement,values_list,values_rated,language,municipality,province,"
-            "lat,lng,geocode_accuracy_type,created_at,slug,assessment_skip_reason",
+            "lat,lng,geocode_accuracy_type,created_at,updated_at,slug,assessment_skip_reason",
             order_by="id",
             desc=False,
         )
@@ -174,6 +175,57 @@ def resolve_org_skip_reason(
     if find_missing_org_fields({**org, **filtered}):
         return SKIP_REASON_PARTIAL_FILL
     return None
+
+
+@dataclass(frozen=True)
+class OrgAssessmentWriteResult:
+    """Result of filtering and persisting one assessment outcome."""
+
+    filtered: Dict[str, Any]
+    reason: str | None
+    applied: bool
+
+
+def filter_assessment_update_fields(
+    org: Dict[str, Any],
+    outcome: Any,
+) -> Dict[str, Any]:
+    """Return assessor DB fields to write — only those still missing on *org*."""
+    from utils.organization_assessment import _result_to_db_fields
+
+    filtered: Dict[str, Any] = {}
+    if not outcome.result:
+        return filtered
+    for field, value in _result_to_db_fields(outcome.result).items():
+        if value is not None and _is_org_field_missing(org, field):
+            filtered[field] = value
+    return filtered
+
+
+def persist_org_assessment_outcome(
+    org: Dict[str, Any],
+    outcome: Any,
+) -> OrgAssessmentWriteResult:
+    """Filter fields, resolve skip reason, and CAS-write on updated_at.
+
+    Returns applied=False when another writer changed the row since we read it.
+    """
+    filtered = filter_assessment_update_fields(org, outcome)
+    reason = resolve_org_skip_reason(org, outcome, filtered)
+    payload = {**filtered, "assessment_skip_reason": reason}
+
+    oid = org["id"]
+    read_at = org.get("updated_at")
+    query = supabase.table("organizations").update(payload).eq("id", oid)
+    if read_at:
+        query = query.eq("updated_at", read_at)
+    resp = query.execute()
+
+    if not resp.data:
+        return OrgAssessmentWriteResult(filtered, reason, False)
+
+    org.update(filtered)
+    return OrgAssessmentWriteResult(filtered, reason, True)
 
 
 def _park_org(oid: Any, reason: str | None) -> None:
@@ -271,7 +323,7 @@ def process_unprocessed_organizations(
     _log(f"Assessing {len(unprocessed)} previously-incomplete organizations...")
 
     from llm.tavily_grounding import is_tavily_available
-    from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
+    from utils.organization_assessment import OrganizationAssessor
 
     if not is_tavily_available():
         _log("⚠️  Tavily not available — organization assessment may produce degraded results")
@@ -303,19 +355,14 @@ def process_unprocessed_organizations(
                 existing_description=existing_description,
             )
 
-            filtered: Dict[str, Any] = {}
-            if outcome.result:
-                update_fields = _result_to_db_fields(outcome.result)
-                for field, value in update_fields.items():
-                    if value is not None and _is_org_field_missing(org, field):
-                        filtered[field] = value
+            write = persist_org_assessment_outcome(org, outcome)
+            filtered = write.filtered
+            reason = write.reason
 
-            reason = resolve_org_skip_reason(org, outcome, filtered)
-
-            # One write: field updates plus the park decision.
-            payload = {**filtered, "assessment_skip_reason": reason}
-            supabase.table("organizations").update(payload).eq("id", oid).execute()
-            org.update(filtered)
+            if not write.applied:
+                _log(f"  ⚠️  Org [{name}] skipped: row changed since read")
+                errors += 1
+                continue
 
             if reason is None:
                 success += 1
