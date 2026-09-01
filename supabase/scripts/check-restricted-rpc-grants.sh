@@ -16,7 +16,7 @@ for file in "${MIGRATIONS}"/*.sql; do
 	ts="${base%%_*}"
 
 	# Grandfather historical migrations; enforce on new work only.
-	if (( ts < CUTOFF )); then
+	if ((ts < CUTOFF)); then
 		continue
 	fi
 
