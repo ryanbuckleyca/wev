@@ -79,7 +79,9 @@ migrations after `20260901140000`). The script uses a multiline-aware matcher so
 split `CREATE OR REPLACE FUNCTION` statements are still detected.
 
 `apply_restricted_rpc_grants()` itself is **superuser-only** — migrations call it;
-service_role uses the individual RPCs whose grants it sets.
+service_role uses the individual RPCs whose grants it sets. When adding a new
+restricted RPC, update both `apply_restricted_rpc_grants()` and the `RESTRICTED`
+list in `supabase/scripts/check-restricted-rpc-grants.sh`.
 
 ### 6. Keep Generated Types Fresh
 

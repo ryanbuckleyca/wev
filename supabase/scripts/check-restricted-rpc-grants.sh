@@ -8,6 +8,7 @@ MIGRATIONS="${ROOT}/supabase/migrations"
 CUTOFF=20260901140000
 
 RESTRICTED='bulk_update_skill_embeddings|recalculate_matches_for_user|recalculate_matches_for_job|enqueue_job_match_recalc|process_job_match_recalc_queue|purge_request_logs|reset_restore_identity_sequences|trigger_recalculate_job_matches|trigger_recalculate_user_matches|verify_user_password|handle_auth_user_created'
+# Keep RESTRICTED in sync with the function list inside apply_restricted_rpc_grants().
 
 # Match CREATE [OR REPLACE] FUNCTION across line breaks and SQL comments.
 RESTRICTED_FN_PATTERN="create\\s+(?:or\\s+replace\\s+)?function\\s+(?:public\\.)?(?:${RESTRICTED})\\b"

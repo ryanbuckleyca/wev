@@ -2,6 +2,9 @@
 --   * RLS disabled on job_match_recalc_queue
 --   * RLS enabled but no policy on job_skills
 --   * SECURITY DEFINER RPCs callable by anon/authenticated
+--
+-- Supabase CLI migrations always run as the postgres superuser, so
+-- SELECT apply_restricted_rpc_grants() below is valid in CI and production.
 
 --------------------------------------------------------------------------------
 -- 1. job_match_recalc_queue — internal worker queue (service_role + triggers only)
@@ -90,9 +93,9 @@ begin
   revoke all on function public.trigger_recalculate_job_matches() from public, anon, authenticated;
   revoke all on function public.trigger_recalculate_user_matches() from public, anon, authenticated;
 
-  -- Authenticated session only: wev-bulletin/lib/account/password-verifier.ts calls
-  -- this via the user's server client; the function raises if auth.uid() is null.
-  -- No anon callers exist in this codebase (signup uses GoTrue, not this RPC).
+  -- Authenticated session only: sole caller is wev-bulletin/lib/account/password-verifier.ts
+  -- (server client with user JWT). Raises if auth.uid() is null. Signup/auth hooks
+  -- use GoTrue directly — they do not call this RPC.
   revoke all on function public.verify_user_password(text) from public, anon;
   grant execute on function public.verify_user_password(text) to authenticated;
 

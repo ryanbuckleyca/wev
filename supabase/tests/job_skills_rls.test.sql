@@ -6,6 +6,7 @@
 --   * anon / authenticated / service_role: set local role before assertions
 --
 -- psql \set triple-quotes produce SQL string literals (see match_calculator.test.sql).
+-- Requires full schema from supabase/migrations (CI: supabase test db applies all).
 
 begin;
 
@@ -78,7 +79,7 @@ select ok(
 );
 
 select lives_ok(
-  format('select public.enqueue_job_match_recalc(%s)', :test_job_id),
+  'select public.enqueue_job_match_recalc(' || :test_job_id || ')',
   'service_role can call enqueue_job_match_recalc'
 );
 
@@ -87,7 +88,7 @@ select lives_ok(
 reset role;
 
 select lives_ok(
-  format('select public.enqueue_job_match_recalc(%s)', :test_job_id),
+  'select public.enqueue_job_match_recalc(' || :test_job_id || ')',
   'enqueue_job_match_recalc works with queue RLS enabled (superuser)'
 );
 
